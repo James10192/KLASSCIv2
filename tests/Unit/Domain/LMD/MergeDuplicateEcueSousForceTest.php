@@ -3,6 +3,7 @@
 namespace Tests\Unit\Domain\LMD;
 
 use App\Domain\LMD\Actions\MergeDuplicateEcue;
+use App\Domain\LMD\Actions\RetirerMoyennesEnCollision;
 use App\Http\Controllers\ESBTPEtudiantController;
 use App\Models\ESBTPNote;
 use Illuminate\Support\Facades\DB;
@@ -104,6 +105,51 @@ class MergeDuplicateEcueSousForceTest extends TestCase
         $this->assertSame(2, DB::table('esbtp_notes')->where('matiere_id', self::CANONIQUE)->count());
     }
 
+    public function test_retirer_une_collision_met_de_cote_l_absorbee_et_recalcule_la_conservee(): void
+    {
+        $this->note($this->evaluation(self::CANONIQUE), 16);
+        $this->note($this->evaluation(self::ABSORBEE), 4);
+        $this->resultat(self::CANONIQUE, 16);
+        $this->resultat(self::ABSORBEE, 4);
+        $conflit = $this->fusionner()['moyennes_enregistrees']['conflits'][0]['id'];
+
+        $rapport = app(RetirerMoyennesEnCollision::class)->execute(self::CANONIQUE, [$conflit]);
+
+        $this->assertSame(1, $rapport['retirees']);
+        $this->assertSame(1, $rapport['recalculees']);
+        // Mise de côté, pas détruite.
+        $this->assertNotNull(DB::table('esbtp_resultats')->where('id', $conflit)->value('deleted_at'));
+        // La conservée porte maintenant les deux notes : (16 + 4) / 2 — une seule ligne.
+        $this->assertSame(10.0, $this->moyenne(self::CANONIQUE));
+        $this->assertSame(1, DB::table('esbtp_resultats')->whereNull('deleted_at')->count());
+    }
+
+    public function test_retirer_refuse_une_ligne_qui_n_est_pas_une_collision_de_fusion(): void
+    {
+        // Une moyenne ordinaire de l'élément conservé : rien à régler ici.
+        $this->resultat(self::CANONIQUE, 16);
+        $id = (int) DB::table('esbtp_resultats')->value('id');
+
+        $rapport = app(RetirerMoyennesEnCollision::class)->execute(self::CANONIQUE, [$id]);
+
+        $this->assertSame(0, $rapport['retirees']);
+        $this->assertSame('pas_un_element_absorbe', $rapport['refusees'][0]['raison']);
+        $this->assertNull(DB::table('esbtp_resultats')->where('id', $id)->value('deleted_at'));
+    }
+
+    public function test_une_collision_est_vue_meme_quand_la_periode_s_ecrit_autrement(): void
+    {
+        // « 1 » et « semestre1 » désignent la même période : reportée, la ligne de
+        // l'absorbée serait une seconde ligne vivante pour la même coordonnée.
+        $this->resultat(self::CANONIQUE, 16);
+        $this->resultat(self::ABSORBEE, 4, '1');
+
+        $rapport = $this->fusionner();
+
+        $this->assertSame(0, $rapport['moyennes_enregistrees']['repointees']);
+        $this->assertCount(1, $rapport['moyennes_enregistrees']['conflits']);
+    }
+
     public function test_sans_force_les_moyennes_enregistrees_ne_bougent_pas(): void
     {
         $this->resultat(self::ABSORBEE, 12);
@@ -198,11 +244,11 @@ class MergeDuplicateEcueSousForceTest extends TestCase
         ]);
     }
 
-    private function resultat(int $matiereId, float $moyenne): void
+    private function resultat(int $matiereId, float $moyenne, string $periode = 'semestre1'): void
     {
         DB::table('esbtp_resultats')->insert([
             'etudiant_id' => self::ETUDIANT, 'classe_id' => self::CLASSE_LMD, 'matiere_id' => $matiereId,
-            'annee_universitaire_id' => self::ANNEE, 'periode' => 'semestre1', 'moyenne' => $moyenne, 'coefficient' => 1,
+            'annee_universitaire_id' => self::ANNEE, 'periode' => $periode, 'moyenne' => $moyenne, 'coefficient' => 1,
         ]);
     }
 

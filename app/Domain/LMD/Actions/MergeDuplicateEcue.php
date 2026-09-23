@@ -2,6 +2,7 @@
 
 namespace App\Domain\LMD\Actions;
 
+use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -42,8 +43,9 @@ use RuntimeException;
  * La valeur reportée n'est pas recalculée ici : elle reste celle d'avant, jusqu'à
  * ce recalcul. Si la canonique a déjà sa propre ligne sur la même coordonnée,
  * celle de l'absorbée reste en place et est nommée : fusionner deux moyennes,
- * peut-être saisies à la main, n'est pas une décision de code — et tant
- * qu'elle n'est pas tranchée, le certificat compte les deux.
+ * peut-être saisies à la main, n'est pas une décision de code. Tant qu'elle
+ * n'est pas tranchée, le certificat compte les deux ; l'écran de fusion offre
+ * de la trancher sur place ({@see RetirerMoyennesEnCollision}).
  *
  * L'AGRÉGAT LMD NE SE RECALCULE PAS, IL SE REPORTE. `esbtp_lmd_resultats_ecues`
  * est une ligne de bulletin LMD généré : sa moyenne se reconstruit à la
@@ -164,20 +166,22 @@ class MergeDuplicateEcue
      * canonique — voir l'en-tête pour le pourquoi.
      *
      * Seules les lignes vivantes : la clé unique porte aussi `deleted_at`, et une
-     * ligne effacée en douceur n'est lue par personne. Une coordonnée où la
-     * canonique a déjà sa ligne vivante est une collision, nommée et laissée.
+     * ligne effacée en douceur ou archivée n'est lue par personne. Une
+     * coordonnée où la canonique a déjà sa ligne vivante est une collision,
+     * nommée et laissée ; {@see RetirerMoyennesEnCollision} la règle.
      *
      * `DB::table` et non le modèle : le garde de cohérence de `ESBTPResultat`
      * n'a rien à dire ici (une ECUE remplace une ECUE, dans la même classe), et
      * l'audit ligne à ligne n'apporterait rien que le journal ne dise déjà.
      *
-     * @return array{repointees:int, conflits:list<array{id:int, etudiant_id:int, classe_id:int, periode:string, moyenne:?float}>}
+     * @return array{repointees:int, conflits:list<array{id:int, etudiant_id:int, classe_id:int, annee_universitaire_id:int, periode:string, moyenne:?float}>}
      */
     private function repointResultats(int $canonicalId, array $absorbedIds): array
     {
         $rows = DB::table('esbtp_resultats')
             ->whereIn('matiere_id', $absorbedIds)
             ->whereNull('deleted_at')
+            ->whereNull('archived_at')
             ->orderBy('id')
             ->get(['id', 'etudiant_id', 'classe_id', 'annee_universitaire_id', 'periode', 'moyenne']);
 
@@ -185,20 +189,14 @@ class MergeDuplicateEcue
         $conflits = [];
 
         foreach ($rows as $row) {
-            $occupe = DB::table('esbtp_resultats')
-                ->where('etudiant_id', $row->etudiant_id)
-                ->where('classe_id', $row->classe_id)
-                ->where('annee_universitaire_id', $row->annee_universitaire_id)
-                ->where('periode', $row->periode)
-                ->where('matiere_id', $canonicalId)
-                ->whereNull('deleted_at')
-                ->exists();
+            $occupe = self::ligneDeLaCanonique($canonicalId, $row)->exists();
 
             if ($occupe) {
                 $conflits[] = [
                     'id' => (int) $row->id,
                     'etudiant_id' => (int) $row->etudiant_id,
                     'classe_id' => (int) $row->classe_id,
+                    'annee_universitaire_id' => (int) $row->annee_universitaire_id,
                     'periode' => (string) $row->periode,
                     'moyenne' => $row->moyenne !== null ? (float) $row->moyenne : null,
                 ];
@@ -263,6 +261,25 @@ class MergeDuplicateEcue
                 ]);
             }
         }
+    }
+
+    /**
+     * La ligne vivante de la canonique sur la coordonnée d'une ligne donnée.
+     *
+     * La période s'écrit de deux façons en base (« 1 » ou « semestre1 ») : une
+     * égalité stricte laisserait passer une collision réelle, et deux lignes
+     * vivantes pour la même coordonnée seraient lues toutes les deux.
+     */
+    public static function ligneDeLaCanonique(int $canonicalId, object $row): \Illuminate\Database\Query\Builder
+    {
+        return DB::table('esbtp_resultats')
+            ->where('etudiant_id', $row->etudiant_id)
+            ->where('classe_id', $row->classe_id)
+            ->where('annee_universitaire_id', $row->annee_universitaire_id)
+            ->whereIn('periode', ESBTPEvaluation::aliasDePeriode((string) $row->periode))
+            ->where('matiere_id', $canonicalId)
+            ->whereNull('deleted_at')
+            ->whereNull('archived_at');
     }
 
     /**
@@ -406,7 +423,7 @@ class MergeDuplicateEcue
                 'matiere_filiere_links' => DB::table('esbtp_matiere_filiere')->whereIn('matiere_id', $absorbedIds)->count(),
                 'lmd_resultats_ecues' => DB::table('esbtp_lmd_resultats_ecues')->whereIn('matiere_id', $absorbedIds)->count(),
                 // Reportées seulement avec `force`, comme les notes.
-                'moyennes_enregistrees' => DB::table('esbtp_resultats')->whereIn('matiere_id', $absorbedIds)->whereNull('deleted_at')->count(),
+                'moyennes_enregistrees' => DB::table('esbtp_resultats')->whereIn('matiere_id', $absorbedIds)->whereNull('deleted_at')->whereNull('archived_at')->count(),
             ],
             'soft_deleted_count' => count($absorbedIds),
         ];

@@ -77,7 +77,13 @@ canonique les lignes d'`esbtp_resultats` de l'absorbée, sans les recalculer.
 Laissées sur l'absorbée, elles compteraient les notes deux fois au certificat
 dès le premier recalcul de la canonique (une note saisie par un enseignant
 suffit). Une ligne en collision avec celle de la canonique sur la même
-coordonnée reste en place, nommée dans `moyennes_enregistrees.conflits`. Il
+coordonnée (période comparée sous ses deux écritures, « 1 » et « semestre1 »)
+reste en place, nommée dans `moyennes_enregistrees.conflits`. L'écran de
+réconciliation la règle sur demande (`POST
+/esbtp/lmd/reconciliation/moyennes-en-collision/retirer`,
+`RetirerMoyennesEnCollision`) : mise de côté tracée de la ligne de l'absorbée,
+puis recalcul de celle de la canonique depuis ses notes. L'écran « Modifier
+les moyennes » refuse les classes LMD : il ne sert pas ici. Il
 reporte aussi les lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`), dont la note de
 rattrapage ne se reconstruit depuis aucune note et serait sinon perdue à la
 régénération ; il laisse en place, et nomme dans `conflits`, une ligne en

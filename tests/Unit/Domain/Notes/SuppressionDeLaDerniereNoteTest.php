@@ -3,6 +3,7 @@
 namespace Tests\Unit\Domain\Notes;
 
 use App\Models\ESBTPNote;
+use App\Models\ESBTPResultat;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -48,6 +49,12 @@ class SuppressionDeLaDerniereNoteTest extends TestCase
         // La ligne reste, sans être remise à zéro — et sans trace de recalcul.
         $this->assertSame(14.0, (float) DB::table('esbtp_resultats')->where('matiere_id', 5)->value('moyenne'));
         $this->assertDatabaseCount('esbtp_resultats_recompute_log', 0);
+
+        // Et elle n'est pas perdue de vue : le pré-contrôle de la génération des
+        // bulletins la liste à la suppression. La note est effacée EN DOUCEUR —
+        // elle est toujours en base, et ce contrôle la comptait encore.
+        $this->assertNotNull(DB::table('esbtp_notes')->where('id', $noteId)->value('deleted_at'));
+        $this->assertSame(1, ESBTPResultat::query()->sansNoteSurLaPeriode(10, 1, ['semestre1', '1'])->count());
     }
 
     public function test_passer_la_derniere_note_en_absence_fixe_toujours_la_moyenne(): void

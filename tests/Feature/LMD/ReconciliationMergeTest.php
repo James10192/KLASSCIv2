@@ -164,4 +164,27 @@ class ReconciliationMergeTest extends TestCase
         $response->assertOk()->assertJson(['success' => true, 'dry_run' => true, 'committed' => false]);
         $this->assertDatabaseHas('esbtp_unites_enseignement', ['id' => $ueB->id, 'deleted_at' => null]);
     }
+
+    public function test_retirer_les_moyennes_en_collision_exige_la_permission(): void
+    {
+        // Un administrateur existe : sans lui, l'application renvoie vers l'installation.
+        $this->admin();
+
+        $this->actingAs(User::factory()->create())
+            ->postJson(route('esbtp.lmd.reconciliation.moyennes-collision.retirer'), ['canonical_id' => 1, 'resultat_ids' => [1]])
+            ->assertForbidden();
+    }
+
+    public function test_retirer_refuse_en_422_une_ligne_qui_n_est_pas_une_collision_de_fusion(): void
+    {
+        $this->admin();
+        $matiere = ESBTPMatiere::create(['name' => 'RDM', 'code' => 'RDM1', 'is_active' => true]);
+
+        $this->postJson(route('esbtp.lmd.reconciliation.moyennes-collision.retirer'), [
+            'canonical_id' => $matiere->id, 'resultat_ids' => [987654],
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('retirees', 0)
+            ->assertJsonPath('refusees.0.id', 987654);
+    }
 }

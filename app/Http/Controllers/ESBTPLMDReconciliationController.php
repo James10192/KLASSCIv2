@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\LMD\Actions\MergeDuplicateEcue;
 use App\Domain\LMD\Actions\MergeDuplicateUe;
+use App\Domain\LMD\Actions\RetirerMoyennesEnCollision;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Services\LMD\DuplicateReconciliationService;
@@ -112,5 +113,24 @@ class ESBTPLMDReconciliationController extends Controller
             : $mergeEcue->execute((int) $validated['canonical_id'], $validated['absorbed_ids'], $options);
 
         return response()->json($report, ($report['success'] ?? false) ? 200 : 422);
+    }
+
+    /**
+     * Règle les moyennes enregistrées qu'une fusion d'ECUE a laissées en
+     * collision : voir {@see RetirerMoyennesEnCollision}.
+     */
+    public function retirerMoyennesEnCollision(Request $request, RetirerMoyennesEnCollision $action): JsonResponse
+    {
+        $this->authorize('lmd.reconciliation.manage');
+
+        $validated = $request->validate([
+            'canonical_id' => ['required', 'integer'],
+            'resultat_ids' => ['required', 'array', 'min:1', 'max:500'],
+            'resultat_ids.*' => ['integer'],
+        ]);
+
+        $rapport = $action->execute((int) $validated['canonical_id'], $validated['resultat_ids'], optional($request->user())->id);
+
+        return response()->json(['success' => $rapport['retirees'] > 0] + $rapport, $rapport['retirees'] > 0 ? 200 : 422);
     }
 }

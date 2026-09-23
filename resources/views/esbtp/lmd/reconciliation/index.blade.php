@@ -102,6 +102,7 @@
     .rec-impact-row { display: flex; justify-content: space-between; padding: .55rem 0; border-bottom: 1px dashed #eef2f7; font-size: .88rem; }
     .rec-impact-row strong { color: #0453cb; }
     .rec-warn { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.28); color: #b45309; border-radius: 9px; padding: .7rem .9rem; font-size: .82rem; margin-top: .9rem; }
+    .rec-warn-actions { margin-top: .6rem; display: flex; flex-direction: column; gap: .35rem; align-items: flex-start; }
     .rec-block { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.28); color: #b91c1c; border-radius: 9px; padding: .7rem .9rem; font-size: .82rem; margin-top: .9rem; }
     .rec-result { margin-top: 1rem; }
     .rec-result-title { font-size: .8rem; font-weight: 700; color: #0f172a; margin: 0 0 .5rem; }
@@ -371,7 +372,15 @@
                         <template x-if="modal.done.moyennes.conflits.length">
                             <div class="rec-warn">
                                 <i class="fas fa-exclamation-triangle"></i>
-                                <span x-text="modal.done.moyennes.conflits.length + ' moyenne(s) enregistrée(s) de l\'élément absorbé sont restées en place : l\'élément conservé avait déjà la sienne pour le même élève et la même période. À trancher depuis « Modifier les moyennes » ; tant que ce n\'est pas fait, le certificat de scolarité compte les deux.'"></span>
+                                <span x-text="modal.done.moyennes.conflits.length + ' moyenne(s) enregistrée(s) de l\'élément absorbé sont restées en place : l\'élément conservé avait déjà la sienne pour le même élève et la même période, et le certificat de scolarité compte les deux.'"></span>
+                                <div class="rec-warn-actions">
+                                    <button type="button" class="rec-btn rec-btn--ghost" @click="retirerMoyennesEnCollision()" :disabled="busy">
+                                        <i class="fas fa-eraser" x-show="!busy"></i>
+                                        <i class="fas fa-spinner fa-spin" x-show="busy" x-cloak></i>
+                                        Retirer ces moyennes et recalculer celles de l'élément conservé
+                                    </button>
+                                    <p class="rec-result-hint">Suppression réversible, tracée dans le journal d'audit. La moyenne de l'élément conservé est recalculée depuis ses notes, qui incluent désormais celles de l'élément absorbé.</p>
+                                </div>
                             </div>
                         </template>
                         <template x-if="modal.done.bulletins_a_regenerer.length">
@@ -581,6 +590,32 @@ function recManager() {
                 throw new Error(data.message || data.reason || ('Erreur HTTP ' + res.status));
             }
             return data;
+        },
+
+        async retirerMoyennesEnCollision() {
+            const conflits = (this.modal.done && this.modal.done.moyennes.conflits) || [];
+            if (!conflits.length) return;
+            this.busy = true;
+            try {
+                const res = await fetch('{{ route('esbtp.lmd.reconciliation.moyennes-collision.retirer') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({ canonical_id: this.modal.canonical, resultat_ids: conflits.map(c => c.id) }),
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.message || 'Aucune moyenne retirée.');
+                const refusees = new Set((data.refusees || []).map(r => r.id));
+                this.modal.done.moyennes.conflits = conflits.filter(c => refusees.has(c.id));
+                this.toast(refusees.size ? 'error' : 'success', data.retirees + ' moyenne(s) retirée(s)' + (refusees.size ? ', ' + refusees.size + ' refusée(s).' : '.'));
+            } catch (err) {
+                this.toast('error', err.message || 'Échec du retrait.');
+            } finally {
+                this.busy = false;
+            }
         },
 
         closeModal() { this.modal.open = false; this.modal.group = null; this.modal.report = null; this.modal.force = false; this.modal.done = null; },
