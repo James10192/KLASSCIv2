@@ -219,6 +219,8 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         'verification_contact',
         'email_verifie_at',
         'telephone_verifie_at',
+        'contact_confirme_par',
+        'contact_confirme_at',
     ];
 
     protected $casts = [
@@ -228,6 +230,7 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         'rdv_invite_at' => 'datetime',
         'email_verifie_at' => 'datetime',
         'telephone_verifie_at' => 'datetime',
+        'contact_confirme_at' => 'datetime',
         'annee_bac' => 'integer',
         'est_transfert' => 'boolean',
         'annee_derniere_inscription' => 'integer',
@@ -250,6 +253,8 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         // dire que le dossier a change de personne. Les autres champs restent
         // dehors, par minimisation : ce sont ceux-la qui portent la decision.
         'nom', 'prenoms', 'date_naissance',
+        // « Confirmer le contact » est un geste d'agent : qui, quand, et l'etat.
+        'verification_contact', 'contact_confirme_par', 'contact_confirme_at',
     ];
 
     public function anneeUniversitaire(): BelongsTo

@@ -137,11 +137,103 @@ class VerificationContactRobustesseTest extends TestCase
         Permission::firstOrCreate(['name' => 'inscriptions.candidatures.process', 'guard_name' => 'web']);
         $agent = User::factory()->create();
         $agent->givePermissionTo('inscriptions.candidatures.process');
-        $this->actingAs($agent)->post(route('esbtp.candidatures.confirmer-contact', $candidature))->assertRedirect();
+        $this->actingAs($agent)->post(route('esbtp.candidatures.confirmer-contact', $candidature), ['empreinte' => $candidature->fresh()->empreinteContact()])
+            ->assertRedirect()->assertSessionHas('success');
 
-        $this->assertSame(StatutVerificationContact::Verifie->value, $candidature->fresh()->verification_contact);
-        app(MessagerieRdv::class)->planifier($reservation->fresh());
+        $confirmee = $candidature->fresh();
+        $this->assertSame(StatutVerificationContact::Verifie->value, $confirmee->verification_contact);
+        $this->assertSame($agent->id, (int) $confirmee->contact_confirme_par);
+        $this->assertNotNull($confirmee->contact_confirme_at);
+        // Le rendez-vous deja pris repart dans la file, avec l'adresse du dossier.
         $this->assertSame(StatutConvocationRdv::EnAttente, $reservation->fresh()->convocation_statut);
+        $this->assertTrue(\OwenIt\Auditing\Models\Audit::query()
+            ->where('auditable_type', $confirmee->getMorphClass())->where('auditable_id', $confirmee->id)
+            ->get()->contains(fn ($a) => ($a->new_values['verification_contact'] ?? null) === 'verifie'), 'Le geste doit laisser une trace d\'audit.');
+    }
+
+    public function test_confirmer_un_dossier_modifie_depuis_l_affichage_est_refuse(): void
+    {
+        $this->withoutMiddleware([\App\Http\Middleware\PaywallMiddleware::class]);
+        $candidature = $this->candidature();
+        $candidature->forceFill(['verification_contact' => StatutVerificationContact::Expiree->value])->saveQuietly();
+        $empreinteAffichee = $candidature->fresh()->empreinteContact();
+        $candidature->fresh()->forceFill(['email' => 'autre@gmail.com'])->saveQuietly();
+
+        Permission::firstOrCreate(['name' => 'inscriptions.candidatures.process', 'guard_name' => 'web']);
+        $agent = User::factory()->create();
+        $agent->givePermissionTo('inscriptions.candidatures.process');
+        $this->actingAs($agent)->post(route('esbtp.candidatures.confirmer-contact', $candidature), ['empreinte' => $empreinteAffichee])
+            ->assertRedirect()->assertSessionHas('error');
+
+        $this->assertSame(StatutVerificationContact::Expiree->value, $candidature->fresh()->verification_contact);
+    }
+
+    public function test_confirmer_le_contact_exige_le_droit_de_traitement(): void
+    {
+        $this->withoutMiddleware([\App\Http\Middleware\PaywallMiddleware::class]);
+        $candidature = $this->candidature();
+        $candidature->forceFill(['verification_contact' => StatutVerificationContact::Expiree->value])->saveQuietly();
+        $demande = \App\Models\ESBTPReinscriptionDemande::create([
+            'etudiant_id' => \App\Models\ESBTPEtudiant::factory()->create()->id,
+            'annee_universitaire_id' => $candidature->annee_universitaire_id,
+            'statut' => \App\Models\ESBTPReinscriptionDemande::STATUT_EN_ATTENTE,
+            'consentement_at' => now(),
+            'verification_contact' => StatutVerificationContact::Expiree->value,
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->post(route('esbtp.candidatures.confirmer-contact', $candidature), ['empreinte' => $candidature->fresh()->empreinteContact()])
+            ->assertForbidden();
+        $this->post(route('esbtp.reinscription-demandes.confirmer-contact', $demande), ['empreinte' => $demande->empreinteContact()])
+            ->assertForbidden();
+        $this->assertSame(StatutVerificationContact::Expiree->value, $candidature->fresh()->verification_contact);
+    }
+
+    public function test_un_renvoi_croise_avec_un_redepot_n_ecrit_rien_sur_le_nouveau_contact(): void
+    {
+        $numeroInitial = '+2250701020304';
+        Http::fake([self::URL_VERIF => Http::sequence()
+            ->push(['id' => 'ver_1', 'status' => 'pending'], 201)
+            ->whenEmpty(function () {
+                // Pendant le renvoi, un redepot remplace le numero de la ligne.
+                ESBTPVerificationContact::query()->update(['destination' => '+2250709090909', 'mailpulse_verification_id' => null]);
+
+                return Http::response(['id' => 'ver_ancien', 'status' => 'pending'], 201);
+            })]);
+        $verification = app(DemarrageVerification::class)->apresDepot($this->candidature($numeroInitial));
+
+        $this->appeler('renvoyer', ['canal' => 'telephone', 'demande_id' => $verification->demandeId])->assertStatus(202);
+
+        $ligne = ESBTPVerificationContact::query()->sole();
+        $this->assertSame('+2250709090909', $ligne->destination);
+        $this->assertNull($ligne->mailpulse_verification_id, 'Le code de l\'ancien numero ne doit pas valoir pour le nouveau.');
+    }
+
+    public function test_whatsapp_sature_se_traite_comme_une_limite(): void
+    {
+        Http::fakeSequence(self::URL_VERIF)
+            ->push(['id' => 'ver_1', 'status' => 'pending'], 201)
+            ->push(['error' => 'whatsapp_sature', 'retry_after' => 20], 503);
+        $candidature = $this->candidature();
+        $verification = app(DemarrageVerification::class)->apresDepot($candidature);
+
+        $this->appeler('renvoyer', ['canal' => 'telephone', 'demande_id' => $verification->demandeId])
+            ->assertStatus(429)->assertJson(['retry_after' => 20]);
+        $this->assertSame(StatutVerificationContact::TelephoneNonVerifie->value, $candidature->fresh()->verification_contact);
+    }
+
+    public function test_un_redepot_d_une_demande_expiree_relance_un_code_sans_la_masquer(): void
+    {
+        Http::fake([self::URL_VERIF => Http::response(['id' => 'ver_1', 'status' => 'pending'], 201)]);
+        $expiree = $this->candidature();
+        $expiree->forceFill(['verification_contact' => StatutVerificationContact::Expiree->value])->saveQuietly();
+
+        $reponse = app(DemarrageVerification::class)->apresDepot($expiree->fresh());
+
+        $this->assertNotNull($reponse);
+        $this->assertFalse($reponse->masquee);
+        $this->assertSame(1, ESBTPCandidature::query()->count());
+        Http::assertSentCount(1);
     }
 
     public function test_la_commande_des_familles_s_arrete_sur_une_limite_sans_garder_de_ligne(): void

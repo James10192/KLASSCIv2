@@ -17,6 +17,12 @@ use Illuminate\Support\Facades\Log;
  */
 class ExpediteurVerification
 {
+    /**
+     * La ligne a change de contact pendant l'envoi (redepot concurrent) : le
+     * resultat est jete, rien n'est ecrit, et l'appelant ne touche a rien.
+     */
+    public const CONTACT_CHANGE = 'contact_change';
+
     public function __construct(
         private readonly CourrielVerification $courriel,
         private readonly MailPulseVerifications $whatsapp,
@@ -28,10 +34,16 @@ class ExpediteurVerification
             ? $this->parEmail($verification)
             : $this->parWhatsapp($verification);
 
-        $verification->forceFill([
+        if ($resultat->code === self::CONTACT_CHANGE) {
+            Log::info('Verification de contact : contact change pendant l\'envoi, resultat ignore', ['demande_id' => $verification->demande_id]);
+
+            return $resultat;
+        }
+
+        $this->ecrire($verification, [
             'dernier_envoi_at' => now(),
             'dernier_echec' => $resultat->ok ? null : mb_substr($resultat->code, 0, 60),
-        ])->save();
+        ]);
 
         if (! $resultat->ok) {
             Log::warning('Verification de contact : envoi refuse', [
@@ -50,18 +62,23 @@ class ExpediteurVerification
         $code = SecretsVerification::nouveauCode();
         $jeton = SecretsVerification::nouveauJeton();
 
-        $verification->forceFill([
+        // Les secrets ne s'ecrivent que sur la ligne telle qu'on l'a lue : si un
+        // redepot a change l'adresse entre-temps, aucun code ne part.
+        $ecrit = $this->ecrire($verification, [
             'code_hash' => SecretsVerification::empreinte($code),
             'jeton_hash' => SecretsVerification::empreinte($jeton),
             'code_expire_at' => now()->addMinutes((int) config('verification_contact.code_expire_minutes', 30)),
             'jeton_expire_at' => now()->addHours((int) config('verification_contact.lien_expire_heures', 48)),
             'tentatives' => 0,
-        ])->save();
+        ]);
+        if (! $ecrit) {
+            return ResultatVerificationDistante::echec(self::CONTACT_CHANGE);
+        }
 
         $envoi = $this->courriel->expedier($verification->destination, $code, $jeton);
 
         if ($envoi->ok) {
-            $verification->forceFill(['mailpulse_message_id' => $envoi->id ? mb_substr($envoi->id, 0, 100) : null])->save();
+            $this->ecrire($verification, ['mailpulse_message_id' => $envoi->id ? mb_substr($envoi->id, 0, 100) : null]);
 
             return ResultatVerificationDistante::ok('sent', (string) $envoi->id);
         }
@@ -74,13 +91,40 @@ class ExpediteurVerification
     private function parWhatsapp(ESBTPVerificationContact $verification): ResultatVerificationDistante
     {
         $resultat = $this->whatsapp->creer($verification->destination, $verification->demande_id);
+        if (! $resultat->ok) {
+            return $resultat;
+        }
 
-        $verification->forceFill([
-            'mailpulse_verification_id' => $resultat->ok ? mb_substr((string) $resultat->id, 0, 100) : $verification->mailpulse_verification_id,
-            'tentatives' => $resultat->ok ? 0 : $verification->tentatives,
-            'code_expire_at' => $resultat->ok ? now()->addMinutes((int) config('verification_contact.code_whatsapp_expire_minutes', 10)) : $verification->code_expire_at,
-        ])->save();
+        // L'identifiant MailPulse ne vaut que pour le numero appele.
+        $ecrit = $this->ecrire($verification, [
+            'mailpulse_verification_id' => mb_substr((string) $resultat->id, 0, 100),
+            'tentatives' => 0,
+            'code_expire_at' => now()->addMinutes((int) config('verification_contact.code_whatsapp_expire_minutes', 10)),
+        ]);
 
-        return $resultat;
+        return $ecrit ? $resultat : ResultatVerificationDistante::echec(self::CONTACT_CHANGE);
+    }
+
+    /**
+     * Ecriture CONDITIONNELLE : seulement si la ligne a encore le canal et la
+     * destination de l'instance en main. Rend faux si elle a change.
+     *
+     * @param  array<string, mixed>  $champs
+     */
+    private function ecrire(ESBTPVerificationContact $verification, array $champs): bool
+    {
+        $n = ESBTPVerificationContact::query()
+            ->whereKey($verification->getKey())
+            ->where('canal', $verification->canal->value)
+            ->where('destination', $verification->destination)
+            ->update($champs + ['updated_at' => now()]);
+
+        if ($n === 0) {
+            return false;
+        }
+
+        $verification->forceFill($champs)->syncOriginal();
+
+        return true;
     }
 }

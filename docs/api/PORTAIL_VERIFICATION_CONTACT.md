@@ -38,7 +38,14 @@ toutes les heures). Une confirmation tardive reste acceptée.
 Les demandes `verification_expiree`, `verification_impossible` et `contact_a_reconfirmer`
 ne sont ni placées automatiquement en rendez-vous ni convoquées par courriel (elles vont
 dans « Familles à prévenir ») tant qu'un agent n'a pas cliqué « Confirmer le contact »
-(permission de traitement des candidatures ou des demandes).
+(permission de traitement des candidatures ou des demandes). Le geste est refusé si le
+dossier a changé depuis l'affichage (empreinte postée par le formulaire), il est audité
+(`contact_confirme_par`, `contact_confirme_at`), et les convocations de rendez-vous déjà
+pris restées « sans e-mail » ou en échec reprennent l'adresse du dossier et repartent
+avec le prochain envoi. Un redépôt d'une demande expirée ou non vérifiable relance un
+code sans la masquer. `503 whatsapp_sature` de MailPulse se traite comme une limite de
+débit (`429` avec `retry_after` au site). Les écritures d'un envoi (secrets, identifiant
+MailPulse) n'ont lieu que si la ligne a toujours le même canal et le même destinataire.
 
 Le courriel contient un code à 6 chiffres (30 min) et le lien
 `<URL_PORTAIL_PUBLIC>/verification-email?ecole=<code_ecole>#jeton=<jeton>` (48 h).

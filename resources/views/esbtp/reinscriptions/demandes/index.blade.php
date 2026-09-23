@@ -139,12 +139,7 @@
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
-        @if(session('error'))
-            <div class="alert alert-danger">{{ session('error') }}</div>
-        @endif
+        <x-flash-demandes />
 
         @if(($referenceActive ?? '') !== '')
             <div class="rd-filtre-ref">
@@ -195,7 +190,7 @@
                                         };
                                     @endphp
                                     <span class="rd-badge rd-badge--{{ $ton }}">{{ $demande->libelleStatut() }}</span>
-                                    @include('esbtp.partials._badge-verification-contact', ['statutVerification' => $demande->verification_contact, 'routeConfirmer' => auth()->user()?->can('reinscriptions.demandes.process') ? route('esbtp.reinscription-demandes.confirmer-contact', $demande) : null])
+                                    <x-demande-contact-badge :demande="$demande" route="esbtp.reinscription-demandes.confirmer-contact" permission="reinscriptions.demandes.process" />
                                     @if($demande->traitePar)
                                         <div style="font-size:.72rem;color:#64748b;margin-top:.2rem;">
                                             par {{ $demande->traitePar->name }}

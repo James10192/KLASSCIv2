@@ -58,6 +58,20 @@ trait AttendVerificationContact
         return in_array($this->verification_contact, StatutVerificationContact::valeursAConfirmer(), true);
     }
 
+    /**
+     * Ce que l'agent avait sous les yeux : l'etat, le contact et la derniere
+     * ecriture. « Confirmer le contact » n'agit que si rien n'a bouge depuis.
+     */
+    public function empreinteContact(): string
+    {
+        return hash('sha256', implode('|', [
+            (string) $this->verification_contact,
+            mb_strtolower(trim((string) $this->getAttribute('email'))),
+            trim((string) $this->getAttribute('telephone')),
+            (string) $this->updated_at?->getTimestamp(),
+        ]));
+    }
+
     /** @param  Builder<static>  $query */
     public function scopeContactUtilisable(Builder $query): Builder
     {

@@ -49,7 +49,9 @@ class DemarrageVerification
                 return $this->demarrer($demande, true);
             }
             if (! $this->contactChange($demande)) {
-                return null;
+                // Visible mais jamais confirmee (expiree, impossible) : la famille
+                // revient, on lui redonne un code, sans rien masquer.
+                return $demande->contactAConfirmer() ? $this->demarrer($demande, false) : null;
             }
 
             $demande->poserVerificationContact(StatutVerificationContact::AReconfirmer, ['email_verifie_at' => null, 'telephone_verifie_at' => null]);
@@ -93,6 +95,14 @@ class DemarrageVerification
         }
 
         $envoi = $this->expediteur->expedier($ligne);
+
+        // Un redepot concurrent a repris la ligne pendant l'envoi : c'est lui
+        // qui decide desormais. On ne supprime ni ne marque rien.
+        if ($envoi->code === ExpediteurVerification::CONTACT_CHANGE) {
+            $this->dernierRefus = $envoi->code;
+
+            return null;
+        }
 
         // MailPulse demande d'attendre, au depot : ce n'est pas une impossibilite.
         // La famille redemandera un code ; l'expiration a 48 h reste le filet.

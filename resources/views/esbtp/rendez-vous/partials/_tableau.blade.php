@@ -151,7 +151,7 @@
                                                 <div class="rdv-resa-qui">
                                                     <strong>{{ $resa->nomComplet() }}</strong>
                                                     <span>{{ $resa->telephone }}@if($resa->email) · {{ $resa->email }}@endif</span>
-                                                    @include('esbtp.partials._badge-verification-contact', ['statutVerification' => $resa->porteur()?->verification_contact])
+                                                    <x-demande-contact-badge :demande="$resa->porteur()" />
                                                 </div>
                                                 <div class="rdv-resa-conv">
                                                     @if($_c)

@@ -84,6 +84,8 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
         'verification_contact',
         'email_verifie_at',
         'telephone_verifie_at',
+        'contact_confirme_par',
+        'contact_confirme_at',
     ];
 
     protected $casts = [
@@ -92,6 +94,7 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
         'rdv_invite_at' => 'datetime',
         'email_verifie_at' => 'datetime',
         'telephone_verifie_at' => 'datetime',
+        'contact_confirme_at' => 'datetime',
     ];
 
     /**
@@ -112,6 +115,8 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
         // sans laisser de trace. L'empreinte d'adresse, elle, reste hors audit :
         // la conserver en plusieurs exemplaires irait contre la minimisation.
         'consentement_at',
+        // « Confirmer le contact » est un geste d'agent : qui, quand, et l'etat.
+        'verification_contact', 'contact_confirme_par', 'contact_confirme_at',
     ];
 
     public function etudiant(): BelongsTo

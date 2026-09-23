@@ -20,6 +20,9 @@ return new class extends Migration
                 $t->string('verification_contact', 30)->nullable()->index();
                 $t->timestamp('email_verifie_at')->nullable();
                 $t->timestamp('telephone_verifie_at')->nullable();
+                // « Confirmer le contact » : l'agent qui a joint la famille, et quand.
+                $t->unsignedBigInteger('contact_confirme_par')->nullable();
+                $t->timestamp('contact_confirme_at')->nullable();
             });
         }
     }
@@ -29,7 +32,7 @@ return new class extends Migration
         foreach (self::TABLES as $table) {
             Schema::table($table, function (Blueprint $t) {
                 $t->dropIndex(['verification_contact']);
-                $t->dropColumn(['verification_contact', 'email_verifie_at', 'telephone_verifie_at']);
+                $t->dropColumn(['verification_contact', 'email_verifie_at', 'telephone_verifie_at', 'contact_confirme_par', 'contact_confirme_at']);
             });
         }
     }

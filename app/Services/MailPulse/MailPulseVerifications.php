@@ -64,9 +64,11 @@ class MailPulseVerifications
 
         $retry = $reponse->json('retry_after');
 
-        // Toute limite de debit (`trop_de_demandes` compris) se traite pareil : attendre.
-        if ($reponse->status() === 429) {
-            return ResultatVerificationDistante::echec('rate_limited', 429, is_numeric($retry) ? (int) $retry : null);
+        // Toute limite de debit (`trop_de_demandes` compris) se traite pareil :
+        // attendre. Un WhatsApp sature (503 `whatsapp_sature`) aussi : ce n'est
+        // pas une impossibilite, juste un moment a passer.
+        if ($reponse->status() === 429 || $reponse->json('error') === 'whatsapp_sature') {
+            return ResultatVerificationDistante::echec('rate_limited', $reponse->status(), is_numeric($retry) ? (int) $retry : null);
         }
 
         $code = $reponse->json('error');
