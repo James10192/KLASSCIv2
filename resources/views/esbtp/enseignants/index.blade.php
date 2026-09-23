@@ -558,9 +558,11 @@
                     <button type="button" class="te-hero-btn" data-bs-toggle="modal" data-bs-target="#bulkAvailabilityModal">
                         <i class="fas fa-calendar-check"></i>Disponibilités
                     </button>
+                    @can('teachers.create')
                     <a href="{{ route('esbtp.enseignants.create') }}" class="te-hero-btn te-btn-solid">
                         <i class="fas fa-plus"></i>Nouvel Enseignant
                     </a>
+                    @endcan
                 </div>
             </div>
             <div class="te-hero-kpis">
@@ -722,9 +724,11 @@
                     </div>
                     <h3>Aucun enseignant trouvé</h3>
                     <p>Ajoutez votre premier enseignant ou modifiez vos filtres de recherche.</p>
+                    @can('teachers.create')
                     <a href="{{ route('esbtp.enseignants.create') }}" class="te-empty-btn">
                         <i class="fas fa-plus"></i>Nouvel Enseignant
                     </a>
+                    @endcan
                 </div>
             @endif
         </div>

@@ -8,10 +8,13 @@ use Illuminate\Validation\Rule;
 
 class StoreEnseignantRequest extends FormRequest
 {
+    /**
+     * Le middleware du groupe ne demande qu'une identite et le module
+     * Enseignants : il ne dit pas qui peut creer un compte. C'est ici.
+     */
     public function authorize(): bool
     {
-        // Authorisation gérée au niveau du middleware (routes).
-        return true;
+        return (bool) $this->user()?->can('teachers.create');
     }
 
     public function rules(): array
