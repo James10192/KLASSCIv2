@@ -232,7 +232,11 @@ class EntreesEtSortiesDeMoyenneTest extends TestCase
 
         $reponse = $this->supprimerLaSeanceDeDevoir($devoir, autorise: true);
 
-        $this->assertStringContainsString('annulez-le d\'abord', (string) $reponse->getSession()->get('error'));
+        $refus = (string) $reponse->getSession()->get('error');
+        $titre = DB::table('esbtp_evaluations')->where('id', $devoir)->value('titre');
+        $this->assertStringContainsString('annulez-le d\'abord', $refus);
+        $this->assertStringContainsString('« '.$titre.' »', $refus, 'le refus nomme le devoir à annuler');
+        $this->assertStringContainsString('est terminée', $refus);
         $this->assertNull(DB::table('esbtp_seance_cours')->where('id', 500)->value('deleted_at'));
         $this->assertNull(DB::table('esbtp_evaluations')->where('id', $devoir)->value('deleted_at'));
         $this->assertSame(10.0, $this->moyenne(self::MATIERE, 'semestre1'));

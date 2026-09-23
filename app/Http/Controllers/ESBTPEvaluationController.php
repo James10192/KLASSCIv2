@@ -916,7 +916,7 @@ class ESBTPEvaluationController extends Controller
     public function destroy(Request $request, ESBTPEvaluation $evaluation)
     {
         try {
-            if (! SuppressionDEvaluation::peutPartir($evaluation)) {
+            if (! $evaluation->isDeletable()) {
                 $message = 'Cette évaluation ne peut pas être supprimée dans son état actuel.';
 
                 if ($request->wantsJson()) {

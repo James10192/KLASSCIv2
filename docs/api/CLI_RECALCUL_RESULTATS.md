@@ -76,9 +76,9 @@ vivante. La liste des évaluations affiche l'avertissement et ses liens
 devoir, qui passe par un formulaire, le rend en message sur l'emploi du temps.
 Une évaluation déjà annulée ne comptait plus : la supprimer ne recalcule rien.
 Une seule règle de suppression pour tous les écrans
-(`SuppressionDEvaluation::peutPartir()`) : brouillon, planifiée ou annulée.
+(`ESBTPEvaluation::isDeletable()`) : brouillon, planifiée ou annulée.
 Un devoir en cours ou terminé s'annule d'abord ; sa séance ne l'emporte plus
-autrement. L'édition en masse de l'emploi du temps affiche l'avertissement.
+autrement, et le refus nomme le devoir. L'édition en masse de l'emploi du temps affiche l'avertissement.
 
 La séance de devoir ne reporte sur le devoir qu'**une coordonnée : sa matière,
 si elle a changé**. La période du devoir n'est pas réalignée quand le jour de la
@@ -367,6 +367,12 @@ qu'on fige.
   (liste des évaluations, suppression d'une séance de devoir) ; source
   `suppression` au journal de recalcul. **Ajout non cassant** : `warning` et
   `warning_links` dans la réponse JSON de la suppression.
+  **Changement de comportement** : supprimer une séance dont le devoir est en
+  cours ou terminé est désormais refusé (422 en JSON, message d'erreur sinon —
+  il nommait le devoir) là où la séance et son devoir partaient avant ; on annule
+  le devoir d'abord. Changer la matière d'une séance de devoir noté exige
+  `evaluations.edit_locked` (422 sinon). Le devoir créé avec une séance prend le
+  semestre de l'emploi du temps, plus le mois.
   `esbtp:check-evaluations-annees` sort en échec quand un recalcul échoue.
 - **Septembre 2026 (ter)** — la modification d'une séance de devoir,
   `esbtp:check-evaluations-annees`, et l'annulation / la réactivation d'une

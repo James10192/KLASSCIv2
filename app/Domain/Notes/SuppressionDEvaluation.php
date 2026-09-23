@@ -55,24 +55,24 @@ final class SuppressionDEvaluation
     }
 
     /**
-     * La seule règle de suppression d'une évaluation, pour tous les écrans :
-     * brouillon, planifiée ou annulée. Une évaluation en cours ou terminée
-     * s'annule d'abord ({@see ChangementDeStatut}, qui recalcule), puis se
-     * supprime. Aucune permission n'y déroge : la liste des évaluations n'en
-     * a jamais admis, et une seconde porte par l'emploi du temps en aurait
-     * fait deux règles.
+     * Le devoir qui retient la séance, ou null si elle peut partir.
+     * Supprimer une séance emporte son devoir : la même règle
+     * ({@see ESBTPEvaluation::isDeletable()}) s'applique.
      */
-    public static function peutPartir(ESBTPEvaluation $evaluation): bool
-    {
-        return $evaluation->isDeletable();
-    }
-
-    /** Supprimer une séance emporte son devoir : la même règle s'applique. */
-    public static function laSeancePeutPartir(ESBTPSeanceCours $seance): bool
+    public static function devoirQuiRetient(ESBTPSeanceCours $seance): ?ESBTPEvaluation
     {
         $devoir = self::devoirDe($seance);
 
-        return $devoir === null || self::peutPartir($devoir);
+        return $devoir !== null && ! $devoir->isDeletable() ? $devoir : null;
+    }
+
+    /** Le refus nomme le devoir, pour qu'on le retrouve dans la liste. */
+    public static function refusDeLaSeance(ESBTPEvaluation $devoir): string
+    {
+        $date = $devoir->date_evaluation ? ' du '.$devoir->date_evaluation->format('d/m/Y') : '';
+
+        return 'Le devoir « '.$devoir->titre.' »'.$date.' est '.mb_strtolower($devoir->status_label, 'UTF-8')
+            .' : annulez-le d\'abord depuis la liste des évaluations, puis supprimez la séance.';
     }
 
     private static function devoirDe(ESBTPSeanceCours $seance): ?ESBTPEvaluation

@@ -1169,8 +1169,8 @@ class ESBTPSeanceCoursController extends Controller
     {
         try {
             $emploiTempsId = $seancesCour->emploi_temps_id;
-            if (! SuppressionDEvaluation::laSeancePeutPartir($seancesCour)) {
-                $refus = 'Le devoir de cette séance est déjà en cours ou terminé : annulez-le d\'abord depuis la liste des évaluations, puis supprimez la séance.';
+            if ($devoir = SuppressionDEvaluation::devoirQuiRetient($seancesCour)) {
+                $refus = SuppressionDEvaluation::refusDeLaSeance($devoir);
 
                 return request()->expectsJson()
                     ? response()->json(['success' => false, 'message' => $refus], 422)
