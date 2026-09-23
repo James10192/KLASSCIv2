@@ -18,15 +18,88 @@
         <x-m.kpi :items="[
             ['value' => $totalStudents, 'label' => 'Inscrits ' . ($anneeLabel ?? ''), 'tone' => 'ok', 'href' => route('esbtp.etudiants.index')],
             ['value' => $totalStudentsBase ?? $totalStudents, 'label' => 'Étudiants en base', 'tone' => 'info'],
+            ['value' => $totalFilieres ?? 0, 'label' => 'Filières', 'tone' => 'info', 'href' => route('esbtp.filieres.index')],
             ['value' => $totalClasses, 'label' => 'Classes', 'tone' => 'info', 'href' => route('esbtp.classes.index')],
+            ['value' => $totalMatieres ?? 0, 'label' => 'Matières', 'tone' => 'info', 'href' => route('esbtp.matieres.index')],
             ['value' => $totalTeachers ?? 0, 'label' => 'Enseignants', 'tone' => 'mute', 'href' => route('esbtp.enseignants.index')],
         ]" />
+
+        @php
+            // Barres en SVG calculées ici : pas de Chart.js sur téléphone.
+            // monthlyStats porte 12 mois, du plus ancien au courant.
+            $samMois = collect($monthlyStats ?? [])->values();
+            $samMax = max(1, (int) $samMois->max('inscriptions'));
+            $samPas = $samMois->count() > 0 ? 300 / $samMois->count() : 300;
+            $samTotal = (int) $samMois->sum('inscriptions');
+            $samValides = (int) $samMois->sum('students');
+            $samAttente = (int) ($samMois->last()['pending_payments'] ?? 0);
+            $samFilieres = collect($filiereStats ?? [])->filter(fn ($f) => ($f['students'] ?? 0) > 0)->sortByDesc('students')->values();
+            $samFilTotal = max(1, (int) $samFilieres->sum('students'));
+        @endphp
+
+        <div class="m-sec"><b>Inscriptions sur 12 mois</b></div>
+        <div class="m-chart">
+            @if($samTotal === 0)
+                <p class="sam-vide">Aucune inscription enregistrée sur les douze derniers mois.</p>
+            @else
+                <svg viewBox="0 0 300 120" role="img" aria-label="{{ $samTotal }} inscriptions sur 12 mois, dont {{ $samValides }} validées">
+                    <g stroke="#e9edf5"><line x1="0" y1="20" x2="300" y2="20"/><line x1="0" y1="55" x2="300" y2="55"/><line x1="0" y1="90" x2="300" y2="90"/></g>
+                    @foreach($samMois as $i => $m)
+                        @php
+                            $samH = round(((int) $m['inscriptions']) / $samMax * 88, 1);
+                            $samHv = round(min((int) $m['students'], (int) $m['inscriptions']) / $samMax * 88, 1);
+                            $samX = round($i * $samPas + $samPas * .2, 1);
+                            $samW = round($samPas * .6, 1);
+                        @endphp
+                        <rect x="{{ $samX }}" y="{{ 102 - $samH }}" width="{{ $samW }}" height="{{ $samH }}" rx="2" fill="#c7d7f3"/>
+                        <rect x="{{ $samX }}" y="{{ 102 - $samHv }}" width="{{ $samW }}" height="{{ $samHv }}" rx="2" fill="#0453cb"/>
+                        @if($i % 2 === 1 || $i === $samMois->count() - 1)
+                            <text x="{{ round($samX + $samW / 2, 1) }}" y="116" font-size="9" fill="#64748b" text-anchor="middle">{{ now()->subMonths($samMois->count() - 1 - $i)->locale('fr')->isoFormat('MMM') }}</text>
+                        @endif
+                    @endforeach
+                    <text x="2" y="16" font-size="9" fill="#64748b">{{ $samMax }}</text>
+                </svg>
+                <div class="sam-legende">
+                    <span><i class="sam-pastille"></i>Validées : <b>{{ $samValides }}</b></span>
+                    <span><i class="sam-pastille clair"></i>Créées : <b>{{ $samTotal }}</b></span>
+                </div>
+                @if($samAttente > 0)
+                    <a href="{{ route('esbtp.inscriptions.index') }}" class="sam-attente">{{ $samAttente }} inscription(s) sans paiement validé à ce jour</a>
+                @endif
+            @endif
+        </div>
+
+        <div class="m-sec"><b>Répartition par filière</b><a href="{{ route('esbtp.filieres.index') }}">Filières</a></div>
+        @if($samFilieres->isEmpty())
+            <x-m.empty icon="book" title="Aucune inscription par filière" />
+        @else
+            <div class="m-chart sam-filieres">
+                @foreach($samFilieres->take(6) as $f)
+                    @php $samPct = round($f['students'] / $samFilTotal * 100); @endphp
+                    <div class="sam-fil">
+                        <div class="sam-fil-tete"><span>{{ $f['name'] }}</span><b>{{ $f['students'] }} · {{ $samPct }} %</b></div>
+                        <div class="m-bar"><i style="width: {{ $samPct }}%"></i></div>
+                    </div>
+                @endforeach
+                @if($samFilieres->count() > 6)
+                    <p class="sam-vide">+ {{ $samFilieres->count() - 6 }} autre(s) filière(s)</p>
+                @endif
+            </div>
+        @endif
+
+        <div class="m-sec"><b>Actions rapides</b></div>
+        <div class="m-list">
+            <x-m.row :href="route('esbtp.evaluations.create')" icon="pen" title="Créer une évaluation" sub="Examen, devoir, contrôle" />
+            <x-m.row :href="route('esbtp.annonces.create')" icon="msg" title="Publier une annonce" sub="Étudiants, enseignants, personnel" />
+            <x-m.row :href="route('esbtp.resultats.index')" icon="print" title="Générer les bulletins" sub="Résultats et bulletins par classe" />
+        </div>
+
         <div class="m-sec"><b>Inscriptions récentes</b><a href="{{ route('esbtp.inscriptions.index') }}">Tout voir</a></div>
         @if(($recentInscriptions ?? collect())->isEmpty())
             <x-m.empty icon="inbox" title="Aucune inscription récente" />
         @else
             <div class="m-list">
-                @foreach($recentInscriptions->take(8) as $inscription)
+                @foreach($recentInscriptions->take(5) as $inscription)
                     @php
                         $saNom = trim(($inscription->etudiant->prenoms ?? '') . ' ' . ($inscription->etudiant->nom ?? ''));
                         $saNom = $saNom !== '' ? $saNom : 'N/A';
@@ -52,6 +125,22 @@
     </x-m.actionbar>
 </div>
 @endif
+@push('styles')
+<style>
+    /* Tableau de bord superAdmin mobile — namespace sam- */
+    .sam-vide { margin: 0; font-size: 12.5px; color: #64748b; }
+    .sam-legende { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: #475569; }
+    .sam-legende b { color: #0f172a; }
+    .sam-pastille { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: #0453cb; margin-right: 6px; vertical-align: -1px; }
+    .sam-pastille.clair { background: #c7d7f3; }
+    .sam-attente { font-size: 12.5px; font-weight: 600; color: #8a5200; text-decoration: none; }
+    .sam-filieres { gap: 12px; }
+    .sam-fil { display: grid; gap: 6px; }
+    .sam-fil-tete { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: #1e293b; }
+    .sam-fil-tete span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .sam-fil-tete b { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+</style>
+@endpush
 <div class="main-content {{ $saShellMobile ? 'm-only-desktop' : '' }}">
     <!-- Header -->
     <div class="dashboard-header mb-xl" style="background-color: var(--primary); color: white; border-radius: var(--radius-medium); display: block;">

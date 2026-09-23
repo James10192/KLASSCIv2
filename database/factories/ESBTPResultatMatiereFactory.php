@@ -23,8 +23,10 @@ class ESBTPResultatMatiereFactory extends Factory
             'coefficient' => $this->faker->numberBetween(1, 4),
             'rang' => $this->faker->numberBetween(1, 50),
             'appreciation' => $this->determinerAppreciation($moyenne),
-            'created_by' => 1,
-            'updated_by' => 1,
+            // Premier utilisateur existant, nul sur une base vide : un 1 en dur viole
+            // la clé étrangère vers users dès qu'aucun compte n'a été créé.
+            'created_by' => fn () => \App\Models\User::query()->min('id'),
+            'updated_by' => fn () => \App\Models\User::query()->min('id'),
             'created_at' => now(),
             'updated_at' => now()
         ];

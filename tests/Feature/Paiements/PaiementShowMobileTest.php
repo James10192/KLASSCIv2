@@ -28,11 +28,18 @@ class PaiementShowMobileTest extends TestCase
     {
         parent::setUp();
 
+        // Le garde « installed » du groupe de routes exige qu'un superAdmin existe.
+        \Spatie\Permission\Models\Role::findOrCreate('superAdmin', 'web');
+        User::factory()->create()->assignRole('superAdmin');
+        \App\Helpers\InstallationHelper::flushCachedStatus();
+
         $this->user = User::factory()->create();
         $this->actingAs($this->user);
         // Toutes les permissions : le profil mobile se deduit de
         // module.caisse.access, donc « caissier ».
-        Gate::before(fn () => true);
+        // ... sauf les capacités d'état (« c'est ma saisie, encore récente ») :
+        // les accorder d'office afficherait une annulation qu'aucun rôle réel n'aurait.
+        Gate::before(fn ($u, string $ability) => in_array($ability, \App\Policies\ESBTPPaiementPolicy::CAPACITES_D_ETAT, true) ? null : true);
 
         $classe = ESBTPClasse::factory()->create();
         $this->inscription = ESBTPInscription::factory()->create([

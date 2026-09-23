@@ -12,6 +12,7 @@ use App\Models\ESBTPNote;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class PreviewImpactTest extends TestCase
@@ -21,6 +22,11 @@ class PreviewImpactTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Le garde « installed » renvoie tout vers /install tant qu'aucun
+        // superAdmin n'existe : sans lui, chaque requête répond 302.
+        Role::findOrCreate('superAdmin', 'web');
+        User::factory()->create()->assignRole('superAdmin');
 
         Permission::findOrCreate('notes.view', 'web');
         Permission::findOrCreate('notes.create', 'web');
@@ -135,7 +141,7 @@ class PreviewImpactTest extends TestCase
         $this->authUser();
         $ctx = $this->makeContext();
 
-        // Moyenne actuelle = 12.5 (Assez Bien)
+        // Moyenne actuelle = 12.5, puis 11 : deux tranches distinctes de l'échelle par défaut
         ESBTPNote::create([
             'evaluation_id' => $ctx['eval1']->id,
             'etudiant_id' => $ctx['etudiant']->id,
@@ -147,7 +153,6 @@ class PreviewImpactTest extends TestCase
             'is_absent' => 0,
         ]);
 
-        // Hypothétique : si eval1 devient 11 → moyenne 11 (Passable)
         $response = $this->postJson(route('esbtp.notes.preview-impact'), [
             'etudiant_id' => $ctx['etudiant']->id,
             'classe_id' => $ctx['classe']->id,
@@ -159,8 +164,11 @@ class PreviewImpactTest extends TestCase
 
         $response->assertOk();
         $data = $response->json();
-        $this->assertSame('Assez Bien', $data['mention_avant']);
-        $this->assertSame('Passable', $data['mention_apres']);
+        // L'échelle des mentions est un réglage d'école : on lit la même
+        // échelle que l'écran plutôt que de figer ses libellés ici.
+        $echelle = app(\App\Services\AppreciationScaleService::class);
+        $this->assertSame($echelle->labelFor(12.5, 'bts'), $data['mention_avant']);
+        $this->assertSame($echelle->labelFor(11.0, 'bts'), $data['mention_apres']);
         $this->assertTrue($data['changed_mention']);
     }
 

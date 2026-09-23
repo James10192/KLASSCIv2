@@ -193,7 +193,9 @@
 .cvn-ligne > i { font-size: .95rem; color: #0453cb; flex-shrink: 0; }
 .cvn--ok .cvn-ligne > i { color: #10b981; }
 .cvn--alerte .cvn-ligne > i { color: #b45309; }
-.cvn-texte { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+/* Le texte passe à la ligne plutôt que de s'écraser : avec `flex: 1` et une
+   base nulle, il se laissait réduire à un mot par ligne à côté des boutons. */
+.cvn-texte { display: flex; flex-direction: column; min-width: 0; flex: 1 1 16rem; }
 .cvn-texte strong { font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #64748b; }
 .cvn-periodes, .cvn-filtres { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; }
 .cvn-periodes { padding: .18rem; border: 1px solid #dbe5f2; background: #f8fafc; border-radius: 8px; }
@@ -226,8 +228,21 @@
 .cvn-doublon > i { margin-top: .15rem; flex-shrink: 0; }
 .cvn-doublon strong { color: #92400e; }
 @@media (max-width: 576px) {
-    .cvn-jauge { width: 100%; }
+    .cvn-bloc { padding: .75rem; }
+    /* L'icône et le texte occupent seuls la première ligne ; les périodes et
+       le détail passent dessous, côte à côte. */
+    .cvn-texte { flex-basis: calc(100% - 1.8rem); }
+    .cvn-texte span { font-size: .84rem; line-height: 1.4; }
+    .cvn-periodes button { min-height: 34px; padding: .3rem .8rem; font-size: .76rem; }
+    .cvn-detail-toggle { margin-left: auto; min-height: 36px; }
+    .cvn-jauge { width: 100%; order: 5; }
+    /* Les filtres défilent sur une seule ligne au lieu d'empiler trois rangées. */
+    .cvn-filtres { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin-left: -.75rem; margin-right: -.75rem; padding-left: .75rem; padding-right: .75rem; }
+    .cvn-filtres::-webkit-scrollbar { display: none; }
+    .cvn-filtres button { flex: 0 0 auto; white-space: nowrap; min-height: 34px; padding: .3rem .7rem; font-size: .74rem; }
     .cvn-matiere { flex-direction: column; align-items: flex-start; gap: .2rem; }
+    .cvn-matiere-qui { flex-wrap: wrap; }
+    .cvn-action { margin-left: 0; min-height: 34px; }
 }
 </style>
 
