@@ -3656,6 +3656,7 @@ Route::middleware(['auth', 'permission:module.tpe.access'])->group(function () {
 
 require __DIR__.'/academic-pilotage.php';
 require __DIR__.'/dispenses.php';
+require __DIR__.'/support.php';
 
 
 

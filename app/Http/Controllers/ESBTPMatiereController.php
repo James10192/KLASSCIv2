@@ -7,10 +7,12 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
+use App\Services\LMD\CodeDeMatiere;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 class ESBTPMatiereController extends Controller
 {
@@ -271,12 +273,13 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request, LiaisonsDeMatiere $service)
+    public function store(Request $request, LiaisonsDeMatiere $service, CodeDeMatiere $codes)
     {
         // Valider les données du formulaire
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'nullable|string|max:50|unique:esbtp_matieres,code',
+            // Une matiere supprimee ne bloque pas son code : CodeDeMatiere le libere.
+            'code' => ['nullable', 'string', 'max:50', Rule::unique('esbtp_matieres', 'code')->whereNull('deleted_at')],
             'description' => 'nullable|string',
             'coefficient' => 'nullable|numeric|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
@@ -289,16 +292,8 @@ class ESBTPMatiereController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        // Auto-generate code from name if not provided
         if (empty($validatedData['code'])) {
-            $baseName = strtoupper(trim($validatedData['name']));
-            $baseCode = implode('', array_map(fn($w) => substr($w, 0, 3), preg_split('/\s+/', $baseName)));
-            $code = $baseCode;
-            $i = 1;
-            while (ESBTPMatiere::where('code', $code)->exists()) {
-                $code = $baseCode . $i++;
-            }
-            $validatedData['code'] = $code;
+            $validatedData['code'] = $codes->genererDepuisLeNom($validatedData['name']);
         }
 
         // Default coefficient if not provided
@@ -310,8 +305,8 @@ class ESBTPMatiereController extends Controller
         $validatedData['created_by'] = Auth::id();
         $validatedData['updated_by'] = Auth::id();
 
-        // Créer la nouvelle matière
-        $matiere = ESBTPMatiere::create($validatedData);
+        // Créer la nouvelle matière, en liberant le code d'une matiere supprimee.
+        [$matiere, $codeLibere] = $codes->ecrireEnLiberant('code', $validatedData['code'], null, fn () => ESBTPMatiere::create($validatedData));
 
         // CE FORMULAIRE N'A QU'UN SEUL MODE, ET C'EST UNE CORRECTION.
         //
@@ -353,7 +348,7 @@ class ESBTPMatiereController extends Controller
 
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.matieres.index')
-            ->with('success', 'La matière a été créée avec succès.');
+            ->with('success', trim('La matière a été créée avec succès. ' . ($codeLibere ?? '')));
     }
 
     /**
@@ -542,14 +537,14 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, ESBTPMatiere $matiere)
+    public function update(Request $request, ESBTPMatiere $matiere, CodeDeMatiere $codes)
     {
         $this->refuserUneEcueLmd($matiere);
 
         // Valider les données du formulaire
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:esbtp_matieres,code,'.$matiere->id,
+            'code' => ['required', 'string', 'max:50', Rule::unique('esbtp_matieres', 'code')->ignore($matiere->id)->whereNull('deleted_at')],
             'description' => 'nullable|string',
             'coefficient' => 'required|numeric|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
@@ -574,8 +569,8 @@ class ESBTPMatiereController extends Controller
         // Ajouter l'identifiant de l'utilisateur courant
         $validatedData['updated_by'] = Auth::id();
 
-        // Mettre à jour la matière
-        $matiere->update($validatedData);
+        // Mettre à jour la matière, en liberant le code d'une matiere supprimee.
+        [, $codeLibere] = $codes->ecrireEnLiberant('code', $validatedData['code'], (int) $matiere->id, fn () => $matiere->update($validatedData));
 
         $this->synchroniserLesPivotsPlats($request, $matiere);
 
@@ -602,7 +597,7 @@ class ESBTPMatiereController extends Controller
 
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.matieres.index')
-            ->with('success', 'La matière a été mise à jour avec succès.');
+            ->with('success', trim('La matière a été mise à jour avec succès. ' . ($codeLibere ?? '')));
     }
 
     /**

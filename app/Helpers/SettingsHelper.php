@@ -621,6 +621,10 @@ class SettingsHelper
             'bulletin_moyenne_mode' => ['value' => 'ponderee', 'group' => 'bulletin'],
             'bulletin_bloc_general_coef' => ['value' => '1', 'group' => 'bulletin'],
             'bulletin_bloc_professionnel_coef' => ['value' => '1', 'group' => 'bulletin'],
+            // Une matiere faite seulement d'absences : « 1 » elle compte 0 (le
+            // bulletin officiel depuis toujours), « 0 » elle n'a pas de moyenne.
+            // Lu par NoteCalculationService::moyenneSansNoteComptable().
+            'bulletin_absences_seules_comptent_zero' => ['value' => '1', 'group' => 'bulletin'],
 
             // Interface
             'theme_primary_color' => ['value' => '#007bff', 'group' => 'interface'],

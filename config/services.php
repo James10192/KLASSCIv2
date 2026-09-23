@@ -46,6 +46,9 @@ return [
     'master' => [
         'api_url' => env('MASTER_API_URL'),
         'api_token' => env('MASTER_API_TOKEN'),
+        // KLASSCI Care : identifiant dedie, porte (support:create, support:read).
+        // Jamais MASTER_API_TOKEN, qui n'a ni portee ni revocation.
+        'support_token' => env('MASTER_SUPPORT_TOKEN'),
     ],
 
     /*

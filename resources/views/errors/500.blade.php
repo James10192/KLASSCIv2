@@ -50,6 +50,8 @@
     .pe-body { padding: 2rem; }
     .pe-message { font-size: 0.9rem; line-height: 1.6; color: var(--pe-text-secondary); text-align: center; margin-bottom: 1.5rem; }
 
+    .pe-suivi { font-size: .82rem; color: #64748b; margin: -0.75rem 0 1.25rem; }
+    .pe-suivi code { color: #0453cb; background: rgba(4,83,203,.07); padding: .1rem .4rem; border-radius: 5px; }
     .pe-note {
         display: flex; gap: 0.65rem; align-items: flex-start;
         background: var(--pe-warn-bg); border: 1px solid var(--pe-warn-border);
@@ -107,15 +109,27 @@
             <div class="pe-note">
                 <svg viewBox="0 0 20 20"><path d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.168 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 7v3m0 3h.01"/></svg>
                 <p>
-                    <strong>Si le problème persiste,</strong> contactez le support technique en indiquant la date et l'heure de l'incident.
+                    <strong>Si le problème persiste,</strong> signalez-le : le code de suivi ci-dessous nous permet de retrouver exactement ce qui s'est passé.
                 </p>
             </div>
+
+            @if(request()->attributes->get('request_id'))
+                <p class="pe-suivi">Code de suivi : <code>{{ request()->attributes->get('request_id') }}</code></p>
+            @endif
 
             <div class="pe-actions">
                 <a href="{{ url()->previous() }}" class="pe-btn pe-btn-primary">
                     <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
                     Réessayer
                 </a>
+                @auth
+                    {{-- Ouvre la fenetre de signalement si KLASSCI Care est actif ; sinon, le courriel. --}}
+                    <a href="mailto:{{ config('app.support_email') }}?subject={{ rawurlencode('Erreur '.request()->attributes->get('request_id')) }}"
+                       class="pe-btn pe-btn-outline" data-support-ouvrir data-support-code="{{ request()->attributes->get('request_id') }}">
+                        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                        Signaler ce problème
+                    </a>
+                @endauth
                 <a href="{{ url('/') }}" class="pe-btn pe-btn-outline">
                     <svg viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>
                     Accueil
