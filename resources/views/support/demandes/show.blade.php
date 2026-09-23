@@ -32,6 +32,7 @@
     .sd-reponse textarea:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
     .sd-erreur { margin-top: .5rem; font-size: .82rem; color: #b91c1c; }
     .sd-reponse-actions { display: flex; justify-content: flex-end; margin-top: .6rem; }
+    .sd-reponse-close { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; font-size: .88rem; color: #64748b; }
     .sd-envoyer { background: #0453cb; color: #fff; border: none; border-radius: 10px; padding: .55rem 1.1rem; font-size: .84rem; font-weight: 600; cursor: pointer; }
     .sd-envoyer:hover { background: #033a8e; }
     .sd-envoyer:disabled { opacity: .6; cursor: wait; }
@@ -109,7 +110,7 @@
         bouton.querySelector('[data-sd-libelle]').hidden = oui;
         bouton.querySelector('[data-sd-envoi]').hidden = !oui;
     }
-    function envoyer(dejaRetente) {
+    function envoyer() {
         return fetch(form.action, {
             method: 'POST',
             credentials: 'same-origin',
@@ -118,10 +119,11 @@
             body: JSON.stringify({ corps: champ.value, cle: cle })
         }).then(function (r) {
             return r.json().catch(function () { return {}; }).then(function (d) {
-                if (r.status === 409 && d.erreur === 'cle_perimee' && !dejaRetente) { cle = nouvelleCle(); return envoyer(true); }
                 if (!r.ok) {
                     var premier = d.errors ? Object.values(d.errors)[0] : null;
-                    throw new Error((premier && premier[0]) || d.message || "Votre réponse n'a pas pu être envoyée.");
+                    var e = new Error((premier && premier[0]) || d.message || "Votre réponse n'a pas pu être envoyée.");
+                    e.donnees = d;
+                    throw e;
                 }
                 return d;
             });
@@ -131,13 +133,23 @@
         ev.preventDefault();
         if (champ.value.trim() === '') { montrer('Écrivez votre réponse.'); champ.focus(); return; }
         occupe(true);
-        envoyer(false).then(function (d) {
+        envoyer().then(function (d) {
             document.getElementById('sd-fil').innerHTML = d.fil;
             document.getElementById('sd-statut').innerHTML = d.statut;
             champ.value = '';
             cle = nouvelleCle();
             if (!d.peut_repondre) { form.remove(); }
         }).catch(function (e) {
+            var d = e.donnees || {};
+            if (d.statut) { document.getElementById('sd-statut').innerHTML = d.statut; }
+            if (d.peut_repondre === false) {
+                /* Plus rien a envoyer d'ici : le message remplace le formulaire. */
+                var avis = document.createElement('p');
+                avis.className = 'sd-reponse-close';
+                avis.textContent = e.message;
+                form.replaceWith(avis);
+                return;
+            }
             montrer(e.message);
             champ.focus();
         }).finally(function () { if (document.body.contains(form)) { occupe(false); } });

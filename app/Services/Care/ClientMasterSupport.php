@@ -3,6 +3,7 @@
 namespace App\Services\Care;
 
 use App\Domain\Support\Exceptions\IdentifiantInstanceRefuse;
+use App\Domain\Support\Exceptions\PorteeAbsente;
 use App\Domain\Support\Exceptions\MasterSupportIndisponible;
 use App\Domain\Support\Exceptions\MasterSupportRefus;
 use GuzzleHttp\Exception\TransferException;
@@ -31,8 +32,8 @@ use Illuminate\Support\Facades\Log;
  * d'envoi. Un 401 ou un 403 est une indisponibilite, pas un refus : c'est
  * l'identifiant de l'instance qui est en cause (revoque, mal pose), pas la
  * demande, et elle doit attendre qu'on le corrige plutot qu'etre perdue.
- * Seule exception : un 403 `insufficient_scope`, ou l'identifiant est valide
- * mais ne couvre pas cette action — un refus, sans coupe-circuit.
+ * Un 403 `insufficient_scope` (identifiant valide qui ne couvre pas l'action)
+ * est traite de meme, mais sans coupe-circuit : le reste de l'API repond.
  */
 class ClientMasterSupport
 {
@@ -214,11 +215,13 @@ class ClientMasterSupport
         }
 
         // Une portee manquante n'est pas un identifiant revoque : l'instance
-        // reste joignable pour tout le reste, donc pas de coupe-circuit.
+        // reste joignable pour tout le reste, donc pas de coupe-circuit. Mais ce
+        // n'est pas non plus un refus de la demande : un signalement doit attendre
+        // l'identifiant elargi, pas etre abandonne.
         if ($reponse->status() === 403 && $reponse->json('error') === 'insufficient_scope') {
             Log::warning('KLASSCI Care : portée absente de l\'identifiant de l\'instance', ['message' => $reponse->json('message')]);
 
-            throw new MasterSupportRefus(403, 'insufficient_scope', (string) ($reponse->json('message') ?? 'Portée insuffisante.'));
+            throw new PorteeAbsente((string) ($reponse->json('message') ?? 'Portée insuffisante.'));
         }
 
         if (in_array($reponse->status(), [401, 403], true)) {

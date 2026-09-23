@@ -51,12 +51,18 @@
   elle veut.
 - **La réponse de l'école** (tranche 2, `POST /support/demandes/{référence}/messages`) :
   - relayée au Master avec une clé d'idempotence tirée par le navigateur par brouillon ;
-  - proposée seulement si l'identifiant porte `support:update` (lu dans le bootstrap) et que
-    la demande n'est pas fermée ;
+  - proposée seulement à l'**auteur** de la demande, si l'identifiant porte `support:update`
+    (lu dans le bootstrap) et que la demande n'est pas fermée. Elle part toujours en portée
+    `mine` : lire les demandes de l'établissement n'autorise pas à écrire sur celles des
+    collègues ;
+  - une demande fermée entre-temps (409 `ticket_closed`) retire le formulaire et remet le
+    statut à jour ;
   - **pas de boîte d'envoi** : Master injoignable, la réponse reste dans le champ (503) et
     l'utilisateur la renvoie avec la même clé ;
-  - un 403 `insufficient_scope` est un refus, pas une indisponibilité : il n'ouvre pas le
-    coupe-circuit.
+  - un 403 `insufficient_scope` (`PorteeAbsente`) n'ouvre pas le coupe-circuit, car le reste
+    de l'API répond. Il reste une faute de l'instance, pas de la demande : un signalement
+    part dans la boîte d'envoi et y attend l'identifiant élargi sans user ses essais ; une
+    réponse retire le formulaire.
 - **L'interrupteur d'exploitation** `support.widget.enabled` : coupe tout sans attendre le
   Master. Aucun écran ne l'expose ; il se pose par `PUT /api/cli/settings/{key}`.
 

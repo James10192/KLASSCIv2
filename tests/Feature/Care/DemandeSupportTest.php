@@ -292,14 +292,14 @@ class DemandeSupportTest extends TestCase
         $this->assertSame('01J8ZQ4Y5K3M2N1P0QRSTVWXYZ', $repris->headers->get('X-Request-ID'));
     }
 
-    private function detail(string $statut = 'ACTION_REQUISE', array $messages = []): array
+    private function detail(string $statut = 'ACTION_REQUISE', array $messages = [], int $rapporteurId = 1): array
     {
         return [
             'reference' => 'KC-2026-000042', 'titre' => 'Le bouton Valider ne répond plus',
             'description' => 'Le bouton Valider les notes ne répond plus.',
             'categorie' => ['code' => 'PROBLEME', 'libelle' => 'Quelque chose ne fonctionne pas'],
             'statut' => ['code' => $statut, 'libelle' => $statut],
-            'rapporteur' => ['id' => 1, 'nom' => 'Awa Koné'],
+            'rapporteur' => ['id' => $rapporteurId, 'nom' => 'Awa Koné'],
             'cree_le' => now()->toIso8601String(), 'mis_a_jour_le' => now()->toIso8601String(),
             'derniere_reponse' => null,
             'messages' => $messages,
@@ -307,22 +307,28 @@ class DemandeSupportTest extends TestCase
     }
 
     /** @test */
-    public function la_page_propose_de_repondre_seulement_si_l_identifiant_le_permet_et_la_demande_est_ouverte(): void
+    public function la_page_propose_de_repondre_seulement_a_l_auteur_si_l_identifiant_le_permet_et_la_demande_est_ouverte(): void
     {
         $user = $this->utilisateur();
 
-        $this->master(Http::response($this->detail()));
+        $this->master(Http::response($this->detail(rapporteurId: $user->id)));
         $this->actingAs($user)->get(route('support.demandes.show', 'KC-2026-000042'))->assertSee('id="sd-reponse"', false);
 
         // Http::fake empile ses reponses : on repart d'un client neuf pour chaque cas.
         Cache::flush();
         Http::swap(new \Illuminate\Http\Client\Factory());
-        $this->master(Http::response($this->detail()), portees: ['support:create', 'support:read']);
+        $this->master(Http::response($this->detail(rapporteurId: $user->id)), portees: ['support:create', 'support:read']);
         $this->actingAs($user)->get(route('support.demandes.show', 'KC-2026-000042'))->assertDontSee('id="sd-reponse"', false);
 
         Cache::flush();
         Http::swap(new \Illuminate\Http\Client\Factory());
-        $this->master(Http::response($this->detail('FERME')));
+        $this->master(Http::response($this->detail('FERME', rapporteurId: $user->id)));
+        $this->actingAs($user)->get(route('support.demandes.show', 'KC-2026-000042'))->assertDontSee('id="sd-reponse"', false);
+
+        // Lire les demandes de l'ecole n'autorise pas a ecrire sur celle d'un collegue.
+        Cache::flush();
+        Http::swap(new \Illuminate\Http\Client\Factory());
+        $this->master(Http::response($this->detail(rapporteurId: $user->id + 1000)));
         $this->actingAs($user)->get(route('support.demandes.show', 'KC-2026-000042'))->assertDontSee('id="sd-reponse"', false);
     }
 
@@ -332,7 +338,7 @@ class DemandeSupportTest extends TestCase
         $user = $this->utilisateur();
         $this->master(Http::response($this->detail('EN_ANALYSE', [
             ['auteur' => 'ECOLE', 'nom' => 'Awa Koné', 'corps' => 'La classe 2A BTS.', 'le' => now()->toIso8601String()],
-        ]), 201));
+        ], $user->id), 201));
 
         $this->actingAs($user)->postJson(route('support.demandes.repondre', 'KC-2026-000042'), ['corps' => 'La classe 2A BTS.', 'cle' => self::CLE])
             ->assertOk()
@@ -343,6 +349,7 @@ class DemandeSupportTest extends TestCase
             return $req->method() === 'POST'
                 && str_contains($req->url(), '/tickets/KC-2026-000042/messages')
                 && str_contains($req->url(), 'reporter='.$user->getKey())
+                && str_contains($req->url(), 'scope=mine')
                 && $req->header('Idempotency-Key') === [self::CLE]
                 && $req['author_name'] === 'Awa Koné'
                 && $req['body'] === 'La classe 2A BTS.';
@@ -356,7 +363,8 @@ class DemandeSupportTest extends TestCase
 
         $this->actingAs($this->utilisateur())->postJson(route('support.demandes.repondre', 'KC-2026-000042'), ['corps' => 'Toujours là ?', 'cle' => self::CLE])
             ->assertStatus(409)
-            ->assertJsonPath('message', 'Cette demande est fermée : ouvrez-en une nouvelle si le problème revient.');
+            ->assertJsonPath('message', 'Cette demande est fermée : ouvrez-en une nouvelle si le problème revient.')
+            ->assertJsonPath('peut_repondre', false);
     }
 
     /** @test */
@@ -369,14 +377,40 @@ class DemandeSupportTest extends TestCase
     }
 
     /** @test */
-    public function une_portee_absente_est_un_refus_et_n_ouvre_pas_le_coupe_circuit(): void
+    public function une_portee_absente_retire_le_formulaire_sans_ouvrir_le_coupe_circuit(): void
     {
         $this->master(Http::response(['error' => 'insufficient_scope', 'message' => 'Portée requise : support:update.'], 403));
 
         $this->actingAs($this->utilisateur())->postJson(route('support.demandes.repondre', 'KC-2026-000042'), ['corps' => 'Toujours là ?', 'cle' => self::CLE])
-            ->assertStatus(422);
+            ->assertStatus(403)
+            ->assertJsonPath('peut_repondre', false);
 
         $this->assertFalse(app(\App\Services\Care\ClientMasterSupport::class)->coupeCircuitOuvert());
+    }
+
+    /** @test */
+    public function une_portee_absente_met_le_signalement_en_attente_au_lieu_de_le_perdre(): void
+    {
+        $this->master(Http::response(['error' => 'insufficient_scope', 'message' => 'Portée requise : support:create.'], 403));
+
+        $this->actingAs($this->utilisateur())->postJson(route('support.demandes.store'), $this->soumission())
+            ->assertStatus(202)->assertJsonPath('en_attente', true);
+
+        $this->assertSame(1, SupportOutbox::count());
+    }
+
+    /** @test */
+    public function une_portee_absente_n_abandonne_pas_la_boite_d_envoi(): void
+    {
+        SupportOutbox::create(['idempotency_key' => self::CLE, 'payload' => ['report' => []]]);
+        SupportOutbox::create(['idempotency_key' => '9b2c7f1e-0d4a-4e8b-9c3f-2a1b0c9d8e7f', 'payload' => ['report' => []]]);
+        Http::fake(['master.test/*' => Http::response(['error' => 'insufficient_scope', 'message' => 'Portée requise.'], 403)]);
+
+        $this->artisan('support:vider-boite-envoi')->assertSuccessful();
+
+        $this->assertSame(0, SupportOutbox::whereNotNull('abandoned_at')->count());
+        $this->assertSame(0, (int) SupportOutbox::sum('attempts'));
+        Http::assertSentCount(1);
     }
 
     /** @test */

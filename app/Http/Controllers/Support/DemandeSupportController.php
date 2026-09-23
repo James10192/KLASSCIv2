@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Support;
 use App\Domain\Support\Actions\SoumettreDemande;
 use App\Domain\Support\Exceptions\MasterSupportIndisponible;
 use App\Domain\Support\Exceptions\MasterSupportRefus;
+use App\Domain\Support\Exceptions\PorteeAbsente;
 use App\Domain\Support\Models\SupportOutbox;
 use App\Domain\Support\Services\ContexteDePage;
 use App\Domain\Support\Services\DisponibiliteSupport;
@@ -123,7 +124,7 @@ class DemandeSupportController extends Controller
             'demande' => $demande,
             'reference' => $reference,
             'indisponible' => false,
-            'peutRepondre' => $this->peutRepondre($demande),
+            'peutRepondre' => $this->peutRepondre($demande, $request->user()->getKey()),
             'limites' => $this->master->limites(),
         ]);
     }
@@ -138,38 +139,63 @@ class DemandeSupportController extends Controller
         abort_unless($this->disponibilite->suivi(), 404);
         abort_unless(preg_match('/^KC-\d{4}-\d{6,}$/', $reference) === 1, 404);
 
+        $auteur = $request->user()->getKey();
+
         try {
+            // Toujours `mine` : lire les demandes de l'ecole n'autorise pas a ecrire
+            // sur celles des collegues. Le Master repond 404 hors de ce perimetre.
             $demande = $this->master->repondre(
                 $reference,
-                $request->user()->getKey(),
-                $this->portee($request, defaut: 'school'),
+                $auteur,
+                'mine',
                 $request->validated('corps'),
                 $request->user()->name,
                 $request->validated('cle'),
             );
+        } catch (PorteeAbsente) {
+            return response()->json(['message' => "Votre établissement ne peut pas encore répondre au support depuis KLASSCI. Écrivez-nous à ".config('app.support_email').'.', 'peut_repondre' => false], 403);
         } catch (MasterSupportIndisponible) {
             return response()->json(['message' => "Le support est momentanément injoignable. Votre réponse est conservée ici : renvoyez-la dans un instant."], 503);
         } catch (MasterSupportRefus $e) {
             // 404 et non 403 au Master : une reference hors de portee n'existe pas.
             abort_if($e->statut === 404, 404);
 
-            return match ($e->codeErreur) {
-                'idempotency_key_reused' => response()->json(['erreur' => 'cle_perimee'], 409),
-                'ticket_closed' => response()->json(['message' => 'Cette demande est fermée : ouvrez-en une nouvelle si le problème revient.'], 409),
-                default => $this->refusInattendu($e),
-            };
+            return $e->codeErreur === 'ticket_closed'
+                ? $this->demandeFermee($reference, $auteur)
+                : $this->refusInattendu($e);
         }
 
         return response()->json([
             'fil' => view('support.demandes._fil', ['messages' => $demande['messages'] ?? []])->render(),
             'statut' => view('support.demandes._statut', ['statut' => $demande['statut'] ?? []])->render(),
-            'peut_repondre' => $this->peutRepondre($demande),
+            'peut_repondre' => $this->peutRepondre($demande, $auteur),
         ]);
     }
 
-    private function peutRepondre(array $demande): bool
+    /**
+     * La demande a ete fermee pendant que l'ecole ecrivait : le formulaire
+     * disparait et le statut affiche rejoint celui du Master.
+     */
+    private function demandeFermee(string $reference, int $auteur): JsonResponse
+    {
+        try {
+            $statut = $this->master->afficher($reference, $auteur)['statut'] ?? null;
+        } catch (MasterSupportIndisponible|MasterSupportRefus) {
+            $statut = null;
+        }
+
+        return response()->json([
+            'message' => 'Cette demande est fermée : ouvrez-en une nouvelle si le problème revient.',
+            'statut' => $statut ? view('support.demandes._statut', ['statut' => $statut])->render() : null,
+            'peut_repondre' => false,
+        ], 409);
+    }
+
+    /** Seul l'auteur de la demande repond, et seulement si l'identifiant le permet. */
+    private function peutRepondre(array $demande, int $utilisateurId): bool
     {
         return ($demande['statut']['code'] ?? null) !== 'FERME'
+            && (string) ($demande['rapporteur']['id'] ?? '') === (string) $utilisateurId
             && in_array('support:update', $this->master->portees(), true);
     }
 
