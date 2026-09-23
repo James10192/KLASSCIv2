@@ -38,7 +38,10 @@ Même mesure en local sur le serveur : `php artisan inscriptions:diagnostiquer-r
 ## `POST /rendez-vous/placer`
 
 - 422 avec `message` si rien n'a été tenté : canal fermé, ou aucune place libre.
-- 200 sinon : `{ places, sans_email, sans_creneau, deja, refus: null }`.
+- 200 sinon : `{ places, a_prevenir, sans_creneau, deja, refus: null }`. `a_prevenir`
+  compte les dossiers placés **sans e-mail** (inclus dans `places`) : leur
+  convocation est posée « sans e-mail » et ils apparaissent dans la liste d'appel
+  « Familles à prévenir ».
 
 Les convocations sont **posées en attente**, pas envoyées. L'envoi passe par
 `/rendez-vous/convocations/envoyer` ou par la tâche planifiée (toutes les 5 min).
@@ -66,6 +69,10 @@ un premier courriel, c'est donc **ici** qu'on borne :
 3. `remettre { "quoi": "inconnues" }` pour le reste, puis `envoyer` jusqu'à `restantes: 0`
 
 ## Historique
+
+- 2026-09-23 — **Breaking** : `placer` place aussi les dossiers sans e-mail. La clé
+  `sans_email` (dossiers NON placés) disparaît, remplacée par `a_prevenir`
+  (dossiers placés sans e-mail, inclus dans `places`).
 
 - 2026-09-23 — ajout de `convocations/remettre` (avec `limite`). Non cassant.
 

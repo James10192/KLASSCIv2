@@ -42,7 +42,7 @@
                 @if($peutGerer)
                     <button type="button" class="rdv-btn rdv-btn--glass" data-rdv-action="generer"><i class="fas fa-calendar-plus"></i>Générer les créneaux</button>
                     <button type="button" class="rdv-btn rdv-btn--white" data-rdv-action="placer"
-                            data-confirm="Les candidatures et demandes en attente vont être placées sur les premiers créneaux libres, puis leur convocation partira par e-mail.">
+                            data-confirm="Les candidatures et demandes en attente vont être placées sur les premiers créneaux libres, puis leur convocation partira par e-mail. Celles sans adresse seront placées aussi et rejoindront la liste des familles à prévenir par téléphone.">
                         <i class="fas fa-envelope-open-text"></i>Placer et convoquer
                     </button>
                 @endif
