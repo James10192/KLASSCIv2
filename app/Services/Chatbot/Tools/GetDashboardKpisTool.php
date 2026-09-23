@@ -43,7 +43,9 @@ class GetDashboardKpisTool extends ChatbotTool
         $kpis['classes'] = DB::table('esbtp_classes')->whereNull('deleted_at')->count();
         $kpis['enseignants'] = DB::table('esbtp_teachers')->where('is_active', true)->whereNull('deleted_at')->count();
 
-        if ($focus === 'general' || $focus === 'finance') {
+        // Cet outil est ouvert a dashboard.view, que portent aussi l'etudiant et
+        // l'enseignant : l'encaisse de l'ecole reste derriere la porte financiere.
+        if (($focus === 'general' || $focus === 'finance') && $user?->can('finances.etudiants.voir')) {
             $kpis['total_paiements'] = number_format(
                 (float) DB::table('esbtp_paiements')->where('status', 'validé')->whereNull('deleted_at')->sum(DB::raw(\App\Models\ESBTPPaiement::sqlCashCase())),
                 0, ',', ' '
