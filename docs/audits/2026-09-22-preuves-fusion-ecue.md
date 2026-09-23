@@ -39,6 +39,13 @@ sur `presentation` reste à faire après déploiement.
 
 Aucune erreur JavaScript relevée pendant les deux parcours.
 
+**Postérieur à ces captures, et non rejoué au navigateur** : sous « Forcer », la
+fusion reporte aussi les moyennes enregistrées (`esbtp_resultats`) de l'élément
+absorbé sur l'élément conservé, et nomme celles en collision (bloc
+d'avertissement du compte rendu). La preuve de ce report est un test :
+`MergeDuplicateEcueSousForceTest`, dont le premier cas tombe à 7 au lieu de 10
+sur le certificat quand on retire le report.
+
 ## Ce qui n'est plus prouvé ici
 
 Deux sections suivaient : la rebascule CLI (`POST /api/cli/evaluations/{id}/matiere`)

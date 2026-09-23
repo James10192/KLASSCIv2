@@ -367,6 +367,13 @@
                 <template x-if="modal.done">
                     <div>
                         <div class="rec-impact-row"><span>Lignes de bulletin LMD reportées, avec leur note de rattrapage</span><strong x-text="modal.done.repointes"></strong></div>
+                        <div class="rec-impact-row" x-show="modal.done.moyennes.repointees"><span>Moyennes enregistrées reportées sur l'élément conservé</span><strong x-text="modal.done.moyennes.repointees"></strong></div>
+                        <template x-if="modal.done.moyennes.conflits.length">
+                            <div class="rec-warn">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span x-text="modal.done.moyennes.conflits.length + ' moyenne(s) enregistrée(s) de l\'élément absorbé sont restées en place : l\'élément conservé avait déjà la sienne pour le même élève et la même période. À trancher depuis « Modifier les moyennes » ; tant que ce n\'est pas fait, le certificat de scolarité compte les deux.'"></span>
+                            </div>
+                        </template>
                         <template x-if="modal.done.bulletins_a_regenerer.length">
                             <div class="rec-result">
                                 <p class="rec-result-title">Bulletins LMD à régénérer</p>
@@ -394,7 +401,7 @@
             <div class="rec-modal-foot">
                 <button class="rec-btn rec-btn--ghost" @click="closeModal()" x-text="modal.done ? 'Fermer' : 'Annuler'"></button>
                 <template x-if="modal.report && modal.report.blocked && !modal.done">
-                    <label class="rec-check"><input type="checkbox" x-model="modal.force"> Forcer (repointe évaluations / notes / résultats)</label>
+                    <label class="rec-check"><input type="checkbox" x-model="modal.force"> Forcer (reporte aussi évaluations, notes et moyennes enregistrées)</label>
                 </template>
                 <button class="rec-btn rec-btn--danger" @click="confirmMerge()" :disabled="mergeDisabled" x-show="!modal.done">
                     <i class="fas fa-object-group" x-show="!busy"></i>
@@ -446,6 +453,7 @@ function recManager() {
                 planifications: 'planifications',
                 matiere_filiere_links: 'matière ↔ filière',
                 lmd_resultats_ecues: 'lignes de bulletin LMD',
+                moyennes_enregistrees: 'moyennes enregistrées (avec « Forcer »)',
             };
             return map[key] || key;
         },
@@ -536,10 +544,11 @@ function recManager() {
                 const report = await this.callMerge(this.modal.type, this.modal.canonical, absorbed, false, this.modal.force);
                 if (report && report.committed) {
                     this.toast('success', 'Fusion effectuée : ' + report.soft_deleted_count + ' entité(s) absorbée(s).');
-                    const lmd = report.lmd_resultats_ecues;
+                    const lmd = report.lmd_resultats_ecues || { repointes: 0, conflits: [], bulletins_a_regenerer: [] };
+                    const moyennes = report.moyennes_enregistrees || { repointees: 0, conflits: [] };
                     // La fenêtre reste ouverte tant qu'il reste quelque chose à faire.
-                    if (lmd && (lmd.bulletins_a_regenerer || []).length) {
-                        this.modal.done = lmd;
+                    if ((lmd.bulletins_a_regenerer || []).length || (moyennes.conflits || []).length) {
+                        this.modal.done = Object.assign({}, lmd, { moyennes });
                     } else {
                         this.closeModal();
                     }

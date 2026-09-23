@@ -3,6 +3,8 @@
 namespace Tests\Unit\Domain\LMD;
 
 use App\Domain\LMD\Actions\MergeDuplicateEcue;
+use App\Http\Controllers\ESBTPEtudiantController;
+use App\Models\ESBTPNote;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 use Tests\Unit\Domain\Notes\SchemaDesMoyennes;
@@ -10,12 +12,10 @@ use Tests\Unit\Domain\Notes\SchemaDesMoyennes;
 /**
  * Ce que la fusion forcée d'ECUE fait — et ne fait pas — des agrégats.
  *
- * Elle ne recalcule PAS `esbtp_resultats` : la moyenne d'une ECUE se relit sur
- * les notes, et recalculer l'élément conservé en laissant la ligne de l'absorbé
- * ferait compter deux fois les notes absorbées au seul lecteur trouvé (voir
- * l'en-tête de `MergeDuplicateEcue`). Elle REPORTE les lignes de bulletin LMD,
- * dont la note de rattrapage ne se reconstruit depuis aucune note, et nomme les
- * bulletins à régénérer.
+ * Elle ne recalcule PAS `esbtp_resultats` : elle REPORTE les moyennes
+ * enregistrées sur l'élément conservé (voir l'en-tête de `MergeDuplicateEcue`),
+ * et les lignes de bulletin LMD, dont la note de rattrapage ne se reconstruit
+ * depuis aucune note, puis nomme les bulletins à régénérer.
  *
  * Schéma : {@see SchemaDesMoyennes}.
  */
@@ -58,7 +58,33 @@ class MergeDuplicateEcueSousForceTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_la_fusion_forcee_laisse_esbtp_resultats_intacte(): void
+    public function test_la_moyenne_enregistree_de_l_absorbee_est_reportee_et_le_certificat_ne_compte_pas_double(): void
+    {
+        // L'élève n'avait de notes — et de moyenne — que sur l'élément absorbé.
+        $this->note($this->evaluation(self::ABSORBEE), 4);
+        $this->resultat(self::ABSORBEE, 4);
+
+        $rapport = $this->fusionner();
+
+        // Reportée telle quelle, sans recalcul : une seule ligne pour cet élève.
+        $this->assertSame(1, $rapport['moyennes_enregistrees']['repointees']);
+        $this->assertSame(4.0, $this->moyenne(self::CANONIQUE));
+        $this->assertNull($this->moyenne(self::ABSORBEE));
+        $this->assertDatabaseCount('esbtp_resultats_recompute_log', 0);
+
+        // Le geste ordinaire qui suit : un enseignant saisit une note sur l'élément
+        // conservé. L'observateur recalcule la ligne depuis TOUTES les notes. Laissée
+        // sur l'absorbée, l'ancienne ligne à 4 se serait ajoutée : (4 + 10) / 2 = 7.
+        ESBTPNote::create([
+            'evaluation_id' => $this->evaluation(self::CANONIQUE), 'etudiant_id' => self::ETUDIANT,
+            'matiere_id' => self::CANONIQUE, 'classe_id' => self::CLASSE_LMD, 'note' => 16, 'is_absent' => false,
+        ]);
+
+        $this->assertSame(10.0, $this->moyenne(self::CANONIQUE));
+        $this->assertSame(10.0, $this->moyenneDuCertificat());
+    }
+
+    public function test_une_moyenne_enregistree_en_collision_reste_en_place_et_est_nommee(): void
     {
         $this->note($this->evaluation(self::CANONIQUE), 16);
         $this->note($this->evaluation(self::ABSORBEE), 4);
@@ -68,13 +94,25 @@ class MergeDuplicateEcueSousForceTest extends TestCase
         $rapport = $this->fusionner();
 
         $this->assertTrue($rapport['committed']);
-        // Chaque note reste comptée une fois : 16 sur une ligne, 4 sur l'autre.
-        // Recalculer la canonique à 10 en gardant le 4 compterait le 4 deux fois.
+        // Deux moyennes, peut-être saisies à la main : laquelle garder n'est pas au code.
         $this->assertSame(16.0, $this->moyenne(self::CANONIQUE));
         $this->assertSame(4.0, $this->moyenne(self::ABSORBEE));
+        $this->assertSame(0, $rapport['moyennes_enregistrees']['repointees']);
+        $this->assertCount(1, $rapport['moyennes_enregistrees']['conflits']);
         $this->assertDatabaseCount('esbtp_resultats_recompute_log', 0);
         // Les notes, elles, ont bien suivi : c'est d'elles que le bulletin LMD relit la moyenne.
         $this->assertSame(2, DB::table('esbtp_notes')->where('matiere_id', self::CANONIQUE)->count());
+    }
+
+    public function test_sans_force_les_moyennes_enregistrees_ne_bougent_pas(): void
+    {
+        $this->resultat(self::ABSORBEE, 12);
+
+        $rapport = app(MergeDuplicateEcue::class)->execute(self::CANONIQUE, [self::ABSORBEE], ['dry_run' => false]);
+
+        $this->assertTrue($rapport['committed']);
+        $this->assertSame(0, $rapport['moyennes_enregistrees']['repointees']);
+        $this->assertSame(12.0, $this->moyenne(self::ABSORBEE));
     }
 
     public function test_la_fusion_reporte_les_lignes_de_bulletin_lmd_et_leur_rattrapage(): void
@@ -168,9 +206,20 @@ class MergeDuplicateEcueSousForceTest extends TestCase
         ]);
     }
 
+    private function moyenneDuCertificat(): float
+    {
+        $inscription = (object) ['anneeUniversitaire' => (object) ['id' => self::ANNEE]];
+        $controleur = app(ESBTPEtudiantController::class);
+        $methode = new \ReflectionMethod($controleur, 'attachMoyenneCalculee');
+        $methode->setAccessible(true);
+        $methode->invoke($controleur, collect([$inscription]), self::ETUDIANT);
+
+        return (float) $inscription->moyenne_generale_calculee;
+    }
+
     private function moyenne(int $matiereId): ?float
     {
-        $v = DB::table('esbtp_resultats')->where('etudiant_id', self::ETUDIANT)->where('matiere_id', $matiereId)->value('moyenne');
+        $v = DB::table('esbtp_resultats')->where('etudiant_id', self::ETUDIANT)->where('matiere_id', $matiereId)->whereNull('deleted_at')->value('moyenne');
 
         return $v === null ? null : (float) $v;
     }

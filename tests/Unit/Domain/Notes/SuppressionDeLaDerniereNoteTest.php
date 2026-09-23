@@ -8,10 +8,15 @@ use Tests\TestCase;
 
 /**
  * Supprimer la dernière note d'un élève dans une matière réveille
- * l'observateur, qui relance le recalcul. Il ne reste aucune note — ou des
- * absences seulement — et le job écrivait 0/20 : au bulletin, pour une matière
- * où l'élève n'a simplement plus de note. Le garde du déplacement
- * (`PerimetreDeRecalcul::recalculerUnCouple()`) ne voit pas ce chemin-là.
+ * l'observateur, qui relance le recalcul. Il ne reste aucune note, et le job
+ * écrivait 0/20 : au bulletin, pour une matière où l'élève n'a simplement plus
+ * de note. Le garde du déplacement (`PerimetreDeRecalcul::recalculerUnCouple()`)
+ * ne voit pas ce chemin-là.
+ *
+ * Marquer la dernière note absente, lui, n'est PAS couvert, et c'est voulu : la
+ * décision écrite dans `PerimetreDeRecalcul` est que ce geste de l'enseignant
+ * fixe la moyenne. Le second test la verrouille, pour qu'on ne l'inverse pas
+ * par accident.
  */
 class SuppressionDeLaDerniereNoteTest extends TestCase
 {
@@ -45,14 +50,13 @@ class SuppressionDeLaDerniereNoteTest extends TestCase
         $this->assertDatabaseCount('esbtp_resultats_recompute_log', 0);
     }
 
-    public function test_passer_la_derniere_note_en_absence_n_ecrit_pas_zero(): void
+    public function test_passer_la_derniere_note_en_absence_fixe_toujours_la_moyenne(): void
     {
         $note = ESBTPNote::findOrFail($this->uneNoteAQuatorze());
         $note->is_absent = true;
         $note->save();
 
-        $this->assertSame(14.0, (float) DB::table('esbtp_resultats')->where('matiere_id', 5)->value('moyenne'));
-        $this->assertDatabaseCount('esbtp_resultats_recompute_log', 0);
+        $this->assertSame(0.0, (float) DB::table('esbtp_resultats')->where('matiere_id', 5)->value('moyenne'));
     }
 
     private function uneNoteAQuatorze(): int

@@ -89,12 +89,12 @@ use Illuminate\Support\Facades\Log;
  * `esbtp_evaluations.matiere_id` ET `esbtp_notes.matiere_id` vers l'ECUE
  * canonique, puis met l'absorbee de cote (soft-delete). Il ne recalcule pas
  * `esbtp_resultats`, **a dessein** — son en-tete dit pourquoi : la moyenne
- * d'une ECUE se relit sur les notes, et recalculer la canonique en laissant la
- * ligne de l'absorbee compterait deux fois les notes absorbees au seul lecteur
- * trouve (le repli du certificat de scolarite). Ce qu'il fait a la place :
- * reporter les lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`), dont la
- * note de rattrapage ne se reconstruit depuis aucune note, et nommer les
- * bulletins a regenerer.
+ * d'une ECUE se relit sur les notes. Il REPORTE a la place les lignes
+ * d'`esbtp_resultats` de l'absorbee sur la canonique (une seule ligne par
+ * coordonnee, que le prochain recalcul reecrit en entier ; collision nommee),
+ * et les lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`), dont la note de
+ * rattrapage ne se reconstruit depuis aucune note, puis nomme les bulletins a
+ * regenerer.
  *
  * ## Les VOISINS : ils ecrivent les memes colonnes sans deplacer d'evaluation
  *

@@ -70,12 +70,15 @@ l'ECUE canonique, puis met l'absorbée de côté — sans rien recalculer.
 relit sur ses notes (`LMDBulletinService`, par `esbtp_notes.matiere_id`, que la
 fusion déplace), et aucun écran LMD ne lit `esbtp_resultats`. Le seul lecteur
 trouvé est le repli sans bulletin du certificat de scolarité, qui additionne
-toutes les lignes cohérentes d'un élève : tant que les deux lignes gardent leur
-moyenne d'origine, chaque note y compte une fois. Recalculer la canonique en
-laissant la ligne de l'absorbée compterait deux fois les notes absorbées.
+toutes les lignes cohérentes d'un élève.
 
-Ce qu'il fait à la place (septembre 2026) : il **reporte** sur la canonique les
-lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`), dont la note de
+Ce qu'il fait à la place (septembre 2026) : sous `force`, il **reporte** sur la
+canonique les lignes d'`esbtp_resultats` de l'absorbée, sans les recalculer.
+Laissées sur l'absorbée, elles compteraient les notes deux fois au certificat
+dès le premier recalcul de la canonique (une note saisie par un enseignant
+suffit). Une ligne en collision avec celle de la canonique sur la même
+coordonnée reste en place, nommée dans `moyennes_enregistrees.conflits`. Il
+reporte aussi les lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`), dont la note de
 rattrapage ne se reconstruit depuis aucune note et serait sinon perdue à la
 régénération ; il laisse en place, et nomme dans `conflits`, une ligne en
 collision avec celle de la canonique sur le même bulletin ; et il rend la liste
@@ -166,6 +169,11 @@ Chaque ligne laissée porte `reste` :
 ⚠️ **Le garde ne vaut pas pour l'observateur de note, et c'est délibéré** : quand
 un enseignant marque une note absente, c'est son geste qui fixe la moyenne. Un
 rattrapage, lui, n'a touché à aucune note — il n'invente pas de zéro.
+
+Une exception, dans le job lui-même (septembre 2026) : quand la **dernière** note
+est supprimée, il ne reste rien, et le job n'écrit rien — ni 0/20, ni ligne
+nouvelle. La ligne, désormais sans aucune note (`reste = aucune_note`), est
+listée par le pré-contrôle de la génération des bulletins.
 
 ## `POST /api/cli/notes/recompute`
 
@@ -295,9 +303,10 @@ qu'on fige.
 ## Historique
 
 - **Septembre 2026 (bis)** — le cinquième chemin, `MergeDuplicateEcue`, est
-  tranché : pas de recalcul, à dessein ; report des lignes de bulletin LMD et
-  liste des bulletins à régénérer. Aucun changement de forme pour les endpoints
-  décrits ici.
+  tranché : pas de recalcul, à dessein ; report des moyennes enregistrées (sous
+  `force`) et des lignes de bulletin LMD, liste des bulletins à régénérer.
+  L'observateur n'écrit plus 0/20 quand la dernière note est supprimée. Aucun
+  changement de forme pour les endpoints décrits ici.
 - **Septembre 2026** — création. Déclenchée par un agrégat laissé périmé après un
   déplacement d'évaluation fait par `POST /api/cli/evaluations/{id}/matiere`, qui
   déplaçait bien les notes mais ne rafraîchissait rien. Une moyenne sans rien à

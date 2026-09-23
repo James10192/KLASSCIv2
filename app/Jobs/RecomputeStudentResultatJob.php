@@ -105,9 +105,7 @@ class RecomputeStudentResultatJob implements ShouldQueue
 
             // 2. Calculer la moyenne pondérée normalisée /20 via le service unifié
             //    (même formule que l'UI temps réel et BulletinService — anti-divergence).
-            //    `null` quand rien n'est exploitable (aucune note, ou des absences
-            //    seulement) : voir l'etape 4.
-            $moyenneApres = $calc->studentMatiereAverageOrNull(ESBTPNote::enChargeUtilePourLeCalcul($notes));
+            $moyenneApres = $calc->studentMatiereAverage(ESBTPNote::enChargeUtilePourLeCalcul($notes));
 
             // 3. Récupérer la moyenne actuelle (avant) pour audit
             $resultatExistant = ESBTPResultat::query()
@@ -122,16 +120,19 @@ class RecomputeStudentResultatJob implements ShouldQueue
                 ? (float) $resultatExistant->moyenne
                 : null;
 
-            // 4. Rien a moyenner : on n'ecrit RIEN, ni creation ni mise a jour.
-            //    Le deplacement et `notes:recompute` passent par le garde de
-            //    `PerimetreDeRecalcul::recalculerUnCouple()`, qui ne dispatche pas
-            //    dans ce cas. L'observateur, lui, dispatche directement : c'est
-            //    ici que la suppression (ou le passage en absence) de la
-            //    DERNIERE note d'une matiere arrive. Ecrire 0/20 par-dessus la
-            //    moyenne existante l'aurait imposee au bulletin par la preseance
-            //    de la ligne enregistree. La ligne est laissee et journalisee :
-            //    son sort est une decision d'ecole (`rien-en-dur.md`).
-            if ($moyenneApres === null) {
+            // 4. Plus AUCUNE note sur la coordonnee : on n'ecrit rien. C'est ici
+            //    qu'arrive la suppression de la DERNIERE note, par l'observateur,
+            //    qui ne traverse pas le garde de `PerimetreDeRecalcul`. Il n'y a
+            //    plus rien a moyenner : ecrire 0/20 inventerait une note que le
+            //    bulletin imposerait par la preseance de la ligne enregistree.
+            //    La ligne reste ; sans aucune note, le pre-controle de la
+            //    generation des bulletins la liste a la suppression.
+            //
+            //    Il reste des notes, mais toutes absentes : le recalcul se fait,
+            //    et la moyenne tombe a 0. C'est la decision ecrite de
+            //    `PerimetreDeRecalcul::recalculerUnCouple()` : le geste de
+            //    l'enseignant fixe la moyenne. Ce garde-ci ne la contredit pas.
+            if ($notes->isEmpty()) {
                 $contexte = [
                     'etudiant_id' => $this->etudiantId,
                     'classe_id' => $this->classeId,
@@ -141,8 +142,8 @@ class RecomputeStudentResultatJob implements ShouldQueue
                 ];
 
                 $resultatExistant
-                    ? Log::warning('RecomputeStudentResultatJob: plus rien a moyenner, moyenne enregistree laissee en place', $contexte + ['moyenne_conservee' => $moyenneAvant])
-                    : Log::info('RecomputeStudentResultatJob: rien a moyenner, aucune ligne, rien ecrit', $contexte);
+                    ? Log::warning('RecomputeStudentResultatJob: plus aucune note, moyenne enregistree laissee en place', $contexte + ['moyenne_conservee' => $moyenneAvant])
+                    : Log::info('RecomputeStudentResultatJob: aucune note, aucune ligne, rien ecrit', $contexte);
 
                 return;
             }
