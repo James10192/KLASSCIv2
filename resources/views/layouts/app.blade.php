@@ -2802,6 +2802,7 @@
                                             </a>
                                         @endrole
                             </li>
+                            <x-support.entrees-menu variante="bureau" />
                             <li>
                                 {{-- Une securite qu'on ne trouve pas n'est activee par personne. --}}
                                 <a class="dropdown-item" href="{{ route('securite.double-auth.reglages') }}">
@@ -2865,34 +2866,7 @@
 
             <!-- Content -->
             <div class="nextadmin-content">
-                <!-- Flash Messages -->
-                @if(session('success'))
-                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                        {{ session('success') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
-
-                @if(session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        {{ session('error') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
-
-                @if(session('warning'))
-                    <div class="alert alert-warning alert-dismissible fade show" role="alert">
-                        {{ session('warning') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
-
-                @if(session('info'))
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        {{ session('info') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                    </div>
-                @endif
+                @include('partials._messages_de_retour', ['contenuDeLaPage' => $__env->yieldContent('content')])
 
                 @auth
                     @php
@@ -3322,6 +3296,9 @@
         @include('components.chatbot.widget')
     </div>
 
+    {{-- KLASSCI Care : fenetre « Aide / Signaler », ouverte depuis le menu du compte. --}}
+    <x-support.lanceur />
+
     <!-- Debug Helper - Doit être chargé en PREMIER -->
     <script>
         // Variable globale pour activer/désactiver les logs debug
@@ -3371,7 +3348,10 @@
             document.addEventListener('DOMContentLoaded', function() {
                 // Shell mobile : sous 768px, les rappels non bloquants ne s'ouvrent pas seuls
                 // (chaque auto-open ci-dessous est garde par cette valeur).
-                const mAutoModalDeferred = window.matchMedia('(max-width:991.98px)').matches;
+                // Differees aussi quand la page s'ouvre pour signaler un probleme (?signaler=1) :
+                // la fenetre du support ne doit pas se retrouver sous une annonce.
+                const mAutoModalDeferred = window.matchMedia('(max-width:991.98px)').matches
+                    || new URLSearchParams(window.location.search).get('signaler') === '1';
 
                 const anneeModal = document.getElementById('anneeCouranteExpiredModal');
                 if (anneeModal) {
@@ -4535,6 +4515,7 @@
                 @if(Route::has('securite.double-auth.reglages'))
                     <a href="{{ route('securite.double-auth.reglages') }}"><x-m.icon name="lock" />Double authentification<span class="ch"><x-m.icon name="chr" /></span></a>
                 @endif
+                <x-support.entrees-menu variante="mobile" />
                 @if($mobileProfile === 'etudiant')
                     @if(Route::has('esbtp.preferences.index'))
                         <a href="{{ route('esbtp.preferences.index') }}"><x-m.icon name="settings" />Préférences<span class="ch"><x-m.icon name="chr" /></span></a>

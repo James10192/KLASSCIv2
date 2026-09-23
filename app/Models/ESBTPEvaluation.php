@@ -294,6 +294,14 @@ class ESBTPEvaluation extends Model implements Auditable
         return $hasNotes;
     }
 
+    /**
+     * La seule règle de suppression d'une évaluation, pour tous les écrans —
+     * la liste, la suppression d'une séance de devoir, et le bouton qui
+     * s'affiche ou non : brouillon, planifiée ou annulée. Une évaluation en
+     * cours ou terminée s'annule d'abord ({@see \App\Domain\Notes\ChangementDeStatut},
+     * qui recalcule), puis se supprime. Aucune permission n'y déroge : une
+     * seconde porte par l'emploi du temps en aurait fait deux règles.
+     */
     public function isDeletable()
     {
         return in_array($this->status, [self::STATUS_DRAFT, self::STATUS_SCHEDULED, self::STATUS_CANCELLED]);

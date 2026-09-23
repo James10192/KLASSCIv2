@@ -85,12 +85,17 @@ class MergeDuplicateEcue
             throw new RuntimeException('Une ou plusieurs ECUE à absorber sont introuvables.');
         }
 
-        $impact = $this->computeImpact($canonicalId, $absorbedIds);
-        $impact['blocking'] = $this->blockingDependencies($absorbedIds);
+        $blocking = $this->blockingDependencies($absorbedIds);
+        $bloquee = ($blocking['evaluations'] > 0 || $blocking['notes'] > 0) && ! $force;
+
+        // Les moyennes ne partent que sous `force`. Bloquée, l'aperçu montre ce
+        // que ferait « Forcer » ; sinon, ce que fera la fusion telle quelle.
+        $impact = $this->computeImpact($canonicalId, $absorbedIds, $force || $bloquee);
+        $impact['blocking'] = $blocking;
 
         // ── Garde-fou : évaluations / notes ──
         // L'impact accompagne le refus : c'est sur lui que se décide « Forcer ».
-        if (($impact['blocking']['evaluations'] > 0 || $impact['blocking']['notes'] > 0) && ! $force) {
+        if ($bloquee) {
             return array_merge($impact, [
                 'success' => false,
                 'dry_run' => $dryRun,
@@ -283,6 +288,16 @@ class MergeDuplicateEcue
     }
 
     /**
+     * La ligne de bulletin LMD de la canonique sur le bulletin d'une ligne donnée.
+     */
+    private static function ligneLmdDeLaCanonique(int $canonicalId, object $row): \Illuminate\Database\Query\Builder
+    {
+        return DB::table('esbtp_lmd_resultats_ecues')
+            ->where('bulletin_id', $row->bulletin_id)
+            ->where('matiere_id', $canonicalId);
+    }
+
+    /**
      * Reporte les lignes de bulletin LMD de l'ECUE absorbée sur la canonique.
      *
      * Même geste que pour les pivots, sauf en cas de collision : une seconde
@@ -308,10 +323,7 @@ class MergeDuplicateEcue
         $conflits = [];
 
         foreach ($rows as $row) {
-            $occupe = DB::table('esbtp_lmd_resultats_ecues')
-                ->where('bulletin_id', $row->bulletin_id)
-                ->where('matiere_id', $canonicalId)
-                ->exists();
+            $occupe = self::ligneLmdDeLaCanonique($canonicalId, $row)->exists();
 
             if ($occupe) {
                 $conflits[] = [
@@ -412,7 +424,7 @@ class MergeDuplicateEcue
         ];
     }
 
-    private function computeImpact(int $canonicalId, array $absorbedIds): array
+    private function computeImpact(int $canonicalId, array $absorbedIds, bool $avecMoyennes): array
     {
         return [
             'canonical_id' => $canonicalId,
@@ -421,12 +433,47 @@ class MergeDuplicateEcue
                 'ue_matiere_links' => DB::table('esbtp_ue_matiere')->whereIn('matiere_id', $absorbedIds)->count(),
                 'planifications' => DB::table('esbtp_planifications_academiques')->whereIn('matiere_id', $absorbedIds)->count(),
                 'matiere_filiere_links' => DB::table('esbtp_matiere_filiere')->whereIn('matiere_id', $absorbedIds)->count(),
-                'lmd_resultats_ecues' => DB::table('esbtp_lmd_resultats_ecues')->whereIn('matiere_id', $absorbedIds)->count(),
+                'lmd_resultats_ecues' => $this->compterLesReports(
+                    DB::table('esbtp_lmd_resultats_ecues')->whereIn('matiere_id', $absorbedIds)->get(['bulletin_id']),
+                    fn ($row) => (string) $row->bulletin_id,
+                    fn ($row) => self::ligneLmdDeLaCanonique($canonicalId, $row)->exists(),
+                ),
                 // Reportées seulement avec `force`, comme les notes.
-                'moyennes_enregistrees' => DB::table('esbtp_resultats')->whereIn('matiere_id', $absorbedIds)->whereNull('deleted_at')->whereNull('archived_at')->count(),
+                'moyennes_enregistrees' => ! $avecMoyennes ? 0 : $this->compterLesReports(
+                    DB::table('esbtp_resultats')->whereIn('matiere_id', $absorbedIds)->whereNull('deleted_at')->whereNull('archived_at')
+                        ->get(['etudiant_id', 'classe_id', 'annee_universitaire_id', 'periode']),
+                    fn ($row) => implode('|', [$row->etudiant_id, $row->classe_id, $row->annee_universitaire_id, ESBTPEvaluation::periodeCanonique((string) $row->periode)]),
+                    fn ($row) => self::ligneDeLaCanonique($canonicalId, $row)->exists(),
+                ),
             ],
             'soft_deleted_count' => count($absorbedIds),
         ];
+    }
+
+    /**
+     * Ce que la fusion reportera vraiment, et rien de plus : « Forcer » se
+     * coche sur ce chiffre.
+     *
+     * Une coordonnée n'est reportée qu'une fois, et seulement si la canonique
+     * n'y a pas déjà sa ligne (le critère même de la fusion) : quand deux
+     * absorbées s'y croisent, la fusion trouve la seconde occupée par la
+     * première. Le compte ne dépend donc pas de l'ordre des lignes.
+     *
+     * @param  iterable<object>  $rows  lignes des absorbées
+     */
+    private function compterLesReports(iterable $rows, callable $coordonnee, callable $occupeeParLaCanonique): int
+    {
+        $prises = [];
+
+        foreach ($rows as $row) {
+            $cle = $coordonnee($row);
+
+            if (! isset($prises[$cle]) && ! $occupeeParLaCanonique($row)) {
+                $prises[$cle] = true;
+            }
+        }
+
+        return count($prises);
     }
 
     private function emptyReport(int $canonicalId, string $message): array

@@ -2072,6 +2072,30 @@
                         Les tranches sont contiguës depuis 0h ; la dernière va jusqu'à l'infini. Les contributions « non justifiées » et « justifiées » s'additionnent.
                     </div>
                 </div>
+
+                {{-- Une matiere faite seulement d'absences : lu par NoteCalculationService::moyenneSansNoteComptable(). --}}
+                <div class="bc-grid" style="margin-top:16px;">
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-user-slash"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Une matière notée seulement d'absences compte 0</div>
+                            <div class="bc-desc">
+                                Activé : la matière vaut 0/20 et pèse dans la moyenne générale.
+                                Désactivé : elle n'a pas de moyenne (« — ») et sort du calcul, comme une matière jamais notée.
+                                Une absence au milieu d'autres notes ne compte jamais.
+                                Changer ce réglage vaut pour les notes saisies ensuite : les moyennes déjà enregistrées à 0
+                                ne partent qu'au recalcul des moyennes de la classe (à demander au support KLASSCI), et les bulletins déjà générés qu'à leur régénération.
+                            </div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="{{ \App\Services\NoteCalculationService::REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO }}" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get(\App\Services\NoteCalculationService::REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO, '1') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Section 3: Statistiques de classe -->

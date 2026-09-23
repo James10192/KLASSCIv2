@@ -1381,12 +1381,12 @@ function initializeEvaluations() {
     function showToast(message, type = 'success') {
         if (window.toastr && typeof window.toastr[type] === 'function') {
             window.toastr[type](message);
+        } else if (typeof window.klassciToast === 'function') {
+            const texte = document.createElement('div');
+            texte.textContent = message;
+            window.klassciToast(type, texte.innerHTML);
         } else {
-            if (type === 'error') {
-                console.error('[Evaluations]', message);
-            } else {
-                console.log('[Evaluations]', message);
-            }
+            console[type === 'error' ? 'error' : 'log']('[Evaluations]', message);
         }
     }
 

@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -87,7 +88,7 @@ class CLIEnvController extends BaseApiController
             // appels, d'ecrire une cle que la liste blanche interdit. La garde
             // vit AUSSI dans EnvFileWriter — ici pour rendre un 422 lisible,
             // la-bas parce qu'un service ne fait pas confiance a son appelant.
-            'valeur' => ['required', 'string', 'max:512', 'regex:/^[A-Za-z0-9_\-.:\/+=~]+$/'],
+            'valeur' => ['required', 'string', 'max:512', 'regex:/^[A-Za-z0-9_\-.:\/+=~]+$/D'],
         ]);
 
         $cle = $valide['cle'];
