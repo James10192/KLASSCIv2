@@ -93,6 +93,19 @@ final class MoyennesLaissees
     }
 
     /**
+     * La phrase d'{@see enUnePhrase()} après une annulation ou une
+     * réactivation : ce qui a laissé la moyenne dépend du sens du geste.
+     *
+     * @param  array{orphelins:array<int, array<string,mixed>>, echecs:int}  $recalcul
+     */
+    public static function apresChangementDeStatut(array $recalcul, ESBTPEvaluation $evaluation): ?string
+    {
+        return self::enUnePhrase($recalcul, $evaluation->status === ESBTPEvaluation::STATUS_CANCELLED
+            ? 'ne reposaient que sur cette évaluation, désormais annulée'
+            : 'n\'ont, même avec cette évaluation réactivée, que des absences à moyenner');
+    }
+
+    /**
      * @param  array<int, array<string,mixed>>  $absences
      * @param  array<int,string>  $classes
      * @return array<int, array<string,mixed>>

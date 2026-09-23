@@ -884,7 +884,9 @@
                 </div>
             </div>
         @endif
-        @if (session('warning'))
+        {{-- Le layout affiche déjà tout avertissement : ce bloc n'existe que
+             pour le bouton de suppression forcée, sinon le texte sortait deux fois. --}}
+        @if (session('warning') && session('show_force_delete'))
             <div class="alert alert-warning alert-dismissible fade show" role="alert">
                 <h5><i class="fas fa-exclamation-triangle me-2"></i>Attention</h5>
                 <p>{{ session('warning') }}</p>

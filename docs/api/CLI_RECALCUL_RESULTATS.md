@@ -59,14 +59,26 @@ moyenne, et recalculent elles aussi, par le même garde : **annuler** une
 évaluation (bouton « Annuler » de la liste, ou la route de statut) retire ses
 notes de la moyenne, la **réactiver** les y remet. Une moyenne qui ne reposait
 que sur l'évaluation annulée est laissée et nommée, jamais remise à zéro — dans
-le champ `warning` de la réponse JSON. **Reste sans recalcul** : la
-**suppression** d'une évaluation encore brouillon ou planifiée qui porte déjà
-des notes ; après une telle suppression, rejouez `POST /api/cli/notes/recompute`
-sur la classe et la période.
+le champ `warning` de la réponse JSON, affiché dans la liste jusqu'à ce qu'on le
+ferme.
 
-La séance de devoir et son devoir s'enregistrent **ensemble** : un échec
-d'écriture refuse toute la modification. Un recalcul en échec, lui, ne défait
-rien (comme ailleurs) : il est compté et affiché dans le bandeau.
+**Restent sans recalcul, trouvés à ce jour** — des écritures qui changent une
+moyenne sans déplacer ni exclure une note :
+- la **suppression** d'une évaluation encore brouillon ou planifiée qui porte
+  déjà des notes ;
+- le changement de **barème** ou de **coefficient** d'une évaluation notée
+  (écran d'édition, édition rapide) : les deux entrent dans le calcul.
+
+Après l'un d'eux, rejouez `POST /api/cli/notes/recompute` sur la classe et la
+période.
+
+La séance de devoir ne reporte sur le devoir que ce qu'elle a **réellement
+changé** : matière, classe, et le semestre de son emploi du temps quand sa date
+change (un semestre illisible laisse la période telle quelle). Retoucher la
+salle ou le titre ne touche donc aucune moyenne. La séance et son devoir
+s'enregistrent **ensemble** : un échec d'écriture refuse toute la modification.
+Le recalcul part après, hors transaction : un recalcul en échec ne défait rien
+(comme ailleurs), il est compté et affiché dans le bandeau.
 
 `esbtp:check-evaluations-annees` tire l'année des inscriptions des élèves notés
 dans la classe de l'évaluation (celle qu'ils partagent tous), sinon de sa date,

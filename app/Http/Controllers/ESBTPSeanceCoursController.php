@@ -1171,15 +1171,18 @@ class ESBTPSeanceCoursController extends Controller
                 throw ValidationException::withMessages(['conflicts' => $conflits]);
             }
 
-            // La séance et son devoir bougent ensemble ou pas du tout : un
-            // échec d'écriture de l'alignement du devoir annule aussi la séance.
-            $avertissement = DB::transaction(function () use ($seancesCour, $validated) {
+            // La séance et son devoir s'écrivent ensemble ou pas du tout ; les
+            // moyennes suivent après le commit (voir AlignementDuDevoir).
+            $devoir = app(AlignementDuDevoir::class);
+            $alignement = DB::transaction(function () use ($seancesCour, $validated, $devoir) {
+                $avant = $seancesCour->getOriginal();
                 $seancesCour->update($validated);
 
                 return $seancesCour->type === ESBTPSeanceCours::TYPE_HOMEWORK
-                    ? app(AlignementDuDevoir::class)->aligner($seancesCour)
+                    ? $devoir->aligner($seancesCour, $avant)
                     : null;
             });
+            $avertissement = $devoir->recalculer($alignement);
 
             return redirect()
                 ->route('esbtp.emploi-temps.show', $seancesCour->emploi_temps_id)

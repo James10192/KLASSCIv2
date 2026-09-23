@@ -25,7 +25,9 @@ use Illuminate\Support\Facades\DB;
  * autre année dans les moyennes de celle-ci, sans que personne le sache.
  *
  * LES MOYENNES. Tant qu'une évaluation n'a pas d'année, ses notes n'entrent
- * dans aucune moyenne. Lui en donner une les y fait entrer : la ligne
+ * dans aucune moyenne ENREGISTRÉE (`esbtp_resultats`) — la moyenne annuelle
+ * de secours de `BulletinService::calculateStudentAverageForPeriode()` ne
+ * filtre pas l'année, elle. Lui en donner une les y fait entrer : la ligne
  * d'`esbtp_resultats` de la coordonnée rejointe est recalculée
  * ({@see RecalculApresDeplacement::pour()}), par le même garde contre le zéro
  * que tout déplacement. La coordonnée d'avant, sans année, est incomplète :

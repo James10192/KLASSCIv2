@@ -93,11 +93,18 @@ use Illuminate\Support\Facades\Log;
  * `ESBTPEvaluationController::cancel()`, `restore()` (les boutons de la liste)
  * et `updateStatus()` (route sans ecran). Branchees par
  * {@see apresChangementDeStatut()}, puisque `pour()` compare deux coordonnees
- * et n'en voit ici qu'une. **Non branchee** : la SUPPRESSION d'une evaluation
- * encore brouillon ou planifiee qui porte deja des notes
- * (`ESBTPEvaluationController::destroy()`, `ESBTPSeanceCoursController::destroy()`).
+ * et n'en voit ici qu'une.
  *
- * Le cinquieme, `app/Domain/LMD/Actions/MergeDuplicateEcue.php`, reparente
+ * **Restent sans recalcul, trouves a ce jour** — et ce sont des ecritures qui
+ * changent une moyenne sans deplacer ni exclure une note :
+ * - la SUPPRESSION d'une evaluation encore brouillon ou planifiee qui porte
+ *   deja des notes (`ESBTPEvaluationController::destroy()`,
+ *   `ESBTPSeanceCoursController::destroy()`) ;
+ * - le changement de BAREME ou de COEFFICIENT d'une evaluation notee
+ *   (`ESBTPEvaluationController::update()` et `quickUpdate()`) : les deux
+ *   entrent dans le calcul (`ESBTPNote::enChargeUtilePourLeCalcul()`).
+ *
+ * `MergeDuplicateEcue` (`app/Domain/LMD/Actions/MergeDuplicateEcue.php`) reparente
  * `esbtp_evaluations.matiere_id` ET `esbtp_notes.matiere_id` vers l'ECUE
  * canonique, puis met l'absorbee de cote (soft-delete). Il ne recalcule rien.
  * Il n'est pas corrige dans ce lot a dessein : c'est un autre domaine (la
@@ -140,8 +147,8 @@ use Illuminate\Support\Facades\Log;
  * Trois raisons de ne pas l'avoir fait, et elles tiennent aux deux endpoints en
  * lot : ils ont besoin d'un plafond et d'un compte-rendu **agreges**, qu'un hook
  * ligne a ligne ne peut pas rendre ; leurs `save()` sont DANS une transaction
- * alors que le recalcul est volontairement hors transaction ; et le cinquieme
- * deplaceur passe par `DB::table()` brut, qu'aucun observer n'attrape. Un
+ * alors que le recalcul est volontairement hors transaction ; et
+ * `MergeDuplicateEcue` passe par `DB::table()` brut, qu'aucun observer n'attrape. Un
  * observer reste souhaitable pour les chemins Eloquent — il n'est simplement
  * pas suffisant, et ce n'est pas le geste de ce lot.
  */
@@ -209,16 +216,30 @@ final class RecalculApresDeplacement
      * evenement, l'observateur ne tourne pas — d'ou l'appel a `pour()` qui
      * suit, sans lequel la moyenne d'avant l'emporterait sur les notes.
      *
-     * `$avant` peut porter l'année d'avant : le devoir d'une séance en change
-     * (`AlignementDuDevoir`). Sans elle, l'année est réputée inchangée. Un
-     * changement d'année seule ne touche aucune colonne des notes — l'année
-     * n'y est pas copiée — mais déplace bien la moyenne : le recalcul part
-     * quand même.
-     *
-     * @param  array{classe_id:int, matiere_id:int, periode:string, annee_universitaire_id?:int|null}  $avant
+     * @param  array{classe_id:int, matiere_id:int, periode:string}  $avant
      * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
      */
     public static function apresEnregistrement(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur = null): array
+    {
+        if (! self::recopierSurLesNotes($evaluation, $avant)) {
+            return ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+        }
+
+        return self::pour($evaluation, $avant + [
+            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+        ], $declencheur);
+    }
+
+    /**
+     * La premiere moitie d'{@see apresEnregistrement()}, seule : l'ecriture,
+     * sans le recalcul. Pour l'appelant qui doit ecrire DANS sa transaction et
+     * recalculer APRES le commit (`AlignementDuDevoir`) — le recalcul reste
+     * hors transaction, comme partout.
+     *
+     * @param  array{classe_id:int, matiere_id:int, periode:string}  $avant
+     * @return bool vrai si une colonne a change
+     */
+    public static function recopierSurLesNotes(ESBTPEvaluation $evaluation, array $avant): bool
     {
         $colonnes = [];
 
@@ -233,21 +254,20 @@ final class RecalculApresDeplacement
             $colonnes['semestre'] = ESBTPNote::semestreDepuisLaPeriode((string) $evaluation->periode);
         }
 
-        if ($colonnes !== []) {
-            $touchees = ESBTPNote::where('evaluation_id', $evaluation->id)->update($colonnes);
-
-            Log::info('Notes propagées après modif évaluation', [
-                'evaluation_id' => $evaluation->id,
-                'changes' => $colonnes,
-                'old' => $avant,
-                'notes_affected' => $touchees,
-            ]);
+        if ($colonnes === []) {
+            return false;
         }
 
-        // Rien n'a bougé : `pour()` le voit et rend un bilan vide.
-        return self::pour($evaluation, $avant + [
-            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
-        ], $declencheur);
+        $touchees = ESBTPNote::where('evaluation_id', $evaluation->id)->update($colonnes);
+
+        Log::info('Notes propagées après modif évaluation', [
+            'evaluation_id' => $evaluation->id,
+            'changes' => $colonnes,
+            'old' => $avant,
+            'notes_affected' => $touchees,
+        ]);
+
+        return true;
     }
 
     /**
@@ -275,8 +295,18 @@ final class RecalculApresDeplacement
         }
 
         $memo = ['couples' => [], 'orphelins' => []];
+        $bilan = self::recalculerPourLesEleves($evaluation, [self::coordonneeDe($evaluation)], $declencheur, $memo);
 
-        return self::recalculerPourLesEleves($evaluation, [self::coordonneeDe($evaluation)], $declencheur, $memo);
+        if ($bilan['orphelins'] !== []) {
+            Log::warning('Changement de statut d evaluation : moyennes sans rien a moyenner, laissees en place', [
+                'evaluation_id' => $evaluation->id,
+                'statut_avant' => $statutAvant,
+                'statut' => $evaluation->status,
+                'orphelins' => $bilan['orphelins'],
+            ]);
+        }
+
+        return $bilan;
     }
 
     /**

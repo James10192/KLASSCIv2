@@ -13,24 +13,36 @@ use Illuminate\Support\Facades\Log;
 /**
  * Aligne l'évaluation « devoir » liée à une séance sur cette séance.
  *
- * Déplacer la séance déplace le devoir — classe, matière, période, année — et
- * donc ses notes : leur copie dénormalisée et les moyennes enregistrées des
- * deux côtés suivent ({@see RecalculApresDeplacement::apresEnregistrement()}).
+ * N'EST ALIGNÉ QUE CE QUE LA SÉANCE A CHANGÉ. Une coordonnée du devoir —
+ * classe, matière, période, année — déplace ses notes et les moyennes des
+ * deux côtés. Réécrire toutes les coordonnées à chaque enregistrement de la
+ * séance défaisait donc en silence une correction faite sur l'écran de
+ * l'évaluation (une période remise à la main, par exemple), dès qu'on
+ * retouchait la salle ou le titre de la séance. On compare la séance avant et
+ * après, et seule une coordonnée qui a réellement bougé est reportée :
+ *  - matière, classe, année : celles de la séance, si elles ont changé ;
+ *  - période : si la DATE de la séance a changé, le semestre de son emploi du
+ *    temps. Pas le mois : la frontière entre semestres appartient à l'école
+ *    (`rien-en-dur.md`), et l'emploi du temps la porte. Un semestre illisible
+ *    laisse la période telle quelle — on ne devine pas.
+ * Titre, description, date et durée, qui ne déplacent aucune moyenne, suivent
+ * toujours.
  *
- * À APPELER DANS LA TRANSACTION QUI ENREGISTRE LA SÉANCE. Un échec
- * d'écriture lève, et doit tout annuler : une séance déplacée dont le devoir
- * serait resté en place ne se réconcilie plus ensuite. Cet alignement vivait
- * dans le contrôleur des séances et avalait toute exception ; la séance
- * changeait alors seule, sans un mot. Un recalcul en échec, lui, ne lève pas
- * (le déplacement reste acquis, comme partout ailleurs) : il est compté et dit.
+ * DEUX TEMPS. {@see aligner()} écrit, DANS la transaction qui enregistre la
+ * séance : un échec d'écriture lève et annule tout, séance comprise. Cet
+ * alignement vivait dans le contrôleur des séances et avalait toute
+ * exception ; la séance changeait alors seule, sans un mot.
+ * {@see recalculer()} rafraîchit les moyennes APRÈS le commit, hors
+ * transaction comme partout ailleurs (voir `RecalculApresDeplacement`) : un
+ * recalcul en échec ne défait pas le déplacement, il est compté et dit.
  */
 final class AlignementDuDevoir
 {
     /**
-     * @return string|null l'avertissement à montrer : une moyenne laissée sans
-     *                     rien à moyenner, ou un recalcul en échec
+     * @param  array<string, mixed>  $seanceAvant  `getOriginal()` de la séance, relevé avant son `update()`
+     * @return array{evaluation: ESBTPEvaluation, avant: array<string, mixed>}|null ce que {@see recalculer()} doit rafraîchir
      */
-    public function aligner(ESBTPSeanceCours $seance): ?string
+    public function aligner(ESBTPSeanceCours $seance, array $seanceAvant): ?array
     {
         $evaluation = $this->devoirDe($seance);
 
@@ -49,19 +61,15 @@ final class AlignementDuDevoir
         $evaluation->fill([
             'titre' => $seance->homework_description ?: 'Devoir - '.($seance->matiere->name ?? 'Matière'),
             'description' => $seance->homework_description,
-            'matiere_id' => $seance->matiere_id,
-            'classe_id' => $seance->classe_id,
             'type' => 'devoir',
             'date_evaluation' => $debut,
             'coefficient' => $evaluation->coefficient ?? 1.0,
             'bareme' => $evaluation->bareme ?? 20.0,
             'duree_minutes' => max(1, $fin->diffInMinutes($debut)),
-            // Logique d'origine : janvier-juin = semestre 2, sinon semestre 1.
-            'periode' => $debut->month <= 6 ? 'semestre2' : 'semestre1',
-            'annee_universitaire_id' => $seance->annee_universitaire_id,
             'enseignant_id' => null,
             'updated_by' => Auth::id(),
         ]);
+        $evaluation->fill($this->coordonneesQuiOntBouge($seance, $seanceAvant));
 
         $avant = [
             'classe_id' => (int) $evaluation->getOriginal('classe_id'),
@@ -71,11 +79,65 @@ final class AlignementDuDevoir
         ];
 
         $evaluation->save();
+        RecalculApresDeplacement::recopierSurLesNotes($evaluation, $avant);
+
+        return ['evaluation' => $evaluation, 'avant' => $avant];
+    }
+
+    /**
+     * À appeler APRÈS le commit de la transaction d'{@see aligner()}.
+     *
+     * @param  array{evaluation: ESBTPEvaluation, avant: array<string, mixed>}|null  $alignement
+     * @return string|null l'avertissement à montrer : une moyenne laissée sans
+     *                     rien à moyenner, ou un recalcul en échec
+     */
+    public function recalculer(?array $alignement): ?string
+    {
+        if ($alignement === null) {
+            return null;
+        }
 
         return MoyennesLaissees::enUnePhrase(
-            RecalculApresDeplacement::apresEnregistrement($evaluation, $avant, Auth::id()),
+            RecalculApresDeplacement::pour($alignement['evaluation'], $alignement['avant'], Auth::id()),
             'n\'ont plus rien à moyenner depuis le déplacement du devoir'
         );
+    }
+
+    /**
+     * @param  array<string, mixed>  $avant
+     * @return array<string, mixed>
+     */
+    private function coordonneesQuiOntBouge(ESBTPSeanceCours $seance, array $avant): array
+    {
+        $coordonnees = [];
+
+        foreach (['matiere_id', 'classe_id', 'annee_universitaire_id'] as $colonne) {
+            if ($seance->{$colonne} != ($avant[$colonne] ?? null)) {
+                $coordonnees[$colonne] = $seance->{$colonne};
+            }
+        }
+
+        if ($this->jour($seance->date_seance) !== $this->jour($avant['date_seance'] ?? null)) {
+            $periode = $this->periodeDeLEmploiDuTemps($seance);
+            if ($periode !== null) {
+                $coordonnees['periode'] = $periode;
+            }
+        }
+
+        return $coordonnees;
+    }
+
+    /** `Semestre 1`, `1`, `semestre1` : l'écriture de l'emploi du temps est libre. */
+    private function periodeDeLEmploiDuTemps(ESBTPSeanceCours $seance): ?string
+    {
+        $semestre = (string) ($seance->emploiTemps?->semestre ?? '');
+
+        return preg_match('/^\D*([12])\D*$/', $semestre, $m) ? 'semestre'.$m[1] : null;
+    }
+
+    private function jour(mixed $date): ?string
+    {
+        return $date ? Carbon::parse($date)->toDateString() : null;
     }
 
     /**

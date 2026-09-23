@@ -292,11 +292,9 @@ class ESBTPEvaluationController extends Controller
      */
     private function recalculerApresStatut(ESBTPEvaluation $evaluation, ?string $statutAvant): ?string
     {
-        return MoyennesLaissees::enUnePhrase(
+        return MoyennesLaissees::apresChangementDeStatut(
             RecalculApresDeplacement::apresChangementDeStatut($evaluation, $statutAvant, Auth::id()),
-            $evaluation->status === ESBTPEvaluation::STATUS_CANCELLED
-                ? 'ne reposaient que sur cette évaluation, désormais annulée'
-                : 'n\'ont, même avec cette évaluation réactivée, que des absences à moyenner'
+            $evaluation
         );
     }
 
