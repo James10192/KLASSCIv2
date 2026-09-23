@@ -19,8 +19,10 @@ use Illuminate\Validation\ValidationException;
  * l'ecran BTS des matieres levaient une erreur serveur, ce dernier jusque sur
  * un code qu'il avait lui-meme genere.
  *
- * Qui ecrit un code de matiere passe par ici : `libererSiArchive()` avant
- * l'ecriture, `sousUnicite()` autour d'elle.
+ * Qui ecrit un code de matiere passe par ici : `ecrire()` pour les ecrans
+ * LMD, `ecrireEnLiberant()` pour l'ecran BTS, et `libererSiArchive()` suivi de
+ * `sousUnicite()` pour les ecritures qui tiennent deja leur transaction
+ * (formulaire d'UE, import de maquette, CLI tronc commun).
  *
  * La regle, desormais une seule :
  * - une matiere ACTIVE garde son code. Qui veut la reutiliser la lie ; la
@@ -80,6 +82,25 @@ class CodeDeMatiere
     }
 
     /**
+     * Code genere depuis le nom (trois premieres lettres de chaque mot), suffixe
+     * d'un rang s'il est pris. Les matieres supprimees comptent : l'index unique
+     * les compte aussi, et les ignorer faisait lever la creation en erreur serveur.
+     */
+    public function genererDepuisLeNom(string $nom): string
+    {
+        $base = implode('', array_map(
+            fn ($mot) => mb_substr($mot, 0, 3, 'UTF-8'),
+            preg_split('/\s+/', mb_strtoupper(trim($nom), 'UTF-8'))
+        ));
+        $code = $base;
+        for ($rang = 1; ESBTPMatiere::withTrashed()->where('code', $code)->exists(); $rang++) {
+            $code = $base . $rang;
+        }
+
+        return $code;
+    }
+
+    /**
      * Ecrit une matiere portant ce code, ou refuse en disant pourquoi.
      *
      * Refuse si une matiere active tient deja le code ; libere le code d'une
@@ -97,8 +118,39 @@ class CodeDeMatiere
         int $portee,
         callable $ecrire
     ): array {
-        return $this->sousUnicite('code', $code, fn () => DB::transaction(function () use ($code, $saufId, $ue, $portee, $ecrire) {
+        return $this->enTransaction('code', $code, $saufId, function () use ($code, $saufId, $ue, $portee, $ecrire) {
             $this->refuserSiActive($code, $saufId, $ue, $portee);
+
+            return $ecrire();
+        }, $ue, $portee);
+    }
+
+    /**
+     * Comme `ecrire()`, pour un ecran qui a deja refuse le code d'une matiere
+     * active par sa propre validation (l'ecran BTS des matieres, et sa regle
+     * `unique` limitee aux lignes non supprimees).
+     *
+     * @param  callable(): mixed  $ecrire
+     * @return array{0: mixed, 1: string|null} Le resultat d'$ecrire, et le message de liberation.
+     */
+    public function ecrireEnLiberant(string $cle, ?string $code, ?int $saufId, callable $ecrire): array
+    {
+        return $this->enTransaction($cle, $code, $saufId, $ecrire);
+    }
+
+    /**
+     * La liberation et l'ecriture dans une transaction : si l'ecriture echoue,
+     * l'ancienne matiere retrouve son code.
+     */
+    private function enTransaction(
+        string $cle,
+        ?string $code,
+        ?int $saufId,
+        callable $ecrire,
+        ?ESBTPUniteEnseignement $ue = null,
+        int $portee = 0
+    ): array {
+        return $this->sousUnicite($cle, $code, fn () => DB::transaction(function () use ($code, $saufId, $ecrire) {
             $message = $this->libererSiArchive($code, $saufId);
 
             return [$ecrire(), $message];
@@ -111,8 +163,9 @@ class CodeDeMatiere
      *
      * Le cas vise est la course : deux saisies simultanees du meme code, dont
      * aucune n'a vu l'autre avant d'ecrire. Le titulaire est relu pour etre
-     * nomme ; s'il reste invisible (la transaction englobante voit un instantane
-     * anterieur), le message le dit sans le nommer.
+     * nomme, par une lecture verrouillante : dans une transaction englobante,
+     * une lecture simple verrait l'instantane d'avant la course et ne le
+     * trouverait pas.
      *
      * @template T
      * @param  callable(): T  $ecrire
@@ -135,7 +188,7 @@ class CodeDeMatiere
                 throw $e;
             }
 
-            $titulaire = ESBTPMatiere::where('code', $code)->first();
+            $titulaire = ESBTPMatiere::where('code', $code)->lockForUpdate()->first();
 
             throw ValidationException::withMessages([$cle => match (true) {
                 $titulaire !== null && $ue !== null => $this->pourquoi($titulaire, $ue, $portee),
