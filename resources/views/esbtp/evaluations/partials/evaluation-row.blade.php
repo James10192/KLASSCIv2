@@ -179,7 +179,10 @@
                                 title="Activer l'évaluation">
                             <i class="fas fa-circle-play"></i>
                         </button>
-                    @else
+                    @endif
+                    {{-- Une évaluation en cours ou terminée ne se supprime qu'annulée :
+                         elle garde donc son bouton Annuler même non publiée. --}}
+                    @if($evaluation->status !== \App\Models\ESBTPEvaluation::STATUS_CANCELLED && ($evaluation->is_published || ! $evaluation->isDeletable()))
                         <button type="button"
                                 class="ev-action-btn ev-action-btn--danger"
                                 data-evaluation-action="cancel"

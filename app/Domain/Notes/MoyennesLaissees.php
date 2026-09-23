@@ -147,6 +147,17 @@ final class MoyennesLaissees
     }
 
     /**
+     * La phrase d'{@see enUnePhrase()} après la suppression d'une évaluation
+     * notée.
+     *
+     * @param  array{orphelins:array<int, array<string,mixed>>, echecs:int}  $recalcul
+     */
+    public static function apresSuppression(array $recalcul): ?string
+    {
+        return self::enUnePhrase($recalcul, 'ne reposaient que sur l\'évaluation supprimée');
+    }
+
+    /**
      * @param  array<int, array<string,mixed>>  $absences
      * @param  array<int,string>  $classes
      * @return array<int, array<string,mixed>>
