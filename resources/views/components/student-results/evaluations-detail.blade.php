@@ -30,11 +30,11 @@
                 <div class="sr-accordion-item">
                     <button type="button" class="sr-accordion-trigger">
                         <div class="sr-accordion-trigger-left">
-                            <span class="sr-accordion-dot sr-accordion-dot--{{ $matiereData['moyenne'] >= 10 ? 'success' : 'danger' }}"></span>
+                            <span class="sr-accordion-dot sr-accordion-dot--{{ ($matiereData['moyenne'] ?? 0) >= 10 ? 'success' : 'danger' }}"></span>
                             <span class="sr-accordion-subject">{{ $matiereData['matiere']->name }}</span>
                         </div>
-                        <span class="sr-accordion-avg sr-accordion-avg--{{ $matiereData['moyenne'] >= 10 ? 'success' : 'danger' }}">
-                            {{ number_format($matiereData['moyenne'], 2) }}/20
+                        <span class="sr-accordion-avg sr-accordion-avg--{{ ($matiereData['moyenne'] ?? 0) >= 10 ? 'success' : 'danger' }}">
+                            {{ $matiereData['moyenne'] !== null ? number_format($matiereData['moyenne'], 2).'/20' : '—' }}
                         </span>
                         <span class="sr-eval-count" style="font-size: 0.7rem;">{{ count($matiereData['notes']) }}</span>
                         <i class="fas fa-chevron-down sr-accordion-chevron"></i>

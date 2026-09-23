@@ -2475,7 +2475,9 @@ class BulletinService
                 $notesByMatiere[$matiereId] = [
                     'total_points' => 0,
                     'total_coefficients' => 0,
-                    'moyenne' => 0,
+                    // `null` = aucune note exploitable (bareme nul), distinct d'une
+                    // moyenne de 0 : la somme plus bas compte la seconde seulement.
+                    'moyenne' => null,
                 ];
             }
 
@@ -2529,7 +2531,7 @@ class BulletinService
                 $notesByMatiere[$matiereId] = [
                     'total_points' => 0,
                     'total_coefficients' => 0,
-                    'moyenne' => 0,
+                    'moyenne' => null,
                 ];
             }
 
@@ -2541,7 +2543,11 @@ class BulletinService
         $sommeCoefs = 0;
 
         foreach ($notesByMatiere as $matiereId => $matiereData) {
-            if ($matiereData['moyenne'] > 0) {
+            // Une moyenne de 0 compte : seule l'absence de moyenne est ecartee.
+            // Le filtre `> 0` d'avant ecrivait 14,00 au lieu de 9,33 dans
+            // `esbtp_bulletins.moyenne_generale` pour 14 (coef 2) et 0 (coef 1),
+            // et rendait `null` pour un eleve dont toutes les matieres valent 0.
+            if ($matiereData['moyenne'] !== null) {
                 // $periodePourBDD appartient a calculateMoyennesForStudent : ici
                 // il n existe pas, et PHP levait « Undefined variable » des
                 // qu une matiere avait une moyenne positive. La page de

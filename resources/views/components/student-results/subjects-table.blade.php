@@ -121,7 +121,9 @@
                                      PAS la somme des coefficients d'évaluations. --}}
                                 <span class="sr-coeff">{{ $matiereData['matiere_coefficient'] ?? $matiereData['total_coefficients'] }}</span>
                             </td>
+                            {{-- `null` = aucune note exploitable : un tiret, pas un 0.00 qui passerait pour une note. --}}
                             <td class="text-center">
+                                @if($matiereData['moyenne'] !== null)
                                 <div class="sr-avg-cell">
                                     <span class="sr-avg-badge sr-avg-badge--{{ $matiereData['moyenne'] >= 10 ? 'success' : 'danger' }}">
                                         {{ number_format($matiereData['moyenne'], 2) }}/20
@@ -131,10 +133,17 @@
                                              style="width: {{ min($matiereData['moyenne'] * 5, 100) }}%"></div>
                                     </div>
                                 </div>
+                                @else
+                                <span class="sr-eval-count">&mdash;</span>
+                                @endif
                             </td>
                             <td class="text-center">
+                                @if($matiereData['moyenne'] !== null)
                                 @php $appreciation = app(\App\Services\AppreciationScaleService::class)->classificationFor((float) $matiereData['moyenne'], 'bts'); @endphp
                                 <span class="sr-appreciation sr-appreciation--{{ $appreciation['slug'] }}">{{ $appreciation['label'] }}</span>
+                                @else
+                                <span class="sr-eval-count">&mdash;</span>
+                                @endif
                             </td>
                         </tr>
                     @endforeach
