@@ -2165,9 +2165,11 @@
                         </div>
                         <p class="text-muted mb-0">Ajoutez l’enseignant et renseignez sa spécialité pour les associations.</p>
                         <img src="{{ asset('assets/guides/timetable/step-1-teacher.png') }}" alt="Créer un enseignant">
+                        @can('teachers.create')
                         <a class="tips-step-action" href="{{ route('esbtp.enseignants.create') }}">
                             <i class="fas fa-user-plus"></i>Créer un enseignant
                         </a>
+                        @endcan
                     </div>
                     <div class="tips-step">
                         <div class="tips-step-title">

@@ -2,46 +2,73 @@
 
 namespace Tests\Unit\Services;
 
+use App\Models\User;
+use App\Providers\AuthServiceProvider;
 use App\Services\EnrollmentAmountVisibility;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
+/**
+ * La porte `finances.etudiants.voir`, et le service qui la relaie.
+ *
+ * Le cas qui a motive la porte : un profil pedagogique (directeur des etudes,
+ * enseignant) portant `admin.access` mais aucune permission financiere lisait
+ * les soldes des etudiants.
+ */
 class EnrollmentAmountVisibilityTest extends TestCase
 {
-    public function test_user_without_finance_cannot_see_amounts(): void
+    use DatabaseTransactions;
+
+    protected function setUp(): void
     {
-        $user = new class {
-            public function can(string $permission): bool
-            {
-                return $permission === 'identity.enrollment_officer';
-            }
+        parent::setUp();
 
-            public function hasAnyPermission(array $permissions): bool
-            {
-                return false;
-            }
-        };
-
-        $visibility = new EnrollmentAmountVisibility();
-
-        $this->assertTrue($visibility->hideAmounts($user));
+        $noms = array_merge(AuthServiceProvider::PERMISSIONS_FINANCES_ETUDIANTS, [
+            'admin.access', 'students.view', 'inscriptions.view', 'identity.enrollment_officer', 'frais.view',
+        ]);
+        foreach ($noms as $nom) {
+            Permission::findOrCreate($nom, 'web');
+        }
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
-    public function test_finance_user_can_see_amounts(): void
+    private function utilisateurAvec(array $permissions): User
     {
-        $user = new class {
-            public function can(string $permission): bool
-            {
-                return false;
-            }
+        $user = User::factory()->create();
+        $user->givePermissionTo($permissions);
 
-            public function hasAnyPermission(array $permissions): bool
-            {
-                return in_array('paiements.view', $permissions, true);
-            }
-        };
+        return $user->fresh();
+    }
 
-        $visibility = new EnrollmentAmountVisibility();
+    public function test_un_profil_pedagogique_avec_admin_access_ne_voit_pas_les_montants(): void
+    {
+        $user = $this->utilisateurAvec(['admin.access', 'students.view', 'inscriptions.view', 'frais.view']);
 
-        $this->assertFalse($visibility->hideAmounts($user));
+        $this->assertFalse($user->can('finances.etudiants.voir'));
+        $this->assertTrue(app(EnrollmentAmountVisibility::class)->hideAmounts($user));
+    }
+
+    public function test_un_agent_d_inscription_ne_voit_pas_les_montants(): void
+    {
+        $user = $this->utilisateurAvec(['inscriptions.view', 'identity.enrollment_officer']);
+
+        $this->assertTrue(app(EnrollmentAmountVisibility::class)->hideAmounts($user));
+    }
+
+    public function test_chaque_permission_financiere_ouvre_la_porte(): void
+    {
+        foreach (AuthServiceProvider::PERMISSIONS_FINANCES_ETUDIANTS as $permission) {
+            $user = $this->utilisateurAvec([$permission]);
+
+            $this->assertTrue($user->can('finances.etudiants.voir'), $permission);
+            $this->assertFalse(app(EnrollmentAmountVisibility::class)->hideAmounts($user), $permission);
+        }
+    }
+
+    public function test_sans_utilisateur_les_montants_sont_masques(): void
+    {
+        $this->assertTrue(app(EnrollmentAmountVisibility::class)->hideAmounts(null));
     }
 }

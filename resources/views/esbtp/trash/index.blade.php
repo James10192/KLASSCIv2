@@ -409,9 +409,11 @@
                 <button class="tr-tab" :class="{ active: tab === 'inscriptions' }" @click="switchTab('inscriptions')">
                     <i class="fas fa-file-signature"></i><span>Inscriptions</span>
                 </button>
+@can('finances.etudiants.voir')
                 <button class="tr-tab" :class="{ active: tab === 'paiements' }" @click="switchTab('paiements')">
                     <i class="fas fa-money-bill-wave"></i><span>Paiements</span>
                 </button>
+                @endcan
             </div>
 
             <div class="tr-toolbar">
