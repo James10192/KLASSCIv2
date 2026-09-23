@@ -165,6 +165,12 @@ class DemarrageVerification
                 'verifie_at' => null,
                 'tentatives' => 0,
                 'mailpulse_verification_id' => null,
+                // Rien de l'ancien contact ne doit valoir pour le nouveau.
+                'code_hash' => null,
+                'jeton_hash' => null,
+                'code_expire_at' => null,
+                'jeton_expire_at' => null,
+                'mailpulse_message_id' => null,
                 'masque_la_demande' => $masquer,
                 'masquee_at' => $masquer ? $ligne->masquee_at : null,
             ])->save();

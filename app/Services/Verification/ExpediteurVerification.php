@@ -40,10 +40,13 @@ class ExpediteurVerification
             return $resultat;
         }
 
-        $this->ecrire($verification, [
+        $consigne = $this->ecrire($verification, [
             'dernier_envoi_at' => now(),
             'dernier_echec' => $resultat->ok ? null : mb_substr($resultat->code, 0, 60),
         ]);
+        if (! $consigne) {
+            return ResultatVerificationDistante::echec(self::CONTACT_CHANGE);
+        }
 
         if (! $resultat->ok) {
             Log::warning('Verification de contact : envoi refuse', [
@@ -78,9 +81,9 @@ class ExpediteurVerification
         $envoi = $this->courriel->expedier($verification->destination, $code, $jeton);
 
         if ($envoi->ok) {
-            $this->ecrire($verification, ['mailpulse_message_id' => $envoi->id ? mb_substr($envoi->id, 0, 100) : null]);
+            $ecrit = $this->ecrire($verification, ['mailpulse_message_id' => $envoi->id ? mb_substr($envoi->id, 0, 100) : null]);
 
-            return ResultatVerificationDistante::ok('sent', (string) $envoi->id);
+            return $ecrit ? ResultatVerificationDistante::ok('sent', (string) $envoi->id) : ResultatVerificationDistante::echec(self::CONTACT_CHANGE);
         }
 
         return in_array($envoi->status, RefusMailPulse::CONFIGURATION, true)
@@ -113,13 +116,15 @@ class ExpediteurVerification
      */
     private function ecrire(ESBTPVerificationContact $verification, array $champs): bool
     {
-        $n = ESBTPVerificationContact::query()
+        $ligne = fn () => ESBTPVerificationContact::query()
             ->whereKey($verification->getKey())
             ->where('canal', $verification->canal->value)
-            ->where('destination', $verification->destination)
-            ->update($champs + ['updated_at' => now()]);
+            ->where('destination', $verification->destination);
 
-        if ($n === 0) {
+        // MySQL compte les lignes MODIFIEES, pas les lignes trouvees : une
+        // ecriture identique dans la meme seconde rend 0. On ne conclut au
+        // changement de contact que si la ligne ne correspond vraiment plus.
+        if ($ligne()->update($champs + ['updated_at' => now()]) === 0 && ! $ligne()->exists()) {
             return false;
         }
 

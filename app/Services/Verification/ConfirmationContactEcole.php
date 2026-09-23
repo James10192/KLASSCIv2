@@ -5,6 +5,7 @@ namespace App\Services\Verification;
 use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutVerificationContact;
 use App\Models\ESBTPRdvReservation;
+use App\Services\Emails\AnalyseurEmail;
 use App\Services\RendezVous\FileConvocationsRdv;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,10 @@ class ConfirmationContactEcole
 
     public const MODIFIE_ENTRE_TEMPS = 'modifie_entre_temps';
 
-    public function __construct(private readonly FileConvocationsRdv $convocations) {}
+    public function __construct(
+        private readonly FileConvocationsRdv $convocations,
+        private readonly AnalyseurEmail $emails,
+    ) {}
 
     /** @return array{0: string, 1: int} le resultat, et le nombre de convocations replanifiees */
     public function confirmer(Model $demande, string $empreinte, int $agentId): array
@@ -70,7 +74,13 @@ class ConfirmationContactEcole
 
         foreach ($reservations as $reservation) {
             /** @var ESBTPRdvReservation $reservation */
-            $reservation->forceFill(['email' => $demande->emailRdv()])->save();
+            // L'adresse du dossier ne remplace celle saisie a la reservation que si
+            // elle recoit du courrier : un contact confirme par telephone, ou un
+            // `@esbtp.edu.ci` en base, ne doit pas effacer une adresse valide.
+            $dossier = $demande->emailRdv();
+            if ($this->emails->analyser($dossier)->joignable()) {
+                $reservation->forceFill(['email' => $dossier])->save();
+            }
             $this->convocations->poser($reservation, $reservation->convocation_action ?: 'confirme');
         }
 

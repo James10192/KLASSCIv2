@@ -260,7 +260,9 @@ class PortailCandidatureService
             // Constate AVANT l'ecriture : assurerReferencePublique() sauve
             // ensuite la ligne, et wasChanged() ne dirait plus rien de l'adresse.
             $candidature->contactModifieAuDepot = mb_strtolower(trim((string) $candidature->email)) !== mb_strtolower(trim((string) ($valeurs['email'] ?? '')))
-                || (array_key_exists('telephone', $valeurs) && trim((string) $candidature->telephone) !== trim((string) $valeurs['telephone']));
+                || (array_key_exists('telephone', $valeurs)
+                    && (\App\Domain\Notifications\PhoneNormalizer::toE164($candidature->telephone) ?? trim((string) $candidature->telephone))
+                        !== (\App\Domain\Notifications\PhoneNormalizer::toE164($valeurs['telephone']) ?? trim((string) $valeurs['telephone'])));
 
             $candidature->update($valeurs + [
                 'statut' => ESBTPCandidature::STATUT_EN_ATTENTE,

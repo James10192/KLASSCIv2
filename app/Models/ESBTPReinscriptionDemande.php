@@ -84,8 +84,6 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
         'verification_contact',
         'email_verifie_at',
         'telephone_verifie_at',
-        'contact_confirme_par',
-        'contact_confirme_at',
     ];
 
     protected $casts = [
@@ -196,7 +194,8 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
 
     public function emailRdv(): ?string
     {
-        return $this->etudiant?->email;
+        // Meme ordre que ContactDeVerification : l'adresse personnelle d'abord.
+        return $this->etudiant?->email_personnel ?: $this->etudiant?->email;
     }
 
     public function typeDemandePublique(): string

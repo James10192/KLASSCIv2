@@ -47,7 +47,7 @@ class ESBTPReinscriptionDemandeController extends Controller
         $reference = app(\App\Services\Portail\ReferencePublique::class)->normaliser($request->string('reference')->toString());
 
         $demandes = ESBTPReinscriptionDemande::query()
-            ->with(['etudiant:id,nom,prenoms,matricule', 'anneeUniversitaire:id,name', 'classeSouhaitee:id,name', 'traitePar:id,name'])
+            ->with(['etudiant:id,nom,prenoms,matricule,email,email_personnel,telephone', 'anneeUniversitaire:id,name', 'classeSouhaitee:id,name', 'traitePar:id,name'])
             ->when($statut !== '', fn ($q) => $q->where('statut', $statut))
             ->when($reference !== '', fn ($q) => $q->where('reference_publique', $reference))
             ->orderByRaw("FIELD(statut, 'en_attente') DESC")

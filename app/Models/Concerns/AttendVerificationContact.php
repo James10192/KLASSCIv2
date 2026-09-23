@@ -66,10 +66,19 @@ trait AttendVerificationContact
     {
         return hash('sha256', implode('|', [
             (string) $this->verification_contact,
-            mb_strtolower(trim((string) $this->getAttribute('email'))),
-            trim((string) $this->getAttribute('telephone')),
+            // Le contact tel que la verification le lit (etudiant pour une
+            // reinscription) : modifier la fiche de l'etudiant change l'empreinte.
+            json_encode($this->contactAffiche()),
             (string) $this->updated_at?->getTimestamp(),
         ]));
+    }
+
+    /** @return array{canal: string, destination: string}|null */
+    public function contactAffiche(): ?array
+    {
+        $contact = app(\App\Services\Verification\ContactDeVerification::class)->pour($this);
+
+        return $contact === null ? null : ['canal' => $contact['canal']->value, 'destination' => $contact['destination']];
     }
 
     /** @param  Builder<static>  $query */
