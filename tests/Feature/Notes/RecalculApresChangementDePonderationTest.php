@@ -29,7 +29,10 @@ use Tests\TestCase;
  * fait tomber les trois premiers tests ; comparer les valeurs en chaines au lieu
  * de nombres fait tomber le quatrieme ; neutraliser `baremeMinimal()` fait tomber
  * les deux refus ; retirer le `refresh()` de `quickUpdate()` fait tomber le
- * dernier.
+ * test du coefficient renvoye ; rattraper moins large que `\Throwable` fait
+ * tomber le test de la panne. Le test « deplacer et reponderer » garde un
+ * comportement deja juste (le recalcul du deplacement lit le nouveau
+ * coefficient) : il reste vert sans ce correctif, et c'est son role.
  */
 class RecalculApresChangementDePonderationTest extends TestCase
 {
@@ -180,6 +183,71 @@ class RecalculApresChangementDePonderationTest extends TestCase
         $reponse = $this->editionRapide($ponderee, bareme: 20, coefficient: 1.25);
 
         $this->assertSame((float) $ponderee->fresh()->coefficient, (float) $reponse['evaluation']['coefficient']);
+    }
+
+    /**
+     * Deplacer ET reponderer d'un coup : le recalcul du deplacement lit deja le
+     * nouveau coefficient a l'arrivee, rien n'est a ajouter.
+     *
+     * @test
+     */
+    public function deplacer_et_reponderer_ensemble_recalcule_l_arrivee_avec_le_nouveau_coefficient(): void
+    {
+        $this->monterLaClasse();
+        $depart = $this->matiereConfiguree();
+        $arrivee = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+
+        $deplacee = $this->evaluationDe($depart);
+        $this->noter($etudiant, $deplacee, 10);
+        $this->noter($etudiant, $this->evaluationDe($arrivee), 20);
+
+        Gate::before(fn () => true);
+        $this->actingAs(User::factory()->create());
+
+        app(ESBTPEvaluationController::class)->update(
+            Request::create('/', 'PUT', [
+                'titre' => 'Devoir deplace',
+                'type' => 'devoir',
+                'date_evaluation' => now()->toDateString(),
+                'heure_debut' => '08:00',
+                'heure_fin' => '10:00',
+                'classe_id' => $this->classe->id,
+                'matiere_id' => $arrivee->id,
+                'bareme' => 20,
+                'coefficient' => 3,
+                'periode' => 'semestre1',
+            ]),
+            $deplacee
+        );
+
+        // (10 x 3 + 20 x 1) / 4 : le coefficient 3 est bien lu a l'arrivee.
+        $this->assertSame(12.5, $this->moyenne($etudiant->id, $arrivee->id));
+    }
+
+    /**
+     * L'evaluation est enregistree avant le recalcul. Qu'il casse ne doit pas
+     * faire repondre « erreur » — la personne croirait que rien n'est sauve —
+     * mais annoncer les moyennes restees en l'etat.
+     *
+     * @test
+     */
+    public function un_recalcul_qui_casse_est_annonce_sans_nier_l_enregistrement(): void
+    {
+        [, , $ponderee] = $this->deuxNotes();
+
+        DB::listen(function ($requete) {
+            if (str_contains($requete->sql, 'select distinct') && str_contains($requete->sql, 'esbtp_notes')) {
+                throw new \RuntimeException('panne simulee');
+            }
+        });
+
+        $reponse = $this->editionRapide($ponderee, bareme: 20, coefficient: 3);
+
+        $this->assertTrue($reponse['success']);
+        $this->assertSame(1, $reponse['moyennes_non_recalculees']);
+        $this->assertStringContainsString("n'ont pas pu être recalculées", $reponse['message']);
+        $this->assertSame(3.0, (float) $ponderee->fresh()->coefficient);
     }
 
     /**

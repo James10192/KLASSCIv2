@@ -208,7 +208,7 @@ final class RecalculApresDeplacement
      * bouge, le recalcul du deplacement lit deja le nouveau bareme a l'arrivee,
      * et le depart ne compte plus cette evaluation : rien a ajouter.
      *
-     * @param  array{classe_id:int, matiere_id:int, periode:string, bareme?:float, coefficient?:float}  $avant
+     * @param  array{classe_id:int, matiere_id:int, periode:string, bareme?:float|int|string|null, coefficient?:float|int|string|null}  $avant
      * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
      */
     public static function apresEnregistrement(ESBTPEvaluation $evaluation, array $avant, ?int $declencheur = null): array
@@ -284,8 +284,19 @@ final class RecalculApresDeplacement
         ];
         $memo = ['couples' => [], 'orphelins' => []];
 
-        foreach (self::elevesNotes($evaluation) as $etudiantId) {
-            self::executerUneFois($etudiantId, $ici, $declencheur, $bilan, $memo, self::SOURCE_PONDERATION);
+        // L'evaluation est DEJA enregistree : une exception qui remonterait
+        // ferait dire a l'ecran « erreur, rien n'est sauve ». Elle compte comme
+        // un echec, que l'ecran annonce, et le journal garde le detail.
+        try {
+            foreach (self::elevesNotes($evaluation) as $etudiantId) {
+                self::executerUneFois($etudiantId, $ici, $declencheur, $bilan, $memo, self::SOURCE_PONDERATION);
+            }
+        } catch (\Throwable $e) {
+            $bilan['echecs']++;
+            Log::error('Recalcul apres changement de ponderation interrompu', [
+                'evaluation_id' => $evaluation->id,
+                'erreur' => $e->getMessage(),
+            ]);
         }
 
         $bilan['orphelins'] = [];
