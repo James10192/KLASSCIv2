@@ -10,9 +10,15 @@ use Illuminate\Validation\Rule;
 
 class QuickStoreEnseignantRequest extends FormRequest
 {
+    /**
+     * La creation rapide cree un compte enseignant, comme la creation classique.
+     * Sa route ne demande qu'une identite et le module Enseignants : sans cette
+     * verification, un directeur des etudes ou un responsable scolarite creait
+     * des comptes sans « Creer un enseignant ».
+     */
     public function authorize(): bool
     {
-        return true;
+        return (bool) $this->user()?->can('teachers.create');
     }
 
     public function rules(): array
