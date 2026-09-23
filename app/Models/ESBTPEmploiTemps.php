@@ -148,6 +148,18 @@ class ESBTPEmploiTemps extends Model
     }
 
     /**
+     * La période des évaluations posées sur cet emploi du temps
+     * (`semestre1` / `semestre2`), lue sur son semestre. L'écran l'écrit
+     * « Semestre 1 », d'autres chemins « 1 » ou « semestre1 » : on lit le
+     * chiffre. Illisible → null : la frontière entre semestres appartient à
+     * l'école, on ne la devine pas ici.
+     */
+    public function periodeDEvaluation(): ?string
+    {
+        return preg_match('/^\D*([12])\D*$/', (string) $this->semestre, $m) ? 'semestre'.$m[1] : null;
+    }
+
+    /**
      * Relation avec l'utilisateur qui a créé l'emploi du temps.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

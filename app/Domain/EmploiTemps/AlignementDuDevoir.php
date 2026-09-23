@@ -26,9 +26,9 @@ use Illuminate\Support\Facades\Log;
  *    ne bouge qu'à l'intérieur de la semaine de son emploi du temps
  *    (`ESBTPEmploiTemps::dateDuJour()`) : ce changement ne dit rien d'un autre
  *    semestre, et réaligner défaisait la correction manuelle faite sur
- *    l'écran de l'évaluation. La période est posée à la création du devoir
- *    (`store()`, qui la déduit encore du mois — règle héritée, qui devrait lire
- *    le semestre de l'emploi du temps ; hors de ce chantier).
+ *    l'écran de l'évaluation. La période est posée à la création du devoir,
+ *    sur le semestre de l'emploi du temps
+ *    (`ESBTPEmploiTemps::periodeDEvaluation()`).
  * Titre, description, date et durée, qui ne déplacent aucune moyenne, suivent
  * toujours.
  *

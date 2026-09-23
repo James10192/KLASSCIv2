@@ -68,14 +68,22 @@ changement de statut passe par `App\Domain\Notes\ChangementDeStatut`.
 Le changement de **barème** ou de **coefficient** d'une évaluation notée
 recalcule aussi, depuis septembre 2026 (écran d'édition et édition rapide).
 
-**Reste sans recalcul, trouvé à ce jour** : la **suppression** d'une évaluation
-encore brouillon ou planifiée qui porte déjà des notes. Après une suppression,
-rejouez `POST /api/cli/notes/recompute` sur la classe et la période.
+La **suppression** d'une évaluation notée recalcule aussi, depuis septembre 2026
+(`App\Domain\Notes\SuppressionDEvaluation`) : la suppression est douce, les
+notes restent en base, mais le recalcul ne lit plus que celles d'une évaluation
+vivante. Les deux écrans qui suppriment — la liste des évaluations et la
+suppression d'une séance de devoir — portent `warning` et `warning_links` dans
+leur réponse JSON. Une évaluation déjà annulée ne comptait plus : la supprimer
+ne recalcule rien.
 
 La séance de devoir ne reporte sur le devoir qu'**une coordonnée : sa matière,
 si elle a changé**. La période du devoir n'est pas réalignée quand le jour de la
-séance change — la date se déduit de l'emploi du temps, qui ne change pas, et
-réaligner défaisait une période corrigée à la main. Retoucher la salle, le titre
+séance change — la date ne bouge qu'à l'intérieur de la semaine de l'emploi du
+temps (`ESBTPEmploiTemps::dateDuJour()`), et réaligner défaisait une période
+corrigée à la main. À la création, la période est celle du semestre de l'emploi
+du temps ; le mois ne sert qu'en dernier recours, si ce semestre est illisible,
+et c'est journalisé. Changer la matière d'une séance dont le devoir a des notes
+exige `evaluations.edit_locked`, comme sur l'écran de l'évaluation. Retoucher la salle, le titre
 ou le jour ne touche donc aucune moyenne. La séance et son devoir
 s'enregistrent **ensemble** : un échec d'écriture refuse toute la modification.
 Le recalcul part après, hors transaction : un recalcul en échec ne défait rien
@@ -347,6 +355,11 @@ qu'on fige.
 
 ## Historique
 
+- **Septembre 2026 (quater)** — la suppression d'une évaluation notée recalcule
+  (liste des évaluations, suppression d'une séance de devoir) ; source
+  `suppression` au journal de recalcul. **Ajout non cassant** : `warning` et
+  `warning_links` dans la réponse JSON de la suppression.
+  `esbtp:check-evaluations-annees` sort en échec quand un recalcul échoue.
 - **Septembre 2026 (ter)** — la modification d'une séance de devoir,
   `esbtp:check-evaluations-annees`, et l'annulation / la réactivation d'une
   évaluation recalculent à leur tour. **Changement de comportement** de la

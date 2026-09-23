@@ -6,6 +6,7 @@ use App\Domain\EmploiTemps\AlignementDuDevoir;
 use App\Domain\EmploiTemps\ConflitsDUnCreneau;
 use App\Domain\EmploiTemps\DetectionDesConflits;
 use App\Domain\EmploiTemps\JourDeLaSemaine;
+use App\Domain\Notes\SuppressionDEvaluation;
 use App\Enums\TypeSeance;
 use App\Services\LMD\Tpe\TpePlanification;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -650,12 +651,7 @@ class ESBTPSeanceCoursController extends Controller
                         $heureFin = Carbon::parse($seance->heure_fin);
                         $dureeMinutes = $heureFin->diffInMinutes($heureDebut);
 
-                        // Déterminer la période selon la date
-                        $periode = 'semestre1'; // Par défaut
-                        $dateSeance = Carbon::parse($seance->date_seance);
-                        if ($dateSeance->month >= 1 && $dateSeance->month <= 6) {
-                            $periode = 'semestre2';
-                        }
+                        $periode = $this->periodeDuDevoir($seance);
 
                         $evaluationStartAt = AlignementDuDevoir::combiner($seance->date_seance, $seance->heure_debut);
                         $evaluationEndAt = AlignementDuDevoir::combiner($seance->date_seance, $seance->heure_fin);
@@ -1171,6 +1167,12 @@ class ESBTPSeanceCoursController extends Controller
                 throw ValidationException::withMessages(['conflicts' => $conflits]);
             }
 
+            // Changer la matière d'une séance de devoir déplace ses notes, comme
+            // sur l'écran de l'évaluation : la même permission y est exigée.
+            if ($this->deplaceUnDevoirNote($seancesCour, $validated) && ! Auth::user()?->can('evaluations.edit_locked')) {
+                throw ValidationException::withMessages(['matiere_id' => 'Impossible de changer la matière : le devoir de cette séance a déjà des notes. Il faut la permission « Modifier une évaluation verrouillée », comme sur l\'écran de l\'évaluation.']);
+            }
+
             // La séance et son devoir s'écrivent ensemble ou pas du tout ; les
             // moyennes suivent après le commit (voir AlignementDuDevoir).
             $devoir = app(AlignementDuDevoir::class);
@@ -1203,6 +1205,40 @@ class ESBTPSeanceCoursController extends Controller
         }
     }
 
+    /** @param array<string,mixed> $validated */
+    private function deplaceUnDevoirNote(ESBTPSeanceCours $seance, array $validated): bool
+    {
+        return $seance->type === ESBTPSeanceCours::TYPE_HOMEWORK
+            && array_key_exists('matiere_id', $validated)
+            && (int) $validated['matiere_id'] !== (int) $seance->matiere_id
+            && $seance->homeworkEvaluation?->notes()->exists();
+    }
+
+    /**
+     * La période du devoir d'une séance : le semestre de son emploi du temps,
+     * que l'école a choisi. Le mois de la séance ne sert qu'en dernier recours,
+     * quand ce semestre est illisible — et c'est journalisé, parce que la
+     * frontière du mois (janvier-juin = semestre 2) est une supposition.
+     */
+    private function periodeDuDevoir(ESBTPSeanceCours $seance): string
+    {
+        $periode = $seance->emploiTemps?->periodeDEvaluation();
+
+        if ($periode !== null) {
+            return $periode;
+        }
+
+        $parLeMois = Carbon::parse($seance->date_seance)->month <= 6 ? 'semestre2' : 'semestre1';
+        Log::warning('Devoir cree : semestre de l emploi du temps illisible, periode deduite du mois', [
+            'seance_id' => $seance->id,
+            'emploi_temps_id' => $seance->emploi_temps_id,
+            'semestre_emploi_du_temps' => $seance->emploiTemps?->semestre,
+            'periode' => $parLeMois,
+        ]);
+
+        return $parLeMois;
+    }
+
     /**
      * Supprimer une séance de cours.
      */
@@ -1210,22 +1246,29 @@ class ESBTPSeanceCoursController extends Controller
     {
         try {
             $emploiTempsId = $seancesCour->emploi_temps_id;
+            $suite = ['avertissement' => null, 'liens' => []];
             if ($seancesCour->type === ESBTPSeanceCours::TYPE_HOMEWORK && $seancesCour->homeworkEvaluation) {
-                $seancesCour->homeworkEvaluation->delete();
+                // Le devoir et sa séance partent ensemble ; les moyennes qu'il
+                // portait sont recalculées après.
+                $suite = SuppressionDEvaluation::supprimer($seancesCour->homeworkEvaluation, Auth::user(), fn () => $seancesCour->delete());
+            } else {
+                $seancesCour->delete();
             }
-            $seancesCour->delete();
 
             if (request()->expectsJson()) {
                 return response()->json([
                     'success' => true,
                     'emploi_temps_id' => $emploiTempsId,
                     'message' => 'Séance supprimée avec succès.',
+                    'warning' => $suite['avertissement'],
+                    'warning_links' => $suite['liens'],
                 ]);
             }
 
             return redirect()
                 ->route('esbtp.emploi-temps.show', $emploiTempsId)
-                ->with('success', 'Séance supprimée avec succès.');
+                ->with('success', 'Séance supprimée avec succès.')
+                ->with('warning', $suite['avertissement']);
         } catch (\Exception $e) {
             Log::error('Error in SeanceCoursController@destroy: '.$e->getMessage());
 
