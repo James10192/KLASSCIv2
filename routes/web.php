@@ -3199,7 +3199,7 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
         ->middleware('permission:lmd.structure.manage')->name('ue.sync-parcours');
 
     // --- Reconciliation des doublons UE/ECUE ---
-    // Le controleur appelle deja authorize('lmd.reconciliation.manage') dans ses trois
+    // Le controleur appelle deja authorize('lmd.reconciliation.manage') dans chacune de ses
     // methodes ; la permission est ici reportee sur la route, pour que le refus tombe
     // avant d'atteindre le controleur et pour que la garde soit lisible ici.
     Route::get('reconciliation', [\App\Http\Controllers\ESBTPLMDReconciliationController::class, 'index'])
@@ -3208,6 +3208,8 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
         ->middleware(['permission:lmd.reconciliation.manage', 'throttle:30,1'])->name('reconciliation.detect');
     Route::post('reconciliation/merge', [\App\Http\Controllers\ESBTPLMDReconciliationController::class, 'merge'])
         ->middleware(['permission:lmd.reconciliation.manage', 'throttle:20,1'])->name('reconciliation.merge');
+    Route::post('reconciliation/moyennes-en-collision/retirer', [\App\Http\Controllers\ESBTPLMDReconciliationController::class, 'retirerMoyennesEnCollision'])
+        ->middleware(['permission:lmd.reconciliation.manage', 'throttle:20,1'])->name('reconciliation.moyennes-collision.retirer');
 
     // --- Notes ---
     // lmd.notes.manage ouvre la saisie ; le controleur restreint ensuite un

@@ -85,23 +85,38 @@
             // `onHidden` rend donc le chainage correct par construction, sans
             // temporisation ni compteur.
             //
-            // LE BOUTON N'EST ARME QU'A `shown`, POUR LA MEME RAISON. Pendant le
-            // fondu d'ouverture, `hide()` ne fait rien (meme garde
-            // `_isTransitioning`). Arme des l'appel, un clic sur Confirmer a cet
-            // instant posait `decided = true` sans fermer, consommait l'ecouteur
-            // `once`, et la sortie suivante — Annuler, la croix, Echap — resolvait
-            // alors a `true` : « Annuler » validait. Arme a `shown`, ce clic-la
-            // est simplement ignore.
-            const onConfirm = () => { decided = true; bsModal.hide(); };
-            const onShown = () => confirmBtn.addEventListener('click', onConfirm, { once: true });
+            // LA DECISION APPARTIENT AU GESTE QUI FERME VRAIMENT. Pendant les
+            // deux fondus, `hide()` ne fait rien (meme garde `_isTransitioning`).
+            // Une decision posee au clic, que la modale se ferme ou non, puis
+            // lue a `hidden`, ouvrait deux fenetres a la meme issue : on annule,
+            // l'action part quand meme.
+            //  - a l'ouverture : clic « Confirmer » sans effet, ecouteur `once`
+            //    consomme, puis Annuler / croix / Echap → `true` ;
+            //  - a la fermeture : Annuler / croix / Echap / fond, puis clic
+            //    « Confirmer » dans les ~150 ms du fondu → `true`.
+            // N'armer le bouton qu'a `shown` fermait la premiere, pas la seconde :
+            // le bouton reste arme pendant le fondu de sortie.
+            //
+            // Bootstrap 5.3.0 emet `hide.bs.modal` DE FACON SYNCHRONE dans
+            // `hide()`, et seulement si la fermeture a lieu :
+            //
+            //   hide(){this._isShown&&!this._isTransitioning&&(P.trigger(this._element,"hide.bs.modal")...
+            //
+            // La decision se lit donc la, en sachant si ce `hide()` vient du
+            // bouton. Un clic sans effet ne decide rien et peut se retenter : pas
+            // de `once` sur le bouton, c'est `cleanup()` qui le detache.
+            let viaConfirm = false;
+            const onConfirm = () => { viaConfirm = true; bsModal.hide(); viaConfirm = false; };
+            const onHide = () => { decided = viaConfirm; };
             const onHidden = () => { resolve(decided); cleanup(); };
             const cleanup = () => {
                 confirmBtn.removeEventListener('click', onConfirm);
-                modal.removeEventListener('shown.bs.modal', onShown);
+                modal.removeEventListener('hide.bs.modal', onHide);
                 modal.removeEventListener('hidden.bs.modal', onHidden);
             };
 
-            modal.addEventListener('shown.bs.modal', onShown, { once: true });
+            confirmBtn.addEventListener('click', onConfirm);
+            modal.addEventListener('hide.bs.modal', onHide);
             modal.addEventListener('hidden.bs.modal', onHidden, { once: true });
             bsModal.show();
         });
