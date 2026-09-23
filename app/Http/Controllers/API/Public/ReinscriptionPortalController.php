@@ -9,7 +9,7 @@ use App\Models\ESBTPEtudiant;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\Reinscription\SituationReinscription;
-use App\Services\Verification\VerificationDuDepot;
+use App\Services\Verification\DemarrageVerification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -92,7 +92,7 @@ class ReinscriptionPortalController extends Controller
         //
         // Une demande neuve attend la verification du contact du dossier
         // (e-mail joignable, sinon WhatsApp) avant d'etre transmise.
-        $verification = app(VerificationDuDepot::class)->apres($demande);
+        $verification = app(DemarrageVerification::class)->apresDepot($demande);
 
         return response()->json(array_merge([
             'enregistre' => true,

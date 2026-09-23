@@ -185,6 +185,15 @@ class Kernel extends ConsoleKernel
             ->name('rdv-convocations-synchro')
             ->description('Relit chez MailPulse la remise reelle des convocations de rendez-vous');
 
+        // Une demande du portail jamais confirmee ne reste pas masquee : passe
+        // 48 h, l'ecole la voit avec un badge « Contact non confirme ».
+        $schedule->command('inscriptions:expirer-verifications-contact')
+            ->hourly()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->name('verifications-contact-expirees')
+            ->description('Rend visibles les demandes du portail restees sans confirmation');
+
         $schedule->command('mailpulse:reconcile-parent-link-codes --limit=50')
             ->everyMinute()
             ->withoutOverlapping()

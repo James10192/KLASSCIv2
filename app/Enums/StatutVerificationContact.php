@@ -24,9 +24,25 @@ enum StatutVerificationContact: string
     case Verifie = 'verifie';
     case Impossible = 'verification_impossible';
 
+    /**
+     * Masquee plus de 48 h sans que la famille confirme : la demande redevient
+     * visible, avec un badge, plutot que de disparaitre pour toujours.
+     */
+    case Expiree = 'verification_expiree';
+
     /** @return list<string> */
     public static function valeursMasquees(): array
     {
         return [self::EmailNonVerifie->value, self::TelephoneNonVerifie->value];
+    }
+
+    /** Le badge a afficher a l'ecole sur une demande visible, ou null. */
+    public static function badge(?string $valeur): ?string
+    {
+        return match ($valeur) {
+            self::Expiree->value => 'Contact non confirmé',
+            self::Impossible->value => 'Contact non vérifiable',
+            default => null,
+        };
     }
 }

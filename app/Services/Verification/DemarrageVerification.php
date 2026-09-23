@@ -10,22 +10,22 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * Pose la verification d'une demande publique et fait partir le premier code.
+ * Lance la verification du contact d'une demande publique.
  *
- * Deux modes :
- * - `masquer` (depot du portail) : la demande reste invisible pour l'ecole
- *   jusqu'a la verification ;
- * - sans masquer (familles deja en base, commande dediee) : la demande reste
- *   visible, la verification ne fait que dater le contact.
+ * Regle cardinale : on ne MASQUE jamais une demande que l'ecole voyait deja.
+ * Seules une demande NEUVE, ou une demande deja masquee, peuvent l'etre ; et
+ * seulement APRES que le code est bien parti. Sans cela, quiconque connait le
+ * numero d'une famille ferait disparaitre sa candidature en redeposant le
+ * formulaire.
  *
- * Si le PREMIER code ne part pas, quelle qu'en soit la raison, la demande
- * n'est jamais laissee masquee : elle passe en « verification impossible »,
- * visible, et le depot repond comme avant. Masquer une demande dont la famille
- * n'a recu aucun code la ferait disparaitre pour tout le monde.
+ * - `apresDepot()` : depuis le portail. Neuve → verification masquante.
+ *   Deja masquee → renvoi soumis au debit (un par minute, cinq par heure).
+ *   Visible (ancienne ou verifiee) dont l'adresse ou le numero a change →
+ *   les dates de verification tombent et un code part, SANS masquer.
+ * - `demarrer(masquer: false)` : familles deja en base (commande dediee).
  *
- * Un nouveau depot sur le MEME contact ne renvoie pas un code d'office : il
- * passe par le debit du renvoi (un par minute, cinq par heure), sans quoi
- * redeposer le formulaire en boucle inonderait la famille de messages.
+ * Si le premier code ne part pas, la demande reste visible, en
+ * « verification impossible ».
  */
 class DemarrageVerification
 {
@@ -35,11 +35,44 @@ class DemarrageVerification
         private readonly RenvoiVerification $renvoi,
     ) {}
 
+    /** Ne leve jamais : une panne ici ne doit ni faire echouer le depot, ni masquer la demande. */
+    public function apresDepot(Model $demande): ?VerificationDemarree
+    {
+        $masquable = $demande->wasRecentlyCreated || $demande->contactNonVerifie();
+        $contactChange = ! $demande->wasRecentlyCreated && ($demande->wasChanged('email') || $demande->wasChanged('telephone'));
+
+        if (! $masquable && ! $contactChange) {
+            return null;
+        }
+
+        try {
+            if (! $masquable) {
+                $demande->poserVerificationContact(null, ['email_verifie_at' => null, 'telephone_verifie_at' => null]);
+                $this->demarrer($demande, false);
+
+                return null;
+            }
+
+            return $this->demarrer($demande, true);
+        } catch (\Throwable $e) {
+            Log::error('Verification de contact : demarrage interrompu, demande laissee visible', [
+                'type' => $demande->typeDemandePublique(),
+                'id' => $demande->getKey(),
+                'erreur' => $e->getMessage(),
+            ]);
+            if ($masquable) {
+                $demande->poserVerificationContact(StatutVerificationContact::Impossible);
+            }
+
+            return null;
+        }
+    }
+
     public function demarrer(Model $demande, bool $masquer = true): ?VerificationDemarree
     {
         $contact = $this->contacts->pour($demande);
         if ($contact === null) {
-            $this->poserStatut($demande, $masquer, StatutVerificationContact::Impossible);
+            $this->poser($demande, $masquer, StatutVerificationContact::Impossible);
 
             return null;
         }
@@ -49,18 +82,16 @@ class DemarrageVerification
         $existante = $this->existante($demande);
 
         if ($existante !== null && ! $existante->estVerifiee() && $existante->canal === $canal && $existante->destination === $contact['destination']) {
-            $this->poserStatut($demande, $masquer, $canal->statutEnAttente());
             $this->renvoi->renvoyer($existante->demande_id, $canal->value);
 
             return new VerificationDemarree($existante->demande_id, $canal, $contact['destination']);
         }
 
         $verification = $this->nouvelle($existante, $demande, $canal, $contact['destination'], $masquer);
-        $this->poserStatut($demande, $masquer, $canal->statutEnAttente());
-
         $envoi = $this->expediteur->expedier($verification);
+
         if (! $envoi->ok) {
-            $this->poserStatut($demande, $masquer, StatutVerificationContact::Impossible);
+            $this->poser($demande, $masquer, StatutVerificationContact::Impossible);
             Log::warning('Verification de contact : premier code non parti, demande laissee visible', [
                 'demande_id' => $verification->demande_id,
                 'type' => $demande->typeDemandePublique(),
@@ -69,6 +100,9 @@ class DemarrageVerification
 
             return null;
         }
+
+        // Masquee seulement maintenant : la famille a de quoi confirmer.
+        $this->poser($demande, $masquer, $canal->statutEnAttente());
 
         return new VerificationDemarree($verification->demande_id, $canal, $contact['destination']);
     }
@@ -101,10 +135,10 @@ class DemarrageVerification
         return $ligne;
     }
 
-    private function poserStatut(Model $demande, bool $masquer, StatutVerificationContact $statut): void
+    private function poser(Model $demande, bool $masquer, StatutVerificationContact $statut): void
     {
         if ($masquer) {
-            $demande->forceFill(['verification_contact' => $statut->value])->saveQuietly();
+            $demande->poserVerificationContact($statut);
         }
     }
 }

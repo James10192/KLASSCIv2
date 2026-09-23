@@ -8,7 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Inscription\PortailCandidatureRequest;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Inscription\PortailCandidatureService;
-use App\Services\Verification\VerificationDuDepot;
+use App\Services\Verification\DemarrageVerification;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -110,8 +110,8 @@ class CandidaturePortalController extends Controller
         // quand l'ecole a renseigne la date.
         //
         // Une candidature neuve attend la verification de son contact : elle
-        // n'est transmise a l'ecole qu'apres le code (voir VerificationDuDepot).
-        $verification = app(VerificationDuDepot::class)->apres($candidature);
+        // n'est transmise a l'ecole qu'apres le code (voir DemarrageVerification).
+        $verification = app(DemarrageVerification::class)->apresDepot($candidature);
 
         return response()->json(array_merge([
             'enregistre' => true,

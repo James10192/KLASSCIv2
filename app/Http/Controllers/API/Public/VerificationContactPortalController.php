@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Verification\VerifierContactRequest;
 use App\Services\Verification\ControleVerification;
 use App\Services\Verification\RenvoiVerification;
+use App\Http\Requests\Verification\RenvoyerContactRequest;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 /**
  * Verification du contact (e-mail ou WhatsApp) d'une demande deposee sur
@@ -31,21 +31,14 @@ class VerificationContactPortalController extends Controller
         return response()->json($resultat->corps(), $resultat->statutHttp());
     }
 
-    public function renvoyer(Request $request, RenvoiVerification $renvoi): JsonResponse
+    public function renvoyer(RenvoyerContactRequest $request, RenvoiVerification $renvoi): JsonResponse
     {
-        $demandeId = $request->input('demande_id');
-        $canal = $request->input('canal') ?? 'email';
-
-        if (! in_array($canal, ['email', 'telephone'], true)) {
-            return response()->json(['envoye' => false, 'motif' => 'canal_invalide'], 422);
-        }
-
         // Une saisie mal formee rend la meme reponse qu'une demande inconnue.
-        if (! is_string($demandeId) || $demandeId === '' || strlen($demandeId) > 64) {
+        if ($request->demandeId() === null) {
             return response()->json(['envoye' => true], 202);
         }
 
-        $attente = $renvoi->renvoyer($demandeId, $canal);
+        $attente = $renvoi->renvoyer($request->demandeId(), $request->canal());
 
         return $attente === null
             ? response()->json(['envoye' => true], 202)

@@ -57,6 +57,11 @@ class MailPulseVerifications
 
     private function echec(Response $reponse): ResultatVerificationDistante
     {
+        // Une cle refusee est une panne de configuration, quel que soit le corps rendu.
+        if (in_array($reponse->status(), [401, 403], true)) {
+            return ResultatVerificationDistante::echec('auth_failed', $reponse->status());
+        }
+
         $code = $reponse->json('error');
         $retry = $reponse->json('retry_after');
 

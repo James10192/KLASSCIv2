@@ -198,4 +198,9 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
     {
         return 'reinscription';
     }
+
+    public function cleCacheCompteur(): string
+    {
+        return self::CLE_CACHE_EN_ATTENTE;
+    }
 }

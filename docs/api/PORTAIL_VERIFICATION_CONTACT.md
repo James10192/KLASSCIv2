@@ -17,17 +17,27 @@ lancée, la réponse contient en plus :
 {"statut":"verification_telephone_requise","demande_id":"<uuid>","telephone_masque":"+22507*****04"}
 ```
 
-Tant que le contact n'est pas vérifié, la demande est invisible pour l'école
-(`verification_contact` = `email_non_verifie` / `telephone_non_verifie`).
+Seule une demande NEUVE (ou déjà masquée) est masquée, et seulement une fois le
+premier code parti : `verification_contact` = `email_non_verifie` /
+`telephone_non_verifie`, invisible pour l'école. Une demande que l'école voyait
+déjà (ancienne, ou vérifiée) n'est JAMAIS masquée : si un redépôt change son
+adresse ou son numéro, les dates de vérification tombent et un code part, la
+demande restant visible (la réponse du dépôt n'annonce alors pas de vérification).
+Un redépôt d'une demande déjà masquée renvoie le code sous le débit du renvoi.
+
 Canal : l'e-mail s'il est joignable (candidature : champ `email` ; réinscription :
-adresse du dossier étudiant), sinon WhatsApp sur le mobile. Si le code ne peut pas
-partir pour une raison de configuration (MailPulse désactivé, clé absente, WhatsApp
-indisponible), la demande passe en `verification_impossible`, reste visible, et la
-réponse n'a pas de champ `statut`.
+adresse du dossier étudiant), sinon WhatsApp sur le mobile. Si le premier code ne
+part pas, la demande passe en `verification_impossible`, reste visible, et la
+réponse n'a pas de champ `statut`. Une demande masquée non confirmée au bout de
+48 h redevient visible en `verification_expiree`, avec le badge « Contact non
+confirmé » dans les listes de l'école (`inscriptions:expirer-verifications-contact`,
+toutes les heures). Une confirmation tardive reste acceptée.
 
 Le courriel contient un code à 6 chiffres (30 min) et le lien
 `<URL_PORTAIL_PUBLIC>/verification-email?ecole=<code_ecole>#jeton=<jeton>` (48 h).
-Code et jeton ne sont stockés qu'en empreinte HMAC. 5 tentatives au plus.
+Code et jeton ne sont stockés qu'en empreinte HMAC. 5 tentatives par code, 15 au
+total par demande, renvois compris. Une demande déjà vérifiée ne répond « vérifié »
+qu'au code qui l'a vérifiée (ou à son lien).
 
 ## `POST /api/portail/email/verifier`
 
@@ -61,3 +71,4 @@ les demandes en attente sans e-mail joignable qui recevraient un code WhatsApp.
 ## Historique
 
 - 2026-09-23 : création.
+- 2026-09-23 : une demande visible n'est jamais masquée ; masquage après envoi seulement ; expiration à 48 h ; plafond cumulé de 15 tentatives.

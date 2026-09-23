@@ -6,6 +6,7 @@ use App\Enums\CanalVerification;
 use App\Models\ESBTPVerificationContact;
 use App\Services\MailPulse\MailPulseVerifications;
 use App\Services\MailPulse\ResultatVerificationDistante;
+use App\Services\RendezVous\MessagerieRdv;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -16,12 +17,6 @@ use Illuminate\Support\Facades\Log;
  */
 class ExpediteurVerification
 {
-    /** Refus MailPulse (rail messages) qui tiennent a la configuration de l'instance. */
-    private const REFUS_DE_CONFIGURATION = [
-        'disabled', 'missing_api_key', 'auth_failed',
-        'endpoint_not_found', 'endpoint_not_supported', 'invalid_dispatch_contract',
-    ];
-
     public function __construct(
         private readonly CourrielVerification $courriel,
         private readonly MailPulseVerifications $whatsapp,
@@ -71,7 +66,7 @@ class ExpediteurVerification
             return ResultatVerificationDistante::ok('sent', (string) $envoi->id);
         }
 
-        return in_array($envoi->status, self::REFUS_DE_CONFIGURATION, true)
+        return in_array($envoi->status, MessagerieRdv::REFUS_DE_CONFIGURATION, true)
             ? ResultatVerificationDistante::echec('verification_indisponible', $envoi->httpStatus)
             : ResultatVerificationDistante::echec($envoi->errorCode ?: $envoi->status, $envoi->httpStatus);
     }

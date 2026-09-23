@@ -15,6 +15,11 @@ return [
     'code_expire_minutes' => 30,
     'lien_expire_heures' => 48,
     'tentatives_max' => 5,
+    // Plafond cumule par demande, renvois compris : trois codes pleinement essayes.
+    'tentatives_max_total' => 15,
+
+    // Une demande masquee sans confirmation au-dela redevient visible (badge).
+    'expiration_masquage_heures' => 48,
 
     // Renvoi : un par minute, cinq par heure, par demande.
     'renvoi_intervalle_secondes' => 60,

@@ -4,7 +4,7 @@ namespace App\Models\Concerns;
 
 use App\Enums\StatutVerificationContact;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Une demande publique dont le contact n'est pas encore verifie n'existe pas
@@ -17,24 +17,17 @@ use Illuminate\Support\Facades\Schema;
  *
  * Seuls le depot (qui doit retrouver la demande pour la relancer) et la
  * verification elle-meme lisent sans la portee : `sansFiltreVerification()`.
+ *
+ * Les migrations passent au deploiement, avant la mise en service du code :
+ * la colonne est presente, la portee ne la teste pas.
  */
 trait AttendVerificationContact
 {
     public const PORTEE_VERIFICATION = 'contact_verifie';
 
-    /** @var array<string, bool> table => la colonne existe (memo par processus) */
-    private static array $colonnePresente = [];
-
     public static function bootAttendVerificationContact(): void
     {
         static::addGlobalScope(self::PORTEE_VERIFICATION, function (Builder $query) {
-            // Au deploiement, le code arrive avant `migrate` : sans la colonne,
-            // chaque page qui compte les demandes (badge du menu) tomberait.
-            $table = $query->getModel()->getTable();
-            if (! (self::$colonnePresente[$table] ??= Schema::hasColumn($table, 'verification_contact'))) {
-                return;
-            }
-
             $colonne = $query->getModel()->qualifyColumn('verification_contact');
 
             $query->where(fn (Builder $q) => $q
@@ -53,6 +46,26 @@ trait AttendVerificationContact
         return in_array($this->verification_contact, StatutVerificationContact::valeursMasquees(), true);
     }
 
+    /**
+     * Change l'etat de verification (et d'autres champs au besoin). Si la
+     * demande apparait ou disparait pour l'ecole, le compteur du menu est
+     * invalide : sinon il mentirait pendant une minute.
+     *
+     * @param  array<string, mixed>  $autres
+     */
+    public function poserVerificationContact(?StatutVerificationContact $statut, array $autres = []): void
+    {
+        $avant = $this->contactNonVerifie();
+        $this->forceFill(($statut === null ? [] : ['verification_contact' => $statut->value]) + $autres)->saveQuietly();
+
+        if ($avant !== $this->contactNonVerifie()) {
+            Cache::forget($this->cleCacheCompteur());
+        }
+    }
+
     /** Le type publie par la route de verification : `candidature` ou `reinscription`. */
     abstract public function typeDemandePublique(): string;
+
+    /** La cle du compteur de la barre laterale qui compte ces demandes. */
+    abstract public function cleCacheCompteur(): string;
 }

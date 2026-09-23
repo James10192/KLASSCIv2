@@ -5,9 +5,10 @@ namespace Tests\Feature\Verification;
 use App\Enums\StatutVerificationContact;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
+use App\Models\ESBTPVerificationContact;
 use App\Models\User;
 use App\Services\Reinscription\PortailSignatureVerifier;
-use App\Services\Verification\VerificationDuDepot;
+use App\Services\Verification\DemarrageVerification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as RequeteHttp;
 use Illuminate\Support\Facades\Cache;
@@ -50,7 +51,7 @@ class VerificationContactTest extends TestCase
         $this->mailpulseAccepteLesCourriels();
         $candidature = $this->candidature('awa.kone@gmail.com');
 
-        $verification = app(VerificationDuDepot::class)->apres($candidature);
+        $verification = app(DemarrageVerification::class)->apresDepot($candidature);
 
         $this->assertNotNull($verification);
         $this->assertSame('verification_email_requise', $verification->reponse()['statut']);
@@ -69,7 +70,7 @@ class VerificationContactTest extends TestCase
     public function test_le_lien_porte_l_ecole_en_requete_et_le_jeton_en_fragment(): void
     {
         $this->mailpulseAccepteLesCourriels();
-        app(VerificationDuDepot::class)->apres($this->candidature('awa.kone@gmail.com'));
+        app(DemarrageVerification::class)->apresDepot($this->candidature('awa.kone@gmail.com'));
 
         $texte = $this->texteEnvoye();
         $this->assertMatchesRegularExpression('~https://www\.klassci\.com/verification-email\?ecole=esbtp-abidjan#jeton=[A-Za-z0-9_-]{40,}~', $texte);
@@ -83,7 +84,7 @@ class VerificationContactTest extends TestCase
     public function test_cinq_codes_faux_bloquent_meme_le_bon(): void
     {
         $this->mailpulseAccepteLesCourriels();
-        $verification = app(VerificationDuDepot::class)->apres($this->candidature('awa.kone@gmail.com'));
+        $verification = app(DemarrageVerification::class)->apresDepot($this->candidature('awa.kone@gmail.com'));
         $bon = $this->codeEnvoye();
         $faux = $bon === '000000' ? '111111' : '000000';
 
@@ -99,7 +100,7 @@ class VerificationContactTest extends TestCase
     public function test_un_code_perime_est_refuse(): void
     {
         $this->mailpulseAccepteLesCourriels();
-        $verification = app(VerificationDuDepot::class)->apres($this->candidature('awa.kone@gmail.com'));
+        $verification = app(DemarrageVerification::class)->apresDepot($this->candidature('awa.kone@gmail.com'));
         $code = $this->codeEnvoye();
 
         $this->travel(31)->minutes();
@@ -123,7 +124,7 @@ class VerificationContactTest extends TestCase
         ]);
         $candidature = $this->candidature(null);
 
-        $verification = app(VerificationDuDepot::class)->apres($candidature);
+        $verification = app(DemarrageVerification::class)->apresDepot($candidature);
 
         $this->assertSame('verification_telephone_requise', $verification->reponse()['statut']);
         $this->assertArrayHasKey('telephone_masque', $verification->reponse());
@@ -144,7 +145,7 @@ class VerificationContactTest extends TestCase
         Http::fake(['mailpulse.test/api/v1/verifications' => Http::response(['error' => 'whatsapp_indisponible'], 409)]);
         $candidature = $this->candidature(null);
 
-        $this->assertNull(app(VerificationDuDepot::class)->apres($candidature));
+        $this->assertNull(app(DemarrageVerification::class)->apresDepot($candidature));
         $this->assertSame(StatutVerificationContact::Impossible->value, $candidature->fresh()->verification_contact);
         $this->assertSame(1, ESBTPCandidature::query()->count());
     }
@@ -154,7 +155,7 @@ class VerificationContactTest extends TestCase
         Http::fake(['mailpulse.test/api/v1/verifications' => Http::response(['error' => 'envoi_echoue'], 502)]);
         $candidature = $this->candidature(null);
 
-        $this->assertNull(app(VerificationDuDepot::class)->apres($candidature));
+        $this->assertNull(app(DemarrageVerification::class)->apresDepot($candidature));
         $this->assertSame(1, ESBTPCandidature::query()->count(), 'Aucun code recu : la demande ne doit pas disparaitre.');
     }
 
@@ -162,10 +163,10 @@ class VerificationContactTest extends TestCase
     {
         $this->mailpulseAccepteLesCourriels();
         $candidature = $this->candidature('awa.kone@gmail.com');
-        $premiere = app(VerificationDuDepot::class)->apres($candidature);
+        $premiere = app(DemarrageVerification::class)->apresDepot($candidature);
 
         for ($i = 0; $i < 3; $i++) {
-            $redepot = app(VerificationDuDepot::class)->apres($candidature->fresh());
+            $redepot = app(DemarrageVerification::class)->apresDepot($candidature->fresh());
             $this->assertSame($premiere->demandeId, $redepot->demandeId);
         }
 
@@ -173,26 +174,107 @@ class VerificationContactTest extends TestCase
         Http::assertSentCount(2);
     }
 
-    public function test_un_redepot_qui_change_l_adresse_d_une_demande_verifiee_la_reverifie(): void
+    public function test_une_demande_ancienne_redeposee_avec_un_nouvel_email_reste_visible(): void
+    {
+        $this->mailpulseAccepteLesCourriels();
+        $ancienne = $this->candidature('awa.kone@gmail.com')->fresh();
+        $this->assertNull($ancienne->verification_contact);
+
+        $ancienne->update(['email' => 'awa.nouvelle@gmail.com']);
+        app(DemarrageVerification::class)->apresDepot($ancienne);
+
+        $this->assertSame(1, ESBTPCandidature::query()->count());
+        $this->assertNull($ancienne->fresh()->verification_contact);
+        $this->assertFalse(ESBTPVerificationContact::query()->sole()->masque_la_demande, 'Le code part, mais sans masquer.');
+    }
+
+    public function test_un_tiers_qui_redepose_sur_le_meme_numero_ne_masque_pas_la_demande(): void
+    {
+        $this->mailpulseAccepteLesCourriels();
+        $enAttente = $this->candidature('awa.kone@gmail.com')->fresh();
+
+        // Ce que fait rouvrir() : l'identite et l'adresse du formulaire remplacent celles en base.
+        $enAttente->update(['nom' => 'INTRUS', 'prenoms' => 'Jean', 'email' => 'intrus@gmail.com']);
+        app(DemarrageVerification::class)->apresDepot($enAttente);
+
+        $this->assertSame(1, ESBTPCandidature::query()->count());
+    }
+
+    public function test_une_demande_verifiee_redeposee_reste_visible(): void
     {
         $this->mailpulseAccepteLesCourriels();
         $candidature = $this->candidature('awa.kone@gmail.com');
-        $verification = app(VerificationDuDepot::class)->apres($candidature);
+        $verification = app(DemarrageVerification::class)->apresDepot($candidature);
         $this->verifier(['demande_id' => $verification->demandeId, 'code' => $this->codeEnvoye()])->assertOk();
 
         $rouverte = $candidature->fresh();
         $rouverte->update(['email' => 'awa.nouvelle@gmail.com']);
-        $nouvelle = app(VerificationDuDepot::class)->apres($rouverte);
+        app(DemarrageVerification::class)->apresDepot($rouverte);
 
-        $this->assertNotNull($nouvelle);
-        $this->assertNull($candidature->fresh()->email_verifie_at);
+        $this->assertSame(1, ESBTPCandidature::query()->count());
+        $this->assertNull($candidature->fresh()->email_verifie_at, 'La nouvelle adresse n\'est pas prouvee.');
+        $this->assertSame(StatutVerificationContact::Verifie->value, $candidature->fresh()->verification_contact);
+    }
+
+    public function test_un_lien_deja_utilise_repare_une_demande_restee_masquee(): void
+    {
+        $this->mailpulseAccepteLesCourriels();
+        $candidature = $this->candidature('awa.kone@gmail.com');
+        app(DemarrageVerification::class)->apresDepot($candidature);
+        preg_match('~#jeton=([A-Za-z0-9_-]+)~', $this->texteEnvoye(), $m);
+        $this->verifier(['jeton' => $m[1]])->assertOk();
+
+        // Etat incoherent (ecriture perdue) : ligne verifiee, demande encore masquee.
+        $candidature->fresh()->forceFill(['verification_contact' => StatutVerificationContact::EmailNonVerifie->value])->saveQuietly();
+
+        $this->verifier(['jeton' => $m[1]])->assertOk()->assertJson(['verifie' => true]);
+        $this->assertSame(1, ESBTPCandidature::query()->count());
+    }
+
+    public function test_une_ligne_verifiee_ne_repond_verifie_qu_a_son_code(): void
+    {
+        $this->mailpulseAccepteLesCourriels();
+        $verification = app(DemarrageVerification::class)->apresDepot($this->candidature('awa.kone@gmail.com'));
+        $code = $this->codeEnvoye();
+        $this->verifier(['demande_id' => $verification->demandeId, 'code' => $code])->assertOk();
+
+        $this->verifier(['demande_id' => $verification->demandeId, 'code' => $code])->assertOk();
+        $this->verifier(['demande_id' => $verification->demandeId, 'code' => $code === '000000' ? '111111' : '000000'])
+            ->assertStatus(422)->assertJson(['motif' => 'code_invalide']);
+    }
+
+    public function test_le_plafond_cumule_resiste_aux_renvois(): void
+    {
+        $this->mailpulseAccepteLesCourriels();
+        $verification = app(DemarrageVerification::class)->apresDepot($this->candidature('awa.kone@gmail.com'));
+        ESBTPVerificationContact::query()->update(['tentatives' => 0, 'tentatives_total' => 15]);
+
+        $this->verifier(['demande_id' => $verification->demandeId, 'code' => $this->codeEnvoye()])
+            ->assertStatus(422)->assertJson(['motif' => 'trop_de_tentatives']);
+    }
+
+    public function test_une_demande_jamais_confirmee_redevient_visible_apres_48_heures(): void
+    {
+        $this->mailpulseAccepteLesCourriels();
+        $candidature = $this->candidature('awa.kone@gmail.com');
+        app(DemarrageVerification::class)->apresDepot($candidature);
         $this->assertSame(0, ESBTPCandidature::query()->count());
+
+        $this->travel(47)->hours();
+        $this->artisan('inscriptions:expirer-verifications-contact')->assertSuccessful();
+        $this->assertSame(0, ESBTPCandidature::query()->count());
+
+        $this->travel(2)->hours();
+        $this->artisan('inscriptions:expirer-verifications-contact')->assertSuccessful();
+        $this->assertSame(1, ESBTPCandidature::query()->count());
+        $this->assertSame(StatutVerificationContact::Expiree->value, $candidature->fresh()->verification_contact);
+        $this->assertSame('Contact non confirmé', StatutVerificationContact::badge($candidature->fresh()->verification_contact));
     }
 
     public function test_le_renvoi_est_limite_a_un_par_minute_sans_rien_reveler(): void
     {
         $this->mailpulseAccepteLesCourriels();
-        $verification = app(VerificationDuDepot::class)->apres($this->candidature('awa.kone@gmail.com'));
+        $verification = app(DemarrageVerification::class)->apresDepot($this->candidature('awa.kone@gmail.com'));
 
         $this->renvoyer(['canal' => 'email', 'demande_id' => $verification->demandeId])->assertStatus(202);
         $this->renvoyer(['canal' => 'email', 'demande_id' => $verification->demandeId])->assertStatus(429)->assertJsonStructure(['retry_after']);

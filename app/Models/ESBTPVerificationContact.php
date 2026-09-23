@@ -18,7 +18,7 @@ class ESBTPVerificationContact extends Model
 
     protected $fillable = [
         'demande_id', 'verifiable_type', 'verifiable_id', 'canal', 'destination',
-        'code_hash', 'jeton_hash', 'code_expire_at', 'jeton_expire_at', 'tentatives',
+        'code_hash', 'jeton_hash', 'code_expire_at', 'jeton_expire_at', 'tentatives', 'tentatives_total',
         'mailpulse_verification_id', 'mailpulse_message_id', 'dernier_echec',
         'dernier_envoi_at', 'verifie_at', 'masque_la_demande',
     ];
@@ -32,6 +32,7 @@ class ESBTPVerificationContact extends Model
         'dernier_envoi_at' => 'datetime',
         'verifie_at' => 'datetime',
         'tentatives' => 'integer',
+        'tentatives_total' => 'integer',
         'masque_la_demande' => 'boolean',
     ];
 

@@ -28,6 +28,8 @@ return new class extends Migration
             $table->timestamp('code_expire_at')->nullable();
             $table->timestamp('jeton_expire_at')->nullable();
             $table->unsignedTinyInteger('tentatives')->default(0);
+            // Cumul sur tous les codes envoyes : un renvoi remet `tentatives` a zero, pas celui-ci.
+            $table->unsignedSmallInteger('tentatives_total')->default(0);
             $table->string('mailpulse_verification_id', 100)->nullable();
             $table->string('mailpulse_message_id', 100)->nullable();
             $table->string('dernier_echec', 60)->nullable();

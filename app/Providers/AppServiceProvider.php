@@ -324,7 +324,7 @@ class AppServiceProvider extends ServiceProvider
             return 0;
         }
 
-        return Cache::remember('inscriptions.candidatures.en_attente', 60, function (): int {
+        return Cache::remember(ESBTPCandidature::CLE_CACHE_EN_ATTENTE, 60, function (): int {
             if (! Schema::hasTable('esbtp_candidatures')) {
                 return 0;
             }

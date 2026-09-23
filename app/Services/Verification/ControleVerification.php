@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\DB;
  * Aucune reponse ne distingue « cette demande n'existe pas » de « ce code est
  * faux » : les deux rendent `code_invalide`. Le jeton et le code ne sont
  * jamais journalises.
+ *
+ * Toute ecriture se fait sous verrou de ligne. Le controle WhatsApp, lui, est
+ * un appel reseau a MailPulse : il se fait HORS verrou, puis la ligne est
+ * relue sous verrou avant d'appliquer le verdict.
  */
 class ControleVerification
 {
@@ -32,27 +36,11 @@ class ControleVerification
 
     public function parJeton(string $jeton, ?string $canal): ResultatControle
     {
-        $verification = ESBTPVerificationContact::query()
-            ->where('jeton_hash', SecretsVerification::empreinte($jeton))
-            ->first();
-
-        if ($verification === null || ! $this->canalConcorde($verification, $canal)) {
-            return ResultatControle::refus(self::CODE_INVALIDE);
-        }
-        if ($verification->estVerifiee()) {
-            return $this->reussite($verification);
-        }
-        if ($verification->jeton_expire_at === null || $verification->jeton_expire_at->isPast()) {
-            return ResultatControle::refus(self::EXPIRE);
-        }
-
-        return $this->finalisation->valider($verification);
-    }
-
-    public function parCode(string $demandeId, string $code, ?string $canal): ResultatControle
-    {
-        return DB::transaction(function () use ($demandeId, $code, $canal) {
-            $verification = ESBTPVerificationContact::query()->where('demande_id', $demandeId)->lockForUpdate()->first();
+        return DB::transaction(function () use ($jeton, $canal) {
+            $verification = ESBTPVerificationContact::query()
+                ->where('jeton_hash', SecretsVerification::empreinte($jeton))
+                ->lockForUpdate()
+                ->first();
 
             if ($verification === null || ! $this->canalConcorde($verification, $canal)) {
                 return ResultatControle::refus(self::CODE_INVALIDE);
@@ -60,60 +48,110 @@ class ControleVerification
             if ($verification->estVerifiee()) {
                 return $this->reussite($verification);
             }
-            if ($verification->tentatives >= (int) config('verification_contact.tentatives_max', 5)) {
-                return ResultatControle::refus(self::TROP_DE_TENTATIVES);
-            }
-            if ($verification->code_expire_at === null || $verification->code_expire_at->isPast()) {
+            if ($verification->jeton_expire_at === null || $verification->jeton_expire_at->isPast()) {
                 return ResultatControle::refus(self::EXPIRE);
             }
 
-            return $verification->canal === CanalVerification::Email
-                ? $this->codeEmail($verification, $code)
-                : $this->codeWhatsapp($verification, $code);
+            return $this->finalisation->valider($verification);
         });
     }
 
-    private function codeEmail(ESBTPVerificationContact $verification, string $code): ResultatControle
+    public function parCode(string $demandeId, string $code, ?string $canal): ResultatControle
     {
-        if (SecretsVerification::concorde($verification->code_hash, $code)) {
-            return $this->finalisation->valider($verification);
+        $apercu = ESBTPVerificationContact::query()->where('demande_id', $demandeId)->first();
+        if ($apercu === null || ! $this->canalConcorde($apercu, $canal)) {
+            return ResultatControle::refus(self::CODE_INVALIDE);
         }
 
-        return $this->echouer($verification, self::CODE_INVALIDE);
-    }
-
-    private function codeWhatsapp(ESBTPVerificationContact $verification, string $code): ResultatControle
-    {
-        if (! is_string($verification->mailpulse_verification_id) || $verification->mailpulse_verification_id === '') {
-            return ResultatControle::refus(self::EXPIRE);
+        if ($apercu->canal === CanalVerification::Email || $apercu->estVerifiee() || $this->blocage($apercu) !== null) {
+            return $this->sousVerrou($apercu->id, fn (ESBTPVerificationContact $v) => $this->local($v, $code));
         }
 
-        $resultat = $this->whatsapp->controler($verification->mailpulse_verification_id, $code);
-        if ($resultat->ok) {
-            return $this->finalisation->valider($verification);
+        $distant = $this->whatsapp->controler((string) $apercu->mailpulse_verification_id, $code);
+
+        return $this->sousVerrou($apercu->id, function (ESBTPVerificationContact $v) use ($distant, $code) {
+            if ($v->estVerifiee()) {
+                return $this->reussiteAvecCode($v, $code);
+            }
+            if ($distant->ok) {
+                return $this->finalisation->valider($v, $code);
+            }
+
+            return match ($distant->code) {
+                self::EXPIRE, self::TROP_DE_TENTATIVES, self::CODE_INVALIDE => $this->echouer($v, $distant->code),
+                default => ResultatControle::refus(self::INDISPONIBLE),
+            };
+        });
+    }
+
+    /** Tout ce qui se decide sans MailPulse : code e-mail, ligne deja verifiee ou bloquee. */
+    private function local(ESBTPVerificationContact $v, string $code): ResultatControle
+    {
+        if ($v->estVerifiee()) {
+            return $this->reussiteAvecCode($v, $code);
+        }
+        if (($blocage = $this->blocage($v)) !== null) {
+            return ResultatControle::refus($blocage);
+        }
+        if ($v->canal === CanalVerification::Email && SecretsVerification::concorde($v->code_hash, $code)) {
+            return $this->finalisation->valider($v, $code);
         }
 
-        return match ($resultat->code) {
-            self::EXPIRE, self::TROP_DE_TENTATIVES, self::CODE_INVALIDE => $this->echouer($verification, $resultat->code),
-            default => ResultatControle::refus(self::INDISPONIBLE),
-        };
+        return $v->canal === CanalVerification::Email
+            ? $this->echouer($v, self::CODE_INVALIDE)
+            : ResultatControle::refus(self::INDISPONIBLE);
     }
 
-    private function echouer(ESBTPVerificationContact $verification, string $motif): ResultatControle
+    private function blocage(ESBTPVerificationContact $v): ?string
     {
-        $tentatives = $verification->tentatives + 1;
-        $verification->forceFill(['tentatives' => $tentatives])->save();
+        if ($v->tentatives >= (int) config('verification_contact.tentatives_max', 5)
+            || $v->tentatives_total >= (int) config('verification_contact.tentatives_max_total', 15)) {
+            return self::TROP_DE_TENTATIVES;
+        }
+        if ($v->code_expire_at === null || $v->code_expire_at->isPast()) {
+            return self::EXPIRE;
+        }
+        if ($v->canal === CanalVerification::Telephone && (string) $v->mailpulse_verification_id === '') {
+            return self::EXPIRE;
+        }
 
-        return ResultatControle::refus(
-            $motif === self::CODE_INVALIDE && $tentatives >= (int) config('verification_contact.tentatives_max', 5)
-                ? self::TROP_DE_TENTATIVES
-                : $motif
-        );
+        return null;
     }
 
-    private function reussite(ESBTPVerificationContact $verification): ResultatControle
+    private function echouer(ESBTPVerificationContact $v, string $motif): ResultatControle
     {
-        return ResultatControle::verifiee($verification->verifiable?->typeDemandePublique() ?? 'candidature');
+        $v->forceFill(['tentatives' => $v->tentatives + 1, 'tentatives_total' => $v->tentatives_total + 1])->save();
+
+        return ResultatControle::refus($motif === self::CODE_INVALIDE && $this->blocage($v) === self::TROP_DE_TENTATIVES ? self::TROP_DE_TENTATIVES : $motif);
+    }
+
+    /** Une ligne deja verifiee ne repond « verifie » qu'au code qui l'a verifiee. */
+    private function reussiteAvecCode(ESBTPVerificationContact $v, string $code): ResultatControle
+    {
+        return SecretsVerification::concorde($v->code_hash, $code)
+            ? $this->reussite($v)
+            : ResultatControle::refus(self::CODE_INVALIDE);
+    }
+
+    /** Idempotent, et repare une demande restee masquee malgre une verification aboutie. */
+    private function reussite(ESBTPVerificationContact $v): ResultatControle
+    {
+        $demande = $v->verifiable;
+        if ($demande !== null && $demande->contactNonVerifie()) {
+            return $this->finalisation->valider($v);
+        }
+
+        return ResultatControle::verifiee($demande?->typeDemandePublique() ?? 'candidature');
+    }
+
+    /** @param  callable(ESBTPVerificationContact): ResultatControle  $travail */
+    private function sousVerrou(int $id, callable $travail): ResultatControle
+    {
+        return DB::transaction(function () use ($id, $travail) {
+            $v = ESBTPVerificationContact::query()->whereKey($id)->lockForUpdate()->first();
+
+            return $v === null ? ResultatControle::refus(self::CODE_INVALIDE) : $travail($v);
+        });
     }
 
     private function canalConcorde(ESBTPVerificationContact $verification, ?string $canal): bool
