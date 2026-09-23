@@ -369,6 +369,11 @@ if (typeof window.auSelect !== 'function') {
             _veilleAncrage: null,
             init() {
                 this._value = this.$refs.native.value;
+                // Avec `x-model`, Alpine pose la valeur du parent dans le
+                // <select> APRES cet init, et sans evenement : sans relecture,
+                // une valeur pre-remplie (depuis l'URL, par exemple) etait bien
+                // en place mais l'ecran affichait encore l'invite.
+                this.$nextTick(() => this.relireLaValeurNative());
                 // Reference gardee une fois pour toutes : le menu peut quitter
                 // cette racine (cf. verifierAncrage), un querySelector sur
                 // $el ne le retrouverait alors plus.
@@ -400,6 +405,12 @@ if (typeof window.auSelect !== 'function') {
                     this.focusFirstSelectable();
                 });
 
+            },
+            relireLaValeurNative() {
+                const native = this.$refs.native;
+                if (native && this._value !== native.value) {
+                    this._value = native.value;
+                }
             },
             destroy() {
                 this._optionsObserver?.disconnect();

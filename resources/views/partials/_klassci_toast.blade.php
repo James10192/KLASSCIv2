@@ -1,7 +1,8 @@
 <script>
     if (typeof window.klassciToast !== 'function') {
         window.klassciToast = function (type, message, duration) {
-            duration = duration || 4500;
+            // 0 : reste affiché jusqu'à fermeture (un avertissement à lire).
+            duration = (duration === undefined || duration === null) ? 4500 : duration;
             let host = document.getElementById('klassci-toast-host');
             if (!host) {
                 host = document.createElement('div');

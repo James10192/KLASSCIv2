@@ -100,9 +100,12 @@ use Illuminate\Support\Facades\Log;
  * Le changement de bareme ou de coefficient, qui ne deplace rien non plus,
  * passe par {@see apresChangementDePonderation()}.
  *
- * **Reste sans recalcul, trouve a ce jour** : la SUPPRESSION d'une evaluation
- * encore brouillon ou planifiee qui porte deja des notes
- * (`ESBTPEvaluationController::destroy()`, `ESBTPSeanceCoursController::destroy()`).
+ * La SUPPRESSION d'une evaluation notee — `ESBTPEvaluationController::destroy()`
+ * et `ESBTPSeanceCoursController::destroy()`, qui supprime le devoir de la
+ * seance — passe par {@see SuppressionDEvaluation}, et de la par
+ * {@see apresSuppression()} : l'evaluation est effacee en douceur, ses notes
+ * restent en base, mais `ESBTPNote::deLaCoordonnee()` ne lit plus que les
+ * notes d'une evaluation vivante.
  *
  * `MergeDuplicateEcue` (`app/Domain/LMD/Actions/MergeDuplicateEcue.php`) reparente
  * `esbtp_evaluations.matiere_id` ET `esbtp_notes.matiere_id` vers l'ECUE
@@ -161,6 +164,9 @@ final class RecalculApresDeplacement
 
     /** Meme colonne, quand une annulation est posee ou levee. */
     public const SOURCE_STATUT = 'statut';
+
+    /** Meme colonne, quand une evaluation notee est supprimee. */
+    public const SOURCE_SUPPRESSION = 'suppression';
 
     /**
      * Borne GLOBALE de notes recalculees dans une requete, tous perimetres
@@ -340,6 +346,36 @@ final class RecalculApresDeplacement
                 'evaluation_id' => $evaluation->id,
                 'statut_avant' => $statutAvant,
                 'statut' => $evaluation->status,
+                'orphelins' => $bilan['orphelins'],
+            ]);
+        }
+
+        return $bilan;
+    }
+
+    /**
+     * Une evaluation notee vient d'etre supprimee (en douceur) : ses notes
+     * sortent de toute moyenne sans qu'aucune note ne soit enregistree. Meme
+     * geste que l'annulation, sur la coordonnee de l'evaluation, par le meme
+     * garde : une moyenne qui ne reposait que sur elle est laissee et
+     * signalee, jamais remise a zero.
+     *
+     * Une evaluation deja annulee ne comptait plus : sa suppression ne change
+     * aucune moyenne, rien n'est recalcule.
+     *
+     * @return array{recalculs_tentes:int, orphelins:array<int,array<string,mixed>>, echecs:int}
+     */
+    public static function apresSuppression(ESBTPEvaluation $evaluation, ?int $declencheur = null): array
+    {
+        if ($evaluation->status === ESBTPEvaluation::STATUS_CANCELLED) {
+            return ['recalculs_tentes' => 0, 'orphelins' => [], 'echecs' => 0];
+        }
+
+        $bilan = self::recalculerIci($evaluation, $declencheur, self::SOURCE_SUPPRESSION);
+
+        if ($bilan['orphelins'] !== []) {
+            Log::warning('Suppression d evaluation : moyennes sans rien a moyenner, laissees en place', [
+                'evaluation_id' => $evaluation->id,
                 'orphelins' => $bilan['orphelins'],
             ]);
         }
