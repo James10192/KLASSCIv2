@@ -28,6 +28,12 @@
         // Le brouillon est range sous l'utilisateur : sur un poste partage, le
         // suivant ne retrouve ni le texte ni la cle du precedent.
         'utilisateur' => auth()->id(),
+        // Charges a la demande, au premier « Capturer l'écran ».
+        'capture' => $_spDisponibilite->capture() ? [
+            'moteur' => asset('vendor/html2canvas-1.4.1/html2canvas.min.js'),
+            'script' => asset('js/support/capture.js').'?v='.filemtime(public_path('js/support/capture.js')),
+            'pieces' => route('support.demandes.pieces.store', '__REFERENCE__'),
+        ] : null,
     ];
 @endphp
 <div class="modal fade sp-modal" id="sp-modal" tabindex="-1" aria-labelledby="sp-modal-titre" aria-hidden="true" data-bs-backdrop="static">
@@ -67,7 +73,27 @@
                         <dt>Page</dt><dd data-sp-recap-page></dd>
                     </dl>
                     <p class="sp-note"><i class="fas fa-shield-halved"></i>
-                        Nous joignons automatiquement la page, votre navigateur et un code de suivi technique. Aucun contenu de la page n'est transmis.</p>
+                        <span data-sp-note>Nous joignons automatiquement la page, votre navigateur et un code de suivi technique. Aucun contenu de la page n'est transmis.</span></p>
+                    @if($_spConfig['capture'])
+                        <div class="sp-capture">
+                            <p class="sp-capture-titre">Une capture d'écran ? <span>Facultatif</span></p>
+                            <div class="sp-capture-choix" data-sp-capture-choix>
+                                <button type="button" class="sp-btn sp-btn--secondaire" data-sp-capturer>
+                                    <i class="fas fa-camera" aria-hidden="true"></i><span data-sp-capturer-libelle>Capturer l'écran</span>
+                                </button>
+                                <label class="sp-btn sp-btn--secondaire sp-capture-fichier">
+                                    <i class="fas fa-image" aria-hidden="true"></i>Choisir une image
+                                    <input type="file" accept="image/png,image/jpeg,image/webp" data-sp-capture-fichier>
+                                </label>
+                            </div>
+                            <div class="sp-capture-jointe" data-sp-capture-jointe hidden>
+                                <img alt="Aperçu de la capture jointe" data-sp-capture-vignette>
+                                <div class="sp-capture-jointe-texte"><strong>Capture prête</strong><span data-sp-capture-taille></span></div>
+                                <button type="button" class="sp-lien" data-sp-capture-modifier>Modifier</button>
+                                <button type="button" class="sp-lien" data-sp-capture-retirer>Retirer</button>
+                            </div>
+                        </div>
+                    @endif
                     <div class="sp-erreur" data-sp-erreur role="alert" hidden></div>
                     <div class="sp-actions">
                         <button type="button" class="sp-btn sp-btn--primaire" data-sp-envoyer>
@@ -76,11 +102,34 @@
                     </div>
                 </section>
 
+                @if($_spConfig['capture'])
+                {{-- Etape facultative : verifier et annoter la capture avant de la joindre --}}
+                <section class="sp-etape" data-sp-etape="capture" hidden>
+                    <p class="sp-question" tabindex="-1" data-sp-focus>Vérifiez la capture avant de la joindre.</p>
+                    <p class="sp-note sp-note--haut"><i class="fas fa-eye-slash"></i>
+                        Les champs de saisie sont déjà masqués. Masquez ce qui reste de sensible : un nom, un montant, une photo.</p>
+                    <div class="sp-outils" role="toolbar" aria-label="Outils d'annotation">
+                        <button type="button" class="sp-outil" data-sp-outil="cadre" aria-pressed="true"><i class="far fa-square" aria-hidden="true"></i>Cadre</button>
+                        <button type="button" class="sp-outil" data-sp-outil="fleche" aria-pressed="false"><i class="fas fa-arrow-right-long" aria-hidden="true"></i>Flèche</button>
+                        <button type="button" class="sp-outil" data-sp-outil="masquer" aria-pressed="false"><i class="fas fa-eye-slash" aria-hidden="true"></i>Masquer</button>
+                        <button type="button" class="sp-outil" data-sp-outil="texte" aria-pressed="false"><i class="fas fa-font" aria-hidden="true"></i>Texte</button>
+                        <button type="button" class="sp-outil sp-outil--annuler" data-sp-annuler disabled><i class="fas fa-rotate-left" aria-hidden="true"></i>Annuler</button>
+                    </div>
+                    <div class="sp-toile-cadre" data-sp-toile></div>
+                    <div class="sp-erreur" data-sp-erreur role="alert" hidden></div>
+                    <div class="sp-actions">
+                        <button type="button" class="sp-btn sp-btn--secondaire" data-sp-capture-abandon>Ne pas joindre</button>
+                        <button type="button" class="sp-btn sp-btn--primaire" data-sp-capture-joindre><i class="fas fa-paperclip" aria-hidden="true"></i>Joindre</button>
+                    </div>
+                </section>
+                @endif
+
                 {{-- Etape 3 : c est recu --}}
                 <section class="sp-etape sp-fin" data-sp-etape="fin" hidden>
                     <div class="sp-fin-icon"><i class="fas fa-check"></i></div>
                     <p class="sp-question" tabindex="-1" data-sp-focus data-sp-fin-titre>Demande reçue</p>
                     <p class="sp-fin-texte" data-sp-fin-texte></p>
+                    <p class="sp-fin-capture" data-sp-fin-capture role="status" hidden></p>
                     <div class="sp-actions sp-actions--centre">
                         <a class="sp-btn sp-btn--secondaire" data-sp-suivi hidden>Suivre ma demande</a>
                         <button type="button" class="sp-btn sp-btn--primaire" data-bs-dismiss="modal">Fermer</button>
@@ -139,6 +188,31 @@
         background: rgba(16,185,129,.12); color: #10b981; font-size: 1.4rem; }
     .sp-fin-texte { color: #475569; font-size: .88rem; }
     .sp-fin-texte strong { font-family: 'Courier New', monospace; color: #0453cb; }
+    .sp-note--haut { margin: 0 0 .75rem; }
+    .sp-capture { margin-top: 1rem; padding: .85rem .9rem; border: 1px dashed #bfd3f2; border-radius: 12px; }
+    .sp-capture-titre { margin: 0 0 .6rem; font-weight: 700; color: #1e293b; font-size: .88rem; }
+    .sp-capture-titre span { font-weight: 500; color: #64748b; font-size: .78rem; margin-left: .3rem; }
+    .sp-capture-choix { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .sp-capture-fichier { position: relative; cursor: pointer; margin: 0; }
+    .sp-capture-fichier input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip: rect(0,0,0,0); }
+    .sp-capture-fichier:focus-within { box-shadow: 0 0 0 3px rgba(4,83,203,.18); }
+    .sp-capture-jointe { display: flex; align-items: center; gap: .75rem; }
+    .sp-capture-jointe[hidden], .sp-capture-choix[hidden] { display: none; }
+    .sp-capture-jointe img { width: 96px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .sp-capture-jointe-texte { display: flex; flex-direction: column; font-size: .82rem; color: #1e293b; margin-right: auto; }
+    .sp-capture-jointe-texte span { color: #64748b; font-size: .75rem; }
+    .sp-lien { background: none; border: 0; padding: 0; color: #0453cb; font-size: .82rem; font-weight: 600; }
+    .sp-outils { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .6rem; }
+    .sp-outil { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .65rem; border: 1px solid #e2e8f0; border-radius: 8px;
+        background: #fff; color: #1e293b; font-size: .78rem; font-weight: 600; }
+    .sp-outil[aria-pressed="true"] { background: #0453cb; border-color: #0453cb; color: #fff; }
+    .sp-outil:disabled { opacity: .5; }
+    .sp-outil--annuler { margin-left: auto; }
+    .sp-toile-cadre { position: relative; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #f8fafc; }
+    .sp-toile { display: block; width: auto; height: auto; max-width: 100%; max-height: 55vh; margin: 0 auto; touch-action: none; cursor: crosshair; }
+    .sp-toile-texte { position: absolute; transform: translateY(-50%); min-width: 180px; padding: .3rem .5rem; font-size: .85rem;
+        border: 1px solid #0453cb; border-radius: 6px; box-shadow: 0 4px 14px rgba(15,23,42,.15); }
+    .sp-fin-capture { font-size: .84rem; color: #475569; }
     @media (max-width: 576px) {
         .sp-recap { grid-template-columns: 1fr; }
         .sp-body { padding: 1rem; }

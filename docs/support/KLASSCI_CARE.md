@@ -4,7 +4,7 @@
 > `docs/support/KLASSCI_CARE_BLUEPRINT.md`. Le Master est la source de vérité des demandes de
 > support ; cette page ne résume que ce qui touche ce dépôt.
 >
-> **État au 23 septembre 2026 : tranche 1 livrée, tranche 2 en cours** (réponse de l'école et pièces jointes livrées) sur la branche
+> **État au 23 septembre 2026 : tranche 1 livrée, tranche 2 en cours** (réponse de l'école, pièces jointes et capture d'écran livrées) sur la branche
 > `claude/klassci-care-support-platform-1x9wwy`, non fusionnée. La section « Livré » décrit le
 > code en place ; la section « Prévu » ce qui n'existe pas encore.
 
@@ -91,13 +91,28 @@
   - la lecture suit la portée de lecture et passe par l'instance : le navigateur ne parle
     jamais au Master. La réponse porte `nosniff` et une CSP `sandbox` ; seuls PNG, JPEG,
     WebP s'affichent, un PDF se télécharge, tout autre type part en `octet-stream`.
+- **La capture d'écran** (tranche 2), dans la fenêtre « Aide / Signaler », à l'étape du
+  récapitulatif : « Capturer l'écran » ou « Choisir une image ». Proposée seulement si le
+  Master ouvre `support_screenshot` (fermée par défaut), si le suivi est ouvert et si
+  l'identifiant porte `support:update` (`DisponibiliteSupport::capture()`) : sans l'un des
+  trois, elle ne pourrait pas être jointe.
+  - `public/js/support/capture.js` et le moteur `html2canvas` 1.4.1 (MIT, servi depuis
+    `public/vendor`, jamais d'un CDN) ne se chargent qu'au premier clic ;
+  - le rendu se fait sur une **copie** du document : la valeur de chaque champ de saisie est
+    effacée et couverte, comme tout élément marqué `data-support-masque` ; la fenêtre et ce
+    qui porte `data-support-exclure` sont omis ; `data-support-visible` garde un champ
+    lisible. La page affichée n'est jamais modifiée ;
+  - l'utilisateur vérifie l'image et peut l'annoter (cadre, flèche, masquer, texte) avant
+    « Joindre ». Masquer **pixelise** la zone dans l'image exportée (WebP, JPEG à défaut,
+    1600 px au plus) : ce n'est pas un calque qu'on retire ;
+  - l'image ne vit qu'en mémoire, jamais dans le brouillon. Elle part **après** la création,
+    par la route des pièces jointes, avec sa propre clé d'idempotence ; une demande gardée
+    en boîte d'envoi n'a pas de référence, et l'écran de fin le dit au lieu de la perdre.
 - **L'interrupteur d'exploitation** `support.widget.enabled` : coupe tout sans attendre le
   Master. Aucun écran ne l'expose ; il se pose par `PUT /api/cli/settings/{key}`.
 
 ## Prévu (tranches suivantes)
 
-- Capture d'écran : masquage des champs avant l'aperçu, annotation, envoi seulement si
-  l'utilisateur le confirme.
 - Télémétrie d'erreurs : empreinte calculée dans `Handler::register()->reportable()`, agrégats
   envoyés par lot chaque minute, jamais pendant la requête.
 - Point de diagnostic signé (HMAC, modèle `ParentChatbotInboundSignature`), en lecture seule :

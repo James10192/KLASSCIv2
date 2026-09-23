@@ -37,6 +37,19 @@ class DisponibiliteSupport
         return $this->interrupteurLocal() && $this->master->fonctionnaliteActive('support_customer_portal');
     }
 
+    /**
+     * La capture d'ecran annotee. Elle part comme piece jointe, apres la
+     * creation : il faut donc aussi le suivi (la route des pieces) et un
+     * identifiant qui porte support:update. Sans l'un des trois, on ne propose
+     * pas une capture qui ne pourrait pas etre jointe.
+     */
+    public function capture(): bool
+    {
+        return $this->suivi()
+            && $this->master->fonctionnaliteActive('support_screenshot')
+            && in_array('support:update', $this->master->portees(), true);
+    }
+
     private function interrupteurLocal(): bool
     {
         return $this->interrupteur ??= $this->master->estConfigure()

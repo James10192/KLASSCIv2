@@ -269,6 +269,37 @@ class DemandeSupportTest extends TestCase
     }
 
     /** @test */
+    public function la_capture_n_est_proposee_que_si_elle_peut_etre_jointe(): void
+    {
+        $this->actingAs($this->utilisateur());
+        $ouvert = ['support_widget' => true, 'support_customer_portal' => true, 'support_screenshot' => true];
+        $rendu = function (array $fonctionnalites, array $portees = ['support:create', 'support:read', 'support:update']): string {
+            Cache::flush();
+            Http::swap(new \Illuminate\Http\Client\Factory());
+            $this->app->forgetScopedInstances();
+            $this->master(Http::response([], 201), $fonctionnalites, $portees);
+
+            return \Illuminate\Support\Facades\Blade::render('<x-support.lanceur />');
+        };
+
+        $html = $rendu($ouvert);
+        $this->assertStringContainsString('data-sp-capturer', $html);
+        $this->assertStringContainsString('html2canvas-1.4.1', $html);
+        $this->assertStringContainsString('__REFERENCE__', $html);
+
+        // Fermee par defaut, puis chaque condition manquante la retire : sans elle,
+        // la capture serait proposee et ne pourrait jamais etre jointe.
+        $this->assertStringNotContainsString('data-sp-capturer', $rendu(['support_screenshot' => false] + $ouvert));
+        $this->assertStringNotContainsString('data-sp-capturer', $rendu(['support_customer_portal' => false] + $ouvert));
+        $this->assertStringNotContainsString('data-sp-capturer', $rendu($ouvert, ['support:create', 'support:read']));
+
+        // Sans capture, la fenetre reste celle d'avant : le signalement ne depend pas d'elle.
+        $sans = $rendu(['support_screenshot' => false] + $ouvert);
+        $this->assertStringContainsString('id="sp-modal"', $sans);
+        $this->assertStringNotContainsString('html2canvas', $sans);
+    }
+
+    /** @test */
     public function la_fenetre_n_est_pas_rendue_sans_identifiant_du_master(): void
     {
         config()->set('services.master.support_token', null);
