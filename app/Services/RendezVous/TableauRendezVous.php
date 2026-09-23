@@ -35,10 +35,14 @@ class TableauRendezVous
         $creneaux = ESBTPRdvCreneau::query()
             ->whereDate('date', '>=', $debut->toDateString())
             ->whereDate('date', '<=', $fin->toDateString())
-            ->with(['reservations' => fn ($q) => $q->occupantes()->orderBy('nom')])
+            ->with(['reservations' => fn ($q) => $q->occupantes()
+                ->with(['prevenuePar:id,name', 'candidature:id,statut', 'demande:id,statut'])->orderBy('nom')])
             ->orderBy('date')
             ->orderBy('heure_debut')
             ->get()
+            // Le creneau et le dossier deja en main : FamillesAPrevenirRdv::concerne()
+            // ne relance aucune requete par ligne.
+            ->each(fn (ESBTPRdvCreneau $c) => $c->reservations->each->setRelation('creneau', $c))
             ->groupBy(fn (ESBTPRdvCreneau $c) => $c->date->toDateString());
 
         $jours = [];

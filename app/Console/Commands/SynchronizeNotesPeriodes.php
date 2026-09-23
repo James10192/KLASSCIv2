@@ -90,7 +90,7 @@ class SynchronizeNotesPeriodes extends Command
         if ($evaluationsSansAnnee > 0) {
             $this->warn("Found {$evaluationsSansAnnee} evaluations without academic years.");
 
-            if (!$dryRun && $this->confirm('Do you want to update these evaluations with the current academic year?')) {
+            if (!$dryRun && $this->confirm('Attribuer une année à ces évaluations (tirée des inscriptions ou de la date) ?')) {
                 $this->call('esbtp:check-evaluations-annees');
             }
         } else {

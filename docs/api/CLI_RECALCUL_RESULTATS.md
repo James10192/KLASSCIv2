@@ -40,7 +40,7 @@ Un `update()` de **query builder** ne passe pas par Eloquent. `ESBTPNoteObserver
 ne tourne pas, `RecomputeStudentResultatJob` n'est jamais dispatché, et les deux
 coordonnées — celle qu'on quitte comme celle qu'on rejoint — restent figées.
 
-**Cinq sont trouvés à ce jour.** C'est un relevé, pas un inventaire garanti :
+**Sept sont trouvés à ce jour.** C'est un relevé, pas un inventaire garanti :
 tout nouveau chemin qui écrit `esbtp_notes` par un `update()` de query builder
 doit appeler `RecalculApresDeplacement` lui-même.
 
@@ -50,7 +50,42 @@ doit appeler `RecalculApresDeplacement` lui-même.
 | `POST /api/cli/evaluations/{id}/matiere` | matière | à l'unité |
 | `POST /api/cli/evaluations/deplacer-periode` | période, jusqu'à 200 évaluations | en lot, plafonné |
 | `POST /api/cli/diagnostics/evaluations-periode/repair` | période, en masse | en lot, plafonné |
+| modification d'une séance de devoir (emploi du temps) | matière du devoir lié, si elle a changé | à l'unité |
+| `esbtp:check-evaluations-annees` | année, depuis nulle — arrivée seule | en lot, sous un mémo, sans plafond (console) |
 | `MergeDuplicateEcue` (LMD, sous `force`) | matière, en masse | **aucun, à dessein** — reporte les lignes de bulletin LMD |
+
+Trois écritures ne déplacent rien mais font **entrer ou sortir** des notes d'une
+moyenne, et recalculent elles aussi, par le même garde : **annuler** une
+évaluation (bouton « Annuler » de la liste, ou la route de statut) retire ses
+notes de la moyenne, la **réactiver** les y remet. Une moyenne qui ne reposait
+que sur l'évaluation annulée est laissée et nommée, jamais remise à zéro — dans
+le champ `warning` de la réponse JSON, affiché dans la liste jusqu'à ce qu'on le
+ferme, avec `warning_links` : les liens `{libelle, url}` vers le pré-contrôle
+des bulletins de la classe (plus aucune note) ou vers « Modifier les moyennes »
+de l'élève (des absences seulement), rendus à qui peut ouvrir ces écrans. Tout
+changement de statut passe par `App\Domain\Notes\ChangementDeStatut`.
+
+Le changement de **barème** ou de **coefficient** d'une évaluation notée
+recalcule aussi, depuis septembre 2026 (écran d'édition et édition rapide).
+
+**Reste sans recalcul, trouvé à ce jour** : la **suppression** d'une évaluation
+encore brouillon ou planifiée qui porte déjà des notes. Après une suppression,
+rejouez `POST /api/cli/notes/recompute` sur la classe et la période.
+
+La séance de devoir ne reporte sur le devoir qu'**une coordonnée : sa matière,
+si elle a changé**. La période du devoir n'est pas réalignée quand le jour de la
+séance change — la date se déduit de l'emploi du temps, qui ne change pas, et
+réaligner défaisait une période corrigée à la main. Retoucher la salle, le titre
+ou le jour ne touche donc aucune moyenne. La séance et son devoir
+s'enregistrent **ensemble** : un échec d'écriture refuse toute la modification.
+Le recalcul part après, hors transaction : un recalcul en échec ne défait rien
+(comme ailleurs), il est compté et affiché dans le bandeau.
+
+`esbtp:check-evaluations-annees` tire l'année des inscriptions des élèves notés
+dans la classe de l'évaluation (celle qu'ils partagent tous), sinon de sa date,
+sinon de `--annee=ID`. Elle ne lit plus `esbtp_classes.annee_universitaire_id`
+et **ne pose plus l'année courante par défaut** : une évaluation qu'elle ne sait
+pas dater reste sans année, et elle la nomme.
 
 ⚠️ **Ce tableau compte les endroits qui changent les coordonnées d'une
 ÉVALUATION, et il liste ceux trouvés à ce jour — pas ceux qui existent.** La
@@ -61,7 +96,7 @@ d'un seul `update()`) et `esbtp:sync-notes-periodes`. Elles ne sont pas branché
 à dessein : `sync-notes` tourne sans bornes sur l'école entière, et y ajouter un
 recalcul synchrone par note est exactement ce que le plafond cherche à éviter.
 
-Le cinquième, `app/Domain/LMD/Actions/MergeDuplicateEcue.php`, est atteignable
+`MergeDuplicateEcue` (`app/Domain/LMD/Actions/MergeDuplicateEcue.php`) est atteignable
 par `POST /esbtp/lmd/reconciliation/merge` avec `type=ecue&force=true`. Il
 reparente `esbtp_evaluations.matiere_id` **et** `esbtp_notes.matiere_id` vers
 l'ECUE canonique, puis met l'absorbée de côté — sans rien recalculer.
@@ -312,6 +347,12 @@ qu'on fige.
 
 ## Historique
 
+- **Septembre 2026 (ter)** — la modification d'une séance de devoir,
+  `esbtp:check-evaluations-annees`, et l'annulation / la réactivation d'une
+  évaluation recalculent à leur tour. **Changement de comportement** de la
+  commande : plus d'année courante posée par défaut, ni d'année lue sur la
+  classe. **Ajout non cassant** : la réponse JSON des actions Annuler /
+  Réactiver et de la route de statut porte `warning` et `warning_links`.
 - **Septembre 2026 (bis)** — le cinquième chemin, `MergeDuplicateEcue`, est
   tranché : pas de recalcul, à dessein ; report des moyennes enregistrées (sous
   `force`) et des lignes de bulletin LMD, liste des bulletins à régénérer.

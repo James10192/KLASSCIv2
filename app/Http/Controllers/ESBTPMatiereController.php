@@ -7,10 +7,12 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
+use App\Services\LMD\CodeDeMatiere;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 class ESBTPMatiereController extends Controller
 {
@@ -271,12 +273,13 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request, LiaisonsDeMatiere $service)
+    public function store(Request $request, LiaisonsDeMatiere $service, CodeDeMatiere $codes)
     {
         // Valider les données du formulaire
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'nullable|string|max:50|unique:esbtp_matieres,code',
+            // Une matiere supprimee ne bloque pas son code : CodeDeMatiere le libere.
+            'code' => ['nullable', 'string', 'max:50', Rule::unique('esbtp_matieres', 'code')->whereNull('deleted_at')],
             'description' => 'nullable|string',
             'coefficient' => 'nullable|numeric|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
@@ -289,16 +292,8 @@ class ESBTPMatiereController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        // Auto-generate code from name if not provided
         if (empty($validatedData['code'])) {
-            $baseName = strtoupper(trim($validatedData['name']));
-            $baseCode = implode('', array_map(fn($w) => substr($w, 0, 3), preg_split('/\s+/', $baseName)));
-            $code = $baseCode;
-            $i = 1;
-            while (ESBTPMatiere::where('code', $code)->exists()) {
-                $code = $baseCode . $i++;
-            }
-            $validatedData['code'] = $code;
+            $validatedData['code'] = $codes->genererDepuisLeNom($validatedData['name']);
         }
 
         // Default coefficient if not provided
@@ -310,8 +305,8 @@ class ESBTPMatiereController extends Controller
         $validatedData['created_by'] = Auth::id();
         $validatedData['updated_by'] = Auth::id();
 
-        // Créer la nouvelle matière
-        $matiere = ESBTPMatiere::create($validatedData);
+        // Créer la nouvelle matière, en liberant le code d'une matiere supprimee.
+        [$matiere, $codeLibere] = $codes->ecrireEnLiberant('code', $validatedData['code'], null, fn () => ESBTPMatiere::create($validatedData));
 
         // CE FORMULAIRE N'A QU'UN SEUL MODE, ET C'EST UNE CORRECTION.
         //
@@ -353,7 +348,7 @@ class ESBTPMatiereController extends Controller
 
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.matieres.index')
-            ->with('success', 'La matière a été créée avec succès.');
+            ->with('success', trim('La matière a été créée avec succès. ' . ($codeLibere ?? '')));
     }
 
     /**
@@ -542,14 +537,14 @@ class ESBTPMatiereController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, ESBTPMatiere $matiere)
+    public function update(Request $request, ESBTPMatiere $matiere, CodeDeMatiere $codes)
     {
         $this->refuserUneEcueLmd($matiere);
 
         // Valider les données du formulaire
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:esbtp_matieres,code,'.$matiere->id,
+            'code' => ['required', 'string', 'max:50', Rule::unique('esbtp_matieres', 'code')->ignore($matiere->id)->whereNull('deleted_at')],
             'description' => 'nullable|string',
             'coefficient' => 'required|numeric|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
@@ -574,8 +569,8 @@ class ESBTPMatiereController extends Controller
         // Ajouter l'identifiant de l'utilisateur courant
         $validatedData['updated_by'] = Auth::id();
 
-        // Mettre à jour la matière
-        $matiere->update($validatedData);
+        // Mettre à jour la matière, en liberant le code d'une matiere supprimee.
+        [, $codeLibere] = $codes->ecrireEnLiberant('code', $validatedData['code'], (int) $matiere->id, fn () => $matiere->update($validatedData));
 
         $this->synchroniserLesPivotsPlats($request, $matiere);
 
@@ -602,7 +597,7 @@ class ESBTPMatiereController extends Controller
 
         // Rediriger avec un message de succès
         return redirect()->route('esbtp.matieres.index')
-            ->with('success', 'La matière a été mise à jour avec succès.');
+            ->with('success', trim('La matière a été mise à jour avec succès. ' . ($codeLibere ?? '')));
     }
 
     /**
@@ -937,44 +932,25 @@ class ESBTPMatiereController extends Controller
     }
 
     /**
-     * Applique la liste voulue : retire ce qui n'y est plus, pose ce qui manque.
-     *
-     * @param  array<string, array{0: int, 1: int}>  $voulues
-     */
-    private function appliquerLesLiaisons(ESBTPMatiere $matiere, array $voulues, LiaisonsDeMatiere $service): void
-    {
-        DB::transaction(function () use ($matiere, $voulues, $service) {
-            $actuelles = \App\Models\ESBTPMatiereFilierNiveau::where('matiere_id', $matiere->id)
-                ->get(['filiere_id', 'niveau_etude_id'])
-                ->mapWithKeys(fn ($l) => [(int) $l->filiere_id.'|'.(int) $l->niveau_etude_id => true]);
-
-            foreach ($actuelles as $cle => $_) {
-                if (! array_key_exists($cle, $voulues)) {
-                    [$filiereId, $niveauId] = array_map('intval', explode('|', $cle));
-                    $service->retirer($matiere->id, $filiereId, $niveauId);
-                }
-            }
-
-            // PAR DIFFERENCE des deux cotes. Reposer un couple deja en
-            // place etait sans effet sur une matiere BTS (`firstOrCreate`
-            // + `syncWithoutDetaching` sont des no-op) — mais depuis que
-            // `poser()` refuse les ECUE, cela faisait LEVER sur un couple
-            // qu'on ne demandait meme pas d'ajouter. Retirer un couple
-            // d'une ECUE qui en portait deux repassait donc par le second,
-            // levait, annulait la transaction, et rendait 500 : la ligne
-            // redevenait « visible, et retirable par rien », c'est-a-dire
-            // exactement le defaut que tout ce chantier corrige.
-            foreach ($voulues as $cle => [$filiereId, $niveauId]) {
-                if (! $actuelles->has($cle)) {
-                    $service->poser($matiere->id, $filiereId, $niveauId);
-                }
-            }
-        });
-    }
-
-    /**
      * Met à jour les liaisons d'une matière avec les combinaisons filière+niveau sélectionnées.
      * Format attendu : { "liaisons": [ {"filiere_id": 1, "niveau_id": 1}, ... ] }
+     *
+     * `present` et NON `required`, et la nuance est tout le sujet. La clé ABSENTE
+     * est une requête malformée (que `?? []` transformait en « retire-les tous ») :
+     * 422. La liste VIDE est une instruction : l'écran propose « tout retirer »,
+     * ouvre une confirmation qui annonce « Cela supprimera toutes les liaisons
+     * existantes », puis poste `liaisons: []`. `required` refusait les deux.
+     *
+     * PAS DE GARDE `is_array()` ICI, ET C'EST MESURÉ (commit cbac675). La règle
+     * `array` semble sautée quand la valeur vaut `''` — `Array` n'est pas une règle
+     * implicite, donc `presentOrRuleIsImplicit()` l'ignore. Mais
+     * `ConvertEmptyStringsToNull` est dans la pile GLOBALE du Kernel : `''` arrive
+     * en `null`, et `array` le refuse. `''`, `null`, `'x'`, `3`, `true` et la clé
+     * absente rendent 422 ; seule `[]` passe, et retire tout. Un `abort()` posé ici
+     * serait du code mort, et piégé : son `HttpException` hérite d'`Exception`,
+     * le `catch (\Exception)` ci-dessous en ferait un 500. Le garde qui ne dépend
+     * de rien est le TYPE `array` de `LiaisonsDeMatiere::appliquerLEnsembleVoulu()`.
+     * `MaquetteBtsRefuseUneEcueTest` gèle la matrice des sept entrées.
      *
      * @return \Illuminate\Http\JsonResponse
      */
@@ -982,106 +958,38 @@ class ESBTPMatiereController extends Controller
     {
         try {
             $validated = $request->validate([
-                // `present` et NON `required`, et la nuance est tout le sujet.
-                //
-                // Le but est de distinguer « la cle est absente » (une requete
-                // malformee, que `?? []` transformait en « retire-les tous »)
-                // de « la cle est la, vide » (l'utilisateur a decoche toutes les
-                // combinaisons, et l'ecran le lui a fait confirmer).
-                //
-                // `required` refuse LES DEUX : il rejette aussi `[]`. « Tout
-                // retirer » rendait donc 422 « Le champ liaisons est
-                // obligatoire », alors que l'ecran propose l'action, ouvre une
-                // confirmation explicite et annonce « Cela supprimera toutes les
-                // liaisons existantes ». `present` exige la cle sans exiger son
-                // contenu — c'est exactement la distinction voulue.
-                'liaisons'             => 'present|array',
+                'liaisons'              => 'present|array',
                 'liaisons.*.filiere_id' => 'required|exists:esbtp_filieres,id',
                 'liaisons.*.niveau_id'  => 'required|exists:esbtp_niveau_etudes,id',
             ]);
 
-            // PAS DE GARDE ICI, ET C'EST MESURE.
-            //
-            // Deux versions successives en ont pose un — `abort_unless()` puis
-            // un `return` anticipe — sur la crainte que `present|array` laisse
-            // passer une chaine vide : `Array` n'est pas une regle implicite,
-            // donc `Validator::presentOrRuleIsImplicit()` la SAUTE quand la
-            // valeur est `''`. Le raisonnement est juste ; la conclusion etait
-            // fausse, parce qu'il lui manquait le middleware.
-            //
-            // `ConvertEmptyStringsToNull` (Kernel, groupe `web`) transforme `''`
-            // en `null` AVANT la validation. `null` n'est pas une chaine, la
-            // regle n'est donc plus sautee, et `array` la refuse. Les sept
-            // entrees possibles ont ete passees a l'endpoint :
-            //
-            //   ''  ·  null  ·  'x'  ·  3  ·  true   → 422 « doit etre un tableau »
-            //   cle absente                          → 422 « doit etre present »
-            //   []                                   → 200, et tout est retire
-            //
-            // `$validated['liaisons']` est donc TOUJOURS un tableau ici. Le
-            // garde etait du code mort — et pire, sa premiere forme trainait un
-            // piege : `abort()` leve un `HttpException`, qui herite de
-            // `RuntimeException` donc d'`Exception`, et le `catch (\Exception)`
-            // de cette meme methode l'aurait converti en 500 si la branche
-            // avait pu s'executer. `MaquetteBtsRefuseUneEcueTest` gele la
-            // matrice ci-dessus : elle seule protege cette absence de garde.
-            $liaisons = $validated['liaisons'];
-
-            // Voulues, dédoublonnées.
-            $voulues = [];
-            foreach ($liaisons as $liaison) {
-                $voulues[(int) $liaison['filiere_id'].'|'.(int) $liaison['niveau_id']] = [
-                    (int) $liaison['filiere_id'],
-                    (int) $liaison['niveau_id'],
-                ];
-            }
-
-            // Un DIFF, et non un « supprime tout puis recrée ». L'ancien code
-            // effaçait les lignes existantes avant de les réinsérer nues :
-            // toute combinaison conservée y perdait sa place au bulletin, son
-            // semestre et son statut tronc commun / spécialité. Sur une
-            // matière qui couvre huit combinaisons, régler la neuvième
-            // remettait les huit autres à zéro, sans un mot.
-            $this->appliquerLesLiaisons($matiere, $voulues, $service);
-
-            $count = count($voulues);
-            $message = $count > 0
-                ? "Liaisons mises à jour avec succès ! {$count} combinaison(s) configurée(s)."
-                : 'Liaisons mises à jour avec succès ! Toutes les liaisons ont été supprimées.';
+            $voulues = $service->appliquerLEnsembleVoulu($matiere, $validated['liaisons']);
 
             return response()->json([
                 'success' => true,
-                'message' => $message,
+                'message' => $voulues > 0
+                    ? "Liaisons mises à jour avec succès ! {$voulues} combinaison(s) configurée(s)."
+                    : 'Liaisons mises à jour avec succès ! Toutes les liaisons ont été supprimées.',
             ]);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Données invalides: '.implode(', ', $e->validator->errors()->all()),
             ], 422);
         } catch (\InvalidArgumentException $e) {
-            // `LiaisonsDeMatiere::poser()` refuse une ECUE LMD. La regle vit
-            // la-bas, en UN endroit ; ce controleur n'a pas a savoir ce qu'est
-            // une ECUE — il se contente de rendre le refus lisible. Une
-            // premiere version dupliquait la question ici, et cette seconde
-            // source repondait deja autrement que l'originale.
+            // `poser()` refuse une ECUE LMD. La règle vit là-bas, en UN endroit :
+            // ce contrôleur n'a pas à savoir ce qu'est une ECUE, il rend le refus lisible.
             \Log::warning('Rattachement refuse par le domaine.', [
                 'matiere_id' => (int) $matiere->id,
                 'raison' => $e->getMessage(),
                 'user_id' => optional(auth()->user())->id,
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 422);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la mise à jour des liaisons: '.$e->getMessage());
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la sauvegarde des liaisons',
-            ], 500);
+            return response()->json(['success' => false, 'message' => 'Erreur lors de la sauvegarde des liaisons'], 500);
         }
     }
 
