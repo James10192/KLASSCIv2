@@ -1040,15 +1040,15 @@ class ESBTPResultatController extends Controller
             ? $this->currentResultSnapshotService->getAnnualSnapshot($etudiant->id, $classe->id, $annee_universitaire_id)
             : null;
 
-        // Moyennes semestrielles incluant l'assiduité (via bulletin ou fallback)
-        $moyenneSemestre1 = $annualSnapshot['semester_snapshots']['semestre1']['effective_total'] ?? $this->bulletinService->getAlignedBulletinAverageForPeriode(
-            $id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
-            'semestre1', $periode, $moyenneAvecAssiduite, $noteAssiduite
-        );
-        $moyenneSemestre2 = $annualSnapshot['semester_snapshots']['semestre2']['effective_total'] ?? $this->bulletinService->getAlignedBulletinAverageForPeriode(
-            $id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
-            'semestre2', $periode, $moyenneAvecAssiduite, $noteAssiduite
-        );
+        // Moyennes semestrielles incluant l'assiduité. Pour la période AFFICHÉE, le snapshot fait
+        // foi : son `null` veut dire « aucune note », et le repli rendait alors la moyenne courante
+        // (0 faute de note, plus l'assiduité) — un semestre vide affichait 0,13. L'autre semestre
+        // garde le repli, qui lit le bulletin officiel.
+        $moyenneDuSemestre = fn (string $semestre) => $annualSnapshot && $semestre === $periode
+            ? ($annualSnapshot['semester_snapshots'][$semestre]['effective_total'] ?? null)
+            : ($annualSnapshot['semester_snapshots'][$semestre]['effective_total'] ?? $this->bulletinService->getAlignedBulletinAverageForPeriode($id, $classe_id ?? 0, $annee_universitaire_id ?? 0, $semestre, $periode, $moyenneAvecAssiduite, $noteAssiduite));
+        $moyenneSemestre1 = $moyenneDuSemestre('semestre1');
+        $moyenneSemestre2 = $moyenneDuSemestre('semestre2');
         $moyenneAnnuelle = ($annualSnapshot['state'] ?? null) === 'annual_complete'
             ? ($annualSnapshot['effective_total'] ?? null)
             : $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
@@ -1082,12 +1082,6 @@ class ESBTPResultatController extends Controller
             $moyenneGenerale = $bulletinConsistency['current_recomputed_raw_total'] ?? $moyenneGenerale;
             $noteAssiduite = $bulletinConsistency['current_recomputed_note_assiduite'] ?? $noteAssiduite;
             $moyenneAvecAssiduite = $bulletinConsistency['current_recomputed_effective_total'] ?? $moyenneAvecAssiduite;
-
-            if ($periode === 'semestre1') {
-                $moyenneSemestre1 = $moyenneAvecAssiduite;
-            } else {
-                $moyenneSemestre2 = $moyenneAvecAssiduite;
-            }
 
             $notesByMatiere = $this->moyennesDeLApercu->notesDetailleesDepuisLeSnapshot($bulletinConsistency['current_subjects'] ?? [], $notes);
             $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
