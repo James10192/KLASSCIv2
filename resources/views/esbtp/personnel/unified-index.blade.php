@@ -1859,6 +1859,7 @@
                                 </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.directeurs-etudes.show', $directeur) }}" class="pu-action-btn" title="Voir"><i class="fas fa-eye"></i></a>
+                                    <x-personnel.bouton-acces-temporaire :user-id="$directeur->id" />
                                     @if($personnelAccess['directeurs_etudes']['edit'] ?? false)
                                     <a href="{{ route('esbtp.directeurs-etudes.edit', $directeur) }}" class="pu-action-btn pu-act-edit" title="Modifier"><i class="fas fa-pen"></i></a>
                                     @if($directeur->id !== auth()->id())
@@ -1945,6 +1946,7 @@
                                     <a href="{{ route('esbtp.coordinateurs.show', $coordinateur) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    <x-personnel.bouton-acces-temporaire :user-id="$coordinateur->id" />
                                     @if($personnelAccess['coordinateurs']['edit'] ?? false)
                                     <a href="{{ route('esbtp.coordinateurs.edit', $coordinateur) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>
@@ -2055,6 +2057,7 @@
                                     <a href="{{ route('esbtp.enseignants.show', $teacher) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    <x-personnel.bouton-acces-temporaire :user-id="$teacher->user_id" />
                                     @if($personnelAccess['enseignants']['edit'] ?? false)
                                     <a href="{{ route('esbtp.enseignants.edit', $teacher) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>
@@ -2143,6 +2146,7 @@
                                     <a href="{{ route('esbtp.secretaires.show', $secretaire) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    <x-personnel.bouton-acces-temporaire :user-id="$secretaire->id" />
                                     @if($personnelAccess['secretaires']['edit'] ?? false)
                                     <a href="{{ route('esbtp.secretaires.edit', $secretaire) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>
@@ -2207,6 +2211,7 @@
                                 </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.responsables-scolarite.show', $responsable) }}" class="pu-action-btn" title="Voir"><i class="fas fa-eye"></i></a>
+                                    <x-personnel.bouton-acces-temporaire :user-id="$responsable->id" />
                                     @if($personnelAccess['responsables_scolarite']['edit'] ?? false)
                                     <a href="{{ route('esbtp.responsables-scolarite.edit', $responsable) }}" class="pu-action-btn pu-act-edit" title="Modifier"><i class="fas fa-pen"></i></a>
                                     @if($responsable->id !== auth()->id())
@@ -2268,6 +2273,7 @@
                                 </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.services-scolarite.show', $service) }}" class="pu-action-btn" title="Voir"><i class="fas fa-eye"></i></a>
+                                    <x-personnel.bouton-acces-temporaire :user-id="$service->id" />
                                     @if($personnelAccess['services_scolarite']['edit'] ?? false)
                                     <a href="{{ route('esbtp.services-scolarite.edit', $service) }}" class="pu-action-btn pu-act-edit" title="Modifier"><i class="fas fa-pen"></i></a>
                                     @if($service->id !== auth()->id())
@@ -2329,6 +2335,7 @@
                                 </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.agents-inscription.show', $agent) }}" class="pu-action-btn" title="Voir"><i class="fas fa-eye"></i></a>
+                                    <x-personnel.bouton-acces-temporaire :user-id="$agent->id" />
                                     @if($personnelAccess['agents_inscription']['edit'] ?? false)
                                     <a href="{{ route('esbtp.agents-inscription.edit', $agent) }}" class="pu-action-btn pu-act-edit" title="Modifier"><i class="fas fa-pen"></i></a>
                                     @if($agent->id !== auth()->id())
@@ -2415,6 +2422,7 @@
                                     <a href="{{ route('esbtp.comptables.show', $comptable) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    <x-personnel.bouton-acces-temporaire :user-id="$comptable->id" />
                                     @if($personnelAccess['comptables']['edit'] ?? false)
                                     @if($comptable->id !== auth()->id())
                                     <button type="button"
@@ -2497,6 +2505,7 @@
                                     <a href="{{ route('esbtp.caissiers.show', $caissier) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    <x-personnel.bouton-acces-temporaire :user-id="$caissier->id" />
                                     @if($personnelAccess['caissiers']['edit'] ?? false)
                                     <a href="{{ route('esbtp.caissiers.edit', $caissier) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>
@@ -2575,6 +2584,7 @@
                                         <a href="{{ route('esbtp.custom-roles.assign-users.form', $roleName) }}" class="pu-action-btn" title="Gérer les assignations">
                                             <i class="fas fa-user-cog"></i>
                                         </a>
+                                        <x-personnel.bouton-acces-temporaire :user-id="$u->id" />
                                     </div>
                                 </div>
                                 @endforeach
