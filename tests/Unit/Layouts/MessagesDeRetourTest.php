@@ -98,6 +98,15 @@ class MessagesDeRetourTest extends TestCase
         $this->assertStringContainsString('&lt;script&gt;', $html);
     }
 
+    public function test_la_vraie_mise_en_page_passe_le_contenu_de_la_page(): void
+    {
+        $miseEnPage = file_get_contents(resource_path('views/layouts/app.blade.php'));
+        $include = "@include('partials._messages_de_retour', ['contenuDeLaPage' => \$__env->yieldContent('content')])";
+
+        $this->assertStringContainsString($include, $miseEnPage);
+        $this->assertLessThan(strpos($miseEnPage, "@yield('content')"), strpos($miseEnPage, $include));
+    }
+
     public function test_la_mise_en_page_recoit_le_contenu_deja_rendu_de_la_page(): void
     {
         // Même geste que layouts/app.blade.php : @include avant @yield('content').
