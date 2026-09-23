@@ -63,6 +63,28 @@ class ChatActionResolver
         ];
     }
 
+    /**
+     * Le payload tel que ce lecteur a le droit de le voir.
+     *
+     * Le snapshot est fige a l'envoi avec ses montants, et l'expediteur ne
+     * choisit pas qui lira la conversation : c'est donc a la lecture, selon
+     * les droits de chacun, qu'on retire ce qui est du, paye ou verse.
+     */
+    public function payloadPourLecteur(?array $payload, User $viewer): ?array
+    {
+        if (! is_array($payload) || ! isset($payload['snapshot']) || $viewer->can('finances.etudiants.voir')) {
+            return $payload;
+        }
+
+        foreach (['montant_total', 'montant_paye', 'solde_restant', 'montant'] as $cle) {
+            if (array_key_exists($cle, $payload['snapshot'])) {
+                $payload['snapshot'][$cle] = null;
+            }
+        }
+
+        return $payload;
+    }
+
     public function snapshotPaiement(ESBTPPaiement $paiement): array
     {
         $paiement->loadMissing([

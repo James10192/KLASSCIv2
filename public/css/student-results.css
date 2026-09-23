@@ -1692,6 +1692,8 @@
 
 .sr-accordion-dot--success { background: var(--sr-success); box-shadow: 0 0 8px var(--sr-success-glow); }
 .sr-accordion-dot--danger { background: var(--sr-danger); box-shadow: 0 0 8px var(--sr-danger-glow); }
+/* Aucune note exploitable : ni reussite ni echec, donc aucune couleur semantique. */
+.sr-accordion-dot--vide { background: var(--sr-muted-light); }
 
 .sr-accordion-subject {
     font-weight: 700;
@@ -1718,6 +1720,11 @@
 .sr-accordion-avg--danger {
     background: var(--sr-danger-light);
     color: #991b1b;
+}
+
+.sr-accordion-avg--vide {
+    background: #f1f5f9;
+    color: var(--sr-muted);
 }
 
 .sr-accordion-chevron {

@@ -3130,7 +3130,11 @@ $(document).on('click', '#nm-eval-quick-save', function() {
                 const modalEl = document.getElementById('evaluationQuickEditModal');
                 const inst = window.bootstrap ? window.bootstrap.Modal.getInstance(modalEl) : null;
                 if (inst) inst.hide(); else $(modalEl).modal('hide');
-                nmShowToast('success', `Évaluation « ${ev.titre} » mise à jour.`);
+                if (resp.moyennes_non_recalculees > 0) {
+                    nmShowToast('warning', resp.message, 8000);
+                } else {
+                    nmShowToast('success', `Évaluation « ${ev.titre} » mise à jour.`);
+                }
             } else {
                 $('#nm-eval-quick-error').text((resp && resp.message) || 'Erreur lors de la mise à jour.').show();
             }

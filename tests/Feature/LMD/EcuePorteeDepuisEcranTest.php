@@ -245,6 +245,157 @@ class EcuePorteeDepuisEcranTest extends TestCase
             ->count();
     }
 
+    public function test_un_code_deja_pris_est_refuse_avec_le_nom_de_son_titulaire(): void
+    {
+        // USAT, septembre 2026 : ce cas remontait en erreur serveur (index unique).
+        $this->actingAs($this->acteur)
+            ->postJson(route('esbtp.lmd.ue.ecue.store', $this->ue), [
+                'name' => 'Autre element',
+                'code' => 'ECUE-TIR',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('code');
+
+        $this->assertSame(1, ESBTPMatiere::where('code', 'ECUE-TIR')->count());
+    }
+
+    public function test_le_code_d_une_matiere_supprimee_est_libere_et_la_creation_aboutit(): void
+    {
+        // Une matiere supprimee garde son code dans l'index unique : sans
+        // liberation, le code resterait bloque par une ligne que personne ne voit.
+        $ancienne = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $ancienne->delete();
+
+        $message = $this->actingAs($this->acteur)
+            ->postJson(route('esbtp.lmd.ue.ecue.store', $this->ue), [
+                'name' => 'Autre element',
+                'code' => 'ECUE-TIR',
+            ])
+            ->assertOk()
+            ->json('message');
+
+        // La reponse dit ce qui a ete fait, et ou retrouver l'ancienne matiere.
+        $this->assertStringContainsString('libéré', $message);
+        $this->assertStringContainsString('ECUE-TIR~suppr-'.$ancienne->id, $message);
+
+        $this->assertSame('ECUE-TIR~suppr-'.$ancienne->id, ESBTPMatiere::withTrashed()->find($ancienne->id)->code);
+        $this->assertSame('Autre element', ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail()->name);
+    }
+
+    public function test_modifier_un_ecue_vers_un_code_deja_pris_est_refuse(): void
+    {
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.ecue.update', [$this->ue, $this->ecueBu]), [
+                'code' => 'ECUE-TIR',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('code');
+
+        // Garder son propre code reste permis.
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.ecue.update', [$this->ue, $this->ecueBu]), [
+                'code' => 'ECUE-BU',
+            ])
+            ->assertOk();
+    }
+
+    public function test_modifier_un_ecue_vers_le_code_d_une_matiere_supprimee_libere_le_code(): void
+    {
+        $ancienne = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $ancienne->delete();
+
+        $message = $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.ecue.update', [$this->ue, $this->ecueBu]), [
+                'code' => 'ECUE-TIR',
+            ])
+            ->assertOk()
+            ->json('message');
+
+        $this->assertStringContainsString('ECUE-TIR~suppr-'.$ancienne->id, $message);
+        $this->assertSame('ECUE-TIR', $this->ecueBu->fresh()->code);
+    }
+
+    public function test_le_code_d_une_matiere_bts_est_refuse_en_le_disant(): void
+    {
+        ESBTPMatiere::create(['name' => 'Topographie BTS', 'code' => 'TOPO-BTS', 'is_active' => true]);
+
+        $erreur = $this->actingAs($this->acteur)
+            ->postJson(route('esbtp.lmd.ue.ecue.store', $this->ue), [
+                'name' => 'Topographie',
+                'code' => 'TOPO-BTS',
+            ])
+            ->assertStatus(422)
+            ->json('errors.code.0');
+
+        // L'onglet « Lier un existant » ne liste pas les matieres BTS : le proposer mentirait.
+        $this->assertStringContainsString('cursus BTS', $erreur);
+        $this->assertStringNotContainsString('Lier un existant', $erreur);
+    }
+
+    public function test_le_formulaire_d_ue_libere_le_code_au_lieu_de_ressusciter_la_matiere(): void
+    {
+        // Avant : le formulaire restaurait la matiere supprimee sous le nom saisi,
+        // notes et historique compris.
+        $ancienne = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $ancienne->delete();
+
+        $message = $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.update', $this->ue), [
+                'name' => $this->ue->name,
+                'type_ue' => 'fondamentale',
+                'ecues' => [
+                    ['name' => 'Matiere ECUE-BU', 'code' => 'ECUE-BU'],
+                    ['name' => 'Nouvel element', 'code' => 'ECUE-TIR'],
+                ],
+            ])
+            ->assertOk()
+            ->json('message');
+
+        $this->assertStringContainsString('libéré', $message);
+
+        $archivee = ESBTPMatiere::withTrashed()->find($ancienne->id);
+        $this->assertTrue($archivee->trashed());
+        $this->assertSame('ECUE-TIR~suppr-'.$ancienne->id, $archivee->code);
+
+        $nouvelle = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $this->assertNotSame($ancienne->id, $nouvelle->id);
+        $this->assertSame('Nouvel element', $nouvelle->name);
+    }
+
+    public function test_un_formulaire_d_ue_refuse_ne_libere_aucun_code(): void
+    {
+        $ancienne = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $ancienne->delete();
+        ESBTPMatiere::create(['name' => 'Topographie BTS', 'code' => 'TOPO-BTS', 'is_active' => true]);
+
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.update', $this->ue), [
+                'name' => $this->ue->name,
+                'type_ue' => 'fondamentale',
+                'ecues' => [
+                    ['name' => 'Nouvel element', 'code' => 'ECUE-TIR'],
+                    ['name' => 'Topographie', 'code' => 'TOPO-BTS'],
+                ],
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame('ECUE-TIR', ESBTPMatiere::withTrashed()->find($ancienne->id)->code);
+    }
+
+    public function test_l_import_libere_le_code_d_une_matiere_supprimee(): void
+    {
+        // Avant : l'import levait sur l'index unique, maquette entiere annulee.
+        $ancienne = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $ancienne->forceFill(['unite_enseignement_id' => null])->save();
+        DB::table('esbtp_ue_matiere')->where('matiere_id', $ancienne->id)->delete();
+        $ancienne->delete();
+
+        app(LMDImportService::class)->import($this->maquette('TIR', 'Travaux Publics', 'UE-TIR', 'ECUE-TIR'));
+
+        $this->assertSame('ECUE-TIR~suppr-'.$ancienne->id, ESBTPMatiere::withTrashed()->find($ancienne->id)->code);
+        $this->assertNotSame($ancienne->id, ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail()->id);
+    }
+
     private function maquette(string $codeParcours, string $nomParcours, string $codeUe, string $codeEcue): array
     {
         return [
