@@ -82,7 +82,11 @@ reste en place, nommée dans `moyennes_enregistrees.conflits`. L'écran de
 réconciliation la règle sur demande (`POST
 /esbtp/lmd/reconciliation/moyennes-en-collision/retirer`,
 `RetirerMoyennesEnCollision`) : mise de côté tracée de la ligne de l'absorbée,
-puis recalcul de celle de la canonique depuis ses notes. L'écran « Modifier
+puis recalcul de celle de la canonique depuis ses notes. Seules les lignes que
+la fusion a elle-même rendues en collision sont acceptées — leur liste est
+gardée en session par le serveur, deux heures, et vidée à mesure qu'elles sont
+réglées ; toute autre ligne est refusée (`hors_de_la_fusion`). Un recalcul en
+échec est rendu dans `echecs` et signalé à l'écran. L'écran « Modifier
 les moyennes » refuse les classes LMD : il ne sert pas ici. Il
 reporte aussi les lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`), dont la note de
 rattrapage ne se reconstruit depuis aucune note et serait sinon perdue à la

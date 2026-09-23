@@ -185,6 +185,54 @@ class ReconciliationMergeTest extends TestCase
         ])
             ->assertStatus(422)
             ->assertJsonPath('retirees', 0)
-            ->assertJsonPath('refusees.0.id', 987654);
+            ->assertJsonPath('refusees.0.id', 987654)
+            // Aucune fusion n'a laissé cette ligne en collision dans la session.
+            ->assertJsonPath('refusees.0.raison', 'hors_de_la_fusion');
+    }
+
+    public function test_une_collision_laissee_par_la_fusion_se_regle_une_fois_depuis_l_ecran(): void
+    {
+        $this->admin();
+        $niveau = $this->niveau();
+        $ue = ESBTPUniteEnseignement::create(['name' => 'UE A', 'code' => 'UEA', 'credit' => 6, 'semestre' => 3, 'niveau_id' => $niveau->id, 'is_active' => true]);
+        $canonical = ESBTPMatiere::create(['name' => 'RDM', 'code' => 'BRDM', 'unite_enseignement_id' => $ue->id, 'niveau_etude_id' => $niveau->id, 'is_active' => true]);
+        $absorbed = ESBTPMatiere::create(['name' => 'RDM', 'code' => 'TPRDM', 'unite_enseignement_id' => $ue->id, 'niveau_etude_id' => $niveau->id, 'is_active' => true]);
+        $annee = ESBTPAnneeUniversitaire::create(['name' => '2025-2026', 'date_debut' => '2025-09-01', 'date_fin' => '2026-07-31', 'is_active' => true, 'is_current' => true]);
+        $filiere = ESBTPFiliere::create(['name' => 'GC', 'code' => 'GC', 'is_active' => true]);
+        $classe = ESBTPClasse::create(['name' => 'L2 A', 'code' => 'L2A', 'filiere_id' => $filiere->id, 'niveau_etude_id' => $niveau->id, 'annee_universitaire_id' => $annee->id, 'is_active' => true, 'systeme_academique' => 'LMD']);
+        $etudiantId = DB::table('esbtp_etudiants')->insertGetId(['nom' => 'KOUASSI', 'prenoms' => 'Ama', 'matricule' => 'ET-1', 'created_at' => now(), 'updated_at' => now()]);
+
+        foreach ([[$canonical->id, 16], [$absorbed->id, 4]] as [$matiereId, $valeur]) {
+            $evaluationId = DB::table('esbtp_evaluations')->insertGetId([
+                'titre' => 'Devoir', 'matiere_id' => $matiereId, 'classe_id' => $classe->id, 'type' => 'devoir',
+                'date_evaluation' => '2025-11-01', 'coefficient' => 1, 'bareme' => 20, 'periode' => 'semestre1',
+                'status' => 'completed', 'annee_universitaire_id' => $annee->id, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            DB::table('esbtp_notes')->insert([
+                'evaluation_id' => $evaluationId, 'etudiant_id' => $etudiantId, 'matiere_id' => $matiereId,
+                'classe_id' => $classe->id, 'note' => $valeur, 'is_absent' => 0, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            DB::table('esbtp_resultats')->insert([
+                'etudiant_id' => $etudiantId, 'classe_id' => $classe->id, 'matiere_id' => $matiereId,
+                'annee_universitaire_id' => $annee->id, 'periode' => 'semestre1', 'moyenne' => $valeur, 'coefficient' => 1,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        $fusion = $this->postJson(route('esbtp.lmd.reconciliation.merge'), [
+            'type' => 'ecue', 'canonical_id' => $canonical->id, 'absorbed_ids' => [$absorbed->id], 'dry_run' => false, 'force' => true,
+        ])->assertOk()->json();
+        $conflit = $fusion['moyennes_enregistrees']['conflits'][0]['id'];
+
+        $route = route('esbtp.lmd.reconciliation.moyennes-collision.retirer');
+        $this->postJson($route, ['canonical_id' => $canonical->id, 'resultat_ids' => [$conflit]])
+            ->assertOk()->assertJsonPath('retirees', 1)->assertJsonPath('echecs', []);
+
+        $this->assertSoftDeleted('esbtp_resultats', ['id' => $conflit]);
+        $this->assertSame(10.0, (float) DB::table('esbtp_resultats')->where('matiere_id', $canonical->id)->whereNull('deleted_at')->value('moyenne'));
+
+        // Réglée une fois : la rejouer est refusé, la liste gardée par le serveur a été vidée.
+        $this->postJson($route, ['canonical_id' => $canonical->id, 'resultat_ids' => [$conflit]])
+            ->assertStatus(422)->assertJsonPath('refusees.0.raison', 'hors_de_la_fusion');
     }
 }

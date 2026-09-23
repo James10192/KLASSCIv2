@@ -112,6 +112,16 @@ class ESBTPLMDReconciliationController extends Controller
             ? $mergeUe->execute((int) $validated['canonical_id'], $validated['absorbed_ids'], $options)
             : $mergeEcue->execute((int) $validated['canonical_id'], $validated['absorbed_ids'], $options);
 
+        // Seules les collisions que CETTE fusion a produites pourront être
+        // réglées par retirerMoyennesEnCollision() : la liste reste côté serveur.
+        $conflits = array_column($report['moyennes_enregistrees']['conflits'] ?? [], 'id');
+        if ($conflits !== []) {
+            $request->session()->put(self::cleDesConflits((int) $validated['canonical_id']), [
+                'ids' => $conflits,
+                'expire' => now()->addHours(2)->getTimestamp(),
+            ]);
+        }
+
         return response()->json($report, ($report['success'] ?? false) ? 200 : 422);
     }
 
@@ -129,8 +139,31 @@ class ESBTPLMDReconciliationController extends Controller
             'resultat_ids.*' => ['integer'],
         ]);
 
-        $rapport = $action->execute((int) $validated['canonical_id'], $validated['resultat_ids'], optional($request->user())->id);
+        $cle = self::cleDesConflits((int) $validated['canonical_id']);
+        $garde = $request->session()->get($cle);
+        $autorises = ($garde['expire'] ?? 0) >= now()->getTimestamp() ? ($garde['ids'] ?? []) : [];
+
+        $rapport = $action->execute((int) $validated['canonical_id'], $validated['resultat_ids'], $autorises, optional($request->user())->id);
+
+        // Une ligne réglée ne l'est qu'une fois ; les refusées restent réglables.
+        $restantes = array_values(array_diff($autorises, $this->reglees($validated['resultat_ids'], $rapport)));
+        $restantes === []
+            ? $request->session()->forget($cle)
+            : $request->session()->put($cle, ['ids' => $restantes] + $garde);
 
         return response()->json(['success' => $rapport['retirees'] > 0] + $rapport, $rapport['retirees'] > 0 ? 200 : 422);
+    }
+
+    private static function cleDesConflits(int $canonicalId): string
+    {
+        return 'lmd.fusion_ecue.conflits.'.$canonicalId;
+    }
+
+    /** @return list<int> */
+    private function reglees(array $demandees, array $rapport): array
+    {
+        $refusees = array_column($rapport['refusees'], 'id');
+
+        return array_values(array_diff(array_map('intval', $demandees), $refusees));
     }
 }

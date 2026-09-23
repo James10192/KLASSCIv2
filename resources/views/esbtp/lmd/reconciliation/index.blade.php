@@ -369,6 +369,12 @@
                     <div>
                         <div class="rec-impact-row"><span>Lignes de bulletin LMD reportées, avec leur note de rattrapage</span><strong x-text="modal.done.repointes"></strong></div>
                         <div class="rec-impact-row" x-show="modal.done.moyennes.repointees"><span>Moyennes enregistrées reportées sur l'élément conservé</span><strong x-text="modal.done.moyennes.repointees"></strong></div>
+                        <template x-if="(modal.done.moyennes.echecs || []).length">
+                            <div class="rec-warn">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span x-text="modal.done.moyennes.echecs.length + ' moyenne(s) de l\'élément absorbé ont été retirées, mais le recalcul de celle de l\'élément conservé a échoué : elle ne compte pas encore les notes reportées. Relancez le recalcul des moyennes de la classe (notes:recompute), ou saisissez à nouveau une note de l\'élément.'"></span>
+                            </div>
+                        </template>
                         <template x-if="modal.done.moyennes.conflits.length">
                             <div class="rec-warn">
                                 <i class="fas fa-exclamation-triangle"></i>
@@ -557,7 +563,7 @@ function recManager() {
                     const moyennes = report.moyennes_enregistrees || { repointees: 0, conflits: [] };
                     // La fenêtre reste ouverte tant qu'il reste quelque chose à faire.
                     if ((lmd.bulletins_a_regenerer || []).length || (moyennes.conflits || []).length) {
-                        this.modal.done = Object.assign({}, lmd, { moyennes });
+                        this.modal.done = Object.assign({}, lmd, { moyennes: Object.assign({ echecs: [] }, moyennes) });
                     } else {
                         this.closeModal();
                     }
@@ -609,8 +615,13 @@ function recManager() {
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(data.message || 'Aucune moyenne retirée.');
                 const refusees = new Set((data.refusees || []).map(r => r.id));
+                const echecs = data.echecs || [];
                 this.modal.done.moyennes.conflits = conflits.filter(c => refusees.has(c.id));
-                this.toast(refusees.size ? 'error' : 'success', data.retirees + ' moyenne(s) retirée(s)' + (refusees.size ? ', ' + refusees.size + ' refusée(s).' : '.'));
+                this.modal.done.moyennes.echecs = conflits.filter(c => echecs.includes(c.id));
+                const ok = !refusees.size && !echecs.length;
+                this.toast(ok ? 'success' : 'error', data.retirees + ' moyenne(s) retirée(s)'
+                    + (refusees.size ? ', ' + refusees.size + ' refusée(s)' : '')
+                    + (echecs.length ? ', ' + echecs.length + ' recalcul(s) en échec' : '') + '.');
             } catch (err) {
                 this.toast('error', err.message || 'Échec du retrait.');
             } finally {

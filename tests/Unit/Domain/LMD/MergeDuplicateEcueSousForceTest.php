@@ -113,7 +113,7 @@ class MergeDuplicateEcueSousForceTest extends TestCase
         $this->resultat(self::ABSORBEE, 4);
         $conflit = $this->fusionner()['moyennes_enregistrees']['conflits'][0]['id'];
 
-        $rapport = app(RetirerMoyennesEnCollision::class)->execute(self::CANONIQUE, [$conflit]);
+        $rapport = app(RetirerMoyennesEnCollision::class)->execute(self::CANONIQUE, [$conflit], [$conflit]);
 
         $this->assertSame(1, $rapport['retirees']);
         $this->assertSame(1, $rapport['recalculees']);
@@ -130,11 +130,47 @@ class MergeDuplicateEcueSousForceTest extends TestCase
         $this->resultat(self::CANONIQUE, 16);
         $id = (int) DB::table('esbtp_resultats')->value('id');
 
-        $rapport = app(RetirerMoyennesEnCollision::class)->execute(self::CANONIQUE, [$id]);
+        $rapport = app(RetirerMoyennesEnCollision::class)->execute(self::CANONIQUE, [$id], [$id]);
 
         $this->assertSame(0, $rapport['retirees']);
         $this->assertSame('pas_un_element_absorbe', $rapport['refusees'][0]['raison']);
         $this->assertNull(DB::table('esbtp_resultats')->where('id', $id)->value('deleted_at'));
+    }
+
+    public function test_retirer_refuse_une_ecue_supprimee_sans_fusion_a_cote_d_une_ecue_sans_rapport(): void
+    {
+        // « Hydraulique » supprimée depuis l'écran des matières, jamais fusionnée,
+        // avec sa moyenne ; « Topographie », vivante, porte une moyenne saisie à
+        // la main. Rien ne relie les deux : la même coordonnée ne suffit pas.
+        DB::table('esbtp_matieres')->insert(['id' => 20, 'name' => 'Hydraulique', 'unite_enseignement_id' => 5, 'is_active' => 1, 'deleted_at' => now()]);
+        $this->resultat(20, 13);
+        $this->note($this->evaluation(self::CANONIQUE), 8);
+        $this->resultat(self::CANONIQUE, 17);
+        $hydraulique = (int) DB::table('esbtp_resultats')->where('matiere_id', 20)->value('id');
+
+        // La liste gardée par le serveur ne la contient pas : aucune fusion ne l'a produite.
+        $rapport = app(RetirerMoyennesEnCollision::class)->execute(self::CANONIQUE, [$hydraulique], []);
+
+        $this->assertSame(0, $rapport['retirees']);
+        $this->assertSame('hors_de_la_fusion', $rapport['refusees'][0]['raison']);
+        $this->assertSame(13.0, $this->moyenne(20));
+        $this->assertSame(17.0, $this->moyenne(self::CANONIQUE));
+    }
+
+    public function test_retirer_refuse_un_element_absorbe_qui_porte_encore_des_evaluations(): void
+    {
+        // Une fusion sans « Forcer » ne déplace pas les évaluations : il n'y a
+        // pas de moyennes reportées, donc rien à régler ici.
+        DB::table('esbtp_matieres')->where('id', self::ABSORBEE)->update(['deleted_at' => now()]);
+        $this->evaluation(self::ABSORBEE);
+        $this->resultat(self::ABSORBEE, 4);
+        $this->resultat(self::CANONIQUE, 16);
+        $id = (int) DB::table('esbtp_resultats')->where('matiere_id', self::ABSORBEE)->value('id');
+
+        $rapport = app(RetirerMoyennesEnCollision::class)->execute(self::CANONIQUE, [$id], [$id]);
+
+        $this->assertSame('element_encore_evalue', $rapport['refusees'][0]['raison']);
+        $this->assertSame(4.0, $this->moyenne(self::ABSORBEE));
     }
 
     public function test_une_collision_est_vue_meme_quand_la_periode_s_ecrit_autrement(): void
