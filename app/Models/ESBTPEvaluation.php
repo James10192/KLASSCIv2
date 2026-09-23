@@ -147,6 +147,21 @@ class ESBTPEvaluation extends Model implements Auditable
     }
 
     /**
+     * Le plus petit bareme que cette evaluation peut prendre sans qu'une note
+     * deja saisie le depasse — `null` tant qu'aucune note n'est saisie.
+     *
+     * La saisie refuse une note au-dessus du bareme ; sans ce plancher, baisser
+     * le bareme ensuite contournait l'invariant, et le recalcul enregistrait
+     * une moyenne au-dessus de 20 (18 sur un bareme ramene a 10 : 36).
+     */
+    public function baremeMinimal(): ?float
+    {
+        $max = $this->notes()->where('is_absent', false)->max('note');
+
+        return $max === null ? null : (float) $max;
+    }
+
+    /**
      * Relation avec l'utilisateur qui a créé l'évaluation.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
