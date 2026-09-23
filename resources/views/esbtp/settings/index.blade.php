@@ -2083,6 +2083,8 @@
                                 Activé : la matière vaut 0/20 et pèse dans la moyenne générale.
                                 Désactivé : elle n'a pas de moyenne (« — ») et sort du calcul, comme une matière jamais notée.
                                 Une absence au milieu d'autres notes ne compte jamais.
+                                Changer ce réglage vaut pour les notes saisies ensuite : les moyennes déjà enregistrées à 0
+                                ne partent qu'au recalcul des moyennes de la classe (à demander au support KLASSCI), et les bulletins déjà générés qu'à leur régénération.
                             </div>
                         </div>
                         <div class="bc-toggle">

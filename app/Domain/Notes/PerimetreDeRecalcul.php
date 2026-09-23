@@ -360,12 +360,18 @@ final class PerimetreDeRecalcul
             return ['statut' => self::RIEN_A_ECRIRE, 'avant' => null, 'laissee' => null];
         }
 
-        // Des notes, aucune comptable (absences seulement), et l'etablissement
-        // a choisi de les ecarter : la decision est prise, ce n'est plus a un
-        // humain de trancher. Le job retire la ligne. Sans ceci, desactiver le
-        // reglage ne valait que pour les saisies suivantes : les zeros deja
-        // enregistres l'emportaient toujours sur les notes.
-        if ($notes['lignes'] > 0 && app(NoteCalculationService::class)->moyenneSansNoteComptable() === null) {
+        // Des notes, aucune comptable (absences seulement), une ligne a ZERO, et
+        // l'etablissement a choisi d'ecarter ces matieres : ce zero est celui
+        // que le recalcul avait ecrit, le reglage dit maintenant qu'il n'a plus
+        // lieu d'etre. Le job retire la ligne. Sans ceci, desactiver le reglage
+        // ne valait que pour les saisies suivantes.
+        //
+        // UNIQUEMENT un zero. Une autre valeur (un 11 saisi dans « Modifier les
+        // moyennes » apres un oral de rattrapage) reste LAISSEE a un humain,
+        // comme avant : un rattrapage ne decide pas a la place de l'ecole.
+        if ($notes['lignes'] > 0
+            && $avant !== null && abs($avant) < 0.005
+            && app(NoteCalculationService::class)->moyenneSansNoteComptable() === null) {
             return ['statut' => self::RECALCULE, 'avant' => $avant, 'laissee' => null];
         }
 

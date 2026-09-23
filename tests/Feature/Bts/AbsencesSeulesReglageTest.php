@@ -13,6 +13,7 @@ use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Models\User;
+use App\Observers\ESBTPNoteObserver;
 use App\Services\BulletinService;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\NoteCalculationService;
@@ -20,6 +21,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\Feature\Bts\Concerns\MonteUneClasseBts;
+use Tests\Feature\Bts\Concerns\SeedsConfiguredBulletin;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -38,6 +41,7 @@ class AbsencesSeulesReglageTest extends TestCase
 {
     use RefreshDatabase;
     use MonteUneClasseBts;
+    use SeedsConfiguredBulletin;
 
     private ESBTPMatiere $coefDeux;
 
@@ -96,6 +100,20 @@ class AbsencesSeulesReglageTest extends TestCase
         SettingsHelper::setOrCreate(NoteCalculationService::REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO, '0', 'bulletin');
     }
 
+    /** La moyenne figee par la generation officielle du bulletin du semestre. */
+    private function moyenneOfficielle(): float
+    {
+        $bulletin = $this->seedConfiguredBulletin(
+            $this->etudiant->id, $this->classe->id, $this->annee->id, 'semestre1', [$this->coefDeux->id, $this->coefUn->id], []
+        );
+
+        app(BulletinService::class)->genererDonneesBulletin(
+            $this->etudiant->id, $this->classe->id, $this->annee->id, 'semestre1'
+        );
+
+        return (float) DB::table('esbtp_bulletins')->where('id', $bulletin->id)->value('moyenne_generale');
+    }
+
     /** @return array{fiche: ?float, repli: ?float, courant: ?float} */
     private function lesTroisCalculs(): array
     {
@@ -148,9 +166,7 @@ class AbsencesSeulesReglageTest extends TestCase
             $this->assertEqualsWithDelta(9.33, (float) $moyenne, 0.01, "{$calcul} : par defaut, absences seules = 0.");
         }
 
-        $this->assertSame(0.0, app(BulletinService::class)->computeMoyenneFromNotesData([
-            ['note' => 0, 'coefficient' => 1, 'bareme' => 20, 'is_absent' => true],
-        ]), 'Generation officielle : absences seules = 0 par defaut.');
+        $this->assertEqualsWithDelta(9.33, $this->moyenneOfficielle(), 0.01, 'Generation officielle : absences seules = 0 par defaut.');
     }
 
     public function test_reglage_desactive_une_matiere_d_absences_seules_sort_du_calcul(): void
@@ -165,9 +181,7 @@ class AbsencesSeulesReglageTest extends TestCase
             $this->assertEqualsWithDelta(14.0, (float) $moyenne, 0.01, "{$calcul} : reglage desactive, absences seules ecartees.");
         }
 
-        $this->assertNull(app(BulletinService::class)->computeMoyenneFromNotesData([
-            ['note' => 0, 'coefficient' => 1, 'bareme' => 20, 'is_absent' => true],
-        ]), 'Generation officielle : pas de moyenne, donc pas de ligne notee.');
+        $this->assertEqualsWithDelta(14.0, $this->moyenneOfficielle(), 0.01, 'Generation officielle : la matiere sans moyenne sort du calcul.');
     }
 
     /**
@@ -237,5 +251,70 @@ class AbsencesSeulesReglageTest extends TestCase
         $this->assertSame(PerimetreDeRecalcul::RECALCULE, $resultat['statut']);
         $this->assertNull($resultat['apres'], 'Plus de moyenne apres le rattrapage.');
         $this->assertNull($ligne(), 'Le zero enregistre est retire.');
+    }
+    /**
+     * Le rattrapage ne retire QUE les zeros. Une moyenne posee a la main (un
+     * oral de rattrapage, par exemple) sur une matiere d'absences reste la,
+     * laissee a un humain.
+     */
+    public function test_le_rattrapage_laisse_une_moyenne_posee_a_la_main(): void
+    {
+        $this->monterLeDecor();
+        $this->absent($this->evaluationDe($this->coefUn));
+        ESBTPResultat::where('etudiant_id', $this->etudiant->id)
+            ->where('matiere_id', $this->coefUn->id)
+            ->update(['moyenne' => 11]);
+
+        $this->exclureLesAbsencesSeules();
+        $resultat = PerimetreDeRecalcul::recalculerUnCouple([
+            'etudiant_id' => $this->etudiant->id,
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $this->coefUn->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1',
+        ], 'manual');
+
+        $this->assertSame(PerimetreDeRecalcul::LAISSEE, $resultat['statut']);
+        $this->assertEqualsWithDelta(11.0, (float) ESBTPResultat::where('etudiant_id', $this->etudiant->id)
+            ->where('matiere_id', $this->coefUn->id)->value('moyenne'), 0.01, 'La moyenne posee a la main reste.');
+    }
+    /**
+     * Le tableau de `/esbtp/resultats` (`calculateStudentStatsFixed()`),
+     * jumeau declare de la fiche. Il moyenne les matieres A EGALITE (voulu,
+     * verrouille par `EcueLmdHorsDuBulletinNoteTest`). L'observateur est coupe
+     * pour exercer le chemin des NOTES : sinon les lignes enregistrees par le
+     * recalcul automatique primeraient et masqueraient le defaut.
+     */
+    public function test_le_tableau_des_resultats_suit_les_deux_regles(): void
+    {
+        ESBTPNoteObserver::$muted = true;
+
+        try {
+            $this->monterLeDecor();
+            // Anglais : 14 et une absence. Marketing : absences seulement.
+            $this->absent($this->evaluationDe($this->coefDeux));
+            $this->absent($this->evaluationDe($this->coefUn));
+        } finally {
+            ESBTPNoteObserver::$muted = false;
+        }
+
+        $tableau = function (): ?float {
+            $moyennes = [];
+            $rangs = [];
+            app(BulletinService::class)->calculateStudentStatsFixed(
+                ESBTPEtudiant::whereKey($this->etudiant->id)->get(),
+                ESBTPNote::with('evaluation.matiere')->where('etudiant_id', $this->etudiant->id)->get(),
+                $moyennes, $rangs, $this->classe->id, $this->annee->id, 'semestre1'
+            );
+
+            return $moyennes[$this->etudiant->id] ?? null;
+        };
+
+        // Defaut : Anglais 14 (l'absence ne compte pas), Marketing 0 -> 7,00.
+        // Avec l'absence comptee : Anglais 7, donc 3,50.
+        $this->assertEqualsWithDelta(7.0, (float) $tableau(), 0.01, 'Par defaut : (14 + 0) / 2.');
+
+        $this->exclureLesAbsencesSeules();
+        $this->assertEqualsWithDelta(14.0, (float) $tableau(), 0.01, 'Reglage desactive : Marketing sort du calcul.');
     }
 }

@@ -450,7 +450,8 @@ class BulletinService
         // BUG FIX : on normalise CHAQUE note par son barème avant pondération.
         // Avant : note brute (15/30 + 10/20)/2 = 12.5 au lieu de (10 + 10)/2 = 10.
         foreach ($resultatsParMatiere as $matiereId => $resultat) {
-            $resultat->moyenne = $this->computeMoyenneFromNotesData($resultat->notes);
+            $resultat->moyenne = $this->computeMoyenneFromNotesData($resultat->notes)
+                ?? app(NoteCalculationService::class)->moyenneSansNoteComptable();
             $resultat->appreciation = $this->getAppreciation($resultat->moyenne);
         }
 
@@ -1494,9 +1495,10 @@ class BulletinService
      *
      * Pure function : aucun accès DB, aucun side-effect → testable unitairement.
      *
-     * Aucune note comptable (absences seulement) : la valeur que l'etablissement
-     * a choisie, 0 par defaut ou `null` (voir
-     * `NoteCalculationService::moyenneSansNoteComptable()`).
+     * `null` quand AUCUNE note n'est comptable (tableau vide, absences seulement,
+     * barèmes nuls). La valeur à donner alors à la matière est un réglage
+     * d'établissement : l'appelant la demande à
+     * `NoteCalculationService::moyenneSansNoteComptable()`, pas cette fonction.
      *
      * @param array<int, array{note: float|int|string, coefficient: float|int, bareme?: float|int|null, is_absent?: bool}> $notes
      */
@@ -1524,7 +1526,7 @@ class BulletinService
         }
 
         if ($totalCoeffs <= 0) {
-            return app(NoteCalculationService::class)->moyenneSansNoteComptable();
+            return null;
         }
 
         return round($totalPoints / $totalCoeffs, 2);
@@ -3793,6 +3795,15 @@ class BulletinService
                 ];
             }
 
+            // Une absence ne compte pas dans la moyenne de la matiere, comme a la
+            // fiche Resultats et a la generation officielle ; elle tranche
+            // seulement le cas « absences seulement » plus bas.
+            if ($note->is_absent) {
+                $notesByStudentMatiere[$etudiantId][$matiere_id]['absences'] = ($notesByStudentMatiere[$etudiantId][$matiere_id]['absences'] ?? 0) + 1;
+
+                continue;
+            }
+
             // Calculate weighted note using EXACT same logic as resultatEtudiant
             if ($note->evaluation->bareme > 0) {
                 $noteValue = is_numeric($note->note) ? floatval($note->note) : (is_numeric($note->valeur) ? floatval($note->valeur) : 0);
@@ -3891,6 +3902,12 @@ class BulletinService
                     $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
                     // For overall average, treat each matière equally (same as resultatEtudiant)
                     $moyenneGenerale += $matiereData['moyenne'];
+                    $countValidMatieres++;
+                } elseif (($matiereData['absences'] ?? 0) > 0
+                    && ($sansNote = app(NoteCalculationService::class)->moyenneSansNoteComptable()) !== null) {
+                    // Absences seulement : 0 par defaut, ecartee si l'etablissement le choisit.
+                    $matiereData['moyenne'] = $sansNote;
+                    $moyenneGenerale += $sansNote;
                     $countValidMatieres++;
                 }
             }

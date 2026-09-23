@@ -8,6 +8,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Models\ESBTPClasse;
 use App\Services\BulletinService;
+use App\Services\NoteCalculationService;
 
 class BtsCurrentResultSnapshotService
 {
@@ -158,7 +159,8 @@ class BtsCurrentResultSnapshotService
         }
 
         foreach ($subjects as $matiereId => $subject) {
-            // `null` : absences seulement, et l'etablissement les ecarte.
+            // Rien de comptable (absences seulement) : la valeur du reglage,
+            // 0 par defaut, `null` si l'etablissement les ecarte.
             $moyenne = $this->bulletinService->computeMoyenneFromNotesData(array_map(
                 fn (array $evaluation) => [
                     'note' => $evaluation['note'],
@@ -167,7 +169,7 @@ class BtsCurrentResultSnapshotService
                     'is_absent' => $evaluation['is_absent'],
                 ],
                 $subject['evaluations']
-            ));
+            )) ?? app(NoteCalculationService::class)->moyenneSansNoteComptable();
             $subjects[$matiereId]['moyenne'] = $moyenne === null ? null : round($moyenne, 2);
         }
 

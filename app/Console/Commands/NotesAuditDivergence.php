@@ -108,7 +108,8 @@ class NotesAuditDivergence extends Command
                     ];
                 })->all();
 
-                $recalculee = $bulletinService->computeMoyenneFromNotesData($notesData);
+                $recalculee = $bulletinService->computeMoyenneFromNotesData($notesData)
+                    ?? app(\App\Services\NoteCalculationService::class)->moyenneSansNoteComptable();
                 $persistee = (float) $resultat->moyenne;
                 // `null` : absences seulement, et l'etablissement les ecarte. La
                 // ligne enregistree n'a alors plus de moyenne a porter : c'est
