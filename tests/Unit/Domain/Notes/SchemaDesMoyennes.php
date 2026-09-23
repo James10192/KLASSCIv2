@@ -5,11 +5,10 @@ namespace Tests\Unit\Domain\Notes;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use OwenIt\Auditing\Models\Audit;
 
 /**
- * Les tables que lisent et écrivent le recalcul des moyennes, sur une base
- * SQLite en mémoire.
+ * Les tables que lisent et écrivent le recalcul des moyennes et la fusion
+ * d'ECUE, sur une base SQLite en mémoire.
  *
  * Écrit à la main parce que la chaîne de migrations ne passe pas sous SQLite.
  * Chaque colonne que le code FILTRE y figure, pas seulement celles qu'il lit :
@@ -21,11 +20,6 @@ trait SchemaDesMoyennes
     protected function monterLeSchemaDesMoyennes(): void
     {
         config()->set('audit.enabled', false);
-        // L'observateur d'audit s'accroche au premier démarrage du modèle, et
-        // ce démarrage survit d'un test à l'autre : le réglage ci-dessus arrive
-        // trop tard pour un modèle déjà démarré. Seul l'interrupteur global
-        // tient à coup sûr (il n'y a pas de table `audits` ici).
-        Audit::$auditingGloballyDisabled = true;
         config()->set('queue.default', 'sync');
         config()->set('database.default', 'sqlite');
         config()->set('database.connections.sqlite', [
@@ -42,7 +36,6 @@ trait SchemaDesMoyennes
 
     protected function demonterLeSchemaDesMoyennes(): void
     {
-        Audit::$auditingGloballyDisabled = false;
         DB::disconnect('sqlite');
     }
 
@@ -75,16 +68,6 @@ trait SchemaDesMoyennes
                 $t->timestamps();
             });
         }
-        // Lu par le garde de période d'`ESBTPEvaluation` à chaque changement
-        // de semestre, et par la réparation `evaluations-periode`.
-        Schema::create('esbtp_classe_orientation_targets', function (Blueprint $t) {
-            $t->id();
-            $t->unsignedBigInteger('source_classe_id')->nullable();
-            $t->unsignedBigInteger('target_classe_id');
-            $t->unsignedTinyInteger('semestre_activation')->default(1);
-            $t->boolean('is_active')->default(true);
-            $t->timestamps();
-        });
         // Source de l'année d'une évaluation qui n'en a pas
         // (`esbtp:check-evaluations-annees`) : une classe n'en porte aucune.
         Schema::create('esbtp_inscriptions', function (Blueprint $t) {
@@ -108,6 +91,13 @@ trait SchemaDesMoyennes
         Schema::create('esbtp_evaluations', function (Blueprint $t) {
             $t->id();
             $t->string('titre');
+            $t->unsignedBigInteger('matiere_id')->nullable();
+            $t->unsignedBigInteger('classe_id')->nullable();
+            $t->unsignedBigInteger('annee_universitaire_id')->nullable();
+            $t->string('periode')->nullable();
+            $t->string('status')->default('draft');
+            $t->decimal('bareme', 5, 2)->default(20);
+            $t->decimal('coefficient', 5, 2)->default(1);
             // Écrites par l'écran d'édition (`ESBTPEvaluationController::update()`).
             $t->text('description')->nullable();
             $t->string('type')->nullable();
@@ -118,13 +108,6 @@ trait SchemaDesMoyennes
             $t->unsignedBigInteger('updated_by')->nullable();
             // Remis à nul par la synchronisation du devoir d'une séance.
             $t->unsignedBigInteger('enseignant_id')->nullable();
-            $t->unsignedBigInteger('matiere_id')->nullable();
-            $t->unsignedBigInteger('classe_id')->nullable();
-            $t->unsignedBigInteger('annee_universitaire_id')->nullable();
-            $t->string('periode')->nullable();
-            $t->string('status')->default('draft');
-            $t->decimal('bareme', 5, 2)->default(20);
-            $t->decimal('coefficient', 5, 2)->default(1);
             $t->softDeletes();
             $t->timestamps();
         });
@@ -169,7 +152,9 @@ trait SchemaDesMoyennes
             $t->unsignedBigInteger('annee_universitaire_id');
             $t->decimal('moyenne_avant', 5, 2)->nullable();
             $t->decimal('moyenne_apres', 5, 2);
-            // `string(30)` depuis `elargir_source_du_journal_de_recalcul`.
+            // `string(30)` depuis `elargir_source_du_journal_de_recalcul` : les
+            // sources `deplacement`, `ponderation` et `statut` n'entrent pas
+            // dans l'ancien ENUM.
             $t->string('source', 30);
             $t->unsignedBigInteger('triggered_by')->nullable();
             $t->timestamp('recomputed_at')->nullable();
@@ -181,6 +166,11 @@ trait SchemaDesMoyennes
             $t->unsignedBigInteger('classe_id');
             $t->unsignedBigInteger('annee_universitaire_id');
             $t->string('periode');
+            // Le certificat de scolarité filtre sur `moyenne_generale > 0` avant
+            // de retomber sur `esbtp_resultats` : sans la colonne, ce filtre
+            // rendrait `false` en silence et le test passerait pour rien.
+            $t->decimal('moyenne_generale', 5, 2)->nullable();
+            $t->decimal('note_assiduite', 5, 2)->nullable();
             $t->timestamp('archived_at')->nullable();
             $t->softDeletes();
             $t->timestamps();
@@ -201,6 +191,80 @@ trait SchemaDesMoyennes
             $t->id();
             $t->unsignedBigInteger('filiere_id');
             $t->unsignedBigInteger('matiere_id');
+        });
+        // Les modèles s'amorcent avec l'application — avant que ce trait ne
+        // coupe `audit.enabled` — et `bootAuditable()` ne relit plus ce réglage
+        // ensuite : un `save()` écrit donc bien son audit, comme en production.
+        Schema::create('audits', function (Blueprint $t) {
+            $t->id();
+            $t->nullableMorphs('user');
+            $t->string('event');
+            $t->morphs('auditable');
+            $t->text('old_values')->nullable();
+            $t->text('new_values')->nullable();
+            $t->text('url')->nullable();
+            $t->string('ip_address', 45)->nullable();
+            $t->string('user_agent', 1023)->nullable();
+            $t->string('tags')->nullable();
+            $t->timestamps();
+        });
+        // Lue par `SettingsHelper::get()` ; vide, chaque réglage prend son défaut.
+        Schema::create('settings', function (Blueprint $t) {
+            $t->id();
+            $t->string('key');
+            $t->text('value')->nullable();
+            $t->string('type')->nullable();
+            $t->string('group')->nullable();
+            $t->boolean('is_active')->default(true);
+            $t->timestamps();
+        });
+        // Lue par `ESBTPNoteAcademicPilotageObserver` à chaque mutation d'une
+        // note ; vide, aucune fiche de saisie ne verrouille la note.
+        Schema::create('esbtp_grade_sheets', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('evaluation_id')->nullable();
+            $t->string('status', 32)->default('expected');
+            $t->softDeletes();
+            $t->timestamps();
+        });
+        // Ouvertures des classes de spécialité : lue par la garde de période
+        // d'`ESBTPEvaluation` et par la réparation CLI des périodes.
+        Schema::create('esbtp_classe_orientation_targets', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('source_classe_id')->nullable();
+            $t->unsignedBigInteger('target_classe_id');
+            $t->unsignedTinyInteger('semestre_activation')->default(2);
+            $t->boolean('is_active')->default(true);
+            $t->timestamps();
+        });
+        Schema::create('esbtp_etudiants', function (Blueprint $t) {
+            $t->id();
+            $t->string('nom')->nullable();
+            $t->string('prenoms')->nullable();
+            $t->string('matricule')->nullable();
+            $t->softDeletes();
+            $t->timestamps();
+        });
+        Schema::create('esbtp_lmd_bulletins', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('etudiant_id');
+            $t->unsignedBigInteger('classe_id');
+            $t->unsignedBigInteger('annee_universitaire_id');
+            $t->unsignedTinyInteger('semestre');
+            $t->softDeletes();
+            $t->timestamps();
+        });
+        Schema::create('esbtp_lmd_resultats_ecues', function (Blueprint $t) {
+            $t->id();
+            $t->unsignedBigInteger('bulletin_id');
+            $t->unsignedBigInteger('resultat_ue_id');
+            $t->unsignedBigInteger('matiere_id');
+            $t->unsignedBigInteger('etudiant_id');
+            $t->decimal('moyenne', 5, 2)->nullable();
+            $t->decimal('note_rattrapage', 5, 2)->nullable();
+            $t->softDeletes();
+            $t->timestamps();
+            $t->unique(['bulletin_id', 'matiere_id']);
         });
     }
 }

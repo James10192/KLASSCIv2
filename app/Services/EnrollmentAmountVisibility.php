@@ -2,25 +2,20 @@
 
 namespace App\Services;
 
+/**
+ * Relais vers la porte `finances.etudiants.voir` (AuthServiceProvider), pour
+ * les appelants qui raisonnent en « masquer les montants ».
+ *
+ * Ce service portait sa propre liste de permissions, differente de la porte,
+ * et y comptait `admin.access` — que detiennent aussi l'enseignant et le
+ * coordinateur. Deux listes divergeaient, et la plus large ouvrait les
+ * montants a des profils sans aucune permission financiere.
+ */
 class EnrollmentAmountVisibility
 {
     public function userCanSeeAmounts($user): bool
     {
-        if (! $user) {
-            return false;
-        }
-
-        if ($user->can('identity.enrollment_officer')
-            && ! $user->hasAnyPermission(['paiements.view', 'comptabilite.access', 'comptabilite.dashboard.view', 'admin.access'])) {
-            return false;
-        }
-
-        return $user->hasAnyPermission([
-            'paiements.view',
-            'comptabilite.access',
-            'comptabilite.dashboard.view',
-            'admin.access',
-        ]);
+        return (bool) $user?->can('finances.etudiants.voir');
     }
 
     public function hideAmounts($user): bool

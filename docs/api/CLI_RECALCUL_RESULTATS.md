@@ -52,7 +52,7 @@ doit appeler `RecalculApresDeplacement` lui-même.
 | `POST /api/cli/diagnostics/evaluations-periode/repair` | période, en masse | en lot, plafonné |
 | modification d'une séance de devoir (emploi du temps) | matière du devoir lié ; sa période quand la date change | à l'unité |
 | `esbtp:check-evaluations-annees` | année, depuis nulle — arrivée seule | à l'unité |
-| `MergeDuplicateEcue` (LMD, sous `force`) | matière, en masse | **aucun** |
+| `MergeDuplicateEcue` (LMD, sous `force`) | matière, en masse | **aucun, à dessein** — reporte les lignes de bulletin LMD |
 
 Trois écritures ne déplacent rien mais font **entrer ou sortir** des notes d'une
 moyenne, et recalculent elles aussi, par le même garde : **annuler** une
@@ -92,20 +92,39 @@ d'un seul `update()`) et `esbtp:sync-notes-periodes`. Elles ne sont pas branché
 à dessein : `sync-notes` tourne sans bornes sur l'école entière, et y ajouter un
 recalcul synchrone par note est exactement ce que le plafond cherche à éviter.
 
-Le cinquième, `app/Domain/LMD/Actions/MergeDuplicateEcue.php`, est atteignable
+`MergeDuplicateEcue` (`app/Domain/LMD/Actions/MergeDuplicateEcue.php`) est atteignable
 par `POST /esbtp/lmd/reconciliation/merge` avec `type=ecue&force=true`. Il
 reparente `esbtp_evaluations.matiere_id` **et** `esbtp_notes.matiere_id` vers
 l'ECUE canonique, puis met l'absorbée de côté — sans rien recalculer.
 
-**Il n'est volontairement pas corrigé ici**, et la raison n'est pas qu'il serait
-sans danger : c'est un autre domaine (la réconciliation LMD, dont les agrégats
-sont `esbtp_lmd_resultat_ecue`), il est gardé par un drapeau `force`, et sur une
-instance saine `ESBTPEvaluation::booted()` refuse déjà qu'une ECUE soit évaluée
-dans une classe BTS — donc il ne devrait pas croiser `esbtp_resultats`. « Ne
-devrait pas » n'est pas « ne peut pas » : sur une instance portant des lignes
-héritées (la « famille 2 » de `.claude/rules/lmd-ecue-leak-bts-picker.md`), il
-laisserait le même agrégat périmé. C'est un chantier à lui, pas une ligne à
-glisser dans celui-ci.
+**Il ne recalcule pas `esbtp_resultats`, à dessein.** La moyenne d'une ECUE se
+relit sur ses notes (`LMDBulletinService`, par `esbtp_notes.matiere_id`, que la
+fusion déplace), et aucun écran LMD ne lit `esbtp_resultats`. Le seul lecteur
+trouvé est le repli sans bulletin du certificat de scolarité, qui additionne
+toutes les lignes cohérentes d'un élève.
+
+Ce qu'il fait à la place (septembre 2026) : sous `force`, il **reporte** sur la
+canonique les lignes d'`esbtp_resultats` de l'absorbée, sans les recalculer.
+Laissées sur l'absorbée, elles compteraient les notes deux fois au certificat
+dès le premier recalcul de la canonique (une note saisie par un enseignant
+suffit). Une ligne en collision avec celle de la canonique sur la même
+coordonnée (période comparée sous ses deux écritures, « 1 » et « semestre1 »)
+reste en place, nommée dans `moyennes_enregistrees.conflits`. L'écran de
+réconciliation la règle sur demande (`POST
+/esbtp/lmd/reconciliation/moyennes-en-collision/retirer`,
+`RetirerMoyennesEnCollision`) : mise de côté tracée de la ligne de l'absorbée,
+puis recalcul de celle de la canonique depuis ses notes. Seules les lignes que
+la fusion a elle-même rendues en collision sont acceptées — leur liste est
+gardée en session par le serveur, deux heures, et vidée à mesure qu'elles sont
+réglées ; toute autre ligne est refusée (`hors_de_la_fusion`). Un recalcul en
+échec est rendu dans `echecs` et signalé à l'écran. L'écran « Modifier
+les moyennes » refuse les classes LMD : il ne sert pas ici. Il
+reporte aussi les lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`), dont la note de
+rattrapage ne se reconstruit depuis aucune note et serait sinon perdue à la
+régénération ; il laisse en place, et nomme dans `conflits`, une ligne en
+collision avec celle de la canonique sur le même bulletin ; et il rend la liste
+des bulletins LMD à régénérer, que l'écran de réconciliation affiche avec un
+lien vers chacun. Voir l'en-tête de `MergeDuplicateEcue`.
 
 `periode` est une coordonnée de la clé d'`esbtp_resultats` au même titre que
 `matiere_id` : un changement de semestre laisse exactement le même agrégat
@@ -191,6 +210,11 @@ Chaque ligne laissée porte `reste` :
 ⚠️ **Le garde ne vaut pas pour l'observateur de note, et c'est délibéré** : quand
 un enseignant marque une note absente, c'est son geste qui fixe la moyenne. Un
 rattrapage, lui, n'a touché à aucune note — il n'invente pas de zéro.
+
+Une exception, dans le job lui-même (septembre 2026) : quand la **dernière** note
+est supprimée, il ne reste rien, et le job n'écrit rien — ni 0/20, ni ligne
+nouvelle. La ligne, désormais sans aucune note (`reste = aucune_note`), est
+listée par le pré-contrôle de la génération des bulletins.
 
 ## `POST /api/cli/notes/recompute`
 
@@ -319,12 +343,17 @@ qu'on fige.
 
 ## Historique
 
-- **Septembre 2026 (bis)** — la modification d'une séance de devoir,
+- **Septembre 2026 (ter)** — la modification d'une séance de devoir,
   `esbtp:check-evaluations-annees`, et l'annulation / la réactivation d'une
   évaluation recalculent à leur tour. **Changement de comportement** de la
   commande : plus d'année courante posée par défaut, ni d'année lue sur la
   classe. **Ajout non cassant** : la réponse JSON des actions Annuler /
   Réactiver et de la route de statut porte `warning`.
+- **Septembre 2026 (bis)** — le cinquième chemin, `MergeDuplicateEcue`, est
+  tranché : pas de recalcul, à dessein ; report des moyennes enregistrées (sous
+  `force`) et des lignes de bulletin LMD, liste des bulletins à régénérer.
+  L'observateur n'écrit plus 0/20 quand la dernière note est supprimée. Aucun
+  changement de forme pour les endpoints décrits ici.
 - **Septembre 2026** — création. Déclenchée par un agrégat laissé périmé après un
   déplacement d'évaluation fait par `POST /api/cli/evaluations/{id}/matiere`, qui
   déplaçait bien les notes mais ne rafraîchissait rien. Une moyenne sans rien à

@@ -73,10 +73,11 @@ use Illuminate\Support\Facades\Log;
  *
  * Alors disons ce que le tableau compte : **les endroits qui changent les
  * coordonnees d'une EVALUATION**. Ils sont sept, `MergeDuplicateEcue` n'est pas
- * branche ici, et la liste est celle des sites **trouves a ce jour** — pas celle
- * des sites existants (`klassci-debugging-discipline.md`, piege #14). Les deux
- * derniers de la liste ont ete trouves APRES que ce docbloc a dit « cinq » :
- * le devoir d'une seance, et l'annee donnee a une evaluation qui n'en avait pas.
+ * branche ici (a dessein, voir plus bas), et la liste est celle des sites
+ * **trouves a ce jour** — pas celle des sites existants
+ * (`klassci-debugging-discipline.md`, piege #14). Les deux derniers branches
+ * ont ete trouves APRES que ce docbloc a dit « cinq » : le devoir d'une seance,
+ * et l'annee donnee a une evaluation qui n'en avait pas.
  *
  * | deplaceur | ce qu'il change | branche sur cette classe |
  * |---|---|---|
@@ -86,7 +87,7 @@ use Illuminate\Support\Facades\Log;
  * | `CLIEvaluationPeriodeController::repair()` | periode, en lot | oui |
  * | `AlignementDuDevoir` (seance de devoir modifiee) | matiere ; periode quand la date change | oui |
  * | `CheckEvaluationsAnnees` (`esbtp:check-evaluations-annees`) | annee, depuis nulle : arrivee seule | oui |
- * | `MergeDuplicateEcue` (sous `force`) | matiere, en masse | **non** |
+ * | `MergeDuplicateEcue` (sous `force`) | matiere, en masse | **non, a dessein** |
  *
  * Et trois ecritures qui ne DEPLACENT rien mais font entrer ou sortir des
  * notes d'une moyenne — l'annulation les retire, la reactivation les remet :
@@ -104,15 +105,14 @@ use Illuminate\Support\Facades\Log;
  *
  * `MergeDuplicateEcue` (`app/Domain/LMD/Actions/MergeDuplicateEcue.php`) reparente
  * `esbtp_evaluations.matiere_id` ET `esbtp_notes.matiere_id` vers l'ECUE
- * canonique, puis met l'absorbee de cote (soft-delete). Il ne recalcule rien.
- * Il n'est pas corrige dans ce lot a dessein : c'est un autre domaine (la
- * reconciliation LMD, dont les agregats sont `esbtp_lmd_resultat_ecue`), il est
- * garde par un drapeau `force`, et sur une instance saine
- * `ESBTPEvaluation::booted()` refuse deja qu'une ECUE soit evaluee dans une
- * classe BTS — donc il ne devrait pas croiser `esbtp_resultats`. « Ne devrait
- * pas » n'est pas « ne peut pas » : sur une instance portant des lignes
- * heritees, il laisserait le meme agregat perime. C'est un chantier a lui, pas
- * une ligne a glisser ici.
+ * canonique, puis met l'absorbee de cote (soft-delete). Il ne recalcule pas
+ * `esbtp_resultats`, **a dessein** — son en-tete dit pourquoi : la moyenne
+ * d'une ECUE se relit sur les notes. Il REPORTE a la place les lignes
+ * d'`esbtp_resultats` de l'absorbee sur la canonique (une seule ligne par
+ * coordonnee, que le prochain recalcul reecrit en entier ; collision nommee),
+ * et les lignes de bulletin LMD (`esbtp_lmd_resultats_ecues`), dont la note de
+ * rattrapage ne se reconstruit depuis aucune note, puis nomme les bulletins a
+ * regenerer.
  *
  * ## Les VOISINS : ils ecrivent les memes colonnes sans deplacer d'evaluation
  *

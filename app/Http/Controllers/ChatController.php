@@ -77,7 +77,7 @@ class ChatController extends Controller
                 'sender_name' => $m->sender?->name ?? 'Système',
                 'type' => $m->type,
                 'body' => $m->body,
-                'payload' => $m->payload,
+                'payload' => $m->type === 'action_card' ? $this->resolver->payloadPourLecteur($m->payload, $viewer) : $m->payload,
                 'cta' => $m->type === 'action_card' ? $this->resolver->resolveCta($m, $viewer, $maps) : null,
                 'created_at' => $m->created_at->toIso8601String(),
                 'mine' => $m->sender_id === $viewer->id,

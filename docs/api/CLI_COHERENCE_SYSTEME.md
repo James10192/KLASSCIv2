@@ -161,8 +161,8 @@ nécessaire.
   évaluation recalculent les agrégats des deux côtés. Ils déplaçaient les notes
   sans rien rafraîchir, et l'agrégat périmé gagne sur les notes : le déplacement
   avait l'air fait et ne l'était qu'à moitié. Le cinquième, `MergeDuplicateEcue`
-  sous `force`, reste à traiter. La rebascule de matière vit désormais dans
-  `CLIEvaluationMatiereController` ; la route et son nom sont inchangés.
+  sous `force`, ne recalcule pas, à dessein : voir son en-tête. La rebascule de
+  matière vit désormais dans `CLIEvaluationMatiereController` ; la route et son nom sont inchangés.
 - **Septembre 2026** — la réponse porte un second bloc `moyennes_manuelles` et un
   `total_toutes_familles`. La version antérieure ne relevait que les évaluations
   et a été prise pour l'inventaire complet. Un garde de cohérence est posé sur

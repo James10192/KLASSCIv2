@@ -10,9 +10,15 @@ use Illuminate\Validation\Rule;
 
 class QuickStoreEnseignantRequest extends FormRequest
 {
+    /**
+     * La creation rapide cree un compte enseignant, comme la creation classique.
+     * Sa route ne demande qu'une identite et le module Enseignants : sans cette
+     * verification, un directeur des etudes ou un responsable scolarite creait
+     * des comptes sans « Creer un enseignant ».
+     */
     public function authorize(): bool
     {
-        return true;
+        return (bool) $this->user()?->can('teachers.create');
     }
 
     public function rules(): array
@@ -37,6 +43,18 @@ class QuickStoreEnseignantRequest extends FormRequest
             'planification_id' => 'nullable|exists:esbtp_planifications_academiques,id',
             'availability' => 'nullable|array',
         ];
+    }
+
+    /**
+     * Le refus arrive en AJAX : le texte par défaut de Laravel est en anglais,
+     * et l'écran l'afficherait tel quel.
+     */
+    protected function failedAuthorization()
+    {
+        throw new HttpResponseException(response()->json([
+            'success' => false,
+            'message' => "Vous n'avez pas le droit « Créer un enseignant ». Demandez-le à l'administrateur de l'établissement.",
+        ], 403));
     }
 
     /**

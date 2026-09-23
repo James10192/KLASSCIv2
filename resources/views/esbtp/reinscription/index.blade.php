@@ -838,6 +838,7 @@
                             @endforeach
                         </select>
                     </div>
+                    @can('finances.etudiants.voir')
                     <div class="re-filter-group">
                         <label for="statut_paiement">Paiement</label>
                         <select name="statut_paiement" id="statut_paiement">
@@ -846,6 +847,7 @@
                             <option value="impaye" {{ request('statut_paiement') == 'impaye' ? 'selected' : '' }}>Impayé</option>
                         </select>
                     </div>
+                    @endcan
                 </div>
 
                 {{-- Actions filtres --}}
