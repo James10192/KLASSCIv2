@@ -29,8 +29,11 @@ class JoindrePieceRequest extends FormRequest
             'fichier.required' => 'Choisissez un fichier.',
             'fichier.mimes' => 'Seules les images (PNG, JPEG, WebP) et les PDF sont acceptés.',
             'fichier.max' => $trop = 'Le fichier dépasse '.self::enMo(app(ClientMasterSupport::class)->limites()['piece_octets_max']).' Mo.',
-            // PHP l'a refuse avant Laravel (upload_max_filesize) : c'est la meme cause.
-            'fichier.uploaded' => $trop,
+            // PHP a refuse l'envoi avant Laravel : trop gros (limite PHP ou du
+            // formulaire), ou envoi interrompu, qui n'a rien a voir avec la taille.
+            'fichier.uploaded' => in_array($this->file('fichier')?->getError(), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)
+                ? $trop
+                : "L'envoi du fichier a été interrompu. Réessayez.",
         ];
     }
 

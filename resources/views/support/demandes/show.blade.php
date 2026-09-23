@@ -31,6 +31,7 @@
     .sd-reponse textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: .7rem .85rem; font-size: .9rem; color: #1e293b; resize: vertical; }
     .sd-reponse textarea:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
     .sd-erreur { margin-top: .5rem; font-size: .82rem; color: #b91c1c; }
+    .sd-alerte { border-left: 3px solid #b91c1c; color: #b91c1c; font-size: .88rem; }
     .sd-reponse-actions { display: flex; justify-content: flex-end; margin-top: .6rem; }
     .sd-reponse-close { margin: 0 0 .6rem; font-size: .88rem; color: #64748b; }
     .sd-envoyer { background: #0453cb; color: #fff; border: none; border-radius: 10px; padding: .55rem 1.1rem; font-size: .84rem; font-weight: 600; cursor: pointer; }
@@ -54,6 +55,10 @@
 
 @section('content')
 <a href="{{ route('support.demandes.index', request('portee') === 'ecole' ? ['portee' => 'ecole'] : []) }}" class="sd-retour"><i class="fas fa-arrow-left me-1"></i> Toutes mes demandes</a>
+
+@if(session('erreur_piece'))
+    <div class="sd-card sd-alerte mt-3" role="alert">{{ session('erreur_piece') }}</div>
+@endif
 
 @if($indisponible)
     <div class="sd-card mt-3">
@@ -144,6 +149,18 @@
         var joindre = document.getElementById('sd-joindre');
         if (joindre && d.peut_joindre === false) { joindre.remove(); }
     }
+    /* Plus rien a envoyer d'ici, mais le texte reste : l'utilisateur peut le copier. */
+    function fermer(message) {
+        if (!form.contains(bouton)) { return; }
+        var avis = document.createElement('p');
+        avis.className = 'sd-reponse-close';
+        avis.textContent = message;
+        form.insertBefore(avis, form.firstChild);
+        champ.readOnly = true;
+        bouton.remove();
+    }
+    /* L'envoi d'une piece peut apprendre, le premier, que la demande est fermee. */
+    document.addEventListener('sd:demande-fermee', function (ev) { fermer(ev.detail); });
     function occupe(oui) {
         bouton.disabled = oui;
         bouton.querySelector('[data-sd-libelle]').hidden = oui;
@@ -183,16 +200,7 @@
             var d = e.donnees || {};
             if (d.statut) { document.getElementById('sd-statut').innerHTML = d.statut; }
             retirerJoindre(d);
-            if (d.peut_repondre === false) {
-                /* Plus rien a envoyer d'ici, mais le texte reste : l'utilisateur peut le copier. */
-                var avis = document.createElement('p');
-                avis.className = 'sd-reponse-close';
-                avis.textContent = e.message;
-                form.insertBefore(avis, form.firstChild);
-                champ.readOnly = true;
-                bouton.remove();
-                return;
-            }
+            if (d.peut_repondre === false) { fermer(e.message); return; }
             montrer(e.message);
             champ.focus();
         }).finally(function () { if (form.contains(bouton)) { occupe(false); } });
@@ -253,6 +261,9 @@
                 if (d.peut_joindre === false) { form.remove(); }
             });
         }).catch(function (e) {
+            if ((e.donnees || {}).peut_repondre === false) {
+                document.dispatchEvent(new CustomEvent('sd:demande-fermee', { detail: e.message }));
+            }
             if ((e.donnees || {}).peut_joindre === false) {
                 var avis = document.createElement('p');
                 avis.className = 'sd-reponse-close';

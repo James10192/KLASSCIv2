@@ -3,6 +3,7 @@
 namespace App\Services\Care;
 
 use App\Domain\Support\Exceptions\DebitLimiteAtteint;
+use App\Domain\Support\Exceptions\MasterEnErreur;
 use App\Domain\Support\Exceptions\IdentifiantInstanceRefuse;
 use App\Domain\Support\Exceptions\PorteeAbsente;
 use App\Domain\Support\Exceptions\MasterSupportIndisponible;
@@ -235,25 +236,26 @@ class ClientMasterSupport
 
     private function requete(string $methode, string $chemin, array $donnees = [], array $entetes = [], ?string $requestId = null): array
     {
+        // Seul un appel ordinaire, court, ouvre le coupe-circuit, qu'il n'ait pas
+        // pu joindre le Master ou que le Master ait repondu en erreur. Un
+        // transfert de fichier qui echoue dit quelque chose de CE fichier, pas du
+        // Master : il echoue seul, sans fermer le support a toute l'ecole.
         try {
-            $reponse = $this->appeler(
+            return $this->interpreter($this->appeler(
                 fn (PendingRequest $client, string $url) => $client->send($methode, $url, $methode === 'GET' ? ['query' => $donnees] : ['json' => $donnees]),
                 $chemin,
                 $entetes,
                 $requestId,
-            );
+            ));
+        } catch (MasterEnErreur $e) {
+            $this->couper('http_'.$e->getCode());
+            throw $e;
         } catch (MasterSupportIndisponible $e) {
-            // Seul un appel ordinaire, court, qui n'a pas pu joindre le Master
-            // ouvre le coupe-circuit. Un transfert de fichier qui depasse son
-            // delai dit quelque chose de CE fichier, pas du Master : il echoue
-            // seul, sans fermer le support a toute l'ecole.
             if ($e->getPrevious() instanceof ConnectionException || $e->getPrevious() instanceof TransferException) {
                 $this->couper('transport', $e->getPrevious()->getMessage());
             }
             throw $e;
         }
-
-        return $this->interpreter($reponse);
     }
 
     /**
@@ -293,8 +295,7 @@ class ClientMasterSupport
         }
 
         if ($reponse->serverError()) {
-            $this->couper('http_'.$reponse->status());
-            throw new MasterSupportIndisponible("Le Master a répondu {$reponse->status()}.");
+            throw new MasterEnErreur("Le Master a répondu {$reponse->status()}.", $reponse->status());
         }
 
         // Une portee manquante n'est pas un identifiant revoque : l'instance

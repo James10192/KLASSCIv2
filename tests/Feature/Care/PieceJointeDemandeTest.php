@@ -202,4 +202,31 @@ class PieceJointeDemandeTest extends TestCase
 
         $this->actingAs($user)->get(route('support.demandes.show', 'KC-2026-000042'))->assertDontSee('id="sd-joindre"', false);
     }
+
+    /** @test */
+    public function une_piece_illisible_ramene_a_la_demande_avec_le_message(): void
+    {
+        $user = $this->utilisateur();
+        $this->master(['master.test/api/v1/support/tickets/*' => Http::response([], 503)]);
+        $this->actingAs($user)->get(route('support.demandes.pieces.show', ['KC-2026-000042', 7]))
+            ->assertRedirect(route('support.demandes.show', 'KC-2026-000042'))
+            ->assertSessionHas('erreur_piece', fn ($m) => str_contains($m, 'injoignable'));
+
+        Cache::flush();
+        Http::swap(new \Illuminate\Http\Client\Factory());
+        $this->master(['master.test/api/v1/support/tickets/*' => Http::response($this->detail($user->id))]);
+        $this->actingAs($user)->withSession(['erreur_piece' => 'Cette pièce n\'a pas pu être lue.'])
+            ->get(route('support.demandes.show', 'KC-2026-000042'))
+            ->assertSee('Cette pièce n&#039;a pas pu être lue.', false);
+    }
+
+    /** @test */
+    public function un_envoi_interrompu_n_est_pas_annonce_comme_trop_gros(): void
+    {
+        $this->master([]);
+        $fichier = new UploadedFile(UploadedFile::fake()->image('ecran.png')->getPathname(), 'ecran.png', 'image/png', UPLOAD_ERR_PARTIAL, true);
+
+        $this->joindre($this->utilisateur(), $fichier)->assertStatus(422)
+            ->assertJsonPath('errors.fichier.0', "L'envoi du fichier a été interrompu. Réessayez.");
+    }
 }

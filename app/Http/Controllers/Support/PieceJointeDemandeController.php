@@ -81,10 +81,11 @@ class PieceJointeDemandeController extends Controller
         try {
             $contenu = $this->master->piece($reference, $request->user()->getKey(), $this->portee($request, defaut: 'school'), $piece);
         } catch (MasterSupportIndisponible) {
-            abort(503, 'Le support est momentanément injoignable. Réessayez dans un instant.');
+            return $this->retourALaDemande($reference, 'Le support est momentanément injoignable. Réessayez d\'ouvrir la pièce dans un instant.');
         } catch (MasterSupportRefus $e) {
             Log::error('KLASSCI Care : lecture de pièce refusée par le Master', ['statut' => $e->statut, 'code' => $e->codeErreur]);
-            abort(502, "Cette pièce n'a pas pu être lue. Écrivez-nous à ".config('app.support_email').'.');
+
+            return $this->retourALaDemande($reference, "Cette pièce n'a pas pu être lue. Écrivez-nous à ".config('app.support_email').'.');
         }
         abort_if($contenu === null, 404);
 
@@ -102,6 +103,15 @@ class PieceJointeDemandeController extends Controller
             'Content-Security-Policy' => "default-src 'none'; img-src 'self'; sandbox",
             'Cache-Control' => 'private, no-store',
         ]);
+    }
+
+    /**
+     * Un lien de telechargement suivi dans la page : une page d'erreur nue
+     * remplacerait la demande. On y revient, avec le message.
+     */
+    private function retourALaDemande(string $reference, string $message): Response
+    {
+        return redirect()->route('support.demandes.show', $reference)->with('erreur_piece', $message);
     }
 
     private function referenceValide(string $reference): void

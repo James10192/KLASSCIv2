@@ -188,4 +188,22 @@ class ClientMasterSupportTest extends TestCase
         }
         $this->assertTrue($client->coupeCircuitOuvert());
     }
+
+    /** @test */
+    public function une_erreur_serveur_sur_un_transfert_n_ouvre_pas_le_coupe_circuit(): void
+    {
+        Http::fake(['*' => Http::response(['error' => 'server_error'], 500)]);
+        $client = app(ClientMasterSupport::class);
+
+        foreach ([fn () => $client->joindre('KC-2026-000042', 42, 'PNG', 'a.png', null, 'cle'),
+                  fn () => $client->piece('KC-2026-000042', 42, 'mine', 7)] as $transfert) {
+            try {
+                $transfert();
+                $this->fail('Indisponibilité attendue.');
+            } catch (MasterSupportIndisponible) {
+            }
+        }
+
+        $this->assertFalse($client->coupeCircuitOuvert());
+    }
 }

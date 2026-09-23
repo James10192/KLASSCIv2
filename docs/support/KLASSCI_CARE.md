@@ -78,9 +78,12 @@
   - la clé d'idempotence est liée au fichier choisi (nom, taille, date) et ne change
     qu'après un succès : si la réponse s'est perdue, rechoisir le même fichier rend la pièce
     déjà enregistrée au lieu d'en créer une seconde ;
-  - un 429 du Master (limite de débit des pièces, par instance) et un transfert qui dépasse
-    son délai n'ouvrent **pas** le coupe-circuit : ils disent quelque chose de cet envoi,
-    pas du Master. Seul un appel ordinaire qui ne joint pas le Master le ferme pour tous ;
+  - un 429 du Master (limite de débit des pièces, par instance), un transfert qui dépasse
+    son délai et un transfert auquel le Master répond 5xx n'ouvrent **pas** le
+    coupe-circuit : ils disent quelque chose de cet envoi, pas du Master. Seul un appel
+    ordinaire qui ne joint pas le Master, ou qui reçoit un 5xx, le ferme pour tous ;
+  - une pièce illisible ramène à la page de la demande avec le message, au lieu d'une
+    page d'erreur nue qui la remplacerait ;
   - le fichier se télécharge sous `piece-{id}.{extension}`, l'extension tirée du type admis
     et jamais du nom envoyé ;
   - envoi réservé à l'auteur de la demande, en portée `mine`, une clé d'idempotence par
