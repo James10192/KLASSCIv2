@@ -81,6 +81,7 @@
     ];
 @endphp
 <div class="dashboard-acasi" x-data="accesTemporaires()" data-config='@json($_atpConfig)'>
+    <div class="main-content" style="padding: 1.25rem; max-width: 100%;">
     <div class="atp-hero">
         <div class="atp-hero-top">
             <div class="atp-hero-left">
@@ -210,6 +211,7 @@
                 </tbody>
             </table>
         </div>
+    </div>
     </div>
 </div>
 @endsection
