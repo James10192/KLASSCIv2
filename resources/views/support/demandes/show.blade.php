@@ -103,8 +103,9 @@
         <h2>Pièces jointes</h2>
         <div id="sd-pieces">@include('support.demandes._pieces', ['demande' => $demande])</div>
 
-        @if($peutRepondre && count($demande['pieces_jointes'] ?? []) < $limites['pieces_max'])
-            <form id="sd-joindre" class="sd-joindre" action="{{ route('support.demandes.pieces.store', $demande['reference']) }}" method="POST" enctype="multipart/form-data" novalidate>
+        @if($peutJoindre)
+            <form id="sd-joindre" class="sd-joindre" action="{{ route('support.demandes.pieces.store', $demande['reference']) }}" method="POST" enctype="multipart/form-data" novalidate
+                  data-octets-max="{{ $limites['piece_octets_max'] }}">
                 @csrf
                 <input type="file" id="sd-joindre-fichier" name="fichier" accept="image/png,image/jpeg,image/webp,application/pdf">
                 <label for="sd-joindre-fichier" class="sd-joindre-bouton">
@@ -112,7 +113,7 @@
                     <span data-sd-libelle>Joindre une capture ou un PDF</span>
                     <span data-sd-envoi hidden>Envoi…</span>
                 </label>
-                <span class="sd-joindre-aide">PNG, JPEG, WebP ou PDF, {{ intdiv($limites['piece_octets_max'], 1024 * 1024) }} Mo au plus. Les informations cachées d'une photo (lieu, appareil) sont retirées.</span>
+                <span class="sd-joindre-aide">PNG, JPEG, WebP ou PDF, {{ \App\Http\Requests\Support\JoindrePieceRequest::enMo($limites['piece_octets_max']) }} Mo au plus. Les informations cachées d'une photo (lieu, appareil) sont retirées.</span>
                 <div class="sd-erreur" role="alert" hidden></div>
             </form>
         @endif
@@ -137,6 +138,12 @@
     champ.addEventListener('input', function () { cle = nouvelleCle(); erreur.hidden = true; });
 
     function montrer(message) { erreur.textContent = message; erreur.hidden = false; }
+    /* Repondre et joindre obeissent aux memes regles : une demande fermee en cours de
+       saisie retire aussi l'envoi de fichier. */
+    function retirerJoindre(d) {
+        var joindre = document.getElementById('sd-joindre');
+        if (joindre && d.peut_joindre === false) { joindre.remove(); }
+    }
     function occupe(oui) {
         bouton.disabled = oui;
         bouton.querySelector('[data-sd-libelle]').hidden = oui;
@@ -171,9 +178,11 @@
             champ.value = '';
             cle = nouvelleCle();
             if (!d.peut_repondre) { form.remove(); }
+            retirerJoindre(d);
         }).catch(function (e) {
             var d = e.donnees || {};
             if (d.statut) { document.getElementById('sd-statut').innerHTML = d.statut; }
+            retirerJoindre(d);
             if (d.peut_repondre === false) {
                 /* Plus rien a envoyer d'ici, mais le texte reste : l'utilisateur peut le copier. */
                 var avis = document.createElement('p');
@@ -196,33 +205,62 @@
     var erreur = form.querySelector('.sd-erreur');
     var libelle = form.querySelector('[data-sd-libelle]');
     var envoi = form.querySelector('[data-sd-envoi]');
+    var octetsMax = parseInt(form.getAttribute('data-octets-max'), 10) || 0;
     function nouvelleCle() {
         return window.crypto && crypto.randomUUID ? crypto.randomUUID()
             : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, function () { return (Math.random() * 16 | 0).toString(16); });
     }
+    /* Un envoi dont la reponse s'est perdue a peut-etre abouti : si l'utilisateur
+       choisit a nouveau LE MEME fichier, la meme cle part, et le Master rend la piece
+       deja enregistree au lieu d'en creer une seconde. La cle ne change qu'apres un
+       succes, ou pour un autre fichier. */
+    var dernier = null;
+    function cleDe(fichier) {
+        var signature = [fichier.name, fichier.size, fichier.lastModified].join('|');
+        if (!dernier || dernier.signature !== signature) { dernier = { signature: signature, cle: nouvelleCle() }; }
+        return dernier.cle;
+    }
     function occupe(oui) { champ.disabled = oui; libelle.hidden = oui; envoi.hidden = !oui; }
+    function montrer(message) { erreur.textContent = message; erreur.hidden = false; }
     champ.addEventListener('change', function () {
         if (!champ.files.length) { return; }
         erreur.hidden = true;
+        var fichier = champ.files[0];
+        /* Refuse ici plutot que d'envoyer en entier un fichier qui sera rejete. */
+        if (octetsMax && fichier.size > octetsMax) {
+            montrer('Le fichier dépasse ' + (octetsMax / 1048576).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' Mo.');
+            champ.value = '';
+            return;
+        }
         var donnees = new FormData();
-        donnees.append('fichier', champ.files[0]);
-        /* Une cle par fichier choisi : un double envoi du meme choix ne cree qu'une piece. */
-        donnees.append('cle', nouvelleCle());
+        donnees.append('fichier', fichier);
+        donnees.append('cle', cleDe(fichier));
         occupe(true);
         fetch(form.action, {
             method: 'POST', credentials: 'same-origin', body: donnees,
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value }
         }).then(function (r) {
             return r.json().catch(function () { return {}; }).then(function (d) {
+                if (d.statut) { document.getElementById('sd-statut').innerHTML = d.statut; }
                 if (!r.ok) {
                     var premier = d.errors ? Object.values(d.errors)[0] : null;
-                    throw new Error((premier && premier[0]) || d.message || "Le fichier n'a pas pu être envoyé.");
+                    var e = new Error((premier && premier[0]) || d.message || "Le fichier n'a pas pu être envoyé.");
+                    e.donnees = d;
+                    throw e;
                 }
                 document.getElementById('sd-pieces').innerHTML = d.pieces;
-                document.getElementById('sd-statut').innerHTML = d.statut;
+                dernier = null;
+                if (d.peut_joindre === false) { form.remove(); }
             });
         }).catch(function (e) {
-            erreur.textContent = e.message; erreur.hidden = false;
+            if ((e.donnees || {}).peut_joindre === false) {
+                var avis = document.createElement('p');
+                avis.className = 'sd-reponse-close';
+                avis.textContent = e.message;
+                form.replaceWith(avis);
+                return;
+            }
+            montrer(e.message);
         }).finally(function () { champ.value = ''; occupe(false); });
     });
 })();

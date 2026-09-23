@@ -5,7 +5,10 @@ namespace Tests\Unit\Care;
 use App\Domain\Support\Exceptions\MasterSupportIndisponible;
 use App\Domain\Support\Exceptions\MasterSupportRefus;
 use App\Services\Care\ClientMasterSupport;
+use App\Domain\Support\Exceptions\DebitLimiteAtteint;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -123,7 +126,7 @@ class ClientMasterSupportTest extends TestCase
         // Ce que le Master ne donne pas retombe sur les valeurs locales.
         $this->assertSame([
             'description_min' => 25, 'description_max' => 3000, 'reponse_min' => 2,
-            'piece_octets_max' => 5 * 1024 * 1024, 'pieces_max' => 4,
+            'piece_octets_max' => min(5 * 1024 * 1024, UploadedFile::getMaxFilesize()), 'pieces_max' => 4,
         ], app(ClientMasterSupport::class)->limites());
     }
 
@@ -138,5 +141,51 @@ class ClientMasterSupportTest extends TestCase
         } finally {
             $this->assertTrue(app(ClientMasterSupport::class)->coupeCircuitOuvert());
         }
+    }
+
+    /** @test */
+    public function la_taille_annoncee_ne_depasse_jamais_ce_que_php_accepte(): void
+    {
+        Http::fake(['*' => Http::response(['fonctionnalites' => [], 'limites' => ['piece_octets_max' => PHP_INT_MAX]])]);
+
+        $this->assertSame(UploadedFile::getMaxFilesize(), app(ClientMasterSupport::class)->limites()['piece_octets_max']);
+    }
+
+    /** @test */
+    public function une_limite_de_debit_n_ouvre_pas_le_coupe_circuit(): void
+    {
+        Http::fake(['*' => Http::response(['error' => 'too_many_requests'], 429)]);
+        $client = app(ClientMasterSupport::class);
+
+        try {
+            $client->joindre('KC-2026-000042', 42, 'PNG', 'a.png', null, 'cle');
+            $this->fail('Limite de debit attendue.');
+        } catch (DebitLimiteAtteint) {
+        }
+
+        $this->assertFalse($client->coupeCircuitOuvert());
+    }
+
+    /** @test */
+    public function un_transfert_qui_echoue_n_ouvre_pas_le_coupe_circuit_mais_un_appel_ordinaire_si(): void
+    {
+        Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out'));
+        $client = app(ClientMasterSupport::class);
+
+        foreach ([fn () => $client->joindre('KC-2026-000042', 42, 'PNG', 'a.png', null, 'cle'),
+                  fn () => $client->piece('KC-2026-000042', 42, 'mine', 7)] as $transfert) {
+            try {
+                $transfert();
+                $this->fail('Indisponibilité attendue.');
+            } catch (MasterSupportIndisponible) {
+            }
+        }
+        $this->assertFalse($client->coupeCircuitOuvert());
+
+        try {
+            $client->afficher('KC-2026-000042', 42);
+        } catch (MasterSupportIndisponible) {
+        }
+        $this->assertTrue($client->coupeCircuitOuvert());
     }
 }

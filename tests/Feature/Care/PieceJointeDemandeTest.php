@@ -78,6 +78,7 @@ class PieceJointeDemandeTest extends TestCase
 
         $this->joindre($user, UploadedFile::fake()->image('ecran.png', 20, 20))
             ->assertOk()
+            ->assertJsonPath('peut_joindre', true)
             ->assertJsonPath('pieces', fn ($html) => str_contains($html, 'ecran.png')
                 && str_contains($html, route('support.demandes.pieces.show', ['KC-2026-000042', 7])));
 
@@ -115,13 +116,19 @@ class PieceJointeDemandeTest extends TestCase
     public function une_demande_fermee_ou_une_portee_absente_refusent_l_envoi(): void
     {
         $user = $this->utilisateur();
-        $this->master(['master.test/api/v1/support/tickets/*' => Http::response(['error' => 'ticket_closed', 'message' => 'Fermée.'], 409)]);
-        $this->joindre($user, UploadedFile::fake()->image('ecran.png'))->assertStatus(409);
+        $ferme = ['statut' => ['code' => 'FERME', 'libelle' => 'Fermée']] + $this->detail($user->id);
+        $this->master([
+            'master.test/api/v1/support/tickets/*/attachments*' => Http::response(['error' => 'ticket_closed', 'message' => 'Fermée.'], 409),
+            'master.test/api/v1/support/tickets/*' => Http::response($ferme),
+        ]);
+        $this->joindre($user, UploadedFile::fake()->image('ecran.png'))->assertStatus(409)
+            ->assertJsonPath('peut_joindre', false)
+            ->assertJsonPath('statut', fn ($html) => str_contains($html, 'Fermée'));
 
         Cache::flush();
         Http::swap(new \Illuminate\Http\Client\Factory());
         $this->master(['master.test/api/v1/support/tickets/*' => Http::response(['error' => 'insufficient_scope', 'message' => 'Portée requise.'], 403)]);
-        $this->joindre($user, UploadedFile::fake()->image('ecran.png'))->assertStatus(403);
+        $this->joindre($user, UploadedFile::fake()->image('ecran.png'))->assertStatus(403)->assertJsonPath('peut_joindre', false);
         $this->assertFalse(app(\App\Services\Care\ClientMasterSupport::class)->coupeCircuitOuvert());
     }
 
@@ -134,7 +141,7 @@ class PieceJointeDemandeTest extends TestCase
             ->assertOk()
             ->assertHeader('Content-Type', 'image/png')
             ->assertHeader('X-Content-Type-Options', 'nosniff')
-            ->assertHeader('Content-Disposition', 'inline; filename="piece-7"');
+            ->assertHeader('Content-Disposition', 'inline; filename="piece-7.png"');
     }
 
     /** @test */
@@ -144,6 +151,7 @@ class PieceJointeDemandeTest extends TestCase
         $this->master(['master.test/api/v1/support/tickets/*' => Http::response('<html>', 200, ['Content-Type' => 'text/html'])]);
         $this->actingAs($user)->get(route('support.demandes.pieces.show', ['KC-2026-000042', 7]))
             ->assertOk()->assertHeader('Content-Type', 'application/octet-stream')
+            // Aucun type admis : aucune extension devinee.
             ->assertHeader('Content-Disposition', 'attachment; filename="piece-7"');
 
         Cache::flush();
@@ -165,5 +173,33 @@ class PieceJointeDemandeTest extends TestCase
         $this->master(['master.test/api/v1/support/tickets/*' => Http::response($this->detail($user->id + 1000, [$this->piece()]))]);
         $this->actingAs($user)->get(route('support.demandes.show', 'KC-2026-000042'))
             ->assertSee('ecran.png')->assertDontSee('id="sd-joindre"', false);
+    }
+
+    /** @test */
+    public function un_pdf_se_telecharge_avec_son_extension(): void
+    {
+        $this->master(['master.test/api/v1/support/tickets/*' => Http::response('%PDF-1.4', 200, ['Content-Type' => 'application/pdf'])]);
+
+        $this->actingAs($this->utilisateur())->get(route('support.demandes.pieces.show', ['KC-2026-000042', 7]))
+            ->assertOk()->assertHeader('Content-Disposition', 'attachment; filename="piece-7.pdf"');
+    }
+
+    /** @test */
+    public function trop_d_envois_se_dit_sans_fermer_le_support(): void
+    {
+        $this->master(['master.test/api/v1/support/tickets/*' => Http::response(['error' => 'too_many_requests'], 429)]);
+
+        $this->joindre($this->utilisateur(), UploadedFile::fake()->image('ecran.png'))
+            ->assertStatus(429)->assertJsonPath('message', fn ($m) => str_contains($m, 'une minute'));
+        $this->assertFalse(app(\App\Services\Care\ClientMasterSupport::class)->coupeCircuitOuvert());
+    }
+
+    /** @test */
+    public function le_plafond_de_pieces_retire_le_formulaire(): void
+    {
+        $user = $this->utilisateur();
+        $this->master(['master.test/api/v1/support/tickets/*' => Http::response($this->detail($user->id, array_fill(0, 10, $this->piece())))]);
+
+        $this->actingAs($user)->get(route('support.demandes.show', 'KC-2026-000042'))->assertDontSee('id="sd-joindre"', false);
     }
 }

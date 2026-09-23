@@ -28,7 +28,15 @@ class JoindrePieceRequest extends FormRequest
         return [
             'fichier.required' => 'Choisissez un fichier.',
             'fichier.mimes' => 'Seules les images (PNG, JPEG, WebP) et les PDF sont acceptés.',
-            'fichier.max' => 'Le fichier dépasse '.intdiv(app(ClientMasterSupport::class)->limites()['piece_octets_max'], 1024 * 1024).' Mo.',
+            'fichier.max' => $trop = 'Le fichier dépasse '.self::enMo(app(ClientMasterSupport::class)->limites()['piece_octets_max']).' Mo.',
+            // PHP l'a refuse avant Laravel (upload_max_filesize) : c'est la meme cause.
+            'fichier.uploaded' => $trop,
         ];
+    }
+
+    /** 2097152 → « 2 », 1572864 → « 1,5 ». */
+    public static function enMo(int $octets): string
+    {
+        return rtrim(rtrim(number_format($octets / 1048576, 1, ',', ''), '0'), ',');
     }
 }

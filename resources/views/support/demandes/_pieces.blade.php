@@ -6,7 +6,7 @@
         @foreach($_sdPieces as $_sdPiece)
             <li>
                 <i class="fas {{ str_starts_with($_sdPiece['type'] ?? '', 'image/') ? 'fa-image' : 'fa-file-pdf' }}" aria-hidden="true"></i>
-                <a href="{{ route('support.demandes.pieces.show', [$demande['reference'], $_sdPiece['id']]) }}" target="_blank" rel="noopener">{{ $_sdPiece['nom'] }}</a>
+                <a href="{{ route('support.demandes.pieces.show', [$demande['reference'], $_sdPiece['id']]) }}" @if(str_starts_with($_sdPiece['type'] ?? '', 'image/')) target="_blank" rel="noopener" @endif>{{ $_sdPiece['nom'] }}</a>
                 <span class="sd-pieces-meta">
                     {{ number_format(($_sdPiece['taille'] ?? 0) / 1024, 0, ',', ' ') }} Ko
                     · {{ ($_sdPiece['auteur'] ?? '') === 'SUPPORT' ? 'Support KLASSCI' : 'Votre établissement' }}

@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Support;
 
+use App\Domain\Support\Exceptions\DebitLimiteAtteint;
 use App\Domain\Support\Exceptions\MasterSupportIndisponible;
 use App\Domain\Support\Exceptions\MasterSupportRefus;
 use App\Domain\Support\Exceptions\PorteeAbsente;
 use App\Domain\Support\Services\DisponibiliteSupport;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Support\Concerns\EcritSurUneDemande;
 use App\Http\Controllers\Support\Concerns\PorteeDeLecture;
 use App\Http\Requests\Support\JoindrePieceRequest;
 use App\Services\Care\ClientMasterSupport;
@@ -24,7 +26,10 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class PieceJointeDemandeController extends Controller
 {
+    use EcritSurUneDemande;
     use PorteeDeLecture;
+
+    private const EXTENSIONS = ['image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp', 'application/pdf' => 'pdf'];
 
     public function __construct(
         private readonly DisponibiliteSupport $disponibilite,
@@ -47,7 +52,9 @@ class PieceJointeDemandeController extends Controller
                 $request->validated('cle'),
             );
         } catch (PorteeAbsente) {
-            return response()->json(['message' => "Votre établissement ne peut pas encore joindre de fichier depuis KLASSCI. Écrivez-nous à ".config('app.support_email').'.'], 403);
+            return response()->json(['message' => "Votre établissement ne peut pas encore joindre de fichier depuis KLASSCI. Écrivez-nous à ".config('app.support_email').'.', 'peut_joindre' => false], 403);
+        } catch (DebitLimiteAtteint) {
+            return response()->json(['message' => "Trop d'envois en même temps. Réessayez dans une minute : choisissez le même fichier, il ne sera pas envoyé deux fois."], 429);
         } catch (MasterSupportIndisponible) {
             return response()->json(['message' => 'Le support est momentanément injoignable. Réessayez dans un instant.'], 503);
         } catch (MasterSupportRefus $e) {
@@ -55,7 +62,7 @@ class PieceJointeDemandeController extends Controller
 
             return match ($e->codeErreur) {
                 'attachment_rejected' => response()->json(['message' => $e->getMessage()], 422),
-                'ticket_closed' => response()->json(['message' => 'Cette demande est fermée : ouvrez-en une nouvelle si le problème revient.'], 409),
+                'ticket_closed' => $this->demandeFermee($reference, $request->user()->getKey()),
                 default => $this->refusInattendu($e),
             };
         }
@@ -63,6 +70,7 @@ class PieceJointeDemandeController extends Controller
         return response()->json([
             'pieces' => view('support.demandes._pieces', ['demande' => $demande])->render(),
             'statut' => view('support.demandes._statut', ['statut' => $demande['statut'] ?? []])->render(),
+            'peut_joindre' => $this->peutJoindre($demande, $request->user()->getKey()),
         ]);
     }
 
@@ -72,18 +80,24 @@ class PieceJointeDemandeController extends Controller
 
         try {
             $contenu = $this->master->piece($reference, $request->user()->getKey(), $this->portee($request, defaut: 'school'), $piece);
-        } catch (MasterSupportIndisponible|MasterSupportRefus) {
-            abort(503, 'Le support est momentanément injoignable.');
+        } catch (MasterSupportIndisponible) {
+            abort(503, 'Le support est momentanément injoignable. Réessayez dans un instant.');
+        } catch (MasterSupportRefus $e) {
+            Log::error('KLASSCI Care : lecture de pièce refusée par le Master', ['statut' => $e->statut, 'code' => $e->codeErreur]);
+            abort(502, "Cette pièce n'a pas pu être lue. Écrivez-nous à ".config('app.support_email').'.');
         }
         abort_if($contenu === null, 404);
 
         // Seuls ces types sortent du Master ; tout autre est traite en telechargement brut.
-        $type = strtok($contenu['type'], ';') ?: 'application/octet-stream';
+        $type = strtolower(trim((string) strtok($contenu['type'], ';'))) ?: 'application/octet-stream';
+        $extension = self::EXTENSIONS[$type] ?? null;
         $image = in_array($type, ['image/png', 'image/jpeg', 'image/webp'], true);
 
         return response($contenu['contenu'], 200, [
-            'Content-Type' => $image || $type === 'application/pdf' ? $type : 'application/octet-stream',
-            'Content-Disposition' => ($image ? 'inline' : 'attachment').'; filename="piece-'.$piece.'"',
+            'Content-Type' => $extension ? $type : 'application/octet-stream',
+            // L'extension vient du type admis, jamais du nom envoye : un PDF telecharge
+            // s'ouvre d'un double clic sans qu'un nom choisi par l'ecole atteigne l'en-tete.
+            'Content-Disposition' => ($image ? 'inline' : 'attachment').'; filename="piece-'.$piece.($extension ? '.'.$extension : '').'"',
             'X-Content-Type-Options' => 'nosniff',
             'Content-Security-Policy' => "default-src 'none'; img-src 'self'; sandbox",
             'Cache-Control' => 'private, no-store',

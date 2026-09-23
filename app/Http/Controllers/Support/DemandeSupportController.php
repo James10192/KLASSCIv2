@@ -10,6 +10,7 @@ use App\Domain\Support\Models\SupportOutbox;
 use App\Domain\Support\Services\ContexteDePage;
 use App\Domain\Support\Services\DisponibiliteSupport;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Support\Concerns\EcritSurUneDemande;
 use App\Http\Controllers\Support\Concerns\PorteeDeLecture;
 use App\Http\Requests\Support\RepondreDemandeRequest;
 use App\Http\Requests\Support\SoumettreDemandeRequest;
@@ -28,6 +29,7 @@ use Illuminate\Support\Facades\Log;
  */
 class DemandeSupportController extends Controller
 {
+    use EcritSurUneDemande;
     use PorteeDeLecture;
 
     public function __construct(
@@ -128,6 +130,7 @@ class DemandeSupportController extends Controller
             'reference' => $reference,
             'indisponible' => false,
             'peutRepondre' => $this->peutRepondre($demande, $request->user()->getKey()),
+            'peutJoindre' => $this->peutJoindre($demande, $request->user()->getKey()),
             'limites' => $this->master->limites(),
         ]);
     }
@@ -156,7 +159,7 @@ class DemandeSupportController extends Controller
                 $request->validated('cle'),
             );
         } catch (PorteeAbsente) {
-            return response()->json(['message' => "Votre établissement ne peut pas encore répondre au support depuis KLASSCI. Écrivez-nous à ".config('app.support_email').'.', 'peut_repondre' => false], 403);
+            return response()->json(['message' => "Votre établissement ne peut pas encore répondre au support depuis KLASSCI. Écrivez-nous à ".config('app.support_email').'.', 'peut_repondre' => false, 'peut_joindre' => false], 403);
         } catch (MasterSupportIndisponible) {
             return response()->json(['message' => "Le support est momentanément injoignable. Votre réponse est conservée ici : renvoyez-la dans un instant."], 503);
         } catch (MasterSupportRefus $e) {
@@ -172,34 +175,8 @@ class DemandeSupportController extends Controller
             'fil' => view('support.demandes._fil', ['messages' => $demande['messages'] ?? []])->render(),
             'statut' => view('support.demandes._statut', ['statut' => $demande['statut'] ?? []])->render(),
             'peut_repondre' => $this->peutRepondre($demande, $auteur),
+            'peut_joindre' => $this->peutJoindre($demande, $auteur),
         ]);
-    }
-
-    /**
-     * La demande a ete fermee pendant que l'ecole ecrivait : le formulaire
-     * disparait et le statut affiche rejoint celui du Master.
-     */
-    private function demandeFermee(string $reference, int $auteur): JsonResponse
-    {
-        try {
-            $statut = $this->master->afficher($reference, $auteur)['statut'] ?? null;
-        } catch (MasterSupportIndisponible|MasterSupportRefus) {
-            $statut = null;
-        }
-
-        return response()->json([
-            'message' => 'Cette demande est fermée : ouvrez-en une nouvelle si le problème revient.',
-            'statut' => $statut ? view('support.demandes._statut', ['statut' => $statut])->render() : null,
-            'peut_repondre' => false,
-        ], 409);
-    }
-
-    /** Seul l'auteur de la demande repond, et seulement si l'identifiant le permet. */
-    private function peutRepondre(array $demande, int $utilisateurId): bool
-    {
-        return ($demande['statut']['code'] ?? null) !== 'FERME'
-            && (string) ($demande['rapporteur']['id'] ?? '') === (string) $utilisateurId
-            && in_array('support:update', $this->master->portees(), true);
     }
 
     private function refusInattendu(MasterSupportRefus $e): JsonResponse

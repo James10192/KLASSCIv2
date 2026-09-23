@@ -2,6 +2,7 @@
 
 namespace App\Services\Care;
 
+use App\Domain\Support\Exceptions\DebitLimiteAtteint;
 use App\Domain\Support\Exceptions\IdentifiantInstanceRefuse;
 use App\Domain\Support\Exceptions\PorteeAbsente;
 use App\Domain\Support\Exceptions\MasterSupportIndisponible;
@@ -10,6 +11,7 @@ use GuzzleHttp\Exception\TransferException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -72,7 +74,10 @@ class ClientMasterSupport
             'description_min' => (int) $l['description_min'],
             'description_max' => (int) $l['description_max'],
             'reponse_min' => (int) $l['reponse_min'],
-            'piece_octets_max' => (int) $l['piece_octets_max'],
+            // Le Master annonce sa limite ; PHP a la sienne (upload_max_filesize,
+            // post_max_size). Promettre plus que ce que ce serveur recoit ferait
+            // echouer un fichier annonce comme admis, sur un message generique.
+            'piece_octets_max' => min((int) $l['piece_octets_max'], (int) UploadedFile::getMaxFilesize()),
             'pieces_max' => (int) $l['pieces_max'],
         ];
     }
@@ -230,15 +235,32 @@ class ClientMasterSupport
 
     private function requete(string $methode, string $chemin, array $donnees = [], array $entetes = [], ?string $requestId = null): array
     {
-        return $this->interpreter($this->appeler(
-            fn (PendingRequest $client, string $url) => $client->send($methode, $url, $methode === 'GET' ? ['query' => $donnees] : ['json' => $donnees]),
-            $chemin,
-            $entetes,
-            $requestId,
-        ));
+        try {
+            $reponse = $this->appeler(
+                fn (PendingRequest $client, string $url) => $client->send($methode, $url, $methode === 'GET' ? ['query' => $donnees] : ['json' => $donnees]),
+                $chemin,
+                $entetes,
+                $requestId,
+            );
+        } catch (MasterSupportIndisponible $e) {
+            // Seul un appel ordinaire, court, qui n'a pas pu joindre le Master
+            // ouvre le coupe-circuit. Un transfert de fichier qui depasse son
+            // delai dit quelque chose de CE fichier, pas du Master : il echoue
+            // seul, sans fermer le support a toute l'ecole.
+            if ($e->getPrevious() instanceof ConnectionException || $e->getPrevious() instanceof TransferException) {
+                $this->couper('transport', $e->getPrevious()->getMessage());
+            }
+            throw $e;
+        }
+
+        return $this->interpreter($reponse);
     }
 
-    /** Les gardes communes a tout appel : configuration, coupe-circuit, transport. */
+    /**
+     * Les gardes communes a tout appel : configuration, coupe-circuit, transport.
+     * Un echec de transport est rendu tel quel (en cause de l'exception) : c'est
+     * l'appelant qui decide s'il ouvre le coupe-circuit.
+     */
     private function appeler(callable $appel, string $chemin, array $entetes = [], ?string $requestId = null): Response
     {
         if (! $this->estConfigure()) {
@@ -256,7 +278,6 @@ class ClientMasterSupport
         } catch (ConnectionException|TransferException $e) {
             // TransferException : redirections en boucle, reponse tronquee… tout ce
             // que Guzzle leve hors connexion. Le Master est a joindre plus tard.
-            $this->couper('transport', $e->getMessage());
             throw new MasterSupportIndisponible('Master injoignable.', 0, $e);
         }
     }
@@ -267,7 +288,11 @@ class ClientMasterSupport
             return (array) $reponse->json();
         }
 
-        if ($reponse->serverError() || $reponse->status() === 429) {
+        if ($reponse->status() === 429) {
+            throw new DebitLimiteAtteint('Trop de demandes au Master pour ce point d\'entrée, nouvel essai plus tard.');
+        }
+
+        if ($reponse->serverError()) {
             $this->couper('http_'.$reponse->status());
             throw new MasterSupportIndisponible("Le Master a répondu {$reponse->status()}.");
         }

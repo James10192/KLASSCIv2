@@ -55,19 +55,34 @@
     (lu dans le bootstrap) et que la demande n'est pas fermée. Elle part toujours en portée
     `mine` : lire les demandes de l'établissement n'autorise pas à écrire sur celles des
     collègues ;
-  - une demande fermée entre-temps (409 `ticket_closed`) retire le formulaire et remet le
-    statut à jour ;
+  - une demande fermée entre-temps (409 `ticket_closed`) remet le statut à jour et laisse le
+    texte saisi en lecture seule, pour qu'il puisse être copié ; le bouton d'envoi et le
+    formulaire de pièces jointes disparaissent ;
   - **pas de boîte d'envoi** : Master injoignable, la réponse reste dans le champ (503) et
     l'utilisateur la renvoie avec la même clé ;
   - un 403 `insufficient_scope` (`PorteeAbsente`) n'ouvre pas le coupe-circuit, car le reste
     de l'API répond. Il reste une faute de l'instance, pas de la demande : un signalement
     part dans la boîte d'envoi et y attend l'identifiant élargi sans user ses essais ; une
-    réponse retire le formulaire.
+    réponse garde le texte en lecture seule et retire le bouton d'envoi.
 - **Les pièces jointes** (tranche 2) : `POST /support/demandes/{référence}/pieces` et
   `GET /support/demandes/{référence}/pieces/{id}` (`PieceJointeDemandeController`) :
   - le fichier est relayé tel quel au Master, qui l'assainit (type lu sur le contenu, images
-    ré-encodées, PDF à contenu actif refusé) ; l'instance ne fait qu'un premier tri
-    (`mimes`, taille) pour un message clair ;
+    ré-encodées, PDF refusé quand il porte un contenu actif repérable — la détection est
+    heuristique, voir le blueprint) ; l'instance ne fait qu'un premier tri (`mimes`, taille)
+    pour un message clair ;
+  - la taille annoncée est le minimum de la limite du Master et de celle que PHP accepte sur
+    ce serveur (`upload_max_filesize`, `post_max_size`) : promettre 5 Mo à un serveur réglé
+    à 2 Mo ferait échouer le fichier sur un message générique. Vérifier ces deux valeurs
+    dans le PHP Selector de chaque instance ; le navigateur refuse un fichier trop gros
+    avant de l'envoyer ;
+  - la clé d'idempotence est liée au fichier choisi (nom, taille, date) et ne change
+    qu'après un succès : si la réponse s'est perdue, rechoisir le même fichier rend la pièce
+    déjà enregistrée au lieu d'en créer une seconde ;
+  - un 429 du Master (limite de débit des pièces, par instance) et un transfert qui dépasse
+    son délai n'ouvrent **pas** le coupe-circuit : ils disent quelque chose de cet envoi,
+    pas du Master. Seul un appel ordinaire qui ne joint pas le Master le ferme pour tous ;
+  - le fichier se télécharge sous `piece-{id}.{extension}`, l'extension tirée du type admis
+    et jamais du nom envoyé ;
   - envoi réservé à l'auteur de la demande, en portée `mine`, une clé d'idempotence par
     fichier choisi ; taille et plafond par demande lus dans le bootstrap du Master ;
   - la lecture suit la portée de lecture et passe par l'instance : le navigateur ne parle
