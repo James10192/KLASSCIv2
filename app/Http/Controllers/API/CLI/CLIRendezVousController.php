@@ -46,7 +46,9 @@ class CLIRendezVousController extends BaseApiController
 
         return $this->successResponse(
             $rapport,
-            sprintf('%d dossiers placés, convocation en attente d\'envoi ; dont %d sans email, à prévenir par téléphone. %d sans créneau.', $rapport['places'], $rapport['a_prevenir'], $rapport['sans_creneau'])
+            sprintf('%d dossiers placés, %d convocations en attente d\'envoi.', $rapport['places'], $rapport['places'] - $rapport['a_prevenir'])
+                .AffecteurDossiersRdv::mentionAPrevenir($rapport['a_prevenir'])
+                .sprintf(' %d sans créneau.', $rapport['sans_creneau'])
         );
     }
 

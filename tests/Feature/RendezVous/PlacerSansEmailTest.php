@@ -62,4 +62,10 @@ class PlacerSansEmailTest extends TestCase
         $second = app(AffecteurDossiersRdv::class)->placer();
         $this->assertSame([0, 2], [$second['places'], $second['deja']], 'Un second passage ne replace personne.');
     }
+
+    public function test_le_compte_rendu_ne_mentionne_les_familles_a_prevenir_que_s_il_y_en_a(): void
+    {
+        $this->assertSame('', \App\Services\RendezVous\AffecteurDossiersRdv::mentionAPrevenir(0));
+        $this->assertStringContainsString('Dont 3 sans e-mail', \App\Services\RendezVous\AffecteurDossiersRdv::mentionAPrevenir(3));
+    }
 }

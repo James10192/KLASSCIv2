@@ -44,6 +44,18 @@ class AffecteurDossiersRdv
     }
 
     /**
+     * La mention des dossiers places sans e-mail, pour les deux compte-rendus
+     * (ecran et CLI). Vide quand il n'y en a aucun : « dont 0 sans e-mail » ne
+     * dit rien, et ces dossiers n'ont justement pas de convocation en attente.
+     */
+    public static function mentionAPrevenir(int $aPrevenir): string
+    {
+        return $aPrevenir > 0
+            ? sprintf(' Dont %d sans e-mail, à prévenir par téléphone (liste « Familles à prévenir »).', $aPrevenir)
+            : '';
+    }
+
+    /**
      * Place les dossiers en attente et POSE leur convocation en attente d'envoi.
      *
      * Rien n'est envoye ici. Avant, chaque placement programmait son envoi dans
