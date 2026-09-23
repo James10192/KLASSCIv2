@@ -208,6 +208,7 @@
 @endsection
 
 @push('scripts')
+@include('partials._klassci_toast')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const modalElement = document.getElementById('seanceModal');
@@ -326,6 +327,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 throw new Error(payload.message || 'Suppression impossible.');
             }
 
+            // Le devoir supprimé avec sa séance a pu laisser une moyenne sans
+            // rien à moyenner : l'avertissement part avant le rafraîchissement,
+            // pour qu'un rafraîchissement en échec ne le fasse pas perdre, et
+            // reste jusqu'à fermeture.
+            if (payload.warning && typeof window.klassciToast === 'function') {
+                const texte = document.createElement('div');
+                texte.textContent = payload.warning;
+                window.klassciToast('warning', texte.innerHTML, 0);
+            }
             await refreshBlock(emploiTempsId);
         } catch (error) {
             alert(error.message || 'Erreur lors de la suppression.');
