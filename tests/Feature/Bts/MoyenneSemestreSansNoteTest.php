@@ -111,7 +111,7 @@ class MoyenneSemestreSansNoteTest extends TestCase
 
         $reponse = $this->resultats($etudiant->id, 'semestre1', avecClasse: false);
 
-        $this->assertNull($reponse->viewData('moyenneSemestre1'), 'Sans note, pas de moyenne (avant : 0,00).');
+        $this->assertNull($reponse->viewData('moyenneSemestre1'), 'Sans note, pas de moyenne : garde-fou, deja vrai sur presentation (93f75fcd).');
         $this->assertNull($reponse->viewData('moyenneAvecAssiduite'));
     }
 
@@ -131,6 +131,37 @@ class MoyenneSemestreSansNoteTest extends TestCase
 
         $this->assertNull($reponse->viewData('moyenneSemestre1'));
         $this->assertNull($reponse->viewData('moyenneSemestre2'), 'Les notes d une autre annee ne font pas une moyenne de cette annee.');
+    }
+
+    /**
+     * Change par l'integration de presentation (ac2737fc) : la moyenne courante se juge
+     * sur la somme des coefficients. Une matiere faite d'absences seules, reglage
+     * « absences seules comptent 0 » desactive, n'a pas de moyenne : l'eleve n'en a donc
+     * pas non plus, au lieu de 0,00. Le reglage se pose AVANT l'absence : pose apres, le
+     * recalcul automatique aurait deja enregistre un 0, que le calcul « Courant » relit.
+     */
+    public function test_des_absences_seules_ecartees_ne_font_pas_une_moyenne_de_zero(): void
+    {
+        $this->monterLaClasse();
+        $this->matiere = $this->matiereConfiguree();
+        $etudiant = $this->etudiantInscrit();
+        \App\Helpers\SettingsHelper::setOrCreate(\App\Services\NoteCalculationService::REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO, '0', 'bulletin');
+        \App\Models\ESBTPNote::create([
+            'evaluation_id' => $this->evaluationDe($this->matiere)->id,
+            'etudiant_id' => $etudiant->id,
+            'matiere_id' => $this->matiere->id,
+            'classe_id' => $this->classe->id,
+            'note' => 0,
+            'is_absent' => true,
+        ]);
+
+        $reponse = $this->resultats($etudiant->id, 'semestre1');
+
+        $this->assertNull(
+            $reponse->viewData('bulletinConsistency')['current_recomputed_raw_total'],
+            'Temoin : le calcul « Courant » ne rend rien, il ne prend donc pas le relais.'
+        );
+        $this->assertNull($reponse->viewData('moyenneGenerale'), 'Reglage desactive : aucune moyenne (avant : 0,00).');
     }
 
     private ESBTPMatiere $matiere;
