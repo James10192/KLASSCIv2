@@ -29,6 +29,7 @@ use App\Services\NotesImportService;
 use App\Services\NotesWindowGuard;
 use App\Services\NotificationService;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection;
@@ -717,18 +718,8 @@ class ESBTPNoteController extends Controller
 
         DB::beginTransaction();
         try {
-            $evalIds = collect($notes)->pluck('evaluation_id')->unique();
-            $evaluations = ESBTPEvaluation::whereIn('id', $evalIds)->get()->keyBy('id');
-
-            // Requête tuple-based IN avec cast int pour éviter injection SQL
-            $pairs = collect($notes)
-                ->map(fn($e) => '(' . (int) $e['etudiant_id'] . ', ' . (int) $e['evaluation_id'] . ')')
-                ->implode(',');
-            $existingNotes = $pairs
-                ? ESBTPNote::whereRaw("(etudiant_id, evaluation_id) IN ({$pairs})")
-                    ->get()->keyBy(fn($n) => $n->etudiant_id . '_' . $n->evaluation_id)
-                : collect();
-
+            $evaluations = ESBTPEvaluation::whereIn('id', collect($notes)->pluck('evaluation_id')->unique())->get()->keyBy('id');
+            $existingNotes = $this->notesExistantes($notes);
             $canEdit = Auth::user()->can('notes.edit');
             $pendingNotifications = [];
             $motifs = app(MotifDeRefusDeNote::class);
@@ -740,15 +731,15 @@ class ESBTPNoteController extends Controller
 
                 $raison = $motifs->pour($entry, $evaluation, $note, $canEdit, $peutGerer);
                 if ($raison !== null) {
-                    $refused[] = [
-                        'etudiant_id' => (int) $entry['etudiant_id'],
-                        'evaluation_id' => (int) $entry['evaluation_id'],
-                        'raison' => $raison,
-                    ];
+                    $refused[] = MotifDeRefusDeNote::ligne($entry, $raison);
                     continue;
                 }
 
-                $result = $this->processNoteEntry($evaluation, $note, $entry, $submitFinal);
+                $result = $this->enregistrerSansDoublon($evaluation, $note, $entry, $submitFinal);
+                if ($result === null) {
+                    $refused[] = MotifDeRefusDeNote::ligne($entry, MotifDeRefusDeNote::SAISIE_CONCURRENTE);
+                    continue;
+                }
 
                 if ($result['is_new_absent']) {
                     $pendingNotifications[] = [$result['note'], $evaluation];
@@ -758,26 +749,8 @@ class ESBTPNoteController extends Controller
 
             $errors = count($refused);
 
-            // Les brouillons ne sont jamais synchronisés. Après une validation
-            // complète, un utilisateur habilité peut remettre les colonnes
-            // dénormalisées en cohérence avec l'évaluation parente.
-            $synchronization = [
-                'performed' => false,
-                'reason' => $submitFinal ? ($errors === 0 ? 'permission_missing' : 'validation_errors') : 'draft',
-                'evaluations_synchronized' => 0,
-                'notes_synchronized' => 0,
-            ];
-            if ($submitFinal && $errors === 0 && (Auth::user()?->can('notes.create') || Auth::user()?->can('notes.edit') || Auth::user()?->can('notes.manage_own'))) {
-                $synchronization = $this->noteSubmissionSynchronizationService
-                    ->synchronize($motifs->evaluationsAutorisees());
-
-                \Log::info('Notes final submission synchronized', [
-                    'user_id' => Auth::id(),
-                    'evaluation_ids' => $motifs->evaluationsAutorisees(),
-                    'evaluations_synchronized' => $synchronization['evaluations_synchronized'],
-                    'notes_synchronized' => $synchronization['notes_synchronized'],
-                ]);
-            }
+            $synchronization = $this->noteSubmissionSynchronizationService
+                ->apresValidation(Auth::user(), $submitFinal, $errors, $motifs->evaluationsAutorisees());
 
             DB::commit();
 
@@ -794,11 +767,11 @@ class ESBTPNoteController extends Controller
                 'total'   => count($notes),
                 'submission_status' => $submitFinal ? ESBTPNote::SUBMISSION_SUBMITTED : ESBTPNote::SUBMISSION_DRAFT,
                 'synchronization' => $synchronization,
-                'message' => $errors === 0
-                    ? ($submitFinal
-                        ? "{$saved} note(s) validée(s) avec succès."
-                        : "{$saved} note(s) enregistrée(s) en brouillon.")
-                    : "{$saved} enregistrée(s), {$errors} erreur(s).",
+                'message' => match (true) {
+                    $errors > 0 => "{$saved} enregistrée(s), {$errors} erreur(s).",
+                    $submitFinal => "{$saved} note(s) validée(s) avec succès.",
+                    default => "{$saved} note(s) enregistrée(s) en brouillon.",
+                },
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -811,6 +784,37 @@ class ESBTPNoteController extends Controller
                 'success' => false,
                 'message' => 'Erreur serveur lors de l\'enregistrement des notes.',
             ], 500);
+        }
+    }
+
+    /** Notes déjà en base pour les paires saisies, indexées « élève_évaluation ». */
+    private function notesExistantes(array $notes): Collection
+    {
+        // Requête tuple-based IN avec cast int pour éviter injection SQL
+        $pairs = collect($notes)
+            ->map(fn ($e) => '('.(int) $e['etudiant_id'].', '.(int) $e['evaluation_id'].')')
+            ->implode(',');
+
+        return $pairs
+            ? ESBTPNote::whereRaw("(etudiant_id, evaluation_id) IN ({$pairs})")
+                ->get()->keyBy(fn ($n) => $n->etudiant_id.'_'.$n->evaluation_id)
+            : collect();
+    }
+
+    /**
+     * Unicité (UniciteDesNotes) : si quelqu'un vient de créer la même note, sa
+     * saisie n'est pas écrasée — rend null, et la ligne revient à l'écran en rouge.
+     */
+    private function enregistrerSansDoublon(ESBTPEvaluation $evaluation, ?ESBTPNote $note, array $entry, bool $submitFinal): ?array
+    {
+        try {
+            return $this->processNoteEntry($evaluation, $note, $entry, $submitFinal);
+        } catch (QueryException $e) {
+            if (($e->errorInfo[1] ?? null) !== 1062) {
+                throw $e;
+            }
+
+            return null;
         }
     }
 

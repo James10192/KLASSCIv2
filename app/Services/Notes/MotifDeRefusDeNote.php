@@ -14,6 +14,9 @@ use App\Models\ESBTPNote;
  */
 class MotifDeRefusDeNote
 {
+    /** La même note créée au même instant par quelqu'un d'autre (unicité). */
+    public const SAISIE_CONCURRENTE = 'note saisie au même moment par quelqu\'un d\'autre';
+
     /** @var array<int, int[]> identifiant d'évaluation => étudiants admis */
     private array $cohortes = [];
 
@@ -55,6 +58,16 @@ class MotifDeRefusDeNote
         }
 
         return null;
+    }
+
+    /** Une ligne de refus renvoyée à l'écran, qui la garde en brouillon rouge. */
+    public static function ligne(array $entry, string $raison): array
+    {
+        return [
+            'etudiant_id' => (int) $entry['etudiant_id'],
+            'evaluation_id' => (int) $entry['evaluation_id'],
+            'raison' => $raison,
+        ];
     }
 
     /** @return int[] les évaluations que l'utilisateur est autorisé à gérer */
