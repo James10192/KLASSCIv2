@@ -105,6 +105,23 @@ Route::prefix('public/rendez-vous')
     });
 
 /*
+ * Verification du contact (e-mail ou WhatsApp) d'une demande deposee sur le
+ * portail. Memes routes pour les deux canaux, champ `canal` dans le corps.
+ * Signees par le site vitrine comme toutes les routes publiques ; seau de
+ * debit a part (`verification`). Le renvoi a en plus son propre debit par
+ * demande (RenvoiVerification). Le corps (code, jeton) n'est jamais journalise.
+ */
+Route::prefix('portail/email')
+    ->withoutMiddleware(['throttle:api'])
+    ->middleware('portail.public:verification')
+    ->group(function () {
+        Route::post('/verifier', [\App\Http\Controllers\API\Public\VerificationContactPortalController::class, 'verifier'])
+            ->name('api.portail.email.verifier');
+        Route::post('/renvoyer', [\App\Http\Controllers\API\Public\VerificationContactPortalController::class, 'renvoyer'])
+            ->name('api.portail.email.renvoyer');
+    });
+
+/*
  * Identite publique de l'etablissement, lue par le site klassci.com.
  *
  * Le site affiche les logos des ecoles qu'il sert, et habille le formulaire
@@ -553,6 +570,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/rendez-vous/generer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'generer'])->name('rendez-vous.generer');
         Route::post('/rendez-vous/placer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'placer'])->name('rendez-vous.placer');
         Route::get('/rendez-vous/diagnostic', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'diagnostic'])->name('rendez-vous.diagnostic');
+        Route::get('/emails/diagnostic', [App\Http\Controllers\API\CLI\CLIEmailsController::class, 'diagnostic'])->name('emails.diagnostic');
         Route::post('/rendez-vous/convocations/envoyer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'envoyerConvocations'])->name('rendez-vous.convocations.envoyer');
         Route::post('/rendez-vous/convocations/remettre', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'remettreConvocations'])->name('rendez-vous.convocations.remettre');
         // L'ordre des categories est l'ordre dans lequel un versement solde les

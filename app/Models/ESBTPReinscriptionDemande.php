@@ -20,6 +20,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  */
 class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRendezVous
 {
+    use Concerns\AttendVerificationContact;
     use Concerns\EstPorteurDeRendezVous;
     use Concerns\HasReferencePublique;
     use HasFactory;
@@ -80,12 +81,17 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
         'inscription_id',
         'reference_publique',
         'rdv_invite_at',
+        'verification_contact',
+        'email_verifie_at',
+        'telephone_verifie_at',
     ];
 
     protected $casts = [
         'consentement_at' => 'datetime',
         'traite_at' => 'datetime',
         'rdv_invite_at' => 'datetime',
+        'email_verifie_at' => 'datetime',
+        'telephone_verifie_at' => 'datetime',
     ];
 
     /**
@@ -186,5 +192,10 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
     public function emailRdv(): ?string
     {
         return $this->etudiant?->email;
+    }
+
+    public function typeDemandePublique(): string
+    {
+        return 'reinscription';
     }
 }

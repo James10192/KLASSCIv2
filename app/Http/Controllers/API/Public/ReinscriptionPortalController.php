@@ -9,6 +9,7 @@ use App\Models\ESBTPEtudiant;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\Reinscription\SituationReinscription;
+use App\Services\Verification\VerificationDuDepot;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -88,12 +89,19 @@ class ReinscriptionPortalController extends Controller
         // emporte donc la meme date d'ouverture que celle d'une candidature,
         // et pour la meme raison : « je viens quand ? » est la question que la
         // scolarite entend le plus.
-        return response()->json([
+        //
+        // Une demande neuve attend la verification du contact du dossier
+        // (e-mail joignable, sinon WhatsApp) avant d'etre transmise.
+        $verification = app(VerificationDuDepot::class)->apres($demande);
+
+        return response()->json(array_merge([
             'enregistre' => true,
-            'message' => 'Votre demande a bien été transmise à votre établissement.',
+            'message' => $verification === null
+                ? 'Votre demande a bien été transmise à votre établissement.'
+                : 'Confirmez votre contact pour que votre demande soit transmise à votre établissement.',
             'inscriptions_physiques' => app(PortailCandidaturePublication::class)->inscriptionsPhysiques(),
             'reference_publique' => $demande->referencePubliqueAffichee(),
-        ], 201);
+        ], $verification?->reponse() ?? []), 201);
     }
 
     /**

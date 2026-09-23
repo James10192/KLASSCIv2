@@ -19,7 +19,7 @@ class LogRequests
      */
     private const CHAMPS_MASQUES = [
         'password', 'password_confirmation', 'current_password', '_token',
-        'matricule', 'date_naissance', 'ip_client',
+        'matricule', 'date_naissance', 'ip_client', 'code', 'jeton',
     ];
 
     public function handle(Request $request, Closure $next)
@@ -52,7 +52,7 @@ class LogRequests
      */
     private function corpsJournalisable(Request $request): array
     {
-        if ($request->is('api/public/*')) {
+        if ($request->is('api/public/*', 'api/portail/*')) {
             return ['_masque' => 'corps non journalise (route publique)'];
         }
 

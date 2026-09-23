@@ -21,6 +21,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  */
 class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
 {
+    use Concerns\AttendVerificationContact;
     use Concerns\EstPorteurDeRendezVous;
     use Concerns\HasReferencePublique;
     use HasFactory;
@@ -215,6 +216,9 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         'etudiant_id', 'inscription_id',
         'reference_publique',
         'rdv_invite_at',
+        'verification_contact',
+        'email_verifie_at',
+        'telephone_verifie_at',
     ];
 
     protected $casts = [
@@ -222,6 +226,8 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         'consentement_at' => 'datetime',
         'traite_at' => 'datetime',
         'rdv_invite_at' => 'datetime',
+        'email_verifie_at' => 'datetime',
+        'telephone_verifie_at' => 'datetime',
         'annee_bac' => 'integer',
         'est_transfert' => 'boolean',
         'annee_derniere_inscription' => 'integer',
@@ -321,5 +327,10 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
     public function emailRdv(): ?string
     {
         return $this->email;
+    }
+
+    public function typeDemandePublique(): string
+    {
+        return 'candidature';
     }
 }

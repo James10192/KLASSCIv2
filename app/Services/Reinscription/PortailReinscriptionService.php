@@ -179,7 +179,7 @@ class PortailReinscriptionService
             'annee_universitaire_id' => $situation->anneeCible->id,
         ];
 
-        $existante = ESBTPReinscriptionDemande::where($cles)->first();
+        $existante = ESBTPReinscriptionDemande::sansFiltreVerification()->where($cles)->first();
 
         // Toute demande DEJA TRAITEE doit pouvoir etre redeposee. Deux cas
         // reels : l'ecole rejette pour piece manquante et l'etudiant corrige ;
@@ -209,7 +209,7 @@ class PortailReinscriptionService
         }
 
         try {
-            $demande = ESBTPReinscriptionDemande::firstOrCreate($cles, [
+            $demande = ESBTPReinscriptionDemande::sansFiltreVerification()->firstOrCreate($cles, [
                 // La classe de l'annee precedente sert de point de depart a la
                 // scolarite. Elle n'est jamais un engagement.
                 'classe_souhaitee_id' => $situation->inscriptionPrecedente->classe_id,
@@ -231,7 +231,7 @@ class PortailReinscriptionService
                 throw $e;
             }
 
-            $rattrapee = ESBTPReinscriptionDemande::where($cles)->first();
+            $rattrapee = ESBTPReinscriptionDemande::sansFiltreVerification()->where($cles)->first();
 
             if ($rattrapee === null) {
                 return null;
