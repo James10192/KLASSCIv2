@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Fire-and-forget notification to adminKlassci master that a tenant state change
- * occurred (paiement validated, inscription created), so the group portal cache
+ * occurred (paiement validated or cancelled), so the group portal cache
  * refreshes immediately instead of waiting for the 2-5min TTL.
  *
  * Runs after the response is sent (dispatch::afterResponse) so the HTTP call —
