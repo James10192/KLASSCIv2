@@ -374,8 +374,8 @@
                 <div class="brm-exec-section-bar brm-exec-section-bar--warn">
                     <i class="fas fa-triangle-exclamation"></i>
                     <span><strong>Résultat :</strong>
-                        <span x-text="executionResults.success_count"></span> succès,
-                        <span x-text="executionResults.error_count"></span> échec(s)
+                        <span x-text="executionResults?.success_count ?? 0"></span> succès,
+                        <span x-text="executionResults?.error_count ?? 0"></span> échec(s)
                     </span>
                 </div>
                 <div class="brm-exec-errors-list">

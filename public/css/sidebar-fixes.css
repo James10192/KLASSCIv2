@@ -410,3 +410,32 @@ button:focus,
 .menu-accordion-btn:active .menu-icon {
     color: #fff !important;
 }
+
+/* ===== Sous-liens : puce, libelle et compteur alignes (septembre 2026) =====
+   La puce ::before est un element flex de 6px : sans flex-shrink:0, un libelle
+   long l'ecrasait a zero, d'ou des entrees avec puce et d'autres sans. Le
+   compteur, pose dans le libelle, poussait l'entree hors du panneau. */
+.menu-sublink::before { flex-shrink: 0; }
+.menu-sublink > .menu-icon { flex-shrink: 0; }
+.menu-sublink > .menu-text { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: .4rem; }
+.menu-sublink .menu-label { min-width: 0; line-height: 1.3; white-space: normal; overflow-wrap: anywhere; }
+/* Entree courante : fond leger et puce bleue, dans toutes les sections. */
+.menu-accordion-content .menu-sublink.active { background: rgba(4, 83, 203, .08); color: #0453cb; font-weight: 600; }
+.menu-accordion-content .menu-sublink.active::before { background: #0453cb; transform: scale(1.3); }
+.menu-badge {
+    margin-left: auto;
+    flex-shrink: 0;
+    min-width: 1.5rem;
+    padding: .1rem .45rem;
+    border-radius: 999px;
+    background: rgba(4, 83, 203, .1);
+    color: #0453cb;
+    font-size: .68rem;
+    font-weight: 700;
+    line-height: 1.4;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+.sidebar .menu-sublink.active .menu-badge { background: rgba(255, 255, 255, .22); color: #fff !important; }
+/* L'icone d'un accordeon ouvert restait bleue sur son fond bleu : invisible. */
+.menu-accordion-btn.active .menu-icon i { color: #fff !important; }

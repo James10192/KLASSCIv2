@@ -65,6 +65,7 @@ class ConvocationsRdvTest extends TestCase
             $t->timestamp('convocation_envoyee_at')->nullable();
             $t->string('convocation_erreur', 255)->nullable();
             $t->string('convocation_message_id', 100)->nullable();
+            $t->unsignedBigInteger('prevenue_par')->nullable();
             $t->timestamps();
         });
 

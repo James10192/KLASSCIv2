@@ -19,10 +19,6 @@ class AffecteurDossiersRdv
 
     private function placerUn(PorteurDeRendezVous $porteur): bool
     {
-        if (! $this->emailValide($porteur)) {
-            return false;
-        }
-
         $existante = $this->reservateur->reservationActive($porteur);
         if ($existante !== null) {
             // N'arrive ici qu'une reservation d'avant le suivi, jamais convoquee
@@ -48,6 +44,18 @@ class AffecteurDossiersRdv
     }
 
     /**
+     * La mention des dossiers places sans e-mail, pour les deux compte-rendus
+     * (ecran et CLI). Vide quand il n'y en a aucun : « dont 0 sans e-mail » ne
+     * dit rien, et ces dossiers n'ont justement pas de convocation en attente.
+     */
+    public static function mentionAPrevenir(int $aPrevenir): string
+    {
+        return $aPrevenir > 0
+            ? sprintf(' Dont %d sans e-mail, à prévenir par téléphone (liste « Familles à prévenir »).', $aPrevenir)
+            : '';
+    }
+
+    /**
      * Place les dossiers en attente et POSE leur convocation en attente d'envoi.
      *
      * Rien n'est envoye ici. Avant, chaque placement programmait son envoi dans
@@ -59,11 +67,17 @@ class AffecteurDossiersRdv
      * « sans creneau » pour chaque dossier : l'ecole cherchait des creneaux qui
      * existaient.
      *
-     * @return array{places: int, sans_email: int, sans_creneau: int, deja: int, refus: ?string}
+     * Un dossier sans e-mail est place lui aussi : sa convocation est posee
+     * « sans e-mail » (MessagerieRdv::planifier) et il entre dans la liste des
+     * familles a prevenir par telephone. Avant, il n'etait pas place du tout, et
+     * rien ne le signalait hors du compte-rendu de ce bouton. `a_prevenir`
+     * compte ces dossiers ; il est inclus dans `places`.
+     *
+     * @return array{places: int, a_prevenir: int, sans_creneau: int, deja: int, refus: ?string}
      */
     public function placer(): array
     {
-        $rapport = ['places' => 0, 'sans_email' => 0, 'sans_creneau' => 0, 'deja' => 0, 'refus' => null];
+        $rapport = ['places' => 0, 'a_prevenir' => 0, 'sans_creneau' => 0, 'deja' => 0, 'refus' => null];
 
         if (! $this->reglages->enabled()) {
             $rapport['refus'] = 'La prise de rendez-vous est fermée. Ouvrez-la dans les réglages avant de placer les dossiers.';
@@ -78,12 +92,6 @@ class AffecteurDossiersRdv
         }
 
         $this->chaquePorteur(function (PorteurDeRendezVous $porteur) use (&$rapport) {
-            if (! $this->emailValide($porteur)) {
-                $rapport['sans_email']++;
-
-                return;
-            }
-
             $existante = $this->reservateur->reservationActive($porteur);
             if ($existante !== null && $this->dejaTraitee($porteur, $existante)) {
                 $rapport['deja']++;
@@ -93,6 +101,9 @@ class AffecteurDossiersRdv
 
             if ($this->placerUn($porteur)) {
                 $rapport['places']++;
+                if (! $this->emailValide($porteur)) {
+                    $rapport['a_prevenir']++;
+                }
 
                 return;
             }

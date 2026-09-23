@@ -145,9 +145,17 @@ l'observateur ne tourne pas, et la moyenne calculée sur l'ancienne pondération
 garde la main. Les deux écrans qui les modifient (`update()` et `quickUpdate()`
 de `ESBTPEvaluationController`) passent désormais par
 `RecalculApresDeplacement::apresChangementDePonderation()`. Tout nouvel écran qui
-écrit ces deux colonnes sur une évaluation notée doit faire de même. Reste
-ouvert : **annuler** une évaluation (`status = cancelled`) ne recalcule rien non
-plus, alors que le calcul l'exclut.
+écrit ces deux colonnes sur une évaluation notée doit faire de même.
+
+**Même défaut, encore : le statut.** Annuler une évaluation (`status = cancelled`)
+la retire du calcul, la réactiver l'y remet — sans qu'aucune note ne soit
+enregistrée. `cancel()`, `restore()` et `updateStatus()` passent désormais par
+`App\Domain\Notes\ChangementDeStatut`, qui pose le statut et la publication puis
+appelle `RecalculApresDeplacement::apresChangementDeStatut()`. Tout nouvel écran
+qui change un statut passe par elle. Attention au piège de
+chemin (#1) : c'est `cancel()` / `restore()` que la liste des évaluations appelle,
+pas `updateStatus()`, qu'aucun écran n'utilise. Reste sans recalcul, trouvé à ce
+jour : la **suppression** d'une évaluation déjà notée.
 
 Pour rafraîchir : `POST /api/cli/notes/recompute` ou `notes:recompute --classe --annee`
 (`docs/api/CLI_RECALCUL_RESULTATS.md`). Pour retirer une moyenne qui n'a plus

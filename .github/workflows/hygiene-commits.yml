@@ -263,7 +263,8 @@ jobs:
             tests/Unit/Deployment \
             tests/Unit/Routes \
             tests/Unit/Comptabilite \
-            tests/Unit/Photos
+            tests/Unit/Photos \
+            tests/Unit/Services/Master
           do
             echo "::group::$chemin"
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
@@ -351,6 +352,22 @@ jobs:
       # reecrivait le premier, en silence.
       - name: L import LMD refuse d ecraser une maquette
         run: php vendor/bin/phpunit tests/Feature/LMD/ImportRefuseEcrasementTest.php --no-coverage
+
+      # KLASSCI Care : les demandes de support, leurs pieces jointes et la file
+      # d'envoi vers le Master vivent en base. Ces tests montent leurs tables
+      # par RefreshDatabase : poses dans le job « sans base », ils tomberaient
+      # tous sur un refus de connexion, qu'on lirait comme un defaut du code.
+      # Une boucle, pour la raison donnee plus haut : PHPUnit 9 n'honore que
+      # le premier chemin positionnel.
+      - name: Demandes de support (KLASSCI Care)
+        run: |
+          echec=0
+          for chemin in tests/Unit/Care tests/Feature/Care; do
+            echo "::group::$chemin"
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+            echo "::endgroup::"
+          done
+          exit $echec
 
   schema:
     name: Le schéma se crée entièrement (${{ matrix.moteur.nom }})
