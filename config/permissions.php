@@ -2059,6 +2059,12 @@ return [
             'group' => 'Modules',
             'icon' => 'fa-comments',
         ],
+        'support.tickets.view_school' => [
+            'label' => "Suivre toutes les demandes de support de l'établissement",
+            'description' => "Sans elle, chacun ne voit que les demandes qu'il a lui-même signalées.",
+            'group' => 'Support',
+            'icon' => 'fa-life-ring',
+        ],
         'module.technical_support.access' => [
             'label' => 'Module : Support technique',
             'group' => 'Modules',
