@@ -1,0 +1,283 @@
+@extends('layouts.app')
+
+@section('title', 'Demande '.$reference)
+
+@push('styles')
+<style>
+    .sd-entete { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+    .sd-entete h1 { font-size: 1.3rem; font-weight: 700; color: #1e293b; margin: .25rem 0 0; }
+    .sd-ref { font-family: 'Courier New', monospace; font-size: .8rem; color: #0453cb; font-weight: 700; }
+    .sd-retour { font-size: .84rem; color: #0453cb; text-decoration: none; font-weight: 600; }
+    .sd-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06); }
+    .sd-card h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .5px; color: #64748b; font-weight: 700; margin: 0 0 .75rem; }
+    .sd-texte { white-space: pre-line; color: #1e293b; font-size: .92rem; margin: 0; }
+    .sd-meta { font-size: .78rem; color: #64748b; margin-top: .75rem; }
+    .sd-fil { display: flex; flex-direction: column; gap: .75rem; }
+    .sd-msg { padding: .85rem 1rem; border-radius: 12px; font-size: .9rem; }
+    .sd-msg--support { background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.15); }
+    .sd-msg--ecole { background: #f8fafc; border: 1px solid #e2e8f0; }
+    .sd-msg-auteur { font-size: .76rem; color: #64748b; margin-bottom: .3rem; }
+    .sd-msg-auteur strong { color: #1e293b; }
+    .sd-msg p { white-space: pre-line; margin: 0; color: #1e293b; }
+    .sd-vide { color: #64748b; font-size: .88rem; margin: 0; }
+    .sd-statut { font-size: .78rem; font-weight: 700; padding: .35rem .7rem; border-radius: 999px; white-space: nowrap; }
+    .sd-statut--info { background: rgba(4,83,203,.08); color: #0453cb; }
+    .sd-statut--attention { background: rgba(245,158,11,.12); color: #b45309; }
+    .sd-statut--succes { background: rgba(16,185,129,.12); color: #047857; }
+    .sd-statut--neutre { background: #f1f5f9; color: #64748b; }
+    .sd-reponse { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; }
+    .sd-reponse-label { display: block; font-size: .8rem; font-weight: 600; color: #475569; margin-bottom: .4rem; }
+    .sd-reponse textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 10px; padding: .7rem .85rem; font-size: .9rem; color: #1e293b; resize: vertical; }
+    .sd-reponse textarea:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
+    .sd-erreur { margin-top: .5rem; font-size: .82rem; color: #b91c1c; }
+    .sd-alerte { border-left: 3px solid #b91c1c; color: #b91c1c; font-size: .88rem; }
+    .sd-reponse-actions { display: flex; justify-content: flex-end; margin-top: .6rem; }
+    .sd-reponse-close { margin: 0 0 .6rem; font-size: .88rem; color: #64748b; }
+    .sd-envoyer { background: #0453cb; color: #fff; border: none; border-radius: 10px; padding: .55rem 1.1rem; font-size: .84rem; font-weight: 600; cursor: pointer; }
+    .sd-envoyer:hover { background: #033a8e; }
+    .sd-envoyer:disabled { opacity: .6; cursor: wait; }
+    .sd-pieces { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+    .sd-pieces li { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; font-size: .9rem; }
+    .sd-pieces i { color: #0453cb; }
+    .sd-pieces a { color: #0453cb; font-weight: 600; text-decoration: none; word-break: break-all; }
+    .sd-pieces a:hover { text-decoration: underline; }
+    .sd-pieces-meta { font-size: .76rem; color: #64748b; }
+    .sd-joindre { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f1f5f9; }
+    .sd-joindre-bouton { display: inline-flex; align-items: center; gap: .45rem; border: 1px dashed #93b4e6; color: #0453cb; background: rgba(4,83,203,.04);
+        border-radius: 10px; padding: .55rem 1rem; font-size: .84rem; font-weight: 600; cursor: pointer; }
+    .sd-joindre-bouton:hover { background: rgba(4,83,203,.08); }
+    .sd-joindre input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .sd-joindre input[type=file]:focus-visible + .sd-joindre-bouton { outline: 2px solid #0453cb; outline-offset: 2px; }
+    .sd-joindre-aide { display: block; font-size: .76rem; color: #64748b; margin-top: .4rem; }
+</style>
+@endpush
+
+@section('content')
+<a href="{{ route('support.demandes.index', request('portee') === 'ecole' ? ['portee' => 'ecole'] : []) }}" class="sd-retour"><i class="fas fa-arrow-left me-1"></i> Toutes mes demandes</a>
+
+@if(session('erreur_piece'))
+    <div class="sd-card sd-alerte mt-3" role="alert">{{ session('erreur_piece') }}</div>
+@endif
+
+@if($indisponible)
+    <div class="sd-card mt-3">
+        <p class="sd-vide"><strong>Le support est momentanément injoignable.</strong> La demande {{ $reference }} est en sécurité ; réessayez dans un instant.</p>
+    </div>
+@else
+    <div class="sd-entete mt-2">
+        <div>
+            <span class="sd-ref">{{ $demande['reference'] }}</span>
+            <h1>{{ $demande['titre'] }}</h1>
+        </div>
+        <div id="sd-statut" aria-live="polite">@include('support.demandes._statut', ['statut' => $demande['statut']])</div>
+    </div>
+
+    <div class="sd-card">
+        <h2>Votre signalement</h2>
+        <p class="sd-texte">{{ $demande['description'] }}</p>
+        <div class="sd-meta">
+            {{ $demande['categorie']['libelle'] ?? '' }}
+            · envoyé le {{ \App\Domain\Support\Services\DateDuMaster::afficher($demande['cree_le'] ?? null, 'd M Y à H:i') }}
+            @if(!empty($demande['rapporteur']['nom'])) · par {{ $demande['rapporteur']['nom'] }} @endif
+        </div>
+    </div>
+
+    <div class="sd-card">
+        <h2>Échanges</h2>
+        <div id="sd-fil">@include('support.demandes._fil', ['messages' => $demande['messages'] ?? []])</div>
+
+        @if($peutRepondre)
+            <form id="sd-reponse" class="sd-reponse" action="{{ route('support.demandes.repondre', $demande['reference']) }}" method="POST" novalidate>
+                @csrf
+                <label for="sd-reponse-corps" class="sd-reponse-label">Votre réponse</label>
+                <textarea id="sd-reponse-corps" name="corps" rows="3" maxlength="{{ $limites['description_max'] }}" required
+                    placeholder="Répondez au support, ou précisez ce qui se passe."></textarea>
+                <div class="sd-erreur" role="alert" hidden></div>
+                <div class="sd-reponse-actions">
+                    <button type="submit" class="sd-envoyer">
+                        <span data-sd-libelle><i class="fas fa-paper-plane me-1"></i> Envoyer</span>
+                        <span data-sd-envoi hidden>Envoi…</span>
+                    </button>
+                </div>
+            </form>
+        @endif
+    </div>
+
+    <div class="sd-card">
+        <h2>Pièces jointes</h2>
+        <div id="sd-pieces">@include('support.demandes._pieces', ['demande' => $demande])</div>
+
+        @if($peutJoindre)
+            <form id="sd-joindre" class="sd-joindre" action="{{ route('support.demandes.pieces.store', $demande['reference']) }}" method="POST" enctype="multipart/form-data" novalidate
+                  data-octets-max="{{ $limites['piece_octets_max'] }}">
+                @csrf
+                <input type="file" id="sd-joindre-fichier" name="fichier" accept="image/png,image/jpeg,image/webp,application/pdf">
+                <label for="sd-joindre-fichier" class="sd-joindre-bouton">
+                    <i class="fas fa-paperclip" aria-hidden="true"></i>
+                    <span data-sd-libelle>Joindre une capture ou un PDF</span>
+                    <span data-sd-envoi hidden>Envoi…</span>
+                </label>
+                <span class="sd-joindre-aide">PNG, JPEG, WebP ou PDF, {{ \App\Http\Requests\Support\JoindrePieceRequest::enMo($limites['piece_octets_max']) }} Mo au plus. Les informations cachées d'une photo (lieu, appareil) sont retirées.</span>
+                <div class="sd-erreur" role="alert" hidden></div>
+            </form>
+        @endif
+    </div>
+@endif
+@endsection
+
+@push('scripts')
+<script>
+(function () {
+    var form = document.getElementById('sd-reponse');
+    if (!form) { return; }
+    var champ = form.querySelector('textarea');
+    var erreur = form.querySelector('.sd-erreur');
+    var bouton = form.querySelector('button[type="submit"]');
+    function nouvelleCle() {
+        return window.crypto && crypto.randomUUID ? crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, function () { return (Math.random() * 16 | 0).toString(16); });
+    }
+    /* Une cle par brouillon : renvoyer apres une coupure ne publie pas deux fois. */
+    var cle = nouvelleCle();
+    champ.addEventListener('input', function () { cle = nouvelleCle(); erreur.hidden = true; });
+
+    function montrer(message) { erreur.textContent = message; erreur.hidden = false; }
+    /* Repondre et joindre obeissent aux memes regles : une demande fermee en cours de
+       saisie retire aussi l'envoi de fichier. */
+    function retirerJoindre(d) {
+        var joindre = document.getElementById('sd-joindre');
+        if (joindre && d.peut_joindre === false) { joindre.remove(); }
+    }
+    /* Plus rien a envoyer d'ici, mais le texte reste : l'utilisateur peut le copier. */
+    function fermer(message) {
+        if (!form.contains(bouton)) { return false; }
+        var avis = document.createElement('p');
+        avis.className = 'sd-reponse-close';
+        avis.textContent = message;
+        form.insertBefore(avis, form.firstChild);
+        champ.readOnly = true;
+        bouton.remove();
+        return true;
+    }
+    /* L'envoi d'une piece peut apprendre, le premier, que la demande est fermee. */
+    document.addEventListener('sd:demande-fermee', function (ev) { ev.detail.affiche = fermer(ev.detail.message) || ev.detail.affiche; });
+    function occupe(oui) {
+        bouton.disabled = oui;
+        bouton.querySelector('[data-sd-libelle]').hidden = oui;
+        bouton.querySelector('[data-sd-envoi]').hidden = !oui;
+    }
+    function envoyer() {
+        return fetch(form.action, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value },
+            body: JSON.stringify({ corps: champ.value, cle: cle })
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (d) {
+                if (!r.ok) {
+                    var premier = d.errors ? Object.values(d.errors)[0] : null;
+                    var e = new Error((premier && premier[0]) || d.message || "Votre réponse n'a pas pu être envoyée.");
+                    e.donnees = d;
+                    throw e;
+                }
+                return d;
+            });
+        });
+    }
+    form.addEventListener('submit', function (ev) {
+        ev.preventDefault();
+        if (champ.value.trim() === '') { montrer('Écrivez votre réponse.'); champ.focus(); return; }
+        occupe(true);
+        envoyer().then(function (d) {
+            document.getElementById('sd-fil').innerHTML = d.fil;
+            document.getElementById('sd-statut').innerHTML = d.statut;
+            champ.value = '';
+            cle = nouvelleCle();
+            if (!d.peut_repondre) { form.remove(); }
+            retirerJoindre(d);
+        }).catch(function (e) {
+            var d = e.donnees || {};
+            if (d.statut) { document.getElementById('sd-statut').innerHTML = d.statut; }
+            retirerJoindre(d);
+            if (d.peut_repondre === false) { fermer(e.message); return; }
+            montrer(e.message);
+            champ.focus();
+        }).finally(function () { if (form.contains(bouton)) { occupe(false); } });
+    });
+})();
+(function () {
+    var form = document.getElementById('sd-joindre');
+    if (!form) { return; }
+    var champ = form.querySelector('input[type=file]');
+    var erreur = form.querySelector('.sd-erreur');
+    var libelle = form.querySelector('[data-sd-libelle]');
+    var envoi = form.querySelector('[data-sd-envoi]');
+    var octetsMax = parseInt(form.getAttribute('data-octets-max'), 10) || 0;
+    function nouvelleCle() {
+        return window.crypto && crypto.randomUUID ? crypto.randomUUID()
+            : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, function () { return (Math.random() * 16 | 0).toString(16); });
+    }
+    /* Un envoi dont la reponse s'est perdue a peut-etre abouti : si l'utilisateur
+       choisit a nouveau LE MEME fichier, la meme cle part, et le Master rend la piece
+       deja enregistree au lieu d'en creer une seconde. La cle ne change qu'apres un
+       succes, ou pour un autre fichier. */
+    var dernier = null;
+    function cleDe(fichier) {
+        var signature = [fichier.name, fichier.size, fichier.lastModified].join('|');
+        if (!dernier || dernier.signature !== signature) { dernier = { signature: signature, cle: nouvelleCle() }; }
+        return dernier.cle;
+    }
+    function occupe(oui) { champ.disabled = oui; libelle.hidden = oui; envoi.hidden = !oui; }
+    function montrer(message) { erreur.textContent = message; erreur.hidden = false; }
+    champ.addEventListener('change', function () {
+        if (!champ.files.length) { return; }
+        erreur.hidden = true;
+        var fichier = champ.files[0];
+        /* Refuse ici plutot que d'envoyer en entier un fichier qui sera rejete. */
+        if (octetsMax && fichier.size > octetsMax) {
+            montrer('Le fichier dépasse ' + (octetsMax / 1048576).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' Mo.');
+            champ.value = '';
+            return;
+        }
+        var donnees = new FormData();
+        donnees.append('fichier', fichier);
+        donnees.append('cle', cleDe(fichier));
+        occupe(true);
+        fetch(form.action, {
+            method: 'POST', credentials: 'same-origin', body: donnees,
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': form.querySelector('input[name="_token"]').value }
+        }).then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (d) {
+                if (d.statut) { document.getElementById('sd-statut').innerHTML = d.statut; }
+                if (!r.ok) {
+                    var premier = d.errors ? Object.values(d.errors)[0] : null;
+                    var e = new Error((premier && premier[0]) || d.message || "Le fichier n'a pas pu être envoyé.");
+                    e.donnees = d;
+                    throw e;
+                }
+                document.getElementById('sd-pieces').innerHTML = d.pieces;
+                dernier = null;
+                if (d.peut_joindre === false) { form.remove(); }
+            });
+        }).catch(function (e) {
+            var fermee = { message: e.message, affiche: false };
+            if ((e.donnees || {}).peut_repondre === false) {
+                document.dispatchEvent(new CustomEvent('sd:demande-fermee', { detail: fermee }));
+            }
+            /* Le formulaire de reponse porte deja l'avis : ne pas l'ecrire deux fois. */
+            if (fermee.affiche) { form.remove(); return; }
+            if ((e.donnees || {}).peut_joindre === false) {
+                var avis = document.createElement('p');
+                avis.className = 'sd-reponse-close';
+                avis.textContent = e.message;
+                form.replaceWith(avis);
+                return;
+            }
+            montrer(e.message);
+        }).finally(function () { champ.value = ''; occupe(false); });
+    });
+})();
+</script>
+@endpush

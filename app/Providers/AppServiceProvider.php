@@ -87,6 +87,8 @@ class AppServiceProvider extends ServiceProvider
         // Le vocabulaire de la structure LMD est lu par des dizaines de libelles
         // dans une meme page : une instance par requete.
         $this->app->scoped(\App\Services\LMD\VocabulaireStructure::class);
+        // KLASSCI Care : le layout le consulte a plusieurs endroits d'une meme page.
+        $this->app->scoped(\App\Domain\Support\Services\DisponibiliteSupport::class);
         // Bornes de la journee de cours, lues par des grilles qui bouclent heure
         // par heure et par enseignant : une lecture des reglages par requete.
         $this->app->scoped(\App\Services\Planning\PlageHoraireJournee::class);

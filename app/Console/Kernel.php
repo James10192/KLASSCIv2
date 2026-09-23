@@ -35,6 +35,9 @@ class Kernel extends ConsoleKernel
         // Tâches existantes
         $schedule->command('attendance:mark-unattended-teacher-sessions')->everyTenMinutes();
 
+        // KLASSCI Care : signalements que le Master n'a pas pu recevoir.
+        $schedule->command('support:vider-boite-envoi')->everyMinute()->withoutOverlapping();
+
         // Restes des exports groupés abandonnés (dossiers de tranches, PDF
         // assemblés jamais récupérés). Sans ça, rien ne les reprenait.
         $schedule->command('bulletins:purger-exports')->hourly();
