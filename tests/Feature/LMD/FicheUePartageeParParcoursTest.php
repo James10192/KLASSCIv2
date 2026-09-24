@@ -100,4 +100,27 @@ class FicheUePartageeParParcoursTest extends TestCase
             ->assertSee('Partagee entre 2 parcours')
             ->assertSee('Filiere LPA, Filiere LPV', false);
     }
+
+    public function test_une_ue_d_un_seul_parcours_ou_d_aucun_le_dit(): void
+    {
+        $ue = ESBTPUniteEnseignement::where('code', 'AGR2103')->firstOrFail();
+        $lpv = ESBTPLMDParcours::where('code', 'LPV')->firstOrFail();
+        $acteur = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
+        $acteur->assignRole(Role::findOrCreate('superAdmin', 'web'));
+
+        \Illuminate\Support\Facades\DB::table('esbtp_lmd_parcours_ue')
+            ->where('unite_enseignement_id', $ue->id)->where('parcours_id', '!=', $lpv->id)->delete();
+
+        $this->actingAs($acteur)->get(route('esbtp.lmd.ue.show', $ue))
+            ->assertOk()
+            ->assertDontSee('Partagee entre')
+            ->assertSee('Parcours LPV')
+            ->assertSee('Semestre 3');
+
+        \Illuminate\Support\Facades\DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $ue->id)->delete();
+
+        $this->actingAs($acteur)->get(route('esbtp.lmd.ue.show', $ue->fresh()))
+            ->assertOk()
+            ->assertSee('Non rattachee');
+    }
 }
