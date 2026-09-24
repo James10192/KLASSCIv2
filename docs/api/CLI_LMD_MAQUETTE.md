@@ -78,6 +78,46 @@ filière du parcours, semestre de l'unité dans ce parcours — pas le niveau de
 reste celui du premier parcours importé) : c'est la masse horaire
 saisie dans le Planning LMD (`/esbtp/lmd/planning`).
 
+## Réparer les crédits laissés à 0
+
+`POST /api/cli/lmd/planifications/reparer-credits` — jeton `cli:admin`.
+
+Avant septembre 2026, une ligne de la maquette horaire créée en tapant des heures
+recevait 0 crédit au lieu de celui de l'ECUE, et faussait le total CECT du
+parcours. Cette route recense ces lignes et, sur demande, leur pose le crédit de
+la maquette du parcours de leur filière (ligne réservée, sinon commune, sinon
+crédit de la matière).
+
+| Paramètre | Défaut | Effet |
+|---|---|---|
+| `dry_run` | `true` | `false` écrit ; sinon liste seulement |
+| `ids` | — | **obligatoire pour écrire** : les identifiants relus, pris dans la simulation |
+
+L'écriture ne se fait jamais d'office. Un 0 saisi à la **création** d'une ligne
+(édition en masse, cellule CECT d'un ECUE pas encore planifié) ne laissait aucune
+trace avant septembre 2026 : la création n'était pas auditée. Il ne se distingue
+donc pas d'un 0 laissé par l'ancienne saisie d'heures, et seule l'école peut
+trancher. La simulation liste ; l'école relit ; on renvoie les identifiants
+retenus. Sans `ids`, l'écriture est refusée (422).
+
+Ne sont jamais candidates :
+- une ligne dont la **création** est au journal d'audit (auditée depuis
+  septembre 2026 : elle porte son vrai crédit, ou un 0 choisi) ;
+- une ligne dont le crédit a été **modifié** à la main (événement `updated`
+  portant `credits_ects`) ;
+- une ligne dont la maquette ne donne pas plus de 0.
+
+Si l'audit est désactivé sur l'instance, l'écriture est refusée (409) ; la
+simulation reste possible. `reparees` compte les lignes réellement écrites.
+
+```jsonc
+{ "success": true, "dry_run": true,
+  "data": { "candidates": 12, "reparees": 0,
+    "lignes": [{ "id": 518, "matiere": "AGR21033 Génétique animale", "filiere_id": 8,
+                 "semestre": 3, "annee_universitaire_id": 4, "credit_attendu": 2 }] } }
+```
+
 ## Historique
 
 - Septembre 2026 — création (diagnostic maquette USAT).
+- Septembre 2026 — ajout de `POST /api/cli/lmd/planifications/reparer-credits`.

@@ -18,11 +18,8 @@ final class LmdCreditWalletServiceTest extends OfficialDocumentDatabaseTestCase
     {
         parent::setUp();
 
-        Schema::table('esbtp_lmd_bulletins', function (Blueprint $table): void {
-            $table->decimal('moyenne_generale', 5, 2)->nullable();
-            $table->unsignedInteger('credits_capitalises')->nullable();
-            $table->unsignedInteger('credits_totaux')->nullable();
-        });
+        // Moyenne et credits des bulletins : deja poses par le socle
+        // (OfficialDocumentDatabaseTestCase), que le PV controle aussi.
         Schema::create('esbtp_unites_enseignement', function (Blueprint $table): void {
             $table->id();
             $table->string('code')->nullable();

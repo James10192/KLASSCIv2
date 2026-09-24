@@ -27,7 +27,13 @@
                 <div class="lp-hero-icon"><i class="fas fa-sitemap"></i></div>
                 <div>
                     <h1>Planning LMD</h1>
-                    <p>Maquette pédagogique UE / ECUE par parcours et semestre</p>
+                    <p>Maquette pédagogique UE / ECUE par parcours et semestre
+                        @if($annee ?? null)
+                            · <strong>Année {{ $annee->name }}</strong>
+                        @else
+                            · <strong>Aucune année universitaire en cours</strong>
+                        @endif
+                    </p>
                 </div>
             </div>
             <div class="lp-hero-actions">

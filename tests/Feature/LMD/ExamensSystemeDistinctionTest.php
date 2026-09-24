@@ -179,8 +179,9 @@ class ExamensSystemeDistinctionTest extends TestCase
     public function test_index_view_calendar_has_legend_entries_for_systems(): void
     {
         $content = file_get_contents(resource_path('views/esbtp/examens/index.blade.php'));
-        $this->assertStringContainsString('exp-event--sys-lmd', $content);
-        $this->assertStringContainsString('exp-event--sys-bts', $content);
+        // Le calendrier est passe a FullCalendar : la legende porte les classes exp-fc-*.
+        $this->assertStringContainsString('exp-fc-sys-dot--sys-lmd', $content);
+        $this->assertStringContainsString('exp-fc-sys-dot--sys-bts', $content);
     }
 
     public function test_show_view_displays_systeme_badge(): void

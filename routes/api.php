@@ -624,6 +624,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // (dry_run par défaut SAFE, garde-fou évaluations). Idempotent.
         Route::post('/lmd/cleanup', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'cleanup'])->name('lmd.cleanup');
 
+        // Planifications LMD laissees a 0 credit par la saisie d'heures : recense,
+        // repare sur demande (dry_run par defaut). Un 0 modifie a la main est garde.
+        Route::post('/lmd/planifications/reparer-credits', [App\Http\Controllers\API\CLI\CLILMDMaquetteController::class, 'reparerCredits'])->name('lmd.planifications.reparer-credits');
+
         // LMD link-classes — rattache des classes LMD à un parcours (parcours_id +
         // filiere_id dérivé + systeme=LMD). Domaine/Mention via parcours. Dry-run par défaut.
         Route::post('/lmd/link-classes', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'linkClasses'])->name('lmd.link-classes');

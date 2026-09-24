@@ -4,15 +4,8 @@
 
 @section('content')
 @php
-    $totalCreditsEcues = 0;
-    $totalHeures = 0;
-    foreach ($ecues as $ecue) {
-        $totalCreditsEcues += (int) ($ecue->pivot?->credit_ecue ?? $ecue->credit_ecue ?? 0);
-        $totalHeures += (int) ($volumesHoraires[$ecue->id]['total'] ?? 0);
-    }
     $creditsUe = $ue->credit !== null ? (int) $ue->credit : null;
-    $ecartCredits = $creditsUe !== null ? $totalCreditsEcues - $creditsUe : null;
-
+    $nbEcues = collect($maquettes)->flatMap(fn ($m) => $m['ecues']->pluck('id'))->unique()->count();
     $rattachements = [];
     foreach ($ue->parcoursMultiple as $parcoursLie) {
         $cle = $parcoursLie->id;
@@ -72,12 +65,12 @@
                 <div class="lmd-kpi-label">Credits de l'UE</div>
             </div>
             <div class="lmd-kpi">
-                <div class="lmd-kpi-value">{{ $ecues->count() }}</div>
+                <div class="lmd-kpi-value">{{ $nbEcues }}</div>
                 <div class="lmd-kpi-label">Elements constitutifs</div>
             </div>
             <div class="lmd-kpi">
-                <div class="lmd-kpi-value">{{ $totalCreditsEcues }}</div>
-                <div class="lmd-kpi-label">Credits repartis</div>
+                <div class="lmd-kpi-value">{{ count($rattachements) }}</div>
+                <div class="lmd-kpi-label">Parcours</div>
             </div>
             <div class="lmd-kpi">
                 <div class="lmd-kpi-value">{{ $ue->semestre ? 'S' . $ue->semestre : '—' }}</div>
@@ -89,14 +82,6 @@
     @if(session('success'))
         <div class="alert alert-success" style="border-radius:.5rem;margin-bottom:1rem;">
             <i class="fas fa-check-circle me-1"></i>{{ session('success') }}
-        </div>
-    @endif
-
-    @if($ecartCredits !== null && $ecartCredits !== 0 && $ecues->isNotEmpty())
-        <div class="alert alert-warning" style="border-radius:.5rem;margin-bottom:1rem;">
-            <i class="fas fa-exclamation-triangle me-1"></i>
-            Les credits des elements constitutifs totalisent {{ $totalCreditsEcues }},
-            alors que l'unite d'enseignement en porte {{ $creditsUe }}.
         </div>
     @endif
 
@@ -164,7 +149,7 @@
         @endif
     </div>
 
-    <div class="lmd-form-card">
+    <div class="lmd-form-card" x-data="{ onglet: 0 }">
         <div class="lmd-section-title" style="display:flex;justify-content:space-between;align-items:center;">
             <span><i class="fas fa-list-ul me-2" style="color:#0453cb;"></i>Elements constitutifs</span>
             <a href="{{ route('esbtp.lmd.ue.edit', $ue) }}" class="btn btn-acasi secondary btn-sm">
@@ -172,68 +157,108 @@
             </a>
         </div>
 
-        @if($ecues->isEmpty())
-            <div class="lmd-empty">
-                <i class="fas fa-inbox d-block mb-2" style="font-size:1.4rem;"></i>
-                Aucun element constitutif rattache a cette unite d'enseignement.
-            </div>
-        @else
-            <div class="table-responsive">
-                <table class="lmd-ecue-table">
-                    <thead>
-                        <tr>
-                            <th style="width:5%;">#</th>
-                            <th>Intitule</th>
-                            <th style="width:14%;">Code</th>
-                            <th style="width:10%;">Coefficient</th>
-                            <th style="width:9%;">Credits</th>
-                            <th style="width:8%;">CM</th>
-                            <th style="width:8%;">TD</th>
-                            <th style="width:8%;">TP</th>
-                            <th style="width:9%;">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($ecues as $index => $ecue)
-                            @php
-                                $volume = $volumesHoraires[$ecue->id] ?? ['cm' => 0, 'td' => 0, 'tp' => 0, 'total' => 0, 'source' => 'matiere'];
-                                $credit = $ecue->pivot?->credit_ecue ?? $ecue->credit_ecue;
-                                $coefficient = $ecue->pivot?->coefficient_ecue ?? $ecue->coefficient_ecue;
-                            @endphp
-                            <tr>
-                                <td style="color:#94a3b8;font-weight:600;">{{ $index + 1 }}</td>
-                                <td>
-                                    <span class="lmd-ecue-name">{{ $ecue->name }}</span>
-                                    @if($volume['source'] === 'matiere' && $volume['total'] > 0)
-                                        <span class="lmd-ecue-hint" title="Heures portees par la matiere, pas encore planifiees">indicatif</span>
-                                    @endif
-                                </td>
-                                <td><span class="lmd-code">{{ $ecue->code ?: '—' }}</span></td>
-                                <td>{{ $coefficient !== null && $coefficient !== '' ? rtrim(rtrim(number_format((float) $coefficient, 2, ',', ' '), '0'), ',') : '—' }}</td>
-                                <td>{{ $credit !== null && $credit !== '' ? (int) $credit : '—' }}</td>
-                                <td>{{ $volume['cm'] ?: '—' }}</td>
-                                <td>{{ $volume['td'] ?: '—' }}</td>
-                                <td>{{ $volume['tp'] ?: '—' }}</td>
-                                <td><strong>{{ $volume['total'] ?: '—' }}</strong></td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                    <tfoot>
-                        <tr class="lmd-ecue-total">
-                            <td colspan="4">Total</td>
-                            <td>{{ $totalCreditsEcues }}</td>
-                            <td colspan="3"></td>
-                            <td>{{ $totalHeures ?: '—' }}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-            <p class="lmd-footnote">
-                Les volumes horaires proviennent de la planification academique de la filiere,
-                du niveau et du semestre de l'unite d'enseignement. Les valeurs marquees
-                « indicatif » sont celles portees par la matiere, faute de planification.
+        @if(count($maquettes) > 1)
+            <p class="lmd-footnote" style="margin:0 0 .75rem;">
+                Cette unite sert plusieurs parcours. Chaque parcours a sa propre liste d'elements
+                et ses propres heures : choisissez-le ci-dessous.
             </p>
+            <div class="lmd-tabs" role="tablist">
+                @foreach($maquettes as $i => $maquette)
+                    <button type="button" class="lmd-tab" role="tab"
+                            :class="onglet === {{ $i }} ? 'lmd-tab--active' : ''"
+                            x-on:click="onglet = {{ $i }}">
+                        {{ $maquette['parcours']->code ?: $maquette['parcours']->name }}
+                        @if($maquette['semestre'])
+                            <span class="lmd-tab-sem">S{{ $maquette['semestre'] }}</span>
+                        @endif
+                        <span class="lmd-tab-count">{{ $maquette['ecues']->count() }}</span>
+                    </button>
+                @endforeach
+            </div>
         @endif
+
+        @foreach($maquettes as $i => $maquette)
+            @php
+                $ecarts = $maquette['credit_ue'] !== null && $maquette['ecues']->isNotEmpty() ? $maquette['credits'] - $maquette['credit_ue'] : 0;
+            @endphp
+            <div x-show="onglet === {{ $i }}" @if($i > 0) x-cloak @endif>
+                @if($ecarts !== 0)
+                    <div class="alert alert-warning" style="border-radius:.5rem;margin-bottom:1rem;">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        Les credits des elements constitutifs totalisent {{ $maquette['credits'] }},
+                        alors que l'unite d'enseignement en porte {{ $maquette['credit_ue'] }} dans cette maquette.
+                    </div>
+                @endif
+
+                @if($maquette['ecues']->isEmpty())
+                    <div class="lmd-empty">
+                        <i class="fas fa-inbox d-block mb-2" style="font-size:1.4rem;"></i>
+                        @if($maquette['parcours'])
+                            Aucun element constitutif dans la maquette de ce parcours.
+                        @else
+                            Aucun element constitutif rattache a cette unite d'enseignement.
+                        @endif
+                    </div>
+                @else
+                    <div class="table-responsive">
+                        <table class="lmd-ecue-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:5%;">#</th>
+                                    <th>Intitule</th>
+                                    <th style="width:14%;">Code</th>
+                                    <th style="width:10%;">Coefficient</th>
+                                    <th style="width:9%;">Credits</th>
+                                    <th style="width:8%;">CM</th>
+                                    <th style="width:8%;">TD</th>
+                                    <th style="width:8%;">TP</th>
+                                    <th style="width:9%;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($maquette['ecues'] as $index => $ecue)
+                                    @php
+                                        $volume = $maquette['volumes'][$ecue->id] ?? ['cm' => 0, 'td' => 0, 'tp' => 0, 'total' => 0, 'source' => 'matiere'];
+                                        $credit = $ecue->pivot?->credit_ecue ?? $ecue->credit_ecue;
+                                        $coefficient = $ecue->pivot?->coefficient_ecue ?? $ecue->coefficient_ecue;
+                                    @endphp
+                                    <tr>
+                                        <td style="color:#94a3b8;font-weight:600;">{{ $index + 1 }}</td>
+                                        <td>
+                                            <span class="lmd-ecue-name">{{ $ecue->name }}</span>
+                                            @if($volume['source'] === 'matiere' && $volume['total'] > 0)
+                                                <span class="lmd-ecue-hint" title="Heures portees par la matiere, pas encore planifiees">indicatif</span>
+                                            @endif
+                                        </td>
+                                        <td><span class="lmd-code">{{ $ecue->code ?: '—' }}</span></td>
+                                        <td>{{ $coefficient !== null && $coefficient !== '' ? rtrim(rtrim(number_format((float) $coefficient, 2, ',', ' '), '0'), ',') : '—' }}</td>
+                                        <td>{{ $credit !== null && $credit !== '' ? (int) $credit : '—' }}</td>
+                                        <td>{{ $volume['cm'] ?: '—' }}</td>
+                                        <td>{{ $volume['td'] ?: '—' }}</td>
+                                        <td>{{ $volume['tp'] ?: '—' }}</td>
+                                        <td><strong>{{ $volume['total'] ?: '—' }}</strong></td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot>
+                                <tr class="lmd-ecue-total">
+                                    <td colspan="4">Total</td>
+                                    <td>{{ $maquette['credits'] }}</td>
+                                    <td colspan="3"></td>
+                                    <td>{{ $maquette['heures'] ?: '—' }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                @endif
+            </div>
+        @endforeach
+
+        <p class="lmd-footnote">
+            Les volumes horaires proviennent de la maquette horaire (menu Maquettes) du parcours
+            et du semestre affiches. Les valeurs marquees « indicatif » sont celles portees par
+            la matiere, faute de saisie.
+        </p>
     </div>
 
 </div>
@@ -242,6 +267,13 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
+.lmd-tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
+.lmd-tab { display:inline-flex; align-items:center; gap:.4rem; padding:.45rem .85rem; border-radius:8px; border:1px solid #cbd5e1; background:#fff; color:#475569; font-size:.82rem; font-weight:600; cursor:pointer; transition:background .15s, color .15s, border-color .15s; }
+.lmd-tab:hover:not(.lmd-tab--active) { background:rgba(4,83,203,.06); color:#0453cb; }
+.lmd-tab--active { background:#0453cb; border-color:#0453cb; color:#fff; }
+.lmd-tab-sem { font-size:.7rem; opacity:.8; }
+.lmd-tab-count { font-size:.7rem; padding:.05rem .4rem; border-radius:6px; background:rgba(15,23,42,.08); }
+.lmd-tab--active .lmd-tab-count { background:rgba(255,255,255,.2); }
     /* Detail d'une unite d'enseignement — namespace lmd- (meme famille que le formulaire) */
     .lmd-hero {
         background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
