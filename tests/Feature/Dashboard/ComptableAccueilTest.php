@@ -57,6 +57,7 @@ class ComptableAccueilTest extends TestCase
     {
         $this->versement(['montant' => 100000, 'date_paiement' => '2026-09-24']);
         $this->versement(['montant' => 50000, 'date_paiement' => '2026-09-23']);
+        $this->versement(['montant' => 40000, 'date_paiement' => '2026-08-10']);
         $this->versement(['montant' => 200000, 'date_paiement' => '2026-07-10']);
         $this->versement(['montant' => 30000, 'date_paiement' => '2026-09-24', 'status' => 'en_attente']);
 
@@ -65,22 +66,49 @@ class ComptableAccueilTest extends TestCase
         $reponse = $this->actingAs($comptable)->get(route('dashboard'));
 
         $reponse->assertOk();
-        $this->assertSame(100000.0, $reponse->viewData('encaisseAujourdhui'));
-        $this->assertSame(50000.0, $reponse->viewData('encaisseHier'));
-        $serie = $reponse->viewData('serieMois');
-        $this->assertCount(6, $serie);
-        $this->assertSame(200000.0, collect($serie)->firstWhere('mois', '2026-07')['total']);
-        $this->assertSame(150000.0, collect($serie)->firstWhere('mois', '2026-09')['total']);
+        $c = $reponse->viewData('compta');
+        $this->assertSame(100000.0, $c['totalValidatedToday']);
+        $this->assertSame(50000.0, $c['totalPaidYesterday']);
+        $this->assertSame(150000.0, $c['totalPaidMonth']);
+        // Août jusqu'au 24 : le versement du 10 août.
+        $this->assertSame(40000.0, $c['totalPaidPrevMonthToDate']);
+        $this->assertSame(390000.0, $c['totalPaid']);
+        $this->assertSame(1, $c['countToValidate']);
+        $this->assertSame(30000.0, $c['totalPending']);
+        $this->assertCount(84, $c['serieJours']);
 
         $reponse->assertSee('Tableau de bord comptable')
             ->assertSee('À traiter')
-            ->assertSee('1 paiement à valider')
-            ->assertSee('vs hier', false)
+            ->assertSee('Versement à valider')
+            ->assertSee('au même jour de août', false)
             ->assertSee(route('esbtp.paiements.index', ['status' => 'en_attente']), false)
+            ->assertSee('cbChart', false)
             // Actions sur les derniers paiements, depuis l'accueil.
             ->assertSee('Annuler le versement (avoir', false)
-            // Pas le droit : pas de lien vers l'analyse détaillée.
-            ->assertDontSee('Analyse détaillée');
+            // Pas le droit : pas de lien vers l'analyse financière.
+            ->assertDontSee('Analyse financière');
+    }
+
+    /**
+     * La revue adverse de septembre 2026 : l'accueil et l'analyse financière
+     * donnaient deux réponses à la même question. Ils lisent désormais le même
+     * calcul ; ce test le verrouille.
+     */
+    public function test_l_accueil_et_l_analyse_financiere_donnent_les_memes_chiffres(): void
+    {
+        $this->versement(['montant' => 100000, 'date_paiement' => '2026-09-24']);
+        $this->versement(['montant' => 70000, 'date_paiement' => '2026-09-02']);
+        $this->versement(['montant' => 30000, 'date_paiement' => '2026-09-24', 'status' => 'en_attente']);
+
+        $comptable = $this->comptable(['paiements.view', 'comptabilite.dashboard.view']);
+
+        $accueil = $this->actingAs($comptable)->get(route('dashboard'))->viewData('compta');
+        $analyse = $this->actingAs($comptable)->getJson(route('esbtp.comptabilite.dashboard.data'))->assertOk()->json();
+
+        foreach (['totalDue', 'totalPaid', 'totalOverdue', 'countToValidate', 'totalValidatedToday', 'countValidatedToday'] as $cle) {
+            $this->assertEquals($accueil[$cle], $analyse[$cle], "« {$cle} » diffère entre l'accueil et l'analyse financière");
+        }
+        $this->assertEquals(100000.0, $analyse['totalValidatedToday']);
     }
 
     private function comptable(array $permissions): User

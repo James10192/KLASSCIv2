@@ -510,156 +510,30 @@ class DashboardController extends Controller
     private function comptableDashboard()
     {
         $user = Auth::user();
-        $data = ['user' => $user];
-
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $data['anneeEnCours'] = $anneeEnCours;
-        $data['validatedInscriptionsCount'] = 0;
+        $data = ['user' => $user, 'anneeEnCours' => $anneeEnCours, 'indisponible' => false];
+
+        // Un seul calcul pour l'accueil et l'analyse financière : les mêmes
+        // questions y reçoivent les mêmes réponses (revue adverse, sept. 2026).
         try {
-            $validatedQuery = ESBTPInscription::query()->where('status', 'active');
-            if ($anneeEnCours) {
-                $validatedQuery->where('annee_universitaire_id', $anneeEnCours->id);
-            }
-            $data['validatedInscriptionsCount'] = $validatedQuery->count();
-        } catch (\Exception $e) {
-            $data['validatedInscriptionsCount'] = 0;
-        }
-
-        // --- KPIs financiers ---
-        try {
-            $paiementsQuery = \App\Models\ESBTPPaiement::query()->whereNull('deleted_at');
-            if ($anneeEnCours) {
-                // Filtrer via la relation inscription pour garantir la cohérence
-                $paiementsQuery->whereHas('inscription', function ($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id);
-                });
-            }
-
-            // Montants par statut
-            $data['totalEncaisse'] = \App\Models\ESBTPPaiement::netCashSum((clone $paiementsQuery)->where('status', 'validé'));
-            $data['totalEnAttente'] = (clone $paiementsQuery)->where('status', 'en_attente')->encaissements()->sum('montant');
-            $data['paiementsEnAttenteCount'] = (clone $paiementsQuery)->where('status', 'en_attente')->count();
-
-            // Total frais dus (souscriptions actives de l'année courante)
-            $subscriptionsQuery = \App\Models\ESBTPFraisSubscription::query()->charged();
-            if ($anneeEnCours) {
-                $subscriptionsQuery->whereHas('inscription', function ($q) use ($anneeEnCours) {
-                    $q->where('annee_universitaire_id', $anneeEnCours->id);
-                });
-            }
-            $data['totalFraisDus'] = $subscriptionsQuery->sum('amount');
-
-            // Taux de recouvrement (plafonné à 100%)
-            $data['tauxRecouvrement'] = $data['totalFraisDus'] > 0
-                ? min(round(($data['totalEncaisse'] / $data['totalFraisDus']) * 100, 1), 100)
-                : 0;
-
-            $data['montantRestant'] = max(0, $data['totalFraisDus'] - $data['totalEncaisse']);
-
-            // Paiements du mois en cours
-            $data['encaisseMois'] = \App\Models\ESBTPPaiement::netCashSum(
-                (clone $paiementsQuery)
-                    ->where('status', 'validé')
-                    ->whereMonth('date_paiement', now()->month)
-                    ->whereYear('date_paiement', now()->year)
-            );
-
-        } catch (\Exception $e) {
-            \Log::error('[dashboard comptable] KPI indisponibles', ['error' => $e->getMessage()]);
+            $data['compta'] = app(\App\Actions\Comptabilite\BuildDashboardDataAction::class)->pourAnnee($anneeEnCours);
+        } catch (\Throwable $e) {
+            \Log::error('[dashboard comptable] indicateurs indisponibles', ['error' => $e->getMessage()]);
+            $data['compta'] = null;
             $data['indisponible'] = true;
-            $data['totalEncaisse'] = 0;
-            $data['totalEnAttente'] = 0;
-            $data['paiementsEnAttenteCount'] = 0;
-            $data['totalFraisDus'] = 0;
-            $data['tauxRecouvrement'] = 0;
-            $data['montantRestant'] = 0;
-            $data['encaisseMois'] = 0;
         }
 
-        // --- Paiements récents ---
         try {
-            $recentQuery = \App\Models\ESBTPPaiement::with(['etudiant', 'inscription.classe'])
+            $recentQuery = \App\Models\ESBTPPaiement::with(['etudiant', 'inscription.classe', 'fraisCategory'])
                 ->whereNull('deleted_at')
                 ->orderBy('created_at', 'desc');
             if ($anneeEnCours) {
                 $recentQuery->where('annee_universitaire_id', $anneeEnCours->id);
             }
             $data['recentPaiements'] = $recentQuery->take(8)->get();
-        } catch (\Exception $e) {
-            $data['recentPaiements'] = collect();
-        }
-
-        // --- Étudiants avec impayés (top 5 plus gros soldes) ---
-        try {
-            if ($anneeEnCours) {
-                $data['topImpayes'] = DB::table('esbtp_frais_subscriptions as fs')
-                    ->join('esbtp_inscriptions as i', 'fs.inscription_id', '=', 'i.id')
-                    ->join('esbtp_etudiants as e', 'i.etudiant_id', '=', 'e.id')
-                    ->leftJoin(DB::raw('(SELECT inscription_id, frais_category_id, SUM('.\App\Models\ESBTPPaiement::sqlStudentPaidCase().') as total_paye FROM esbtp_paiements WHERE status = \'validé\' AND deleted_at IS NULL GROUP BY inscription_id, frais_category_id) as p'), function ($join) {
-                        $join->on('p.inscription_id', '=', 'i.id')
-                             ->on('p.frais_category_id', '=', 'fs.frais_category_id');
-                    })
-                    ->where('i.annee_universitaire_id', $anneeEnCours->id)
-                    ->where('i.status', 'active')
-                    ->whereNull('e.deleted_at')
-                    ->select(
-                        'e.id as etudiant_id',
-                        'e.nom',
-                        'e.prenoms',
-                        'e.matricule',
-                        DB::raw('SUM(fs.amount) as total_du'),
-                        DB::raw('SUM(COALESCE(p.total_paye, 0)) as total_paye'),
-                        DB::raw('SUM(fs.amount) - SUM(COALESCE(p.total_paye, 0)) as solde_restant')
-                    )
-                    ->groupBy('e.id', 'e.nom', 'e.prenoms', 'e.matricule')
-                    ->havingRaw('solde_restant > 0')
-                    ->orderByDesc('solde_restant')
-                    ->limit(5)
-                    ->get();
-            } else {
-                $data['topImpayes'] = collect();
-            }
-        } catch (\Exception $e) {
-            $data['topImpayes'] = collect();
-        }
-
-        // --- Répartition par mode de paiement (pour le mois) ---
-        try {
-            $modesQuery = \App\Models\ESBTPPaiement::query()
-                ->whereNull('deleted_at')
-                ->where('status', 'validé')
-                ->whereMonth('date_paiement', now()->month)
-                ->whereYear('date_paiement', now()->year);
-            if ($anneeEnCours) {
-                $modesQuery->where('annee_universitaire_id', $anneeEnCours->id);
-            }
-            $data['paiementsParMode'] = $modesQuery
-                ->select('mode_paiement', DB::raw('COUNT(*) as count'), DB::raw('SUM('.\App\Models\ESBTPPaiement::sqlCashCase().') as total'))
-                ->groupBy('mode_paiement')
-                ->get();
-        } catch (\Exception $e) {
-            $data['paiementsParMode'] = collect();
-        }
-
-        // --- Repères et tendance (rule premium-dashboard, exigences 1 et 4) ---
-        $indicateurs = app(IndicateursDeCaisse::class);
-        try {
-            $data['encaisseAujourdhui'] = $indicateurs->netEcoleDuJour(now());
-            $data['encaisseHier'] = $indicateurs->netEcoleDuJour(now()->subDay());
-            // Le mois précédent à la même date : comparer un mois entamé à un
-            // mois complet ferait toujours baisser la courbe.
-            $data['encaisseMoisPrecedent'] = round(\App\Models\ESBTPPaiement::netCashSum(
-                \App\Models\ESBTPPaiement::query()->where('status', 'validé')
-                    ->whereDate('date_paiement', '>=', now()->subMonthNoOverflow()->startOfMonth())
-                    ->whereDate('date_paiement', '<=', now()->subMonthNoOverflow())
-            ), 2);
-            $data['serieMois'] = $indicateurs->serieMensuelle(6);
         } catch (\Throwable $e) {
-            \Log::error('[dashboard comptable] tendance indisponible', ['error' => $e->getMessage()]);
-            $data['encaisseAujourdhui'] = null;
-            $data['encaisseHier'] = null;
-            $data['encaisseMoisPrecedent'] = null;
-            $data['serieMois'] = [];
+            \Log::error('[dashboard comptable] derniers versements indisponibles', ['error' => $e->getMessage()]);
+            $data['recentPaiements'] = null;
         }
 
         try {
@@ -669,6 +543,14 @@ class DashboardController extends Controller
         } catch (\Throwable $e) {
             $data['derniereReconciliation'] = null;
         }
+
+        // Ancienneté du plus vieux versement en attente : « 12 à valider » ne dit
+        // pas si l'on a pris du retard, « le plus ancien attend depuis 3 jours » si.
+        $data['plusVieilleAttente'] = \App\Models\ESBTPPaiement::query()
+            ->where('status', 'en_attente')
+            ->encaissements()
+            ->when($anneeEnCours, fn ($q) => $q->whereHas('inscription', fn ($i) => $i->where('annee_universitaire_id', $anneeEnCours->id)))
+            ->min('created_at');
 
         return view('dashboard.comptable', $data);
     }

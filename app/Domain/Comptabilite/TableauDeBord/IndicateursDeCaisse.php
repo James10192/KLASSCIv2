@@ -12,12 +12,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Les chiffres des tableaux de bord de la caisse et de la comptabilité.
+ * Les chiffres du tableau de bord de la caisse.
  *
- * Deux portées, un seul calcul :
- *  - « guichet » : ce qu'UN agent a saisi, daté par `created_at` — c'est le
- *    geste au guichet qui compte, pas la date de valeur ;
- *  - « école » : tout l'établissement, daté par `date_paiement`.
+ * Portée « guichet » : ce qu'UN agent a saisi, daté par `created_at` — c'est
+ * le geste au guichet qui compte, pas la date de valeur. Les chiffres de
+ * l'école entière (accueil comptable, analyse financière) viennent d'un seul
+ * calcul, {@see \App\Actions\Comptabilite\BuildDashboardDataAction}.
  *
  * Tout est agrégé en base (SUM, COUNT, GROUP BY) : rien n'hydrate les
  * versements d'une période entière (rule premium-dashboard, exigence 9).
@@ -136,42 +136,6 @@ class IndicateursDeCaisse
         }
 
         return $serie;
-    }
-
-    /**
-     * Encaissé net par mois pour l'école, sur les N derniers mois.
-     *
-     * @return array<int, array{mois: string, libelle: string, total: float}>
-     */
-    public function serieMensuelle(int $mois): array
-    {
-        $debut = now()->startOfMonth()->subMonths($mois - 1);
-
-        $totaux = $this->ecole()
-            ->whereDate('date_paiement', '>=', $debut)
-            ->groupBy(DB::raw("DATE_FORMAT(date_paiement, '%Y-%m')"))
-            ->select(DB::raw("DATE_FORMAT(date_paiement, '%Y-%m') as mois"), DB::raw('SUM('.ESBTPPaiement::sqlCashCase().') as total'))
-            ->pluck('total', 'mois');
-
-        $serie = [];
-        for ($m = $debut->copy(); $m->lte(now()); $m->addMonth()) {
-            $cle = $m->format('Y-m');
-            $serie[] = [
-                'mois' => $cle,
-                'libelle' => ucfirst($m->isoFormat('MMM YY')),
-                'total' => round((float) ($totaux[$cle] ?? 0), 2),
-            ];
-        }
-
-        return $serie;
-    }
-
-    /**
-     * Encaissé net de l'école sur une journée (date de valeur).
-     */
-    public function netEcoleDuJour(Carbon $jour): float
-    {
-        return $this->netDu($this->ecole()->whereDate('date_paiement', $jour));
     }
 
     /**

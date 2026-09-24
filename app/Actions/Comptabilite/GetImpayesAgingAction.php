@@ -14,6 +14,7 @@ class GetImpayesAgingAction
 {
     private const ACTIVE_INSCRIPTION_STATUSES = ['active', 'en_attente', 'validée'];
     private const STUDENT_PREVIEW_PER_BUCKET = 5;
+    private const TOP_ECHUS = 5;
 
     public function __construct(
         private readonly RelanceCalculationService $relanceCalc,
@@ -26,9 +27,22 @@ class GetImpayesAgingAction
      */
     public function __invoke(ComptabiliteFilters $filters): array
     {
+        return $this->analyse($filters)['buckets'];
+    }
+
+    /**
+     * Buckets ET plus gros impayés échus, en un seul passage sur les
+     * inscriptions : le tableau de bord affiche les deux, et un second passage
+     * recalculerait l'état financier de chaque inscription pour rien.
+     *
+     * @return array{buckets: array<string, array{count:int, amount:float, students:array}>, top: array<int, array>}
+     */
+    public function analyse(ComptabiliteFilters $filters): array
+    {
         $inscriptions = ESBTPInscription::query()
             ->with([
                 'etudiant',
+                'classe:id,name',
                 'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
             ])
             ->when($filters->anneeId, fn ($q) => $q->where('annee_universitaire_id', $filters->anneeId))
@@ -37,12 +51,13 @@ class GetImpayesAgingAction
             ->get();
 
         if ($inscriptions->isEmpty()) {
-            return $this->emptyBuckets();
+            return ['buckets' => $this->emptyBuckets(), 'top' => []];
         }
 
         $this->relanceCalc->preloadForInscriptions($inscriptions);
 
         $buckets = $this->emptyBuckets();
+        $echus = [];
 
         foreach ($inscriptions as $inscription) {
             $state = $this->relanceCalc->getFinancialState($inscription);
@@ -55,26 +70,32 @@ class GetImpayesAgingAction
             $joursRetard = (int) ($state['overdue_days'] ?? 0);
             $bucketKey = $this->bucketKeyFor($joursRetard);
 
+            $ligne = [
+                'id' => $inscription->etudiant->id ?? null,
+                'inscription_id' => $inscription->id,
+                'nom' => $inscription->etudiant->nom_complet ?? 'N/A',
+                'classe' => $inscription->classe->name ?? null,
+                'solde' => $soldeRestant,
+                'jours' => $joursRetard,
+            ];
+
             $buckets[$bucketKey]['count']++;
             $buckets[$bucketKey]['amount'] += $soldeRestant;
             if (count($buckets[$bucketKey]['students']) < self::STUDENT_PREVIEW_PER_BUCKET) {
-                $buckets[$bucketKey]['students'][] = [
-                    'id' => $inscription->etudiant->id ?? null,
-                    'inscription_id' => $inscription->id,
-                    'nom' => $inscription->etudiant->nom_complet ?? 'N/A',
-                    'solde' => $soldeRestant,
-                    'jours' => $joursRetard,
-                ];
+                $buckets[$bucketKey]['students'][] = $ligne;
             }
+            $echus[] = $ligne;
         }
 
-        return $buckets;
+        usort($echus, fn ($a, $b) => $b['solde'] <=> $a['solde']);
+
+        return ['buckets' => $buckets, 'top' => array_slice($echus, 0, self::TOP_ECHUS)];
     }
 
     /**
      * Total dû agrégé sur les filtres (utilisé par BuildDashboardDataAction).
      *
-     * @return array{totalDue:float, countDue:int}
+     * @return array{totalDue:float, countDue:int, parClasse:array<int, float>}
      */
     public function totalDuForFilters(ComptabiliteFilters $filters): array
     {
@@ -83,25 +104,28 @@ class GetImpayesAgingAction
             ->when($filters->anneeId, fn ($q) => $q->where('annee_universitaire_id', $filters->anneeId))
             ->when($filters->filiereId, fn ($q) => $q->whereHas('classe', fn ($q2) => $q2->where('filiere_id', $filters->filiereId)))
             ->when($filters->classeId, fn ($q) => $q->where('classe_id', $filters->classeId))
-            ->get(['id', 'filiere_id', 'niveau_id', 'affectation_status']);
+            ->get(['id', 'classe_id', 'filiere_id', 'niveau_id', 'affectation_status']);
 
         if ($inscriptions->isEmpty()) {
-            return ['totalDue' => 0.0, 'countDue' => 0];
+            return ['totalDue' => 0.0, 'countDue' => 0, 'parClasse' => []];
         }
 
         $this->relanceCalc->preloadForInscriptions($inscriptions);
 
         $totalDue = 0.0;
         $countDue = 0;
+        $parClasse = [];
         foreach ($inscriptions as $inscription) {
             $montant = $this->relanceCalc->calculerTotalDu($inscription);
             if ($montant > 0) {
                 $totalDue += $montant;
                 $countDue++;
+                $cle = (int) $inscription->classe_id;
+                $parClasse[$cle] = ($parClasse[$cle] ?? 0.0) + $montant;
             }
         }
 
-        return ['totalDue' => $totalDue, 'countDue' => $countDue];
+        return ['totalDue' => $totalDue, 'countDue' => $countDue, 'parClasse' => $parClasse];
     }
 
     private function emptyBuckets(): array
