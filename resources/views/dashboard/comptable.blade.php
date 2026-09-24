@@ -68,7 +68,7 @@
     .cb-bar { display: flex; align-items: center; gap: .75rem; }
     .cb-bar-track { flex: 1; position: relative; height: 34px; background: #f1f5fb; border-radius: 8px; overflow: hidden; }
     .cb-bar-fill { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 8px; background: #c9dbf6; }
-    .cb-bar-lbl { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); font-size: .82rem; font-weight: 700; color: #0f172a; white-space: nowrap; }
+    .cb-bar-lbl { position: absolute; left: .75rem; right: .5rem; top: 50%; transform: translateY(-50%); font-size: .82rem; font-weight: 700; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .cb-bar-val { width: 128px; text-align: right; font-size: .86rem; font-weight: 700; color: #0f172a; white-space: nowrap; }
 
     .cb-rank { display: flex; align-items: center; gap: .75rem; text-decoration: none; color: #1e293b; }
@@ -315,7 +315,7 @@
             <div class="cb-card-head"><span class="cb-card-t">Par mode de paiement</span><span class="cb-card-s">{{ now()->locale('fr')->isoFormat('MMMM') }}</span></div>
             @forelse($modes as $m)
                 <div class="cb-bar">
-                    <div class="cb-bar-track"><div class="cb-bar-fill" style="width: {{ max(2, round($m['total'] / $modesMax * 100)) }}%"></div><span class="cb-bar-lbl">{{ $m['mode'] }} · {{ $m['count'] }}</span></div>
+                    <div class="cb-bar-track"><div class="cb-bar-fill" style="width: {{ max(2, round($m['total'] / $modesMax * 100)) }}%"></div><span class="cb-bar-lbl" title="{{ $m['mode'] }} · {{ $m['count'] }}">{{ $m['mode'] }} · {{ $m['count'] }}</span></div>
                     <span class="cb-bar-val cb-num">{{ $cbFmt($m['total']) }}</span>
                 </div>
             @empty
