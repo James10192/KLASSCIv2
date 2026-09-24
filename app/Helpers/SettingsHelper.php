@@ -539,6 +539,18 @@ class SettingsHelper
      *
      * @return array
      */
+    /** Seuils du bandeau « Fiabilité des données », valeurs par defaut comprises. */
+    private static function analyticsFiabiliteSettings(): array
+    {
+        $valeurs = [];
+        foreach (\App\Domain\Analytics\Quality\PaymentQualityEvaluator::DEFAULTS as $cle => $defaut) {
+            $brut = self::get('analytics.fiabilite.' . $cle, $defaut);
+            $valeurs[$cle] = is_float($defaut) ? (float) $brut : (int) $brut;
+        }
+
+        return $valeurs;
+    }
+
     public static function getAnalyticsSettings()
     {
         return [
@@ -568,6 +580,10 @@ class SettingsHelper
                 'enabled'     => (string) self::get('analytics.scan_cache.enabled', '0') === '1',
                 'ttl_seconds' => (int)    self::get('analytics.scan_cache.ttl_seconds', \App\Services\Analytics\AnalyticsScanCache::DEFAULT_TTL_SECONDS),
             ],
+            // Fiabilite des donnees : avant toute prevision, on verifie que les
+            // paiements saisis permettent d'en faire une. Voir
+            // App\Domain\Analytics\Quality\PaymentQualityEvaluator.
+            'fiabilite' => self::analyticsFiabiliteSettings(),
             'recouvrement' => [
                 'whatsapp_template' => (string) self::get(
                     'analytics.recouvrement.whatsapp_template',

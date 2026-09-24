@@ -30,7 +30,8 @@
     .cb-chip--up { background: #dcfce7; color: #047857; }
     .cb-chip--down { background: #fee2e2; color: #b91c1c; }
     .cb-chip--flat { background: #eef2f7; color: #475569; }
-    .cb-kpi-val { display: flex; align-items: baseline; gap: .4rem; white-space: nowrap; }
+    .cb-kpi-val { display: flex; align-items: baseline; gap: .4rem; white-space: nowrap; flex-wrap: wrap; }
+    .cb-kpi-val .cb-chip { margin-left: auto; align-self: center; }
     .cb-kpi-val b { font-size: clamp(1.25rem, 1.9vw, 1.65rem); font-weight: 800; color: #0f172a; letter-spacing: -.02em; }
     .cb-kpi-val small { font-size: .74rem; font-weight: 700; color: #94a3b8; }
     .cb-spark { width: 100%; height: 34px; display: block; }
@@ -91,7 +92,7 @@
     .cb-st--wait { background: #fef3c7; color: #92400e; }
     .cb-st--no { background: #fee2e2; color: #b91c1c; }
     .cb-st--av { background: #e8f0fc; color: #0453cb; }
-    .cb-table-wrap { overflow-x: auto; }
+    .cb-table-wrap { overflow-x: auto; width: 100%; max-width: 100%; min-width: 0; }
     .cb-sub { font-size: .74rem; color: #64748b; }
 
     .cb-links { display: flex; gap: .6rem; flex-wrap: wrap; }
@@ -103,6 +104,23 @@
     /* Sur une colonne, la file de travail passe avant la courbe (exigence 10). */
     @media (max-width: 1100px) { .cb-row--2-1 { grid-template-columns: 1fr; } .cb-card--todo { order: -1; } }
     @media (max-width: 860px) { .cb-row--1-1 { grid-template-columns: 1fr; } }
+    /* Téléphone : chaque versement devient une carte (le tableau élargissait
+       la page à 630 px). Montant et statut en tête, actions en pied. */
+    @media (max-width: 640px) {
+        .cb-table thead { display: none; }
+        .cb-table, .cb-table tbody { display: block; }
+        .cb-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .2rem .75rem; padding: .8rem 0; border-top: 1px solid #f1f5f9; }
+        .cb-table tr:first-child { border-top: 0; }
+        .cb-table td { display: block; padding: 0; border: 0; }
+        .cb-table td:nth-child(1) { grid-column: 1; grid-row: 3; font-size: .74rem; }
+        .cb-table td:nth-child(2) { grid-column: 1; grid-row: 1; }
+        .cb-table td:nth-child(3) { grid-column: 1; grid-row: 2; font-size: .78rem; }
+        .cb-table td:nth-child(4) { grid-column: 2; grid-row: 2; justify-self: end; }
+        .cb-table .cb-amt { grid-column: 2; grid-row: 1; }
+        .cb-table .cb-act { grid-column: 1 / -1; grid-row: 4; width: auto; white-space: normal; margin-top: .35rem; }
+        .cb-head-actions { width: 100%; }
+        .cb-head-actions .cb-btn { flex: 1 1 auto; justify-content: center; }
+    }
     @media (max-width: 576px) {
         .cb-wrap { padding: 1rem .75rem 1.5rem; }
         .cb-head h1 { font-size: 1.4rem; }
@@ -231,30 +249,30 @@
     <div class="cb-kpis">
         @php $ch = $cbChip($varMois); @endphp
         <a class="cb-kpi" @if($cbPeutVoir) href="{{ route('esbtp.paiements.index', ['status' => 'validé', 'date_debut' => $cbDebutMois, 'date_fin' => $cbAujourdhui]) }}" @endif>
-            <span class="cb-kpi-top"><span class="cb-kpi-label">Encaissé ce mois</span><span class="cb-chip {{ $ch['cls'] }}">{{ $ch['txt'] }}</span></span>
-            <span class="cb-kpi-val cb-num"><b>{{ $cbFmt($c['totalPaidMonth']) }}</b><small>FCFA</small></span>
+            <span class="cb-kpi-top"><span class="cb-kpi-label">Encaissé ce mois</span></span>
+            <span class="cb-kpi-val cb-num"><b>{{ $cbFmt($c['totalPaidMonth']) }}</b><small>FCFA</small><span class="cb-chip {{ $ch['cls'] }}">{{ $ch['txt'] }}</span></span>
             @if($sparkEncaisse)<svg class="cb-spark" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><polyline points="{{ $sparkEncaisse }}" fill="none" stroke="#0453cb" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline></svg>@endif
             <span class="cb-kpi-ref">vs {{ $cbFmt($c['totalPaidPrevMonthToDate']) }} au même jour de {{ $cbMoisPrec }}</span>
         </a>
 
         <a class="cb-kpi" @if($cbPeutVoir) href="{{ route('esbtp.paiements.suivi-categories') }}" @endif>
-            <span class="cb-kpi-top"><span class="cb-kpi-label">Taux de recouvrement</span>@if($gainTaux !== null)<span class="cb-chip {{ $gainTaux > 0.05 ? 'cb-chip--up' : 'cb-chip--flat' }}">+{{ number_format($gainTaux, 1, ',', ' ') }} pts ce mois</span>@endif</span>
-            <span class="cb-kpi-val cb-num"><b>{{ $taux === null ? '—' : number_format($taux, 1, ',', ' ') }}</b><small>%</small></span>
+            <span class="cb-kpi-top"><span class="cb-kpi-label">Taux de recouvrement</span></span>
+            <span class="cb-kpi-val cb-num"><b>{{ $taux === null ? '—' : number_format($taux, 1, ',', ' ') }}</b><small>%</small>@if($gainTaux !== null)<span class="cb-chip {{ $gainTaux > 0.05 ? 'cb-chip--up' : 'cb-chip--flat' }}">+{{ number_format($gainTaux, 1, ',', ' ') }} pts ce mois</span>@endif</span>
             @if($sparkTaux)<svg class="cb-spark" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><polyline points="{{ $sparkTaux }}" fill="none" stroke="#0453cb" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline></svg>@endif
             <span class="cb-kpi-ref">{{ $cbFmt($totalPaye) }} encaissés sur {{ $cbFmt($totalDu) }} FCFA dus</span>
         </a>
 
         <a class="cb-kpi" @if($cbPeutRelancer) href="{{ route('esbtp.comptabilite.relances.index') }}" @endif>
-            <span class="cb-kpi-top"><span class="cb-kpi-label">Reste à percevoir (total)</span>@if($c['totalPaidMonth'] > 0)<span class="cb-chip cb-chip--up">− {{ $cbFmt($c['totalPaidMonth']) }} ce mois</span>@endif</span>
-            <span class="cb-kpi-val cb-num"><b>{{ $cbFmt($reste) }}</b><small>FCFA</small></span>
+            <span class="cb-kpi-top"><span class="cb-kpi-label">Reste à percevoir (total)</span></span>
+            <span class="cb-kpi-val cb-num"><b>{{ $cbFmt($reste) }}</b><small>FCFA</small>@if($c['totalPaidMonth'] > 0)<span class="cb-chip cb-chip--up">− {{ $cbFmt($c['totalPaidMonth']) }} ce mois</span>@endif</span>
             @if($sparkReste)<svg class="cb-spark" viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><polyline points="{{ $sparkReste }}" fill="none" stroke="#0453cb" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline></svg>@endif
             <span class="cb-kpi-ref">dont {{ $cbFmt($c['totalOverdue']) }} FCFA échus · {{ $c['countOverdueTotal'] }} étudiant{{ $c['countOverdueTotal'] > 1 ? 's' : '' }}</span>
         </a>
 
         @php $ch = $cbChip($varJour); @endphp
         <a class="cb-kpi" @if($cbPeutVoir) href="{{ route('esbtp.paiements.index', ['status' => 'validé', 'date_debut' => $cbAujourdhui, 'date_fin' => $cbAujourdhui]) }}" @endif>
-            <span class="cb-kpi-top"><span class="cb-kpi-label">Encaissé aujourd'hui</span><span class="cb-chip {{ $ch['cls'] }}">{{ $ch['txt'] }} vs hier</span></span>
-            <span class="cb-kpi-val cb-num"><b>{{ $cbFmt($c['totalValidatedToday']) }}</b><small>FCFA</small></span>
+            <span class="cb-kpi-top"><span class="cb-kpi-label">Encaissé aujourd'hui</span></span>
+            <span class="cb-kpi-val cb-num"><b>{{ $cbFmt($c['totalValidatedToday']) }}</b><small>FCFA</small><span class="cb-chip {{ $ch['cls'] }}">{{ $ch['txt'] }} vs hier</span></span>
             <span class="cb-kpi-ref">{{ $c['countValidatedToday'] }} versement{{ $c['countValidatedToday'] > 1 ? 's' : '' }} · hier {{ $cbFmt($c['totalPaidYesterday']) }} FCFA</span>
             <span class="cb-kpi-ref">{{ $c['countToValidate'] }} en attente de validation</span>
         </a>

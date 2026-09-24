@@ -135,7 +135,8 @@
     .sam-pastille.clair { background: #c7d7f3; }
     .sam-attente { font-size: 12.5px; font-weight: 600; color: #8a5200; text-decoration: none; }
     .sam-filieres { gap: 12px; }
-    .sam-fil { display: grid; gap: 6px; }
+    .sam-fil { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; min-width: 0; }
+    .sam-fil-tete { min-width: 0; }
     .sam-fil-tete { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: #1e293b; }
     .sam-fil-tete span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
     .sam-fil-tete b { flex-shrink: 0; font-variant-numeric: tabular-nums; }

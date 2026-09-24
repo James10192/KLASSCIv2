@@ -216,7 +216,7 @@
     <div class="cx-top">
         <div class="cx-hero">
             <div class="cx-ring" role="img" aria-label="{{ $cxPart === null ? 'Pas encore de moyenne' : round($cxPart).' % de ma moyenne' }}">
-                <svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="17" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="3.2"></circle><circle cx="21" cy="21" r="17" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" pathLength="100" stroke-dasharray="{{ round($cxAnneau, 1) }} 100"></circle></svg>
+                <svg viewBox="0 0 42 42"><circle cx="21" cy="21" r="17" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="3.2"></circle>@if($cxAnneau > 0)<circle cx="21" cy="21" r="17" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" pathLength="100" stroke-dasharray="{{ round($cxAnneau, 1) }} 100"></circle>@endif</svg>
                 <div class="cx-ring-mid">
                     @if($cxPart === null)<b>—</b><small>pas encore de moyenne</small>
                     @else<b class="cx-num">{{ round($cxPart) }} %</b><small>de ma moyenne journalière</small>@endif

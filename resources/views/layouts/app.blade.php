@@ -56,7 +56,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
     <!-- Custom CSS -->
-    <link href="{{ asset('css/nextadmin.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/nextadmin.css') }}?v={{ @filemtime(public_path('css/nextadmin.css')) ?: '1' }}" rel="stylesheet">
     <link href="{{ asset('css/navbar-enhancements.css') }}" rel="stylesheet">
     <link href="{{ asset('css/sidebar-fixes.css') }}?v={{ @filemtime(public_path('css/sidebar-fixes.css')) ?: '1' }}" rel="stylesheet">
     <!-- Dashboard Moderne CSS - Design System ACASI 2025 -->
