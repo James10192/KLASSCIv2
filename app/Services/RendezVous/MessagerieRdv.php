@@ -5,6 +5,8 @@ namespace App\Services\RendezVous;
 use App\Enums\StatutConvocationRdv;
 use App\Models\ESBTPRdvReservation;
 use App\Services\MailPulse\MailPulseResult;
+use App\Services\MailPulse\RefusMailPulse;
+use App\Support\ColonnesDeployees;
 use Illuminate\Support\Facades\Log;
 
 class MessagerieRdv
@@ -17,14 +19,9 @@ class MessagerieRdv
      * toutes les convocations suivantes a l'identique. Ils ne consomment pas de
      * tentative, et arretent un lot au lieu de le parcourir pour rien.
      */
-    private const REFUS_DE_CONFIGURATION = [
-        'disabled', 'missing_api_key', 'auth_failed',
-        'endpoint_not_found', 'endpoint_not_supported', 'invalid_dispatch_contract',
-    ];
+    private const REFUS_DE_CONFIGURATION = RefusMailPulse::CONFIGURATION;
 
-    private const REFUS_PASSAGERS = [
-        'connection_failed', 'request_timeout', 'rate_limited', 'provider_unavailable',
-    ];
+    private const REFUS_PASSAGERS = RefusMailPulse::PASSAGERS;
 
     public function __construct(private readonly CourrielConvocationRdv $courriel)
     {
@@ -46,7 +43,22 @@ class MessagerieRdv
             'convocation_erreur' => null,
             'convocation_message_id' => null,
             'prevenue_par' => null,
-        ])->save();
+        ] + $this->suiviDistantEfface())->save();
+    }
+
+    /**
+     * Le suivi MailPulse d'une convocation precedente, remis a zero. Colonnes
+     * absentes entre le pull et le migrate du deploiement : rien a effacer.
+     *
+     * @return array<string, null>
+     */
+    private function suiviDistantEfface(): array
+    {
+        if (! ColonnesDeployees::existe('esbtp_rdv_reservations', 'convocation_code_distant')) {
+            return [];
+        }
+
+        return ['convocation_delivree_at' => null, 'convocation_synchro_at' => null, 'convocation_code_distant' => null];
     }
 
     /**
@@ -147,9 +159,17 @@ class MessagerieRdv
 
     private function emailValide(ESBTPRdvReservation $reservation): bool
     {
-        $email = trim((string) ($reservation->email ?? ''));
+        // Une adresse fabriquee (`@esbtp.edu.ci`) ou une faute connue
+        // (`gmail.con`) rebondirait : la famille est « sans e-mail », donc a
+        // appeler, plutot que convoquee dans le vide. Meme conduite pour un
+        // contact que la famille n'a jamais confirme, tant que l'ecole ne l'a
+        // pas confirme elle-meme.
+        $porteur = $reservation->porteur();
+        if ($porteur instanceof \Illuminate\Database\Eloquent\Model && method_exists($porteur, 'contactAConfirmer') && $porteur->contactAConfirmer()) {
+            return false;
+        }
 
-        return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+        return app(\App\Services\Emails\AnalyseurEmail::class)->analyser($reservation->email)->joignable();
     }
 
     private function creneauPasse(ESBTPRdvReservation $reservation): bool

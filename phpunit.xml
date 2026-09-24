@@ -27,5 +27,7 @@
         <server name="QUEUE_CONNECTION" value="sync"/>
         <server name="SESSION_DRIVER" value="array"/>
         <server name="TELESCOPE_ENABLED" value="false"/>
+        <!-- Aucun test ne doit dependre du DNS reel : ceux qui verifient le MX le remplacent par un double. -->
+        <server name="EMAILS_VERIFIER_MX" value="false"/>
     </php>
 </phpunit>

@@ -16,7 +16,7 @@ class UpdateStudentReinscriptionFicheRequest extends FormRequest
         return [
             // ── Étudiant
             'telephone'                     => 'required|string|max:20',
-            'email_personnel'               => 'nullable|email|max:255',
+            'email_personnel'               => ['nullable', 'email', 'max:255', new \App\Rules\EmailJoignable($this->adressesEnregistrees())],
             'ville'                         => 'required|string|max:255',
             'commune'                       => 'required|string|max:255',
             'adresse'                       => 'nullable|string',
@@ -37,7 +37,7 @@ class UpdateStudentReinscriptionFicheRequest extends FormRequest
             'parents.*.adresse'             => 'nullable|string',
             'parents.*.telephone'           => 'nullable|string|max:20|required_with:parents.*.nom',
             'parents.*.telephone_secondaire'=> 'nullable|string|max:20',
-            'parents.*.email'               => 'nullable|email|max:255',
+            'parents.*.email'               => ['nullable', 'email', 'max:255', new \App\Rules\EmailJoignable($this->adressesEnregistrees())],
             'parents.*.type_piece_identite' => 'nullable|in:CNI,Passeport,Permis,Carte_consulaire,Autre',
             'parents.*.numero_piece_identite'=> 'nullable|string|max:50',
             'parents.*.relation'            => 'nullable|string|max:50|required_with:parents.*.nom',
@@ -58,5 +58,21 @@ class UpdateStudentReinscriptionFicheRequest extends FormRequest
             'parents.*.relation.required_with' => 'La relation avec l\'étudiant est obligatoire dès que vous remplissez le nom du parent.',
             'parents.*.email.email'            => 'L\'email du parent n\'est pas valide.',
         ];
+    }
+
+    /**
+     * Adresses deja en base, renvoyees telles quelles par la fiche : une adresse
+     * ancienne que personne n'a touchee ne bloque pas l'enregistrement.
+     *
+     * @return list<?string>
+     */
+    private function adressesEnregistrees(): array
+    {
+        $etudiant = $this->route('etudiant');
+        if (! $etudiant instanceof \App\Models\ESBTPEtudiant) {
+            return [];
+        }
+
+        return \App\Http\Requests\Etudiants\ReglesEmailsEtudiant::adressesEnregistrees($etudiant);
     }
 }

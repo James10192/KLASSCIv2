@@ -1,0 +1,87 @@
+<?php
+
+namespace App\Services\MailPulse;
+
+use Illuminate\Http\Client\Response;
+
+/**
+ * L'API de verification WhatsApp de MailPulse (`/api/v1/verifications`).
+ *
+ * MailPulse genere, envoie et controle le code : KLASSCI ne le voit jamais.
+ * Chaque appel rend un ResultatVerificationDistante dont le `code` est l'un
+ * de ceux du contrat MailPulse, ou un code local (`disabled`,
+ * `missing_api_key`, `connection_failed`).
+ */
+class MailPulseVerifications
+{
+    public function __construct(private readonly MailPulseApi $api) {}
+
+    public function creer(string $telephoneE164, string $reference): ResultatVerificationDistante
+    {
+        $reponse = $this->api->appeler('POST', '/api/v1/verifications', [
+            'channel' => 'whatsapp',
+            'to' => $telephoneE164,
+            'locale' => 'fr',
+            'reference' => $reference,
+        ], 'verification_create');
+
+        if (is_string($reponse)) {
+            return ResultatVerificationDistante::echec($reponse);
+        }
+
+        if ($reponse->status() === 201) {
+            $id = $reponse->json('id');
+
+            return is_string($id) && $id !== ''
+                ? ResultatVerificationDistante::ok('pending', $id)
+                : ResultatVerificationDistante::echec('invalid_contract');
+        }
+
+        return $this->echec($reponse);
+    }
+
+    public function controler(string $verificationId, string $code): ResultatVerificationDistante
+    {
+        $reponse = $this->api->appeler('POST', '/api/v1/verifications/'.rawurlencode($verificationId).'/check', ['code' => $code], 'verification_check');
+
+        if (is_string($reponse)) {
+            return ResultatVerificationDistante::echec($reponse);
+        }
+
+        if ($reponse->status() === 200 && $reponse->json('status') === 'approved') {
+            return ResultatVerificationDistante::ok('approved', $verificationId);
+        }
+
+        return $this->echec($reponse);
+    }
+
+    private function echec(Response $reponse): ResultatVerificationDistante
+    {
+        // Une cle refusee est une panne de configuration, quel que soit le corps rendu.
+        if (in_array($reponse->status(), [401, 403], true)) {
+            return ResultatVerificationDistante::echec('auth_failed', $reponse->status());
+        }
+
+        $retry = $reponse->json('retry_after');
+
+        // Toute limite de debit (`trop_de_demandes` compris) se traite pareil :
+        // attendre. Un WhatsApp sature (503 `whatsapp_sature`) aussi : ce n'est
+        // pas une impossibilite, juste un moment a passer.
+        if ($reponse->status() === 429 || $reponse->json('error') === 'whatsapp_sature') {
+            return ResultatVerificationDistante::echec('rate_limited', $reponse->status(), is_numeric($retry) ? (int) $retry : null);
+        }
+
+        $code = $reponse->json('error');
+
+        return ResultatVerificationDistante::echec(
+            is_string($code) && $code !== '' ? $code : match ($reponse->status()) {
+                429 => 'rate_limited',
+                401, 403 => 'auth_failed',
+                404 => 'introuvable',
+                default => 'provider_unavailable',
+            },
+            $reponse->status(),
+            is_numeric($retry) ? (int) $retry : null,
+        );
+    }
+}
