@@ -14,6 +14,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- Outil d'exploitation `GET /api/cli/usage/pages` : les pages de l'application où l'on agit le plus (créations, modifications, suppressions), tirées du journal d'audit, pour décider quoi améliorer en priorité.
+
+- **Nouveau style mobile.** La barre de navigation du bas devient une pilule sombre flottante : l'onglet actif affiche son nom sur fond blanc, les autres seulement leur icône. L'action principale d'un écran, par exemple « Nouvel étudiant », flotte au-dessus au lieu d'être collée à la barre. Les indicateurs deviennent des tuiles arrondies et les listes des groupes à la manière de l'iPhone. L'accueil superAdmin sur téléphone s'ouvre sur une mosaïque : les inscrits en grande tuile bleue, les inscriptions en attente en orange.
+
 - **Nouvelle permission « Enregistrer un paiement hors espèces »** (`paiements.create.non_cash`), qui couvre tous les modes sauf les espèces : mobile money, virement, chèque, carte. Elle est donnée par défaut au comptable. Un comptable qui encaisse sans tenir la caisse retrouve l'écran d'encaissement dans son menu (« Encaisser »), ainsi que le bouton flottant et les boutons des tableaux de bord. Les espèces lui restent refusées. Une école qui a volontairement donné `paiements.create` à son comptable garde ce choix : il n'est plus retiré à chaque déploiement.
 
 - **Trois tableaux de bord refaits : accueil comptable, analyse financière et accueil caisse.**
@@ -39,6 +43,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **La fenêtre « Aide / Signaler un problème » s'utilise enfin au téléphone, et sa capture montre ce que l'on voit** — au téléphone, elle occupe tout l'écran, l'en-tête est compact et le bouton d'envoi reste sous le pouce au lieu de glisser sous la barre du navigateur : des styles communs à toutes les fenêtres de l'application la réduisaient à une carte flottante. Hors iPhone et iPad, une page défilée se capturait par son haut, et non par la partie affichée : c'est corrigé. La capture ne détaille plus ce qui est au-dessus ni au-dessous de l'écran, ce qui réduit d'environ 40 % son temps d'analyse et de dessin sur une page longue (mesuré sur un téléphone simulé ralenti), et le moteur se charge pendant que l'on relit sa demande. Si elle dure plus de 25 secondes, la fenêtre rend la main et propose de joindre une capture faite avec le téléphone. Une image choisie depuis l'appareil n'est plus annoncée comme masquée : elle part telle quelle, et la fenêtre invite à y masquer soi-même ce qui est personnel.
 - **Écrans mobiles : la page ne glisse plus de côté sur iPhone.** Un nom long, comme un intitulé de filière, élargissait l'écran au-delà du téléphone, par exemple sur l'accueil superAdmin d'ISLG. La barre de navigation du bas devient opaque : le contenu ne transparaît plus à travers.
 - **Barre du haut sur ordinateur et tablette** : le bouton de profil ne sort plus de l'écran avec un nom d'école ou d'utilisateur long. La recherche rétrécit, les noms s'abrègent, et sous 1200 px l'avatar remplace le nom.
 - **Accueil comptable sur téléphone** : chaque dernier versement s'affiche en carte au lieu d'un tableau qui élargissait la page.
