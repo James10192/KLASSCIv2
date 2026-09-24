@@ -32,8 +32,11 @@ class AgentInscriptionDashboardController extends Controller
             ->whereDoesntHave('paiements', fn ($query) => $query->where('status', $validatedStatus))
             ->count();
 
+        // Sur la date de VALIDATION, pas sur updated_at : une operation de masse
+        // qui touche les dossiers (recalcul des frais, synchronisation) les
+        // comptait tous comme « valides ce jour » — 2175 a ISLG un matin.
         $validatedToday = ESBTPInscription::query()
-            ->whereDate('updated_at', now()->toDateString())
+            ->whereDate('date_validation', now()->toDateString())
             ->where(function ($query) {
                 $query->where('status', 'active')
                     ->orWhere('workflow_step', 'etudiant_cree');
