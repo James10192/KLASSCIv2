@@ -159,6 +159,25 @@ class AnnulationDeSaisieSuperAdminTest extends TestCase
             ->assertSee(route('esbtp.paiements.show', $paiement->id), false);
     }
 
+    /**
+     * Un avoir total sur la fiche d'inscription : le versement se lit
+     * « Annulé par avoir », l'avoir en négatif, et le total net tombe à zéro
+     * au lieu de s'additionner (50 000 affichés pour 25 000 payés puis annulés).
+     */
+    public function test_la_fiche_inscription_deduit_l_avoir_du_total(): void
+    {
+        $paiement = $this->versement($this->caissier, ['status' => 'validé', 'montant' => 25000, 'created_at' => '2026-09-01 09:00:00']);
+        app(\App\Services\AvoirService::class)->issue($paiement, 25000, 'refund', 'Annulation de test.', $this->superAdmin->id);
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('esbtp.inscriptions.show', $this->inscription->id))
+            ->assertOk()
+            ->assertSee('Annulé par avoir')
+            ->assertSee('Total net payé')
+            ->assertSee('− 25 000 FCFA', false)
+            ->assertSee('<strong>0 FCFA</strong>', false);
+    }
+
     public function test_la_fiche_mobile_ne_propose_l_annulation_que_sur_sa_propre_saisie(): void
     {
         $mien = $this->versement($this->superAdmin, ['status' => 'en_attente', 'created_at' => '2026-09-04 10:44:00']);

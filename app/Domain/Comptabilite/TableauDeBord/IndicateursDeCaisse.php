@@ -36,7 +36,7 @@ class IndicateursDeCaisse
      *   mobile: array{count: int, total: float},
      *   autres: array{count: int, total: float},
      *   total: float, count: int, hier: float,
-     *   a_valider: int, annulables: int,
+     *   a_valider: int, a_valider_total: float, annulables: int,
      *   fenetre_annulation_minutes: int, peut_annuler: bool
      * }
      */
@@ -75,12 +75,15 @@ class IndicateursDeCaisse
         $donnees['hier'] = $this->netDu($this->guichet($user)->whereDate('created_at', $jour->copy()->subDay()));
         $donnees['count'] = $donnees['especes']['count'] + $donnees['mobile']['count'] + $donnees['autres']['count'];
 
-        $donnees['a_valider'] = ESBTPPaiement::query()
+        $attente = ESBTPPaiement::query()
             ->ownedBy($user->id)
             ->whereDate('created_at', $jour)
             ->where('status', 'en_attente')
             ->encaissements()
-            ->count();
+            ->selectRaw('COUNT(*) as n, COALESCE(SUM(montant), 0) as total')
+            ->first();
+        $donnees['a_valider'] = (int) ($attente->n ?? 0);
+        $donnees['a_valider_total'] = round((float) ($attente->total ?? 0), 2);
 
         // Seuls les versements de la fenêtre peuvent encore s'annuler : on ne
         // passe par la policy que pour ceux-là, jamais pour la journée entière.
@@ -195,6 +198,7 @@ class IndicateursDeCaisse
             'count' => 0,
             'hier' => 0.0,
             'a_valider' => 0,
+            'a_valider_total' => 0.0,
             'annulables' => 0,
             'fenetre_annulation_minutes' => (int) SettingsHelper::get('comptabilite.cancel_own_window_minutes', 5),
             'peut_annuler' => $user ? $user->can('paiements.cancel_own') : false,
