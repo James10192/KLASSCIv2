@@ -96,9 +96,43 @@ l'enveloppe `data`, la synthèse est toujours présente :
 `telephones_masques` (`+225 07 ** ** ** 12`), `emails_alternatifs_masques`,
 `a_telephone`, `a_email_alternatif_joignable`, `categorie`. Aucun nom, aucune donnée en clair.
 
+## `POST /api/cli/rendez-vous/rattrapage-convocations` (`cli:admin`, 5 appels/min)
+
+Rattache aux convocations d'avant le suivi du 22/09 (« envoyée », sans identifiant MailPulse,
+dans le périmètre des rendez-vous) l'identifiant et la date du courriel qui les a portées,
+pour que la synchronisation relise leur remise. Simulation par défaut.
+
+```json
+{"execute":false,"messages":[{"reference":"ABCD-EFGH-IJKL","message_id":"msg_…",
+  "envoye_at":"2026-09-10T09:00:00Z","destinataire_sha256":"<sha256 de l'adresse en minuscules, sans espaces>",
+  "destinataire_domaine":"gmail.com","action":"confirme"}]}
+```
+
+`execute` : vrai booléen JSON. 2000 courriels au plus. `destinataire_sha256` peut valoir `null`.
+Appariement, par réservation éligible :
+1. même référence de dossier (`reference_publique`, tirets et casse indifférents) et même action ;
+2. adresse présente : même empreinte ; adresse vidée par le nettoyage : domaine fabriqué ;
+3. le plus proche de `rdv_invite_at` du dossier, à défaut le plus récent. Égalité : ambigu, rien n'est écrit.
+
+Un courriel déjà rattaché n'est jamais réutilisé ; choisi par deux réservations, il est ambigu
+pour les deux. L'écriture est conditionnelle (identifiant encore vide) : relancer ne change rien,
+rien n'est écrasé. Chaque ligne écrite entre au journal d'audit (`rattrapage_convocation`,
+source `rattrapage_mailpulse`).
+
+Réponse, dans l'enveloppe `data` :
+
+```json
+{"execute":false,"eligibles":0,"appariees":0,"ambigues":0,"sans_message":0,
+ "deja_renseignees":0,"ecrites":0,"exemples":[{"reference_masquee":"ABCD-****-**KL","motif":"ambigue"}]}
+```
+
+`deja_renseignees` : courriels reçus déjà rattachés à une réservation. `exemples` : au plus 20,
+ambigus ou sans courriel, référence masquée.
+
 ## Réglage `inscriptions.portail.verification_contact`
 
 Lisible et modifiable par `GET/POST /api/cli/settings` ; la valeur est validée comme
 booléen (`1/0`, `true/false`) et écrite en `1`/`0`.
 
 - 2026-09-24 : nettoyage, synchronisation et familles par l'API CLI.
+- 2026-09-25 : rattrapage des convocations d'avant le suivi.

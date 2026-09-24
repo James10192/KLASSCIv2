@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\CLI\CLIEmailsController;
+use App\Http\Controllers\API\CLI\CLIRattrapageConvocationsController;
 use App\Http\Controllers\API\CLI\CLISuiviConvocationsController;
 use Illuminate\Support\Facades\Route;
 
@@ -15,3 +16,6 @@ Route::post('/emails/nettoyer-factices', [CLIEmailsController::class, 'nettoyerF
 Route::post('/rendez-vous/synchroniser-convocations', [CLISuiviConvocationsController::class, 'synchroniser'])
     ->middleware('throttle:10,1')->name('rendez-vous.synchroniser-convocations');
 Route::get('/rendez-vous/familles', [CLISuiviConvocationsController::class, 'familles'])->name('rendez-vous.familles');
+// Convocations d'avant le suivi : rattacher l'identifiant MailPulse (simulation par defaut).
+Route::post('/rendez-vous/rattrapage-convocations', CLIRattrapageConvocationsController::class)
+    ->middleware('throttle:5,1')->name('rendez-vous.rattrapage-convocations');
