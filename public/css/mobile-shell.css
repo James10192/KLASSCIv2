@@ -893,3 +893,82 @@ body.m-sheet-open { overflow: hidden; }
 body.modal-open .m-bottomnav,
 body.modal-open .m-fab,
 body.modal-open .m-actionbar { display: none !important; }
+
+/* =====================================================================
+   Refonte M2 + M3 (septembre 2026, choix de Marcel)
+   - M3 : barre du bas sombre, flottante, en pilule ; l'onglet actif porte
+     son libellé sur fond blanc, les autres ne montrent que l'icône.
+   - M2 : listes groupées façon iOS, en-têtes de section discrets.
+   - M3 : tuiles d'indicateurs arrondies ; la première s'étale sur deux
+     colonnes et passe en bleu quand leur nombre est impair.
+   L'action principale d'une page (.m-actionbar) n'est plus une bande collée
+   à la barre : elle flotte, décollée, au-dessus.
+   ===================================================================== */
+@media (max-width: 767.98px) {
+    body.has-m-shell { padding-bottom: calc(96px + var(--m-safe-b)); }
+    body.has-m-shell:has(.m-actionbar) { padding-bottom: calc(160px + var(--m-safe-b)); }
+
+    .m-bottomnav {
+        left: 50%; right: auto; bottom: calc(12px + var(--m-safe-b));
+        transform: translateX(-50%);
+        width: max-content; max-width: calc(100vw - 24px); height: 60px;
+        padding: 0 8px; border: 0; border-radius: 30px;
+        background: #0f172a;
+        -webkit-backdrop-filter: none; backdrop-filter: none;
+        box-shadow: 0 12px 30px rgba(15,23,42,.30), 0 2px 6px rgba(15,23,42,.18);
+        display: flex; align-items: center; gap: 2px;
+    }
+    .m-bottomnav-pill { display: none; }
+    .m-bottomnav a,
+    .m-bottomnav button {
+        display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px;
+        height: 44px; min-height: 44px; min-width: 48px; padding: 0 12px; border-radius: 22px;
+        color: #cbd5e1; font-size: 0; letter-spacing: 0;
+        transition: background 180ms ease, color 180ms ease;
+    }
+    .m-bottomnav a svg,
+    .m-bottomnav button svg { width: 21px; height: 21px; flex-shrink: 0; }
+    .m-bottomnav a.on,
+    .m-bottomnav button.on { background: #fff; color: #0f172a; font-size: 12.5px; font-weight: 700; }
+    .m-bottomnav a.on svg { filter: none; }
+    .m-bottomnav a:active,
+    .m-bottomnav button:active { background: rgba(255,255,255,.12); }
+
+    /* Action principale : flottante, décollée de la barre, en pilule. */
+    .m-actionbar {
+        left: auto; right: 16px; bottom: calc(12px + 60px + 12px + var(--m-safe-b));
+        padding: 0; background: none; display: flex; gap: 8px;
+    }
+    .m-actionbar.row { left: 16px; display: flex; }
+    .m-actionbar .m-btn { width: auto; height: 50px; padding: 0 20px; border-radius: 999px; box-shadow: 0 10px 24px rgba(4,83,203,.32); }
+    .m-actionbar.row .m-btn { flex: 1; }
+
+    /* En-tête d'écran : sur le fond de page, sans filet. */
+    .m-appbar { background: rgba(243,246,251,.92); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-bottom: 0; }
+    .m-appbar .t { font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
+
+    /* Tuiles d'indicateurs (M3). */
+    .m-kpi > div,
+    .m-kpi > .m-kpi-link { border: 0; border-radius: 20px; padding: 14px; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 18px rgba(15,23,42,.05); }
+    .m-kpi .v { font-size: 23px; }
+    .m-kpi .l { font-size: 12px; }
+    .m-kpi > :first-child:nth-last-child(odd) { grid-column: span 2; background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 55%, #3b7ddb 100%); }
+    .m-kpi > :first-child:nth-last-child(odd) .v { color: #fff; font-size: 28px; }
+    .m-kpi > :first-child:nth-last-child(odd) .l,
+    .m-kpi > :first-child:nth-last-child(odd) .d { color: rgba(255,255,255,.82); }
+
+    /* Titres de section (M2). */
+    .m-sec { margin-top: 6px; padding: 0 4px; }
+    .m-sec b { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* Listes groupées (M2) : une carte, des lignes séparées d'un filet. */
+    .m-list { gap: 0; background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 18px rgba(15,23,42,.05); }
+    .m-list > .m-row { border: 0; border-radius: 0; border-bottom: 1px solid #f1f5f9; min-height: 60px; }
+    .m-list > .m-row:last-child { border-bottom: 0; }
+    .m-row { border: 0; border-radius: 16px; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 18px rgba(15,23,42,.05); }
+    .m-list > .m-row { box-shadow: none; }
+
+    /* Cartes de graphique et héros : mêmes arrondis que les tuiles. */
+    .m-chart { border: 0; border-radius: 20px; padding: 14px; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 18px rgba(15,23,42,.05); }
+    .m-hero { border-radius: 22px; box-shadow: 0 12px 30px rgba(4,83,203,.22); }
+}
