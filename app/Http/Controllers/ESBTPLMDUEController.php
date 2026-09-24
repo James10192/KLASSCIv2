@@ -269,9 +269,9 @@ class ESBTPLMDUEController extends Controller
     }
 
     /**
-     * Ou l'UE est rattachee, lu sur les liens parcours-UE et non sur les
-     * colonnes de la fiche : celles-ci ne gardent que le parcours, la filiere
-     * et le semestre du premier import, faux pour une UE partagee.
+     * Où l'UE est rattachée, lu sur les liens parcours-UE et non sur les
+     * colonnes de la fiche : celles-ci ne gardent que le parcours, la filière
+     * et le semestre du premier import, faux pour une UE partagée.
      *
      * @return array{parcours: array<int, array{nom: string, code: ?string, semestres: list<int>}>, est_partagee: bool, filieres: list<string>, parcours_sans_filiere: int, semestres: list<int>}
      */

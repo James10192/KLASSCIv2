@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', "Unite d'Enseignement — " . $ue->name)
+@section('title', "Unité d'enseignement — " . $ue->name)
 
 @section('content')
 <div class="lmd-page">
@@ -27,7 +27,7 @@
             </div>
             <div class="lmd-hero-actions">
                 <a href="{{ route('esbtp.lmd.ue.index') }}" class="lmd-btn lmd-btn--glass">
-                    <i class="fas fa-arrow-left me-1"></i> Retour a la liste
+                    <i class="fas fa-arrow-left me-1"></i> Retour à la liste
                 </a>
                 <a href="{{ route('esbtp.lmd.ue.edit', $ue) }}" class="lmd-btn lmd-btn--white">
                     <i class="fas fa-edit me-1"></i> Modifier
@@ -38,11 +38,11 @@
         <div class="lmd-kpis">
             <div class="lmd-kpi">
                 <div class="lmd-kpi-value">{{ $ue->credit !== null ? (int) $ue->credit : '—' }}</div>
-                <div class="lmd-kpi-label">Credits de l'UE</div>
+                <div class="lmd-kpi-label">Crédits de l'UE</div>
             </div>
             <div class="lmd-kpi">
                 <div class="lmd-kpi-value">{{ $nbEcues }}</div>
-                <div class="lmd-kpi-label">Elements constitutifs</div>
+                <div class="lmd-kpi-label">Éléments constitutifs</div>
             </div>
             <div class="lmd-kpi">
                 <div class="lmd-kpi-value">{{ count($rattachement['parcours']) }}</div>
@@ -105,7 +105,7 @@
         @if(empty($rattachement['parcours']))
             <div class="lmd-empty">
                 <i class="fas fa-unlink d-block mb-2" style="font-size:1.4rem;"></i>
-                Cette unite d'enseignement n'est rattachee a aucun parcours : elle n'apparaitra
+                Cette unité d'enseignement n'est rattachée à aucun parcours : elle n'apparaîtra
                 ni dans les calculs, ni sur les bulletins. Ouvrez « Modifier » pour choisir un
                 parcours et un semestre.
             </div>
@@ -128,15 +128,15 @@
 
     <div class="lmd-form-card" x-data="{ onglet: 0 }">
         <div class="lmd-section-title" style="display:flex;justify-content:space-between;align-items:center;">
-            <span><i class="fas fa-list-ul me-2" style="color:#0453cb;"></i>Elements constitutifs</span>
+            <span><i class="fas fa-list-ul me-2" style="color:#0453cb;"></i>Éléments constitutifs</span>
             <a href="{{ route('esbtp.lmd.ue.edit', $ue) }}" class="btn btn-acasi secondary btn-sm">
-                <i class="fas fa-pen me-1"></i> Gerer
+                <i class="fas fa-pen me-1"></i> Gérer
             </a>
         </div>
 
         @if(count($maquettes) > 1)
             <p class="lmd-footnote" style="margin:0 0 .75rem;">
-                Cette unite sert plusieurs parcours. Chaque parcours a sa propre liste d'elements
+                Cette unité sert plusieurs parcours. Chaque parcours a sa propre liste d'éléments
                 et ses propres heures : choisissez-le ci-dessous.
             </p>
             <div class="lmd-tabs" role="tablist">
@@ -162,8 +162,8 @@
                 @if($ecarts !== 0)
                     <div class="alert alert-warning" style="border-radius:.5rem;margin-bottom:1rem;">
                         <i class="fas fa-exclamation-triangle me-1"></i>
-                        Les credits des elements constitutifs totalisent {{ $maquette['credits'] }},
-                        alors que l'unite d'enseignement en porte {{ $maquette['credit_ue'] }} dans cette maquette.
+                        Les crédits des éléments constitutifs totalisent {{ $maquette['credits'] }},
+                        alors que l'unité d'enseignement en porte {{ $maquette['credit_ue'] }} dans cette maquette.
                     </div>
                 @endif
 
@@ -171,9 +171,9 @@
                     <div class="lmd-empty">
                         <i class="fas fa-inbox d-block mb-2" style="font-size:1.4rem;"></i>
                         @if($maquette['parcours'])
-                            Aucun element constitutif dans la maquette de ce parcours.
+                            Aucun élément constitutif dans la maquette de ce parcours.
                         @else
-                            Aucun element constitutif rattache a cette unite d'enseignement.
+                            Aucun élément constitutif rattaché à cette unité d'enseignement.
                         @endif
                     </div>
                 @else
@@ -185,7 +185,7 @@
                                     <th>Intitule</th>
                                     <th style="width:14%;">Code</th>
                                     <th style="width:10%;">Coefficient</th>
-                                    <th style="width:9%;">Credits</th>
+                                    <th style="width:9%;">Crédits</th>
                                     <th style="width:8%;">CM</th>
                                     <th style="width:8%;">TD</th>
                                     <th style="width:8%;">TP</th>
@@ -204,7 +204,7 @@
                                         <td>
                                             <span class="lmd-ecue-name">{{ $ecue->name }}</span>
                                             @if($volume['source'] === 'matiere' && $volume['total'] > 0)
-                                                <span class="lmd-ecue-hint" title="Heures portees par la matiere, pas encore planifiees">indicatif</span>
+                                                <span class="lmd-ecue-hint" title="Heures portées par la matière, pas encore planifiées">indicatif</span>
                                             @endif
                                         </td>
                                         <td><span class="lmd-code">{{ $ecue->code ?: '—' }}</span></td>
@@ -233,8 +233,8 @@
 
         <p class="lmd-footnote">
             Les volumes horaires proviennent de la maquette horaire (menu Maquettes) du parcours
-            et du semestre affiches. Les valeurs marquees « indicatif » sont celles portees par
-            la matiere, faute de saisie.
+            et du semestre affichés. Les valeurs marquées « indicatif » sont celles portées par
+            la matière, faute de saisie.
         </p>
     </div>
 
