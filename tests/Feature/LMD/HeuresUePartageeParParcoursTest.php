@@ -159,4 +159,13 @@ class HeuresUePartageeParParcoursTest extends TestCase
         $this->assertFalse(ESBTPPlanificationAcademique::where('filiere_id', $this->lpv->filiere_id)
             ->where('volume_horaire_td', 14)->exists());
     }
+
+    public function test_une_planification_creee_par_la_saisie_garde_les_credits_de_l_ecue(): void
+    {
+        $this->saisir((int) $this->lpa->filiere_id, 18)->assertOk();
+
+        $this->assertSame(2, (int) ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)
+            ->where('filiere_id', $this->lpa->filiere_id)->where('volume_horaire_cm', 18)->value('credits_ects'),
+            'Saisir des heures ne doit pas mettre les credits a zero.');
+    }
 }

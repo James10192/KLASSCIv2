@@ -379,8 +379,21 @@ class ESBTPLMDPlanningController extends Controller
         ]);
         $planif->statut    = ESBTPPlanificationAcademique::STATUT_PLANIFIE;
         $planif->is_active = true;
+        // La colonne vaut 0 par defaut, et l'ecran lit « planif ?? ECUE » : une
+        // ligne creee par la saisie d'heures affichait donc 0 credit a la place
+        // de ceux de l'ECUE, et faussait le total CECT du parcours.
+        $planif->credits_ects = $this->creditDeLEcue($ecueId);
 
         return [$planif, true];
+    }
+
+    /** Le credit de l'ECUE : celui de sa ligne de maquette, sinon celui de la matiere. */
+    private function creditDeLEcue(int $ecueId): int
+    {
+        $pivot = DB::table('esbtp_ue_matiere')->where('matiere_id', $ecueId)
+            ->whereNotNull('credit_ecue')->orderByDesc('parcours_id')->value('credit_ecue');
+
+        return (int) ($pivot ?? ESBTPMatiere::whereKey($ecueId)->value('credit_ecue') ?? 0);
     }
 
     /**
@@ -394,28 +407,9 @@ class ESBTPLMDPlanningController extends Controller
         // attaquent le même 5-uplet unique, la seconde attendra que la
         // première commit avant de relire — la contrainte unique composite
         // `uniq_planif_academique` reste le filet ultime.
-        $planif = ESBTPPlanificationAcademique::query()
-            ->where('matiere_id', $ecueId)
-            ->where('filiere_id', $context['filiere_id'])
-            ->where('niveau_etude_id', $context['niveau_id'])
-            ->where('semestre', $context['semestre'])
-            ->where('annee_universitaire_id', $context['annee_id'])
-            ->lockForUpdate()
-            ->first();
-
-        $wasCreated = false;
-        if (!$planif) {
-            $planif = new ESBTPPlanificationAcademique([
-                'matiere_id' => $ecueId,
-                'filiere_id' => $context['filiere_id'],
-                'niveau_etude_id' => $context['niveau_id'],
-                'semestre' => $context['semestre'],
-                'annee_universitaire_id' => $context['annee_id'],
-            ]);
-            $planif->statut = ESBTPPlanificationAcademique::STATUT_PLANIFIE;
-            $planif->is_active = true;
-            $wasCreated = true;
-        }
+        // Meme initialisation que l'edition en masse : une seule source, sinon
+        // l'une pose les credits de l'ECUE et l'autre les laisse a zero.
+        [$planif, $wasCreated] = $this->lockOrInitPlanification($ecueId, (int) $context['filiere_id'], $context);
 
         // M1 : fill() AVANT l'assignation created_by/updated_by pour que ces
         // deux colonnes ne puissent jamais être écrasées par une payload

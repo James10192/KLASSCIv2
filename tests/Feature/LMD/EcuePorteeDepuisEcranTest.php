@@ -251,6 +251,24 @@ class EcuePorteeDepuisEcranTest extends TestCase
         $this->assertSame(1, $compte($this->batiment->id));
     }
 
+    public function test_retirer_la_derniere_ligne_d_un_element_demande_confirmation(): void
+    {
+        // ECUE-BU n'a qu'une ligne (reservee a Batiment) : la retirer le ferait
+        // sortir du LMD. Le serveur refuse sans confirmation explicite.
+        $url = route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]);
+
+        $this->actingAs($this->acteur)
+            ->deleteJson($url, ['parcours_id' => $this->batiment->id])
+            ->assertStatus(409)
+            ->assertJson(['confirmation_requise' => true]);
+        $this->assertContains('ECUE-BU', $this->vusPar($this->batiment), 'Rien ne doit etre retire sans confirmation.');
+
+        $this->actingAs($this->acteur)
+            ->deleteJson($url, ['parcours_id' => $this->batiment->id, 'confirmer_sortie' => true])
+            ->assertOk();
+        $this->assertNotContains('ECUE-BU', $this->vusPar($this->batiment));
+    }
+
     public function test_la_liste_signale_un_element_a_la_fois_commun_et_reserve(): void
     {
         // L'import a reserve ECUE-BU a Batiment ; on ajoute la ligne commune.

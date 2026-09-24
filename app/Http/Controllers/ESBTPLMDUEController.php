@@ -712,6 +712,23 @@ class ESBTPLMDUEController extends Controller
     {
         $portee = $this->composition->porteeValide($ue, $request->input('parcours_id'));
 
+        // Retirer la DERNIERE ligne d'un element le fait sortir du LMD : sa cle
+        // etrangere est liberee, il rejoint le catalogue BTS, et on ne peut plus
+        // ni le relier ni le recreer sous le meme code. On le dit avant, et on
+        // n'agit que sur confirmation explicite.
+        if (! $request->boolean('confirmer_sortie') && $this->sortiraitDuLmd($ue, $ecue, $portee)) {
+            return response()->json([
+                'success' => false,
+                'confirmation_requise' => true,
+                'message' => sprintf(
+                    "« %s » n'est dans aucune autre maquette : le retirer le fait sortir du LMD, et son code %s ne pourra plus être réutilisé pour un ECUE. "
+                    . "Pour le changer de parcours, utilisez plutôt le crayon. Le retirer quand même ?",
+                    $ecue->name ?? $ecue->code,
+                    $ecue->code ? '« '.$ecue->code.' »' : ''
+                ),
+            ], 409);
+        }
+
         // Retirer de CETTE maquette, et d'elle seule. `detach($id)` supprimait
         // toutes les lignes de cet élément, toutes maquettes confondues : retirer
         // un élément de Bâtiment le retirait aussi de Travaux Publics.
@@ -736,6 +753,16 @@ class ESBTPLMDUEController extends Controller
         }
         return redirect()->route('esbtp.lmd.ue.index')
             ->with('success', 'ECUE détaché de l\'UE avec succès.');
+    }
+
+    /** Vrai si retirer cette ligne laisse l'element sans aucune maquette, dans aucune UE. */
+    private function sortiraitDuLmd(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue, int $portee): bool
+    {
+        $lignes = DB::table('esbtp_ue_matiere')->where('matiere_id', $ecue->id)->get(['unite_enseignement_id', 'parcours_id']);
+        $restantes = $lignes->reject(fn ($l) => (int) $l->unite_enseignement_id === (int) $ue->id && (int) $l->parcours_id === $portee);
+        $tenueAilleurs = $ecue->unite_enseignement_id && (int) $ecue->unite_enseignement_id !== (int) $ue->id;
+
+        return $restantes->isEmpty() && ! $tenueAilleurs;
     }
 
     /**
