@@ -233,7 +233,7 @@
     {{-- Le bouton d'export n'existe que si la personne peut exporter (même garde que les routes). --}}
     <x-m.appbar title="Recouvrement"
                 :sub="$reDateJour"
-                :back="route('esbtp.comptabilite.dashboard')"
+                :back="\App\Support\PorteDeRoute::ouverte('esbtp.comptabilite.dashboard', auth()->user()) ? route('esbtp.comptabilite.dashboard') : route('dashboard')"
                 :action="$rePeutExporter ? 'dl' : null"
                 action-label="Exporter la file du jour"
                 x-on:click="mOuvrir('rcm-exports')" />
