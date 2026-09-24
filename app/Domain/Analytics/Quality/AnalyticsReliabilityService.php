@@ -67,7 +67,8 @@ class AnalyticsReliabilityService
             'echeancier' => [
                 'mode' => $mode,
                 'mode_degrade' => $mode === EcheancierReadinessService::MODE_FALLBACK,
-                'note' => $this->readiness->noteForMode(),
+                // noteForMode() relancerait la requete de mode() : on reutilise $mode.
+                'note' => $mode === EcheancierReadinessService::MODE_FALLBACK ? $this->readiness->noteForMode() : null,
                 'couverture' => $this->coverage->summary($context->anneeId),
             ],
             'anciennete' => $aging['data'] + ['calcule_le' => $aging['computed_at']->toIso8601String()],

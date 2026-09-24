@@ -342,6 +342,7 @@
         <div class="m-seg" role="tablist" aria-label="Sections des paramètres">
             <button type="button" role="tab" x-bind:aria-selected="mSeg === 'risque' ? 'true' : 'false'" x-bind:class="mSeg === 'risque' ? 'on' : ''" x-on:click="mSeg = 'risque'">Risque</button>
             <button type="button" role="tab" x-bind:aria-selected="mSeg === 'anomalies' ? 'true' : 'false'" x-bind:class="mSeg === 'anomalies' ? 'on' : ''" x-on:click="mSeg = 'anomalies'">Anomalies</button>
+            <button type="button" role="tab" x-bind:aria-selected="mSeg === 'fiabilite' ? 'true' : 'false'" x-bind:class="mSeg === 'fiabilite' ? 'on' : ''" x-on:click="mSeg = 'fiabilite'">Fiabilité</button>
             <button type="button" role="tab" x-bind:aria-selected="mSeg === 'message' ? 'true' : 'false'" x-bind:class="mSeg === 'message' ? 'on' : ''" x-on:click="mSeg = 'message'">Message</button>
         </div>
 
@@ -397,6 +398,25 @@
                         <span class="m-chip" x-bind:class="form.anomaly.notifications_enabled ? 'ok' : 'mute'" x-text="form.anomaly.notifications_enabled ? 'Activées' : 'Coupées'"></span>
                     </label>
                 </div>
+            </div>
+
+            {{-- Segment : fiabilité des données --}}
+            <div class="asm-groupe" x-show="mSeg === 'fiabilite'" x-cloak>
+                <div class="m-sec">
+                    <b>Fiabilité des données</b>
+                    <button type="button" class="asm-reset" x-on:click="resetSection('fiabilite')">Valeurs recommandées</button>
+                </div>
+                @foreach($fiabiliteFields as [$key, $label, $help, $min, $max, $step])
+                    <div class="m-field asm-field">
+                        <label for="asm-fi-{{ $key }}">{{ $label }}</label>
+                        <input id="asm-fi-{{ $key }}" type="number" class="m-in"
+                               inputmode="numeric" step="{{ $step }}" min="{{ $min }}" max="{{ $max }}"
+                               x-model.number="form.fiabilite.{{ $key }}"
+                               x-bind:aria-invalid="erreurs['fiabilite.{{ $key }}'] ? 'true' : 'false'">
+                        <small class="asm-help">{{ $help }} · entre {{ $min }} et {{ $max }} · recommandé : {{ $defaults['fiabilite'][$key] }}</small>
+                        <small class="asm-err" x-show="erreurs['fiabilite.{{ $key }}']" x-text="erreurs['fiabilite.{{ $key }}']"></small>
+                    </div>
+                @endforeach
             </div>
 
             {{-- Segment 3 : modèle de message WhatsApp --}}
@@ -708,6 +728,7 @@ window.settingsPage = function (cfg) {
         mSegmentDe(champ) {
             if (champ.indexOf('anomaly.') === 0) { return 'anomalies'; }
             if (champ.indexOf('recouvrement.') === 0) { return 'message'; }
+            if (champ.indexOf('fiabilite.') === 0) { return 'fiabilite'; }
             return 'risque';
         },
 
@@ -733,6 +754,7 @@ window.settingsPage = function (cfg) {
                             notifications_enabled: this.form.anomaly.notifications_enabled ? '1' : '0',
                         }),
                         recouvrement: this.form.recouvrement,
+                        fiabilite: this.form.fiabilite,
                     }),
                 });
                 if (response.status === 429) {
