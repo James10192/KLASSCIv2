@@ -37,6 +37,9 @@ class RattrapageConvocationsTest extends TestCase
             $this->message($ref, 'msg_autre_adresse', 'autre@gmail.com', '2026-09-11T09:00:00Z'),
         ])->assertOk()
             ->assertJsonPath('data.execute', false)
+            ->assertJsonPath('data.coupure_source', 'maintenant')
+            ->assertJsonPath('data.resolues_par_sauvegarde', 0)
+            ->assertJsonPath('data.resolues_par_domaine', 0)
             ->assertJsonPath('data.eligibles', 1)
             ->assertJsonPath('data.appariees', 1)
             ->assertJsonPath('data.ecrites', 0);
@@ -78,7 +81,7 @@ class RattrapageConvocationsTest extends TestCase
         $r = $this->reservation('awa@gmail.com');
 
         $this->rattraper(true, [$this->message($this->reference($r), 'msg_bon', 'awa@gmail.com', '2026-09-10T09:00:00Z')])
-            ->assertOk()->assertJsonPath('data.appariees', 1)->assertJsonPath('data.ecrites', 0);
+            ->assertOk()->assertJsonPath('data.appariees', 1)->assertJsonPath('data.ecrites', 0)->assertJsonPath('data.echecs_ecriture', 1);
 
         $this->assertNull($r->fresh()->convocation_message_id);
     }

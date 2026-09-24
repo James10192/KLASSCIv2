@@ -17,7 +17,7 @@ class CLIRattrapageConvocationsController extends BaseApiController
 {
     public function __invoke(RattrapageConvocationsRequest $request, RattrapageConvocations $rattrapage, JournalActionsCli $journal): JsonResponse
     {
-        $rapport = $rattrapage->traiter($request->courriels(), $request->executer(), $request->user());
+        $rapport = $rattrapage->traiter($request->courriels(), $request->executer(), $request->user(), $request->coupureMax());
 
         $journal->consigner($request, 'cli.rendez_vous.rattrapage_convocations', [
             'source' => RattrapageConvocations::SOURCE,

@@ -12,6 +12,7 @@ use App\Models\ESBTPReinscriptionDemande;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 
@@ -33,12 +34,15 @@ trait ConstruitRattrapage
         ]);
         Sanctum::actingAs(User::factory()->create(), ['cli:read', 'cli:admin']);
         Cache::flush();
+        // Les sauvegardes du nettoyage sont lues sur le disque local : jamais celles du poste.
+        Storage::fake('local');
         $this->annee = ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
     }
 
-    private function rattraper(bool $executer, array $messages): TestResponse
+    private function rattraper(bool $executer, array $messages, ?string $coupureMax = null): TestResponse
     {
-        return $this->postJson('/api/cli/rendez-vous/rattrapage-convocations', ['execute' => $executer, 'messages' => $messages]);
+        return $this->postJson('/api/cli/rendez-vous/rattrapage-convocations', ['execute' => $executer, 'messages' => $messages]
+            + ($coupureMax === null ? [] : ['coupure_max' => $coupureMax]));
     }
 
     /** @return array<string, mixed> */

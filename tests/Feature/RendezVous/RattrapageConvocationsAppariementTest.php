@@ -127,7 +127,7 @@ class RattrapageConvocationsAppariementTest extends TestCase
         $this->rattraper(true, [
             $this->message($ref, 'msg_autre_fabriquee', 'm22-0999@esbtp.edu.ci', '2026-09-10T09:00:00Z'),
             $this->message($ref, 'msg_la_sienne', 'm22-0521@esbtp.edu.ci', '2026-09-09T09:00:00Z'),
-        ])->assertOk()->assertJsonPath('data.ecrites', 1);
+        ])->assertOk()->assertJsonPath('data.ecrites', 1)->assertJsonPath('data.resolues_par_sauvegarde', 1);
 
         $this->assertSame('msg_la_sienne', $r->fresh()->convocation_message_id);
     }
@@ -141,7 +141,7 @@ class RattrapageConvocationsAppariementTest extends TestCase
         $this->rattraper(true, [
             $this->message($ref, 'msg_gmail', 'awa@gmail.com', '2026-09-10T09:00:00Z'),
             $this->message($ref, 'msg_fabrique', 'm22-0521@esbtp.edu.ci', '2026-09-09T09:00:00Z'),
-        ])->assertOk()->assertJsonPath('data.ecrites', 1);
+        ])->assertOk()->assertJsonPath('data.ecrites', 1)->assertJsonPath('data.resolues_par_domaine', 1);
 
         $this->assertSame('msg_fabrique', $r->fresh()->convocation_message_id);
     }

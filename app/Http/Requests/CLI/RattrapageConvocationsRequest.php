@@ -8,7 +8,7 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 
 /**
  * `POST /api/cli/rendez-vous/rattrapage-convocations`
- * `{"execute": false, "messages": [{"reference", "message_id", "envoye_at",
+ * `{"execute": false, "coupure_max": null, "messages": [{"reference", "message_id", "envoye_at",
  *   "destinataire_sha256", "destinataire_domaine", "action"}]}`
  *
  * `execute` doit etre un vrai booleen JSON : une chaine « false » ne doit pas
@@ -37,6 +37,7 @@ class RattrapageConvocationsRequest extends FormRequest
                     $echec('« execute » doit être un booléen JSON (true ou false).');
                 }
             }],
+            'coupure_max' => ['nullable', 'string', 'regex:'.self::ISO_8601],
             'messages' => ['required', 'array', 'max:'.self::MESSAGES_MAX],
             'messages.*' => ['array'],
             'messages.*.reference' => ['nullable', 'string', 'max:40'],
@@ -46,6 +47,14 @@ class RattrapageConvocationsRequest extends FormRequest
             'messages.*.destinataire_domaine' => ['required', 'string', 'max:255'],
             'messages.*.action' => ['required', 'in:confirme,deplace,annule'],
         ];
+    }
+
+    /** Borne superieure optionnelle de la coupure du suivi (voir ContextesRattrapage). */
+    public function coupureMax(): ?\Carbon\CarbonImmutable
+    {
+        $valeur = $this->validated('coupure_max');
+
+        return is_string($valeur) ? \Carbon\CarbonImmutable::parse($valeur) : null;
     }
 
     public function executer(): bool

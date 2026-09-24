@@ -7,6 +7,7 @@ use App\Enums\StatutReservationRdv;
 use App\Models\ESBTPRdvReservation;
 use App\Services\Portail\ReferencePublique;
 use App\Services\RendezVous\PerimetreRdv;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
@@ -22,6 +23,10 @@ use Illuminate\Support\Facades\Log;
  * identifiant ni date d'envoi, dans PerimetreRdv. Un courriel deja rattache
  * n'est jamais reutilise ; un courriel que deux reservations choisiraient est
  * ambigu pour les deux. Un courriel sans reference est ecarte seul.
+ *
+ * Tous les courriels d'une meme reference doivent arriver dans le MEME appel :
+ * le choix se fait parmi ceux que l'appel contient. Une reservation deja
+ * rattachee n'est plus eligible, un appel suivant ne la retouche donc jamais.
  *
  * Simulation par defaut. En execution, chaque ecriture est conditionnelle
  * (identifiant et date encore vides) et tracee dans l'audit, dans la meme
@@ -43,10 +48,11 @@ class RattrapageConvocations
 
     /**
      * @param  list<array<string, mixed>>  $bruts
-     * @return array{execute: bool, eligibles: int, appariees: int, ambigues: int, sans_message: int, sans_reference: int, deja_renseignees: int, ecrites: int, exemples: list<array{reference_masquee: string, motif: string}>}
+     * @return array<string, mixed> voir docs/api/CLI_EMAILS_DIAGNOSTIC.md
      */
-    public function traiter(array $bruts, bool $executer, ?Model $auteur = null): array
+    public function traiter(array $bruts, bool $executer, ?Model $auteur = null, ?CarbonImmutable $coupureMax = null): array
     {
+        [$coupure, $sourceCoupure] = $this->contextes->coupure($coupureMax);
         [$sansReference, $avecReference] = collect($bruts)
             ->map(fn (array $m) => MessageConvocation::depuis($m, $this->references))
             ->partition(fn (MessageConvocation $m) => $m->reference === '');
@@ -55,10 +61,12 @@ class RattrapageConvocations
             ->reject(fn (MessageConvocation $m) => isset($dejaRattaches[$m->messageId]))
             ->groupBy(fn (MessageConvocation $m) => $m->reference);
 
-        $decisions = $this->decider($parReference);
-        $rapport = ['execute' => $executer, 'eligibles' => count($decisions), 'appariees' => 0, 'ambigues' => 0,
-            'sans_message' => 0, 'sans_reference' => $sansReference->count(), 'deja_renseignees' => count($dejaRattaches),
-            'ecrites' => 0, 'exemples' => []];
+        $decisions = $this->decider($parReference, $coupure);
+        $rapport = ['execute' => $executer, 'coupure' => $coupure->toIso8601String(), 'coupure_source' => $sourceCoupure,
+            'eligibles' => count($decisions), 'appariees' => 0, 'ambigues' => 0, 'sans_message' => 0,
+            'sans_reference' => $sansReference->count(), 'deja_renseignees' => count($dejaRattaches),
+            'resolues_par_sauvegarde' => 0, 'resolues_par_domaine' => 0,
+            'ecrites' => 0, 'echecs_ecriture' => 0, 'exemples' => []];
 
         foreach ($decisions as $decision) {
             $rapport[match ($decision['motif']) {
@@ -69,8 +77,13 @@ class RattrapageConvocations
             if ($decision['motif'] !== ApparieurConvocation::APPARIEE && count($rapport['exemples']) < self::EXEMPLES_MAX) {
                 $rapport['exemples'][] = ['reference_masquee' => $this->masquer($decision['reference']), 'motif' => $decision['motif']];
             }
-            if ($executer && $decision['message'] !== null && $this->ecrire($decision['reservation'], $decision['message'], $auteur)) {
-                $rapport['ecrites']++;
+            if ($decision['motif'] === ApparieurConvocation::APPARIEE && $decision['mode'] !== ContexteReservation::PAR_ADRESSE) {
+                $rapport['resolues_par_'.$decision['mode']]++;
+            }
+            if ($executer && $decision['message'] !== null) {
+                $issue = $this->ecrire($decision['reservation'], $decision['message'], $auteur);
+                $rapport['ecrites'] += (int) ($issue === true);
+                $rapport['echecs_ecriture'] += (int) ($issue === null);
             }
         }
 
@@ -89,11 +102,10 @@ class RattrapageConvocations
 
     /**
      * @param  Collection<string, Collection<int, MessageConvocation>>  $parReference
-     * @return list<array{reservation: int, reference: string, motif: string, message: ?MessageConvocation}>
+     * @return list<array{reservation: int, reference: string, motif: string, message: ?MessageConvocation, mode: string}>
      */
-    private function decider(Collection $parReference): array
+    private function decider(Collection $parReference, CarbonImmutable $coupure): array
     {
-        $coupure = $this->contextes->coupure();
         $decisions = [];
         self::eligibles($this->perimetre->reservations())
             ->select(['id', 'creneau_id', 'candidature_id', 'reinscription_demande_id', 'email', 'convocation_action', 'created_at'])
@@ -105,7 +117,8 @@ class RattrapageConvocations
                     [$motif, $message] = $reference === ''
                         ? [ApparieurConvocation::SANS_MESSAGE, null]
                         : $this->apparieur->choisir($parReference->get($reference, collect())->all(), $contextes[$reservation->id]);
-                    $decisions[] = ['reservation' => (int) $reservation->id, 'reference' => $reference, 'motif' => $motif, 'message' => $message];
+                    $decisions[] = ['reservation' => (int) $reservation->id, 'reference' => $reference, 'motif' => $motif,
+                        'message' => $message, 'mode' => $contextes[$reservation->id]->modeDestinataire()];
                 }
             });
 
@@ -141,8 +154,12 @@ class RattrapageConvocations
             ->all();
     }
 
-    /** Ecriture et trace d'audit ensemble : l'une sans l'autre est annulee, et la ligne comptee non ecrite. */
-    private function ecrire(int $reservationId, MessageConvocation $message, ?Model $auteur): bool
+    /**
+     * Ecriture et trace d'audit ensemble : l'une sans l'autre est annulee.
+     *
+     * @return bool|null true ecrite, false deja renseignee entre-temps, null echec (annulee)
+     */
+    private function ecrire(int $reservationId, MessageConvocation $message, ?Model $auteur): ?bool
     {
         try {
             return DB::transaction(function () use ($reservationId, $message, $auteur) {
@@ -161,7 +178,7 @@ class RattrapageConvocations
         } catch (\Throwable $e) {
             Log::error('Rattrapage convocation : ligne annulee', ['reservation_id' => $reservationId, 'erreur' => $e->getMessage()]);
 
-            return false;
+            return null;
         }
     }
 

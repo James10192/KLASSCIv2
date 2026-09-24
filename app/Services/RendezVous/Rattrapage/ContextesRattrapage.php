@@ -19,18 +19,26 @@ use OwenIt\Auditing\Models\Audit;
  * instant, KLASSCI enregistre l'identifiant de chaque courriel, donc un
  * courriel posterieur ne peut pas etre une convocation d'avant le suivi. Sans
  * aucun envoi suivi, la coupure est maintenant.
+ *
+ * `coupure_max` (optionnel, fourni par l'appelant, par exemple l'heure du
+ * deploiement du suivi) ne peut que l'avancer : la coupure retenue est la
+ * plus ancienne des deux.
  */
 class ContextesRattrapage
 {
-    /** Tolerance entre la creation de la reservation et le depart du courriel. */
-    private const TOLERANCE_SECONDES = 60;
+    public const SOURCE_PREMIER_ENVOI_SUIVI = 'premier_envoi_suivi';
+
+    public const SOURCE_COUPURE_MAX = 'coupure_max';
+
+    public const SOURCE_MAINTENANT = 'maintenant';
 
     /** @var array<int, string>|null */
     private ?array $anciennes = null;
 
     public function __construct(private readonly AnciennesAdresses $adresses) {}
 
-    public function coupure(): CarbonImmutable
+    /** @return array{0: CarbonImmutable, 1: string} la coupure et d'ou elle vient */
+    public function coupure(?CarbonImmutable $maximum = null): array
     {
         $premier = ESBTPRdvReservation::query()
             ->whereNotNull('convocation_message_id')
@@ -40,9 +48,16 @@ class ContextesRattrapage
                 ->where('event', 'rattrapage_convocation')
                 ->where('auditable_type', (new ESBTPRdvReservation)->getMorphClass()))
             ->min('convocation_envoyee_at');
-        $maintenant = CarbonImmutable::now();
+        $candidates = [self::SOURCE_MAINTENANT => CarbonImmutable::now()];
+        if ($premier !== null) {
+            $candidates[self::SOURCE_PREMIER_ENVOI_SUIVI] = CarbonImmutable::parse($premier);
+        }
+        if ($maximum !== null) {
+            $candidates[self::SOURCE_COUPURE_MAX] = $maximum;
+        }
+        $source = array_keys($candidates, min($candidates))[0];
 
-        return $premier === null ? $maintenant : CarbonImmutable::parse($premier)->min($maintenant);
+        return [$candidates[$source], $source];
     }
 
     /**
@@ -52,7 +67,7 @@ class ContextesRattrapage
     public function pour(Collection $lot, CarbonInterface $coupure): array
     {
         $this->anciennes ??= $this->adresses->empreintesDesReservations();
-        $suivantes = $this->creationDesSuivantes($lot);
+        [$suivantes, $precedees] = $this->voisines($lot);
 
         $contextes = [];
         foreach ($lot as $r) {
@@ -63,7 +78,8 @@ class ContextesRattrapage
                 $r->email,
                 $this->anciennes[$r->id] ?? null,
                 $porteur?->rdv_invite_at,
-                CarbonImmutable::parse($r->created_at)->subSeconds(self::TOLERANCE_SECONDES),
+                CarbonImmutable::parse($r->created_at),
+                isset($precedees[$r->id]),
                 $suivante === null ? $coupure : $suivante->min($coupure),
             );
         }
@@ -72,13 +88,14 @@ class ContextesRattrapage
     }
 
     /**
-     * La creation de la reservation suivante du meme dossier, toutes
-     * reservations confondues (annulees comprises).
+     * Pour chaque reservation : la creation de la suivante du meme dossier, et
+     * si une precedente existe, toutes reservations confondues (annulees
+     * comprises).
      *
      * @param  Collection<int, ESBTPRdvReservation>  $lot
-     * @return array<int, CarbonImmutable>
+     * @return array{0: array<int, CarbonImmutable>, 1: array<int, true>}
      */
-    private function creationDesSuivantes(Collection $lot): array
+    private function voisines(Collection $lot): array
     {
         $candidatures = $lot->pluck('candidature_id')->filter()->unique()->values()->all();
         $demandes = $lot->pluck('reinscription_demande_id')->filter()->unique()->values()->all();
@@ -91,15 +108,19 @@ class ContextesRattrapage
             ->groupBy(fn ($r) => $r->candidature_id ? 'c'.$r->candidature_id : 'd'.$r->reinscription_demande_id);
 
         $suivantes = [];
+        $precedees = [];
         foreach ($parDossier as $reservations) {
             $liste = $reservations->values();
             foreach ($liste as $i => $r) {
                 if (isset($liste[$i + 1])) {
                     $suivantes[$r->id] = CarbonImmutable::parse($liste[$i + 1]->created_at);
                 }
+                if ($i > 0) {
+                    $precedees[$r->id] = true;
+                }
             }
         }
 
-        return $suivantes;
+        return [$suivantes, $precedees];
     }
 }

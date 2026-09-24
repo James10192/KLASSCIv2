@@ -8,15 +8,23 @@ use App\Services\Emails\DiagnosticEmail;
 /**
  * Choisit, pour UNE reservation, le courriel MailPulse qui l'a convoquee.
  *
+ * `envoyeAt` d'un courriel est son `createdAt` chez MailPulse : l'instant ou
+ * MailPulse a accepte le message, juste AVANT que KLASSCI ne pose
+ * `rdv_invite_at` sur le dossier.
+ *
  * 1. Candidats : meme reference de dossier, action compatible (une
  *    convocation « confirme » d'avant le suivi a pu partir comme confirmation
  *    ou deplacement ; une annulation ne prend jamais une confirmation), parti
- *    dans les bornes de la reservation (ContexteReservation).
+ *    dans la fenetre de la reservation (ContexteReservation).
  * 2. Destinataire : adresse presente, meme empreinte ; adresse videe par le
  *    nettoyage, l'empreinte de l'ancienne adresse si la sauvegarde la donne,
  *    sinon un domaine fabrique.
- * 3. Le plus recent parti au plus tard au dernier envoi au dossier (`ancre`),
- *    a defaut le plus recent. Deux candidats au meme instant : ambigu.
+ * 3. Le plus recent parti au plus tard au dernier envoi au dossier (`ancre`,
+ *    a TOLERANCE_ANCRE_SECONDES pres), a defaut le plus recent. Deux
+ *    candidats au meme instant : ambigu.
+ * 4. Retenu mais parti avant la creation de la reservation alors que le
+ *    dossier en avait une precedente : il peut etre celui de la precedente,
+ *    ambigu.
  *
  * Decide seulement ; n'ecrit rien.
  */
@@ -27,6 +35,13 @@ class ApparieurConvocation
     public const AMBIGUE = 'ambigue';
 
     public const SANS_MESSAGE = 'sans_message';
+
+    /**
+     * `rdv_invite_at` est pose apres la reponse de MailPulse et tronque a la
+     * seconde : le `createdAt` du dernier envoi peut le suivre de quelques
+     * fractions de seconde, ou le preceder de la duree de l'appel.
+     */
+    public const TOLERANCE_ANCRE_SECONDES = 120;
 
     private const ACTIONS_COMPATIBLES = [
         'confirme' => ['confirme', 'deplace'],
@@ -43,22 +58,27 @@ class ApparieurConvocation
     public function choisir(array $candidats, ContexteReservation $contexte): array
     {
         $actions = self::ACTIONS_COMPATIBLES[$contexte->action] ?? [];
+        $depuis = $contexte->depuis();
         $retenus = array_values(array_filter($candidats, fn (MessageConvocation $m) => in_array($m->action, $actions, true)
-            && $m->envoyeAt->gte($contexte->depuis)
+            && $m->envoyeAt->gte($depuis)
             && $m->envoyeAt->lt($contexte->jusqua)
             && $this->memeDestinataire($m, $contexte)));
         if ($retenus === []) {
             return [self::SANS_MESSAGE, null];
         }
 
-        $avantAncre = $contexte->ancre === null ? [] : array_values(array_filter(
+        $limite = $contexte->ancre?->copy()->addSeconds(self::TOLERANCE_ANCRE_SECONDES);
+        $avantAncre = $limite === null ? [] : array_values(array_filter(
             $retenus,
-            fn (MessageConvocation $m) => $m->envoyeAt->lte($contexte->ancre),
+            fn (MessageConvocation $m) => $m->envoyeAt->lte($limite),
         ));
         $pool = $avantAncre !== [] ? $avantAncre : $retenus;
-        usort($pool, fn ($a, $b) => $b->envoyeAt->getTimestamp() <=> $a->envoyeAt->getTimestamp());
+        usort($pool, fn ($a, $b) => $b->envoyeAt <=> $a->envoyeAt);
 
-        if (count($pool) > 1 && $pool[0]->envoyeAt->getTimestamp() === $pool[1]->envoyeAt->getTimestamp()) {
+        if (count($pool) > 1 && $pool[0]->envoyeAt->eq($pool[1]->envoyeAt)) {
+            return [self::AMBIGUE, null];
+        }
+        if ($contexte->aUnePrecedente && $pool[0]->envoyeAt->lt($contexte->creeLe)) {
             return [self::AMBIGUE, null];
         }
 
@@ -67,8 +87,11 @@ class ApparieurConvocation
 
     private function memeDestinataire(MessageConvocation $message, ContexteReservation $contexte): bool
     {
-        $email = $contexte->email === null ? '' : trim($contexte->email);
-        $empreinte = $email !== '' ? MessageConvocation::empreinte($email) : $contexte->ancienneEmpreinte;
+        $empreinte = match ($contexte->modeDestinataire()) {
+            ContexteReservation::PAR_ADRESSE => MessageConvocation::empreinte((string) $contexte->email),
+            ContexteReservation::PAR_SAUVEGARDE => $contexte->ancienneEmpreinte,
+            default => null,
+        };
         if ($empreinte !== null) {
             return $message->destinataireSha256 !== null && hash_equals($empreinte, $message->destinataireSha256);
         }

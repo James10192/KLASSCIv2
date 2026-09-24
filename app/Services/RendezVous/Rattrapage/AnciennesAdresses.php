@@ -24,6 +24,9 @@ class AnciennesAdresses
 
     private const TABLE = 'esbtp_rdv_reservations';
 
+    /** Au-dela, le fichier n'est pas une sauvegarde du nettoyage : on ne le charge pas en memoire. */
+    private const TAILLE_MAX_OCTETS = 20 * 1024 * 1024;
+
     /** @return array<int, string> identifiant de reservation => sha256 de l'ancienne adresse */
     public function empreintesDesReservations(): array
     {
@@ -33,6 +36,11 @@ class AnciennesAdresses
 
         $empreintes = [];
         foreach ($fichiers as $fichier) {
+            if ($disque->size($fichier) > self::TAILLE_MAX_OCTETS) {
+                Log::warning('Rattrapage convocations : sauvegarde trop volumineuse, ignoree', ['fichier' => basename($fichier)]);
+
+                continue;
+            }
             $lignes = json_decode((string) $disque->get($fichier), true);
             if (! is_array($lignes)) {
                 Log::warning('Rattrapage convocations : sauvegarde illisible', ['fichier' => basename($fichier)]);
