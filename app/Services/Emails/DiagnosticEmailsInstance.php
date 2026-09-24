@@ -37,8 +37,8 @@ class DiagnosticEmailsInstance
             'adresses' => $this->adresses(),
             'convocations' => $this->convocations->comptes(),
             'familles_a_prevenir' => $this->familles->compter(),
-            'demandes_non_verifiees' => ESBTPCandidature::sansFiltreVerification()->whereIn('verification_contact', StatutVerificationContact::valeursMasquees())->count()
-                + ESBTPReinscriptionDemande::sansFiltreVerification()->whereIn('verification_contact', StatutVerificationContact::valeursMasquees())->count(),
+            'demandes_non_verifiees' => ESBTPCandidature::query()->whereIn('verification_contact', StatutVerificationContact::valeursEnAttente())->count()
+                + ESBTPReinscriptionDemande::query()->whereIn('verification_contact', StatutVerificationContact::valeursEnAttente())->count(),
         ];
 
         if ($details) {

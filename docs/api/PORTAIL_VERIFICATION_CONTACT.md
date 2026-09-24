@@ -6,46 +6,63 @@ Consommée par klassci.com (klassci-landing). Routes signées comme `api/public/
 ouvertes (une saison qui ferme ne bloque pas une vérification en cours).
 Le corps de ces routes n'est jamais journalisé (`LogRequests`).
 
-## Dépôt (réponse enrichie)
+## Réglage d'instance
+
+`inscriptions.portail.verification_contact` (constante
+`TenantScolariteSettings::VERIFICATION_CONTACT`), **désactivé par défaut**, semé par
+migration. Écran : Réglages → section Inscriptions, carte « Vérifier le contact des
+demandes en ligne ».
+
+- **Désactivé** : le portail se comporte comme avant. Aucun code n'est envoyé, la
+  réponse du dépôt n'a pas de champ `statut`, rien n'est marqué ni retenu.
+  `inscriptions:verifier-familles-sans-email` ne fait rien.
+- **Activé** : un code part après chaque dépôt, et la demande est **marquée**, jamais
+  masquée (voir ci-dessous).
+
+Restent actifs quel que soit le réglage : la règle `EmailJoignable` et ses suggestions,
+la synchronisation des statuts MailPulse, le diagnostic CLI et `emails:nettoyer-factices`.
+
+## Dépôt (réponse enrichie, réglage activé)
 
 `POST /api/public/inscription/submit` et `POST /api/public/reinscription/submit`
-répondent toujours `201` avec leurs champs habituels. Quand une vérification est
-lancée, la réponse contient en plus :
+répondent toujours `201` avec leurs champs habituels (message « transmise »). Quand un
+code est parti, la réponse contient en plus :
 
 ```json
 {"statut":"verification_email_requise","demande_id":"<uuid>","email_masque":"k***@gmail.com"}
 {"statut":"verification_telephone_requise","demande_id":"<uuid>","telephone_masque":"+22507*****04"}
 ```
 
-Seule une demande NEUVE (ou déjà masquée) est masquée, et seulement une fois le
-premier code parti : `verification_contact` = `email_non_verifie` /
-`telephone_non_verifie`, invisible pour l'école. Une demande que l'école voyait
-déjà (ancienne, ou vérifiée) n'est JAMAIS masquée : si un redépôt change son
-adresse ou son numéro, les dates de vérification tombent, la demande passe en
-`contact_a_reconfirmer` (visible, badge « Contact à reconfirmer ») et un code part.
-La réponse du dépôt renvoie alors `statut` et `demande_id` pour saisir le code, avec
-le message « transmise ».
-Un redépôt d'une demande déjà masquée renvoie le code sous le débit du renvoi.
-
 Canal : l'e-mail s'il est joignable (candidature : champ `email` ; réinscription :
-adresse du dossier étudiant), sinon WhatsApp sur le mobile. Si le premier code ne
-part pas, la demande passe en `verification_impossible`, reste visible, et la
-réponse n'a pas de champ `statut`. Un 429 de MailPulse au premier envoi n'est pas une
-impossibilité : la demande est masquée et la famille redemande un code plus tard. Une demande masquée non confirmée au bout de
-48 h redevient visible en `verification_expiree`, avec le badge « Contact non
-confirmé » dans les listes de l'école (`inscriptions:expirer-verifications-contact`,
-toutes les heures). Une confirmation tardive reste acceptée.
-Les demandes `verification_expiree`, `verification_impossible` et `contact_a_reconfirmer`
-ne sont ni placées automatiquement en rendez-vous ni convoquées par courriel (elles vont
-dans « Familles à prévenir ») tant qu'un agent n'a pas cliqué « Confirmer le contact »
-(permission de traitement des candidatures ou des demandes). Le geste est refusé si le
-dossier a changé depuis l'affichage (empreinte postée par le formulaire), il est audité
-(`contact_confirme_par`, `contact_confirme_at`), et les convocations de rendez-vous déjà
-pris restées « sans e-mail » ou en échec reprennent l'adresse du dossier et repartent
-avec le prochain envoi. Un redépôt d'une demande expirée ou non vérifiable relance un
-code sans la masquer. `503 whatsapp_sature` de MailPulse se traite comme une limite de
-débit (`429` avec `retry_after` au site). Les écritures d'un envoi (secrets, identifiant
-MailPulse) n'ont lieu que si la ligne a toujours le même canal et le même destinataire.
+adresse personnelle puis adresse du dossier étudiant), sinon WhatsApp sur le mobile.
+
+La demande est **toujours visible** par l'école. Tant que son contact n'est pas prouvé,
+`verification_contact` vaut :
+
+- `email_non_verifie` / `telephone_non_verifie` : code parti, badge « Contact non vérifié » ;
+- `verification_impossible` : le code n'a pas pu partir (MailPulse désactivé, clé absente,
+  WhatsApp indisponible, aucun contact joignable), badge « Contact non vérifiable » ;
+- `contact_a_reconfirmer` : un redépôt a changé l'adresse ou le numéro d'une demande
+  déjà traitée, un nouveau code est parti, badge « Contact à reconfirmer ».
+
+Les corbeilles candidatures et réinscriptions ont un filtre « Contact non vérifié »
+(`?contact=non_verifie`). Ces demandes ne sont ni placées automatiquement en
+rendez-vous ni convoquées par courriel (elles vont dans « Familles à prévenir »)
+jusqu'à la saisie du code, ou jusqu'à ce qu'un agent clique « Confirmer le contact »
+(permission de traitement des candidatures ou des demandes). Réglage coupé, rien
+n'est retenu, même une demande marquée auparavant.
+
+« Confirmer le contact » est refusé si le dossier a changé depuis l'affichage
+(empreinte postée par le formulaire), il est audité (`contact_confirme_par`,
+`contact_confirme_at`), et les convocations de rendez-vous déjà pris restées « sans
+e-mail » ou en échec repartent avec le prochain envoi ; l'adresse du dossier ne
+remplace celle de la réservation que si elle reçoit du courrier.
+
+Un redépôt d'une demande marquée relance un code (sous le débit du renvoi). Un 429 ou
+`503 whatsapp_sature` de MailPulse se traite comme une limite de débit (`429` avec
+`retry_after` au site), jamais comme une impossibilité. Les écritures d'un envoi
+(secrets, identifiant MailPulse) n'ont lieu que si la ligne a toujours le même canal et
+le même destinataire.
 
 Le courriel contient un code à 6 chiffres (30 min) et le lien
 `<URL_PORTAIL_PUBLIC>/verification-email?ecole=<code_ecole>#jeton=<jeton>` (48 h).
@@ -82,7 +99,7 @@ Codes gérés : `201`, `409 whatsapp_indisponible`, `429 retry_after`, `502 envo
 
 `php artisan inscriptions:verifier-familles-sans-email` (simulation par défaut) liste
 les demandes en attente sans e-mail joignable qui recevraient un code WhatsApp.
-`--execute` envoie, avec l'accord de l'école ; la demande reste visible. `--limite`
+`--execute` envoie, avec l'accord de l'école (réglage activé) ; la demande n'est pas marquée, la vérification ne fait que dater le contact. `--limite`
 (20 par défaut, 20 au plus) borne un passage ; la commande s'arrête au premier refus de
 débit (`rate_limited`, `trop_de_demandes`) ou de configuration, et ne garde aucune ligne
 de vérification pour un envoi échoué.
@@ -92,3 +109,4 @@ de vérification pour un envoi échoué.
 - 2026-09-23 : création.
 - 2026-09-23 : `contact_a_reconfirmer`, « Confirmer le contact », `retry_after` MailPulse, code WhatsApp de 10 min.
 - 2026-09-23 : une demande visible n'est jamais masquée ; masquage après envoi seulement ; expiration à 48 h ; plafond cumulé de 15 tentatives.
+- 2026-09-24 : **changement de comportement** : vérification derrière le réglage `inscriptions.portail.verification_contact` (désactivé par défaut) ; plus aucun masquage (ni portée globale, ni expiration à 48 h, ni `verification_expiree`) : la demande reste visible, marquée, filtrable.

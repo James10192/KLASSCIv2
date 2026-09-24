@@ -8,12 +8,12 @@ use App\Models\ESBTPVerificationContact;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Le contact est prouve : on le date, et la demande entre dans le circuit
- * normal de l'ecole (corbeille, compteurs, affectation des rendez-vous).
+ * Le contact est prouve : on le date, le badge tombe, et la demande redevient
+ * eligible au placement en rendez-vous et aux convocations.
  *
  * Appelee sous le verrou de la ligne de verification. Une verification lancee
- * sur une demande deja visible (familles en base, contact change) ne touche
- * pas l'etat de visibilite : elle ne fait que dater le contact.
+ * sur une demande jamais marquee (familles deja en base) ne fait que dater le
+ * contact.
  *
  * Le code qui a verifie est garde en empreinte : une ligne verifiee ne repond
  * « verifie » qu'a ce code-la (WhatsApp compris, dont MailPulse detient le
@@ -35,8 +35,10 @@ class FinalisationVerification
         }
 
         $date = [$verification->canal === CanalVerification::Email ? 'email_verifie_at' : 'telephone_verifie_at' => $maintenant];
-        $rendreVisible = $verification->masque_la_demande || $demande->contactNonVerifie() || $demande->contactAConfirmer();
-        $demande->poserVerificationContact($rendreVisible ? StatutVerificationContact::Verifie : null, $date);
+        // Une demande marquee (code en attente, impossible, a reconfirmer) passe
+        // en « verifie » ; une demande jamais marquee ne fait que dater son contact.
+        $marquee = in_array($demande->verification_contact, StatutVerificationContact::valeursAConfirmer(), true);
+        $demande->poserVerificationContact($marquee ? StatutVerificationContact::Verifie : null, $date);
 
         Log::info('Verification de contact aboutie', [
             'demande_id' => $verification->demande_id,

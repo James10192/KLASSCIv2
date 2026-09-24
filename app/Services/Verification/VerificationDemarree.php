@@ -11,8 +11,6 @@ final class VerificationDemarree
         public readonly string $demandeId,
         public readonly CanalVerification $canal,
         private readonly string $destination,
-        /** Faux : demande restee visible (contact a reconfirmer), deja transmise a l'ecole. */
-        public readonly bool $masquee = true,
     ) {}
 
     /** @return array{statut: string, demande_id: string, email_masque?: string, telephone_masque?: string} */

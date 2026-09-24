@@ -29,6 +29,7 @@ use Tests\TestCase;
  */
 class VerificationConcurrenceTest extends TestCase
 {
+    use ActiveLaVerificationContact;
     use RefreshDatabase;
 
     private const URL_MESSAGES = 'mailpulse.test/api/v1/messages';
@@ -44,6 +45,7 @@ class VerificationConcurrenceTest extends TestCase
             'services.mailpulse.base_url' => 'https://mailpulse.test',
         ]);
         Cache::flush();
+        $this->reglerVerificationContact(true);
     }
 
     public function test_un_renvoi_e_mail_croise_avec_un_redepot_n_ecrit_rien_sur_le_nouveau_contact(): void
@@ -82,13 +84,13 @@ class VerificationConcurrenceTest extends TestCase
     public function test_confirmer_par_telephone_garde_l_adresse_saisie_et_reste_dans_le_dossier(): void
     {
         // Un dossier n'a qu'un rendez-vous actif : un dossier par cas.
-        $candidature = $this->candidature(null, StatutVerificationContact::Expiree);
+        $candidature = $this->candidature(null, StatutVerificationContact::Impossible);
         $retenue = $this->reservation($candidature, 'saisie@gmail.com', StatutConvocationRdv::SansEmail);
-        $dossierEnvoye = $this->candidature(null, StatutVerificationContact::Expiree, '+2250701020397');
+        $dossierEnvoye = $this->candidature(null, StatutVerificationContact::Impossible, '+2250701020397');
         $envoyee = $this->reservation($dossierEnvoye, 'envoyee@gmail.com', StatutConvocationRdv::Envoyee);
-        $dossierAppele = $this->candidature(null, StatutVerificationContact::Expiree, '+2250701020398');
+        $dossierAppele = $this->candidature(null, StatutVerificationContact::Impossible, '+2250701020398');
         $telephone = $this->reservation($dossierAppele, 'appelee@gmail.com', StatutConvocationRdv::Telephone);
-        $autre = $this->reservation($this->candidature(null, StatutVerificationContact::Expiree, '+2250701020399'), 'autre@gmail.com', StatutConvocationRdv::SansEmail);
+        $autre = $this->reservation($this->candidature(null, StatutVerificationContact::Impossible, '+2250701020399'), 'autre@gmail.com', StatutConvocationRdv::SansEmail);
         $agent = User::factory()->create()->id;
         $confirmer = fn (ESBTPCandidature $c) => app(ConfirmationContactEcole::class)->confirmer($c->fresh(), $c->fresh()->empreinteContact(), $agent);
 
@@ -119,7 +121,7 @@ class VerificationConcurrenceTest extends TestCase
 
     public function test_une_adresse_joignable_du_dossier_remplace_celle_de_la_reservation(): void
     {
-        $candidature = $this->candidature('dossier@gmail.com', StatutVerificationContact::Expiree);
+        $candidature = $this->candidature('dossier@gmail.com', StatutVerificationContact::Impossible);
         $retenue = $this->reservation($candidature, 'ancienne@gmail.com', StatutConvocationRdv::SansEmail);
 
         app(ConfirmationContactEcole::class)->confirmer($candidature->fresh(), $candidature->fresh()->empreinteContact(), User::factory()->create()->id);
@@ -155,7 +157,7 @@ class VerificationConcurrenceTest extends TestCase
             $demande = ESBTPReinscriptionDemande::create([
                 'etudiant_id' => $etudiant->id, 'annee_universitaire_id' => ESBTPAnneeUniversitaire::factory()->create()->id,
                 'statut' => ESBTPReinscriptionDemande::STATUT_EN_ATTENTE, 'consentement_at' => now(),
-                'verification_contact' => StatutVerificationContact::Expiree->value,
+                'verification_contact' => StatutVerificationContact::Impossible->value,
             ]);
             $empreinteAffichee = $demande->fresh()->empreinteContact();
 

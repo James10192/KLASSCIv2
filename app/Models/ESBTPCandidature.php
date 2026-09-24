@@ -336,12 +336,4 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
     {
         return 'candidature';
     }
-
-    /** Cle du badge « Candidatures en ligne » (AppServiceProvider). */
-    public const CLE_CACHE_EN_ATTENTE = 'inscriptions.candidatures.en_attente';
-
-    public function cleCacheCompteur(): string
-    {
-        return self::CLE_CACHE_EN_ATTENTE;
-    }
 }

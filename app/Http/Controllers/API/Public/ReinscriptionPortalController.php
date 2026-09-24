@@ -90,15 +90,14 @@ class ReinscriptionPortalController extends Controller
         // et pour la meme raison : « je viens quand ? » est la question que la
         // scolarite entend le plus.
         //
-        // Une demande neuve attend la verification du contact du dossier
-        // (e-mail joignable, sinon WhatsApp) avant d'etre transmise.
+        // Si l'ecole l'a active, un code part vers le contact du dossier (e-mail
+        // joignable, sinon WhatsApp) ; la demande est transmise dans tous les cas.
         $verification = app(DemarrageVerification::class)->apresDepot($demande);
 
         return response()->json(array_merge([
             'enregistre' => true,
-            'message' => $verification === null || ! $verification->masquee
-                ? 'Votre demande a bien été transmise à votre établissement.'
-                : 'Confirmez votre contact pour que votre demande soit transmise à votre établissement.',
+            'message' => 'Votre demande a bien été transmise à votre établissement.'
+                .($verification === null ? '' : ' Confirmez votre contact avec le code reçu pour être convoqué(e).'),
             'inscriptions_physiques' => app(PortailCandidaturePublication::class)->inscriptionsPhysiques(),
             'reference_publique' => $demande->referencePubliqueAffichee(),
         ], $verification?->reponse() ?? []), 201);

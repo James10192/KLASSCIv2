@@ -22,12 +22,14 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Le depot de reinscription de bout en bout : la reponse annonce la
- * verification, la demande reste hors de la corbeille, un second depot relance
- * la meme verification, et le bon code la fait entrer.
+ * Le depot de reinscription de bout en bout, reglage actif puis coupe : la
+ * reponse annonce (ou non) la verification, la demande est dans la corbeille
+ * des le depot, avec son badge et sous le filtre « Contact non verifie »
+ * jusqu'au bon code.
  */
 class DepotReinscriptionVerifieTest extends TestCase
 {
+    use ActiveLaVerificationContact;
     use RefreshDatabase;
 
     private const SECRET = 'un-secret-de-test-suffisamment-long-pour-passer';
@@ -67,9 +69,10 @@ class DepotReinscriptionVerifieTest extends TestCase
             'dispatch' => ['state' => 'accepted', 'sms_fallback_eligible' => false],
             'message' => ['id' => 'msg_1', 'status' => 'queued'],
         ], 202)]);
+        $this->reglerVerificationContact(true);
     }
 
-    public function test_le_depot_attend_le_code_avant_d_entrer_dans_la_corbeille(): void
+    public function test_le_depot_marque_la_demande_jusqu_au_code(): void
     {
         $identite = ['matricule' => 'DEMO-0001', 'date_naissance' => '2004-03-15'];
         $depotCorps = $identite + ['consentement' => true];
@@ -79,18 +82,65 @@ class DepotReinscriptionVerifieTest extends TestCase
             ->assertJson(['enregistre' => true, 'statut' => 'verification_email_requise', 'email_masque' => 'a***@gmail.com']);
         $demandeId = $depot->json('demande_id');
 
-        $this->assertSame(0, ESBTPReinscriptionDemande::query()->count());
-        $this->appeler('api/public/reinscription/lookup', $identite)->assertJson(['demande_existante' => false]);
+        $this->assertTrue(ESBTPReinscriptionDemande::query()->sole()->contactNonVerifie(), 'Transmise, mais marquee.');
+        $this->appeler('api/public/reinscription/lookup', $identite)->assertJson(['demande_existante' => true]);
 
         // Page perdue : la famille redepose, et retrouve la meme verification.
         $this->appeler('api/public/reinscription/submit', $depotCorps)->assertStatus(201)->assertJson(['demande_id' => $demandeId]);
-        $this->assertSame(1, ESBTPReinscriptionDemande::sansFiltreVerification()->count());
+        $this->assertSame(1, ESBTPReinscriptionDemande::query()->count());
 
         $this->appeler('api/portail/email/verifier', ['canal' => 'email', 'demande_id' => $demandeId, 'code' => $this->dernierCode()])
             ->assertOk()->assertExactJson(['verifie' => true, 'type' => 'reinscription']);
 
         $this->assertSame(1, ESBTPReinscriptionDemande::query()->count());
         $this->appeler('api/public/reinscription/lookup', $identite)->assertJson(['demande_existante' => true]);
+    }
+
+    public function test_reglage_desactive_le_portail_repond_comme_avant(): void
+    {
+        $this->reglerVerificationContact(false);
+
+        $this->appeler('api/public/reinscription/submit', ['matricule' => 'DEMO-0001', 'date_naissance' => '2004-03-15', 'consentement' => true])
+            ->assertStatus(201)
+            ->assertJson(['enregistre' => true, 'message' => 'Votre demande a bien été transmise à votre établissement.'])
+            ->assertJsonMissingPath('statut')
+            ->assertJsonMissingPath('demande_id');
+
+        Http::assertNothingSent();
+        $this->assertNull(ESBTPReinscriptionDemande::query()->sole()->verification_contact);
+        $this->assertSame(0, \App\Models\ESBTPVerificationContact::query()->count());
+    }
+
+    public function test_reglage_actif_la_demande_est_dans_la_corbeille_avec_son_badge_et_sous_le_filtre(): void
+    {
+        $this->appeler('api/public/reinscription/submit', ['matricule' => 'DEMO-0001', 'date_naissance' => '2004-03-15', 'consentement' => true])
+            ->assertStatus(201)->assertJson(['statut' => 'verification_email_requise']);
+        $this->actingAs($this->secretaire());
+
+        $this->get(route('esbtp.reinscription-demandes.index'))
+            ->assertOk()->assertSee('KOUASSI')->assertSee('pas de convocation automatique tant que le contact');
+        $this->get(route('esbtp.reinscription-demandes.index', ['contact' => 'non_verifie']))
+            ->assertOk()->assertSee('KOUASSI');
+
+        $demandeId = \App\Models\ESBTPVerificationContact::query()->sole()->demande_id;
+        $this->appeler('api/portail/email/verifier', ['canal' => 'email', 'demande_id' => $demandeId, 'code' => $this->dernierCode()])->assertOk();
+
+        $this->get(route('esbtp.reinscription-demandes.index', ['contact' => 'non_verifie']))
+            ->assertOk()->assertDontSee('KOUASSI');
+        $this->get(route('esbtp.reinscription-demandes.index'))
+            ->assertOk()->assertSee('KOUASSI')->assertDontSee('pas de convocation automatique tant que le contact');
+    }
+
+    private function secretaire(): User
+    {
+        $role = Role::firstOrCreate(['name' => 'secretaire-verification', 'guard_name' => 'web']);
+        foreach (['reinscriptions.demandes.view', 'reinscriptions.demandes.process'] as $nom) {
+            $role->givePermissionTo(\Spatie\Permission\Models\Permission::firstOrCreate(['name' => $nom, 'guard_name' => 'web']));
+        }
+        $user = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
+        $user->assignRole($role);
+
+        return $user;
     }
 
     private function dernierCode(): string

@@ -40,7 +40,7 @@ class ConfirmationContactEcole
     public function confirmer(Model $demande, string $empreinte, int $agentId): array
     {
         return DB::transaction(function () use ($demande, $empreinte, $agentId) {
-            $ligne = $demande::sansFiltreVerification()->whereKey($demande->getKey())->lockForUpdate()->first();
+            $ligne = $demande::query()->whereKey($demande->getKey())->lockForUpdate()->first();
 
             if ($ligne === null || ! hash_equals($ligne->empreinteContact(), $empreinte)) {
                 return [self::MODIFIE_ENTRE_TEMPS, 0];

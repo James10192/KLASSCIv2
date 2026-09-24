@@ -144,7 +144,7 @@ class ControleVerification
             : ResultatControle::refus(self::CODE_INVALIDE);
     }
 
-    /** Idempotent, et repare une demande restee masquee malgre une verification aboutie. */
+    /** Idempotent, et repare une demande restee marquee malgre une verification aboutie. */
     private function reussite(ESBTPVerificationContact $v): ResultatControle
     {
         $demande = $v->verifiable;

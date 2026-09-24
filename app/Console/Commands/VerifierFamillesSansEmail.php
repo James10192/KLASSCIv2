@@ -33,6 +33,12 @@ class VerifierFamillesSansEmail extends Command
 
     public function handle(ContactDeVerification $contacts, DemarrageVerification $demarrage): int
     {
+        if (! $demarrage->active()) {
+            $this->warn('La vérification du contact est désactivée dans les réglages (Inscriptions) : rien à faire.');
+
+            return self::SUCCESS;
+        }
+
         $limite = min(self::LIMITE_MAX, max(1, (int) $this->option('limite')));
         $cibles = [];
 

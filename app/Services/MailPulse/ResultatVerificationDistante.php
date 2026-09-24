@@ -6,8 +6,8 @@ final class ResultatVerificationDistante
 {
     /**
      * Refus qui tiennent a la configuration ou a l'indisponibilite du canal,
-     * pas a la famille : attendre ne les leve pas. La demande ne doit pas
-     * rester masquee a l'ecole a cause d'eux.
+     * pas a la famille : attendre ne les leve pas. Ils sont journalises comme
+     * tels, pour distinguer une panne d'instance d'un contact injoignable.
      */
     private const DEFINITIFS = [
         MailPulseApi::DESACTIVE, MailPulseApi::CLE_ABSENTE, 'auth_failed',

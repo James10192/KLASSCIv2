@@ -493,6 +493,7 @@ class ESBTPSettingsController extends Controller
                 TenantScolariteSettings::AGENT_INSCRIPTION_ROLE,
                 TenantScolariteSettings::REINSCRIPTION_EN_LIGNE,
                 TenantScolariteSettings::CONFIRMER_STATUT_ETABLISSEMENT,
+                TenantScolariteSettings::VERIFICATION_CONTACT,
                 TenantScolariteSettings::CLERK_LMD_ACCESS,
                 TenantScolariteSettings::CLERK_PEDAGOGIE,
                 TenantScolariteSettings::MANAGE_TEACHERS,

@@ -69,6 +69,7 @@ class ESBTPCandidatureController extends Controller
             ->with(['anneeUniversitaire:id,name', 'filiere:id,name', 'niveau:id,name', 'traitePar:id,name'])
             ->when(in_array($statut, $statutsConnus, true), fn ($q) => $q->where('statut', $statut))
             ->when($reference !== '', fn ($q) => $q->where('reference_publique', $reference))
+            ->when($request->query('contact') === 'non_verifie', fn ($q) => $q->contactNonConfirme())
             ->orderByRaw("FIELD(statut, 'en_attente') DESC")
             ->latest('created_at')
             ->paginate(25)

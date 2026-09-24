@@ -50,6 +50,7 @@ class ESBTPReinscriptionDemandeController extends Controller
             ->with(['etudiant:id,nom,prenoms,matricule,email,email_personnel,telephone', 'anneeUniversitaire:id,name', 'classeSouhaitee:id,name', 'traitePar:id,name'])
             ->when($statut !== '', fn ($q) => $q->where('statut', $statut))
             ->when($reference !== '', fn ($q) => $q->where('reference_publique', $reference))
+            ->when($request->query('contact') === 'non_verifie', fn ($q) => $q->contactNonConfirme())
             ->orderByRaw("FIELD(statut, 'en_attente') DESC")
             ->latest('created_at')
             ->paginate(25)

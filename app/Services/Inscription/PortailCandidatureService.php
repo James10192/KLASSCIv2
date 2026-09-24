@@ -124,7 +124,7 @@ class PortailCandidatureService
             $valeurs[$champTransfert] = $champs[$champTransfert] ?? null;
         }
 
-        $existante = ESBTPCandidature::sansFiltreVerification()->where($cles)->first();
+        $existante = ESBTPCandidature::where($cles)->first();
 
         if ($existante !== null) {
             $rouverte = $this->rouvrir($existante->id, $valeurs);
@@ -167,7 +167,7 @@ class PortailCandidatureService
                 throw $e;
             }
 
-            $rattrapee = ESBTPCandidature::sansFiltreVerification()->where($cles)->first();
+            $rattrapee = ESBTPCandidature::where($cles)->first();
 
             if ($rattrapee === null) {
                 throw $e;
@@ -216,7 +216,7 @@ class PortailCandidatureService
     private function rouvrir(int $id, array $valeurs): ?ESBTPCandidature
     {
         return DB::transaction(function () use ($id, $valeurs) {
-            $candidature = ESBTPCandidature::sansFiltreVerification()->whereKey($id)->lockForUpdate()->first();
+            $candidature = ESBTPCandidature::whereKey($id)->lockForUpdate()->first();
 
             // Disparue entre la lecture et le verrou. Rare, mais possible :
             // une purge, une suppression manuelle. L'appelant la recreera.

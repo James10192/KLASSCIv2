@@ -109,15 +109,14 @@ class CandidaturePortalController extends Controller
         // scolarite entend le plus au telephone. Le portail y repond lui-meme
         // quand l'ecole a renseigne la date.
         //
-        // Une candidature neuve attend la verification de son contact : elle
-        // n'est transmise a l'ecole qu'apres le code (voir DemarrageVerification).
+        // Si l'ecole l'a active, un code part pour verifier le contact ; la
+        // candidature est transmise dans tous les cas (voir DemarrageVerification).
         $verification = app(DemarrageVerification::class)->apresDepot($candidature);
 
         return response()->json(array_merge([
             'enregistre' => true,
-            'message' => $verification === null || ! $verification->masquee
-                ? 'Votre candidature a bien été transmise à l\'établissement.'
-                : 'Confirmez votre contact pour que votre candidature soit transmise à l\'établissement.',
+            'message' => 'Votre candidature a bien été transmise à l\'établissement.'
+                .($verification === null ? '' : ' Confirmez votre contact avec le code reçu pour être convoqué(e).'),
             'inscriptions_physiques' => $this->publication->inscriptionsPhysiques(),
             'reference_publique' => $candidature->referencePubliqueAffichee(),
         ], $verification?->reponse() ?? []), 201);

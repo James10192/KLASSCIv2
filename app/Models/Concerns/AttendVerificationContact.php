@@ -3,59 +3,57 @@
 namespace App\Models\Concerns;
 
 use App\Enums\StatutVerificationContact;
+use App\Services\TenantScolariteSettings;
+use App\Services\Verification\ContactDeVerification;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Cache;
 
 /**
- * Une demande publique dont le contact n'est pas encore verifie n'existe pas
- * pour l'ecole.
+ * Le contact d'une demande deposee sur le portail public (candidature,
+ * reinscription), et ce que l'ecole peut en faire.
  *
- * Portee GLOBALE, et c'est voulu : la corbeille, le badge de la barre
- * laterale, l'affectation des rendez-vous, la recherche par reference du
- * portail… une douzaine de requetes lisent ces tables, et en oublier une
- * suffirait a faire traiter un dossier dont l'adresse n'a jamais repondu.
- *
- * Seuls le depot (qui doit retrouver la demande pour la relancer) et la
- * verification elle-meme lisent sans la portee : `sansFiltreVerification()`.
- *
- * Les migrations passent au deploiement, avant la mise en service du code :
- * la colonne est presente, la portee ne la teste pas.
+ * La demande reste toujours visible. Quand le reglage d'instance
+ * `inscriptions.portail.verification_contact` est actif et que le contact
+ * n'est pas prouve, elle est retenue : ni placement automatique en
+ * rendez-vous, ni convocation par courriel, jusqu'a « Confirmer le contact ».
+ * Reglage coupe, rien n'est retenu, meme une demande marquee auparavant.
  */
 trait AttendVerificationContact
 {
-    public const PORTEE_VERIFICATION = 'contact_verifie';
-
     /**
      * Pose par le depot quand un redepot a change l'adresse ou le numero.
      * Propriete PHP declaree, pas un attribut : elle n'est jamais ecrite en base.
      */
     public bool $contactModifieAuDepot = false;
 
-    public static function bootAttendVerificationContact(): void
-    {
-        static::addGlobalScope(self::PORTEE_VERIFICATION, function (Builder $query) {
-            $colonne = $query->getModel()->qualifyColumn('verification_contact');
-
-            $query->where(fn (Builder $q) => $q
-                ->whereNull($colonne)
-                ->orWhereNotIn($colonne, StatutVerificationContact::valeursMasquees()));
-        });
-    }
-
-    public static function sansFiltreVerification(): Builder
-    {
-        return static::query()->withoutGlobalScope(self::PORTEE_VERIFICATION);
-    }
-
+    /** Un code attend la famille. */
     public function contactNonVerifie(): bool
     {
-        return in_array($this->verification_contact, StatutVerificationContact::valeursMasquees(), true);
+        return in_array($this->verification_contact, StatutVerificationContact::valeursEnAttente(), true);
     }
 
-    /** Visible, mais contact jamais prouve : pas de convocation ni de placement automatique. */
+    /** Contact jamais prouve, et reglage actif : pas de convocation ni de placement automatique. */
     public function contactAConfirmer(): bool
     {
-        return in_array($this->verification_contact, StatutVerificationContact::valeursAConfirmer(), true);
+        return in_array($this->verification_contact, StatutVerificationContact::valeursAConfirmer(), true)
+            && app(TenantScolariteSettings::class)->verificationContactActive();
+    }
+
+    /** @param  Builder<static>  $query */
+    public function scopeContactUtilisable(Builder $query): Builder
+    {
+        if (! app(TenantScolariteSettings::class)->verificationContactActive()) {
+            return $query;
+        }
+
+        $colonne = $this->qualifyColumn('verification_contact');
+
+        return $query->where(fn (Builder $q) => $q->whereNull($colonne)->orWhereNotIn($colonne, StatutVerificationContact::valeursAConfirmer()));
+    }
+
+    /** Le filtre « Contact non verifie » des corbeilles. */
+    public function scopeContactNonConfirme(Builder $query): Builder
+    {
+        return $query->whereIn($this->qualifyColumn('verification_contact'), StatutVerificationContact::valeursAConfirmer());
     }
 
     /**
@@ -76,39 +74,22 @@ trait AttendVerificationContact
     /** @return array{canal: string, destination: string}|null */
     public function contactAffiche(): ?array
     {
-        $contact = app(\App\Services\Verification\ContactDeVerification::class)->pour($this);
+        $contact = app(ContactDeVerification::class)->pour($this);
 
         return $contact === null ? null : ['canal' => $contact['canal']->value, 'destination' => $contact['destination']];
     }
 
-    /** @param  Builder<static>  $query */
-    public function scopeContactUtilisable(Builder $query): Builder
-    {
-        $colonne = $this->qualifyColumn('verification_contact');
-
-        return $query->where(fn (Builder $q) => $q->whereNull($colonne)->orWhereNotIn($colonne, StatutVerificationContact::valeursAConfirmer()));
-    }
-
     /**
-     * Change l'etat de verification (et d'autres champs au besoin). Si la
-     * demande apparait ou disparait pour l'ecole, le compteur du menu est
-     * invalide : sinon il mentirait pendant une minute.
+     * Change l'etat de verification (et d'autres champs au besoin), sans
+     * declencher les observateurs : c'est le portail qui ecrit, pas un agent.
      *
      * @param  array<string, mixed>  $autres
      */
     public function poserVerificationContact(?StatutVerificationContact $statut, array $autres = []): void
     {
-        $avant = $this->contactNonVerifie();
         $this->forceFill(($statut === null ? [] : ['verification_contact' => $statut->value]) + $autres)->saveQuietly();
-
-        if ($avant !== $this->contactNonVerifie()) {
-            Cache::forget($this->cleCacheCompteur());
-        }
     }
 
     /** Le type publie par la route de verification : `candidature` ou `reinscription`. */
     abstract public function typeDemandePublique(): string;
-
-    /** La cle du compteur de la barre laterale qui compte ces demandes. */
-    abstract public function cleCacheCompteur(): string;
 }
