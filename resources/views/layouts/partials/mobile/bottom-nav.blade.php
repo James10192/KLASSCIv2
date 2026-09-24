@@ -62,16 +62,46 @@
                 ];
                 break;
             case 'scolarite':
-                // Qui ne voit pas les paiements a les classes en quatrieme onglet.
-                $mScoPaiements = $mUser->canAny(['paiements.view', 'paiements.view_own']);
-                $mItems = [
-                    ['label' => 'Accueil', 'icon' => 'home', 'href' => $r('dashboard') ? route('dashboard') : null, 'on' => $on(['dashboard', 'dashboard.*']), 'show' => true],
-                    ['label' => 'Inscriptions', 'icon' => 'file', 'href' => $r('esbtp.inscriptions.index') ? route('esbtp.inscriptions.index') : null, 'on' => $on('esbtp.inscriptions.*'), 'show' => $mUser->can('inscriptions.view')],
-                    ['label' => 'Étudiants', 'icon' => 'users', 'href' => $r('esbtp.etudiants.index') ? route('esbtp.etudiants.index') : null, 'on' => $on('esbtp.etudiants.*'), 'show' => $mUser->can('students.view')],
-                    ['label' => 'Paiements', 'icon' => 'cash', 'href' => $r('esbtp.paiements.index') ? route('esbtp.paiements.index') : null, 'on' => $on('esbtp.paiements.*'), 'show' => $mScoPaiements],
-                    ['label' => 'Classes', 'icon' => 'grid', 'href' => $r('esbtp.classes.index') ? route('esbtp.classes.index') : null, 'on' => $on('esbtp.classes.*'), 'show' => !$mScoPaiements && $mUser->can('classes.view')],
-                    ['label' => 'Plus', 'icon' => 'menu', 'sheet' => 'm-plus', 'on' => false, 'show' => true],
+                // Chaque entree passe par la garde REELLE de sa route (PorteDeRoute) :
+                // les listes d'autorisations des routes scolarite et LMD divergent
+                // entre elles, une copie ici se tromperait pour quelqu'un.
+                // L'ordre suit le metier : qui porte la coordination ou la direction
+                // des etudes sans gerer de dossiers (ni valider d'inscriptions : a ISLG,
+                // les coordinateurs le font) travaille d'abord sur les classes,
+                // les emplois du temps et les notes. Les trois premieres entrees
+                // ouvertes deviennent des onglets, les autres vont dans « Plus ».
+                $mScoPedago = $mUser->canAny(['identity.coordinate', 'identity.direct_studies'])
+                    && ! $mUser->canAny(['identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer', 'identity.school_manager', 'inscriptions.validate']);
+                $mScoCatalogue = [
+                    'inscriptions' => ['route' => 'esbtp.inscriptions.index', 'on' => 'esbtp.inscriptions.*', 'icon' => 'file', 'label' => 'Inscriptions', 'court' => 'Inscriptions'],
+                    'etudiants' => ['route' => 'esbtp.etudiants.index', 'on' => 'esbtp.etudiants.*', 'icon' => 'users', 'label' => 'Étudiants', 'court' => 'Étudiants'],
+                    'paiements' => ['route' => 'esbtp.paiements.index', 'on' => 'esbtp.paiements.*', 'icon' => 'cash', 'label' => 'Paiements', 'court' => 'Paiements'],
+                    'classes' => ['route' => 'esbtp.classes.index', 'on' => 'esbtp.classes.*', 'icon' => 'grid', 'label' => 'Classes', 'court' => 'Classes'],
+                    'edt' => ['route' => 'esbtp.emploi-temps.index', 'on' => 'esbtp.emploi-temps.*', 'icon' => 'cal', 'label' => 'Emplois du temps', 'court' => 'EDT'],
+                    'notes' => ['route' => 'esbtp.notes.index', 'on' => 'esbtp.notes.*', 'icon' => 'list', 'label' => 'Notes', 'court' => 'Notes'],
+                    'ue' => ['route' => 'esbtp.lmd.ue.index', 'on' => 'esbtp.lmd.ue.*', 'icon' => 'book', 'label' => 'UE et ECUE (LMD)', 'court' => 'UE'],
+                    'parcours' => ['route' => 'esbtp.lmd.parcours-domain.index', 'on' => 'esbtp.lmd.parcours-domain.*', 'icon' => 'scale', 'label' => 'Parcours LMD', 'court' => 'Parcours'],
+                    'evaluations' => ['route' => 'esbtp.evaluations.index', 'on' => 'esbtp.evaluations.*', 'icon' => 'pen', 'label' => 'Évaluations', 'court' => 'Évaluations'],
+                    'bulletins' => ['route' => 'esbtp.bulletins.index', 'on' => 'esbtp.bulletins.*', 'icon' => 'file', 'label' => 'Bulletins', 'court' => 'Bulletins'],
+                    'annonces' => ['route' => 'esbtp.annonces.index', 'on' => 'esbtp.annonces.*', 'icon' => 'msg', 'label' => 'Annonces', 'court' => 'Annonces'],
+                    'filieres' => ['route' => 'esbtp.filieres.index', 'on' => 'esbtp.filieres.*', 'icon' => 'book', 'label' => 'Filières', 'court' => 'Filières'],
                 ];
+                $mScoOrdre = $mScoPedago
+                    ? ['classes', 'edt', 'notes', 'ue', 'evaluations', 'bulletins', 'etudiants', 'inscriptions', 'parcours', 'annonces', 'filieres', 'paiements']
+                    : ['inscriptions', 'etudiants', 'paiements', 'classes', 'ue', 'edt', 'notes', 'bulletins', 'evaluations', 'parcours', 'annonces', 'filieres'];
+                $mScoOuverts = [];
+                foreach ($mScoOrdre as $cle) {
+                    $lien = $mScoCatalogue[$cle];
+                    if ($r($lien['route']) && \App\Support\PorteDeRoute::ouverte($lien['route'], $mUser)) {
+                        $mScoOuverts[] = $lien;
+                    }
+                }
+                $mScoReste = array_slice($mScoOuverts, 3);
+                $mItems = [['label' => 'Accueil', 'icon' => 'home', 'href' => $r('dashboard') ? route('dashboard') : null, 'on' => $on(['dashboard', 'dashboard.*']), 'show' => true]];
+                foreach (array_slice($mScoOuverts, 0, 3) as $lien) {
+                    $mItems[] = ['label' => $lien['court'], 'icon' => $lien['icon'], 'href' => route($lien['route']), 'on' => $on($lien['on']), 'show' => true];
+                }
+                $mItems[] = ['label' => 'Plus', 'icon' => 'menu', 'sheet' => 'm-plus', 'on' => false, 'show' => true];
                 break;
         }
 
@@ -217,21 +247,12 @@
                         </a>
                     @endif
                 @elseif($mProfil === 'scolarite')
-                    @php
-                        $mScoLiens = [
-                            ['route' => 'esbtp.inscriptions.create', 'on' => 'esbtp.inscriptions.create', 'perm' => 'inscriptions.create', 'icon' => 'plus', 'label' => 'Nouvelle inscription'],
-                            ['route' => 'esbtp.classes.index', 'on' => 'esbtp.classes.*', 'perm' => 'classes.view', 'icon' => 'grid', 'label' => 'Classes', 'sauf_onglet' => true],
-                            ['route' => 'esbtp.filieres.index', 'on' => 'esbtp.filieres.*', 'perm' => 'filieres.view', 'icon' => 'book', 'label' => 'Filières'],
-                            ['route' => 'esbtp.emploi-temps.index', 'on' => 'esbtp.emploi-temps.*', 'perm' => 'timetables.view', 'icon' => 'cal', 'label' => 'Emplois du temps'],
-                            ['route' => 'esbtp.evaluations.index', 'on' => 'esbtp.evaluations.*', 'perm' => 'evaluations.view', 'icon' => 'pen', 'label' => 'Évaluations'],
-                            ['route' => 'esbtp.notes.index', 'on' => 'esbtp.notes.*', 'perm' => 'notes.view', 'icon' => 'list', 'label' => 'Notes'],
-                            ['route' => 'esbtp.bulletins.index', 'on' => 'esbtp.bulletins.*', 'perm' => 'bulletins.view', 'icon' => 'file', 'label' => 'Bulletins'],
-                            ['route' => 'esbtp.annonces.index', 'on' => 'esbtp.annonces.*', 'perm' => 'annonces.view', 'icon' => 'msg', 'label' => 'Annonces'],
-                        ];
-                        $mScoOngletClasses = collect($mItems)->contains(fn ($it) => ($it['label'] ?? '') === 'Classes');
-                    @endphp
-                    @foreach($mScoLiens as $lien)
-                        @continue(!Route::has($lien['route']) || !$mUser->can($lien['perm']) || (($lien['sauf_onglet'] ?? false) && $mScoOngletClasses))
+                    @if(Route::has('esbtp.inscriptions.create') && \App\Support\PorteDeRoute::ouverte('esbtp.inscriptions.create', $mUser))
+                        <a href="{{ route('esbtp.inscriptions.create') }}" class="{{ request()->routeIs('esbtp.inscriptions.create') ? 'on' : '' }}">
+                            <x-m.icon name="plus" />Nouvelle inscription<span class="ch"><x-m.icon name="chr" /></span>
+                        </a>
+                    @endif
+                    @foreach($mScoReste ?? [] as $lien)
                         <a href="{{ route($lien['route']) }}" class="{{ request()->routeIs($lien['on']) ? 'on' : '' }}">
                             <x-m.icon :name="$lien['icon']" />{{ $lien['label'] }}<span class="ch"><x-m.icon name="chr" /></span>
                         </a>

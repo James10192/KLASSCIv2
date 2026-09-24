@@ -10,19 +10,25 @@ use Tests\TestCase;
 
 /**
  * Profil mobile « scolarite » : secretariat, scolarite, agent d'inscription,
- * coordination. Ils recevaient la mise en page de bureau sur leur telephone.
- * La barre du bas suit leurs permissions : un onglet qu'on ne peut pas ouvrir
- * n'est pas affiche, et qui ne voit pas les paiements a les classes a la place.
+ * coordination. Chaque onglet passe par la garde reelle de sa route : un lien
+ * qu'on ne peut pas ouvrir n'est jamais affiche. Les trois premieres pages
+ * ouvertes deviennent des onglets, dans un ordre qui suit le metier.
  */
 class ScolariteBottomNavTest extends TestCase
 {
     use RefreshDatabase;
 
+    private const PERMISSIONS = [
+        'admin.access', 'identity.enrollment_officer', 'identity.coordinate', 'identity.direct_studies',
+        'inscriptions.view', 'inscriptions.create', 'inscriptions.validate', 'students.view', 'classes.view',
+        'paiements.view', 'timetables.view', 'notes.view', 'module.notes_evaluations.access', 'annonces.view',
+    ];
+
     protected function setUp(): void
     {
         parent::setUp();
         MobileProfileResolver::oublier();
-        foreach (['inscriptions.view', 'inscriptions.create', 'students.view', 'classes.view', 'paiements.view', 'bulletins.view'] as $permission) {
+        foreach (self::PERMISSIONS as $permission) {
             Permission::findOrCreate($permission, 'web');
         }
     }
@@ -33,36 +39,50 @@ class ScolariteBottomNavTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_les_onglets_suivent_les_permissions(): void
+    public function test_un_agent_d_inscription_a_les_dossiers_en_onglets(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo(['inscriptions.view', 'inscriptions.create', 'students.view', 'paiements.view', 'classes.view']);
+        $user->givePermissionTo(['identity.enrollment_officer', 'inscriptions.view', 'inscriptions.create', 'students.view', 'classes.view']);
 
         $html = $this->rendre($user);
 
         $this->assertStringContainsString('class="m-bottomnav"', $html);
         $this->assertStringContainsString('aria-label="Inscriptions"', $html);
         $this->assertStringContainsString('aria-label="Étudiants"', $html);
-        $this->assertStringContainsString('aria-label="Paiements"', $html);
-        $this->assertStringNotContainsString('aria-label="Classes"', $html);
-        // Les classes passent dans la feuille « Plus », avec la nouvelle inscription.
-        $this->assertStringContainsString(route('esbtp.classes.index'), $html);
+        $this->assertStringContainsString('aria-label="Classes"', $html);
         $this->assertStringContainsString('Nouvelle inscription', $html);
-        // Pas de lien vers un écran refusé.
-        $this->assertStringNotContainsString(route('esbtp.bulletins.index'), $html);
+        // Sans permission, pas de lien — ni onglet, ni entrée de la feuille.
+        $this->assertStringNotContainsString(route('esbtp.paiements.index'), $html);
+        // Emplois du temps : la route n'admet pas l'agent d'inscription.
+        $this->assertStringNotContainsString(route('esbtp.emploi-temps.index'), $html);
     }
 
-    public function test_sans_paiements_les_classes_prennent_l_onglet(): void
+    public function test_la_coordination_pedagogique_a_classes_edt_et_notes(): void
     {
         $user = User::factory()->create();
-        $user->givePermissionTo(['students.view', 'classes.view']);
+        $user->givePermissionTo(['admin.access', 'identity.direct_studies', 'identity.coordinate', 'inscriptions.view', 'students.view', 'classes.view', 'timetables.view', 'notes.view', 'module.notes_evaluations.access']);
 
         $html = $this->rendre($user);
 
-        $this->assertStringNotContainsString('aria-label="Paiements"', $html);
-        $this->assertStringNotContainsString('aria-label="Inscriptions"', $html);
         $this->assertStringContainsString('aria-label="Classes"', $html);
-        $this->assertSame(1, substr_count($html, 'href="' . route('esbtp.classes.index') . '"') / 2);
+        $this->assertStringContainsString('aria-label="EDT"', $html);
+        $this->assertStringContainsString('aria-label="Notes"', $html);
+        $this->assertStringNotContainsString('aria-label="Inscriptions"', $html);
+        // Les inscriptions restent joignables par « Plus ».
+        $this->assertStringContainsString(route('esbtp.inscriptions.index'), $html);
+    }
+
+    public function test_qui_valide_des_inscriptions_garde_les_dossiers_en_tete(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo(['admin.access', 'identity.coordinate', 'inscriptions.view', 'inscriptions.validate', 'students.view', 'paiements.view', 'classes.view']);
+
+        $html = $this->rendre($user);
+
+        $this->assertStringContainsString('aria-label="Inscriptions"', $html);
+        $this->assertStringContainsString('aria-label="Paiements"', $html);
+        $this->assertStringNotContainsString('aria-label="Classes"', $html);
+        $this->assertStringContainsString(route('esbtp.classes.index'), $html);
     }
 
     private function rendre(User $user): string
