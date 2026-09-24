@@ -31,12 +31,23 @@
         ['recouvrement_gap_min_expected', 'Écart recouvrement — montant minimal attendu (FCFA)', 'On ignore les mois où le montant attendu est inférieur à ce seuil (évite le bruit sur petits volumes)', 0, 100000000, 50000],
     ];
 
+    // Fiabilité des données : seuils du bandeau affiché avant toute prévision.
+    $fiabiliteFields = [
+        ['stale_days', 'Données anciennes après (jours)', 'Sans paiement saisi depuis ce nombre de jours, les prévisions sont signalées comme non fiables', 7, 365, 1],
+        ['min_sample', 'Échantillon minimal (paiements)', 'En dessous, pas assez de paiements pour dégager une tendance', 5, 1000, 1],
+        ['lookback_months', 'Période analysée (mois)', 'Nombre de mois de saisies examinés', 3, 24, 1],
+        ['catchup_min_per_day', 'Rattrapage : saisies par jour et par compte', 'Un compte qui saisit au moins ce nombre de paiements dans la journée…', 5, 1000, 1],
+        ['catchup_lag_days', 'Rattrapage : ancienneté des paiements (jours)', '… dont la majorité date de plus de ce nombre de jours fait une saisie de rattrapage', 1, 180, 1],
+        ['catchup_alert_pct', "Rattrapage : seuil d'alerte (%)", 'Part des paiements saisis en rattrapage au-delà de laquelle le bandeau alerte', 5, 100, 1],
+    ];
+
     $asCfg = [
         'defaults' => $defaults,
         'settings' => [
             'default_risk' => $settings['default_risk'],
             'anomaly' => $settings['anomaly'],
             'recouvrement' => $settings['recouvrement'],
+            'fiabilite' => $settings['fiabilite'],
         ],
         'flash' => session('success'),
         'csrf' => csrf_token(),
@@ -224,6 +235,41 @@
                         </span>
                     </label>
                 </div>
+            </div>
+        </div>
+
+        {{-- ===== Fiabilité des données ===== --}}
+        <div class="as-card">
+            <div class="as-card-head">
+                <div class="as-card-icon as-card-icon--anomaly"><i class="fas fa-shield-alt"></i></div>
+                <div class="as-card-title-block">
+                    <h2>Fiabilité des données</h2>
+                    <p>Avant toute prévision, la page vérifie que les paiements saisis permettent d'en faire une.</p>
+                </div>
+                <button type="button" class="as-card-reset" @click="resetSection('fiabilite')">
+                    <i class="fas fa-undo"></i> Restaurer défauts
+                </button>
+            </div>
+
+            <div class="as-form-grid">
+                @foreach($fiabiliteFields as [$key, $label, $help, $min, $max, $step])
+                    <div class="as-field">
+                        <label class="as-field-label">
+                            <span>{{ $label }}</span>
+                            <span class="as-recommended">recommandé : {{ $defaults['fiabilite'][$key] }}</span>
+                        </label>
+                        <div class="as-field-help">{{ $help }}</div>
+                        <div class="as-slider-row">
+                            <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}"
+                                   x-model.number="form.fiabilite.{{ $key }}"
+                                   class="as-range">
+                            <input type="number" step="{{ $step }}" min="{{ $min }}" max="{{ $max }}"
+                                   name="fiabilite[{{ $key }}]"
+                                   x-model.number="form.fiabilite.{{ $key }}"
+                                   class="as-number">
+                        </div>
+                    </div>
+                @endforeach
             </div>
         </div>
 
@@ -626,6 +672,7 @@ window.settingsPage = function (cfg) {
                 notifications_enabled: !!(settings.anomaly && settings.anomaly.notifications_enabled),
             }),
             recouvrement: Object.assign({}, settings.recouvrement || {}),
+            fiabilite: Object.assign({}, settings.fiabilite || {}),
         },
 
         /* ---------- écran mobile ---------- */
