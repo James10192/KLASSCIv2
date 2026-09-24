@@ -107,7 +107,11 @@ class ESBTPLMDUEController extends Controller
                         'description' => $ue->description,
                         'filiere_id' => $ue->filiere_id,
                         'niveau_id' => $ue->niveau_id,
-                        'matieres_count' => $ue->matieres_count,
+                        // Les elements que CETTE vue montre : filtree sur un
+                        // parcours, ceux de sa maquette. Le compte par cle
+                        // etrangere affichait « 2 » a cote de « Aucun ECUE
+                        // rattache » (USAT).
+                        'matieres_count' => $ecues->pluck('id')->unique()->count(),
                         // Elements a la fois communs et reserves a un parcours :
                         // la ligne commune les montre a TOUS les parcours, ce
                         // que la reservation laisse croire impossible. Calcule
