@@ -90,9 +90,14 @@ class PermissionSyncService
                 ];
             }
 
+            // Les espèces restent à la caisse par défaut. Mais une école qui a
+            // délibérément donné `paiements.create` à son comptable (extension
+            // locale, via le CLI ou l'écran des rôles) garde son choix : le
+            // retirer à chaque déploiement défaisait une décision d'organisation.
             if ($roleName === 'comptable'
                 && in_array('paiements.create', $existingNames, true)
                 && ! in_array('paiements.create', $defaults, true)
+                && ! in_array('paiements.create', app(ExtensionsDeRole::class)->pour($roleName), true)
             ) {
                 $role->revokePermissionTo('paiements.create');
             }
@@ -196,6 +201,7 @@ class PermissionSyncService
             'documents.print',
             'notes.window.manage',
             'paiements.create.mobile_money',
+            'paiements.create.non_cash',
             'finance.unpaid_count.view',
             'reports.academic.rentree',
             'reports.academic.trimestre',
@@ -269,6 +275,11 @@ class PermissionSyncService
             'pieces_dossier.view',
             'pieces_dossier.suivre',
             'pieces_dossier.configure',
+
+            // Modifier une inscription deja validee : le verrou tenait jusqu'ici
+            // a `admin.access`, que les roles de guichet n'ont pas. Nee en
+            // septembre 2026 : aucune ecole n'a pu la retirer avant.
+            'inscriptions.edit_validated',
         ];
     }
 

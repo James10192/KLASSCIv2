@@ -545,6 +545,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/frais/appliquer-tenue-nouveaux', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'appliquerTenueNouveaux'])->name('frais.appliquer-tenue-nouveaux');
         Route::post('/frais/souscriptions-manquantes', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'souscriptionsManquantes'])->name('frais.souscriptions-manquantes');
 
+        // Annuler un versement (avoir, le versement reste visible) ou restaurer
+        // un versement supprime. Montre par defaut, n'ecrit que sur `apply`.
+        Route::post('/paiements/{id}/annuler', [App\Http\Controllers\API\CLI\CLIPaiementController::class, 'annuler'])->whereNumber('id')->name('paiements.annuler');
+        Route::post('/paiements/{id}/restaurer', [App\Http\Controllers\API\CLI\CLIPaiementController::class, 'restaurer'])->whereNumber('id')->name('paiements.restaurer');
+
         // Reprise de l'annee ecoulee d'une ecole qui arrive avec un arriere.
         // La donnee source voyage dans le corps de la requete : c'est un etat de
         // compte d'eleves reels, il n'a rien a faire dans le depot.

@@ -2159,14 +2159,14 @@
                         </div>
                         @endcanany
 
-                        @canany(['paiements.create', 'paiements.create.mobile_money'])
+                        @can('porte:esbtp.paiements.create')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.paiements.create') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.create') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-plus"></i></div>
                                 <div class="menu-text">Encaissement</div>
                             </a>
                         </div>
-                        @endcanany
+                        @endcan
 
                         @can('paiements.view_own')
                         <div class="menu-item">
@@ -2233,14 +2233,28 @@
                     @can('comptabilite.access')
                         <div class="menu-category">Gestion financière</div>
 
-                        {{-- Dashboard Comptabilité --}}
+                        {{-- Analyse financière (ex « Dashboard Comptable ») --}}
                         @can('comptabilite.dashboard.view')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-chart-line"></i></div>
-                                <div class="menu-text">Dashboard Comptable</div>
+                                <div class="menu-text">Analyse financière</div>
                             </a>
                         </div>
+                        @endcan
+
+                        {{-- Encaisser hors de la section Caisse : un comptable qui encaisse
+                             (hors espèces, par exemple) n'a pas le module caisse, et ne voyait
+                             donc l'écran nulle part. Masqué quand la section Caisse l'affiche. --}}
+                        @can('porte:esbtp.paiements.create')
+                        @cannot('module.caisse.access')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.paiements.create') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.create') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-plus"></i></div>
+                                <div class="menu-text">Encaisser</div>
+                            </a>
+                        </div>
+                        @endcannot
                         @endcan
 
                         <div class="menu-accordion">
@@ -3160,7 +3174,7 @@
                         </div>
                     @endif
 
-                    <div class="modal fade" id="whatsNewModal" tabindex="-1" aria-labelledby="whatsNewModalLabel" aria-hidden="true" data-bs-backdrop="static" data-pref-key="whatsNew.v2026_09_02.user.{{ auth()->id() }}">
+                    <div class="modal fade" id="whatsNewModal" tabindex="-1" aria-labelledby="whatsNewModalLabel" aria-hidden="true" data-bs-backdrop="static" data-pref-key="whatsNew.v2026_09_24.user.{{ auth()->id() }}">
                         <div class="modal-dialog modal-dialog-centered modal-lg">
                             <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 48px rgba(15,23,42,.2);">
                                 <div class="modal-header" style="background:linear-gradient(135deg,#0453cb,#5e91de);color:#fff;border-bottom:none;">
@@ -3173,30 +3187,30 @@
                                     <div style="display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.9rem;padding:.7rem .8rem;border-radius:10px;background:rgba(4,83,203,.06);border:1px solid rgba(4,83,203,.15);">
                                         <i class="fas fa-info-circle" style="margin-top:2px;color:#0453cb;"></i>
                                         <div style="font-size:.86rem;color:#334155;line-height:1.45;">
-                                            Ce qui change ce mois-ci autour des <strong>paiements</strong>, maintenant qu&rsquo;un versement peut couvrir plusieurs frais d&rsquo;un seul geste.
+                                            Ce qui change pour la <strong>caisse</strong>, la <strong>comptabilité</strong> et la <strong>scolarité</strong> : vous pouvez désormais corriger et annuler vous-même, là où vous voyez l&rsquo;information.
                                         </div>
                                     </div>
 
                                     <div style="display:grid;gap:.55rem;">
                                         <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Filtrer la liste des paiements par frais</div>
-                                            <div style="font-size:.78rem;color:#475569;">Un versement qui a payé la tenue en même temps que la scolarité apparaît sous les deux, et non sous la seule case cochée au guichet. Le montant affiché est alors la part réellement allée sur ce frais.</div>
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Un accueil qui dit quoi faire</div>
+                                            <div style="font-size:.78rem;color:#475569;">L&rsquo;accueil de la caisse et celui de la comptabilité montrent ce qui vous attend (paiements à valider, saisies encore annulables, reste à percevoir), la tendance des derniers jours, et chaque chiffre ouvre la liste correspondante.</div>
                                         </div>
                                         <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Chaque ligne nomme les frais couverts</div>
-                                            <div style="font-size:.78rem;color:#475569;">Fini le « 3 frais » muet : la liste, le PDF, l&rsquo;Excel et le reçu disent lesquels, et pour quel montant chacun.</div>
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Annuler un versement, sans le faire disparaître</div>
+                                            <div style="font-size:.78rem;color:#475569;">Le bouton <strong>Annuler le versement</strong> (flèche arrière) émet un avoir : le versement reste visible, compensé, avec votre motif. Il est sur la liste des paiements, la fiche du paiement, la fiche d&rsquo;inscription et l&rsquo;accueil.</div>
                                         </div>
                                         <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Nouvel état financier par frais</div>
-                                            <div style="font-size:.78rem;color:#475569;">Dans le menu « Exporter » : une ligne par étudiant et par frais, avec le dû, le payé, le reste et le statut. De quoi savoir qui a soldé quoi, et qui doit encore.</div>
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">« Annuler ma saisie » juste après une erreur</div>
+                                            <div style="font-size:.78rem;color:#475569;">Dans les minutes qui suivent l&rsquo;encaissement, l&rsquo;agent qui s&rsquo;est trompé annule lui-même sa saisie, même si le versement est déjà validé (selon les droits donnés par l&rsquo;école).</div>
                                         </div>
                                         <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Les exports PDF ne bloquent plus sur les gros volumes</div>
-                                            <div style="font-size:.78rem;color:#475569;">Le document est composé par tranches puis recollé : un export de plusieurs milliers de versements sort désormais en entier.</div>
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Les versements de la fiche d&rsquo;inscription</div>
+                                            <div style="font-size:.78rem;color:#475569;">Chaque versement a maintenant ses boutons : voir, reçu, annuler, supprimer avec motif. Plus besoin de passer par la liste des paiements.</div>
                                         </div>
                                         <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Suivi par catégorie remis d&rsquo;aplomb</div>
-                                            <div style="font-size:.78rem;color:#475569;">Il ignorait la répartition des versements : un étudiant à jour pouvait ressortir « en retard ». Les remboursements sont de nouveau déduits.</div>
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Corriger une inscription déjà validée</div>
+                                            <div style="font-size:.78rem;color:#475569;">Filière, niveau et classe se modifient encore après validation pour qui a le droit « Modifier une inscription déjà validée » (agent d&rsquo;inscription, scolarité). Les frais sont recalculés.</div>
                                         </div>
                                     </div>
 

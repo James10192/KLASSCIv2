@@ -13,7 +13,8 @@
     $mabDevise = 'FCFA';
 
     // Les modes proposés : ceux du formulaire de bureau, filtrés par le garde
-    // (MobileMoneyPaymentGuard) puis, ligne à ligne, par la permission exacte.
+    // (MobileMoneyPaymentGuard), seule source : il sait ce que chaque
+    // permission d'encaissement ouvre (tous modes, hors espèces, mobile money).
     // Le repli dérive de l'enum lui aussi : recopié, il perdait Carte, Djamo
     // et Celtiis Cash, donc le pas-à-pas mobile offrait moins que le bureau.
     $mabTousModes = $allModeOptions ?? \App\Enums\ModePaiement::optionsDeGuichet();
@@ -251,7 +252,6 @@
             <div class="m-opt" role="radiogroup" aria-label="Mode de paiement">
                 @foreach($mabModes as $mabMode)
                     @if($mabMode['mobile'])
-                        @canany(['paiements.create', 'paiements.create.mobile_money'])
                             <label>
                                 <input type="radio" name="mab_mode" value="{{ $mabMode['label'] }}"
                                        data-canon="{{ $mabMode['canon'] }}" data-label="{{ $mabMode['label'] }}"
@@ -260,9 +260,7 @@
                                 <div><b>{{ $mabMode['label'] }}</b><span>Numéro de transaction à saisir</span></div>
                                 <x-m.icon name="phone" class="m-ic" />
                             </label>
-                        @endcanany
                     @else
-                        @can('paiements.create')
                             <label>
                                 <input type="radio" name="mab_mode" value="{{ $mabMode['label'] }}"
                                        data-canon="{{ $mabMode['canon'] }}" data-label="{{ $mabMode['label'] }}"
@@ -274,7 +272,6 @@
                                 </div>
                                 <x-m.icon :name="$mabMode['especes'] ? 'cash' : 'file'" class="m-ic" />
                             </label>
-                        @endcan
                     @endif
                 @endforeach
             </div>

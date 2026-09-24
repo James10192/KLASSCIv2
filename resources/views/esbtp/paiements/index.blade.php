@@ -29,7 +29,10 @@
         display: flex;
         align-items: flex-start;
         gap: 1rem;
-        flex: 1;
+        /* Base de 340px : sous ce seuil, les actions passent a la ligne au
+           lieu d'ecraser le titre en colonne de trois mots (bug a 1440px
+           avec la barre laterale ouverte). */
+        flex: 1 1 340px;
         min-width: 0;
     }
     .pi-hero-icon {
@@ -89,6 +92,9 @@
         gap: .5rem;
         flex-wrap: wrap;
         align-items: center;
+        justify-content: flex-end;
+        flex: 0 1 auto;
+        max-width: 100%;
     }
     .pi-btn {
         display: inline-flex;
@@ -1068,7 +1074,7 @@
                         <i class="fas fa-chart-bar"></i>
                         <span>Suivi par Catégorie</span>
                     </a>
-                    @can('paiements.create')
+                    @can('porte:esbtp.paiements.create')
                     <a href="{{ route('esbtp.paiements.create') }}" class="pi-btn pi-btn--white">
                         <i class="fas fa-plus"></i>
                         <span>Nouveau paiement</span>
