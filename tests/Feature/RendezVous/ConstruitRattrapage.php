@@ -28,6 +28,8 @@ trait ConstruitRattrapage
             \App\Http\Middleware\CheckInstalled::class,
             \App\Http\Middleware\EnsureInstalled::class,
             \App\Http\Middleware\PaywallMiddleware::class,
+            // 5 appels par minute en production : un test en enchaine davantage.
+            \Illuminate\Routing\Middleware\ThrottleRequests::class,
         ]);
         Sanctum::actingAs(User::factory()->create(), ['cli:read', 'cli:admin']);
         Cache::flush();
@@ -78,12 +80,12 @@ trait ConstruitRattrapage
         return $this->reservationPour(['candidature_id' => $candidature->id], $email, $annee, $options);
     }
 
-    private function reservationDeReinscription(string $email): ESBTPRdvReservation
+    private function reservationDeReinscription(string $email, ?string $reference = null): ESBTPRdvReservation
     {
         $demande = ESBTPReinscriptionDemande::forceCreate([
             'etudiant_id' => ESBTPEtudiant::factory()->create()->id, 'annee_universitaire_id' => $this->annee->id,
             'statut' => ESBTPReinscriptionDemande::STATUT_EN_ATTENTE, 'consentement_at' => now(),
-        ]);
+        ] + ($reference === null ? [] : ['reference_publique' => $reference]));
 
         return $this->reservationPour(['reinscription_demande_id' => $demande->id], $email, $this->annee, []);
     }

@@ -54,11 +54,12 @@ class RattrapageConvocationsAppariementTest extends TestCase
 
     public function test_un_courriel_choisi_par_deux_reservations_est_ambigu_pour_les_deux(): void
     {
-        // Deux reservations du meme dossier creees a la meme seconde : aucune borne ne les separe.
+        // Un dossier n'a qu'une reservation active ; deux dossiers ne partagent une
+        // reference que si une candidature et une reinscription tombent sur la meme.
         $premiere = $this->reservation('awa@gmail.com');
-        $seconde = $this->reservation('awa@gmail.com', ['candidature' => $premiere->candidature]);
+        $seconde = $this->reservationDeReinscription('awa@gmail.com', $premiere->candidature->reference_publique);
 
-        $this->rattraper(true, [$this->message($this->reference($premiere), 'msg_unique', 'awa@gmail.com', '2026-09-05T07:59:30Z')])
+        $this->rattraper(true, [$this->message($this->reference($premiere), 'msg_unique', 'awa@gmail.com', '2026-09-10T09:00:00Z')])
             ->assertOk()->assertJsonPath('data.ambigues', 2)->assertJsonPath('data.ecrites', 0);
 
         $this->assertNull($premiere->fresh()->convocation_message_id);
