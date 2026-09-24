@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Nouveau style mobile.** La barre de navigation du bas devient une pilule sombre flottante : l'onglet actif affiche son nom sur fond blanc, les autres seulement leur icône. L'action principale d'un écran, par exemple « Nouvel étudiant », flotte au-dessus au lieu d'être collée à la barre. Les indicateurs deviennent des tuiles arrondies et les listes des groupes à la manière de l'iPhone. L'accueil superAdmin sur téléphone s'ouvre sur une mosaïque : les inscrits en grande tuile bleue, les inscriptions en attente en orange.
+
 - **Nouvelle permission « Enregistrer un paiement hors espèces »** (`paiements.create.non_cash`), qui couvre tous les modes sauf les espèces : mobile money, virement, chèque, carte. Elle est donnée par défaut au comptable. Un comptable qui encaisse sans tenir la caisse retrouve l'écran d'encaissement dans son menu (« Encaisser »), ainsi que le bouton flottant et les boutons des tableaux de bord. Les espèces lui restent refusées. Une école qui a volontairement donné `paiements.create` à son comptable garde ce choix : il n'est plus retiré à chaque déploiement.
 
 - **Trois tableaux de bord refaits : accueil comptable, analyse financière et accueil caisse.**

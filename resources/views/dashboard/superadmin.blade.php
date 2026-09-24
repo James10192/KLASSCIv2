@@ -10,19 +10,37 @@
 <div class="m-only-mobile m-screen">
     <x-m.appbar title="Tableau de bord" :sub="$anneeEnCours->name ?? 'Année non définie'" />
     <div class="m-body" data-m-ptr="reload">
-        @if(($pendingInscriptionsCount ?? 0) > 0)
-            <a href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}" class="m-btn g" style="margin-bottom:12px;">
-                {{ $pendingInscriptionsCount }} inscription(s) en attente — consulter
+        {{-- Mosaïque (maquette M3) : le chiffre clé en grande tuile bleue, ce qui
+             attend en orange, le reste en petites tuiles. Chaque tuile ouvre sa liste. --}}
+        @php
+            $samInscrits = (int) ($totalStudents ?? 0);
+            $samEnAttente = (int) ($pendingInscriptionsCount ?? 0);
+            $samTuiles = [
+                ['v' => $totalStudentsBase ?? $totalStudents, 'l' => 'Étudiants en base', 'href' => route('esbtp.etudiants.index')],
+                ['v' => $totalClasses ?? 0, 'l' => 'Classes', 'href' => route('esbtp.classes.index')],
+                ['v' => $totalFilieres ?? 0, 'l' => 'Filières', 'href' => route('esbtp.filieres.index')],
+                ['v' => $totalMatieres ?? 0, 'l' => 'Matières', 'href' => route('esbtp.matieres.index')],
+                ['v' => $totalTeachers ?? 0, 'l' => 'Enseignants', 'href' => route('esbtp.enseignants.index')],
+            ];
+        @endphp
+        <div class="sam-bento">
+            <a href="{{ route('esbtp.etudiants.index') }}" class="sam-tuile sam-tuile--cle">
+                <span class="sam-k">Inscrits {{ $anneeLabel ?? '' }}</span>
+                <span class="sam-v">{{ number_format($samInscrits, 0, ',', ' ') }}</span>
+                <span class="sam-k">{{ $anneeEnCours->name ?? 'Année en cours' }}</span>
             </a>
-        @endif
-        <x-m.kpi :items="[
-            ['value' => $totalStudents, 'label' => 'Inscrits ' . ($anneeLabel ?? ''), 'tone' => 'ok', 'href' => route('esbtp.etudiants.index')],
-            ['value' => $totalStudentsBase ?? $totalStudents, 'label' => 'Étudiants en base', 'tone' => 'info'],
-            ['value' => $totalFilieres ?? 0, 'label' => 'Filières', 'tone' => 'info', 'href' => route('esbtp.filieres.index')],
-            ['value' => $totalClasses, 'label' => 'Classes', 'tone' => 'info', 'href' => route('esbtp.classes.index')],
-            ['value' => $totalMatieres ?? 0, 'label' => 'Matières', 'tone' => 'info', 'href' => route('esbtp.matieres.index')],
-            ['value' => $totalTeachers ?? 0, 'label' => 'Enseignants', 'tone' => 'mute', 'href' => route('esbtp.enseignants.index')],
-        ]" />
+            <a href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}" class="sam-tuile {{ $samEnAttente > 0 ? 'sam-tuile--att' : '' }}">
+                <span class="sam-v">{{ $samEnAttente }}</span>
+                <span class="sam-l">Inscription{{ $samEnAttente > 1 ? 's' : '' }} en attente</span>
+                @if($samEnAttente > 0)<span class="sam-go">Consulter →</span>@endif
+            </a>
+            @foreach($samTuiles as $t)
+                <a href="{{ $t['href'] }}" class="sam-tuile">
+                    <span class="sam-v">{{ number_format((int) $t['v'], 0, ',', ' ') }}</span>
+                    <span class="sam-l">{{ $t['l'] }}</span>
+                </a>
+            @endforeach
+        </div>
 
         @php
             // Barres en SVG calculées ici : pas de Chart.js sur téléphone.
@@ -129,6 +147,17 @@
 <style>
     /* Tableau de bord superAdmin mobile — namespace sam- */
     .sam-vide { margin: 0; font-size: 12.5px; color: #64748b; }
+    .sam-bento { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .sam-tuile { background: #fff; border-radius: 20px; padding: 14px; display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: #0f172a; min-width: 0; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 18px rgba(15,23,42,.05); }
+    .sam-tuile:active { transform: scale(.97); }
+    .sam-v { font-size: 23px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+    .sam-l { font-size: 12px; color: #64748b; }
+    .sam-k { font-size: 12px; font-weight: 600; color: rgba(255,255,255,.8); }
+    .sam-tuile--cle { grid-column: span 2; background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 55%, #3b7ddb 100%); color: #fff; box-shadow: 0 12px 30px rgba(4,83,203,.25); }
+    .sam-tuile--cle .sam-v { font-size: 34px; }
+    .sam-tuile--att { background: #fff7ed; }
+    .sam-tuile--att .sam-v { color: #9a3412; }
+    .sam-go { margin-top: 4px; font-size: 12px; font-weight: 700; color: #9a3412; }
     .sam-legende { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: #475569; }
     .sam-legende b { color: #0f172a; }
     .sam-pastille { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: #0453cb; margin-right: 6px; vertical-align: -1px; }
