@@ -91,15 +91,24 @@ crédit de la matière).
 | Paramètre | Défaut | Effet |
 |---|---|---|
 | `dry_run` | `true` | `false` écrit ; sinon liste seulement |
+| `ids` | — | **obligatoire pour écrire** : les identifiants relus, pris dans la simulation |
 
-Ne sont jamais touchées :
-- une ligne dont le crédit a été **modifié à la main**, même à 0 : le journal
-  d'audit la trahit (événement `updated` portant `credits_ects`). Un zéro choisi
-  est une décision de l'école ;
+L'écriture ne se fait jamais d'office. Un 0 saisi à la **création** d'une ligne
+(édition en masse, cellule CECT d'un ECUE pas encore planifié) ne laissait aucune
+trace avant septembre 2026 : la création n'était pas auditée. Il ne se distingue
+donc pas d'un 0 laissé par l'ancienne saisie d'heures, et seule l'école peut
+trancher. La simulation liste ; l'école relit ; on renvoie les identifiants
+retenus. Sans `ids`, l'écriture est refusée (422).
+
+Ne sont jamais candidates :
+- une ligne dont la **création** est au journal d'audit (auditée depuis
+  septembre 2026 : elle porte son vrai crédit, ou un 0 choisi) ;
+- une ligne dont le crédit a été **modifié** à la main (événement `updated`
+  portant `credits_ects`) ;
 - une ligne dont la maquette ne donne pas plus de 0.
 
-Si l'audit est désactivé sur l'instance, la preuve n'existe plus : l'écriture est
-refusée (409) et rien n'est modifié ; la simulation reste possible.
+Si l'audit est désactivé sur l'instance, l'écriture est refusée (409) ; la
+simulation reste possible. `reparees` compte les lignes réellement écrites.
 
 ```jsonc
 { "success": true, "dry_run": true,

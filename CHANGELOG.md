@@ -13,7 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Ajouts
-- **Réparer les crédits LMD laissés à 0** : `POST /api/cli/lmd/planifications/reparer-credits` (simulation par défaut) recense les lignes de maquette horaire restées à 0 crédit après une saisie d'heures et leur pose le crédit de la maquette de leur parcours. Un 0 modifié à la main (visible au journal d'audit) est conservé ; sans audit, l'écriture est refusée (docs/api/CLI_LMD_MAQUETTE.md).
+- **Réparer les crédits LMD laissés à 0** : `POST /api/cli/lmd/planifications/reparer-credits` (simulation par défaut) recense les lignes de maquette horaire restées à 0 crédit après une saisie d'heures et leur pose le crédit de la maquette de leur parcours. L'écriture exige la liste des identifiants relus par l'école : un 0 saisi à la création avant ce changement ne laissait aucune trace. Un 0 modifié à la main, ou posé à une création désormais auditée, n'est jamais proposé ; sans audit, l'écriture est refusée (docs/api/CLI_LMD_MAQUETTE.md). La création d'une ligne de maquette horaire est désormais tracée au journal d'audit.
 
 - Outil d'exploitation `GET /api/cli/lmd/maquette` : la maquette LMD telle que chaque parcours la voit — origine de chaque élément (commun, réservé, clé étrangère), unités partagées, et masse horaire planifiée — pour diagnostiquer à distance un élément « qui apparaît dans l'autre parcours ».
 - Outil d'exploitation `POST /api/cli/notes/corriger` : corriger à distance les notes existantes d'un élève et recalculer aussitôt ses moyennes, sans attendre la file de tâches. Simulation par défaut, motif obligatoire et journalisé.
@@ -53,7 +53,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 - **Maquettes LMD : la fiche d'une UE partagée montre chaque parcours à part** (`/esbtp/lmd/ue/{id}`). Un onglet par parcours et semestre, avec ses propres ECUE et les heures de sa filière ; la fiche mélangeait les éléments de tous les parcours et lisait les heures du premier parcours importé.
 - **Planning LMD : seule l'année en cours s'affiche, et elle est nommée.** La liste lisait les lignes de toutes les années et en gardait une au hasard par ECUE, pendant que la saisie écrivait dans l'année en cours.
-- **Planning LMD : une ligne supprimée se recrée.** Elle occupait encore l'index unique ; la saisie suivante échouait sur « modifiée par un autre utilisateur ». Elle est reprise, remise à zéro.
+- **Planning LMD : une ligne supprimée se recrée.** Elle occupait encore l'index unique ; la saisie suivante échouait sur « modifiée par un autre utilisateur ». Elle est reprise, entièrement remise à neuf (heures, coefficient, enseignants, observations).
 - **Coefficient d'un ECUE : 1 par défaut, et la liste montre celui qu'utilise le bulletin.** Le « 1 » gris n'était qu'un exemple : laissé tel quel, rien n'était enregistré et la liste affichait « Coeff. — ».
 - **Modifier une UE sans renvoyer tous ses champs ne les efface plus.** Le code, le semestre, la filière et le parcours non envoyés étaient remis à vide, et un crédit laissé vide faisait échouer l'enregistrement (erreur serveur).
 - **Retirer un ECUE déjà sans clé LMD ne pose plus de seconde question** qui annonçait à tort son passage en BTS.

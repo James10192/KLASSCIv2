@@ -194,7 +194,7 @@ class HeuresUePartageeParParcoursTest extends TestCase
         $this->saisir((int) $this->lpa->filiere_id, 18)->assertOk();
         $ancienne = ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)
             ->where('filiere_id', $this->lpa->filiere_id)->first();
-        $ancienne->update(['volume_horaire_td' => 9]);
+        $ancienne->update(['volume_horaire_td' => 9, 'coefficient' => 3, 'observations' => 'ancienne']);
         $ancienne->delete();
 
         // Avant : 409 « modifiee par un autre utilisateur ».
@@ -205,6 +205,8 @@ class HeuresUePartageeParParcoursTest extends TestCase
         $this->assertNotNull($ligne, 'La ligne doit etre de nouveau visible.');
         $this->assertSame(6, (int) $ligne->volume_horaire_cm);
         $this->assertSame(0, (int) $ligne->volume_horaire_td, 'Les anciennes heures supprimees ne reviennent pas.');
+        $this->assertEquals(1, (float) $ligne->coefficient, 'Ni son ancien coefficient.');
+        $this->assertNull($ligne->observations, 'Ni ses observations.');
         $this->assertSame(6, (int) $ligne->volume_horaire_total);
     }
 

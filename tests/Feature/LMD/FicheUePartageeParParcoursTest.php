@@ -67,6 +67,10 @@ class FicheUePartageeParParcoursTest extends TestCase
             ['volume_horaire_cm' => 37, 'volume_horaire_total' => 37, 'credits_ects' => 2]
         );
 
+        // LPA grave son propre credit sur son lien : l'alerte doit s'y comparer.
+        \Illuminate\Support\Facades\DB::table('esbtp_lmd_parcours_ue')
+            ->where('parcours_id', $lpa->id)->where('unite_enseignement_id', $ue->id)->update(['credit' => 5]);
+
         $acteur = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
         $acteur->assignRole(Role::findOrCreate('superAdmin', 'web'));
 
@@ -80,5 +84,7 @@ class FicheUePartageeParParcoursTest extends TestCase
         $this->assertSame(['AGR21031'], $parCode['LPV']['ecues']->pluck('code')->all(), 'LPV ne voit que la sienne.');
         $this->assertSame(37, $parCode['LPA']['heures'], 'Les heures de LPA viennent de la filiere de LPA.');
         $this->assertSame(0, $parCode['LPV']['heures'], 'LPV n\'a rien saisi.');
+        $this->assertSame(5, $parCode['LPA']['credit_ue'], 'Le credit de la maquette LPA, pas celui de la fiche.');
+        $this->assertSame(2, $parCode['LPV']['credit_ue']);
     }
 }

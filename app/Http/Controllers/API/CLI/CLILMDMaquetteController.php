@@ -52,10 +52,16 @@ class CLILMDMaquetteController extends Controller
             return response()->json(['success' => false, 'message' => 'Token missing cli:admin ability'], 403);
         }
 
+        $valide = $request->validate([
+            'ids' => 'sometimes|array',
+            'ids.*' => 'integer',
+        ]);
         $simulation = $request->boolean('dry_run', true);
 
         try {
-            $resultat = $credits->reparer($simulation);
+            $resultat = $credits->reparer($simulation, $valide['ids'] ?? []);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         } catch (\RuntimeException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 409);
         }

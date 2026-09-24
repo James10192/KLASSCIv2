@@ -51,6 +51,9 @@ class CreditsNulsReparationTest extends TestCase
             ]],
         ]);
 
+        // Des lignes d'avant septembre 2026 : leur creation n'etait pas auditee.
+        DB::table('audits')->where('auditable_type', ESBTPPlanificationAcademique::class)->where('event', 'created')->delete();
+
         $planif = fn (string $code) => ESBTPPlanificationAcademique::where('matiere_id', ESBTPMatiere::where('code', $code)->value('id'))->firstOrFail();
 
         // Laissee a 0 par l'ancienne saisie d'heures : aucune trace d'audit.
@@ -79,7 +82,7 @@ class CreditsNulsReparationTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create(), ['cli:admin']);
 
-        $this->postJson('/api/cli/lmd/planifications/reparer-credits', ['dry_run' => false])
+        $this->postJson('/api/cli/lmd/planifications/reparer-credits', ['dry_run' => false, 'ids' => [$this->laissee->id, $this->choisie->id]])
             ->assertOk()->assertJsonPath('data.reparees', 1);
 
         $this->assertSame(3, (int) $this->laissee->fresh()->credits_ects);
@@ -91,7 +94,7 @@ class CreditsNulsReparationTest extends TestCase
         config(['audit.enabled' => false]);
         Sanctum::actingAs(User::factory()->create(), ['cli:admin']);
 
-        $this->postJson('/api/cli/lmd/planifications/reparer-credits', ['dry_run' => false])->assertStatus(409);
+        $this->postJson('/api/cli/lmd/planifications/reparer-credits', ['dry_run' => false, 'ids' => [$this->laissee->id]])->assertStatus(409);
         $this->assertSame(0, (int) $this->laissee->fresh()->credits_ects);
     }
 
@@ -99,5 +102,27 @@ class CreditsNulsReparationTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create(), ['cli:read']);
         $this->postJson('/api/cli/lmd/planifications/reparer-credits')->assertForbidden();
+    }
+
+    public function test_ecrire_sans_liste_relue_est_refuse(): void
+    {
+        Sanctum::actingAs(User::factory()->create(), ['cli:admin']);
+
+        $this->postJson('/api/cli/lmd/planifications/reparer-credits', ['dry_run' => false])->assertStatus(422);
+        $this->assertSame(0, (int) $this->laissee->fresh()->credits_ects);
+    }
+
+    public function test_un_zero_saisi_a_la_creation_n_est_pas_candidat(): void
+    {
+        // Creation auditee : un 0 pose des la creation est une decision tracee.
+        $this->laissee->delete();
+        $nouvelle = $this->laissee->replicate();
+        $nouvelle->credits_ects = 0;
+        $nouvelle->deleted_at = null;
+        $nouvelle->annee_universitaire_id = ESBTPAnneeUniversitaire::factory()->create()->id;
+        $nouvelle->save();
+
+        $ids = app(\App\Services\LMD\CreditDeMaquette::class)->creditsNulsAReparer()->pluck('id');
+        $this->assertFalse($ids->contains($nouvelle->id));
     }
 }

@@ -376,11 +376,21 @@ class ESBTPLMDPlanningController extends Controller
         // un autre utilisateur ». On la reprend, remise a neuf : ses anciennes
         // heures avaient ete supprimees, elles ne reviennent pas.
         if ($planif) {
-            $planif->restore();
-            foreach (['volume_horaire_cm', 'volume_horaire_td', 'volume_horaire_tp', 'volume_horaire_projet', 'volume_horaire_tpe', 'volume_horaire_total'] as $champ) {
-                $planif->{$champ} = 0;
-            }
-            $planif->enseignant_principal_id = null;
+            // Remise a neuf AVANT tout enregistrement : restore() enregistrerait
+            // aussitot l'ancienne ligne, et un echec de la suite (edition en
+            // masse, chaque ECUE dans son try) la laisserait vivante avec ses
+            // anciennes heures. L'appelant fait l'unique save().
+            $planif->forceFill([
+                'deleted_at' => null,
+                'volume_horaire_cm' => 0, 'volume_horaire_td' => 0, 'volume_horaire_tp' => 0,
+                'volume_horaire_projet' => 0, 'volume_horaire_tpe' => 0, 'volume_horaire_total' => 0,
+                'heures_effectuees' => 0, 'derniere_mise_a_jour_heures' => null,
+                'coefficient' => 1,
+                'enseignant_principal_id' => null, 'enseignants_secondaires' => null,
+                'periode_debut' => null, 'periode_fin' => null,
+                'objectifs_pedagogiques' => null, 'prerequis' => null, 'modalites_evaluation' => null,
+                'contraintes_pedagogiques' => null, 'ressources_necessaires' => null, 'observations' => null,
+            ]);
         } else {
             $planif = new ESBTPPlanificationAcademique([
                 'matiere_id'             => $ecueId,

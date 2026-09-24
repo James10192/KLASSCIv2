@@ -179,14 +179,14 @@
 
         @foreach($maquettes as $i => $maquette)
             @php
-                $ecarts = $creditsUe !== null && $maquette['ecues']->isNotEmpty() ? $maquette['credits'] - $creditsUe : 0;
+                $ecarts = $maquette['credit_ue'] !== null && $maquette['ecues']->isNotEmpty() ? $maquette['credits'] - $maquette['credit_ue'] : 0;
             @endphp
             <div x-show="onglet === {{ $i }}" @if($i > 0) x-cloak @endif>
                 @if($ecarts !== 0)
                     <div class="alert alert-warning" style="border-radius:.5rem;margin-bottom:1rem;">
                         <i class="fas fa-exclamation-triangle me-1"></i>
                         Les credits des elements constitutifs totalisent {{ $maquette['credits'] }},
-                        alors que l'unite d'enseignement en porte {{ $creditsUe }}.
+                        alors que l'unite d'enseignement en porte {{ $maquette['credit_ue'] }} dans cette maquette.
                     </div>
                 @endif
 

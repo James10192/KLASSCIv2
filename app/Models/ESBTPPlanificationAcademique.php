@@ -40,7 +40,11 @@ class ESBTPPlanificationAcademique extends Model implements Auditable
      *
      * @var array
      */
+    // `created` aussi : sans lui, un credit saisi a 0 des la creation d'une
+    // ligne (edition en masse, cellule CECT) ne laissait aucune trace, et rien
+    // ne le distinguait d'un 0 laisse par l'ancienne saisie d'heures.
     protected $auditEvents = [
+        'created',
         'updated',
         'deleted',
     ];

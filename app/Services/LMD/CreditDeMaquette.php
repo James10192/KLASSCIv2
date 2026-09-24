@@ -47,19 +47,24 @@ class CreditDeMaquette
     }
 
     /**
-     * Planifications LMD a 0 credit alors que la maquette en donne, et dont le
-     * credit n'a JAMAIS ete modifie a la main. Un zero choisi par l'ecole est
-     * une decision (rien-en-dur.md) : le journal d'audit le distingue, puisque
-     * toute modification du credit y laisse une ligne « updated ».
+     * Planifications LMD a 0 credit alors que la maquette en donne, sans trace
+     * d'une decision humaine.
+     *
+     * Sont ecartees les lignes dont le journal d'audit montre une creation
+     * (auditee depuis septembre 2026 : toute ligne creee depuis porte donc son
+     * vrai credit ou un 0 choisi) ou une modification du credit. Ce qui reste
+     * est anterieur : un 0 saisi a la creation, avant cet audit, n'y a laisse
+     * AUCUNE trace et ne se distingue pas d'un 0 laisse par la saisie d'heures.
+     * D'ou l'ecriture sur liste relue (reparer()), jamais d'office.
      *
      * @return Collection<int, array{id:int, matiere:string, filiere_id:int, semestre:int, annee_universitaire_id:int, credit_attendu:int}>
      */
     public function creditsNulsAReparer(): Collection
     {
-        $modifiesALaMain = DB::table('audits')
+        $tracees = DB::table('audits')
             ->where('auditable_type', ESBTPPlanificationAcademique::class)
-            ->where('event', 'updated')
-            ->where('new_values', 'like', '%"credits_ects"%')
+            ->where(fn ($q) => $q->where('event', 'created')
+                ->orWhere(fn ($m) => $m->where('event', 'updated')->where('new_values', 'like', '%"credits_ects"%')))
             ->pluck('auditable_id')
             ->map(fn ($id) => (int) $id)
             ->flip();
@@ -69,7 +74,7 @@ class CreditDeMaquette
             ->whereHas('matiere', fn ($q) => $q->whereNotNull('unite_enseignement_id'))
             ->with('matiere:id,code,name')
             ->get()
-            ->reject(fn ($pl) => $modifiesALaMain->has((int) $pl->id))
+            ->reject(fn ($pl) => $tracees->has((int) $pl->id))
             ->map(fn ($pl) => [
                 'id' => (int) $pl->id,
                 'matiere' => trim(($pl->matiere->code ?? '') . ' ' . ($pl->matiere->name ?? '')),
@@ -83,26 +88,37 @@ class CreditDeMaquette
     }
 
     /**
+     * Simulation : liste les candidates. Ecriture : seulement les identifiants
+     * fournis, relus par l'ecole, et encore candidats au moment d'ecrire.
+     *
+     * @param  array<int, int>  $ids
      * @return array{candidates: int, reparees: int, lignes: array}
      */
-    public function reparer(bool $simulation = true): array
+    public function reparer(bool $simulation = true, array $ids = []): array
     {
-        // Sans audit, « jamais modifie a la main » ne se prouve plus : un zero
-        // choisi par l'ecole serait ecrase. On liste, on n'ecrit pas.
+        // Sans audit, « aucune trace » ne prouve plus rien.
         if (! $simulation && ! config('audit.enabled')) {
             throw new \RuntimeException("L'audit est desactive sur cette instance : impossible de distinguer un credit laisse a 0 par la saisie d'un 0 choisi. Rien n'a ete modifie.");
         }
+        if (! $simulation && $ids === []) {
+            throw new \InvalidArgumentException("Indiquez les identifiants relus (ids) : un 0 saisi avant septembre 2026 ne laisse aucune trace, seule l'ecole peut trancher.");
+        }
 
         $lignes = $this->creditsNulsAReparer();
+        $reparees = 0;
 
         if (! $simulation) {
-            DB::transaction(function () use ($lignes) {
-                foreach ($lignes as $l) {
+            $voulus = array_flip(array_map('intval', $ids));
+            $aEcrire = $lignes->filter(fn ($l) => isset($voulus[$l['id']]));
+
+            DB::transaction(function () use ($aEcrire, &$reparees) {
+                foreach ($aEcrire as $l) {
                     // save() et non un update en masse : l'audit garde la trace.
                     $pl = ESBTPPlanificationAcademique::lockForUpdate()->find($l['id']);
                     if ($pl && (int) $pl->credits_ects === 0) {
                         $pl->credits_ects = $l['credit_attendu'];
                         $pl->save();
+                        $reparees++;
                     }
                 }
             });
@@ -110,7 +126,7 @@ class CreditDeMaquette
 
         return [
             'candidates' => $lignes->count(),
-            'reparees' => $simulation ? 0 : $lignes->count(),
+            'reparees' => $reparees,
             'lignes' => $lignes->all(),
         ];
     }

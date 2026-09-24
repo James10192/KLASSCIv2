@@ -270,12 +270,13 @@ class ESBTPLMDUEController extends Controller
      * la fiche montrait tous les elements melanges et les heures de la filiere
      * du premier parcours importe, que l'autre parcours n'avait jamais saisies.
      *
-     * @return array<int, array{parcours: ?ESBTPLMDParcours, semestre: ?int, ecues: \Illuminate\Support\Collection, volumes: array, credits: int, heures: int}>
+     * @return array<int, array{parcours: ?ESBTPLMDParcours, semestre: ?int, credit_ue: ?int, ecues: \Illuminate\Support\Collection, volumes: array, credits: int, heures: int}>
      */
     private function maquettesDeLaFiche(ESBTPUniteEnseignement $ue): array
     {
-        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first()
-            ?? ESBTPAnneeUniversitaire::where('is_active', true)->orderByDesc('start_date')->first();
+        // La meme annee que le planning, qui ecrit ces heures : sans annee en
+        // cours, il n'affiche rien, la fiche non plus.
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Un onglet par couple parcours × semestre : une UE peut servir un meme
         // parcours sur deux semestres, avec deux masses horaires.
@@ -303,6 +304,9 @@ class ESBTPLMDUEController extends Controller
             return [
                 'parcours' => $p,
                 'semestre' => $semestre,
+                // Chaque maquette peut graver son propre credit sur le lien
+                // parcours-UE ; la fiche garde celui du premier import.
+                'credit_ue' => $p && $p->pivot->credit !== null ? (int) $p->pivot->credit : ($ue->credit !== null ? (int) $ue->credit : null),
                 'ecues' => $ecues,
                 'volumes' => $volumes,
                 'credits' => (int) $ecues->sum(fn ($e) => (int) ($e->pivot?->credit_ecue ?? $e->credit_ecue ?? 0)),
