@@ -58,7 +58,7 @@ class ESBTPPaiementController extends Controller
         $this->middleware('auth');
         // Accepter soit `paiements.view` (voit tous), soit `paiements.view_own` (voit ses encaissements)
         $this->middleware('permission:paiements.view|paiements.view_own', ['only' => ['index', 'show', 'paiementsEtudiant', 'genererRecu', 'previewRecu']]);
-        $this->middleware('permission:paiements.create|paiements.create.mobile_money', ['only' => ['create', 'store', 'apercuRepartition']]);
+        $this->middleware('permission:paiements.create|paiements.create.non_cash|paiements.create.mobile_money', ['only' => ['create', 'store', 'apercuRepartition']]);
         $this->middleware('permission:paiements.edit', ['only' => ['edit', 'update']]);
         $this->middleware('permission:paiements.delete', ['only' => ['destroy']]);
         $this->middleware('permission:paiements.validate', ['only' => ['valider', 'rejeter']]);

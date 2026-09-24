@@ -598,9 +598,6 @@
             $modeOptions[$label] = $label;
         }
     }
-    if ($modeOptions === []) {
-        $modeOptions = ['Mobile Money' => 'Mobile Money', 'Orange Money' => 'Orange Money', 'MTN Money' => 'MTN Money', 'Moov Money' => 'Moov Money', 'Wave' => 'Wave'];
-    }
 
     $trancheOptions = [
         'Première tranche' => 'Première tranche',
