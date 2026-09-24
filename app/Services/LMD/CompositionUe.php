@@ -219,7 +219,7 @@ class CompositionUe
      * Ce qui est repris l'est en COMMUN : c'est ce que la lecture affichait, et
      * l'ecran ne doit pas changer.
      */
-    public function materialiserDepuisCleEtrangere(int $uniteEnseignementId): void
+    public function materialiserDepuisCleEtrangere(int $uniteEnseignementId, array $sauf = []): void
     {
         $unite = ESBTPUniteEnseignement::find($uniteEnseignementId);
 
@@ -240,8 +240,26 @@ class CompositionUe
             return;
         }
 
-        // Meme perimetre que le repli de getEcuesEffectifs() : les actives.
+        // Meme perimetre que le repli de getEcuesEffectifs() : les actives que
+        // le pivot IGNORE. Un element deja present dans le pivot, meme reserve a
+        // un seul parcours, n'etait pas lu comme commun : le graver en commun le
+        // montrait soudain a toutes les maquettes. C'est ce qui se passait en
+        // retirant la derniere ligne commune d'une unite (USAT, AGR2103) :
+        // l'element reserve a LPV revenait aussitot en commun, chez LPA.
+        //
+        // $sauf : les elements qu'on est en train de retirer. Les graver ici
+        // rendait leur retrait impossible.
+        $dansLePivot = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $unite->id)
+            ->pluck('matiere_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        $ignores = array_merge($dansLePivot, array_map('intval', $sauf));
+
         foreach ($unite->matieres()->where('is_active', true)->get() as $ecue) {
+            if (in_array((int) $ecue->id, $ignores, true)) {
+                continue;
+            }
             $this->poser($unite, (int) $ecue->id, [
                 'coefficient_ecue' => $ecue->coefficient_ecue,
                 'credit_ecue' => $ecue->credit_ecue,
@@ -313,7 +331,7 @@ class CompositionUe
         // L'element quitterait toutes les maquettes d'un coup et tomberait dans
         // le catalogue BTS, ou une vingtaine d'ecrans en service l'afficheraient.
         // On grave donc la composition commune avant de juger.
-        $this->materialiserDepuisCleEtrangere($ue->id);
+        $this->materialiserDepuisCleEtrangere($ue->id, $matiereIds);
 
         $encoreLiees = DB::table('esbtp_ue_matiere')
             ->where('unite_enseignement_id', $ue->id)
