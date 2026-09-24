@@ -507,7 +507,7 @@
         .dashboard-acasi > .main-content { padding: 0 !important; }
         .cd-header { background: transparent; color: #0f172a; padding: .25rem 0 0; border-radius: 0; overflow: visible; margin-bottom: 1rem; }
         .cd-header::before { display: none; }
-        .cd-header-inner { flex-direction: column; align-items: stretch; text-align: left; gap: .75rem; }
+        .cd-header-inner { flex-direction: column; flex-wrap: nowrap; align-items: stretch; text-align: left; gap: .75rem; }
         .cd-header-left { flex-direction: row; gap: 0; }
         .cd-avatar { display: none; }
         .cd-header h1 { color: #0f172a; font-size: 1.65rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
