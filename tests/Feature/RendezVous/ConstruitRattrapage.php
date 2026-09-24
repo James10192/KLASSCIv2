@@ -29,7 +29,7 @@ trait ConstruitRattrapage
             \App\Http\Middleware\EnsureInstalled::class,
             \App\Http\Middleware\PaywallMiddleware::class,
             // 5 appels par minute en production : un test en enchaine davantage.
-            \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            \App\Http\Middleware\ThrottleRequestsParRoute::class,
         ]);
         Sanctum::actingAs(User::factory()->create(), ['cli:read', 'cli:admin']);
         Cache::flush();
