@@ -807,7 +807,7 @@
 <div class="m-only-mobile m-screen anm-screen" x-data="anMobile({{ \Illuminate\Support\Js::from($anmCfg) }})">
     <x-m.appbar title="Analytics"
                 :sub="$anmEcoleNom"
-                :back="route('esbtp.comptabilite.dashboard')"
+                :back="\App\Support\PorteDeRoute::ouverte('esbtp.comptabilite.dashboard', auth()->user()) ? route('esbtp.comptabilite.dashboard') : route('dashboard')"
                 :action="$anmPeutExporter ? 'dl' : null"
                 action-label="Exporter"
                 x-on:click="ouvrir('anm-exports')">

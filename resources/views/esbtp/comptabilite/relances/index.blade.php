@@ -750,7 +750,7 @@
 <div class="m-only-mobile m-screen rlm-screen" x-data="rlmRelances({{ \Illuminate\Support\Js::from($rlmConfig) }})">
     <x-m.appbar title="Relances"
                 :sub="$rlmEcoleNom . ($anneeActive ? ' · ' . $anneeActive->name : '')"
-                :back="route('esbtp.comptabilite.dashboard')"
+                :back="\App\Support\PorteDeRoute::ouverte('esbtp.comptabilite.dashboard', auth()->user()) ? route('esbtp.comptabilite.dashboard') : route('dashboard')"
                 :action="auth()->user()?->can('comptabilite.relances.send') ? 'plus' : null"
                 action-label="Planifier des relances"
                 x-on:click="ouvrir('rlm-planifier')">
