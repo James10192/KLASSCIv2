@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Comptabilite\TableauDeBord\IndicateursDeCaisse;
 use App\Models\Attendance;
 use App\Models\Certificate;
 use App\Models\Grade;
@@ -564,6 +565,8 @@ class DashboardController extends Controller
             );
 
         } catch (\Exception $e) {
+            \Log::error('[dashboard comptable] KPI indisponibles', ['error' => $e->getMessage()]);
+            $data['indisponible'] = true;
             $data['totalEncaisse'] = 0;
             $data['totalEnAttente'] = 0;
             $data['paiementsEnAttenteCount'] = 0;
@@ -638,56 +641,82 @@ class DashboardController extends Controller
             $data['paiementsParMode'] = collect();
         }
 
+        // --- Repères et tendance (rule premium-dashboard, exigences 1 et 4) ---
+        $indicateurs = app(IndicateursDeCaisse::class);
+        try {
+            $data['encaisseAujourdhui'] = $indicateurs->netEcoleDuJour(now());
+            $data['encaisseHier'] = $indicateurs->netEcoleDuJour(now()->subDay());
+            // Le mois précédent à la même date : comparer un mois entamé à un
+            // mois complet ferait toujours baisser la courbe.
+            $data['encaisseMoisPrecedent'] = round(\App\Models\ESBTPPaiement::netCashSum(
+                \App\Models\ESBTPPaiement::query()->where('status', 'validé')
+                    ->whereDate('date_paiement', '>=', now()->subMonthNoOverflow()->startOfMonth())
+                    ->whereDate('date_paiement', '<=', now()->subMonthNoOverflow())
+            ), 2);
+            $data['serieMois'] = $indicateurs->serieMensuelle(6);
+        } catch (\Throwable $e) {
+            \Log::error('[dashboard comptable] tendance indisponible', ['error' => $e->getMessage()]);
+            $data['encaisseAujourdhui'] = null;
+            $data['encaisseHier'] = null;
+            $data['encaisseMoisPrecedent'] = null;
+            $data['serieMois'] = [];
+        }
+
+        try {
+            $data['derniereReconciliation'] = \App\Domain\Comptabilite\Reconciliation\Models\ReconciliationSession::query()
+                ->whereNotNull('closed_at')
+                ->max('period_end');
+        } catch (\Throwable $e) {
+            $data['derniereReconciliation'] = null;
+        }
+
         return view('dashboard.comptable', $data);
     }
 
     /**
      * Tableau de bord pour les caissiers.
+     *
+     * Les chiffres viennent d'{@see IndicateursDeCaisse} : la journée du
+     * guichet (par mode, veille, à valider, annulables, session) et la série
+     * des sept derniers jours. Un bloc qui échoue est marqué indisponible et
+     * journalisé — jamais remplacé par un zéro qui ment.
      */
     private function caissierDashboard()
     {
         $user = Auth::user();
         $today = now()->startOfDay();
         $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $indicateurs = app(IndicateursDeCaisse::class);
+        $indisponible = false;
 
         try {
-            // KPIs — scoped to current caissier
-            $paiementsAujourdhuiCount = \App\Models\ESBTPPaiement::whereDate('created_at', $today)
-                ->where('created_by', $user->id)
-                ->count();
-
-            $montantEncaisseAujourdhui = \App\Models\ESBTPPaiement::netCashSum(
-                \App\Models\ESBTPPaiement::whereDate('created_at', $today)
-                    ->where('created_by', $user->id)
-                    ->where('status', 'validé')
-            );
-
-            $preInscriptionsAujourdhui = \App\Models\ESBTPInscription::whereDate('created_at', $today)
-                ->where('workflow_step', 'prospect')
-                ->where('created_by', $user->id)
-                ->count();
-
-            $preInscriptionsEnAttente = \App\Models\ESBTPInscription::where('workflow_step', 'prospect')
-                ->where('status', 'en_attente')
-                ->count();
-
-            // Recent payments (last 10 by this caissier). L'ecran mobile en
-            // montre cinq avec la classe et le frais : on les charge d'un coup.
-            $paiementsRecents = \App\Models\ESBTPPaiement::with(['etudiant', 'inscription.classe', 'fraisCategory'])
-                ->where('created_by', $user->id)
-                ->orderBy('created_at', 'desc')
-                ->take(10)
-                ->get();
-
-            $caisseMobile = $this->caisseDuJourPourMobile($user, $today);
-        } catch (\Exception $e) {
-            $paiementsAujourdhuiCount = 0;
-            $montantEncaisseAujourdhui = 0;
-            $preInscriptionsAujourdhui = 0;
-            $preInscriptionsEnAttente = 0;
-            $paiementsRecents = collect();
-            $caisseMobile = $this->caisseDuJourVide();
+            $caisseMobile = $indicateurs->journeeDuGuichet($user, $today);
+            $serieSemaine = $indicateurs->serieJournaliere(7, $user);
+        } catch (\Throwable $e) {
+            \Log::error('[dashboard caisse] indicateurs indisponibles', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            $caisseMobile = IndicateursDeCaisse::journeeVide($user);
+            $serieSemaine = [];
+            $indisponible = true;
         }
+
+        $paiementsAujourdhuiCount = $caisseMobile['count'] + $caisseMobile['a_valider'];
+        $montantEncaisseAujourdhui = $caisseMobile['total'];
+
+        $preInscriptionsAujourdhui = \App\Models\ESBTPInscription::whereDate('created_at', $today)
+            ->where('workflow_step', 'prospect')
+            ->where('created_by', $user->id)
+            ->count();
+        $preInscriptionsEnAttente = \App\Models\ESBTPInscription::where('workflow_step', 'prospect')
+            ->where('status', 'en_attente')
+            ->count();
+
+        // Les derniers versements de l'agent, avec de quoi agir dessus sans
+        // quitter l'accueil (voir, reçu, annuler ma saisie, avoir).
+        $paiementsRecents = \App\Models\ESBTPPaiement::with(['etudiant', 'inscription.classe', 'fraisCategory'])
+            ->where('created_by', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
 
         return view('dashboard.caissier', compact(
             'user',
@@ -697,110 +726,10 @@ class DashboardController extends Controller
             'preInscriptionsAujourdhui',
             'preInscriptionsEnAttente',
             'paiementsRecents',
-            'caisseMobile'
+            'caisseMobile',
+            'serieSemaine',
+            'indisponible'
         ));
-    }
-
-    /**
-     * Ce que l'accueil mobile du caissier ajoute au bureau : la session de
-     * caisse du jour, l'encaisse par famille de mode, ce qui attend encore une
-     * validation et ce que le guichet peut encore annuler lui-meme.
-     *
-     * La session est LUE, jamais creee : c'est le premier encaissement en
-     * especes (ou « Ma caisse ») qui l'ouvre, pas le fait de regarder l'accueil.
-     *
-     * @return array{
-     *   session: array{statut: string|null, ouverte_a: string|null, fermee_a: string|null},
-     *   especes: array{count: int, total: float},
-     *   mobile: array{count: int, total: float},
-     *   autres: array{count: int, total: float},
-     *   a_valider: int,
-     *   annulables: int,
-     *   fenetre_annulation_minutes: int,
-     *   peut_annuler: bool
-     * }
-     */
-    private function caisseDuJourPourMobile(User $user, Carbon $today): array
-    {
-        $donnees = $this->caisseDuJourVide();
-
-        $session = \App\Models\ESBTPCashSession::query()
-            ->where('cashier_user_id', $user->id)
-            ->whereDate('business_date', $today->toDateString())
-            ->first();
-        if ($session) {
-            $donnees['session'] = [
-                'statut' => $session->status?->value,
-                'ouverte_a' => $session->opened_at?->format('H:i'),
-                'fermee_a' => $session->closed_at?->format('H:i'),
-            ];
-        }
-
-        // Un seul passage sur les versements du jour : les KPI par mode ne
-        // comptent que les encaissements valides (les avoirs se lisent a part,
-        // via netCashSum sur le total).
-        $paiementsJour = \App\Models\ESBTPPaiement::query()
-            ->ownedBy($user->id)
-            ->whereDate('created_at', $today)
-            ->get();
-
-        foreach ($paiementsJour as $paiement) {
-            if ($paiement->status === 'en_attente' && ! $paiement->isAvoir()) {
-                $donnees['a_valider']++;
-                if ($donnees['peut_annuler'] && $user->can('cancelOwnRecent', $paiement)) {
-                    $donnees['annulables']++;
-                }
-                continue;
-            }
-            if ($paiement->status !== 'validé' || $paiement->isAvoir()) {
-                continue;
-            }
-            $famille = $this->familleDeMode((string) $paiement->mode_paiement);
-            $donnees[$famille]['count']++;
-            $donnees[$famille]['total'] += (float) $paiement->montant;
-        }
-
-        foreach (['especes', 'mobile', 'autres'] as $famille) {
-            $donnees[$famille]['total'] = round($donnees[$famille]['total'], 2);
-        }
-
-        return $donnees;
-    }
-
-    private function caisseDuJourVide(): array
-    {
-        $user = Auth::user();
-
-        return [
-            'session' => ['statut' => null, 'ouverte_a' => null, 'fermee_a' => null],
-            'especes' => ['count' => 0, 'total' => 0.0],
-            'mobile' => ['count' => 0, 'total' => 0.0],
-            'autres' => ['count' => 0, 'total' => 0.0],
-            'a_valider' => 0,
-            'annulables' => 0,
-            'fenetre_annulation_minutes' => (int) SettingsHelper::get('comptabilite.cancel_own_window_minutes', 5),
-            'peut_annuler' => $user ? $user->can('paiements.cancel_own') : false,
-        ];
-    }
-
-    /**
-     * Especes au tiroir ; portefeuilles mobiles ensemble ; le reste (virement,
-     * cheque, valeur inconnue) a part, pour ne pas le faire passer pour du
-     * mobile money.
-     */
-    private function familleDeMode(string $mode): string
-    {
-        $canon = \App\Enums\ModePaiement::fromLegacy($mode);
-        if ($canon === null) {
-            return 'autres';
-        }
-        if ($canon->isDrawer()) {
-            return 'especes';
-        }
-
-        // Dérivé de l'enum : la liste recopiée ici rangeait Djamo et Celtiis
-        // Cash dans « autres », alors que ce sont des portefeuilles mobiles.
-        return $canon->estMobile() ? 'mobile' : 'autres';
     }
 
     /**

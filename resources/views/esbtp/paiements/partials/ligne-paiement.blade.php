@@ -220,9 +220,9 @@
                     @endcan
                     @can('paiements.avoir')
                         @if(! $paiement->isAvoir() && $paiement->avoir_disponible > 0)
-                        <button type="button" class="btn btn-outline-primary" title="Émettre un avoir"
+                        <button type="button" class="btn btn-outline-primary" title="Annuler le versement (avoir : le versement reste visible)"
                                 data-bs-toggle="modal" data-bs-target="#avoirModal{{ $paiement->id }}">
-                            <i class="fas fa-file-invoice"></i>
+                            <i class="fas fa-rotate-left"></i>
                         </button>
                         @endif
                     @endcan
@@ -244,6 +244,14 @@
                        title="Modifier">
                         <i class="fas fa-edit"></i>
                     </a>
+                @endcan
+                {{-- Supprimer avec motif, quel que soit le statut : c'est le geste
+                     qui reste quand « Annuler ma saisie » n'est plus ouvert. --}}
+                @can('paiements.delete')
+                    <button type="button" class="btn btn-outline-danger btn-sm" title="Supprimer le versement (motif obligatoire)"
+                            data-bs-toggle="modal" data-bs-target="#supprimerPaiementModal{{ $paiement->id }}">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 @endcan
             </div>
             <div class="paiement-actions-spinner" aria-hidden="true">
@@ -302,3 +310,10 @@
 
 @include('esbtp.paiements.partials.avoir-modal', ['paiement' => $paiement, 'modalId' => 'avoirModal'.$paiement->id])
 @include('esbtp.paiements.partials.mode-reglement-modal', ['paiement' => $paiement])
+@include('esbtp.paiements.partials.supprimer-modal', [
+    'paiement' => $paiement,
+    'modalId' => 'supprimerPaiementModal'.$paiement->id,
+    // Rendue en AJAX (filtre, rafraichissement de ligne), l'adresse courante
+    // serait celle du point d'acces : on revient alors a la liste.
+    'retour' => request()->ajax() ? null : request()->getRequestUri(),
+])

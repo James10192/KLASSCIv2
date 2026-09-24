@@ -10,6 +10,9 @@
             <form method="POST" action="{{ route('esbtp.paiements.avoir.store', $paiement->id) }}"
                   x-data="avoirForm({{ $avMax }})" @submit="if (!confirme) { $event.preventDefault(); confirme = true; }">
                 @csrf
+                @if(! empty($retour ?? null))
+                    <input type="hidden" name="retour" value="{{ $retour }}">
+                @endif
 
                 <div class="av-head">
                     <div class="av-head-ic"><i class="fas fa-rotate-left"></i></div>

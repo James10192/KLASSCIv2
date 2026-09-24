@@ -2901,6 +2901,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                         <th>Référence</th>
                                                         <th>Statut</th>
                                                         <th>Commentaire</th>
+                                                        <th class="text-end">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -2958,6 +2959,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                                     {{ $payment->commentaire ?? '-' }}
                                                                 @endif
                                                             </td>
+                                                            <td class="text-end">
+                                                                @include('esbtp.paiements.partials.actions-versement', ['paiement' => $payment, 'retour' => request()->getRequestUri()])
+                                                            </td>
                                                         </tr>
                                                     @endforeach
                                                 </tbody>
@@ -2973,7 +2977,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                             @endphp
                                                             <strong>{{ number_format($totalValidated, 0, ',', ' ') }} FCFA</strong>
                                                         </th>
-                                                        <th colspan="4"></th>
+                                                        <th colspan="5"></th>
                                                     </tr>
                                                 </tfoot>
                                             </table>
@@ -2997,6 +3001,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                         <th>Référence</th>
                                                         <th>Statut</th>
                                                         <th>Commentaire</th>
+                                                        <th class="text-end">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -3049,6 +3054,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                                 @else
                                                                     {{ $payment->commentaire ?? '-' }}
                                                                 @endif
+                                                            </td>
+                                                            <td class="text-end">
+                                                                @include('esbtp.paiements.partials.actions-versement', ['paiement' => $payment, 'retour' => request()->getRequestUri()])
                                                             </td>
                                                         </tr>
                                                     @endforeach

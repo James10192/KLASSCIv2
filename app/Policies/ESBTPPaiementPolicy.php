@@ -76,7 +76,10 @@ class ESBTPPaiementPolicy
      *
      * Permet d'annuler son propre paiement sans déranger un comptable, à condition que :
      *   - Le user a saisi ce paiement (created_by == auth.id)
-     *   - Le paiement est encore en_attente (pas encore validé/rejeté)
+     *   - Le paiement est en_attente OU validé — pas rejeté, pas un avoir, pas
+     *     rapproché. Là où la caisse valide à l'encaissement (ISLG, USAT), un
+     *     versement n'est jamais en attente : l'exiger rendait le geste
+     *     introuvable pour l'agent qui venait de se tromper.
      *   - Saisi il y a moins de N minutes (configurable via setting tenant, default 5)
      *
      * C'est ANTI-ERREUR (typo cash, mauvais étudiant), pas anti-fraude.
@@ -103,7 +106,9 @@ class ESBTPPaiementPolicy
             return false;
         }
 
-        if ($paiement->status !== 'en_attente') {
+        if (! in_array($paiement->status, ['en_attente', 'validé'], true)
+            || $paiement->isAvoir()
+            || $paiement->reconciliation_locked_at) {
             return false;
         }
 
