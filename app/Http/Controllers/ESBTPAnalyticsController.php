@@ -313,6 +313,13 @@ class ESBTPAnalyticsController extends Controller
             'anomaly.recouvrement_gap_min_expected' => 'required|numeric|min:0|max:100000000',
             'anomaly.notifications_enabled'  => 'nullable|in:0,1',
             'recouvrement.whatsapp_template' => 'nullable|string|max:1000',
+            // Absents du formulaire mobile : facultatifs, jamais remis a zero.
+            'fiabilite.stale_days'          => 'nullable|integer|min:7|max:365',
+            'fiabilite.min_sample'          => 'nullable|integer|min:5|max:1000',
+            'fiabilite.lookback_months'     => 'nullable|integer|min:3|max:24',
+            'fiabilite.catchup_min_per_day' => 'nullable|integer|min:5|max:1000',
+            'fiabilite.catchup_lag_days'    => 'nullable|integer|min:1|max:180',
+            'fiabilite.catchup_alert_pct'   => 'nullable|numeric|min:5|max:100',
         ]);
 
         $mappings = [
@@ -333,6 +340,12 @@ class ESBTPAnalyticsController extends Controller
             'analytics.anomaly.notifications_enabled'       => $validated['anomaly']['notifications_enabled'] ?? '0',
             'analytics.recouvrement.whatsapp_template'      => $validated['recouvrement']['whatsapp_template'] ?? '',
         ];
+
+        foreach ($validated['fiabilite'] ?? [] as $cle => $valeur) {
+            if ($valeur !== null) {
+                $mappings['analytics.fiabilite.' . $cle] = $valeur;
+            }
+        }
 
         foreach ($mappings as $key => $value) {
             SettingsHelper::setOrCreate($key, (string) $value, 'analytics');
@@ -668,6 +681,7 @@ class ESBTPAnalyticsController extends Controller
                 'recouvrement_gap_critical_pct' => AnomalyDetector::DEFAULT_RECOUVREMENT_GAP_CRITICAL_PCT,
                 'recouvrement_gap_min_expected' => AnomalyDetector::DEFAULT_RECOUVREMENT_GAP_MIN_EXPECTED,
             ],
+            'fiabilite' => \App\Domain\Analytics\Quality\PaymentQualityEvaluator::DEFAULTS,
             'recouvrement' => [
                 'whatsapp_template' => "Bonjour {prenom}, votre solde de scolarité de {solde} FCFA est en retard de {retard} jours. Merci de régulariser dès que possible. — {ecole}",
             ],

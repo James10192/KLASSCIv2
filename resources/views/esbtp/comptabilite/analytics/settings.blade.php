@@ -31,12 +31,23 @@
         ['recouvrement_gap_min_expected', 'Écart recouvrement — montant minimal attendu (FCFA)', 'On ignore les mois où le montant attendu est inférieur à ce seuil (évite le bruit sur petits volumes)', 0, 100000000, 50000],
     ];
 
+    // Fiabilité des données : seuils du bandeau affiché avant toute prévision.
+    $fiabiliteFields = [
+        ['stale_days', 'Données anciennes après (jours)', 'Sans paiement saisi depuis ce nombre de jours, les prévisions sont signalées comme non fiables', 7, 365, 1],
+        ['min_sample', 'Échantillon minimal (paiements)', 'En dessous, pas assez de paiements pour dégager une tendance', 5, 1000, 1],
+        ['lookback_months', 'Période analysée (mois)', 'Nombre de mois de saisies examinés', 3, 24, 1],
+        ['catchup_min_per_day', 'Rattrapage : saisies par jour et par compte', 'Un compte qui saisit au moins ce nombre de paiements dans la journée…', 5, 1000, 1],
+        ['catchup_lag_days', 'Rattrapage : ancienneté des paiements (jours)', '… dont la majorité date de plus de ce nombre de jours fait une saisie de rattrapage', 1, 180, 1],
+        ['catchup_alert_pct', "Rattrapage : seuil d'alerte (%)", 'Part des paiements saisis en rattrapage au-delà de laquelle le bandeau alerte', 5, 100, 1],
+    ];
+
     $asCfg = [
         'defaults' => $defaults,
         'settings' => [
             'default_risk' => $settings['default_risk'],
             'anomaly' => $settings['anomaly'],
             'recouvrement' => $settings['recouvrement'],
+            'fiabilite' => $settings['fiabilite'],
         ],
         'flash' => session('success'),
         'csrf' => csrf_token(),
@@ -227,6 +238,41 @@
             </div>
         </div>
 
+        {{-- ===== Fiabilité des données ===== --}}
+        <div class="as-card">
+            <div class="as-card-head">
+                <div class="as-card-icon as-card-icon--anomaly"><i class="fas fa-shield-alt"></i></div>
+                <div class="as-card-title-block">
+                    <h2>Fiabilité des données</h2>
+                    <p>Avant toute prévision, la page vérifie que les paiements saisis permettent d'en faire une.</p>
+                </div>
+                <button type="button" class="as-card-reset" @click="resetSection('fiabilite')">
+                    <i class="fas fa-undo"></i> Restaurer défauts
+                </button>
+            </div>
+
+            <div class="as-form-grid">
+                @foreach($fiabiliteFields as [$key, $label, $help, $min, $max, $step])
+                    <div class="as-field">
+                        <label class="as-field-label">
+                            <span>{{ $label }}</span>
+                            <span class="as-recommended">recommandé : {{ $defaults['fiabilite'][$key] }}</span>
+                        </label>
+                        <div class="as-field-help">{{ $help }}</div>
+                        <div class="as-slider-row">
+                            <input type="range" min="{{ $min }}" max="{{ $max }}" step="{{ $step }}"
+                                   x-model.number="form.fiabilite.{{ $key }}"
+                                   class="as-range">
+                            <input type="number" step="{{ $step }}" min="{{ $min }}" max="{{ $max }}"
+                                   name="fiabilite[{{ $key }}]"
+                                   x-model.number="form.fiabilite.{{ $key }}"
+                                   class="as-number">
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
         {{-- ===== Recouvrement WhatsApp template ===== --}}
         <div class="as-card">
             <div class="as-card-head">
@@ -296,6 +342,7 @@
         <div class="m-seg" role="tablist" aria-label="Sections des paramètres">
             <button type="button" role="tab" x-bind:aria-selected="mSeg === 'risque' ? 'true' : 'false'" x-bind:class="mSeg === 'risque' ? 'on' : ''" x-on:click="mSeg = 'risque'">Risque</button>
             <button type="button" role="tab" x-bind:aria-selected="mSeg === 'anomalies' ? 'true' : 'false'" x-bind:class="mSeg === 'anomalies' ? 'on' : ''" x-on:click="mSeg = 'anomalies'">Anomalies</button>
+            <button type="button" role="tab" x-bind:aria-selected="mSeg === 'fiabilite' ? 'true' : 'false'" x-bind:class="mSeg === 'fiabilite' ? 'on' : ''" x-on:click="mSeg = 'fiabilite'">Fiabilité</button>
             <button type="button" role="tab" x-bind:aria-selected="mSeg === 'message' ? 'true' : 'false'" x-bind:class="mSeg === 'message' ? 'on' : ''" x-on:click="mSeg = 'message'">Message</button>
         </div>
 
@@ -351,6 +398,25 @@
                         <span class="m-chip" x-bind:class="form.anomaly.notifications_enabled ? 'ok' : 'mute'" x-text="form.anomaly.notifications_enabled ? 'Activées' : 'Coupées'"></span>
                     </label>
                 </div>
+            </div>
+
+            {{-- Segment : fiabilité des données --}}
+            <div class="asm-groupe" x-show="mSeg === 'fiabilite'" x-cloak>
+                <div class="m-sec">
+                    <b>Fiabilité des données</b>
+                    <button type="button" class="asm-reset" x-on:click="resetSection('fiabilite')">Valeurs recommandées</button>
+                </div>
+                @foreach($fiabiliteFields as [$key, $label, $help, $min, $max, $step])
+                    <div class="m-field asm-field">
+                        <label for="asm-fi-{{ $key }}">{{ $label }}</label>
+                        <input id="asm-fi-{{ $key }}" type="number" class="m-in"
+                               inputmode="numeric" step="{{ $step }}" min="{{ $min }}" max="{{ $max }}"
+                               x-model.number="form.fiabilite.{{ $key }}"
+                               x-bind:aria-invalid="erreurs['fiabilite.{{ $key }}'] ? 'true' : 'false'">
+                        <small class="asm-help">{{ $help }} · entre {{ $min }} et {{ $max }} · recommandé : {{ $defaults['fiabilite'][$key] }}</small>
+                        <small class="asm-err" x-show="erreurs['fiabilite.{{ $key }}']" x-text="erreurs['fiabilite.{{ $key }}']"></small>
+                    </div>
+                @endforeach
             </div>
 
             {{-- Segment 3 : modèle de message WhatsApp --}}
@@ -626,6 +692,7 @@ window.settingsPage = function (cfg) {
                 notifications_enabled: !!(settings.anomaly && settings.anomaly.notifications_enabled),
             }),
             recouvrement: Object.assign({}, settings.recouvrement || {}),
+            fiabilite: Object.assign({}, settings.fiabilite || {}),
         },
 
         /* ---------- écran mobile ---------- */
@@ -661,6 +728,7 @@ window.settingsPage = function (cfg) {
         mSegmentDe(champ) {
             if (champ.indexOf('anomaly.') === 0) { return 'anomalies'; }
             if (champ.indexOf('recouvrement.') === 0) { return 'message'; }
+            if (champ.indexOf('fiabilite.') === 0) { return 'fiabilite'; }
             return 'risque';
         },
 
@@ -686,6 +754,7 @@ window.settingsPage = function (cfg) {
                             notifications_enabled: this.form.anomaly.notifications_enabled ? '1' : '0',
                         }),
                         recouvrement: this.form.recouvrement,
+                        fiabilite: this.form.fiabilite,
                     }),
                 });
                 if (response.status === 429) {

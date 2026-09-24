@@ -2281,6 +2281,9 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     Route::get('/analytics/refresh', [\App\Http\Controllers\ESBTPAnalyticsController::class, 'refresh'])
         ->name('analytics.refresh')
         ->middleware('throttle:30,1');
+    Route::get('/analytics/fiabilite', [\App\Http\Controllers\ESBTPAnalyticsReliabilityController::class, 'show'])
+        ->name('analytics.fiabilite')
+        ->middleware('throttle:30,1');
     Route::post('/analytics/run-now', [\App\Http\Controllers\ESBTPAnalyticsController::class, 'runNow'])
         ->name('analytics.run-now')
         ->middleware(['permission:comptabilite.analytics.run_now', 'throttle:10,1']);
