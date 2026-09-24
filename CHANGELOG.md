@@ -51,7 +51,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
-- **Maquettes LMD : la fiche d'une UE partagée montre chaque parcours à part** (`/esbtp/lmd/ue/{id}`). Un onglet par parcours et semestre, avec ses propres ECUE et les heures de sa filière ; la fiche mélangeait les éléments de tous les parcours et lisait les heures du premier parcours importé.
+- **Maquettes LMD : la fiche d'une UE partagée montre chaque parcours à part** (`/esbtp/lmd/ue/{id}`). Un onglet par parcours et semestre, avec ses propres ECUE et les heures de sa filière ; la fiche mélangeait les éléments de tous les parcours et lisait les heures du premier parcours importé. Le bloc « Rattachement académique » ne présente plus le premier parcours importé comme « Parcours principal » : une UE partagée dit entre combien de parcours, et liste toutes ses filières et tous ses semestres.
 - **Planning LMD : seule l'année en cours s'affiche, et elle est nommée.** La liste lisait les lignes de toutes les années et en gardait une au hasard par ECUE, pendant que la saisie écrivait dans l'année en cours.
 - **Planning LMD : une ligne supprimée se recrée.** Elle occupait encore l'index unique ; la saisie suivante échouait sur « modifiée par un autre utilisateur ». Elle est reprise, entièrement remise à neuf (heures, coefficient, enseignants, observations).
 - **Coefficient d'un ECUE : 1 par défaut, et la liste montre celui qu'utilise le bulletin.** Le « 1 » gris n'était qu'un exemple : laissé tel quel, rien n'était enregistré et la liste affichait « Coeff. — ».

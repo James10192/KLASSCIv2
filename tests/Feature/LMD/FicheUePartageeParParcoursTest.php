@@ -87,4 +87,17 @@ class FicheUePartageeParParcoursTest extends TestCase
         $this->assertSame(5, $parCode['LPA']['credit_ue'], 'Le credit de la maquette LPA, pas celui de la fiche.');
         $this->assertSame(2, $parCode['LPV']['credit_ue']);
     }
+
+    public function test_la_fiche_ne_presente_pas_le_premier_parcours_comme_le_seul(): void
+    {
+        $ue = ESBTPUniteEnseignement::where('code', 'AGR2103')->firstOrFail();
+        $acteur = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
+        $acteur->assignRole(Role::findOrCreate('superAdmin', 'web'));
+
+        $this->actingAs($acteur)->get(route('esbtp.lmd.ue.show', $ue))
+            ->assertOk()
+            ->assertDontSee('Parcours principal')
+            ->assertSee('Partagee entre 2 parcours')
+            ->assertSee('Filiere LPA, Filiere LPV', false);
+    }
 }
