@@ -521,8 +521,21 @@
         .cd-quick-actions { background: #0453cb; color: #fff; border-color: #0453cb; border-radius: 99px; white-space: nowrap; min-height: 38px; backdrop-filter: none; }
         .cd-quick-actions:hover { background: #033a8e; }
         .cd-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-        .cd-kpi { border-radius: 20px; min-width: 0; }
-        .cd-kpi-value { font-size: 1.4rem; }
+        /* Tuiles M3 : blanches, icône bleue ; l'orange reste pour ce qui attend
+           une action, le rouge pour ce qui bloque. Plus de dégradés décoratifs. */
+        .cd-kpi, [class*="cd-kpi--"] { background: #fff; color: #0f172a; text-align: left; border-radius: 20px; min-width: 0; padding: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
+        .cd-kpi::after { display: none; }
+        .cd-kpi:hover { transform: none; }
+        .cd-kpi-icon { color: #0453cb; font-size: 1.25rem; opacity: 1; }
+        .cd-kpi-label { color: #64748b; opacity: 1; text-transform: none; letter-spacing: 0; font-size: .78rem; }
+        .cd-kpi-value { font-size: 1.5rem; color: #0f172a; }
+        .cd-kpi-link { color: #0453cb; background: #eef4ff; border-color: transparent; }
+        .cd-kpi--warning { background: #fff7ed; }
+        .cd-kpi--warning .cd-kpi-icon, .cd-kpi--warning .cd-kpi-value, .cd-kpi--warning .cd-kpi-label { color: #9a3412; }
+        .cd-kpi--warning .cd-kpi-link { color: #9a3412; background: #ffedd5; }
+        .cd-kpi--danger { background: #fef2f2; }
+        .cd-kpi--danger .cd-kpi-icon, .cd-kpi--danger .cd-kpi-value, .cd-kpi--danger .cd-kpi-label { color: #b91c1c; }
+        .cd-kpi--danger .cd-kpi-link { color: #b91c1c; background: #fee2e2; }
         .cd-alert { flex-direction: row; flex-wrap: wrap; align-items: flex-start; text-align: left; gap: .75rem; border-radius: 20px; padding: 14px; }
         .cd-alert-icon { width: 40px; height: 40px; font-size: 1rem; flex: 0 0 40px; }
         .cd-alert-content { flex: 1 1 0; min-width: 0; }
