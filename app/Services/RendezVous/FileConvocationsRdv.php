@@ -27,6 +27,13 @@ class FileConvocationsRdv
 
     private const DUREE_VERROU_SECONDES = 150;
 
+    /**
+     * Le porteur est lu pour chaque convocation (contact a confirmer, reference,
+     * invitation) : charge d'avance, pas une requete par ligne. Modeles
+     * complets, car la convocation peut ecrire la reference publique.
+     */
+    private const CHARGEMENTS = ['creneau', 'candidature', 'demande'];
+
     public function __construct(private readonly MessagerieRdv $mails)
     {
     }
@@ -81,7 +88,7 @@ class FileConvocationsRdv
     {
         try {
             $this->sousVerrou(function () use ($reservationId) {
-                $reservation = ESBTPRdvReservation::query()->with('creneau')->find($reservationId);
+                $reservation = ESBTPRdvReservation::query()->with(self::CHARGEMENTS)->find($reservationId);
                 if ($reservation?->convocation_statut === StatutConvocationRdv::EnAttente) {
                     $this->mails->envoyer($reservation);
                 }
@@ -104,7 +111,7 @@ class FileConvocationsRdv
         $tenu = $this->sousVerrou(function () use (&$rapport, $maximum, $budgetSecondes) {
             $debut = microtime(true);
             $paquet = ESBTPRdvReservation::query()
-                ->with('creneau')
+                ->with(self::CHARGEMENTS)
                 ->where('convocation_statut', StatutConvocationRdv::EnAttente->value)
                 ->orderBy('id')
                 ->limit($maximum)
@@ -158,7 +165,7 @@ class FileConvocationsRdv
         // Pagination par identifiant, pas par decalage : planifier() fait sortir chaque
         // ligne du filtre, et une page 2 en `offset` sauterait autant de lignes que la
         // page 1 en a traite. Un lot borne, lui, se lit d'un bloc.
-        $requete->with('creneau');
+        $requete->with(self::CHARGEMENTS);
         $limite === null
             ? $requete->chunkById(200, fn ($lot) => $lot->each($planifier))
             : $requete->orderBy('id')->limit($limite)->get()->each($planifier);

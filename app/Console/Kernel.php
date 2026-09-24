@@ -176,6 +176,15 @@ class Kernel extends ConsoleKernel
             ->name('rdv-convocations-en-attente')
             ->description('Envoie les convocations de rendez-vous en attente');
 
+        // « Envoyee » ne dit que « acceptee par MailPulse » : relire l'etat reel
+        // met en echec les rebonds, qui rejoignent alors les familles a prevenir.
+        $schedule->command('inscriptions:synchroniser-convocations-rdv --max=100')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->name('rdv-convocations-synchro')
+            ->description('Relit chez MailPulse la remise reelle des convocations de rendez-vous');
+
         $schedule->command('mailpulse:reconcile-parent-link-codes --limit=50')
             ->everyMinute()
             ->withoutOverlapping()

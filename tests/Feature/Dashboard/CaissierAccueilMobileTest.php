@@ -130,7 +130,10 @@ class CaissierAccueilMobileTest extends TestCase
         $this->assertSame(['count' => 1, 'total' => 25000.0], $caisse['mobile']);
         $this->assertSame(['count' => 1, 'total' => 300000.0], $caisse['autres']);
         $this->assertSame(2, $caisse['a_valider']);
-        $this->assertSame(1, $caisse['annulables']);
+        // L'espèces validé de 10h42 et l'attente de 10h44 : un versement
+        // validé récent de son auteur s'annule aussi (la caisse valide à
+        // l'encaissement dans plusieurs écoles).
+        $this->assertSame(2, $caisse['annulables']);
         $this->assertTrue($caisse['peut_annuler']);
         $this->assertSame(5, $caisse['fenetre_annulation_minutes']);
 

@@ -185,6 +185,8 @@ class ScolariteOrgChartPermissionsTest extends TestCase
         $this->assertContains('inscriptions.create', $defaults);
         $this->assertContains('inscriptions.edit', $defaults);
         $this->assertContains('inscriptions.validate', $defaults);
+        // Reprendre la classe d'une inscription deja validee, sans admin.access.
+        $this->assertContains('inscriptions.edit_validated', $defaults);
         $this->assertContains('inscriptions.in_kind.mark', $defaults);
         $this->assertContains('classes.view', $defaults);
         $this->assertContains('filieres.view', $defaults);

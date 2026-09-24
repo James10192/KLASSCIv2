@@ -195,7 +195,7 @@
                     </div>
                 </div>
 
-                @if($inscription->status !== 'active' || auth()->user()->can('admin.access'))
+                @if($inscription->parcoursModifiablePar(auth()->user()))
                     {{-- ZONE LMD-AWARE :
                          - Niveau d'études (commun) — son type détermine BTS|LMD
                          - Mode BTS : <select name="filiere_id"> classique
@@ -298,7 +298,7 @@
                         $insIsInTcActif = $inscription->filiere?->isTroncCommun()
                             && ! $inscription->phases->contains(fn ($p) => $p->type_phase === 'specialisation' && $p->is_active);
                         $insIsLegacyDual = $inscription->inscription_origine_id !== null;
-                        $insCanCorrection = auth()->user()->can('admin.access');
+                        $insCanCorrection = \App\Models\ESBTPInscription::reaffectationAutoriseePour(auth()->user());
                     @endphp
 
                     @if($insIsInTcActif && ! $insIsLegacyDual)
@@ -321,7 +321,6 @@
                                                class="form-check-input mt-1" style="margin:0;">
                                         <span>
                                             <strong>Correction d'erreur de saisie</strong>
-                                            <span class="badge bg-warning text-dark ms-1">admin</span>
                                             <small class="d-block text-muted">
                                                 Cocher uniquement si la classe initiale a été <em>mal saisie</em>
                                                 (ex : redoublant inscrit en TC par erreur). Ne pas utiliser pour orienter — utilisez le workflow officiel.
@@ -375,6 +374,8 @@
                                 <div class="form-text text-muted">
                                     @if($insIsInTcActif && ! $insIsLegacyDual)
                                         Verrouillé : étudiant en Tronc Commun. Utilisez l'orientation officielle ou cochez « Correction d'erreur » ci-dessus.
+                                    @elseif($inscription->status === 'active')
+                                        Inscription déjà validée : changer de filière, de niveau ou de classe recalcule les frais de l'étudiant.
                                     @else
                                         Vous pouvez changer la classe tant que l'inscription n'est pas activée.
                                     @endif
@@ -383,7 +384,7 @@
                         </div>
                     </div>
                 @else
-                    {{-- Status = active + non-admin : tout est en lecture seule --}}
+                    {{-- Inscription validée, sans le droit « Modifier une inscription déjà validée » : lecture seule --}}
                     <input type="hidden" name="filiere_id" value="{{ $inscription->filiere_id }}">
                     <input type="hidden" name="niveau_id" value="{{ $inscription->niveau_id }}">
                     <input type="hidden" name="classe_id" value="{{ $inscription->classe_id }}">
@@ -408,7 +409,7 @@
                                 <label class="form-label">Classe</label>
                                 <input type="text" class="form-control" value="{{ $inscription->classe?->name ?? 'Non affecté' }}" disabled>
                                 <div id="{{ $placesInfoId }}" class="mt-2 small text-muted"></div>
-                                <div class="alert alert-warning mt-2">La classe ne peut plus être modifiée après activation de l'inscription.</div>
+                                <div class="alert alert-warning mt-2">La classe ne peut plus être modifiée après activation de l'inscription. Ce geste demande le droit « Modifier une inscription déjà validée ».</div>
                             </div>
                         </div>
                     </div>

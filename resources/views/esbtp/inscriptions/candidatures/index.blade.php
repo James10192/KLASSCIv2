@@ -126,14 +126,10 @@
                 </a>
             @endforeach
         </div>
+        <x-filtre-contact-non-verifie route="esbtp.candidatures.index" />
     </div>
 
-    @if(session('success'))
-        <div class="alert alert-success">{{ session('success') }}</div>
-    @endif
-    @if(session('error'))
-        <div class="alert alert-danger">{{ session('error') }}</div>
-    @endif
+    <x-flash-demandes />
 
     @if(($referenceActive ?? '') !== '')
         <div class="cd-filtre-ref">
@@ -276,6 +272,7 @@
                                         $_b = $_libelles[$c->statut] ?? ['attente', $c->statut];
                                     @endphp
                                     <span class="cd-badge cd-badge--{{ $_b[0] }}">{{ $_b[1] }}</span>
+                                    <x-demande-contact-badge :demande="$c" route="esbtp.candidatures.confirmer-contact" permission="inscriptions.candidatures.process" />
                                     @if($c->motif_rejet)
                                         <div class="cd-contact" style="margin-top:.25rem;">{{ $c->motif_rejet }}</div>
                                     @endif
