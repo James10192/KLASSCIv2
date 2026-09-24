@@ -258,10 +258,49 @@ class ESBTPLMDUEController extends Controller
             'parcoursMultiple.filiere', 'responsableUe', 'createdBy', 'updatedBy',
         ]);
 
+        $maquettes = $this->maquettesDeLaFiche($ue);
+
         return view('esbtp.lmd.ue.show', [
             'ue' => $ue,
-            'maquettes' => $this->maquettesDeLaFiche($ue),
+            'maquettes' => $maquettes,
+            'nbEcues' => collect($maquettes)->flatMap(fn ($m) => $m['ecues']->pluck('id'))->unique()->count(),
+            'rattachement' => $this->rattachementDeLaFiche($ue),
         ]);
+    }
+
+    /**
+     * Ou l'UE est rattachee, lu sur les liens parcours-UE et non sur les
+     * colonnes de la fiche : celles-ci ne gardent que le parcours, la filiere
+     * et le semestre du premier import, faux pour une UE partagee.
+     *
+     * @return array{parcours: array<int, array{nom: string, code: ?string, semestres: list<int>}>, est_partagee: bool, filieres: list<string>, parcours_sans_filiere: int, semestres: list<int>}
+     */
+    private function rattachementDeLaFiche(ESBTPUniteEnseignement $ue): array
+    {
+        $parcours = $ue->parcoursMultiple
+            ->groupBy('id')
+            ->map(fn ($liens) => [
+                'nom' => $liens->first()->name ?? $liens->first()->code,
+                'code' => $liens->first()->code,
+                'semestres' => $liens->pluck('pivot.semestre')->filter()->map(fn ($s) => (int) $s)->unique()->sort()->values()->all(),
+            ])
+            ->values()
+            ->all();
+
+        $semestres = collect($parcours)->flatMap(fn ($p) => $p['semestres'])->unique()->sort()->values()->all();
+        if ($semestres === [] && $ue->semestre) {
+            $semestres = [(int) $ue->semestre];
+        }
+
+        $distincts = $ue->parcoursMultiple->unique('id');
+
+        return [
+            'parcours' => $parcours,
+            'est_partagee' => count($parcours) > 1,
+            'filieres' => $distincts->map(fn ($p) => $p->filiere?->name)->filter()->unique()->sort()->values()->all(),
+            'parcours_sans_filiere' => $distincts->filter(fn ($p) => ! $p->filiere)->count(),
+            'semestres' => $semestres,
+        ];
     }
 
     /**
