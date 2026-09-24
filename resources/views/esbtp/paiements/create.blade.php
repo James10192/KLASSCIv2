@@ -1007,43 +1007,49 @@ $(function() {
     const studentRoot = document.getElementById('etudiant_id')?.closest('[x-data]');
     const studentSelect = studentRoot ? Alpine.$data(studentRoot) : null;
 
-    function bindStudentSearch() {
-        if (!studentSelect || !studentSelect.$refs || !studentSelect.$refs.searchInput) {
+    // Recherche serveur des étudiants, écoutée UNE fois au niveau du document.
+    //
+    // L'ancienne version posait `studentSelect.$watch('open', …)` sur l'objet
+    // rendu par `Alpine.$data()` : hors du composant, `$watch` perd son contexte
+    // et Alpine levait « Illegal invocation ». La recherche serveur n'était donc
+    // jamais branchée, et l'on ne trouvait que les étudiants préchargés. Elle
+    // ajoutait en plus un écouteur à chaque ouverture.
+    //
+    // L'écoute au document survit au déplacement du menu sous <body> que fait
+    // le composant quand un ancêtre le couperait.
+    function rechercheEtudiant(saisie) {
+        const query = saisie.value.trim();
+        clearTimeout(studentSearchTimer);
+        if (query.length < 3) {
             return;
         }
-        studentSelect.$refs.searchInput.addEventListener('input', function () {
-            const query = this.value.trim();
-            clearTimeout(studentSearchTimer);
-            if (query.length < 3) {
-                return;
-            }
-            studentSearchTimer = setTimeout(async function () {
-                try {
-                    const response = await fetch(studentSearchUrl + '?q=' + encodeURIComponent(query), {
-                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-                    });
-                    if (!response.ok) {
-                        return;
-                    }
-                    const payload = await response.json();
-                    const options = (payload.results || []).map(function (item) {
-                        return { value: String(item.id), label: item.text };
-                    });
-                    // On conserve la saisie : le serveur repond pendant que la
-                    // caissiere tape encore, et vider le champ a cet instant lui
-                    // retire le texte des doigts.
-                    studentSelect.setOptions(options, studentSelect.currentValue || '', true);
-                } catch (error) {
-                    debugWarn('Recherche etudiant indisponible', error);
+        studentSearchTimer = setTimeout(async function () {
+            try {
+                const response = await fetch(studentSearchUrl + '?q=' + encodeURIComponent(query), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!response.ok) {
+                    return;
                 }
-            }, 220);
-        });
+                const payload = await response.json();
+                const options = (payload.results || []).map(function (item) {
+                    return { value: String(item.id), label: item.text };
+                });
+                // On conserve la saisie : le serveur repond pendant que la
+                // caissiere tape encore, et vider le champ a cet instant lui
+                // retire le texte des doigts.
+                studentSelect.setOptions(options, studentSelect.currentValue || '', true);
+            } catch (error) {
+                debugWarn('Recherche etudiant indisponible', error);
+            }
+        }, 220);
     }
 
     if (studentSelect) {
-        studentSelect.$watch('open', function (isOpen) {
-            if (isOpen) {
-                studentSelect.$nextTick(bindStudentSearch);
+        document.addEventListener('input', function (ev) {
+            const saisie = studentSelect.$refs && studentSelect.$refs.searchInput;
+            if (saisie && ev.target === saisie) {
+                rechercheEtudiant(saisie);
             }
         });
     }
