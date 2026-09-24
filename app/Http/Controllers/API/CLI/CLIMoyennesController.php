@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\Notes\CorrectionDeNotes;
 use App\Domain\Notes\SaisieDeMoyennes;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -93,5 +94,50 @@ class CLIMoyennesController extends BaseApiController
         return $this->successResponse(['dry_run' => $simuler, 'classe' => $classe->name] + $resultat, $simuler
             ? 'Aucune écriture : prévisualisation. Relancer avec dry_run=false pour enregistrer.'
             : 'Moyennes enregistrées. Régénérer les bulletins listés pour qu’ils en tiennent compte.');
+    }
+
+    /**
+     * POST /api/cli/notes/corriger — corriger des notes EXISTANTES d'un eleve,
+     * puis recalculer ses moyennes de matiere (synchrone).
+     *
+     * Body: etudiant_id, motif (>= 10), dry_run? (true par defaut),
+     *       notes: [{note_id, note}]
+     */
+    public function corrigerNotes(Request $request, CorrectionDeNotes $correction): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $v = $request->validate([
+            'etudiant_id' => 'required|integer|exists:esbtp_etudiants,id',
+            'motif' => 'required|string|min:10|max:500',
+            'dry_run' => 'nullable|boolean',
+            'notes' => 'required|array|min:1|max:60',
+            'notes.*.note_id' => 'required|integer|distinct',
+            'notes.*.note' => 'required|numeric|min:0',
+        ]);
+        $simuler = (bool) ($v['dry_run'] ?? true);
+
+        try {
+            $resultat = $correction->appliquer((int) $v['etudiant_id'], $v['notes'], $simuler, $request->user()->id);
+        } catch (ValidationException $e) {
+            return $this->errorResponse($e->getMessage(), $e->errors(), 422);
+        }
+
+        if (! $simuler) {
+            Log::warning('CLI: notes corrigees', [
+                'etudiant_id' => $v['etudiant_id'],
+                'motif' => $v['motif'],
+                'lignes' => $resultat['lignes'],
+                'moyennes' => $resultat['moyennes'],
+                'caller_user_id' => $request->user()->id,
+                'ip' => $request->ip(),
+            ]);
+        }
+
+        return $this->successResponse(['dry_run' => $simuler] + $resultat, $simuler
+            ? 'Aucune écriture : prévisualisation. Relancer avec dry_run=false pour enregistrer.'
+            : 'Notes corrigées et moyennes recalculées. Régénérer le bulletin pour qu’il en tienne compte.');
     }
 }
