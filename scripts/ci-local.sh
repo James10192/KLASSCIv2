@@ -30,15 +30,45 @@ MYSQL_INSTALL_DB="${MYSQL_INSTALL_DB:-mysql_install_db}"
 MYSQL="${MYSQL:-mysql}"
 CI_DATADIR="${CI_DATADIR:-${TMPDIR:-/tmp}/klassci-ci-mariadb}"
 CI_DB_PORT="${CI_DB_PORT:-3317}"
-CI_TESTS_BRANCHE="${CI_TESTS_BRANCHE-AnalyseurEmailTest|EnumsVerificationTest|ReglesEmailsFormulairesTest|VerificationC|DepotReinscriptionVerifieTest|NettoyerEmailsFacticesTest|DiagnosticEmailsCliTest|CliJoignabiliteTest|SynchroConvocationsTest|AdresseDeCompteTest|PortailPublicExportTest|CorbeilleDemandesTest|DebitPortailTest|RendezVous|MailPulseClientTest}"
+CI_TESTS_BRANCHE="${CI_TESTS_BRANCHE-AnalyseurEmailTest|EnumsVerificationTest|ReglesEmailsFormulairesTest|VerificationC|DepotReinscriptionVerifieTest|NettoyerEmailsFacticesTest|DiagnosticEmailsCliTest|CliJoignabiliteTest|SynchroConvocationsTest|AdresseDeCompteTest|PortailPublicExportTest|CorbeilleDemandesTest|DebitPortailTest|RendezVous|MailPulseClientTest|RepriseConvocationsVerifieesTest}"
 
 ECHECS=()
 AVERTISSEMENTS=()
 etape() { printf '\n==== %s\n' "$1"; }
 echec() { ECHECS+=("$1"); printf '  ECHEC : %s\n' "$1"; }
 avert() { AVERTISSEMENTS+=("$1"); printf '  AVERTISSEMENT : %s\n' "$1"; }
+# Tout ce qui touche a la base : on s'arrete net plutot que de continuer sur
+# une connexion incertaine.
+abandon() { printf '\nCI LOCALE : ABANDON (%s)\n' "$1"; exit 1; }
 
 cd "$(dirname "$0")/.." || exit 2
+
+# ---------------------------------------------------------------- isolation
+# Des le depart, et pas seulement avant la migration : un test « sans base »
+# qui ouvrirait quand meme une connexion ne doit jamais atteindre la base du
+# poste. `.env.testing` vise le port 3306, et un `config:cache` oublie dans
+# bootstrap/cache ignorerait toutes ces variables : les caches sont rediriges
+# vers des fichiers qui n'existent pas, sous le repertoire de l'instance isolee.
+[ "$CI_DB_PORT" = "3306" ] && abandon "CI_DB_PORT=3306 est le port de la base partagee"
+mkdir -p "$CI_DATADIR" || abandon "repertoire $CI_DATADIR impossible a creer"
+DATADIR_NATIF=$(cygpath -m "$CI_DATADIR" 2>/dev/null || printf '%s' "$CI_DATADIR")
+REP_CACHES="$(cd "$CI_DATADIR" && pwd -P)/laravel-cache"
+mkdir -p "$REP_CACHES" || abandon "repertoire des caches impossible a creer"
+# config, routes, events : ces fichiers ne doivent pas exister (personne ne
+# fait config:cache ici) ; services : Laravel l'ecrit la, pas dans bootstrap/cache.
+for f in config routes events; do
+    [ -e "$REP_CACHES/$f.php" ] && abandon "$REP_CACHES/$f.php existe : un cache viendrait fausser la connexion"
+done
+# Laravel ne tient un chemin de cache pour absolu que s'il commence par / ou \ :
+# sous Windows, le lecteur (C:) est retire et les separateurs sont des \.
+if command -v cygpath > /dev/null 2>&1; then
+    CACHES=$(cygpath -w "$REP_CACHES"); CACHES="${CACHES#?:}"; SEP='\'
+else
+    CACHES="$REP_CACHES"; SEP=/
+fi
+export APP_CONFIG_CACHE="${CACHES}${SEP}config.php" APP_ROUTES_CACHE="${CACHES}${SEP}routes.php" \
+    APP_EVENTS_CACHE="${CACHES}${SEP}events.php" APP_SERVICES_CACHE="${CACHES}${SEP}services.php"
+export APP_ENV=testing DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT="$CI_DB_PORT" DB_DATABASE=klassci_testing DB_USERNAME=root DB_PASSWORD=
 
 # ---------------------------------------------------------------- hygiene
 etape "Messages de commit ($CI_BASE..HEAD)"
@@ -104,27 +134,49 @@ done
 
 # ---------------------------------------------------------------- base isolee
 etape "MariaDB isolee ($CI_DATADIR, port $CI_DB_PORT)"
-[ -d "$CI_DATADIR/mysql" ] || "$MYSQL_INSTALL_DB" --datadir="$CI_DATADIR" --port="$CI_DB_PORT" > /dev/null 2>&1 \
-    || { echec "initialisation de la base isolee"; }
+repond() { "$PHP" -r "new PDO('mysql:host=127.0.0.1;port=$CI_DB_PORT','root','');" 2>/dev/null; }
+# Un serveur qui repond deja sur ce port n'est pas le notre : ni DROP, ni SHUTDOWN.
+repond && abandon "le port $CI_DB_PORT est deja occupe par un autre serveur"
+[ -d "$CI_DATADIR/mysql" ] || "$MYSQL_INSTALL_DB" --datadir="$DATADIR_NATIF" --port="$CI_DB_PORT" > /dev/null 2>&1 \
+    || abandon "initialisation de la base isolee"
 # Le fichier de reglages ecrit par l'initialisation (XAMPP) porte le datadir ;
 # sinon, aucun fichier du poste n'est lu.
-if [ -f "$CI_DATADIR/my.ini" ]; then DEFAUTS=(--defaults-file="$CI_DATADIR/my.ini"); else DEFAUTS=(--no-defaults); fi
-"$MYSQLD" "${DEFAUTS[@]}" --datadir="$CI_DATADIR" --port="$CI_DB_PORT" --bind-address=127.0.0.1 --console > /tmp/ci-local-mysqld.log 2>&1 &
+if [ -f "$CI_DATADIR/my.ini" ]; then DEFAUTS=(--defaults-file="$DATADIR_NATIF/my.ini"); else DEFAUTS=(--no-defaults); fi
+"$MYSQLD" "${DEFAUTS[@]}" --datadir="$DATADIR_NATIF" --port="$CI_DB_PORT" --bind-address=127.0.0.1 --console > /tmp/ci-local-mysqld.log 2>&1 &
 PID_BASE=$!
+BASE_VERIFIEE=non
 arreter_base() {
-    "$MYSQL" -h127.0.0.1 -P"$CI_DB_PORT" -uroot -e "SHUTDOWN" > /dev/null 2>&1
+    # SHUTDOWN seulement vers un serveur dont on a verifie qu'il est le notre.
+    [ "$BASE_VERIFIEE" = oui ] && "$MYSQL" -h127.0.0.1 -P"$CI_DB_PORT" -uroot -e "SHUTDOWN" > /dev/null 2>&1
     kill "$PID_BASE" 2>/dev/null
     wait "$PID_BASE" 2>/dev/null
     echo "  base isolee arretee"
 }
 trap arreter_base EXIT
 for _ in $(seq 1 60); do
-    "$PHP" -r "new PDO('mysql:host=127.0.0.1;port=$CI_DB_PORT','root','');" 2>/dev/null && break
+    repond && break
+    kill -0 "$PID_BASE" 2>/dev/null || abandon "le serveur isole s'est arrete au demarrage (voir /tmp/ci-local-mysqld.log)"
     sleep 1
 done
+repond || abandon "base isolee injoignable apres 60 s"
+
+# Le serveur qui repond est-il celui que ce script vient de lancer ?
+serveur=$("$MYSQL" -h127.0.0.1 -P"$CI_DB_PORT" -uroot -N -B -e "SELECT CONCAT(@@port, '|', @@datadir)") \
+    || abandon "lecture de @@port/@@datadir impossible"
+[ "${serveur%%|*}" = "$CI_DB_PORT" ] || abandon "le serveur repond sur le port ${serveur%%|*}"
+datadir_lu=$(printf '%s' "${serveur#*|}" | tr '\\' '/' | sed 's#/*$##' | tr '[:upper:]' '[:lower:]')
+datadir_vise=$(printf '%s' "$DATADIR_NATIF" | tr '\\' '/' | sed 's#/*$##' | tr '[:upper:]' '[:lower:]')
+[ "$datadir_lu" = "$datadir_vise" ] || abandon "datadir du serveur ${serveur#*|}, attendu $DATADIR_NATIF"
+BASE_VERIFIEE=oui
+
 "$MYSQL" -h127.0.0.1 -P"$CI_DB_PORT" -uroot -e "DROP DATABASE IF EXISTS klassci_testing; CREATE DATABASE klassci_testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" \
-    || echec "base isolee injoignable"
-export APP_ENV=testing DB_CONNECTION=mysql DB_HOST=127.0.0.1 DB_PORT="$CI_DB_PORT" DB_DATABASE=klassci_testing DB_USERNAME=root DB_PASSWORD=
+    || abandon "creation de klassci_testing"
+
+etape "Laravel se connecte bien a la base isolee"
+# Meme verification, mais par la connexion que migrate:fresh et PHPUnit
+# utiliseront : configuration, .env.testing et caches compris.
+"$PHP" bin/verifier-base-isolee.php "$CI_DB_PORT" "$DATADIR_NATIF" klassci_testing \
+    || abandon "Laravel ne vise pas la base isolee : aucune migration lancee"
 
 etape "Le schema se cree entierement"
 "$PHP" artisan migrate:fresh --force --env=testing > /tmp/ci-local-schema.log 2>&1 || { tail -n 20 /tmp/ci-local-schema.log; echec "schema"; }
