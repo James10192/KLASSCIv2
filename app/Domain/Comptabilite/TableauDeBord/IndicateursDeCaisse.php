@@ -106,23 +106,20 @@ class IndicateursDeCaisse
     }
 
     /**
-     * Encaissé net par jour, sur les N derniers jours (aujourd'hui compris).
-     * Portée guichet si un agent est donné, école sinon.
+     * Encaissé net par jour de l'agent, sur les N derniers jours (aujourd'hui
+     * compris), daté par la saisie au guichet.
      *
      * @return array<int, array{jour: string, libelle: string, total: float}>
      */
-    public function serieJournaliere(int $jours, ?User $agent = null): array
+    public function serieJournaliere(int $jours, User $agent): array
     {
         $fin = now()->startOfDay();
         $debut = $fin->copy()->subDays($jours - 1);
-        $colonne = $agent ? 'created_at' : 'date_paiement';
-
-        $base = $agent ? $this->guichet($agent) : $this->ecole();
-        $totaux = $base
-            ->whereDate($colonne, '>=', $debut)
-            ->whereDate($colonne, '<=', $fin)
-            ->groupBy(DB::raw("DATE($colonne)"))
-            ->select(DB::raw("DATE($colonne) as jour"), DB::raw('SUM('.ESBTPPaiement::sqlCashCase().') as total'))
+        $totaux = $this->guichet($agent)
+            ->whereDate('created_at', '>=', $debut)
+            ->whereDate('created_at', '<=', $fin)
+            ->groupBy(DB::raw('DATE(created_at)'))
+            ->select(DB::raw('DATE(created_at) as jour'), DB::raw('SUM('.ESBTPPaiement::sqlCashCase().') as total'))
             ->pluck('total', 'jour');
 
         $serie = [];
@@ -217,11 +214,6 @@ class IndicateursDeCaisse
     private function guichet(User $agent): Builder
     {
         return ESBTPPaiement::query()->ownedBy($agent->id)->where('status', 'validé');
-    }
-
-    private function ecole(): Builder
-    {
-        return ESBTPPaiement::query()->where('status', 'validé');
     }
 
     private function netDu(Builder $requete): float

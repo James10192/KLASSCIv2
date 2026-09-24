@@ -95,8 +95,10 @@ class BuildDashboardDataAction
             ->first();
         $totalPaid = (float) ($statusAgg->total_paid ?? 0);
 
-        $totalDuResult = $this->getImpayesAging->totalDuForFilters($filters);
+        // Un seul passage : dû, ancienneté et plus gros impayés viennent du même
+        // calcul par inscription (revue avant fusion, septembre 2026).
         $analyse = $this->getImpayesAging->analyse($filters);
+        $totalDuResult = ['totalDue' => $analyse['totalDue'], 'countDue' => $analyse['countDue'], 'parClasse' => $analyse['parClasse']];
         $agingBuckets = $analyse['buckets'];
         $countOverdueTotal = (int) array_sum(array_column($agingBuckets, 'count'));
         $totalOverdue = (float) array_sum(array_column($agingBuckets, 'amount'));
@@ -144,7 +146,7 @@ class BuildDashboardDataAction
             'serieJours' => $this->serieJours($filters, self::SERIE_JOURS),
             'modes' => $this->parMode($filters, null),
             'modesMois' => $this->parMode($filters, Carbon::today()->startOfMonth()),
-            'recouvrementParClasse' => $this->recouvrementParClasse($filters, $totalDuResult['parClasse'] ?? []),
+            'recouvrementParClasse' => $this->recouvrementParClasse($filters, $totalDuResult['parClasse'], $analyse['inscriptionsActives']),
             'topEchus' => $analyse['top'],
             'agingBuckets' => $agingBuckets,
             'paiementsEnAttente' => $this->fetchPendingPayments($filters),
@@ -219,12 +221,16 @@ class BuildDashboardDataAction
      * Taux par classe, les moins recouvrées d'abord : c'est là qu'il faut agir.
      * Le dû vient du même calcul que le total dû (RelanceCalculationService).
      *
+     * Le payé ne compte que les inscriptions dont le dû est compté (actives) :
+     * sinon le versement d'une inscription abandonnée gonflait le taux.
+     *
      * @param  array<int, float>  $duParClasse
+     * @param  array<int, int>  $inscriptionsActives
      * @return array<int, array{classe_id: int, classe: string, du: float, paye: float, taux: float}>
      */
-    private function recouvrementParClasse(ComptabiliteFilters $filters, array $duParClasse): array
+    private function recouvrementParClasse(ComptabiliteFilters $filters, array $duParClasse, array $inscriptionsActives): array
     {
-        if ($duParClasse === []) {
+        if ($duParClasse === [] || $inscriptionsActives === []) {
             return [];
         }
 
@@ -232,6 +238,7 @@ class BuildDashboardDataAction
         // ambiguës les colonnes que les deux tables partagent (status, deleted_at).
         $payeParInscription = $this->paiementsQuery($filters)
             ->where('status', self::PAYMENT_STATUS_VALIDATED)
+            ->whereIn('inscription_id', $inscriptionsActives)
             ->groupBy('inscription_id')
             ->selectRaw('inscription_id, SUM('.ESBTPPaiement::sqlCashCase().') as total')
             ->pluck('total', 'inscription_id');

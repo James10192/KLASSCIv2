@@ -100,7 +100,8 @@
     .cb-link:hover { border-color: #b9cdee; color: #0453cb; }
     .cb-warn { display: flex; gap: .7rem; align-items: center; padding: 1rem 1.2rem; border-radius: 12px; background: #fff7ed; border: 1px solid #fde2c2; color: #9a3412; font-size: .88rem; }
 
-    @media (max-width: 1100px) { .cb-row--2-1 { grid-template-columns: 1fr; } }
+    /* Sur une colonne, la file de travail passe avant la courbe (exigence 10). */
+    @media (max-width: 1100px) { .cb-row--2-1 { grid-template-columns: 1fr; } .cb-card--todo { order: -1; } }
     @media (max-width: 860px) { .cb-row--1-1 { grid-template-columns: 1fr; } }
     @media (max-width: 576px) {
         .cb-wrap { padding: 1rem .75rem 1.5rem; }
@@ -276,7 +277,7 @@
             @endif
         </div>
 
-        <div class="cb-card">
+        <div class="cb-card cb-card--todo">
             <div class="cb-card-head"><span class="cb-card-t">À traiter</span><span class="cb-card-s">contrôlé à {{ now()->format('H:i') }}</span></div>
             @forelse($todo as $t)
                 <a href="{{ $t['href'] }}" class="cb-todo">

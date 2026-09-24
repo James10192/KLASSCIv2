@@ -729,8 +729,12 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
             charge: false,
             _ecoute: null,
 
+            _requete: null,
+            _reinit: false,
+
             init() {
                 this._ecoute = (ev) => {
+                    if (this._reinit) return;
                     if (['f-annee', 'f-filiere', 'f-classe'].includes(ev.target && ev.target.id)) this.recharger();
                 };
                 document.addEventListener('change', this._ecoute);
@@ -800,24 +804,40 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
                 if (v('f-annee')) p.set('annee', v('f-annee'));
                 if (v('f-filiere')) p.set('filiere', v('f-filiere'));
                 if (v('f-classe')) p.set('classe', v('f-classe'));
+                // Deux filtres changés vite : seule la dernière requête compte,
+                // sinon la plus lente écrasait la plus récente.
+                if (this._requete) this._requete.abort();
+                const requete = new AbortController();
+                this._requete = requete;
                 this.charge = true;
                 try {
-                    const r = await fetch(this.url + '?' + p.toString(), { headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                    const r = await fetch(this.url + '?' + p.toString(), { signal: requete.signal, headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
                     if (!r.ok) throw new Error('HTTP ' + r.status);
                     this.d = await r.json();
                     history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p.toString() : ''));
                     this.$nextTick(() => this.dessiner());
                 } catch (e) {
+                    if (e.name === 'AbortError') return;
                     window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Les chiffres n’ont pas pu être rechargés. Réessayez.' } }));
                 } finally {
-                    this.charge = false;
+                    if (this._requete === requete) {
+                        this._requete = null;
+                        this.charge = false;
+                    }
                 }
             },
             reinitialiser() {
+                // Le composant de sélection ne relit sa valeur que sur « change » :
+                // sans l'événement, il gardait l'ancien libellé sur des chiffres
+                // non filtrés. On l'émet, en ignorant l'écoute, puis un seul rechargement.
+                this._reinit = true;
                 ['f-annee', 'f-filiere', 'f-classe'].forEach((id) => {
                     const el = document.getElementById(id);
-                    if (el) el.value = '';
+                    if (!el) return;
+                    el.value = '';
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
                 });
+                this._reinit = false;
                 this.recharger();
             },
 

@@ -361,18 +361,14 @@
          défaut pour garder l'accueil efficace. Le choix est retenu par
          navigateur (confort personnel, rien de plus). ─── --}}
     @php
+        // Les alertes déjà affichées au-dessus (caisse non ouverte,
+        // pré-inscriptions) ne sont pas répétées ici.
         $cxTodo = [];
-        if ($cxPeutMaCaisse && $cxSession === null && $cxEncaisseEspeces) {
-            $cxTodo[] = ['warn', 'fa-lock-open', "Votre caisse n'est pas ouverte", "Le premier encaissement en espèces l'ouvre, ou ouvrez-la maintenant.", route('esbtp.caisse.ma-caisse')];
-        }
         if ($cxJ['annulables'] > 0) {
             $cxTodo[] = ['warn', 'fa-rotate-left', $cxJ['annulables'].' saisie'.($cxJ['annulables'] > 1 ? 's' : '').' encore annulable'.($cxJ['annulables'] > 1 ? 's' : ''), 'Une erreur ? Vous avez '.$cxFenetre.' minutes après la saisie pour l’annuler vous-même.', '#cx-derniers'];
         }
         if ($cxJ['a_valider'] > 0 && $cxLienAValider) {
             $cxTodo[] = ['warn', 'fa-hourglass-half', $cxJ['a_valider'].' versement'.($cxJ['a_valider'] > 1 ? 's' : '').' en attente de validation', $cxFmt($cxJ['a_valider_total']).' FCFA saisis aujourd’hui, pas encore comptabilisés.', $cxLienAValider];
-        }
-        if ($preInscriptionOuverte && $preInscriptionsEnAttente > 0 && (auth()->user()?->can('inscriptions.view') ?? false)) {
-            $cxTodo[] = ['info', 'fa-user-clock', $preInscriptionsEnAttente.' pré-inscription'.($preInscriptionsEnAttente > 1 ? 's' : '').' à finaliser', 'Dossiers ouverts à la caisse, en attente du secrétariat.', route('esbtp.inscriptions.index', ['status' => 'en_attente'])];
         }
         if ($cxSession === 'open' && $cxPeutMaCaisse) {
             $cxTodo[] = ['info', 'fa-vault', 'Caisse ouverte depuis '.($cxJ['session']['ouverte_a'] ?? '—'), 'Pensez à compter et clôturer en fin de journée.', route('esbtp.caisse.ma-caisse')];
