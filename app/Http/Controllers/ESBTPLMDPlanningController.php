@@ -133,9 +133,9 @@ class ESBTPLMDPlanningController extends Controller
      * Sécurités appliquées :
      *   - assert ECUE LMD (matiere.unite_enseignement_id != null) — les
      *     matières BTS legacy ne sont pas planifiables ici (Silent #10)
-     *   - filiere_id dérivée server-side depuis l'UE de l'ECUE pour
-     *     éviter l'IDOR (M3) — la valeur client est seulement utilisée
-     *     comme « hint » et validée contre la vérité server-side
+     *   - filiere_id : celle du parcours affiché, acceptée seulement si ce
+     *     parcours voit l'ECUE ; sinon 422, sans repli (anti-IDOR, M3).
+     *     Voir filiereDePlanification()
      *   - DB::transaction + lockForUpdate sur l'unique composite pour
      *     éviter la double-création en race condition (M2)
      *   - created_by/updated_by assignés APRÈS le fill() pour qu'une
@@ -242,9 +242,9 @@ class ESBTPLMDPlanningController extends Controller
      *
      * Securites :
      *   - max 50 ECUE par appel (validation FormRequest + abort_if defensive)
-     *   - chaque ECUE est valide individuellement (LMD only, filiere derivee
-     *     server-side via deriveFiliereIdFromEcue) — meme protection IDOR
-     *     que updatePlanification
+     *   - chaque ECUE est valide individuellement (LMD only, filiere par
+     *     filiereDePlanification : refus si le parcours affiche ne voit pas
+     *     l'ECUE) — meme protection IDOR que updatePlanification
      *   - enseignant valide une seule fois si present
      *   - transaction unique : si un ECUE plante, on continue les autres et
      *     on remonte les erreurs partielles dans la reponse JSON
@@ -307,7 +307,7 @@ class ESBTPLMDPlanningController extends Controller
     /**
      * Variante de `upsertPlanification()` qui prend directement un tableau de
      * champs (au lieu d'un FormRequest) pour servir le bulk-update. Reutilise
-     * la meme strategie : derivation filiere server-side, lockForUpdate, fill
+     * la meme strategie : filiereDePlanification (refus sans repli), lockForUpdate, fill
      * controle, recalcul du total, audit auto via le modele Auditable.
      */
     private function upsertPlanificationFields(int $ecueId, array $fields, array $contextHint): void
@@ -474,25 +474,21 @@ class ESBTPLMDPlanningController extends Controller
     /**
      * Résout le contexte de planification (filiere/niveau/semestre/année).
      *
-     * IMPORTANT (M3, anti-IDOR) : `filiere_id` est dérivé server-side depuis
-     * l'UE de l'ECUE et NON pris tel quel du client. La valeur client est
-     * acceptée seulement si elle correspond à la filière de l'UE de l'ECUE
-     * — sinon on retombe sur la valeur server-side.
-     *
-     * Chaîne canonique : ECUE.unite_enseignement_id → UE.filiere_id (FK directe
-     * sur esbtp_unites_enseignement). Fallback via UE.parcours.filiere_id si
-     * l'UE n'a pas de filière directe (rare mais autorisé par le schéma).
+     * IMPORTANT (M3, anti-IDOR) : `filiere_id` est celle du parcours affiché,
+     * acceptée seulement si ce parcours voit l'ECUE (filiereDePlanification) ;
+     * sinon le contexte porte un refus et la requête répond 422, sans repli.
+     * La filière de la fiche de l'UE ne sert que si aucune n'est envoyée ET
+     * que l'UE ne sert qu'un parcours.
      */
     private function resolvePlanificationContext(Request $request, ?ESBTPMatiere $matiere = null): array
     {
         $clientFiliereId = $request->integer('filiere_id') ?: null;
 
-        // La filiere du parcours AFFICHE, si c'est bien celle d'un parcours qui
-        // utilise l'UE de cet ECUE. La fiche d'une UE partagee ne porte que la
-        // filiere du premier parcours importe : l'imposer ecrivait les heures
-        // saisies sur la maquette LPA dans la planification de LPV (USAT) —
-        // perdues pour l'une, ecrasees pour l'autre. Une filiere etrangere a
-        // l'ECUE reste refusee (IDOR) et retombe sur celle de la fiche.
+        // La filiere du parcours AFFICHE. La fiche d'une UE partagee ne porte
+        // que la filiere du premier parcours importe : l'imposer ecrivait les
+        // heures saisies sur la maquette LPA dans la planification de LPV
+        // (USAT) — perdues pour l'une, ecrasees pour l'autre. Une filiere dont
+        // aucun parcours ne voit l'ECUE est refusee (422), jamais redirigee.
         // Sans ECUE (edition en masse), la filiere se tranche ECUE par ECUE dans
         // upsertPlanificationFields().
         [$filiereId, $refus] = $matiere
