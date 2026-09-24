@@ -18,6 +18,7 @@ class ScolariteClerkCapabilities
         'students.edit',
         'inscriptions.create',
         'inscriptions.edit',
+        'inscriptions.edit_validated',
         'inscriptions.validate',
         'inscriptions.fiche.print',
         'inscriptions.in_kind.mark',
