@@ -37,6 +37,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- Écran d'encaissement : une erreur JavaScript levée à chaque ouverture de l'écran disparaît. Elle venait d'un ancien branchement de recherche d'étudiant, remplacé depuis par le sélecteur d'inscription de la caisse.
+
 - Liste des paiements : sur un écran de portable avec la barre latérale ouverte, le titre « Suivi des Paiements » se retrouvait écrasé en colonne sous les boutons du bandeau. Les boutons passent désormais à la ligne quand la place manque.
 - **Un versement annulé par avoir ne se comptait plus deux fois sur la fiche d'inscription** : l'avoir s'y affichait comme un second versement « Validé » et le total additionnait les deux (50 000 FCFA pour 25 000 payés puis annulés). L'avoir se lit maintenant en négatif avec le reçu qu'il annule, le versement compensé porte « Annulé par avoir », et le total est net.
 - **Accueil caisse** : les saisies encore à valider comptent dans « Saisies du jour » (un guichet qui ne valide pas lui-même voyait « 0 » après deux encaissements), avec le montant qui attend un validateur.
