@@ -27,7 +27,7 @@
             <a href="{{ route('esbtp.etudiants.index') }}" class="sam-tuile sam-tuile--cle">
                 <span class="sam-k">Inscrits {{ $anneeLabel ?? '' }}</span>
                 <span class="sam-v">{{ number_format($samInscrits, 0, ',', ' ') }}</span>
-                <span class="sam-k">{{ $anneeEnCours->name ?? 'Année en cours' }}</span>
+                <span class="sam-k">{{ $samEnAttente > 0 ? $samEnAttente.' encore à valider' : 'toutes validées' }}</span>
             </a>
             <a href="{{ route('esbtp.inscriptions.index', ['status' => 'non_validee']) }}" class="sam-tuile {{ $samEnAttente > 0 ? 'sam-tuile--att' : '' }}">
                 <span class="sam-v">{{ $samEnAttente }}</span>
