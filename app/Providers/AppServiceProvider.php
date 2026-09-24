@@ -184,6 +184,9 @@ class AppServiceProvider extends ServiceProvider
 
         $this->brancherReglagesTelephone();
 
+        // Pierres tombales des purges, pour la synchronisation LMS.
+        \App\Domain\Lms\Synchronisation\SuppressionsDefinitives::ecouter();
+
         $this->partagerCompteurDemandesReinscription();
 
         // Shell mobile : $mobileShellEnabled et $mobileProfile dans toutes les
