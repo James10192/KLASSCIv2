@@ -161,7 +161,7 @@ done
 repond || abandon "base isolee injoignable apres 60 s"
 
 # Le serveur qui repond est-il celui que ce script vient de lancer ?
-serveur=$("$MYSQL" -h127.0.0.1 -P"$CI_DB_PORT" -uroot -N -B -e "SELECT CONCAT(@@port, '|', @@datadir)") \
+serveur=$("$MYSQL" -h127.0.0.1 -P"$CI_DB_PORT" -uroot -N -B -r -e "SELECT CONCAT(@@port, '|', @@datadir)") \
     || abandon "lecture de @@port/@@datadir impossible"
 [ "${serveur%%|*}" = "$CI_DB_PORT" ] || abandon "le serveur repond sur le port ${serveur%%|*}"
 datadir_lu=$(printf '%s' "${serveur#*|}" | tr '\\' '/' | sed 's#/*$##' | tr '[:upper:]' '[:lower:]')
