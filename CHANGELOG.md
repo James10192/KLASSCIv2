@@ -14,6 +14,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Le style mobile s'étend à la scolarité et au secrétariat.** L'agent d'inscription, les services de scolarité, le secrétariat et la coordination reçoivent sur téléphone la même barre du bas en pilule que la caisse et la comptabilité : Accueil, Inscriptions, Étudiants, Paiements (ou Classes pour qui ne voit pas les paiements), et « Plus » (nouvelle inscription, filières, emplois du temps, évaluations, notes, bulletins, annonces, tout le menu). Chaque onglet suit les droits de la personne. Une école peut toujours choisir un autre profil mobile pour un rôle.
+- **Écrans plus lisibles sur téléphone.** Les accueils de scolarité s'ouvrent sur un grand titre et des tuiles d'indicateurs en mosaïque. Les bandeaux des autres pages sont plus compacts : leurs boutons forment une rangée qui défile et leurs indicateurs deux colonnes. Le panneau des notifications s'ouvre sur toute la largeur de l'écran. Les fenêtres montent du bas avec une poignée, et les listes déroulantes premium s'ouvrent sur toute la largeur, sans couper les libellés.
+
 - Outil d'exploitation `GET /api/cli/usage/pages` : les pages de l'application où l'on agit le plus (créations, modifications, suppressions), tirées du journal d'audit, pour décider quoi améliorer en priorité.
 
 - **Nouveau style mobile.** La barre de navigation du bas devient une pilule sombre flottante : l'onglet actif affiche son nom sur fond blanc, les autres seulement leur icône. L'action principale d'un écran, par exemple « Nouvel étudiant », flotte au-dessus au lieu d'être collée à la barre. Les indicateurs deviennent des tuiles arrondies et les listes des groupes à la manière de l'iPhone. L'accueil superAdmin sur téléphone s'ouvre sur une mosaïque : les inscrits en grande tuile bleue, les inscriptions en attente en orange.

@@ -61,6 +61,18 @@
                     ['label' => 'Profil', 'icon' => 'user', 'href' => $r('teacher.profile') ? route('teacher.profile') : null, 'on' => $on('teacher.profile*'), 'show' => true],
                 ];
                 break;
+            case 'scolarite':
+                // Qui ne voit pas les paiements a les classes en quatrieme onglet.
+                $mScoPaiements = $mUser->canAny(['paiements.view', 'paiements.view_own']);
+                $mItems = [
+                    ['label' => 'Accueil', 'icon' => 'home', 'href' => $r('dashboard') ? route('dashboard') : null, 'on' => $on(['dashboard', 'dashboard.*']), 'show' => true],
+                    ['label' => 'Inscriptions', 'icon' => 'file', 'href' => $r('esbtp.inscriptions.index') ? route('esbtp.inscriptions.index') : null, 'on' => $on('esbtp.inscriptions.*'), 'show' => $mUser->can('inscriptions.view')],
+                    ['label' => 'Étudiants', 'icon' => 'users', 'href' => $r('esbtp.etudiants.index') ? route('esbtp.etudiants.index') : null, 'on' => $on('esbtp.etudiants.*'), 'show' => $mUser->can('students.view')],
+                    ['label' => 'Paiements', 'icon' => 'cash', 'href' => $r('esbtp.paiements.index') ? route('esbtp.paiements.index') : null, 'on' => $on('esbtp.paiements.*'), 'show' => $mScoPaiements],
+                    ['label' => 'Classes', 'icon' => 'grid', 'href' => $r('esbtp.classes.index') ? route('esbtp.classes.index') : null, 'on' => $on('esbtp.classes.*'), 'show' => !$mScoPaiements && $mUser->can('classes.view')],
+                    ['label' => 'Plus', 'icon' => 'menu', 'sheet' => 'm-plus', 'on' => false, 'show' => true],
+                ];
+                break;
         }
 
         $mItems = array_values(array_filter($mItems, fn ($it) => $it['show'] && (isset($it['sheet']) || !empty($it['href']))));
@@ -73,7 +85,7 @@
     $mOnIndex = $mOnIndex === false ? -1 : (int) $mOnIndex;
     $mCanSwitch = $mUser && $mUser->hasRole('superAdmin') && Route::has('mobile.profil');
     // Libellés courts pour l'affichage (la liste canonique vient du resolver).
-    $mProfilLabels = ['caissier' => 'Caisse', 'comptable' => 'Comptabilité', 'etudiant' => 'Étudiant', 'enseignant' => 'Enseignant'];
+    $mProfilLabels = ['caissier' => 'Caisse', 'comptable' => 'Comptabilité', 'etudiant' => 'Étudiant', 'enseignant' => 'Enseignant', 'scolarite' => 'Scolarité'];
     $mProfilLabels = array_intersect_key($mProfilLabels, array_flip(\App\Services\Mobile\MobileProfileResolver::PROFILS));
     $mRoleLabel = $mProfil ? ($mProfilLabels[$mProfil] ?? '') : '';
 @endphp
@@ -204,6 +216,29 @@
                             <x-m.icon name="settings" />Préférences<span class="ch"><x-m.icon name="chr" /></span>
                         </a>
                     @endif
+                @elseif($mProfil === 'scolarite')
+                    @php
+                        $mScoLiens = [
+                            ['route' => 'esbtp.inscriptions.create', 'on' => 'esbtp.inscriptions.create', 'perm' => 'inscriptions.create', 'icon' => 'plus', 'label' => 'Nouvelle inscription'],
+                            ['route' => 'esbtp.classes.index', 'on' => 'esbtp.classes.*', 'perm' => 'classes.view', 'icon' => 'grid', 'label' => 'Classes', 'sauf_onglet' => true],
+                            ['route' => 'esbtp.filieres.index', 'on' => 'esbtp.filieres.*', 'perm' => 'filieres.view', 'icon' => 'book', 'label' => 'Filières'],
+                            ['route' => 'esbtp.emploi-temps.index', 'on' => 'esbtp.emploi-temps.*', 'perm' => 'timetables.view', 'icon' => 'cal', 'label' => 'Emplois du temps'],
+                            ['route' => 'esbtp.evaluations.index', 'on' => 'esbtp.evaluations.*', 'perm' => 'evaluations.view', 'icon' => 'pen', 'label' => 'Évaluations'],
+                            ['route' => 'esbtp.notes.index', 'on' => 'esbtp.notes.*', 'perm' => 'notes.view', 'icon' => 'list', 'label' => 'Notes'],
+                            ['route' => 'esbtp.bulletins.index', 'on' => 'esbtp.bulletins.*', 'perm' => 'bulletins.view', 'icon' => 'file', 'label' => 'Bulletins'],
+                            ['route' => 'esbtp.annonces.index', 'on' => 'esbtp.annonces.*', 'perm' => 'annonces.view', 'icon' => 'msg', 'label' => 'Annonces'],
+                        ];
+                        $mScoOngletClasses = collect($mItems)->contains(fn ($it) => ($it['label'] ?? '') === 'Classes');
+                    @endphp
+                    @foreach($mScoLiens as $lien)
+                        @continue(!Route::has($lien['route']) || !$mUser->can($lien['perm']) || (($lien['sauf_onglet'] ?? false) && $mScoOngletClasses))
+                        <a href="{{ route($lien['route']) }}" class="{{ request()->routeIs($lien['on']) ? 'on' : '' }}">
+                            <x-m.icon :name="$lien['icon']" />{{ $lien['label'] }}<span class="ch"><x-m.icon name="chr" /></span>
+                        </a>
+                    @endforeach
+                    <button type="button" x-on:click="hide(); document.getElementById('sidebar-toggle')?.click();">
+                        <x-m.icon name="menu" />Tout le menu<span class="ch"><x-m.icon name="chr" /></span>
+                    </button>
                 @endif
 
                 @if(Route::has('logout'))
