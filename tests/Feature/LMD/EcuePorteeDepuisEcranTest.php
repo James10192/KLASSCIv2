@@ -168,6 +168,72 @@ class EcuePorteeDepuisEcranTest extends TestCase
         $this->assertNotContains('TOPO-TIR', $this->vusPar($this->batiment), 'Un element reserve a Travaux Publics ne doit pas entrer dans la maquette de Batiment.');
     }
 
+    public function test_changer_la_maquette_d_un_element_commun_le_deplace(): void
+    {
+        // Le cas USAT : un element pose en commun, puis modifie en « Reservee a
+        // Batiment ». La ligne commune doit partir, sinon Travaux Publics le
+        // voit toujours alors que l'ecran affirme le contraire.
+        $this->composition->retirer($this->ue, [(int) $this->ecueBu->id], (int) $this->batiment->id);
+        $this->composition->poser($this->ue, (int) $this->ecueBu->id, ['coefficient_ecue' => 1, 'credit_ecue' => 3, 'ordre_bulletin' => 0]);
+        $this->assertContains('ECUE-BU', $this->vusPar($this->travauxPublics));
+
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.ecue.update', [$this->ue, $this->ecueBu]), [
+                'credit_ecue' => 3,
+                'parcours_id' => $this->batiment->id,
+                'portee_origine' => 0,
+                'garder_origine' => 0,
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseMissing('esbtp_ue_matiere', [
+            'unite_enseignement_id' => $this->ue->id,
+            'matiere_id' => $this->ecueBu->id,
+            'parcours_id' => CompositionUe::COMMUN,
+        ]);
+        $this->assertContains('ECUE-BU', $this->vusPar($this->batiment));
+        $this->assertNotContains('ECUE-BU', $this->vusPar($this->travauxPublics));
+    }
+
+    public function test_garder_aussi_l_origine_conserve_la_surcharge(): void
+    {
+        $this->composition->poser($this->ue, (int) $this->ecueBu->id, ['coefficient_ecue' => 1, 'credit_ecue' => 3, 'ordre_bulletin' => 0]);
+
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.ecue.update', [$this->ue, $this->ecueBu]), [
+                'coefficient_ecue' => 2,
+                'parcours_id' => $this->travauxPublics->id,
+                'portee_origine' => 0,
+                'garder_origine' => 1,
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('esbtp_ue_matiere', [
+            'unite_enseignement_id' => $this->ue->id,
+            'matiere_id' => $this->ecueBu->id,
+            'parcours_id' => CompositionUe::COMMUN,
+        ]);
+        $this->assertDatabaseHas('esbtp_ue_matiere', [
+            'unite_enseignement_id' => $this->ue->id,
+            'matiere_id' => $this->ecueBu->id,
+            'parcours_id' => $this->travauxPublics->id,
+        ]);
+    }
+
+    public function test_la_liste_signale_un_element_a_la_fois_commun_et_reserve(): void
+    {
+        // L'import a reserve ECUE-BU a Batiment ; on ajoute la ligne commune.
+        $this->composition->poser($this->ue, (int) $this->ecueBu->id, ['coefficient_ecue' => 1, 'credit_ecue' => 3, 'ordre_bulletin' => 0]);
+
+        $doubles = $this->actingAs($this->acteur)
+            ->getJson(route('esbtp.lmd.ue.index', ['format' => 'json', 'search' => 'UE-PARTAGEE', 'parcours_id' => $this->travauxPublics->id]))
+            ->assertOk()
+            ->json('ues.0.communs_et_reserves');
+
+        $this->assertCount(1, $doubles, 'Le signalement vaut quel que soit le filtre de parcours.');
+        $this->assertSame(['BU'], $doubles[0]['reserve_a']);
+    }
+
     public function test_le_retrait_vise_la_maquette_de_la_ligne_cliquee(): void
     {
         $this->composition->poser($this->ue, (int) $this->ecueBu->id, [

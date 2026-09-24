@@ -87,6 +87,9 @@
     .lu-parcours-badge-sem { font-size: .6rem; color: #818cf8; }
     /* Portee d'un element : commun a toutes les maquettes, ou reserve a un parcours */
     .lu-portee-badge { display: inline-flex; align-items: center; gap: .25rem; margin-left: .45rem; padding: .1rem .4rem; border-radius: 5px; font-size: .64rem; font-weight: 600; letter-spacing: .02em; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; vertical-align: middle; }
+    .lu-double-alerte { display: inline-flex; align-items: center; gap: .3rem; margin-left: .5rem; padding: .12rem .45rem; border-radius: 6px; font-size: .66rem; font-weight: 700; background: rgba(245,158,11,.12); color: #b45309; border: 1px solid rgba(245,158,11,.35); vertical-align: middle; }
+    .lu-double-ligne td { background: #fffbeb; }
+    .lu-double-texte { font-size: .8rem; color: #92400e; line-height: 1.5; }
     .lu-portee-badge--reserve { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
     .lu-empty { text-align: center; padding: 4rem 2rem; }
     .lu-empty-icon { width: 76px; height: 76px; border-radius: 20px; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; color: #cbd5e1; margin-bottom: 1.15rem; }
@@ -284,7 +287,13 @@
                                 <span class="lu-arrow" :class="{ 'lu-open': openRow === ue.id }">&#9654;</span>
                             </td>
                             <td><span class="lu-code" x-text="ue.code"></span></td>
-                            <td><span class="lu-name" x-text="ue.name"></span></td>
+                            <td>
+                                <span class="lu-name" x-text="ue.name"></span>
+                                <span class="lu-double-alerte" x-show="(ue.communs_et_reserves || []).length" x-cloak
+                                      title="Un élément est à la fois commun et réservé : les autres parcours le voient encore.">
+                                    <i class="fas fa-exclamation-triangle"></i>Élément en double
+                                </span>
+                            </td>
                             <td>
                                 <span x-show="ue.type_ue" class="lu-type-badge"
                                       :class="'lu-type--' + ue.type_ue"
@@ -349,6 +358,18 @@
                                             <i class="fas fa-unlink" style="font-size:.7rem;"></i>
                                         </button>
                                     </div>
+                                </td>
+                            </tr>
+                        </template>
+                        <template x-for="d in (ue.communs_et_reserves || [])" :key="'double-' + d.id">
+                            <tr class="lu-sub-row lu-double-ligne" x-show="openRow === ue.id" x-cloak>
+                                <td></td>
+                                <td colspan="7" class="lu-double-texte">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    « <strong x-text="d.name"></strong> » est réservé à <strong x-text="d.reserve_a.join(', ')"></strong>,
+                                    mais il est aussi dans la version <strong>Commun</strong> : les autres parcours le voient donc encore.
+                                    S'il ne concerne que <span x-text="d.reserve_a.join(', ')"></span>, retirez sa ligne « Commun » avec le bouton
+                                    <i class="fas fa-unlink" style="font-size:.7rem;"></i>.
                                 </td>
                             </tr>
                         </template>
@@ -521,6 +542,11 @@
                             <option value="">Commune à tous les parcours de l'UE</option>
                         </select>
                         <div id="ecue_portee_hint" style="margin-top:.45rem; font-size:.74rem; color:#64748b; line-height:1.45;"></div>
+                        {{-- En modification seulement : changer la maquette deplace l'element --}}
+                        <label id="ecue_garder_block" style="display:none; margin-top:.6rem; font-size:.76rem; color:#334155; cursor:pointer;">
+                            <input type="checkbox" id="ecue_garder_origine" onchange="onEcuePorteeChange()" style="margin-right:.35rem;">
+                            Garder aussi l'élément dans « <span id="ecue_origine_label"></span> »
+                        </label>
                     </div>
 
                     {{-- Tabs: Créer / Lier existant --}}
@@ -1095,13 +1121,29 @@ function onEcuePorteeChange() {
         const nom = sel.options[sel.selectedIndex].textContent.replace(/^Réservée à /, '');
         hint.textContent = 'Visible et compté uniquement dans la maquette ' + nom + '. Les autres parcours de l\'unité ne le voient pas.';
     }
+    // En modification : la maquette choisie differe de celle de la ligne ouverte.
+    const garderBlock = document.getElementById('ecue_garder_block');
+    const change = ecueIsEditMode && String(sel.value || '0') !== String(ecueOriginePortee || '0');
+    garderBlock.style.display = change ? 'block' : 'none';
+    if (change) {
+        const origine = Array.from(sel.options).find(o => String(o.value || '0') === String(ecueOriginePortee || '0'));
+        document.getElementById('ecue_origine_label').textContent = origine ? origine.textContent : 'l\'ancienne maquette';
+        hint.textContent = document.getElementById('ecue_garder_origine').checked
+            ? 'L\'élément sera dans les DEUX : « ' + (origine ? origine.textContent : '') + ' » reste visible pour ses parcours.'
+            : 'L\'élément sera DÉPLACÉ : il quitte « ' + (origine ? origine.textContent : '') + ' ». ' + hint.textContent;
+    }
     // La liste des matieres proposees depend de la maquette visee.
     lastLoadedUeId = null;
     if (ecueActiveTab === 'link') loadMatieresDisponibles();
 }
 
+// Maquette de la ligne ouverte en modification (0 = commune).
+let ecueOriginePortee = 0;
+
 function openEcueCreateModal(ueId, ueName, ueCredit, creditsUsed, parcoursList, porteeParDefaut) {
     ecueUeCredit = ueCredit; ecueCreditsUsed = creditsUsed; ecueOwnCredit = 0; ecueCurrentUeId = ueId; ecueIsEditMode = false;
+    ecueOriginePortee = 0;
+    document.getElementById('ecue_garder_origine').checked = false;
     document.getElementById('ecue_form').action = `${BASE}/${ueId}/ecue`;
     document.getElementById('ecue_form').reset();
     document.getElementById('ecue_method').value = 'POST';
@@ -1123,8 +1165,11 @@ function openEcueEditModalFn(ueId, ecue, ueCredit, creditsUsed, ueName, parcours
     ecueCurrentUeId = ueId; ecueIsEditMode = true;
     document.getElementById('ecue_form').action = `${BASE}/${ueId}/ecue/${ecue.id}`;
     document.getElementById('ecue_method').value = 'PUT';
-    // On modifie la ligne que l'on regarde : sa propre maquette. Choisir un
-    // parcours sur un element commun cree une surcharge propre a ce parcours.
+    // On modifie la ligne que l'on regarde : sa propre maquette. Changer la
+    // maquette DEPLACE l'element ; la case « Garder aussi » permet la
+    // surcharge (un parcours pose ses propres valeurs sur un element commun).
+    ecueOriginePortee = ecue.portee || 0;
+    document.getElementById('ecue_garder_origine').checked = false;
     remplirEcuePortee(parcoursList, ecue.portee || '');
     document.getElementById('ecue_matiere_id').value = '';
     document.getElementById('ecue_modal_title').textContent = 'Modifier l\'ECUE';
@@ -1167,6 +1212,10 @@ document.getElementById('ecue_form').addEventListener('submit', async function(e
     const body = {};
     formData.forEach((v, k) => { if (v !== '' && k !== '_method') body[k] = v; });
     if (ecueActiveTab === 'link') { delete body.name; delete body.code; }
+    if (ecueIsEditMode) {
+        body.portee_origine = ecueOriginePortee || 0;
+        body.garder_origine = document.getElementById('ecue_garder_origine').checked ? 1 : 0;
+    }
 
     const isPut = document.getElementById('ecue_method').value === 'PUT';
     try {
