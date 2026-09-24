@@ -214,6 +214,14 @@ class BaseApiController extends Controller
             return $query;
         }
 
+        // Le jeton serveur du LMS lit toute l'ecole s'il porte `lms:lecture` :
+        // il alimente le cache du LMS, pas l'ecran d'un utilisateur.
+        if (\App\Support\Lms\JetonServeurLms::estServeur($user)) {
+            return \App\Support\Lms\JetonServeurLms::peut($user, \App\Support\Lms\JetonServeurLms::LECTURE)
+                ? $query
+                : $query->whereRaw('1 = 0');
+        }
+
         // Filtres spécifiques par rôle et contexte
         if ($user->can('identity.teach')) {
             return $this->applyEnseignantFilters($query, $context);
