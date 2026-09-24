@@ -717,5 +717,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // ecrase les moyennes enregistrees, y compris celles saisies a la main.
         Route::post('/notes/recompute', [App\Http\Controllers\API\CLI\CLINotesRecomputeController::class, 'notesRecompute'])
             ->name('notes.recompute');
+        // Enregistrer ou retirer les moyennes de matiere d'UN eleve (reclamation
+        // traitee a distance). Simulation par defaut, motif obligatoire.
+        Route::post('/resultats/moyennes', [App\Http\Controllers\API\CLI\CLIMoyennesController::class, 'enregistrer'])
+            ->name('resultats.moyennes');
     });
 });
