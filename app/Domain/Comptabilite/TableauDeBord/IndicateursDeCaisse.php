@@ -139,6 +139,33 @@ class IndicateursDeCaisse
     }
 
     /**
+     * Saisies de l'agent par heure sur la journée (validées ou en attente),
+     * de 7 h à 18 h au moins, élargi si l'agent a saisi en dehors.
+     *
+     * @return array<int, array{heure: int, count: int}>
+     */
+    public function affluenceDuJour(User $user, Carbon $jour): array
+    {
+        $parHeure = ESBTPPaiement::query()
+            ->ownedBy($user->id)
+            ->whereDate('created_at', $jour)
+            ->whereIn('status', ['validé', 'en_attente'])
+            ->encaissements()
+            ->groupBy(DB::raw('HOUR(created_at)'))
+            ->select(DB::raw('HOUR(created_at) as h'), DB::raw('COUNT(*) as n'))
+            ->pluck('n', 'h');
+
+        $debut = min(7, (int) ($parHeure->keys()->min() ?? 7));
+        $fin = max(18, (int) ($parHeure->keys()->max() ?? 18));
+        $serie = [];
+        for ($h = $debut; $h <= $fin; $h++) {
+            $serie[] = ['heure' => $h, 'count' => (int) ($parHeure[$h] ?? 0)];
+        }
+
+        return $serie;
+    }
+
+    /**
      * Variation en pourcentage, null quand la référence est nulle (un « +∞ % »
      * n'apprend rien à personne).
      */

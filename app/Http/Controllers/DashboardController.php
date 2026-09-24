@@ -574,10 +574,12 @@ class DashboardController extends Controller
         try {
             $caisseMobile = $indicateurs->journeeDuGuichet($user, $today);
             $serieSemaine = $indicateurs->serieJournaliere(7, $user);
+            $affluence = $indicateurs->affluenceDuJour($user, $today);
         } catch (\Throwable $e) {
             \Log::error('[dashboard caisse] indicateurs indisponibles', ['user_id' => $user->id, 'error' => $e->getMessage()]);
             $caisseMobile = IndicateursDeCaisse::journeeVide($user);
             $serieSemaine = [];
+            $affluence = [];
             $indisponible = true;
         }
 
@@ -610,6 +612,7 @@ class DashboardController extends Controller
             'paiementsRecents',
             'caisseMobile',
             'serieSemaine',
+            'affluence',
             'indisponible'
         ));
     }
