@@ -2159,14 +2159,14 @@
                         </div>
                         @endcanany
 
-                        @canany(['paiements.create', 'paiements.create.mobile_money'])
+                        @can('porte:esbtp.paiements.create')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.paiements.create') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.create') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-plus"></i></div>
                                 <div class="menu-text">Encaissement</div>
                             </a>
                         </div>
-                        @endcanany
+                        @endcan
 
                         @can('paiements.view_own')
                         <div class="menu-item">
@@ -2233,14 +2233,28 @@
                     @can('comptabilite.access')
                         <div class="menu-category">Gestion financière</div>
 
-                        {{-- Dashboard Comptabilité --}}
+                        {{-- Analyse financière (ex « Dashboard Comptable ») --}}
                         @can('comptabilite.dashboard.view')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-chart-line"></i></div>
-                                <div class="menu-text">Dashboard Comptable</div>
+                                <div class="menu-text">Analyse financière</div>
                             </a>
                         </div>
+                        @endcan
+
+                        {{-- Encaisser hors de la section Caisse : un comptable qui encaisse
+                             (hors espèces, par exemple) n'a pas le module caisse, et ne voyait
+                             donc l'écran nulle part. Masqué quand la section Caisse l'affiche. --}}
+                        @can('porte:esbtp.paiements.create')
+                        @cannot('module.caisse.access')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.paiements.create') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.create') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-plus"></i></div>
+                                <div class="menu-text">Encaisser</div>
+                            </a>
+                        </div>
+                        @endcannot
                         @endcan
 
                         <div class="menu-accordion">

@@ -12,12 +12,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Les chiffres des tableaux de bord de la caisse et de la comptabilité.
+ * Les chiffres du tableau de bord de la caisse.
  *
- * Deux portées, un seul calcul :
- *  - « guichet » : ce qu'UN agent a saisi, daté par `created_at` — c'est le
- *    geste au guichet qui compte, pas la date de valeur ;
- *  - « école » : tout l'établissement, daté par `date_paiement`.
+ * Portée « guichet » : ce qu'UN agent a saisi, daté par `created_at` — c'est
+ * le geste au guichet qui compte, pas la date de valeur. Les chiffres de
+ * l'école entière (accueil comptable, analyse financière) viennent d'un seul
+ * calcul, {@see \App\Actions\Comptabilite\BuildDashboardDataAction}.
  *
  * Tout est agrégé en base (SUM, COUNT, GROUP BY) : rien n'hydrate les
  * versements d'une période entière (rule premium-dashboard, exigence 9).
@@ -106,23 +106,20 @@ class IndicateursDeCaisse
     }
 
     /**
-     * Encaissé net par jour, sur les N derniers jours (aujourd'hui compris).
-     * Portée guichet si un agent est donné, école sinon.
+     * Encaissé net par jour de l'agent, sur les N derniers jours (aujourd'hui
+     * compris), daté par la saisie au guichet.
      *
      * @return array<int, array{jour: string, libelle: string, total: float}>
      */
-    public function serieJournaliere(int $jours, ?User $agent = null): array
+    public function serieJournaliere(int $jours, User $agent): array
     {
         $fin = now()->startOfDay();
         $debut = $fin->copy()->subDays($jours - 1);
-        $colonne = $agent ? 'created_at' : 'date_paiement';
-
-        $base = $agent ? $this->guichet($agent) : $this->ecole();
-        $totaux = $base
-            ->whereDate($colonne, '>=', $debut)
-            ->whereDate($colonne, '<=', $fin)
-            ->groupBy(DB::raw("DATE($colonne)"))
-            ->select(DB::raw("DATE($colonne) as jour"), DB::raw('SUM('.ESBTPPaiement::sqlCashCase().') as total'))
+        $totaux = $this->guichet($agent)
+            ->whereDate('created_at', '>=', $debut)
+            ->whereDate('created_at', '<=', $fin)
+            ->groupBy(DB::raw('DATE(created_at)'))
+            ->select(DB::raw('DATE(created_at) as jour'), DB::raw('SUM('.ESBTPPaiement::sqlCashCase().') as total'))
             ->pluck('total', 'jour');
 
         $serie = [];
@@ -139,39 +136,30 @@ class IndicateursDeCaisse
     }
 
     /**
-     * Encaissé net par mois pour l'école, sur les N derniers mois.
+     * Saisies de l'agent par heure sur la journée (validées ou en attente),
+     * de 7 h à 18 h au moins, élargi si l'agent a saisi en dehors.
      *
-     * @return array<int, array{mois: string, libelle: string, total: float}>
+     * @return array<int, array{heure: int, count: int}>
      */
-    public function serieMensuelle(int $mois): array
+    public function affluenceDuJour(User $user, Carbon $jour): array
     {
-        $debut = now()->startOfMonth()->subMonths($mois - 1);
+        $parHeure = ESBTPPaiement::query()
+            ->ownedBy($user->id)
+            ->whereDate('created_at', $jour)
+            ->whereIn('status', ['validé', 'en_attente'])
+            ->encaissements()
+            ->groupBy(DB::raw('HOUR(created_at)'))
+            ->select(DB::raw('HOUR(created_at) as h'), DB::raw('COUNT(*) as n'))
+            ->pluck('n', 'h');
 
-        $totaux = $this->ecole()
-            ->whereDate('date_paiement', '>=', $debut)
-            ->groupBy(DB::raw("DATE_FORMAT(date_paiement, '%Y-%m')"))
-            ->select(DB::raw("DATE_FORMAT(date_paiement, '%Y-%m') as mois"), DB::raw('SUM('.ESBTPPaiement::sqlCashCase().') as total'))
-            ->pluck('total', 'mois');
-
+        $debut = min(7, (int) ($parHeure->keys()->min() ?? 7));
+        $fin = max(18, (int) ($parHeure->keys()->max() ?? 18));
         $serie = [];
-        for ($m = $debut->copy(); $m->lte(now()); $m->addMonth()) {
-            $cle = $m->format('Y-m');
-            $serie[] = [
-                'mois' => $cle,
-                'libelle' => ucfirst($m->isoFormat('MMM YY')),
-                'total' => round((float) ($totaux[$cle] ?? 0), 2),
-            ];
+        for ($h = $debut; $h <= $fin; $h++) {
+            $serie[] = ['heure' => $h, 'count' => (int) ($parHeure[$h] ?? 0)];
         }
 
         return $serie;
-    }
-
-    /**
-     * Encaissé net de l'école sur une journée (date de valeur).
-     */
-    public function netEcoleDuJour(Carbon $jour): float
-    {
-        return $this->netDu($this->ecole()->whereDate('date_paiement', $jour));
     }
 
     /**
@@ -226,11 +214,6 @@ class IndicateursDeCaisse
     private function guichet(User $agent): Builder
     {
         return ESBTPPaiement::query()->ownedBy($agent->id)->where('status', 'validé');
-    }
-
-    private function ecole(): Builder
-    {
-        return ESBTPPaiement::query()->where('status', 'validé');
     }
 
     private function netDu(Builder $requete): float

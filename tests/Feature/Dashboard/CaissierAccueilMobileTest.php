@@ -137,6 +137,15 @@ class CaissierAccueilMobileTest extends TestCase
         $this->assertTrue($caisse['peut_annuler']);
         $this->assertSame(5, $caisse['fenetre_annulation_minutes']);
 
+        // Bureau « guichet » : affluence par heure, repère sur la moyenne,
+        // compte à rebours sur les saisies encore annulables.
+        $affluence = collect($response->viewData('affluence'));
+        $this->assertSame(1, $affluence->firstWhere('heure', 9)['count']);
+        $this->assertSame(4, $affluence->firstWhere('heure', 10)['count']); // 10h00, 10h12, 10h42, 10h44 ; le rejet de 9h30 ne compte pas
+        $response->assertSee('Ma caisse du jour', false);
+        $response->assertSee('Caisse ouverte à 07:58', false);
+        $response->assertSee('annulable encore', false);
+
         // Le DOM mobile est rendu, à côté du bureau.
         $response->assertSee('has-m-shell m-profile-caissier', false);
         $response->assertSee('m-only-mobile m-screen cxm-screen', false);
