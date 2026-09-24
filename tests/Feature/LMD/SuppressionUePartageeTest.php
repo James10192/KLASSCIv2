@@ -165,8 +165,16 @@ class SuppressionUePartageeTest extends TestCase
         // La fabrique pose created_by et updated_by a 1 : sans utilisateur en base,
         // la cle etrangere tombe. Piege connu de ce depot.
         $auteur = User::factory()->create();
+        // Une evaluation porte une classe (colonne obligatoire) ; LMD, puisque
+        // l'element evalue est une ECUE (garde CoherenceSystemeAcademique).
+        // Le systeme d'une classe se deduit de son niveau : un niveau Licence.
+        $classe = \App\Models\ESBTPClasse::factory()->create([
+            'systeme_academique' => 'LMD',
+            'niveau_etude_id' => \App\Models\ESBTPNiveauEtude::whereIn('type', \App\Models\ESBTPNiveauEtude::CYCLES_LMD)->value('id'),
+        ]);
         ESBTPEvaluation::factory()->create([
             'matiere_id' => $ecueTir->id,
+            'classe_id' => $classe->id,
             'created_by' => $auteur->id,
             'updated_by' => $auteur->id,
         ]);
@@ -174,7 +182,9 @@ class SuppressionUePartageeTest extends TestCase
         $resultat = app(LMDCleanupService::class)->cleanupParcours([$tir->code], dryRun: false);
 
         // L'unite est REFUSEE, et rien n'est touche.
-        $this->assertNotEmpty($resultat['blocked'] ?? [], "L'unite aurait du etre refusee : son element porte des notes.");
+        // Le refus se lit par parcours : la racine ne porte que les totaux.
+        $this->assertNotEmpty($resultat['parcours'][0]['blocked'], "L'unite aurait du etre refusee : son element porte des notes.");
+        $this->assertSame(1, $resultat['totals']['ues_blocked']);
         $this->assertNotNull(ESBTPUniteEnseignement::find($ueTir->id), "L'unite a ete supprimee malgre des notes.");
         $this->assertNotNull(ESBTPMatiere::find($ecueTir->id), "L'element note a ete supprime.");
     }

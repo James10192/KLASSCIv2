@@ -66,6 +66,79 @@ une sauvegarde relue ; `modifiees` et `sauvegarde` (nom du fichier, jamais son c
 Seules les lignes dont l'adresse porte encore le domaine factice sont vidées. Chaque appel est tracé dans le journal d'audit
 (`cli.emails.nettoyer_factices`).
 
+## `POST /api/cli/emails/corriger-fautes` (`cli:admin`, 10 appels/min)
+
+Corrige les adresses dont le domaine est une faute de frappe (`gmai.com`, `gmail.con`,
+`gemail.com`…), après validation de l'école. Refus par défaut : tout doute laisse l'adresse
+telle quelle. Mêmes colonnes que le diagnostic, présentes dans le schéma ; `users` seulement
+avec `inclure_comptes: true`. Les domaines se comparent après suppression des espaces et
+passage en minuscules.
+
+**Deux natures de faute**
+- `connue` : tables explicites de `domaines-suspects.json` (fautes connues, extensions
+  fautives `con`, `fe`, `frr`). Toujours proposée et corrigible.
+- `probable` : une lettre ou deux d'une messagerie de référence (distance d'édition). Proposée
+  et corrigée **seulement** avec `inclure_probables: true` ; à l'écriture, le résolveur doit
+  répondre **à l'instant** NXDOMAIN pour MX **et** pour A (aucun cache, aucun domaine témoin,
+  aucun repli) ; réponse inconnue, délai dépassé ou résolveur suspendu : rien n'est écrit
+  (`dns_non_confirme`). Deux messageries à égale distance : aucune suggestion. Une extension
+  de pays valide (`.cm`…) n'est jamais remplacée.
+
+**Simulation** `{"execute": false, "inclure_comptes": false, "inclure_probables": false}` :
+`propositions`, au plus 500 (`propositions_total` les compte toutes) :
+
+```json
+{"cle":"esbtp_candidatures:email:42","table":"esbtp_candidatures","colonne":"email","id":42,
+ "email_masque":"k***@gmai.com","domaine_actuel":"gmai.com","domaine_propose":"gmail.com","nature":"connue",
+ "suggestion_masquee":"k***@gmail.com","dossier_reference_masquee":"AB**-****-**KL",
+ "lie_a":[{"table":"esbtp_rdv_reservations","colonne":"email","id":7,"cle":"esbtp_rdv_reservations:email:7"}],
+ "compte_de_connexion":false,"avertissement":null}
+```
+
+`lie_a` : les autres lignes du **même dossier** qui portent **la même adresse** (candidature et
+ses réservations actives ; réservation de réinscription et adresses de l'étudiant ; étudiant ou
+parent et son compte de connexion `users`). `compte_de_connexion: true` (et `avertissement`)
+signale une adresse de connexion : la corriger change l'identifiant de la personne.
+
+**Exécution** `{"execute": true, "inclure_comptes": false, "inclure_probables": false,
+"corrections": [{"cle": "…", "domaine_propose": "gmail.com", "domaine_actuel": "gmai.com"}]}`
+(500 clés au plus, distinctes ; `domaine_actuel` optionnel mais conseillé). Seules les clés
+listées sont traitées, et **tous les `lie_a` d'une clé doivent être dans la même requête**
+(sinon `lies_non_valides` ; un étudiant lié à son compte exige donc `inclure_comptes`).
+
+Pour chaque clé, au moment d'écrire : l'adresse **entière** est analysée ; elle doit porter
+encore une faute dont la suggestion canonique est exactement `domaine_propose` (jamais un domaine
+choisi par l'appelant) ; l'adresse corrigée doit être valide. Seul le domaine change, la partie
+locale reste identique. Une sauvegarde (`storage/app/backups/emails-fautes-<date>_<µs>-<aléa>.json` :
+table, id, colonne, ancienne et nouvelle valeur) est écrite et relue avant toute écriture. Les
+clés liées forment un **groupe** écrit dans **une** transaction : toutes ses lignes verrouillées
+et relues, chacune écrite avec sa trace d'audit (`correction_faute_email`) ; une ligne modifiée,
+une adresse déjà utilisée ou une erreur annulent le groupe entier. Un groupe en échec n'arrête pas
+les suivants.
+
+Réponse, dans l'enveloppe `data` :
+
+```json
+{"execute":true,"inclure_comptes":false,"inclure_probables":false,"propositions_total":0,"propositions":[],
+ "corrigees":2,"ignorees":[{"cle":"esbtp_candidatures:email:43","motif":"domaine_non_canonique"}],
+ "sauvegarde":"emails-fautes-20260925_101500_123456-k3x9q2.json","convocations_a_renvoyer":1}
+```
+
+`ignorees[].motif` :
+- `cle_invalide` : clé mal formée, colonne absente ou non inventoriée, compte sans `inclure_comptes` ;
+- `introuvable` : aucune ligne à cet identifiant ;
+- `modifiee_entre_temps` : l'adresse ne porte plus de faute, `domaine_actuel` diffère, ou la
+  valeur a été modifiée entre la préparation et le verrou ;
+- `domaine_non_canonique` ; `adresse_invalide` (adresse actuelle ou corrigée mal formée) ;
+- `faute_probable_non_autorisee` ; `dns_non_confirme` ;
+- `lies_non_valides` ; `groupe_refuse` (une autre clé du groupe est refusée) ;
+- `adresse_deja_utilisee` (unicité : groupe annulé) ; `echec_ecriture` (groupe annulé).
+
+`convocations_a_renvoyer` : réservations actives corrigées dont la convocation était en échec
+ou sans e-mail. **Rien n'est envoyé** : le renvoi se décide ensuite. Une erreur rend un message
+fixe en français (ni requête ni chemin) ; le détail va au journal de l'application, et l'appel
+est tracé dans le journal CLI dans tous les cas.
+
 ## `POST /api/cli/rendez-vous/synchroniser-convocations` (`cli:admin`)
 
 Un passage de la synchronisation planifiée (`?max=` 1 à 200, 100 par défaut, 20 s au plus) :
@@ -167,4 +240,4 @@ Lisible et modifiable par `GET/POST /api/cli/settings` ; la valeur est validée 
 booléen (`1/0`, `true/false`) et écrite en `1`/`0`.
 
 - 2026-09-24 : nettoyage, synchronisation et familles par l'API CLI.
-- 2026-09-25 : rattrapage des convocations d'avant le suivi.
+- 2026-09-25 : rattrapage des convocations d'avant le suivi ; correction des fautes de frappe.

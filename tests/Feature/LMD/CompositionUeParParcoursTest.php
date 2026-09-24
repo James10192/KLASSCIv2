@@ -331,6 +331,11 @@ class CompositionUeParParcoursTest extends TestCase
         $autre = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
         $autre->update(['unite_enseignement_id' => null]);
 
+        // Depuis septembre 2026 l'import reserve l'element a son parcours : on
+        // part d'un element purement commun, sinon sa reservation (qui prime,
+        // a juste titre) masque ce que ce test mesure.
+        $this->composition->retirer($this->ue, [$this->ecue->id], $this->batiment->id);
+
         $this->composition->poser($this->ue, $this->ecue->id, ['credit_ecue' => 8]);
         $this->composition->poser($this->ue, $autre->id, ['credit_ecue' => 3], $this->batiment->id);
 
