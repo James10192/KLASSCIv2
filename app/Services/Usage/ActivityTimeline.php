@@ -61,6 +61,7 @@ class ActivityTimeline
             'groupes' => $buckets,
             'jours' => $this->daily($school),
             'semaines' => $this->weekly($school),
+            'mois' => $this->monthly($school),
             'comptes' => $this->perUser($school),
             'journees_de_masse' => $this->bulkDays($userDays),
         ];
@@ -113,6 +114,27 @@ class ActivityTimeline
         }
 
         return array_values(array_map(fn ($w) => [...$w, 'comptes' => count($w['comptes'])], $weeks));
+    }
+
+    /** Par mois : ecritures, comptes distincts, jours distincts avec activite. */
+    private function monthly(array $school): array
+    {
+        $months = [];
+        foreach ($school as $userId => $perDay) {
+            foreach ($perDay as $day => $count) {
+                $month = substr($day, 0, 7);
+                $months[$month] ??= ['mois' => $month, 'actions' => 0, 'comptes' => [], 'jours' => []];
+                $months[$month]['actions'] += $count;
+                $months[$month]['comptes'][$userId] = true;
+                $months[$month]['jours'][$day] = true;
+            }
+        }
+        for ($m = $this->window->from->startOfMonth(); $m->lessThanOrEqualTo($this->window->to); $m = $m->addMonth()) {
+            $months[$m->format('Y-m')] ??= ['mois' => $m->format('Y-m'), 'actions' => 0, 'comptes' => [], 'jours' => []];
+        }
+        ksort($months);
+
+        return array_values(array_map(fn ($m) => [...$m, 'comptes' => count($m['comptes']), 'jours' => count($m['jours'])], $months));
     }
 
     private function perUser(array $school): array
