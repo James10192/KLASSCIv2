@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Nouvelle permission « Enregistrer un paiement hors espèces »** (`paiements.create.non_cash`), qui couvre tous les modes sauf les espèces : mobile money, virement, chèque, carte. Elle est donnée par défaut au comptable. Un comptable qui encaisse sans tenir la caisse retrouve l'écran d'encaissement dans son menu (« Encaisser »), ainsi que le bouton flottant et les boutons des tableaux de bord. Les espèces lui restent refusées. Une école qui a volontairement donné `paiements.create` à son comptable garde ce choix : il n'est plus retiré à chaque déploiement.
+
 - **Trois tableaux de bord refaits : accueil comptable, analyse financière et accueil caisse.**
   - **Accueil comptable** (clair) : quatre indicateurs, chacun avec sa mini-courbe, son écart et un lien vers la liste filtrée ; la courbe des encaissements comparée à l'an dernier ; la file « À traiter » ; la répartition par mode ; les plus gros impayés échus ; les derniers versements avec leurs actions.
   - **Analyse financière** (cockpit bleu, ex « Dashboard Comptable ») : le mois et sa courbe dans le bandeau, les quatre chiffres de la période, un anneau des modes, l'ancienneté des impayés, une carte d'activité sur douze semaines et les classes les moins recouvrées. Les filtres année, filière et classe utilisent les listes premium et rechargent la page sans la quitter.

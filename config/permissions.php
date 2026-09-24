@@ -989,6 +989,12 @@ return [
             'icon' => 'fa-plus',
             'aliases' => ['create_payments', 'create-paiements'],
         ],
+        'paiements.create.non_cash' => [
+            'label' => 'Enregistrer un paiement hors espèces',
+            'description' => 'Tous les modes sauf les espèces : mobile money, virement, chèque, carte… Les espèces passent par la caisse (paiements.create), qui tient le tiroir.',
+            'group' => 'Paiements',
+            'icon' => 'fa-building-columns',
+        ],
         'paiements.create.mobile_money' => [
             'label' => 'Enregistrer un paiement mobile money',
             'description' => 'Autorise uniquement Wave, Orange Money, MTN, Moov et le mobile money generique. La caisse garde tous les modes via paiements.create.',
@@ -2316,7 +2322,7 @@ return [
             'comptabilite.salaires.view', 'comptabilite.salaires.create',
             'comptabilite.salaires.pay', 'comptabilite.salaires.configure',
             'comptabilite.salaires.export', 'comptabilite.salaires.set_rate',
-            'paiements.view', 'paiements.create.mobile_money', 'paiements.edit', 'paiements.validate',
+            'paiements.view', 'paiements.create.non_cash', 'paiements.edit', 'paiements.validate',
             'paiements.avoir',
             'paiements.correct_mode',
             'paiements.export',  // Lot 15

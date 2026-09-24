@@ -216,7 +216,7 @@
                 <a href="{{ route('esbtp.comptabilite.journal-caisse.index') }}" class="cb-btn cb-btn--ghost"><i class="fas fa-book"></i> Journal de caisse</a>
             @endcan
             @endcan
-            @can('paiements.create')
+            @can('porte:esbtp.paiements.create')
                 <a href="{{ route('esbtp.paiements.create') }}" class="cb-btn cb-btn--primary"><i class="fas fa-plus"></i> Encaisser</a>
             @endcan
         </div>

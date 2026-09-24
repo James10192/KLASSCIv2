@@ -1240,7 +1240,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             });
 
             // â”€â”€ CREATE (encaissement)
-            Route::middleware('permission:paiements.create|paiements.create.mobile_money')->group(function () {
+            Route::middleware('permission:paiements.create|paiements.create.non_cash|paiements.create.mobile_money')->group(function () {
                 Route::get('/paiements/create', [App\Http\Controllers\ESBTPPaiementController::class, 'create'])->name('paiements.create');
                 Route::post('/paiements', [App\Http\Controllers\ESBTPPaiementController::class, 'store'])->name('paiements.store');
                 // L'ecran de caisse interroge la regle de repartition au lieu de
@@ -2044,7 +2044,7 @@ Route::prefix('api/esbtp')->name('api.esbtp.')->middleware(['auth'])->group(func
     Route::get('matieres/list', [ESBTPMatiereController::class, 'apiList'])->name('matieres.list');
 });
 
-Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer|paiements.create|paiements.create.mobile_money'])->group(function () {
+Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer|paiements.create|paiements.create.non_cash|paiements.create.mobile_money'])->group(function () {
     Route::get('etudiants/search', [ESBTPEtudiantController::class, 'searchForApi'])->name('etudiants.search');
     Route::get('etudiants/inscriptions', [ESBTPEtudiantController::class, 'getInscriptionsForApi'])->name('etudiants.inscriptions');
     Route::get('caisse/inscriptions', [App\Http\Controllers\ESBTPPaiementController::class, 'searchInscriptionsForCaisse'])->name('caisse.inscriptions');

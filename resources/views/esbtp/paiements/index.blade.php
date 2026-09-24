@@ -1074,7 +1074,7 @@
                         <i class="fas fa-chart-bar"></i>
                         <span>Suivi par Catégorie</span>
                     </a>
-                    @can('paiements.create')
+                    @can('porte:esbtp.paiements.create')
                     <a href="{{ route('esbtp.paiements.create') }}" class="pi-btn pi-btn--white">
                         <i class="fas fa-plus"></i>
                         <span>Nouveau paiement</span>

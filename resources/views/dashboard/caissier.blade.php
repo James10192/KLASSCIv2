@@ -182,7 +182,10 @@
         'closed', 'auto_closed' => ['cx-sess--done', 'Caisse clôturée'.($cxJ['session']['fermee_a'] ? ' à '.$cxJ['session']['fermee_a'] : '')],
         default => ['cx-sess--off', 'Caisse non ouverte'],
     };
-    $cxPeutEncaisser = auth()->user()?->can('paiements.create') ?? false;
+    // Ouvrir l'écran d'encaissement (au moins un mode) ; la caisse physique, elle,
+    // ne concerne que qui encaisse des espèces (`paiements.create`).
+    $cxPeutEncaisser = auth()->user()?->can('porte:esbtp.paiements.create') ?? false;
+    $cxEncaisseEspeces = auth()->user()?->can('paiements.create') ?? false;
 @endphp
 
 <div class="dashboard-acasi {{ $cxShellMobile ? 'm-only-desktop' : '' }}">
@@ -257,7 +260,7 @@
 
     @php
         $cxAlertes = [];
-        if ($cxPeutMaCaisse && $cxSession === null && $cxPeutEncaisser) {
+        if ($cxPeutMaCaisse && $cxSession === null && $cxEncaisseEspeces) {
             $cxAlertes[] = ['warn', 'fa-lock-open', 'Votre caisse n’est pas ouverte.', 'Le premier encaissement en espèces l’ouvre, ou ouvrez-la maintenant.', route('esbtp.caisse.ma-caisse'), 'Ouvrir'];
         }
         if ($preInscriptionOuverte && $preInscriptionsEnAttente > 0 && (auth()->user()?->can('inscriptions.view') ?? false)) {
@@ -359,7 +362,7 @@
          navigateur (confort personnel, rien de plus). ─── --}}
     @php
         $cxTodo = [];
-        if ($cxPeutMaCaisse && $cxSession === null && $cxPeutEncaisser) {
+        if ($cxPeutMaCaisse && $cxSession === null && $cxEncaisseEspeces) {
             $cxTodo[] = ['warn', 'fa-lock-open', "Votre caisse n'est pas ouverte", "Le premier encaissement en espèces l'ouvre, ou ouvrez-la maintenant.", route('esbtp.caisse.ma-caisse')];
         }
         if ($cxJ['annulables'] > 0) {
@@ -508,7 +511,7 @@
 
         @if($cxmDernieres->isEmpty())
             <x-m.empty icon="inbox" title="Aucune opération pour l'instant" text="Le premier encaissement de la journée apparaîtra ici.">
-                @can('paiements.create')
+                @can('porte:esbtp.paiements.create')
                     <a href="{{ route('esbtp.paiements.create') }}" class="m-btn g"><x-m.icon name="plus" />Encaisser</a>
                 @endcan
             </x-m.empty>
@@ -582,7 +585,7 @@
         @endif
     </div>
 
-    @can('paiements.create')
+    @can('porte:esbtp.paiements.create')
         <a href="{{ route('esbtp.paiements.create') }}" class="m-fab" aria-label="Encaisser un paiement">
             <x-m.icon name="plus" />
         </a>
