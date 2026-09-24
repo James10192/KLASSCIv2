@@ -95,6 +95,37 @@
     .cx-axe { display: flex; justify-content: space-between; font-size: .68rem; color: #94a3b8; }
     .cx-warn-strip { display: flex; gap: .6rem; align-items: center; background: #fff7ed; border: 1px solid #fde2c2; color: #9a3412; border-radius: 11px; padding: .7rem 1rem; font-size: .85rem; }
 
+    /* « Voir plus de détails » : la richesse de l'ancien accueil, repliée. */
+    .cx-more-btn { align-self: center; display: inline-flex; align-items: center; gap: .5rem; border: 1px solid #cfdcf0; background: #fff; color: #0453cb; font-weight: 700; font-size: .86rem; padding: .6rem 1.2rem; border-radius: 99px; cursor: pointer; }
+    .cx-more-btn:hover { border-color: #0453cb; }
+    .cx-more-btn i { transition: transform .2s ease; }
+    .cx-more-btn.is-open i { transform: rotate(180deg); }
+    .cx-more { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; align-items: start; }
+    .cx-todo { display: flex; align-items: center; gap: .7rem; padding: .7rem .75rem; border-radius: 12px; border: 1px solid #eef2f7; background: #f8fafc; color: #1e293b; text-decoration: none; }
+    a.cx-todo:hover { border-color: #b9cdee; color: #1e293b; }
+    .cx-todo-ic { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #e8f0fc; color: #0453cb; }
+    .cx-todo--warn .cx-todo-ic { background: #fef3c7; color: #92400e; }
+    .cx-todo-t { font-size: .84rem; font-weight: 700; color: #0f172a; }
+    .cx-todo-d { font-size: .74rem; color: #64748b; }
+    .cx-ok { display: flex; gap: .6rem; align-items: center; padding: .8rem; border-radius: 12px; background: #f0fdf4; color: #047857; font-size: .86rem; }
+    .cx-mline { display: flex; flex-direction: column; gap: .3rem; padding: .55rem 0; border-top: 1px solid #f1f5f9; }
+    .cx-mline:first-of-type { border-top: 0; }
+    .cx-mline-h { display: flex; justify-content: space-between; gap: .5rem; font-size: .84rem; }
+    .cx-mline-h span { color: #475569; font-weight: 600; }
+    .cx-mline-h b { color: #0f172a; white-space: nowrap; }
+    .cx-mline small { font-size: .72rem; color: #64748b; }
+    .cx-mbar { height: 6px; background: #eef2f7; border-radius: 99px; overflow: hidden; }
+    .cx-mbar > i { display: block; height: 100%; background: #0453cb; border-radius: 99px; }
+    .cx-week { display: flex; align-items: flex-end; gap: 6px; height: 150px; }
+    .cx-week > div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%; min-width: 0; }
+    .cx-week i { display: block; width: 100%; border-radius: 6px 6px 2px 2px; background: #bcd3f5; min-height: 3px; }
+    .cx-week i.is-now { background: #0453cb; }
+    .cx-week em { font-style: normal; font-size: .64rem; font-weight: 700; color: #475569; white-space: nowrap; }
+    .cx-week span { font-size: .66rem; color: #94a3b8; }
+    .cx-foot { display: flex; justify-content: space-between; gap: .5rem; font-size: .76rem; color: #64748b; flex-wrap: wrap; }
+    .cx-foot b { color: #0f172a; }
+    @@media (max-width: 1100px) { .cx-more { grid-template-columns: 1fr; } }
+
     @@media (max-width: 1100px) { .cx-top, .cx-bottom { grid-template-columns: 1fr; } }
     @@media (max-width: 640px) { .cx-wrap { padding: 1rem .75rem; } .cx-hero { flex-direction: column; align-items: stretch; } .cx-ring { margin: 0 auto; } .cx-modes { grid-template-columns: 1fr; } }
 
@@ -322,6 +353,80 @@
         </div>
     </div>
 
+
+    {{-- ─── Voir plus de détails : la richesse de l'ancien accueil, repliée par
+         défaut pour garder l'accueil efficace. Le choix est retenu par
+         navigateur (confort personnel, rien de plus). ─── --}}
+    @php
+        $cxTodo = [];
+        if ($cxPeutMaCaisse && $cxSession === null && $cxPeutEncaisser) {
+            $cxTodo[] = ['warn', 'fa-lock-open', "Votre caisse n'est pas ouverte", "Le premier encaissement en espèces l'ouvre, ou ouvrez-la maintenant.", route('esbtp.caisse.ma-caisse')];
+        }
+        if ($cxJ['annulables'] > 0) {
+            $cxTodo[] = ['warn', 'fa-rotate-left', $cxJ['annulables'].' saisie'.($cxJ['annulables'] > 1 ? 's' : '').' encore annulable'.($cxJ['annulables'] > 1 ? 's' : ''), 'Une erreur ? Vous avez '.$cxFenetre.' minutes après la saisie pour l’annuler vous-même.', '#cx-derniers'];
+        }
+        if ($cxJ['a_valider'] > 0 && $cxLienAValider) {
+            $cxTodo[] = ['warn', 'fa-hourglass-half', $cxJ['a_valider'].' versement'.($cxJ['a_valider'] > 1 ? 's' : '').' en attente de validation', $cxFmt($cxJ['a_valider_total']).' FCFA saisis aujourd’hui, pas encore comptabilisés.', $cxLienAValider];
+        }
+        if ($preInscriptionOuverte && $preInscriptionsEnAttente > 0 && (auth()->user()?->can('inscriptions.view') ?? false)) {
+            $cxTodo[] = ['info', 'fa-user-clock', $preInscriptionsEnAttente.' pré-inscription'.($preInscriptionsEnAttente > 1 ? 's' : '').' à finaliser', 'Dossiers ouverts à la caisse, en attente du secrétariat.', route('esbtp.inscriptions.index', ['status' => 'en_attente'])];
+        }
+        if ($cxSession === 'open' && $cxPeutMaCaisse) {
+            $cxTodo[] = ['info', 'fa-vault', 'Caisse ouverte depuis '.($cxJ['session']['ouverte_a'] ?? '—'), 'Pensez à compter et clôturer en fin de journée.', route('esbtp.caisse.ma-caisse')];
+        }
+        $cxTotalModes = max(1, $cxJ['especes']['total'] + $cxJ['mobile']['total'] + $cxJ['autres']['total']);
+        $cxMaxJour = max(1, collect($cxSerie)->max('total') ?? 0);
+        $cxMeilleur = collect($cxSerie)->sortByDesc('total')->first();
+    @endphp
+    <div x-data="{ ouvert: (() => { try { return localStorage.getItem('cx-details') === '1'; } catch (e) { return false; } })() }" style="display: flex; flex-direction: column; gap: 1rem;">
+        <button type="button" class="cx-more-btn" :class="{ 'is-open': ouvert }" :aria-expanded="ouvert.toString()"
+                x-on:click="ouvert = !ouvert; try { localStorage.setItem('cx-details', ouvert ? '1' : '0'); } catch (e) {}">
+            <span x-text="ouvert ? 'Masquer les détails' : 'Voir plus de détails'">Voir plus de détails</span> <i class="fas fa-chevron-down"></i>
+        </button>
+        <div class="cx-more" x-show="ouvert" x-cloak x-transition.opacity>
+            <div class="cx-card">
+                <div class="cx-card-h"><span class="cx-card-t">À faire</span><span class="cx-card-s">contrôlé à {{ now()->format('H:i') }}</span></div>
+                @forelse($cxTodo as [$ton, $ic, $t, $d, $href])
+                    <a href="{{ $href }}" class="cx-todo cx-todo--{{ $ton }}"><span class="cx-todo-ic"><i class="fas {{ $ic }}"></i></span><span><span class="cx-todo-t">{{ $t }}</span><br><span class="cx-todo-d">{{ $d }}</span></span></a>
+                @empty
+                    <div class="cx-ok"><i class="fas fa-circle-check"></i> Rien en attente.</div>
+                @endforelse
+            </div>
+
+            <div class="cx-card">
+                <div class="cx-card-h"><span class="cx-card-t">Par moyen de paiement</span>
+                    @if($cxPeutMaCaisse)<a href="{{ route('esbtp.caisse.ma-caisse') }}" class="cx-lnk">Compter ma caisse →</a>@endif</div>
+                <span class="cx-card-s">Ce que vous devez retrouver dans le tiroir et sur les comptes.</span>
+                @foreach([['especes', 'Espèces · tiroir'], ['mobile', 'Mobile money'], ['autres', 'Virement, chèque…']] as [$cle, $lib])
+                    @php $bloc = $cxJ[$cle]; @endphp
+                    <div class="cx-mline">
+                        <div class="cx-mline-h"><span>{{ $lib }}</span><b class="cx-num">{{ $cxFmt($bloc['total']) }} FCFA</b></div>
+                        <div class="cx-mbar"><i style="width: {{ round($bloc['total'] / $cxTotalModes * 100) }}%"></i></div>
+                        <small>{{ $bloc['count'] }} versement{{ $bloc['count'] > 1 ? 's' : '' }} · {{ round($bloc['total'] / $cxTotalModes * 100) }} % du jour</small>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="cx-card">
+                <div class="cx-card-h"><span class="cx-card-t">Mes 7 derniers jours, jour par jour</span></div>
+                @if(count($cxSerie) === 0)
+                    <div class="cx-empty">Pas encore d’historique.</div>
+                @else
+                    <div class="cx-week" role="img" aria-label="Encaissé validé par jour">
+                        @foreach($cxSerie as $j)
+                            <div title="{{ $cxFmt($j['total']) }} FCFA">
+                                <em>{{ $j['total'] > 0 ? ($j['total'] >= 1000000 ? number_format($j['total'] / 1000000, 1, ',', ' ').' M' : $cxFmt(round($j['total'] / 1000)).' k') : '' }}</em>
+                                <i class="{{ $loop->last ? 'is-now' : '' }}" style="height: {{ $j['total'] > 0 ? max(4, round($j['total'] / $cxMaxJour * 100)) : 2 }}%"></i>
+                                <span>{{ $loop->last ? 'auj.' : $j['libelle'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                    <div class="cx-foot"><span>Total : <b class="cx-num">{{ $cxFmt($cxTotalSemaine) }} FCFA</b></span>
+                        @if($cxMeilleur && $cxMeilleur['total'] > 0)<span>Meilleur jour : <b>{{ $cxMeilleur['libelle'] }}</b>, {{ $cxFmt($cxMeilleur['total']) }} FCFA</span>@endif</div>
+                @endif
+            </div>
+        </div>
+    </div>
 </div>
 </div>
 
