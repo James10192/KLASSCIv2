@@ -496,15 +496,14 @@
         .dashboard-acasi > .main-content { padding: 0 !important; }
         .sec-header { background: transparent; color: #0f172a; padding: .25rem 0 0; border-radius: 0; overflow: visible; margin-bottom: 1rem; }
         .sec-header::before { display: none; }
-        .sec-header-inner { flex-direction: column; align-items: stretch; text-align: left; gap: .75rem; }
+        .sec-header-inner { flex-direction: column; flex-wrap: nowrap; align-items: stretch; text-align: left; gap: .75rem; }
         .sec-header-left { flex-direction: row; gap: 0; }
         .sec-avatar { display: none; }
         .sec-header h1 { color: #0f172a; font-size: 1.65rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
         .sec-header-left > div { min-width: 0; }
         .sec-header .header-sub { color: #64748b; font-size: .84rem; white-space: normal; overflow-wrap: anywhere; }
         .sec-header .header-sub strong { color: #0f172a; }
-        .sec-header-actions { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px; }
-        .sec-header-actions::-webkit-scrollbar { display: none; }
+        .sec-header-actions { justify-content: flex-start; flex-wrap: wrap; }
         .sec-header-actions > * { flex: 0 0 auto; }
         .sec-badge { background: #fff; color: #334155; border-color: #dfe6f1; white-space: nowrap; backdrop-filter: none; }
         .sec-btn-refresh { background: #fff; color: #0453cb; border-color: #dfe6f1; border-radius: 99px; }
