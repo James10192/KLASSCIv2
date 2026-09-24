@@ -168,4 +168,24 @@ class HeuresUePartageeParParcoursTest extends TestCase
             ->where('filiere_id', $this->lpa->filiere_id)->where('volume_horaire_cm', 18)->value('credits_ects'),
             'Saisir des heures ne doit pas mettre les credits a zero.');
     }
+
+    public function test_le_credit_grave_est_celui_de_la_maquette_saisie(): void
+    {
+        // Reserve a LPA a 3 credits, commun a 2 : chaque maquette garde le sien.
+        $ue = ESBTPUniteEnseignement::where('code', 'AGR2103')->firstOrFail();
+        app(\App\Services\LMD\CompositionUe::class)->poser($ue, (int) $this->ecue->id, ['credit_ecue' => 3], (int) $this->lpa->id);
+
+        // L'import a deja cree la ligne de LPV : on part de rien, pour que ce
+        // soit bien la saisie d'heures qui pose le credit.
+        ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)->forceDelete();
+
+        $this->saisir((int) $this->lpv->filiere_id, 10)->assertOk();
+        $this->saisir((int) $this->lpa->filiere_id, 11)->assertOk();
+
+        $credit = fn (ESBTPLMDParcours $p) => (int) ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)
+            ->where('filiere_id', $p->filiere_id)->value('credits_ects');
+
+        $this->assertSame(2, $credit($this->lpv), 'LPV lit la ligne commune, pas la reserve de LPA.');
+        $this->assertSame(3, $credit($this->lpa), 'LPA lit sa ligne reservee.');
+    }
 }

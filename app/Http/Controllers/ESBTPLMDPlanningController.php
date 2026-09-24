@@ -353,7 +353,7 @@ class ESBTPLMDPlanningController extends Controller
 
     /**
      * Lock or init a planification row for the given (ecue, filiere, contexte)
-     * triple. Returns [$planif, $wasCreated]. Used by bulk path only.
+     * triple. Returns [$planif, $wasCreated]. Used by the unit and bulk paths.
      */
     private function lockOrInitPlanification(int $ecueId, int $filiereId, array $ctx): array
     {
@@ -382,18 +382,43 @@ class ESBTPLMDPlanningController extends Controller
         // La colonne vaut 0 par defaut, et l'ecran lit « planif ?? ECUE » : une
         // ligne creee par la saisie d'heures affichait donc 0 credit a la place
         // de ceux de l'ECUE, et faussait le total CECT du parcours.
-        $planif->credits_ects = $this->creditDeLEcue($ecueId);
+        $planif->credits_ects = $this->creditDeLEcue($ecueId, $filiereId);
 
         return [$planif, true];
     }
 
-    /** Le credit de l'ECUE : celui de sa ligne de maquette, sinon celui de la matiere. */
-    private function creditDeLEcue(int $ecueId): int
+    /**
+     * Le credit de l'ECUE dans la maquette de CETTE filiere.
+     *
+     * Une ECUE partagee peut valoir 3 credits chez LPA et 2 chez LPV : prendre
+     * la premiere ligne venue graverait le credit d'un autre parcours, que
+     * l'ecran lit ensuite avant tout repli. Ligne reservee au parcours de la
+     * filiere, sinon ligne commune, sinon credit de la matiere. Plusieurs
+     * parcours sur la meme filiere avec des credits differents : on ne devine
+     * pas, on garde le commun ou la matiere.
+     */
+    private function creditDeLEcue(int $ecueId, int $filiereId): int
     {
-        $pivot = DB::table('esbtp_ue_matiere')->where('matiere_id', $ecueId)
-            ->whereNotNull('credit_ecue')->orderByDesc('parcours_id')->value('credit_ecue');
+        $parcours = ESBTPLMDParcours::where('filiere_id', $filiereId)->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        return (int) ($pivot ?? ESBTPMatiere::whereKey($ecueId)->value('credit_ecue') ?? 0);
+        $lignes = DB::table('esbtp_ue_matiere')->where('matiere_id', $ecueId)
+            ->whereNotNull('credit_ecue')
+            ->whereIn('parcours_id', array_merge([0], $parcours))
+            ->get(['parcours_id', 'credit_ecue']);
+
+        $reserves = $lignes->where('parcours_id', '!=', 0)->pluck('credit_ecue')->map(fn ($c) => (int) $c)->unique();
+        if ($reserves->count() === 1) {
+            return $reserves->first();
+        }
+        if ($reserves->count() > 1) {
+            Log::warning('LMD planning : credits divergents pour une meme filiere, credit reserve ignore', [
+                'matiere_id' => $ecueId, 'filiere_id' => $filiereId, 'credits' => $reserves->values()->all(),
+            ]);
+        }
+
+        $commun = $lignes->firstWhere('parcours_id', 0);
+
+        return (int) ($commun->credit_ecue ?? ESBTPMatiere::whereKey($ecueId)->value('credit_ecue') ?? 0);
     }
 
     /**

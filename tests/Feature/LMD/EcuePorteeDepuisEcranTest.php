@@ -269,6 +269,23 @@ class EcuePorteeDepuisEcranTest extends TestCase
         $this->assertNotContains('ECUE-BU', $this->vusPar($this->batiment));
     }
 
+    public function test_une_ligne_dans_une_autre_ue_n_evite_pas_la_confirmation(): void
+    {
+        // La cle etrangere est coupee des qu'il ne reste plus de ligne dans
+        // CETTE unite : une ligne ailleurs ne retient pas l'element dans le LMD.
+        $autre = $this->ue->replicate();
+        $autre->code = 'UE-AUTRE';
+        $autre->save();
+        DB::table('esbtp_ue_matiere')->insert([
+            'unite_enseignement_id' => $autre->id, 'matiere_id' => $this->ecueBu->id,
+            'parcours_id' => 0, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->acteur)
+            ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]), ['parcours_id' => $this->batiment->id])
+            ->assertStatus(409);
+    }
+
     public function test_la_liste_signale_un_element_a_la_fois_commun_et_reserve(): void
     {
         // L'import a reserve ECUE-BU a Batiment ; on ajoute la ligne commune.

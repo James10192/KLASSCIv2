@@ -721,10 +721,9 @@ class ESBTPLMDUEController extends Controller
                 'success' => false,
                 'confirmation_requise' => true,
                 'message' => sprintf(
-                    "« %s » n'est dans aucune autre maquette : le retirer le fait sortir du LMD, et son code %s ne pourra plus être réutilisé pour un ECUE. "
+                    "« %s » n'est dans aucune autre maquette de cette UE : le retirer le détache du LMD, et il repassera dans les listes de matières BTS. "
                     . "Pour le changer de parcours, utilisez plutôt le crayon. Le retirer quand même ?",
-                    $ecue->name ?? $ecue->code,
-                    $ecue->code ? '« '.$ecue->code.' »' : ''
+                    $ecue->name ?? $ecue->code
                 ),
             ], 409);
         }
@@ -755,14 +754,26 @@ class ESBTPLMDUEController extends Controller
             ->with('success', 'ECUE détaché de l\'UE avec succès.');
     }
 
-    /** Vrai si retirer cette ligne laisse l'element sans aucune maquette, dans aucune UE. */
+    /**
+     * Vrai si retirer cette ligne fait sortir l'element du LMD.
+     *
+     * Miroir de CompositionUe::libererCleEtrangere() : la cle etrangere est
+     * coupee des qu'il ne reste plus de ligne dans CETTE unite, meme si une
+     * autre unite en porte encore. L'element retombe alors dans les listes de
+     * matieres BTS (whereNull). S'y ajoute l'element sans cle ni autre ligne.
+     */
     private function sortiraitDuLmd(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue, int $portee): bool
     {
-        $lignes = DB::table('esbtp_ue_matiere')->where('matiere_id', $ecue->id)->get(['unite_enseignement_id', 'parcours_id']);
-        $restantes = $lignes->reject(fn ($l) => (int) $l->unite_enseignement_id === (int) $ue->id && (int) $l->parcours_id === $portee);
-        $tenueAilleurs = $ecue->unite_enseignement_id && (int) $ecue->unite_enseignement_id !== (int) $ue->id;
+        $autresLignes = DB::table('esbtp_ue_matiere')->where('matiere_id', $ecue->id)
+            ->where(fn ($q) => $q->where('unite_enseignement_id', '!=', $ue->id)->orWhere('parcours_id', '!=', $portee))
+            ->get(['unite_enseignement_id']);
+        $resteIci = $autresLignes->contains(fn ($l) => (int) $l->unite_enseignement_id === (int) $ue->id);
 
-        return $restantes->isEmpty() && ! $tenueAilleurs;
+        if ((int) $ecue->unite_enseignement_id === (int) $ue->id) {
+            return ! $resteIci;
+        }
+
+        return ! $ecue->unite_enseignement_id && $autresLignes->isEmpty();
     }
 
     /**
