@@ -78,12 +78,13 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
 .af-todo-n { font-size: .9rem; font-weight: 800; color: #0f172a; white-space: nowrap; }
 
 .af-donut { display: flex; align-items: center; gap: 1rem; }
-.af-donut-c { position: relative; width: 150px; height: 150px; flex-shrink: 0; }
+.af-donut-c { position: relative; width: 132px; height: 132px; flex-shrink: 0; }
 .af-donut-mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
 .af-donut-mid b { font-size: 1rem; font-weight: 800; color: #0f172a; }
 .af-donut-mid small { font-size: .68rem; color: #64748b; }
-.af-leg { display: flex; flex-direction: column; gap: .45rem; font-size: .8rem; min-width: 0; }
-.af-leg span { display: flex; align-items: center; gap: .5rem; }
+.af-leg { display: flex; flex-direction: column; gap: .45rem; font-size: .8rem; min-width: 0; flex: 1; }
+.af-leg > span { display: flex; align-items: center; gap: .5rem; white-space: nowrap; }
+.af-leg > span > span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .af-leg i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 .af-leg b { margin-left: auto; padding-left: .5rem; font-variant-numeric: tabular-nums; }
 
@@ -300,10 +301,10 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
         </div>
 
         <div class="af-card">
-            <div class="af-card-h"><span class="af-card-t">Modes de paiement</span><span class="af-card-s">sur la période</span></div>
+            <div class="af-card-h"><span class="af-card-t">Modes de paiement</span><span class="af-card-s">encaissements, hors avoirs</span></div>
             <div class="af-donut" x-show="d.modes.length">
                 <div class="af-donut-c"><canvas id="afDonut" aria-label="Répartition par mode de paiement"></canvas>
-                    <div class="af-donut-mid"><b class="af-num" x-text="fmtCourt(d.totalPaid)"></b><small>FCFA</small></div></div>
+                    <div class="af-donut-mid"><b class="af-num" x-text="fmtCourt(d.modes.reduce((s, m) => s + m.total, 0))"></b><small>FCFA encaissés</small></div></div>
                 <div class="af-leg">
                     <template x-for="(m, i) in d.modes.slice(0, 5)" :key="m.mode">
                         <span><i :style="'background:' + teinte(i)"></i><span x-text="m.mode"></span><b x-text="part(m.total) + ' %'"></b></span>

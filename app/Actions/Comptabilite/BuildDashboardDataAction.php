@@ -201,11 +201,14 @@ class BuildDashboardDataAction
      */
     private function parMode(ComptabiliteFilters $filters, ?Carbon $depuis): array
     {
+        // Les avoirs ne sont pas un moyen de paiement : ils apparaissaient comme
+        // une part « avoir 0 % ». La répartition porte sur les encaissements.
         return $this->paiementsQuery($filters)
             ->where('status', self::PAYMENT_STATUS_VALIDATED)
+            ->encaissements()
             ->when($depuis, fn ($q) => $q->whereDate('date_paiement', '>=', $depuis->toDateString()))
             ->groupBy('mode_paiement')
-            ->selectRaw('mode_paiement, COUNT(*) as cnt, SUM('.ESBTPPaiement::sqlCashCase().') as total')
+            ->selectRaw('mode_paiement, COUNT(*) as cnt, SUM(montant) as total')
             ->orderByDesc('total')
             ->get()
             ->map(fn ($l) => [
