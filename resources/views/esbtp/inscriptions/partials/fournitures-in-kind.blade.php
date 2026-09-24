@@ -11,10 +11,10 @@
                     <div class="is-section-title">Fournitures à déposer</div>
                 </div>
                 @foreach($fournitures as $item)
-                    <div class="is-info-row" style="flex-direction:row;align-items:center;justify-content:space-between;gap:12px;">
+                    <div class="is-info-row is-fourniture" style="flex-direction:row;align-items:center;justify-content:space-between;gap:12px;">
                         <span class="is-info-val">{{ $item['category']->name }}</span>
                         @if(!empty($item['satisfied_in_kind']))
-                            <span style="display:flex;align-items:center;gap:8px;">
+                            <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
                                 <span class="is-badge success"><i class="fas fa-check"></i> Déposé</span>
                                 {{-- Le retour en arriere. Sans lui, une case cochee par erreur
                                      laissait le frais a zero pour toujours, et la caisse ne
