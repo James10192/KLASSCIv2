@@ -56,7 +56,7 @@
                     placeholder="Tous les parcours"
                     :value="$filters['parcours_id']"
                     :searchable="$parcours->count() > 8"
-                    :options="$parcours->mapWithKeys(fn ($p) => [$p->id => $p->label_complet])->all()"
+                    :options="$parcours->mapWithKeys(fn ($p) => [$p->id => trim(($p->code ? $p->code.' · ' : '').$p->name)])->all()"
                     x-on:change="reload($event.target.value, 'parcours_id')" />
             </div>
             <div class="lp-filter-group" data-tour-node="filter-niveau">

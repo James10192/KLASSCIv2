@@ -712,6 +712,22 @@ class ESBTPLMDUEController extends Controller
     {
         $portee = $this->composition->porteeValide($ue, $request->input('parcours_id'));
 
+        // Retirer la DERNIERE ligne d'un element le fait sortir du LMD : sa cle
+        // etrangere est liberee, il rejoint le catalogue BTS, et on ne peut plus
+        // ni le relier ni le recreer sous le meme code. On le dit avant, et on
+        // n'agit que sur confirmation explicite.
+        if (! $request->boolean('confirmer_sortie') && $this->sortiraitDuLmd($ue, $ecue, $portee)) {
+            return response()->json([
+                'success' => false,
+                'confirmation_requise' => true,
+                'message' => sprintf(
+                    "« %s » n'est dans aucune autre maquette de cette UE : le retirer le détache du LMD, et il repassera dans les listes de matières BTS. "
+                    . "Pour le changer de parcours, utilisez plutôt le crayon. Le retirer quand même ?",
+                    $ecue->name ?? $ecue->code
+                ),
+            ], 409);
+        }
+
         // Retirer de CETTE maquette, et d'elle seule. `detach($id)` supprimait
         // toutes les lignes de cet élément, toutes maquettes confondues : retirer
         // un élément de Bâtiment le retirait aussi de Travaux Publics.
@@ -736,6 +752,28 @@ class ESBTPLMDUEController extends Controller
         }
         return redirect()->route('esbtp.lmd.ue.index')
             ->with('success', 'ECUE détaché de l\'UE avec succès.');
+    }
+
+    /**
+     * Vrai si retirer cette ligne fait sortir l'element du LMD.
+     *
+     * Miroir de CompositionUe::libererCleEtrangere() : la cle etrangere est
+     * coupee des qu'il ne reste plus de ligne dans CETTE unite, meme si une
+     * autre unite en porte encore. L'element retombe alors dans les listes de
+     * matieres BTS (whereNull). S'y ajoute l'element sans cle ni autre ligne.
+     */
+    private function sortiraitDuLmd(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue, int $portee): bool
+    {
+        $autresLignes = DB::table('esbtp_ue_matiere')->where('matiere_id', $ecue->id)
+            ->where(fn ($q) => $q->where('unite_enseignement_id', '!=', $ue->id)->orWhere('parcours_id', '!=', $portee))
+            ->get(['unite_enseignement_id']);
+        $resteIci = $autresLignes->contains(fn ($l) => (int) $l->unite_enseignement_id === (int) $ue->id);
+
+        if ((int) $ecue->unite_enseignement_id === (int) $ue->id) {
+            return ! $resteIci;
+        }
+
+        return ! $ecue->unite_enseignement_id && $autresLignes->isEmpty();
     }
 
     /**
