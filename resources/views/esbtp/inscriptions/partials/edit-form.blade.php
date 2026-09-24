@@ -321,7 +321,6 @@
                                                class="form-check-input mt-1" style="margin:0;">
                                         <span>
                                             <strong>Correction d'erreur de saisie</strong>
-                                            
                                             <small class="d-block text-muted">
                                                 Cocher uniquement si la classe initiale a été <em>mal saisie</em>
                                                 (ex : redoublant inscrit en TC par erreur). Ne pas utiliser pour orienter — utilisez le workflow officiel.
