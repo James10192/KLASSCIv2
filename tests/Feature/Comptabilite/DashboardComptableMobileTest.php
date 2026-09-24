@@ -75,8 +75,8 @@ class DashboardComptableMobileTest extends TestCase
             ->assertSee('derniers jours')
             // Fabrique Alpine exposée sous garde ; le DOM de bureau et son Chart.js restent là.
             ->assertSee("if (typeof window.dashComptaMobile !== 'function')", false)
-            ->assertSee('dash-hero', false)
-            ->assertSee('encaissementsChart', false);
+            ->assertSee('af-hero', false)
+            ->assertSee('afHeroChart', false);
     }
 
     public function test_les_actions_du_jour_suivent_les_permissions(): void
@@ -110,7 +110,7 @@ class DashboardComptableMobileTest extends TestCase
             ->assertDontSee('has-m-shell', false)
             ->assertDontSee('m-only-mobile m-screen dm-screen', false)
             ->assertDontSee('data-m-sheet="dm-filtres"', false)
-            ->assertSee('dash-hero', false);
+            ->assertSee('af-hero', false);
     }
 
     public function test_l_endpoint_json_porte_la_serie_des_encaissements_recents(): void

@@ -408,7 +408,7 @@
         <x-m.appbar title="Journal de caisse"
                     :sub="$jcmSub"
                     :back="route('esbtp.comptabilite.dashboard')"
-                    back-label="Tableau de bord comptable"
+                    back-label="Analyse financière"
                     :action="$jcmPeutExporter ? 'dl' : null"
                     action-label="Exporter le journal"
                     x-on:click="ouvrir('jcm-export')" />

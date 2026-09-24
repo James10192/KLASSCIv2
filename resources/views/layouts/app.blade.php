@@ -2233,12 +2233,12 @@
                     @can('comptabilite.access')
                         <div class="menu-category">Gestion financière</div>
 
-                        {{-- Dashboard Comptabilité --}}
+                        {{-- Analyse financière (ex « Dashboard Comptable ») --}}
                         @can('comptabilite.dashboard.view')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="menu-link {{ Request::routeIs('esbtp.comptabilite.dashboard') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-chart-line"></i></div>
-                                <div class="menu-text">Dashboard Comptable</div>
+                                <div class="menu-text">Analyse financière</div>
                             </a>
                         </div>
                         @endcan
