@@ -69,12 +69,36 @@ class RouteServiceProvider extends ServiceProvider
     protected function configureRateLimiting()
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
+            $utilisateur = $request->user();
+
+            // Le jeton serveur du LMS porte les taches de fond de toute l'ecole :
+            // compte par jeton, avec une enveloppe propre, reglable par ecole.
+            if (\App\Support\Lms\JetonServeurLms::estServeur($utilisateur)) {
+                $parMinute = max(60, (int) \App\Helpers\SettingsHelper::get('lms.serveur.limite_par_minute', 600));
+
+                return Limit::perMinute($parMinute)->by('lms-serveur:'.$utilisateur->currentAccessToken()->id);
+            }
+
+            return Limit::perMinute(60)->by(optional($utilisateur)->id ?: $request->ip());
         });
 
         // Rate limiter strict pour les endpoints de découverte LMS (anti-énumération)
+        //
+        // Compte par IDENTIFIANT recherche, plus une enveloppe large par IP :
+        // tous les usagers du LMS sortent de la meme IP, et une limite de 10
+        // par IP etait partagee par toute l'ecole. L'enveloppe garde la
+        // protection contre l'enumeration (une IP ne balaie pas des milliers
+        // d'identifiants).
         RateLimiter::for('lms-discovery', function (Request $request) {
-            return Limit::perMinute(10)->by($request->ip());
+            $identifiant = mb_strtolower(trim((string) (
+                $request->input('identifier') ?? $request->input('email') ?? $request->input('username') ?? ''
+            )));
+
+            return [
+                Limit::perMinute(10)->by('lms-decouverte-id:'.sha1($identifiant.'|'.$request->ip())),
+                Limit::perMinute(max(10, (int) \App\Helpers\SettingsHelper::get('lms.decouverte.limite_ip_par_minute', 120)))
+                    ->by('lms-decouverte-ip:'.$request->ip()),
+            ];
         });
 
         // === Rate limiters Sécurité (Task #10) ===

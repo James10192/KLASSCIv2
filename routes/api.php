@@ -725,5 +725,14 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // (synchrone). Simulation par defaut, motif obligatoire.
         Route::post('/notes/corriger', [App\Http\Controllers\API\CLI\CLIMoyennesController::class, 'corrigerNotes'])
             ->name('notes.corriger');
+        // Jetons SERVEUR du LMS (compte technique « Service LMS ») : le jeton
+        // en clair n'est rendu qu'a la creation. Voir docs/api/LMS_JETON_SERVEUR.md.
+        Route::post('/lms/jeton-serveur', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'creer'])
+            ->name('lms.jeton-serveur.creer');
+        Route::get('/lms/jetons-serveur', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'lister'])
+            ->name('lms.jetons-serveur');
+        Route::delete('/lms/jeton-serveur/{id}', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'revoquer'])
+            ->whereNumber('id')
+            ->name('lms.jeton-serveur.revoquer');
     });
 });
