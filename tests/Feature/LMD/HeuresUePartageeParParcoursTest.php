@@ -56,6 +56,13 @@ class HeuresUePartageeParParcoursTest extends TestCase
         $this->lpv = ESBTPLMDParcours::where('code', 'LPV')->firstOrFail();
         $this->lpa = ESBTPLMDParcours::where('code', 'LPA')->firstOrFail();
 
+        // L'import reserve AGR21031 a LPV. On le rend commun : les deux
+        // maquettes le voient, chacune doit garder ses heures.
+        $ue = ESBTPUniteEnseignement::where('code', 'AGR2103')->firstOrFail();
+        app(\App\Services\LMD\CompositionUe::class)->poser($ue, (int) $this->ecue->id, ['credit_ecue' => 2]);
+        DB::table('esbtp_ue_matiere')->where('unite_enseignement_id', $ue->id)
+            ->where('matiere_id', $this->ecue->id)->where('parcours_id', $this->lpv->id)->delete();
+
         foreach (['admin.access', 'module.lmd.access', 'lmd.planning.view', 'lmd.planning.edit'] as $permission) {
             Permission::findOrCreate($permission, 'web');
         }
@@ -81,24 +88,23 @@ class HeuresUePartageeParParcoursTest extends TestCase
         ];
     }
 
-    private function saisir(int $filiereId, int $cm): void
+    private function saisir(?int $filiereId, int $cm, ?ESBTPMatiere $ecue = null)
     {
         $niveau = ESBTPUniteEnseignement::where('code', 'AGR2103')->value('niveau_id');
 
-        $this->actingAs($this->acteur)
-            ->patchJson(route('esbtp.lmd.planifications.update', $this->ecue->id), [
+        return $this->actingAs($this->acteur)
+            ->patchJson(route('esbtp.lmd.planifications.update', ($ecue ?? $this->ecue)->id), array_filter([
                 'filiere_id' => $filiereId,
                 'niveau_id' => $niveau,
                 'semestre' => 3,
                 'volume_horaire_cm' => $cm,
-            ])
-            ->assertOk();
+            ], fn ($v) => $v !== null));
     }
 
     public function test_les_heures_saisies_sur_lpa_vont_dans_la_planification_de_lpa(): void
     {
-        $this->saisir((int) $this->lpv->filiere_id, 20);
-        $this->saisir((int) $this->lpa->filiere_id, 30);
+        $this->saisir((int) $this->lpv->filiere_id, 20)->assertOk();
+        $this->saisir((int) $this->lpa->filiere_id, 30)->assertOk();
 
         $heures = fn (ESBTPLMDParcours $p) => ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)
             ->where('filiere_id', $p->filiere_id)->where('semestre', 3)->value('volume_horaire_cm');
@@ -107,17 +113,50 @@ class HeuresUePartageeParParcoursTest extends TestCase
         $this->assertSame(30, (int) $heures($this->lpa), 'Les heures saisies sur la maquette LPA doivent y rester.');
     }
 
-    public function test_une_filiere_etrangere_a_l_ecue_retombe_sur_celle_de_la_fiche(): void
+    public function test_une_filiere_etrangere_a_l_ecue_est_refusee_sans_rien_ecrire(): void
     {
         $etrangere = ESBTPFiliere::create(['name' => 'Droit', 'code' => 'DRT', 'is_active' => true]);
 
-        $this->saisir((int) $etrangere->id, 12);
+        $this->saisir((int) $etrangere->id, 12)->assertStatus(422);
 
         $this->assertFalse(
-            ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)->where('filiere_id', $etrangere->id)->exists(),
-            'Une filiere qui n\'utilise pas cette UE ne recoit rien.'
+            ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)->where('volume_horaire_cm', 12)->exists(),
+            'Aucune maquette ne doit recevoir ces heures, surtout pas celle de la fiche.'
         );
-        $this->assertSame(12, (int) DB::table('esbtp_planifications_academiques')
-            ->where('matiere_id', $this->ecue->id)->where('filiere_id', $this->lpv->filiere_id)->value('volume_horaire_cm'));
+    }
+
+    public function test_un_ecue_reserve_a_lpv_est_refuse_sur_la_maquette_lpa(): void
+    {
+        $reserveLpa = ESBTPMatiere::where('code', 'AGR21033')->firstOrFail();
+
+        $this->saisir((int) $this->lpv->filiere_id, 15, $reserveLpa)->assertStatus(422);
+        $this->saisir((int) $this->lpa->filiere_id, 15, $reserveLpa)->assertOk();
+    }
+
+    public function test_sans_filiere_une_ue_partagee_est_refusee(): void
+    {
+        $this->saisir(null, 9)->assertStatus(422);
+        $this->assertFalse(ESBTPPlanificationAcademique::where('volume_horaire_cm', 9)->exists());
+    }
+
+    public function test_la_saisie_en_masse_range_aussi_par_parcours(): void
+    {
+        $niveau = ESBTPUniteEnseignement::where('code', 'AGR2103')->value('niveau_id');
+
+        $this->actingAs($this->acteur)
+            ->postJson(route('esbtp.lmd.planifications.bulk-update'), [
+                'ecue_ids' => [$this->ecue->id],
+                'fields' => ['volume_horaire_td' => 14],
+                'filiere_id' => $this->lpa->filiere_id,
+                'niveau_id' => $niveau,
+                'semestre' => 3,
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertSame(14, (int) ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)
+            ->where('filiere_id', $this->lpa->filiere_id)->value('volume_horaire_td'));
+        $this->assertFalse(ESBTPPlanificationAcademique::where('filiere_id', $this->lpv->filiere_id)
+            ->where('volume_horaire_td', 14)->exists());
     }
 }

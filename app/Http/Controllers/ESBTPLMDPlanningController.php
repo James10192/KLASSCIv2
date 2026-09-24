@@ -153,6 +153,9 @@ class ESBTPLMDPlanningController extends Controller
         abort_if(!$matiere->unite_enseignement_id, 422, "Cette matière n'est pas un ECUE LMD.");
 
         $context = $this->resolvePlanificationContext($request, $matiere);
+        if ($context['refus_filiere']) {
+            return response()->json(['success' => false, 'message' => $context['refus_filiere']], 422);
+        }
         if (!$context['filiere_id'] || !$context['niveau_id']) {
             return response()->json(['success' => false, 'message' => 'Contexte filière/niveau manquant — sélectionnez un niveau et un semestre avant l\'édition.'], 422);
         }
@@ -315,11 +318,9 @@ class ESBTPLMDPlanningController extends Controller
         }
 
         $demandee = isset($contextHint['filiere_id']) ? (int) $contextHint['filiere_id'] : null;
-        $filiereId = $this->filiereDemandeeSiLegitime($matiere, $demandee)
-            ?? $this->deriveFiliereIdFromEcue($matiere)
-            ?? $demandee;
-        if (!$filiereId) {
-            throw new \RuntimeException("Filiere indisponible pour ECUE {$ecueId}.");
+        [$filiereId, $refus] = $this->filiereDePlanification($matiere, $demandee);
+        if ($refus || !$filiereId) {
+            throw new \RuntimeException($refus ?? "Filiere indisponible pour ECUE {$ecueId}.");
         }
 
         [$planif, $wasCreated] = $this->lockOrInitPlanification($ecueId, $filiereId, $contextHint);
@@ -492,12 +493,15 @@ class ESBTPLMDPlanningController extends Controller
         // saisies sur la maquette LPA dans la planification de LPV (USAT) —
         // perdues pour l'une, ecrasees pour l'autre. Une filiere etrangere a
         // l'ECUE reste refusee (IDOR) et retombe sur celle de la fiche.
-        $filiereId = $this->filiereDemandeeSiLegitime($matiere, $clientFiliereId)
-            ?? $this->deriveFiliereIdFromEcue($matiere)
-            ?? $clientFiliereId;
+        // Sans ECUE (edition en masse), la filiere se tranche ECUE par ECUE dans
+        // upsertPlanificationFields().
+        [$filiereId, $refus] = $matiere
+            ? $this->filiereDePlanification($matiere, $clientFiliereId)
+            : [$clientFiliereId, null];
 
         return [
             'filiere_id' => $filiereId,
+            'refus_filiere' => $refus,
             'niveau_id' => $request->integer('niveau_id') ?: null,
             'semestre' => $request->integer('semestre') ?: 1,
             'annee_id' => $request->integer('annee_universitaire_id')
@@ -506,27 +510,54 @@ class ESBTPLMDPlanningController extends Controller
     }
 
     /**
-     * La filiere demandee, si un parcours de cette filiere utilise une UE qui
-     * contient l'ECUE (par le pivot ou par la cle etrangere). Null sinon.
+     * La filiere dans laquelle ecrire les heures de cet ECUE, ou le refus a dire.
+     *
+     * La filiere demandee est celle du parcours affiche. Elle est retenue si un
+     * parcours de cette filiere voit l'ECUE dans sa maquette : une UE qu'il
+     * utilise, et l'ECUE commun ou reserve a CE parcours. Sinon on refuse.
+     * Retomber sur la filiere de la fiche de l'UE, ici, ecrirait les heures dans
+     * la maquette d'un autre parcours sans le dire : c'est le defaut corrige.
+     *
+     * Sans filiere demandee, la fiche ne vaut que si l'UE ne sert qu'un parcours.
+     *
+     * @return array{0: ?int, 1: ?string}
      */
-    private function filiereDemandeeSiLegitime(?ESBTPMatiere $matiere, ?int $filiereId): ?int
+    private function filiereDePlanification(ESBTPMatiere $matiere, ?int $demandee): array
     {
-        if (!$matiere || !$filiereId) {
-            return null;
-        }
-
         $ueIds = DB::table('esbtp_ue_matiere')->where('matiere_id', $matiere->id)
             ->pluck('unite_enseignement_id')
             ->push($matiere->unite_enseignement_id)
             ->filter()->unique()->values();
 
-        $legitime = DB::table('esbtp_lmd_parcours_ue')
-            ->join('esbtp_lmd_parcours', 'esbtp_lmd_parcours.id', '=', 'esbtp_lmd_parcours_ue.parcours_id')
-            ->whereIn('esbtp_lmd_parcours_ue.unite_enseignement_id', $ueIds)
-            ->where('esbtp_lmd_parcours.filiere_id', $filiereId)
-            ->exists();
+        if ($demandee) {
+            $voit = DB::table('esbtp_lmd_parcours_ue as pu')
+                ->join('esbtp_lmd_parcours as p', 'p.id', '=', 'pu.parcours_id')
+                ->whereIn('pu.unite_enseignement_id', $ueIds)
+                ->where('p.filiere_id', $demandee)
+                ->where(function ($q) use ($matiere) {
+                    $q->whereExists(fn ($sub) => $sub->selectRaw('1')->from('esbtp_ue_matiere as um')
+                        ->whereColumn('um.unite_enseignement_id', 'pu.unite_enseignement_id')
+                        ->where('um.matiere_id', $matiere->id)
+                        ->where(fn ($w) => $w->where('um.parcours_id', 0)->orWhereColumn('um.parcours_id', 'p.id')))
+                        // Tenu par la seule cle etrangere : commun, donc vu par tous.
+                        ->orWhere(fn ($w) => $w->where('pu.unite_enseignement_id', $matiere->unite_enseignement_id)
+                            ->whereNotExists(fn ($sub) => $sub->selectRaw('1')->from('esbtp_ue_matiere as um2')
+                                ->whereColumn('um2.unite_enseignement_id', 'pu.unite_enseignement_id')
+                                ->where('um2.matiere_id', $matiere->id)));
+                })
+                ->exists();
 
-        return $legitime ? $filiereId : null;
+            return $voit
+                ? [$demandee, null]
+                : [null, "« {$matiere->name} » n'est pas dans la maquette du parcours affiché : ses heures ne peuvent pas y être enregistrées."];
+        }
+
+        $parcours = DB::table('esbtp_lmd_parcours_ue')->whereIn('unite_enseignement_id', $ueIds)
+            ->distinct()->count('parcours_id');
+
+        return $parcours <= 1
+            ? [$this->deriveFiliereIdFromEcue($matiere), null]
+            : [null, "Ce parcours n'a pas de filière : les heures de « {$matiere->name} », partagé entre plusieurs parcours, ne peuvent pas être rangées. Rattachez une filière au parcours."];
     }
 
     /**
