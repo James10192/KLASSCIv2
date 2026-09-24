@@ -25,6 +25,11 @@ class PerimetreRdv
 {
     public const MOIS_SANS_ANNEE = 12;
 
+    /** L'annee resolue, une fois par instance : plusieurs comptages par requete. */
+    private ?int $annee = null;
+
+    private bool $resolue = false;
+
     public function __construct(private readonly PortailReinscriptionService $saison) {}
 
     /**
@@ -33,11 +38,21 @@ class PerimetreRdv
      */
     public function appliquer(Builder $reservations): Builder
     {
-        $annee = $this->saison->anneeCible()?->id;
+        $annee = $this->annee();
 
         return $reservations->whereHas('creneau', fn (Builder $q) => $annee !== null
             ? $q->where('annee_universitaire_id', $annee)
             : $q->whereDate('date', '>=', now()->subMonths(self::MOIS_SANS_ANNEE)->toDateString()));
+    }
+
+    private function annee(): ?int
+    {
+        if (! $this->resolue) {
+            $this->annee = $this->saison->anneeCible()?->id;
+            $this->resolue = true;
+        }
+
+        return $this->annee;
     }
 
     /** @return Builder<ESBTPRdvReservation> */

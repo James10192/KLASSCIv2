@@ -49,17 +49,22 @@ class SynchroStatutsConvocations
      * la fenetre. Partage avec le diagnostic (ConvocationsNonSynchronisees),
      * qui ne peut donc pas promettre une relecture qui n'aura jamais lieu.
      *
+     * `$depuis` : debut de la fenetre, passe par l'appelant qui compte aussi
+     * `hors_fenetre` avec la meme date ; maintenant moins FENETRE_JOURS sinon.
+     *
      * @param  Builder<ESBTPRdvReservation>  $reservations
      * @return Builder<ESBTPRdvReservation>
      */
-    public static function selectionnables(Builder $reservations): Builder
+    public static function selectionnables(Builder $reservations, ?\Illuminate\Support\Carbon $depuis = null): Builder
     {
+        $depuis ??= now()->subDays(self::FENETRE_JOURS);
+
         return $reservations
             ->where('convocation_statut', StatutConvocationRdv::Envoyee->value)
             ->whereNotNull('convocation_message_id')
             ->whereNull('convocation_delivree_at')
             ->where(fn ($q) => $q->whereNull('convocation_code_distant')->orWhereNotIn('convocation_code_distant', self::NEUTRES_DEFINITIFS))
-            ->where('convocation_envoyee_at', '>=', now()->subDays(self::FENETRE_JOURS));
+            ->where('convocation_envoyee_at', '>=', $depuis);
     }
 
     /**

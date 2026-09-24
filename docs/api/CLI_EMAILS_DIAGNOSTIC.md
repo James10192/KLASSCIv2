@@ -22,10 +22,12 @@ Le corps est rendu tel quel (pas d'enveloppe `success/data`).
 - `convocations.acceptees` : acceptées par MailPulse ; `delivrees` : remise confirmée
   par la synchronisation (`inscriptions:synchroniser-convocations-rdv`, toutes les 15 min).
 - `convocations.non_synchronisees` : envoyées jamais relues ; `non_synchronisees_detail` dit
-  pourquoi. `a_synchroniser` : la synchronisation les relira (même prédicat qu'elle). Les autres
+  pourquoi. `a_synchroniser` : la synchronisation les relira (même prédicat et même date de coupure qu'elle).
+  Ce détail ne compte que le périmètre des rendez-vous (voir plus bas), alors que la
+  synchronisation relit toutes les convocations de la fenêtre, quelle que soit leur année. Les autres
   sont des impasses : `sans_identifiant` (aucun identifiant MailPulse, typiquement les
   convocations d'avant le suivi du 22/09, marquées « envoyée » par la migration),
-  `sans_date_envoi`, `hors_fenetre` (plus de 30 jours), `code_neutre`. `autre` doit valoir 0.
+  `sans_date_envoi`, `hors_fenetre` (plus de 30 jours), `code_neutre`. `autre` doit valoir 0 ; négatif, il est journalisé.
 - Périmètre des convocations, du diagnostic `GET /api/cli/rendez-vous/diagnostic` et des
   familles : les rendez-vous de l'année cible des inscriptions (réglage `inscriptions.annee_cible`,
   à défaut l'année courante, à défaut les douze derniers mois).
