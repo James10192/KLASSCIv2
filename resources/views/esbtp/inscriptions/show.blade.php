@@ -2977,12 +2977,12 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                             </td>
                                                             <td>
                                                                 @if(isset($payment->observations))
-                                                                    {{ $payment->observations }}
+                                                                    <span class="d-inline-block text-truncate" style="max-width:160px;" title="{{ $payment->observations }}">{{ $payment->observations }}</span>
                                                                 @else
                                                                     {{ $payment->commentaire ?? '-' }}
                                                                 @endif
                                                             </td>
-                                                            <td class="text-end">
+                                                            <td class="text-end" style="white-space:nowrap;width:1%;">
                                                                 @include('esbtp.paiements.partials.actions-versement', ['paiement' => $payment, 'retour' => request()->getRequestUri()])
                                                             </td>
                                                         </tr>
@@ -3075,12 +3075,12 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                             </td>
                                                             <td>
                                                                 @if(isset($payment->observations))
-                                                                    {{ $payment->observations }}
+                                                                    <span class="d-inline-block text-truncate" style="max-width:160px;" title="{{ $payment->observations }}">{{ $payment->observations }}</span>
                                                                 @else
                                                                     {{ $payment->commentaire ?? '-' }}
                                                                 @endif
                                                             </td>
-                                                            <td class="text-end">
+                                                            <td class="text-end" style="white-space:nowrap;width:1%;">
                                                                 @include('esbtp.paiements.partials.actions-versement', ['paiement' => $payment, 'retour' => request()->getRequestUri()])
                                                             </td>
                                                         </tr>
