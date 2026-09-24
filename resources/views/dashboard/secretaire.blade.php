@@ -500,7 +500,8 @@
         .sec-header-left { flex-direction: row; gap: 0; }
         .sec-avatar { display: none; }
         .sec-header h1 { color: #0f172a; font-size: 1.65rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
-        .sec-header .header-sub { color: #64748b; font-size: .84rem; }
+        .sec-header-left > div { min-width: 0; }
+        .sec-header .header-sub { color: #64748b; font-size: .84rem; white-space: normal; overflow-wrap: anywhere; }
         .sec-header .header-sub strong { color: #0f172a; }
         .sec-header-actions { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px; }
         .sec-header-actions::-webkit-scrollbar { display: none; }
