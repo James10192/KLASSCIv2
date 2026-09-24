@@ -166,6 +166,49 @@ class UsageReportCliTest extends TestCase
         $this->assertArrayNotHasKey('serviceTechnique', $parc->all());
     }
 
+    /** @test */
+    public function concrete_outcomes_count_school_work_by_entity_and_month(): void
+    {
+        $data = $this->data();
+        $notes = collect($data['realisations'])->firstWhere('entite', 'ESBTPNote');
+        $inscriptions = collect($data['realisations'])->firstWhere('entite', 'ESBTPInscription');
+
+        $this->assertSame(3, $notes['crees']);
+        $this->assertSame(4 + 2 + 350, $inscriptions['crees'], 'le CLI, le compte technique et l\'etudiant sont exclus');
+        $this->assertSame(1, $inscriptions['comptes']);
+
+        $august = collect($data['creations_par_mois'])->firstWhere('mois', '2026-08');
+        $this->assertSame(356, collect($august['creations'])->max('nombre'));
+    }
+
+    /** @test */
+    public function monthly_summary_counts_distinct_days_and_accounts(): void
+    {
+        $august = collect($this->data()['mois'])->firstWhere('mois', '2026-08');
+
+        $this->assertSame(359, $august['actions']);
+        $this->assertSame(4, $august['jours']);
+        $this->assertSame(1, $august['comptes']);
+    }
+
+    /** @test */
+    public function payments_are_summed_per_month_of_payment(): void
+    {
+        $etudiantId = \App\Models\ESBTPEtudiant::factory()->create()->id;
+        $anneeId = \App\Models\ESBTPAnneeUniversitaire::factory()->create()->id;
+        \App\Models\ESBTPPaiement::factory()->create(['etudiant_id' => $etudiantId, 'annee_universitaire_id' => $anneeId, 'montant' => 150000, 'date_paiement' => '2026-08-04', 'status' => 'validé']);
+        \App\Models\ESBTPPaiement::factory()->create(['etudiant_id' => $etudiantId, 'annee_universitaire_id' => $anneeId, 'montant' => 50000, 'date_paiement' => '2026-08-20', 'status' => 'validé']);
+        \App\Models\ESBTPPaiement::factory()->create(['etudiant_id' => $etudiantId, 'annee_universitaire_id' => $anneeId, 'montant' => 99000, 'date_paiement' => '2026-08-21', 'status' => 'en_attente']);
+        \App\Models\ESBTPPaiement::factory()->create(['etudiant_id' => $etudiantId, 'annee_universitaire_id' => $anneeId, 'montant' => 70000, 'date_paiement' => '2026-06-02', 'status' => 'validé']);
+
+        $payments = $this->data()['paiements_par_mois'];
+
+        $this->assertCount(1, $payments, 'juin est hors periode, le paiement en attente ne compte pas');
+        $this->assertSame('2026-08', $payments[0]['mois']);
+        $this->assertSame(2, $payments[0]['nombre']);
+        $this->assertEquals(200000, $payments[0]['montant'], 'le JSON rend 200000.0 en entier');
+    }
+
     private function data(): array
     {
         $response = $this->report(['cli:read'], ['from' => '2026-08-01', 'to' => '2026-08-31']);

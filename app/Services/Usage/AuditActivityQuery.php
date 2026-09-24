@@ -53,6 +53,15 @@ class AuditActivityQuery
             ->get();
     }
 
+    /** Lignes (user_id, auditable_type, event, month, total) : ce qui a ete fait, mois par mois. */
+    public function webWritesPerModelEventMonth(): Collection
+    {
+        return $this->webWrites()
+            ->selectRaw("user_id, auditable_type, event, DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as total")
+            ->groupByRaw("user_id, auditable_type, event, DATE_FORMAT(created_at, '%Y-%m')")
+            ->get();
+    }
+
     /** Lignes (origin, auditable_type, total) : ecritures de toutes origines. */
     public function writesPerOriginAndModel(): Collection
     {

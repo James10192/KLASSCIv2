@@ -4,7 +4,6 @@ namespace App\Services\RendezVous;
 
 use App\Enums\EtatEmail;
 use App\Enums\StatutConvocationRdv;
-use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPRdvReservation;
 use App\Services\Emails\AnalyseurEmail;
 use App\Services\Verification\MasqueContact;
@@ -24,8 +23,8 @@ use Illuminate\Support\Collection;
  * adresses fabriquees par KLASSCI, reparties selon ce qui reste pour les
  * joindre.
  *
- * Perimetre : les rendez-vous de l'annee universitaire courante, ou a defaut
- * ceux des douze derniers mois. Lus par paquets, colonnes utiles seulement.
+ * Perimetre : celui de PerimetreRdv (annee cible des inscriptions), le meme
+ * que le diagnostic des convocations. Lus par paquets, colonnes utiles seulement.
  *
  * Lecture seule. Aucune donnee personnelle en clair dans ce qui sort d'ici.
  */
@@ -33,14 +32,15 @@ class FamillesARecontacter
 {
     private const PAQUET = 500;
 
-    private const MOIS_SANS_ANNEE_COURANTE = 12;
-
     private const COLONNES = [
         'id', 'creneau_id', 'candidature_id', 'reinscription_demande_id', 'statut', 'email', 'telephone',
         'convocation_statut', 'convocation_delivree_at', 'convocation_code_distant',
     ];
 
-    public function __construct(private readonly AnalyseurEmail $emails) {}
+    public function __construct(
+        private readonly AnalyseurEmail $emails,
+        private readonly PerimetreRdv $perimetre,
+    ) {}
 
     /** @return array{synthese: array<string, mixed>, familles: list<array<string, mixed>>} */
     public function rapport(): array
@@ -53,10 +53,9 @@ class FamillesARecontacter
     /** @return Collection<string, Collection<int, ESBTPRdvReservation>> */
     private function reservationsParFamille(): Collection
     {
-        $annee = ESBTPAnneeUniversitaire::query()->current()->value('id');
         $parFamille = [];
 
-        ESBTPRdvReservation::query()
+        $this->perimetre->reservations()
             ->select(self::COLONNES)
             ->with([
                 'candidature:id,email,tuteur_telephone',
@@ -65,9 +64,6 @@ class FamillesARecontacter
                 'demande.etudiant.parents:esbtp_parents.id,esbtp_parents.telephone,esbtp_parents.email',
             ])
             ->where(fn ($q) => $q->whereNotNull('candidature_id')->orWhereNotNull('reinscription_demande_id'))
-            ->whereHas('creneau', fn ($q) => $annee !== null
-                ? $q->where('annee_universitaire_id', $annee)
-                : $q->whereDate('date', '>=', now()->subMonths(self::MOIS_SANS_ANNEE_COURANTE)->toDateString()))
             ->chunkById(self::PAQUET, function (Collection $lot) use (&$parFamille) {
                 foreach ($lot as $r) {
                     $parFamille[$r->candidature_id ? 'c'.$r->candidature_id : 'd'.$r->reinscription_demande_id][] = $r;
