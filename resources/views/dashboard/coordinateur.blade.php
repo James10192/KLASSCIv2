@@ -500,17 +500,34 @@
     .cd-animate:nth-child(7) { animation-delay: 0.3s; }
 
     /* ── Responsive ────────────────────────────────────────────────── */
-    @media (max-width: 768px) {
-        .cd-header-inner { flex-direction: column; text-align: center; }
-        .cd-header-left { flex-direction: column; }
-        .cd-header-actions { justify-content: center; }
-        .cd-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    /* ── Téléphone : grand titre (M2), pastilles, tuiles sur deux colonnes ──
+       Le bandeau bleu centré occupait tout le premier écran. Sous 768px le
+       titre se pose sur le fond de page et la liste reprend la main. */
+    @media (max-width: 767.98px) {
+        .dashboard-acasi > .main-content { padding: 0 !important; }
+        .cd-header { background: transparent; color: #0f172a; padding: .25rem 0 0; border-radius: 0; overflow: visible; margin-bottom: 1rem; }
+        .cd-header::before { display: none; }
+        .cd-header-inner { flex-direction: column; align-items: stretch; text-align: left; gap: .75rem; }
+        .cd-header-left { flex-direction: row; gap: 0; }
+        .cd-avatar { display: none; }
+        .cd-header h1 { color: #0f172a; font-size: 1.65rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+        .cd-header .header-sub { color: #64748b; font-size: .84rem; }
+        .cd-header .header-sub strong { color: #0f172a; }
+        .cd-header-actions { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px; }
+        .cd-header-actions::-webkit-scrollbar { display: none; }
+        .cd-header-actions > * { flex: 0 0 auto; }
+        .cd-badge { background: #fff; color: #334155; border-color: #dfe6f1; white-space: nowrap; backdrop-filter: none; }
+        .cd-btn-refresh { background: #fff; color: #0453cb; border-color: #dfe6f1; border-radius: 99px; }
+        .cd-quick-actions { background: #0453cb; color: #fff; border-color: #0453cb; border-radius: 99px; white-space: nowrap; min-height: 38px; backdrop-filter: none; }
+        .cd-quick-actions:hover { background: #033a8e; }
+        .cd-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .cd-kpi { border-radius: 20px; min-width: 0; }
         .cd-kpi-value { font-size: 1.4rem; }
-        .cd-alert { flex-direction: column; text-align: center; }
+        .cd-alert { flex-direction: row; flex-wrap: wrap; align-items: flex-start; text-align: left; gap: .75rem; border-radius: 20px; padding: 14px; }
+        .cd-alert-icon { width: 40px; height: 40px; font-size: 1rem; flex: 0 0 40px; }
+        .cd-alert-content { flex: 1 1 0; min-width: 0; }
+        .cd-alert > .btn-acasi { flex: 1 1 100%; justify-content: center; }
         .cd-edt-grid { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 480px) {
-        .cd-kpi-grid { grid-template-columns: 1fr; }
     }
 </style>
 @endsection

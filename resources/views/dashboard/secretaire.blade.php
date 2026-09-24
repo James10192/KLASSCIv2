@@ -489,16 +489,33 @@
     .sec-animate:nth-child(7) { animation-delay: 0.3s; }
 
     /* ── Responsive ──────────────────────────────────────────────── */
-    @media (max-width: 768px) {
-        .sec-header-inner { flex-direction: column; text-align: center; }
-        .sec-header-left { flex-direction: column; }
-        .sec-header-actions { justify-content: center; }
-        .sec-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    /* ── Téléphone : grand titre (M2), pastilles, tuiles sur deux colonnes ──
+       Le bandeau bleu centré occupait tout le premier écran. Sous 768px le
+       titre se pose sur le fond de page et la liste reprend la main. */
+    @media (max-width: 767.98px) {
+        .dashboard-acasi > .main-content { padding: 0 !important; }
+        .sec-header { background: transparent; color: #0f172a; padding: .25rem 0 0; border-radius: 0; overflow: visible; margin-bottom: 1rem; }
+        .sec-header::before { display: none; }
+        .sec-header-inner { flex-direction: column; align-items: stretch; text-align: left; gap: .75rem; }
+        .sec-header-left { flex-direction: row; gap: 0; }
+        .sec-avatar { display: none; }
+        .sec-header h1 { color: #0f172a; font-size: 1.65rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+        .sec-header .header-sub { color: #64748b; font-size: .84rem; }
+        .sec-header .header-sub strong { color: #0f172a; }
+        .sec-header-actions { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px; }
+        .sec-header-actions::-webkit-scrollbar { display: none; }
+        .sec-header-actions > * { flex: 0 0 auto; }
+        .sec-badge { background: #fff; color: #334155; border-color: #dfe6f1; white-space: nowrap; backdrop-filter: none; }
+        .sec-btn-refresh { background: #fff; color: #0453cb; border-color: #dfe6f1; border-radius: 99px; }
+        .sec-quick-actions { background: #0453cb; color: #fff; border-color: #0453cb; border-radius: 99px; white-space: nowrap; min-height: 38px; backdrop-filter: none; }
+        .sec-quick-actions:hover { background: #033a8e; }
+        .sec-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .sec-kpi { border-radius: 20px; min-width: 0; }
         .sec-kpi-value { font-size: 1.4rem; }
-        .sec-alert { flex-direction: column; text-align: center; }
-    }
-    @media (max-width: 480px) {
-        .sec-kpi-grid { grid-template-columns: 1fr; }
+        .sec-alert { flex-direction: row; flex-wrap: wrap; align-items: flex-start; text-align: left; gap: .75rem; border-radius: 20px; padding: 14px; }
+        .sec-alert-icon { width: 40px; height: 40px; font-size: 1rem; flex: 0 0 40px; }
+        .sec-alert-content { flex: 1 1 0; min-width: 0; }
+        .sec-alert > .btn-acasi { flex: 1 1 100%; justify-content: center; }
     }
 </style>
 @endsection
