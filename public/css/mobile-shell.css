@@ -991,6 +991,10 @@ body.modal-open .m-actionbar { display: none !important; }
    4. Listes premium : menu à la largeur de l'écran, pas du champ.
    ====================================================================== */
 @media (max-width: 767.98px) {
+    /* Gouttière unique : l'écran porte déjà 16px de marge. Le conteneur .p-lg
+       de nombreuses pages en ajoutait 24 de chaque côté, et une fiche
+       d'inscription ne gardait que 250px de texte sur 360. */
+    body .nextadmin-content .main-content > .p-lg { padding-left: 0; padding-right: 0; }
     body .nextadmin-content [class$="-hero"]:not(.m-hero):not(.rdx-hero) { padding: 1rem 1rem .9rem; margin-bottom: .9rem; }
     body .nextadmin-content [class$="-hero"]:not(.m-hero):not(.rdx-hero) h1 { font-size: 1.2rem; line-height: 1.25; letter-spacing: -.01em; }
     body .nextadmin-content [class$="-hero"]:not(.m-hero):not(.rdx-hero) h1 + p { font-size: .8rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
