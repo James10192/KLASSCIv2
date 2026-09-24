@@ -4,7 +4,6 @@ namespace App\Services\RendezVous;
 
 use App\Enums\StatutConvocationRdv;
 use App\Exceptions\ReglagesRdvIncomplets;
-use App\Models\ESBTPRdvReservation;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\MailPulse\MailPulseClient;
 use App\Services\Reinscription\PortailReinscriptionService;
@@ -42,6 +41,7 @@ class EtatChaineRdv
         private readonly PortailReinscriptionService $saison,
         private readonly PortailSignatureVerifier $signature,
         private readonly MailPulseClient $mailpulse,
+        private readonly PerimetreRdv $perimetre,
     ) {
     }
 
@@ -78,7 +78,8 @@ class EtatChaineRdv
      */
     public function convocations(): array
     {
-        $comptes = ESBTPRdvReservation::query()
+        // Meme perimetre que les familles a recontacter et le diagnostic e-mails.
+        $comptes = $this->perimetre->reservations()
             ->selectRaw('convocation_statut, COUNT(*) AS n')
             ->whereNotNull('convocation_statut')
             ->groupBy('convocation_statut')
@@ -88,11 +89,11 @@ class EtatChaineRdv
         foreach (StatutConvocationRdv::cases() as $statut) {
             $resultat[$statut->value] = (int) ($comptes[$statut->value] ?? 0);
         }
-        $resultat['inconnu'] = ESBTPRdvReservation::query()->occupantes()->whereNull('convocation_statut')->count();
+        $resultat['inconnu'] = $this->perimetre->reservations()->occupantes()->whereNull('convocation_statut')->count();
         // « Envoyee » veut dire « acceptee par MailPulse ». La remise, elle, n'est
         // connue qu'apres synchronisation (inscriptions:synchroniser-convocations-rdv).
         $resultat['delivrees'] = ColonnesDeployees::existe('esbtp_rdv_reservations', 'convocation_delivree_at')
-            ? ESBTPRdvReservation::query()->whereNotNull('convocation_delivree_at')->count()
+            ? $this->perimetre->reservations()->whereNotNull('convocation_delivree_at')->count()
             : 0;
 
         return $resultat;
