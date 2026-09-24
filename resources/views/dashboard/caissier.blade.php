@@ -138,7 +138,7 @@
         $cxTodo[] = ['ton' => 'warn', 'ic' => 'fa-rotate-left', 't' => $cxJ['annulables'].' saisie'.($cxJ['annulables'] > 1 ? 's' : '').' encore annulable'.($cxJ['annulables'] > 1 ? 's' : ''), 'd' => 'Une erreur ? Vous avez '.$cxJ['fenetre_annulation_minutes'].' minutes après la saisie pour l\'annuler vous-même.', 'href' => '#cx-derniers'];
     }
     if ($cxJ['a_valider'] > 0) {
-        $cxTodo[] = ['ton' => 'warn', 'ic' => 'fa-hourglass-half', 't' => $cxJ['a_valider'].' versement'.($cxJ['a_valider'] > 1 ? 's' : '').' en attente de validation', 'd' => 'Saisis aujourd\'hui, pas encore comptabilisés.', 'href' => $cxLienAValider];
+        $cxTodo[] = ['ton' => 'warn', 'ic' => 'fa-hourglass-half', 't' => $cxJ['a_valider'].' versement'.($cxJ['a_valider'] > 1 ? 's' : '').' en attente de validation', 'd' => $cxFmt($cxJ['a_valider_total']).' FCFA saisis aujourd\'hui, en attente d\'un validateur.', 'href' => $cxLienAValider];
     }
     if ($preInscriptionOuverte && $preInscriptionsEnAttente > 0 && (auth()->user()?->can('inscriptions.view') ?? false)) {
         $cxTodo[] = ['ton' => 'info', 'ic' => 'fa-user-clock', 't' => $preInscriptionsEnAttente.' pré-inscription'.($preInscriptionsEnAttente > 1 ? 's' : '').' à finaliser', 'd' => 'Dossiers ouverts à la caisse, en attente du secrétariat.', 'href' => route('esbtp.inscriptions.index', ['status' => 'en_attente'])];
@@ -173,7 +173,7 @@
 
         <div class="cx-kpis">
             <a class="cx-kpi" @if($cxLienJour) href="{{ $cxLienJour }}" @endif>
-                <div class="cx-kpi-l"><i class="fas fa-coins"></i> Encaissé aujourd'hui</div>
+                <div class="cx-kpi-l"><i class="fas fa-coins"></i> Encaissé validé aujourd'hui</div>
                 <div class="cx-kpi-v">{{ $indisponible ? '—' : $cxFmt($cxJ['total']) }}<small>FCFA</small></div>
                 <div class="cx-kpi-r">
                     @if($indisponible) Indisponible pour le moment
@@ -183,14 +183,14 @@
                 </div>
             </a>
             <a class="cx-kpi" @if($cxLienJour) href="{{ $cxLienJour }}" @endif>
-                <div class="cx-kpi-l"><i class="fas fa-receipt"></i> Versements du jour</div>
-                <div class="cx-kpi-v">{{ $cxJ['count'] }}</div>
-                <div class="cx-kpi-r">Espèces {{ $cxJ['especes']['count'] }} · Mobile {{ $cxJ['mobile']['count'] }} · Autres {{ $cxJ['autres']['count'] }}</div>
+                <div class="cx-kpi-l"><i class="fas fa-receipt"></i> Saisies du jour</div>
+                <div class="cx-kpi-v">{{ $cxJ['count'] + $cxJ['a_valider'] }}</div>
+                <div class="cx-kpi-r">{{ $cxJ['count'] }} validée{{ $cxJ['count'] > 1 ? 's' : '' }} · {{ $cxJ['a_valider'] }} à valider</div>
             </a>
             <a class="cx-kpi" @if($cxLienAValider) href="{{ $cxLienAValider }}" @endif>
                 <div class="cx-kpi-l"><i class="fas fa-hourglass-half"></i> À valider</div>
                 <div class="cx-kpi-v">{{ $cxJ['a_valider'] }}</div>
-                <div class="cx-kpi-r">{{ $cxJ['a_valider'] > 0 ? 'en attente de comptabilisation' : 'tout est validé' }}</div>
+                <div class="cx-kpi-r">{{ $cxJ['a_valider'] > 0 ? $cxFmt($cxJ['a_valider_total']).' FCFA pas encore comptés' : 'tout est validé' }}</div>
             </a>
             <div class="cx-kpi">
                 <div class="cx-kpi-l"><i class="fas fa-chart-column"></i> Sept derniers jours</div>
