@@ -19,6 +19,29 @@ final class MasqueContact
         return mb_substr($email, 0, 1).'***'.substr($email, $arobase);
     }
 
+    /**
+     * Forme lisible pour un rapport : « +225 07 ** ** ** 12 ». Seuls
+     * l'indicatif, les deux premiers et les deux derniers chiffres restent.
+     */
+    public static function telephoneGroupe(?string $telephone): string
+    {
+        $parties = \App\Domain\Notifications\PhoneNormalizer::decomposer($telephone);
+        $national = $parties['national'] ?? (preg_replace('/\D+/', '', (string) $telephone) ?? '');
+        if (strlen($national) < 6) {
+            return '***';
+        }
+
+        $paires = str_split($national, 2);
+        $dernier = count($paires) - 1;
+        foreach ($paires as $i => $paire) {
+            if ($i !== 0 && $i !== $dernier) {
+                $paires[$i] = str_repeat('*', strlen($paire));
+            }
+        }
+
+        return trim((isset($parties['indicatif']) ? '+'.$parties['indicatif'].' ' : '').implode(' ', $paires));
+    }
+
     public static function telephone(?string $telephone): string
     {
         $chiffres = preg_replace('/\D+/', '', (string) $telephone) ?? '';

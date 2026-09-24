@@ -39,10 +39,14 @@ class SynchroStatutsConvocations
 
     public function __construct(private readonly MailPulseStatutsMessages $statuts) {}
 
-    /** @return array{lues: int, delivrees: int, echecs: int, en_transit: int, erreurs: int, bloque: ?string} */
+    /**
+     * `rebonds` et `supprimees` detaillent `echecs` d'apres le code distant.
+     *
+     * @return array{lues: int, delivrees: int, echecs: int, rebonds: int, supprimees: int, en_transit: int, erreurs: int, bloque: ?string}
+     */
     public function synchroniser(int $maximum = 100): array
     {
-        $rapport = ['lues' => 0, 'delivrees' => 0, 'echecs' => 0, 'en_transit' => 0, 'erreurs' => 0, 'bloque' => null];
+        $rapport = ['lues' => 0, 'delivrees' => 0, 'echecs' => 0, 'rebonds' => 0, 'supprimees' => 0, 'en_transit' => 0, 'erreurs' => 0, 'bloque' => null];
 
         $reservations = ESBTPRdvReservation::query()
             ->where('convocation_statut', StatutConvocationRdv::Envoyee->value)
@@ -74,7 +78,15 @@ class SynchroStatutsConvocations
             }
 
             $rapport['lues']++;
-            $rapport[$this->appliquer($reservation, $etat)]++;
+            $issue = $this->appliquer($reservation, $etat);
+            $rapport[$issue]++;
+            if ($issue === 'echecs') {
+                match (MotifsRemiseConvocation::famille($etat['error_code'] ?: $etat['status'])) {
+                    'rebond' => $rapport['rebonds']++,
+                    'suppression' => $rapport['supprimees']++,
+                    default => null,
+                };
+            }
         }
 
         return $rapport;

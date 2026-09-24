@@ -30,7 +30,7 @@ class NettoyerEmailsFactices extends Command
         } else {
             $this->table(
                 ['Table', 'Colonne', 'Domaine', 'Adresses', 'Constat', 'Suggestion'],
-                array_map(fn ($l) => [$l['table'], $l['colonne'], $l['domaine'], $l['nombre'], $l['etat'], $l['suggestion'] ?? 'aucune'], $rapport)
+                array_map(fn ($l) => [$l['table'], $l['colonne'], $l['domaine'], $l['nombre'], $l['type'], $l['suggestion'] ?? 'aucune'], $rapport)
             );
         }
 

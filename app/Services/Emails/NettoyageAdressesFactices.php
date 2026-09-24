@@ -33,7 +33,7 @@ class NettoyageAdressesFactices
     ) {}
 
     /**
-     * @return list<array{table: string, colonne: string, domaine: string, nombre: int, etat: string, suggestion: ?string}>
+     * @return list<array{table: string, colonne: string, domaine: string, nombre: int, type: string, suggestion: ?string}>
      */
     public function rapport(bool $avecMx = true): array
     {
@@ -43,7 +43,7 @@ class NettoyageAdressesFactices
             if ($analyse->etat->typeSuspect() === null) {
                 continue;
             }
-            $lignes[] = $ligne + ['etat' => $analyse->etat->value, 'suggestion' => $analyse->domaineSuggere()];
+            $lignes[] = $ligne + ['type' => (string) $analyse->etat->typeSuspect(), 'suggestion' => $analyse->domaineSuggere()];
         }
 
         return $lignes;

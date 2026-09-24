@@ -1,9 +1,17 @@
 <?php
 
+use App\Http\Controllers\API\CLI\CLIEmailsController;
+use App\Http\Controllers\API\CLI\CLISuiviConvocationsController;
 use Illuminate\Support\Facades\Route;
 
 /*
  * Inclus DANS le groupe /api/cli (auth:sanctum, noms `api.cli.*`) de routes/api.php.
- * Joignabilite des adresses et remise reelle des convocations : lecture seule, `cli:read`.
+ * Joignabilite des adresses et suivi reel des convocations. Chaque action
+ * verifie son droit (`cli:read` en lecture, `cli:admin` en ecriture).
  */
-Route::get('/emails/diagnostic', [App\Http\Controllers\API\CLI\CLIEmailsController::class, 'diagnostic'])->name('emails.diagnostic');
+Route::get('/emails/diagnostic', [CLIEmailsController::class, 'diagnostic'])->name('emails.diagnostic');
+Route::post('/emails/nettoyer-factices', [CLIEmailsController::class, 'nettoyerFactices'])
+    ->middleware('throttle:10,1')->name('emails.nettoyer-factices');
+Route::post('/rendez-vous/synchroniser-convocations', [CLISuiviConvocationsController::class, 'synchroniser'])
+    ->middleware('throttle:10,1')->name('rendez-vous.synchroniser-convocations');
+Route::get('/rendez-vous/familles', [CLISuiviConvocationsController::class, 'familles'])->name('rendez-vous.familles');
