@@ -1143,7 +1143,13 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
     .is-hero-name { font-size: 1.15rem; }
     .is-hero-actions { width: 100%; margin-left: 0; margin-top: 8px; }
     .is-card-body { padding: 16px; }
-    .is-info-grid { grid-template-columns: 1fr; }
+    /* !important : la grille des parents porte un minmax(220px) en ligne, plus
+       large que la carte à 360px — le badge « Tuteur principal » et les
+       valeurs sortaient de la carte. */
+    .is-info-grid { grid-template-columns: 1fr !important; }
+    .is-card .accordion-button { flex-wrap: wrap; row-gap: 6px; }
+    .is-card .accordion-button .badge { margin-left: 0 !important; }
+    .is-fourniture { flex-wrap: wrap; }
     .is-stepper { display: none; }
     .is-stepper-mobile { display: block; }
 }
