@@ -39,6 +39,8 @@ class LectureDeMaquetteLmd
         $parcours = ESBTPLMDParcours::query()
             ->when($parcoursId, fn ($q) => $q->whereKey($parcoursId))
             ->with(['unitesEnseignement' => fn ($q) => $q
+                // Comme le planning : une unite desactivee n'est vue par personne.
+                ->where('esbtp_unites_enseignement.is_active', true)
                 ->when($codeUe, fn ($q) => $q->where('esbtp_unites_enseignement.code', $codeUe))
                 ->with(['ecues', 'matieres', 'parcoursMultiple:id,code', 'niveau:id,name'])])
             ->orderBy('name')
@@ -66,7 +68,7 @@ class LectureDeMaquetteLmd
         return [
             'parcours' => $vues,
             'unites_partagees' => $partagees,
-            'anomalies' => $this->anomalies($vues, $partagees),
+            'anomalies' => $this->anomalies($vues),
         ];
     }
 
@@ -85,13 +87,26 @@ class LectureDeMaquetteLmd
             'partagee_avec' => $ue->parcoursMultiple->pluck('code')->unique()
                 ->reject(fn ($code) => $code === $p->code)->values(),
             'ecues' => $ecues->map(function ($e) use ($idsPivot, $heures, $p, $ue) {
-                $h = $heures->get($p->filiere_id . ':' . $ue->niveau_id . ':' . $ue->pivot->semestre . ':' . $e->id);
+                // Pas de niveau dans la cle : la fiche d'une unite partagee garde
+                // celui du premier parcours importe, alors que la planification
+                // du second est ecrite avec le sien. Le planning cherche lui
+                // aussi par filiere et matiere.
+                $h = $heures->get($p->filiere_id . ':' . $ue->pivot->semestre . ':' . $e->id);
+
+                // Reserve a un AUTRE parcours dans le pivot, mais vu ici par une
+                // ligne commune ou par la cle etrangere : c'est la « fuite ».
+                $reserveAilleurs = $ue->ecues
+                    ->where('id', $e->id)
+                    ->map(fn ($l) => (int) ($l->pivot->parcours_id ?? 0))
+                    ->reject(fn ($id) => $id === 0 || $id === (int) $p->id)
+                    ->isNotEmpty();
 
                 return [
                     'id' => $e->id,
                     'code' => $e->code,
                     'name' => $e->name,
                     'origine' => $this->origine($e, $idsPivot),
+                    'reserve_ailleurs' => $reserveAilleurs,
                     'credit' => $e->pivot->credit_ecue ?? $e->credit_ecue,
                     'heures' => $h ? [
                         'cm' => (int) $h->volume_horaire_cm,
@@ -140,14 +155,23 @@ class LectureDeMaquetteLmd
         ];
     }
 
-    private function anomalies(Collection $vues, Collection $partagees): array
+    /**
+     * Ce qui surprend l'ecole, et seulement cela. Une composition commune est
+     * le fonctionnement normal d'une unite partagee : on ne la signale pas.
+     */
+    private function anomalies(Collection $vues): array
     {
         $anomalies = [];
 
         foreach ($vues as $p) {
+            if (! $p['filiere_id']) {
+                $anomalies[] = ['type' => 'parcours_sans_filiere', 'parcours' => $p['code']];
+            }
+
             foreach ($p['unites'] as $u) {
-                // Deux elements de meme intitule dans une meme maquette : la
-                // version commune et une version reservee cohabitent.
+                $partagee = count($u['partagee_avec']) > 0;
+
+                // Deux elements de meme intitule dans une meme maquette.
                 $parNom = collect($u['ecues'])->groupBy(fn ($e) => mb_strtolower(trim($e['name'])));
                 foreach ($parNom->filter(fn ($g) => $g->count() > 1) as $groupe) {
                     $anomalies[] = [
@@ -158,25 +182,26 @@ class LectureDeMaquetteLmd
                     ];
                 }
 
-                // Unite partagee dont un element commun apparait chez tous :
-                // c'est ce que l'ecole prend pour une fuite.
-                if (count($u['partagee_avec']) > 0) {
-                    foreach ($u['ecues'] as $e) {
-                        if ($e['origine'] !== 'reserve') {
-                            $anomalies[] = [
-                                'type' => 'element_commun_dans_unite_partagee',
-                                'parcours' => $p['code'],
-                                'ue' => $u['code'],
-                                'ecue' => $e['code'] . ' — ' . $e['name'],
-                                'origine' => $e['origine'],
-                                'aussi_vu_par' => $u['partagee_avec'],
-                            ];
-                        }
-                    }
-                }
-
                 foreach ($u['ecues'] as $e) {
-                    if ($e['heures'] === null) {
+                    if ($e['reserve_ailleurs']) {
+                        $anomalies[] = [
+                            'type' => 'reserve_ailleurs_mais_visible',
+                            'parcours' => $p['code'],
+                            'ue' => $u['code'],
+                            'ecue' => $e['code'] . ' — ' . $e['name'],
+                            'origine' => $e['origine'],
+                        ];
+                    } elseif ($partagee && $e['origine'] === 'cle_etrangere') {
+                        $anomalies[] = [
+                            'type' => 'cle_etrangere_dans_unite_partagee',
+                            'parcours' => $p['code'],
+                            'ue' => $u['code'],
+                            'ecue' => $e['code'] . ' — ' . $e['name'],
+                            'aussi_vu_par' => $u['partagee_avec'],
+                        ];
+                    }
+
+                    if ($p['filiere_id'] && $e['heures'] === null) {
                         $anomalies[] = ['type' => 'sans_masse_horaire', 'parcours' => $p['code'], 'ue' => $u['code'], 'ecue' => $e['code']];
                     }
                 }
@@ -186,7 +211,7 @@ class LectureDeMaquetteLmd
         return $anomalies;
     }
 
-    /** Planifications de l'annee courante, indexees filiere:niveau:semestre:matiere. */
+    /** Planifications de l'annee courante, indexees filiere:semestre:matiere. */
     private function heuresPlanifiees(Collection $parcours): Collection
     {
         $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
@@ -199,6 +224,6 @@ class LectureDeMaquetteLmd
         return ESBTPPlanificationAcademique::where('annee_universitaire_id', $annee->id)
             ->whereIn('filiere_id', $filieres)
             ->get()
-            ->keyBy(fn ($pl) => $pl->filiere_id . ':' . $pl->niveau_etude_id . ':' . $pl->semestre . ':' . $pl->matiere_id);
+            ->keyBy(fn ($pl) => $pl->filiere_id . ':' . $pl->semestre . ':' . $pl->matiere_id);
     }
 }

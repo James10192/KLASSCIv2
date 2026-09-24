@@ -26,6 +26,13 @@ class LectureDeMaquetteLmdTest extends TestCase
     {
         parent::setUp();
 
+        // Installation et paywall redirigent avant le controleur : hors sujet ici.
+        $this->withoutMiddleware([
+            \App\Http\Middleware\CheckInstalled::class,
+            \App\Http\Middleware\EnsureInstalled::class,
+            \App\Http\Middleware\PaywallMiddleware::class,
+        ]);
+
         ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
 
         // Deux parcours d'une meme mention qui importent la MEME unite (meme
@@ -71,24 +78,30 @@ class LectureDeMaquetteLmdTest extends TestCase
         $this->assertNotNull($partagee, "L'unite importee par deux parcours doit etre signalee comme partagee.");
     }
 
-    public function test_un_element_commun_d_une_unite_partagee_est_signale(): void
+    public function test_un_element_reserve_qui_porte_aussi_une_ligne_commune_est_signale(): void
     {
         $ue = ESBTPUniteEnseignement::where('code', 'UE-COMMUNE')->firstOrFail();
         $ecue = DB::table('esbtp_matieres')->where('code', 'ECUE-PA')->value('id');
 
-        // Le geste qui fait « fuir » : l'element pose en composition commune.
-        DB::table('esbtp_ue_matiere')
-            ->where('unite_enseignement_id', $ue->id)
-            ->where('matiere_id', $ecue)
-            ->update(['parcours_id' => 0]);
+        // Le geste USAT : l'element reserve a LPA est aussi ajoute en
+        // composition commune (modal ouvert sans filtre de parcours).
+        DB::table('esbtp_ue_matiere')->insert([
+            'unite_enseignement_id' => $ue->id,
+            'matiere_id' => $ecue,
+            'parcours_id' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         $data = app(LectureDeMaquetteLmd::class)->lire();
 
         $this->assertSame('commun', $this->vue($data, 'LPV')['ECUE-PA'] ?? null,
-            "Un element commun doit apparaitre chez l'autre parcours, et le dire.");
+            "L'element entre chez l'autre parcours par la ligne commune.");
 
-        $this->assertTrue(collect($data['anomalies'])->contains(fn ($a) => $a['type'] === 'element_commun_dans_unite_partagee'
+        $this->assertTrue(collect($data['anomalies'])->contains(fn ($a) => $a['type'] === 'reserve_ailleurs_mais_visible'
             && $a['parcours'] === 'LPV' && str_starts_with($a['ecue'], 'ECUE-PA')));
+        $this->assertFalse(collect($data['anomalies'])->contains(fn ($a) => $a['type'] === 'reserve_ailleurs_mais_visible'
+            && $a['parcours'] === 'LPA'), 'Chez LPA, l\'element est a sa place.');
     }
 
     public function test_l_endpoint_exige_cli_read_et_filtre_par_parcours(): void

@@ -34,14 +34,28 @@ un élément que j'avais réservé à l'autre », sans session web sur l'instanc
     "unites_partagees": [{ "code": "UE31", "parcours": ["LPA","LPV"],
       "lignes": [{"ecue": "ECUE311 — …", "maquette": "LPA"}] }],
     "anomalies": [
-      {"type": "element_commun_dans_unite_partagee", "parcours": "LPV", "ue": "UE31",
-       "ecue": "…", "origine": "commun", "aussi_vu_par": ["LPA"]},
+      {"type": "reserve_ailleurs_mais_visible", "parcours": "LPV", "ue": "UE31",
+       "ecue": "…", "origine": "commun"},
+      {"type": "cle_etrangere_dans_unite_partagee", "…": "…"},
       {"type": "doublon_d_intitule", "…": "…"},
-      {"type": "sans_masse_horaire", "…": "…"}
-    ]
-  }
+      {"type": "sans_masse_horaire", "…": "…"},
+      {"type": "parcours_sans_filiere", "parcours": "…"}
+    ]  }
 }
 ```
+
+## Les anomalies
+
+| Type | Sens |
+|---|---|
+| `reserve_ailleurs_mais_visible` | l'élément est réservé à un autre parcours, **et** porte une ligne commune (ou seulement la clé étrangère) : il apparaît donc ici. C'est la « fuite » que l'école signale. |
+| `cle_etrangere_dans_unite_partagee` | élément sans ligne de pivot dans une unité partagée : visible par tous ses parcours. |
+| `doublon_d_intitule` | deux éléments de même intitulé dans une même maquette. |
+| `sans_masse_horaire` | aucune planification pour l'année courante. |
+| `parcours_sans_filiere` | le parcours n'a pas de filière : aucune heure ne peut être lue. |
+
+Un élément simplement commun dans une unité partagée n'est **pas** une anomalie :
+c'est le fonctionnement normal.
 
 ## Lire `origine`
 
@@ -59,8 +73,9 @@ parcours qui le porte, puis le retirer de la composition commune.
 La composition par parcours passe par `ESBTPUniteEnseignement::getEcuesEffectifs()`,
 la même méthode que le planning et les bulletins.
 
-`heures` vient de `esbtp_planifications_academiques` (année courante,
-filière du parcours, niveau et semestre de l'unité) : c'est la masse horaire
+`heures` vient de `esbtp_planifications_academiques` (**année courante seulement**,
+filière du parcours, semestre de l'unité dans ce parcours — pas le niveau de la fiche, qui
+reste celui du premier parcours importé) : c'est la masse horaire
 saisie dans le Planning LMD (`/esbtp/lmd/planning`).
 
 ## Historique
