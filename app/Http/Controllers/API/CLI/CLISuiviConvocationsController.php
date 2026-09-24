@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
-use App\Services\Cli\JournalActionsCli;
+use App\Services\CLI\JournalActionsCli;
 use App\Services\RendezVous\FamillesARecontacter;
 use App\Services\RendezVous\SynchroStatutsConvocations;
 use Illuminate\Http\JsonResponse;

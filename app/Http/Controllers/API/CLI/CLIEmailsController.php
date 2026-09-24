@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
-use App\Services\Cli\JournalActionsCli;
+use App\Services\CLI\JournalActionsCli;
 use App\Services\Emails\DiagnosticEmailsInstance;
 use App\Services\Emails\NettoyageAdressesFactices;
 use App\Services\Emails\RapportNettoyageEmails;

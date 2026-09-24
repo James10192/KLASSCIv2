@@ -73,6 +73,8 @@ etape "Noms de classes irresolus (fichiers modifies)"
 mapfile -t modifies < <(git diff --name-only --diff-filter=d "$CI_BASE...HEAD" -- '*.php')
 if [ ${#modifies[@]} -gt 0 ]; then
     "$PHP" bin/verifier-classes.php "${modifies[@]}" || echec "noms de classes irresolus"
+    # Sous Windows la casse ne compte pas ; en production (Linux, PSR-4) si.
+    "$PHP" bin/verifier-casse-psr4.php "${modifies[@]}" || echec "namespace ou classe dont la casse differe du chemin"
 fi
 
 etape "Directives Blade (avertit seulement)"
