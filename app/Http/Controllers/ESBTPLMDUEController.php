@@ -136,7 +136,10 @@ class ESBTPLMDUEController extends Controller
                                 'id' => $e->id,
                                 'code' => $e->code,
                                 'name' => $e->name,
-                                'coefficient' => $e->pivot->coefficient_ecue ?? $e->coefficient_ecue ?? null,
+                                // Le coefficient que les bulletins utilisent vraiment
+                                // (meme repli que LMDBulletinService) : afficher
+                                // « — » laissait croire a un element sans poids.
+                                'coefficient' => $e->pivot->coefficient_ecue ?? $e->coefficient_ecue ?? $e->coefficient ?? 1,
                                 'credit' => $e->pivot->credit_ecue ?? $e->credit_ecue ?? null,
                                 'ordre' => $e->pivot->ordre_bulletin ?? $e->ordre_bulletin ?? 0,
                                 'portee' => $portee,
@@ -255,21 +258,61 @@ class ESBTPLMDUEController extends Controller
             'parcoursMultiple', 'responsableUe', 'createdBy', 'updatedBy',
         ]);
 
-        // Tri sur une clé composite (ordre bulletin, puis intitulé) : une seule
-        // fermeture, compatible avec toutes les versions de Collection::sortBy.
-        $ecues = $ue->getEcuesEffectifs()
-            ->sortBy(fn ($m) => sprintf(
-                '%06d|%s',
-                (int) ($m->pivot?->ordre_bulletin ?? $m->ordre_bulletin ?? 0),
-                mb_strtolower((string) $m->name)
-            ))
-            ->values();
-
         return view('esbtp.lmd.ue.show', [
             'ue' => $ue,
-            'ecues' => $ecues,
-            'volumesHoraires' => $this->volumesHorairesParEcue($ue, $ecues),
+            'maquettes' => $this->maquettesDeLaFiche($ue),
         ]);
+    }
+
+    /**
+     * Une maquette par parcours qui utilise l'unite : ses elements et leurs
+     * heures. Une UE partagee n'a pas UNE composition ni UNE masse horaire :
+     * la fiche montrait tous les elements melanges et les heures de la filiere
+     * du premier parcours importe, que l'autre parcours n'avait jamais saisies.
+     *
+     * @return array<int, array{parcours: ?ESBTPLMDParcours, semestre: ?int, credit_ue: ?int, ecues: \Illuminate\Support\Collection, volumes: array, credits: int, heures: int}>
+     */
+    private function maquettesDeLaFiche(ESBTPUniteEnseignement $ue): array
+    {
+        // La meme annee que le planning, qui ecrit ces heures : sans annee en
+        // cours, il n'affiche rien, la fiche non plus.
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // Un onglet par couple parcours × semestre : une UE peut servir un meme
+        // parcours sur deux semestres, avec deux masses horaires.
+        $parcours = $ue->parcoursMultiple
+            ->unique(fn ($p) => $p->id . ':' . $p->pivot->semestre)
+            ->sortBy(fn ($p) => $p->code . ':' . $p->pivot->semestre)
+            ->values();
+        $vues = $parcours->isEmpty() ? [null] : $parcours->all();
+
+        return array_map(function (?ESBTPLMDParcours $p) use ($ue, $annee) {
+            $semestre = $p ? ((int) $p->pivot->semestre ?: null) : null;
+            $semestre ??= $ue->semestre ? (int) $ue->semestre : null;
+
+            // Tri sur une cle composite (ordre bulletin, puis intitule).
+            $ecues = $ue->getEcuesEffectifs($p?->id)
+                ->sortBy(fn ($m) => sprintf(
+                    '%06d|%s',
+                    (int) ($m->pivot?->ordre_bulletin ?? $m->ordre_bulletin ?? 0),
+                    mb_strtolower((string) $m->name)
+                ))
+                ->values();
+
+            $volumes = $this->volumesHorairesParEcue($ecues, $annee, $p?->filiere_id ?? $ue->filiere_id, $ue->niveau_id, $semestre);
+
+            return [
+                'parcours' => $p,
+                'semestre' => $semestre,
+                // Chaque maquette peut graver son propre credit sur le lien
+                // parcours-UE ; la fiche garde celui du premier import.
+                'credit_ue' => $p && $p->pivot->credit !== null ? (int) $p->pivot->credit : ($ue->credit !== null ? (int) $ue->credit : null),
+                'ecues' => $ecues,
+                'volumes' => $volumes,
+                'credits' => (int) $ecues->sum(fn ($e) => (int) ($e->pivot?->credit_ecue ?? $e->credit_ecue ?? 0)),
+                'heures' => (int) collect($volumes)->sum('total'),
+            ];
+        }, $vues);
     }
 
     /**
@@ -324,17 +367,20 @@ class ESBTPLMDUEController extends Controller
      */
     private function attributsUe(array $donnees): array
     {
-        return [
-            'name' => $donnees['name'],
-            'code' => $donnees['code'] ?? null,
-            'description' => $donnees['description'] ?? null,
-            'credit' => $donnees['credit'] ?? null,
-            'type_ue' => $donnees['type_ue'],
-            'semestre' => $donnees['semestre'] ?? null,
-            'filiere_id' => $donnees['filiere_id'] ?? null,
-            'niveau_id' => $donnees['niveau_id'] ?? null,
-            'parcours_id' => $donnees['parcours_id'] ?? null,
-        ];
+        // Seuls les champs ENVOYES : une modification partielle remettait a
+        // vide le code, le semestre, la filiere et le parcours qu'elle ne
+        // mentionnait pas.
+        $attributs = array_intersect_key($donnees, array_flip([
+            'name', 'code', 'description', 'credit', 'type_ue', 'semestre', 'filiere_id', 'niveau_id', 'parcours_id',
+        ]));
+
+        // La colonne refuse le vide (0 par defaut) : un credit laisse vide
+        // faisait echouer l'enregistrement sur une erreur serveur.
+        if (array_key_exists('credit', $attributs) && $attributs['credit'] === null) {
+            $attributs['credit'] = 0;
+        }
+
+        return $attributs;
     }
 
     /**
@@ -508,7 +554,7 @@ class ESBTPLMDUEController extends Controller
      *
      * @return array<int, array{cm:int, td:int, tp:int, total:int, source:string}>
      */
-    private function volumesHorairesParEcue(ESBTPUniteEnseignement $ue, $ecues): array
+    private function volumesHorairesParEcue($ecues, ?ESBTPAnneeUniversitaire $annee, ?int $filiereId, ?int $niveauId, ?int $semestre): array
     {
         $volumes = [];
         foreach ($ecues as $ecue) {
@@ -521,22 +567,19 @@ class ESBTPLMDUEController extends Controller
             ];
         }
 
-        if (!$ue->filiere_id || !$ue->niveau_id || !$ue->semestre || empty($volumes)) {
+        if (! $annee || ! $filiereId || ! $semestre || empty($volumes)) {
             return $volumes;
         }
 
-        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first()
-            ?? ESBTPAnneeUniversitaire::where('is_active', true)->orderByDesc('start_date')->first();
-        if (!$annee) {
-            return $volumes;
-        }
-
+        // Pas de niveau obligatoire dans la recherche : la fiche d'une UE
+        // partagee garde le niveau du premier parcours importe. On prefere la
+        // ligne du niveau de la fiche quand il en existe plusieurs.
         $planifications = ESBTPPlanificationAcademique::where('annee_universitaire_id', $annee->id)
-            ->where('filiere_id', $ue->filiere_id)
-            ->where('niveau_etude_id', $ue->niveau_id)
-            ->where('semestre', $ue->semestre)
+            ->where('filiere_id', $filiereId)
+            ->where('semestre', $semestre)
             ->whereIn('matiere_id', array_keys($volumes))
-            ->get();
+            ->get()
+            ->sortBy(fn ($pl) => (int) $pl->niveau_etude_id === (int) $niveauId ? 1 : 0);
 
         foreach ($planifications as $planification) {
             $volumes[$planification->matiere_id] = [
@@ -760,20 +803,18 @@ class ESBTPLMDUEController extends Controller
      * Miroir de CompositionUe::libererCleEtrangere() : la cle etrangere est
      * coupee des qu'il ne reste plus de ligne dans CETTE unite, meme si une
      * autre unite en porte encore. L'element retombe alors dans les listes de
-     * matieres BTS (whereNull). S'y ajoute l'element sans cle ni autre ligne.
+     * matieres BTS (whereNull).
      */
     private function sortiraitDuLmd(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue, int $portee): bool
     {
-        $autresLignes = DB::table('esbtp_ue_matiere')->where('matiere_id', $ecue->id)
-            ->where(fn ($q) => $q->where('unite_enseignement_id', '!=', $ue->id)->orWhere('parcours_id', '!=', $portee))
-            ->get(['unite_enseignement_id']);
-        $resteIci = $autresLignes->contains(fn ($l) => (int) $l->unite_enseignement_id === (int) $ue->id);
-
-        if ((int) $ecue->unite_enseignement_id === (int) $ue->id) {
-            return ! $resteIci;
-        }
-
-        return ! $ecue->unite_enseignement_id && $autresLignes->isEmpty();
+        // Sans cle sur cette unite, rien n'est libere : un element sans cle du
+        // tout est deja dans les listes BTS, la seconde question mentirait.
+        return (int) $ecue->unite_enseignement_id === (int) $ue->id
+            && DB::table('esbtp_ue_matiere')
+                ->where('unite_enseignement_id', $ue->id)
+                ->where('matiere_id', $ecue->id)
+                ->where('parcours_id', '!=', $portee)
+                ->doesntExist();
     }
 
     /**

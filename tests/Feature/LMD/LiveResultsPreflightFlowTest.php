@@ -230,6 +230,8 @@ class LiveResultsPreflightFlowTest extends TestCase
             $table->string('code')->nullable();
             $table->unsignedTinyInteger('credit')->default(0);
             $table->unsignedTinyInteger('semestre')->default(1);
+            // Migration 2026_09_10 : sert au tri de repli des UE d'une classe.
+            $table->unsignedSmallInteger('ordre')->nullable();
             $table->unsignedBigInteger('filiere_id')->nullable();
             $table->unsignedBigInteger('niveau_id')->nullable();
             $table->unsignedBigInteger('parcours_id')->nullable();
@@ -258,6 +260,8 @@ class LiveResultsPreflightFlowTest extends TestCase
             $table->float('coefficient_ecue')->default(1);
             $table->unsignedTinyInteger('credit_ecue')->default(0);
             $table->unsignedInteger('ordre_bulletin')->default(1);
+            // 0 = composition commune, sinon le parcours auquel la ligne est reservee.
+            $table->unsignedBigInteger('parcours_id')->default(0);
             $table->timestamps();
         });
 

@@ -188,4 +188,48 @@ class HeuresUePartageeParParcoursTest extends TestCase
         $this->assertSame(2, $credit($this->lpv), 'LPV lit la ligne commune, pas la reserve de LPA.');
         $this->assertSame(3, $credit($this->lpa), 'LPA lit sa ligne reservee.');
     }
+
+    public function test_une_planification_supprimee_se_recree_au_lieu_d_un_faux_conflit(): void
+    {
+        $this->saisir((int) $this->lpa->filiere_id, 18)->assertOk();
+        $ancienne = ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)
+            ->where('filiere_id', $this->lpa->filiere_id)->first();
+        $ancienne->update(['volume_horaire_td' => 9, 'coefficient' => 3, 'observations' => 'ancienne']);
+        $ancienne->delete();
+
+        // Avant : 409 « modifiee par un autre utilisateur ».
+        $this->saisir((int) $this->lpa->filiere_id, 6)->assertOk();
+
+        $ligne = ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)
+            ->where('filiere_id', $this->lpa->filiere_id)->first();
+        $this->assertNotNull($ligne, 'La ligne doit etre de nouveau visible.');
+        $this->assertSame(6, (int) $ligne->volume_horaire_cm);
+        $this->assertSame(0, (int) $ligne->volume_horaire_td, 'Les anciennes heures supprimees ne reviennent pas.');
+        $this->assertEquals(1, (float) $ligne->coefficient, 'Ni son ancien coefficient.');
+        $this->assertNull($ligne->observations, 'Ni ses observations.');
+        $this->assertSame(6, (int) $ligne->volume_horaire_total);
+    }
+
+    public function test_le_planning_ne_montre_que_l_annee_en_cours(): void
+    {
+        // Une ligne de l'an dernier, plus recente en base que celle de cette annee.
+        $this->saisir((int) $this->lpa->filiere_id, 12)->assertOk();
+        $ancienne = ESBTPAnneeUniversitaire::factory()->create(['is_current' => false]);
+        $cetteAnnee = ESBTPPlanificationAcademique::where('matiere_id', $this->ecue->id)
+            ->where('filiere_id', $this->lpa->filiere_id)->firstOrFail();
+        $copie = $cetteAnnee->replicate();
+        $copie->annee_universitaire_id = $ancienne->id;
+        $copie->volume_horaire_cm = 99;
+        $copie->save();
+
+        Role::findOrCreate('enseignant', 'web');
+        $rows = $this->actingAs($this->acteur)->get(route('esbtp.lmd.planning.index', [
+            'parcours_id' => $this->lpa->id,
+            'niveau_id' => ESBTPUniteEnseignement::where('code', 'AGR2103')->value('niveau_id'),
+            'semestre' => 3,
+        ]))->assertOk()->viewData('rows');
+
+        $planif = $rows->flatMap(fn ($r) => $r['ecues'])->firstWhere('ecue.id', $this->ecue->id)['planif'];
+        $this->assertSame(12, (int) $planif->volume_horaire_cm, 'La saisie de cette annee, pas celle de l\'an dernier.');
+    }
 }
