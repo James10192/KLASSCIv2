@@ -133,9 +133,9 @@ class ESBTPLMDPlanningController extends Controller
      * Sécurités appliquées :
      *   - assert ECUE LMD (matiere.unite_enseignement_id != null) — les
      *     matières BTS legacy ne sont pas planifiables ici (Silent #10)
-     *   - filiere_id dérivée server-side depuis l'UE de l'ECUE pour
-     *     éviter l'IDOR (M3) — la valeur client est seulement utilisée
-     *     comme « hint » et validée contre la vérité server-side
+     *   - filiere_id : celle du parcours affiché, acceptée seulement si ce
+     *     parcours voit l'ECUE ; sinon 422, sans repli (anti-IDOR, M3).
+     *     Voir filiereDePlanification()
      *   - DB::transaction + lockForUpdate sur l'unique composite pour
      *     éviter la double-création en race condition (M2)
      *   - created_by/updated_by assignés APRÈS le fill() pour qu'une
@@ -153,6 +153,9 @@ class ESBTPLMDPlanningController extends Controller
         abort_if(!$matiere->unite_enseignement_id, 422, "Cette matière n'est pas un ECUE LMD.");
 
         $context = $this->resolvePlanificationContext($request, $matiere);
+        if ($context['refus_filiere']) {
+            return response()->json(['success' => false, 'message' => $context['refus_filiere']], 422);
+        }
         if (!$context['filiere_id'] || !$context['niveau_id']) {
             return response()->json(['success' => false, 'message' => 'Contexte filière/niveau manquant — sélectionnez un niveau et un semestre avant l\'édition.'], 422);
         }
@@ -239,9 +242,9 @@ class ESBTPLMDPlanningController extends Controller
      *
      * Securites :
      *   - max 50 ECUE par appel (validation FormRequest + abort_if defensive)
-     *   - chaque ECUE est valide individuellement (LMD only, filiere derivee
-     *     server-side via deriveFiliereIdFromEcue) — meme protection IDOR
-     *     que updatePlanification
+     *   - chaque ECUE est valide individuellement (LMD only, filiere par
+     *     filiereDePlanification : refus si le parcours affiche ne voit pas
+     *     l'ECUE) — meme protection IDOR que updatePlanification
      *   - enseignant valide une seule fois si present
      *   - transaction unique : si un ECUE plante, on continue les autres et
      *     on remonte les erreurs partielles dans la reponse JSON
@@ -304,7 +307,7 @@ class ESBTPLMDPlanningController extends Controller
     /**
      * Variante de `upsertPlanification()` qui prend directement un tableau de
      * champs (au lieu d'un FormRequest) pour servir le bulk-update. Reutilise
-     * la meme strategie : derivation filiere server-side, lockForUpdate, fill
+     * la meme strategie : filiereDePlanification (refus sans repli), lockForUpdate, fill
      * controle, recalcul du total, audit auto via le modele Auditable.
      */
     private function upsertPlanificationFields(int $ecueId, array $fields, array $contextHint): void
@@ -314,9 +317,10 @@ class ESBTPLMDPlanningController extends Controller
             throw new \RuntimeException("ECUE {$ecueId} non LMD ou introuvable.");
         }
 
-        $filiereId = $this->deriveFiliereIdFromEcue($matiere) ?: ($contextHint['filiere_id'] ?? null);
-        if (!$filiereId) {
-            throw new \RuntimeException("Filiere indisponible pour ECUE {$ecueId}.");
+        $demandee = isset($contextHint['filiere_id']) ? (int) $contextHint['filiere_id'] : null;
+        [$filiereId, $refus] = $this->filiereDePlanification($matiere, $demandee);
+        if ($refus || !$filiereId) {
+            throw new \RuntimeException($refus ?? "Filiere indisponible pour ECUE {$ecueId}.");
         }
 
         [$planif, $wasCreated] = $this->lockOrInitPlanification($ecueId, $filiereId, $contextHint);
@@ -470,34 +474,86 @@ class ESBTPLMDPlanningController extends Controller
     /**
      * Résout le contexte de planification (filiere/niveau/semestre/année).
      *
-     * IMPORTANT (M3, anti-IDOR) : `filiere_id` est dérivé server-side depuis
-     * l'UE de l'ECUE et NON pris tel quel du client. La valeur client est
-     * acceptée seulement si elle correspond à la filière de l'UE de l'ECUE
-     * — sinon on retombe sur la valeur server-side.
-     *
-     * Chaîne canonique : ECUE.unite_enseignement_id → UE.filiere_id (FK directe
-     * sur esbtp_unites_enseignement). Fallback via UE.parcours.filiere_id si
-     * l'UE n'a pas de filière directe (rare mais autorisé par le schéma).
+     * IMPORTANT (M3, anti-IDOR) : `filiere_id` est celle du parcours affiché,
+     * acceptée seulement si ce parcours voit l'ECUE (filiereDePlanification) ;
+     * sinon le contexte porte un refus et la requête répond 422, sans repli.
+     * La filière de la fiche de l'UE ne sert que si aucune n'est envoyée ET
+     * que l'UE ne sert qu'un parcours.
      */
     private function resolvePlanificationContext(Request $request, ?ESBTPMatiere $matiere = null): array
     {
-        $serverFiliereId = $this->deriveFiliereIdFromEcue($matiere);
         $clientFiliereId = $request->integer('filiere_id') ?: null;
 
-        // Si client envoie une filière qui ne matche pas celle dérivée
-        // server-side, on prend toujours la server-side. Si server-side
-        // n'a pas pu être dérivée (UE sans filière + sans parcours.filière),
-        // on accepte la client mais ce cas est pathologique.
-        $filiereId = $serverFiliereId
-            ?? $clientFiliereId;
+        // La filiere du parcours AFFICHE. La fiche d'une UE partagee ne porte
+        // que la filiere du premier parcours importe : l'imposer ecrivait les
+        // heures saisies sur la maquette LPA dans la planification de LPV
+        // (USAT) — perdues pour l'une, ecrasees pour l'autre. Une filiere dont
+        // aucun parcours ne voit l'ECUE est refusee (422), jamais redirigee.
+        // Sans ECUE (edition en masse), la filiere se tranche ECUE par ECUE dans
+        // upsertPlanificationFields().
+        [$filiereId, $refus] = $matiere
+            ? $this->filiereDePlanification($matiere, $clientFiliereId)
+            : [$clientFiliereId, null];
 
         return [
             'filiere_id' => $filiereId,
+            'refus_filiere' => $refus,
             'niveau_id' => $request->integer('niveau_id') ?: null,
             'semestre' => $request->integer('semestre') ?: 1,
             'annee_id' => $request->integer('annee_universitaire_id')
                 ?: optional(ESBTPAnneeUniversitaire::where('is_current', true)->first())->id,
         ];
+    }
+
+    /**
+     * La filiere dans laquelle ecrire les heures de cet ECUE, ou le refus a dire.
+     *
+     * La filiere demandee est celle du parcours affiche. Elle est retenue si un
+     * parcours de cette filiere voit l'ECUE dans sa maquette : une UE qu'il
+     * utilise, et l'ECUE commun ou reserve a CE parcours. Sinon on refuse.
+     * Retomber sur la filiere de la fiche de l'UE, ici, ecrirait les heures dans
+     * la maquette d'un autre parcours sans le dire : c'est le defaut corrige.
+     *
+     * Sans filiere demandee, la fiche ne vaut que si l'UE ne sert qu'un parcours.
+     *
+     * @return array{0: ?int, 1: ?string}
+     */
+    private function filiereDePlanification(ESBTPMatiere $matiere, ?int $demandee): array
+    {
+        $ueIds = DB::table('esbtp_ue_matiere')->where('matiere_id', $matiere->id)
+            ->pluck('unite_enseignement_id')
+            ->push($matiere->unite_enseignement_id)
+            ->filter()->unique()->values();
+
+        if ($demandee) {
+            $voit = DB::table('esbtp_lmd_parcours_ue as pu')
+                ->join('esbtp_lmd_parcours as p', 'p.id', '=', 'pu.parcours_id')
+                ->whereIn('pu.unite_enseignement_id', $ueIds)
+                ->where('p.filiere_id', $demandee)
+                ->where(function ($q) use ($matiere) {
+                    $q->whereExists(fn ($sub) => $sub->selectRaw('1')->from('esbtp_ue_matiere as um')
+                        ->whereColumn('um.unite_enseignement_id', 'pu.unite_enseignement_id')
+                        ->where('um.matiere_id', $matiere->id)
+                        ->where(fn ($w) => $w->where('um.parcours_id', 0)->orWhereColumn('um.parcours_id', 'p.id')))
+                        // Tenu par la seule cle etrangere : commun, donc vu par tous.
+                        ->orWhere(fn ($w) => $w->where('pu.unite_enseignement_id', $matiere->unite_enseignement_id)
+                            ->whereNotExists(fn ($sub) => $sub->selectRaw('1')->from('esbtp_ue_matiere as um2')
+                                ->whereColumn('um2.unite_enseignement_id', 'pu.unite_enseignement_id')
+                                ->where('um2.matiere_id', $matiere->id)));
+                })
+                ->exists();
+
+            return $voit
+                ? [$demandee, null]
+                : [null, "« {$matiere->name} » n'est pas dans la maquette du parcours affiché : ses heures ne peuvent pas y être enregistrées."];
+        }
+
+        $parcours = DB::table('esbtp_lmd_parcours_ue')->whereIn('unite_enseignement_id', $ueIds)
+            ->distinct()->count('parcours_id');
+
+        return $parcours <= 1
+            ? [$this->deriveFiliereIdFromEcue($matiere), null]
+            : [null, "Ce parcours n'a pas de filière : les heures de « {$matiere->name} », partagé entre plusieurs parcours, ne peuvent pas être rangées. Rattachez une filière au parcours."];
     }
 
     /**

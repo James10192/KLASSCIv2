@@ -219,7 +219,7 @@ class CompositionUe
      * Ce qui est repris l'est en COMMUN : c'est ce que la lecture affichait, et
      * l'ecran ne doit pas changer.
      */
-    public function materialiserDepuisCleEtrangere(int $uniteEnseignementId): void
+    public function materialiserDepuisCleEtrangere(int $uniteEnseignementId, array $sauf = []): void
     {
         $unite = ESBTPUniteEnseignement::find($uniteEnseignementId);
 
@@ -227,21 +227,31 @@ class CompositionUe
             return;
         }
 
-        // La garde porte sur la composition COMMUNE. Tester l'existence de
-        // n'importe quelle ligne rendrait cette materialisation impossible des
-        // qu'un seul element aurait ete reserve a une maquette — et l'unite
-        // resterait alors exposee au depouillement que cette methode previent.
-        $dejaGrave = DB::table('esbtp_ue_matiere')
+        // Plus de garde « deja grave » : ne reprenant que ce que le pivot
+        // ignore, l'operation est idempotente. La garde laissait sans
+        // protection une unite qui avait deja une ligne commune ET un element
+        // tenu par la seule cle etrangere.
+        //
+        // Meme perimetre que le repli de getEcuesEffectifs() : les actives que
+        // le pivot IGNORE. Un element deja present dans le pivot, meme reserve a
+        // un seul parcours, n'etait pas lu comme commun : le graver en commun le
+        // montrait soudain a toutes les maquettes. C'est ce qui se passait en
+        // retirant la derniere ligne commune d'une unite (USAT, AGR2103) :
+        // l'element reserve a LPV revenait aussitot en commun, chez LPA.
+        //
+        // $sauf : les elements qu'on est en train de retirer. Les graver ici
+        // rendait leur retrait impossible.
+        $dansLePivot = DB::table('esbtp_ue_matiere')
             ->where('unite_enseignement_id', $unite->id)
-            ->where('parcours_id', self::COMMUN)
-            ->exists();
+            ->pluck('matiere_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        $ignores = array_merge($dansLePivot, array_map('intval', $sauf));
 
-        if ($dejaGrave) {
-            return;
-        }
-
-        // Meme perimetre que le repli de getEcuesEffectifs() : les actives.
         foreach ($unite->matieres()->where('is_active', true)->get() as $ecue) {
+            if (in_array((int) $ecue->id, $ignores, true)) {
+                continue;
+            }
             $this->poser($unite, (int) $ecue->id, [
                 'coefficient_ecue' => $ecue->coefficient_ecue,
                 'credit_ecue' => $ecue->credit_ecue,
@@ -307,13 +317,13 @@ class CompositionUe
             return;
         }
 
-        // Une unite dont le pivot n'a JAMAIS ete ecrit rendrait ce test vrai par
-        // vacuite : aucune ligne ne designe l'element, donc il passerait pour
-        // orphelin, et sa cle serait coupee alors qu'elle etait le SEUL lien.
-        // L'element quitterait toutes les maquettes d'un coup et tomberait dans
-        // le catalogue BTS, ou une vingtaine d'ecrans en service l'afficheraient.
-        // On grave donc la composition commune avant de juger.
-        $this->materialiserDepuisCleEtrangere($ue->id);
+        // On grave d'abord en commun les AUTRES elements tenus par la seule cle
+        // etrangere : sans cela, une unite dont le pivot n'a jamais ete ecrit
+        // les verrait passer pour orphelins, et leur cle serait coupee alors
+        // qu'elle etait leur seul lien. Ceux qu'on retire ($matiereIds) sont
+        // exclus a dessein : leur retrait vise la composition commune, leur cle
+        // doit etre liberee. Les graver ici rendait ce retrait impossible.
+        $this->materialiserDepuisCleEtrangere($ue->id, $matiereIds);
 
         $encoreLiees = DB::table('esbtp_ue_matiere')
             ->where('unite_enseignement_id', $ue->id)

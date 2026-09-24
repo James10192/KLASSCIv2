@@ -12,6 +12,12 @@ class AttendanceSyncController extends Controller
 {
     public function sync(Request $request)
     {
+        // N'importe quel jeton (celui d'un eleve compris) ecrivait des
+        // presences pour n'importe quel eleve.
+        if (! $request->user()?->canAny(['attendances.create', 'attendances.edit'])) {
+            return response()->json(['success' => false, 'message' => 'Vous ne pouvez pas enregistrer de présences.'], 403);
+        }
+
         try {
             $request->validate([
                 'student_id' => 'required|exists:students,id',

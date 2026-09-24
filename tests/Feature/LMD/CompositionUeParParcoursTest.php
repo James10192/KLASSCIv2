@@ -206,6 +206,24 @@ class CompositionUeParParcoursTest extends TestCase
         $this->assertSame(5, (int) $reserve->credit_ecue, 'Son credit ne doit pas avoir bouge.');
     }
 
+    public function test_retirer_la_derniere_ligne_commune_ne_la_fait_pas_revenir(): void
+    {
+        // USAT, AGR2103 : un element reserve a une maquette ET pose en commun.
+        // L'ecole retire la ligne commune. La liberation de la cle etrangere
+        // materialisait alors la composition commune a partir de la cle
+        // etrangere, et regravait l'element en commun : il revenait chez
+        // l'autre parcours aussitot retire.
+        $this->composition->poser($this->ue, (int) $this->ecue->id, ['coefficient_ecue' => 1, 'credit_ecue' => 3, 'ordre_bulletin' => 0]);
+        $this->assertContains('ECUE-BU', $this->vusPar($this->travauxPublics));
+
+        $this->composition->retirer($this->ue, [(int) $this->ecue->id], CompositionUe::COMMUN);
+        $this->composition->libererCleEtrangere($this->ue, [(int) $this->ecue->id]);
+
+        $this->assertSame(0, $this->lignes(CompositionUe::COMMUN), 'La ligne commune ne doit pas revenir.');
+        $this->assertNotContains('ECUE-BU', $this->vusPar($this->travauxPublics));
+        $this->assertContains('ECUE-BU', $this->vusPar($this->batiment), 'La reservation de Batiment reste.');
+    }
+
     public function test_retirer_d_une_maquette_ne_touche_pas_les_autres(): void
     {
         // `detach($id)` supprimait toutes les lignes de cet element : retirer
@@ -334,11 +352,40 @@ class CompositionUeParParcoursTest extends TestCase
 
     public function test_la_materialisation_reprend_la_cle_etrangere_en_commun(): void
     {
+        // Un element tenu par la SEULE cle etrangere : la lecture le montre comme
+        // commun, la materialisation le grave donc en commun.
+        DB::table('esbtp_ue_matiere')->where('unite_enseignement_id', $this->ue->id)->delete();
         $this->ecue->update(['unite_enseignement_id' => $this->ue->id, 'credit_ecue' => 3]);
 
         $this->composition->materialiserDepuisCleEtrangere($this->ue->id);
 
         $this->assertSame(1, $this->lignes(CompositionUe::COMMUN));
+    }
+
+    public function test_la_materialisation_protege_un_element_hors_pivot_meme_avec_une_ligne_commune(): void
+    {
+        // Une ligne commune existe deja pour un autre element : l'ancienne garde
+        // s'arretait la, et l'element tenu par la seule cle etrangere restait
+        // expose.
+        $autre = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $this->composition->poser($this->ue, (int) $autre->id, ['credit_ecue' => 2]);
+        DB::table('esbtp_ue_matiere')->where('unite_enseignement_id', $this->ue->id)->where('matiere_id', $this->ecue->id)->delete();
+        $this->ecue->update(['unite_enseignement_id' => $this->ue->id]);
+
+        $this->composition->materialiserDepuisCleEtrangere($this->ue->id);
+
+        $this->assertSame(1, $this->lignes(CompositionUe::COMMUN));
+    }
+
+    public function test_la_materialisation_ne_rend_pas_commun_un_element_reserve(): void
+    {
+        // L'import a reserve l'element a Batiment ET pose sa cle etrangere. La
+        // lecture ne le montre qu'a Batiment : le graver en commun le montrerait
+        // a Travaux Publics.
+        $this->composition->materialiserDepuisCleEtrangere($this->ue->id);
+
+        $this->assertSame(0, $this->lignes(CompositionUe::COMMUN));
+        $this->assertNotContains('ECUE-BU', $this->vusPar($this->travauxPublics));
     }
 
     public function test_la_materialisation_reste_possible_malgre_une_reservation(): void

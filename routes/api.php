@@ -516,6 +516,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
 
     // LMD hierarchy (read)
     Route::get('/lmd/tree', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'tree'])->name('lmd.tree');
+    // La maquette vue par chaque parcours : origine de chaque element (commun,
+    // reserve, cle etrangere) et masse horaire planifiee. Lecture seule.
+    Route::get('/lmd/maquette', [App\Http\Controllers\API\CLI\CLILMDMaquetteController::class, 'lire'])->name('lmd.maquette');
 
     // Admin endpoints — throttled at 60/min (matches outer group; auth:sanctum + tokenCan('cli:admin')
     // already gates access. Higher throughput needed for bulk operations like LMD import.)
@@ -725,5 +728,14 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // (synchrone). Simulation par defaut, motif obligatoire.
         Route::post('/notes/corriger', [App\Http\Controllers\API\CLI\CLIMoyennesController::class, 'corrigerNotes'])
             ->name('notes.corriger');
+        // Jetons SERVEUR du LMS (compte technique « Service LMS ») : le jeton
+        // en clair n'est rendu qu'a la creation. Voir docs/api/LMS_JETON_SERVEUR.md.
+        Route::post('/lms/jeton-serveur', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'creer'])
+            ->name('lms.jeton-serveur.creer');
+        Route::get('/lms/jetons-serveur', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'lister'])
+            ->name('lms.jetons-serveur');
+        Route::delete('/lms/jeton-serveur/{id}', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'revoquer'])
+            ->whereNumber('id')
+            ->name('lms.jeton-serveur.revoquer');
     });
 });
