@@ -32,6 +32,9 @@ class CLISettingsController extends BaseApiController
      */
     private const SENSIBLES = ['token', 'secret', 'password', 'mot_de_passe', 'api_key', 'apikey', 'cle_api'];
 
+    /** Reglages dont la valeur est validee comme booleen, puis ecrite en 1 / 0. */
+    private const BOOLEENS = [\App\Services\TenantScolariteSettings::VERIFICATION_CONTACT];
+
     public function index(Request $request): JsonResponse
     {
         if (! $request->user()->tokenCan('cli:read')) {
@@ -114,10 +117,20 @@ class CLISettingsController extends BaseApiController
             );
         }
 
+        // Bascules d'instance dont la valeur est strictement un booleen.
+        if (in_array($valide['key'], self::BOOLEENS, true)) {
+            $booleen = filter_var($valide['value'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($booleen === null) {
+                return $this->errorResponse(sprintf('« %s » attend un booléen (1/0, true/false).', $valide['key']), [], 422);
+            }
+            $valide['value'] = $booleen ? '1' : '0';
+        }
+
         $reglage = Setting::query()->where('key', $valide['key'])->first();
 
         if (! $reglage) {
             $creables = [
+                \App\Services\TenantScolariteSettings::VERIFICATION_CONTACT,
                 \App\Services\TenantScolariteSettings::CLERK_LMD_ACCESS,
                 \App\Services\TenantScolariteSettings::CLERK_PEDAGOGIE,
                 \App\Services\TenantScolariteSettings::MANAGE_TEACHERS,

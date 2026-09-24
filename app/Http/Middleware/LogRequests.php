@@ -52,7 +52,7 @@ class LogRequests
      */
     private function corpsJournalisable(Request $request): array
     {
-        if ($request->is('api/public/*')) {
+        if ($request->is('api/public/*', 'api/portail/*')) {
             return ['_masque' => 'corps non journalise (route publique)'];
         }
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Inscription\PortailCandidatureRequest;
 use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\Inscription\PortailCandidatureService;
+use App\Services\Verification\DemarrageVerification;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -107,12 +108,18 @@ class CandidaturePortalController extends Controller
         // finalise SUR PLACE, et « je viens quand ? » est la question que la
         // scolarite entend le plus au telephone. Le portail y repond lui-meme
         // quand l'ecole a renseigne la date.
-        return response()->json([
+        //
+        // Si l'ecole l'a active, un code part pour verifier le contact ; la
+        // candidature est transmise dans tous les cas (voir DemarrageVerification).
+        $verification = app(DemarrageVerification::class)->apresDepot($candidature);
+
+        return response()->json(array_merge([
             'enregistre' => true,
-            'message' => 'Votre candidature a bien été transmise à l\'établissement.',
+            'message' => 'Votre candidature a bien été transmise à l\'établissement.'
+                .($verification === null ? '' : ' Confirmez votre contact avec le code reçu pour être convoqué(e).'),
             'inscriptions_physiques' => $this->publication->inscriptionsPhysiques(),
             'reference_publique' => $candidature->referencePubliqueAffichee(),
-        ], 201);
+        ], $verification?->reponse() ?? []), 201);
     }
 
     /**

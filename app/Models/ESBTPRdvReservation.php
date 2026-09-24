@@ -34,6 +34,9 @@ class ESBTPRdvReservation extends Model
         'accueilli_at',
         'accueilli_par',
         'prevenue_par',
+        'convocation_delivree_at',
+        'convocation_synchro_at',
+        'convocation_code_distant',
     ];
 
     protected $casts = [
@@ -44,6 +47,8 @@ class ESBTPRdvReservation extends Model
         'convocation_tentatives' => 'integer',
         'convocation_envoyee_at' => 'datetime',
         'accueilli_at' => 'datetime',
+        'convocation_delivree_at' => 'datetime',
+        'convocation_synchro_at' => 'datetime',
     ];
 
     public function creneau(): BelongsTo

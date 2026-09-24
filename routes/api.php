@@ -104,6 +104,8 @@ Route::prefix('public/rendez-vous')
             ->name('api.public.rendez-vous.retrouver');
     });
 
+require __DIR__.'/api-portail-verification.php';
+
 /*
  * Identite publique de l'etablissement, lue par le site klassci.com.
  *
@@ -553,6 +555,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/rendez-vous/generer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'generer'])->name('rendez-vous.generer');
         Route::post('/rendez-vous/placer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'placer'])->name('rendez-vous.placer');
         Route::get('/rendez-vous/diagnostic', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'diagnostic'])->name('rendez-vous.diagnostic');
+        require __DIR__.'/api-cli-emails.php';
         Route::post('/rendez-vous/convocations/envoyer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'envoyerConvocations'])->name('rendez-vous.convocations.envoyer');
         Route::post('/rendez-vous/convocations/remettre', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'remettreConvocations'])->name('rendez-vous.convocations.remettre');
         // L'ordre des categories est l'ordre dans lequel un versement solde les
