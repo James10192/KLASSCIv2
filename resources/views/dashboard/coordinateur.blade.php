@@ -514,8 +514,7 @@
         .cd-header-left > div { min-width: 0; }
         .cd-header .header-sub { color: #64748b; font-size: .84rem; white-space: normal; overflow-wrap: anywhere; }
         .cd-header .header-sub strong { color: #0f172a; }
-        .cd-header-actions { justify-content: flex-start; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-right: -16px; padding-right: 16px; }
-        .cd-header-actions::-webkit-scrollbar { display: none; }
+        .cd-header-actions { justify-content: flex-start; flex-wrap: wrap; }
         .cd-header-actions > * { flex: 0 0 auto; }
         .cd-badge { background: #fff; color: #334155; border-color: #dfe6f1; white-space: nowrap; backdrop-filter: none; }
         .cd-btn-refresh { background: #fff; color: #0453cb; border-color: #dfe6f1; border-radius: 99px; }
