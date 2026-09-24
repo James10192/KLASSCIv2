@@ -97,7 +97,7 @@ class FicheUePartageeParParcoursTest extends TestCase
         $this->actingAs($acteur)->get(route('esbtp.lmd.ue.show', $ue))
             ->assertOk()
             ->assertDontSee('Parcours principal')
-            ->assertSee('Partagee entre 2 parcours')
+            ->assertSee('Partagée entre 2 parcours')
             ->assertSee('Filiere LPA, Filiere LPV', false);
     }
 
@@ -113,7 +113,7 @@ class FicheUePartageeParParcoursTest extends TestCase
 
         $this->actingAs($acteur)->get(route('esbtp.lmd.ue.show', $ue))
             ->assertOk()
-            ->assertDontSee('Partagee entre')
+            ->assertDontSee('Partagée entre')
             ->assertSee('Parcours LPV')
             ->assertSee('Semestre 3');
 
@@ -121,6 +121,23 @@ class FicheUePartageeParParcoursTest extends TestCase
 
         $this->actingAs($acteur)->get(route('esbtp.lmd.ue.show', $ue->fresh()))
             ->assertOk()
-            ->assertSee('Non rattachee');
+            ->assertSee('Non rattachée');
+    }
+
+    public function test_un_parcours_sans_filiere_est_compte_et_non_tu(): void
+    {
+        $ue = ESBTPUniteEnseignement::where('code', 'AGR2103')->firstOrFail();
+        ESBTPLMDParcours::where('code', 'LPV')->update(['filiere_id' => null]);
+        $acteur = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
+        $acteur->assignRole(Role::findOrCreate('superAdmin', 'web'));
+
+        $rattachement = $this->actingAs($acteur)->get(route('esbtp.lmd.ue.show', $ue))
+            ->assertOk()
+            ->assertSee('Filiere LPA (1 parcours sans filière)', false)
+            ->viewData('rattachement');
+
+        $this->assertTrue($rattachement['est_partagee']);
+        $this->assertSame(['Filiere LPA'], $rattachement['filieres']);
+        $this->assertSame([3], $rattachement['semestres']);
     }
 }
