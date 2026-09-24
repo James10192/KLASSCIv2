@@ -811,19 +811,24 @@ function ueManager() {
         },
 
         // ── Delete ECUE ──
-        async deleteEcue(ue, ecue) {
+        async deleteEcue(ue, ecue, confirmerSortie = false) {
             const maquette = ecue.portee
                 ? `de la maquette ${ecue.portee_label || ecue.portee_code}`
                 : 'de la composition commune (tous les parcours de l\'UE)';
-            if (!confirm(`Retirer « ${ecue.name} » ${maquette} ?`)) return;
+            if (!confirmerSortie && !confirm(`Retirer « ${ecue.name} » ${maquette} ?`)) return;
             try {
                 const resp = await fetch(`${BASE}/${ue.id}/ecue/${ecue.id}`, {
                     method: 'DELETE',
                     headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
                     // La ligne visee : celle de CETTE maquette, et d'elle seule.
-                    body: JSON.stringify({ parcours_id: ecue.portee || null }),
+                    body: JSON.stringify({ parcours_id: ecue.portee || null, confirmer_sortie: confirmerSortie }),
                 });
                 const data = await resp.json();
+                // Derniere ligne de l'element : le serveur demande une seconde confirmation.
+                if (resp.status === 409 && data.confirmation_requise) {
+                    if (confirm(data.message)) return this.deleteEcue(ue, ecue, true);
+                    return;
+                }
                 if (resp.ok && data.success) {
                     ue.ecues = (ue.ecues || []).filter(e => !(e.id === ecue.id && (e.portee || 0) === (ecue.portee || 0)));
                     ue.matieres_count = new Set(ue.ecues.map(e => e.id)).size;
