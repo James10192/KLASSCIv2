@@ -39,6 +39,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Écrans mobiles : la page ne glisse plus de côté sur iPhone.** Un nom long, comme un intitulé de filière, élargissait l'écran au-delà du téléphone, par exemple sur l'accueil superAdmin d'ISLG. La barre de navigation du bas devient opaque : le contenu ne transparaît plus à travers.
+- **Barre du haut sur ordinateur et tablette** : le bouton de profil ne sort plus de l'écran avec un nom d'école ou d'utilisateur long. La recherche rétrécit, les noms s'abrègent, et sous 1200 px l'avatar remplace le nom.
+- **Accueil comptable sur téléphone** : chaque dernier versement s'affiche en carte au lieu d'un tableau qui élargissait la page.
+
 - Écran d'encaissement : une erreur JavaScript levée à chaque ouverture de l'écran disparaît. Elle venait d'un ancien branchement de recherche d'étudiant, remplacé depuis par le sélecteur d'inscription de la caisse.
 
 - Liste des paiements : sur un écran de portable avec la barre latérale ouverte, le titre « Suivi des Paiements » se retrouvait écrasé en colonne sous les boutons du bandeau. Les boutons passent désormais à la ligne quand la place manque.
