@@ -205,20 +205,20 @@
                 <div class="cb-kpi-v">{{ $cbFmt($encaisseMois) }}<small>FCFA</small></div>
                 <div class="cb-kpi-r">
                     @if($cbVarMois === null) {{ ucfirst(now()->isoFormat('MMMM')) }} en cours
-                    @else <span class="{{ $cbVarMois >= 0 ? 'cb-up' : 'cb-down' }}">{{ $cbVarMois >= 0 ? '▲ +' : '▼ ' }}{{ number_format($cbVarMois, 1, ',', ' ') }} %</span> vs même date le mois dernier
+                    @else <span class="{{ $cbVarMois >= 0 ? 'cb-up' : 'cb-down' }}">{{ $cbVarMois >= 0 ? '▲ +' : '▼ ' }}{{ number_format($cbVarMois, 1, ',', ' ') }} %</span> vs mois dernier à date
                     @endif
                 </div>
             </a>
             <a class="cb-kpi" @if($cbPeutVoir) href="{{ route('esbtp.paiements.index', ['status' => 'validé']) }}" @endif>
                 <div class="cb-kpi-l"><i class="fas fa-circle-check"></i> Encaissé sur l'année</div>
                 <div class="cb-kpi-v">{{ $cbIndisponible ? '—' : $cbFmt($totalEncaisse) }}<small>FCFA</small></div>
-                <div class="cb-kpi-r">sur {{ $cbFmt($totalFraisDus) }} FCFA dus · {{ $validatedInscriptionsCount }} inscrits</div>
+                <div class="cb-kpi-r" title="{{ $cbFmt($totalFraisDus) }} FCFA dus · {{ $validatedInscriptionsCount }} inscrits">{{ number_format((float) $tauxRecouvrement, 1, ',', ' ') }} % des {{ $cbCourt($totalFraisDus) }} dus</div>
                 <div class="cb-kpi-bar"><span style="width: {{ min(100, (float) $tauxRecouvrement) }}%"></span></div>
             </a>
             <a class="cb-kpi" @if($cbPeutCompta) href="{{ route('esbtp.comptabilite.relances.index') }}" @endif>
                 <div class="cb-kpi-l"><i class="fas fa-hourglass-half"></i> Reste à percevoir</div>
                 <div class="cb-kpi-v">{{ $cbIndisponible ? '—' : $cbFmt($montantRestant) }}<small>FCFA</small></div>
-                <div class="cb-kpi-r">taux de recouvrement {{ number_format((float) $tauxRecouvrement, 1, ',', ' ') }} %</div>
+                <div class="cb-kpi-r">{{ $validatedInscriptionsCount }} inscrits cette année</div>
             </a>
         </div>
     </div>

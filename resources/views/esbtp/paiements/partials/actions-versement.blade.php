@@ -11,6 +11,9 @@
     $avSupprimer = 'supprimerVersement'.$paiement->id.$avSuffixe;
     $avAnnuler = 'annulerVersement'.$paiement->id.$avSuffixe;
     $avPeutAnnuler = ! $paiement->isAvoir() && $paiement->status === 'validé' && $paiement->avoir_disponible > 0;
+    // Un versement déjà compensé par un avoir ne se supprime pas (le serveur
+    // le refuse) : le bouton ne s'affiche pas plutôt que d'échouer.
+    $avCompense = ! $paiement->isAvoir() && $paiement->status === 'validé' && $paiement->avoir_disponible < (float) $paiement->montant;
 @endphp
 <div class="d-inline-flex gap-1 flex-nowrap">
     @can('view', $paiement)
@@ -42,10 +45,12 @@
         @endif
     @endcan
     @can('paiements.delete')
+        @unless($avCompense)
         <button type="button" class="btn btn-sm btn-outline-danger" title="Supprimer le versement (motif obligatoire)"
                 data-bs-toggle="modal" data-bs-target="#{{ $avSupprimer }}">
             <i class="fas fa-trash"></i>
         </button>
+        @endunless
     @endcan
 </div>
 @include('esbtp.paiements.partials.supprimer-modal', ['paiement' => $paiement, 'modalId' => $avSupprimer, 'retour' => $retour])
