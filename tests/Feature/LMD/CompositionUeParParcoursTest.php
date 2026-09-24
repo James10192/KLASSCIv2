@@ -362,6 +362,21 @@ class CompositionUeParParcoursTest extends TestCase
         $this->assertSame(1, $this->lignes(CompositionUe::COMMUN));
     }
 
+    public function test_la_materialisation_protege_un_element_hors_pivot_meme_avec_une_ligne_commune(): void
+    {
+        // Une ligne commune existe deja pour un autre element : l'ancienne garde
+        // s'arretait la, et l'element tenu par la seule cle etrangere restait
+        // expose.
+        $autre = ESBTPMatiere::where('code', 'ECUE-TIR')->firstOrFail();
+        $this->composition->poser($this->ue, (int) $autre->id, ['credit_ecue' => 2]);
+        DB::table('esbtp_ue_matiere')->where('unite_enseignement_id', $this->ue->id)->where('matiere_id', $this->ecue->id)->delete();
+        $this->ecue->update(['unite_enseignement_id' => $this->ue->id]);
+
+        $this->composition->materialiserDepuisCleEtrangere($this->ue->id);
+
+        $this->assertSame(1, $this->lignes(CompositionUe::COMMUN));
+    }
+
     public function test_la_materialisation_ne_rend_pas_commun_un_element_reserve(): void
     {
         // L'import a reserve l'element a Batiment ET pose sa cle etrangere. La

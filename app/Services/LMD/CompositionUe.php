@@ -227,19 +227,11 @@ class CompositionUe
             return;
         }
 
-        // La garde porte sur la composition COMMUNE. Tester l'existence de
-        // n'importe quelle ligne rendrait cette materialisation impossible des
-        // qu'un seul element aurait ete reserve a une maquette — et l'unite
-        // resterait alors exposee au depouillement que cette methode previent.
-        $dejaGrave = DB::table('esbtp_ue_matiere')
-            ->where('unite_enseignement_id', $unite->id)
-            ->where('parcours_id', self::COMMUN)
-            ->exists();
-
-        if ($dejaGrave) {
-            return;
-        }
-
+        // Plus de garde « deja grave » : ne reprenant que ce que le pivot
+        // ignore, l'operation est idempotente. La garde laissait sans
+        // protection une unite qui avait deja une ligne commune ET un element
+        // tenu par la seule cle etrangere.
+        //
         // Meme perimetre que le repli de getEcuesEffectifs() : les actives que
         // le pivot IGNORE. Un element deja present dans le pivot, meme reserve a
         // un seul parcours, n'etait pas lu comme commun : le graver en commun le
@@ -325,12 +317,12 @@ class CompositionUe
             return;
         }
 
-        // Une unite dont le pivot n'a JAMAIS ete ecrit rendrait ce test vrai par
-        // vacuite : aucune ligne ne designe l'element, donc il passerait pour
-        // orphelin, et sa cle serait coupee alors qu'elle etait le SEUL lien.
-        // L'element quitterait toutes les maquettes d'un coup et tomberait dans
-        // le catalogue BTS, ou une vingtaine d'ecrans en service l'afficheraient.
-        // On grave donc la composition commune avant de juger.
+        // On grave d'abord en commun les AUTRES elements tenus par la seule cle
+        // etrangere : sans cela, une unite dont le pivot n'a jamais ete ecrit
+        // les verrait passer pour orphelins, et leur cle serait coupee alors
+        // qu'elle etait leur seul lien. Ceux qu'on retire ($matiereIds) sont
+        // exclus a dessein : leur retrait vise la composition commune, leur cle
+        // doit etre liberee. Les graver ici rendait ce retrait impossible.
         $this->materialiserDepuisCleEtrangere($ue->id, $matiereIds);
 
         $encoreLiees = DB::table('esbtp_ue_matiere')

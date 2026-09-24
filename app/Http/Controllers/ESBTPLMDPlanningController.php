@@ -314,7 +314,10 @@ class ESBTPLMDPlanningController extends Controller
             throw new \RuntimeException("ECUE {$ecueId} non LMD ou introuvable.");
         }
 
-        $filiereId = $this->deriveFiliereIdFromEcue($matiere) ?: ($contextHint['filiere_id'] ?? null);
+        $demandee = isset($contextHint['filiere_id']) ? (int) $contextHint['filiere_id'] : null;
+        $filiereId = $this->filiereDemandeeSiLegitime($matiere, $demandee)
+            ?? $this->deriveFiliereIdFromEcue($matiere)
+            ?? $demandee;
         if (!$filiereId) {
             throw new \RuntimeException("Filiere indisponible pour ECUE {$ecueId}.");
         }
@@ -481,14 +484,16 @@ class ESBTPLMDPlanningController extends Controller
      */
     private function resolvePlanificationContext(Request $request, ?ESBTPMatiere $matiere = null): array
     {
-        $serverFiliereId = $this->deriveFiliereIdFromEcue($matiere);
         $clientFiliereId = $request->integer('filiere_id') ?: null;
 
-        // Si client envoie une filière qui ne matche pas celle dérivée
-        // server-side, on prend toujours la server-side. Si server-side
-        // n'a pas pu être dérivée (UE sans filière + sans parcours.filière),
-        // on accepte la client mais ce cas est pathologique.
-        $filiereId = $serverFiliereId
+        // La filiere du parcours AFFICHE, si c'est bien celle d'un parcours qui
+        // utilise l'UE de cet ECUE. La fiche d'une UE partagee ne porte que la
+        // filiere du premier parcours importe : l'imposer ecrivait les heures
+        // saisies sur la maquette LPA dans la planification de LPV (USAT) —
+        // perdues pour l'une, ecrasees pour l'autre. Une filiere etrangere a
+        // l'ECUE reste refusee (IDOR) et retombe sur celle de la fiche.
+        $filiereId = $this->filiereDemandeeSiLegitime($matiere, $clientFiliereId)
+            ?? $this->deriveFiliereIdFromEcue($matiere)
             ?? $clientFiliereId;
 
         return [
@@ -498,6 +503,30 @@ class ESBTPLMDPlanningController extends Controller
             'annee_id' => $request->integer('annee_universitaire_id')
                 ?: optional(ESBTPAnneeUniversitaire::where('is_current', true)->first())->id,
         ];
+    }
+
+    /**
+     * La filiere demandee, si un parcours de cette filiere utilise une UE qui
+     * contient l'ECUE (par le pivot ou par la cle etrangere). Null sinon.
+     */
+    private function filiereDemandeeSiLegitime(?ESBTPMatiere $matiere, ?int $filiereId): ?int
+    {
+        if (!$matiere || !$filiereId) {
+            return null;
+        }
+
+        $ueIds = DB::table('esbtp_ue_matiere')->where('matiere_id', $matiere->id)
+            ->pluck('unite_enseignement_id')
+            ->push($matiere->unite_enseignement_id)
+            ->filter()->unique()->values();
+
+        $legitime = DB::table('esbtp_lmd_parcours_ue')
+            ->join('esbtp_lmd_parcours', 'esbtp_lmd_parcours.id', '=', 'esbtp_lmd_parcours_ue.parcours_id')
+            ->whereIn('esbtp_lmd_parcours_ue.unite_enseignement_id', $ueIds)
+            ->where('esbtp_lmd_parcours.filiere_id', $filiereId)
+            ->exists();
+
+        return $legitime ? $filiereId : null;
     }
 
     /**
