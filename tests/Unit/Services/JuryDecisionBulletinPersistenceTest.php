@@ -12,9 +12,7 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPLMDJury;
 use App\Services\JuryDeliberationService;
 use App\Services\LMD\LmdDecisionProjectionService;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Mockery;
 use Tests\Unit\Domain\OfficialDocuments\OfficialDocumentDatabaseTestCase;
 
@@ -25,16 +23,6 @@ final class JuryDecisionBulletinPersistenceTest extends OfficialDocumentDatabase
     protected function setUp(): void
     {
         parent::setUp();
-
-        Schema::table('esbtp_lmd_bulletins', function (Blueprint $table): void {
-            $table->decimal('moyenne_generale', 5, 2)->nullable();
-            $table->unsignedInteger('credits_capitalises')->nullable();
-            $table->unsignedInteger('credits_totaux')->nullable();
-        });
-        Schema::table('esbtp_lmd_jury_decisions', function (Blueprint $table): void {
-            $table->unsignedBigInteger('created_by')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
-        });
 
         $this->service = new JuryDeliberationService(
             Mockery::mock(OfficialDocumentService::class),

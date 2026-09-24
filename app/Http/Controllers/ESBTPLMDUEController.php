@@ -255,7 +255,7 @@ class ESBTPLMDUEController extends Controller
     {
         $ue->load([
             'matieres', 'ecues', 'filiere', 'niveau', 'parcours',
-            'parcoursMultiple', 'responsableUe', 'createdBy', 'updatedBy',
+            'parcoursMultiple.filiere', 'responsableUe', 'createdBy', 'updatedBy',
         ]);
 
         return view('esbtp.lmd.ue.show', [

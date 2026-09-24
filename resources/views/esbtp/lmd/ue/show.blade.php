@@ -25,6 +25,15 @@
         sort($semestres);
         $rattachements[$cle]['semestres'] = $semestres;
     }
+    // Une UE partagee n'a pas UN parcours, UNE filiere ni UN semestre : les
+    // colonnes de la fiche ne gardent que ceux du premier import.
+    $estPartagee = count($rattachements) > 1;
+    $filieresLiees = $ue->parcoursMultiple->map(fn ($p) => $p->filiere?->name)->filter()->unique()->sort()->values();
+    $parcoursSansFiliere = $ue->parcoursMultiple->unique('id')->filter(fn ($p) => ! $p->filiere)->count();
+    $semestresLies = collect($rattachements)->flatMap(fn ($r) => $r['semestres'])->unique()->sort()->values();
+    if ($semestresLies->isEmpty() && $ue->semestre) {
+        $semestresLies = collect([(int) $ue->semestre]);
+    }
 @endphp
 
 <div class="lmd-page">
@@ -73,7 +82,7 @@
                 <div class="lmd-kpi-label">Parcours</div>
             </div>
             <div class="lmd-kpi">
-                <div class="lmd-kpi-value">{{ $ue->semestre ? 'S' . $ue->semestre : '—' }}</div>
+                <div class="lmd-kpi-value">{{ $semestresLies->isNotEmpty() ? $semestresLies->map(fn ($s) => 'S' . $s)->implode(' · ') : '—' }}</div>
                 <div class="lmd-kpi-label">Semestre</div>
             </div>
         </div>
@@ -89,12 +98,13 @@
         <div class="lmd-section-title"><i class="fas fa-info-circle me-2" style="color:#0453cb;"></i>Rattachement academique</div>
         <div class="lmd-info-grid">
             <div class="lmd-info">
-                <div class="lmd-info-label">Parcours principal</div>
-                <div class="lmd-info-value">{{ $ue->parcours?->name ?? $ue->parcours?->code ?? 'Non rattachee' }}</div>
+                <div class="lmd-info-label">Parcours</div>
+                {{-- Meme source que le bloc « Parcours et semestres rattaches » plus bas. --}}
+                <div class="lmd-info-value">{{ $estPartagee ? 'Partagee entre ' . count($rattachements) . ' parcours (detail ci-dessous)' : (collect($rattachements)->first()['nom'] ?? 'Non rattachee') }}</div>
             </div>
             <div class="lmd-info">
-                <div class="lmd-info-label">Filiere</div>
-                <div class="lmd-info-value">{{ $ue->filiere?->name ?? 'Non renseignee' }}</div>
+                <div class="lmd-info-label">{{ $filieresLiees->count() > 1 ? 'Filieres' : 'Filiere' }}</div>
+                <div class="lmd-info-value">{{ $filieresLiees->isNotEmpty() ? $filieresLiees->implode(', ') . ($parcoursSansFiliere ? ' (' . $parcoursSansFiliere . ' parcours sans filiere)' : '') : ($ue->filiere?->name ?? 'Non renseignee') }}</div>
             </div>
             <div class="lmd-info">
                 <div class="lmd-info-label">Niveau</div>
@@ -102,7 +112,7 @@
             </div>
             <div class="lmd-info">
                 <div class="lmd-info-label">Semestre</div>
-                <div class="lmd-info-value">{{ $ue->semestre ? 'Semestre ' . $ue->semestre : 'Non renseigne' }}</div>
+                <div class="lmd-info-value">{{ $semestresLies->isNotEmpty() ? ($semestresLies->count() > 1 ? 'Semestres ' : 'Semestre ') . $semestresLies->implode(', ') : 'Non renseigne' }}</div>
             </div>
             <div class="lmd-info">
                 <div class="lmd-info-label">Type</div>
