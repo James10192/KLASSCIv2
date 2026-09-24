@@ -415,8 +415,8 @@
 
                 @can('paiements.avoir')
                 @if($paiement->status === 'validé' && ! $paiement->isAvoir() && $paiement->avoir_disponible > 0)
-                <button type="button" class="ps-btn ghost" data-bs-toggle="modal" data-bs-target="#modalAvoir">
-                    <i class="fas fa-file-invoice"></i> Avoir
+                <button type="button" class="ps-btn ghost" data-bs-toggle="modal" data-bs-target="#modalAvoir" title="Émet un avoir : le versement reste visible, compensé">
+                    <i class="fas fa-rotate-left"></i> Annuler le versement
                 </button>
                 @endif
                 @endcan

@@ -220,9 +220,9 @@
                     @endcan
                     @can('paiements.avoir')
                         @if(! $paiement->isAvoir() && $paiement->avoir_disponible > 0)
-                        <button type="button" class="btn btn-outline-primary" title="Émettre un avoir"
+                        <button type="button" class="btn btn-outline-primary" title="Annuler le versement (avoir : le versement reste visible)"
                                 data-bs-toggle="modal" data-bs-target="#avoirModal{{ $paiement->id }}">
-                            <i class="fas fa-file-invoice"></i>
+                            <i class="fas fa-rotate-left"></i>
                         </button>
                         @endif
                     @endcan
