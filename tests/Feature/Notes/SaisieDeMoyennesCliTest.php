@@ -113,7 +113,7 @@ class SaisieDeMoyennesCliTest extends TestCase
     }
 
     /** @test */
-    public function une_ecue_est_refusee_des_la_simulation_et_rien_n_est_ecrit(): void
+    public function une_ecue_est_refusee_avant_toute_ecriture_meme_en_simulation(): void
     {
         $this->resultat($this->physique, 0);
         $ue = ESBTPUniteEnseignement::create(['name' => 'UE Ouvrages', 'code' => 'UE-TPGC641', 'credit' => 6, 'semestre' => 1, 'is_active' => true]);
@@ -125,9 +125,57 @@ class SaisieDeMoyennesCliTest extends TestCase
         ]]);
 
         $this->assertSame(422, $reponse->getStatusCode());
-        // Tout ou rien : la ligne valide n'a pas ete ecrite non plus.
+        // Refus avant toute ecriture : la ligne valide n'a pas ete ecrite non plus.
         $this->assertSame(0.0, $this->moyenne($this->physique));
         $this->assertSame(422, $this->appeler(['moyennes' => [['matiere_id' => $ecue->id, 'moyenne' => 12]]])->getStatusCode());
+    }
+
+    /** @test */
+    public function deux_moyennes_vivantes_sur_la_meme_matiere_bloquent_la_saisie(): void
+    {
+        // L'index unique inclut deleted_at : deux lignes vivantes peuvent coexister.
+        $this->resultat($this->anglais, 4);
+        $this->resultat($this->anglais, 6);
+
+        $reponse = $this->appeler(['dry_run' => false, 'moyennes' => [['matiere_id' => $this->anglais->id, 'moyenne' => 15]]]);
+
+        $this->assertSame(422, $reponse->getStatusCode());
+        $this->assertStringContainsString('dédoublonner', json_encode($reponse->getData(true), JSON_UNESCAPED_UNICODE));
+        $this->assertSame([4.0, 6.0], ESBTPResultat::where('matiere_id', $this->anglais->id)->orderBy('id')->pluck('moyenne')->map(fn ($m) => (float) $m)->all());
+    }
+
+    /** @test */
+    public function le_second_semestre_s_ecrit_sur_sa_propre_periode(): void
+    {
+        $this->resultat($this->anglais, 9);
+
+        $this->appeler(['dry_run' => false, 'periode' => 'semestre2', 'moyennes' => [['matiere_id' => $this->anglais->id, 'moyenne' => 13]]]);
+
+        $this->assertSame(9.0, (float) ESBTPResultat::where('matiere_id', $this->anglais->id)->where('periode', 'semestre1')->value('moyenne'));
+        $this->assertSame(13.0, (float) ESBTPResultat::where('matiere_id', $this->anglais->id)->where('periode', 'semestre2')->value('moyenne'));
+    }
+
+    /** @test */
+    public function une_classe_lmd_est_refusee(): void
+    {
+        $this->classe->update(['systeme_academique' => 'LMD']);
+
+        $reponse = $this->appeler(['moyennes' => [['matiere_id' => $this->anglais->id, 'moyenne' => 15]]]);
+
+        $this->assertSame(422, $reponse->getStatusCode());
+    }
+
+    /** @test */
+    public function une_moyenne_retiree_peut_etre_saisie_de_nouveau(): void
+    {
+        $this->resultat($this->anglais, 0);
+        $this->appeler(['dry_run' => false, 'moyennes' => [['matiere_id' => $this->anglais->id, 'moyenne' => null]]]);
+
+        $data = $this->appeler(['dry_run' => false, 'moyennes' => [['matiere_id' => $this->anglais->id, 'moyenne' => 15]]])->getData(true)['data'];
+
+        $this->assertSame('creee', $data['lignes'][0]['action']);
+        $this->assertSame(15.0, $this->moyenne($this->anglais));
+        $this->assertSame(1, ESBTPResultat::onlyTrashed()->where('matiere_id', $this->anglais->id)->count());
     }
 
     /**

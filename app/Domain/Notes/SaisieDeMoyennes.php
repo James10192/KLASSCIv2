@@ -54,9 +54,15 @@ final class SaisieDeMoyennes
         ?int $auteurId,
     ): array {
         // Refus AVANT toute ecriture, et aussi en simulation : l'apercu doit
-        // annoncer le refus que l'ecriture rencontrerait (garde d'ESBTPResultat).
+        // annoncer le refus que l'ecriture rencontrerait (garde d'ESBTPResultat,
+        // moyennes en double).
         foreach ($lignes as $ligne) {
-            $this->refuserUneMatiereEtrangere($classe, ESBTPMatiere::findOrFail($ligne['matiere_id']));
+            $matiere = ESBTPMatiere::findOrFail($ligne['matiere_id']);
+            $this->refuserUneMatiereEtrangere($classe, $matiere);
+            $this->laLigneLue([
+                'etudiant_id' => $etudiantId, 'classe_id' => $classe->id, 'matiere_id' => $matiere->id,
+                'periode' => $periode, 'annee_universitaire_id' => $anneeId,
+            ], $matiere);
         }
 
         $ecrire = fn () => array_map(
@@ -88,7 +94,7 @@ final class SaisieDeMoyennes
             'periode' => $periode,
             'annee_universitaire_id' => $anneeId,
         ];
-        $existante = ESBTPResultat::where($cle)->first();
+        $existante = $this->laLigneLue($cle, $matiere);
         $avant = $existante ? (float) $existante->moyenne : null;
         $cible = $ligne['moyenne'] === null ? null : round((float) $ligne['moyenne'], 2);
 
@@ -121,6 +127,30 @@ final class SaisieDeMoyennes
         }
 
         return $rapport + ['action' => $existante ? 'modifiee' : 'creee', 'coefficient' => $coefficient];
+    }
+
+    /**
+     * La ligne que le bulletin lira — et refus s'il y en a plusieurs.
+     *
+     * L'index unique d'esbtp_resultats inclut `deleted_at`, et MySQL tient les
+     * NULL pour distincts : rien n'empeche DEUX lignes vivantes sur la meme cle
+     * (une course de recalcul suffit). Modifier la premiere laisserait le
+     * bulletin lire l'autre, et la reclamation paraitrait traitee sans l'etre.
+     * On refuse plutot que de deviner laquelle compte.
+     *
+     * @param  array<string,int|string>  $cle
+     */
+    private function laLigneLue(array $cle, ESBTPMatiere $matiere): ?ESBTPResultat
+    {
+        $vivantes = ESBTPResultat::where($cle)->get();
+        if ($vivantes->count() > 1) {
+            throw ValidationException::withMessages([
+                'moyennes' => "« {$matiere->name} » porte {$vivantes->count()} moyennes enregistrées pour ce semestre "
+                    .'(lignes '.$vivantes->pluck('id')->implode(', ').') : à dédoublonner avant toute saisie.',
+            ]);
+        }
+
+        return $vivantes->first();
     }
 
     private function refuserUneMatiereEtrangere(ESBTPClasse $classe, ESBTPMatiere $matiere): void

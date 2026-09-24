@@ -16,6 +16,9 @@ il sert à traiter à distance une réclamation validée par l'école.
   (`Log::warning`, « CLI: moyennes enregistrees ») avec l'avant et l'après.
   Chaque ligne passe aussi par l'audit du modèle `ESBTPResultat`.
 - **Tout ou rien.** Une ligne refusée annule toute la demande.
+- **Doublons refusés.** Si une matière porte déjà deux moyennes vivantes pour ce
+  semestre, la saisie est refusée : modifier l'une laisserait le bulletin lire
+  l'autre. À dédoublonner d'abord.
 - **Le bulletin ne bouge pas tout seul.** Il fige sa moyenne à la génération :
   la réponse liste les bulletins à régénérer (`bulletins_a_regenerer`).
 - **Un recalcul depuis les notes écrase ces moyennes** (`notes:recompute`, ou la
@@ -53,6 +56,7 @@ il sert à traiter à distance une réclamation validée par l'école.
 | 422 | classe LMD (ses relevés passent par `/esbtp/lmd/bulletins`) |
 | 422 | élève non inscrit dans cette classe pour cette année |
 | 422 | matière LMD (ECUE) dans une classe BTS — refusé dès la simulation |
+| 422 | deux moyennes vivantes sur la même matière (à dédoublonner)                 |
 | 422 | validation (motif trop court, moyenne hors de 0 à 20, matière en double) |
 
 ## Réponse
