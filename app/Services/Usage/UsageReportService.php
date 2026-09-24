@@ -21,6 +21,8 @@ class UsageReportService
 
         $timeline = (new ActivityTimeline($window, $actors, $threshold))->build($query->perUserDayEvent());
         $modules = new ModuleAdoption($window, $actors);
+        $outcomes = new ConcreteOutcomes($window, $actors);
+        $concrete = $outcomes->build($query->webWritesPerModelEventMonth());
         $activeStaffIds = array_column($timeline['comptes'], 'user_id');
 
         return [
@@ -35,6 +37,10 @@ class UsageReportService
             'groupes' => $timeline['groupes'],
             'jours' => $timeline['jours'],
             'semaines' => $timeline['semaines'],
+            'mois' => $timeline['mois'],
+            'realisations' => $concrete['realisations'],
+            'creations_par_mois' => $concrete['creations_par_mois'],
+            'paiements_par_mois' => $outcomes->payments(),
             'comptes_actifs' => $this->present($timeline['comptes'], $actors, $withNames),
             'journees_de_masse' => $this->present($timeline['journees_de_masse'], $actors, $withNames),
             'modules' => $modules->build($query->webWritesPerModelDay(), $query->writesPerOriginAndModel()),

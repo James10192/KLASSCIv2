@@ -46,6 +46,10 @@ Tout se règle dans `config/usage_report.php`.
     "groupes": {"ecole": {"actions": 5120, "lectures": 310, "comptes_actifs": 14, "comptes_lecteurs": 3}, "klassci": {}, "systeme": {}, "etudiants": {}},
     "jours": [{"jour": "2026-07-24", "actions": 12, "comptes": 3}],
     "semaines": [{"semaine": "2026-07-20", "actions": 800, "actions_hors_masse": 420, "comptes": 6}],
+    "mois": [{"mois": "2026-08", "actions": 35000, "comptes": 4, "jours": 17}],
+    "realisations": [{"entite": "ESBTPNote", "label": "Notes", "crees": 12000, "modifies": 800, "supprimes": 3, "restaures": 0, "comptes": 4}],
+    "creations_par_mois": [{"mois": "2026-08", "creations": [{"label": "Notes", "nombre": 12000}]}],
+    "paiements_par_mois": [{"mois": "2026-08", "nombre": 120, "montant": 18000000}],
     "comptes_actifs": [{"user_id": 42, "compte": "Compte 42", "role": "secretaire", "actions": 900, "jours_actifs": 31, "jours_de_masse": 1, "premiere_action": "2026-07-24", "derniere_action": "2026-09-23"}],
     "journees_de_masse": [{"groupe": "ecole", "user_id": 42, "compte": "Compte 42", "role": "secretaire", "jour": "2026-09-02", "actions": 410}],
     "modules": [{"module": "inscriptions", "label": "Inscriptions et dossiers étudiants", "actions_ecole": 3000, "actions_klassci": 120, "actions_systeme": 0, "comptes": 5, "jours": 40, "roles": ["secretaire", "caissier"]}],
@@ -58,6 +62,9 @@ Tout se règle dans `config/usage_report.php`.
   }
 }
 ```
+
+- `realisations` et `creations_par_mois` : ce que le personnel de l'école a fait, entité par entité (créations, modifications, suppressions). Nos opérations en sont exclues.
+- `paiements_par_mois` : paiements validés, par mois de `date_paiement`, nombre et montant encaissé. Source : la table des paiements, quel que soit l'auteur.
 
 `heures[].jour_semaine` suit la norme ISO : 1 = lundi … 7 = dimanche.
 
@@ -72,3 +79,4 @@ Tout se règle dans `config/usage_report.php`.
 ## Historique
 
 - 2026-09-24 : création.
+- 2026-09-24 : ajout de `mois`, `realisations`, `creations_par_mois` et `paiements_par_mois` (non cassant).
