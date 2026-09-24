@@ -995,8 +995,14 @@ body.modal-open .m-actionbar { display: none !important; }
     body .nextadmin-content [class$="-hero"]:not(.m-hero):not(.rdx-hero) h1 { font-size: 1.2rem; line-height: 1.25; letter-spacing: -.01em; }
     body .nextadmin-content [class$="-hero"]:not(.m-hero):not(.rdx-hero) h1 + p { font-size: .8rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     body .nextadmin-content [class$="-hero-icon"]:not([class^="rdx-"]) { width: 40px; height: 40px; flex: 0 0 40px; font-size: 1rem; border-radius: 12px; }
-    body .nextadmin-content [class$="-hero-top"]:not([class^="rdx-"]) { flex-direction: column; align-items: stretch; gap: .75rem; }
-    body .nextadmin-content [class$="-hero-left"]:not([class^="rdx-"]) { min-width: 0; }
+    /* nowrap indispensable : une colonne flex qui PEUT passer à la ligne prend
+       pour largeur celle de son plus long contenu (706px pour 390 d'écran sur
+       /esbtp/inscriptions), et le sous-titre sortait de l'écran au lieu de
+       revenir à la ligne. */
+    body .nextadmin-content [class$="-hero-top"]:not([class^="rdx-"]) { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .75rem; }
+    body .nextadmin-content [class$="-hero-left"]:not([class^="rdx-"]) { min-width: 0; max-width: 100%; }
+    body .nextadmin-content [class$="-hero-left"]:not([class^="rdx-"]) > :not([class$="-hero-icon"]) { min-width: 0; flex: 1 1 auto; }
+    body .nextadmin-content [class$="-hero"]:not(.m-hero):not(.rdx-hero) :is(h1, p) { overflow-wrap: anywhere; }
 
     body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"]) { display: flex; flex-wrap: nowrap; justify-content: flex-start; gap: .5rem; width: auto; margin: 0 -1rem; padding: 0 1rem 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"])::-webkit-scrollbar { display: none; }
