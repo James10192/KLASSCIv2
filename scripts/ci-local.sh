@@ -13,7 +13,7 @@
 # Variables (toutes facultatives) :
 #   CI_BASE=origin/presentation   branche de comparaison (messages, changelog, diff)
 #   PHP=php                       binaire PHP 8.3
-#   COMPOSER="composer"           commande composer
+#   COMPOSER_BIN="composer"       commande composer (pas COMPOSER : Composer y lit le chemin de composer.json)
 #   MYSQLD=mysqld                 serveur MariaDB (sous XAMPP : /c/xampp/mysql/bin/mysqld.exe)
 #   MYSQL_INSTALL_DB=mysql_install_db   initialisation du repertoire de donnees
 #   MYSQL=mysql                   client
@@ -24,7 +24,7 @@ set -uo pipefail
 
 CI_BASE="${CI_BASE:-origin/presentation}"
 PHP="${PHP:-php}"
-COMPOSER="${COMPOSER:-composer}"
+COMPOSER_BIN="${COMPOSER_BIN:-composer}"
 MYSQLD="${MYSQLD:-mysqld}"
 MYSQL_INSTALL_DB="${MYSQL_INSTALL_DB:-mysql_install_db}"
 MYSQL="${MYSQL:-mysql}"
@@ -82,11 +82,11 @@ while IFS= read -r f; do
 done < <(find resources/views -name '*.blade.php')
 
 etape "composer validate --strict"
-$COMPOSER validate --strict --no-interaction > /dev/null || echec "composer.json invalide"
+$COMPOSER_BIN validate --strict --no-interaction > /dev/null || echec "composer.json invalide"
 
 # ---------------------------------------------------------------- securite
 etape "Audit des dependances deployees"
-$COMPOSER audit --locked --no-dev --abandoned=ignore --no-interaction || avert "composer audit : avis a lire (ou API injoignable)"
+$COMPOSER_BIN audit --locked --no-dev --abandoned=ignore --no-interaction || avert "composer audit : avis a lire (ou API injoignable)"
 git ls-files --error-unmatch .env > /dev/null 2>&1 && echec ".env versionne"
 
 # ---------------------------------------------------------------- tests sans base
