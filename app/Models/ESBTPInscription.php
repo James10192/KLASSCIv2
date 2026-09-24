@@ -217,6 +217,32 @@ class ESBTPInscription extends Model implements Auditable
     }
 
     /**
+     * Qui peut encore changer la filiere, le niveau ou la classe d'une
+     * inscription deja validee — et corriger une erreur de saisie en Tronc
+     * Commun.
+     *
+     * Le verrou tenait a `admin.access`, un droit de direction : un agent
+     * d'inscription ou une scolarite qui a saisi la mauvaise classe devait
+     * appeler quelqu'un d'autre pour la reprendre. Le droit dedie laisse
+     * l'ecole decider a qui elle confie ce geste ; `admin.access` reste
+     * accepte pour ne rien retirer a qui l'avait.
+     */
+    public static function reaffectationAutoriseePour(?\App\Models\User $user): bool
+    {
+        return $user !== null
+            && ($user->can('inscriptions.edit_validated') || $user->can('admin.access'));
+    }
+
+    /**
+     * La filiere, le niveau et la classe de cette inscription sont-ils encore
+     * modifiables par cet utilisateur ?
+     */
+    public function parcoursModifiablePar(?\App\Models\User $user): bool
+    {
+        return $this->status !== 'active' || self::reaffectationAutoriseePour($user);
+    }
+
+    /**
      * Relation avec l'étudiant.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

@@ -265,14 +265,10 @@ class ESBTPInscriptionService
             $count++;
         }
 
-        // Générer un email basé sur le username
-        $baseEmail = $username . '@esbtp.edu';
-        $email = $baseEmail;
-        $count = 1;
-        while (User::withTrashed()->where('email', $email)->exists()) {
-            $email = str_replace('@', '.' . $count . '@', $baseEmail);
-            $count++;
-        }
+        // Jamais d'adresse fabriquee : `@esbtp.edu` n'existe pas, et tout
+        // courriel qui y part rebondit. Le compte se connecte par son
+        // identifiant ; sans adresse reelle, l'e-mail reste vide.
+        $email = app(\App\Services\Emails\AdresseDeCompte::class)->pour($etudiantData['email_personnel'] ?? null);
 
         // Générer un mot de passe aléatoire
         $password = Str::random(10);

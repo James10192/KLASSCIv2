@@ -259,7 +259,7 @@ class ESBTPEtudiantController extends Controller
             'genre' => 'required|in:M,F',
             'date_naissance' => 'nullable|date',
             'telephone' => 'required|string|max:20',
-            'email_personnel' => 'required|email|max:255',
+            ...\App\Http\Requests\Etudiants\ReglesEmailsEtudiant::creation(),
             'ville' => 'nullable|string|max:255',
             'commune' => 'nullable|string|max:255',
             'photo' => 'nullable|image|max:2048',
@@ -625,7 +625,7 @@ class ESBTPEtudiantController extends Controller
         // Validation des données - Exclus les champs non modifiables
         $validator = Validator::make($request->all(), [
             'telephone' => 'nullable|string|max:20',
-            'email_personnel' => 'nullable|email|max:255',
+            ...\App\Http\Requests\Etudiants\ReglesEmailsEtudiant::edition($etudiant),
             'photo' => 'nullable|image|max:2048',
             'statut' => 'required|in:actif,inactif,diplômé,abandon,exclu',
             'ville' => 'nullable|string|max:255',
@@ -1003,14 +1003,10 @@ class ESBTPEtudiantController extends Controller
                 $count++;
             }
 
-            // Générer un email basé sur le username
-            $baseEmail = $username . '@esbtp.edu';
-            $email = $baseEmail;
-            $count = 1;
-            while (User::where('email', $email)->exists()) {
-                $email = str_replace('@', '.' . $count . '@', $baseEmail);
-                $count++;
-            }
+            // Jamais d'adresse fabriquee : `@esbtp.edu` n'existe pas, et tout
+            // courriel qui y part rebondit. Le compte se connecte par son
+            // identifiant ; sans adresse reelle, l'e-mail reste vide.
+            $email = app(\App\Services\Emails\AdresseDeCompte::class)->pour($etudiant->email_personnel ?: $etudiant->email);
 
             // Générer un mot de passe simple
             // 6 caractères: 4 lettres majuscules + 2 chiffres
@@ -1955,7 +1951,7 @@ class ESBTPEtudiantController extends Controller
             'genre' => 'required|in:M,F',
             'date_naissance' => 'nullable|date',
             'telephone' => 'required|string|max:20',
-            'email_personnel' => 'required|email|max:255',
+            ...\App\Http\Requests\Etudiants\ReglesEmailsEtudiant::creation(),
             'ville' => 'nullable|string|max:255',
             'commune' => 'nullable|string|max:255',
             'photo' => 'nullable|image|max:2048',

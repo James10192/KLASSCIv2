@@ -104,6 +104,8 @@ Route::prefix('public/rendez-vous')
             ->name('api.public.rendez-vous.retrouver');
     });
 
+require __DIR__.'/api-portail-verification.php';
+
 /*
  * Identite publique de l'etablissement, lue par le site klassci.com.
  *
@@ -443,6 +445,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');
     Route::get('/evaluations/coverage', [App\Http\Controllers\API\CLI\CLIEvaluationCoverageController::class, 'index'])
         ->name('evaluations.coverage');
+    // Rapport d'usage : l'etablissement travaille-t-il vraiment dans KLASSCI ? (lecture seule)
+    Route::get('/usage/report', [App\Http\Controllers\API\CLI\CLIUsageReportController::class, 'report'])
+        ->middleware('throttle:10,1')
+        ->name('usage.report');
     Route::get('/diagnostics/evaluations-dates', [App\Http\Controllers\API\CLI\CLIEvaluationDateCoherenceController::class, 'index'])
         ->name('diagnostics.evaluations-dates');
 
@@ -539,6 +545,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/frais/appliquer-tenue-nouveaux', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'appliquerTenueNouveaux'])->name('frais.appliquer-tenue-nouveaux');
         Route::post('/frais/souscriptions-manquantes', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'souscriptionsManquantes'])->name('frais.souscriptions-manquantes');
 
+        // Annuler un versement (avoir, le versement reste visible) ou restaurer
+        // un versement supprime. Montre par defaut, n'ecrit que sur `apply`.
+        Route::post('/paiements/{id}/annuler', [App\Http\Controllers\API\CLI\CLIPaiementController::class, 'annuler'])->whereNumber('id')->name('paiements.annuler');
+        Route::post('/paiements/{id}/restaurer', [App\Http\Controllers\API\CLI\CLIPaiementController::class, 'restaurer'])->whereNumber('id')->name('paiements.restaurer');
+
         // Reprise de l'annee ecoulee d'une ecole qui arrive avec un arriere.
         // La donnee source voyage dans le corps de la requete : c'est un etat de
         // compte d'eleves reels, il n'a rien a faire dans le depot.
@@ -553,6 +564,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/rendez-vous/generer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'generer'])->name('rendez-vous.generer');
         Route::post('/rendez-vous/placer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'placer'])->name('rendez-vous.placer');
         Route::get('/rendez-vous/diagnostic', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'diagnostic'])->name('rendez-vous.diagnostic');
+        require __DIR__.'/api-cli-emails.php';
         Route::post('/rendez-vous/convocations/envoyer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'envoyerConvocations'])->name('rendez-vous.convocations.envoyer');
         Route::post('/rendez-vous/convocations/remettre', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'remettreConvocations'])->name('rendez-vous.convocations.remettre');
         // L'ordre des categories est l'ordre dans lequel un versement solde les

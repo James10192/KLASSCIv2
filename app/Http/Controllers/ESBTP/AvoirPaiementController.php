@@ -40,6 +40,13 @@ class AvoirPaiementController extends Controller
             return response()->json(['success' => true, 'message' => $message, 'avoir_id' => $avoir->id]);
         }
 
+        // Retour à la page d'où l'avoir a été émis (fiche d'inscription,
+        // accueil) : un chemin local seulement, jamais une adresse extérieure.
+        $retour = $request->input('retour');
+        if (is_string($retour) && str_starts_with($retour, '/') && ! str_starts_with($retour, '//')) {
+            return redirect()->to(url($retour))->with('success', $message);
+        }
+
         return redirect()->route('esbtp.paiements.index')->with('success', $message);
     }
 

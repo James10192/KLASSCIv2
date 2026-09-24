@@ -351,6 +351,12 @@ return [
             'group' => 'Inscriptions',
             'icon' => 'fa-box',
         ],
+        'inscriptions.edit_validated' => [
+            'label' => 'Modifier une inscription déjà validée (filière, niveau, classe)',
+            'description' => 'Sans ce droit, une inscription active garde sa filière, son niveau et sa classe. Couvre aussi la correction d\'une erreur de saisie en Tronc Commun, motif obligatoire.',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-unlock-alt',
+        ],
         'inscriptions.validate' => [
             'label' => 'Valider une inscription',
             'group' => 'Inscriptions',
@@ -2486,6 +2492,7 @@ return [
             'students.view', 'students.create', 'students.edit',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'inscriptions.edit_validated',
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
@@ -2592,6 +2599,7 @@ return [
             'dashboard.view',
             'students.view', 'students.create', 'students.edit',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'inscriptions.edit_validated',
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',

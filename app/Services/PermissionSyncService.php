@@ -269,6 +269,11 @@ class PermissionSyncService
             'pieces_dossier.view',
             'pieces_dossier.suivre',
             'pieces_dossier.configure',
+
+            // Modifier une inscription deja validee : le verrou tenait jusqu'ici
+            // a `admin.access`, que les roles de guichet n'ont pas. Nee en
+            // septembre 2026 : aucune ecole n'a pu la retirer avant.
+            'inscriptions.edit_validated',
         ];
     }
 

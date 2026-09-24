@@ -24,6 +24,10 @@ class ScolariteClerkCapabilitiesTest extends TestCase
         $this->assertContains('inscriptions.create', ScolariteClerkCapabilities::PEDAGOGIE);
         $this->assertContains('inscriptions.validate', ScolariteClerkCapabilities::PEDAGOGIE);
         $this->assertContains('students.edit', ScolariteClerkCapabilities::PEDAGOGIE);
+        // Le service scolarite qui corrige un dossier doit pouvoir reprendre la
+        // classe d'une inscription deja validee, sans passer par la direction.
+        $this->assertContains('inscriptions.edit_validated', ScolariteClerkCapabilities::PEDAGOGIE);
+        $this->assertContains('students.accessibility.edit', ScolariteClerkCapabilities::PEDAGOGIE);
     }
 
     public function test_teachers_pack_excludes_unified_personnel(): void
