@@ -65,13 +65,19 @@ class ConvocationsRdvTest extends TestCase
             $t->timestamp('convocation_envoyee_at')->nullable();
             $t->string('convocation_erreur', 255)->nullable();
             $t->string('convocation_message_id', 100)->nullable();
+            $t->timestamp('convocation_delivree_at')->nullable();
+            $t->timestamp('convocation_synchro_at')->nullable();
+            $t->string('convocation_code_distant', 60)->nullable();
             $t->unsignedBigInteger('prevenue_par')->nullable();
             $t->timestamps();
         });
 
         // Le porteur est lu apres un envoi reussi ; ces reservations n'en ont pas.
         foreach (['esbtp_candidatures', 'esbtp_reinscription_demandes'] as $table) {
-            Schema::create($table, fn (Blueprint $t) => $t->id());
+            Schema::create($table, function (Blueprint $t) {
+                $t->id();
+                $t->string('verification_contact', 30)->nullable();
+            });
         }
 
         $this->creneauFutur = ESBTPRdvCreneau::create([

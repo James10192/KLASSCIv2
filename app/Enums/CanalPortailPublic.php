@@ -35,6 +35,13 @@ enum CanalPortailPublic: string
 
     case Rendezvous = 'rendezvous';
 
+    /**
+     * Verification du contact d'une demande DEJA deposee. Toujours ouvert : une
+     * saison qui se ferme entre le depot et le clic sur le lien ne doit pas
+     * laisser la demande retenue (ni rendez-vous automatique ni convocation).
+     */
+    case Verification = 'verification';
+
     /** Bornes de volume, comptees sur des valeurs signees. */
     private const MAX_PAR_ADRESSE_PAR_MINUTE = 10;
 
@@ -106,6 +113,7 @@ enum CanalPortailPublic: string
             self::Candidatures => app(PortailCandidaturePublication::class)->canalOuvert(),
             self::Reinscriptions => app(PortailReinscriptionService::class)->canalOuvert(),
             self::Rendezvous => app(RendezVousReglages::class)->enabled(),
+            self::Verification => true,
         };
     }
 
@@ -115,6 +123,7 @@ enum CanalPortailPublic: string
             self::Candidatures => 'Les inscriptions en ligne ne sont pas ouvertes actuellement.',
             self::Reinscriptions => 'Les réinscriptions en ligne ne sont pas ouvertes actuellement.',
             self::Rendezvous => 'La prise de rendez-vous n\'est pas ouverte actuellement.',
+            self::Verification => 'La vérification n\'est pas disponible actuellement.',
         };
     }
 

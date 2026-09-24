@@ -20,6 +20,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  */
 class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRendezVous
 {
+    use Concerns\AttendVerificationContact;
     use Concerns\EstPorteurDeRendezVous;
     use Concerns\HasReferencePublique;
     use HasFactory;
@@ -80,12 +81,17 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
         'inscription_id',
         'reference_publique',
         'rdv_invite_at',
+        // verification_contact, email_verifie_at, telephone_verifie_at : jamais
+        // par affectation de masse, seulement par la verification (forceFill).
     ];
 
     protected $casts = [
         'consentement_at' => 'datetime',
         'traite_at' => 'datetime',
         'rdv_invite_at' => 'datetime',
+        'email_verifie_at' => 'datetime',
+        'telephone_verifie_at' => 'datetime',
+        'contact_confirme_at' => 'datetime',
     ];
 
     /**
@@ -106,6 +112,8 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
         // sans laisser de trace. L'empreinte d'adresse, elle, reste hors audit :
         // la conserver en plusieurs exemplaires irait contre la minimisation.
         'consentement_at',
+        // « Confirmer le contact » est un geste d'agent : qui, quand, et l'etat.
+        'verification_contact', 'contact_confirme_par', 'contact_confirme_at',
     ];
 
     public function etudiant(): BelongsTo
@@ -185,6 +193,12 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
 
     public function emailRdv(): ?string
     {
-        return $this->etudiant?->email;
+        // Meme ordre que ContactDeVerification : l'adresse personnelle d'abord.
+        return $this->etudiant?->email_personnel ?: $this->etudiant?->email;
+    }
+
+    public function typeDemandePublique(): string
+    {
+        return 'reinscription';
     }
 }
