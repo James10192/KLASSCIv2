@@ -50,23 +50,26 @@ s'ils sont fournis, de **vrais booléens JSON** (sinon `422`). Simulation par d�
 Enveloppe habituelle des routes CLI : `{"success":true,"data":{…},"message":"…"}`.
 `type` : `factice`, `faute_de_frappe` ou `sans_mx`. Avec `execute: true` : vide les
 adresses factices (comptes utilisateurs seulement avec `inclure_comptes: true`) après
-une sauvegarde relue ; `modifiees` et `sauvegarde` (chemin du fichier) sont remplis. Chaque appel est tracé dans le journal d'audit
+une sauvegarde relue ; `modifiees` et `sauvegarde` (nom du fichier, jamais son chemin sur le serveur) sont remplis.
+Seules les lignes dont l'adresse porte encore le domaine factice sont vidées. Chaque appel est tracé dans le journal d'audit
 (`cli.emails.nettoyer_factices`).
 
 ## `POST /api/cli/rendez-vous/synchroniser-convocations` (`cli:admin`)
 
-Un passage de la synchronisation planifiée (`?max=` 1 à 500, 100 par défaut) :
+Un passage de la synchronisation planifiée (`?max=` 1 à 200, 100 par défaut, 20 s au plus) :
 
 ```json
 {"lus":0,"delivrees":0,"echecs":0,"rebonds":0,"supprimees":0,"en_attente":0,"arretee_sur":null,"erreurs":0}
 ```
 
-`arretee_sur` : code de la panne qui a arrêté le lot, `null` sinon ; la réponse reste `200`,
+`arretee_sur` : code de la panne qui a arrêté le lot, `budget_temps_epuise` si les 20 s sont
+écoulées (le reste passe en tête à l'appel suivant), `null` sinon ; la réponse reste `200`,
 dans l'enveloppe `data`. Tracé dans l'audit.
 
 ## `GET /api/cli/rendez-vous/familles[?details=1]` (`cli:read`, lecture seule)
 
-Une ligne par FAMILLE (candidature ou demande), réservations dédupliquées. Dans
+Une ligne par FAMILLE (candidature ou demande), réservations dédupliquées. Périmètre :
+les rendez-vous de l'année universitaire courante, ou à défaut des douze derniers mois. Dans
 l'enveloppe `data`, la synthèse est toujours présente :
 
 ```json

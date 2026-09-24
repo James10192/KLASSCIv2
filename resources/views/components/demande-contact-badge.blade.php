@@ -9,10 +9,14 @@
 @php
     $_badge = $demande ? \App\Enums\StatutVerificationContact::badge($demande->verification_contact) : null;
     $_peutConfirmer = $_badge && $route && $permission && auth()->user()?->can($permission);
+    // Reglage coupe apres le marquage : le badge reste, mais plus rien n'est retenu.
+    $_retenue = $_badge && app(\App\Services\TenantScolariteSettings::class)->verificationContactActive();
 @endphp
 @if($_badge)
     <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;margin-top:.25rem;">
-        <span title="La famille n'a pas confirmé son adresse e-mail ou son numéro WhatsApp : pas de convocation automatique tant que le contact n'est pas confirmé."
+        <span title="{{ $_retenue
+                ? 'La famille n\'a pas confirmé son adresse e-mail ou son numéro WhatsApp : pas de convocation automatique tant que le contact n\'est pas confirmé.'
+                : 'La famille n\'a pas confirmé son adresse e-mail ou son numéro WhatsApp. La vérification est désactivée : les convocations partent normalement.' }}"
               style="display:inline-flex;align-items:center;gap:.3rem;padding:.15rem .5rem;border-radius:6px;font-size:.7rem;font-weight:600;background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;">
             <i class="fas fa-user-clock" aria-hidden="true"></i>{{ $_badge }}
         </span>

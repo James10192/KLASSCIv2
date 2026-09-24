@@ -38,7 +38,7 @@ enum CanalPortailPublic: string
     /**
      * Verification du contact d'une demande DEJA deposee. Toujours ouvert : une
      * saison qui se ferme entre le depot et le clic sur le lien ne doit pas
-     * laisser la demande invisible pour l'ecole.
+     * laisser la demande retenue (ni rendez-vous automatique ni convocation).
      */
     case Verification = 'verification';
 

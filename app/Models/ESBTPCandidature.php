@@ -216,9 +216,8 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         'etudiant_id', 'inscription_id',
         'reference_publique',
         'rdv_invite_at',
-        'verification_contact',
-        'email_verifie_at',
-        'telephone_verifie_at',
+        // verification_contact, email_verifie_at, telephone_verifie_at : jamais
+        // par affectation de masse, seulement par la verification (forceFill).
     ];
 
     protected $casts = [

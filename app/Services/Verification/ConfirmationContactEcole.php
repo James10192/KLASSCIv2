@@ -2,11 +2,8 @@
 
 namespace App\Services\Verification;
 
-use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutVerificationContact;
-use App\Models\ESBTPRdvReservation;
-use App\Services\Emails\AnalyseurEmail;
-use App\Services\RendezVous\FileConvocationsRdv;
+use App\Services\RendezVous\ReprisesConvocationsRetenues;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -18,10 +15,10 @@ use Illuminate\Support\Facades\Log;
  * - N'agit que si la demande est encore celle que l'agent avait a l'ecran
  *   (empreinte), sous verrou : deux agents, ou un redepot entre-temps, ne se
  *   marchent pas dessus.
+ * - Possible quel que soit le reglage : une demande marquee pendant qu'il
+ *   etait actif garde son badge jusqu'a confirmation, meme apres coupure.
  * - Sauvegarde normale : le journal d'audit garde qui, quand, et l'etat.
- * - Les rendez-vous deja pris dont la convocation avait ete retenue (« sans
- *   e-mail » ou en echec) reprennent l'adresse du dossier et repartent dans
- *   la file d'envoi. Les autres ne sont pas touches.
+ * - Les convocations retenues repartent (ReprisesConvocationsRetenues).
  */
 class ConfirmationContactEcole
 {
@@ -31,10 +28,7 @@ class ConfirmationContactEcole
 
     public const MODIFIE_ENTRE_TEMPS = 'modifie_entre_temps';
 
-    public function __construct(
-        private readonly FileConvocationsRdv $convocations,
-        private readonly AnalyseurEmail $emails,
-    ) {}
+    public function __construct(private readonly ReprisesConvocationsRetenues $reprises) {}
 
     /** @return array{0: string, 1: int} le resultat, et le nombre de convocations replanifiees */
     public function confirmer(Model $demande, string $empreinte, int $agentId): array
@@ -45,7 +39,7 @@ class ConfirmationContactEcole
             if ($ligne === null || ! hash_equals($ligne->empreinteContact(), $empreinte)) {
                 return [self::MODIFIE_ENTRE_TEMPS, 0];
             }
-            if (! $ligne->contactAConfirmer()) {
+            if (! $ligne->contactMarque()) {
                 return [self::PAS_A_CONFIRMER, 0];
             }
 
@@ -61,29 +55,7 @@ class ConfirmationContactEcole
                 'par_utilisateur' => $agentId,
             ]);
 
-            return [self::CONFIRME, $this->replanifier($ligne)];
+            return [self::CONFIRME, $this->reprises->reprendre($ligne)];
         });
-    }
-
-    private function replanifier(Model $demande): int
-    {
-        $reservations = $demande->reservations()
-            ->occupantes()
-            ->whereIn('convocation_statut', [StatutConvocationRdv::SansEmail->value, StatutConvocationRdv::Echec->value])
-            ->get();
-
-        foreach ($reservations as $reservation) {
-            /** @var ESBTPRdvReservation $reservation */
-            // L'adresse du dossier ne remplace celle saisie a la reservation que si
-            // elle recoit du courrier : un contact confirme par telephone, ou un
-            // `@esbtp.edu.ci` en base, ne doit pas effacer une adresse valide.
-            $dossier = $demande->emailRdv();
-            if ($this->emails->analyser($dossier)->joignable()) {
-                $reservation->forceFill(['email' => $dossier])->save();
-            }
-            $this->convocations->poser($reservation, $reservation->convocation_action ?: 'confirme');
-        }
-
-        return $reservations->count();
     }
 }

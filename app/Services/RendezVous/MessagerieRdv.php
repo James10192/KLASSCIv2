@@ -6,6 +6,7 @@ use App\Enums\StatutConvocationRdv;
 use App\Models\ESBTPRdvReservation;
 use App\Services\MailPulse\MailPulseResult;
 use App\Services\MailPulse\RefusMailPulse;
+use App\Support\ColonnesDeployees;
 use Illuminate\Support\Facades\Log;
 
 class MessagerieRdv
@@ -41,11 +42,23 @@ class MessagerieRdv
             'convocation_envoyee_at' => null,
             'convocation_erreur' => null,
             'convocation_message_id' => null,
-            'convocation_delivree_at' => null,
-            'convocation_synchro_at' => null,
-            'convocation_code_distant' => null,
             'prevenue_par' => null,
-        ])->save();
+        ] + $this->suiviDistantEfface())->save();
+    }
+
+    /**
+     * Le suivi MailPulse d'une convocation precedente, remis a zero. Colonnes
+     * absentes entre le pull et le migrate du deploiement : rien a effacer.
+     *
+     * @return array<string, null>
+     */
+    private function suiviDistantEfface(): array
+    {
+        if (! ColonnesDeployees::existe('esbtp_rdv_reservations', 'convocation_code_distant')) {
+            return [];
+        }
+
+        return ['convocation_delivree_at' => null, 'convocation_synchro_at' => null, 'convocation_code_distant' => null];
     }
 
     /**

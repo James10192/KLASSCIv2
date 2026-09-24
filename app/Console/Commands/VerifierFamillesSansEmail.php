@@ -26,8 +26,8 @@ class VerifierFamillesSansEmail extends Command
     private const LIMITE_MAX = 20;
 
     protected $signature = 'inscriptions:verifier-familles-sans-email
-        {--execute : envoie reellement les codes WhatsApp}
-        {--limite=20 : nombre maximal de familles par passage (20 au plus, pour rester sous le debit WhatsApp de MailPulse)}';
+        {--execute : envoie réellement les codes WhatsApp}
+        {--limite=20 : nombre maximal de familles par passage (20 au plus, pour rester sous le débit WhatsApp de MailPulse)}';
 
     protected $description = 'Liste les familles en attente sans e-mail joignable qui recevraient une verification WhatsApp ; --execute l\'envoie.';
 

@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Verification\ConfirmerContactRequest;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Services\Verification\ConfirmationContactEcole;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 
 /**
  * « Confirmer le contact » : l'ecole a joint la famille (telephone, guichet)
@@ -23,21 +23,19 @@ class ESBTPConfirmationContactController extends Controller
         $this->middleware('permission:reinscriptions.demandes.process')->only('reinscription');
     }
 
-    public function candidature(Request $request, ESBTPCandidature $candidature): RedirectResponse
+    public function candidature(ConfirmerContactRequest $request, ESBTPCandidature $candidature): RedirectResponse
     {
         return $this->confirmer($request, $candidature);
     }
 
-    public function reinscription(Request $request, ESBTPReinscriptionDemande $demande): RedirectResponse
+    public function reinscription(ConfirmerContactRequest $request, ESBTPReinscriptionDemande $demande): RedirectResponse
     {
         return $this->confirmer($request, $demande);
     }
 
-    private function confirmer(Request $request, Model $demande): RedirectResponse
+    private function confirmer(ConfirmerContactRequest $request, Model $demande): RedirectResponse
     {
-        $empreinte = $request->validate(['empreinte' => ['required', 'string', 'size:64']])['empreinte'];
-
-        [$resultat, $replanifiees] = $this->confirmation->confirmer($demande, $empreinte, (int) $request->user()->id);
+        [$resultat, $replanifiees] = $this->confirmation->confirmer($demande, $request->empreinte(), (int) $request->user()->id);
 
         return match ($resultat) {
             ConfirmationContactEcole::MODIFIE_ENTRE_TEMPS => back()->with('error', 'Ce dossier a changé depuis l\'affichage de la page (nouveau dépôt ou autre agent). Rechargez-la et vérifiez le contact avant de confirmer.'),

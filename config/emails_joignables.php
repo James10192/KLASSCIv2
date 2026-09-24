@@ -24,6 +24,9 @@ return [
     'mx' => [
         'actif' => env('EMAILS_VERIFIER_MX', true),
         'cache_secondes' => 86400,
+        // Delai total d'une resolution (MX puis A). Au-dela, la verification
+        // MX est suspendue cinq minutes : le formulaire public n'attend pas.
+        'delai_secondes' => 1.0,
         // Domaine de controle : s'il ne se resout pas, c'est le reseau qui manque.
         'domaine_temoin' => 'gmail.com',
     ],

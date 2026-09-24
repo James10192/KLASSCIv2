@@ -53,7 +53,8 @@ class CLIEmailsController extends BaseApiController
         if ($executer) {
             $resultat = $nettoyage->executer($inclureComptes);
             $donnees['modifiees'] = $resultat['modifiees'];
-            $donnees['sauvegarde'] = $resultat['sauvegarde'];
+            // Le nom du fichier, pas son chemin sur le serveur.
+            $donnees['sauvegarde'] = $resultat['sauvegarde'] === null ? null : basename($resultat['sauvegarde']);
         }
 
         $journal->consigner($request, 'cli.emails.nettoyer_factices', [

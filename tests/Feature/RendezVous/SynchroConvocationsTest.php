@@ -64,6 +64,19 @@ class SynchroConvocationsTest extends TestCase
         $this->assertNotNull($transit->fresh()->convocation_synchro_at);
     }
 
+    public function test_un_budget_de_temps_epuise_arrete_le_lot_sans_rien_dater(): void
+    {
+        Http::fake();
+        $attente = $this->reservation('msg_attente');
+
+        $rapport = app(\App\Services\RendezVous\SynchroStatutsConvocations::class)->synchroniser(100, 0.0);
+
+        $this->assertSame(\App\Services\RendezVous\SynchroStatutsConvocations::BUDGET_EPUISE, $rapport['bloque']);
+        $this->assertSame(0, $rapport['lues']);
+        $this->assertNull($attente->fresh()->convocation_synchro_at, 'Non relue : elle passe en tete au passage suivant.');
+        Http::assertNothingSent();
+    }
+
     public function test_un_message_illisible_ne_bloque_pas_la_file(): void
     {
         Http::fake(['mailpulse.test/api/v1/messages/*' => Http::response(['error' => 'Message not found'], 404)]);

@@ -154,7 +154,7 @@ class VerificationConcurrenceTest extends TestCase
     {
         foreach ([['email_personnel' => 'ama@gmail.com'], ['telephone' => '+2250701020305']] as $modification) {
             $etudiant = ESBTPEtudiant::factory()->create(['email' => null, 'email_personnel' => null, 'telephone' => '+2250701020304']);
-            $demande = ESBTPReinscriptionDemande::create([
+            $demande = ESBTPReinscriptionDemande::forceCreate([
                 'etudiant_id' => $etudiant->id, 'annee_universitaire_id' => ESBTPAnneeUniversitaire::factory()->create()->id,
                 'statut' => ESBTPReinscriptionDemande::STATUT_EN_ATTENTE, 'consentement_at' => now(),
                 'verification_contact' => StatutVerificationContact::Impossible->value,

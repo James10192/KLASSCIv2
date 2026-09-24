@@ -73,9 +73,16 @@ class NettoyageAdressesFactices
     public function executer(bool $inclureComptes = false): array
     {
         $sauvegarde = [];
-        foreach ($this->factices($inclureComptes) as ['table' => $table, 'colonne' => $colonne, 'domaines' => $domaines]) {
+        $cibles = [];
+        foreach ($this->factices($inclureComptes) as $cible) {
+            ['table' => $table, 'colonne' => $colonne, 'domaines' => $domaines] = $cible;
+            $ids = [];
             foreach ($this->inventaire->lignes($table, $colonne, $domaines) as $r) {
                 $sauvegarde[] = ['table' => $table, 'id' => (int) $r->id, 'colonne' => $colonne, 'ancienne_valeur' => (string) $r->email];
+                $ids[] = (int) $r->id;
+            }
+            if ($ids !== []) {
+                $cibles[] = $cible + ['ids' => $ids];
             }
         }
 
@@ -85,12 +92,16 @@ class NettoyageAdressesFactices
 
         $chemin = $this->sauvegarder($sauvegarde);
 
-        $modifiees = DB::transaction(function () use ($sauvegarde) {
+        $modifiees = DB::transaction(function () use ($cibles) {
             $n = 0;
-            foreach (collect($sauvegarde)->groupBy(fn ($l) => $l['table'].'.'.$l['colonne']) as $groupe) {
-                $premier = $groupe->first();
-                foreach ($groupe->pluck('id')->chunk(500) as $ids) {
-                    $n += DB::table($premier['table'])->whereIn('id', $ids->all())->update([$premier['colonne'] => null]);
+            foreach ($cibles as ['table' => $table, 'colonne' => $colonne, 'domaines' => $domaines, 'ids' => $ids]) {
+                foreach (array_chunk($ids, 500) as $paquet) {
+                    // L'identifiant ET le domaine : une adresse corrigee entre la
+                    // sauvegarde et l'ecriture n'est pas effacee.
+                    $n += DB::table($table)
+                        ->whereIn('id', $paquet)
+                        ->whereIn(DB::raw('LOWER(TRIM(SUBSTRING_INDEX('.DB::getQueryGrammar()->wrap($colonne).", '@', -1)))"), $domaines)
+                        ->update([$colonne => null]);
                 }
             }
 

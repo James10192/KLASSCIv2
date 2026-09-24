@@ -124,6 +124,50 @@ class AnalyseurEmailTest extends TestCase
         $this->assertSame(EtatEmail::Valide, app(DiagnosticEmail::class)->diagnostiquer('a@ecole-imaginaire.ci')->etat);
     }
 
+    public function test_un_resolveur_trop_lent_suspend_la_verification_mx(): void
+    {
+        config(['emails_joignables.mx.actif' => true]);
+        Cache::flush();
+        $appels = 0;
+        $this->app->instance(ResolveurDns::class, new class($appels) implements ResolveurDns
+        {
+            public function __construct(private int &$appels) {}
+
+            public function recoitDuCourrier(string $domaine): bool
+            {
+                $this->appels++;
+                throw new \App\Services\Emails\DnsTropLent('lent');
+            }
+        });
+        $mx = app(\App\Services\Emails\VerificateurMx::class);
+
+        $this->assertNull($mx->recoitDuCourrier('ecole-imaginaire.ci'));
+        $this->assertNull($mx->recoitDuCourrier('autre-ecole.ci'));
+        $this->assertSame(1, $appels, 'Une fois le resolveur juge lent, plus aucun formulaire ne l\'attend.');
+    }
+
+    public function test_le_domaine_temoin_n_est_interroge_qu_une_fois(): void
+    {
+        $this->dns(['gmail.com' => true]);
+        $appels = [];
+        $this->app->instance(ResolveurDns::class, new class($appels) implements ResolveurDns
+        {
+            public function __construct(private array &$appels) {}
+
+            public function recoitDuCourrier(string $domaine): bool
+            {
+                $this->appels[] = $domaine;
+
+                return $domaine === 'gmail.com';
+            }
+        });
+        $mx = app(\App\Services\Emails\VerificateurMx::class);
+
+        $this->assertFalse($mx->recoitDuCourrier('ecole-une.ci'));
+        $this->assertFalse($mx->recoitDuCourrier('ecole-deux.ci'));
+        $this->assertSame(1, count(array_keys($appels, 'gmail.com')));
+    }
+
     /** @param  array<string, bool>  $reponses */
     private function dns(array $reponses): void
     {

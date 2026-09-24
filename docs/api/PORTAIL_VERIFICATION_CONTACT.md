@@ -50,13 +50,15 @@ Les corbeilles candidatures et réinscriptions ont un filtre « Contact non vér
 rendez-vous ni convoquées par courriel (elles vont dans « Familles à prévenir »)
 jusqu'à la saisie du code, ou jusqu'à ce qu'un agent clique « Confirmer le contact »
 (permission de traitement des candidatures ou des demandes). Réglage coupé, rien
-n'est retenu, même une demande marquée auparavant.
+n'est retenu ; une demande marquée auparavant garde son badge, et « Confirmer le
+contact » reste possible, jusqu'à ce que son contact soit confirmé.
 
 « Confirmer le contact » est refusé si le dossier a changé depuis l'affichage
 (empreinte postée par le formulaire), il est audité (`contact_confirme_par`,
 `contact_confirme_at`), et les convocations de rendez-vous déjà pris restées « sans
 e-mail » ou en échec repartent avec le prochain envoi ; l'adresse du dossier ne
-remplace celle de la réservation que si elle reçoit du courrier.
+remplace celle de la réservation que si elle reçoit du courrier. La saisie du bon
+code par la famille fait repartir ces convocations de la même façon.
 
 Un redépôt d'une demande marquée relance un code (sous le débit du renvoi). Un 429 ou
 `503 whatsapp_sature` de MailPulse se traite comme une limite de débit (`429` avec
@@ -78,7 +80,7 @@ Corps : `{"canal":"email"|"telephone","jeton":"…"}` ou `{"canal","demande_id",
 
 - `200 {"verifie":true,"type":"candidature"|"reinscription"}`
 - `422 {"verifie":false,"motif":"code_invalide"|"expire"|"trop_de_tentatives"}`
-  (demande inconnue = `code_invalide`)
+  (demande inconnue = `code_invalide` ; vérification WhatsApp inconnue de MailPulse = `expire`)
 - `503 {"verifie":false,"motif":"indisponible"}` : MailPulse n'a pas pu contrôler un code WhatsApp.
 
 ## `POST /api/portail/email/renvoyer`

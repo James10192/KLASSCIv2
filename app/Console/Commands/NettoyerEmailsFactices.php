@@ -15,11 +15,11 @@ use Illuminate\Console\Command;
 class NettoyerEmailsFactices extends Command
 {
     protected $signature = 'emails:nettoyer-factices
-        {--execute : ecrit reellement (sinon simple rapport)}
+        {--execute : écrit réellement (sinon simple rapport)}
         {--inclure-comptes : vide aussi les adresses factices des comptes utilisateurs}
-        {--sans-mx : ne pas interroger le DNS}';
+        {--sans-mx : n’interroge pas le DNS}';
 
-    protected $description = 'Liste les adresses e-mail factices et fautives ; avec --execute, vide les factices apres sauvegarde.';
+    protected $description = 'Liste les adresses e-mail factices et fautives ; avec --execute, vide les factices après sauvegarde.';
 
     public function handle(NettoyageAdressesFactices $nettoyage): int
     {

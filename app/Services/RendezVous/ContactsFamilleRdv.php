@@ -3,6 +3,7 @@
 namespace App\Services\RendezVous;
 
 use App\Models\ESBTPRdvReservation;
+use App\Support\ColonnesDeployees;
 
 /**
  * Qui appeler pour une reservation, quand la convocation ne peut pas partir.
@@ -14,12 +15,18 @@ use App\Models\ESBTPRdvReservation;
  */
 class ContactsFamilleRdv
 {
-    /** Relations a charger pour que second() ne declenche aucune requete par ligne. */
+    /**
+     * Relations a charger pour que second() ne declenche aucune requete par ligne.
+     * `verification_contact` (badge) seulement une fois la migration passee :
+     * l'accueil reste lisible entre le pull et le migrate du deploiement.
+     */
     public static function chargements(): array
     {
         return [
-            'candidature:id,statut,reference_publique,tuteur_nom,tuteur_telephone,tuteur_lien,verification_contact',
-            'demande:id,statut,etudiant_id,reference_publique,verification_contact',
+            'candidature:'.implode(',', ['id', 'statut', 'reference_publique', 'tuteur_nom', 'tuteur_telephone', 'tuteur_lien',
+                ...ColonnesDeployees::si('esbtp_candidatures', 'verification_contact')]),
+            'demande:'.implode(',', ['id', 'statut', 'etudiant_id', 'reference_publique',
+                ...ColonnesDeployees::si('esbtp_reinscription_demandes', 'verification_contact')]),
             'demande.etudiant:id',
             'demande.etudiant.parents:esbtp_parents.id,nom,prenoms,telephone',
         ];

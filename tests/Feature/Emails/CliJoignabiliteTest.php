@@ -127,6 +127,18 @@ class CliJoignabiliteTest extends TestCase
         $this->getJson('/api/cli/rendez-vous/familles')->assertOk()->assertJsonMissingPath('data.familles');
     }
 
+    public function test_les_familles_se_limitent_a_l_annee_courante(): void
+    {
+        $courante = ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
+        $ancienne = $this->candidature('ancienne@gmail.com', '+2250701020307');
+        $this->reservation($ancienne, StatutConvocationRdv::Echec, 'confirmee', null, 'email_bounced');
+        $actuelle = $this->candidature('actuelle@gmail.com', '+2250701020308');
+        $actuelle->forceFill(['annee_universitaire_id' => $courante->id])->saveQuietly();
+        $this->reservation($actuelle->fresh(), StatutConvocationRdv::Echec, 'confirmee', null, 'email_bounced');
+
+        $this->getJson('/api/cli/rendez-vous/familles')->assertOk()->assertJsonPath('data.synthese.familles', 1);
+    }
+
     private function candidature(?string $email, string $telephone = '+2250701020304'): ESBTPCandidature
     {
         return ESBTPCandidature::create([

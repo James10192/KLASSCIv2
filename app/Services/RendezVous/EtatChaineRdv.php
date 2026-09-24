@@ -9,6 +9,7 @@ use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\MailPulse\MailPulseClient;
 use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\Reinscription\PortailSignatureVerifier;
+use App\Support\ColonnesDeployees;
 
 /**
  * Chaque maillon qui separe une famille de sa convocation, et son etat.
@@ -90,7 +91,9 @@ class EtatChaineRdv
         $resultat['inconnu'] = ESBTPRdvReservation::query()->occupantes()->whereNull('convocation_statut')->count();
         // « Envoyee » veut dire « acceptee par MailPulse ». La remise, elle, n'est
         // connue qu'apres synchronisation (inscriptions:synchroniser-convocations-rdv).
-        $resultat['delivrees'] = ESBTPRdvReservation::query()->whereNotNull('convocation_delivree_at')->count();
+        $resultat['delivrees'] = ColonnesDeployees::existe('esbtp_rdv_reservations', 'convocation_delivree_at')
+            ? ESBTPRdvReservation::query()->whereNotNull('convocation_delivree_at')->count()
+            : 0;
 
         return $resultat;
     }

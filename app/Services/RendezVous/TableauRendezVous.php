@@ -6,6 +6,7 @@ use App\Enums\StatutReservationRdv;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\ESBTPRdvReservation;
 use App\Services\Reinscription\PortailReinscriptionService;
+use App\Support\ColonnesDeployees;
 use Carbon\Carbon;
 
 /**
@@ -36,7 +37,10 @@ class TableauRendezVous
             ->whereDate('date', '>=', $debut->toDateString())
             ->whereDate('date', '<=', $fin->toDateString())
             ->with(['reservations' => fn ($q) => $q->occupantes()
-                ->with(['prevenuePar:id,name', 'candidature:id,statut,verification_contact', 'demande:id,statut,verification_contact'])->orderBy('nom')])
+                ->with(['prevenuePar:id,name',
+                    'candidature:'.implode(',', ['id', 'statut', ...ColonnesDeployees::si('esbtp_candidatures', 'verification_contact')]),
+                    'demande:'.implode(',', ['id', 'statut', ...ColonnesDeployees::si('esbtp_reinscription_demandes', 'verification_contact')]),
+                ])->orderBy('nom')])
             ->orderBy('date')
             ->orderBy('heure_debut')
             ->get()

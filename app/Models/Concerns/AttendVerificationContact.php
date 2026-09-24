@@ -15,7 +15,8 @@ use Illuminate\Database\Eloquent\Builder;
  * `inscriptions.portail.verification_contact` est actif et que le contact
  * n'est pas prouve, elle est retenue : ni placement automatique en
  * rendez-vous, ni convocation par courriel, jusqu'a « Confirmer le contact ».
- * Reglage coupe, rien n'est retenu, meme une demande marquee auparavant.
+ * Reglage coupe, rien n'est retenu ; une demande marquee auparavant garde son
+ * badge jusqu'a ce que son contact soit confirme.
  */
 trait AttendVerificationContact
 {
@@ -31,11 +32,19 @@ trait AttendVerificationContact
         return in_array($this->verification_contact, StatutVerificationContact::valeursEnAttente(), true);
     }
 
+    /**
+     * Contact jamais prouve, quel que soit le reglage : le badge reste et
+     * « Confirmer le contact » reste possible, meme apres coupure du reglage.
+     */
+    public function contactMarque(): bool
+    {
+        return in_array($this->verification_contact, StatutVerificationContact::valeursAConfirmer(), true);
+    }
+
     /** Contact jamais prouve, et reglage actif : pas de convocation ni de placement automatique. */
     public function contactAConfirmer(): bool
     {
-        return in_array($this->verification_contact, StatutVerificationContact::valeursAConfirmer(), true)
-            && app(TenantScolariteSettings::class)->verificationContactActive();
+        return $this->contactMarque() && app(TenantScolariteSettings::class)->verificationContactActive();
     }
 
     /** @param  Builder<static>  $query */

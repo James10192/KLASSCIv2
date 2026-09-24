@@ -81,9 +81,8 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
         'inscription_id',
         'reference_publique',
         'rdv_invite_at',
-        'verification_contact',
-        'email_verifie_at',
-        'telephone_verifie_at',
+        // verification_contact, email_verifie_at, telephone_verifie_at : jamais
+        // par affectation de masse, seulement par la verification (forceFill).
     ];
 
     protected $casts = [

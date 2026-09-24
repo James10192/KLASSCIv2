@@ -29,9 +29,9 @@ return new class extends Migration
             'group' => 'scolarite',
             'category' => 'scolarite',
             'default_value' => '0',
-            'description' => 'Envoie un code (e-mail, sinon WhatsApp) apres chaque depot sur le portail. '
-                .'Tant que le contact n est pas verifie, la demande reste visible avec un badge et n est ni '
-                .'placee en rendez-vous ni convoquee par courriel.',
+            'description' => 'Envoie un code (e-mail, sinon WhatsApp) après chaque dépôt sur le portail. '
+                .'Tant que le contact n’est pas vérifié, la demande reste visible avec un badge et n’est ni '
+                .'placée en rendez-vous ni convoquée par courriel.',
             'is_required' => 0,
             'validation_rules' => null,
             'is_active' => 1,

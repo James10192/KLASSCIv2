@@ -8,8 +8,8 @@ use App\Services\MailPulse\MailPulseVerifications;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Controle un code (ou un jeton de lien) et, s'il est bon, rend la demande
- * visible a l'ecole.
+ * Controle un code (ou un jeton de lien) et, s'il est bon, leve la retenue de
+ * la demande : badge retire, rendez-vous et convocations de nouveau possibles.
  *
  * Aucune reponse ne distingue « cette demande n'existe pas » de « ce code est
  * faux » : les deux rendent `code_invalide`. Le jeton et le code ne sont
@@ -28,6 +28,9 @@ class ControleVerification
     public const TROP_DE_TENTATIVES = 'trop_de_tentatives';
 
     public const INDISPONIBLE = 'indisponible';
+
+    /** Code d'erreur MailPulse (404) d'une verification inconnue ou purgee. */
+    private const VERIFICATION_INTROUVABLE = 'verification_introuvable';
 
     public function __construct(
         private readonly MailPulseVerifications $whatsapp,
@@ -85,6 +88,9 @@ class ControleVerification
 
             return match ($distant->code) {
                 self::EXPIRE, self::TROP_DE_TENTATIVES, self::CODE_INVALIDE => $this->echouer($v, $distant->code),
+                // MailPulse ne connait plus cette verification (purgee apres
+                // expiration) : pour la famille, c'est un code expire, a renvoyer.
+                self::VERIFICATION_INTROUVABLE, 'introuvable' => $this->echouer($v, self::EXPIRE),
                 default => ResultatControle::refus(self::INDISPONIBLE),
             };
         });

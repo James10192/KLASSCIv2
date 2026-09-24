@@ -25,6 +25,9 @@ class SynchroStatutsConvocations
 {
     public const FENETRE_JOURS = 30;
 
+    /** Motif d'arret quand le budget de temps est epuise : le reste attend le passage suivant. */
+    public const BUDGET_EPUISE = 'budget_temps_epuise';
+
     /** Statuts MailPulse : remis a la famille. */
     private const DELIVRES = ['delivered', 'read'];
 
@@ -42,10 +45,15 @@ class SynchroStatutsConvocations
     /**
      * `rebonds` et `supprimees` detaillent `echecs` d'apres le code distant.
      *
+     * Chaque lecture est un appel reseau : au-dela de `$budgetSecondes`, le lot
+     * s'arrete (`bloque` = BUDGET_EPUISE) pour rester sous le max_execution_time
+     * d'une requete HTTP. Les convocations non relues passent en tete au suivant.
+     *
      * @return array{lues: int, delivrees: int, echecs: int, rebonds: int, supprimees: int, en_transit: int, erreurs: int, bloque: ?string}
      */
-    public function synchroniser(int $maximum = 100): array
+    public function synchroniser(int $maximum = 100, float $budgetSecondes = 20.0): array
     {
+        $debut = microtime(true);
         $rapport = ['lues' => 0, 'delivrees' => 0, 'echecs' => 0, 'rebonds' => 0, 'supprimees' => 0, 'en_transit' => 0, 'erreurs' => 0, 'bloque' => null];
 
         $reservations = ESBTPRdvReservation::query()
@@ -59,6 +67,10 @@ class SynchroStatutsConvocations
             ->get();
 
         foreach ($reservations as $reservation) {
+            if (microtime(true) - $debut >= $budgetSecondes) {
+                $rapport['bloque'] = self::BUDGET_EPUISE;
+                break;
+            }
             $etat = $this->statuts->lire((string) $reservation->convocation_message_id);
 
             if (is_string($etat)) {

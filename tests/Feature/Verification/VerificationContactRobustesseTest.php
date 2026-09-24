@@ -209,7 +209,7 @@ class VerificationContactRobustesseTest extends TestCase
         $this->withoutMiddleware([\App\Http\Middleware\PaywallMiddleware::class]);
         $candidature = $this->candidature();
         $candidature->forceFill(['verification_contact' => StatutVerificationContact::Impossible->value])->saveQuietly();
-        $demande = \App\Models\ESBTPReinscriptionDemande::create([
+        $demande = \App\Models\ESBTPReinscriptionDemande::forceCreate([
             'etudiant_id' => \App\Models\ESBTPEtudiant::factory()->create()->id,
             'annee_universitaire_id' => $candidature->annee_universitaire_id,
             'statut' => \App\Models\ESBTPReinscriptionDemande::STATUT_EN_ATTENTE,

@@ -14,13 +14,21 @@ use Illuminate\Support\Facades\Log;
  * se refuse jamais parce que le DNS de l'hebergeur est en panne.
  *
  * Les verdicts sont caches un jour : un formulaire soumis cent fois ne
- * relance pas cent resolutions.
+ * relance pas cent resolutions. Le temoin est cache cinq minutes.
+ *
+ * Le formulaire public n'attend jamais le DNS plus d'environ une seconde : le
+ * resolveur a un delai borne (ResolveurDnsSysteme), et s'il le depasse, la
+ * verification MX est suspendue cinq minutes pour tout le monde.
  */
 class VerificateurMx
 {
     private const INCONNU = 'inconnu';
 
     private const DUREE_INCONNU_SECONDES = 300;
+
+    private const CLE_RESOLVEUR_LENT = 'emails-joignables:mx:resolveur-lent';
+
+    private const CLE_TEMOIN = 'emails-joignables:mx:temoin';
 
     public function __construct(private readonly ResolveurDns $dns) {}
 
@@ -31,7 +39,7 @@ class VerificateurMx
         }
 
         $domaine = mb_strtolower(trim($domaine));
-        if ($domaine === '') {
+        if ($domaine === '' || Cache::get(self::CLE_RESOLVEUR_LENT) === true) {
             return null;
         }
 
@@ -61,13 +69,24 @@ class VerificateurMx
                 return true;
             }
 
-            $temoin = (string) config('emails_joignables.mx.domaine_temoin', 'gmail.com');
+            return $this->reseauRepond() ? false : null;
+        } catch (DnsTropLent $e) {
+            Cache::put(self::CLE_RESOLVEUR_LENT, true, self::DUREE_INCONNU_SECONDES);
+            Log::warning('Resolveur DNS trop lent : verification MX suspendue', ['domaine' => $domaine, 'minutes' => self::DUREE_INCONNU_SECONDES / 60]);
 
-            return $this->dns->recoitDuCourrier($temoin) ? false : null;
+            return null;
         } catch (\Throwable $e) {
             Log::warning('Verification MX impossible', ['domaine' => $domaine, 'erreur' => $e->getMessage()]);
 
             return null;
         }
+    }
+
+    /** Le domaine temoin se resout-il ? Cache cinq minutes, dans un sens comme dans l'autre. */
+    private function reseauRepond(): bool
+    {
+        return Cache::remember(self::CLE_TEMOIN, self::DUREE_INCONNU_SECONDES, fn () => $this->dns->recoitDuCourrier(
+            (string) config('emails_joignables.mx.domaine_temoin', 'gmail.com')
+        ) ? 'oui' : 'non') === 'oui';
     }
 }

@@ -22,7 +22,9 @@ class CLISuiviConvocationsController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
-        $r = $synchro->synchroniser(max(1, min(500, (int) $request->input('max', 100))));
+        // 200 lectures au plus, et 20 s de budget : la reponse part avant le
+        // max_execution_time ; `arretee_sur` = budget_temps_epuise le signale.
+        $r = $synchro->synchroniser(max(1, min(200, (int) $request->input('max', 100))), 20.0);
         $donnees = [
             'lus' => $r['lues'],
             'delivrees' => $r['delivrees'],
