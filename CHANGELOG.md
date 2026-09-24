@@ -14,6 +14,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- Outil d'exploitation `POST /api/cli/resultats/moyennes` : enregistrer ou retirer à distance les moyennes de matière d'un élève (réclamation validée par l'école). Simulation par défaut, motif obligatoire et journalisé, tout ou rien, retrait réversible ; la réponse liste les bulletins à régénérer.
 - **Le style mobile s'étend à la scolarité et au secrétariat.** L'agent d'inscription, les services de scolarité, le secrétariat et la coordination reçoivent sur téléphone la même barre du bas en pilule que la caisse et la comptabilité : Accueil, Inscriptions, Étudiants, Paiements (ou Classes pour qui ne voit pas les paiements), et « Plus » (nouvelle inscription, filières, emplois du temps, évaluations, notes, bulletins, annonces, tout le menu). Chaque onglet suit les droits de la personne. Une école peut toujours choisir un autre profil mobile pour un rôle.
 - **Écrans plus lisibles sur téléphone.** Les accueils de scolarité s'ouvrent sur un grand titre et des tuiles d'indicateurs en mosaïque. Les bandeaux des autres pages sont plus compacts : leurs boutons forment une rangée qui défile et leurs indicateurs deux colonnes. Le panneau des notifications s'ouvre sur toute la largeur de l'écran. Les fenêtres montent du bas avec une poignée, et les listes déroulantes premium s'ouvrent sur toute la largeur, sans couper les libellés.
 
