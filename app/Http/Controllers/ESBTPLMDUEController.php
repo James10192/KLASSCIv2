@@ -678,7 +678,10 @@ class ESBTPLMDUEController extends Controller
 
             if (array_key_exists('portee_origine', $validated) && $validated['portee_origine'] !== null
                 && empty($validated['garder_origine'])) {
-                $origine = $this->composition->porteeValide($ue, $validated['portee_origine']);
+                // Pas porteeValide() : la ligne ouverte peut etre reservee a un
+                // parcours detache depuis de l'unite, et il faut pouvoir la
+                // deplacer. retirer() reste borne a CETTE unite.
+                $origine = (int) $validated['portee_origine'];
                 if ($origine !== $portee) {
                     $this->composition->retirer($ue, [(int) $ecue->id], $origine);
                 }

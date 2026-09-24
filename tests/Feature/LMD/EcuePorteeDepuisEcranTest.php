@@ -195,6 +195,26 @@ class EcuePorteeDepuisEcranTest extends TestCase
         $this->assertNotContains('ECUE-BU', $this->vusPar($this->travauxPublics));
     }
 
+    public function test_repasser_un_element_reserve_en_commun_le_rend_a_tous(): void
+    {
+        // L'import a reserve ECUE-BU a Batiment. On le rend commun.
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.ecue.update', [$this->ue, $this->ecueBu]), [
+                'credit_ecue' => 3,
+                'portee_origine' => $this->batiment->id,
+                'garder_origine' => 0,
+            ])
+            ->assertOk();
+
+        $lignes = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $this->ue->id)
+            ->where('matiere_id', $this->ecueBu->id)
+            ->pluck('parcours_id')->map(fn ($id) => (int) $id)->all();
+
+        $this->assertSame([CompositionUe::COMMUN], $lignes, 'Une seule ligne, la commune.');
+        $this->assertContains('ECUE-BU', $this->vusPar($this->travauxPublics));
+    }
+
     public function test_garder_aussi_l_origine_conserve_la_surcharge(): void
     {
         $this->composition->poser($this->ue, (int) $this->ecueBu->id, ['coefficient_ecue' => 1, 'credit_ecue' => 3, 'ordre_bulletin' => 0]);

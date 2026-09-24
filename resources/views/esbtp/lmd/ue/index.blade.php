@@ -290,8 +290,8 @@
                             <td>
                                 <span class="lu-name" x-text="ue.name"></span>
                                 <span class="lu-double-alerte" x-show="(ue.communs_et_reserves || []).length" x-cloak
-                                      title="Un élément est à la fois commun et réservé : les autres parcours le voient encore.">
-                                    <i class="fas fa-exclamation-triangle"></i>Élément en double
+                                      title="Un élément est à la fois dans la version commune et réservé à un parcours : tous les parcours le voient donc encore.">
+                                    <i class="fas fa-exclamation-triangle"></i>Commun + réservé
                                 </span>
                             </td>
                             <td>
@@ -369,7 +369,8 @@
                                     « <strong x-text="d.name"></strong> » est réservé à <strong x-text="d.reserve_a.join(', ')"></strong>,
                                     mais il est aussi dans la version <strong>Commun</strong> : les autres parcours le voient donc encore.
                                     S'il ne concerne que <span x-text="d.reserve_a.join(', ')"></span>, retirez sa ligne « Commun » avec le bouton
-                                    <i class="fas fa-unlink" style="font-size:.7rem;"></i>.
+                                    <i class="fas fa-unlink" style="font-size:.7rem;"></i> (la ligne « Commun » se voit quand le filtre Parcours est sur « Tous »).
+                                    Si c'est voulu (valeurs propres à ce parcours), laissez tel quel.
                                 </td>
                             </tr>
                         </template>
@@ -1128,9 +1129,15 @@ function onEcuePorteeChange() {
     if (change) {
         const origine = Array.from(sel.options).find(o => String(o.value || '0') === String(ecueOriginePortee || '0'));
         document.getElementById('ecue_origine_label').textContent = origine ? origine.textContent : 'l\'ancienne maquette';
+        // Qui perd l'element : en quittant le commun, tous les parcours sauf la cible.
+        const perdants = !ecueOriginePortee
+            ? Array.from(sel.options).filter(o => o.value && o.value !== sel.value).map(o => o.textContent.replace(/^Réservée à /, ''))
+            : [origine ? origine.textContent.replace(/^Réservée à /, '') : ''];
         hint.textContent = document.getElementById('ecue_garder_origine').checked
-            ? 'L\'élément sera dans les DEUX : « ' + (origine ? origine.textContent : '') + ' » reste visible pour ses parcours.'
-            : 'L\'élément sera DÉPLACÉ : il quitte « ' + (origine ? origine.textContent : '') + ' ». ' + hint.textContent;
+            ? 'L\'élément restera AUSSI dans « ' + (origine ? origine.textContent : '') + ' ».'
+            : 'L\'élément sera DÉPLACÉ. ' + (perdants.filter(Boolean).length
+                ? perdants.join(', ') + ' ne l\'aura plus dans sa maquette. Cochez la case ci-dessous si ' + (perdants.length > 1 ? 'ces parcours doivent' : 'ce parcours doit') + ' le garder.'
+                : '');
     }
     // La liste des matieres proposees depend de la maquette visee.
     lastLoadedUeId = null;
