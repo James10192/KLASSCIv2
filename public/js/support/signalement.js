@@ -97,6 +97,9 @@
             $('[data-sp-recap-description]').textContent = etat.description;
             $('[data-sp-recap-page]').textContent = window.location.pathname;
             afficherCapture();
+            /* Le moteur de rendu pese ~200 Ko : il se charge pendant que la personne
+               relit, pas apres qu'elle a appuye sur « Capturer ». */
+            if (CONFIG.capture && !etat.capture) { outilsCapture().catch(function () {}); }
         }
         /* Le bouton clique vient d'etre masque : sans ceci, le focus tombe sur la page.
            A l'ouverture, la fenetre est encore invisible, shown.bs.modal s'en charge. */
@@ -326,19 +329,47 @@
         if (editeur) { editeur.choisir(outil); }
     }
 
+    /*
+     * Au-dela, on rend la main : sur un telephone lent et une page lourde, le
+     * rendu peut durer bien plus, et la personne n'a aucun moyen de le savoir.
+     * Le rendu en cours ne s'annule pas ; son resultat tardif est simplement ignore.
+     */
+    var CAPTURE_DELAI_MAX_MS = 25000;
+    var tentativeCapture = 0;
+
     function capturerEcran() {
-        var bouton = $('[data-sp-capturer]');
-        var libelle = $('[data-sp-capturer-libelle]');
-        bouton.disabled = true;
-        libelle.textContent = 'Capture…';
-        outilsCapture().then(function () {
-            return window.KlassciCapture.capturer();
-        }).then(ouvrirEditeur).catch(function () {
-            erreur('La capture n\'a pas pu être faite sur cette page. Vous pouvez choisir une image à la place.');
-        }).then(function () {
-            bouton.disabled = false;
-            libelle.textContent = 'Capturer l\'écran';
+        var tentative = ++tentativeCapture;
+        $('[data-sp-capturer]').disabled = true;
+        $('[data-sp-capturer-libelle]').textContent = 'Capture en cours…';
+        var delai = new Promise(function (resoudre, rejeter) {
+            setTimeout(function () { rejeter(new Error('delai')); }, CAPTURE_DELAI_MAX_MS);
         });
+        Promise.race([
+            outilsCapture().then(function () { return window.KlassciCapture.capturer(); }),
+            delai
+        ]).then(function (source) {
+            if (tentative === tentativeCapture) { ouvrirEditeur(source); }
+        }).catch(function (e) {
+            if (tentative !== tentativeCapture) { return; }
+            erreur(e && e.message === 'delai'
+                ? 'La capture prend trop de temps sur cet appareil. Faites une capture avec votre téléphone, puis « Choisir une image ».'
+                : 'La capture n\'a pas pu être faite sur cette page. Vous pouvez choisir une image à la place.');
+        }).then(function () {
+            if (tentative === tentativeCapture) { remettreBoutonCapture(); }
+        });
+    }
+
+    function remettreBoutonCapture() {
+        var bouton = $('[data-sp-capturer]');
+        if (!bouton) { return; }
+        bouton.disabled = false;
+        $('[data-sp-capturer-libelle]').textContent = 'Capturer l\'écran';
+    }
+
+    /* Fenetre fermee pendant le rendu : son resultat n'ouvrira pas l'editeur a la reouverture. */
+    function abandonnerCapture() {
+        tentativeCapture++;
+        remettreBoutonCapture();
     }
 
     function capturerFichier(champ) {
@@ -511,6 +542,7 @@
 
     /* Le focus revient a ce qui a ouvert la fenetre. */
     racine.addEventListener('hidden.bs.modal', function () {
+        abandonnerCapture();
         if (etat.declencheur && typeof etat.declencheur.focus === 'function' && document.contains(etat.declencheur)) {
             etat.declencheur.focus();
         }

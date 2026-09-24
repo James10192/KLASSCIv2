@@ -26,6 +26,12 @@
     if (window.KlassciCapture) { return; }
 
     var COTE_MAX = 1600;
+    /*
+     * Un ecran de telephone rend ses pixels par trois : rendre la capture a
+     * cette finesse triple le travail pour une image qui sera lue, reduite, dans
+     * une fenetre. Au-dela de 1,5 le texte n'est pas plus lisible.
+     */
+    var ECHELLE_MAX = 1.5;
     var APLAT = '#cbd5e1';
     var TRAIT = '#dc2626';
     var TYPES_NON_SAISIS = ['button', 'submit', 'reset', 'checkbox', 'radio', 'hidden', 'range', 'color', 'image', 'file'];
@@ -76,10 +82,28 @@
         });
     }
 
+    /*
+     * Un element entierement hors de la partie visible n'apparaitra pas dans
+     * l'image : le recopier ne sert a rien, et c'est ce qui coutait le plus sur
+     * telephone (une page longue se recopiait en entier, pour n'en garder qu'un
+     * ecran). Un element fixe ou colle reste, meme hors champ : il se peint a
+     * l'ecran quelle que soit sa place dans la page.
+     */
+    function horsChamp(el) {
+        if (!el.getBoundingClientRect || el === document.body || el === document.documentElement) { return false; }
+        var r = el.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) { return false; }
+        var dehors = r.bottom < 0 || r.right < 0 || r.top > window.innerHeight || r.left > document.documentElement.clientWidth;
+        if (!dehors) { return false; }
+        var position = window.getComputedStyle(el).position;
+        return position !== 'fixed' && position !== 'sticky';
+    }
+
     function exclure(el) {
         return el.id === 'sp-modal'
             || (el.classList && (el.classList.contains('modal-backdrop') || el.classList.contains('toast-container')))
-            || (el.hasAttribute && el.hasAttribute('data-support-exclure'));
+            || (el.hasAttribute && el.hasAttribute('data-support-exclure'))
+            || horsChamp(el);
     }
 
     /** Rend la partie visible de la page, masquee. Promet un <canvas>. */
@@ -96,7 +120,7 @@
             height: hauteur,
             windowWidth: largeur,
             windowHeight: hauteur,
-            scale: Math.min(window.devicePixelRatio || 1, COTE_MAX / Math.max(largeur, hauteur)),
+            scale: Math.min(window.devicePixelRatio || 1, ECHELLE_MAX, COTE_MAX / Math.max(largeur, hauteur)),
             useCORS: true,
             logging: false,
             backgroundColor: '#ffffff',

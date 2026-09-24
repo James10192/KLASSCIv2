@@ -37,6 +37,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **La fenêtre « Aide / Signaler un problème » s'utilise enfin au téléphone** — elle occupe tout l'écran, l'en-tête est compact et le bouton d'envoi reste sous le pouce au lieu de glisser sous la barre du navigateur : des styles communs à toutes les fenêtres de l'application la réduisaient à une carte flottante. La capture d'écran est deux fois plus rapide (sur une page de classes, 9 secondes environ ramenées à 4,5 sur un téléphone simulé) : seule la partie visible de la page est recopiée, et le moteur se charge pendant que l'on relit sa demande. Si elle dure plus de 25 secondes, la fenêtre rend la main et propose de joindre une capture faite avec le téléphone.
+
 - Liste des paiements : sur un écran de portable avec la barre latérale ouverte, le titre « Suivi des Paiements » se retrouvait écrasé en colonne sous les boutons du bandeau. Les boutons passent désormais à la ligne quand la place manque.
 - **Un versement annulé par avoir ne se comptait plus deux fois sur la fiche d'inscription** : l'avoir s'y affichait comme un second versement « Validé » et le total additionnait les deux (50 000 FCFA pour 25 000 payés puis annulés). L'avoir se lit maintenant en négatif avec le reçu qu'il annule, le versement compensé porte « Annulé par avoir », et le total est net.
 - **Accueil caisse** : les saisies encore à valider comptent dans « Saisies du jour » (un guichet qui ne valide pas lui-même voyait « 0 » après deux encaissements), avec le montant qui attend un validateur.
