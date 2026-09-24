@@ -685,7 +685,10 @@ if (typeof window.auSelect !== 'function') {
                     // La largeur du menu EST celle du champ. Mesurer le contenu
                     // etirait le dropdown a toute la page des qu'un libelle
                     // d'etudiant etait long.
-                    this._menuWidth = Math.min(triggerRect.width, viewportWidth);
+                    // Sauf au telephone : un champ en demi-largeur donnait un
+                    // menu de 150px ou chaque libelle etait coupe. Sous 768px,
+                    // le menu prend la largeur de l'ecran.
+                    this._menuWidth = layoutWidth < 768 ? viewportWidth : Math.min(triggerRect.width, viewportWidth);
                     this._menuMaxHeight = Math.max(0, Math.min(
                         380,
                         Math.max(spaceBelowNow, spaceAboveNow)
@@ -704,7 +707,7 @@ if (typeof window.auSelect !== 'function') {
 
                 const menuWidth = Math.min(this._menuWidth, viewportWidth);
                 const availableHeight = this._menuMaxHeight;
-                const minimumWidth = Math.min(triggerRect.width, viewportWidth);
+                const minimumWidth = Math.min(Math.max(triggerRect.width, menuWidth), viewportWidth);
                 const left = Math.max(margin, Math.min(triggerRect.left, layoutWidth - menuWidth - margin));
 
                 // Sous <body>, le menu perd les regles CSS ecrites en
