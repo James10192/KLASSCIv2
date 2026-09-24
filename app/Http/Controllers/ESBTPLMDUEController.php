@@ -107,7 +107,16 @@ class ESBTPLMDUEController extends Controller
                         'description' => $ue->description,
                         'filiere_id' => $ue->filiere_id,
                         'niveau_id' => $ue->niveau_id,
-                        'matieres_count' => $ue->matieres_count,
+                        // Les elements que CETTE vue montre : filtree sur un
+                        // parcours, ceux de sa maquette. Le compte par cle
+                        // etrangere affichait « 2 » a cote de « Aucun ECUE
+                        // rattache » (USAT).
+                        'matieres_count' => $ecues->pluck('id')->unique()->count(),
+                        // Elements a la fois communs et reserves a un parcours :
+                        // la ligne commune les montre a TOUS les parcours, ce
+                        // que la reservation laisse croire impossible. Calcule
+                        // sur le pivot entier, quel que soit le filtre.
+                        'communs_et_reserves' => $this->communsEtReserves($ue),
                         'parcours' => $ue->parcoursMultiple->groupBy('id')->map(fn($pivots) => [
                             'id' => $pivots->first()->id,
                             'code' => $pivots->first()->code,
@@ -152,6 +161,31 @@ class ESBTPLMDUEController extends Controller
         $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
 
         return view('esbtp.lmd.ue.index', compact('ues', 'parcours', 'filieres', 'niveaux'));
+    }
+
+    /**
+     * @return array<int, array{id:int, name:string, reserve_a:array<int,string>}>
+     */
+    private function communsEtReserves(ESBTPUniteEnseignement $ue): array
+    {
+        $codes = $ue->parcoursMultiple->pluck('code', 'id');
+
+        return $ue->ecues->groupBy('id')
+            ->map(function ($lignes) use ($codes) {
+                $portees = $lignes->map(fn ($l) => (int) ($l->pivot->parcours_id ?? 0));
+                if (! $portees->contains(0) || $portees->filter()->isEmpty()) {
+                    return null;
+                }
+
+                return [
+                    'id' => (int) $lignes->first()->id,
+                    'name' => (string) $lignes->first()->name,
+                    'reserve_a' => $portees->filter()->map(fn ($id) => $codes[$id] ?? ('#' . $id))->values()->all(),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
     }
 
     /**
@@ -623,6 +657,16 @@ class ESBTPLMDUEController extends Controller
             'coefficient_ecue' => 'nullable|numeric|min:0',
             'ordre_bulletin'  => 'nullable|integer|min:0',
             'parcours_id'     => 'nullable|integer',
+            // La maquette de la ligne ouverte dans le modal. Quand elle differe
+            // de `parcours_id`, l'ecole a change la maquette : on DEPLACE la
+            // ligne. Sans cela, passer un element commun en « Reservee a LPV »
+            // posait une ligne de plus et laissait la commune — l'element
+            // restait visible chez les autres parcours alors que l'ecran
+            // affirmait le contraire (USAT, septembre 2026).
+            'portee_origine'  => 'nullable|integer',
+            // Garder aussi l'ancienne ligne : la surcharge voulue, ou un
+            // parcours pose ses propres valeurs sur un element commun.
+            'garder_origine'  => 'nullable|boolean',
         ]);
 
         $portee = $this->composition->porteeValide($ue, $validated['parcours_id'] ?? null);
@@ -633,7 +677,22 @@ class ESBTPLMDUEController extends Controller
             return $error;
         }
 
-        $codeLibere = $this->ecritures->modifier($ue, $ecue, $portee, $validated);
+        $codeLibere = DB::transaction(function () use ($ue, $ecue, $portee, $validated) {
+            $code = $this->ecritures->modifier($ue, $ecue, $portee, $validated);
+
+            if (array_key_exists('portee_origine', $validated) && $validated['portee_origine'] !== null
+                && empty($validated['garder_origine'])) {
+                // Pas porteeValide() : la ligne ouverte peut etre reservee a un
+                // parcours detache depuis de l'unite, et il faut pouvoir la
+                // deplacer. retirer() reste borne a CETTE unite.
+                $origine = (int) $validated['portee_origine'];
+                if ($origine !== $portee) {
+                    $this->composition->retirer($ue, [(int) $ecue->id], $origine);
+                }
+            }
+
+            return $code;
+        });
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([

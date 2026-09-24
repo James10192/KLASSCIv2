@@ -17,6 +17,12 @@ class CLIPaieController extends Controller
      */
     public function seedDemo(Request $request)
     {
+        // Seule route CLI sans ce controle : un jeton quelconque (celui d'un
+        // eleve connecte au LMS compris) reecrivait les taux horaires.
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return response()->json(['success' => false, 'message' => 'Token missing cli:admin ability'], 403);
+        }
+
         $params = array_filter([
             '--weeks' => $request->integer('weeks') ?: null,
             '--max-matieres' => $request->integer('max_matieres') ?: null,
