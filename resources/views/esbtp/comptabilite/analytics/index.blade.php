@@ -134,6 +134,8 @@
         </div>
     @endif
 
+    @include('esbtp.comptabilite.analytics.partials._fiabilite')
+
     {{-- Bandeaux qualité données : signalent saturation, auto-calibration, jamais-calculé --}}
     @php
         $riskHautPct = 0.0;
