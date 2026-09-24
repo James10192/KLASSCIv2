@@ -979,13 +979,13 @@ body.modal-open .m-actionbar { display: none !important; }
    1. Bandeaux de page (« .xx-hero », convention de premium-redesign.md)
       Sous 768px, les boutons du bandeau s'empilaient en pleine largeur et
       les KPIs en une colonne : la moitié du premier écran partait avant le
-      moindre contenu. Les boutons deviennent une rangée de pastilles qui
-      défile, les KPIs une grille de deux tuiles.
+      moindre contenu. Les boutons deviennent des pastilles à leur largeur,
+      les KPIs une grille de deux tuiles.
       Sélection par la CONVENTION de nommage (plus d'une centaine de
       bandeaux la suivent) ; .m-hero et .rdx-hero ont leur propre mise en
-      page et sont écartés. Une rangée d'actions qui contient un menu
-      positionné en absolu (export, liste premium) passe à la ligne au lieu
-      de défiler : un conteneur qui défile rognerait le menu.
+      page et sont écartés. Les boutons passent à la ligne plutôt que de
+      défiler : une rangée qui défile coupe son dernier bouton au bord de
+      l'écran, et cela se lit comme un défaut (signalé sur /esbtp/inscriptions).
    2. Menus de la barre du haut (notifications…) en panneau pleine largeur.
    3. Fenêtres modales Bootstrap en feuille qui monte du bas.
    4. Listes premium : menu à la largeur de l'écran, pas du champ.
@@ -1003,10 +1003,11 @@ body.modal-open .m-actionbar { display: none !important; }
     body .nextadmin-content [class$="-hero-left"]:not([class^="rdx-"]) { min-width: 0; max-width: 100%; }
     body .nextadmin-content [class$="-hero-left"]:not([class^="rdx-"]) > :not([class$="-hero-icon"]) { min-width: 0; flex: 1 1 auto; }
     body .nextadmin-content [class$="-hero"]:not(.m-hero):not(.rdx-hero) :is(h1, p) { overflow-wrap: anywhere; }
+    /* Listes natives étroites (filtres sur deux colonnes) : points de suspension
+       plutôt qu'un libellé tranché net. */
+    body .nextadmin-content select { text-overflow: ellipsis; }
 
-    body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"]) { display: flex; flex-wrap: nowrap; justify-content: flex-start; gap: .5rem; width: auto; margin: 0 -1rem; padding: 0 1rem 2px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-    body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"])::-webkit-scrollbar { display: none; }
-    body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"]):has(.export-menu, .au-select) { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
+    body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"]) { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: .5rem; width: auto; margin: 0; padding: 0; overflow: visible; }
     body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"]) > :is(a, button, .btn, .dropdown, form, div) { flex: 0 0 auto; width: auto; max-width: none; }
     body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"]) > :is(a, button, .btn),
     body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"]) > :is(.dropdown, form, div) > :is(a, button, .btn) { white-space: nowrap; min-height: 40px; border-radius: 999px; padding-left: .95rem; padding-right: .95rem; justify-content: center; }
