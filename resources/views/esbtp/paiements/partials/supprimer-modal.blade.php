@@ -40,7 +40,7 @@
                                   minlength="{{ \App\Domain\Comptabilite\Paiements\Actions\SupprimerPaiement::MOTIF_MIN }}" maxlength="500"
                                   placeholder="Ex : Encaissé par erreur, le paquet de rames a été déposé en nature."
                                   x-on:input="count = $event.target.value.length"
-                                  style="border:2px solid #dee2e6; border-radius:10px; resize:none;">{{ old('motif') }}</textarea>
+                                  style="border:2px solid #dee2e6; border-radius:10px; resize:none;"></textarea>
                         <div style="display:flex; justify-content:flex-end; margin-top:6px; font-size:.74rem; color:#94a3b8;">
                             <span x-text="count + ' / 500'" :style="count < {{ \App\Domain\Comptabilite\Paiements\Actions\SupprimerPaiement::MOTIF_MIN }} ? 'color:#dc2626;font-weight:600' : ''">0 / 500</span>
                         </div>

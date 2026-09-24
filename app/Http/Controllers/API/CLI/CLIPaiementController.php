@@ -97,7 +97,11 @@ class CLIPaiementController extends BaseApiController
             return $this->successResponse($apercu, "Le versement {$paiement->numero_recu} serait restauré. Rien n'a été écrit.");
         }
 
-        $cascade = $restauration->execute($paiement, (int) $request->user()->id);
+        try {
+            $cascade = $restauration->execute($paiement, (int) $request->user()->id);
+        } catch (\DomainException $e) {
+            return $this->errorResponse($e->getMessage(), $apercu, 422);
+        }
 
         return $this->successResponse(
             array_merge($apercu, ['applique' => true, 'cascade' => $cascade]),

@@ -21,6 +21,12 @@ Annuler est la contre-écriture comptable : c'est le même geste que le bouton
 | `motif` | oui | 10 à 500 caractères |
 | `apply` | non | `true` pour écrire |
 
+**`refund` par le CLI** : la sortie est inscrite au journal de caisse du jour,
+au nom de l'utilisateur du jeton, alors qu'aucune caisse n'a physiquement bougé.
+Pour une saisie faite par erreur (argent jamais reçu), c'est bien la
+contre-écriture attendue : l'entrée et la sortie s'annulent. Si l'argent reste
+réellement à l'école, choisissez `credit`.
+
 Refus (422) : versement non validé, déjà entièrement compensé, avoir sur un avoir,
 période verrouillée, versement rapproché. 404 si le versement est supprimé :
 restaurez-le d'abord.
@@ -39,6 +45,11 @@ Réponse : `data.paiement`, `data.montant_a_annuler`, `data.applique`, et
 Remet un versement supprimé, avec son inscription et son étudiant s'ils avaient
 été supprimés en cascade (même action que la corbeille à l'écran). La réponse
 montre, avant application, la date et le motif de la suppression.
+
+Refus (422) : versement d'une période comptable verrouillée
+(`comptabilite.period_locked_until`) ou rapproché par une réconciliation close,
+sauf droit de contournement explicite. La corbeille à l'écran applique le même
+refus.
 
 ## Historique
 

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Comptabilite\Paiements\Actions\RestaurerPaiement;
-
 use App\Domain\Trash\ErreurDeSuppression;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
@@ -129,7 +128,11 @@ class ESBTPPaiementTrashController extends Controller
         $etudiant = ESBTPEtudiant::withTrashed()->find(
             ESBTPInscription::withTrashed()->whereKey($paiement->inscription_id)->value('etudiant_id')
         );
-        $cascadeRestored = app(RestaurerPaiement::class)->execute($paiement, Auth::id());
+        try {
+            $cascadeRestored = app(RestaurerPaiement::class)->execute($paiement, Auth::id());
+        } catch (\DomainException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
 
         $messages = ["Le paiement a été restauré."];
         if ($cascadeRestored['inscription']) $messages[] = "L'inscription associée a aussi été restaurée (cascade).";

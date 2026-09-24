@@ -94,6 +94,19 @@ class CliAnnulationPaiementTest extends TestCase
         $this->assertNull($paiement->fresh()->motif_suppression);
     }
 
+    public function test_un_versement_d_une_periode_close_ne_se_restaure_pas(): void
+    {
+        $paiement = $this->versement();
+        $paiement->forceFill(['date_paiement' => '2026-01-10'])->save();
+        $paiement->delete();
+        \App\Helpers\SettingsHelper::setOrCreate('comptabilite.period_locked_until', '2026-01-31', 'comptabilite', 'string');
+
+        $this->postJson("/api/cli/paiements/{$paiement->id}/restaurer", ['apply' => true])
+            ->assertStatus(422);
+
+        $this->assertSoftDeleted($paiement);
+    }
+
     private function versement(): ESBTPPaiement
     {
         return ESBTPPaiement::factory()->pour($this->inscription)->create([
