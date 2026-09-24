@@ -37,6 +37,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Écrans mobiles : la page ne glisse plus de côté sur iPhone.** Un nom long, comme un intitulé de filière, élargissait l'écran au-delà du téléphone, par exemple sur l'accueil superAdmin d'ISLG. La barre de navigation du bas devient opaque : le contenu ne transparaît plus à travers.
+
 - Écran d'encaissement : une erreur JavaScript levée à chaque ouverture de l'écran disparaît. Elle venait d'un ancien branchement de recherche d'étudiant, remplacé depuis par le sélecteur d'inscription de la caisse.
 
 - Liste des paiements : sur un écran de portable avec la barre latérale ouverte, le titre « Suivi des Paiements » se retrouvait écrasé en colonne sous les boutons du bandeau. Les boutons passent désormais à la ligne quand la place manque.
