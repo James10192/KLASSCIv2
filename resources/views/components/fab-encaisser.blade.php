@@ -2,7 +2,8 @@
     FAB (Floating Action Button) "+ Encaisser" pour le module comptabilité.
 
     Affiche un bouton flottant en bas-droite qui pointe vers /esbtp/paiements/create.
-    Visible UNIQUEMENT si l'utilisateur a la permission `paiements.create`.
+    Visible dès que l'utilisateur peut ouvrir l'écran d'encaissement, pour au
+    moins un mode (porte `porte:esbtp.paiements.create`, la même que la route).
 
     Raccourci clavier : Ctrl+E (ou Cmd+E sur macOS) — focus action immédiate.
 
@@ -11,7 +12,7 @@
     Position bottom-right responsive : 24px desktop, 16px mobile.
     Pas affiché si on est déjà sur /esbtp/paiements/create (évite redondance).
 --}}
-@can('paiements.create')
+@can('porte:esbtp.paiements.create')
 @if(!Request::routeIs('esbtp.paiements.create'))
 <a href="{{ route('esbtp.paiements.create') }}" id="fab-encaisser" class="fab-encaisser"
    title="Encaisser un nouveau paiement (Ctrl+E)" aria-label="Encaisser un paiement">

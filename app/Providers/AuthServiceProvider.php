@@ -38,6 +38,7 @@ class AuthServiceProvider extends ServiceProvider
     public const PERMISSIONS_FINANCES_ETUDIANTS = [
         'paiements.view',
         'paiements.create',
+        'paiements.create.non_cash',
         'paiements.create.mobile_money',
         'paiements.validate',
         'comptabilite.access',
@@ -163,6 +164,11 @@ class AuthServiceProvider extends ServiceProvider
         foreach ([
             'esbtp.seances-cours.index',
             'esbtp.planning-general.index',
+            // Encaisser : la route accepte trois permissions (tous modes, hors
+            // espèces, mobile money). Le menu, le bouton flottant et les
+            // tableaux de bord ne testaient que la première, et le comptable
+            // « hors espèces » ne trouvait plus l'écran.
+            'esbtp.paiements.create',
         ] as $porte) {
             Gate::define(
                 "porte:{$porte}",
