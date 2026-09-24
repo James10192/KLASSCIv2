@@ -182,7 +182,7 @@
                             <thead>
                                 <tr>
                                     <th style="width:5%;">#</th>
-                                    <th>Intitule</th>
+                                    <th>Intitulé</th>
                                     <th style="width:14%;">Code</th>
                                     <th style="width:10%;">Coefficient</th>
                                     <th style="width:9%;">Crédits</th>
@@ -251,7 +251,7 @@
 .lmd-tab-sem { font-size:.7rem; opacity:.8; }
 .lmd-tab-count { font-size:.7rem; padding:.05rem .4rem; border-radius:6px; background:rgba(15,23,42,.08); }
 .lmd-tab--active .lmd-tab-count { background:rgba(255,255,255,.2); }
-    /* Detail d'une unite d'enseignement — namespace lmd- (meme famille que le formulaire) */
+    /* Détail d'une unité d'enseignement — namespace lmd- (même famille que le formulaire) */
     .lmd-hero {
         background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
         border-radius: 1rem;
