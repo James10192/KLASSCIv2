@@ -7,11 +7,11 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPParent;
 use App\Models\ESBTPRdvReservation;
 use App\Models\User;
-use App\Services\Emails\InventaireAdresses;
 
 /**
  * Une adresse precise : `<table>:<colonne>:<id>`. Seules les colonnes
- * inventoriees (InventaireAdresses::SOURCES) sont des cibles ; `users` ne
+ * inventoriees ET presentes dans le schema de l'instance
+ * (InventaireAdresses::colonnes()) sont des cibles ; `users` ne
  * l'est que sur demande expresse, comme pour le nettoyage des adresses
  * fabriquees (un compte du personnel peut se connecter par cette adresse).
  */
@@ -34,14 +34,19 @@ final class CibleCorrection
         public readonly int $id,
     ) {}
 
-    /** Null si la cle est mal formee ou vise une colonne qui n'est pas une adresse inventoriee. */
-    public static function depuisCle(string $cle, bool $inclureComptes): ?self
+    /**
+     * Null si la cle est mal formee ou vise une colonne qui n'est pas une
+     * adresse inventoriee presente dans le schema.
+     *
+     * @param  list<array{table: string, colonne: string}>  $colonnes  InventaireAdresses::colonnes()
+     */
+    public static function depuisCle(string $cle, bool $inclureComptes, array $colonnes): ?self
     {
         if (preg_match('/^([a-z_]+):([a-z_]+):([1-9]\d{0,18})$/', $cle, $m) !== 1) {
             return null;
         }
         [, $table, $colonne, $id] = $m;
-        if (! in_array($colonne, InventaireAdresses::SOURCES[$table] ?? [], true)
+        if (! in_array(['table' => $table, 'colonne' => $colonne], $colonnes, true)
             || ($table === self::TABLE_COMPTES && ! $inclureComptes)) {
             return null;
         }

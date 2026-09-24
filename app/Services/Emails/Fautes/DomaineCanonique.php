@@ -3,28 +3,54 @@
 namespace App\Services\Emails\Fautes;
 
 use App\Enums\EtatEmail;
+use App\Services\Emails\AnalyseurEmail;
 use App\Services\Emails\DiagnosticEmail;
 
 /**
- * Le seul domaine vers lequel une faute de frappe peut etre corrigee : la
- * suggestion des listes partagees (`DomainesSuspects`), pour un domaine
- * classe faute de frappe CERTAINE (liste des fautes connues, ou faute
- * probable dont le domaine ne recoit aucun courrier). Jamais un domaine
- * fourni par l'appelant.
+ * Pour les PROPOSITIONS (simulation) : vers quel domaine un domaine fautif se
+ * corrigerait, et avec quelle certitude.
+ *
+ * - `connue` : tables explicites des listes partagees (fautes connues,
+ *   extensions fautives). Toujours proposee.
+ * - `probable` : distance d'edition vers une messagerie de reference, dont le
+ *   domaine ne recoit aucun courrier d'apres la verification MX habituelle.
+ *   Proposee seulement avec `inclure_probables` ; l'ecriture exigera en plus
+ *   un NXDOMAIN frais (ControleEcriture).
+ *
+ * Domaines compares apres `trim` et passage en minuscules.
  */
 class DomaineCanonique
 {
-    public function __construct(private readonly DiagnosticEmail $classement) {}
+    public const CONNUE = 'connue';
 
-    public function pour(string $domaine, bool $avecMx = true): ?string
+    public const PROBABLE = 'probable';
+
+    public function __construct(
+        private readonly AnalyseurEmail $analyseur,
+        private readonly DiagnosticEmail $classement,
+    ) {}
+
+    /** @return array{domaine: string, nature: string}|null */
+    public function pour(string $domaine, bool $inclureProbables): ?array
     {
         $domaine = mb_strtolower(trim($domaine));
         if ($domaine === '') {
             return null;
         }
-        $analyse = $this->classement->classerDomaine($domaine, $avecMx);
+        $hors = $this->analyseur->analyser('x@'.$domaine);
+        $suggere = $hors->domaineSuggere();
+        if ($suggere === null) {
+            return null;
+        }
+        if ($hors->etat === EtatEmail::FauteDeFrappe) {
+            return ['domaine' => $suggere, 'nature' => self::CONNUE];
+        }
+        if ($hors->etat === EtatEmail::FauteProbable && $inclureProbables
+            && $this->classement->classerDomaine($domaine, true)->etat === EtatEmail::FauteDeFrappe) {
+            return ['domaine' => $suggere, 'nature' => self::PROBABLE];
+        }
 
-        return $analyse->etat === EtatEmail::FauteDeFrappe ? $analyse->domaineSuggere() : null;
+        return null;
     }
 
     public static function domaineDe(?string $email): string

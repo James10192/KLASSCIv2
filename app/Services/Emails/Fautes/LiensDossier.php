@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\DB;
  *
  * - candidature ↔ ses reservations actives ;
  * - reservation de reinscription ↔ les adresses de l'etudiant de la demande ;
- * - etudiant ↔ les reservations actives de ses demandes de reinscription.
+ * - etudiant ↔ les reservations actives de ses demandes de reinscription,
+ *   et son compte de connexion (`users`) ;
+ * - parent ↔ son compte de connexion ;
+ * - compte ↔ l'etudiant ou le parent qui le porte.
  *
  * Donne aussi la reference du dossier, pour que l'ecole le retrouve.
  */
@@ -27,8 +30,10 @@ class LiensDossier
         $lignes = match ($cible->table) {
             'esbtp_candidatures' => $this->reservations('candidature_id', [$cible->id]),
             'esbtp_rdv_reservations' => $this->autourDeLaReservation($cible->id),
-            'esbtp_etudiants' => $this->reservations('reinscription_demande_id', DB::table('esbtp_reinscription_demandes')
-                ->where('etudiant_id', $cible->id)->pluck('id')->all()),
+            'esbtp_etudiants' => [...$this->reservations('reinscription_demande_id', DB::table('esbtp_reinscription_demandes')
+                ->where('etudiant_id', $cible->id)->pluck('id')->all()), ...$this->compteDe('esbtp_etudiants', $cible->id)],
+            'esbtp_parents' => $this->compteDe('esbtp_parents', $cible->id),
+            'users' => $this->porteursDuCompte($cible->id),
             default => [],
         };
 
@@ -58,6 +63,30 @@ class LiensDossier
     public static function memeAdresse(?string $a, ?string $b): bool
     {
         return $a !== null && $b !== null && mb_strtolower(trim($a)) === mb_strtolower(trim($b));
+    }
+
+    /** @return list<array{0: string, 1: string, 2: int, 3: ?string}> */
+    private function compteDe(string $table, int $id): array
+    {
+        $compte = DB::table($table)->where('id', $id)->value('user_id');
+        $email = $compte ? DB::table('users')->where('id', $compte)->value('email') : null;
+
+        return $email === null ? [] : [['users', 'email', (int) $compte, $email]];
+    }
+
+    /** @return list<array{0: string, 1: string, 2: int, 3: ?string}> */
+    private function porteursDuCompte(int $compte): array
+    {
+        $lignes = [];
+        foreach (DB::table('esbtp_etudiants')->where('user_id', $compte)->get(['id', 'email', 'email_personnel']) as $e) {
+            $lignes[] = ['esbtp_etudiants', 'email', (int) $e->id, $e->email];
+            $lignes[] = ['esbtp_etudiants', 'email_personnel', (int) $e->id, $e->email_personnel];
+        }
+        foreach (DB::table('esbtp_parents')->where('user_id', $compte)->get(['id', 'email']) as $p) {
+            $lignes[] = ['esbtp_parents', 'email', (int) $p->id, $p->email];
+        }
+
+        return $lignes;
     }
 
     /** @return list<array{0: string, 1: string, 2: int, 3: ?string}> */

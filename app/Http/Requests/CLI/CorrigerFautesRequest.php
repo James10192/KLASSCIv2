@@ -8,10 +8,10 @@ use Illuminate\Http\Exceptions\HttpResponseException;
 
 /**
  * `POST /api/cli/emails/corriger-fautes`
- * `{"execute": false, "inclure_comptes": false, "sans_mx": false,
+ * `{"execute": false, "inclure_comptes": false, "inclure_probables": false,
  *   "corrections": [{"cle": "esbtp_candidatures:email:42", "domaine_propose": "gmail.com", "domaine_actuel": "gmai.com"}]}`
  *
- * `execute`, `inclure_comptes`, `sans_mx` : vrais booleens JSON s'ils sont
+ * `execute`, `inclure_comptes`, `inclure_probables` : vrais booleens JSON s'ils sont
  * fournis. `corrections` n'est exige qu'en execution. Les erreurs gardent
  * l'enveloppe des routes CLI.
  */
@@ -35,7 +35,7 @@ class CorrigerFautesRequest extends FormRequest
         return [
             'execute' => [$booleen('execute')],
             'inclure_comptes' => [$booleen('inclure_comptes')],
-            'sans_mx' => [$booleen('sans_mx')],
+            'inclure_probables' => [$booleen('inclure_probables')],
             'corrections' => ['required_if:execute,true', 'array', 'max:'.self::CORRECTIONS_MAX],
             'corrections.*.cle' => ['required', 'string', 'max:120', 'distinct'],
             'corrections.*.domaine_propose' => ['required', 'string', 'max:255'],
@@ -53,9 +53,10 @@ class CorrigerFautesRequest extends FormRequest
         return $this->json('inclure_comptes') === true;
     }
 
-    public function avecMx(): bool
+    /** Fautes probables (distance d'edition) : jamais sans demande expresse. */
+    public function inclureProbables(): bool
     {
-        return $this->json('sans_mx') !== true;
+        return $this->json('inclure_probables') === true;
     }
 
     /** @return list<array{cle: string, domaine_propose: string, domaine_actuel?: ?string}> */
