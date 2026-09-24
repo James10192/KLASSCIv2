@@ -82,6 +82,10 @@ class PaiementShowMobileTest extends TestCase
     public function test_la_fiche_rend_le_recu_mobile_a_cote_du_dom_de_bureau(): void
     {
         $paiement = $this->paiement();
+        // Hors du delai d'annulation : un versement valide tout frais de son
+        // auteur s'annule desormais, et la barre raccourcirait alors
+        // « Nouvel encaissement » en « Encaisser ». Ce test porte sur le rendu.
+        $paiement->forceFill(['created_at' => now()->subHour()])->saveQuietly();
 
         $reponse = $this->get(route('esbtp.paiements.show', $paiement->id));
 

@@ -48,6 +48,7 @@ class EncaisserMobileTest extends TestCase
         Permission::findOrCreate('admin.access', 'web');
         Permission::findOrCreate('paiements.create', 'web');
         Permission::findOrCreate('paiements.create.mobile_money', 'web');
+        Permission::findOrCreate('paiements.create.non_cash', 'web');
         Permission::findOrCreate('paiements.validate', 'web');
         // Le profil mobile « caissier » se deduit de cette permission.
         Permission::findOrCreate('module.caisse.access', 'web');
@@ -113,6 +114,34 @@ class EncaisserMobileTest extends TestCase
             ->assertSee('data-canon="wave"', false)
             ->assertDontSee('data-canon="especes"', false)
             ->assertDontSee('data-canon="cheque"', false);
+    }
+
+    /**
+     * Le comptable « hors espèces » (septembre 2026, ISLG et USAT) : il n'a ni
+     * la caisse ni `paiements.create`, et ne trouvait plus l'écran. Il le voit
+     * dans son menu, y trouve tous les modes sauf les espèces, et les espèces
+     * lui restent refusées à l'enregistrement.
+     */
+    public function test_le_droit_hors_especes_ouvre_l_ecran_sans_les_especes(): void
+    {
+        $comptable = User::factory()->create();
+        Permission::findOrCreate('module.comptabilite.access', 'web');
+        Permission::findOrCreate('comptabilite.access', 'web');
+        $comptable->givePermissionTo(['admin.access', 'module.comptabilite.access', 'comptabilite.access', 'paiements.create.non_cash']);
+
+        $reponse = $this->actingAs($comptable)->get(route('esbtp.paiements.create'))
+            ->assertOk()
+            // L'entrée du menu hors de la section Caisse.
+            ->assertSee('<div class="menu-text">Encaisser</div>', false);
+        $modes = $reponse->viewData('allowedPaymentModes');
+        $this->assertContains('wave', $modes);
+        $this->assertContains('cheque', $modes);
+        $this->assertContains('virement', $modes);
+        $this->assertNotContains('especes', $modes);
+
+        $this->actingAs($comptable)->postJson(route('esbtp.paiements.store'), $this->versement(10000))
+            ->assertForbidden();
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
     }
 
     public function test_l_enregistrement_repond_en_json_avec_de_quoi_aller_au_recu(): void

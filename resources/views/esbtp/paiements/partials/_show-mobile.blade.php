@@ -318,7 +318,7 @@
         @can('paiements.avoir')
             @if($paiement->status === 'validé' && ! $mEstAvoir && $mAvoirDisponible > 0)
                 <button type="button" class="m-btn d" x-show="avoirDisponible > 0" x-on:click="ouvrir('psm-avoir')">
-                    <x-m.icon name="file" />Émettre un avoir
+                    <x-m.icon name="file" />Annuler le versement (avoir)
                 </button>
             @endif
         @endcan
@@ -430,7 +430,7 @@
     {{-- ============ Feuille « Émettre un avoir » ============ --}}
     @can('paiements.avoir')
     @if($paiement->status === 'validé' && ! $mEstAvoir && $mAvoirDisponible > 0)
-    <x-m.sheet id="psm-avoir" title="Émettre un avoir" :sub="'Reçu N° ' . $mNumero . ' · ' . $mNomEtudiant">
+    <x-m.sheet id="psm-avoir" title="Annuler le versement" :sub="'Reçu N° ' . $mNumero . ' · ' . $mNomEtudiant">
         <form x-on:submit.prevent="emettreAvoir()" class="psm-form">
             <dl class="m-dl">
                 <dt>Reste annulable sur ce reçu</dt>

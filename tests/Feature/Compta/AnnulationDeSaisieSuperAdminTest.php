@@ -19,7 +19,7 @@ use Tests\TestCase;
 
 /**
  * « Annuler ma saisie » décrit un état, pas un droit : c'est moi qui l'ai
- * saisi, il est encore en attente, il y a moins de N minutes.
+ * saisi, il n'est ni rejeté ni rapproché, il y a moins de N minutes.
  *
  * Le passe-droit du superAdmin (Gate::before) rendait ces trois faits vrais
  * pour tout paiement : le bouton s'affichait sur un reçu validé saisi par un
@@ -104,6 +104,78 @@ class AnnulationDeSaisieSuperAdminTest extends TestCase
             ->assertJson(['success' => true]);
 
         $this->assertSoftDeleted($recent);
+    }
+
+    /**
+     * La ou la caisse valide a l'encaissement, un versement n'est jamais en
+     * attente : exiger ce statut rendait le geste introuvable pour l'agent qui
+     * venait de se tromper. Un versement valide recent de son auteur s'annule
+     * donc aussi, par la suppression officielle, avec un motif pose d'office.
+     */
+    public function test_l_auteur_annule_sa_saisie_validee_recente_avec_un_motif_trace(): void
+    {
+        $caissier = User::factory()->create();
+        // `admin.access` : la garde commune de l'espace /esbtp, que tout
+        // personnel d'encaissement porte.
+        Permission::findOrCreate('admin.access', 'web');
+        $caissier->givePermissionTo(['paiements.cancel_own', 'admin.access']);
+        $recent = $this->versement($caissier, ['status' => 'validé', 'created_at' => '2026-09-04 10:44:00']);
+        $ancien = $this->versement($caissier, ['status' => 'validé', 'created_at' => '2026-09-04 10:00:00']);
+        $rejete = $this->versement($caissier, ['status' => 'rejeté', 'created_at' => '2026-09-04 10:44:00']);
+
+        $this->assertTrue($caissier->can('cancelOwnRecent', $recent));
+        $this->assertFalse($caissier->can('cancelOwnRecent', $ancien));
+        $this->assertFalse($caissier->can('cancelOwnRecent', $rejete));
+
+        $this->actingAs($caissier)
+            ->postJson(route('esbtp.paiements.cancel-own', $recent->id))
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $this->assertSoftDeleted($recent);
+        $supprime = ESBTPPaiement::withTrashed()->find($recent->id);
+        $this->assertSame($caissier->id, (int) $supprime->deleted_by);
+        $this->assertStringContainsString('annulée par son auteur', (string) $supprime->motif_suppression);
+    }
+
+    /**
+     * Quand « Annuler ma saisie » n'est plus ouvert, reste la suppression avec
+     * motif : elle doit se trouver la ou l'on voit le versement — la liste des
+     * paiements et la fiche d'inscription, pas seulement la fiche du paiement.
+     */
+    public function test_la_suppression_avec_motif_est_proposee_sur_la_liste_et_la_fiche_inscription(): void
+    {
+        $paiement = $this->versement($this->caissier, ['status' => 'validé', 'created_at' => '2026-09-01 09:00:00']);
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('esbtp.paiements.index'))
+            ->assertOk()
+            ->assertSee('supprimerPaiementModal'.$paiement->id, false);
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('esbtp.inscriptions.show', $this->inscription->id))
+            ->assertOk()
+            ->assertSee('supprimerVersement'.$paiement->id, false)
+            ->assertSee(route('esbtp.paiements.show', $paiement->id), false);
+    }
+
+    /**
+     * Un avoir total sur la fiche d'inscription : le versement se lit
+     * « Annulé par avoir », l'avoir en négatif, et le total net tombe à zéro
+     * au lieu de s'additionner (50 000 affichés pour 25 000 payés puis annulés).
+     */
+    public function test_la_fiche_inscription_deduit_l_avoir_du_total(): void
+    {
+        $paiement = $this->versement($this->caissier, ['status' => 'validé', 'montant' => 25000, 'created_at' => '2026-09-01 09:00:00']);
+        app(\App\Services\AvoirService::class)->issue($paiement, 25000, 'refund', 'Annulation de test.', $this->superAdmin->id);
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('esbtp.inscriptions.show', $this->inscription->id))
+            ->assertOk()
+            ->assertSee('Annulé par avoir')
+            ->assertSee('Total net payé')
+            ->assertSee('− 25 000 FCFA', false)
+            ->assertSee('<strong>0 FCFA</strong>', false);
     }
 
     public function test_la_fiche_mobile_ne_propose_l_annulation_que_sur_sa_propre_saisie(): void

@@ -67,6 +67,8 @@ class AnalyticsDiagnoseCommand extends Command
             'monthly_attendu'    => $this->monthlyDistribution($annee?->id, $months),
             'risk_saturation'    => $this->riskSaturation($annee?->id, $riskPredictor),
             'top_uncovered'      => $this->topUncoveredInscriptions($annee?->id, 5),
+            // Meme source que le bandeau de la page analytics.
+            'fiabilite'          => app(\App\Domain\Analytics\Quality\AnalyticsReliabilityService::class)->dataQuality(),
         ];
     }
 
@@ -92,6 +94,9 @@ class AnalyticsDiagnoseCommand extends Command
             if (($cov['coverage_pct'] ?? 100) < EcheancierCoverageService::SEUIL_FAIBLE_PCT) {
                 $r[] = 'La saturation est très probablement un artefact de la faible couverture : tout le parc est évalué en mode dégradé (échéance unique)';
             }
+        }
+        foreach ($report['fiabilite']['constats'] ?? [] as $constat) {
+            $r[] = 'Fiabilité des données : ' . $constat['titre'] . '. ' . $constat['detail'];
         }
         if (($ech['mode'] ?? null) === EcheancierReadinessService::MODE_FALLBACK) {
             $r[] = 'Aucune règle active — système en mode dégradé (1 tranche par catégorie)';

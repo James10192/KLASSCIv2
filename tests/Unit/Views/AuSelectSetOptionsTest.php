@@ -33,7 +33,7 @@ class AuSelectSetOptionsTest extends TestCase
 
         $this->assertStringContainsString("opt.value + '|' + opt.label", $source);
         $this->assertStringNotContainsString("opt.value + ':' + idx", $source);
-        $this->assertStringContainsString('this._menuWidth = Math.min(triggerRect.width, viewportWidth)', $source);
+        $this->assertStringContainsString('this._menuWidth = layoutWidth < 768 ? viewportWidth : Math.min(triggerRect.width, viewportWidth)', $source);
         $this->assertStringContainsString('document.documentElement.clientWidth', $source);
     }
 }

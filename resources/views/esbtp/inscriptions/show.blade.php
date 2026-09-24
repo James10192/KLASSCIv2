@@ -1143,7 +1143,13 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
     .is-hero-name { font-size: 1.15rem; }
     .is-hero-actions { width: 100%; margin-left: 0; margin-top: 8px; }
     .is-card-body { padding: 16px; }
-    .is-info-grid { grid-template-columns: 1fr; }
+    /* !important : la grille des parents porte un minmax(220px) en ligne, plus
+       large que la carte à 360px — le badge « Tuteur principal » et les
+       valeurs sortaient de la carte. */
+    .is-info-grid { grid-template-columns: 1fr !important; }
+    .is-card .accordion-button { flex-wrap: wrap; row-gap: 6px; }
+    .is-card .accordion-button .badge { margin-left: 0 !important; }
+    .is-fourniture { flex-wrap: wrap; }
     .is-stepper { display: none; }
     .is-stepper-mobile { display: block; }
 }
@@ -2901,6 +2907,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                         <th>Référence</th>
                                                         <th>Statut</th>
                                                         <th>Commentaire</th>
+                                                        <th class="text-end">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -2916,13 +2923,24 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                                 @endif
                                                             </td>
                                                             <td>
-                                                                <strong>
-                                                                    @if(isset($payment->montant))
+                                                                @php
+                                                                    // Un avoir annule tout ou partie d'un versement : il se lit en
+                                                                    // négatif, et le versement qu'il compense le dit.
+                                                                    $estAvoir = $payment instanceof \App\Models\ESBTPPaiement && $payment->isAvoir();
+                                                                    $recuAnnule = $estAvoir ? ($allPayments->firstWhere('id', $payment->parent_paiement_id)?->numero_recu) : null;
+                                                                @endphp
+                                                                <strong @if($estAvoir) style="color:#b91c1c;" @endif>
+                                                                    @if($estAvoir)
+                                                                        − {{ number_format($payment->montant, 0, ',', ' ') }} FCFA
+                                                                    @elseif(isset($payment->montant))
                                                                         {{ number_format($payment->montant, 0, ',', ' ') }} FCFA
                                                                     @elseif(isset($payment->amount))
                                                                         {{ number_format($payment->amount, 0, ',', ' ') }} FCFA
                                                                     @endif
                                                                 </strong>
+                                                                @if($estAvoir)
+                                                                    <div class="small text-muted">Avoir {{ $payment->numero_avoir }}@if($recuAnnule) · annule {{ $recuAnnule }}@endif</div>
+                                                                @endif
                                                             </td>
                                                             <td>
                                                                 @if(isset($payment->mode_paiement))
@@ -2943,37 +2961,54 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                                 @endif
                                                             </td>
                                                             <td>
-                                                                <span class="badge bg-success">
-                                                                    @if(isset($payment->status))
-                                                                        {{ $payment->status === 'validated' ? 'Validé' : ucfirst($payment->status) }}
-                                                                    @else
-                                                                        Validé
-                                                                    @endif
-                                                                </span>
+                                                                @php
+                                                                    $compense = ! $estAvoir && $payment instanceof \App\Models\ESBTPPaiement
+                                                                        && $allPayments->contains(fn ($p) => (int) $p->parent_paiement_id === (int) $payment->id);
+                                                                @endphp
+                                                                @if($estAvoir)
+                                                                    <span class="badge bg-primary">Avoir</span>
+                                                                @elseif($compense && $payment->avoir_disponible <= 0)
+                                                                    <span class="badge bg-secondary">Annulé par avoir</span>
+                                                                @elseif($compense)
+                                                                    <span class="badge bg-success">Validé</span> <span class="badge bg-secondary">en partie annulé</span>
+                                                                @else
+                                                                    <span class="badge bg-success">
+                                                                        @if(isset($payment->status))
+                                                                            {{ $payment->status === 'validated' ? 'Validé' : ucfirst($payment->status) }}
+                                                                        @else
+                                                                            Validé
+                                                                        @endif
+                                                                    </span>
+                                                                @endif
                                                             </td>
                                                             <td>
                                                                 @if(isset($payment->observations))
-                                                                    {{ $payment->observations }}
+                                                                    <span class="d-inline-block text-truncate" style="max-width:160px;" title="{{ $payment->observations }}">{{ $payment->observations }}</span>
                                                                 @else
                                                                     {{ $payment->commentaire ?? '-' }}
                                                                 @endif
+                                                            </td>
+                                                            <td class="text-end" style="white-space:nowrap;width:1%;">
+                                                                @include('esbtp.paiements.partials.actions-versement', ['paiement' => $payment, 'retour' => request()->getRequestUri()])
                                                             </td>
                                                         </tr>
                                                     @endforeach
                                                 </tbody>
                                                 <tfoot>
                                                     <tr class="table-success">
-                                                        <th>Total Validé</th>
+                                                        <th>Total net payé</th>
                                                         <th>
                                                             @php
+                                                                // Les avoirs se déduisent : un versement annulé ne compte plus.
                                                                 $totalValidated = 0;
                                                                 foreach($validatedPayments as $payment) {
-                                                                    $totalValidated += $payment->montant ?? $payment->amount ?? 0;
+                                                                    $montantLigne = $payment->montant ?? $payment->amount ?? 0;
+                                                                    $totalValidated += ($payment instanceof \App\Models\ESBTPPaiement && $payment->isAvoir()) ? -$montantLigne : $montantLigne;
                                                                 }
                                                             @endphp
                                                             <strong>{{ number_format($totalValidated, 0, ',', ' ') }} FCFA</strong>
                                                         </th>
-                                                        <th colspan="4"></th>
+                                                        <th colspan="5"></th>
                                                     </tr>
                                                 </tfoot>
                                             </table>
@@ -2997,6 +3032,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                         <th>Référence</th>
                                                         <th>Statut</th>
                                                         <th>Commentaire</th>
+                                                        <th class="text-end">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -3045,10 +3081,13 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                             </td>
                                                             <td>
                                                                 @if(isset($payment->observations))
-                                                                    {{ $payment->observations }}
+                                                                    <span class="d-inline-block text-truncate" style="max-width:160px;" title="{{ $payment->observations }}">{{ $payment->observations }}</span>
                                                                 @else
                                                                     {{ $payment->commentaire ?? '-' }}
                                                                 @endif
+                                                            </td>
+                                                            <td class="text-end" style="white-space:nowrap;width:1%;">
+                                                                @include('esbtp.paiements.partials.actions-versement', ['paiement' => $payment, 'retour' => request()->getRequestUri()])
                                                             </td>
                                                         </tr>
                                                     @endforeach

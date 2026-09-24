@@ -1263,9 +1263,9 @@ class ESBTPInscriptionController extends Controller
             ])->withInput();
         }
 
-        if ($isCorrectionSaisie && ! Auth::user()->can('admin.access')) {
+        if ($isCorrectionSaisie && ! ESBTPInscription::reaffectationAutoriseePour(Auth::user())) {
             return redirect()->back()->withErrors([
-                'correction_saisie' => "Seuls les administrateurs peuvent effectuer une correction d'erreur de saisie.",
+                'correction_saisie' => "Votre compte n'a pas le droit de corriger une inscription déjà validée.",
             ])->withInput();
         }
 
@@ -1296,10 +1296,7 @@ class ESBTPInscriptionController extends Controller
             $ancienAffectationStatus = $inscription->affectation_status;
             $ancienStatutEtablissement = $inscription->statut_etablissement;
 
-            if (
-                $inscription->status === "active" &&
-                !Auth::user()->can("admin.access")
-            ) {
+            if (! $inscription->parcoursModifiablePar(Auth::user())) {
                 // Empêcher la modification de la filière, niveau et classe pour les inscriptions actives (sauf utilisateurs autorisés)
                 unset($data["filiere_id"]);
                 unset($data["niveau_id"]);
