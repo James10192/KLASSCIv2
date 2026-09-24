@@ -1002,51 +1002,10 @@ $(function() {
     let repartitionTimer = null;
     let repartitionRequete = null;
     
-    const studentSearchUrl = @json(route('esbtp.api.etudiants.search'));
-    let studentSearchTimer = null;
-    const studentRoot = document.getElementById('etudiant_id')?.closest('[x-data]');
-    const studentSelect = studentRoot ? Alpine.$data(studentRoot) : null;
-
-    function bindStudentSearch() {
-        if (!studentSelect || !studentSelect.$refs || !studentSelect.$refs.searchInput) {
-            return;
-        }
-        studentSelect.$refs.searchInput.addEventListener('input', function () {
-            const query = this.value.trim();
-            clearTimeout(studentSearchTimer);
-            if (query.length < 3) {
-                return;
-            }
-            studentSearchTimer = setTimeout(async function () {
-                try {
-                    const response = await fetch(studentSearchUrl + '?q=' + encodeURIComponent(query), {
-                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-                    });
-                    if (!response.ok) {
-                        return;
-                    }
-                    const payload = await response.json();
-                    const options = (payload.results || []).map(function (item) {
-                        return { value: String(item.id), label: item.text };
-                    });
-                    // On conserve la saisie : le serveur repond pendant que la
-                    // caissiere tape encore, et vider le champ a cet instant lui
-                    // retire le texte des doigts.
-                    studentSelect.setOptions(options, studentSelect.currentValue || '', true);
-                } catch (error) {
-                    debugWarn('Recherche etudiant indisponible', error);
-                }
-            }, 220);
-        });
-    }
-
-    if (studentSelect) {
-        studentSelect.$watch('open', function (isOpen) {
-            if (isOpen) {
-                studentSelect.$nextTick(bindStudentSearch);
-            }
-        });
-    }
+    // Le choix de l'étudiant passe par le sélecteur d'inscription de la caisse
+    // (caisseInscriptionPicker), qui porte sa propre recherche. L'ancien
+    // branchement sur un sélecteur générique était mort et levait « Illegal
+    // invocation » à chaque ouverture de l'écran : retiré.
 
     // Gestion de la sélection d'étudiant
     $('#etudiant_id').on('change', function() {
