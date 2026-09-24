@@ -33,16 +33,16 @@ class ESBTPPlanificationAcademique extends Model implements Auditable
     /**
      * Événements à auditer.
      *
-     * On exclut volontairement 'created' pour éviter le spam audit pendant
-     * les bulk imports LMD (klassci lmd:import génère plusieurs centaines de
-     * planifications d'un coup). On garde 'updated' et 'deleted' qui sont
-     * les actions humaines significatives.
+     * 'created' était exclu pour ne pas remplir la table d'audit pendant les
+     * imports LMD (plusieurs centaines de planifications d'un coup). Il est
+     * audité depuis septembre 2026 : sans lui, un crédit saisi à 0 dès la
+     * création d'une ligne (édition en masse, cellule CECT) ne laissait aucune
+     * trace, et rien ne le distinguait d'un 0 laissé par l'ancienne saisie
+     * d'heures (CreditDeMaquette). La liste $auditInclude borne la taille de
+     * chaque ligne ; à surveiller sur un gros import.
      *
      * @var array
      */
-    // `created` aussi : sans lui, un credit saisi a 0 des la creation d'une
-    // ligne (edition en masse, cellule CECT) ne laissait aucune trace, et rien
-    // ne le distinguait d'un 0 laisse par l'ancienne saisie d'heures.
     protected $auditEvents = [
         'created',
         'updated',
