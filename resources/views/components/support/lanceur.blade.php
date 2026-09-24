@@ -86,7 +86,7 @@
                                     <input type="file" accept="image/png,image/jpeg,image/webp" data-sp-capture-fichier>
                                 </label>
                             </div>
-                            <p class="sp-capture-astuce">Sur téléphone, le plus rapide : une capture avec les boutons de l'appareil, puis « Choisir une image ».</p>
+                            <p class="sp-capture-astuce">Sur téléphone, le plus rapide : une capture avec les boutons de l'appareil, puis « Choisir une image ». Masquez-y ce qui est personnel avec l'outil Masquer.</p>
                             <div class="sp-capture-jointe" data-sp-capture-jointe hidden>
                                 <img alt="Aperçu de la capture jointe" data-sp-capture-vignette>
                                 <div class="sp-capture-jointe-texte"><strong>Capture prête</strong><span data-sp-capture-taille></span></div>

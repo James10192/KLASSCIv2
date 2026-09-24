@@ -107,67 +107,81 @@
      *    n'apparaitra pas dans l'image : on le vide en lui gardant sa taille,
      *    rien de ce qui est a l'ecran ne bouge, et le moteur n'a plus a
      *    l'analyser ni a le peindre. Jamais un morceau de tableau (la largeur
-     *    des colonnes visibles en depend), ni un element en ligne. Ses
-     *    descendants FIXES sont remis dans le bloc vide : hors du flux, ils se
-     *    peignent a l'ecran (la bulle de l'assistant vit en bas de page).
-     * 2. Un element colle (sticky, avec `top`) remonte au-dessus de son seuil
-     *    dans la copie non defilee : on le redescend de ce qui lui manque, sans
-     *    sortir de son parent, comme le ferait le navigateur.
+     *    des colonnes visibles en depend), ni un element en ligne, ni un bloc
+     *    dont le contenu deborde de sa boite (il pourrait deborder jusqu'a
+     *    l'ecran). Ses descendants FIXES sont remis dans le bloc vide : hors du
+     *    flux, ils se peignent a l'ecran (la bulle de l'assistant vit en bas).
+     * 2. Un element colle (sticky, avec `top` en px) remonte au-dessus de son
+     *    seuil dans la copie non defilee : on le redescend de ce qui lui manque,
+     *    sans sortir de son parent, comme le ferait le navigateur.
+     * 3. Un repere au milieu de l'ecran est mesure avant et apres : tout ecart
+     *    restant est compense.
      *
-     * Rien n'est retire AVANT la mise en page (ignoreElements) : tout ce qui
-     * suit remonterait, et une page defilee se capturait blanche.
+     * Le hors-ecran n'est pas retire AVANT la mise en page (ignoreElements) :
+     * tout ce qui suit remonterait, et une page defilee se capturait blanche.
+     * Seuls la fenetre d'aide, son fond et les elements data-support-exclure
+     * le sont.
      */
     function ajusterLaCopie(copie) {
         var vue = copie.defaultView;
         var bas = vue.innerHeight;
-        var colles = [];
-        var aVider = [];
-
-        function coller(el, r, style) {
-            var seuil = parseFloat(style.top);
-            if (style.top === 'auto' || !(r.top < seuil)) { return; }
-            var manque = Math.min(seuil - r.top, el.parentElement.getBoundingClientRect().bottom - r.bottom);
-            if (manque > 0) { colles.push([el, manque]); }
-        }
-
-        /* Un element fixe n'a pas de parent de positionnement : offsetParent nul
-           l'annonce sans lire le style de tout le sous-arbre. */
-        function fixesDans(bloc) {
-            var fixes = [];
-            bloc.querySelectorAll('*').forEach(function (d) {
-                if (d.offsetParent === null && !fixes.some(function (f) { return f.contains(d); })
-                    && vue.getComputedStyle(d).position === 'fixed') {
-                    fixes.push(d);
-                }
-            });
-            return fixes;
-        }
-
-        (function parcourir(parent) {
-            for (var el = parent.firstElementChild; el; el = el.nextElementSibling) {
-                var r = el.getBoundingClientRect();
-                var style;
-                if (r.bottom > 0 && r.top < bas) {
-                    style = vue.getComputedStyle(el);
-                    if (style.position === 'sticky') { coller(el, r, style); }
-                    parcourir(el);
-                    continue;
-                }
-                style = vue.getComputedStyle(el);
-                if (style.position === 'fixed') { continue; }
-                if (style.position === 'sticky') { coller(el, r, style); continue; }
-                if (style.display.indexOf('table-') === 0) { continue; }
-                if (el.firstChild && style.display !== 'inline' && style.display !== 'contents') {
-                    aVider.push([el, r.width, r.height, fixesDans(el)]);
-                    continue;
-                }
-                parcourir(el);
-            }
-        })(copie.body);
-
+        var mesure = mesurer(copie, vue, bas);
         var repere = repereFixe(copie, vue, bas);
         var avant = repere && repere.getBoundingClientRect().top;
 
+        viderHorsEcran(mesure.aVider);
+        recoller(mesure.colles);
+        if (repere) { compenserEcart(copie, repere.getBoundingClientRect().top - avant); }
+    }
+
+    function mesurer(copie, vue, bas) {
+        var mesure = { aVider: [], colles: [] };
+        (function parcourir(parent) {
+            for (var el = parent.firstElementChild; el; el = el.nextElementSibling) {
+                var r = el.getBoundingClientRect();
+                var style = vue.getComputedStyle(el);
+                var aLEcran = r.bottom > 0 && r.top < bas;
+                if (style.position === 'sticky') { coller(copie, vue, el, r, style, mesure.colles); }
+                if (aLEcran) { parcourir(el); continue; }
+                if (style.position === 'fixed' || style.position === 'sticky'
+                    || style.display.indexOf('table-') === 0) { continue; }
+                if (!videable(el, style)) { parcourir(el); continue; }
+                mesure.aVider.push([el, r.width, r.height, fixesDans(vue, el)]);
+            }
+        })(copie.body);
+        return mesure;
+    }
+
+    function videable(el, style) {
+        return el.firstChild && style.display !== 'inline' && style.display !== 'contents'
+            && el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1;
+    }
+
+    /* Un colle dans un conteneur qui defile colle a ce conteneur, pas a l'ecran :
+       on ne sait pas le recaler, on le laisse. Un seuil en % n'est pas lu. */
+    function coller(copie, vue, el, r, style, colles) {
+        if (!/px$/.test(style.top) || !(r.top < parseFloat(style.top))) { return; }
+        for (var a = el.parentElement; a && a !== copie.body; a = a.parentElement) {
+            if (vue.getComputedStyle(a).overflow !== 'visible') { return; }
+        }
+        var manque = Math.min(parseFloat(style.top) - r.top, el.parentElement.getBoundingClientRect().bottom - r.bottom);
+        if (manque > 0) { colles.push([el, manque]); }
+    }
+
+    /* Un element fixe n'a pas de parent de positionnement : offsetParent nul
+       l'annonce sans lire le style de tout le sous-arbre. */
+    function fixesDans(vue, bloc) {
+        var fixes = [];
+        bloc.querySelectorAll('*').forEach(function (d) {
+            if (d.offsetParent === null && !fixes.some(function (f) { return f.contains(d); })
+                && vue.getComputedStyle(d).position === 'fixed') {
+                fixes.push(d);
+            }
+        });
+        return fixes;
+    }
+
+    function viderHorsEcran(aVider) {
         aVider.forEach(function (x) {
             var el = x[0];
             el.style.setProperty('box-sizing', 'border-box', 'important');
@@ -181,27 +195,27 @@
             while (el.firstChild) { el.removeChild(el.firstChild); }
             x[3].forEach(function (f) { el.appendChild(f); });
         });
+    }
+
+    function recoller(colles) {
         colles.forEach(function (x) {
             x[0].style.setProperty('transition', 'none', 'important');
             x[0].style.setProperty('position', 'relative', 'important');
             x[0].style.setProperty('top', x[1] + 'px', 'important');
         });
+    }
 
-        /* Filet : si un bloc vide au-dessus a malgre tout perdu de la hauteur
-           (une marge qui passait a travers lui, un cas non prevu), ce qui est a
-           l'ecran a glisse. On le remet a sa place d'avant. */
-        if (repere) {
-            var ecart = repere.getBoundingClientRect().top - avant;
-            if (Math.abs(ecart) >= 1) {
-                var racine = copie.documentElement;
-                var haut = parseFloat(racine.style.getPropertyValue('top')) || 0;
-                /* Sans ceci, une transition de la page anime le recalage et le
-                   moteur peindrait l'etat de depart. */
-                racine.style.setProperty('transition', 'none', 'important');
-                racine.style.setProperty('position', 'relative', 'important');
-                racine.style.setProperty('top', (haut - ecart) + 'px', 'important');
-            }
-        }
+    /* Filet : si un bloc vide au-dessus a malgre tout perdu de la hauteur (une
+       marge qui passait a travers lui, un cas non prevu), ce qui est a l'ecran a
+       glisse. On le remet a sa place d'avant. Sans couper la transition, la page
+       animerait le recalage et le moteur peindrait l'etat de depart. */
+    function compenserEcart(copie, ecart) {
+        if (Math.abs(ecart) < 1) { return; }
+        var racine = copie.documentElement;
+        var haut = parseFloat(racine.style.getPropertyValue('top')) || 0;
+        racine.style.setProperty('transition', 'none', 'important');
+        racine.style.setProperty('position', 'relative', 'important');
+        racine.style.setProperty('top', (haut - ecart) + 'px', 'important');
     }
 
     /* Un element du flux au milieu de l'ecran : ni fixe ni colle, sinon il ne

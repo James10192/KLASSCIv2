@@ -306,7 +306,11 @@
         if (etat.capture) {
             $('[data-sp-capture-vignette]').src = etat.capture.url;
             $('[data-sp-capture-taille]').textContent = Math.max(1, Math.round(etat.capture.blob.size / 1024)) + ' Ko';
-            note.textContent = 'Nous joignons la page, votre navigateur, un code de suivi technique et la capture que vous avez vérifiée, champs de saisie masqués.';
+            /* Seule une capture de l'ecran a ses champs masques d'office : une image
+               choisie arrive telle quelle, et le dire autrement serait mentir. */
+            note.textContent = etat.capture.source === 'fichier'
+                ? 'Nous joignons la page, votre navigateur, un code de suivi technique et l\'image que vous avez choisie, telle que vous l\'avez vérifiée.'
+                : 'Nous joignons la page, votre navigateur, un code de suivi technique et la capture que vous avez vérifiée, champs de saisie masqués.';
         } else {
             note.textContent = 'Nous joignons automatiquement la page, votre navigateur et un code de suivi technique. Aucun contenu de la page n\'est transmis.';
         }
@@ -314,7 +318,8 @@
         choix.hidden = !!etat.capture;
     }
 
-    function ouvrirEditeur(source) {
+    function ouvrirEditeur(source, provenance) {
+        editeurProvenance = provenance;
         var cadre = $('[data-sp-toile]');
         editeur = new window.KlassciCapture.Editeur(cadre, source);
         choisirOutil('cadre');
@@ -335,6 +340,7 @@
      * Le rendu en cours ne s'annule pas ; son resultat tardif est simplement ignore.
      */
     var CAPTURE_DELAI_MAX_MS = 25000;
+    var editeurProvenance = 'ecran';
     var tentativeCapture = 0;
 
     function capturerEcran() {
@@ -348,11 +354,11 @@
             outilsCapture().then(function () { return window.KlassciCapture.capturer(); }),
             delai
         ]).then(function (source) {
-            if (tentative === tentativeCapture) { ouvrirEditeur(source); }
+            if (tentative === tentativeCapture) { ouvrirEditeur(source, 'ecran'); }
         }).catch(function (e) {
             if (tentative !== tentativeCapture) { return; }
             erreur(e && e.message === 'delai'
-                ? 'La capture prend trop de temps sur cet appareil. Faites une capture avec votre téléphone, puis « Choisir une image ».'
+                ? 'La capture prend trop de temps sur cet appareil. Faites une capture avec les touches de votre appareil, puis « Choisir une image ».'
                 : 'La capture n\'a pas pu être faite sur cette page. Vous pouvez choisir une image à la place.');
         }).then(function () {
             if (tentative === tentativeCapture) { remettreBoutonCapture(); }
@@ -380,7 +386,7 @@
         if (!fichier) { return; }
         charger(CONFIG.capture.script).then(function () {
             return window.KlassciCapture.depuisFichier(fichier);
-        }).then(ouvrirEditeur).catch(function () {
+        }).then(function (source) { ouvrirEditeur(source, 'fichier'); }).catch(function () {
             erreur('Cette image n\'a pas pu être ouverte. Choisissez une capture PNG, JPEG ou WebP.');
         });
     }
@@ -394,7 +400,7 @@
                 return;
             }
             if (etat.capture) { URL.revokeObjectURL(etat.capture.url); }
-            etat.capture = { blob: blob, url: URL.createObjectURL(blob), cle: nouvelleCle(), operations: editeur.operations.slice() };
+            etat.capture = { blob: blob, url: URL.createObjectURL(blob), cle: nouvelleCle(), operations: editeur.operations.slice(), source: editeurProvenance };
             aller('recap');
         }).catch(function () {
             erreur('La capture n\'a pas pu être préparée. Réessayez, ou choisissez une image.');
