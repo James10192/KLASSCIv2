@@ -724,5 +724,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // traitee a distance). Simulation par defaut, motif obligatoire.
         Route::post('/resultats/moyennes', [App\Http\Controllers\API\CLI\CLIMoyennesController::class, 'enregistrer'])
             ->name('resultats.moyennes');
+        // Corriger des notes EXISTANTES d'un eleve, puis recalculer ses moyennes
+        // (synchrone). Simulation par defaut, motif obligatoire.
+        Route::post('/notes/corriger', [App\Http\Controllers\API\CLI\CLIMoyennesController::class, 'corrigerNotes'])
+            ->name('notes.corriger');
     });
 });

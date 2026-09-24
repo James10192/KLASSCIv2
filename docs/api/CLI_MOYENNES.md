@@ -84,3 +84,34 @@ demandé sans moyenne enregistrée).
 
 - **Septembre 2026** — création, pour traiter la réclamation d'un élève de 1BTS GTP C
   à l'ESBTP Abidjan.
+
+---
+
+# Corriger des notes existantes
+
+`POST /api/cli/notes/corriger` — jeton `cli:admin`.
+
+À préférer à la saisie d'une moyenne quand la matière n'a **qu'une note** ce
+semestre-là : la note et la moyenne restent d'accord, et un recalcul ultérieur
+ne défait pas la correction, puisqu'il repart des notes corrigées. Quand une
+matière a plusieurs notes, la moyenne est leur moyenne pondérée, pas la
+dernière saisie.
+
+```json
+{
+  "etudiant_id": 3443,
+  "motif": "Réclamation validée par la direction des études le 24/09/2026",
+  "dry_run": true,
+  "notes": [ { "note_id": 55907, "note": 15 } ]
+}
+```
+
+- **Simulation par défaut**, motif obligatoire et journalisé (« CLI: notes corrigees »).
+- **Recalcul synchrone** des moyennes touchées, sans passer par la file : une
+  moyenne enregistrée d'avant, qui l'emporterait au bulletin, est remplacée
+  tout de suite. La réponse rend les moyennes obtenues.
+- Le commentaire de la note, trace de l'enseignant, n'est pas modifié. Une
+  note « absent » devient une note chiffrée.
+- Refus (422) : note d'un autre élève, note inexistante, note au-dessus du
+  barème de son évaluation. Tout ou rien.
+- Le bulletin reste à régénérer.
