@@ -98,36 +98,54 @@ l'enveloppe `data`, la synthèse est toujours présente :
 
 ## `POST /api/cli/rendez-vous/rattrapage-convocations` (`cli:admin`, 5 appels/min)
 
-Rattache aux convocations d'avant le suivi du 22/09 (« envoyée », sans identifiant MailPulse,
-dans le périmètre des rendez-vous) l'identifiant et la date du courriel qui les a portées,
-pour que la synchronisation relise leur remise. Simulation par défaut.
+Rattache aux convocations d'avant le suivi du 22/09 l'identifiant et la date du courriel
+MailPulse qui les a portées, pour que la synchronisation relise leur remise. Simulation par défaut.
 
 ```json
 {"execute":false,"messages":[{"reference":"ABCD-EFGH-IJKL","message_id":"msg_…",
   "envoye_at":"2026-09-10T09:00:00Z","destinataire_sha256":"<sha256 de l'adresse en minuscules, sans espaces>",
-  "destinataire_domaine":"gmail.com","action":"confirme"}]}
+  "destinataire_domaine":"gmail.com","action":"confirme|deplace|annule"}]}
 ```
 
-`execute` : vrai booléen JSON. 2000 courriels au plus. `destinataire_sha256` peut valoir `null`.
-Appariement, par réservation éligible :
-1. même référence de dossier (`reference_publique`, tirets et casse indifférents) et même action ;
-2. adresse présente : même empreinte ; adresse vidée par le nettoyage : domaine fabriqué ;
-3. le plus proche de `rdv_invite_at` du dossier, à défaut le plus récent. Égalité : ambigu, rien n'est écrit.
+Validation (422 pour tout le lot) : `execute` vrai booléen JSON, 2000 courriels au plus,
+`message_id` distincts, `envoye_at` en ISO 8601 avec fuseau et pas dans le futur,
+`destinataire_sha256` présent (peut valoir `null`). Un courriel sans `reference` est écarté
+seul et compté dans `sans_reference`.
 
-Un courriel déjà rattaché n'est jamais réutilisé ; choisi par deux réservations, il est ambigu
-pour les deux. L'écriture est conditionnelle (identifiant encore vide) : relancer ne change rien,
-rien n'est écrasé. Chaque ligne écrite entre au journal d'audit (`rattrapage_convocation`,
-source `rattrapage_mailpulse`).
+**Éligibles** : réservations `confirmee`, convocation `envoyee`, sans identifiant MailPulse
+**et** sans date d'envoi, dans le périmètre des rendez-vous.
+
+**Appariement**, par réservation :
+1. même référence de dossier (`reference_publique`, tirets et casse indifférents) ; action
+   compatible (`confirme` accepte `confirme` ou `deplace` ; `annule` n'accepte que `annule`) ;
+2. bornes : parti au plus tôt une minute avant la création de la réservation, et strictement
+   avant la plus proche de ces deux dates : la **coupure du suivi**, la création de la
+   réservation suivante du même dossier ;
+3. destinataire : adresse présente, même empreinte (un courriel sans empreinte ne se rattache
+   pas) ; adresse vidée par le nettoyage, l'empreinte de l'ancienne adresse lue dans la
+   sauvegarde `storage/app/backups/emails-factices-*.json`, à défaut un domaine fabriqué ;
+4. le plus récent parti au plus tard au dernier envoi au dossier (`rdv_invite_at`), à défaut
+   le plus récent ; deux courriels au même instant : ambigu, rien n'est écrit.
+
+**Coupure du suivi** : le plus ancien `convocation_envoyee_at` d'une réservation qui porte un
+identifiant MailPulse posé par l'envoi lui-même (les lignes déjà rattrapées, tracées dans
+l'audit, sont exclues pour que la coupure ne recule pas d'un passage à l'autre). À partir de
+cet instant, chaque envoi enregistre son identifiant : un courriel postérieur n'est pas une
+convocation d'avant le suivi. Aucun envoi suivi : la coupure est l'instant de l'appel.
+
+Un courriel déjà rattaché n'est jamais réutilisé (`deja_renseignees`) ; choisi par deux
+réservations, il est ambigu pour les deux. L'écriture est conditionnelle (identifiant et date
+encore vides) et partage sa transaction avec la trace d'audit (`rattrapage_convocation`,
+source `rattrapage_mailpulse`, anciennes et nouvelles valeurs) : sans trace, rien n'est écrit.
 
 Réponse, dans l'enveloppe `data` :
 
 ```json
-{"execute":false,"eligibles":0,"appariees":0,"ambigues":0,"sans_message":0,
- "deja_renseignees":0,"ecrites":0,"exemples":[{"reference_masquee":"ABCD-****-**KL","motif":"ambigue"}]}
+{"execute":false,"eligibles":0,"appariees":0,"ambigues":0,"sans_message":0,"sans_reference":0,
+ "deja_renseignees":0,"ecrites":0,"exemples":[{"reference_masquee":"AB**-****-**KL","motif":"ambigue"}]}
 ```
 
-`deja_renseignees` : courriels reçus déjà rattachés à une réservation. `exemples` : au plus 20,
-ambigus ou sans courriel, référence masquée.
+`exemples` : au plus 20, ambigus ou sans courriel, référence masquée à deux plus deux caractères.
 
 ## Réglage `inscriptions.portail.verification_contact`
 

@@ -22,13 +22,18 @@ final class MessageConvocation
         public readonly string $action,
     ) {}
 
-    /** @param  array{reference: string, message_id: string, envoye_at: string, destinataire_sha256?: ?string, destinataire_domaine: string, action: string}  $brut */
+    /**
+     * Reference absente ou vide : `reference` vaut '' et le courriel est ecarte
+     * seul par l'appelant.
+     *
+     * @param  array{reference?: ?string, message_id: string, envoye_at: string, destinataire_sha256?: ?string, destinataire_domaine: string, action: string}  $brut
+     */
     public static function depuis(array $brut, ReferencePublique $references): self
     {
         $empreinte = $brut['destinataire_sha256'] ?? null;
 
         return new self(
-            $references->normaliser($brut['reference']),
+            $references->normaliser((string) ($brut['reference'] ?? '')),
             $brut['message_id'],
             CarbonImmutable::parse($brut['envoye_at']),
             $empreinte === null ? null : strtolower($empreinte),

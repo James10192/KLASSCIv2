@@ -4,17 +4,19 @@ namespace App\Services\RendezVous\Rattrapage;
 
 use App\Enums\EtatEmail;
 use App\Services\Emails\DiagnosticEmail;
-use Carbon\CarbonInterface;
 
 /**
  * Choisit, pour UNE reservation, le courriel MailPulse qui l'a convoquee.
  *
- * 1. Candidats : meme reference de dossier, meme action que la convocation.
- * 2. Reservation avec adresse : seuls les courriels partis vers cette adresse
- *    (empreinte). Adresse videe par le nettoyage des adresses fabriquees :
- *    seuls les courriels partis vers un domaine fabrique.
- * 3. Le plus proche de la date d'invitation du dossier, a defaut le plus
- *    recent. Deux candidats a egalite : ambigu, rien n'est attribue.
+ * 1. Candidats : meme reference de dossier, action compatible (une
+ *    convocation « confirme » d'avant le suivi a pu partir comme confirmation
+ *    ou deplacement ; une annulation ne prend jamais une confirmation), parti
+ *    dans les bornes de la reservation (ContexteReservation).
+ * 2. Destinataire : adresse presente, meme empreinte ; adresse videe par le
+ *    nettoyage, l'empreinte de l'ancienne adresse si la sauvegarde la donne,
+ *    sinon un domaine fabrique.
+ * 3. Le plus recent parti au plus tard au dernier envoi au dossier (`ancre`),
+ *    a defaut le plus recent. Deux candidats au meme instant : ambigu.
  *
  * Decide seulement ; n'ecrit rien.
  */
@@ -26,40 +28,49 @@ class ApparieurConvocation
 
     public const SANS_MESSAGE = 'sans_message';
 
+    private const ACTIONS_COMPATIBLES = [
+        'confirme' => ['confirme', 'deplace'],
+        'deplace' => ['deplace'],
+        'annule' => ['annule'],
+    ];
+
     public function __construct(private readonly DiagnosticEmail $classement) {}
 
     /**
      * @param  list<MessageConvocation>  $candidats  meme reference de dossier
      * @return array{0: string, 1: ?MessageConvocation}
      */
-    public function choisir(array $candidats, string $action, ?string $email, ?CarbonInterface $invitation): array
+    public function choisir(array $candidats, ContexteReservation $contexte): array
     {
-        $retenus = array_values(array_filter(
-            $candidats,
-            fn (MessageConvocation $m) => $m->action === $action && $this->memeDestinataire($m, $email),
-        ));
+        $actions = self::ACTIONS_COMPATIBLES[$contexte->action] ?? [];
+        $retenus = array_values(array_filter($candidats, fn (MessageConvocation $m) => in_array($m->action, $actions, true)
+            && $m->envoyeAt->gte($contexte->depuis)
+            && $m->envoyeAt->lt($contexte->jusqua)
+            && $this->memeDestinataire($m, $contexte)));
         if ($retenus === []) {
             return [self::SANS_MESSAGE, null];
         }
 
-        // Distance a la date d'invitation ; sans elle, le plus recent d'abord.
-        $cle = $invitation === null
-            ? fn (MessageConvocation $m) => -$m->envoyeAt->getTimestamp()
-            : fn (MessageConvocation $m) => abs($m->envoyeAt->getTimestamp() - $invitation->getTimestamp());
-        usort($retenus, fn ($a, $b) => $cle($a) <=> $cle($b));
+        $avantAncre = $contexte->ancre === null ? [] : array_values(array_filter(
+            $retenus,
+            fn (MessageConvocation $m) => $m->envoyeAt->lte($contexte->ancre),
+        ));
+        $pool = $avantAncre !== [] ? $avantAncre : $retenus;
+        usort($pool, fn ($a, $b) => $b->envoyeAt->getTimestamp() <=> $a->envoyeAt->getTimestamp());
 
-        if (count($retenus) > 1 && $cle($retenus[0]) === $cle($retenus[1])) {
+        if (count($pool) > 1 && $pool[0]->envoyeAt->getTimestamp() === $pool[1]->envoyeAt->getTimestamp()) {
             return [self::AMBIGUE, null];
         }
 
-        return [self::APPARIEE, $retenus[0]];
+        return [self::APPARIEE, $pool[0]];
     }
 
-    private function memeDestinataire(MessageConvocation $message, ?string $email): bool
+    private function memeDestinataire(MessageConvocation $message, ContexteReservation $contexte): bool
     {
-        if ($email !== null && trim($email) !== '') {
-            return $message->destinataireSha256 !== null
-                && hash_equals(MessageConvocation::empreinte($email), $message->destinataireSha256);
+        $email = $contexte->email === null ? '' : trim($contexte->email);
+        $empreinte = $email !== '' ? MessageConvocation::empreinte($email) : $contexte->ancienneEmpreinte;
+        if ($empreinte !== null) {
+            return $message->destinataireSha256 !== null && hash_equals($empreinte, $message->destinataireSha256);
         }
 
         return $message->destinataireDomaine !== ''

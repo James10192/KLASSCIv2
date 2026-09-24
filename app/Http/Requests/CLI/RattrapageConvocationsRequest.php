@@ -12,12 +12,17 @@ use Illuminate\Http\Exceptions\HttpResponseException;
  *   "destinataire_sha256", "destinataire_domaine", "action"}]}`
  *
  * `execute` doit etre un vrai booleen JSON : une chaine « false » ne doit pas
- * declencher d'ecriture. 2000 courriels au plus par appel. Les erreurs gardent
- * l'enveloppe des routes CLI.
+ * declencher d'ecriture. 2000 courriels au plus par appel, identifiants
+ * distincts, dates ISO 8601 pas dans le futur. Un courriel sans reference
+ * n'invalide pas le lot : il est ecarte seul (`sans_reference`). Les erreurs
+ * gardent l'enveloppe des routes CLI.
  */
 class RattrapageConvocationsRequest extends FormRequest
 {
     public const MESSAGES_MAX = 2000;
+
+    /** `2026-09-10T09:00:00Z`, `2026-09-10T09:00:00.123+00:00` : fuseau obligatoire. */
+    private const ISO_8601 = '/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/';
 
     public function authorize(): bool
     {
@@ -33,12 +38,13 @@ class RattrapageConvocationsRequest extends FormRequest
                 }
             }],
             'messages' => ['required', 'array', 'max:'.self::MESSAGES_MAX],
-            'messages.*.reference' => ['required', 'string', 'max:40'],
-            'messages.*.message_id' => ['required', 'string', 'max:100'],
-            'messages.*.envoye_at' => ['required', 'date'],
+            'messages.*' => ['array'],
+            'messages.*.reference' => ['nullable', 'string', 'max:40'],
+            'messages.*.message_id' => ['required', 'string', 'max:100', 'distinct'],
+            'messages.*.envoye_at' => ['required', 'string', 'regex:'.self::ISO_8601, 'before_or_equal:now'],
             'messages.*.destinataire_sha256' => ['present', 'nullable', 'string', 'regex:/^[0-9a-fA-F]{64}$/'],
             'messages.*.destinataire_domaine' => ['required', 'string', 'max:255'],
-            'messages.*.action' => ['required', 'in:confirme,annule'],
+            'messages.*.action' => ['required', 'in:confirme,deplace,annule'],
         ];
     }
 
