@@ -510,8 +510,21 @@
         .sec-quick-actions { background: #0453cb; color: #fff; border-color: #0453cb; border-radius: 99px; white-space: nowrap; min-height: 38px; backdrop-filter: none; }
         .sec-quick-actions:hover { background: #033a8e; }
         .sec-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-        .sec-kpi { border-radius: 20px; min-width: 0; }
-        .sec-kpi-value { font-size: 1.4rem; }
+        /* Tuiles M3 : blanches, icône bleue ; l'orange reste pour ce qui attend
+           une action, le rouge pour ce qui bloque. Plus de dégradés décoratifs. */
+        .sec-kpi, [class*="sec-kpi--"] { background: #fff; color: #0f172a; text-align: left; border-radius: 20px; min-width: 0; padding: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
+        .sec-kpi::after { display: none; }
+        .sec-kpi:hover { transform: none; }
+        .sec-kpi-icon { color: #0453cb; font-size: 1.25rem; opacity: 1; }
+        .sec-kpi-label { color: #64748b; opacity: 1; text-transform: none; letter-spacing: 0; font-size: .78rem; }
+        .sec-kpi-value { font-size: 1.5rem; color: #0f172a; }
+        .sec-kpi-link { color: #0453cb; background: #eef4ff; border-color: transparent; }
+        .sec-kpi--warning { background: #fff7ed; }
+        .sec-kpi--warning .sec-kpi-icon, .sec-kpi--warning .sec-kpi-value, .sec-kpi--warning .sec-kpi-label { color: #9a3412; }
+        .sec-kpi--warning .sec-kpi-link { color: #9a3412; background: #ffedd5; }
+        .sec-kpi--danger { background: #fef2f2; }
+        .sec-kpi--danger .sec-kpi-icon, .sec-kpi--danger .sec-kpi-value, .sec-kpi--danger .sec-kpi-label { color: #b91c1c; }
+        .sec-kpi--danger .sec-kpi-link { color: #b91c1c; background: #fee2e2; }
         .sec-alert { flex-direction: row; flex-wrap: wrap; align-items: flex-start; text-align: left; gap: .75rem; border-radius: 20px; padding: 14px; }
         .sec-alert-icon { width: 40px; height: 40px; font-size: 1rem; flex: 0 0 40px; }
         .sec-alert-content { flex: 1 1 0; min-width: 0; }
