@@ -37,6 +37,9 @@ class CLILmsJetonController extends BaseApiController
         ]);
 
         $compte = $this->compteTechnique();
+        if (is_string($compte)) {
+            return $this->errorResponse($compte, [], 409);
+        }
         $droits = array_values(array_unique($v['droits'] ?? JetonServeurLms::DROITS));
 
         $revoques = 0;
@@ -114,20 +117,38 @@ class CLILmsJetonController extends BaseApiController
             : $this->errorResponse('Token missing cli:admin ability', [], 403);
     }
 
-    /** Le compte technique de l'ecole, cree au premier jeton. */
-    private function compteTechnique(): User
+    /**
+     * Le compte technique de l'ecole, cree au premier jeton — ou la raison
+     * pour laquelle on refuse de s'en servir.
+     *
+     * Un VRAI compte pourrait porter deja l'identifiant ou l'adresse : lui
+     * donner des jetons serveur (et `remplacer` supprimerait ses jetons a lui)
+     * serait une prise de compte. On ne reprend donc qu'un compte sans role et
+     * jamais connecte, c'est-a-dire un compte technique.
+     */
+    private function compteTechnique(): User|string
     {
         $domaine = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'klassci.local';
+        $email = JetonServeurLms::COMPTE.'@'.$domaine;
 
-        return User::firstOrCreate(
-            ['username' => JetonServeurLms::COMPTE],
-            [
-                'name' => 'Service LMS (compte technique)',
-                'email' => JetonServeurLms::COMPTE.'@'.$domaine,
-                'password' => Hash::make(Str::random(64)),
-                'is_active' => true,
-                'must_change_password' => false,
-            ]
-        );
+        $existant = User::where('username', JetonServeurLms::COMPTE)->first();
+        if ($existant) {
+            return $existant->roles()->exists() || $existant->last_login_at !== null
+                ? "Un vrai compte porte déjà l'identifiant « ".JetonServeurLms::COMPTE." » : renommez-le avant de créer un jeton serveur."
+                : $existant;
+        }
+
+        if (User::where('email', $email)->exists()) {
+            return "L'adresse {$email} est déjà prise par un autre compte : libérez-la avant de créer un jeton serveur.";
+        }
+
+        return User::create([
+            'name' => 'Service LMS (compte technique)',
+            'username' => JetonServeurLms::COMPTE,
+            'email' => $email,
+            'password' => Hash::make(Str::random(64)),
+            'is_active' => true,
+            'must_change_password' => false,
+        ]);
     }
 }

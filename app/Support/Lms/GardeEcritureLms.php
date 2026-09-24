@@ -40,14 +40,33 @@ final class GardeEcritureLms
             return false;
         }
 
-        // Meme regle que LMSWriteController::saveEvaluationNotes() : l'enseignant
-        // de la matiere pour l'annee de l'evaluation, ou l'enseignant designe.
-        return (int) $evaluation->enseignant_id === (int) $utilisateur->id
-            || ($evaluation->matiere && $evaluation->matiere->enseignants()
-                ->where('enseignant_id', $utilisateur->id)
-                ->where('esbtp_enseignant_matiere.annee_universitaire_id', $evaluation->annee_universitaire_id)
-                ->where('esbtp_enseignant_matiere.is_active', true)
-                ->exists());
+        // Les memes liens que ceux par lesquels le LMS MONTRE l'evaluation a
+        // l'enseignant (BaseApiController::applyEnseignantFilters), sauf « meme
+        // classe », trop large pour autoriser une ecriture :
+        //  - l'enseignant designe sur l'evaluation ;
+        //  - l'enseignant de la matiere pour l'annee (pivot) ;
+        //  - l'enseignant d'une seance de cette matiere dans cette classe
+        //    (emploi du temps) : c'est le seul lien d'un vacataire quand la
+        //    scolarite a cree l'evaluation.
+        if ((int) $evaluation->enseignant_id === (int) $utilisateur->id) {
+            return true;
+        }
+
+        if ($evaluation->matiere && $evaluation->annee_universitaire_id && $evaluation->matiere->enseignants()
+            ->where('enseignant_id', $utilisateur->id)
+            ->where('esbtp_enseignant_matiere.annee_universitaire_id', $evaluation->annee_universitaire_id)
+            ->where('esbtp_enseignant_matiere.is_active', true)
+            ->exists()) {
+            return true;
+        }
+
+        $profil = $utilisateur->teacherProfile;
+
+        return $profil !== null && ESBTPSeanceCours::query()
+            ->where('teacher_id', $profil->id)
+            ->where('matiere_id', $evaluation->matiere_id)
+            ->where('classe_id', $evaluation->classe_id)
+            ->exists();
     }
 
     public static function peutGererLaSeance(?User $utilisateur, ESBTPSeanceCours $seance): bool

@@ -30,7 +30,7 @@ class JetonServeurEtGardesLmsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        foreach (['identity.student', 'identity.teach', 'admin.access', 'identity.coordinate', 'identity.direct_studies'] as $p) {
+        foreach (['identity.student', 'identity.teach', 'admin.access', 'identity.coordinate', 'identity.direct_studies', 'attendances.create', 'attendances.edit'] as $p) {
             Permission::findOrCreate($p, 'web');
         }
         $this->monterLaClasse();
@@ -171,7 +171,95 @@ class JetonServeurEtGardesLmsTest extends TestCase
 
         $this->assertNotSame($parIdentifiantA->key, $parIdentifiantB->key);
         $this->assertSame($parIpA->key, $parIpB->key);
-        $this->assertSame(120, $parIpA->maxAttempts);
+        $this->assertSame(30, $parIpA->maxAttempts);
+    }
+
+    /** @test */
+    public function l_enseignant_rattache_par_l_emploi_du_temps_peut_noter(): void
+    {
+        // Le vacataire : ni designe sur l'evaluation, ni dans le pivot des
+        // matieres, seulement dans l'emploi du temps de la classe.
+        $prof = User::factory()->create();
+        $prof->givePermissionTo('identity.teach');
+        $profil = \App\Models\ESBTPTeacher::create(['user_id' => $prof->id, 'matricule' => 'VAC-001', 'status' => 'active']);
+        $this->seance($profil->id);
+
+        $this->ecrireNote($this->jeton($prof, ['lms:access']), 13)->assertOk();
+    }
+
+    /** @test */
+    public function l_encadrement_peut_noter(): void
+    {
+        $coordinateur = User::factory()->create();
+        $coordinateur->givePermissionTo('identity.coordinate');
+
+        $this->ecrireNote($this->jeton($coordinateur, ['lms:access']), 16)->assertOk();
+    }
+
+    /** @test */
+    public function le_jeton_serveur_pointe_une_visio_seulement_avec_le_droit_presences(): void
+    {
+        $service = User::factory()->create(['username' => JetonServeurLms::COMPTE]);
+        $seance = $this->seance();
+
+        $this->pointer($this->jeton($service, [JetonServeurLms::SERVEUR, JetonServeurLms::NOTES]), $seance)->assertForbidden();
+        $this->pointer($this->jeton($service, [JetonServeurLms::SERVEUR, JetonServeurLms::PRESENCES]), $seance)->assertOk();
+    }
+
+    /** @test */
+    public function un_vrai_compte_service_lms_n_est_jamais_repris(): void
+    {
+        $reel = User::factory()->create(['username' => JetonServeurLms::COMPTE, 'last_login_at' => now()]);
+        $reel->createToken('le sien', ['lms:access']);
+        $cli = $this->jeton(User::factory()->create(), ['cli:admin']);
+
+        $this->withToken($cli)->postJson('/api/cli/lms/jeton-serveur', ['remplacer' => true])->assertStatus(409);
+
+        $this->assertSame(['lms:access'], $reel->tokens()->first()->abilities);
+    }
+
+    /** @test */
+    public function remplacer_revoque_les_anciens_jetons_serveur(): void
+    {
+        $cli = $this->jeton(User::factory()->create(), ['cli:admin']);
+        $this->withToken($cli)->postJson('/api/cli/lms/jeton-serveur')->assertOk();
+        $this->app['auth']->forgetGuards();
+
+        $data = $this->withToken($cli)->postJson('/api/cli/lms/jeton-serveur', ['remplacer' => true])->assertOk()->json('data');
+
+        $this->assertSame(1, $data['jetons_revoques']);
+        $this->assertSame(1, User::where('username', JetonServeurLms::COMPTE)->firstOrFail()->tokens()->count());
+    }
+
+    /** @test */
+    public function un_jeton_lms_ne_lance_plus_le_peuplement_de_la_paie(): void
+    {
+        $eleve = User::factory()->create();
+        $eleve->givePermissionTo('identity.student');
+
+        $this->withToken($this->jeton($eleve, ['lms:access']))->postJson('/api/cli/paie/seed-demo', ['dry_run' => true])->assertForbidden();
+    }
+
+    /** @test */
+    public function un_eleve_ne_synchronise_plus_de_presences(): void
+    {
+        $eleve = User::factory()->create();
+        $eleve->givePermissionTo('identity.student');
+
+        $this->withToken($this->jeton($eleve, ['lms:access']))->postJson('/api/attendance/sync', [
+            'student_id' => 1, 'date' => now()->toDateString(), 'status' => 'present', 'timestamp' => now()->toDateTimeString(),
+        ])->assertForbidden();
+    }
+
+    private function pointer(string $jeton, ESBTPSeanceCours $seance): \Illuminate\Testing\TestResponse
+    {
+        $this->app['auth']->forgetGuards();
+
+        return $this->withToken($jeton)->postJson('/api/lms/attendances/from-video-session', [
+            'seance_cours_id' => $seance->id, 'date' => now()->toDateString(),
+            'attendances' => [['etudiant_id' => $this->eleve->id, 'statut' => 'present',
+                'joined_at' => now()->format('Y-m-d H:i:s'), 'left_at' => now()->format('Y-m-d H:i:s'), 'duration_minutes' => 60]],
+        ]);
     }
 
     /** @param array<int,string> $droits */
@@ -191,7 +279,7 @@ class JetonServeurEtGardesLmsTest extends TestCase
         ]);
     }
 
-    private function seance(): ESBTPSeanceCours
+    private function seance(?int $teacherId = null): ESBTPSeanceCours
     {
         $emploi = \App\Models\ESBTPEmploiTemps::create([
             'titre' => 'Planning test LMS',
@@ -206,6 +294,7 @@ class JetonServeurEtGardesLmsTest extends TestCase
 
         return ESBTPSeanceCours::create([
             'emploi_temps_id' => $emploi->id,
+            'teacher_id' => $teacherId,
             'classe_id' => $this->classe->id,
             'matiere_id' => $this->evaluation->matiere_id,
             'annee_universitaire_id' => $this->annee->id,

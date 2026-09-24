@@ -310,7 +310,7 @@ Les donnees retournees au login sont automatiquement filtrees selon le role :
 **Type**: Securite
 
 **Changements**:
-- Rate limiter `lms-discovery` : 10 requetes/minute **par identifiant recherche** (et non plus par IP), plus une enveloppe de 120/minute par IP (reglage `lms.decouverte.limite_ip_par_minute`). Tous les usagers du LMS sortent de la meme IP et se partageaient les 10 appels.
+- Rate limiter `lms-discovery` : 10 requetes/minute **par identifiant recherche** (et non plus par IP), plus une enveloppe de 30/minute par IP (reglage `lms.decouverte.limite_ip_par_minute`). Tous les usagers du LMS sortent de la meme IP et se partageaient les 10 appels.
 - Jeton serveur du LMS (`lms:serveur` + droits nommes) : voir [LMS_JETON_SERVEUR.md](LMS_JETON_SERVEUR.md).
 
 **Breaking changes**: les routes d'ecriture (notes d'une evaluation, presences d'une visio, rappels de seance) repondent desormais `403` a un eleve ou a un compte sans lien avec l'evaluation ou la seance. Voir LMS_JETON_SERVEUR.md.

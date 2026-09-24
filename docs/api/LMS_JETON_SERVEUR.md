@@ -41,11 +41,24 @@ rappels. Elles passent désormais par `App\Support\Lms\GardeEcritureLms`.
 
 | Route | Autorisé |
 |---|---|
-| `POST /api/lms/evaluations/{id}/notes` | jeton serveur avec `lms:notes` · administration, coordination, direction des études · enseignant de l'évaluation (`enseignant_id`) ou de la matière pour l'année |
+| `POST /api/lms/evaluations/{id}/notes` | jeton serveur avec `lms:notes` · administration, coordination, direction des études · enseignant de l'évaluation (`enseignant_id`), de la matière pour l'année, ou d'une séance de cette matière dans cette classe (emploi du temps : le lien d'un vacataire) |
 | `POST /api/lms/attendances/from-video-session` | jeton serveur avec `lms:presences` · encadrement · enseignant de la séance |
 | `POST /api/lms/notifications/send-session-reminder` | idem |
 
 Refus : **403**, avec un message.
+
+Deux routes voisines, qui acceptaient n'importe quel jeton, sont verrouillées
+dans le même lot :
+
+| Route | Exige désormais |
+|---|---|
+| `POST /api/cli/paie/seed-demo` | un jeton `cli:admin` |
+| `POST /api/attendance/sync` | la permission `attendances.create` ou `attendances.edit` |
+
+Le compte technique n'est jamais pris sur un vrai compte : si l'identifiant
+`service-lms` appartient déjà à un compte doté d'un rôle ou qui s'est déjà
+connecté, ou si l'adresse `service-lms@<domaine>` est prise, la création répond
+**409**.
 
 **Commentaire de la note** : une mise à jour ne remplace plus le commentaire de
 l'enseignant par « Note soumise via LMS ». Il n'est modifié que si le LMS en
@@ -63,7 +76,7 @@ ligne.
 |---|---|---|
 | Jeton serveur | réglage `lms.serveur.limite_par_minute`, **600** par défaut (60 au minimum) | le jeton |
 | Autres jetons | 60 / minute | l'utilisateur |
-| `check-user`, `check-availability` | 10 / minute **par identifiant recherché**, plus une enveloppe par IP : réglage `lms.decouverte.limite_ip_par_minute`, **120** par défaut | identifiant + IP, et IP |
+| `check-user`, `check-availability` | 10 / minute **par identifiant recherché**, plus une enveloppe par IP : réglage `lms.decouverte.limite_ip_par_minute`, **30** par défaut (compromis : trois fois plus qu'avant par IP, mais l'école n'est plus bloquée par dix recherches) | identifiant + IP, et IP |
 
 Avant, la recherche d'utilisateur était limitée à 10 par minute **et par IP** :
 tous les usagers du LMS sortant de la même IP se partageaient ces 10 appels.

@@ -88,7 +88,9 @@ class RouteServiceProvider extends ServiceProvider
         // tous les usagers du LMS sortent de la meme IP, et une limite de 10
         // par IP etait partagee par toute l'ecole. L'enveloppe garde la
         // protection contre l'enumeration (une IP ne balaie pas des milliers
-        // d'identifiants).
+        // d'identifiants). Compromis assume : a 30/min par IP, une IP sonde 3
+        // fois plus de comptes qu'avant (10/min), mais l'ecole entiere n'est
+        // plus bloquee par dix recherches.
         RateLimiter::for('lms-discovery', function (Request $request) {
             $identifiant = mb_strtolower(trim((string) (
                 $request->input('identifier') ?? $request->input('email') ?? $request->input('username') ?? ''
@@ -96,7 +98,7 @@ class RouteServiceProvider extends ServiceProvider
 
             return [
                 Limit::perMinute(10)->by('lms-decouverte-id:'.sha1($identifiant.'|'.$request->ip())),
-                Limit::perMinute(max(10, (int) \App\Helpers\SettingsHelper::get('lms.decouverte.limite_ip_par_minute', 120)))
+                Limit::perMinute(max(10, (int) \App\Helpers\SettingsHelper::get('lms.decouverte.limite_ip_par_minute', 30)))
                     ->by('lms-decouverte-ip:'.$request->ip()),
             ];
         });
