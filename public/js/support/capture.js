@@ -82,66 +82,91 @@
             || (el.hasAttribute && el.hasAttribute('data-support-exclure'));
     }
 
-    var APPAREIL_APPLE = /(iPad|iPhone|iPod)/;
-
     /*
-     * La copie doit montrer ce que la personne voit. html2canvas la place dans
-     * un cadre qu'il fait defiler jusqu'a la position de la page ; quand ce
-     * defilement echoue (c'est le cas sous Chrome), il ne le rattrape que pour
-     * les appareils Apple, et partout ailleurs l'image montrait le HAUT de la
-     * page. On rattrape le reste ici, en decalant la racine de la copie : les
-     * elements fixes, eux, restent a l'ecran. Rend le decalage qui subsiste
-     * entre l'ecran et la copie (nul, sauf quand html2canvas a rattrape lui-meme).
+     * La copie doit montrer ce que la personne voit. On ne demande PAS a
+     * html2canvas de faire defiler sa copie : ce defilement echoue sous Chrome
+     * comme sous Safari, et html2canvas ne le rattrape qu'a moitie, pour les
+     * seuls appareils Apple (les bandeaux colles y disparaissaient). La copie
+     * reste en haut, et on decale sa racine de la hauteur defilee. Les
+     * elements fixes restent a l'ecran ; les elements colles, eux, ne collent
+     * que si la page defile vraiment, donc on les recale a la main.
      */
-    function recalerLaCopie(copie, cible) {
-        var vue = copie.defaultView;
-        var ecartX = cible.x - vue.pageXOffset;
-        var ecartY = cible.y - vue.pageYOffset;
-        if (APPAREIL_APPLE.test(navigator.userAgent) || (ecartX === 0 && ecartY === 0)) {
-            return { x: ecartX, y: ecartY };
-        }
+    function placerLaCopie(copie, defile) {
+        if (defile.x === 0 && defile.y === 0) { return; }
         var racine = copie.documentElement;
         racine.style.setProperty('position', 'relative', 'important');
-        racine.style.setProperty('left', -ecartX + 'px', 'important');
-        racine.style.setProperty('top', -ecartY + 'px', 'important');
-        return { x: 0, y: 0 };
+        racine.style.setProperty('left', -defile.x + 'px', 'important');
+        racine.style.setProperty('top', -defile.y + 'px', 'important');
     }
 
     /*
-     * Ce qui est entierement SOUS l'ecran n'apparaitra pas dans l'image : sur la
-     * copie, on vide ces blocs en leur gardant exactement leur taille. Le moteur
-     * n'a plus a les analyser ni a les peindre (sur une page longue, environ la
-     * moitie du temps d'analyse et de dessin).
+     * Une seule lecture de la copie placee, puis toutes les ecritures : alterner
+     * lecture et ecriture forcerait une mise en page complete a chaque element.
      *
-     * Pourquoi seulement sous l'ecran, et pourquoi sur la copie deja placee :
-     * retirer un element AVANT la mise en page (ignoreElements) fait remonter
-     * tout ce qui suit, et une page defilee se capturait blanche. Ici la copie
-     * est deja mise en page et placee ; un bloc vide garde sa hauteur, rien de
-     * ce qui est a l'ecran ne bouge. On ne touche ni aux lignes et cellules de
-     * tableau (la largeur des colonnes visibles en depend), ni aux elements
-     * fixes ou colles, ni aux elements en ligne.
+     * 1. Un bloc entierement HORS de l'ecran, au-dessus comme au-dessous,
+     *    n'apparaitra pas dans l'image : on le vide en lui gardant sa taille,
+     *    rien de ce qui est a l'ecran ne bouge, et le moteur n'a plus a
+     *    l'analyser ni a le peindre. Jamais un morceau de tableau (la largeur
+     *    des colonnes visibles en depend), ni un element en ligne. Ses
+     *    descendants FIXES sont remis dans le bloc vide : hors du flux, ils se
+     *    peignent a l'ecran (la bulle de l'assistant vit en bas de page).
+     * 2. Un element colle (sticky, avec `top`) remonte au-dessus de son seuil
+     *    dans la copie non defilee : on le redescend de ce qui lui manque, sans
+     *    sortir de son parent, comme le ferait le navigateur.
+     *
+     * Rien n'est retire AVANT la mise en page (ignoreElements) : tout ce qui
+     * suit remonterait, et une page defilee se capturait blanche.
      */
-    function allegerLaCopie(copie, decalage) {
+    function ajusterLaCopie(copie) {
         var vue = copie.defaultView;
-        var bas = decalage.y + vue.innerHeight;
+        var bas = vue.innerHeight;
+        var colles = [];
         var aVider = [];
 
-        /* Deux passes : lire toutes les positions, puis ecrire. Alterner lecture et
-           ecriture forcerait une mise en page complete a chaque element. */
+        function coller(el, r, style) {
+            var seuil = parseFloat(style.top);
+            if (style.top === 'auto' || !(r.top < seuil)) { return; }
+            var manque = Math.min(seuil - r.top, el.parentElement.getBoundingClientRect().bottom - r.bottom);
+            if (manque > 0) { colles.push([el, manque]); }
+        }
+
+        /* Un element fixe n'a pas de parent de positionnement : offsetParent nul
+           l'annonce sans lire le style de tout le sous-arbre. */
+        function fixesDans(bloc) {
+            var fixes = [];
+            bloc.querySelectorAll('*').forEach(function (d) {
+                if (d.offsetParent === null && !fixes.some(function (f) { return f.contains(d); })
+                    && vue.getComputedStyle(d).position === 'fixed') {
+                    fixes.push(d);
+                }
+            });
+            return fixes;
+        }
+
         (function parcourir(parent) {
             for (var el = parent.firstElementChild; el; el = el.nextElementSibling) {
                 var r = el.getBoundingClientRect();
-                if (r.top > bas && el.firstChild) {
-                    var style = vue.getComputedStyle(el);
-                    if (style.display.indexOf('table-') !== 0 && style.display !== 'inline' && style.display !== 'contents'
-                        && style.position !== 'fixed' && style.position !== 'sticky') {
-                        aVider.push([el, r.width, r.height]);
-                        continue;
-                    }
+                var style;
+                if (r.bottom > 0 && r.top < bas) {
+                    style = vue.getComputedStyle(el);
+                    if (style.position === 'sticky') { coller(el, r, style); }
+                    parcourir(el);
+                    continue;
+                }
+                style = vue.getComputedStyle(el);
+                if (style.position === 'fixed') { continue; }
+                if (style.position === 'sticky') { coller(el, r, style); continue; }
+                if (style.display.indexOf('table-') === 0) { continue; }
+                if (el.firstChild && style.display !== 'inline' && style.display !== 'contents') {
+                    aVider.push([el, r.width, r.height, fixesDans(el)]);
+                    continue;
                 }
                 parcourir(el);
             }
         })(copie.body);
+
+        var repere = repereFixe(copie, vue, bas);
+        var avant = repere && repere.getBoundingClientRect().top;
 
         aVider.forEach(function (x) {
             var el = x[0];
@@ -150,8 +175,44 @@
             el.style.setProperty('height', x[2] + 'px', 'important');
             el.style.setProperty('min-height', '0', 'important');
             el.style.setProperty('max-height', 'none', 'important');
+            /* Un element flexible de base nulle (flex: 1 1 0%) ignore sa hauteur :
+               vide, il s'ecraserait et tout ce qui suit remonterait. */
+            el.style.setProperty('flex', '0 0 auto', 'important');
             while (el.firstChild) { el.removeChild(el.firstChild); }
+            x[3].forEach(function (f) { el.appendChild(f); });
         });
+        colles.forEach(function (x) {
+            x[0].style.setProperty('transition', 'none', 'important');
+            x[0].style.setProperty('position', 'relative', 'important');
+            x[0].style.setProperty('top', x[1] + 'px', 'important');
+        });
+
+        /* Filet : si un bloc vide au-dessus a malgre tout perdu de la hauteur
+           (une marge qui passait a travers lui, un cas non prevu), ce qui est a
+           l'ecran a glisse. On le remet a sa place d'avant. */
+        if (repere) {
+            var ecart = repere.getBoundingClientRect().top - avant;
+            if (Math.abs(ecart) >= 1) {
+                var racine = copie.documentElement;
+                var haut = parseFloat(racine.style.getPropertyValue('top')) || 0;
+                /* Sans ceci, une transition de la page anime le recalage et le
+                   moteur peindrait l'etat de depart. */
+                racine.style.setProperty('transition', 'none', 'important');
+                racine.style.setProperty('position', 'relative', 'important');
+                racine.style.setProperty('top', (haut - ecart) + 'px', 'important');
+            }
+        }
+    }
+
+    /* Un element du flux au milieu de l'ecran : ni fixe ni colle, sinon il ne
+       bougerait pas avec le reste et ne dirait rien. */
+    function repereFixe(copie, vue, bas) {
+        var el = copie.elementFromPoint(vue.innerWidth / 2, bas * 0.6);
+        for (var a = el; a && a !== copie.body; a = a.parentElement) {
+            var position = vue.getComputedStyle(a).position;
+            if (position === 'fixed' || position === 'sticky') { return null; }
+        }
+        return el;
     }
 
     /** Rend la partie visible de la page, masquee. Promet un <canvas>. */
@@ -161,10 +222,12 @@
         }
         var largeur = document.documentElement.clientWidth;
         var hauteur = window.innerHeight;
-        var cible = { x: window.scrollX, y: window.scrollY };
+        var defile = { x: window.scrollX, y: window.scrollY };
         return window.html2canvas(document.body, {
-            x: cible.x,
-            y: cible.y,
+            x: 0,
+            y: 0,
+            scrollX: 0,
+            scrollY: 0,
             width: largeur,
             height: hauteur,
             windowWidth: largeur,
@@ -176,7 +239,10 @@
             ignoreElements: exclure,
             onclone: function (copie) {
                 masquerLaCopie(copie);
-                if (copie.defaultView && copie.body) { allegerLaCopie(copie, recalerLaCopie(copie, cible)); }
+                if (copie.defaultView && copie.body) {
+                    placerLaCopie(copie, defile);
+                    ajusterLaCopie(copie);
+                }
             }
         });
     }
