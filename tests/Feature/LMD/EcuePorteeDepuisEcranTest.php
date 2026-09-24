@@ -240,6 +240,17 @@ class EcuePorteeDepuisEcranTest extends TestCase
         ]);
     }
 
+    public function test_le_compte_d_ecue_suit_la_maquette_filtree(): void
+    {
+        // ECUE-BU est reserve a Batiment : Travaux Publics n'en voit aucun.
+        $compte = fn ($parcoursId) => $this->actingAs($this->acteur)
+            ->getJson(route('esbtp.lmd.ue.index', ['format' => 'json', 'search' => 'UE-PARTAGEE', 'parcours_id' => $parcoursId]))
+            ->assertOk()->json('ues.0.matieres_count');
+
+        $this->assertSame(0, $compte($this->travauxPublics->id));
+        $this->assertSame(1, $compte($this->batiment->id));
+    }
+
     public function test_la_liste_signale_un_element_a_la_fois_commun_et_reserve(): void
     {
         // L'import a reserve ECUE-BU a Batiment ; on ajoute la ligne commune.
