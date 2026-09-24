@@ -89,6 +89,9 @@ abstract class OfficialDocumentDatabaseTestCase extends TestCase
     private function createIdentityTables(): void
     {
         Schema::create('users', fn (Blueprint $t) => $this->userColumns($t));
+        // Tout rendu de vue passe par MobileShellComposer, qui lit les roles de
+        // l'utilisateur connecte : le PDF du PV compris.
+        $this->createPermissionTables();
         Schema::create('settings', function (Blueprint $t): void {
             $t->id();
             $t->string('key')->unique();
@@ -105,6 +108,43 @@ abstract class OfficialDocumentDatabaseTestCase extends TestCase
         Schema::create('esbtp_etudiants', function (Blueprint $t): void { $t->id(); $t->string('matricule'); $t->string('nom'); $t->string('prenoms'); $t->timestamps(); $t->softDeletes(); });
     }
 
+    private function createPermissionTables(): void
+    {
+        Schema::create('permissions', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->string('guard_name');
+            $table->timestamps();
+            $table->unique(['name', 'guard_name']);
+        });
+        Schema::create('roles', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->string('guard_name');
+            $table->timestamps();
+            $table->unique(['name', 'guard_name']);
+        });
+        Schema::create('model_has_permissions', function (Blueprint $table): void {
+            $table->unsignedBigInteger('permission_id');
+            $table->string('model_type');
+            $table->unsignedBigInteger('model_id');
+            $table->primary(['permission_id', 'model_id', 'model_type']);
+        });
+        Schema::create('model_has_roles', function (Blueprint $table): void {
+            $table->unsignedBigInteger('role_id');
+            $table->string('model_type');
+            $table->unsignedBigInteger('model_id');
+            $table->primary(['role_id', 'model_id', 'model_type']);
+        });
+        Schema::create('role_has_permissions', function (Blueprint $table): void {
+            $table->unsignedBigInteger('permission_id');
+            $table->unsignedBigInteger('role_id');
+            $table->primary(['permission_id', 'role_id']);
+        });
+
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
     private function userColumns(Blueprint $t): void
     {
         $t->id(); $t->string('name'); $t->string('email')->nullable(); $t->string('password')->nullable(); $t->timestamps(); $t->softDeletes();
@@ -114,7 +154,7 @@ abstract class OfficialDocumentDatabaseTestCase extends TestCase
     {
         Schema::create('esbtp_lmd_jurys', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('annee_universitaire_id'); $t->unsignedBigInteger('session_id')->nullable(); $t->unsignedBigInteger('parcours_id')->nullable(); $t->unsignedBigInteger('classe_id')->nullable(); $t->unsignedTinyInteger('semestre')->nullable(); $t->string('libelle'); $t->date('date_jury')->nullable(); $t->string('pv_numero')->nullable()->unique(); $t->string('pv_path')->nullable(); $t->dateTime('pv_genere_at')->nullable(); $t->unsignedBigInteger('pv_genere_par')->nullable(); $t->string('status')->default('preparation'); $t->dateTime('clos_at')->nullable(); $t->dateTime('publie_at')->nullable(); $t->unsignedBigInteger('publie_par')->nullable(); $t->text('observations')->nullable(); $t->unsignedBigInteger('created_by')->nullable(); $t->unsignedBigInteger('updated_by')->nullable(); $t->timestamps(); $t->softDeletes(); });
         Schema::create('esbtp_lmd_jury_membres', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('jury_id'); $t->unsignedBigInteger('user_id'); $t->string('role'); $t->boolean('present'); $t->longText('signature_data')->nullable(); $t->dateTime('signature_at')->nullable(); $t->string('signature_ip')->nullable(); $t->text('signature_user_agent')->nullable(); $t->text('notes')->nullable(); $t->timestamps(); $t->softDeletes(); });
-        Schema::create('esbtp_lmd_jury_decisions', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('jury_id'); $t->unsignedBigInteger('etudiant_id'); $t->unsignedBigInteger('bulletin_id')->nullable(); $t->string('decision_auto')->nullable(); $t->string('decision')->nullable(); $t->string('mention')->nullable(); $t->boolean('override_par_jury')->default(false); $t->text('motif_override')->nullable(); $t->string('vote_resultat')->nullable(); $t->decimal('moyenne_generale', 5, 2)->nullable(); $t->unsignedInteger('credits_obtenus')->default(0); $t->unsignedInteger('credits_attendus')->default(0); $t->boolean('locked')->default(false); $t->dateTime('locked_at')->nullable(); $t->timestamps(); $t->softDeletes(); });
+        Schema::create('esbtp_lmd_jury_decisions', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('jury_id'); $t->unsignedBigInteger('etudiant_id'); $t->unsignedBigInteger('bulletin_id')->nullable(); $t->string('decision_auto')->nullable(); $t->string('decision')->nullable(); $t->string('mention')->nullable(); $t->boolean('override_par_jury')->default(false); $t->text('motif_override')->nullable(); $t->string('vote_resultat')->nullable(); $t->decimal('moyenne_generale', 5, 2)->nullable(); $t->unsignedInteger('credits_obtenus')->default(0); $t->unsignedInteger('credits_attendus')->default(0); $t->boolean('locked')->default(false); $t->dateTime('locked_at')->nullable(); $t->json('raisons')->nullable(); $t->unsignedBigInteger('created_by')->nullable(); $t->unsignedBigInteger('updated_by')->nullable(); $t->timestamps(); $t->softDeletes(); });
     }
 
     private function createAcademicTables(): void
