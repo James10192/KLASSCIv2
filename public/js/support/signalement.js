@@ -373,6 +373,8 @@
     }
 
     function capturerFichier(champ) {
+        /* Une image choisie pendant un rendu en cours : le rendu ne la remplacera pas. */
+        abandonnerCapture();
         var fichier = champ.files && champ.files[0];
         champ.value = '';
         if (!fichier) { return; }

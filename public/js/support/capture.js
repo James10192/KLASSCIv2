@@ -26,12 +26,6 @@
     if (window.KlassciCapture) { return; }
 
     var COTE_MAX = 1600;
-    /*
-     * Un ecran de telephone rend ses pixels par trois : rendre la capture a
-     * cette finesse triple le travail pour une image qui sera lue, reduite, dans
-     * une fenetre. Au-dela de 1,5 le texte n'est pas plus lisible.
-     */
-    var ECHELLE_MAX = 1.5;
     var APLAT = '#cbd5e1';
     var TRAIT = '#dc2626';
     var TYPES_NON_SAISIS = ['button', 'submit', 'reset', 'checkbox', 'radio', 'hidden', 'range', 'color', 'image', 'file'];
@@ -82,28 +76,82 @@
         });
     }
 
-    /*
-     * Un element entierement hors de la partie visible n'apparaitra pas dans
-     * l'image : le recopier ne sert a rien, et c'est ce qui coutait le plus sur
-     * telephone (une page longue se recopiait en entier, pour n'en garder qu'un
-     * ecran). Un element fixe ou colle reste, meme hors champ : il se peint a
-     * l'ecran quelle que soit sa place dans la page.
-     */
-    function horsChamp(el) {
-        if (!el.getBoundingClientRect || el === document.body || el === document.documentElement) { return false; }
-        var r = el.getBoundingClientRect();
-        if (r.width === 0 && r.height === 0) { return false; }
-        var dehors = r.bottom < 0 || r.right < 0 || r.top > window.innerHeight || r.left > document.documentElement.clientWidth;
-        if (!dehors) { return false; }
-        var position = window.getComputedStyle(el).position;
-        return position !== 'fixed' && position !== 'sticky';
-    }
-
     function exclure(el) {
         return el.id === 'sp-modal'
             || (el.classList && (el.classList.contains('modal-backdrop') || el.classList.contains('toast-container')))
-            || (el.hasAttribute && el.hasAttribute('data-support-exclure'))
-            || horsChamp(el);
+            || (el.hasAttribute && el.hasAttribute('data-support-exclure'));
+    }
+
+    var APPAREIL_APPLE = /(iPad|iPhone|iPod)/;
+
+    /*
+     * La copie doit montrer ce que la personne voit. html2canvas la place dans
+     * un cadre qu'il fait defiler jusqu'a la position de la page ; quand ce
+     * defilement echoue (c'est le cas sous Chrome), il ne le rattrape que pour
+     * les appareils Apple, et partout ailleurs l'image montrait le HAUT de la
+     * page. On rattrape le reste ici, en decalant la racine de la copie : les
+     * elements fixes, eux, restent a l'ecran. Rend le decalage qui subsiste
+     * entre l'ecran et la copie (nul, sauf quand html2canvas a rattrape lui-meme).
+     */
+    function recalerLaCopie(copie, cible) {
+        var vue = copie.defaultView;
+        var ecartX = cible.x - vue.pageXOffset;
+        var ecartY = cible.y - vue.pageYOffset;
+        if (APPAREIL_APPLE.test(navigator.userAgent) || (ecartX === 0 && ecartY === 0)) {
+            return { x: ecartX, y: ecartY };
+        }
+        var racine = copie.documentElement;
+        racine.style.setProperty('position', 'relative', 'important');
+        racine.style.setProperty('left', -ecartX + 'px', 'important');
+        racine.style.setProperty('top', -ecartY + 'px', 'important');
+        return { x: 0, y: 0 };
+    }
+
+    /*
+     * Ce qui est entierement SOUS l'ecran n'apparaitra pas dans l'image : sur la
+     * copie, on vide ces blocs en leur gardant exactement leur taille. Le moteur
+     * n'a plus a les analyser ni a les peindre (sur une page longue, environ la
+     * moitie du temps d'analyse et de dessin).
+     *
+     * Pourquoi seulement sous l'ecran, et pourquoi sur la copie deja placee :
+     * retirer un element AVANT la mise en page (ignoreElements) fait remonter
+     * tout ce qui suit, et une page defilee se capturait blanche. Ici la copie
+     * est deja mise en page et placee ; un bloc vide garde sa hauteur, rien de
+     * ce qui est a l'ecran ne bouge. On ne touche ni aux lignes et cellules de
+     * tableau (la largeur des colonnes visibles en depend), ni aux elements
+     * fixes ou colles, ni aux elements en ligne.
+     */
+    function allegerLaCopie(copie, decalage) {
+        var vue = copie.defaultView;
+        var bas = decalage.y + vue.innerHeight;
+        var aVider = [];
+
+        /* Deux passes : lire toutes les positions, puis ecrire. Alterner lecture et
+           ecriture forcerait une mise en page complete a chaque element. */
+        (function parcourir(parent) {
+            for (var el = parent.firstElementChild; el; el = el.nextElementSibling) {
+                var r = el.getBoundingClientRect();
+                if (r.top > bas && el.firstChild) {
+                    var style = vue.getComputedStyle(el);
+                    if (style.display.indexOf('table-') !== 0 && style.display !== 'inline' && style.display !== 'contents'
+                        && style.position !== 'fixed' && style.position !== 'sticky') {
+                        aVider.push([el, r.width, r.height]);
+                        continue;
+                    }
+                }
+                parcourir(el);
+            }
+        })(copie.body);
+
+        aVider.forEach(function (x) {
+            var el = x[0];
+            el.style.setProperty('box-sizing', 'border-box', 'important');
+            el.style.setProperty('width', x[1] + 'px', 'important');
+            el.style.setProperty('height', x[2] + 'px', 'important');
+            el.style.setProperty('min-height', '0', 'important');
+            el.style.setProperty('max-height', 'none', 'important');
+            while (el.firstChild) { el.removeChild(el.firstChild); }
+        });
     }
 
     /** Rend la partie visible de la page, masquee. Promet un <canvas>. */
@@ -113,19 +161,23 @@
         }
         var largeur = document.documentElement.clientWidth;
         var hauteur = window.innerHeight;
+        var cible = { x: window.scrollX, y: window.scrollY };
         return window.html2canvas(document.body, {
-            x: window.scrollX,
-            y: window.scrollY,
+            x: cible.x,
+            y: cible.y,
             width: largeur,
             height: hauteur,
             windowWidth: largeur,
             windowHeight: hauteur,
-            scale: Math.min(window.devicePixelRatio || 1, ECHELLE_MAX, COTE_MAX / Math.max(largeur, hauteur)),
+            scale: Math.min(window.devicePixelRatio || 1, COTE_MAX / Math.max(largeur, hauteur)),
             useCORS: true,
             logging: false,
             backgroundColor: '#ffffff',
             ignoreElements: exclure,
-            onclone: masquerLaCopie
+            onclone: function (copie) {
+                masquerLaCopie(copie);
+                if (copie.defaultView && copie.body) { allegerLaCopie(copie, recalerLaCopie(copie, cible)); }
+            }
         });
     }
 
