@@ -127,16 +127,52 @@ class CliJoignabiliteTest extends TestCase
         $this->getJson('/api/cli/rendez-vous/familles')->assertOk()->assertJsonMissingPath('data.familles');
     }
 
-    public function test_les_familles_se_limitent_a_l_annee_courante(): void
+    public function test_les_familles_sont_celles_de_l_annee_cible_des_inscriptions(): void
+    {
+        // Septembre : l'annee courante s'acheve, les rendez-vous sont poses sur la suivante.
+        $courante = ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
+        $cible = ESBTPAnneeUniversitaire::factory()->create(['is_current' => false]);
+        \App\Models\Setting::setOrCreate(\App\Services\Reinscription\PortailReinscriptionService::REGLAGE_ANNEE_CIBLE, (string) $cible->id);
+        Cache::flush();
+        $this->reservationSurAnnee($cible, 'a@gmail.com', '+2250701020307');
+        $this->reservationSurAnnee($cible, 'b@gmail.com', '+2250701020308');
+        $this->reservationSurAnnee($courante, 'c@gmail.com', '+2250701020309');
+
+        $this->getJson('/api/cli/rendez-vous/familles')->assertOk()
+            ->assertJsonPath('data.synthese.familles', 2)
+            ->assertJsonPath('data.synthese.B_uniquement_des_echecs', 2);
+        // Le diagnostic des convocations lit le meme perimetre : il ne peut pas diverger.
+        $this->getJson('/api/cli/rendez-vous/diagnostic')->assertOk()->assertJsonPath('data.convocations.echec', 2);
+        $this->getJson('/api/cli/emails/diagnostic')->assertOk()->assertJsonPath('convocations.echecs', 2);
+    }
+
+    public function test_sans_annee_cible_reglee_les_familles_sont_celles_de_l_annee_courante(): void
     {
         $courante = ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
-        $ancienne = $this->candidature('ancienne@gmail.com', '+2250701020307');
-        $this->reservation($ancienne, StatutConvocationRdv::Echec, 'confirmee', null, 'email_bounced');
-        $actuelle = $this->candidature('actuelle@gmail.com', '+2250701020308');
-        $actuelle->forceFill(['annee_universitaire_id' => $courante->id])->saveQuietly();
-        $this->reservation($actuelle->fresh(), StatutConvocationRdv::Echec, 'confirmee', null, 'email_bounced');
+        $autre = ESBTPAnneeUniversitaire::factory()->create(['is_current' => false]);
+        $this->reservationSurAnnee($courante, 'a@gmail.com', '+2250701020307');
+        $this->reservationSurAnnee($autre, 'b@gmail.com', '+2250701020308');
 
         $this->getJson('/api/cli/rendez-vous/familles')->assertOk()->assertJsonPath('data.synthese.familles', 1);
+    }
+
+    public function test_sans_aucune_annee_les_familles_sont_celles_des_douze_derniers_mois(): void
+    {
+        $annee = ESBTPAnneeUniversitaire::factory()->create(['is_current' => false]);
+        $this->reservationSurAnnee($annee, 'a@gmail.com', '+2250701020307');
+        $this->reservationSurAnnee($annee, 'b@gmail.com', '+2250701020308', now()->subMonths(13)->toDateString());
+
+        $this->getJson('/api/cli/rendez-vous/familles')->assertOk()->assertJsonPath('data.synthese.familles', 1);
+    }
+
+    private function reservationSurAnnee(ESBTPAnneeUniversitaire $annee, string $email, string $telephone, ?string $date = null): void
+    {
+        $c = $this->candidature($email, $telephone);
+        $c->forceFill(['annee_universitaire_id' => $annee->id])->saveQuietly();
+        $r = $this->reservation($c->fresh(), StatutConvocationRdv::Echec, 'confirmee', null, 'email_bounced');
+        if ($date !== null) {
+            $r->creneau->forceFill(['date' => $date])->save();
+        }
     }
 
     private function candidature(?string $email, string $telephone = '+2250701020304'): ESBTPCandidature

@@ -8,7 +8,9 @@ Le corps est rendu tel quel (pas d'enveloppe `success/data`).
 {"tenant":"esbtp-abidjan","genere_le":"2026-09-23T18:00:00+00:00",
  "adresses":{"total":0,"valides":0,"factices":0,"fautes_de_frappe":0,"sans_email":0,
    "par_domaine_suspect":[{"domaine":"gmail.con","nombre":3,"type":"faute_de_frappe","suggestion":"gmail.com"}]},
- "convocations":{"acceptees":0,"delivrees":0,"en_attente":0,"echecs":0,"rebonds":0,"supprimees":0,"non_synchronisees":0,"derniere_synchro":null},
+ "convocations":{"acceptees":0,"delivrees":0,"en_attente":0,"echecs":0,"rebonds":0,"supprimees":0,"non_synchronisees":0,
+   "non_synchronisees_detail":{"a_synchroniser":0,"sans_identifiant":0,"sans_date_envoi":0,"hors_fenetre":0,"code_neutre":0,"autre":0},
+   "derniere_synchro":null},
  "familles_a_prevenir":0,
  "demandes_non_verifiees":0}
 ```
@@ -19,6 +21,14 @@ Le corps est rendu tel quel (pas d'enveloppe `success/data`).
   `esbtp_rdv_reservations.email`. `total` = lignes de ces colonnes.
 - `convocations.acceptees` : acceptées par MailPulse ; `delivrees` : remise confirmée
   par la synchronisation (`inscriptions:synchroniser-convocations-rdv`, toutes les 15 min).
+- `convocations.non_synchronisees` : envoyées jamais relues ; `non_synchronisees_detail` dit
+  pourquoi. `a_synchroniser` : la synchronisation les relira (même prédicat qu'elle). Les autres
+  sont des impasses : `sans_identifiant` (aucun identifiant MailPulse, typiquement les
+  convocations d'avant le suivi du 22/09, marquées « envoyée » par la migration),
+  `sans_date_envoi`, `hors_fenetre` (plus de 30 jours), `code_neutre`. `autre` doit valoir 0.
+- Périmètre des convocations, du diagnostic `GET /api/cli/rendez-vous/diagnostic` et des
+  familles : les rendez-vous de l'année cible des inscriptions (réglage `inscriptions.annee_cible`,
+  à défaut l'année courante, à défaut les douze derniers mois).
 - `demandes_non_verifiees` : champ optionnel, demandes du portail en attente de code.
 - `?details=1` ajoute `exemples` : au plus 20 `{"email_masque":"k***@gmail.con","table":"…","motif":"…"}`.
   Aucune adresse complète n'est jamais rendue.
@@ -69,7 +79,7 @@ dans l'enveloppe `data`. Tracé dans l'audit.
 ## `GET /api/cli/rendez-vous/familles[?details=1]` (`cli:read`, lecture seule)
 
 Une ligne par FAMILLE (candidature ou demande), réservations dédupliquées. Périmètre :
-les rendez-vous de l'année universitaire courante, ou à défaut des douze derniers mois. Dans
+les rendez-vous de l'année cible des inscriptions, le même que le diagnostic (voir plus haut). Dans
 l'enveloppe `data`, la synthèse est toujours présente :
 
 ```json

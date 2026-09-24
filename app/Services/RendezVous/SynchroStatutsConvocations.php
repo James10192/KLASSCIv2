@@ -6,6 +6,7 @@ use App\Enums\StatutConvocationRdv;
 use App\Models\ESBTPRdvReservation;
 use App\Services\MailPulse\RefusMailPulse;
 use App\Services\MailPulse\MailPulseStatutsMessages;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -43,6 +44,25 @@ class SynchroStatutsConvocations
     public function __construct(private readonly MailPulseStatutsMessages $statuts) {}
 
     /**
+     * Ce que la synchronisation sait relire : envoyee, avec un identifiant
+     * MailPulse, pas encore remise, sans verdict neutre definitif, envoyee dans
+     * la fenetre. Partage avec le diagnostic (ConvocationsNonSynchronisees),
+     * qui ne peut donc pas promettre une relecture qui n'aura jamais lieu.
+     *
+     * @param  Builder<ESBTPRdvReservation>  $reservations
+     * @return Builder<ESBTPRdvReservation>
+     */
+    public static function selectionnables(Builder $reservations): Builder
+    {
+        return $reservations
+            ->where('convocation_statut', StatutConvocationRdv::Envoyee->value)
+            ->whereNotNull('convocation_message_id')
+            ->whereNull('convocation_delivree_at')
+            ->where(fn ($q) => $q->whereNull('convocation_code_distant')->orWhereNotIn('convocation_code_distant', self::NEUTRES_DEFINITIFS))
+            ->where('convocation_envoyee_at', '>=', now()->subDays(self::FENETRE_JOURS));
+    }
+
+    /**
      * `rebonds` et `supprimees` detaillent `echecs` d'apres le code distant.
      *
      * Chaque lecture est un appel reseau : au-dela de `$budgetSecondes`, le lot
@@ -56,12 +76,7 @@ class SynchroStatutsConvocations
         $debut = microtime(true);
         $rapport = ['lues' => 0, 'delivrees' => 0, 'echecs' => 0, 'rebonds' => 0, 'supprimees' => 0, 'en_transit' => 0, 'erreurs' => 0, 'bloque' => null];
 
-        $reservations = ESBTPRdvReservation::query()
-            ->where('convocation_statut', StatutConvocationRdv::Envoyee->value)
-            ->whereNotNull('convocation_message_id')
-            ->whereNull('convocation_delivree_at')
-            ->where(fn ($q) => $q->whereNull('convocation_code_distant')->orWhereNotIn('convocation_code_distant', self::NEUTRES_DEFINITIFS))
-            ->where('convocation_envoyee_at', '>=', now()->subDays(self::FENETRE_JOURS))
+        $reservations = self::selectionnables(ESBTPRdvReservation::query())
             ->orderByRaw('convocation_synchro_at IS NOT NULL, convocation_synchro_at')
             ->limit($maximum)
             ->get();
