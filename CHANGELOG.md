@@ -13,6 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Ajouts
+- **Réparer les crédits LMD laissés à 0** : `POST /api/cli/lmd/planifications/reparer-credits` (simulation par défaut) recense les lignes de maquette horaire restées à 0 crédit après une saisie d'heures et leur pose le crédit de la maquette de leur parcours. Un 0 modifié à la main (visible au journal d'audit) est conservé ; sans audit, l'écriture est refusée (docs/api/CLI_LMD_MAQUETTE.md).
 
 - Outil d'exploitation `GET /api/cli/lmd/maquette` : la maquette LMD telle que chaque parcours la voit — origine de chaque élément (commun, réservé, clé étrangère), unités partagées, et masse horaire planifiée — pour diagnostiquer à distance un élément « qui apparaît dans l'autre parcours ».
 - Outil d'exploitation `POST /api/cli/notes/corriger` : corriger à distance les notes existantes d'un élève et recalculer aussitôt ses moyennes, sans attendre la file de tâches. Simulation par défaut, motif obligatoire et journalisé.
@@ -50,6 +51,13 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Maquettes LMD : la fiche d'une UE partagée montre chaque parcours à part** (`/esbtp/lmd/ue/{id}`). Un onglet par parcours et semestre, avec ses propres ECUE et les heures de sa filière ; la fiche mélangeait les éléments de tous les parcours et lisait les heures du premier parcours importé.
+- **Planning LMD : seule l'année en cours s'affiche, et elle est nommée.** La liste lisait les lignes de toutes les années et en gardait une au hasard par ECUE, pendant que la saisie écrivait dans l'année en cours.
+- **Planning LMD : une ligne supprimée se recrée.** Elle occupait encore l'index unique ; la saisie suivante échouait sur « modifiée par un autre utilisateur ». Elle est reprise, remise à zéro.
+- **Coefficient d'un ECUE : 1 par défaut, et la liste montre celui qu'utilise le bulletin.** Le « 1 » gris n'était qu'un exemple : laissé tel quel, rien n'était enregistré et la liste affichait « Coeff. — ».
+- **Modifier une UE sans renvoyer tous ses champs ne les efface plus.** Le code, le semestre, la filière et le parcours non envoyés étaient remis à vide, et un crédit laissé vide faisait échouer l'enregistrement (erreur serveur).
+- **Retirer un ECUE déjà sans clé LMD ne pose plus de seconde question** qui annonçait à tort son passage en BTS.
+- Filtres « Parcours » et « Type UE » de la page des UE : sélecteur premium au lieu de la liste native.
 - **Maquettes LMD : saisir des heures ne met plus les crédits à zéro, et retirer la dernière ligne d'un ECUE demande confirmation.** Une planification créée en tapant des heures prend les crédits de l'ECUE dans la maquette du parcours saisi (ligne réservée, sinon commune) au lieu de 0 (le total CECT du parcours était faussé). Les planifications déjà créées à 0 ne sont pas réparées : les ressaisir, ou les recenser (planification LMD à 0 crédit pour un ECUE qui en a). Retirer la dernière ligne d'un ECUE dans son UE, ce qui le fait sortir du LMD (même s'il figure dans une autre UE), est désormais annoncé et demande une seconde confirmation. La liste « Parcours » de l'écran Maquettes commence par le code du parcours (LPA · …), lisible même tronquée.
 - **Unités d'Enseignement : la colonne ECUES compte ce que la vue montre.** Filtrée sur un parcours, elle compte les ECUE de sa maquette, au lieu d'afficher « 2 » à côté de « Aucun ECUE rattaché ».
 - **Maquettes LMD : la masse horaire d'une UE partagée se saisit parcours par parcours.** Sur l'écran « Maquettes », les heures (CM, TD, TP, projet, TPE) tapées pour un ECUE d'une UE commune à deux parcours étaient enregistrées dans le parcours qui avait importé l'UE en premier : elles disparaissaient de la maquette affichée et écrasaient celles de l'autre (USAT). Elles restent désormais dans le parcours affiché ; un ECUE qui n'est pas dans la maquette affichée est refusé avec un message, au lieu d'être rangé ailleurs. Le sous-titre de la section « Examens planifiés » n'affiche plus de libellé technique.

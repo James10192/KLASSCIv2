@@ -78,6 +78,37 @@ filière du parcours, semestre de l'unité dans ce parcours — pas le niveau de
 reste celui du premier parcours importé) : c'est la masse horaire
 saisie dans le Planning LMD (`/esbtp/lmd/planning`).
 
+## Réparer les crédits laissés à 0
+
+`POST /api/cli/lmd/planifications/reparer-credits` — jeton `cli:admin`.
+
+Avant septembre 2026, une ligne de la maquette horaire créée en tapant des heures
+recevait 0 crédit au lieu de celui de l'ECUE, et faussait le total CECT du
+parcours. Cette route recense ces lignes et, sur demande, leur pose le crédit de
+la maquette du parcours de leur filière (ligne réservée, sinon commune, sinon
+crédit de la matière).
+
+| Paramètre | Défaut | Effet |
+|---|---|---|
+| `dry_run` | `true` | `false` écrit ; sinon liste seulement |
+
+Ne sont jamais touchées :
+- une ligne dont le crédit a été **modifié à la main**, même à 0 : le journal
+  d'audit la trahit (événement `updated` portant `credits_ects`). Un zéro choisi
+  est une décision de l'école ;
+- une ligne dont la maquette ne donne pas plus de 0.
+
+Si l'audit est désactivé sur l'instance, la preuve n'existe plus : l'écriture est
+refusée (409) et rien n'est modifié ; la simulation reste possible.
+
+```jsonc
+{ "success": true, "dry_run": true,
+  "data": { "candidates": 12, "reparees": 0,
+    "lignes": [{ "id": 518, "matiere": "AGR21033 Génétique animale", "filiere_id": 8,
+                 "semestre": 3, "annee_universitaire_id": 4, "credit_attendu": 2 }] } }
+```
+
 ## Historique
 
 - Septembre 2026 — création (diagnostic maquette USAT).
+- Septembre 2026 — ajout de `POST /api/cli/lmd/planifications/reparer-credits`.

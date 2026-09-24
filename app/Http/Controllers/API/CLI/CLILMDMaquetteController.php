@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\Controller;
+use App\Services\LMD\CreditDeMaquette;
 use App\Services\LMD\LectureDeMaquetteLmd;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,6 +36,34 @@ class CLILMDMaquetteController extends Controller
                 isset($valide['parcours_id']) ? (int) $valide['parcours_id'] : null,
                 $valide['code_ue'] ?? null
             ),
+        ]);
+    }
+
+    /**
+     * POST /api/cli/lmd/planifications/reparer-credits — recense, puis repare
+     * sur demande, les planifications LMD laissees a 0 credit par la saisie
+     * d'heures. Simulation par defaut.
+     *
+     * @see docs/api/CLI_LMD_MAQUETTE.md
+     */
+    public function reparerCredits(Request $request, CreditDeMaquette $credits): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return response()->json(['success' => false, 'message' => 'Token missing cli:admin ability'], 403);
+        }
+
+        $simulation = $request->boolean('dry_run', true);
+
+        try {
+            $resultat = $credits->reparer($simulation);
+        } catch (\RuntimeException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 409);
+        }
+
+        return response()->json([
+            'success' => true,
+            'dry_run' => $simulation,
+            'data' => $resultat,
         ]);
     }
 }
