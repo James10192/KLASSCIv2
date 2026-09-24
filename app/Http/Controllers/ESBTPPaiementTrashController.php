@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Comptabilite\Paiements\Actions\RestaurerPaiement;
+
 use App\Domain\Trash\ErreurDeSuppression;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
@@ -124,30 +126,10 @@ class ESBTPPaiementTrashController extends Controller
         abort_unless(Auth::user()?->can('paiements.restore'), 403, 'Permission paiements.restore requise.');
 
         $paiement = ESBTPPaiement::onlyTrashed()->findOrFail($id);
-        $inscription = ESBTPInscription::withTrashed()->find($paiement->inscription_id);
-        $etudiant = $inscription ? ESBTPEtudiant::withTrashed()->find($inscription->etudiant_id) : null;
-        $cascadeRestored = ['inscription' => false, 'etudiant' => false];
-
-        DB::transaction(function () use ($paiement, $inscription, $etudiant, &$cascadeRestored) {
-            if ($etudiant && $etudiant->trashed()) {
-                $etudiant->restore();
-                $cascadeRestored['etudiant'] = true;
-            }
-            if ($inscription && $inscription->trashed()) {
-                $inscription->restore();
-                $cascadeRestored['inscription'] = true;
-            }
-            // Une ligne vivante ne porte pas de motif de suppression : la trace
-            // reste au journal d'audit, pas sur le versement restauré.
-            $paiement->forceFill(['deleted_by' => null, 'motif_suppression' => null]);
-            $paiement->restore();
-        });
-
-        Log::info('Paiement restauré', [
-            'paiement_id' => $paiement->id,
-            'cascade' => $cascadeRestored,
-            'restored_by' => Auth::id(),
-        ]);
+        $etudiant = ESBTPEtudiant::withTrashed()->find(
+            ESBTPInscription::withTrashed()->whereKey($paiement->inscription_id)->value('etudiant_id')
+        );
+        $cascadeRestored = app(RestaurerPaiement::class)->execute($paiement, Auth::id());
 
         $messages = ["Le paiement a été restauré."];
         if ($cascadeRestored['inscription']) $messages[] = "L'inscription associée a aussi été restaurée (cascade).";
