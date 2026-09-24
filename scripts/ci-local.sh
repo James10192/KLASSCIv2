@@ -30,7 +30,7 @@ MYSQL_INSTALL_DB="${MYSQL_INSTALL_DB:-mysql_install_db}"
 MYSQL="${MYSQL:-mysql}"
 CI_DATADIR="${CI_DATADIR:-${TMPDIR:-/tmp}/klassci-ci-mariadb}"
 CI_DB_PORT="${CI_DB_PORT:-3317}"
-CI_TESTS_BRANCHE="${CI_TESTS_BRANCHE-AnalyseurEmailTest|EnumsVerificationTest|ReglesEmailsFormulairesTest|VerificationC|DepotReinscriptionVerifieTest|NettoyerEmailsFacticesTest|DiagnosticEmailsCliTest|CliJoignabiliteTest|SynchroConvocationsTest|AdresseDeCompteTest|PortailPublicExportTest|CorbeilleDemandesTest|DebitPortailTest|RendezVous|MailPulseClientTest|RepriseConvocationsVerifieesTest}"
+CI_TESTS_BRANCHE="${CI_TESTS_BRANCHE-AnalyseurEmailTest|EnumsVerificationTest|ReglesEmailsFormulairesTest|VerificationC|DepotReinscriptionVerifieTest|NettoyerEmailsFacticesTest|DiagnosticEmailsCliTest|CliJoignabiliteTest|SynchroConvocationsTest|AdresseDeCompteTest|PortailPublicExportTest|CorbeilleDemandesTest|DebitPortailTest|RendezVous|MailPulseClientTest|RepriseConvocationsVerifieesTest|CorrigerFautesTest}"
 
 ECHECS=()
 AVERTISSEMENTS=()
