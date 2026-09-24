@@ -240,11 +240,20 @@ body.m-sheet-open { overflow: hidden; }
         padding-bottom: calc(var(--m-nav-h) + var(--m-safe-b));
         -webkit-font-smoothing: antialiased;
         overflow-x: hidden;
+        /* Safari iOS ignore overflow-x: hidden sur <body> pour le défilement au
+           doigt : la page glissait de côté dès qu'un enfant débordait. `clip`
+           tient, lui (Safari 16+) ; `hidden` reste pour les plus anciens. */
+        overflow-x: clip;
     }
 
     /* Conteneur d'un écran mobile : grille verticale sans marge propre (la
        gouttière est celle du layout). Un .m-body dedans reste utilisable seul. */
-    .m-screen { display: grid; gap: 14px; padding: 0; min-width: 0; align-content: start; font-family: var(--m-font); }
+    .m-screen { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 0; min-width: 0; align-content: start; font-family: var(--m-font); }
+    /* Une piste implicite vaut `auto` : sa largeur minimale est celle du plus
+       long contenu insécable (un nom de filière d'ISLG, par exemple), et tout
+       l'écran s'élargissait au-delà du téléphone. `minmax(0, 1fr)` et un
+       min-width nul sur les enfants tiennent la largeur de l'écran. */
+    .m-screen > *, .m-screen .m-chart > *, .m-screen .m-kpi > * { min-width: 0; }
     .m-main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
 
     .m-appbar { height: 56px; flex: 0 0 56px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); background: #fff; border-bottom: 1px solid #e6eaf2; position: sticky; top: 0; z-index: 1020; font-family: var(--m-font); }
@@ -265,7 +274,7 @@ body.m-sheet-open { overflow: hidden; }
        sous l'onglet .on, elle GLISSE vers l'onglet touché (transform, courbe
        iOS) avant que la navigation parte, puis est morphée d'une page à l'autre
        par la transition de vue (view-transition-name: m-tab-pill). */
-    .m-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 6px 6px calc(18px + var(--m-safe-b)); background: rgba(255,255,255,.62); -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.04); backdrop-filter: blur(24px) saturate(180%) brightness(1.04); border-top: .5px solid rgba(255,255,255,.55); box-shadow: inset 0 .5px 0 rgba(255,255,255,.75), 0 -1px 24px rgba(15,23,42,.05); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; z-index: 1080; font-family: var(--m-font); view-transition-name: m-bottomnav; }
+    .m-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 6px 6px calc(18px + var(--m-safe-b)); background: rgba(255,255,255,.94); -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.04); backdrop-filter: blur(24px) saturate(180%) brightness(1.04); border-top: .5px solid rgba(255,255,255,.55); box-shadow: inset 0 .5px 0 rgba(255,255,255,.75), 0 -1px 24px rgba(15,23,42,.05); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; z-index: 1080; font-family: var(--m-font); view-transition-name: m-bottomnav; }
         /* Verre liquide : la pastille est une lentille, pas un aplat. Elle eclaircit
        et sature ce qui passe dessous (backdrop-filter), porte une arete speculaire
        en haut, un fresnel plus dense en bas, et une ombre qui la decolle du verre.
