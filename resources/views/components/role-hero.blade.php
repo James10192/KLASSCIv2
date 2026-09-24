@@ -132,7 +132,7 @@
        nombre est impair, pour que la grille se remplisse. */
     @media (max-width: 767.98px) {
         .rdx-hero { background: transparent; color: #0f172a; padding: .25rem 0 0; border-radius: 0; box-shadow: none; margin-bottom: 1rem; }
-        .rdx-hero-top { flex-direction: column; align-items: stretch; gap: .75rem; }
+        .rdx-hero-top { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .75rem; }
         .rdx-hero-icon { display: none; }
         .rdx-hero h1 { font-size: 1.65rem; font-weight: 800; color: #0f172a; letter-spacing: -.02em; line-height: 1.15; }
         .rdx-hero p { color: #64748b; font-size: .84rem; margin-top: .3rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
