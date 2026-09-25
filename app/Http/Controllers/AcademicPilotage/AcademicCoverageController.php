@@ -142,12 +142,6 @@ class AcademicCoverageController extends Controller
      */
     public static function cle(int $classeId, int $anneeId, string $periode): string
     {
-        try {
-            $periode = (new AcademicPeriodNormalizer())->normalize($periode);
-        } catch (\InvalidArgumentException) {
-            // Volontairement laissee telle quelle.
-        }
-
-        return 'pilotage.couverture.'.$classeId.'.'.$anneeId.'.'.mb_strtolower($periode, 'UTF-8');
+        return AcademicNoteCoverageService::cleDeCache($classeId, $anneeId, $periode);
     }
 }

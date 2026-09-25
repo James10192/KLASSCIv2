@@ -179,6 +179,12 @@ return [
             'group' => 'Communication',
             'icon' => 'fa-comments',
         ],
+        'assistant.model.choose' => [
+            'label' => "Choisir le modèle d'IA de l'assistant",
+            'description' => "Affiche le sélecteur de modèle dans l'assistant, parmi les modèles autorisés par l'école.",
+            'group' => 'Communication',
+            'icon' => 'fa-microchip',
+        ],
         'sod.bypass' => [
             'label' => 'Contourner la separation des devoirs',
             'description' => 'Autorise un acteur habilite a executer une action meme lorsqu une regle maker-checker est active. A reserver aux super administrateurs et procedures de secours.',
@@ -1931,24 +1937,14 @@ return [
 
         // ===== Performance personnel =====
         'performance.view' => [
-            'label' => 'Voir les scores de performance accessibles',
-            'group' => 'Performance personnel',
+            'label' => 'Voir sa propre activité (séances, notes, paiements)',
+            'group' => 'Activité du personnel',
             'icon' => 'fa-chart-line',
         ],
         'performance.view_all' => [
-            'label' => 'Voir tous les scores de performance du personnel',
-            'group' => 'Performance personnel',
-            'icon' => 'fa-ranking-star',
-        ],
-        'performance.recalculate' => [
-            'label' => 'Recalculer les scores de performance',
-            'group' => 'Performance personnel',
-            'icon' => 'fa-arrows-rotate',
-        ],
-        'performance.configure' => [
-            'label' => 'Configurer les règles de scoring du personnel',
-            'group' => 'Performance personnel',
-            'icon' => 'fa-sliders',
+            'label' => "Voir l'activité de tout le personnel",
+            'group' => 'Activité du personnel',
+            'icon' => 'fa-people-group',
         ],
 
         // ===== Résultats =====
@@ -2278,7 +2274,7 @@ return [
             'messages.send', 'messages.receive',
             'annonces.view', 'annonces.create', 'annonces.edit',
             'reports.view',
-            'performance.view', 'performance.view_all', 'performance.recalculate',
+            'performance.view',
             'resultats.view', 'resultats.export',
             'paiements.export',  // Lot 15
             'settings.pdf.manage',  // Phase 9 — customisation PDF tenant
@@ -2427,7 +2423,7 @@ return [
             'messages.send', 'messages.receive',
             'annonces.view', 'annonces.create', 'annonces.edit',
             'reports.view', 'reports.generate',
-            'performance.view', 'performance.view_all', 'performance.recalculate',
+            'performance.view', 'performance.view_all',
             'resultats.view', 'resultats.edit',
             'users.manage',
             'identity.coordinate',
@@ -2728,6 +2724,8 @@ return [
     */
 
     'deprecated' => [
+        'performance.recalculate' => ['since' => '2026-09', 'reason' => "Score du personnel retiré : l'activité se lit en faits, sans recalcul"],
+        'performance.configure'   => ['since' => '2026-09', 'reason' => 'Score du personnel retiré : plus de règles de notation'],
         'view_frais_scolarite'   => ['since' => '2026-04', 'reason' => 'Frais dynamiques par catégorie, plus de hardcode'],
         'create_frais_scolarite' => ['since' => '2026-04', 'reason' => 'Frais dynamiques par catégorie'],
         'edit_frais_scolarite'   => ['since' => '2026-04', 'reason' => 'Frais dynamiques par catégorie'],

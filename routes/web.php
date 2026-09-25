@@ -153,8 +153,8 @@ require __DIR__.'/auth.php';
 // Routes pour la navbar (recherche, notifications, messages, actions rapides)
 Route::middleware(['auth'])->group(function () {
     // Routes de recherche
-    Route::get('/search', [SearchController::class, 'globalSearch'])->name('search.global');
-    Route::get('/search/results', [SearchController::class, 'searchResults'])->name('search.results');
+    Route::get('/search', [SearchController::class, 'globalSearch'])->middleware('throttle:120,1')->name('search.global');
+    Route::get('/search/results', [SearchController::class, 'searchResults'])->middleware('throttle:60,1')->name('search.results');
 
     // Routes pour les fonctionnalitÃ©s de la navbar
     Route::prefix('navbar')->name('navbar.')->group(function () {
@@ -181,10 +181,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/mark-all-as-read', [ESBTPNotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
     Route::get('/notifications/unread-count', [ESBTPNotificationController::class, 'getUnreadCount'])->name('notifications.unread-count');
 
-    // Route pour les paramÃ¨tres utilisateur
-    Route::get('/settings', function () {
-        return view('settings.index');
-    })->name('settings.index');
+    // L'ancienne page /settings était factice (formulaire qui n'enregistrait rien).
+    // Les vrais réglages d'établissement vivent sur /esbtp/settings ; le nom de
+    // route est conservé pour les liens existants.
+    Route::redirect('/settings', '/esbtp/settings')->name('settings.index');
 });
 
 // Routes contrat expiration (AJAX â€” pas de middleware contract.expiry pour Ã©viter rÃ©cursion)
@@ -412,6 +412,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Liste d'appel des familles qu'aucun courriel n'a prevenues.
             Route::prefix('/rendez-vous/familles-a-prevenir')->middleware('permission:inscriptions.rdv.view')->name('familles.')->group(function () {
                 $c = \App\Http\Controllers\ESBTP\ESBTPRendezVousExportController::class;
+                Route::get('/apercu', [$c, 'apercu'])->middleware('throttle:60,1')->name('apercu');
+                Route::get('/pdf', [$c, 'pdf'])->middleware('throttle:10,1')->name('pdf');
+                Route::get('/excel', [$c, 'excel'])->middleware('throttle:10,1')->name('excel');
+            });
+            // Feuille de suivi a imprimer : la semaine affichee, ou une journee.
+            Route::prefix('/rendez-vous/feuille')->middleware('permission:inscriptions.rdv.view|inscriptions.rdv.accueil')->name('feuille.')->group(function () {
+                $c = \App\Http\Controllers\ESBTP\ESBTPRendezVousFeuilleController::class;
                 Route::get('/apercu', [$c, 'apercu'])->middleware('throttle:60,1')->name('apercu');
                 Route::get('/pdf', [$c, 'pdf'])->middleware('throttle:10,1')->name('pdf');
                 Route::get('/excel', [$c, 'excel'])->middleware('throttle:10,1')->name('excel');
@@ -1028,7 +1035,16 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:bulletins.view_own|bulletins.view']);
 
             // Routes pour les annonces
-            Route::resource('annonces', ESBTPAnnonceController::class)
+            // Lire une annonce ne donne pas le droit d'en publier : `annonces.view`
+            // (caissier, comptable) ouvrait aussi création, modification et
+            // suppression. « create » est déclarée avant « show », sinon
+            // `annonces/create` serait lu comme `annonces/{annonce}`. Les anciens
+            // noms (create_annonces…) restent acceptés pour les rôles d'avant.
+            Route::resource('annonces', ESBTPAnnonceController::class)->only(['create', 'store'])
+                ->middleware(['permission:annonces.create|create_annonces']);
+            Route::resource('annonces', ESBTPAnnonceController::class)->only(['edit', 'update', 'destroy'])
+                ->middleware(['permission:annonces.edit|edit_annonces']);
+            Route::resource('annonces', ESBTPAnnonceController::class)->only(['index', 'show'])
                 ->middleware(['permission:annonces.view|annonces.create|annonces.edit']);
 
             // Routes pour les prÃ©sences/absences (esbtp namespace)
@@ -1778,10 +1794,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
     // Routes pour les paramÃ¨tres et les rÃ´les
     Route::middleware(['auth', 'permission:system.manage'])->group(function () {
-        Route::get('/settings', function () {
-            return view('admin.settings.index');
-        })->name('settings.index');
-
         Route::get('/roles', function () {
             $roles = \Spatie\Permission\Models\Role::with('permissions')->get();
 
@@ -1829,6 +1841,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/settings/mailpulse/test-notification', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'testMailPulseNotification'])
                 ->middleware('throttle:10,1')
                 ->name('esbtp.settings.mailpulse.test-notification');
+            // Assistant IA : clés des fournisseurs (chiffrées), modèle par défaut, essai réel.
+            Route::prefix('/settings/assistant')->name('esbtp.settings.assistant.')->group(function () {
+                Route::get('/', [App\Http\Controllers\ESBTP\AssistantReglagesController::class, 'etat'])->name('etat');
+                Route::put('/cle', [App\Http\Controllers\ESBTP\AssistantReglagesController::class, 'poserCle'])->middleware('throttle:20,1')->name('cle');
+                Route::delete('/cle/{fournisseur}', [App\Http\Controllers\ESBTP\AssistantReglagesController::class, 'retirerCle'])->middleware('throttle:20,1')->name('cle.retirer');
+                Route::put('/modele', [App\Http\Controllers\ESBTP\AssistantReglagesController::class, 'choisirModele'])->middleware('throttle:20,1')->name('modele');
+                Route::post('/tester', [App\Http\Controllers\ESBTP\AssistantReglagesController::class, 'tester'])->middleware('throttle:6,1')->name('tester');
+            });
         });
 
         // Phase 9 â€” AperÃ§u PDF avec settings non persistÃ©s (nouvelle tab)
@@ -2088,7 +2108,11 @@ Route::post('esbtp/emploi-temps/{id}/set-current', [App\Http\Controllers\ESBTPEm
     ->middleware(['auth', 'permission:timetables.edit']);
 
 // Routes pour les Ã©valuations
-Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk'])->group(function () {
+// La seconde clause ferme le groupe à qui ne porte AUCUN droit sur les
+// évaluations : `admin.access` seul (caissier, comptable) suffisait à créer,
+// modifier ou supprimer une évaluation et ses coefficients. Les anciens noms
+// (view_evaluations…) restent acceptés pour les rôles créés avant le registre.
+Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:evaluations.view|evaluations.create|evaluations.edit|view_evaluations|create_evaluations|edit_evaluations'])->group(function () {
     Route::get('/', [ESBTPEvaluationController::class, 'index'])->name('index');
     Route::get('/create', [ESBTPEvaluationController::class, 'create'])->name('create');
     Route::post('/', [ESBTPEvaluationController::class, 'store'])->name('store');
@@ -2964,15 +2988,19 @@ Route::middleware(['auth', 'permission:system.manage', 'paywall'])->prefix('esbt
     Route::post('/caissiers/{caissier}/reset-password', [\App\Http\Controllers\ESBTPCaissierController::class, 'resetPassword'])->middleware('throttle:5,1')->name('caissiers.reset-password');
 });
 
-Route::middleware(['auth', 'permission:performance.view_all', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
-    Route::prefix('personnel/performance')->name('personnel.performance.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'index'])->name('index');
-        Route::get('/data', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'data'])->name('data');
-        Route::post('/recalculate', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'recalculate'])
-            ->middleware('permission:performance.recalculate')
-            ->name('recalculate');
-        Route::get('/{user}', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'show'])->name('show');
-    });
+// Activite du personnel : des faits prevus / realises, plus de note. La liste
+// exige `view_all` ; le detail s'ouvre aussi a la personne elle-meme avec
+// `performance.view` (« Mon activite »), verifie dans le controleur.
+Route::middleware(['auth', 'paywall'])->prefix('esbtp/personnel/performance')->name('esbtp.personnel.performance.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'index'])
+        ->middleware('permission:performance.view_all')->name('index');
+    Route::get('/data', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'data'])
+        ->middleware(['permission:performance.view_all', 'throttle:60,1'])->name('data');
+    Route::get('/moi', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'moi'])
+        ->middleware('permission:performance.view|performance.view_all')->name('moi');
+    Route::get('/{user}', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'show'])
+        ->whereNumber('user')
+        ->middleware('permission:performance.view|performance.view_all')->name('show');
 });
 
 // Acces temporaires : une permission ouverte a une personne jusqu'a une date.

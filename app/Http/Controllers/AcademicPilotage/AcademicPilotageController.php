@@ -112,12 +112,10 @@ class AcademicPilotageController extends Controller
                     : null,
             ],
             'summary' => $this->summary->summarize($year?->id, $period, $system, $classId, $classIds),
-            'classes' => $this->classes($year?->id, $period, $system, $classId, 12, $classIds),
             'alerts' => $this->alerts($year?->id, $period, $classId, 10, null, $classIds),
             'sheets' => $this->sheets($year?->id, $period, $system, $classId, 10, $classIds, $request->user()),
             'note_coverage' => $this->noteCoverage->summarize($year?->id, $period, $system, $classId, $classIds),
             'my_sheets' => $this->sheets($year?->id, $period, $system, $classId, 8, $classIds, $request->user(), true),
-            'students' => $this->students($year?->id, $period, $system, $classId, 10, $classIds),
             'actor_activity' => $this->actorActivity->summarize(
                 $year?->id,
                 $period,
@@ -132,7 +130,6 @@ class AcademicPilotageController extends Controller
                 'class_count' => $classIds?->count(),
                 'sources' => $scope->sources,
             ],
-            'freshness' => $this->freshness($year?->id, $period, $system, $classId, $classIds),
         ]);
     }
 
@@ -245,34 +242,14 @@ class AcademicPilotageController extends Controller
         ]);
     }
 
-    private function classes(?int $yearId, string $period, ?string $system, ?int $classId, int $limit = 12, ?Collection $classIds = null): array
-    {
-        return $this->scopeClasses($this->snapshotQuery($yearId, $period, $system, $classId), $classIds)
-            ->where('scope_type', 'class')
-            ->with('classe:id,name,code,systeme_academique')
-            ->latest('calculated_at')
-            ->limit($limit)
-            ->get()
-            ->map(fn (AcademicMetricSnapshot $snapshot): array => [
-                'id' => $snapshot->classe_id,
-                'name' => $snapshot->classe ? $this->classLabel($snapshot->classe) : 'Classe supprimée',
-                'system' => $snapshot->academic_system,
-                'academic_score' => $snapshot->academic_score === null ? null : (float) $snapshot->academic_score,
-                'operational_score' => $snapshot->operational_score === null ? null : (float) $snapshot->operational_score,
-                'coverage_pct' => $snapshot->coverage_pct,
-                'confidence_pct' => $snapshot->confidence_pct,
-                'level' => $snapshot->level,
-                'is_dirty' => $snapshot->is_dirty,
-                'calculated_at' => optional($snapshot->calculated_at)->toIso8601String(),
-            ])
-            ->values()
-            ->all();
-    }
-
     private function alerts(?int $yearId, string $period, ?int $classId = null, int $limit = 10, ?int $studentId = null, ?Collection $classIds = null): array
     {
         return $this->scopeClasses($this->alertQuery($yearId, $period, $classId), $classIds)
             ->when($studentId, fn ($query) => $query->where('etudiant_id', $studentId))
+            // Le compteur « Alertes à traiter » ne compte que les alertes
+            // actives ; la liste affichait aussi les résolues et les classées,
+            // si bien que les deux chiffres ne se recoupaient jamais.
+            ->whereIn('status', \App\Domain\AcademicPilotage\Enums\AcademicAlertStatus::activeValues())
             ->with(['classe:id,name,code', 'etudiant:id,nom,prenoms,matricule'])
             ->latest('last_seen_at')
             ->limit($limit)
@@ -398,17 +375,6 @@ class AcademicPilotageController extends Controller
             ->where('semester', $period)
             ->when($system, fn ($query) => $query->where('academic_system', $system))
             ->when($classId, fn ($query) => $query->where('classe_id', $classId));
-    }
-
-    private function freshness(?int $yearId, string $period, ?string $system, ?int $classId, ?Collection $classIds = null): array
-    {
-        $query = $this->scopeClasses($this->snapshotQuery($yearId, $period, $system, $classId), $classIds);
-        $latest = (clone $query)->max('calculated_at');
-
-        return [
-            'last_updated_at' => $latest,
-            'stale_count' => $query->where('is_dirty', true)->count(),
-        ];
     }
 
     private function selectedYear(Request $request): ?ESBTPAnneeUniversitaire

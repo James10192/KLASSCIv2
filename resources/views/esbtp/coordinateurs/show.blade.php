@@ -479,9 +479,11 @@
             <button class="cs-tab" data-tab="activity" type="button">
                 <i class="fas fa-history"></i> Activite
             </button>
+            @if(\App\Services\Personnel\ActiviteDuPersonnel::peutLire(auth()->user(), (int) $coordinateur->id))
             <button class="cs-tab" data-tab="performance" type="button">
-                <i class="fas fa-chart-line"></i> Performance
+                <i class="fas fa-chart-line"></i> Activité
             </button>
+            @endif
             <button class="cs-tab" data-tab="account" type="button">
                 <i class="fas fa-user-cog"></i> Compte
             </button>
@@ -660,9 +662,11 @@
         </div>
 
         {{-- ---- TAB: Compte --------------------------------------- --}}
+        @if(\App\Services\Personnel\ActiviteDuPersonnel::peutLire(auth()->user(), (int) $coordinateur->id))
         <div class="cs-panel" id="cs-tab-performance">
-            @include('esbtp.personnel.partials.performance-score', ['performanceScore' => $performanceScore ?? null])
+            @include('esbtp.personnel.partials.activite-resume', ['activite' => $activite ?? null, 'userId' => $coordinateur->id])
         </div>
+        @endif
 
         <div class="cs-panel" id="cs-tab-account">
             <div class="cs-grid-2">

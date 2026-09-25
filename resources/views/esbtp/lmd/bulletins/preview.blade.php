@@ -244,7 +244,7 @@
                                 @endphp
                                 {{-- UE row --}}
                                 <tr class="bp-ue">
-                                    <td><span class="bp-code">{{ $ue->code ?? '' }}</span></td>
+                                    <td><span class="bp-code">{{ $ue->code_affiche ?? '' }}</span></td>
                                     <td>{{ $ue->name ?? '' }}</td>
                                     <td style="text-align:center;">
                                         <span class="{{ $uePass ? 'bp-moy--pass' : 'bp-moy--fail' }}" style="font-size:.92rem;">
@@ -268,7 +268,7 @@
                                 {{-- ECUE rows --}}
                                 @foreach($resUE->resultatsECUEs as $resECUE)
                                     <tr class="bp-ecue">
-                                        <td><span class="bp-code">{{ $resECUE->matiere->code ?? '' }}</span></td>
+                                        <td><span class="bp-code">{{ $resECUE->matiere->code_affiche ?? '' }}</span></td>
                                         <td>{{ $resECUE->matiere->name ?? '' }}</td>
                                         <td style="text-align:center;">
                                             <span style="font-weight:600;">{{ $resECUE->moyenne !== null ? number_format($resECUE->moyenne, 2) : '' }}</span>

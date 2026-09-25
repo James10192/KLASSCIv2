@@ -1,5 +1,8 @@
 # API CLI Personnel Scores
 
+> **Retiré le 2026-09-25.** Cet endpoint répond 410 Gone. Le score du personnel est remplacé par l’activité en faits : voir [CLI_PERSONNEL_ACTIVITE.md](CLI_PERSONNEL_ACTIVITE.md).
+
+
 ## Endpoint
 
 `GET /api/cli/personnel-scores`

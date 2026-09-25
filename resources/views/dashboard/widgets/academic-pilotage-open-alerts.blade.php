@@ -15,5 +15,5 @@
     :alert="$count > 0"
 >
     <div class="dw-widget-hint">Alertes ouvertes ou en cours</div>
-    <a class="dw-widget-link" href="{{ route('esbtp.pilotage-academique.index') }}#alerts">Traiter les alertes <i class="fas fa-arrow-right"></i></a>
+    <a class="dw-widget-link" href="{{ route('esbtp.pilotage-academique.fiches') }}#alerts">Traiter les alertes <i class="fas fa-arrow-right"></i></a>
 </x-dw-widget>

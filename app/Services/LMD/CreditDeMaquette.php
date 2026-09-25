@@ -77,7 +77,7 @@ class CreditDeMaquette
             ->reject(fn ($pl) => $tracees->has((int) $pl->id))
             ->map(fn ($pl) => [
                 'id' => (int) $pl->id,
-                'matiere' => trim(($pl->matiere->code ?? '') . ' ' . ($pl->matiere->name ?? '')),
+                'matiere' => trim(($pl->matiere->code_affiche ?? '') . ' ' . ($pl->matiere->name ?? '')),
                 'filiere_id' => (int) $pl->filiere_id,
                 'semestre' => (int) $pl->semestre,
                 'annee_universitaire_id' => (int) $pl->annee_universitaire_id,

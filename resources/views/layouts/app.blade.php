@@ -28,9 +28,9 @@
 
     {{-- PWA : manifest dynamique par tenant + meta installables (branding via SettingsHelper) --}}
     @php
-        $pwaPdf = \App\Helpers\SettingsHelper::getPdfSettings();
-        $pwaThemeColor = preg_match('/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', (string) ($pwaPdf['primary_color'] ?? ''))
-            ? $pwaPdf['primary_color'] : '#0453cb';
+        $pwaPrimaire = \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb');
+        $pwaThemeColor = preg_match('/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', (string) $pwaPrimaire)
+            ? $pwaPrimaire : '#0453cb';
         $pwaSchool = \App\Helpers\SettingsHelper::getSchoolInfo();
         $pwaAppTitle = trim((string) ($pwaSchool['name'] ?? '')) ?: 'KLASSCI';
     @endphp
@@ -67,23 +67,18 @@
     <link href="{{ asset('css/form-interaction-fix.css') }}" rel="stylesheet">
     <!-- Modal Force Fix - DEBUG MODE -->
     <link href="{{ asset('css/modal-force-fix.css') }}" rel="stylesheet">
-    <!-- Chatbot Widget -->
-    <link href="{{ asset('css/chatbot-widget.css') }}" rel="stylesheet">
+    {{-- Assistant IA (namespace ast-*) : panneau lateral, feuille plein ecran sur telephone. --}}
+    <link href="{{ asset('css/assistant.css') }}?v={{ @filemtime(public_path('css/assistant.css')) ?: '1' }}" rel="stylesheet">
 
     {{-- Shell mobile generalise (PWA, prefixe m-) : barre d'onglets, feuilles, pile des flottants.
-         Absorbe l'ancien mobile-student.css (alias .stu-* conserves). Charge APRES chatbot-widget.css
+         Absorbe l'ancien mobile-student.css (alias .stu-* conserves). Charge APRES assistant.css
          et dashboard-moderne.css pour pouvoir surcharger leurs positions en mobile. --}}
     <link href="{{ asset('css/mobile-shell.css') }}?v={{ @filemtime(public_path('css/mobile-shell.css')) ?: '1' }}" rel="stylesheet">
 
     <!-- Styles supplémentaires -->
     <style>
-        /* Shell mobile (< 768px) : l'assistant IA n'est pas charge (voir garde JS avant son include)
-           et le rappel NON bloquant de renouvellement (.m-ce-deferred) n'est pas affiche. */
+        /* Shell mobile (< 768px) : le rappel NON bloquant de renouvellement (.m-ce-deferred) n'est pas affiche. */
         @media (max-width: 767.98px) {
-            .m-chatbot-host,
-            .m-chatbot-host #chatbot-widget,
-            .m-chatbot-host #chatbot-backdrop,
-            .m-chatbot-host #chatbot-settings-modal { display: none !important; }
             .m-ce-deferred #contractExpiryModal,
             .m-ce-deferred #ce-strip { display: none !important; }
         }
@@ -643,131 +638,6 @@
             box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
         }
 
-        /* Résultats de recherche */
-        .search-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            width: 100%;
-            max-width: 400px;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            max-height: 350px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            margin-top: 5px;
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(99, 102, 241, 0.1);
-        }
-
-        .search-results.show {
-            animation: searchSlideIn 0.3s ease-out;
-        }
-
-        @keyframes searchSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .search-item {
-            display: flex;
-            align-items: center;
-            padding: 12px 16px;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.2s ease;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .search-item:hover {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
-        }
-
-        .search-item-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-            color: white;
-            flex-shrink: 0;
-        }
-
-        .search-category {
-            padding: 8px 16px;
-            font-weight: 600;
-            color: #0453cb;
-            background: rgba(4, 83, 203, 0.05);
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .search-item-content {
-            flex: 1;
-            min-width: 0;
-            overflow: hidden;
-        }
-        
-        .search-item-title {
-            font-weight: 500;
-            color: #1f2937;
-            font-size: 14px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 2px;
-        }
-        
-        .search-item-description {
-            font-size: 12px;
-            color: #6b7280;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        /* Scrollbar personnalisée pour les résultats de recherche */
-        .search-results::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .search-results::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 10px;
-        }
-        
-        .search-results::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #0453cb, #5e91de);
-            border-radius: 10px;
-            transition: all 0.3s ease;
-        }
-        
-        .search-results::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-        }
-        
-        /* Firefox scrollbar */
-        .search-results {
-            scrollbar-width: thin;
-            scrollbar-color: #0453cb rgba(0, 0, 0, 0.05);
-        }
 
         /* ===== AMÉLIORATION DES ACTIONS RAPIDES ===== */
         /* Dropdown spécifique pour les actions rapides */
@@ -936,15 +806,6 @@
                 margin-left: 0;
             }
 
-            /* Ajustement de la navbar search sur mobile */
-            .navbar-search {
-                max-width: 200px;
-            }
-
-            .navbar-search input {
-                padding: 10px 15px 10px 35px;
-                font-size: 13px;
-            }
         }
 
         @media (max-width: 767.98px) {
@@ -1028,7 +889,6 @@
             border-radius: 18px;
             backdrop-filter: blur(25px);
             background: rgba(255, 255, 255, 0.97);
-            animation: dropdownSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             min-width: 320px;
             max-width: 380px;
             border: 1px solid rgba(99, 102, 241, 0.08);
@@ -1036,16 +896,8 @@
             padding: 8px 0;
         }
 
-        @keyframes dropdownSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-15px) scale(0.92);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
+        /* Pas d'animation de transform sur les panneaux : Popper les place par
+           leur transform (fondu en opacité seule dans sidebar-fixes.css). */
 
         .custom-dropdown .dropdown-item {
             border-radius: 12px;
@@ -1521,7 +1373,7 @@
             .header-actions,
             .dashboard-header .header-actions,
             .btn-acasi,
-            .navbar-search,
+            .spl-root,
             .floating-chatbot-btn,
             #floating-chatbot,
             .modal,
@@ -1638,6 +1490,8 @@
             .pwd-expiry-banner-btn { padding: .4rem .7rem; font-size: .78rem; }
         }
     </style>
+    {{-- Barre du haut : après les styles en ligne ci-dessus, avant ceux des pages. --}}
+    <link href="{{ asset('css/barre-du-haut.css') }}?v={{ @filemtime(public_path('css/barre-du-haut.css')) ?: '1' }}" rel="stylesheet">
     @yield('styles')
     @stack('styles')
 </head>
@@ -1663,17 +1517,30 @@
                             </a>
                     </div>
 
-                    @can('module.academic_pilotage.access')
-                    @can('academic_pilotage.view')
+                    @php
+                        $_menuPilotage = auth()->user()->can('module.academic_pilotage.access') && auth()->user()->can('academic_pilotage.view');
+                        $_menuActivite = auth()->user()->can('performance.view_all');
+                        $_menuMonActivite = ! $_menuActivite && auth()->user()->can('performance.view');
+                    @endphp
+                    @if($_menuPilotage || $_menuActivite || $_menuMonActivite)
                         <div class="menu-category">Pilotage</div>
+                    @endif
+                    @if($_menuPilotage)
                         <div class="menu-item">
                             <a href="{{ route('esbtp.pilotage-academique.index') }}" class="menu-link {{ Request::routeIs('esbtp.pilotage-academique.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-chart-line"></i></div>
                                 <div class="menu-text">Pilotage académique</div>
                             </a>
                         </div>
-                    @endcan
-                    @endcan
+                    @endif
+                    @if($_menuActivite || $_menuMonActivite)
+                        <div class="menu-item">
+                            <a href="{{ $_menuActivite ? route('esbtp.personnel.performance.index') : route('esbtp.personnel.performance.moi') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.performance.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-people-group"></i></div>
+                                <div class="menu-text">{{ $_menuActivite ? 'Activité du personnel' : 'Mon activité' }}</div>
+                            </a>
+                        </div>
+                    @endif
 
                     <!-- Academic Management Section — gates per-link via les nouvelles permissions registry -->
                     @can('module.academique.access')
@@ -2602,15 +2469,14 @@
 
                     <div class="navbar-center d-none d-lg-block">
                         <div class="header-actions">
-                            <input type="search" class="search-bar" id="global-search" placeholder="Rechercher dans l'application..." autocomplete="off">
-                            <div id="search-results" class="search-results" style="display: none;"></div>
+                            @include('layouts.partials.spotlight-declencheur')
                         </div>
                     </div>
 
                     <div class="navbar-right">
                         <!-- Notifications -->
                         <div class="dropdown">
-                            <button class="btn-acasi icon-only" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn-acasi icon-only" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Notifications" title="Notifications">
                                 <i class="fas fa-bell"></i>
                                 <span class="navbar-badge" id="notifications-count" style="display: none;">0</span>
                             </button>
@@ -2643,7 +2509,7 @@
 
                         <!-- Messages (sous 768px avec le shell mobile : dans la feuille m-navbar-plus) -->
                         <div class="dropdown" data-mnb="desktop">
-                            <button class="btn-acasi icon-only" type="button" id="messagesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn-acasi icon-only" type="button" id="messagesDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Messages" title="Messages">
                                 <i class="fas fa-envelope"></i>
                                 <span class="navbar-badge" id="messages-count" style="display: none;">0</span>
                             </button>
@@ -2684,7 +2550,7 @@
 
                     <!-- Quick Actions (sous 768px avec le shell mobile : la grille est adoptée par la feuille m-navbar-plus) -->
                     <div class="dropdown" data-mnb="desktop">
-                            <button class="btn-acasi icon-only" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn-acasi icon-only" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Actions rapides" title="Actions rapides">
                                 <i class="fas fa-th-large"></i>
                         </button>
                             <ul class="dropdown-menu dropdown-menu-end custom-dropdown quick-actions-dropdown" aria-labelledby="quickActionsDropdown">
@@ -2697,7 +2563,7 @@
                                         @if(auth()->check() && auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
                                             @can('students.create')
                                             <a href="{{ route('esbtp.etudiants.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-user-plus"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvel étudiant</span>
@@ -2705,7 +2571,7 @@
                                             @endcan
                                             @can('inscriptions.create')
                                             <a href="{{ route('esbtp.inscriptions.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-clipboard-check"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle inscription</span>
@@ -2713,7 +2579,7 @@
                                             @endcan
                                             @can('evaluations.create')
                                             <a href="{{ route('esbtp.evaluations.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-plus-circle"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle évaluation</span>
@@ -2721,7 +2587,7 @@
                                             @endcan
                                             @can('classes.create')
                                             <a href="{{ route('esbtp.classes.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-school"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle classe</span>
@@ -2729,44 +2595,44 @@
                                             @endcan
                                         @elseif(auth()->check() && auth()->user()->can('identity.coordinate'))
                                             <a href="{{ route('esbtp.emploi-temps.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-calendar-plus"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvel emploi du temps</span>
                                             </a>
                                             <a href="{{ route('esbtp.evaluations.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-plus-circle"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle évaluation</span>
                                             </a>
                                             <a href="{{ route('esbtp.annonces.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-bullhorn"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle annonce</span>
                                             </a>
                                         @elseif(auth()->check() && auth()->user()->can('identity.student'))
                                             <a href="{{ route('esbtp.mes-evaluations.index') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-clipboard-list"></i>
                                                 </div>
                                                 <span class="quick-action-text">Mes évaluations</span>
                                             </a>
                                             <a href="{{ route('esbtp.mes-notes.index') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-star"></i>
                                                 </div>
                                                 <span class="quick-action-text">Mes notes</span>
                                             </a>
                                             <a href="{{ route('esbtp.mon-emploi-temps.index') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-calendar-alt"></i>
                                                 </div>
                                                 <span class="quick-action-text">Mon emploi du temps</span>
                                             </a>
                                             <a href="{{ route('esbtp.mes-annonces.index') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-bullhorn"></i>
                                                 </div>
                                                 <span class="quick-action-text">Mes annonces</span>
@@ -2785,7 +2651,7 @@
 
                 <!-- User Profile (sous 768px avec le shell mobile : remplacé par le bouton .mnb-avatar qui ouvre la feuille m-navbar-plus) -->
                 <div class="dropdown ms-2" data-mnb="desktop">
-                    <button class="btn-acasi profile-btn" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn-acasi profile-btn" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Mon compte">
                         <div class="navbar-avatar">
                             @if(auth()->check() && auth()->user()->profile_photo_path)
                                 <img src="{{ asset('storage/' . auth()->user()->profile_photo_path) }}" alt="{{ auth()->user()->name }}">
@@ -2797,7 +2663,8 @@
                         </div>
                         <div class="navbar-user-info d-none d-md-block">
                             <div class="navbar-user-name">{{ auth()->check() ? auth()->user()->name : 'Invité' }}</div>
-                    </div>
+                        </div>
+                        <i class="fas fa-chevron-down kbh-chevron d-none d-md-inline" aria-hidden="true"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end custom-dropdown" aria-labelledby="profileDropdown">
                         <li>
@@ -2820,46 +2687,41 @@
                         <li><hr class="dropdown-divider"></li>
                         @if(auth()->check())
                             <li>
-                                        @role('etudiant')
-                                            <a class="dropdown-item" href="{{ route('esbtp.mon-profil.index') }}">
-                                    <i class="fas fa-user-circle me-2"></i> Mon profil
-                                </a>
-                                        @elserole('coordinateur')
-                                            <a class="dropdown-item" href="{{ route('coordinateur.profile') }}">
-                                                <i class="fas fa-user-tie me-2"></i> Mon profil
-                                            </a>
-                                        @elserole('teacher')
-                                            <a class="dropdown-item" href="{{ route('teacher.profile') }}">
-                                                <i class="fas fa-chalkboard-teacher me-2"></i> Mon profil
-                                            </a>
-                                        @elserole('enseignant')
-                                            <a class="dropdown-item" href="{{ route('teacher.profile') }}">
-                                                <i class="fas fa-chalkboard-teacher me-2"></i> Mon profil
-                                            </a>
-                                        @else
-                                            <a class="dropdown-item" href="{{ route('admin.profile') }}">
-                                                <i class="fas fa-user-circle me-2"></i> Mon profil
-                                            </a>
-                                        @endrole
+                                {{-- Trois pages de profil, gardées par leur route : l'étudiant et l'enseignant
+                                     ont la leur, toute autre fonction (rôles personnalisés compris) ouvre
+                                     admin.profile, protégée par permission et non par rôle. --}}
+                                @role('etudiant')
+                                    <a class="dropdown-item" href="{{ route('esbtp.mon-profil.index') }}">
+                                        <i class="fas fa-user-circle"></i> Mon profil
+                                    </a>
+                                @elserole('enseignant|teacher')
+                                    <a class="dropdown-item" href="{{ route('teacher.profile') }}">
+                                        <i class="fas fa-user-circle"></i> Mon profil
+                                    </a>
+                                @else
+                                    <a class="dropdown-item" href="{{ route('admin.profile') }}">
+                                        <i class="fas fa-user-circle"></i> Mon profil
+                                    </a>
+                                @endrole
                             </li>
                             <x-support.entrees-menu variante="bureau" />
                             <li>
                                 {{-- Une securite qu'on ne trouve pas n'est activee par personne. --}}
                                 <a class="dropdown-item" href="{{ route('securite.double-auth.reglages') }}">
-                                    <i class="fas fa-shield-halved me-2"></i> Double authentification
+                                    <i class="fas fa-shield-halved"></i> Double authentification
                                 </a>
                             </li>
                             @role('etudiant')
                             <li>
-                                    <a class="dropdown-item" href="{{ \Illuminate\Support\Facades\Route::has('esbtp.preferences.index') ? route('esbtp.preferences.index') : url('/esbtp/preferences') }}">
-                                        <i class="fas fa-cog me-2"></i> Paramètres
+                                    <a class="dropdown-item" href="{{ route('esbtp.preferences.index') }}">
+                                        <i class="fas fa-sliders"></i> Préférences
                                     </a>
                             </li>
                             @else
                             @can('system.manage')
                             <li>
-                                    <a class="dropdown-item" href="{{ route('settings.index') }}">
-                                        <i class="fas fa-cog me-2"></i> Paramètres
+                                    <a class="dropdown-item" href="{{ route('esbtp.settings.index') }}">
+                                        <i class="fas fa-gear"></i> Paramètres de l'établissement
                                     </a>
                             </li>
                             @endcan
@@ -2868,8 +2730,8 @@
                             <li>
                                 <form method="POST" action="{{ route('logout') }}" id="logout-form">
                                 @csrf
-                                    <a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                        <i class="fas fa-sign-out-alt me-2"></i> Déconnexion
+                                    <a class="dropdown-item kbh-deconnexion" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                                        <i class="fas fa-arrow-right-from-bracket"></i> Déconnexion
                                     </a>
                             </form>
                         </li>
@@ -3200,65 +3062,7 @@
                         </div>
                     @endif
 
-                    {{-- Ces nouveautés ne concernent que la caisse, la comptabilité et la
-                         scolarité : un enseignant ou un étudiant ne doit pas les recevoir. --}}
-                    @canany(['paiements.view', 'paiements.view_own', 'paiements.create', 'inscriptions.edit', 'comptabilite.dashboard.view'])
-                    <div class="modal fade" id="whatsNewModal" tabindex="-1" aria-labelledby="whatsNewModalLabel" aria-hidden="true" data-bs-backdrop="static" data-pref-key="whatsNew.v2026_09_24.user.{{ auth()->id() }}">
-                        <div class="modal-dialog modal-dialog-centered modal-lg">
-                            <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 48px rgba(15,23,42,.2);">
-                                <div class="modal-header" style="background:linear-gradient(135deg,#0453cb,#5e91de);color:#fff;border-bottom:none;">
-                                    <h5 class="modal-title" id="whatsNewModalLabel" style="font-weight:700;">
-                                        <i class="fas fa-sparkles me-2"></i>Nouveautés — Septembre 2026
-                                    </h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer" id="whatsNewCloseBtn"></button>
-                                </div>
-                                <div class="modal-body" style="padding:1.25rem 1.35rem;">
-                                    <div style="display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.9rem;padding:.7rem .8rem;border-radius:10px;background:rgba(4,83,203,.06);border:1px solid rgba(4,83,203,.15);">
-                                        <i class="fas fa-info-circle" style="margin-top:2px;color:#0453cb;"></i>
-                                        <div style="font-size:.86rem;color:#334155;line-height:1.45;">
-                                            Ce qui change pour la <strong>caisse</strong>, la <strong>comptabilité</strong> et la <strong>scolarité</strong> : vous pouvez désormais corriger et annuler vous-même, là où vous voyez l&rsquo;information.
-                                        </div>
-                                    </div>
-
-                                    <div style="display:grid;gap:.55rem;">
-                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Un accueil qui dit quoi faire</div>
-                                            <div style="font-size:.78rem;color:#475569;">L&rsquo;accueil de la caisse et celui de la comptabilité montrent ce qui vous attend (paiements à valider, saisies encore annulables, reste à percevoir), la tendance des derniers jours, et chaque chiffre ouvre la liste correspondante.</div>
-                                        </div>
-                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Annuler un versement, sans le faire disparaître</div>
-                                            <div style="font-size:.78rem;color:#475569;">Le bouton <strong>Annuler le versement</strong> (flèche arrière) émet un avoir : le versement reste visible, compensé, avec votre motif. Il est sur la liste des paiements, la fiche du paiement, la fiche d&rsquo;inscription et l&rsquo;accueil.</div>
-                                        </div>
-                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">« Annuler ma saisie » juste après une erreur</div>
-                                            <div style="font-size:.78rem;color:#475569;">Dans les minutes qui suivent l&rsquo;encaissement, l&rsquo;agent qui s&rsquo;est trompé annule lui-même sa saisie, même si le versement est déjà validé (selon les droits donnés par l&rsquo;école).</div>
-                                        </div>
-                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Les versements de la fiche d&rsquo;inscription</div>
-                                            <div style="font-size:.78rem;color:#475569;">Chaque versement a maintenant ses boutons : voir, reçu, annuler, supprimer avec motif. Plus besoin de passer par la liste des paiements.</div>
-                                        </div>
-                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Corriger une inscription déjà validée</div>
-                                            <div style="font-size:.78rem;color:#475569;">Filière, niveau et classe se modifient encore après validation pour qui a le droit « Modifier une inscription déjà validée » (agent d&rsquo;inscription, scolarité). Les frais sont recalculés.</div>
-                                        </div>
-                                    </div>
-
-                                    <div style="margin-top:.9rem;font-size:.75rem;color:#64748b;text-align:center;">
-                                        Le détail complet est dans le journal des versions, sur klassci.com.
-                                    </div>
-                                </div>
-                                <div class="modal-footer" style="border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:.5rem;padding:.9rem 1rem;">
-                                    <button type="button" class="btn btn-outline-secondary" id="whatsNewRemindLaterBtn" data-bs-dismiss="modal">
-                                        <i class="fas fa-clock me-1"></i>Me le rappeler plus tard
-                                    </button>
-                                    <button type="button" class="btn" id="whatsNewDismissBtn" data-bs-dismiss="modal" style="background:#0453cb;color:#fff;">
-                                        <i class="fas fa-check me-1"></i>J'ai compris
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    @endcanany
+                    @include('layouts.partials.nouveautes', ['cleVersion' => 'whatsNew.v2026_09_25'])
                 @endauth
 
             {{-- Alerte expiration mot de passe --}}
@@ -3318,27 +3122,10 @@
         </main>
     </div>
 
-    {{-- Assistant IA : desactive sous 768px (shell mobile). Le widget pousse lui-meme son script
-         (chatbot-widget.js, defer) dans la pile 'scripts' : on ne peut pas le rendre conditionnel d'ici
-         sans toucher le composant. On neutralise donc son initialisation : sous 768px, la configuration
-         globale qu'il ecrit (window.KLASSCI_CHATBOT_CONFIG) est absorbee par un accesseur qui ne retient
-         rien, et chatbot-widget.js, qui exige cette configuration, n'instancie jamais le widget.
-         Le HTML est masque par CSS (.m-chatbot-host, bloc de styles du head). --}}
-    <script>
-    (function () {
-        if (!window.matchMedia || !window.matchMedia('(max-width:767.98px)').matches) return;
-        try {
-            Object.defineProperty(window, 'KLASSCI_CHATBOT_CONFIG', {
-                configurable: true,
-                get: function () { return undefined; },
-                set: function () { /* ignore sous 768px : l'assistant n'est pas charge en mobile */ }
-            });
-        } catch (e) { /* silencieux */ }
-    })();
-    </script>
-    <div class="m-chatbot-host">
-        @include('components.chatbot.widget')
-    </div>
+    {{-- Assistant IA : panneau lateral sur ordinateur, plein ecran sur telephone (shell mobile compris). --}}
+    @auth
+        <x-chatbot.assistant />
+    @endauth
 
     {{-- KLASSCI Care : fenetre « Aide / Signaler », ouverte depuis le menu du compte. --}}
     <x-support.lanceur />
@@ -3666,10 +3453,6 @@
             debugLog('📡 Chargement des données navbar...');
             loadNavbarData();
 
-            // 6. Configurer la recherche
-            debugLog('🔍 Configuration de la recherche...');
-            setupSearchFunctionality();
-
             debugLog('🎉 Initialisation terminée !');
         });
 
@@ -3755,9 +3538,12 @@
             } else {
                 notificationsCount.style.display = 'none';
             }
+            document.getElementById('notificationsDropdown')?.setAttribute('aria-label',
+                unreadCount > 0 ? 'Notifications, ' + unreadCount + ' non lue' + (unreadCount > 1 ? 's' : '') : 'Notifications');
 
             // Mettre à jour le bouton header selon l'état
             if (markAllBtn) {
+                markAllBtn.style.display = '';
                 if (unreadCount > 0) {
                     markAllBtn.innerHTML = 'Tout marquer comme lu';
                     markAllBtn.onclick = function() { markAllNotificationsAsRead(); };
@@ -3835,6 +3621,7 @@
 
             // Mettre à jour le bouton header selon l'état
             if (markAllMessagesBtn) {
+                markAllMessagesBtn.style.display = '';
                 if (unreadCount > 0) {
                     markAllMessagesBtn.innerHTML = 'Tout marquer comme lu';
                     markAllMessagesBtn.onclick = function() { markAllMessagesAsRead(); };
@@ -3902,20 +3689,10 @@
 
             let html = '';
             actions.forEach(action => {
-                // Mapping des couleurs vers les backgrounds appropriés
-                const colorMap = {
-                    'primary': 'background: #3b82f6; color: white; border-color: #2563eb;',
-                    'success': 'background: #10b981; color: white; border-color: #059669;',
-                    'warning': 'background: #f59e0b; color: white; border-color: #d97706;',
-                    'danger': 'background: #ef4444; color: white; border-color: #dc2626;',
-                    'info': 'background: #06b6d4; color: white; border-color: #0891b2;',
-                    'secondary': 'background: #6b7280; color: white; border-color: #4b5563;'
-                };
-                const iconStyle = colorMap[action.color] || colorMap['primary'];
                 
                 html += `
                     <a href="${action.url}" class="quick-action-item">
-                        <div class="quick-action-icon" style="${iconStyle}">
+                        <div class="quick-action-icon">
                             <i class="${action.icon}"></i>
                         </div>
                         <div class="quick-action-text">${escapeHtml(action.title)}</div>
@@ -3936,122 +3713,6 @@
                 "'": '&#039;'
             };
             return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-        }
-
-        // Setup search functionality
-        function setupSearchFunctionality() {
-            debugLog('🔍 Configuration de la recherche...');
-            const searchInput = document.getElementById('global-search');
-            const searchResults = document.getElementById('search-results');
-            let searchTimeout;
-
-            if (searchInput) {
-                debugLog('✅ Search input trouvé, ajout des event listeners');
-
-                searchInput.addEventListener('input', function() {
-                    const query = this.value.trim();
-                    debugLog('🔍 Search input - nouvelle valeur:', query);
-
-                    clearTimeout(searchTimeout);
-
-                    if (query.length < 2) {
-                        searchResults.style.display = 'none';
-                        searchResults.classList.remove('show');
-                        return;
-                    }
-
-                    searchTimeout = setTimeout(() => {
-                        performSearch(query);
-                    }, 300);
-                });
-
-                // Hide search results when clicking outside
-                document.addEventListener('click', function(e) {
-                    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
-                        searchResults.style.display = 'none';
-                        searchResults.classList.remove('show');
-                    }
-                });
-
-                // Show search results when focusing on input if there's content
-                searchInput.addEventListener('focus', function() {
-                    debugLog('🔍 Search input focus');
-                    if (this.value.trim().length >= 2 && searchResults.innerHTML.trim() !== '') {
-                        searchResults.style.display = 'block';
-                        searchResults.classList.add('show');
-                    }
-                });
-
-                debugLog('✅ Search functionality configurée');
-            } else {
-                debugError('❌ Search input non trouvé');
-            }
-        }
-
-        // Perform search
-        function performSearch(query) {
-            debugLog('🔍 Exécution recherche pour:', query);
-            const searchResults = document.getElementById('search-results');
-
-            searchResults.innerHTML = '<div class="loading-text"><div class="loading-spinner"></div> Recherche...</div>';
-            searchResults.style.display = 'block';
-            searchResults.classList.add('show');
-
-            fetch(`{{ route("search.global") }}?q=${encodeURIComponent(query)}`)
-                .then(response => {
-                    debugLog('🔍 Réponse recherche:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    debugLog('🔍 Résultats recherche:', data);
-                    displaySearchResults(data);
-                })
-                .catch(error => {
-                    debugError('❌ Erreur recherche:', error);
-                    searchResults.innerHTML = '<div class="search-no-results">Erreur de recherche</div>';
-                });
-        }
-
-        // Display search results
-        function displaySearchResults(data) {
-            debugLog('🔍 Affichage résultats recherche:', data);
-            const searchResults = document.getElementById('search-results');
-
-            if (!data.results || data.results.length === 0) {
-                searchResults.innerHTML = '<div class="search-no-results">Aucun résultat trouvé</div>';
-                return;
-            }
-
-            let html = '';
-
-            // Group results by category
-            const groupedResults = {};
-            data.results.forEach(result => {
-                if (!groupedResults[result.category]) {
-                    groupedResults[result.category] = [];
-                }
-                groupedResults[result.category].push(result);
-            });
-
-            // Display results by category
-            Object.keys(groupedResults).forEach(category => {
-                html += `<div class="search-category">${category}</div>`;
-                groupedResults[category].forEach(result => {
-                    html += `
-                        <a href="${result.url}" class="search-item">
-                            <div class="search-item-icon bg-${result.color || 'primary'}">
-                                <i class="${result.icon}"></i>
-                            </div>
-                            <div class="search-item-content">
-                                <div class="search-item-title">${result.title}</div>
-                                <div class="search-item-subtitle">${result.description}</div>
-                            </div>
-                        </a>
-                    `;
-                });
-            });
-
-            searchResults.innerHTML = html;
         }
 
         // Mark notification as read
@@ -4080,37 +3741,10 @@
             });
         }
 
-        // Mark all notifications as read
+        // « Tout marquer comme lu » : un seul gestionnaire, l'onclick posé par
+        // updateNotifications() selon l'état (marquer ou supprimer). Un second
+        // écouteur ici déclenchait les deux appels à la fois.
         document.addEventListener('DOMContentLoaded', function() {
-            const markAllBtn = document.getElementById('mark-all-notifications-read');
-            if (markAllBtn) {
-                markAllBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    debugLog('🔔 Marquage toutes notifications comme lues');
-
-                    const markAllUrl = document.querySelector('meta[name="navbar-mark-all-read-url"]')?.content;
-                    if (!markAllUrl) {
-                        return;
-                    }
-
-                    fetch(markAllUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            loadNavbarData();
-                        }
-                    })
-                    .catch(error => {
-                        debugError('❌ Erreur marquage toutes notifications:', error);
-                    });
-                });
-            }
 
             // Nouvelles fonctions pour notifications améliorées
             window.markNotificationAsRead = function(notificationId) {
@@ -4308,8 +3942,12 @@
 
             // Fonctions pour marquer tout comme lu
             window.markAllNotificationsAsRead = function() {
+                // Le clic ferme aussi le panneau : l'écouteur de fermeture ne doit
+                // pas relancer le même marquage pendant que celui-ci est en route.
+                window.__kbhMarquageEnCours = true;
                 fetch('{{ route("navbar.notifications.mark-all-read") }}', {
                     method: 'POST',
+                    keepalive: true,
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Accept': 'application/json'
@@ -4327,7 +3965,8 @@
                 .catch(error => {
                     debugError('❌ Erreur marquage toutes notifications:', error);
                     alert('Erreur lors du marquage');
-                });
+                })
+                .finally(() => { window.__kbhMarquageEnCours = false; });
             };
 
             window.markAllMessagesAsRead = function() {
@@ -4353,9 +3992,12 @@
                 });
             };
 
-            // Marquer les notifications comme vues quand on ouvre le dropdown
-            document.getElementById('notificationsDropdown').addEventListener('shown.bs.dropdown', function () {
-                debugLog('🔔 Dropdown notifications ouvert - marquage comme vu');
+            // Marquer les notifications comme vues à la FERMETURE du panneau, pas à l'ouverture :
+            // à l'ouverture, le re-rendu de la liste déplaçait le contenu sous la souris et
+            // changeait « Tout marquer comme lu » en « Tout supprimer » pendant la lecture.
+            document.getElementById('notificationsDropdown').addEventListener('hidden.bs.dropdown', function () {
+                debugLog('🔔 Panneau des notifications fermé - marquage comme vu');
+                if (window.__kbhMarquageEnCours) return;
 
                 const unreadNotifications = document.querySelectorAll('.notification-item.unread');
                 const badge = document.getElementById('notifications-count');
@@ -4365,6 +4007,7 @@
                 if (unreadNotifications.length > 0 || badgeCount > 0) {
                     fetch('{{ route("navbar.notifications.mark-all-read") }}', {
                         method: 'POST',
+                        keepalive: true,
                         headers: {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                             'Accept': 'application/json'
@@ -4555,7 +4198,8 @@
         @endphp
         <x-m.sheet id="m-navbar-plus" :title="$mnbUser->name" :sub="$mnbUser->email">
             @if(Route::has('search.results'))
-                <form class="m-search" method="GET" action="{{ route('search.results') }}" role="search">
+                {{-- Ouvre la palette de recherche ; le formulaire reste le repli sans JavaScript. --}}
+                <form class="m-search" method="GET" action="{{ route('search.results') }}" role="search" data-spl-ouvrir>
                     <x-m.icon name="search" />
                     <input type="search" name="q" minlength="2" required placeholder="Rechercher dans l'application" autocomplete="off" aria-label="Rechercher dans l'application">
                 </form>
@@ -4584,9 +4228,7 @@
                     @endif
                 @else
                     @can('system.manage')
-                        @if(Route::has('settings.index'))
-                            <a href="{{ route('settings.index') }}"><x-m.icon name="settings" />Paramètres<span class="ch"><x-m.icon name="chr" /></span></a>
-                        @endif
+                        <a href="{{ route('esbtp.settings.index') }}"><x-m.icon name="settings" />Paramètres<span class="ch"><x-m.icon name="chr" /></span></a>
                     @endcan
                 @endif
                 @if(Route::has('logout'))
@@ -4628,5 +4270,9 @@
         </script>
         @endauth
     @endif
+
+    @auth
+        @include('layouts.partials.spotlight')
+    @endauth
 </body>
 </html>

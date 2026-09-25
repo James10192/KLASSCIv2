@@ -10,6 +10,7 @@ use App\Domain\AcademicPilotage\DTO\ClassAcademicHealthResult;
 use App\Domain\AcademicPilotage\Enums\AcademicAlertSeverity;
 use App\Domain\AcademicPilotage\Enums\AcademicAlertType;
 use App\Domain\AcademicPilotage\Models\AcademicAlert;
+use Illuminate\Support\Facades\DB;
 
 final class AcademicAlertDetectionService
 {
@@ -60,7 +61,11 @@ final class AcademicAlertDetectionService
         $unassignedReceived = (int) ($metrics['unassigned_received_sheets'] ?? 0);
         $candidates = [];
 
-        if ($configuredSheets === 0) {
+        // Sans fiche de notes, la classe n'est « non configurée » que si elle n'a
+        // AUCUNE évaluation non plus : une école qui saisit ses notes directement
+        // sur les évaluations ne passe pas par les fiches, et lui dire que son
+        // cadre bloque les bulletins est faux.
+        if ($configuredSheets === 0 && ! $this->aDesEvaluations($result->classId, $academicYearId, $period)) {
             $candidates[] = $this->candidate(
                 AcademicAlertType::ASSESSMENT_NOT_CONFIGURED,
                 AcademicAlertSeverity::BLOCKING,
@@ -98,6 +103,17 @@ final class AcademicAlertDetectionService
         }
 
         return $candidates;
+    }
+
+    private function aDesEvaluations(int $classId, int $academicYearId, string $period): bool
+    {
+        return DB::table('esbtp_evaluations')
+            ->where('classe_id', $classId)
+            ->where('annee_universitaire_id', $academicYearId)
+            ->when($period !== 'annuel', fn ($q) => $q->whereIn('periode', $this->periods->databaseVariants($period)))
+            ->where('status', '!=', 'cancelled')
+            ->whereNull('deleted_at')
+            ->exists();
     }
 
     /** @return list<AcademicAlertCandidate> */

@@ -50,67 +50,6 @@
     color: var(--primary);
 }
 
-/* Search Results Dropdown */
-.search-results {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
-        0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    border: 1px solid rgba(229, 231, 235, 0.8);
-    max-height: 400px;
-    overflow-y: auto;
-    z-index: 1047;
-    backdrop-filter: blur(20px);
-    margin-top: 8px;
-}
-
-.search-results .search-result-item {
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(229, 231, 235, 0.5);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.search-results .search-result-item:hover {
-    background: rgba(4, 83, 203, 0.05);
-    transform: translateX(4px);
-}
-
-.search-results .search-result-item:last-child {
-    border-bottom: none;
-}
-
-.search-results .search-result-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    color: white;
-}
-
-.search-results .search-result-content h6 {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 600;
-    color: #111827;
-}
-
-.search-results .search-result-content p {
-    margin: 0;
-    font-size: 12px;
-    color: #6b7280;
-}
-
 /* Quick Actions Improvements */
 .navbar-actions {
     display: flex;
@@ -191,7 +130,6 @@
 .dropdown-item:hover {
     background: rgba(4, 83, 203, 0.1);
     color: var(--primary);
-    transform: translateX(4px);
 }
 
 .dropdown-item i {
@@ -266,10 +204,6 @@
     .navbar-search .form-control {
         padding: 10px 16px 10px 40px;
         font-size: 13px;
-    }
-
-    .search-results {
-        margin-top: 4px;
     }
 }
 
@@ -405,11 +339,6 @@
 }
 
 /* Correction KLASSCI : garantir que la navbar, la sidebar et les overlays ne passent jamais devant un modal Bootstrap (z-index 1055+) */
-
-.search-results {
-    /* z-index Bootstrap modal-backdrop: 1050, modal: 1055 */
-    z-index: 1047 !important;
-}
 
 .sidebar-overlay {
     z-index: 1030 !important;

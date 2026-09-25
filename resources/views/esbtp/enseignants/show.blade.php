@@ -642,9 +642,11 @@
             <button class="es-tab" data-tab="teaching" type="button">
                 <i class="fas fa-chalkboard"></i> Enseignement
             </button>
+            @if(\App\Services\Personnel\ActiviteDuPersonnel::peutLire(auth()->user(), (int) $teacher->user_id))
             <button class="es-tab" data-tab="performance" type="button">
-                <i class="fas fa-chart-line"></i> Performance
+                <i class="fas fa-chart-line"></i> Activité
             </button>
+            @endif
             <button class="es-tab" data-tab="account" type="button">
                 <i class="fas fa-user-cog"></i> Compte
             </button>
@@ -1110,9 +1112,11 @@
         </div>
 
         {{-- ---- TAB: Compte --------------------------------------- --}}
+        @if(\App\Services\Personnel\ActiviteDuPersonnel::peutLire(auth()->user(), (int) $teacher->user_id))
         <div class="es-panel" id="es-tab-performance">
-            @include('esbtp.personnel.partials.performance-score', ['performanceScore' => $performanceScore ?? null])
+            @include('esbtp.personnel.partials.activite-resume', ['activite' => $activite ?? null, 'userId' => $teacher->user_id])
         </div>
+        @endif
 
         <div class="es-panel" id="es-tab-account">
             <div class="es-grid-2">

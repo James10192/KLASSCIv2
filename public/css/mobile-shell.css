@@ -3,7 +3,7 @@
    -------------------------------------------------------------
    Remplace : public/css/mobile-student.css (absorbé ; les classes
    `.stu-*` restent ici en ALIAS pour ne rien casser des vues étudiant
-   existantes). Doit être chargé APRÈS chatbot-widget.css et après le
+   existantes). Doit être chargé APRÈS assistant.css et après le
    style poussé par le composant x-fab-encaisser : il SURCHARGE leurs positions
    sans les modifier.
 
@@ -21,7 +21,7 @@
      3. Shell mobile  @media (max-width: 991.98px)
      3b. Layout sous 768px (body.has-m-shell)  — gouttières, navbar → app bar 56px
      4. Variante tablette @media (768px – 991.98px) — rail latéral, gouttière 24px
-     5. Pile des flottants (fab / chatbot / toast) sous body.has-m-shell
+     5. Pile des flottants (fab / lanceur de l'assistant) sous body.has-m-shell
      6. Alias hérités `.stu-*` (mobile-student.css)
 
    Mouvement (comme sur iOS) : courbe --m-ease-ios pour tout ce qui glisse
@@ -344,6 +344,9 @@ body.m-sheet-open { overflow: hidden; }
 
     .m-actionbar { position: fixed; left: 0; right: 0; bottom: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 10px 16px 12px; background: linear-gradient(to top, rgba(244,246,251,1) 70%, rgba(244,246,251,0)); display: grid; gap: 8px; z-index: 1079; }
     .m-actionbar.row { grid-template-columns: 1fr 1fr; }
+    /* « row » est aussi la classe de grille Bootstrap : ses marges négatives
+       (-12px) décollaient les deux boutons du bord de chaque côté. */
+    body .m-actionbar.row { margin: 0; flex-wrap: nowrap; }
 .m-actionbar.row .m-btn { font-size: 14px; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     body.has-m-shell:has(.m-actionbar) { padding-bottom: calc(var(--m-nav-h) + 78px + var(--m-safe-b)); }
 
@@ -685,10 +688,10 @@ body.m-sheet-open { overflow: hidden; }
 /* ---------- 5. Pile des flottants sous body.has-m-shell ----------
    Ordre du bas vers le haut (mobile) :
      nav bas 78px  →  FAB principal (m-fab / #fab-encaisser) bas 96px
-                   →  chatbot (.chatbot-widget, 44px) bas 164px
-                   →  toast chatbot (.chatbot-toast) au-dessus de la nav.
+                   →  lanceur de l'assistant (.ast-launcher, 44px) bas 164px.
+   Ouvert, l'assistant occupe tout l'écran (z-index 1100, au-dessus de la nav).
    Spécificité volontairement forte (html body.…) : le style poussé par
-   <x-fab-encaisser> et chatbot-widget.css utilisent !important. */
+   le composant fab-encaisser utilise !important. */
 @media (max-width: 991.98px) {
     html body.has-m-shell .fab-encaisser,
     html body.has-m-shell #fab-encaisser {
@@ -697,23 +700,27 @@ body.m-sheet-open { overflow: hidden; }
         z-index: 1081 !important;
         animation: none;
     }
-    html body.has-m-shell .chatbot-widget {
+    /* Même forme que le .m-fab des autres écrans : carré arrondi, un seul +. */
+    html body.has-m-shell .fab-encaisser {
+        width: 56px; height: 56px; padding: 0; gap: 0;
+        justify-content: center; border-radius: 18px;
+    }
+    html body.has-m-shell .fab-encaisser .fab-encaisser-icon { background: none; width: auto; height: auto; }
+    html body.has-m-shell .fab-encaisser .fab-encaisser-icon i { font-size: 1.25rem; }
+    html body.has-m-shell .fab-encaisser .fab-encaisser-label,
+    html body.has-m-shell .fab-encaisser .fab-encaisser-kbd { display: none; }
+    html body.has-m-shell .ast-launcher {
         bottom: calc(164px + var(--m-safe-b)) !important;
         right: 22px !important;
         z-index: 1090;
-    }
-    html body.has-m-shell .chatbot-widget .chatbot-toggle {
         width: 44px !important;
         height: 44px !important;
+        padding: 0 !important;
         border-radius: 14px !important;
+        justify-content: center;
         box-shadow: 0 4px 14px rgba(15,23,42,.14);
     }
-    html body.has-m-shell .chatbot-toast {
-        bottom: calc(var(--m-nav-h) + 22px + var(--m-safe-b)) !important;
-        left: 16px;
-        right: 16px;
-        max-width: none;
-    }
+    html body.has-m-shell .ast-launcher .ast-launcher-label { display: none; }
     /* Un seul FAB principal : si le composant x-fab-encaisser est présent, le m-fab de la page s'efface. */
     html body.has-m-shell:has(#fab-encaisser) .m-fab:not(.chat) { display: none; }
 }
@@ -721,8 +728,7 @@ body.m-sheet-open { overflow: hidden; }
 @media (min-width: 768px) and (max-width: 991.98px) {
     html body.has-m-shell .fab-encaisser,
     html body.has-m-shell #fab-encaisser { bottom: 24px !important; right: 24px !important; }
-    html body.has-m-shell .chatbot-widget { bottom: 96px !important; right: 30px !important; }
-    html body.has-m-shell .chatbot-toast { bottom: 160px !important; left: auto; right: 24px; max-width: 340px; }
+    html body.has-m-shell .ast-launcher { bottom: 96px !important; right: 30px !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -790,10 +796,10 @@ body.m-sheet-open { overflow: hidden; }
     body.has-stu-bottomnav:not(.has-m-shell) .content-wrapper {
         padding-bottom: calc(var(--stu-bottomnav-h) + env(safe-area-inset-bottom, 0px) + 16px) !important;
     }
-    body.has-stu-bottomnav:not(.has-m-shell) .chatbot-widget {
+    body.has-stu-bottomnav:not(.has-m-shell) .ast-launcher {
         bottom: calc(var(--stu-bottomnav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
     }
-    body.has-stu-bottomnav:not(.has-m-shell):has(#fab-encaisser) .chatbot-widget {
+    body.has-stu-bottomnav:not(.has-m-shell):has(#fab-encaisser) .ast-launcher {
         bottom: calc(var(--stu-bottomnav-h) + env(safe-area-inset-bottom, 0px) + 96px) !important;
     }
 }

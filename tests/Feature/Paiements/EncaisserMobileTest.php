@@ -90,6 +90,31 @@ class EncaisserMobileTest extends TestCase
             ->assertSee('id="payment-form"', false);
     }
 
+    public function test_le_montant_propose_se_remplace_au_premier_chiffre(): void
+    {
+        // Incident ISLG (septembre 2026) : le reste dû etait pre-rempli, et le
+        // premier chiffre tape s'y ajoutait. 120 000 puis « 25 000 » donnait
+        // 12 000 025 000 FCFA, que l'ecran proposait d'encaisser.
+        $reponse = $this->get(route('esbtp.paiements.create'));
+
+        $reponse->assertOk()
+            ->assertSee('let v = this.propose ? 0 : Math.round(this.montant);', false)
+            ->assertSee('Tout le reste dû est proposé. Tapez un chiffre pour saisir un autre montant.')
+            // Le recapitulatif precede les modes, qui sont des tuiles.
+            ->assertSeeInOrder(['class="mab-recap"', 'class="mab-modes"'], false);
+    }
+
+    public function test_le_formulaire_de_bureau_n_invente_plus_de_tranches(): void
+    {
+        // Les suggestions de 25 000 et 50 000 FCFA etaient ecrites en dur,
+        // quel que soit le tarif de l'ecole.
+        $this->get(route('esbtp.paiements.create'))
+            ->assertOk()
+            ->assertDontSee('Tranche 25,000', false)
+            ->assertDontSee('Tranche 50,000', false)
+            ->assertSeeInOrder(['class="pc-main"', 'class="pc-aside"', 'id="submit-section"'], false);
+    }
+
     public function test_la_page_pre_remplie_depuis_une_fiche_porte_l_inscription_dans_la_configuration(): void
     {
         $reponse = $this->get(route('esbtp.paiements.create', [

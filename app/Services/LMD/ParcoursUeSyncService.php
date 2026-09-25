@@ -6,6 +6,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPUniteEnseignement;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Idempotent sync between an LMD Parcours and its UEs (pivot esbtp_lmd_parcours_ue).
@@ -35,6 +36,7 @@ class ParcoursUeSyncService
             // attaching, which would 1062 on the unique (parcours_id, ue_id, semestre).
             $current = $this->loadCurrentPivot($parcours, lockForUpdate: true);
             $diff = $this->computeDiff($current, $desired, $detachMissing);
+            $this->refuserCodeImprimeEnDouble((int) $parcours->id, collect($diff['attach'])->pluck('ue_id'));
 
             foreach ($diff['attach'] as $row) {
                 $parcours->unitesEnseignement()->attach($row['ue_id'], [
@@ -124,22 +126,9 @@ class ParcoursUeSyncService
                 DB::table('esbtp_lmd_parcours_ue')->where('parcours_id', $parcoursId)->lockForUpdate()->get(['id']);
             }
 
-            $actuels = [];
-            $lignes = DB::table('esbtp_lmd_parcours_ue')
-                ->where('unite_enseignement_id', $ue->id)
-                ->get(['parcours_id', 'semestre', 'is_optional', 'ordre']);
-
-            foreach ($lignes as $ligne) {
-                $actuels[((int) $ligne->parcours_id).'_'.((int) $ligne->semestre)] = [
-                    'parcours_id' => (int) $ligne->parcours_id,
-                    'ue_id' => (int) $ue->id,
-                    'semestre' => (int) $ligne->semestre,
-                    'is_optional' => (bool) $ligne->is_optional,
-                    'ordre' => (int) $ligne->ordre,
-                ];
-            }
-
-            $diff = $this->computeDiff($actuels, $voulus, detachMissing: true);
+            $diff = $this->computeDiff($this->liensActuelsDeLUnite($ue), $voulus, detachMissing: true);
+            collect($diff['attach'])->pluck('parcours_id')->unique()
+                ->each(fn ($parcoursId) => $this->refuserCodeImprimeEnDouble((int) $parcoursId, collect([(int) $ue->id])));
 
             foreach ($diff['attach'] as $row) {
                 // `credit` n'est PAS ecrit : il reste nul, ce qui veut dire
@@ -185,6 +174,66 @@ class ParcoursUeSyncService
                 'unchanged' => count($diff['unchanged']),
             ];
         });
+    }
+
+    /**
+     * Les rattachements actuels d'une unite, indexes comme computeDiff les
+     * attend : « parcours_semestre ».
+     *
+     * @return array<string, array{parcours_id: int, ue_id: int, semestre: int, is_optional: bool, ordre: int}>
+     */
+    private function liensActuelsDeLUnite(ESBTPUniteEnseignement $ue): array
+    {
+        $actuels = [];
+        $lignes = DB::table('esbtp_lmd_parcours_ue')
+            ->where('unite_enseignement_id', $ue->id)
+            ->get(['parcours_id', 'semestre', 'is_optional', 'ordre']);
+
+        foreach ($lignes as $ligne) {
+            $actuels[((int) $ligne->parcours_id).'_'.((int) $ligne->semestre)] = [
+                'parcours_id' => (int) $ligne->parcours_id,
+                'ue_id' => (int) $ue->id,
+                'semestre' => (int) $ligne->semestre,
+                'is_optional' => (bool) $ligne->is_optional,
+                'ordre' => (int) $ligne->ordre,
+            ];
+        }
+
+        return $actuels;
+    }
+
+    /**
+     * Un parcours n'imprime jamais deux fois le meme code d'UE.
+     *
+     * Deux unites differentes peuvent porter le meme code imprime, pourvu
+     * qu'elles vivent dans deux parcours differents (CodeDeMaquette). Ce
+     * service est le passage commun du formulaire, de l'import et de l'ecran de
+     * rattachement : c'est donc ici que l'unicite par parcours se garde.
+     *
+     * @param  \Illuminate\Support\Collection<int, int>  $ueIds
+     */
+    private function refuserCodeImprimeEnDouble(int $parcoursId, \Illuminate\Support\Collection $ueIds): void
+    {
+        if ($ueIds->isEmpty()) {
+            return;
+        }
+
+        $maquette = app(CodeDeMaquette::class);
+        foreach (ESBTPUniteEnseignement::whereIn('id', $ueIds->all())->get(['id', 'code', 'name']) as $ue) {
+            $deja = $maquette->autreUniteDuParcours($parcoursId, $ue->code, (int) $ue->id);
+            if ($deja === null) {
+                continue;
+            }
+
+            $parcours = DB::table('esbtp_lmd_parcours')->where('id', $parcoursId)->value('code');
+            throw ValidationException::withMessages(['parcours_id' => sprintf(
+                'Le parcours %s porte déjà l\'UE « %s » (%s) sous le code %s. Un relevé ne peut pas imprimer deux fois le même code : retirez d\'abord cette UE du parcours.',
+                $parcours ?? ('#' . $parcoursId),
+                $deja->name,
+                CodeDeMaquette::affiche($deja->code),
+                CodeDeMaquette::affiche($ue->code)
+            )]);
+        }
     }
 
     /**

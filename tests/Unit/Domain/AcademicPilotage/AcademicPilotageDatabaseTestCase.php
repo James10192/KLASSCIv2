@@ -190,6 +190,8 @@ abstract class AcademicPilotageDatabaseTestCase extends TestCase
             $table->unsignedBigInteger('enseignant_id')->nullable();
             $table->unsignedBigInteger('matiere_id')->nullable();
             $table->string('periode')->nullable();
+            $table->string('status')->default('draft');
+            $table->softDeletes();
         });
 
         Schema::create('esbtp_emploi_temps', function (Blueprint $table): void {
