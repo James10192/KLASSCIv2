@@ -344,6 +344,9 @@ body.m-sheet-open { overflow: hidden; }
 
     .m-actionbar { position: fixed; left: 0; right: 0; bottom: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 10px 16px 12px; background: linear-gradient(to top, rgba(244,246,251,1) 70%, rgba(244,246,251,0)); display: grid; gap: 8px; z-index: 1079; }
     .m-actionbar.row { grid-template-columns: 1fr 1fr; }
+    /* « row » est aussi la classe de grille Bootstrap : ses marges négatives
+       (-12px) décollaient les deux boutons du bord de chaque côté. */
+    body .m-actionbar.row { margin: 0; flex-wrap: nowrap; }
 .m-actionbar.row .m-btn { font-size: 14px; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     body.has-m-shell:has(.m-actionbar) { padding-bottom: calc(var(--m-nav-h) + 78px + var(--m-safe-b)); }
 
@@ -697,6 +700,15 @@ body.m-sheet-open { overflow: hidden; }
         z-index: 1081 !important;
         animation: none;
     }
+    /* Même forme que le .m-fab des autres écrans : carré arrondi, un seul +. */
+    html body.has-m-shell .fab-encaisser {
+        width: 56px; height: 56px; padding: 0; gap: 0;
+        justify-content: center; border-radius: 18px;
+    }
+    html body.has-m-shell .fab-encaisser .fab-encaisser-icon { background: none; width: auto; height: auto; }
+    html body.has-m-shell .fab-encaisser .fab-encaisser-icon i { font-size: 1.25rem; }
+    html body.has-m-shell .fab-encaisser .fab-encaisser-label,
+    html body.has-m-shell .fab-encaisser .fab-encaisser-kbd { display: none; }
     html body.has-m-shell .chatbot-widget {
         bottom: calc(164px + var(--m-safe-b)) !important;
         right: 22px !important;
