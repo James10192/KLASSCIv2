@@ -70,7 +70,23 @@ final class PorteDeRoute
             return false;
         }
 
-        $exigences = self::exigencesDe($nomDeRoute);
+        return self::verdictSelon(self::exigencesDe($nomDeRoute), $utilisateur);
+    }
+
+    /**
+     * Le même verdict, à partir d'exigences déjà lues par `exigencesDe()`.
+     * Lire les exigences coûte (les middlewares de constructeur instancient le
+     * contrôleur) et ne dépend PAS de l'utilisateur : un appelant qui en
+     * interroge beaucoup peut les garder en cache et n'évaluer ici que les
+     * droits, qui changent d'une requête à l'autre.
+     *
+     * @param  list<array{0: string, 1: list<string>}>|null  $exigences
+     */
+    public static function verdictSelon(?array $exigences, ?Authorizable $utilisateur): ?bool
+    {
+        if ($utilisateur === null) {
+            return false;
+        }
 
         if ($exigences === null || $exigences === []) {
             return null;
@@ -92,7 +108,7 @@ final class PorteDeRoute
      *
      * @return list<array{0: string, 1: list<string>}>|null
      */
-    private static function exigencesDe(string $nomDeRoute): ?array
+    public static function exigencesDe(string $nomDeRoute): ?array
     {
         $route = Route::getRoutes()->getByName($nomDeRoute);
 
