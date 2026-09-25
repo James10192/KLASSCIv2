@@ -86,6 +86,7 @@
                                     <input type="file" accept="image/png,image/jpeg,image/webp" data-sp-capture-fichier>
                                 </label>
                             </div>
+                            <p class="sp-capture-astuce">Sur téléphone, le plus rapide : une capture avec les boutons de l'appareil, puis « Choisir une image ». Masquez-y ce qui est personnel avec l'outil Masquer.</p>
                             <div class="sp-capture-jointe" data-sp-capture-jointe hidden>
                                 <img alt="Aperçu de la capture jointe" data-sp-capture-vignette>
                                 <div class="sp-capture-jointe-texte"><strong>Capture prête</strong><span data-sp-capture-taille></span></div>
@@ -220,9 +221,46 @@
     .sp-toile-texte { position: absolute; transform: translateY(-50%); min-width: 180px; padding: .3rem .5rem; font-size: .85rem;
         border: 1px solid #0453cb; border-radius: 6px; box-shadow: 0 4px 14px rgba(15,23,42,.15); }
     .sp-fin-capture { font-size: .84rem; color: #475569; }
+    .sp-capture-astuce { display: none; margin: .6rem 0 0; font-size: .76rem; color: #64748b; }
+    @media (pointer: coarse) { .sp-capture-astuce { display: block; } .sp-capture-choix[hidden] + .sp-capture-astuce { display: none; } }
     @media (max-width: 576px) {
         .sp-recap { grid-template-columns: 1fr; }
         .sp-body { padding: 1rem; }
+    }
+    /*
+     * Plein ecran sur telephone. Des feuilles globales (dashboard-moderne.css,
+     * modal-z-index-fix.css) imposent a toute .modal-dialog marges, largeur et
+     * hauteur en !important, une hauteur maximale a toute .modal-content, et un
+     * retrait a toute .modal.show : ils annulaient modal-fullscreen-sm-down. La
+     * fenetre restait une carte flottante, le bouton d'envoi sous la barre de Safari.
+     * L'identifiant ne vise que cette fenetre, les autres modales ne bougent pas.
+     */
+    @media (max-width: 575.98px) {
+        #sp-modal.modal.show { padding: 0 !important; }
+        #sp-modal.modal .modal-dialog { margin: 0 !important; width: 100% !important; max-width: none !important;
+            height: 100% !important; max-height: none !important; transform: none !important; }
+        #sp-modal.modal .modal-content { height: 100%; max-height: none; border: 0; border-radius: 0; display: flex; flex-direction: column; }
+        #sp-modal .sp-head { flex-shrink: 0; padding: .75rem 1rem; padding-top: calc(.75rem + env(safe-area-inset-top)); align-items: center; }
+        #sp-modal .sp-head p { display: none; }
+        #sp-modal .sp-head-icon { width: 34px; height: 34px; border-radius: 10px; font-size: .95rem; }
+        #sp-modal .sp-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 0; }
+        /* L'action reste sous le pouce, sans faire defiler tout le recapitulatif. */
+        #sp-modal .sp-actions { position: sticky; bottom: 0; z-index: 2; margin: 1rem -1rem 0; padding: .75rem 1rem;
+            padding-bottom: calc(.75rem + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #e2e8f0; }
+        #sp-modal .sp-actions .sp-btn { flex: 1; justify-content: center; padding: .75rem 1rem; }
+        #sp-modal .sp-capture-choix { flex-wrap: nowrap; }
+        #sp-modal .sp-capture-choix .sp-btn { flex: 1 1 0; min-width: 0; justify-content: center; white-space: nowrap; padding: .6rem .5rem; font-size: .82rem; gap: .35rem; }
+        #sp-modal .sp-outils { flex-wrap: nowrap; overflow-x: auto; margin: 0 -1rem .6rem; padding: 0 1rem .2rem; scrollbar-width: none; }
+        #sp-modal .sp-outils::-webkit-scrollbar { display: none; }
+        #sp-modal .sp-outil { flex-shrink: 0; }
+        #sp-modal .sp-outil--droite { margin-left: 0; }
+        #sp-modal .sp-toile { max-height: 48vh; }
+        #sp-modal .sp-toile-cadre.sp-toile-cadre--reelle { max-height: 52vh; }
+    }
+    /* Sous 400 px, « Choisir une image » ne tient plus a cote de l'autre bouton : on empile. */
+    @media (max-width: 400px) {
+        #sp-modal .sp-capture-choix { flex-direction: column; }
+        #sp-modal .sp-capture-choix .sp-btn { flex: 0 0 auto; }
     }
 </style>
 <script>window.KLASSCI_SUPPORT = @json($_spConfig);</script>

@@ -58,7 +58,7 @@ class ESBTPPaiementController extends Controller
         $this->middleware('auth');
         // Accepter soit `paiements.view` (voit tous), soit `paiements.view_own` (voit ses encaissements)
         $this->middleware('permission:paiements.view|paiements.view_own', ['only' => ['index', 'show', 'paiementsEtudiant', 'genererRecu', 'previewRecu']]);
-        $this->middleware('permission:paiements.create|paiements.create.mobile_money', ['only' => ['create', 'store', 'apercuRepartition']]);
+        $this->middleware('permission:paiements.create|paiements.create.non_cash|paiements.create.mobile_money', ['only' => ['create', 'store', 'apercuRepartition']]);
         $this->middleware('permission:paiements.edit', ['only' => ['edit', 'update']]);
         $this->middleware('permission:paiements.delete', ['only' => ['destroy']]);
         $this->middleware('permission:paiements.validate', ['only' => ['valider', 'rejeter']]);
@@ -2231,78 +2231,65 @@ class ESBTPPaiementController extends Controller
      * S1.5 — Annuler son propre paiement créé il y a < N minutes (anti-erreur caissier).
      *
      * Évite que le caissier qui s'est trompé (typo cash, mauvais étudiant) doive
-     * appeler un comptable pour annuler. Soft delete + log + audit.
-     *
-     * Permission via Policy::cancelOwnRecent — vérifie auteur + statut + fenêtre temps.
+     * appeler un comptable pour annuler. La policy dit QUI et QUAND ; la
+     * suppression elle-même est celle de destroy() — même action, mêmes verrous
+     * de période et de réconciliation, même refus quand un avoir ou un reliquat
+     * repose sur le versement. Seul le motif est posé d'office.
      */
     public function cancelOwn(Request $request, ESBTPPaiement $paiement)
     {
         $this->authorize('cancelOwnRecent', $paiement);
 
+        $veutJson = $request->ajax() || $request->wantsJson();
+        $refuser = fn (string $message, int $code) => $veutJson
+            ? response()->json(['success' => false, 'message' => $message], $code)
+            : redirect()->back()->with('error', $message);
+
+        if ($block = $this->assertPeriodNotLocked($paiement)) {
+            return $refuser($block['message'], 403);
+        }
+        if ($block = $this->assertReconciliationNotLocked($paiement)) {
+            return $refuser($block['message'], 403);
+        }
+
+        $fenetre = (int) \App\Helpers\SettingsHelper::get('comptabilite.cancel_own_window_minutes', 5);
+
         try {
-            DB::beginTransaction();
-
-            // Désactive les rappels associés (cohérence avec destroy())
-            try {
-                $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPPaiement')
-                    ->where('remindable_id', $paiement->id)
-                    ->first();
-                if ($reminder) {
-                    $reminder->deactivate();
-                }
-            } catch (\Exception $e) {
-                Log::error('Erreur désactivation reminder paiement (cancel-own): ' . $e->getMessage());
-            }
-
-            $contextLog = [
-                'paiement_id' => $paiement->id,
-                'numero_recu' => $paiement->numero_recu,
-                'inscription_id' => $paiement->inscription_id,
-                'montant' => $paiement->montant,
-                'created_by' => $paiement->created_by,
-                'created_at' => $paiement->created_at?->toIso8601String(),
-                'cancelled_by' => auth()->id(),
-                'cancelled_at' => now()->toIso8601String(),
-            ];
-
-            $paiement->delete(); // Soft delete (trait SoftDeletes)
-
-            DB::commit();
-
-            Log::info('[S1.5] Paiement annulé par son auteur (fenêtre 5min)', $contextLog);
-
-            // Cache invalidation pour mettre à jour les KPIs
-            try {
-                app(\App\Services\GroupCacheInvalidator::class)->invalidate('paiement_cancelled');
-            } catch (\Throwable $e) {
-                // pas bloquant
-            }
-
-            $message = 'Paiement annulé. Vous pouvez en créer un nouveau si nécessaire.';
-
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => $message,
-                    'paiement_id' => $paiement->id,
-                ]);
-            }
-
-            return redirect()->route('esbtp.paiements.index')->with('success', $message);
-
+            app(SupprimerPaiement::class)->execute(
+                $paiement,
+                $request->user(),
+                "Saisie annulée par son auteur dans les {$fenetre} minutes suivant l'encaissement."
+            );
+        } catch (\DomainException $e) {
+            return $refuser($e->getMessage(), 422);
         } catch (\Throwable $e) {
-            DB::rollback();
             Log::error('Erreur cancelOwn paiement', [
                 'paiement_id' => $paiement->id,
                 'error' => $e->getMessage(),
             ]);
 
-            $msg = 'Impossible d\'annuler ce paiement : ' . $e->getMessage();
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $msg], 500);
-            }
-            return redirect()->back()->with('error', $msg);
+            return $refuser('Impossible d\'annuler ce paiement : '.$e->getMessage(), 500);
         }
+
+        try {
+            app(\App\Services\GroupCacheInvalidator::class)->invalidate('paiement_cancelled');
+        } catch (\Throwable $e) {
+            // pas bloquant
+        }
+
+        $message = 'Paiement annulé. Vous pouvez en créer un nouveau si nécessaire.';
+
+        if ($veutJson) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'paiement_id' => $paiement->id,
+            ]);
+        }
+
+        $retour = $request->input('retour');
+
+        return redirect()->to($this->cibleDeRetour(is_string($retour) ? $retour : null))->with('success', $message);
     }
 
     /**

@@ -88,12 +88,23 @@ class MobileProfileResolverTest extends TestCase
             'caisse prime sur comptabilite' => [['comptabilite.access', 'module.caisse.access'], MobileProfileResolver::CAISSIER],
             'comptabilite prime sur enseignant' => [['identity.teach', 'comptabilite.access'], MobileProfileResolver::COMPTABLE],
             'enseignant prime sur etudiant' => [['identity.student', 'identity.teach'], MobileProfileResolver::ENSEIGNANT],
+            'inscriptions seules' => [['inscriptions.view'], MobileProfileResolver::SCOLARITE],
+            'etudiants seuls' => [['students.view'], MobileProfileResolver::SCOLARITE],
+            'classes seules' => [['classes.view'], MobileProfileResolver::SCOLARITE],
+            'caisse prime sur scolarite' => [['inscriptions.view', 'module.caisse.access'], MobileProfileResolver::CAISSIER],
         ];
     }
 
     public function test_sans_permission_le_premier_role_declarant_un_profil_decide(): void
     {
         $user = $this->utilisateur(superAdmin: false, permissions: [], roles: [null, 'enseignant', 'caissier']);
+
+        $this->assertSame(MobileProfileResolver::ENSEIGNANT, $this->resolver()->resolve($user));
+    }
+
+    public function test_le_role_declarant_prime_sur_le_repli_scolarite(): void
+    {
+        $user = $this->utilisateur(superAdmin: false, permissions: ['students.view'], roles: ['enseignant']);
 
         $this->assertSame(MobileProfileResolver::ENSEIGNANT, $this->resolver()->resolve($user));
     }
@@ -138,7 +149,7 @@ class MobileProfileResolverTest extends TestCase
         $this->assertSame('/dashboard?profil=caissier', MobileProfileResolver::startUrl('caissier'));
     }
 
-    public function test_les_libelles_couvrent_exactement_les_quatre_profils(): void
+    public function test_les_libelles_couvrent_exactement_les_profils(): void
     {
         $this->assertSame(MobileProfileResolver::PROFILS, array_keys(MobileProfileResolver::libelles()));
     }

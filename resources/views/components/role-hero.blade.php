@@ -124,10 +124,48 @@
     .rdx-btn--white { background: #fff; color: #0453cb; border-color: transparent; }
     .rdx-btn--white:hover { background: #eef4ff; color: #0453cb; }
 
-    @media (max-width: 768px) {
-        .rdx-hero { padding: 1.35rem 1.25rem 1.1rem; border-radius: 14px; }
-        .rdx-hero h1 { font-size: 1.2rem; }
-        .rdx-kpi { min-width: 100%; }
+    /* ===== Téléphone : grand titre (M2) et tuiles en mosaïque (M3) =====
+       Le bandeau dégradé plein écran mangeait la moitié du premier écran et
+       empilait les KPIs en une colonne. Sous 768px, le titre se pose sur le fond
+       de page, les actions deviennent des pastilles qui passent à la ligne, et les
+       KPIs une grille de tuiles : la première occupe toute la largeur quand leur
+       nombre est impair, pour que la grille se remplisse. */
+    @media (max-width: 767.98px) {
+        .rdx-hero { background: transparent; color: #0f172a; padding: .25rem 0 0; border-radius: 0; box-shadow: none; margin-bottom: 1rem; }
+        .rdx-hero-top { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .75rem; }
+        .rdx-hero-icon { display: none; }
+        .rdx-hero h1 { font-size: 1.65rem; font-weight: 800; color: #0f172a; letter-spacing: -.02em; line-height: 1.15; }
+        .rdx-hero p { color: #64748b; font-size: .84rem; margin-top: .3rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .rdx-hero-actions { margin-left: 0; flex-wrap: wrap; }
+        .rdx-btn { flex: 0 0 auto; white-space: nowrap; min-height: 40px; border-radius: 99px; background: #fff; color: #0453cb; border: 1px solid #dfe6f1; box-shadow: 0 1px 2px rgba(15, 23, 42, .05); }
+        .rdx-btn:hover { background: #fff; color: #0453cb; }
+        .rdx-btn--white { background: #0453cb; color: #fff; border-color: #0453cb; }
+        .rdx-btn--white:hover { background: #033a8e; color: #fff; }
+
+        .rdx-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 1rem; }
+        .rdx-kpi { position: relative; min-width: 0; flex-direction: column; align-items: flex-start; gap: .55rem; padding: 14px; border: 0; border-radius: 20px; background: #fff; color: #0f172a; box-shadow: 0 1px 3px rgba(15, 23, 42, .06); }
+        a.rdx-kpi:hover { background: #fff; color: #0f172a; border-color: transparent; }
+        a.rdx-kpi:active { transform: scale(.98); }
+        .rdx-kpi-icon { width: 32px; height: 32px; border-radius: 10px; background: #e8f0fc; color: #0453cb; }
+        .rdx-kpi-value { font-size: 1.5rem; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+        .rdx-kpi-label { font-size: .78rem; color: #64748b; font-weight: 600; }
+        .rdx-kpi-hint { color: #94a3b8; }
+        .rdx-kpi-go { position: absolute; top: 16px; right: 14px; margin: 0; color: #94a3b8; opacity: 1; }
+
+        .rdx-kpi:first-child:nth-last-child(2n+1) { grid-column: span 2; background: #0453cb; color: #fff; }
+        .rdx-kpi:first-child:nth-last-child(2n+1) .rdx-kpi-icon { background: rgba(255, 255, 255, .16); color: #fff; }
+        .rdx-kpi:first-child:nth-last-child(2n+1) .rdx-kpi-label,
+        .rdx-kpi:first-child:nth-last-child(2n+1) .rdx-kpi-hint,
+        .rdx-kpi:first-child:nth-last-child(2n+1) .rdx-kpi-go { color: rgba(255, 255, 255, .78); }
+        a.rdx-kpi:first-child:nth-last-child(2n+1):hover { background: #0453cb; color: #fff; }
+
+        /* Une alerte reste une alerte, même en première tuile. */
+        .rdx-kpi.rdx-kpi--alert,
+        a.rdx-kpi.rdx-kpi--alert:hover { background: #fff7ed; color: #9a3412; }
+        .rdx-kpi.rdx-kpi--alert .rdx-kpi-icon { background: #ffedd5; color: #c2410c; }
+        .rdx-kpi.rdx-kpi--alert .rdx-kpi-label,
+        .rdx-kpi.rdx-kpi--alert .rdx-kpi-go { color: #9a3412; }
+        .rdx-kpi.rdx-kpi--alert .rdx-kpi-hint { color: #c2410c; }
     }
 </style>
 @endpush

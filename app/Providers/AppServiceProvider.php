@@ -104,6 +104,9 @@ class AppServiceProvider extends ServiceProvider
         // leur cote le meme triplet : une seule instance par requete suffit.
         $this->app->scoped(BtsAnnualClassMapResolver::class);
         $this->app->bind(AcademicSystemMetricsProvider::class, AcademicMetricsProviderResolver::class);
+        $this->app->bind(\App\Services\Emails\ResolveurDns::class, \App\Services\Emails\ResolveurDnsSysteme::class);
+        // Le fichier des domaines suspects est lu une fois par processus, pas a chaque validation.
+        $this->app->singleton(\App\Services\Emails\DomainesSuspects::class);
 
         // TPE — Strategy de validation pilotée par Setting tenant.
         // Setting `tpe.validation.enabled` = false (defaut) → AutoValidateStrategy (Option 2)
@@ -180,6 +183,11 @@ class AppServiceProvider extends ServiceProvider
         SsoSecretValidator::validate();
 
         $this->brancherReglagesTelephone();
+
+        // Synchronisation LMS : pierres tombales des purges, et fiche qui
+        // avance quand le compte change.
+        \App\Domain\Lms\Synchronisation\SuppressionsDefinitives::ecouter();
+        \App\Domain\Lms\Synchronisation\CompteLmsSuitLaFiche::ecouter();
 
         $this->partagerCompteurDemandesReinscription();
 

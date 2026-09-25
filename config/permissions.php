@@ -351,6 +351,12 @@ return [
             'group' => 'Inscriptions',
             'icon' => 'fa-box',
         ],
+        'inscriptions.edit_validated' => [
+            'label' => 'Modifier une inscription déjà validée (filière, niveau, classe)',
+            'description' => 'Sans ce droit, une inscription active garde sa filière, son niveau et sa classe. Couvre aussi la correction d\'une erreur de saisie en Tronc Commun, motif obligatoire.',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-unlock-alt',
+        ],
         'inscriptions.validate' => [
             'label' => 'Valider une inscription',
             'group' => 'Inscriptions',
@@ -982,6 +988,12 @@ return [
             'group' => 'Paiements',
             'icon' => 'fa-plus',
             'aliases' => ['create_payments', 'create-paiements'],
+        ],
+        'paiements.create.non_cash' => [
+            'label' => 'Enregistrer un paiement hors espèces',
+            'description' => 'Tous les modes sauf les espèces : mobile money, virement, chèque, carte… Les espèces passent par la caisse (paiements.create), qui tient le tiroir.',
+            'group' => 'Paiements',
+            'icon' => 'fa-building-columns',
         ],
         'paiements.create.mobile_money' => [
             'label' => 'Enregistrer un paiement mobile money',
@@ -2310,7 +2322,7 @@ return [
             'comptabilite.salaires.view', 'comptabilite.salaires.create',
             'comptabilite.salaires.pay', 'comptabilite.salaires.configure',
             'comptabilite.salaires.export', 'comptabilite.salaires.set_rate',
-            'paiements.view', 'paiements.create.mobile_money', 'paiements.edit', 'paiements.validate',
+            'paiements.view', 'paiements.create.non_cash', 'paiements.edit', 'paiements.validate',
             'paiements.avoir',
             'paiements.correct_mode',
             'paiements.export',  // Lot 15
@@ -2486,6 +2498,7 @@ return [
             'students.view', 'students.create', 'students.edit',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'inscriptions.edit_validated',
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
@@ -2592,6 +2605,7 @@ return [
             'dashboard.view',
             'students.view', 'students.create', 'students.edit',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'inscriptions.edit_validated',
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',

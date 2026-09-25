@@ -302,7 +302,7 @@
 <div class="m-only-mobile m-screen rim-screen">
     <x-m.appbar title="Réconciliation"
                 :sub="$rimEcoleNom"
-                :back="route('esbtp.comptabilite.dashboard')"
+                :back="\App\Support\PorteDeRoute::ouverte('esbtp.comptabilite.dashboard', auth()->user()) ? route('esbtp.comptabilite.dashboard') : route('dashboard')"
                 :action="$rimPeutOuvrir ? 'plus' : null"
                 action-label="Ouvrir une session"
                 x-on:click="mOuvrirFeuille('rim-nouvelle')" />

@@ -82,6 +82,153 @@
             || (el.hasAttribute && el.hasAttribute('data-support-exclure'));
     }
 
+    /*
+     * La copie doit montrer ce que la personne voit. On ne demande PAS a
+     * html2canvas de faire defiler sa copie : ce defilement echoue sous Chrome
+     * comme sous Safari, et html2canvas ne le rattrape qu'a moitie, pour les
+     * seuls appareils Apple (les bandeaux colles y disparaissaient). La copie
+     * reste en haut, et on decale sa racine de la hauteur defilee. Les
+     * elements fixes restent a l'ecran ; les elements colles, eux, ne collent
+     * que si la page defile vraiment, donc on les recale a la main.
+     */
+    function placerLaCopie(copie, defile) {
+        if (defile.x === 0 && defile.y === 0) { return; }
+        var racine = copie.documentElement;
+        racine.style.setProperty('position', 'relative', 'important');
+        racine.style.setProperty('left', -defile.x + 'px', 'important');
+        racine.style.setProperty('top', -defile.y + 'px', 'important');
+    }
+
+    /*
+     * Une seule lecture de la copie placee, puis toutes les ecritures : alterner
+     * lecture et ecriture forcerait une mise en page complete a chaque element.
+     *
+     * 1. Un bloc entierement HORS de l'ecran, au-dessus comme au-dessous,
+     *    n'apparaitra pas dans l'image : on le vide en lui gardant sa taille,
+     *    rien de ce qui est a l'ecran ne bouge, et le moteur n'a plus a
+     *    l'analyser ni a le peindre. Jamais un morceau de tableau (la largeur
+     *    des colonnes visibles en depend), ni un element en ligne, ni un bloc
+     *    dont le contenu deborde de sa boite (il pourrait deborder jusqu'a
+     *    l'ecran). Ses descendants FIXES sont remis dans le bloc vide : hors du
+     *    flux, ils se peignent a l'ecran (la bulle de l'assistant vit en bas).
+     * 2. Un element colle (sticky, avec `top` en px) remonte au-dessus de son
+     *    seuil dans la copie non defilee : on le redescend de ce qui lui manque,
+     *    sans sortir de son parent, comme le ferait le navigateur.
+     * 3. Un repere au milieu de l'ecran est mesure avant et apres : tout ecart
+     *    restant est compense.
+     *
+     * Le hors-ecran n'est pas retire AVANT la mise en page (ignoreElements) :
+     * tout ce qui suit remonterait, et une page defilee se capturait blanche.
+     * Seuls la fenetre d'aide, son fond et les elements data-support-exclure
+     * le sont.
+     */
+    function ajusterLaCopie(copie) {
+        var vue = copie.defaultView;
+        var bas = vue.innerHeight;
+        var mesure = mesurer(copie, vue, bas);
+        var repere = repereFixe(copie, vue, bas);
+        var avant = repere && repere.getBoundingClientRect().top;
+
+        viderHorsEcran(mesure.aVider);
+        recoller(mesure.colles);
+        if (repere) { compenserEcart(copie, repere.getBoundingClientRect().top - avant); }
+    }
+
+    function mesurer(copie, vue, bas) {
+        var mesure = { aVider: [], colles: [] };
+        (function parcourir(parent) {
+            for (var el = parent.firstElementChild; el; el = el.nextElementSibling) {
+                var r = el.getBoundingClientRect();
+                var style = vue.getComputedStyle(el);
+                var aLEcran = r.bottom > 0 && r.top < bas;
+                if (style.position === 'sticky') { coller(copie, vue, el, r, style, mesure.colles); }
+                if (aLEcran) { parcourir(el); continue; }
+                if (style.position === 'fixed' || style.position === 'sticky'
+                    || style.display.indexOf('table-') === 0) { continue; }
+                if (!videable(el, style)) { parcourir(el); continue; }
+                mesure.aVider.push([el, r.width, r.height, fixesDans(vue, el)]);
+            }
+        })(copie.body);
+        return mesure;
+    }
+
+    function videable(el, style) {
+        return el.firstChild && style.display !== 'inline' && style.display !== 'contents'
+            && el.scrollHeight <= el.clientHeight + 1 && el.scrollWidth <= el.clientWidth + 1;
+    }
+
+    /* Un colle dans un conteneur qui defile colle a ce conteneur, pas a l'ecran :
+       on ne sait pas le recaler, on le laisse. Un seuil en % n'est pas lu. */
+    function coller(copie, vue, el, r, style, colles) {
+        if (!/px$/.test(style.top) || !(r.top < parseFloat(style.top))) { return; }
+        for (var a = el.parentElement; a && a !== copie.body; a = a.parentElement) {
+            if (vue.getComputedStyle(a).overflow !== 'visible') { return; }
+        }
+        var manque = Math.min(parseFloat(style.top) - r.top, el.parentElement.getBoundingClientRect().bottom - r.bottom);
+        if (manque > 0) { colles.push([el, manque]); }
+    }
+
+    /* Un element fixe n'a pas de parent de positionnement : offsetParent nul
+       l'annonce sans lire le style de tout le sous-arbre. */
+    function fixesDans(vue, bloc) {
+        var fixes = [];
+        bloc.querySelectorAll('*').forEach(function (d) {
+            if (d.offsetParent === null && !fixes.some(function (f) { return f.contains(d); })
+                && vue.getComputedStyle(d).position === 'fixed') {
+                fixes.push(d);
+            }
+        });
+        return fixes;
+    }
+
+    function viderHorsEcran(aVider) {
+        aVider.forEach(function (x) {
+            var el = x[0];
+            el.style.setProperty('box-sizing', 'border-box', 'important');
+            el.style.setProperty('width', x[1] + 'px', 'important');
+            el.style.setProperty('height', x[2] + 'px', 'important');
+            el.style.setProperty('min-height', '0', 'important');
+            el.style.setProperty('max-height', 'none', 'important');
+            /* Un element flexible de base nulle (flex: 1 1 0%) ignore sa hauteur :
+               vide, il s'ecraserait et tout ce qui suit remonterait. */
+            el.style.setProperty('flex', '0 0 auto', 'important');
+            while (el.firstChild) { el.removeChild(el.firstChild); }
+            x[3].forEach(function (f) { el.appendChild(f); });
+        });
+    }
+
+    function recoller(colles) {
+        colles.forEach(function (x) {
+            x[0].style.setProperty('transition', 'none', 'important');
+            x[0].style.setProperty('position', 'relative', 'important');
+            x[0].style.setProperty('top', x[1] + 'px', 'important');
+        });
+    }
+
+    /* Filet : si un bloc vide au-dessus a malgre tout perdu de la hauteur (une
+       marge qui passait a travers lui, un cas non prevu), ce qui est a l'ecran a
+       glisse. On le remet a sa place d'avant. Sans couper la transition, la page
+       animerait le recalage et le moteur peindrait l'etat de depart. */
+    function compenserEcart(copie, ecart) {
+        if (Math.abs(ecart) < 1) { return; }
+        var racine = copie.documentElement;
+        var haut = parseFloat(racine.style.getPropertyValue('top')) || 0;
+        racine.style.setProperty('transition', 'none', 'important');
+        racine.style.setProperty('position', 'relative', 'important');
+        racine.style.setProperty('top', (haut - ecart) + 'px', 'important');
+    }
+
+    /* Un element du flux au milieu de l'ecran : ni fixe ni colle, sinon il ne
+       bougerait pas avec le reste et ne dirait rien. */
+    function repereFixe(copie, vue, bas) {
+        var el = copie.elementFromPoint(vue.innerWidth / 2, bas * 0.6);
+        for (var a = el; a && a !== copie.body; a = a.parentElement) {
+            var position = vue.getComputedStyle(a).position;
+            if (position === 'fixed' || position === 'sticky') { return null; }
+        }
+        return el;
+    }
+
     /** Rend la partie visible de la page, masquee. Promet un <canvas>. */
     function capturer() {
         if (typeof window.html2canvas !== 'function') {
@@ -89,9 +236,12 @@
         }
         var largeur = document.documentElement.clientWidth;
         var hauteur = window.innerHeight;
+        var defile = { x: window.scrollX, y: window.scrollY };
         return window.html2canvas(document.body, {
-            x: window.scrollX,
-            y: window.scrollY,
+            x: 0,
+            y: 0,
+            scrollX: 0,
+            scrollY: 0,
             width: largeur,
             height: hauteur,
             windowWidth: largeur,
@@ -101,7 +251,13 @@
             logging: false,
             backgroundColor: '#ffffff',
             ignoreElements: exclure,
-            onclone: masquerLaCopie
+            onclone: function (copie) {
+                masquerLaCopie(copie);
+                if (copie.defaultView && copie.body) {
+                    placerLaCopie(copie, defile);
+                    ajusterLaCopie(copie);
+                }
+            }
         });
     }
 

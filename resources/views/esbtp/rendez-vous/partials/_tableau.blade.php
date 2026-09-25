@@ -151,12 +151,15 @@
                                                 <div class="rdv-resa-qui">
                                                     <strong>{{ $resa->nomComplet() }}</strong>
                                                     <span>{{ $resa->telephone }}@if($resa->email) · {{ $resa->email }}@endif</span>
+                                                    <x-demande-contact-badge :demande="$resa->porteur()" />
                                                 </div>
                                                 <div class="rdv-resa-conv">
                                                     @if($_c)
                                                         <span class="rdv-badge rdv-badge--{{ $_c->ton() }}">{{ $_c->label() }}</span>
-                                                        @if($_c === \App\Enums\StatutConvocationRdv::Envoyee && $resa->convocation_envoyee_at)
-                                                            <small>le {{ $resa->convocation_envoyee_at->translatedFormat('j M à H:i') }}</small>
+                                                        @if($_c === \App\Enums\StatutConvocationRdv::Envoyee && $resa->convocation_delivree_at)
+                                                            <small>délivrée le {{ $resa->convocation_delivree_at->translatedFormat('j M à H:i') }}</small>
+                                                        @elseif($_c === \App\Enums\StatutConvocationRdv::Envoyee && $resa->convocation_envoyee_at)
+                                                            <small title="MailPulse a accepté le courriel ; sa remise dans la boîte de la famille n'est pas encore confirmée.">acceptée le {{ $resa->convocation_envoyee_at->translatedFormat('j M à H:i') }}, remise non confirmée</small>
                                                         @elseif($_c === \App\Enums\StatutConvocationRdv::Telephone)
                                                             <small>{{ $resa->prevenuePar ? 'par '.$resa->prevenuePar->name.' ' : '' }}{{ $resa->convocation_envoyee_at ? 'le '.$resa->convocation_envoyee_at->translatedFormat('j M à H:i') : '' }}</small>
                                                             @if($_peutPrevenir && $_familles->annulable($resa))

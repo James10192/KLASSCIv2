@@ -31,7 +31,7 @@
 
    Marqueurs attendus sur <body> (posés par le layout) :
      .has-m-shell            le shell est actif (padding bas, police, flottants)
-     .m-profile-{caissier|comptable|etudiant|enseignant}  profil courant
+     .m-profile-{caissier|comptable|etudiant|enseignant|scolarite}  profil courant
    ============================================================= */
 
 /* ---------- 1. Socle global ---------- */
@@ -240,11 +240,20 @@ body.m-sheet-open { overflow: hidden; }
         padding-bottom: calc(var(--m-nav-h) + var(--m-safe-b));
         -webkit-font-smoothing: antialiased;
         overflow-x: hidden;
+        /* Safari iOS ignore overflow-x: hidden sur <body> pour le défilement au
+           doigt : la page glissait de côté dès qu'un enfant débordait. `clip`
+           tient, lui (Safari 16+) ; `hidden` reste pour les plus anciens. */
+        overflow-x: clip;
     }
 
     /* Conteneur d'un écran mobile : grille verticale sans marge propre (la
        gouttière est celle du layout). Un .m-body dedans reste utilisable seul. */
-    .m-screen { display: grid; gap: 14px; padding: 0; min-width: 0; align-content: start; font-family: var(--m-font); }
+    .m-screen { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 0; min-width: 0; align-content: start; font-family: var(--m-font); }
+    /* Une piste implicite vaut `auto` : sa largeur minimale est celle du plus
+       long contenu insécable (un nom de filière d'ISLG, par exemple), et tout
+       l'écran s'élargissait au-delà du téléphone. `minmax(0, 1fr)` et un
+       min-width nul sur les enfants tiennent la largeur de l'écran. */
+    .m-screen > *, .m-screen .m-chart > *, .m-screen .m-kpi > * { min-width: 0; }
     .m-main { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
 
     .m-appbar { height: 56px; flex: 0 0 56px; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); background: #fff; border-bottom: 1px solid #e6eaf2; position: sticky; top: 0; z-index: 1020; font-family: var(--m-font); }
@@ -265,7 +274,7 @@ body.m-sheet-open { overflow: hidden; }
        sous l'onglet .on, elle GLISSE vers l'onglet touché (transform, courbe
        iOS) avant que la navigation parte, puis est morphée d'une page à l'autre
        par la transition de vue (view-transition-name: m-tab-pill). */
-    .m-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 6px 6px calc(18px + var(--m-safe-b)); background: rgba(255,255,255,.62); -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.04); backdrop-filter: blur(24px) saturate(180%) brightness(1.04); border-top: .5px solid rgba(255,255,255,.55); box-shadow: inset 0 .5px 0 rgba(255,255,255,.75), 0 -1px 24px rgba(15,23,42,.05); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; z-index: 1080; font-family: var(--m-font); view-transition-name: m-bottomnav; }
+    .m-bottomnav { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--m-nav-h) + var(--m-safe-b)); padding: 6px 6px calc(18px + var(--m-safe-b)); background: rgba(255,255,255,.94); -webkit-backdrop-filter: blur(24px) saturate(180%) brightness(1.04); backdrop-filter: blur(24px) saturate(180%) brightness(1.04); border-top: .5px solid rgba(255,255,255,.55); box-shadow: inset 0 .5px 0 rgba(255,255,255,.75), 0 -1px 24px rgba(15,23,42,.05); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; z-index: 1080; font-family: var(--m-font); view-transition-name: m-bottomnav; }
         /* Verre liquide : la pastille est une lentille, pas un aplat. Elle eclaircit
        et sature ce qui passe dessous (backdrop-filter), porte une arete speculaire
        en haut, un fresnel plus dense en bas, et une ombre qui la decolle du verre.
@@ -884,3 +893,159 @@ body.m-sheet-open { overflow: hidden; }
 body.modal-open .m-bottomnav,
 body.modal-open .m-fab,
 body.modal-open .m-actionbar { display: none !important; }
+
+/* =====================================================================
+   Refonte M2 + M3 (septembre 2026, choix de Marcel)
+   - M3 : barre du bas sombre, flottante, en pilule ; l'onglet actif porte
+     son libellé sur fond blanc, les autres ne montrent que l'icône.
+   - M2 : listes groupées façon iOS, en-têtes de section discrets.
+   - M3 : tuiles d'indicateurs arrondies ; la première s'étale sur deux
+     colonnes et passe en bleu quand leur nombre est impair.
+   L'action principale d'une page (.m-actionbar) n'est plus une bande collée
+   à la barre : elle flotte, décollée, au-dessus.
+   ===================================================================== */
+@media (max-width: 767.98px) {
+    body.has-m-shell { padding-bottom: calc(96px + var(--m-safe-b)); }
+    body.has-m-shell:has(.m-actionbar) { padding-bottom: calc(160px + var(--m-safe-b)); }
+
+    .m-bottomnav {
+        left: 50%; right: auto; bottom: calc(12px + var(--m-safe-b));
+        transform: translateX(-50%);
+        width: max-content; max-width: calc(100vw - 24px); height: 60px;
+        padding: 0 8px; border: 0; border-radius: 30px;
+        background: #0f172a;
+        -webkit-backdrop-filter: none; backdrop-filter: none;
+        box-shadow: 0 12px 30px rgba(15,23,42,.30), 0 2px 6px rgba(15,23,42,.18);
+        display: flex; align-items: center; gap: 2px;
+    }
+    .m-bottomnav-pill { display: none; }
+    .m-bottomnav a,
+    .m-bottomnav button {
+        display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 6px;
+        height: 44px; min-height: 44px; min-width: 48px; padding: 0 12px; border-radius: 22px;
+        color: #cbd5e1; font-size: 0; letter-spacing: 0;
+        transition: background 180ms ease, color 180ms ease;
+    }
+    .m-bottomnav a svg,
+    .m-bottomnav button svg { width: 21px; height: 21px; flex-shrink: 0; }
+    .m-bottomnav a.on,
+    .m-bottomnav button.on { background: #fff; color: #0f172a; font-size: 12.5px; font-weight: 700; }
+    .m-bottomnav a.on svg { filter: none; }
+    .m-bottomnav a:active,
+    .m-bottomnav button:active { background: rgba(255,255,255,.12); }
+
+    /* Action principale : flottante, décollée de la barre, en pilule. */
+    .m-actionbar {
+        left: auto; right: 16px; bottom: calc(12px + 60px + 12px + var(--m-safe-b));
+        padding: 0; background: none; display: flex; gap: 8px;
+    }
+    .m-actionbar.row { left: 16px; display: flex; }
+    .m-actionbar .m-btn { width: auto; height: 50px; padding: 0 20px; border-radius: 999px; box-shadow: 0 10px 24px rgba(4,83,203,.32); }
+    .m-actionbar.row .m-btn { flex: 1; }
+
+    /* En-tête d'écran : sur le fond de page, sans filet. */
+    .m-appbar { background: rgba(243,246,251,.92); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-bottom: 0; }
+    .m-appbar .t { font-size: 19px; font-weight: 800; letter-spacing: -.02em; }
+
+    /* Tuiles d'indicateurs (M3). */
+    .m-kpi > div,
+    .m-kpi > .m-kpi-link { border: 0; border-radius: 20px; padding: 14px; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 18px rgba(15,23,42,.05); }
+    .m-kpi .v { font-size: 23px; }
+    .m-kpi .l { font-size: 12px; }
+    .m-kpi > :first-child:nth-last-child(odd) { grid-column: span 2; background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 55%, #3b7ddb 100%); }
+    .m-kpi > :first-child:nth-last-child(odd) .v { color: #fff; font-size: 28px; }
+    .m-kpi > :first-child:nth-last-child(odd) .l,
+    .m-kpi > :first-child:nth-last-child(odd) .d { color: rgba(255,255,255,.82); }
+
+    /* Titres de section (M2). */
+    .m-sec { margin-top: 6px; padding: 0 4px; }
+    .m-sec b { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* Listes groupées (M2) : une carte, des lignes séparées d'un filet. */
+    .m-list { gap: 0; background: #fff; border-radius: 18px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 18px rgba(15,23,42,.05); }
+    .m-list > .m-row { border: 0; border-radius: 0; border-bottom: 1px solid #f1f5f9; min-height: 60px; }
+    .m-list > .m-row:last-child { border-bottom: 0; }
+    .m-row { border: 0; border-radius: 16px; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 18px rgba(15,23,42,.05); }
+    .m-list > .m-row { box-shadow: none; }
+
+    /* Cartes de graphique et héros : mêmes arrondis que les tuiles. */
+    .m-chart { border: 0; border-radius: 20px; padding: 14px; box-shadow: 0 1px 2px rgba(15,23,42,.04), 0 6px 18px rgba(15,23,42,.05); }
+    .m-hero { border-radius: 22px; box-shadow: 0 12px 30px rgba(4,83,203,.22); }
+}
+
+/* ======================================================================
+   Téléphone, pour TOUTES les pages (profil mobile ou non), septembre 2026.
+
+   1. Bandeaux de page (« .xx-hero », convention de premium-redesign.md)
+      Sous 768px, les boutons du bandeau s'empilaient en pleine largeur et
+      les KPIs en une colonne : la moitié du premier écran partait avant le
+      moindre contenu. Les boutons deviennent des pastilles à leur largeur,
+      les KPIs une grille de deux tuiles.
+      Sélection par la CONVENTION de nommage (plus d'une centaine de
+      bandeaux la suivent) ; .m-hero et .rdx-hero ont leur propre mise en
+      page et sont écartés. Les boutons passent à la ligne plutôt que de
+      défiler : une rangée qui défile coupe son dernier bouton au bord de
+      l'écran, et cela se lit comme un défaut (signalé sur /esbtp/inscriptions).
+   2. Menus de la barre du haut (notifications…) en panneau pleine largeur.
+   3. Fenêtres modales Bootstrap en feuille qui monte du bas.
+   4. Listes premium : menu à la largeur de l'écran, pas du champ.
+   ====================================================================== */
+@media (max-width: 767.98px) {
+    /* Gouttière unique : l'écran porte déjà 16px de marge. Le conteneur .p-lg
+       de nombreuses pages en ajoutait 24 de chaque côté, et une fiche
+       d'inscription ne gardait que 250px de texte sur 360. */
+    body .nextadmin-content .main-content > .p-lg { padding-left: 0; padding-right: 0; }
+    body .nextadmin-content [class$="-hero"]:not(.m-hero):not(.rdx-hero) { padding: 1rem 1rem .9rem; margin-bottom: .9rem; }
+    body .nextadmin-content [class$="-hero"]:not(.m-hero):not(.rdx-hero) h1 { font-size: 1.2rem; line-height: 1.25; letter-spacing: -.01em; }
+    body .nextadmin-content [class$="-hero"]:not(.m-hero):not(.rdx-hero) h1 + p { font-size: .8rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    body .nextadmin-content [class$="-hero-icon"]:not([class^="rdx-"]) { width: 40px; height: 40px; flex: 0 0 40px; font-size: 1rem; border-radius: 12px; }
+    /* nowrap indispensable : une colonne flex qui PEUT passer à la ligne prend
+       pour largeur celle de son plus long contenu (706px pour 390 d'écran sur
+       /esbtp/inscriptions), et le sous-titre sortait de l'écran au lieu de
+       revenir à la ligne. */
+    body .nextadmin-content [class$="-hero-top"]:not([class^="rdx-"]) { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: .75rem; }
+    body .nextadmin-content [class$="-hero-left"]:not([class^="rdx-"]) { min-width: 0; max-width: 100%; }
+    body .nextadmin-content [class$="-hero-left"]:not([class^="rdx-"]) > :not([class$="-hero-icon"]) { min-width: 0; flex: 1 1 auto; }
+    body .nextadmin-content [class$="-hero"]:not(.m-hero):not(.rdx-hero) :is(h1, p) { overflow-wrap: anywhere; }
+    /* Listes natives étroites (filtres sur deux colonnes) : points de suspension
+       plutôt qu'un libellé tranché net. */
+    body .nextadmin-content select { text-overflow: ellipsis; }
+
+    body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"]) { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: .5rem; width: auto; margin: 0; padding: 0; overflow: visible; }
+    body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"]) > :is(a, button, .btn, .dropdown, form, div) { flex: 0 0 auto; width: auto; max-width: none; }
+    body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"]) > :is(a, button, .btn),
+    body .nextadmin-content [class$="-hero-actions"]:not([class^="rdx-"]) > :is(.dropdown, form, div) > :is(a, button, .btn) { white-space: nowrap; min-height: 40px; border-radius: 999px; padding-left: .95rem; padding-right: .95rem; justify-content: center; }
+
+    body .nextadmin-content [class$="-hero"]:not(.rdx-hero) [class$="-kpis"] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 1rem; }
+    body .nextadmin-content [class$="-hero"]:not(.rdx-hero) [class$="-kpis"] > * { min-width: 0; width: auto; flex: none; margin: 0; padding: .7rem .8rem; border-radius: 14px; }
+    body .nextadmin-content [class$="-hero"]:not(.rdx-hero) [class$="-kpis"] > :first-child:nth-last-child(2n+1) { grid-column: span 2; }
+    body .nextadmin-content [class$="-hero"]:not(.rdx-hero) [class$="-kpi-value"] { font-size: 1.2rem; }
+    body .nextadmin-content [class$="-hero"]:not(.rdx-hero) [class$="-kpi-label"] { font-size: .7rem; }
+
+    /* 2. Menus de la barre du haut : Popper les place en strategy « fixed »
+       (monkey-patch de layouts/app, cf. universal-dropdowns.md). On reprend
+       la main sur la position — inset ET transform ensemble, sinon Popper et
+       nous tirerions en sens contraire. Le panneau reste une colonne flex qui
+       ne déborde pas (.custom-dropdown, en !important dans layouts/app) : c'est
+       la LISTE qui défile, et elle prend toute la hauteur restante. */
+    .nextadmin-navbar .dropdown-menu.custom-dropdown.show {
+        position: fixed !important; inset: 64px 8px auto 8px !important; transform: none !important;
+        width: auto !important; min-width: 0 !important; max-width: none !important;
+        max-height: calc(100dvh - 64px - 96px) !important; margin: 0 !important;
+        border: 0 !important; border-radius: 22px !important;
+        box-shadow: 0 24px 60px rgba(15,23,42,.22), 0 2px 8px rgba(15,23,42,.08) !important;
+    }
+    .nextadmin-navbar .dropdown-menu.custom-dropdown.show #notifications-list,
+    .nextadmin-navbar .dropdown-menu.custom-dropdown.show #messages-list { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; overscroll-behavior: contain; }
+
+    /* 3. Modales : feuille qui monte du bas, poignée, coins arrondis en haut.
+       Les modales plein écran gardent leur choix. */
+    .modal:not(.m-keep-center) .modal-dialog:not([class*="modal-fullscreen"]) { margin: 0; max-width: none; min-height: 100%; display: flex; align-items: flex-end; }
+    .modal:not(.m-keep-center) .modal-dialog:not([class*="modal-fullscreen"]) > .modal-content { width: 100%; border: 0; border-radius: 24px 24px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); box-shadow: 0 -12px 40px rgba(15,23,42,.18); }
+    .modal:not(.m-keep-center) .modal-dialog-scrollable:not([class*="modal-fullscreen"]) > .modal-content { max-height: 92dvh; }
+    .modal:not(.m-keep-center) .modal-dialog:not([class*="modal-fullscreen"]) > .modal-content::before { content: ""; display: block; width: 40px; height: 5px; border-radius: 99px; background: #cbd5e1; margin: 8px auto 0; flex-shrink: 0; }
+    .modal.fade:not(.m-keep-center) .modal-dialog:not([class*="modal-fullscreen"]) { transform: translateY(40px); transition: transform .25s cubic-bezier(.2,.8,.2,1); }
+    .modal.show:not(.m-keep-center) .modal-dialog:not([class*="modal-fullscreen"]) { transform: none; }
+    .modal .modal-footer { gap: .5rem; }
+    .modal .modal-footer > .btn { flex: 1 1 auto; min-height: 44px; margin: 0; }
+}

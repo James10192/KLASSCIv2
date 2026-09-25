@@ -16,8 +16,12 @@ class ScolariteClerkCapabilities
     public const PEDAGOGIE = [
         'students.create',
         'students.edit',
+        // Le pack porte deja students.accessibility.view : sans l'edition, la
+        // section Accessibilite de la fiche restait grisee au guichet.
+        'students.accessibility.edit',
         'inscriptions.create',
         'inscriptions.edit',
+        'inscriptions.edit_validated',
         'inscriptions.validate',
         'inscriptions.fiche.print',
         'inscriptions.in_kind.mark',
