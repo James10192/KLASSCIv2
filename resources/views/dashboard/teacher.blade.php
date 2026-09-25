@@ -104,7 +104,7 @@
     .ted-next-what { font-size:.86rem; color:var(--ted-text); font-weight:600; }
     .ted-next-what small { display:block; color:var(--ted-muted); font-weight:500; font-size:.76rem; }
 
-    .ted-quick { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:.6rem; }
+    .ted-quick { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:.6rem; }
     .ted-quick a { display:flex; align-items:center; gap:.6rem; padding:.75rem .85rem; border:1px solid var(--ted-line); border-radius:12px; text-decoration:none; color:var(--ted-text); font-size:.85rem; font-weight:600; background:#fff; transition:border-color .2s ease, box-shadow .2s ease; }
     .ted-quick a:hover { border-color:#bfd3f2; box-shadow:0 4px 16px rgba(4,83,203,.08); color:var(--ted-p); }
     .ted-quick i { width:30px; height:30px; border-radius:8px; background:rgba(4,83,203,.08); color:var(--ted-p); display:flex; align-items:center; justify-content:center; font-size:.85rem; flex-shrink:0; }
@@ -130,7 +130,6 @@
         .ted-legend { grid-template-columns:1fr 1fr 1fr; }
         .ted-chart text { font-size:17px; }
         .ted-quick { grid-template-columns:1fr 1fr; }
-        .ted-quick a:last-child:nth-child(odd) { grid-column:1 / -1; }
     }
 </style>
 @endpush
@@ -353,7 +352,7 @@
                             @if($semaine['heures'] > 0)
                                 <text x="{{ $tedX + $tedBw / 2 }}" y="{{ $tedH - $tedB - $tedBarH - 5 }}" text-anchor="middle" font-size="11" font-weight="700" fill="#1e293b">{{ $tedHeure($semaine['heures']) }}</text>
                             @endif
-                            <text x="{{ $tedX + $tedBw / 2 }}" y="{{ $tedH - 8 }}" text-anchor="middle" font-size="10.5" fill="{{ $tedDerniere ? '#0453cb' : '#64748b' }}" font-weight="{{ $tedDerniere ? '700' : '400' }}">{{ $tedDerniere ? 'Cette sem.' : $semaine['libelle'] }}</text>
+                            <text x="{{ $tedDerniere ? $tedX + $tedBw : $tedX + $tedBw / 2 }}" y="{{ $tedH - 8 }}" text-anchor="{{ $tedDerniere ? 'end' : 'middle' }}" font-size="10.5" fill="{{ $tedDerniere ? '#0453cb' : '#64748b' }}" font-weight="{{ $tedDerniere ? '700' : '400' }}">{{ $tedDerniere ? 'Cette sem.' : $semaine['libelle'] }}</text>
                         </g>
                     @endforeach
                 </svg>
@@ -416,7 +415,6 @@
             <a href="{{ $tedHistorique }}"><i class="fas fa-clock-rotate-left"></i>Mon historique</a>
             <a href="{{ route('teacher.availability') }}"><i class="fas fa-calendar-check"></i>Mes disponibilités</a>
             <a href="{{ route('esbtp.annonces.index') }}"><i class="fas fa-bullhorn"></i>Annonces</a>
-            <a href="{{ route('teacher.profile') }}"><i class="fas fa-user-circle"></i>Mon profil</a>
         </div>
     </section>
 </div>
