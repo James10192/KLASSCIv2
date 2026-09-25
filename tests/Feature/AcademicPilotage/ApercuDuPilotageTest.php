@@ -118,8 +118,31 @@ class ApercuDuPilotageTest extends TestCase
         $this->evaluationIlYA(40, 'semestre1');
         $this->evaluationIlYA(10, 'semestre2');
 
-        self::assertSame('semestre2', app(ApercuDuPilotage::class)->periodeCourante((int) $this->annee->id, null));
+        self::assertSame(['semestre2', 'semestre1'], app(ApercuDuPilotage::class)->periodesRecentes((int) $this->annee->id, null));
         self::assertSame('semestre2', $this->apercu(['periode' => ''])->assertOk()->json('periode'));
+    }
+
+    public function test_une_periode_recente_sans_note_attendue_ne_masque_pas_le_travail_en_retard(): void
+    {
+        // Sur presentation, une seule évaluation de semestre 3 ouvrait la page
+        // sur un constat vide, pendant que le semestre 1 attendait trente notes.
+        $this->etudiantInscrit();
+        $this->evaluationIlYA(40, 'semestre1');
+        // Le semestre 3 n'a qu'une évaluation, dans une classe sans inscrit :
+        // elle n'attend aucune note.
+        $sansInscrit = \App\Models\ESBTPClasse::factory()->create([
+            'filiere_id' => $this->filiere->id,
+            'niveau_etude_id' => $this->niveau->id,
+            'annee_universitaire_id' => $this->annee->id,
+        ]);
+        $this->evaluationIlYA(3, 'semestre3')->forceFill(['classe_id' => $sansInscrit->id])->save();
+
+        $choix = app(ApercuDuPilotage::class)->choisirLaPeriode((int) $this->annee->id, null, null, null);
+        $vide = app(ApercuDuPilotage::class)->construire((int) $this->annee->id, 'semestre3', null, null, null);
+
+        self::assertSame(0, $vide['kpis']['notes_attendues'], 'Le cas à reproduire : le semestre 3 n\'attend rien ici.');
+        self::assertSame('semestre1', $choix['periode']);
+        self::assertSame('semestre1', $this->apercu(['periode' => ''])->assertOk()->json('periode'));
     }
 
     public function test_le_bandeau_de_couverture_nomme_l_auteur_de_l_evaluation(): void
