@@ -190,7 +190,11 @@ final class JourneeDeLEnseignant
 
                 return [
                     'ecart' => $ecart === 0 ? 7 : $ecart,
-                    'jour' => JourDeLaSemaine::libelle($s->jour) ?? '',
+                    'jour' => match ($ecart === 0 ? 7 : $ecart) {
+                        1 => 'Demain',
+                        7 => (JourDeLaSemaine::libelle($s->jour) ?? '').' prochain',
+                        default => JourDeLaSemaine::libelle($s->jour) ?? '',
+                    },
                     'debut' => $debut,
                     'fin' => HeureDeSeance::hi($s->getAttributes()['heure_fin'] ?? null) ?? '--:--',
                     'matiere' => $s->matiere->name ?? 'Matière non définie',

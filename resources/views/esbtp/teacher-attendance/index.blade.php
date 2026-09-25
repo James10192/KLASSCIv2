@@ -176,7 +176,8 @@
             </a>
         </div>
         <div class="tae-regles">
-            <span class="tae-regle">Ouvert {{ $taeFenetres->minutes(\App\Domain\EmploiTemps\FenetresDEmargement::CLE_AVANCE) }} min avant le début</span>
+            @php $taeAvance = $taeFenetres->minutes(\App\Domain\EmploiTemps\FenetresDEmargement::CLE_AVANCE); @endphp
+            <span class="tae-regle">{{ $taeAvance > 0 ? 'Ouvert '.$taeAvance.' min avant le début' : 'Ouvert dès le début du cours' }}</span>
             <span class="tae-regle">Présent jusqu’à {{ $taeFenetres->minutes(\App\Domain\EmploiTemps\FenetresDEmargement::CLE_PRESENT) }} min après</span>
             <span class="tae-regle">En retard jusqu’à {{ $taeFenetres->minutes(\App\Domain\EmploiTemps\FenetresDEmargement::CLE_RETARD) }} min</span>
             <span class="tae-regle">{{ $taeJustification ? 'Au-delà : motif du retard demandé' : 'Au-delà : absence enregistrée' }}</span>
