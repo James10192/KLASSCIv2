@@ -104,7 +104,7 @@
     .ted-next-what { font-size:.86rem; color:var(--ted-text); font-weight:600; }
     .ted-next-what small { display:block; color:var(--ted-muted); font-weight:500; font-size:.76rem; }
 
-    .ted-quick { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:.6rem; }
+    .ted-quick { display:grid; grid-template-columns:repeat(auto-fit,minmax(135px,1fr)); gap:.6rem; }
     .ted-quick a { display:flex; align-items:center; gap:.6rem; padding:.75rem .85rem; border:1px solid var(--ted-line); border-radius:12px; text-decoration:none; color:var(--ted-text); font-size:.85rem; font-weight:600; background:#fff; transition:border-color .2s ease, box-shadow .2s ease; }
     .ted-quick a:hover { border-color:#bfd3f2; box-shadow:0 4px 16px rgba(4,83,203,.08); color:var(--ted-p); }
     .ted-quick i { width:30px; height:30px; border-radius:8px; background:rgba(4,83,203,.08); color:var(--ted-p); display:flex; align-items:center; justify-content:center; font-size:.85rem; flex-shrink:0; }
@@ -128,6 +128,9 @@
         .ted-task-btn { text-align:center; padding:.6rem; }
         .ted-slot, .ted-now { grid-template-columns:48px 12px minmax(0,1fr); gap:.5rem; }
         .ted-legend { grid-template-columns:1fr 1fr 1fr; }
+        .ted-chart text { font-size:17px; }
+        .ted-quick { grid-template-columns:1fr 1fr; }
+        .ted-quick a:last-child:nth-child(odd) { grid-column:1 / -1; }
     }
 </style>
 @endpush
