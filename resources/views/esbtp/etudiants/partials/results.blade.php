@@ -319,6 +319,25 @@
 
 <!-- Vue Mobile : Cards Grid (visible ≤ 992px) -->
 <div class="mobile-view">
+    @php
+        // Classe courante d'une inscription : nom, ligne de detail, et si elle est LMD.
+        $renderInscBlockMobile = function ($insc) {
+            $isLmd = ($insc->classe?->systeme_academique ?? '') === 'LMD';
+            $parcours = $isLmd ? $insc->classe?->parcours : null;
+            $mention = $parcours?->mention;
+            $classeName = $insc->classe?->name ?? 'Non assigné';
+            $niveauName = $insc->niveau?->name ?? '';
+            if ($parcours && $mention) {
+                return ['main' => $classeName, 'sub' => $mention->name . ' · ' . $parcours->name . ($niveauName ? ' · ' . $niveauName : ''), 'isLmd' => true];
+            }
+            if ($isLmd) {
+                $mentionTronc = $insc->classe?->filiere?->name;
+                return ['main' => $classeName, 'sub' => ($mentionTronc ?: 'Mention LMD') . ' · Tronc commun' . ($niveauName ? ' · ' . $niveauName : ''), 'isLmd' => true];
+            }
+            $filiereName = $insc->filiere?->name ?? '';
+            return ['main' => $classeName, 'sub' => trim($filiereName . ($niveauName ? ' - ' . $niveauName : ''), ' -'), 'isLmd' => false];
+        };
+    @endphp
     <div class="students-grid" id="etudiants-grid-mobile">
         @forelse ($etudiants as $etudiant)
             @php
@@ -372,175 +391,123 @@
                     ->first() : null;
             @endphp
 
-            <div data-li-cle="{{ $etudiant->id }}" class="student-card {{ $pendingInscription ? 'pending-inscription' : '' }}">
-                <!-- Header de la card avec photo et nom -->
-                <div class="student-card-header">
-                    <div class="student-photo">
-                        @if($etudiant->photo_url)
-                            <img src="{{ $etudiant->photo_url }}" alt="Photo" class="rounded-circle">
-                        @else
-                            <div class="photo-placeholder rounded-circle">
-                                <i class="fas fa-user"></i>
-                            </div>
-                        @endif
-                    </div>
-                    <div class="student-info-header">
-                        <h3 class="student-name">
+            @php
+                $etmInsc = $inscriptionCouranteClasse ?: $etudiant->inscriptions->sortByDesc('created_at')->first();
+                $etmClasse = $etmInsc ? $renderInscBlockMobile($etmInsc) : null;
+                $etmInitiales = mb_strtoupper(mb_substr((string) $etudiant->nom, 0, 1, 'UTF-8') . mb_substr((string) $etudiant->prenoms, 0, 1, 'UTF-8'), 'UTF-8');
+                $etmAffectation = [
+                    'affecté' => ['Affecté', 'ok'],
+                    'réaffecté' => ['Réaffecté', 'info'],
+                    'non_affecté' => ['Non affecté', 'ko'],
+                ][$inscriptionCourante?->affectation_status] ?? null;
+            @endphp
+            <article data-li-cle="{{ $etudiant->id }}" class="etm-card {{ $pendingInscription ? 'etm-card--attente' : '' }}">
+                <header class="etm-tete">
+                    @if($etudiant->photo_url)
+                        <img src="{{ $etudiant->photo_url }}" alt="" class="etm-avatar" loading="lazy">
+                    @else
+                        <span class="etm-avatar etm-avatar--initiales" aria-hidden="true">{{ $etmInitiales ?: '?' }}</span>
+                    @endif
+                    <div class="etm-identite">
+                        <h3 class="etm-nom">
                             {{ $etudiant->nom }} {{ $etudiant->prenoms }}
                             @can('students.accessibility.view')
                                 @if($etudiant->accessibilityProfile)
-                                    <i class="fas fa-universal-access ms-1" style="color:#0453cb;font-size:.85em;"
+                                    <i class="fas fa-universal-access etm-a11y"
                                        title="{{ $etudiant->accessibilityProfile->summaryBadge() }}{{ $etudiant->accessibilityProfile->short_description ? ' — ' . $etudiant->accessibilityProfile->short_description : '' }}"></i>
                                 @endif
                             @endcan
                         </h3>
-                        <p class="student-matricule">{{ $etudiant->matricule }}</p>
-                        @if($pendingInscription)
-                            <span class="badge bg-warning text-dark">Inscription en attente</span>
-                        @endif
-                        @if(!empty($etudiant->bts_journey_ui))
-                            <div class="mt-2">
-                                @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $etudiant->bts_journey_ui])
-                            </div>
-                        @endif
+                        <span class="etm-matricule">{{ $etudiant->matricule }}</span>
                     </div>
-                    <div class="student-status">
-                        @if($etudiant->statut == 'actif')
-                            <span class="badge bg-success">Actif</span>
-                        @else
-                            <span class="badge bg-danger">Inactif</span>
-                        @endif
-                    </div>
-                </div>
+                    <span class="etm-statut {{ $etudiant->statut == 'actif' ? 'etm-statut--actif' : 'etm-statut--inactif' }}">
+                        {{ $etudiant->statut == 'actif' ? 'Actif' : 'Inactif' }}
+                    </span>
+                </header>
 
-                <!-- Corps de la card avec infos -->
-                <div class="student-card-body">
-                    <!-- Contact -->
-                    <div class="info-row">
-                        <i class="fas fa-phone text-primary"></i>
-                        <div class="info-content">
-                            <span class="info-label">Contact</span>
-                            <span class="info-value">{{ $etudiant->telephone }}</span>
-                        </div>
-                    </div>
-
-                    @if($etudiant->email)
-                    <div class="info-row">
-                        <i class="fas fa-envelope text-primary"></i>
-                        <div class="info-content">
-                            <span class="info-label">Email</span>
-                            <span class="info-value">{{ $etudiant->email }}</span>
-                        </div>
-                    </div>
-                    @endif
-
-                    <!-- Classe actuelle -->
-                    <div class="info-row">
-                        <i class="fas fa-graduation-cap text-primary"></i>
-                        <div class="info-content">
-                            <span class="info-label">Classe actuelle</span>
-                            @php
-                                $renderInscBlockMobile = function ($insc) {
-                                    $isLmd = ($insc->classe?->systeme_academique ?? '') === 'LMD';
-                                    $parcours = $isLmd ? $insc->classe?->parcours : null;
-                                    $mention = $parcours?->mention;
-                                    $classeName = $insc->classe?->name ?? 'Non assigné';
-                                    $niveauName = $insc->niveau?->name ?? '';
-                                    if ($parcours && $mention) {
-                                        return ['main' => $classeName, 'sub' => $mention->name . ' · ' . $parcours->name . ($niveauName ? ' · ' . $niveauName : ''), 'isLmd' => true];
-                                    }
-                                    if ($isLmd) {
-                                        $mentionTronc = $insc->classe?->filiere?->name;
-                                        return ['main' => $classeName, 'sub' => ($mentionTronc ?: 'Mention LMD') . ' · Tronc commun' . ($niveauName ? ' · ' . $niveauName : ''), 'isLmd' => true];
-                                    }
-                                    $filiereName = $insc->filiere?->name ?? '';
-                                    return ['main' => $classeName, 'sub' => trim($filiereName . ($niveauName ? ' - ' . $niveauName : ''), ' -'), 'isLmd' => false];
-                                };
-                            @endphp
+                <div class="etm-classe">
+                    @if($etmClasse)
+                        <div class="etm-classe-ligne">
+                            <i class="fas fa-graduation-cap"></i>
+                            <span class="etm-classe-nom">{{ $etmClasse['main'] }}</span>
+                            @if($etmClasse['isLmd'])<span class="etm-tag">LMD</span>@endif
                             @if($inscriptionCouranteClasse)
-                                @php $insBlock = $renderInscBlockMobile($inscriptionCouranteClasse); @endphp
-                                <span class="info-value" style="display:inline-flex;align-items:center;gap:.35rem;">
-                                    <span>{{ $insBlock['main'] }}</span>
-                                    @if($insBlock['isLmd'])
-                                        <span style="font-size:.6rem;font-weight:700;color:#0453cb;background:rgba(4,83,203,.1);border:1px solid rgba(4,83,203,.25);padding:.05rem .3rem;border-radius:4px;">LMD</span>
-                                    @endif
-                                    @if($inscriptionCouranteClasse->workflow_step == 'etudiant_cree')
-                                        <i class="fas fa-check-circle text-success ms-1"></i>
-                                    @else
-                                        <i class="fas fa-hourglass-half text-warning ms-1"></i>
-                                    @endif
-                                </span>
-                                <small class="text-muted d-block">{{ $insBlock['sub'] }}</small>
-                            @elseif($etudiant->inscriptions->count() > 0)
-                                <?php $derniere = $etudiant->inscriptions->sortByDesc('created_at')->first(); ?>
-                                @php $insBlock = $renderInscBlockMobile($derniere); @endphp
-                                <span class="info-value" style="display:inline-flex;align-items:center;gap:.35rem;">
-                                    <span>{{ $insBlock['main'] }}</span>
-                                    @if($insBlock['isLmd'])
-                                        <span style="font-size:.6rem;font-weight:700;color:#0453cb;background:rgba(4,83,203,.1);border:1px solid rgba(4,83,203,.25);padding:.05rem .3rem;border-radius:4px;">LMD</span>
-                                    @endif
-                                </span>
-                                <small class="text-muted d-block">
-                                    {{ $insBlock['sub'] }}
-                                    ({{ $derniere->anneeUniversitaire ? $derniere->anneeUniversitaire->name : '' }})
-                                </small>
-                            @else
-                                <span class="info-value text-muted">Non inscrit</span>
+                                @if($inscriptionCouranteClasse->workflow_step == 'etudiant_cree')
+                                    <i class="fas fa-check-circle etm-ok" title="Inscription validée"></i>
+                                @else
+                                    <i class="fas fa-hourglass-half etm-attente" title="Inscription en cours"></i>
+                                @endif
                             @endif
                         </div>
-                    </div>
-
-                    <!-- Statut d'affectation -->
-                    @if($inscriptionCourante)
-                        <div class="info-row">
-                            <i class="fas fa-map-marker-alt text-primary"></i>
-                            <div class="info-content">
-                                <span class="info-label">Affectation ({{ $currentYear->name ?? 'N/A' }})</span>
-                                @if($inscriptionCourante->affectation_status == 'affecté')
-                                    <span class="badge bg-success">Affecté</span>
-                                @elseif($inscriptionCourante->affectation_status == 'réaffecté')
-                                    <span class="badge bg-info">Réaffecté</span>
-                                @elseif($inscriptionCourante->affectation_status == 'non_affecté')
-                                    <span class="badge bg-danger">Non affecté</span>
-                                @else
-                                    <span class="text-muted">-</span>
+                        @if($etmClasse['sub'] !== '' || ! $inscriptionCouranteClasse)
+                            <div class="etm-classe-sous">
+                                {{ $etmClasse['sub'] }}
+                                @if(! $inscriptionCouranteClasse && $etmInsc->anneeUniversitaire)
+                                    ({{ $etmInsc->anneeUniversitaire->name }})
                                 @endif
                             </div>
-                        </div>
+                        @endif
+                    @else
+                        <div class="etm-classe-ligne etm-vide"><i class="fas fa-graduation-cap"></i> Non inscrit</div>
                     @endif
 
-                    <!-- Date inscription -->
-                    <div class="info-row">
-                        <i class="fas fa-calendar text-primary"></i>
-                        <div class="info-content">
-                            <span class="info-label">Date inscription</span>
-                            <span class="info-value">{{ $latestDate }}</span>
-                        </div>
+                    <div class="etm-pastilles">
+                        @if($etmAffectation)
+                            <span class="etm-pastille etm-pastille--{{ $etmAffectation[1] }}">{{ $etmAffectation[0] }}</span>
+                        @endif
+                        @if($pendingInscription)
+                            <span class="etm-pastille etm-pastille--attente">Inscription en attente</span>
+                        @endif
+                        @if(!empty($etudiant->bts_journey_ui))
+                            @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $etudiant->bts_journey_ui])
+                        @endif
                     </div>
                 </div>
 
-                <!-- Footer avec actions -->
-                <div class="student-card-footer">
-                    <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-sm btn-primary">
+                <dl class="etm-infos">
+                    <div>
+                        <dt><i class="fas fa-phone"></i><span class="visually-hidden">Téléphone</span></dt>
+                        <dd>
+                            @if($etudiant->telephone)
+                                <a href="tel:{{ preg_replace('/[^0-9+]/', '', $etudiant->telephone) }}">{{ $etudiant->telephone }}</a>
+                            @else
+                                <span class="etm-vide">—</span>
+                            @endif
+                        </dd>
+                    </div>
+                    @if($etudiant->email)
+                        <div>
+                            <dt><i class="fas fa-envelope"></i><span class="visually-hidden">E-mail</span></dt>
+                            <dd class="etm-tronque">{{ $etudiant->email }}</dd>
+                        </div>
+                    @endif
+                    <div>
+                        <dt><i class="fas fa-calendar"></i><span class="visually-hidden">Date d'inscription</span></dt>
+                        <dd>Inscrit le {{ $latestDate }}</dd>
+                    </div>
+                </dl>
+
+                <footer class="etm-actions">
+                    <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="etm-btn etm-btn--plein">
                         <i class="fas fa-eye"></i> Voir
                     </a>
                     @can('students.edit')
                     <button type="button"
-                        class="btn btn-sm btn-warning btn-open-edit-modal"
+                        class="etm-btn etm-btn--contour btn-open-edit-modal"
                         data-student='@json($studentDataset, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'>
-                        <i class="fas fa-edit"></i> Modifier
+                        <i class="fas fa-pen"></i> Modifier
                     </button>
                     @endcan
                     @if($pendingInscription)
                         @can('inscriptions.validate')
-                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}">
+                        <button type="button" class="etm-btn etm-btn--valider" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}">
                             <i class="fas fa-check"></i> Valider
                         </button>
                         @includeIf('esbtp.etudiants._validation_modal', ['pendingInscription' => $pendingInscription, 'etudiant' => $etudiant])
                         @endcan
                     @endif
-                </div>
-            </div>
+                </footer>
+            </article>
         @empty
             <div class="col-12 text-center py-5">
                 <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>

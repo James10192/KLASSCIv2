@@ -661,304 +661,104 @@
     }
 
     /* ========================================
-       STUDENT CARD - DESIGN MODERNE 2025
-       Typography: 18-24px | Padding: 24-32px | Touch targets: 56px
+       FICHE ETUDIANT SUR TELEPHONE (etm-*)
+       Classes propres a cette carte : les generiques (.student-photo,
+       .badge, .info-row) sont redefinies ailleurs et la deformaient.
        ======================================== */
-
-    .student-card {
-        background: #ffffff;
-        border-radius: 16px;  /* 8px grid × 2 */
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);  /* 16px = 8px grid × 2 */
-        transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
-        overflow: hidden;
-        border: 1px solid #e5e7eb;
-        max-width: 100%;
-        width: 100%;
-    }
-
-    .student-card:hover {
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);  /* 32px = 8px grid × 4 */
-        transform: translateY(-4px);
-    }
-
-    .student-card.pending-inscription {
-        border-left: 5px solid #f59e0b;
-    }
-
-    /* Card Header */
-    .student-card-header {
-        display: flex;
-        align-items: center;
-        gap: 16px;  /* 8px grid × 2 */
-        padding: 24px;  /* 8px grid × 3 */
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        border-bottom: 1px solid #e5e7eb;
-    }
-
-    .student-photo img,
-    .photo-placeholder {
-        width: 88px;
-        height: 88px;
-        border-radius: 50%;
-        object-fit: cover;
-        flex-shrink: 0;
-        border: 4px solid #fff;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .photo-placeholder {
-        background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #6366f1;
-        font-size: 32px;
-    }
-
-    .student-info-header {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .student-name {
-        font-size: 22px;
-        font-weight: 700;
-        margin: 0 0 8px 0;
-        color: #1e293b;
-        line-height: 1.3;
-        letter-spacing: -0.02em;
-    }
-
-    .student-matricule {
-        font-size: 16px;
-        color: #64748b;
-        margin: 0 0 8px 0;
-        font-family: 'Courier New', monospace;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-    }
-
-    .student-status {
-        flex-shrink: 0;
-    }
-
-    .student-status .badge {
-        font-size: 14px;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-weight: 600;
-        letter-spacing: 0.3px;
-    }
-
-    /* Card Body */
-    .student-card-body {
-        padding: 24px;  /* 8px grid × 3 */
-        display: flex;
-        flex-direction: column;
-        gap: 16px;  /* 8px grid × 2 - Séparation entre info rows */
-    }
-
-    .info-row {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;  /* 8px + 4px pour équilibre visuel */
-    }
-
-    .info-row > i {
-        font-size: 22px;
-        margin-top: 2px;
-        flex-shrink: 0;
-        width: 28px;
-        text-align: center;
-    }
-
-    .info-content {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .info-label {
-        display: block;
-        font-size: 13px;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        color: #64748b;
-        font-weight: 700;
-        margin-bottom: 6px;
-    }
-
-    .info-value {
-        display: block;
-        font-size: 18px;
-        color: #1e293b;
-        font-weight: 500;
-        line-height: 1.5;
-        word-wrap: break-word;
-    }
-
-    .info-value small {
-        font-size: 15px;
-        color: #64748b;
-    }
-
-    /* Card Footer */
-    .student-card-footer {
-        padding: 24px;  /* 8px grid × 3 */
-        background: #f8fafc;
-        border-top: 1px solid #e5e7eb;
-        display: flex;
-        gap: 12px;  /* 8px + 4px pour équilibre visuel */
-        flex-wrap: wrap;
-    }
-
-    .student-card-footer .btn {
-        flex: 1;
-        min-width: fit-content;
-        min-height: 56px;  /* 8px grid × 7 - Touch target optimal */
-        font-size: 16px;  /* 8px grid × 2 */
-        font-weight: 600;
-        padding: 0 24px;  /* 8px grid × 3 */
-        border-radius: 12px;  /* 8px + 4px */
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;  /* 8px grid × 1 */
-    }
-
-    .student-card-footer .btn:hover {
-        transform: translateY(-2px);
-    }
-
-    .student-card-footer .btn i {
-        font-size: 16px;
-    }
-
-    /* Badges dans cards */
-    .student-card .badge {
-        font-size: 14px;
-        padding: 8px 16px;
-        font-weight: 600;
-        border-radius: 8px;
-    }
-
-    /* Textes muted plus gros */
-    .student-card small.text-muted {
-        font-size: 15px;
-        color: #64748b;
-    }
-
-    /* Les cards sont déjà optimisées mobile-first (voir grid breakpoints ci-dessus) */
-
-    /* Règles mobile strictes pour éviter tout débordement */
     @media (max-width: 992px) {
-        /* Réduire gap de la grille sur mobile */
-        .students-grid {
-            gap: 16px;
-            padding: 0;
-            margin-top: 16px;
-        }
-
-        .student-card,
-        .student-card-header,
-        .student-card-body,
-        .student-card-footer {
-            max-width: 100%;
-            width: 100%;
-            overflow-x: hidden;
-            box-sizing: border-box;
-        }
-
-        .student-name,
-        .student-matricule,
-        .info-value,
-        .info-label {
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            hyphens: auto;
-            max-width: 100%;
-        }
-
-        /* Réduire padding des cards sur mobile (8px grid) */
-        .student-card-header {
-            padding: 16px;  /* 8px grid × 2 */
-            gap: 12px;  /* 8px + 4px */
-        }
-
-        .student-card-body {
-            padding: 16px;  /* 8px grid × 2 */
-            gap: 12px;  /* 8px + 4px */
-        }
-
-        .student-card-footer {
-            padding: 16px;  /* 8px grid × 2 */
-            gap: 8px;  /* 8px grid × 1 */
-        }
-
-        /* Boutons footer plus compacts */
-        .student-card-footer .btn {
-            font-size: 14px;
-            min-height: 48px;  /* 8px grid × 6 */
-            padding: 0 16px;  /* 8px grid × 2 */
-        }
-
-        /* Photos */
-        .student-photo img,
-        .photo-placeholder {
-            width: 64px;
-            height: 64px;
-        }
-
-        /* Textes plus petits mais lisibles */
-        .student-name {
-            font-size: 18px;
-        }
-
-        .student-matricule {
-            font-size: 14px;
-        }
-
-        .info-value {
-            font-size: 16px;
-        }
-
-        .info-row > i {
-            font-size: 18px;
-        }
+        .students-grid { gap: 12px; margin-top: 12px; }
     }
 
-    @media (max-width: 576px) {
-        /* Gap encore plus réduit sur très petit écran (8px grid) */
-        .students-grid {
-            gap: 12px;  /* 8px + 4px */
-            margin-top: 12px;
-        }
+    .etm-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+        padding: 14px 14px 12px;
+        display: flex; flex-direction: column; gap: 12px;
+        min-width: 0;
+    }
+    .etm-card--attente { border-left: 4px solid #f59e0b; }
 
-        .student-card-header {
-            padding: 12px;  /* 8px + 4px - Compact mais respirable */
-        }
+    .etm-tete { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .etm-avatar {
+        width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+        object-fit: cover; background: rgba(4,83,203,.08);
+    }
+    .etm-avatar--initiales {
+        display: grid; place-items: center;
+        color: #0453cb; font-weight: 700; font-size: .95rem; letter-spacing: .02em;
+    }
+    .etm-identite { flex: 1; min-width: 0; }
+    .etm-nom {
+        margin: 0; font-size: 1rem; font-weight: 700; color: #0f172a; line-height: 1.25;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .etm-a11y { color: #0453cb; font-size: .8em; margin-left: .2rem; }
+    .etm-matricule {
+        display: block; margin-top: 2px;
+        font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .75rem; color: #64748b;
+    }
+    .etm-statut {
+        flex-shrink: 0; align-self: flex-start;
+        font-size: .7rem; font-weight: 700; padding: .2rem .55rem; border-radius: 999px;
+    }
+    .etm-statut--actif { color: #047857; background: rgba(16,185,129,.12); }
+    .etm-statut--inactif { color: #b91c1c; background: rgba(220,38,38,.1); }
 
-        .student-card-body {
-            padding: 12px;  /* 8px + 4px */
-            gap: 12px;
-        }
+    .etm-classe {
+        background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px;
+        padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0;
+    }
+    .etm-classe-ligne {
+        display: flex; align-items: center; gap: .4rem; min-width: 0;
+        font-size: .88rem; font-weight: 600; color: #1e293b;
+    }
+    .etm-classe-ligne > .fa-graduation-cap { color: #0453cb; font-size: .85rem; }
+    .etm-classe-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .etm-classe-sous { font-size: .76rem; color: #64748b; line-height: 1.35; }
+    .etm-tag {
+        font-size: .6rem; font-weight: 700; color: #0453cb; flex-shrink: 0;
+        background: rgba(4,83,203,.1); border: 1px solid rgba(4,83,203,.25);
+        padding: .05rem .3rem; border-radius: 4px;
+    }
+    .etm-ok { color: #10b981; flex-shrink: 0; }
+    .etm-attente { color: #f59e0b; flex-shrink: 0; }
+    .etm-pastilles { display: flex; flex-wrap: wrap; gap: 6px; }
+    .etm-pastilles:empty { display: none; }
+    .etm-pastille {
+        font-size: .68rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px;
+    }
+    .etm-pastille--ok { color: #047857; background: rgba(16,185,129,.12); }
+    .etm-pastille--info { color: #0453cb; background: rgba(4,83,203,.1); }
+    .etm-pastille--ko { color: #b91c1c; background: rgba(220,38,38,.1); }
+    .etm-pastille--attente { color: #92400e; background: rgba(245,158,11,.15); }
 
-        .student-card-footer {
-            padding: 12px;  /* 8px + 4px */
-        }
+    .etm-infos { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+    .etm-infos > div { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .etm-infos dt { width: 16px; flex-shrink: 0; margin: 0; color: #94a3b8; font-size: .8rem; text-align: center; }
+    .etm-infos dd { margin: 0; min-width: 0; font-size: .85rem; color: #334155; }
+    .etm-infos a { color: #0453cb; font-weight: 600; text-decoration: none; }
+    .etm-tronque { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .etm-vide { color: #94a3b8; }
 
-        .student-card-footer .btn {
-            font-size: 13px;
-            min-height: 44px;  /* Minimum touch target acceptable */
-            padding: 0 12px;  /* 8px + 4px */
-        }
+    .etm-actions { display: flex; gap: 8px; padding-top: 2px; }
+    .etm-btn {
+        flex: 1; min-height: 42px; border-radius: 10px;
+        display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+        font-size: .85rem; font-weight: 600; text-decoration: none; cursor: pointer;
+        transition: background .2s ease, color .2s ease; border: 1px solid transparent;
+    }
+    .etm-btn--plein { background: #0453cb; color: #fff; }
+    .etm-btn--plein:hover { background: #033a8e; color: #fff; }
+    .etm-btn--contour { background: #fff; color: #0453cb; border-color: rgba(4,83,203,.3); }
+    .etm-btn--contour:hover { background: rgba(4,83,203,.06); }
+    .etm-btn--valider { background: #10b981; color: #fff; }
 
-        /* Photos légèrement plus petites sur très petit écran */
-        .student-photo img,
-        .photo-placeholder {
-            width: 56px;
-            height: 56px;
-        }
+    /* Le bouton des filtres passait sous la barre de navigation du telephone. */
+    body.has-m-shell .mobile-filter-fab {
+        bottom: calc(var(--m-nav-h, 78px) + 16px + var(--m-safe-b, 0px));
+        left: 16px; width: 52px; height: 52px; font-size: 20px;
     }
 
     /* Règles ULTRA strictes pour petits écrans iPhone (390px) */
@@ -989,56 +789,6 @@
         .students-grid {
             gap: 8px !important;
             padding: 0 !important;
-        }
-
-        .student-card {
-            border-radius: 12px !important;
-        }
-
-        .student-card-header,
-        .student-card-body,
-        .student-card-footer {
-            padding: 8px !important;
-        }
-
-        .student-card-header {
-            gap: 8px !important;
-        }
-
-        .student-card-body {
-            gap: 10px !important;
-        }
-
-        .student-photo img,
-        .photo-placeholder {
-            width: 48px !important;
-            height: 48px !important;
-        }
-
-        .student-name {
-            font-size: 16px !important;
-        }
-
-        .student-matricule {
-            font-size: 13px !important;
-        }
-
-        .info-label {
-            font-size: 11px !important;
-        }
-
-        .info-value {
-            font-size: 14px !important;
-        }
-
-        .info-row > i {
-            font-size: 16px !important;
-        }
-
-        .student-card-footer .btn {
-            font-size: 12px !important;
-            min-height: 40px !important;
-            padding: 0 8px !important;
         }
 
         .dashboard-header {
@@ -3880,7 +3630,7 @@
                         const newGrille = tmp.querySelector('#etudiants-grid-mobile');
                         if (newGrille && grilleMobile) {
                             Array.from(newGrille.children)
-                                .filter((carte) => carte.classList.contains('student-card')
+                                .filter((carte) => carte.classList.contains('etm-card')
                                     && !grilleMobile.querySelector('[data-li-cle="' + carte.dataset.liCle + '"]'))
                                 .forEach((carte) => grilleMobile.appendChild(carte));
                         }
