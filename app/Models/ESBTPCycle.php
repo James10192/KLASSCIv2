@@ -39,7 +39,8 @@ class ESBTPCycle extends Model
     protected $casts = [
         'duration_years' => 'integer',
         'is_active' => 'boolean',
-        'deleted_at' => 'datetime'
+        'deleted_at' => 'datetime',
+        'description' => \App\Casts\TexteRicheCast::class,
     ];
 
     /**
