@@ -165,6 +165,10 @@ class ESBTPInscriptionController extends Controller
             } else {
                 $baseQuery->orderBy($sort, $dir);
             }
+            // Departage unique : sans lui, les lignes a egalite de tri (statut,
+            // filiere, meme seconde de creation) changent d'ordre d'une tranche a
+            // l'autre, et la liste infinie en repete certaines et en saute d'autres.
+            $baseQuery->orderBy("esbtp_inscriptions.id", $dir);
         }
 
         if ($search) {

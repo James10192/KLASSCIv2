@@ -883,7 +883,7 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                 {{-- Champs cachés pour sort + per_page (préservés dans AJAX) --}}
                 <input type="hidden" name="sort" id="sort-input" value="{{ $sort ?? 'created_at' }}">
                 <input type="hidden" name="dir" id="dir-input" value="{{ $dir ?? 'desc' }}">
-                <input type="hidden" name="per_page" id="per-page-input" value="{{ $perPage ?? 15 }}">
+                <input type="hidden" name="per_page" id="per-page-input" value="{{ $perPage ?? 25 }}">
 
                 <button type="button" id="reset-filters-btn" class="ii-btn--ghost" title="Réinitialiser les filtres">
                     <i class="fas fa-rotate-left"></i>Reset

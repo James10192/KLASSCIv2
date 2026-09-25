@@ -12,6 +12,9 @@
  * cible (il remonte) : une page qui attache des gestionnaires ligne par
  * ligne s'y rebranche. Les pages qui deleguent leurs clics n'ont rien a faire.
  *
+ * Une ligne qui porte data-li-cle (son identifiant) n'est jamais ajoutee deux
+ * fois.
+ *
  * Une liste remplacee par un filtrage AJAX amene un nouveau bas de liste :
  * l'observateur de mutations le branche seul. Une reponse arrivee pour un
  * bas de liste qui n'est plus dans la page est jetee.
@@ -37,6 +40,10 @@
             '.li-bas[data-etat="chargement"] .li-compteur::before{content:"";display:inline-block;width:.8rem;height:.8rem;margin-right:.45rem;vertical-align:-1px;border:2px solid #c9daf6;border-top-color:#0453cb;border-radius:50%;animation:li-tourne .7s linear infinite}' +
             '@keyframes li-tourne{to{transform:rotate(360deg)}}';
         document.head.appendChild(style);
+    }
+
+    function cssEchapper(v) {
+        return window.CSS && CSS.escape ? CSS.escape(v) : String(v).replace(/["\\]/g, '\\$&');
     }
 
     function nombre(n) {
@@ -116,10 +123,21 @@
                     cible.insertAdjacentHTML('beforeend', data.rows_html);
                     var nouvelles = [];
                     var n = avant ? avant.nextElementSibling : cible.firstElementChild;
-                    while (n) { nouvelles.push(n); n = n.nextElementSibling; }
-                    if (window.Alpine && typeof window.Alpine.initTree === 'function') {
-                        nouvelles.forEach(function (el) { window.Alpine.initTree(el); });
+                    while (n) {
+                        var suivante = n.nextElementSibling;
+                        // Seconde ceinture du tri stable : une ligne deja affichee
+                        // (creee en tete pendant qu'on defile) n'est pas repetee.
+                        var cle = n.getAttribute('data-li-cle');
+                        if (cle && cible.querySelectorAll('[data-li-cle="' + cssEchapper(cle) + '"]').length > 1) {
+                            n.remove();
+                        } else {
+                            nouvelles.push(n);
+                        }
+                        n = suivante;
                     }
+                    // Pas d'Alpine.initTree ici : Alpine observe le DOM et initialise
+                    // lui-meme les lignes ajoutees dans un composant. L'appeler en plus
+                    // attacherait chaque @click deux fois.
                     cible.dispatchEvent(new CustomEvent('liste-infinie:ajout', {
                         bubbles: true,
                         detail: { lignes: nouvelles, pagination: p }

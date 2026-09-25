@@ -6,8 +6,13 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\User;
+use App\Services\ESBTPInscriptionService;
+use App\Services\Inscriptions\FiltresListeInscriptions;
+use App\Services\Inscriptions\SelectionDInscriptions;
+use Mockery;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -37,13 +42,13 @@ class ListeInfinieInscriptionsTest extends TestCase
             \App\Http\Middleware\PaywallMiddleware::class,
         ]);
 
-        foreach (['admin.access', 'inscriptions.view'] as $p) {
+        foreach (['admin.access', 'inscriptions.view', 'inscriptions.validate', 'inscriptions.cancel'] as $p) {
             Permission::findOrCreate($p, 'web');
         }
         Cache::flush();
 
         $this->user = User::factory()->create();
-        $this->user->givePermissionTo(['admin.access', 'inscriptions.view']);
+        $this->user->givePermissionTo(['admin.access', 'inscriptions.view', 'inscriptions.validate', 'inscriptions.cancel']);
         $this->actingAs($this->user);
 
         $this->classe = ESBTPClasse::factory()->create();
@@ -136,5 +141,94 @@ class ListeInfinieInscriptionsTest extends TestCase
             ->postJson(route('esbtp.inscriptions.bulk-export'), [])
             ->assertStatus(422)
             ->assertJsonValidationErrors('inscription_ids');
+    }
+
+    public function test_chaque_tri_finit_par_l_identifiant(): void
+    {
+        // Sur une egalite de tri, MySQL rend les lignes dans un ordre libre a
+        // chaque LIMIT/OFFSET : une tranche repete des lignes et en saute
+        // d'autres. Sur une petite table le hasard ne se voit pas, donc on
+        // verifie la requete elle-meme.
+        $this->inscriptions(2);
+
+        foreach (['status', 'created_at', 'date_inscription', 'nom'] as $tri) {
+            $requetes = [];
+            DB::listen(function ($q) use (&$requetes) {
+                $requetes[] = $q->sql;
+            });
+
+            $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+                ->getJson(route('esbtp.inscriptions.index', $this->filtre(['sort' => $tri, 'dir' => 'asc', 'page' => 2, 'mode' => 'rows'])))
+                ->assertOk();
+
+            $liste = collect($requetes)->first(fn ($sql) => str_contains($sql, 'from `esbtp_inscriptions`') && str_contains($sql, 'limit'));
+            $this->assertNotNull($liste, "Aucune requête paginée pour le tri {$tri}.");
+            $this->assertMatchesRegularExpression('/order by .*`esbtp_inscriptions`\.`id` asc limit/', $liste, "Le tri {$tri} n'a pas de départage unique.");
+            DB::flushQueryLog();
+            $this->app['events']->forget(\Illuminate\Database\Events\QueryExecuted::class);
+        }
+    }
+
+    public function test_la_validation_groupee_porte_sur_tout_le_filtre(): void
+    {
+        $this->inscriptions(3);
+        $attendus = ESBTPInscription::where('annee_universitaire_id', $this->annee->id)->pluck('id')->sort()->values()->all();
+
+        $service = Mockery::mock(ESBTPInscriptionService::class)->makePartial();
+        $service->shouldReceive('processBulkValidation')->once()
+            ->withArgs(function (array $ids) use ($attendus) {
+                sort($ids);
+
+                return $ids === $attendus;
+            })
+            ->andReturn([]);
+        $service->shouldReceive('buildBulkValidationMessage')->andReturn('ok');
+        $service->shouldReceive('extractBulkProblems')->andReturn([]);
+        $this->app->instance(ESBTPInscriptionService::class, $service);
+
+        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->postJson(route('esbtp.inscriptions.bulk-valider'), $this->filtre(['scope' => 'filtre']))
+            ->assertOk();
+    }
+
+    public function test_l_annulation_groupee_ne_traite_pas_deux_fois_une_ligne_cochee_deux_fois(): void
+    {
+        $this->inscriptions(2);
+        $ids = ESBTPInscription::where('annee_universitaire_id', $this->annee->id)->pluck('id')->all();
+
+        $service = Mockery::mock(ESBTPInscriptionService::class)->makePartial();
+        $service->shouldReceive('annulerInscription')->times(2)->andReturn(['success' => true]);
+        $this->app->instance(ESBTPInscriptionService::class, $service);
+
+        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->postJson(route('esbtp.inscriptions.bulk-annuler'), [
+                'inscription_ids' => [$ids[0], $ids[1], $ids[0]],
+                'motif' => 'Doublon de saisie',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success_count', 2);
+    }
+
+    public function test_au_dela_du_plafond_l_ecriture_est_refusee_pour_le_filtre_comme_pour_les_lignes_cochees(): void
+    {
+        $this->inscriptions(3);
+        $this->app->instance(SelectionDInscriptions::class, new class(app(FiltresListeInscriptions::class)) extends SelectionDInscriptions {
+            protected function plafond(): int
+            {
+                return 2;
+            }
+        });
+        $ids = ESBTPInscription::where('annee_universitaire_id', $this->annee->id)->pluck('id')->all();
+
+        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->postJson(route('esbtp.inscriptions.bulk-annuler'), $this->filtre(['scope' => 'filtre', 'motif' => 'Hors délai']))
+            ->assertStatus(422);
+
+        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->postJson(route('esbtp.inscriptions.bulk-valider'), ['inscription_ids' => $ids])
+            ->assertStatus(422);
+
+        // L'export n'ecrit rien : il n'est pas borne.
+        $this->post(route('esbtp.inscriptions.bulk-export'), $this->filtre(['scope' => 'filtre']))->assertOk();
     }
 }

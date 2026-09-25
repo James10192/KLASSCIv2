@@ -20,6 +20,17 @@ use Illuminate\Http\Request;
  * Le controleur doit repondre AVANT de calculer ce que seule la page complete
  * affiche (statistiques, listes de filtres) : sinon chaque tranche refait tout
  * l'ecran pour n'en renvoyer que les lignes.
+ *
+ * Le tri DOIT finir par une colonne unique (l'id). Sur une egalite de tri,
+ * MySQL rend les lignes dans un ordre libre a chaque LIMIT/OFFSET : mesure sur
+ * 1 000 lignes triees par statut, 20 tranches de 25 n'en montraient que 230
+ * distinctes. Un tri sans departage unique n'est pas une liste infinie valable.
+ * Le script ecarte aussi une ligne dont la cle (data-li-cle) est deja affichee.
+ *
+ * Dette connue : c'est une pagination par decalage. Une ligne qui sort du
+ * filtre pendant qu'on defile (validee sous un filtre « en attente ») decale la
+ * suite d'un cran, et une ligne est sautee. Seule une pagination par curseur
+ * supprimerait ce trou.
  */
 final class ListeInfinie
 {
