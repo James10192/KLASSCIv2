@@ -259,6 +259,26 @@ class SettingsHelper
     }
 
     /**
+     * Un reglage numerique enregistre vide n'est pas un zero : c'est un reglage
+     * jamais pose. Setting::get() le type en (int) et rend 0, si bien que le
+     * defaut n'etait jamais servi ; l'ecran des parametres affichait 0, et le
+     * premier enregistrement ecrivait « 0 » pour de bon (esbtp-abidjan, marges
+     * PDF a 0, septembre 2026). Un « 0 » saisi, lui, reste 0.
+     */
+    public static function entierPose(string $key, int $defaut): int
+    {
+        try {
+            $brut = Setting::where('key', $key)->where('is_active', true)->value('value');
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Reglage numerique illisible, defaut servi', ['cle' => $key, 'erreur' => $e->getMessage()]);
+
+            return $defaut;
+        }
+
+        return ($brut === null || trim((string) $brut) === '') ? $defaut : (int) $brut;
+    }
+
+    /**
      * Récupère les paramètres PDF
      *
      * @return array
@@ -271,21 +291,21 @@ class SettingsHelper
             'footer_custom_text' => self::get('pdf_footer_custom_text', ''),
             'show_logo' => self::get('pdf_show_logo', '1') === '1',
             'logo_position' => self::get('pdf_logo_position', 'left'),
-            'logo_size' => (int) self::get('pdf_logo_size', '60'),
+            'logo_size' => self::entierPose('pdf_logo_size', 60),
             'signature_director' => self::get('pdf_signature_director', ''),
             'signature_secretary' => self::get('pdf_signature_secretary', ''),
-            'signature_height' => (int) self::get('pdf_signature_height', '80'),
+            'signature_height' => self::entierPose('pdf_signature_height', 80),
             'show_director_signature' => self::get('pdf_show_director_signature', '1') === '1',
             'show_generator_name' => self::get('pdf_show_generator_name', '1') === '1',
             'show_pagination' => self::get('pdf_show_pagination', '1') === '1',
             'watermark' => self::get('pdf_watermark', ''),
             'watermark_opacity' => (float) self::get('pdf_watermark_opacity', '0.05'),
             'watermark_rotation' => (int) self::get('pdf_watermark_rotation', '-30'),
-            'font_size' => (int) self::get('pdf_font_size', '12'),
-            'margin_top' => (int) self::get('pdf_margin_top', '20'),
-            'margin_bottom' => (int) self::get('pdf_margin_bottom', '20'),
-            'margin_left' => (int) self::get('pdf_margin_left', '15'),
-            'margin_right' => (int) self::get('pdf_margin_right', '15'),
+            'font_size' => self::entierPose('pdf_font_size', 12),
+            'margin_top' => self::entierPose('pdf_margin_top', 20),
+            'margin_bottom' => self::entierPose('pdf_margin_bottom', 20),
+            'margin_left' => self::entierPose('pdf_margin_left', 15),
+            'margin_right' => self::entierPose('pdf_margin_right', 15),
             'primary_color' => self::get('pdf_primary_color', '#0453cb'),
             'secondary_color' => self::get('pdf_secondary_color', '#64748b'),
             'accent_color' => $accent = self::get('pdf_accent_color', '#f59e0b'),
