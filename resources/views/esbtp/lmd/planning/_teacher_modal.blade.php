@@ -30,7 +30,9 @@
             <x-au-user-picker
                 name="lpt_user_id"
                 :users="$enseignants"
-                placeholder="— Sélectionner un enseignant —" />
+                placeholder="— Sélectionner un enseignant —"
+                empty-label="Aucun enseignant"
+                empty-hint="Enregistrer ce choix retire l'enseignant assigné" />
             <div class="lpt-empty-hint" x-show="!currentTeacherId" x-cloak>
                 <i class="fas fa-info-circle"></i>
                 <span>L'enseignant assigné apparaîtra ici une fois sélectionné.</span>

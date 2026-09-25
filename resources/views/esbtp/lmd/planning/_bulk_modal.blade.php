@@ -67,7 +67,9 @@
                         <x-au-user-picker
                             name="lpb_user_id"
                             :users="$enseignants"
-                            placeholder="— Selectionner un enseignant (vide = clear) —" />
+                            placeholder="— Selectionner un enseignant (vide = clear) —"
+                            empty-label="Aucun enseignant"
+                            empty-hint="Retire l'enseignant des ECUE sélectionnées" />
                     </div>
                 </div>
             </div>

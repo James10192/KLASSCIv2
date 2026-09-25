@@ -338,7 +338,9 @@
                                     name="enseignant_id"
                                     :value="old('enseignant_id')"
                                     :users="$enseignants"
-                                    placeholder="— Sélectionner un enseignant —" />
+                                    placeholder="— Sélectionner un enseignant —"
+                                    empty-label="Aucun enseignant"
+                                    empty-hint="L'évaluation n'est attribuée à personne pour la saisie" />
                                 <div class="ec-hint">L'enseignant pourra saisir les notes directement.</div>
                             </div>
 

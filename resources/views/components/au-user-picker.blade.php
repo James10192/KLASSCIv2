@@ -4,6 +4,14 @@
     'users' => collect(),
     'placeholder' => '— Tous les utilisateurs —',
     'submitOnChange' => false,
+    // L'option vide n'a pas le meme sens partout : « tout le monde » dans un
+    // filtre, « personne » quand vide veut dire desassigner. Elle ne se devine
+    // pas : chaque ecran la nomme. Sans libelle, elle reprend l'invite.
+    // `false` la retire, pour un choix obligatoire.
+    'emptyOption' => true,
+    'emptyLabel' => null,
+    'emptyHint' => null,
+    'emptyIcon' => 'fa-user-slash',
 ])
 
 @php
@@ -70,6 +78,8 @@
     }
 
     $totalUsers = $usersCollection->count();
+    // L'invite sans ses tirets decoratifs (« — Tous les enseignants — »).
+    $libelleOptionVide = $emptyLabel ?? preg_replace('/^[\s\x{2014}-]+|[\s\x{2014}-]+$/u', '', (string) $placeholder);
 @endphp
 
 <div class="au-up {{ $attributes->get('class') ?? '' }}"
@@ -129,17 +139,21 @@
         </div>
 
         <div class="au-up-options" role="listbox">
+            @if($emptyOption)
             <button type="button"
                     class="au-up-option au-up-option--all"
                     :class="{ 'au-up-option--active': currentValue === '' }"
                     @click="select(null)">
-                <span class="au-up-avatar au-up-avatar--all"><i class="fas fa-globe"></i></span>
+                <span class="au-up-avatar au-up-avatar--all"><i class="fas {{ $emptyIcon }}"></i></span>
                 <span class="au-up-option-info">
-                    <span class="au-up-option-name">Tous les utilisateurs</span>
-                    <span class="au-up-option-meta">Vue d'ensemble — toutes les actions tracées</span>
+                    <span class="au-up-option-name">{{ $libelleOptionVide }}</span>
+                    @if($emptyHint)
+                    <span class="au-up-option-meta">{{ $emptyHint }}</span>
+                    @endif
                 </span>
                 <i class="fas fa-check au-up-option-check" x-show="currentValue === ''"></i>
             </button>
+            @endif
 
             <template x-for="group in filteredGroups" :key="group.key">
                 <div class="au-up-group">

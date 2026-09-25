@@ -240,7 +240,8 @@
                             name="teacher_id"
                             :value="$filters['teacher_id']"
                             :users="$teachers"
-                            placeholder="— Tous les enseignants —" />
+                            placeholder="— Tous les enseignants —"
+                            empty-icon="fa-globe" />
                     </div>
 
                     <div class="rc-filter-field">

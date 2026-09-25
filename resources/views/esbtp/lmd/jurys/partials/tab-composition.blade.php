@@ -52,6 +52,7 @@
                         name="new_membre_user_id"
                         :users="$enseignants"
                         placeholder="Sélectionner un membre"
+                        :empty-option="false"
                         x-on:change="newMembreUserId = $event.target.value" />
                 </div>
                 <div>

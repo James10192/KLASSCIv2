@@ -365,6 +365,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Sélecteur d'utilisateurs : une première option qui veut dire quelque chose** — dans les fenêtres d'affectation du planning LMD et à la création d'une évaluation, la liste proposait « Tous les utilisateurs — Vue d'ensemble, toutes les actions tracées », un texte venu de l'écran d'audit. Elle propose désormais « Aucun enseignant », avec ce que ce choix produit. Là où choisir quelqu'un est obligatoire (accès temporaires, pilotage académique, composition du jury), cette option n'apparaît plus. L'audit et les rapports de cours gardent « Tous les… ».
+
 - **Sélecteur d'utilisateurs (audit, accès temporaires, affectation des enseignants, jurys LMD, rapports de cours)** : la liste s'ouvre enfin au-dessus de la fenêtre qui la contient. Dans une modale, elle était coupée au bord de la fenêtre et seuls les premiers noms étaient visibles, jusqu'à un défilement de la page ; dans les fenêtres animées du planning LMD, elle s'ouvre désormais collée sous son champ. Fermer la liste (clic ailleurs ou Échap) efface aussi la recherche en cours.
 
 - **Listes déroulantes premium (`/esbtp/evaluations` et toutes les pages qui les utilisent)** : le menu s'ouvrait parfois sur toute la largeur de la page, loin du champ, jusqu'au premier défilement. Il s'ouvre désormais toujours sous son champ, à sa largeur. L'option « Toutes les classes / matières / … » est de nouveau cliquable pour revenir à l'ensemble ; auparavant le clic ne faisait rien, laissait le menu ouvert et le clic suivant sur le champ le refermait. Sur la liste des évaluations, « Réinitialiser » et le retour arrière vident réellement les filtres affichés.

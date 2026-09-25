@@ -87,6 +87,9 @@
                 :value="$selectedUser?->id"
                 :users="$users"
                 placeholder="— Tous les utilisateurs —"
+                empty-label="Tous les utilisateurs"
+                empty-hint="Vue d'ensemble — toutes les actions tracées"
+                empty-icon="fa-globe"
                 :submit-on-change="true" />
             <div class="au-filter-field">
                 <label><i class="fas fa-calendar"></i></label>
