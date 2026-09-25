@@ -117,3 +117,34 @@ rappel mot de passe = ¼ d'écran, tableaux larges tronqués.
 Évaluation TP 86 + 4 notes brouillon (B3 COM) ; bulletin S3 de Domy Marc régénéré ; jury 4 et ses 4 décisions ;
 enseignant n° 20 « E2E-0925 Enseignant Test » (associé à Anglais B2 COM, dispo vendredi 15-17 h) ; séances 368 et 369,
 deux émargements, un code du jour.
+
+
+---
+
+# Journal des contournements du testeur
+
+Chaque ligne : un moment où le test a dû sortir du chemin normal (fonction JS cachée, adresse devinée, changement de module, fenêtres fermées par script). Pour un agent d'école, c'est un appel au support ou un abandon.
+
+| Je voulais | L'interface m'a obligé à | Raccourci à ajouter |
+|---|---|---|
+| Ajouter un second professeur à une matière depuis le formulaire de séance | Ouvrir la fenêtre « Gérer les enseignants » en appelant sa fonction JavaScript : le bouton est caché dès qu'un professeur est déjà associé | Lien « + Associer un autre enseignant » toujours visible sous la liste des enseignants |
+| Voir le professeur que je venais d'associer | Choisir une autre matière puis revenir à la bonne pour recharger la liste | Recharger la liste et sélectionner automatiquement le professeur à la fermeture de la fenêtre |
+| Associer un professeur depuis la fiche Matière | Lire « utilisez le module Planning Général », sans lien, puis chercher la bonne planification | Bouton qui ouvre directement la planification de cette matière, filière et niveau |
+| Programmer un professeur tout juste créé | Me connecter avec son compte pour cocher ses disponibilités : depuis la séance, la grille rouge ne se modifie pas et une alerte native bloque | Côté administration, « Le rendre disponible sur ce créneau » dans la grille, ou « Programmer quand même » avec motif |
+| Enchaîner après la création d'un enseignant | Revenir à Gestion du personnel, retrouver la fiche, puis aller ailleurs pour matières, disponibilités et taux | Après création : boutons « Associer à une matière », « Définir ses disponibilités », « Saisir son taux horaire », « Programmer une séance » |
+| Choisir l'emploi du temps où ajouter la séance | Choisir au hasard parmi 40 cartes identiques « B2 COM · 14/09 → 19/09 » | Recherche et filtre classe / période, emplois du temps expirés masqués, et la semaine en cours proposée d'office |
+| Émarger avec le code | Envoyer le formulaire par script : la fenêtre est sous le fond grisé | Corriger la superposition ; saisie du code directement dans la ligne du cours, sans fenêtre |
+| Obtenir le code du jour côté professeur | Lire « Demander le code au coordinateur », sans bouton | Bouton « Demander le code » qui notifie la coordination, ou affichage en QR dans la salle |
+| Trouver mes cours et mes disponibilités (enseignant) | Deviner les adresses : ni « cours du jour » ni « disponibilités » dans le menu (seulement en tuiles sur l'accueil) | Entrées « Mes cours du jour » et « Mes disponibilités » dans le menu enseignant |
+| Changer le mot de passe imposé | Fermer d'abord « Expiration du contrat » puis « Nouveautés » | Aucune fenêtre sur les pages d'authentification ; « Nouveautés » ciblées par rôle |
+| Travailler sur n'importe quel écran | Écrire un script qui ferme cinq types de fenêtres surgissantes (Nouveautés, Expiration, Notes à saisir, Inscriptions, Emplois du temps) | Une file unique : une fenêtre par session, jamais sur un formulaire en cours ; le reste dans la cloche de notifications |
+| Saisir des notes en M1 Management | Lire « Aucune UE liée », avec un lien vers la liste générale des parcours | Bouton « Lier cette classe à son parcours » qui ouvre le bon parcours déjà filtré |
+| Débloquer un bulletin refusé par le contrôle | Trouver seul que les « fiches » sont dans Pilotage académique, choisir la classe, synchroniser, ouvrir l'onglet « Notes et fiches » | Dans le contrôle, lien « Ouvrir les fiches de cet étudiant » vers Pilotage filtré classe + semestre |
+| Ouvrir le pilotage d'une classe par son adresse | Recevoir du JSON brut : `/pilotage-academique/classes/{id}` n'est pas une page | Adresse partageable qui ouvre l'écran Pilotage filtré sur la classe |
+| Voir mon TP de semestre 3 dans le Pilotage | Constater « Aucune note attendue » : le filtre ne propose que Semestre 1 / 2 / Annuel | Filtre aligné sur les semestres LMD de la classe |
+| Valider les notes saisies | Chercher un bouton qui n'existe pas dans la saisie LMD | Bouton « Valider mes notes » en pied de grille |
+| Composer un jury | Ajouter les membres un par un après la création | « Reprendre la composition du dernier jury » et composition proposée dès la création |
+| Passer des ajournés au rattrapage | Aller dans Sessions & Rattrapage et créer une session à la main | « Inscrire au rattrapage » depuis la liste des ajournés et depuis le jury |
+| Saisir les notes de la session de rattrapage | Tomber sur « session sans session parent », sans action pour corriger | Bouton « Rattacher à la session normale » sur ce message |
+| Payer le professeur de test | Constater qu'il n'est pas dans la liste de paie, sans explication | Ligne « Taux horaire manquant — Renseigner » dans la liste de paie |
+| Suivre les émargements | Passer entre trois écrans qui se contredisent (Planning → Émargement, Administration, Rapport) | Un seul écran, avec onglets Aujourd'hui / Historique / Rapport |

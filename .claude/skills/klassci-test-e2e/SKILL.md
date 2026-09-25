@@ -303,7 +303,35 @@ Validé partiellement | Validé de bout en bout | Bloqué
 ## Gaps
 
 - ce qui manque encore pour conclure
+
+## Journal des contournements
+
+| Je voulais | L'interface m'a obligé à | Raccourci à ajouter |
+|---|---|---|
 ```
+
+### Journal des contournements — obligatoire en fin de test
+
+Demande de Marcel (25 septembre 2026). Chaque fois que le test sort du chemin qu'un agent
+d'école suivrait, c'est un constat d'ergonomie, pas un détail technique à taire :
+
+- appeler une fonction JavaScript parce que le bouton est caché ou inaccessible ;
+- envoyer un formulaire par script parce qu'une fenêtre est sous le fond grisé ;
+- deviner ou taper une adresse faute de lien dans le menu ;
+- changer de module parce que l'écran renvoie ailleurs sans lien direct
+  (« utilisez le Planning Général ») ;
+- fermer des fenêtres surgissantes par script ;
+- se connecter avec un autre rôle pour débloquer une étape ;
+- recharger ou re-sélectionner pour qu'une liste se mette à jour.
+
+Noter le contournement **au moment où on le fait**, puis le rendre en fin de test avec le
+raccourci qui le supprime (souvent un bouton ou un lien). Un agent d'école n'a pas la console :
+pour lui, chaque ligne du journal est un appel au support ou un abandon.
+
+Exemple réel : « Ajouter un second professeur à une matière depuis la séance » → « ouvrir
+`openManageTeachersModal()` en JavaScript, le bouton étant caché dès qu'un professeur est
+associé » → « lien "+ Associer un autre enseignant" toujours visible ». Rapport de référence :
+`docs/audits/2026-09-25-audit-e2e-lmd/README.md`.
 
 ## Notes BTS TC
 
