@@ -125,7 +125,8 @@
     .lu-propre-check strong { display: block; font-size: .88rem; color: #1e293b; }
     .lu-propre-check small { display: block; font-size: .76rem; color: #64748b; line-height: 1.45; margin-top: .15rem; }
     .lu-propre-champs { margin-top: .75rem; }
-    .lu-propre-field { display: flex; flex-direction: column; }
+    .lu-propre-field { display: flex; flex-direction: column; min-width: 0; }
+    .lu-propre-field .au-select, .lu-propre-field .au-select-trigger { max-width: 100%; min-width: 0; }
     .lu-propre-info { display: flex; align-items: center; gap: .6rem; padding: .7rem .9rem; border-radius: 10px; background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.18); color: #1e293b; font-size: .82rem; margin-top: .75rem; }
     .lu-propre-info i { color: #0453cb; }
     .lu-propre-badge { display: inline-flex; align-items: center; gap: .25rem; margin-left: .35rem; padding: .08rem .4rem; border-radius: 5px; font-size: .62rem; font-weight: 700; background: rgba(4,83,203,.08); color: #0453cb; border: 1px solid rgba(4,83,203,.2); vertical-align: middle; }
@@ -995,11 +996,19 @@ function ueProprebasculer() {
     const actif = document.getElementById('ue_propre').checked;
     const champs = document.getElementById('ue_propre_champs');
     champs.style.display = actif ? '' : 'none';
-    // Désactivés, parcours et semestre ne partent pas : une UE ordinaire se
-    // rattache par le bouton « Lier à des parcours », comme avant.
-    champs.querySelectorAll('select').forEach(el => { el.disabled = !actif; });
+    // Sans nom, parcours et semestre ne partent pas : une UE ordinaire se
+    // rattache par le bouton « Lier à des parcours », comme avant. On retire le
+    // nom plutôt que de désactiver : la liste premium resterait grisée.
+    champs.querySelectorAll('select').forEach(el => {
+        el.dataset.nom = el.dataset.nom || el.name;
+        el.name = actif ? el.dataset.nom : '';
+    });
 }
-document.getElementById('ue_propre').addEventListener('change', ueProprebasculer);
+document.getElementById('ue_propre').addEventListener('change', () => {
+    // Le refus « code déjà pris » ne vaut plus une fois la case cochée.
+    document.getElementById('ue_errors').classList.add('d-none');
+    ueProprebasculer();
+});
 
 // ── UE Form submit (create/edit) ──
 document.getElementById('formUE').addEventListener('submit', async function(e) {

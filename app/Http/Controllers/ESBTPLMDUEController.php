@@ -105,7 +105,7 @@ class ESBTPLMDUEController extends Controller
                         // parcours porte une cle suffixee (`AGR2103~LPA`) qui ne
                         // s'affiche pas ; `propre_a` dit a quel parcours.
                         'code' => $ue->code_affiche,
-                        'propre_a' => \App\Services\LMD\CodeDeMaquette::suffixe($ue->code),
+                        'propre_a' => CodeDeMaquette::suffixe($ue->code),
                         'name' => $ue->name,
                         'type_ue' => $ue->type_ue,
                         'credit' => $ue->credit,
@@ -218,7 +218,7 @@ class ESBTPLMDUEController extends Controller
         $data = $ue->toArray();
         // Le formulaire montre le code imprime ; la requete rend sa cle a l'UE.
         $data['code'] = $ue->code_affiche;
-        $data['propre_a'] = \App\Services\LMD\CodeDeMaquette::suffixe($ue->code);
+        $data['propre_a'] = CodeDeMaquette::suffixe($ue->code);
 
         // Ajouter l'ordre du pivot (premier parcours lié)
         $pivot = $ue->parcoursMultiple->first();

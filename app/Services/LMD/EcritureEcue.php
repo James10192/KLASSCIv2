@@ -173,12 +173,11 @@ class EcritureEcue
     {
         if (! empty($donnees['code']) && empty($donnees['matiere_id'])) {
             $donnees['code'] = $this->maquette->resoudreElement(
-                $ue,
-                (string) $donnees['code'],
-                null,
-                $portee === CompositionUe::COMMUN ? null : $portee,
-                null,
-                $saufMatiereId
+                ue: $ue,
+                codeSaisi: (string) $donnees['code'],
+                nom: null,
+                parcoursId: $portee === CompositionUe::COMMUN ? null : $portee,
+                saufMatiereId: $saufMatiereId,
             )['cle'];
         }
 
