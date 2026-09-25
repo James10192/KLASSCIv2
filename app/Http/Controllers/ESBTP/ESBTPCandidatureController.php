@@ -5,6 +5,8 @@ namespace App\Http\Controllers\ESBTP;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPCandidature;
 use App\Services\RendezVous\ReservateurRdv;
+use App\Support\ListeInfinie;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -52,7 +54,7 @@ class ESBTPCandidatureController extends Controller
         $this->middleware('permission:inscriptions.candidatures.process')->only(['accepter', 'rejeter']);
     }
 
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $statut = $request->string('statut')->toString();
         $statutsConnus = [
@@ -73,8 +75,18 @@ class ESBTPCandidatureController extends Controller
             ->when($request->query('contact') === 'non_verifie', fn ($q) => $q->contactNonConfirme())
             ->orderByRaw("FIELD(statut, 'en_attente') DESC")
             ->latest('created_at')
+            // Departage stable : la liste se charge par tranches, et deux dossiers
+            // recus a la meme seconde changeraient d'ordre d'une tranche a l'autre.
+            ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $candidatures,
+                fn (ESBTPCandidature $c) => view('esbtp.inscriptions.candidatures._ligne', compact('c'))->render(),
+            );
+        }
 
         return view('esbtp.inscriptions.candidatures.index', [
             'candidatures' => $candidatures,

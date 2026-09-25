@@ -9,6 +9,8 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Services\ReeinscriptionService;
 use App\Services\RendezVous\ReservateurRdv;
+use App\Support\ListeInfinie;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -34,7 +36,7 @@ class ESBTPReinscriptionDemandeController extends Controller
         $this->middleware('permission:reinscriptions.demandes.process')->only(['convertir', 'rejeter']);
     }
 
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         // Un statut inconnu rendrait une page vide sans rien expliquer : on
         // retombe sur « tous » plutot que de filtrer sur une valeur qui
@@ -55,8 +57,18 @@ class ESBTPReinscriptionDemandeController extends Controller
             ->when($request->query('contact') === 'non_verifie', fn ($q) => $q->contactNonConfirme())
             ->orderByRaw("FIELD(statut, 'en_attente') DESC")
             ->latest('created_at')
+            // Departage stable : la liste se charge par tranches, et deux demandes
+            // deposees a la meme seconde changeraient d'ordre d'une tranche a l'autre.
+            ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $demandes,
+                fn (ESBTPReinscriptionDemande $demande) => view('esbtp.reinscriptions.demandes._ligne', compact('demande'))->render(),
+            );
+        }
 
         $compteurs = ESBTPReinscriptionDemande::query()
             ->selectRaw('statut, COUNT(*) as total')
