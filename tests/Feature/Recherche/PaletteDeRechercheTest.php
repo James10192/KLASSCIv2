@@ -10,6 +10,9 @@ use App\Support\Recherche\RechercheDesEntites;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use App\Domain\Permissions\AccesTemporaires;
+use App\Models\TemporaryPermissionGrant;
 use Tests\TestCase;
 
 /**
@@ -146,6 +149,49 @@ class PaletteDeRechercheTest extends TestCase
         $suggestions = array_column($reponse->json('suggestions'), 'title');
         $this->assertContains('Encaisser', $suggestions);
         $this->assertNotContains('Nouvelle classe', $suggestions);
+    }
+
+    public function test_un_compte_etudiant_ne_retrouve_que_ses_propres_paiements(): void
+    {
+        Role::findOrCreate('etudiant', 'web');
+        $eleve = User::factory()->create();
+        $eleve->assignRole('etudiant');
+        $eleve->givePermissionTo(['admin.access', 'paiements.view']);
+
+        $sonDossier = ESBTPEtudiant::factory()->create(['user_id' => $eleve->id]);
+        $autreDossier = ESBTPEtudiant::factory()->create();
+        $sienne = ESBTPInscription::factory()->create(['etudiant_id' => $sonDossier->id]);
+        $autre = ESBTPInscription::factory()->create(['etudiant_id' => $autreDossier->id]);
+        ESBTPPaiement::factory()->pour($sienne)->create(['numero_recu' => 'RQE-SIEN-1']);
+        ESBTPPaiement::factory()->pour($autre)->create(['numero_recu' => 'RQE-AUTRE-1']);
+
+        $recus = array_column(array_filter(
+            $this->recherche($eleve, 'RQE-'),
+            fn ($r) => $r['type'] === 'paiement'
+        ), 'title');
+
+        $this->assertContains('RQE-SIEN-1', $recus);
+        $this->assertNotContains('RQE-AUTRE-1', $recus);
+    }
+
+    public function test_un_acces_temporaire_ouvre_la_page_sans_attendre_un_cache(): void
+    {
+        $agent = User::factory()->create();
+        $agent->givePermissionTo(['admin.access']);
+
+        $this->assertNotContains('Encaisser', array_column($this->recherche($agent, 'encaisser'), 'title'));
+
+        TemporaryPermissionGrant::create([
+            'user_id' => $agent->id,
+            'permission' => 'paiements.create',
+            'starts_at' => now()->subMinute(),
+            'expires_at' => now()->addDay(),
+            'motif' => 'Remplacement du caissier',
+            'granted_by' => $agent->id,
+        ]);
+        $this->app->forgetInstance(AccesTemporaires::class);
+
+        $this->assertContains('Encaisser', array_column($this->recherche($agent, 'encaisser'), 'title'));
     }
 
     public function test_le_gabarit_rend_la_palette_et_son_declencheur(): void

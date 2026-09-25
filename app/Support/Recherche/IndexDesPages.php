@@ -173,9 +173,6 @@ final class IndexDesPages
         ['route' => 'admin.profile', 'titre' => 'Mon profil', 'groupe' => 'Mon espace', 'icone' => 'fa-id-badge', 'mots' => ['profil', 'mot de passe', 'mes informations']],
     ];
 
-    /** @var array<string, list<array>> Pages ouvrables, par utilisateur, le temps d'une requête. */
-    private array $memo = [];
-
     /**
      * Les pages que cet utilisateur peut ouvrir, dans l'ordre du menu. Deux
      * « Mon profil » peuvent passer le filtre (profil d'administration ET
@@ -189,35 +186,20 @@ final class IndexDesPages
             return [];
         }
 
-        $cle = method_exists($utilisateur, 'getAuthIdentifier') ? (string) $utilisateur->getAuthIdentifier() : spl_object_hash($utilisateur);
-
-        if (isset($this->memo[$cle])) {
-            return $this->memo[$cle];
-        }
-
-        // Lire la porte d'une route instancie son contrôleur (ses middlewares de
-        // constructeur comptent) : ~200 ms pour tout l'index, à chaque frappe.
-        // Le résultat ne dépend que des rôles et permissions de la personne ;
-        // la clé les contient, donc un droit retiré change la clé au lieu
-        // d'attendre l'expiration.
-        $pages = Cache::remember(
-            'recherche.pages.'.$cle.'.'.self::empreinteDesDroits($utilisateur),
-            now()->addMinutes(10),
-            fn () => $this->calculerPour($utilisateur)
-        );
-
-        // L'adresse se calcule à la lecture : elle dépend de l'hôte de la requête.
-        return $this->memo[$cle] = array_map(fn (array $p) => $p + ['url' => route($p['route'])], $pages);
-    }
-
-    /** @return list<array> */
-    private function calculerPour(Authorizable $utilisateur): array
-    {
+        // Les droits s'évaluent à CHAQUE requête : ils ne tiennent pas qu'aux
+        // rôles et permissions Spatie. Gate::after accorde aussi des accès
+        // temporaires (qui expirent à une date) et des capacités de scolarité
+        // (qui suivent un réglage d'instance) : aucune empreinte des rôles ne
+        // les voit changer. Seules les exigences des routes sont mises en
+        // cache — voir exigencesDesRoutes(). Rien n'est retenu par
+        // utilisateur, pas même le temps d'une instance : le contrôleur qui
+        // porte ce service peut survivre à la requête.
+        $portes = self::exigencesDesRoutes();
         $pages = [];
         $titresVus = [];
 
         foreach (self::PAGES as $page) {
-            if (! Route::has($page['route']) || ! $this->ouvrable($page, $utilisateur)) {
+            if (! array_key_exists($page['route'], $portes) || ! $this->ouvrable($page, $portes[$page['route']], $utilisateur)) {
                 continue;
             }
 
@@ -234,26 +216,59 @@ final class IndexDesPages
                 'icone' => $page['icone'],
                 'mots' => $page['mots'] ?? [],
                 'rang' => $page['rang'] ?? 100,
+                'url' => route($page['route']),
             ];
         }
 
         return $pages;
     }
 
-    /** Rôles et permissions de la personne, sous une forme courte et stable. */
-    private static function empreinteDesDroits(Authorizable $utilisateur): string
+    /**
+     * Les exigences de garde de chaque route de l'index, ou null si elle n'a
+     * pas de garde lisible. Les routes absentes de l'instance n'y figurent pas.
+     *
+     * Les LIRE coûte (~200 ms pour l'index : les middlewares de constructeur
+     * instancient chaque contrôleur) mais ne dépend d'aucun utilisateur ; elles
+     * ne changent qu'avec le code déployé. La clé porte donc la version du code
+     * (le commit en place, à défaut la date des fichiers de routes).
+     *
+     * @return array<string, list<array{0: string, 1: list<string>}>|null>
+     */
+    private static function exigencesDesRoutes(): array
     {
-        $droits = [];
+        return Cache::remember(
+            'recherche.portes.'.md5(self::versionDuCode().'|'.implode(',', array_column(self::PAGES, 'route'))),
+            now()->addDay(),
+            function () {
+                $portes = [];
+                foreach (self::PAGES as $page) {
+                    if (Route::has($page['route'])) {
+                        $portes[$page['route']] = PorteDeRoute::exigencesDe($page['route']);
+                    }
+                }
 
-        if (method_exists($utilisateur, 'getRoleNames')) {
-            $droits = array_merge($droits, $utilisateur->getRoleNames()->map(fn ($r) => 'r:'.$r)->all());
-        }
-        if (method_exists($utilisateur, 'getAllPermissions')) {
-            $droits = array_merge($droits, $utilisateur->getAllPermissions()->pluck('name')->all());
-        }
-        sort($droits);
+                return $portes;
+            }
+        );
+    }
 
-        return md5(implode('|', $droits));
+    private static function versionDuCode(): string
+    {
+        $head = base_path('.git/HEAD');
+        if (is_readable($head)) {
+            $ref = trim((string) @file_get_contents($head));
+            if (str_starts_with($ref, 'ref: ')) {
+                $fichier = base_path('.git/'.substr($ref, 5));
+                $ref = is_readable($fichier) ? trim((string) @file_get_contents($fichier)) : $ref;
+            }
+            if ($ref !== '') {
+                return $ref;
+            }
+        }
+
+        $dates = array_map(fn ($f) => (string) @filemtime($f), glob(base_path('routes/*.php')) ?: []);
+
+        return implode('-', $dates);
     }
 
     /**
@@ -301,9 +316,10 @@ final class IndexDesPages
         return count(self::PAGES);
     }
 
-    private function ouvrable(array $page, Authorizable $utilisateur): bool
+    /** @param list<array{0: string, 1: list<string>}>|null $exigences */
+    private function ouvrable(array $page, ?array $exigences, Authorizable $utilisateur): bool
     {
-        $verdict = PorteDeRoute::verdict($page['route'], $utilisateur);
+        $verdict = PorteDeRoute::verdictSelon($exigences, $utilisateur);
 
         if ($verdict === false) {
             return false;

@@ -2,6 +2,7 @@
 
 namespace App\Support\Recherche;
 
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
@@ -110,6 +111,8 @@ final class RechercheDesEntites
     /** @param list<string> $jetons */
     private function chercherEtudiants(string $saisie, array $jetons, Authorizable $u, int $limite): array
     {
+        $annee = ESBTPAnneeUniversitaire::anneeCourante();
+
         $etudiants = ESBTPEtudiant::query()
             ->select(['id', 'nom', 'prenoms', 'matricule'])
             ->where(function (Builder $q) use ($saisie, $jetons) {
@@ -127,7 +130,15 @@ final class RechercheDesEntites
                         }
                     });
             })
-            ->with('classe')
+            // La classe affichée est celle de l'année EN COURS : la relation
+            // `classe` passe par n'importe quelle inscription active, y
+            // compris celle d'une année close.
+            ->with(['inscriptions' => function ($q) use ($annee) {
+                $q->select(['id', 'etudiant_id', 'classe_id', 'annee_universitaire_id'])
+                    ->where('annee_universitaire_id', $annee?->id ?? 0)
+                    ->where('status', 'active')
+                    ->with('classe:id,name');
+            }])
             ->orderBy('nom')
             ->limit($limite)
             ->get();
@@ -135,7 +146,7 @@ final class RechercheDesEntites
         return $etudiants->map(fn (ESBTPEtudiant $e) => self::resultat(
             'Étudiants', 'etudiant', $e->id,
             trim($e->nom.' '.$e->prenoms),
-            self::joindre([$e->matricule, optional($e->classe)->name]),
+            self::joindre([$e->matricule, optional(optional($e->inscriptions->first())->classe)->name]),
             route('esbtp.etudiants.show', $e->id),
             'fa-user-graduate'
         ))->all();
@@ -152,17 +163,24 @@ final class RechercheDesEntites
                     ->orWhere('reference_paiement', 'like', $motif)
                     ->orWhere('numero_transaction', 'like', $motif);
             })
-            ->with('etudiant:id,nom,prenoms')
+            ->with('etudiant:id,nom,prenoms,user_id')
             ->orderByDesc('id')
             ->limit($limite);
 
-        // Même portée que la liste des paiements : sans `paiements.view`, on ne
-        // retrouve que ses propres encaissements.
-        if (! $u->can('paiements.view')) {
+        // Même portée que ESBTPPaiementPolicy::view, reproduite en SQL pour que
+        // la limite porte sur des lignes visibles : un compte étudiant ne
+        // retrouve que SES paiements, `paiements.view_own` seulement ce qu'il a
+        // encaissé. La politique est ensuite rejouée ligne à ligne, pour
+        // qu'une divergence future entre les deux ne puisse que retirer.
+        if ($u->can('paiements.view')) {
+            if (method_exists($u, 'hasRole') && $u->hasRole('etudiant')) {
+                $requete->whereHas('etudiant', fn (Builder $e) => $e->where('user_id', $u->getAuthIdentifier()));
+            }
+        } else {
             $requete->ownedBy($u);
         }
 
-        return $requete->get()->map(function (ESBTPPaiement $p) {
+        return $requete->get()->filter(fn (ESBTPPaiement $p) => $u->can('view', $p))->values()->map(function (ESBTPPaiement $p) {
             $etudiant = $p->etudiant ? trim($p->etudiant->nom.' '.$p->etudiant->prenoms) : null;
             $date = $p->date_paiement ? \Illuminate\Support\Carbon::parse($p->date_paiement)->format('d/m/Y') : null;
 

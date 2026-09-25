@@ -178,6 +178,7 @@
      x-cloak
      data-url-recherche="{{ route('search.global') }}"
      data-url-resultats="{{ route('search.results') }}"
+     data-url-deconnexion="{{ Route::has('logout') ? route('logout') : '' }}"
      data-utilisateur="{{ auth()->id() }}">
     <div class="spl-voile" x-show="ouvert"
          x-transition:enter="spl-voile-entre" x-transition:enter-start="spl-voile-debut" x-transition:enter-end="spl-voile-fin"
@@ -270,6 +271,17 @@
     if (typeof window.klassciSpotlight === 'function') { return; }
 
     var MAX_RECENTS = 6;
+    var PREFIXE_RECENTS = 'klassci.spotlight.recents.';
+
+    /* Retire les récents de tous les comptes, sauf `garder` (null = tous). */
+    function purgerRecents(garder) {
+        try {
+            for (var i = window.localStorage.length - 1; i >= 0; i--) {
+                var cle = window.localStorage.key(i);
+                if (cle && cle.indexOf(PREFIXE_RECENTS) === 0 && cle !== garder) { window.localStorage.removeItem(cle); }
+            }
+        } catch (e) { /* stockage indisponible */ }
+    }
     var DELAI_FRAPPE = 140;
 
     function estMacPlateforme() {
@@ -311,7 +323,21 @@
                 var racine = this.$root;
                 this._urlRecherche = racine.dataset.urlRecherche;
                 this._urlResultats = racine.dataset.urlResultats;
-                this._cleRecents = 'klassci.spotlight.recents.' + (racine.dataset.utilisateur || '0');
+                this._cleRecents = PREFIXE_RECENTS + (racine.dataset.utilisateur || '0');
+                // Un poste partagé : les récents d'un autre compte n'ont rien à
+                // faire ici, même s'ils ne portent que des pages.
+                purgerRecents(this._cleRecents);
+                var urlDeconnexion = racine.dataset.urlDeconnexion;
+                if (urlDeconnexion) {
+                    var surDeconnexion = function (ev) {
+                        var form = ev.target.closest && ev.target.closest('form');
+                        if (form && form.action === urlDeconnexion) { purgerRecents(null); }
+                    };
+                    // En capture : le lien du menu soumet par form.submit(),
+                    // qui ne déclenche aucun évènement submit.
+                    this._ecoute(document, 'click', surDeconnexion, true);
+                    this._ecoute(document, 'submit', surDeconnexion, true);
+                }
 
                 if (this.estMac) {
                     document.querySelectorAll('[data-spl-raccourci]').forEach(function (k) { k.textContent = '⌘ K'; });
@@ -348,15 +374,15 @@
             },
 
             destroy: function () {
-                this._ecouteurs.forEach(function (e) { e[0].removeEventListener(e[1], e[2]); });
+                this._ecouteurs.forEach(function (e) { e[0].removeEventListener(e[1], e[2], e[3]); });
                 this._ecouteurs = [];
                 if (this._controleur) { this._controleur.abort(); }
                 clearTimeout(this._minuteur);
             },
 
-            _ecoute: function (cible, type, fn) {
-                cible.addEventListener(type, fn);
-                this._ecouteurs.push([cible, type, fn]);
+            _ecoute: function (cible, type, fn, capture) {
+                cible.addEventListener(type, fn, !!capture);
+                this._ecouteurs.push([cible, type, fn, !!capture]);
             },
 
             raccourciGlobal: function (ev) {
@@ -621,16 +647,19 @@
             lireRecents: function () {
                 try {
                     var brut = JSON.parse(window.localStorage.getItem(this._cleRecents) || '[]');
-                    return Array.isArray(brut) ? brut.filter(function (r) { return r && typeof r.url === 'string'; }).slice(0, MAX_RECENTS) : [];
+                    return Array.isArray(brut) ? brut.filter(function (r) { return r && r.type === 'page' && typeof r.url === 'string'; }).slice(0, MAX_RECENTS) : [];
                 } catch (e) {
                     return [];
                 }
             },
 
+            /* Seules les PAGES sont retenues : jamais une fiche, dont le titre
+               porte un nom d'élève ou un montant, dans le stockage du navigateur. */
             memoriser: function (el) {
+                if (el.type !== 'page') { return; }
                 try {
                     var recents = this.lireRecents().filter(function (r) { return r.url !== el.url; });
-                    recents.unshift({ url: el.url, title: el.title, subtitle: el.subtitle, icon: el.icon, type: el.type });
+                    recents.unshift({ url: el.url, title: el.title, subtitle: el.subtitle, icon: el.icon, type: 'page' });
                     window.localStorage.setItem(this._cleRecents, JSON.stringify(recents.slice(0, MAX_RECENTS)));
                 } catch (e) { /* stockage indisponible : les récents sont un confort */ }
             }
