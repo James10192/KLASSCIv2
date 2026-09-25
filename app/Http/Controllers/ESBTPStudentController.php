@@ -373,6 +373,11 @@ class ESBTPStudentController extends Controller
             'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
         ]));
 
+        // Liste du telephone (partial _index-mobile) : lignes en JSON, meme requete filtree.
+        if ($request->input('mode') === 'mobile') {
+            return response()->json($this->trancheMobile($etudiants, $anneeCourante));
+        }
+
         if ($request->ajax()) {
             \Log::info('ESBTPStudentController@index returning AJAX response', array_merge($baseLogContext, [
                 'timestamp' => now()->toIso8601String(),
@@ -403,8 +408,11 @@ class ESBTPStudentController extends Controller
             'etudiants_for_bulk_count' => $etudiantsForBulk->count(),
         ]));
 
+        $listeMobile = $this->trancheMobile($etudiants, $anneeCourante);
+
         return view('esbtp.etudiants.index', compact(
             'etudiants',
+            'listeMobile',
             'etudiantsForBulk',
             'filieres',
             'niveaux',
@@ -439,6 +447,47 @@ class ESBTPStudentController extends Controller
         'M' => ['M', 'Masculin', 'masculin', 'MASCULIN'],
         'F' => ['F', 'Féminin', 'féminin', 'FEMININ', 'Feminin'],
     ];
+
+    /**
+     * Une tranche de la liste du telephone : lignes pretes a afficher, et de quoi
+     * demander la suivante.
+     *
+     * @return array{items: array<int, array<string, mixed>>, has_more: bool, next_page: int, total: int}
+     */
+    private function trancheMobile($etudiants, ?ESBTPAnneeUniversitaire $anneeCourante): array
+    {
+        $collection = $etudiants->getCollection();
+        $user = auth()->user();
+        $droits = [
+            'a11y' => (bool) $user?->can('students.accessibility.view'),
+            'valider' => (bool) $user?->can('inscriptions.validate'),
+        ];
+
+        // Seules les inscriptions de l'annee courante sont chargees : pour un
+        // etudiant qui n'en a pas, sa derniere classe vient d'une requete unique.
+        $sansCourante = $collection
+            ->filter(fn (ESBTPEtudiant $e) => ! $anneeCourante || ! $e->inscriptions->contains('annee_universitaire_id', $anneeCourante->id))
+            ->pluck('id');
+        $dernieres = $sansCourante->isEmpty() ? collect() : \App\Models\ESBTPInscription::query()
+            ->whereIn('etudiant_id', $sansCourante)
+            ->with(['classe:id,name,systeme_academique', 'anneeUniversitaire:id,name'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get()
+            ->unique('etudiant_id')
+            ->keyBy('etudiant_id');
+
+        return [
+            'items' => $collection
+                ->map(fn (ESBTPEtudiant $e) => \App\Support\Etudiants\LigneEtudiantMobile::depuis($e, $anneeCourante?->id, $dernieres->get($e->id), $droits))
+                ->values()
+                ->all(),
+            'has_more' => $etudiants->hasMorePages(),
+            'next_page' => $etudiants->currentPage() + 1,
+            'total' => $etudiants->total(),
+            'segments' => $anneeCourante !== null,
+        ];
+    }
 
     /**
      * La valeur canonique demandee, ou null si le filtre n'est pas pose.
