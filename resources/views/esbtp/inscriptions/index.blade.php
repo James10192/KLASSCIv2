@@ -435,33 +435,6 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
 }
 
 /* ========== FOOTER ========== */
-.ii-table-footer {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 1rem 1.25rem;
-    border-top: 1px solid var(--ii-border);
-    background: var(--ii-surface);
-    flex-wrap: wrap; gap: 1rem;
-}
-.ii-per-page { display: flex; align-items: center; gap: .5rem; font-size: .82rem; color: var(--ii-muted); }
-.ii-per-page-label { font-weight: 500; margin: 0; }
-.ii-per-page-select {
-    padding: .3rem .6rem;
-    border: 1px solid var(--ii-border); border-radius: 8px;
-    background: #fff; font-size: .82rem;
-    cursor: pointer;
-}
-.ii-per-page-select:focus { outline: none; border-color: var(--ii-primary); }
-.ii-pagination .pagination { margin: 0; }
-.ii-pagination .page-link {
-    color: var(--ii-primary);
-    border-color: var(--ii-border);
-    font-size: .85rem;
-}
-.ii-pagination .page-item.active .page-link {
-    background: var(--ii-primary);
-    border-color: var(--ii-primary);
-}
-
 /* Empty state */
 .ii-empty {
     text-align: center; padding: 3.5rem 1.5rem;
@@ -526,6 +499,13 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
 }
 .ii-bulk-count i { font-size: 1rem; }
 .ii-bulk-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+.ii-bulk-lien {
+    background: none; border: 0; padding: 0; color: #fff;
+    font-size: .82rem; font-weight: 700; text-decoration: underline; text-underline-offset: 3px;
+    cursor: pointer;
+}
+.ii-bulk-lien[hidden], .ii-bulk-portee[hidden] { display: none; }
+.ii-bulk-portee { display: inline-flex; align-items: center; gap: .5rem; font-size: .82rem; font-weight: 600; }
 .ii-bulk-btn {
     display: inline-flex; align-items: center; gap: .3rem;
     padding: .45rem 1rem;
@@ -590,7 +570,6 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
 @media (max-width: 480px) {
     .ii-hero { padding: 1.25rem; }
     .ii-kpis { grid-template-columns: 1fr; }
-    .ii-table-footer { flex-direction: column; align-items: flex-start; }
     .ii-bulk-bar { left: 12px; right: 12px; transform: none; width: calc(100% - 24px); }
 }
 </style>
@@ -904,7 +883,7 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                 {{-- Champs cachés pour sort + per_page (préservés dans AJAX) --}}
                 <input type="hidden" name="sort" id="sort-input" value="{{ $sort ?? 'created_at' }}">
                 <input type="hidden" name="dir" id="dir-input" value="{{ $dir ?? 'desc' }}">
-                <input type="hidden" name="per_page" id="per-page-input" value="{{ $perPage ?? 15 }}">
+                <input type="hidden" name="per_page" id="per-page-input" value="{{ $perPage ?? 25 }}">
 
                 <button type="button" id="reset-filters-btn" class="ii-btn--ghost" title="Réinitialiser les filtres">
                     <i class="fas fa-rotate-left"></i>Reset
@@ -970,6 +949,13 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
             <i class="fas fa-check-circle"></i>
             <span id="ii-selected-count">0</span> sélection(s)
         </div>
+        {{-- Toutes les lignes chargees sont cochees et la liste en compte d'autres :
+             proposer tout le filtre (SelectionDInscriptions). --}}
+        <button type="button" id="ii-etendre-filtre" class="ii-bulk-lien" hidden></button>
+        <span id="ii-portee-filtre" class="ii-bulk-portee" hidden>
+            Tout le filtre est sélectionné
+            <button type="button" id="ii-annuler-portee" class="ii-bulk-lien">Annuler</button>
+        </span>
         <div class="ii-bulk-actions">
             @can('inscriptions.validate')
                 <button type="button" class="ii-bulk-btn ii-bulk-btn--primary" onclick="iiBulkValider()">

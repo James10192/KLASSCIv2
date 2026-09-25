@@ -8,9 +8,13 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Services\ReeinscriptionService;
+use App\Services\RendezVous\ReservateurRdv;
+use App\Support\ListeInfinie;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -32,7 +36,7 @@ class ESBTPReinscriptionDemandeController extends Controller
         $this->middleware('permission:reinscriptions.demandes.process')->only(['convertir', 'rejeter']);
     }
 
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         // Un statut inconnu rendrait une page vide sans rien expliquer : on
         // retombe sur « tous » plutot que de filtrer sur une valeur qui
@@ -53,8 +57,18 @@ class ESBTPReinscriptionDemandeController extends Controller
             ->when($request->query('contact') === 'non_verifie', fn ($q) => $q->contactNonConfirme())
             ->orderByRaw("FIELD(statut, 'en_attente') DESC")
             ->latest('created_at')
+            // Departage stable : la liste se charge par tranches, et deux demandes
+            // deposees a la meme seconde changeraient d'ordre d'une tranche a l'autre.
+            ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $demandes,
+                fn (ESBTPReinscriptionDemande $demande) => view('esbtp.reinscriptions.demandes._ligne', compact('demande'))->render(),
+            );
+        }
 
         $compteurs = ESBTPReinscriptionDemande::query()
             ->selectRaw('statut, COUNT(*) as total')
@@ -175,7 +189,7 @@ class ESBTPReinscriptionDemandeController extends Controller
         return back()->with('success', 'Réinscription effectuée. La demande est clôturée.');
     }
 
-    public function rejeter(Request $request, ESBTPReinscriptionDemande $demande): RedirectResponse
+    public function rejeter(Request $request, ESBTPReinscriptionDemande $demande, ReservateurRdv $reservateur): RedirectResponse
     {
         $valide = $request->validate([
             // Un rejet sans motif est un rejet qu'on ne saura pas expliquer a
@@ -185,14 +199,20 @@ class ESBTPReinscriptionDemandeController extends Controller
 
         // Meme reservation atomique que la conversion : deux agents ne doivent
         // pas pouvoir clore la meme demande avec deux motifs differents.
-        $traite = ESBTPReinscriptionDemande::whereKey($demande->id)
-            ->where('statut', ESBTPReinscriptionDemande::STATUT_EN_ATTENTE)
-            ->update([
-                'statut' => ESBTPReinscriptionDemande::STATUT_REJETEE,
-                'motif_rejet' => $valide['motif_rejet'],
-                'traite_par' => auth()->id(),
-                'traite_at' => now(),
-            ]);
+        // Le creneau se libere dans la meme transaction que le rejet : sinon la
+        // famille pourrait deplacer ou reprendre sa place entre les deux.
+        [$traite, $liberee] = DB::transaction(function () use ($demande, $valide, $reservateur) {
+            $traite = ESBTPReinscriptionDemande::whereKey($demande->id)
+                ->where('statut', ESBTPReinscriptionDemande::STATUT_EN_ATTENTE)
+                ->update([
+                    'statut' => ESBTPReinscriptionDemande::STATUT_REJETEE,
+                    'motif_rejet' => $valide['motif_rejet'],
+                    'traite_par' => auth()->id(),
+                    'traite_at' => now(),
+                ]);
+
+            return [$traite, $traite > 0 ? $reservateur->liberer($demande) : null];
+        });
 
         if ($traite === 0) {
             return back()->with('error', 'Cette demande a déjà été traitée.');
@@ -200,7 +220,7 @@ class ESBTPReinscriptionDemandeController extends Controller
 
         $this->oublierLeCompteur();
 
-        return back()->with('success', 'Demande rejetée.');
+        return back()->with('success', 'Demande rejetée.'.ReservateurRdv::phraseLiberation($liberee));
     }
 
     /**

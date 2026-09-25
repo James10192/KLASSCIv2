@@ -79,6 +79,15 @@ class MessagerieRdv
             return null;
         }
 
+        // Une reservation liberee ou annulee ne tient plus de place : lui confirmer
+        // son rendez-vous enverrait la famille sur un creneau qu'une autre peut
+        // avoir pris. Seul l'avis d'annulation part encore.
+        if ($action !== 'annule' && ! $reservation->statut?->occupeLeCreneau()) {
+            $this->consigner($reservation, StatutConvocationRdv::SansObjet, 'La réservation ne tient plus de créneau.');
+
+            return null;
+        }
+
         if ($action !== 'annule' && $this->creneauPasse($reservation)) {
             $this->consigner($reservation, StatutConvocationRdv::SansObjet, 'Le créneau est passé avant l\'envoi.');
 
