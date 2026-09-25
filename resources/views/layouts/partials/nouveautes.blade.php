@@ -59,7 +59,6 @@
     .nvx-btn--discret { border-color: transparent; color: #64748b; }
 
     @media (max-width: 575.98px) {
-        .nvx-content { border-radius: 0; }
         .nvx-hero { padding: 1rem 1rem .85rem; }
         .nvx-corps { padding: 1rem; }
         .nvx-pied { flex-wrap: wrap; padding: .75rem 1rem calc(.9rem + env(safe-area-inset-bottom, 0px)); }
@@ -69,7 +68,7 @@
 </style>
 
 <div class="modal fade" id="whatsNewModal" tabindex="-1" aria-labelledby="whatsNewModalLabel" aria-hidden="true" data-bs-backdrop="static" data-pref-key="{{ $cleVersion }}.user.{{ auth()->id() }}">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-sm-down">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content nvx-content"
              data-total="{{ $nvxTotal }}"
              x-data="{ i: 0, n: Number($el.dataset.total), aller(k) { this.i = Math.max(0, Math.min(this.n - 1, k)); } }"
