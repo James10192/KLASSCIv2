@@ -25,6 +25,8 @@ return [
             'titre' => 'Chercher partout avec Ctrl K',
             'icone' => 'fa-magnifying-glass',
             'texte' => 'Ctrl K (⌘ K sur Mac) ouvre une recherche qui trouve les pages de l’application et les fiches : étudiants, paiements, classes, matières. Les flèches parcourent les résultats, Entrée ouvre, Échap ferme. Vous ne voyez que ce que votre compte peut ouvrir.',
+            // Réservée au personnel : un étudiant a la palette, mais n'y trouve que ses propres pages.
+            'permissions' => ['students.view', 'inscriptions.view', 'paiements.view', 'paiements.create', 'classes.view', 'teachers.view'],
             'captures' => [
                 'avant' => 'images/nouveautes/2026-09/recherche-bureau-avant.webp',
                 'apres' => 'images/nouveautes/2026-09/recherche-bureau-apres.webp',
