@@ -4,7 +4,7 @@ namespace Tests\Feature\Assistant;
 
 use App\Domain\Assistant\Cles\CoffreDesCles;
 use App\Domain\Assistant\Modeles\RegistreDesModeles;
-use App\Models\Setting;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
@@ -64,7 +64,7 @@ class ReglagesAssistantTest extends TestCase
             ->assertJsonPath('etat.fournisseurs.openrouter.fin', 'abcd')
             ->assertDontSee(self::CLE);
 
-        $brut = Setting::where('key', 'assistant_cle_openrouter')->value('value');
+        $brut = DB::table('assistant_cles')->where('fournisseur', 'openrouter')->value('cle');
         $this->assertNotSame(self::CLE, $brut);
         $this->assertStringNotContainsString('sk-or-v1', $brut);
         $this->assertSame(self::CLE, app(CoffreDesCles::class)->lire('openrouter'));
@@ -102,14 +102,21 @@ class ReglagesAssistantTest extends TestCase
             ->assertOk()->assertJsonPath('etat.modele_defaut', 'or-deepseek');
     }
 
-    public function test_le_formulaire_generique_ne_peut_pas_ecrire_une_cle_en_clair(): void
+    public function test_aucune_lecture_des_reglages_n_emporte_la_cle(): void
     {
         app(CoffreDesCles::class)->definir('openrouter', self::CLE);
+        $brut = DB::table('assistant_cles')->where('fournisseur', 'openrouter')->value('cle');
+
+        // Lecture générique des réglages par le CLI, et export de l'écran.
+        Sanctum::actingAs(User::factory()->create(), ['cli:read']);
+        $this->getJson('/api/cli/settings')->assertOk()->assertDontSee(self::CLE)->assertDontSee($brut);
 
         $this->actingAs($this->administrateur())
-            ->put(route('esbtp.settings.update'), ['setting_assistant_cle_openrouter' => 'en-clair']);
+            ->get(route('esbtp.settings.export'))
+            ->assertDontSee(self::CLE)->assertDontSee($brut);
 
-        $this->assertSame(self::CLE, app(CoffreDesCles::class)->lire('openrouter'));
+        // Et le modèle ne se sérialise pas avec sa clé.
+        $this->assertArrayNotHasKey('cle', \App\Domain\Assistant\Cles\CleFournisseur::first()->toArray());
     }
 
     public function test_le_cli_pose_la_cle_avec_cli_admin_seulement(): void

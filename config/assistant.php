@@ -45,32 +45,40 @@ return [
     ],
 
     'fournisseurs' => [
+        'openrouter' => [
+            'libelle' => 'OpenRouter',
+            'adaptateur' => 'openai',
+            'cle' => env('OPENROUTER_API_KEY'),
+            'url' => env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1/'),
+            // Identification de l'application, recommandée par OpenRouter.
+            'entetes' => ['HTTP-Referer' => env('APP_URL', ''), 'X-Title' => 'KLASSCI'],
+        ],
         'anthropic' => [
+            'libelle' => 'Anthropic (Claude)',
             'adaptateur' => 'anthropic',
             'cle' => env('ANTHROPIC_API_KEY'),
             'url' => env('ANTHROPIC_BASE_URL', 'https://api.anthropic.com/v1/'),
         ],
         'openai' => [
+            'libelle' => 'OpenAI',
             'adaptateur' => 'openai',
             'cle' => env('OPENAI_API_KEY'),
             'url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1/'),
         ],
         'mistral' => [
+            'libelle' => 'Mistral',
             'adaptateur' => 'openai',
             'cle' => env('MISTRAL_API_KEY'),
             'url' => env('MISTRAL_BASE_URL', 'https://api.mistral.ai/v1/'),
         ],
         'deepseek' => [
+            'libelle' => 'DeepSeek',
             'adaptateur' => 'openai',
             'cle' => env('DEEPSEEK_API_KEY'),
             'url' => env('DEEPSEEK_BASE_URL', 'https://api.deepseek.com/v1/'),
         ],
-        'openrouter' => [
-            'adaptateur' => 'openai',
-            'cle' => env('OPENROUTER_API_KEY'),
-            'url' => env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1/'),
-        ],
         'gemini' => [
+            'libelle' => 'Google Gemini',
             'adaptateur' => 'gemini',
             'cle' => env('GEMINI_API_KEY'),
             'url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/'),

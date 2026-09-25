@@ -153,8 +153,6 @@
 <script>
     if (typeof window.asrReglages !== 'function') {
         window.asrReglages = function () {
-            var ORDRE = ['openrouter', 'anthropic', 'openai', 'gemini', 'mistral', 'deepseek'];
-            var FOURNISSEURS = { openrouter: 'OpenRouter', anthropic: 'Anthropic (Claude)', openai: 'OpenAI', gemini: 'Google Gemini', mistral: 'Mistral', deepseek: 'DeepSeek' };
             var ERREURS = {
                 http_401: 'clé refusée', http_402: 'crédit épuisé', http_403: 'accès refusé par le fournisseur',
                 http_404: 'modèle introuvable', limite_debit: 'limite de débit atteinte', reseau: 'fournisseur injoignable',
@@ -168,13 +166,15 @@
                     this.urls = JSON.parse(this.$root.dataset.urls || '{}');
                     this.modele = this.etat.modele_defaut || '';
                 },
+                // Ordre et libellés : ceux de config/assistant.php.
                 fournisseursTries: function () {
                     var f = this.etat.fournisseurs || {};
-                    return Object.keys(f)
-                        .sort(function (a, b) { return (ORDRE.indexOf(a) + 99) % 99 - (ORDRE.indexOf(b) + 99) % 99; })
-                        .map(function (code) { return Object.assign({ code: code }, f[code]); });
+                    return Object.keys(f).map(function (code) { return Object.assign({ code: code }, f[code]); });
                 },
-                libelleFournisseur: function (code) { return FOURNISSEURS[code] || code; },
+                libelleFournisseur: function (code) {
+                    var f = (this.etat.fournisseurs || {})[code];
+                    return (f && f.libelle) || code;
+                },
                 libelleModele: function (cle) {
                     var m = (this.etat.modeles || []).find(function (x) { return x.cle === cle; });
                     return m ? m.libelle : cle;

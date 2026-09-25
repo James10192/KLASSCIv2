@@ -9,8 +9,9 @@ Authentification : jeton Sanctum. Lecture : `cli:read`. Écriture et test :
 
 ## Principe
 
-- Une clé posée ici est **chiffrée** (APP_KEY) dans la table `settings`, sous
-  `assistant_cle_<fournisseur>`. Elle **prime sur le .env** du serveur.
+- Une clé posée ici est **chiffrée** (APP_KEY, cast `encrypted`) dans sa propre
+  table `assistant_cles`, hors des réglages : ni l'export, ni les sauvegardes,
+  ni le journal, ni `/api/cli/settings` ne la voient. Elle **prime sur le .env**.
 - Elle n'est **jamais renvoyée** : les réponses ne portent que la source
   (`reglages`, `env`, `aucune`) et les 4 derniers caractères.
 - Fournisseurs : ceux de `config/assistant.php` (`openrouter`, `anthropic`,

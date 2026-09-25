@@ -19,8 +19,12 @@ class CLIAssistantController extends BaseApiController
     {
     }
 
-    public function etat(): JsonResponse
+    public function etat(Request $request): JsonResponse
     {
+        if (! $request->user()->tokenCan('cli:read') && ! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
         return $this->successResponse($this->reglages->etat());
     }
 

@@ -23,10 +23,11 @@ class OpenAiCompatible extends AdaptateurHttp
             'Accept' => 'text/event-stream',
             'Authorization' => 'Bearer ' . $modele->cleApi(),
         ];
-        if ($modele->fournisseur === 'openrouter') {
-            // Identification de l'application, recommandée par OpenRouter.
-            $entetes['HTTP-Referer'] = (string) config('app.url');
-            $entetes['X-Title'] = 'KLASSCI';
+        // En-têtes propres au fournisseur (config/assistant.php, clé « entetes »).
+        foreach ((array) config('assistant.fournisseurs.' . $modele->fournisseur . '.entetes', []) as $nom => $valeur) {
+            if (is_string($valeur) && $valeur !== '') {
+                $entetes[$nom] = $valeur;
+            }
         }
 
         [$corps, $erreur] = $this->ouvrir($modele, $modele->url . 'chat/completions', $entetes, $this->corps($requete, $modele));

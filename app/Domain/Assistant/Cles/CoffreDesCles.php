@@ -2,10 +2,7 @@
 
 namespace App\Domain\Assistant\Cles;
 
-use App\Models\Setting;
 use Illuminate\Contracts\Encryption\DecryptException;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
@@ -13,14 +10,16 @@ use InvalidArgumentException;
  * Clés d'API des fournisseurs d'IA, posées par l'école (écran des réglages ou
  * klassci-cli) plutôt que dans le .env du serveur.
  *
- * Stockées CHIFFRÉES (APP_KEY) dans la table des réglages, sous
- * `assistant_cle_<fournisseur>`. Jamais relues en clair ailleurs qu'ici,
- * jamais renvoyées au navigateur ni au CLI : on n'expose que leur état et
- * leurs quatre derniers caractères. Une clé posée ici prime sur celle du .env.
+ * Stockées CHIFFRÉES dans leur propre table (`assistant_cles`), hors des
+ * réglages : les exports, sauvegardes, journaux et lectures génériques des
+ * réglages n'y ont pas accès. Jamais renvoyées au navigateur ni au CLI : on
+ * n'expose que leur état et leurs quatre derniers caractères. Une clé posée
+ * ici prime sur celle du .env.
  */
 class CoffreDesCles
 {
-    private const PREFIXE = 'assistant_cle_';
+    /** @var array<string, ?string> lecture mémorisée le temps d'une requête */
+    private array $memo = [];
 
     /** @return string[] fournisseurs déclarés dans config/assistant.php */
     public function fournisseurs(): array
@@ -30,20 +29,22 @@ class CoffreDesCles
 
     public function lire(string $fournisseur): ?string
     {
-        $chiffree = $this->valeurStockee($fournisseur);
-        if ($chiffree === null) {
-            return null;
+        if (array_key_exists($fournisseur, $this->memo)) {
+            return $this->memo[$fournisseur];
         }
 
         try {
-            $cle = Crypt::decryptString($chiffree);
+            $cle = CleFournisseur::where('fournisseur', $fournisseur)->first()?->cle;
         } catch (DecryptException $e) {
             // APP_KEY a changé depuis la pose : la clé est perdue, pas corrompue.
             Log::error('assistant.cle_illisible', ['fournisseur' => $fournisseur]);
-            return null;
+            $cle = null;
+        } catch (\Throwable $e) {
+            // Table absente (déploiement pas encore migré, tests sans schéma).
+            $cle = null;
         }
 
-        return $cle !== '' ? $cle : null;
+        return $this->memo[$fournisseur] = (is_string($cle) && $cle !== '') ? $cle : null;
     }
 
     public function definir(string $fournisseur, string $cle, ?int $auteurId = null): void
@@ -54,18 +55,8 @@ class CoffreDesCles
             throw new InvalidArgumentException('La clé est vide, trop longue ou contient des espaces.');
         }
 
-        Setting::updateOrCreate(
-            ['key' => self::PREFIXE . $fournisseur],
-            [
-                'value' => Crypt::encryptString($cle),
-                'type' => 'string',
-                'group' => 'assistant',
-                'description' => 'Clé API ' . $fournisseur . ' (chiffrée)',
-                'is_active' => true,
-                'updated_by' => $auteurId,
-            ]
-        );
-        $this->oublierCache($fournisseur);
+        CleFournisseur::updateOrCreate(['fournisseur' => $fournisseur], ['cle' => $cle, 'updated_by' => $auteurId]);
+        unset($this->memo[$fournisseur]);
 
         Log::info('assistant.cle_posee', ['fournisseur' => $fournisseur, 'par' => $auteurId]);
     }
@@ -73,8 +64,8 @@ class CoffreDesCles
     public function retirer(string $fournisseur, ?int $auteurId = null): void
     {
         $this->verifierFournisseur($fournisseur);
-        Setting::where('key', self::PREFIXE . $fournisseur)->delete();
-        $this->oublierCache($fournisseur);
+        CleFournisseur::where('fournisseur', $fournisseur)->delete();
+        unset($this->memo[$fournisseur]);
 
         Log::info('assistant.cle_retiree', ['fournisseur' => $fournisseur, 'par' => $auteurId]);
     }
@@ -82,18 +73,19 @@ class CoffreDesCles
     /**
      * État de chaque fournisseur, sans jamais la clé.
      *
-     * @return array<string, array{source: string, fin: ?string}>
+     * @return array<string, array{libelle: string, source: string, fin: ?string}>
      *   source : « reglages » (posée par l'école), « env » (serveur) ou « aucune »
      */
     public function etat(): array
     {
         $etat = [];
-        foreach ($this->fournisseurs() as $fournisseur) {
+        foreach ((array) config('assistant.fournisseurs', []) as $fournisseur => $conf) {
             $posee = $this->lire($fournisseur);
-            $env = config('assistant.fournisseurs.' . $fournisseur . '.cle');
+            $env = $conf['cle'] ?? null;
             $cle = $posee ?? (is_string($env) && $env !== '' ? $env : null);
 
             $etat[$fournisseur] = [
+                'libelle' => (string) ($conf['libelle'] ?? $fournisseur),
                 'source' => $posee !== null ? 'reglages' : ($cle !== null ? 'env' : 'aucune'),
                 'fin' => $cle !== null ? mb_substr($cle, -4) : null,
             ];
@@ -102,29 +94,10 @@ class CoffreDesCles
         return $etat;
     }
 
-    private function valeurStockee(string $fournisseur): ?string
-    {
-        try {
-            $valeur = Setting::where('key', self::PREFIXE . $fournisseur)
-                ->where('is_active', true)
-                ->value('value');
-        } catch (\Throwable $e) {
-            // Table absente (installation, tests sans schéma) : pas de clé posée.
-            return null;
-        }
-
-        return is_string($valeur) && $valeur !== '' ? $valeur : null;
-    }
-
     private function verifierFournisseur(string $fournisseur): void
     {
         if (!in_array($fournisseur, $this->fournisseurs(), true)) {
             throw new InvalidArgumentException("Fournisseur inconnu : {$fournisseur}.");
         }
-    }
-
-    private function oublierCache(string $fournisseur): void
-    {
-        Cache::forget('setting_' . self::PREFIXE . $fournisseur);
     }
 }
