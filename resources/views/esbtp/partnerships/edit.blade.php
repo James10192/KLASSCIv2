@@ -146,7 +146,7 @@
                         <!-- Description du partenariat -->
                         <div class="form-group">
                             <label for="description">Description du partenariat</label>
-                            <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="4" placeholder="Description détaillée du partenariat">{{ old('description', $partnership->description) }}</textarea>
+                            <textarea data-editeur-riche class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="4" placeholder="Description détaillée du partenariat">{{ \App\Support\TexteRiche::pourEditeur(old('description', $partnership->description)) }}</textarea>
                             @error('description')
                                 <span class="invalid-feedback" role="alert">
                                     <strong>{{ $message }}</strong>
@@ -169,31 +169,8 @@
 @endsection
 
 @section('scripts')
-<script>
-    $(document).ready(function () {
-        // Initialiser Select2
-        $('.select2').select2({
-            theme: 'bootstrap4'
-        });
-        
-        // Afficher le nom du fichier sélectionné pour le logo
-        bsCustomFileInput.init();
-        
-        // Initialiser l'éditeur de texte pour la description
-        $('#description').summernote({
-            height: 200,
-            placeholder: 'Rédigez une description détaillée du partenariat ici...',
-            toolbar: [
-                ['style', ['style']],
-                ['font', ['bold', 'underline', 'clear']],
-                ['color', ['color']],
-                ['para', ['ul', 'ol', 'paragraph']],
-                ['table', ['table']],
-                ['insert', ['link']],
-                ['view', ['fullscreen', 'codeview', 'help']]
-            ],
-            lang: 'fr-FR'
-        });
-    });
-</script>
+    {{-- Éditeur riche : l'ancienne initialisation appelait Summernote, Select2 et
+         bsCustomFileInput sans qu'aucun ne soit chargé, et plantait à la première ligne.
+         Les selects et le champ de fichier restent natifs : hors du périmètre de l'éditeur. --}}
+    @include('partials.editeur-riche')
 @endsection 

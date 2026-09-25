@@ -103,7 +103,7 @@
                         <!-- Description de la spécialité -->
                         <div class="form-group">
                             <label for="description">Description de la spécialité</label>
-                            <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="4" placeholder="Description détaillée de la spécialité">{{ old('description', $specialty->description) }}</textarea>
+                            <textarea data-editeur-riche class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="4" placeholder="Description détaillée de la spécialité">{{ \App\Support\TexteRiche::pourEditeur(old('description', $specialty->description)) }}</textarea>
                             @error('description')
                                 <span class="invalid-feedback" role="alert">
                                     <strong>{{ $message }}</strong>
@@ -114,7 +114,7 @@
                         <!-- Débouchés professionnels -->
                         <div class="form-group">
                             <label for="career_opportunities">Débouchés professionnels</label>
-                            <textarea class="form-control @error('career_opportunities') is-invalid @enderror" id="career_opportunities" name="career_opportunities" rows="4" placeholder="Débouchés professionnels pour cette spécialité">{{ old('career_opportunities', $specialty->career_opportunities) }}</textarea>
+                            <textarea data-editeur-riche class="form-control @error('career_opportunities') is-invalid @enderror" id="career_opportunities" name="career_opportunities" rows="4" placeholder="Débouchés professionnels pour cette spécialité">{{ \App\Support\TexteRiche::pourEditeur(old('career_opportunities', $specialty->career_opportunities)) }}</textarea>
                             @error('career_opportunities')
                                 <span class="invalid-feedback" role="alert">
                                     <strong>{{ $message }}</strong>
@@ -137,28 +137,8 @@
 @endsection
 
 @section('scripts')
-<script>
-    $(document).ready(function () {
-        // Initialiser Select2
-        $('.select2').select2({
-            theme: 'bootstrap4'
-        });
-        
-        // Initialiser l'éditeur de texte pour la description et les débouchés
-        $('#description, #career_opportunities').summernote({
-            height: 200,
-            placeholder: 'Rédigez ici...',
-            toolbar: [
-                ['style', ['style']],
-                ['font', ['bold', 'underline', 'clear']],
-                ['color', ['color']],
-                ['para', ['ul', 'ol', 'paragraph']],
-                ['table', ['table']],
-                ['insert', ['link']],
-                ['view', ['fullscreen', 'codeview', 'help']]
-            ],
-            lang: 'fr-FR'
-        });
-    });
-</script>
+    {{-- Éditeur riche : l'ancienne initialisation appelait Summernote, Select2 et
+         bsCustomFileInput sans qu'aucun ne soit chargé, et plantait à la première ligne.
+         Les selects et le champ de fichier restent natifs : hors du périmètre de l'éditeur. --}}
+    @include('partials.editeur-riche')
 @endsection 

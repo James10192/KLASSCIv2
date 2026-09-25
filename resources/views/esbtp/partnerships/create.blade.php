@@ -136,7 +136,7 @@
                         <!-- Description du partenariat -->
                         <div class="form-group">
                             <label for="description">Description du partenariat</label>
-                            <textarea class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="4" placeholder="Description détaillée du partenariat">{{ old('description') }}</textarea>
+                            <textarea data-editeur-riche class="form-control @error('description') is-invalid @enderror" id="description" name="description" rows="4" placeholder="Description détaillée du partenariat">{{ \App\Support\TexteRiche::pourEditeur(old('description')) }}</textarea>
                             @error('description')
                                 <span class="invalid-feedback" role="alert">
                                     <strong>{{ $message }}</strong>
@@ -144,23 +144,9 @@
                             @enderror
                         </div>
                         
-                        <!-- Départements associés -->
-                        <div class="form-group">
-                            <label>Départements associés</label>
-                            <select class="form-control select2 @error('departments') is-invalid @enderror" id="departments" name="departments[]" multiple="multiple" data-placeholder="Sélectionnez les départements">
-                                @foreach($departments as $department)
-                                    <option value="{{ $department->id }}" {{ (collect(old('departments'))->contains($department->id)) ? 'selected' : '' }}>
-                                        {{ $department->name }} ({{ $department->code }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            <small class="form-text text-muted">Vous pourrez ajouter des détails spécifiques pour chaque département après la création du partenariat.</small>
-                            @error('departments')
-                                <span class="invalid-feedback" role="alert">
-                                    <strong>{{ $message }}</strong>
-                                </span>
-                            @enderror
-                        </div>
+                        {{-- Pas de choix des départements ici : le rattachement n'existe pas encore
+                             (store() ne l'enregistre pas, la fiche l'annonce « à venir »), et la liste
+                             attendait une variable que le contrôleur ne transmet pas — la page tombait en 500. --}}
                     </div>
                     <!-- /.card-body -->
                     
@@ -177,31 +163,8 @@
 @endsection
 
 @section('scripts')
-<script>
-    $(document).ready(function () {
-        // Initialiser Select2
-        $('.select2').select2({
-            theme: 'bootstrap4'
-        });
-        
-        // Afficher le nom du fichier sélectionné pour le logo
-        bsCustomFileInput.init();
-        
-        // Initialiser l'éditeur de texte pour la description
-        $('#description').summernote({
-            height: 200,
-            placeholder: 'Rédigez une description détaillée du partenariat ici...',
-            toolbar: [
-                ['style', ['style']],
-                ['font', ['bold', 'underline', 'clear']],
-                ['color', ['color']],
-                ['para', ['ul', 'ol', 'paragraph']],
-                ['table', ['table']],
-                ['insert', ['link']],
-                ['view', ['fullscreen', 'codeview', 'help']]
-            ],
-            lang: 'fr-FR'
-        });
-    });
-</script>
+    {{-- Éditeur riche : l'ancienne initialisation appelait Summernote, Select2 et
+         bsCustomFileInput sans qu'aucun ne soit chargé, et plantait à la première ligne.
+         Les selects et le champ de fichier restent natifs : hors du périmètre de l'éditeur. --}}
+    @include('partials.editeur-riche')
 @endsection 
