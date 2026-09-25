@@ -137,6 +137,13 @@ class FamillesAPrevenirRdv
 
     private function motif(ESBTPRdvReservation $r): string
     {
+        // Une adresse presente mais jamais prouvee retient aussi la convocation
+        // (MessagerieRdv::emailValide) : « pas d'adresse » enverrait l'agent
+        // chercher un courriel qui existe.
+        if ($r->convocation_statut === StatutConvocationRdv::SansEmail && $r->porteur()?->contactAConfirmer()) {
+            return 'Contact non confirmé : code jamais saisi par la famille';
+        }
+
         return match ($r->convocation_statut) {
             StatutConvocationRdv::SansEmail => 'Pas d\'adresse e-mail',
             StatutConvocationRdv::Echec => 'Envoi refusé'.($r->convocation_erreur ? ' : '.$r->convocation_erreur : ''),
