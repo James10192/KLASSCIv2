@@ -4,6 +4,17 @@
     'users' => collect(),
     'placeholder' => '— Tous les utilisateurs —',
     'submitOnChange' => false,
+    // L'option vide n'a pas le meme sens partout : « tout le monde » dans un
+    // filtre, « personne » quand vide veut dire desassigner. Elle ne se devine
+    // pas : chaque ecran qui assigne la nomme (empty-label, empty-hint,
+    // empty-icon="fa-user-slash"). Sans libelle, elle reprend l'invite sans
+    // ses tirets, ce qui ne vaut que pour une invite de filtre (« Tous les… ») :
+    // d'ou l'icone par defaut, `fa-globe`. `false` la retire, pour un choix
+    // obligatoire — c'est le `placeholderIsFirstOption` de x-au-select.
+    'emptyOption' => true,
+    'emptyLabel' => null,
+    'emptyHint' => null,
+    'emptyIcon' => 'fa-globe',
 ])
 
 @php
@@ -70,6 +81,11 @@
     }
 
     $totalUsers = $usersCollection->count();
+    // L'invite sans ses tirets decoratifs (« — Tous les enseignants — »).
+    $libelleOptionVide = $emptyLabel ?? preg_replace('/^[\s\x{00A0}\x{2013}\x{2014}-]+|[\s\x{00A0}\x{2013}\x{2014}-]+$/u', '', (string) $placeholder);
+    if ($libelleOptionVide === '') {
+        $libelleOptionVide = 'Aucun';
+    }
 @endphp
 
 <div class="au-up {{ $attributes->get('class') ?? '' }}"
@@ -77,8 +93,8 @@
      data-groups='@json($groupedJson)'
      data-submit-on-change="{{ $submitOnChange ? '1' : '0' }}"
      data-current="{{ $value ?? '' }}"
-     @click.outside="open = false"
-     @keydown.escape="open = false">
+     @click.outside="fermerSiExterieur($event)"
+     @keydown.escape="fermer()">
 
     <button type="button"
             class="au-up-trigger"
@@ -104,7 +120,7 @@
         <i class="fas fa-chevron-down au-up-caret" :class="{ 'au-up-caret--open': open }"></i>
     </button>
 
-    <div class="au-up-menu" x-show="open" x-cloak :style="menuStyle"
+    <div class="au-up-menu" x-ref="menu" x-show="open" x-cloak
          x-transition:enter="au-up-menu--entering"
          x-transition:enter-start="au-up-menu--enter-start"
          x-transition:enter-end="au-up-menu--enter-end">
@@ -112,7 +128,7 @@
         <div class="au-up-search">
             <i class="fas fa-search"></i>
             <input type="text" x-model="search" x-ref="searchInput" @click.stop
-                   @keydown.escape.stop="open = false"
+                   @keydown.escape.stop="fermer()"
                    placeholder="Rechercher par nom, email ou rôle…">
             <button type="button" x-show="search.length > 0"
                     @click="search = ''; $refs.searchInput.focus()"
@@ -129,17 +145,22 @@
         </div>
 
         <div class="au-up-options" role="listbox">
+            @if($emptyOption)
             <button type="button"
                     class="au-up-option au-up-option--all"
                     :class="{ 'au-up-option--active': currentValue === '' }"
-                    @click="select(null)">
-                <span class="au-up-avatar au-up-avatar--all"><i class="fas fa-globe"></i></span>
+                    @click="select(null)" role="option"
+                    :aria-selected="(currentValue === '').toString()">
+                <span class="au-up-avatar au-up-avatar--all"><i class="fas {{ $emptyIcon }}"></i></span>
                 <span class="au-up-option-info">
-                    <span class="au-up-option-name">Tous les utilisateurs</span>
-                    <span class="au-up-option-meta">Vue d'ensemble — toutes les actions tracées</span>
+                    <span class="au-up-option-name">{{ $libelleOptionVide }}</span>
+                    @if($emptyHint)
+                    <span class="au-up-option-meta">{{ $emptyHint }}</span>
+                    @endif
                 </span>
                 <i class="fas fa-check au-up-option-check" x-show="currentValue === ''"></i>
             </button>
+            @endif
 
             <template x-for="group in filteredGroups" :key="group.key">
                 <div class="au-up-group">
@@ -174,7 +195,11 @@
         </div>
     </div>
 
-    <input type="hidden" name="{{ $name }}" :value="currentValue" x-ref="native">
+    {{-- Les attributs poses par l'appelant (x-model, x-on:change…) vont sur le
+         champ cache, comme x-au-select le fait sur son select natif. Les laisser
+         sur la racine les faisait disparaitre sans bruit : l'ajout d'un membre
+         de jury et le filtre Utilisateur de l'audit n'ont jamais rien recu. --}}
+    <input type="hidden" name="{{ $name }}" {{ $attributes->except(['class']) }} :value="currentValue" x-ref="native">
 </div>
 
 @once
@@ -231,7 +256,9 @@
     background: #f8fafc;
 }
 .au-up-search > i:first-child { color: #94a3b8; }
-.au-up-search input { flex: 1; border: none; background: transparent; outline: none; font-size: .88rem; color: #0f172a; }
+/* min-width:0 : sans lui, le champ garde sa largeur native et deborde d'un
+   menu etroit ; le focus fait alors defiler le menu, affiche coupe a gauche. */
+.au-up-search input { flex: 1; min-width: 0; width: 100%; border: none; background: transparent; outline: none; font-size: .88rem; color: #0f172a; }
 .au-up-search input::placeholder { color: #94a3b8; }
 .au-up-search-clear {
     background: #e2e8f0; border: none; width: 24px; height: 24px;
@@ -305,6 +332,8 @@
 
 @push('scripts')
 <script>
+@include('components.partials.au-menu-ancrage-js')
+
 if (typeof window.auUserPicker !== 'function') {
     window.auUserPicker = function () {
         return {
@@ -313,17 +342,36 @@ if (typeof window.auUserPicker !== 'function') {
             groups: [],
             currentValue: '',
             submitOnChange: false,
-            menuStyle: '',
             _repositionMenu: null,
+            _racine: null,
+            _declencheur: null,
+            _menu: null,
+            _suiviModele: null,
+            _marqueur: null,
+            _arreterVeille: null,
             init() {
+                // Dans une methode appelee depuis un gestionnaire
+                // (`@click="toggle()"` sur le bouton), `$el` designe le BOUTON,
+                // pas la racine : `$el.querySelector('.au-up-trigger')` y rendait
+                // null et positionMenu sortait sans rien poser. Le menu restait
+                // sur sa position CSS, coupe par tout parent `overflow:hidden`
+                // (modales), jusqu'au premier scroll. On garde donc les
+                // elements utiles une fois pour toutes, ici, ou `$el` est bien
+                // la racine. Meme correctif que le composant x-au-select (PR #1199).
+                this._racine = this.$el;
+                this._declencheur = this.$el.querySelector('.au-up-trigger');
+                this._menu = this.$refs.menu || this.$el.querySelector('.au-up-menu');
                 try { this.groups = JSON.parse(this.$el.dataset.groups || '[]'); }
                 catch (e) { this.groups = []; }
                 this.currentValue = this.$el.dataset.current || '';
                 this.submitOnChange = this.$el.dataset.submitOnChange === '1';
-                this.$nextTick(() => { if (this.$refs.native) this.$refs.native.value = this.currentValue; });
+                this.$nextTick(() => {
+                    if (this.$refs.native) this.$refs.native.value = this.currentValue;
+                    this.suivreLeModeleParent();
+                });
                 this._repositionMenu = (e) => {
                     if (!this.open) return;
-                    if (e?.target && this.$el.querySelector('.au-up-menu')?.contains(e.target)) return;
+                    if (e?.target && this._menu?.contains(e.target)) return;
                     this.positionMenu();
                 };
                 window.addEventListener('resize', this._repositionMenu, { passive: true });
@@ -332,29 +380,94 @@ if (typeof window.auUserPicker !== 'function') {
                 window.visualViewport?.addEventListener('scroll', this._repositionMenu, { passive: true });
             },
             destroy() {
+                if (this._suiviModele && window.Alpine?.release) window.Alpine.release(this._suiviModele);
+                this.lacherLeMenu();
                 window.removeEventListener('resize', this._repositionMenu);
                 window.removeEventListener('scroll', this._repositionMenu, { capture: true });
                 window.visualViewport?.removeEventListener('resize', this._repositionMenu);
                 window.visualViewport?.removeEventListener('scroll', this._repositionMenu);
             },
             toggle() {
-                this.open = !this.open;
                 if (this.open) {
-                    // Position before Alpine reveals the menu, then refine with its rendered size.
-                    this.positionMenu();
-                    this.$nextTick(() => {
-                        window.requestAnimationFrame(() => {
-                            this.positionMenu();
-                            this.$refs.searchInput?.focus();
-                        });
-                    });
-                } else {
-                    this.menuStyle = '';
+                    this.fermer();
+                    return;
                 }
+                this.open = true;
+                // Le deplacement se decide AVANT la mesure : il change la
+                // reference des coordonnees.
+                this.ancrer();
+                // Position before Alpine reveals the menu, then refine with its rendered size.
+                this.positionMenu();
+                this.$nextTick(() => {
+                    window.requestAnimationFrame(() => {
+                        this.positionMenu();
+                        this.$refs.searchInput?.focus();
+                    });
+                });
+            },
+            /**
+             * Avec `x-model` sur le composant, la valeur vit aussi chez le
+             * parent : « Réinitialiser » la remet a vide la-bas sans rien dire
+             * ici, et le champ affichait encore l'ancien choix. On suit donc
+             * le modele parent quand il existe.
+             */
+            suivreLeModeleParent() {
+                const native = this.$refs.native;
+                if (! native || ! native._x_model || ! window.Alpine?.effect) return;
+                // On ne reagit qu'a un changement DU PARENT : l'effet lit aussi
+                // currentValue, donc il se relance a chaque choix ici — et sans
+                // ce garde il remettait aussitot l'ancienne valeur du parent.
+                let precedente = null;
+                this._suiviModele = window.Alpine.effect(() => {
+                    const v = native._x_model.get();
+                    const valeur = v === null || v === undefined ? '' : String(v);
+                    if (valeur === precedente) return;
+                    precedente = valeur;
+                    if (valeur !== this.currentValue) this.currentValue = valeur;
+                });
+            },
+            /** Unique chemin de fermeture : clic dehors, echappement, choix, bouton. */
+            fermer() {
+                this.open = false;
+                this.search = '';
+                this.effacerPositionMenu();
+                this.lacherLeMenu();
+            },
+            /**
+             * Une modale animee par un `transform` (planning LMD) devient le
+             * bloc conteneur des descendants `fixed` : le menu y partirait de
+             * plusieurs centaines de pixels. On le passe alors sous <body>,
+             * par la mecanique partagee avec x-au-select, et on surveille les
+             * `transform` de survol tant qu'il n'est pas deplace.
+             */
+            ancrer() {
+                if (this._marqueur || typeof window.auMenuAncrage !== 'object') return;
+                this._marqueur = window.auMenuAncrage.deplacerSiBloque(this._racine, this._menu);
+                if (this._marqueur || this._arreterVeille) return;
+                this._arreterVeille = window.auMenuAncrage.veiller(() => {
+                    if (! this.open || this._marqueur) { this.cesserVeille(); return; }
+                    this._marqueur = window.auMenuAncrage.deplacerSiBloque(this._racine, this._menu);
+                    if (this._marqueur) { this.positionMenu(); this.cesserVeille(); }
+                });
+            },
+            cesserVeille() {
+                if (this._arreterVeille) { this._arreterVeille(); this._arreterVeille = null; }
+            },
+            lacherLeMenu() {
+                this.cesserVeille();
+                if (! this._marqueur) return;
+                window.auMenuAncrage.rapatrier(this._menu, this._marqueur);
+                this._marqueur = null;
+            },
+            /** `@click.outside` ne connait que la racine : un menu deplace sous <body> serait « dehors ». */
+            fermerSiExterieur(evenement) {
+                if (! this.open) return;
+                if (this._menu && evenement && this._menu.contains(evenement.target)) return;
+                this.fermer();
             },
             positionMenu() {
-                const trigger = this.$el.querySelector('.au-up-trigger');
-                const menu = this.$el.querySelector('.au-up-menu');
+                const trigger = this._declencheur;
+                const menu = this._menu;
                 if (!trigger || !menu) return;
 
                 const margin = 12;
@@ -371,9 +484,38 @@ if (typeof window.auUserPicker !== 'function') {
                 const openUp = spaceBelow < 220 && spaceAbove > spaceBelow;
                 const availableHeight = Math.max(0, Math.min(500, openUp ? spaceAbove : spaceBelow));
 
-                this.menuStyle = openUp
-                    ? `position:fixed;left:${left}px;right:auto;top:auto;bottom:${visibleHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
-                    : `position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
+                this.appliquerPositionMenu({
+                    // Sous <body>, le z-index de la feuille (1050) passerait
+                    // sous le fond des modales LMD (2050).
+                    'z-index': this._marqueur ? '99999' : '',
+                    position: 'fixed',
+                    left: `${left}px`,
+                    right: 'auto',
+                    top: openUp ? 'auto' : `${triggerRect.bottom + gap}px`,
+                    bottom: openUp ? `${visibleHeight - triggerRect.top + gap}px` : 'auto',
+                    width: `${menuWidth}px`,
+                    'min-width': `${minimumWidth}px`,
+                    'max-width': `${viewportWidth}px`,
+                    'max-height': `${availableHeight}px`,
+                    'transform-origin': openUp ? 'bottom center' : 'top center',
+                });
+            },
+            /**
+             * Propriete par propriete, jamais un `:style` en chaine : celui-ci
+             * reecrit l'attribut style entier, sur lequel x-show pose et
+             * retire `display`. `display` n'appartient qu'a x-show.
+             */
+            appliquerPositionMenu(proprietes) {
+                if (! this._menu) return;
+                Object.entries(proprietes).forEach(([nom, valeur]) => (valeur === ''
+                    ? this._menu.style.removeProperty(nom)
+                    : this._menu.style.setProperty(nom, valeur)));
+            },
+            effacerPositionMenu() {
+                if (! this._menu) return;
+                ['z-index', 'position', 'left', 'right', 'top', 'bottom', 'width', 'min-width',
+                    'max-width', 'max-height', 'transform-origin']
+                    .forEach((nom) => this._menu.style.removeProperty(nom));
             },
             get filteredGroups() {
                 const s = this.search.trim().toLowerCase();
@@ -401,14 +543,16 @@ if (typeof window.auUserPicker !== 'function') {
             },
             select(u, group) {
                 this.currentValue = u ? String(u.id) : '';
-                this.open = false; this.search = ''; this.menuStyle = '';
+                this.fermer();
                 this.$nextTick(() => {
                     if (this.$refs.native) {
                         this.$refs.native.value = this.currentValue;
                         this.$refs.native.dispatchEvent(new Event('change', { bubbles: true }));
+                        // x-model sur un champ cache ecoute `input`, pas `change`.
+                        this.$refs.native.dispatchEvent(new Event('input', { bubbles: true }));
                     }
                     if (this.submitOnChange) {
-                        const form = this.$el.closest('form');
+                        const form = this._racine.closest('form');
                         if (form) form.submit();
                     }
                 });
