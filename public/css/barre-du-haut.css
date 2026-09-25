@@ -38,51 +38,6 @@
         padding: 4px 8px 4px 0 !important;
     }
 
-    /* ---------- Recherche ---------- */
-    /* Le champ fixe sa largeur ; le conteneur l'épouse, pour que l'indication
-       Ctrl K se pose dans le champ et non au bout de la colonne centrale. */
-    .nextadmin-navbar .header-actions { position: relative; display: inline-flex !important; width: fit-content; max-width: 100%; }
-    .nextadmin-navbar .search-bar {
-        width: clamp(240px, 30vw, 420px);
-        min-width: 0 !important;
-        height: 38px;
-        padding: 0 64px 0 38px !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 10px !important;
-        background: #f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 12px 50% !important;
-        box-shadow: none !important;
-        font-size: 13.5px !important;
-        color: #0f172a;
-        transform: none !important;
-    }
-    .nextadmin-navbar .search-bar::placeholder { color: #94a3b8; }
-    .nextadmin-navbar .search-bar:hover { border-color: #cbd5e1 !important; }
-    .nextadmin-navbar .search-bar:focus {
-        background-color: #fff !important;
-        border-color: #0453cb !important;
-        box-shadow: 0 0 0 3px rgba(4, 83, 203, .12) !important;
-        outline: none;
-    }
-    .nextadmin-navbar .kbh-raccourci {
-        position: absolute;
-        right: 10px;
-        top: 50%;
-        margin-top: -10px;
-        height: 20px;
-        padding: 0 6px;
-        display: inline-flex;
-        align-items: center;
-        border: 1px solid #e2e8f0;
-        border-radius: 5px;
-        background: #fff;
-        color: #64748b;
-        font: 600 11px/1 'Inter', system-ui, sans-serif;
-        pointer-events: none;
-        box-shadow: none;
-    }
-    .nextadmin-navbar .search-bar:focus + .kbh-raccourci,
-    .nextadmin-navbar .search-bar:not(:placeholder-shown) + .kbh-raccourci { display: none; }
-
     /* ---------- Boutons icônes ---------- */
     .nextadmin-navbar .btn-acasi.icon-only {
         width: 40px !important;
