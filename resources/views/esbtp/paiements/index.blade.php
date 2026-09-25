@@ -2130,6 +2130,9 @@ function showYearChangeInfo() {
                     const modals = Array.from(tmpl.content.querySelectorAll('div.modal[id^="rejetModal"]'));
 
                     newRows.forEach((row) => {
+                        // Une ligne deja affichee (versement saisi en tete pendant
+                        // qu'on defile) n'est pas repetee.
+                        if (tbody.querySelector('tr[data-paiement-id="' + CSS.escape(row.dataset.paiementId) + '"]')) return;
                         row.classList.add('pi-row-enter');
                         tbody.appendChild(row);
                         // Cleanup animation class

@@ -1123,29 +1123,25 @@
                     const nextPage = parseInt(tbody.dataset.nextPage || '2', 10);
                     const url = new URL(window.location.href);
                     url.searchParams.set('page', String(nextPage));
+                    url.searchParams.set('mode', 'rows');
                     const data = await ajaxJson(url.toString());
-                    // Parse retourné HTML, extraire les <tr> du nouveau tbody, append
-                    const tmp = document.createElement('div');
-                    tmp.innerHTML = data.html || '';
-                    const newTbody = tmp.querySelector('#matieres-tbody');
-                    if (newTbody) {
-                        Array.from(newTbody.children).forEach((row) => {
-                            tbody.appendChild(row);
-                        });
-                        tbody.dataset.hasMore = newTbody.dataset.hasMore || '0';
-                        tbody.dataset.nextPage = newTbody.dataset.nextPage || String(nextPage + 1);
-                        tbody.dataset.currentPage = newTbody.dataset.currentPage || String(nextPage);
+                    // Les lignes seules ; une ligne deja affichee n'est pas repetee.
+                    window.ListeInfinie.ajouterLignes(tbody, data.rows_html || '');
+                    const p = data.pagination || {};
+                    tbody.dataset.hasMore = p.has_more ? '1' : '0';
+                    tbody.dataset.nextPage = String(p.next_page || nextPage + 1);
+                    tbody.dataset.currentPage = String(p.current_page || nextPage);
+                    if (!p.has_more && p.total > 0) {
+                        sentinel.innerHTML = '<div class="mi-sentinel-end"><i class="fas fa-check-circle"></i>'
+                            + '<span>Toutes les ' + p.total + ' matière(s) affichée(s).</span></div>';
                     }
-                    // Re-render sentinel state (end-message si dernière page)
-                    const newSentinel = tmp.querySelector('#matieres-sentinel');
-                    if (newSentinel) sentinel.innerHTML = newSentinel.innerHTML;
-                    // Update summary count
-                    updateSummary(data.summary || {});
+                    updateSummary({ total: p.total, from: p.total > 0 ? 1 : 0, to: p.affiches });
                     // Re-attache les handlers row selection sur les nouvelles rows
                     bindRowSelectionForNewRows();
                 } catch (error) {
                     debugError('Erreur infinite scroll matières:', error);
                 } finally {
+                    if (spinner) spinner.style.display = 'none';
                     infiniteLoading = false;
                 }
             }

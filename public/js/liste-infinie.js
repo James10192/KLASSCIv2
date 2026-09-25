@@ -127,22 +127,7 @@
                 var p = data.pagination || {};
 
                 if (cible && data.rows_html) {
-                    var avant = cible.lastElementChild;
-                    cible.insertAdjacentHTML('beforeend', data.rows_html);
-                    var nouvelles = [];
-                    var n = avant ? avant.nextElementSibling : cible.firstElementChild;
-                    while (n) {
-                        var suivante = n.nextElementSibling;
-                        // Seconde ceinture du tri stable : une ligne deja affichee
-                        // (creee en tete pendant qu'on defile) n'est pas repetee.
-                        var cle = n.getAttribute('data-li-cle');
-                        if (cle && cible.querySelectorAll('[data-li-cle="' + cssEchapper(cle) + '"]').length > 1) {
-                            n.remove();
-                        } else {
-                            nouvelles.push(n);
-                        }
-                        n = suivante;
-                    }
+                    var nouvelles = ajouterLignes(cible, data.rows_html);
                     // Pas d'Alpine.initTree ici : Alpine observe le DOM et initialise
                     // lui-meme les lignes ajoutees dans un composant. L'appeler en plus
                     // attacherait chaque @click deux fois.
@@ -175,6 +160,28 @@
                     charger(bas);
                 }
             });
+    }
+
+    // Ajoute des lignes en bas de `cible`, sans repeter une ligne deja affichee
+    // (data-li-cle) : seconde ceinture du tri stable, pour une ligne creee en
+    // tete pendant qu'on defile. Rend les lignes reellement ajoutees. Sert aussi
+    // aux listes qui gardent leur propre defilement (evaluations, paiements…).
+    function ajouterLignes(cible, html) {
+        var avant = cible.lastElementChild;
+        cible.insertAdjacentHTML('beforeend', html);
+        var nouvelles = [];
+        var n = avant ? avant.nextElementSibling : cible.firstElementChild;
+        while (n) {
+            var suivante = n.nextElementSibling;
+            var cle = n.getAttribute('data-li-cle');
+            if (cle && cible.querySelectorAll('[data-li-cle="' + cssEchapper(cle) + '"]').length > 1) {
+                n.remove();
+            } else {
+                nouvelles.push(n);
+            }
+            n = suivante;
+        }
+        return nouvelles;
     }
 
     function estVisible(el) {
@@ -353,7 +360,7 @@
         afficherEtat(bas, d.pageSuivante ? 'pret' : 'fin');
     }
 
-    window.ListeInfinie = { init: init, charger: charger, alpine: alpine, ajuster: ajuster, pageAPrendre: pageAPrendre };
+    window.ListeInfinie = { init: init, charger: charger, alpine: alpine, ajuster: ajuster, pageAPrendre: pageAPrendre, ajouterLignes: ajouterLignes };
 
     function demarrer() {
         init(document);
