@@ -315,7 +315,9 @@
                         <x-au-user-picker
                             x-model="filters.user_id"
                             :users="$users"
-                            placeholder="Tous les utilisateurs" />
+                            placeholder="Tous les utilisateurs"
+                            empty-hint="Vue d'ensemble — toutes les actions tracées"
+                            empty-icon="fa-globe" />
                     </div>
                     <div>
                         <label>Adresse IP</label>

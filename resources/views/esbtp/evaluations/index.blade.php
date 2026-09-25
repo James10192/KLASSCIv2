@@ -1893,6 +1893,26 @@ function initializeEvaluations() {
         });
     }
 
+    /**
+     * Pose la valeur d'un champ de filtre ET la fait voir a l'ecran.
+     *
+     * Les listes sont des listes premium (composant x-au-select) : le `<select>` natif est cache, et
+     * ce qui s'affiche vit dans l'etat Alpine du composant, qui ne se relit que
+     * sur un evenement `change`. Ecrire `field.value` seul changeait donc la
+     * valeur envoyee sans changer le libelle — d'ou des filtres « encore
+     * remplis » apres Reinitialiser ou apres un retour arriere.
+     *
+     * L'evenement ne remonte PAS (`bubbles: false`) : l'appelant relance deja
+     * la recherche lui-meme, et l'ecouteur `change` du formulaire en lancerait
+     * une seconde.
+     */
+    function poserValeurFiltre(field, value) {
+        field.value = value;
+        if (field.tagName === 'SELECT') {
+            field.dispatchEvent(new Event('change'));
+        }
+    }
+
     function syncFiltersFromUrl() {
         const params = new URLSearchParams(window.location.search);
         filtersForm.querySelectorAll('select[name], input[name]').forEach((field) => {
@@ -1900,7 +1920,7 @@ function initializeEvaluations() {
             if (!name || name === 'search') {
                 return;
             }
-            field.value = params.get(name) ?? '';
+            poserValeurFiltre(field, params.get(name) ?? '');
         });
         const searchValue = params.get('search') ?? '';
         if (hiddenSearch) {
@@ -1951,7 +1971,12 @@ function initializeEvaluations() {
 
     if (clearFiltersBtn) {
         clearFiltersBtn.addEventListener('click', () => {
-            filtersForm.reset();
+            // Pas de `filtersForm.reset()` : il ramene chaque champ a sa valeur
+            // de CHARGEMENT — le filtre venu de l'URL, pas le vide — et ne
+            // previent aucun composant, donc les listes gardaient leur libelle.
+            filtersForm.querySelectorAll('select[name], input[type="date"]').forEach((field) => {
+                poserValeurFiltre(field, '');
+            });
             selectedIds.clear();
             if (hiddenSearch) {
                 hiddenSearch.value = '';
