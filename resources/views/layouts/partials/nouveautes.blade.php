@@ -67,13 +67,13 @@
     }
 </style>
 
-<div class="modal fade" id="whatsNewModal" tabindex="-1" aria-labelledby="whatsNewModalLabel" aria-hidden="true" data-bs-backdrop="static" data-pref-key="{{ $cleVersion }}.user.{{ auth()->id() }}">
+<div class="modal fade" id="whatsNewModal" tabindex="-1" aria-labelledby="whatsNewModalLabel" aria-hidden="true" data-bs-backdrop="static" data-pref-key="{{ $cleVersion }}.user.{{ auth()->id() }}"
+     data-total="{{ $nvxTotal }}"
+     x-data="{ i: 0, n: Number($el.dataset.total), aller(k) { this.i = Math.max(0, Math.min(this.n - 1, k)); } }"
+     x-on:keydown.arrow-right="aller(i + 1)"
+     x-on:keydown.arrow-left="aller(i - 1)">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content nvx-content"
-             data-total="{{ $nvxTotal }}"
-             x-data="{ i: 0, n: Number($el.dataset.total), aller(k) { this.i = Math.max(0, Math.min(this.n - 1, k)); } }"
-             x-on:keydown.arrow-right="aller(i + 1)"
-             x-on:keydown.arrow-left="aller(i - 1)">
+        <div class="modal-content nvx-content">
             <div class="nvx-hero">
                 <div class="nvx-hero-top">
                     <div class="nvx-hero-icone"><i class="fas fa-wand-magic-sparkles"></i></div>
@@ -114,7 +114,7 @@
                                     <span class="nvx-etiquette nvx-etiquette--avant">Avant</span>
                                     <span class="nvx-etiquette nvx-etiquette--apres">Après</span>
                                     <input type="range" min="0" max="100" step="1" class="nvx-curseur" x-model.number="pos"
-                                           x-on:keydown.stop aria-label="Comparer avant et après">
+                                           x-on:keydown.arrow-left.stop x-on:keydown.arrow-right.stop aria-label="Comparer avant et après">
                                     <div class="nvx-trait" :style="'left: ' + pos + '%'" style="left: 50%">
                                         <span class="nvx-poignee"><i class="fas fa-arrows-left-right"></i></span>
                                     </div>
