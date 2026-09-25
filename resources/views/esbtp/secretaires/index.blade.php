@@ -67,12 +67,20 @@
 @section('scripts')
 <script>
     $(document).ready(function() {
-        $('#secretairesTable').DataTable({
+        const table = $('#secretairesTable').DataTable({
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.10.24/i18n/French.json'
             },
             "paging": false,
             "info": false
+        });
+
+        // Les lignes chargees au defilement arrivent dans le DOM, pas dans
+        // DataTables : sans cet enregistrement, un tri ou une recherche les
+        // ferait disparaitre.
+        document.addEventListener('liste-infinie:ajout', function (event) {
+            const lignes = (event.detail.lignes || []).filter(l => l.closest('#secretairesTable'));
+            if (lignes.length) table.rows.add(lignes).draw(false);
         });
     });
 </script>

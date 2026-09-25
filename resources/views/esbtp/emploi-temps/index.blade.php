@@ -2813,7 +2813,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 language: {
                     url: '//cdn.datatables.net/plug-ins/1.10.24/i18n/French.json'
                 },
-                pageLength: 10,
+                // Toutes les lignes sont deja chargees : pas de pages, on fait defiler.
+                paging: false,
                 responsive: true,
                 order: [[3, 'desc'], [1, 'asc']]
             });
