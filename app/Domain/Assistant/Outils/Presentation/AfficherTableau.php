@@ -103,6 +103,16 @@ class AfficherTableau extends OutilDePresentation
     /** Seuls les liens vers l'application : un modèle ne doit pas pouvoir afficher un lien externe. */
     private function urlInterne($url): bool
     {
-        return is_string($url) && str_starts_with($url, '/') && !str_starts_with($url, '//');
+        return self::estLienInterne($url);
+    }
+
+    /**
+     * Chemin de l'application, et rien d'autre. Commencer par « / » ne suffit
+     * pas : les navigateurs lisent « /\\site.tld » et « /<tab>/site.tld » comme
+     * « //site.tld », donc comme un autre site. Liste blanche de caractères.
+     */
+    public static function estLienInterne($url): bool
+    {
+        return is_string($url) && preg_match('#^/(?:esbtp|dashboard|chatbot)(?:[/?\#][A-Za-z0-9/_\-?=&%.\#]*)?$#', $url) === 1;
     }
 }

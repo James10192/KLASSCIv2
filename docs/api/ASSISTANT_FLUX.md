@@ -16,10 +16,21 @@ Corps : `message` (≤ 1000 caractères), `session_id` (facultatif), `modele` (c
 Le texte du modèle est du **Markdown GFM** : gras, listes, titres `###`, tableaux courts, liens relatifs vers
 l'application (`[DOSSO Ibrahim](/esbtp/etudiants/2743)`), blocs ```` ```mermaid ````.
 
+### Sécurité du rendu (obligatoire côté client)
+
+Le texte du modèle n'est pas fiable : une injection peut passer par une donnée lue par un outil.
+- Tout HTML issu du Markdown passe par DOMPurify.
+- **Liens** : n'est cliquable qu'un chemin interne qui satisfait
+  `^/(esbtp|dashboard|chatbot)([/?#][A-Za-z0-9/_\-?=&%.#]*)?$` (même règle que
+  `AfficherTableau::estLienInterne`, côté serveur). Tout autre lien est rendu en texte :
+  `/\site.tld`, une tabulation ou un retour à la ligne dans l'URL mènent sinon à un autre site.
+- **Mermaid** : `securityLevel: 'strict'` toujours, y compris pour les blocs ```` ```mermaid ```` du texte libre,
+  qui n'ont pas traversé le contrôle d'`afficher_diagramme`. Les directives `%%{…}` et les `click` sont retirées avant rendu.
+
 ## Parties propres à KLASSCI
 
 ### `data-etape` — une étape de l'agent (un appel d'outil)
-`id` = identifiant de l'appel, stable. Émise plusieurs fois ; la dernière l'emporte.
+`id` = identifiant attribué par le serveur (`a00000001`, `a00000002`…), unique dans l'échange quel que soit le fournisseur. Émise plusieurs fois ; la dernière l'emporte.
 
 ```json
 { "type": "data-etape", "id": "call_1",

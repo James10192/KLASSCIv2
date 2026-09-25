@@ -34,8 +34,13 @@ abstract class OutilDePresentation extends ChatbotTool
         return ['affiche' => true, 'widget' => $widget, 'count' => 1];
     }
 
+    /** Texte court ; une valeur non textuelle (tableau, objet) donne une chaîne vide plutôt qu'« Array ». */
     protected function texte($valeur, int $max = 120): string
     {
+        if (!is_scalar($valeur)) {
+            return '';
+        }
+
         return mb_substr(trim((string) $valeur), 0, $max, 'UTF-8');
     }
 }

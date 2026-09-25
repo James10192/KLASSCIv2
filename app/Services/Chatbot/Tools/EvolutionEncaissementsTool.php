@@ -42,20 +42,16 @@ class EvolutionEncaissementsTool extends ChatbotTool
         $debut = Carbon::now()->startOfMonth()->subMonths($n - 1);
         $debutPrecedent = $debut->copy()->subMonths($n);
 
+        // Une seule lecture, bornée des deux côtés : la période et celle d'avant.
         $parMois = DB::table('esbtp_paiements')
             ->where('status', 'validé')
             ->whereNull('deleted_at')
             ->where('date_paiement', '>=', $debutPrecedent->toDateString())
+            ->where('date_paiement', '<', $debut->copy()->addMonths($n)->toDateString())
             ->selectRaw("DATE_FORMAT(date_paiement, '%Y-%m') as mois, SUM(" . ESBTPPaiement::sqlCashCase() . ") as montant, COUNT(*) as nombre")
             ->groupBy('mois')
-            ->pluck('montant', 'mois');
-        $nombres = DB::table('esbtp_paiements')
-            ->where('status', 'validé')
-            ->whereNull('deleted_at')
-            ->where('date_paiement', '>=', $debut->toDateString())
-            ->selectRaw("DATE_FORMAT(date_paiement, '%Y-%m') as mois, COUNT(*) as nombre")
-            ->groupBy('mois')
-            ->pluck('nombre', 'mois');
+            ->get()
+            ->keyBy('mois');
 
         $lignes = [];
         $libelles = [];
@@ -64,7 +60,7 @@ class EvolutionEncaissementsTool extends ChatbotTool
         for ($i = 0; $i < $n; $i++) {
             $mois = $debut->copy()->addMonths($i);
             $cle = $mois->format('Y-m');
-            $montant = (float) ($parMois[$cle] ?? 0);
+            $montant = (float) ($parMois[$cle]->montant ?? 0);
             $total += $montant;
             $libelle = ucfirst($mois->locale('fr')->isoFormat('MMM YY'));
             $libelles[] = $libelle;
@@ -73,14 +69,14 @@ class EvolutionEncaissementsTool extends ChatbotTool
                 'mois' => $libelle,
                 'montant' => $this->formatFCFA($montant),
                 'montant_brut' => round($montant),
-                'versements' => (int) ($nombres[$cle] ?? 0),
+                'versements' => (int) ($parMois[$cle]->nombre ?? 0),
                 'en_cours' => $i === $n - 1,
             ];
         }
 
         $totalPrecedent = 0.0;
         for ($i = 0; $i < $n; $i++) {
-            $totalPrecedent += (float) ($parMois[$debutPrecedent->copy()->addMonths($i)->format('Y-m')] ?? 0);
+            $totalPrecedent += (float) ($parMois[$debutPrecedent->copy()->addMonths($i)->format('Y-m')]->montant ?? 0);
         }
         $variation = $totalPrecedent > 0 ? round((($total - $totalPrecedent) / $totalPrecedent) * 100, 1) : null;
 

@@ -28,6 +28,12 @@ class ConstructeurDePrompt
     /** Réponses récentes dont on rejoue aussi les appels d'outil (les autres : texte seul). */
     protected int $reponsesAvecOutils = 3;
 
+    /**
+     * Plafond des traces rejouées : elles repartent à chaque tour de la boucle,
+     * donc pèsent huit fois sur le budget de jetons.
+     */
+    private const OCTETS_REJOUES = 12000;
+
     public function __construct(protected ConversationContextProvider $contextProvider)
     {
     }
@@ -50,20 +56,39 @@ class ConstructeurDePrompt
             ->reverse()
             ->values();
 
-        $avecOutils = $messages->where('role', 'assistant')->reverse()->take($this->reponsesAvecOutils)->pluck('id')->all();
+        // Les traces rejouées, de la plus récente à la plus ancienne, dans la limite du plafond.
+        $avecOutils = [];
+        $rejoue = 0;
+        foreach ($messages->where('role', 'assistant')->reverse()->take($this->reponsesAvecOutils) as $msg) {
+            $trace = $msg->metadata['trace'] ?? null;
+            if (!is_array($trace) || !$this->traceValide($trace)) {
+                continue;
+            }
+            $taille = strlen((string) json_encode($trace));
+            if ($rejoue + $taille > self::OCTETS_REJOUES) {
+                break;
+            }
+            $rejoue += $taille;
+            $avecOutils[] = $msg->id;
+        }
 
         $neutres = [];
+        $numero = 0;
         foreach ($messages as $msg) {
             $role = $msg->role === 'assistant' ? 'assistant' : 'user';
             $texte = (string) ($msg->content ?? '');
 
             if ($role === 'assistant') {
-                $trace = in_array($msg->id, $avecOutils, true) ? ($msg->metadata['trace'] ?? []) : [];
-                if (is_array($trace) && $this->traceValide($trace)) {
-                    foreach ($trace as $etape) {
+                if (in_array($msg->id, $avecOutils, true)) {
+                    foreach ($this->renumeroter($msg->metadata['trace'], $numero) as $etape) {
                         $neutres[] = $etape;
                     }
                     $texte = $this->texteFinal($msg) ?? $texte;
+                    if (trim($texte) === '') {
+                        // Réponse coupée après ses outils : sans ce tour, certaines API
+                        // (Gemini) recevraient deux tours utilisateur à la suite.
+                        $texte = '(Réponse précédente interrompue.)';
+                    }
                 }
                 if (trim($texte) === '') {
                     continue;
@@ -168,11 +193,12 @@ PROMPT;
         $maintenant = Carbon::now()->locale('fr');
         $ecole = trim((string) SettingsHelper::get('school_name', ''));
         $pays = trim((string) SettingsHelper::get('school_country', ''));
-        $annee = null;
         try {
-            $annee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('name');
+            $annee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('name') ?? 'non définie';
         } catch (\Throwable $e) {
-            // Table absente (tests sans schéma) : le bloc s'en passe.
+            // Ne pas écrire « non définie » : le modèle l'affirmerait à l'utilisateur.
+            \Illuminate\Support\Facades\Log::warning('assistant.environnement_annee', ['exception' => get_class($e), 'message' => $e->getMessage()]);
+            $annee = 'indisponible pour le moment';
         }
 
         $nom = $preferences?->preferred_name ?: ($user->name ?? 'utilisateur');
@@ -181,7 +207,7 @@ PROMPT;
         $lignes = [
             '- Date et heure : ' . $maintenant->isoFormat('dddd D MMMM YYYY, HH:mm') . ' (fuseau ' . config('app.timezone') . ')',
             '- Établissement : ' . ($ecole !== '' ? $ecole : 'non renseigné') . ($pays !== '' ? " ({$pays})" : ''),
-            '- Année universitaire en cours : ' . ($annee ?? 'non définie'),
+            '- Année universitaire en cours : ' . $annee,
             "- Personne connectée : {$nom}, rôle « {$role} »",
             '- Monnaie : FCFA',
         ];
@@ -241,6 +267,28 @@ PROMPT;
         };
 
         return trim($longueur . "\n" . $ton);
+    }
+
+    /**
+     * Identifiants neufs pour les appels rejoués : ceux d'origine viennent du
+     * modèle de l'époque (format propre à chaque API, parfois répétés d'une
+     * réponse à l'autre), et le modèle d'aujourd'hui peut être un autre.
+     */
+    private function renumeroter(array $trace, int &$numero): array
+    {
+        $ids = [];
+        foreach ($trace as $i => $message) {
+            if ($message['role'] === 'assistant') {
+                foreach ($message['appels'] ?? [] as $j => $appel) {
+                    $ids[$appel['id']] = $nouveau = 'h' . str_pad((string) ++$numero, 8, '0', STR_PAD_LEFT);
+                    $trace[$i]['appels'][$j]['id'] = $nouveau;
+                }
+            } else {
+                $trace[$i]['id'] = $ids[$message['id']] ?? ('h' . str_pad((string) ++$numero, 8, '0', STR_PAD_LEFT));
+            }
+        }
+
+        return $trace;
     }
 
     /** Une trace rejouable : des appels d'outil suivis de leurs résultats. */

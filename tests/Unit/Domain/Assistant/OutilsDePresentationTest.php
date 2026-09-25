@@ -51,6 +51,11 @@ class OutilsDePresentationTest extends TestCase
         $this->assertSame(1500.0, $lignes[0]['du']);
         $this->assertNull($lignes[1]['du']);
         $this->assertSame('neutre', $lignes[1]['s']['ton']);
+
+        foreach (["/\\evil.com", "/\t/evil.com", "//evil.com", "javascript:alert(1)", "/esbtp/x\n//evil"] as $piege) {
+            $this->assertFalse(AfficherTableau::estLienInterne($piege), json_encode($piege));
+        }
+        $this->assertTrue(AfficherTableau::estLienInterne('/esbtp/paiements?statut=en_attente'));
     }
 
     public function test_le_diagramme_refuse_directives_et_clics(): void

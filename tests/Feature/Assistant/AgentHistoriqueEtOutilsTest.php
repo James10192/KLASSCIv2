@@ -50,7 +50,34 @@ class AgentHistoriqueEtOutilsTest extends TestCase
 
         $this->assertSame(['user', 'assistant', 'outil', 'assistant', 'user'], array_column($messages, 'role'));
         $this->assertSame('KOUAKOU doit le plus.', $messages[3]['texte'], 'le texte après le dernier outil, sans la phrase d\'avant');
+        // Identifiants réécrits : ceux d'origine venaient du modèle de l'époque.
+        $this->assertSame('h00000001', $messages[1]['appels'][0]['id']);
+        $this->assertSame('h00000001', $messages[2]['id']);
         $this->assertStringNotContainsString('widget', json_encode($messages, JSON_UNESCAPED_UNICODE), 'plus aucun repère à recopier');
+    }
+
+    public function test_deux_reponses_passees_au_meme_identifiant_sont_renumerotees(): void
+    {
+        $user = User::factory()->create();
+        $conversation = ChatbotConversation::create(['user_id' => $user->id, 'session_id' => (string) Str::uuid(), 'is_active' => true, 'last_activity_at' => now()]);
+        foreach (['A', 'B'] as $lettre) {
+            ChatbotMessage::create(['conversation_id' => $conversation->id, 'role' => 'user', 'content' => "Question {$lettre}", 'display_type' => 'text']);
+            ChatbotMessage::create([
+                'conversation_id' => $conversation->id, 'role' => 'assistant', 'display_type' => 'text', 'content' => '',
+                'metadata' => ['trace' => [
+                    ['role' => 'assistant', 'texte' => '', 'appels' => [['id' => 'gemini_1', 'nom' => 'search_fees', 'arguments' => ['q' => $lettre]]]],
+                    ['role' => 'outil', 'id' => 'gemini_1', 'nom' => 'search_fees', 'resultat' => '{}'],
+                ]],
+            ]);
+        }
+
+        $messages = app(ConstructeurDePrompt::class)->messages($conversation, 'Et alors ?');
+        $ids = collect($messages)->where('role', 'outil')->pluck('id')->all();
+
+        $this->assertSame(['h00000001', 'h00000002'], $ids);
+        // Réponse vide après ses outils : un texte neutre évite deux tours utilisateur de suite.
+        $this->assertSame(['user', 'assistant', 'outil', 'assistant', 'user', 'assistant', 'outil', 'assistant', 'user'], array_column($messages, 'role'));
+        $this->assertMatchesRegularExpression('/^[A-Za-z0-9]{9}$/', $ids[0], 'format accepté par Mistral');
     }
 
     public function test_le_prompt_porte_l_environnement_et_la_page_ouverte(): void
@@ -82,6 +109,7 @@ class AgentHistoriqueEtOutilsTest extends TestCase
         $this->assertSame(3, $inscrits['valeur']);
         $this->assertStringContainsString('+50', $inscrits['repere']);
         $this->assertSame('succes', $inscrits['ton']);
+        $this->assertNull($inscrits['url'], 'pas de lien vers une liste que la personne ne peut pas ouvrir');
     }
 
     public function test_les_encaissements_par_mois_ne_comptent_que_le_valide_et_comparent(): void

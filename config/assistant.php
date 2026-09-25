@@ -110,8 +110,8 @@ return [
             'outils' => true,
             'diffusion' => true,
         ],
-        // Candidats plus solides en appel d'outils, pour un vrai agent. Choisis sur
-        // un jeu de questions réelles, pas sur la réputation : voir docs/api/CLI_ASSISTANT.md.
+        // Candidats plus solides en appel d'outils, NON ENCORE ÉVALUÉS : le choix du
+        // modèle par défaut se fait sur le banc de questions réelles (docs/api/ASSISTANT_FLUX.md).
         'or-gemini-flash' => [
             'fournisseur' => 'openrouter',
             'modele' => env('OPENROUTER_MODEL_GEMINI_FLASH', 'google/gemini-3.8-flash'),

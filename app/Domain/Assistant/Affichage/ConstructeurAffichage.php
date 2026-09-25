@@ -26,7 +26,8 @@ class ConstructeurAffichage
 
     public function enregistrer(ChatbotConversation $conversation, string $nom, array $arguments, array $resultat): void
     {
-        if (str_starts_with($nom, 'afficher_')) {
+        // Un outil de présentation ne lit rien : les suites se règlent sur le dernier outil de données.
+        if (!empty($resultat['affiche'])) {
             return;
         }
         $this->dernierOutil = $nom;

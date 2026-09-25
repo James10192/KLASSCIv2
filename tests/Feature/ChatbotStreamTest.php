@@ -147,12 +147,15 @@ class ChatbotStreamTest extends TestCase
         // Le modèle demande quand même l'outil : le serveur refuse, sans rien exécuter.
         $second = $recorded[1][0]->data();
         $toolResult = collect(end($second['messages'])['content'])->firstWhere('type', 'tool_result');
-        $this->assertSame('toolu_01', $toolResult['tool_use_id']);
+        // L'identifiant renvoyé à Anthropic est celui de la boucle, cohérent avec son tool_use.
+        $this->assertSame('a00000001', $toolResult['tool_use_id']);
+        $toolUse = collect($second['messages'][count($second['messages']) - 2]['content'])->firstWhere('type', 'tool_use');
+        $this->assertSame('a00000001', $toolUse['id']);
         $this->assertSame(['error' => 'Outil indisponible.'], json_decode($toolResult['content'], true));
 
         $outil = collect($this->parts())->where('type', 'data-etape')->last();
         $this->assertSame('echec', $outil['data']['etat']);
-        $this->assertSame('toolu_01', $outil['id']);
+        $this->assertSame('a00000001', $outil['id']);
 
         // Aucune donnée d'inscription n'est partie au navigateur.
         $this->assertEmpty(collect($this->parts())->filter(fn ($p) => in_array($p['type'], ['data-table', 'data-cards', 'data-widget'], true)));

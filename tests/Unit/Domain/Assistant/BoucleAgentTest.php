@@ -118,14 +118,15 @@ class BoucleAgentTest extends TestCase
 
         // Le second tour reçoit l'appel et son résultat, au format neutre.
         $second = $this->faux->recues[1]['requete']->messages;
-        $this->assertSame(['role' => 'assistant', 'texte' => 'Je regarde.', 'appels' => [['id' => 't1', 'nom' => 'outil_permis', 'arguments' => ['search' => 'BTS']]]], $second[1]);
+        // L'identifiant est celui de la boucle, pas celui du fournisseur (t1).
+        $this->assertSame(['role' => 'assistant', 'texte' => 'Je regarde.', 'appels' => [['id' => 'a00000001', 'nom' => 'outil_permis', 'arguments' => ['search' => 'BTS']]]], $second[1]);
         $this->assertSame('outil', $second[2]['role']);
-        $this->assertSame('t1', $second[2]['id']);
+        $this->assertSame('a00000001', $second[2]['id']);
 
         $outils = array_values(array_filter($this->parts(), fn ($p) => $p['type'] === 'data-etape'));
         $this->assertSame(['en_cours', 'termine'], array_column(array_column($outils, 'data'), 'etat'));
         $this->assertSame('Recherche des classes…', $outils[0]['data']['libelle']);
-        $this->assertSame(['t1', 't1'], array_column($outils, 'id'));
+        $this->assertSame(['a00000001', 'a00000001'], array_column($outils, 'id'));
         $this->assertSame(2, count(array_keys($this->types(), 'start-step')));
     }
 
@@ -149,7 +150,7 @@ class BoucleAgentTest extends TestCase
         $this->assertSame('1 résultat', $fin['data']['resume']);
         $this->assertSame('search : BTS', $fin['data']['detail']);
         $widget = collect($parts)->firstWhere('type', 'data-widget');
-        $this->assertSame('t1', $widget['id']);
+        $this->assertSame('a00000001', $widget['id']);
         $this->assertSame('table', $widget['data']['kind']);
         $this->assertLessThan(array_search($widget, $parts, true), array_search($fin, $parts, true));
 
@@ -179,7 +180,7 @@ class BoucleAgentTest extends TestCase
 
         $this->assertSame(1, $this->permis->appels);
         $this->assertSame(1, collect($this->parts())->where('type', 'data-widget')->count());
-        $this->assertSame('retire', collect($this->parts())->where('type', 'data-etape')->where('id', 't2')->last()['data']['etat']);
+        $this->assertSame('retire', collect($this->parts())->where('type', 'data-etape')->where('id', 'a00000002')->last()['data']['etat']);
         $troisieme = end($this->faux->recues[2]['requete']->messages);
         $this->assertStringContainsString('Appel identique', $troisieme['resultat']);
     }
@@ -197,7 +198,29 @@ class BoucleAgentTest extends TestCase
         $r = $boucle->executer([$this->modele('a')], new RequeteModele('sys', [['role' => 'user', 'texte' => 'Classes ?']], $catalogue->schemas($user)), $user, $ui);
 
         $this->assertSame('Conclusion.', $r->texteDernierTour);
-        $this->assertStringContainsString('Dernier tour', end($this->faux->recues[1]['requete']->messages)['resultat']);
+        $this->assertFalse($this->faux->recues[0]['requete']->conclure);
+        $this->assertTrue($this->faux->recues[1]['requete']->conclure, 'le dernier tour ne peut plus appeler d\'outil');
+        $this->assertNotEmpty($this->faux->recues[1]['requete']->outils, 'mais ses outils restent déclarés');
+    }
+
+    public function test_un_identifiant_repete_par_le_fournisseur_ne_fusionne_pas_deux_etapes(): void
+    {
+        // Gemini recompte ses appels depuis 1 à chaque tour : deux appels distincts, même identifiant.
+        $this->faux->scripts['a'] = [
+            FauxFournisseur::outil('gemini_1', 'outil_permis', ['search' => 'BTS']),
+            FauxFournisseur::outil('gemini_1', 'outil_permis', ['search' => 'Licence']),
+            FauxFournisseur::texte('Deux listes.'),
+        ];
+        [$boucle, $catalogue, $ui] = $this->boucle();
+        $user = $this->utilisateur();
+        $fil = new FilDeReponse();
+
+        $boucle->executer([$this->modele('a')], new RequeteModele('sys', [['role' => 'user', 'texte' => 'Classes ?']], $catalogue->schemas($user)), $user, $ui,
+            fn () => ['kind' => 'table'], $fil);
+
+        $widgets = collect($this->parts())->where('type', 'data-widget')->pluck('id')->all();
+        $this->assertSame(['a00000001', 'a00000002'], $widgets);
+        $this->assertSame(['etape', 'widget', 'etape', 'widget', 'texte'], array_column($fil->toArray(), 'type'));
     }
 
     public function test_outil_non_autorise_ni_declare_ni_execute(): void

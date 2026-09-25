@@ -8,6 +8,7 @@ use App\Domain\Assistant\Fournisseurs\FournisseurDeModele;
 use App\Domain\Assistant\Fournisseurs\RequeteModele;
 use App\Domain\Assistant\Modeles\ModeleIa;
 use App\Domain\Assistant\Outils\CatalogueOutils;
+use App\Domain\Assistant\Outils\ResumeOutil;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -36,6 +37,9 @@ use Illuminate\Support\Facades\Log;
  */
 class BoucleAgent
 {
+    /** Numéro du dernier identifiant d'appel attribué dans l'échange en cours. */
+    private int $numeroAppel = 0;
+
     public function __construct(private CatalogueOutils $catalogue)
     {
     }
@@ -48,6 +52,7 @@ class BoucleAgent
     public function executer(array $candidats, RequeteModele $requete, $user, UiMessageStream $ui, ?callable $surResultat = null, ?FilDeReponse $fil = null): ResultatBoucle
     {
         $fil ??= new FilDeReponse();
+        $this->numeroAppel = 0;
         $deja = [];
         $trace = [];
         $maxTours = max(1, (int) config('assistant.limites.tours', 4));
@@ -87,7 +92,11 @@ class BoucleAgent
             $tours++;
             $ui->startStep();
 
-            $tour = $this->unTour($this->fournisseur($modele), $requete, $modele, $ui, $arreter, $fil);
+            // Dernier tour permis, après des outils : le modèle doit conclure avec ce
+            // qu'il a. Ses outils restent déclarés mais il ne peut plus les appeler,
+            // sinon l'utilisateur ne recevrait que des étapes sans réponse.
+            $requeteTour = ($tours === $maxTours && $tours > 1) ? $requete->pourConclure() : $requete;
+            $tour = $this->unTour($this->fournisseur($modele), $requeteTour, $modele, $ui, $arreter, $fil);
             $entree += $tour['entree'];
             $sortie += $tour['sortie'];
 
@@ -142,59 +151,11 @@ class BoucleAgent
             $messages[] = $messageAssistant;
             $trace[] = $messageAssistant;
             foreach ($tour['appels'] as $appel) {
-                $cle = $appel['nom'] . ':' . json_encode($this->trier($appel['arguments']));
-                $debutAppel = microtime(true);
-
-                if (isset($deja[$cle])) {
-                    // Déjà fait dans cet échange : on redonne le résultat, sans rien réafficher.
-                    $ui->data('etape', ['nom' => $appel['nom'], 'etat' => 'retire'], $appel['id']);
-                    $fil->retirerEtape($appel['id']);
-                    $pourModele = $deja[$cle] . "\n(Appel identique déjà fait dans cet échange : ne le refais pas, utilise ce résultat.)";
-                } else {
-                    $resultat = $this->catalogue->executer($appel['nom'], $appel['arguments'], $user);
-                    $ok = !isset($resultat['error']);
-                    $widget = ($ok && $surResultat) ? $surResultat($appel['nom'], $appel['arguments'], $resultat) : null;
-
-                    $etape = [
-                        'nom' => $appel['nom'],
-                        'libelle' => $this->catalogue->libelle($appel['nom']),
-                        'etat' => $ok ? 'termine' : 'echec',
-                        'resume' => \App\Domain\Assistant\Outils\ResumeOutil::resumeCourt($appel['nom'], $resultat),
-                        'detail' => $ok ? $this->detail($appel['arguments']) : null,
-                        'duree_ms' => (int) round((microtime(true) - $debutAppel) * 1000),
-                    ];
-                    $ui->data('etape', $etape, $appel['id']);
-                    $fil->etape($appel['id'], $etape);
-
-                    if ($widget) {
-                        $ui->data('widget', $widget, $appel['id']);
-                        $fil->widget($appel['id'], $widget);
-                    }
-
-                    if ($ok) {
-                        $appelsFaits[] = ['tool' => $appel['nom'], 'args' => $appel['arguments'], 'result_count' => $resultat['count'] ?? null];
-                    }
-
-                    $pourModele = \App\Domain\Assistant\Outils\ResumeOutil::pourModele($appel['nom'], $resultat, $widget !== null);
-                    $deja[$cle] = $pourModele;
-                }
-
-                $messageOutil = [
-                    'role' => 'outil',
-                    'id' => $appel['id'],
-                    'nom' => $appel['nom'],
-                    'resultat' => $pourModele,
-                ];
+                $messageOutil = $this->executerAppel($appel, $user, $ui, $fil, $surResultat, $deja, $appelsFaits);
                 $messages[] = $messageOutil;
                 $trace[] = $messageOutil;
             }
 
-            // Dernier tour permis : le modèle doit conclure avec ce qu'il a, sinon
-            // l'utilisateur ne reçoit que des étapes sans réponse.
-            if ($tours === $maxTours - 1 && $messages !== []) {
-                $dernier = array_key_last($messages);
-                $messages[$dernier]['resultat'] .= "\n(Dernier tour : réponds maintenant à l'utilisateur avec ce que tu as, sans appeler d'autre outil.)";
-            }
             $requete = $requete->avecMessages($messages);
             $texteTour = '';
             $ui->finishStep();
@@ -212,6 +173,62 @@ class BoucleAgent
     }
 
     /**
+     * Exécute UN appel d'outil : étape terminée à l'écran, widget sous l'étape,
+     * et le message `outil` compact que le modèle recevra.
+     *
+     * @param array<string, string> $deja résultats déjà obtenus dans l'échange, par appel
+     */
+    private function executerAppel(array $appel, $user, UiMessageStream $ui, FilDeReponse $fil, ?callable $surResultat, array &$deja, array &$appelsFaits): array
+    {
+        $cle = $appel['nom'] . ':' . json_encode($this->trier($appel['arguments']));
+        $message = ['role' => 'outil', 'id' => $appel['id'], 'nom' => $appel['nom']];
+
+        if (isset($deja[$cle])) {
+            // Déjà obtenu dans cet échange : on le redonne, sans rien réafficher.
+            $ui->data('etape', ['nom' => $appel['nom'], 'etat' => 'retire'], $appel['id']);
+            $fil->retirerEtape($appel['id']);
+
+            return $message + ['resultat' => $deja[$cle] . "\n(Appel identique déjà fait dans cet échange : utilise ce résultat.)"];
+        }
+
+        $debut = microtime(true);
+        $resultat = $this->catalogue->executer($appel['nom'], $appel['arguments'], $user);
+        $ok = !isset($resultat['error']);
+        $widget = ($ok && $surResultat) ? $surResultat($appel['nom'], $appel['arguments'], $resultat) : null;
+
+        $etape = [
+            'nom' => $appel['nom'],
+            'libelle' => $this->catalogue->libelle($appel['nom']),
+            'etat' => $ok ? 'termine' : 'echec',
+            'resume' => ResumeOutil::resumeCourt($appel['nom'], $resultat),
+            'detail' => $ok ? $this->detail($appel['arguments']) : null,
+            'duree_ms' => (int) round((microtime(true) - $debut) * 1000),
+        ];
+        $ui->data('etape', $etape, $appel['id']);
+        $fil->etape($appel['id'], $etape);
+
+        if ($widget) {
+            $ui->data('widget', $widget, $appel['id']);
+            $fil->widget($appel['id'], $widget);
+        }
+
+        $pourModele = ResumeOutil::pourModele($appel['nom'], $resultat, $widget !== null);
+        if ($ok) {
+            // Seul un succès est mémorisé : un échec passager peut être retenté.
+            $deja[$cle] = $pourModele;
+            $appelsFaits[] = ['tool' => $appel['nom'], 'args' => $appel['arguments'], 'result_count' => $resultat['count'] ?? null];
+        }
+
+        return $message + ['resultat' => $pourModele];
+    }
+
+    /** Identifiant d'appel propre à l'échange : 9 caractères alphanumériques, accepté par toutes les API. */
+    private function nouvelIdentifiant(): string
+    {
+        return 'a' . str_pad((string) ++$this->numeroAppel, 8, '0', STR_PAD_LEFT);
+    }
+
+    /**
      * Un appel au modèle : diffuse le texte au fil de l'eau et collecte les appels d'outil.
      */
     private function unTour(FournisseurDeModele $fournisseur, RequeteModele $requete, ModeleIa $modele, UiMessageStream $ui, callable $arreter, FilDeReponse $fil): array
@@ -219,6 +236,11 @@ class BoucleAgent
         $tour = ['texte' => '', 'appels' => [], 'puces' => [], 'raison' => null, 'erreur' => null, 'entree' => 0, 'sortie' => 0];
         $idTexte = null;
         $bloc = '';
+        // Identifiant du fournisseur → le nôtre. Les fournisseurs ne garantissent ni
+        // l'unicité d'un tour à l'autre (Gemini recompte depuis 1) ni un format
+        // commun (Mistral exige 9 caractères) : l'écran, le fil, la trace et les
+        // messages suivants n'emploient que l'identifiant attribué ici.
+        $ids = [];
 
         try {
             foreach ($fournisseur->diffuser($requete, $modele, $arreter) as $evenement) {
@@ -239,18 +261,21 @@ class BoucleAgent
 
                     case EvenementModele::OUTIL_DEBUT:
                         $this->fermerTexte($ui, $idTexte, $fil, $bloc);
+                        $id = $ids[$evenement->donnees['id']] = $this->nouvelIdentifiant();
                         $enCours = [
                             'nom' => $evenement->donnees['nom'],
                             'libelle' => $this->catalogue->libelle($evenement->donnees['nom']),
                             'etat' => 'en_cours',
                         ];
-                        $ui->data('etape', $enCours, $evenement->donnees['id']);
-                        $fil->etape($evenement->donnees['id'], $enCours);
-                        $tour['puces'][] = ['id' => $evenement->donnees['id'], 'nom' => $evenement->donnees['nom']];
+                        $ui->data('etape', $enCours, $id);
+                        $fil->etape($id, $enCours);
+                        $tour['puces'][] = ['id' => $id, 'nom' => $evenement->donnees['nom']];
                         break;
 
                     case EvenementModele::OUTIL:
-                        $tour['appels'][] = $evenement->donnees;
+                        $appel = $evenement->donnees;
+                        $appel['id'] = $ids[$appel['id']] ?? $this->nouvelIdentifiant();
+                        $tour['appels'][] = $appel;
                         break;
 
                     case EvenementModele::USAGE:
