@@ -160,18 +160,20 @@
     border-radius: 12px !important;
     padding: 8px !important;
     margin-top: 8px !important;
-    animation: dropdownFadeIn 0.3s ease !important;
+    animation: dropdownFadeIn 0.14s ease-out !important;
 }
 
+/* Opacité SEULE. L'ancienne version animait aussi transform (translateY) : or
+   Popper place le menu par son transform. Pendant les 300 ms de l'animation,
+   la valeur animée écrasait celle de Popper et le menu restait collé en haut
+   de l'écran avant de sauter à sa place (mesuré sur presentation, sept. 2026). */
 @keyframes dropdownFadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dropdown-menu { animation: none !important; }
 }
 
 .dropdown-item {
@@ -183,7 +185,6 @@
 .dropdown-item:hover {
     background-color: rgba(4, 83, 203, 0.1) !important;
     color: var(--primary) !important;
-    transform: translateX(2px);
 }
 
 /* 7. Corrections Search Input */
@@ -342,9 +343,23 @@ button:focus,
     box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.2) !important;
 }
 
-/* 14. Corrections Transitions Globales */
+/* 14. Transitions globales — couleurs et ombres seulement, et sans !important.
+   L'ancienne règle `* { transition: all .2s ease !important }` animait TOUT,
+   position comprise : un menu repositionné par Popper (défilement, bascule vers
+   le haut) glissait au lieu de se replacer, et le !important écrasait les
+   transitions propres des composants (sélecteurs premium, modales, carets).
+   Un composant qui déclare sa propre transition reprend désormais la main. */
 * {
-    transition: all 0.2s ease !important;
+    transition-property: color, background-color, border-color, box-shadow, opacity;
+    transition-duration: .2s;
+    transition-timing-function: ease;
+}
+
+/* Les éléments placés par Popper ne suivent jamais leur position en différé. */
+.dropdown-menu,
+.tooltip,
+.popover {
+    transition-property: opacity !important;
 }
 
 /* 15. Corrections Z-Index */
