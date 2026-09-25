@@ -95,7 +95,7 @@ class BoucleAgent
             if ($tour['erreur'] !== null || $delaiDepasse) {
                 $code = $delaiDepasse ? 'delai' : $tour['erreur'];
                 $essais[] = ['modele' => $modele->cle, 'code' => $code];
-                Log::warning('assistant.tour_en_echec', ['fournisseur' => $modele->fournisseur, 'modele' => $modele->cle, 'code' => $code, 'tour' => $tours]);
+                Log::error('assistant.tour_en_echec', ['fournisseur' => $modele->fournisseur, 'modele' => $modele->cle, 'code' => $code, 'tour' => $tours]);
                 $ui->finishStep();
 
                 if (!$montre && !$delaiDepasse && $candidats !== []) {
