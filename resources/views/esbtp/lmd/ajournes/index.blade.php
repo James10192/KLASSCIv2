@@ -37,11 +37,18 @@
                 <p>Année <strong>{{ $annee->name ?? $annee->display_name ?? '—' }}</strong> · UE et IE (ECUE) non validées</p>
             </div>
         </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        @can('lmd.rattrapage.view')
+        <a href="{{ route('esbtp.lmd.rattrapage.index', ['annee_universitaire_id' => $annee->id ?? null]) }}" class="juy-btn" style="padding:.5rem 1rem;border-radius:10px;font-size:.82rem;font-weight:600;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.25);text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;">
+            <i class="fas fa-rotate-right"></i> Sessions de rattrapage
+        </a>
+        @endcan
         @can('lmd.jury.view')
         <a href="{{ route('esbtp.lmd.jurys.index') }}" class="juy-btn" style="padding:.5rem 1rem;border-radius:10px;font-size:.82rem;font-weight:600;background:#fff;color:#0453cb;text-decoration:none;display:inline-flex;align-items:center;gap:.4rem;">
             <i class="fas fa-gavel"></i> Jurys
         </a>
         @endcan
+        </div>
     </div>
     <div class="juy-kpis">
         <div class="juy-kpi"><div class="juy-kpi-icon"><i class="fas fa-users"></i></div>
@@ -79,6 +86,7 @@
                 <th>Parcours / classe</th>
                 <th>UE non validées</th>
                 <th>IE (ECUE) &lt; 10</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -104,6 +112,17 @@
                 <td>
                     @php $ies = collect($ligne['ues_non_validees'])->pluck('ie')->flatten()->filter(); @endphp
                     {{ $ies->isEmpty() ? '—' : $ies->implode(', ') }}
+                </td>
+                <td style="white-space:nowrap;">
+                    {{-- Raccourci : la session normale du jury porte « Lancer rattrapage »,
+                         qui crée la session enfant et y inscrit les éligibles. --}}
+                    @if($ligne['jury']->session_id)
+                        @can('lmd.rattrapage.view')
+                        <a href="{{ route('esbtp.lmd.rattrapage.show', $ligne['jury']->session_id) }}" class="juy-chip" style="text-decoration:none;" title="Ouvrir la session pour lancer le rattrapage et inscrire les éligibles">
+                            <i class="fas fa-rotate-right"></i> Rattrapage
+                        </a>
+                        @endcan
+                    @endif
                 </td>
             </tr>
         @endforeach

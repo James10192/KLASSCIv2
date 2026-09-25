@@ -550,7 +550,7 @@
                     <select class="lr-filter-select" name="annee_universitaire_id" onchange="document.getElementById('lr-filter-form').submit()">
                         @foreach($annees as $annee)
                             <option value="{{ $annee->id }}" {{ ($anneeId ?? null) == $annee->id ? 'selected' : '' }}>
-                                {{ $annee->name ?? $annee->libelle ?? $annee->id }}
+                                {{ $annee->name ?? $annee->display_name ?? $annee->id }}
                                 @if($annee->is_current) (en cours) @endif
                             </option>
                         @endforeach

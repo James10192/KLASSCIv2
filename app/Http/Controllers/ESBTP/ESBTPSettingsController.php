@@ -74,6 +74,7 @@ class ESBTPSettingsController extends Controller
         $appreciationScaleSettings->ensureDefaults();
         $this->ensureMailPulseSettings();
         app(TelephoneSettingsService::class)->ensureDefaults();
+        app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->ensureDefaults();
         $allSettings = Setting::orderBy('category')->orderBy('sort_order')->get();
         $settings = $allSettings->groupBy('category');
         $flatSettings = $allSettings; // Collection plate pour l'accès direct par clé
@@ -117,6 +118,7 @@ class ESBTPSettingsController extends Controller
             $this->ensureMailPulseSettings();
             $telephoneSettings = app(TelephoneSettingsService::class);
             $telephoneSettings->ensureDefaults();
+            app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->ensureDefaults();
 
             $pdfColorDefaults = [
                 'pdf_primary_color' => '#0453cb',

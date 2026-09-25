@@ -81,7 +81,7 @@
                         })
                         ->map(function ($inscription) use ($currentYearId) {
                             $anneeLabel = $inscription->anneeUniversitaire->name
-                                ?? $inscription->anneeUniversitaire->libelle
+                                ?? $inscription->anneeUniversitaire->display_name
                                 ?? 'Année non renseignée';
 
                             return [
@@ -353,7 +353,7 @@
                     })
                     ->map(function ($inscription) use ($currentYearId) {
                         $anneeLabel = $inscription->anneeUniversitaire->name
-                            ?? $inscription->anneeUniversitaire->libelle
+                            ?? $inscription->anneeUniversitaire->display_name
                             ?? 'Année non renseignée';
 
                         return [

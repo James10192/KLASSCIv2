@@ -28,12 +28,12 @@
                             <td x-text="d.etudiant_name"></td>
                             <td x-text="d.moyenne_generale ? Number(d.moyenne_generale).toFixed(2) : '—'"></td>
                             <td><span x-text="d.credits_obtenus"></span> / <span x-text="d.credits_attendus"></span></td>
-                            <td><span :class="'juy-dec-chip juy-dec-chip--'+d.decision_auto" x-text="d.decision_auto || '—'"></span></td>
+                            <td><span :class="'juy-dec-chip juy-dec-chip--'+d.decision_auto" x-text="d.decision_auto_label || '—'"></span></td>
                             <td>
-                                <span :class="'juy-dec-chip juy-dec-chip--'+d.decision" x-text="d.decision"></span>
-                                <template x-if="d.override_par_jury"><span class="juy-override-badge">Override</span></template>
+                                <span :class="'juy-dec-chip juy-dec-chip--'+d.decision" x-text="d.decision_label || d.decision"></span>
+                                <template x-if="d.override_par_jury"><span class="juy-override-badge">Décision du jury</span></template>
                             </td>
-                            <td x-text="d.mention || '—'"></td>
+                            <td x-text="d.mention_label || '—'"></td>
                             <td>
                                 @can('lmd.jury.deliberate')
                                 @if(!$jury->isLocked())

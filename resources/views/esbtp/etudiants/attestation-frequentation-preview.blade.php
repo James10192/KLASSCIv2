@@ -247,7 +247,7 @@
                 @php
                     $anneeText = $inscription->anneeUniversitaire->name
                         ?? $inscription->anneeUniversitaire->nom
-                        ?? $inscription->anneeUniversitaire->libelle ?? '';
+                        ?? $inscription->anneeUniversitaire->display_name ?? '';
                     $anneeFormatted = preg_match('/(\d{4}-\d{4})/', $anneeText, $m) ? $m[1] : $anneeText;
                 @endphp
                 Est régulièrement inscrit(e) au titre de l'année universitaire

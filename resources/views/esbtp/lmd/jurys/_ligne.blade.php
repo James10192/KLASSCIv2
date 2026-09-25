@@ -4,7 +4,7 @@
     <td>{{ optional($j->date_jury)->format('d/m/Y') ?? '—' }}</td>
     <td>{{ $j->parcours?->name ?? '—' }} @if($j->classe) · {{ $j->classe->name }}@endif</td>
     <td><span style="background:#f1f5f9;padding:.15rem .45rem;border-radius:5px;font-size:.72rem;color:#475569;font-weight:600;">{{ $j->membres->count() }}</span></td>
-    <td><span class="juy-status juy-status--{{ $j->status }}">{{ str_replace('_',' ',$j->status) }}</span></td>
+    <td><span class="juy-status juy-status--{{ $j->status }}">{{ $j->libelleStatut() }}</span></td>
     <td>
         @if($j->pv_numero)
         <span style="font-family:'Courier New',monospace;font-size:.72rem;color:#0453cb;font-weight:700;">{{ $j->pv_numero }}</span>

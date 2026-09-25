@@ -97,7 +97,7 @@
                 <td>{{ trim(($decision['last_name'] ?? '').' '.($decision['first_names'] ?? '')) }}</td>
                 <td class="center">{{ $decision['average'] !== null ? number_format((float) $decision['average'], 2, ',', ' ') : 'N/A' }}</td>
                 <td class="center">{{ $decision['credits'] }}/{{ $decision['expected_credits'] }}</td>
-                <td>{{ strtoupper(str_replace('_', ' ', $decision['decision'])) }}@if($decision['mention'])<br><span class="muted">{{ str_replace('_', ' ', $decision['mention']) }}</span>@endif</td>
+                <td>{{ \App\Models\ESBTPLMDJuryDecision::libelleDecision($decision['decision']) }}@if($decision['mention'])<br><span class="muted">{{ \App\Models\ESBTPLMDJuryDecision::libelleMention($decision['mention']) }}</span>@endif</td>
                 <td>{{ $decision['vote'] ? str_replace('_', ' ', $decision['vote']) : 'Décision automatique' }}@if($decision['override_reason'])<br>{{ $decision['override_reason'] }}@endif</td>
             </tr>
         @endforeach

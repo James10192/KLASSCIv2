@@ -17,9 +17,14 @@ class ESBTPTeacherAttendanceController extends Controller
     public function index()
     {
         // Check if this is a teacher accessing their attendance marking page
+        // L'enseignant émarge sur « Mes cours du jour ». Cette page en portait une
+        // seconde copie, avec ses propres délais écrits en dur : elle renvoie
+        // désormais vers l'unique écran d'émargement.
+        // Test d'identité sans passe-droit : `can()` est vrai pour superAdmin
+        // (Gate::before), qui serait renvoyé vers un écran réservé aux enseignants.
         $user = auth()->user();
-        if ($user->can('identity.teach')) {
-            return $this->showTeacherAttendancePage();
+        if ($user->hasRole('enseignant') && ! $user->can('attendances.generate_codes')) {
+            return redirect()->route('esbtp.teacher-attendance.index');
         }
 
         // Admin view
@@ -29,82 +34,25 @@ class ESBTPTeacherAttendanceController extends Controller
             ->latest()
             ->first();
 
-        $todayAttendances = ESBTPTeacherAttendance::with(['teacher', 'course.matiere'])
+        $todayAttendances = ESBTPTeacherAttendance::with(['teacher', 'course.matiere', 'course.emploiTemps.classe'])
             ->whereDate('created_at', $date)
             ->orderBy('created_at', 'desc')
             ->get();
 
         $codeStats = $dailyCode ? $dailyCode->getAttemptsStatistics() : null;
         $settings = ESBTPAttendanceSettings::getAll();
+        $prolongationsEnAttente = \App\Models\ESBTPProlongationSeance::where('statut', \App\Models\ESBTPProlongationSeance::EN_ATTENTE)->count();
 
-        return view('esbtp.admin.attendance.index', compact('dailyCode', 'todayAttendances', 'codeStats', 'settings'));
-    }
-
-    /**
-     * Show teacher attendance marking page with their courses
-     */
-    private function showTeacherAttendancePage()
-    {
-        $user = auth()->user();
-
-        // Récupérer le modèle enseignant associé à l'utilisateur
-        $teacherModel = $user->teacherProfile;
-        $teacherId = $teacherModel ? $teacherModel->id : null;
-        $teacherUserId = $user->id;
-
-        // Get today's courses for the teacher  
-        $today = now()->format('Y-m-d');
-        $dayOfWeek = now()->dayOfWeek; // 0=Sunday, 1=Monday, etc.
-        // Convert to database format (1=Monday, 7=Sunday)
-        $dayOfWeekDb = $dayOfWeek == 0 ? 7 : $dayOfWeek;
-        
-        $todayCourses = ESBTPSeanceCours::with(['matiere', 'emploiTemps.classe'])
-            ->where('teacher_id', $teacherId) // Use proper teacher_id from ESBTPTeacher table
-            ->where(function($query) use ($today, $dayOfWeekDb) {
-                // Séances avec date_seance aujourd'hui
-                $query->whereDate('date_seance', $today)
-                // OU séances récurrentes pour le jour d'aujourd'hui
-                ->orWhere('jour', $dayOfWeekDb);
-            })
-            ->whereHas('emploiTemps', function($query) {
-                $query->where('is_active', true);
-            })
-            ->get();
-
-        // Load teacher attendance status for each course.
-        // esbtp_teacher_attendances.teacher_id référence users.id, pas esbtp_teachers.id.
-        $todayCourses->each(function($course) use ($teacherUserId, $today) {
-            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $teacherUserId)
-                ->where('course_id', $course->id)
-                ->whereDate('date', $today)
-                ->first();
-        });
-
-        return view('esbtp.attendance.mark', compact('todayCourses'));
+        return view('esbtp.admin.attendance.index', compact('dailyCode', 'todayAttendances', 'codeStats', 'settings', 'prolongationsEnAttente', 'date'));
     }
 
     public function store(Request $request)
     {
-        \Log::info('🔵 START store method', [
-            'user_id' => auth()->id(),
-            'has_code' => $request->has('code'),
-            'has_course_id' => $request->has('course_id'),
-            'all_data' => $request->all()
-        ]);
-
-        // Check if this is teacher self-attendance marking
+        // Un enseignant qui émarge avec son code passe par le seul chemin
+        // d'émargement, qui applique les délais réglés par l'école et la
+        // prolongation éventuelle du cours.
         if ($request->has('code') && $request->has('course_id')) {
-            \Log::info('✅ Redirecting to markTeacherAttendance');
-            try {
-                return $this->markTeacherAttendance($request);
-            } catch (\Exception $e) {
-                \Log::error('❌ ERROR in store -> markTeacherAttendance', [
-                    'message' => $e->getMessage(),
-                    'line' => $e->getLine(),
-                    'trace' => config('app.debug') ? $e->getTraceAsString() : null
-                ]);
-                return redirect()->back()->with('error', 'Erreur système: ' . $e->getMessage());
-            }
+            return app(\App\Http\Controllers\ESBTP\TeacherAttendanceController::class)->sign($request);
         }
 
         // Admin attendance marking (existing functionality)
@@ -123,171 +71,6 @@ class ESBTPTeacherAttendanceController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Présence enregistrée avec succès');
-    }
-
-    /**
-     * Handle teacher self-attendance marking with code verification
-     */
-    private function markTeacherAttendance(Request $request)
-    {
-        $validated = $request->validate([
-            'code' => 'required|string|size:6',
-            'course_id' => 'required|exists:esbtp_seance_cours,id'
-        ]);
-
-        // Find the active daily code
-        $dailyCode = ESBTPDailyCode::where('code', $validated['code'])
-            ->where('status', 'active')
-            ->where('is_active', true)
-            ->first();
-
-        if (!$dailyCode) {
-            return redirect()->back()->with('error', 'Code d\'émargement invalide ou expiré.');
-        }
-
-        if (!$dailyCode->isValid()) {
-            return redirect()->back()->with('error', 'Code d\'émargement expiré.');
-        }
-
-        // Get the course (seance)
-        $seanceCours = ESBTPSeanceCours::findOrFail($validated['course_id']);
-        
-        // Get current teacher
-        $user = auth()->user();
-
-        // Récupérer le modèle enseignant associé à l'utilisateur
-        $teacherModel = $user->teacherProfile;
-        if (!$teacherModel) {
-            return redirect()->back()->with('error', 'Aucun profil enseignant associé à ce compte.');
-        }
-        
-        // Check if teacher is assigned to this course
-        if ($seanceCours->teacher_id !== $teacherModel->id) {
-            return redirect()->back()->with('error', 'Vous n\'êtes pas assigné à ce cours.');
-        }
-        
-        // **VÉRIFICATION DES ÉMARGEMENTS EXISTANTS (DÉBUT ET FIN)**
-        // esbtp_teacher_attendances.teacher_id référence users.id (FK), pas esbtp_teachers.id.
-        $emargementDebut = ESBTPTeacherAttendance::where('teacher_id', $user->id)
-            ->where('course_id', $seanceCours->id)
-            ->whereDate('date', today())
-            ->where('type', 'start')
-            ->first();
-
-        $emargementFin = ESBTPTeacherAttendance::where('teacher_id', $user->id)
-            ->where('course_id', $seanceCours->id)
-            ->whereDate('date', today())
-            ->where('type', 'end')
-            ->first();
-
-        // **DÉTERMINER QUEL TYPE D'ÉMARGEMENT FAIRE**
-        $now = Carbon::now();
-        $heureDebut = Carbon::parse($seanceCours->heure_debut);
-        $heureFin = Carbon::parse($seanceCours->heure_fin);
-        $fenetreClotureDebut = $heureFin->copy()->subMinutes(20);
-        $fenetreClotureFin = $heureFin->copy()->addMinutes(30);
-
-        // Est-on dans la fenêtre de clôture?
-        $isInClosingWindow = $now->gte($fenetreClotureDebut) && $now->lte($fenetreClotureFin);
-
-        // Récupérer le workflow pour vérifier si l'appel de début est fait
-        try {
-            $workflow = \App\Models\ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
-        } catch (\Exception $e) {
-            \Log::error('❌ Erreur getOrCreateForSession: ' . $e->getMessage(), [
-                'seance_id' => $seanceCours->id,
-                'user_id' => $user->id,
-                'trace' => config('app.debug') ? $e->getTraceAsString() : null
-            ]);
-            return redirect()->back()->with('error', 'Erreur lors de la création du workflow: ' . $e->getMessage());
-        }
-
-        // Déterminer le type d'émargement à faire
-        if (!$emargementDebut) {
-            // Pas encore d'émargement de début → FAIRE ÉMARGEMENT DÉBUT
-            $emargementType = 'start';
-        } elseif ($emargementDebut && $emargementFin) {
-            // Les deux émargements sont déjà faits
-            return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
-                ->with('success', 'Vous avez déjà émargé le début et la fin de cette séance.');
-        } elseif (!$workflow->call_start_done) {
-            // Émargement début fait mais appel de début pas encore fait
-            return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
-                ->with('info', 'Vous devez d\'abord effectuer l\'appel de début avant de pouvoir émarger la fin de la séance.');
-        } elseif (!$isInClosingWindow) {
-            // Appel début fait mais pas encore dans la fenêtre de clôture
-            return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
-                ->with('info', 'Émargement de début déjà effectué. L\'émargement de fin sera disponible à partir de ' . $fenetreClotureDebut->format('H:i') . '.');
-        } elseif ($isInClosingWindow && !$emargementFin) {
-            // Appel début fait + dans fenêtre clôture + pas encore émargement fin → FAIRE ÉMARGEMENT FIN
-            $emargementType = 'end';
-        } else {
-            // Cas par défaut (ne devrait pas arriver)
-            return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
-                ->with('info', 'Veuillez vérifier l\'état de votre émargement.');
-        }
-
-        // **CRÉER L'ÉMARGEMENT (DÉBUT OU FIN)**
-        try {
-            // Déterminer le statut selon le type et l'heure
-            $status = 'present';
-            if ($emargementType === 'start') {
-                $limite20min = $heureDebut->copy()->addMinutes(20);
-                $limite45min = $heureDebut->copy()->addMinutes(45);
-
-                // FENÊTRE 1 : AVANT heure_debut → ❌ IMPOSSIBLE d'émarger
-                if ($now < $heureDebut) {
-                    $dailyCode->recordAttempt(false);
-                    return redirect()->back()->with('error', 'Vous ne pouvez pas émarger avant le début du cours (' . $heureDebut->format('H:i') . ').');
-                }
-
-                // FENÊTRE 4 : heure_debut + 45min et plus → ❌ ABSENT (workflow fermé)
-                if ($now > $limite45min) {
-                    $dailyCode->recordAttempt(false);
-                    return redirect()->back()->with('error', 'Délai d\'émargement dépassé (45 minutes après le début). Vous êtes marqué ABSENT.');
-                }
-
-                // Déterminer le statut : present ou late
-                $status = ($now <= $limite20min) ? 'present' : 'late';
-            }
-
-            $attendance = ESBTPTeacherAttendance::create([
-                'teacher_id' => $user->id, // users.id (FK), pas le profil esbtp_teachers
-                'course_id' => $seanceCours->id,
-                'daily_code_id' => $dailyCode->id,
-                'date' => now()->toDateString(),
-                'status' => $status,
-                'type' => $emargementType,
-                'attempts' => 1,
-                'ip_address' => $request->ip(),
-                'device_info' => json_encode(['user_agent' => $request->userAgent()]),
-                'validated_at' => now()
-            ]);
-
-            // Record successful attempt on the daily code
-            $dailyCode->recordAttempt(true);
-
-            // Mettre à jour le workflow selon le type d'émargement
-            if ($emargementType === 'start') {
-                $workflow->markAttendanceStartSigned();
-                $successMessage = $status === 'late'
-                    ? 'Émargement de DÉBUT enregistré avec RETARD. Veuillez maintenant effectuer l\'appel de début.'
-                    : 'Émargement de DÉBUT enregistré avec succès. Veuillez maintenant effectuer l\'appel de début.';
-            } else {
-                $workflow->markAttendanceEndSigned();
-                $successMessage = 'Émargement de FIN enregistré avec succès. Vous pouvez maintenant clôturer la séance.';
-            }
-
-            // Rediriger vers la page de sélection du type d'appel après émargement réussi
-            return redirect()->route('teacher.select-call-type', ['seance' => $seanceCours->id])
-                ->with('success', $successMessage);
-
-        } catch (\Exception $e) {
-            // Record failed attempt
-            $dailyCode->recordAttempt(false);
-            
-            return redirect()->back()->with('error', 'Erreur lors de l\'enregistrement de l\'émargement: ' . $e->getMessage());
-        }
     }
 
     public function report(Request $request)
@@ -492,6 +275,7 @@ class ESBTPTeacherAttendanceController extends Controller
 
             return response()->json([
                 'success' => true,
+                'id' => $dailyCode->id,
                 'code' => $dailyCode->code,
                 'valid_until' => $dailyCode->valid_until->format('Y-m-d H:i:s'),
                 'remaining_minutes' => $dailyCode->getRemainingValidityInMinutes()

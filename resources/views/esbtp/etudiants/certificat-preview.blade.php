@@ -228,7 +228,7 @@
                     @forelse($inscriptions as $inscription)
                     <tr>
                         <td>@php
-                            $rawYear = $inscription->anneeUniversitaire?->libelle
+                            $rawYear = $inscription->anneeUniversitaire?->display_name
                                 ?? $inscription->anneeUniversitaire?->name ?? null;
                             echo $rawYear
                                 ? (preg_match('/(\d{4}-\d{4})/', $rawYear, $m) ? $m[1] : $rawYear)
