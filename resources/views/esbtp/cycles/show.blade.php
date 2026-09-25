@@ -137,7 +137,7 @@
                                             <h3 class="card-title">Description</h3>
                                         </div>
                                         <div class="card-body">
-                                            {{ $cycle->description ?: 'Aucune description disponible.' }}
+                                            {{ \App\Support\TexteRiche::afficher($cycle->description) ?? 'Aucune description disponible.' }}
                                         </div>
                                     </div>
                                 </div>
