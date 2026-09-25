@@ -41,6 +41,7 @@ class ResumeOutil
         'search_bulletins' => ['bulletin trouvé', 'bulletins trouvés'],
         'search_absences_summary' => ['étudiant concerné', 'étudiants concernés'],
         'evolution_encaissements' => ['mois analysé', 'mois analysés'],
+        'repartition_effectifs' => ['groupe', 'groupes'],
     ];
 
     /** Résumés fixes des outils qui ne comptent rien. */

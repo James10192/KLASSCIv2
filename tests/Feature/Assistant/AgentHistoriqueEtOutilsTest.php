@@ -139,6 +139,49 @@ class AgentHistoriqueEtOutilsTest extends TestCase
         $this->assertNull($inscrits['url'], 'pas de lien vers une liste que la personne ne peut pas ouvrir');
     }
 
+    public function test_la_repartition_compte_comme_le_tableau_de_bord(): void
+    {
+        ESBTPAnneeUniversitaire::query()->update(['is_current' => false]);
+        $annee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2034-2035', 'start_date' => '2034-09-01', 'end_date' => '2035-07-31', 'is_current' => true]);
+        // Deux classes du même nom : deux barres, distinguées par leur code.
+        $classeA = \App\Models\ESBTPClasse::factory()->create(['name' => 'BATIMENT A']);
+        $classeB = \App\Models\ESBTPClasse::factory()->create(['name' => 'BATIMENT A']);
+        ESBTPInscription::factory()->count(3)->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classeA->id]);
+        $double = ESBTPInscription::factory()->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classeB->id]);
+        // Ne comptent pas, comme au tableau de bord : non validée, terminée, supprimée.
+        ESBTPInscription::factory()->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classeB->id, 'workflow_step' => 'prospect']);
+        ESBTPInscription::factory()->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classeB->id, 'status' => 'terminée']);
+        ESBTPInscription::factory()->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classeB->id])->delete();
+        // Même étudiant dans une seconde classe : une fois au total, une fois par groupe.
+        $classeC = \App\Models\ESBTPClasse::factory()->create(['name' => 'TP 1']);
+        ESBTPInscription::factory()->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classeC->id, 'etudiant_id' => $double->etudiant_id]);
+
+        $r = (new \App\Services\Chatbot\Tools\RepartitionEffectifsTool())->execute(['par' => 'classe'], User::factory()->create());
+
+        $parGroupe = array_column($r['results'], 'inscrits', 'classe');
+        $this->assertSame(3, $parGroupe["BATIMENT A ({$classeA->code})"]);
+        $this->assertSame(1, $parGroupe["BATIMENT A ({$classeB->code})"]);
+        $this->assertSame(1, $parGroupe['TP 1']);
+        $this->assertSame(4, $r['totaux']['inscrits']);
+        $this->assertSame(app(\App\Domain\Students\StudentCountService::class)->inscritsDe($annee->id), $r['totaux']['inscrits']);
+        $this->assertStringContainsString('plusieurs groupes', $r['remarque']);
+        $this->assertSame('graphique', $r['widget']['kind']);
+        $this->assertSame([3, 1, 1], $r['widget']['series'][0]['valeurs']);
+    }
+
+    public function test_une_inscription_sans_classe_reste_comptee(): void
+    {
+        ESBTPAnneeUniversitaire::query()->update(['is_current' => false]);
+        $annee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2035-2036', 'start_date' => '2035-09-01', 'end_date' => '2036-07-31', 'is_current' => true]);
+        ESBTPInscription::factory()->create(['annee_universitaire_id' => $annee->id, 'classe_id' => null]);
+
+        $r = (new \App\Services\Chatbot\Tools\RepartitionEffectifsTool())->execute(['par' => 'filiere'], User::factory()->create());
+
+        $this->assertSame([['filiere' => 'Non renseigné', 'inscrits' => 1, 'part' => '100 %']], $r['results']);
+        $this->assertSame(1, $r['totaux']['inscrits']);
+        $this->assertNull($r['remarque']);
+    }
+
     public function test_les_encaissements_par_mois_ne_comptent_que_le_valide_et_comparent(): void
     {
         Carbon::setTestNow('2035-06-15 10:00:00');
