@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Rules\MotDePasseChoisi;
-use App\Services\Scoring\PersonnelScoringService;
 use App\Services\UserService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use Illuminate\Http\Request;
@@ -119,10 +118,9 @@ class ESBTPCoordinateurController extends Controller
         // Statistiques du coordinateur
         $statistiques = $this->getCoordinateurStatistiques($coordinateur->id);
 
-        $performanceScore = app(PersonnelScoringService::class)->latestFor($coordinateur)
-            ?: app(PersonnelScoringService::class)->calculate($coordinateur);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($coordinateur);
 
-        return view('esbtp.coordinateurs.show', compact('coordinateur', 'statistiques', 'performanceScore'));
+        return view('esbtp.coordinateurs.show', compact('coordinateur', 'statistiques', 'activite'));
     }
 
     /**

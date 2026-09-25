@@ -12,6 +12,6 @@
     'icon' => 'fa-graduation-cap',
     'roleLabel' => 'Directeur des études',
     'model' => $directeur,
-    'performanceScore' => $performanceScore ?? null,
+    'activite' => $activite ?? null,
 ])
 @endsection

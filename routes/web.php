@@ -2950,15 +2950,19 @@ Route::middleware(['auth', 'permission:system.manage', 'paywall'])->prefix('esbt
     Route::post('/caissiers/{caissier}/reset-password', [\App\Http\Controllers\ESBTPCaissierController::class, 'resetPassword'])->middleware('throttle:5,1')->name('caissiers.reset-password');
 });
 
-Route::middleware(['auth', 'permission:performance.view_all', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
-    Route::prefix('personnel/performance')->name('personnel.performance.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'index'])->name('index');
-        Route::get('/data', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'data'])->name('data');
-        Route::post('/recalculate', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'recalculate'])
-            ->middleware('permission:performance.recalculate')
-            ->name('recalculate');
-        Route::get('/{user}', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'show'])->name('show');
-    });
+// Activite du personnel : des faits prevus / realises, plus de note. La liste
+// exige `view_all` ; le detail s'ouvre aussi a la personne elle-meme avec
+// `performance.view` (« Mon activite »), verifie dans le controleur.
+Route::middleware(['auth', 'paywall'])->prefix('esbtp/personnel/performance')->name('esbtp.personnel.performance.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'index'])
+        ->middleware('permission:performance.view_all')->name('index');
+    Route::get('/data', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'data'])
+        ->middleware(['permission:performance.view_all', 'throttle:60,1'])->name('data');
+    Route::get('/moi', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'moi'])
+        ->middleware('permission:performance.view|performance.view_all')->name('moi');
+    Route::get('/{user}', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'show'])
+        ->whereNumber('user')
+        ->middleware('permission:performance.view|performance.view_all')->name('show');
 });
 
 // Acces temporaires : une permission ouverte a une personne jusqu'a une date.

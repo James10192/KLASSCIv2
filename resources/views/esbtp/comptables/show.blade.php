@@ -473,7 +473,7 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
                 <i class="fas fa-user"></i> Informations
             </button>
             <button class="cs-comptable-tab" data-tab="performance" type="button">
-                <i class="fas fa-chart-line"></i> Performance
+                <i class="fas fa-chart-line"></i> Activité
             </button>
             <button class="cs-comptable-tab" data-tab="account" type="button">
                 <i class="fas fa-user-cog"></i> Compte
@@ -602,7 +602,7 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
 
         {{-- ---- TAB: Compte --------------------------------------- --}}
         <div class="cs-comptable-panel" id="cs-comptable-tab-performance">
-            @include('esbtp.personnel.partials.performance-score', ['performanceScore' => $performanceScore ?? null])
+            @include('esbtp.personnel.partials.activite-resume', ['activite' => $activite ?? null, 'userId' => $user->id])
         </div>
 
         <div class="cs-comptable-panel" id="cs-comptable-tab-account">

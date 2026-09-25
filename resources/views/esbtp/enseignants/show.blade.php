@@ -625,7 +625,7 @@
                 <i class="fas fa-chalkboard"></i> Enseignement
             </button>
             <button class="es-tab" data-tab="performance" type="button">
-                <i class="fas fa-chart-line"></i> Performance
+                <i class="fas fa-chart-line"></i> Activité
             </button>
             <button class="es-tab" data-tab="account" type="button">
                 <i class="fas fa-user-cog"></i> Compte
@@ -1093,7 +1093,7 @@
 
         {{-- ---- TAB: Compte --------------------------------------- --}}
         <div class="es-panel" id="es-tab-performance">
-            @include('esbtp.personnel.partials.performance-score', ['performanceScore' => $performanceScore ?? null])
+            @include('esbtp.personnel.partials.activite-resume', ['activite' => $activite ?? null, 'userId' => $teacher->user_id])
         </div>
 
         <div class="es-panel" id="es-tab-account">

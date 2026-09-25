@@ -12,6 +12,6 @@
     'icon' => 'fa-user-plus',
     'roleLabel' => 'Agent d\'inscription',
     'model' => $agent,
-    'performanceScore' => $performanceScore ?? null,
+    'activite' => $activite ?? null,
 ])
 @endsection

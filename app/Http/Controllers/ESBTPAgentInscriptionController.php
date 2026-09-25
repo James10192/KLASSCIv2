@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Rules\MotDePasseChoisi;
-use App\Services\Scoring\PersonnelScoringService;
 use App\Http\Controllers\Concerns\ResetsStaffPassword;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Services\UserService;
@@ -82,12 +81,11 @@ class ESBTPAgentInscriptionController extends Controller
         $this->authorize('agents_inscription.view');
         $this->assertAgentInscription($agentInscription);
 
-        $performanceScore = app(PersonnelScoringService::class)->latestFor($agentInscription)
-            ?: app(PersonnelScoringService::class)->calculate($agentInscription);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($agentInscription);
 
         return view('esbtp.agents-inscription.show', [
             'agent' => $agentInscription,
-            'performanceScore' => $performanceScore,
+            'activite' => $activite,
         ]);
     }
 

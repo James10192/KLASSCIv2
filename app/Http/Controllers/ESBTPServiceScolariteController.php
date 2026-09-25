@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Rules\MotDePasseChoisi;
-use App\Services\Scoring\PersonnelScoringService;
 use App\Http\Controllers\Concerns\ResetsStaffPassword;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Services\UserService;
@@ -82,12 +81,11 @@ class ESBTPServiceScolariteController extends Controller
         $this->authorize('services_scolarite.view');
         $this->assertServiceScolarite($serviceScolarite);
 
-        $performanceScore = app(PersonnelScoringService::class)->latestFor($serviceScolarite)
-            ?: app(PersonnelScoringService::class)->calculate($serviceScolarite);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($serviceScolarite);
 
         return view('esbtp.services-scolarite.show', [
             'service' => $serviceScolarite,
-            'performanceScore' => $performanceScore,
+            'activite' => $activite,
         ]);
     }
 

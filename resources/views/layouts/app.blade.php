@@ -1663,17 +1663,30 @@
                             </a>
                     </div>
 
-                    @can('module.academic_pilotage.access')
-                    @can('academic_pilotage.view')
+                    @php
+                        $_menuPilotage = auth()->user()->can('module.academic_pilotage.access') && auth()->user()->can('academic_pilotage.view');
+                        $_menuActivite = auth()->user()->can('performance.view_all');
+                        $_menuMonActivite = ! $_menuActivite && auth()->user()->can('performance.view');
+                    @endphp
+                    @if($_menuPilotage || $_menuActivite || $_menuMonActivite)
                         <div class="menu-category">Pilotage</div>
+                    @endif
+                    @if($_menuPilotage)
                         <div class="menu-item">
                             <a href="{{ route('esbtp.pilotage-academique.index') }}" class="menu-link {{ Request::routeIs('esbtp.pilotage-academique.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-chart-line"></i></div>
                                 <div class="menu-text">Pilotage académique</div>
                             </a>
                         </div>
-                    @endcan
-                    @endcan
+                    @endif
+                    @if($_menuActivite || $_menuMonActivite)
+                        <div class="menu-item">
+                            <a href="{{ $_menuActivite ? route('esbtp.personnel.performance.index') : route('esbtp.personnel.performance.moi') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.performance.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-people-group"></i></div>
+                                <div class="menu-text">{{ $_menuActivite ? 'Activité du personnel' : 'Mon activité' }}</div>
+                            </a>
+                        </div>
+                    @endif
 
                     <!-- Academic Management Section — gates per-link via les nouvelles permissions registry -->
                     @can('module.academique.access')

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Rules\MotDePasseChoisi;
-use App\Services\Scoring\PersonnelScoringService;
 use App\Http\Controllers\Concerns\ResetsStaffPassword;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use App\Services\UserService;
@@ -82,12 +81,11 @@ class ESBTPDirecteurEtudesController extends Controller
         $this->authorize('directeurs_etudes.view');
         $this->assertDirecteurEtudes($directeurEtude);
 
-        $performanceScore = app(PersonnelScoringService::class)->latestFor($directeurEtude)
-            ?: app(PersonnelScoringService::class)->calculate($directeurEtude);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($directeurEtude);
 
         return view('esbtp.directeurs-etudes.show', [
             'directeur' => $directeurEtude,
-            'performanceScore' => $performanceScore,
+            'activite' => $activite,
         ]);
     }
 

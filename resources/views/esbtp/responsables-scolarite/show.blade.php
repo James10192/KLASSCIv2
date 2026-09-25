@@ -12,6 +12,6 @@
     'icon' => 'fa-user-check',
     'roleLabel' => 'Responsable scolarité',
     'model' => $responsable,
-    'performanceScore' => $performanceScore ?? null,
+    'activite' => $activite ?? null,
 ])
 @endsection

@@ -5,7 +5,6 @@ namespace App\Console;
 use App\Console\Commands\MarkTeacherAbsences;
 use App\Console\Commands\MarkUnattendedTeacherSessions;
 use App\Console\Commands\QueueMonitorCommand;
-use App\Console\Commands\RecalculatePersonnelScoresCommand;
 use App\Console\Commands\RunQueueWorker;
 use App\Console\Commands\SendInscriptionPaiementReminders;
 use App\Jobs\CalculerKPIsJob;
@@ -328,6 +327,5 @@ class Kernel extends ConsoleKernel
         QueueMonitorCommand::class,
         SendInscriptionPaiementReminders::class,
         MarkTeacherAbsences::class,
-        RecalculatePersonnelScoresCommand::class,
     ];
 }
