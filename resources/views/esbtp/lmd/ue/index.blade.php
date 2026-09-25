@@ -125,6 +125,8 @@
     .lu-propre-check strong { display: block; font-size: .88rem; color: #1e293b; }
     .lu-propre-check small { display: block; font-size: .76rem; color: #64748b; line-height: 1.45; margin-top: .15rem; }
     .lu-propre-champs { margin-top: .75rem; }
+    .lu-propre-edition { display: flex; gap: .5rem; align-items: flex-start; margin-top: .6rem; font-size: .78rem; color: #475569; }
+    .lu-propre-edition i { color: #0453cb; margin-top: .15rem; }
     .lu-propre-field { display: flex; flex-direction: column; min-width: 0; }
     .lu-propre-field .au-select, .lu-propre-field .au-select-trigger { max-width: 100%; min-width: 0; }
     .lu-propre-info { display: flex; align-items: center; gap: .6rem; padding: .7rem .9rem; border-radius: 10px; background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.18); color: #1e293b; font-size: .82rem; margin-top: .75rem; }
@@ -464,6 +466,10 @@
                                 <small>Cochez-la si un autre parcours utilise déjà ce code pour une UE différente. Chaque parcours garde son intitulé et ses ECUE ; le relevé imprime le code tel que vous le saisissez.</small>
                             </span>
                         </label>
+                        <div class="lu-propre-edition" id="ue_propre_edition" style="display:none;">
+                            <i class="fas fa-info-circle"></i>
+                            <span>L'UE devient propre à <strong>son parcours actuel</strong> : elle ne doit plus servir qu'à lui. Vous pourrez ensuite redonner à ses ECUE leurs codes officiels.</span>
+                        </div>
                         @php
                             $_optionsSemestres = collect(range(1, 10))->mapWithKeys(fn ($n) => [$n => 'Semestre ' . $n])->all();
                         @endphp
@@ -812,6 +818,8 @@ function ueManager() {
                 if (data.propre_a) {
                     document.getElementById('ue_propre_info_code').textContent = data.propre_a;
                     document.getElementById('ue_propre_info').style.display = 'flex';
+                } else {
+                    document.getElementById('ue_propre_group').style.display = '';
                 }
             } catch (e) { console.error(e); }
 
@@ -976,9 +984,15 @@ document.getElementById('lp_submit').addEventListener('click', async function() 
 
 // ── UE propre à un parcours ──
 // La case n'existe qu'à la création : une UE garde ensuite sa maquette.
+// En création, la case demande parcours et semestre. En modification, elle
+// rend propre une UE existante à son parcours actuel (déduit côté serveur).
+let ueProprEdition = false;
 function ueProprePreparer(creation, parcoursFiltre) {
     const groupe = document.getElementById('ue_propre_group');
     const coche = document.getElementById('ue_propre');
+    ueProprEdition = !creation;
+    // En modification, affichée seulement une fois l'UE chargée, si elle
+    // n'est pas déjà propre à un parcours.
     groupe.style.display = creation ? '' : 'none';
     document.getElementById('ue_propre_info').style.display = 'none';
     coche.checked = false;
@@ -993,9 +1007,11 @@ function ueProprePoserValeur(id, valeur) {
     natif.dispatchEvent(new Event('change', { bubbles: true }));
 }
 function ueProprebasculer() {
-    const actif = document.getElementById('ue_propre').checked;
+    const coche = document.getElementById('ue_propre').checked;
+    const actif = coche && !ueProprEdition;
     const champs = document.getElementById('ue_propre_champs');
     champs.style.display = actif ? '' : 'none';
+    document.getElementById('ue_propre_edition').style.display = coche && ueProprEdition ? 'flex' : 'none';
     // Sans nom, parcours et semestre ne partent pas : une UE ordinaire se
     // rattache par le bouton « Lier à des parcours », comme avant. On retire le
     // nom plutôt que de désactiver : la liste premium resterait grisée.

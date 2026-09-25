@@ -212,6 +212,51 @@ class CodeImprimeParParcoursTest extends TestCase
         $this->assertSame('AMELIORATION GENETIQUE ET REPRODUCTION', $ue->fresh()->name);
     }
 
+    public function test_modifier_rend_propre_une_ue_renumerotee_et_rend_leurs_codes_officiels_aux_ecue(): void
+    {
+        // Le contournement d'avant : LPA avait saisi AGR2104 / AGR21033 faute de
+        // pouvoir reprendre les codes de LPV.
+        $acteur = $this->acteur();
+        $lpa = $this->parcoursSansMaquette('LPA', 'Productions Animales');
+        $this->actingAs($acteur)->postJson(route('esbtp.lmd.ue.store'), [
+            'name' => 'AMELIORATION GENETIQUE ET REPRODUCTION', 'code' => 'AGR2104', 'credit' => 4, 'type_ue' => 'fondamentale',
+        ])->assertOk();
+        $ue = ESBTPUniteEnseignement::where('code', 'AGR2104')->firstOrFail();
+        app(ParcoursUeSyncService::class)->syncPourUnite($ue, [['parcours_id' => $lpa->id, 'semestre' => 3]]);
+        $this->actingAs($acteur)->postJson(route('esbtp.lmd.ue.ecue.store', $ue), [
+            'name' => 'Génétique animale', 'code' => 'AGR21033', 'credit_ecue' => 2, 'parcours_id' => $lpa->id,
+        ])->assertOk();
+        $animale = ESBTPMatiere::where('code', 'AGR21033')->firstOrFail();
+
+        // Modifier : cocher « propre à un parcours » et remettre le code officiel.
+        $this->actingAs($acteur)->putJson(route('esbtp.lmd.ue.update', $ue), [
+            'name' => $ue->name, 'code' => 'AGR2103', 'credit' => 4, 'type_ue' => 'fondamentale', 'propre_au_parcours' => 1,
+        ])->assertOk();
+        $this->assertSame('AGR2103~LPA', $ue->fresh()->code);
+        $this->assertSame((int) $lpa->id, (int) $ue->fresh()->parcours_id);
+
+        // Puis l'ECUE retrouve son code officiel, sans toucher celui de LPV.
+        $this->actingAs($acteur)->putJson(route('esbtp.lmd.ue.ecue.update', [$ue->fresh(), $animale]), [
+            'name' => 'Génétique animale', 'code' => 'AGR21031', 'parcours_id' => $lpa->id,
+        ])->assertOk();
+        $this->assertSame('AGR21031~LPA', $animale->fresh()->code);
+        $this->assertSame('AGR21031', $animale->fresh()->code_affiche);
+        $this->assertSame('Génétique vegetale', ESBTPMatiere::where('code', 'AGR21031')->value('name'));
+    }
+
+    public function test_modifier_refuse_de_rendre_propre_une_ue_qui_sert_deux_parcours(): void
+    {
+        $acteur = $this->acteur();
+        $lpa = $this->parcoursSansMaquette('LPA', 'Productions Animales');
+        $ue = ESBTPUniteEnseignement::where('code', 'AGR2103')->firstOrFail();
+        app(ParcoursUeSyncService::class)->sync($lpa, [['id' => $ue->id, 'semestres' => [3], 'is_optional' => false, 'ordre' => 0]], detachMissing: false);
+
+        $this->actingAs($acteur)->putJson(route('esbtp.lmd.ue.update', $ue), [
+            'name' => $ue->name, 'code' => 'AGR2103', 'credit' => 4, 'type_ue' => 'fondamentale', 'propre_au_parcours' => 1,
+        ])->assertStatus(422)->assertJsonValidationErrors('propre_au_parcours');
+        $this->assertSame('AGR2103', $ue->fresh()->code);
+    }
+
     private function acteur(): User
     {
         foreach (['admin.access', 'module.lmd.access', 'lmd.structure.view', 'lmd.structure.manage', 'lmd.structure.delete'] as $permission) {

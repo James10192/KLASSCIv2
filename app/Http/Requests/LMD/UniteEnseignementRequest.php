@@ -41,6 +41,9 @@ class UniteEnseignementRequest extends FormRequest
     /** La cle interne calculee une fois, apres validation (voir cle()). */
     private ?string $cle = null;
 
+    /** Le parcours d'une UE existante qu'on rend propre (edition). */
+    private ?ESBTPLMDParcours $parcoursPropre = null;
+
     public function rules(): array
     {
         return [
@@ -151,6 +154,10 @@ class UniteEnseignementRequest extends FormRequest
         if (array_key_exists('code', $donnees) && $this->cle !== null) {
             $donnees['code'] = $this->cle;
         }
+        // La fiche nomme desormais le parcours auquel l'UE est propre.
+        if ($this->parcoursPropre !== null) {
+            $donnees['parcours_id'] = $this->parcoursPropre->id;
+        }
 
         return $donnees;
     }
@@ -189,6 +196,21 @@ class UniteEnseignementRequest extends FormRequest
                 return;
             }
             $this->cle = $maquette->cleUnitePropre($saisi, $parcours);
+        } elseif ($ue && $this->boolean('propre_au_parcours')) {
+            // Rendre propre une UE existante (codes renumerotes faute de mieux,
+            // qu'on veut remettre au code officiel). Son parcours se deduit de
+            // ses rattachements : il n'y en a qu'un, sinon elle ne lui est pas
+            // propre et il faut d'abord la retirer des autres.
+            $sesParcours = $ue->parcoursMultiple()->pluck('esbtp_lmd_parcours.id')->unique()->values();
+            if ($sesParcours->count() !== 1) {
+                $validator->errors()->add('propre_au_parcours', $sesParcours->isEmpty()
+                    ? 'Rattachez d\'abord cette UE à son parcours (« Lier à des parcours »).'
+                    : sprintf('Cette UE sert %d parcours. Retirez d\'abord ceux auxquels elle n\'appartient pas (« Lier à des parcours »).', $sesParcours->count()));
+
+                return;
+            }
+            $this->parcoursPropre = ESBTPLMDParcours::find($sesParcours->first());
+            $this->cle = $maquette->cleUnitePropre($saisi, $this->parcoursPropre, $ue->id);
         } else {
             $this->cle = $saisi;
         }
