@@ -149,7 +149,6 @@ if (typeof window.paApercu !== 'function') {
                     const donnees = await reponse.json();
                     // Une réponse plus ancienne qu'une autre demande déjà partie ne doit rien écraser.
                     if (numero !== this._requete) return;
-                    if (donnees.periode) this.filtres.periode = donnees.periode;
                     this.injecter(donnees.html || '');
                     if (historique) history.replaceState(null, '', '?' + this.parametres().toString());
                 } catch (e) {
