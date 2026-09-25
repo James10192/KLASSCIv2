@@ -299,6 +299,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                     <div class="ee-grid" style="margin-top: 1.25rem;">
                         @can('comptabilite.salaires.set_rate')
                         <div class="ee-field ee-conditional {{ $selectedRegime !== 'permanent' ? 'show' : '' }}" id="tauxField">
+                            <span id="taux" aria-hidden="true"></span>
                             <label for="taux_horaire" class="ee-label">Taux horaire par défaut (FCFA/heure)</label>
                             <input type="number" name="taux_horaire" id="taux_horaire"
                                    value="{{ $currentTaux }}"

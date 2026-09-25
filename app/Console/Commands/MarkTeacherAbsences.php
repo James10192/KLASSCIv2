@@ -2,6 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\EmploiTemps\FenetresDEmargement;
+use App\Domain\EmploiTemps\MomentDEmargement;
+
 use Illuminate\Console\Command;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacherAttendance;
@@ -56,12 +59,22 @@ class MarkTeacherAbsences extends Command
         $alreadyMarked = 0;
         $notYetExpired = 0;
 
+        // Les délais sont ceux réglés par l'école. Si elle a choisi d'accepter un
+        // retard avec motif, rien ne doit marquer absent d'office : l'enseignant
+        // doit encore pouvoir émarger et se justifier.
+        $fenetres = app(FenetresDEmargement::class);
+        if (! $fenetres->marqueAbsentDOffice()) {
+            $this->info("L'école accepte les retards avec motif : aucune absence n'est marquée automatiquement.");
+
+            return 0;
+        }
+
         foreach ($seances as $seance) {
             $courseStart = Carbon::parse($seance->heure_debut);
-            $limite45min = $courseStart->copy()->addMinutes(45);
+            $limite45min = $fenetres->limiteRetard($courseStart);
 
-            // Vérifier si la fenêtre de 45min a expiré
-            if ($now->lte($limite45min)) {
+            // Le délai de retard réglé par l'école est-il dépassé ?
+            if ($fenetres->classerDebut($now, $courseStart) !== MomentDEmargement::Depasse) {
                 $notYetExpired++;
                 continue;
             }

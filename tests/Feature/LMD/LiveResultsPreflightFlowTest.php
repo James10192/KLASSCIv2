@@ -90,10 +90,14 @@ class LiveResultsPreflightFlowTest extends TestCase
         $response->assertJsonPath('blocking_errors.0.issues.0.code', 'missing_grade_entries');
         $response->assertJsonPath('blocking_errors.0.student_name', 'Kouassi Awa');
         $response->assertJsonPath('blocking_errors.0.student_matricule', 'LMD100');
-        $this->assertStringContainsString('Ouvrez Notes LMD', $response->json('message'));
+        $this->assertStringContainsString('Pilotage académique', $response->json('message'));
         $this->assertStringContainsString(
-            'Certaines notes attendues manquent',
+            'Des notes attendues manquent ou sont encore en brouillon',
             $response->json('blocking_errors.0.issues.0.message')
+        );
+        $this->assertStringContainsString(
+            'pilotage-academique',
+            (string) $response->json('blocking_errors.0.issues.0.action_url')
         );
     }
 

@@ -99,7 +99,7 @@
                                     <input
                                         type="text"
                                         class="pe-input pe-input--readonly"
-                                        value="{{ $paiement->inscription->filiere->name ?? 'N/A' }} - {{ $paiement->inscription->niveauEtude->name ?? 'N/A' }} ({{ $paiement->inscription->anneeUniversitaire->libelle ?? 'N/A' }})"
+                                        value="{{ $paiement->inscription->filiere->name ?? 'N/A' }} - {{ $paiement->inscription->niveauEtude->name ?? 'N/A' }} ({{ $paiement->inscription->anneeUniversitaire->display_name ?? 'N/A' }})"
                                         readonly>
                                 </div>
                             </div>

@@ -7,7 +7,7 @@
             <div class="juy-stat-card"><div class="juy-stat-value" x-text="stats.ajourne">{{ $stats['ajourne'] }}</div><div class="juy-stat-label">Ajournés</div></div>
             <div class="juy-stat-card"><div class="juy-stat-value" x-text="stats.exclu">{{ $stats['exclu'] }}</div><div class="juy-stat-label">Exclus</div></div>
             <div class="juy-stat-card"><div class="juy-stat-value" x-text="stats.admis_sous_condition">{{ $stats['admis_sous_condition'] }}</div><div class="juy-stat-label">Sous condition</div></div>
-            <div class="juy-stat-card"><div class="juy-stat-value" x-text="stats.defere">{{ $stats['defere'] }}</div><div class="juy-stat-label">Différés</div></div>
+            <div class="juy-stat-card"><div class="juy-stat-value" x-text="stats.defere">{{ $stats['defere'] }}</div><div class="juy-stat-label">Déférés au rectorat</div></div>
         </div>
     </div>
 

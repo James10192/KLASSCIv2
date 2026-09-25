@@ -5,6 +5,9 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
+    .rpf-au { display: flex !important; width: 100%; }
+    .rpf-au .au-select-trigger { width: 100%; }
+
     .main-card {
         background: white;
         border-radius: 12px;
@@ -231,12 +234,9 @@
                                 <label for="classe_id" class="form-label-modern">
                                     <i class="fas fa-users text-primary me-1"></i>Classe
                                 </label>
-                                <select name="classe_id" id="classe_id" class="form-control-modern form-select" required>
-                                    <option value="">Sélectionner une classe</option>
-                                    @foreach($classes as $classe)
-                                        <option value="{{ $classe->id }}">{{ $classe->name }}</option>
-                                    @endforeach
-                                </select>
+                                <x-au-select name="classe_id" id="classe_id" required class="rpf-au"
+                                             :options="$classes->pluck('name', 'id')" icon="fa-users"
+                                             placeholder="Sélectionner une classe" :searchable="$classes->count() > 8" />
                             </div>
 
                             <!-- Période -->

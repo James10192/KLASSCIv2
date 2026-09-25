@@ -98,6 +98,14 @@ if (!window.lmdPreflightModalLoaded) {
                 const issues = (entry.issues || []).map((issue) => issue.message).join(' ');
                 const studentLabel = entry.student_name || (entry.student_id ? `Étudiant #${entry.student_id}` : 'Étudiant');
                 li.textContent = `${studentLabel} : ${issues || entry.message || 'Blocage détecté'}`;
+                const action = (entry.issues || []).find((issue) => issue.action_url);
+                if (action) {
+                    const lien = document.createElement('a');
+                    lien.href = action.action_url;
+                    lien.textContent = ' ' + (action.action_label || 'Corriger');
+                    lien.style.cssText = 'margin-left:.35rem;color:#0453cb;font-weight:600;text-decoration:underline;';
+                    li.appendChild(lien);
+                }
                 listNode.appendChild(li);
             });
 

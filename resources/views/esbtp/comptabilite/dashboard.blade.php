@@ -141,7 +141,7 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
         ? app(\App\Domain\Comptabilite\Reconciliation\Services\ReconciliationMetricsService::class)->snapshot()
         : null;
 
-    $afAnneeCourante = $anneeActive ? (string) ($anneeActive->name ?? $anneeActive->libelle) : null;
+    $afAnneeCourante = $anneeActive ? (string) ($anneeActive->name ?? $anneeActive->display_name) : null;
     $afOptionsAnnee = ['' => $afAnneeCourante ? 'Année en cours ('.$afAnneeCourante.')' : 'Année en cours'];
     foreach ($annees as $a) {
         $afOptionsAnnee[(string) $a->id] = (string) ($a->name ?? $a->libelle);
@@ -171,7 +171,7 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
             'serieJours' => $serieJours, 'modes' => $modes, 'recouvrementParClasse' => $recouvrementParClasse,
             'agingBuckets' => $agingBuckets,
             'paiementsEnAttente' => \App\Actions\Comptabilite\BuildDashboardDataAction::pendingPaymentsToArray($paiementsEnAttente),
-            'anneeLabel' => $annee ? (string) ($annee->name ?? $annee->libelle) : '',
+            'anneeLabel' => $annee ? (string) ($annee->name ?? $annee->display_name) : '',
         ],
         'url' => route('esbtp.comptabilite.dashboard.data'),
         'liens' => [
@@ -206,7 +206,7 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
     <div class="af-hero">
         <div>
             <div class="af-crumb"><a href="{{ route('dashboard') }}">Accueil</a> · Analyse financière</div>
-            <h1>Analyse financière <span class="af-pill" x-text="d.anneeLabel || 'Année en cours'">{{ $annee ? ($annee->name ?? $annee->libelle) : 'Année en cours' }}</span></h1>
+            <h1>Analyse financière <span class="af-pill" x-text="d.anneeLabel || 'Année en cours'">{{ $annee ? ($annee->name ?? $annee->display_name) : 'Année en cours' }}</span></h1>
             <div class="af-big-lbl">Encaissé ce mois</div>
             <div class="af-big af-num"><b x-text="fmt(d.totalPaidMonth)">{{ number_format($totalPaidMonth, 0, ',', ' ') }}</b><small>FCFA</small></div>
             <div class="af-delta">
@@ -401,7 +401,7 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
     // ── Écran mobile (maquette S['comptable:dash']) ──────────────────────────
     $dmEcole = \App\Helpers\SettingsHelper::getSchoolInfo();
     $dmEcoleNom = $dmEcole['name'] ?: ($dmEcole['acronym'] ?: config('app.name'));
-    $dmAnneeLabel = $annee ? (string) ($annee->name ?? $annee->libelle ?? '') : '';
+    $dmAnneeLabel = $annee ? (string) ($annee->name ?? $annee->display_name ?? '') : '';
     $dmAnneeEnCours = $annee && $anneeActive && (int) $annee->id === (int) $anneeActive->id;
     $dmDateJour = now()->translatedFormat('j M');
     $dmTaux = $totalDue > 0 ? min(100, round(($totalPaid / $totalDue) * 100, 1)) : null;
@@ -629,7 +629,7 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
                 <label>
                     <input type="radio" name="dm_annee" value="" x-model="sheet.annee">
                     <span class="rd" aria-hidden="true"></span>
-                    <b>{{ $anneeActive ? ($anneeActive->name ?? $anneeActive->libelle) : 'Année par défaut' }}</b>
+                    <b>{{ $anneeActive ? ($anneeActive->name ?? $anneeActive->display_name) : 'Année par défaut' }}</b>
                     @if($anneeActive)<span>En cours · par défaut</span>@endif
                 </label>
                 @foreach($annees as $a)

@@ -453,7 +453,11 @@ class ESBTPEvaluationController extends Controller
             $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_debut);
             $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_fin);
             if ($endAt->lessThanOrEqualTo($startAt)) {
-                $endAt = $endAt->addDay();
+                // Des heures inversées donnaient 22 h d'épreuve (1 320 min) en
+                // passant au lendemain. Une évaluation ne dure pas une nuit : on refuse.
+                return redirect()->back()
+                    ->with('error', 'L’heure de fin doit suivre l’heure de début.')
+                    ->withInput();
             }
             $calculatedDuration = $endAt->diffInMinutes($startAt);
 
@@ -722,7 +726,11 @@ class ESBTPEvaluationController extends Controller
             $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_debut);
             $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_fin);
             if ($endAt->lessThanOrEqualTo($startAt)) {
-                $endAt = $endAt->addDay();
+                // Des heures inversées donnaient 22 h d'épreuve (1 320 min) en
+                // passant au lendemain. Une évaluation ne dure pas une nuit : on refuse.
+                return redirect()->back()
+                    ->with('error', 'L’heure de fin doit suivre l’heure de début.')
+                    ->withInput();
             }
             $calculatedDuration = $endAt->diffInMinutes($startAt);
 
@@ -1993,6 +2001,23 @@ class ESBTPEvaluationController extends Controller
                         })->keyBy('etudiant_id'),
                     ];
                 });
+
+            // Les copies d'un examen encore anonyme ne se saisissent que par
+            // numéro : la grille nominative ne reçoit ni leurs notes, ni les
+            // noms en face. Elle renvoie vers la saisie par numéros.
+            $sousAnonymat = app(\App\Domain\Examens\FeuilleDeNotesDeLExamen::class)
+                ->evaluationsSousAnonymat($evaluations->pluck('id'));
+            $evaluations = $evaluations->map(function (array $e) use ($sousAnonymat) {
+                if (! $sousAnonymat->contains((int) $e['id'])) {
+                    return $e + ['anonyme' => false];
+                }
+
+                return array_merge($e, [
+                    'anonyme' => true,
+                    'notes' => collect(),
+                    'saisie_url' => route('esbtp.lmd.notes.saisie', $e['id']),
+                ]);
+            });
 
             \Log::info('✅ [API] byClassMatiere - Success', [
                 'class_id' => $classId,
