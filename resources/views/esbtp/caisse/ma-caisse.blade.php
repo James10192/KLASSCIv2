@@ -232,6 +232,9 @@
     .mcm-bill-in:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
     .mcm-bill-in.is-set { border-color: #0453cb; }
     .m-bill .mcm-bill-unit { color: #64748b; font-size: 12px; }
+    /* Les coupures sont des lignes de la carte, pas des cartes dans la carte. */
+    .mcm-screen .m-list.one > .m-bill { border: 0; border-top: 1px solid #eef2f7; border-radius: 0; padding: 10px 16px; background: none; }
+    .mcm-screen .m-bill input.mcm-bill-in { width: 72px; height: 44px; padding: 0 8px; text-align: center; font-size: 16px; line-height: 44px; }
     .mcm-ecart-lbl { font-weight: 700; color: #0f172a; }
     .mcm-ok { color: #0f6b4c !important; }
     .mcm-bad { color: #a12016 !important; }
