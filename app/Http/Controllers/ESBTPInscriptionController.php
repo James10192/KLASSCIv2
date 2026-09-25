@@ -121,14 +121,6 @@ class ESBTPInscriptionController extends Controller
         $mentionFilter = $request->input("mention");
         $parcoursFilter = $request->input("parcours");
 
-        // Tri (whitelist pour éviter SQL injection)
-        $allowedSorts = ["created_at", "date_inscription", "status", "filiere_id", "niveau_id", "nom"];
-        $sortInput = (string) $request->input("sort", "");
-        $sort = in_array($sortInput, $allowedSorts, true) ? $sortInput : "created_at";
-
-        $dirInput = strtolower((string) $request->input("dir", "desc"));
-        $dir = in_array($dirInput, ["asc", "desc"], true) ? $dirInput : "desc";
-
         // Pagination (whitelist pour éviter DoS)
         $allowedPerPage = [15, 25, 50, 100];
         // Taille d'une TRANCHE : la liste se charge au defilement.
@@ -153,23 +145,7 @@ class ESBTPInscriptionController extends Controller
         ]);
 
         $filtres->appliquer($baseQuery, $request);
-
-        // Appliquer le tri (sauf pour "nom" qui nécessite un join, et si recherche active)
-        if (!$search) {
-            if ($sort === "nom") {
-                $baseQuery
-                    ->leftJoin("esbtp_etudiants", "esbtp_inscriptions.etudiant_id", "=", "esbtp_etudiants.id")
-                    ->orderBy("esbtp_etudiants.nom", $dir)
-                    ->orderBy("esbtp_etudiants.prenoms", $dir)
-                    ->select("esbtp_inscriptions.*");
-            } else {
-                $baseQuery->orderBy($sort, $dir);
-            }
-            // Departage unique : sans lui, les lignes a egalite de tri (statut,
-            // filiere, meme seconde de creation) changent d'ordre d'une tranche a
-            // l'autre, et la liste infinie en repete certaines et en saute d'autres.
-            $baseQuery->orderBy("esbtp_inscriptions.id", $dir);
-        }
+        [$sort, $dir] = $filtres->trier($baseQuery, $request);
 
         if ($search) {
             $inscriptions = $this->searchService->search(
