@@ -207,10 +207,18 @@
         display: flex; align-items: center; gap: .75rem; padding: 1rem 1.5rem;
         border-bottom: 1px solid #e8ecf1; flex-wrap: wrap; background: #fafbfc;
     }
-    .ln-modal-toolbar select {
-        border-radius: 9px; border: 1.5px solid #e2e8f0; padding: .45rem .75rem;
-        font-size: .84rem; background: #fff; transition: all .2s;
+    /* Ces listes sont remplies en direct par le script (UE, puis éléments,
+       puis semestres) : elles restent des listes du navigateur, mais habillées
+       comme les sélecteurs de la charte — flèche, rayon, focus bleu. */
+    .ln-modal-toolbar select,
+    .ln-eval-field select {
+        -webkit-appearance: none; appearance: none;
+        border-radius: 10px; border: 1.5px solid #e2e8f0; padding: .5rem 2.1rem .5rem .8rem;
+        font-size: .84rem; font-weight: 600; color: #1e293b; transition: all .2s; cursor: pointer;
+        background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230453cb' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right .75rem center;
     }
+    .ln-modal-toolbar select:disabled { color: #94a3b8; background-color: #f8fafc; cursor: not-allowed; }
+    .ln-eval-field select:focus { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.08); outline: none; }
     .ln-modal-toolbar select:focus {
         border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.08); outline: none;
     }
@@ -430,6 +438,7 @@
     .ln-eval-field input:focus, .ln-eval-field select:focus, .ln-eval-field textarea:focus {
         border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.08); outline: none;
     }
+    .ln-eval-field select { padding-right: 2.1rem; background-color: #fff; }
     .ln-eval-field .is-invalid { border-color: #dc2626 !important; }
     .ln-eval-field .invalid-feedback { font-size: .72rem; color: #dc2626; margin-top: .15rem; }
     .ln-eval-duree-badge--ko { color: #b91c1c !important; background: rgba(220,38,38,.08) !important; border-color: rgba(220,38,38,.25) !important; }

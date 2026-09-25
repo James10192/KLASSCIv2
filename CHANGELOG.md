@@ -331,6 +331,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **L'enseignant posé sur le planning LMD apparaît enfin à la création d'une séance** — le formulaire d'ajout de séance vidait la liste des enseignants des ECUE, alors que la page Planning LMD les affichait. On reprend l'enseignant principal (et les assignations) de la planification.
 
 ### Améliorations
+- **Sélecteurs de la charte sur les écrans LMD restants** : semestre et année des résultats de classe, classe et année de la génération des bulletins passent au sélecteur premium (recherche dès huit classes). Les listes UE et élément constitutif de la saisie des notes et du nouvel examen, remplies selon le parcours choisi, prennent l'habillage de la charte.
 - **Pilotage académique : l'adresse d'une classe s'ouvre dans l'écran**, filtrée sur cette classe, au lieu d'afficher des données brutes.
 - **Rappels automatiques : un seul à la fois**, et aucun sur les pages de mot de passe (changement imposé au premier accès compris). Les rappels suivants attendent le prochain chargement de page au lieu de s'empiler. La fenêtre « Nouveautés » de septembre n'est plus montrée qu'aux personnes de la caisse, de la comptabilité et de la scolarité, qu'elle concerne. Sur téléphone, le rappel d'expiration du mot de passe tient sur une ligne.
 - **Séances : l'enseignant tout juste associé à une matière est sélectionné d'office**, et les erreurs de la gestion des enseignants s'affichent dans la page au lieu d'une alerte bloquante.

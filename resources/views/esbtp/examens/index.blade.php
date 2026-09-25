@@ -35,6 +35,17 @@
 @push('styles')
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
 <style>
+    /* UE et ECUE se remplissent selon le parcours choisi : listes du navigateur
+       gardées pour la cascade, habillées comme les sélecteurs de la charte. */
+    .exp-cascade {
+        width: 100%; -webkit-appearance: none; appearance: none; cursor: pointer;
+        border: 1.5px solid #e2e8f0; border-radius: 10px; padding: .55rem 2.1rem .55rem .8rem;
+        font-size: .88rem; font-weight: 600; color: #1e293b; transition: border-color .2s, box-shadow .2s;
+        background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230453cb' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right .75rem center;
+    }
+    .exp-cascade:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
+    .exp-cascade:disabled { color: #94a3b8; background-color: #f8fafc; cursor: not-allowed; }
+
 [x-cloak] { display: none !important; }
 
 /* ─── Hero ─── */
@@ -798,7 +809,7 @@
                                 <select x-ref="ueSelect" name="unite_enseignement_id"
                                         @change="onUeChange($event.target.value)"
                                         :disabled="!parcoursId || ues.length === 0"
-                                        style="width:100%;border:1px solid #e2e8f0;border-radius:9px;padding:.55rem .7rem;font-size:.88rem;background:#fff;color:#1e293b;cursor:pointer;">
+                                        class="exp-cascade">
                                     <option value="">— UE —</option>
                                     <template x-for="ue in ues" :key="ue.id">
                                         <option :value="ue.id" x-text="ue.name + (ue.code ? ' · ' + ue.code : '')"></option>
@@ -811,7 +822,7 @@
                                 <label>ECUE * <span style="font-weight:400;color:#64748b;font-size:.72rem;text-transform:none;">(Élément Constitutif d'UE)</span></label>
                                 <select name="matiere_id" x-model="ecueId"
                                         :disabled="!ueId || ecues.length === 0"
-                                        style="width:100%;border:1px solid #e2e8f0;border-radius:9px;padding:.55rem .7rem;font-size:.88rem;background:#fff;color:#1e293b;cursor:pointer;">
+                                        class="exp-cascade">
                                     <option value="">— ECUE —</option>
                                     <template x-for="ecue in ecues" :key="ecue.id">
                                         <option :value="ecue.id" x-text="ecue.name + (ecue.code ? ' · ' + ecue.code : '')"></option>
