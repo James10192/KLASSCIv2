@@ -395,11 +395,47 @@ class ESBTPAnnonceController extends Controller
     }
 
     /**
+     * Pour chaque message de la tranche, s'il a ete lu par l'etudiant et quand.
+     */
+    private function marquerLecture($messages, ESBTPEtudiant $etudiant): void
+    {
+        foreach ($messages as $message) {
+            if ($message->type == 'etudiant') {
+                $pivot = $message->etudiants()->wherePivot('etudiant_id', $etudiant->id)->first();
+                if ($pivot) {
+                    $message->is_read = (bool) $pivot->pivot->is_read;
+                    $message->read_at = $pivot->pivot->read_at;
+                } else {
+                    $message->is_read = false;
+                    $message->read_at = null;
+                }
+            } else {
+                // Pour les messages généraux et de classe, vérifier dans la table pivot
+                $readStatus = DB::table('esbtp_annonce_lectures')
+                    ->where('annonce_id', $message->id)
+                    ->where('etudiant_id', $etudiant->id)
+                    ->first();
+
+                $message->is_read = $readStatus ? true : false;
+                $message->read_at = $readStatus ? $readStatus->read_at : null;
+            }
+        }
+    }
+
+    /**
+     * La suite des messages de l'etudiant : leurs cartes et leurs modales seules.
+     */
+    private function suiteDesMessages($messages): \Illuminate\Http\JsonResponse
+    {
+        return ListeInfinie::reponse($messages, fn ($message) => view('esbtp.annonces._message-etudiant', compact('message'))->render());
+    }
+
+    /**
      * Affiche les messages pour un étudiant
      *
      * @return \Illuminate\Http\Response
      */
-    public function studentAnnonces()
+    public function studentAnnonces(Request $request)
     {
         $user = Auth::user();
         $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
@@ -414,11 +450,17 @@ class ESBTPAnnonceController extends Controller
                 })
                 ->orderBy('priorite', 'desc')
                 ->orderBy('created_at', 'desc')
+                // Departage stable : la liste se charge par tranches.
+                ->orderBy('id', 'desc')
                 ->paginate(10);
 
             foreach ($messages as $message) {
                 $message->is_read = true;
                 $message->read_at = null;
+            }
+
+            if (ListeInfinie::demandee($request)) {
+                return $this->suiteDesMessages($messages);
             }
 
             $stats = [
@@ -482,29 +524,14 @@ class ESBTPAnnonceController extends Controller
         $messages = (clone $baseBuilder)
             ->orderBy('priorite', 'desc')
             ->orderBy('created_at', 'desc')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('id', 'desc')
             ->paginate(10);
 
-        // Pour chaque message, déterminer s'il a été lu par l'étudiant
-        foreach ($messages as $message) {
-            if ($message->type == 'etudiant') {
-                $pivot = $message->etudiants()->wherePivot('etudiant_id', $etudiant->id)->first();
-                if ($pivot) {
-                    $message->is_read = (bool) $pivot->pivot->is_read;
-                    $message->read_at = $pivot->pivot->read_at;
-                } else {
-                    $message->is_read = false;
-                    $message->read_at = null;
-                }
-            } else {
-                // Pour les messages généraux et de classe, vérifier dans la table pivot
-                $readStatus = DB::table('esbtp_annonce_lectures')
-                    ->where('annonce_id', $message->id)
-                    ->where('etudiant_id', $etudiant->id)
-                    ->first();
+        $this->marquerLecture($messages, $etudiant);
 
-                $message->is_read = $readStatus ? true : false;
-                $message->read_at = $readStatus ? $readStatus->read_at : null;
-            }
+        if (ListeInfinie::demandee($request)) {
+            return $this->suiteDesMessages($messages);
         }
 
         // Statistiques globales (pas seulement page courante) avec builders frais

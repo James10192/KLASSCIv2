@@ -6,6 +6,7 @@ use App\Models\ESBTPEvenementAcademique;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
+use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -59,7 +60,12 @@ class ESBTPEvenementAcademiqueController extends Controller
             });
         }
 
-        $evenements = $query->orderBy('date_debut', 'asc')->paginate(15);
+        // Departage stable : la liste se charge par tranches.
+        $evenements = $query->orderBy('date_debut', 'asc')->orderBy('id')->paginate(15)->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($evenements, fn ($evenement) => view('esbtp.evenements-academiques._carte', compact('evenement'))->render());
+        }
 
         // Statistiques
         $stats = $this->calculerStatistiques($anneeSelectionnee);

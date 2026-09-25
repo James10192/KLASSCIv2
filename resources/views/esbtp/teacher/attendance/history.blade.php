@@ -91,33 +91,9 @@
                             <th>Code</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="tah-tbody">
                         @forelse($attendances as $attendance)
-                            @php
-                                $statut = (string) ($attendance->status ?? '');
-                                [$libelleStatut, $couleurStatut] = $libellesStatut[$statut] ?? [ucfirst($statut ?: 'Inconnu'), 'secondary'];
-                            @endphp
-                            <tr>
-                                <td>{{ optional($attendance->date)->format('d/m/Y') ?? '—' }}</td>
-                                <td>{{ optional(optional($attendance->course)->matiere)->name ?? '—' }}</td>
-                                <td>{{ optional(optional($attendance->course)->classe)->name ?? '—' }}</td>
-                                <td>
-                                    @if($attendance->type === 'start')
-                                        Début
-                                    @elseif($attendance->type === 'end')
-                                        Fin
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                                <td>{{ optional($attendance->validated_at)->format('H:i') ?? '—' }}</td>
-                                <td>
-                                    <span class="badge bg-{{ $couleurStatut }}">{{ $libelleStatut }}</span>
-                                </td>
-                                <td>
-                                    <small class="text-muted">{{ optional($attendance->dailyCode)->code ?? '—' }}</small>
-                                </td>
-                            </tr>
+                            @include('esbtp.teacher.attendance._ligne')
                         @empty
                             <tr>
                                 <td colspan="7" class="text-center text-muted py-4">
@@ -129,10 +105,7 @@
                 </table>
             </div>
 
-            <!-- Pagination -->
-            <div class="d-flex justify-content-center mt-4">
-                {{ $attendances->links() }}
-            </div>
+            <x-liste-infinie :paginateur="$attendances" cible="#tah-tbody" libelle="émargements" />
         </div>
     </div>
 </div>

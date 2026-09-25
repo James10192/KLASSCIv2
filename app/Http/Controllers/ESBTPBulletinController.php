@@ -1595,7 +1595,7 @@ class ESBTPBulletinController extends Controller
      *
      * @return Response
      */
-    public function pending()
+    public function pending(Request $request)
     {
         // Récupérer les bulletins qui ne sont pas publiés ou qui n'ont pas toutes les signatures
         $bulletins = ESBTPBulletin::where('is_published', false)
@@ -1605,7 +1605,13 @@ class ESBTPBulletinController extends Controller
             })
             ->with(['etudiant', 'classe', 'anneeUniversitaire'])
             ->orderBy('created_at', 'desc')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('id', 'desc')
             ->paginate(15);
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($bulletins, fn ($bulletin) => view('esbtp.bulletins._ligne-attente', compact('bulletin'))->render());
+        }
 
         // Statistiques
         $totalPending = ESBTPBulletin::where('is_published', false)->count();

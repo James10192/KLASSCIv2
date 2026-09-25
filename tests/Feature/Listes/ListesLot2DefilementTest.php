@@ -27,11 +27,21 @@ class ListesLot2DefilementTest extends TestCase
         User::factory()->create()->assignRole('superAdmin');
         \App\Helpers\InstallationHelper::flushCachedStatus();
 
-        $this->actingAs(User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]));
+        // Certaines routes filtrent par role (CheckRole) et non par permission.
+        $moi = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
+        foreach (['superAdmin', 'enseignant', 'etudiant'] as $role) {
+            $moi->assignRole(\Spatie\Permission\Models\Role::findOrCreate($role, 'web'));
+        }
+        $this->actingAs($moi);
+        foreach (['secretaire', 'coordinateur'] as $role) {
+            \Spatie\Permission\Models\Role::findOrCreate($role, 'web');
+        }
         Gate::before(fn () => true);
 
         \App\Models\ESBTPAnneeUniversitaire::query()->update(['is_current' => false]);
         $this->annee = \App\Models\ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
+        // L'ancien chemin de l'historique d'emargement exige un profil enseignant.
+        $this->ligneMinimale('esbtp_teachers', ['user_id' => $moi->id, 'matricule' => 'ENS-TEST-MOI']);
     }
 
     private \App\Models\ESBTPAnneeUniversitaire $annee;
@@ -81,11 +91,16 @@ class ListesLot2DefilementTest extends TestCase
         $user = auth()->id();
         match ($table) {
             'esbtp_examens_planifies' => $this->ligneMinimale($table, ['annee_universitaire_id' => $this->annee->id]),
-            'esbtp_attendances' => $this->ligneMinimale($table, ['annee_universitaire_id' => $this->annee->id, 'call_type' => 'merged']),
             'esbtp_session_reports' => $this->ligneMinimale($table, ['status' => 'submitted']),
             'audits' => $this->ligneMinimale($table, ['auditable_type' => 'App\\Models\\ESBTPPaiement', 'event' => 'updated', 'created_at' => now(), 'updated_at' => now()]),
             'esbtp_lmd_jurys', 'esbtp_lmd_sessions' => $this->ligneMinimale($table, ['annee_universitaire_id' => $this->annee->id]),
             'esbtp_inscriptions' => $this->ligneMinimale($table, ['status' => 'en_attente', 'is_sous_reserve' => 1, 'annee_universitaire_id' => $this->annee->id]),
+            'esbtp_bulletins' => $this->ligneMinimale($table, ['is_published' => 0]),
+            'users' => collect(['secretaire', 'coordinateur'])->each(fn ($role) => User::factory()->create()->assignRole(\Spatie\Permission\Models\Role::findOrCreate($role, 'web'))),
+            'esbtp_evenements_academiques' => $this->ligneMinimale($table, ['is_active' => 1, 'annee_universitaire_id' => $this->annee->id]),
+            'esbtp_attendances' => $this->ligneMinimale($table, ['annee_universitaire_id' => $this->annee->id, 'call_type' => 'merged', 'justification_status' => 'pending']),
+            'esbtp_teacher_attendances' => $this->ligneMinimale($table, ['teacher_id' => $user, 'date' => now()->toDateString()]),
+            'esbtp_annonces' => $this->ligneMinimale($table, ['is_published' => 1, 'date_publication' => now()->subDay(), 'date_expiration' => null]),
             'esbtp_tpe_declarations' => $this->ligneMinimale($table, [
                 'statut' => \App\Enums\TpeDeclarationStatut::EN_ATTENTE->value,
                 'matiere_id' => $this->ligneMinimale('esbtp_planifications_academiques', ['enseignant_principal_id' => $user, 'is_active' => 1, 'matiere_id' => 987654]) ? 987654 : 0,
@@ -115,6 +130,17 @@ class ListesLot2DefilementTest extends TestCase
             'bulletins LMD' => ['esbtp.lmd.bulletins.index', 'esbtp_lmd_bulletins', '`id` desc'],
             'inscriptions a valider' => ['esbtp.inscriptions.administration', 'esbtp_inscriptions', '`esbtp_inscriptions`.`id` desc'],
             'inscriptions sous reserve' => ['esbtp.inscriptions.sous-reserve', 'esbtp_inscriptions', '`esbtp_inscriptions`.`id` desc'],
+            'bulletins en attente' => ['esbtp.bulletins.pending', 'esbtp_bulletins', '`id` desc'],
+            'secretaires' => ['esbtp.secretaires.index', 'users', '`users`.`id` asc'],
+            'coordinateurs' => ['esbtp.coordinateurs.index', 'users', '`users`.`id` asc'],
+            'evenements academiques' => ['esbtp.evenements-academiques.index', 'esbtp_evenements_academiques', '`id` asc'],
+            'categories de paiement' => ['esbtp.payment-categories.index', 'payment_categories', '`id` asc'],
+            'bourses' => ['esbtp.comptabilite.bourses', 'esbtp_bourses', '`id` desc'],
+            'frais de scolarite' => ['esbtp.comptabilite.frais-scolarite', 'esbtp_frais_scolarite', '`id` desc'],
+            'justifications a traiter' => ['esbtp.attendances.justifications.admin', 'esbtp_attendances', '`esbtp_attendances`.`id` desc'],
+            'emargements enseignant' => ['esbtp.teacher.attendance.history', 'esbtp_teacher_attendances', '`id` desc'],
+            'emargements enseignant (ancien chemin)' => ['esbtp.teacher-attendance.history', 'esbtp_teacher_attendances', '`id` desc'],
+            'messages de l etudiant' => ['esbtp.mes-annonces.index', 'esbtp_annonces', '`id` desc'],
         ];
     }
 
@@ -219,5 +245,18 @@ class ListesLot2DefilementTest extends TestCase
 
         $this->assertSame(20, $kpis['publies']);
         $this->assertEquals(10, $kpis['moyenne']);
+    }
+
+    public function test_coordinateurs_les_compteurs_portent_sur_tous(): void
+    {
+        // Douze coordinateurs dont onze actifs : la premiere tranche en montre dix.
+        for ($i = 0; $i < 12; $i++) {
+            User::factory()->create(['is_active' => $i < 11])->assignRole('coordinateur');
+        }
+
+        $compteurs = $this->get(route('esbtp.coordinateurs.index'))->assertOk()->viewData('compteurs');
+
+        $this->assertSame(11, $compteurs['actifs']);
+        $this->assertSame(1, $compteurs['inactifs']);
     }
 }
