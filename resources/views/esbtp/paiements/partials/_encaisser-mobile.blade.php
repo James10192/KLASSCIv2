@@ -96,6 +96,28 @@
     .mab-spin { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: m-spin .8s linear infinite; }
     .mab-pad button:active { background: #eef2f7; }
     .mab-big.is-zero { color: #94a3b8; }
+    .mab-big.is-propose { color: #0453cb; }
+    .mab-row .tt .mab-mat { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: #94a3b8; }
+    .mab-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .mab-mode { position: relative; display: grid; gap: 6px; align-content: start; min-height: 76px; padding: 12px 14px; background: #fff; border: 1.5px solid #e6eaf2; border-radius: 14px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    .mab-mode input { position: absolute; opacity: 0; pointer-events: none; }
+    .mab-mode svg { width: 22px; height: 22px; color: #0453cb; }
+    .mab-mode b { font-size: 14px; font-weight: 600; color: #0f172a; line-height: 1.25; }
+    .mab-mode:has(input:checked) { border-color: #0453cb; background: #eef4ff; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
+    .mab-mode:has(input:focus-visible) { outline: 2px solid #0453cb; outline-offset: 2px; }
+    .mab-recap { background: #fff; border: 1px solid #e6eaf2; border-radius: 16px; padding: 14px 16px; display: grid; gap: 4px; }
+    .mab-recap .mt { font-size: 12px; color: #64748b; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; }
+    .mab-recap .v { font-size: 26px; font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; }
+    .mab-recap .v small { font-size: 13px; font-weight: 600; color: #64748b; margin-left: 4px; }
+    .mab-recap .l { font-size: 13.5px; color: #334155; }
+    .mab-sous { font-size: 12px; font-weight: 700; color: #475569; letter-spacing: .04em; text-transform: uppercase; margin: 4px 2px -4px; }
+    /* Plein écran : le pas-à-pas remplace les onglets, la barre d'action se pose en bas. */
+    @media (max-width: 767.98px) {
+        body.has-m-shell:has(.mab-screen) .m-bottomnav { display: none; }
+        body.has-m-shell:has(.mab-screen) .mab-screen .m-actionbar { left: 16px; right: 16px; bottom: calc(12px + var(--m-safe-b)); }
+        body.has-m-shell:has(.mab-screen) .mab-screen .m-actionbar .m-btn { flex: 1; }
+        body.has-m-shell:has(.mab-screen) { padding-bottom: calc(96px + var(--m-safe-b)); }
+    }
 </style>
 @endpush
 
@@ -142,11 +164,10 @@
                         <div class="av" aria-hidden="true" x-text="initiales(row.nom)"></div>
                         <div class="tt">
                             <b x-text="row.nom"></b>
-                            <span x-text="row.classe + ' · ' + row.matricule"></span>
+                            <span x-text="[row.classe, row.niveau].filter(Boolean).join(' · ')"></span>
+                            <span class="mab-mat" x-text="row.matricule"></span>
                         </div>
-                        <div class="tr">
-                            <span class="m-chip info" x-text="row.niveau"></span>
-                        </div>
+                        <div class="tr"><x-m.icon name="chr" class="ch" /></div>
                     </button>
                 </template>
                 <x-m.empty x-show="inscriptions.length === 0 && !chargement.liste" x-cloak
@@ -208,10 +229,22 @@
 
             <div class="m-field">
                 <label>Montant encaissé</label>
-                <div class="m-big mab-big" x-bind:class="montant > 0 ? '' : 'is-zero'" aria-live="polite">
+                <div class="m-big mab-big" x-bind:class="montant > 0 ? (propose ? 'is-propose' : '') : 'is-zero'" aria-live="polite">
                     <span x-text="fmtNu(montant)"></span><small x-text="cfg.devise"></small>
                 </div>
+                <div class="mab-hint" x-show="propose && montant > 0" x-cloak>Tout le reste dû est proposé. Tapez un chiffre pour saisir un autre montant.</div>
                 <div class="mab-field-err" x-show="erreurs.montant" x-cloak x-text="erreurs.montant"></div>
+            </div>
+
+            <div class="m-opt" x-show="depasseSeuil" x-cloak>
+                <label>
+                    <input type="checkbox" x-model="confirme">
+                    <span class="rd" aria-hidden="true"></span>
+                    <div>
+                        <b>Je confirme ce montant</b>
+                        <span x-text="'Il dépasse le seuil habituel de ' + fmt(cfg.seuil) + ' configuré pour l\'école.'"></span>
+                    </div>
+                </label>
             </div>
 
             <div class="m-pad mab-pad" role="group" aria-label="Clavier numérique">
@@ -234,45 +267,27 @@
                 </template>
                 <div class="mab-err" x-show="apercu.message" x-text="apercu.message"></div>
             </div>
-
-            <div class="m-opt" x-show="depasseSeuil" x-cloak>
-                <label>
-                    <input type="checkbox" x-model="confirme">
-                    <span class="rd" aria-hidden="true"></span>
-                    <div>
-                        <b>Je confirme ce montant</b>
-                        <span x-text="'Il dépasse le seuil habituel de ' + fmt(cfg.seuil) + ' configuré pour l\'école.'"></span>
-                    </div>
-                </label>
-            </div>
         </div>
 
-        {{-- Étape 4 : le mode --}}
+        {{-- Étape 4 : le mode. Le récapitulatif d'abord : c'est lui qu'on relit. --}}
         <div class="mab-etape" x-show="etape === 4" x-cloak>
-            <div class="m-opt" role="radiogroup" aria-label="Mode de paiement">
+            <div class="mab-recap">
+                <div class="mt">À encaisser</div>
+                <div class="v"><span x-text="fmtNu(montant)"></span><small x-text="cfg.devise"></small></div>
+                <div class="l" x-text="(sel ? sel.nom : '') + ' · ' + libelleChoix"></div>
+                <div class="l" style="color:#64748b" x-text="cfg.dateLabel"></div>
+            </div>
+
+            <div class="mab-sous">Mode de paiement</div>
+            <div class="mab-modes" role="radiogroup" aria-label="Mode de paiement">
                 @foreach($mabModes as $mabMode)
-                    @if($mabMode['mobile'])
-                            <label>
-                                <input type="radio" name="mab_mode" value="{{ $mabMode['label'] }}"
-                                       data-canon="{{ $mabMode['canon'] }}" data-label="{{ $mabMode['label'] }}"
-                                       x-model="form.mode" x-on:change="choisirMode($event.target)">
-                                <span class="rd" aria-hidden="true"></span>
-                                <div><b>{{ $mabMode['label'] }}</b><span>Numéro de transaction à saisir</span></div>
-                                <x-m.icon name="phone" class="m-ic" />
-                            </label>
-                    @else
-                            <label>
-                                <input type="radio" name="mab_mode" value="{{ $mabMode['label'] }}"
-                                       data-canon="{{ $mabMode['canon'] }}" data-label="{{ $mabMode['label'] }}"
-                                       x-model="form.mode" x-on:change="choisirMode($event.target)">
-                                <span class="rd" aria-hidden="true"></span>
-                                <div>
-                                    <b>{{ $mabMode['label'] }}</b>
-                                    <span>{{ $mabMode['especes'] ? 'Remis en main propre à la caisse' : 'Référence à saisir' }}</span>
-                                </div>
-                                <x-m.icon :name="$mabMode['especes'] ? 'cash' : 'file'" class="m-ic" />
-                            </label>
-                    @endif
+                    <label class="mab-mode">
+                        <input type="radio" name="mab_mode" value="{{ $mabMode['label'] }}"
+                               data-canon="{{ $mabMode['canon'] }}" data-label="{{ $mabMode['label'] }}"
+                               x-model="form.mode" x-on:change="choisirMode($event.target)">
+                        <x-m.icon :name="$mabMode['mobile'] ? 'phone' : ($mabMode['especes'] ? 'cash' : 'file')" />
+                        <b>{{ $mabMode['label'] }}</b>
+                    </label>
                 @endforeach
             </div>
             @if($mabModes === [])
@@ -288,14 +303,6 @@
                        placeholder="Facultatif mais recommandé">
                 <div class="mab-field-err" x-show="erreurs.reference_paiement" x-cloak x-text="erreurs.reference_paiement"></div>
             </div>
-
-            <dl class="m-dl">
-                <dt>Étudiant</dt><dd x-text="sel ? sel.nom : ''"></dd>
-                <dt>Frais</dt><dd x-text="libelleChoix"></dd>
-                <dt>Montant</dt><dd x-text="fmt(montant)"></dd>
-                <dt>Mode</dt><dd x-text="form.label || '—'"></dd>
-                <dt>Date</dt><dd x-text="cfg.dateLabel"></dd>
-            </dl>
         </div>
     </div>
 
@@ -341,6 +348,9 @@ if (typeof window.mabEncaisser !== 'function') {
             frais: [],
             choix: [],
             montant: 0,
+            // Vrai tant que le montant affiché est celui proposé (le reste dû) :
+            // le premier chiffre tapé le remplace au lieu de s'y ajouter.
+            propose: false,
             confirme: false,
             apercu: { allocations: [], message: '' },
             form: { mode: '', canon: '', label: '', mobile: false, reference: '' },
@@ -350,6 +360,9 @@ if (typeof window.mabEncaisser !== 'function') {
             chargement: { liste: false, frais: false, apercu: false },
 
             init() {
+                // Chaque étape repart du haut : sinon l'étape 4 s'ouvre à la
+                // hauteur du clavier de l'étape 3, son récapitulatif sous l'en-tête.
+                this.$watch('etape', () => window.scrollTo({ top: 0 }));
                 try {
                     this.cfg = JSON.parse(this.$root.dataset.mabCfg || '{}');
                 } catch (e) {
@@ -440,7 +453,13 @@ if (typeof window.mabEncaisser !== 'function') {
                         return;
                     }
                     this.etape = 3;
-                    if (this.montant === 0) { this.montant = Math.round(this.resteChoisi); }
+                    // Un montant encore « proposé » suit le choix des frais : revenir
+                    // cocher un frais de plus doit proposer le nouveau reste dû.
+                    if (this.montant === 0 || this.propose) {
+                        this.montant = Math.round(this.resteChoisi);
+                        this.propose = this.montant > 0;
+                        this.confirme = false;
+                    }
                     this.planifierApercu();
                     return;
                 }
@@ -529,6 +548,7 @@ if (typeof window.mabEncaisser !== 'function') {
                 };
                 this.choix = [];
                 this.montant = 0;
+                this.propose = false;
                 this.confirme = false;
                 this.apercu = { allocations: [], message: '' };
                 this.erreurs = {};
@@ -560,6 +580,7 @@ if (typeof window.mabEncaisser !== 'function') {
                 if (this.etape === 3) {
                     // Les frais sont déjà choisis : on encaisse tout ce qu'ils réclament.
                     this.montant = Math.round(this.resteChoisi);
+                    this.propose = true;
                     this.confirme = false;
                     this.planifierApercu();
                     return;
@@ -572,6 +593,7 @@ if (typeof window.mabEncaisser !== 'function') {
                     return;
                 }
                 this.montant = Math.round(this.resteChoisi);
+                this.propose = true;
                 this.confirme = false;
                 this.etape = 3;
                 this.planifierApercu();
@@ -580,7 +602,8 @@ if (typeof window.mabEncaisser !== 'function') {
             /* ---------- étape 3 ---------- */
             tape(k) {
                 this.erreurs.montant = '';
-                let v = Math.round(this.montant);
+                let v = this.propose ? 0 : Math.round(this.montant);
+                this.propose = false;
                 if (k === 'efface') {
                     v = Math.floor(v / 10);
                 } else if (k === '000') {

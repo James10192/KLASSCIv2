@@ -241,7 +241,8 @@
                                 </div>
                                 <i class="fas fa-chevron-right prof-action-arrow"></i>
                             </button>
-                            <a href="{{ route('settings.index') }}" class="prof-action-btn">
+                            @can('system.manage')
+                            <a href="{{ route('esbtp.settings.index') }}" class="prof-action-btn">
                                 <div class="prof-action-icon" style="background: rgba(94,145,222,0.1); color: #5e91de;">
                                     <i class="fas fa-cog"></i>
                                 </div>
@@ -251,6 +252,7 @@
                                 </div>
                                 <i class="fas fa-chevron-right prof-action-arrow"></i>
                             </a>
+                            @endcan
                         </div>
                     </div>
                 </div>
