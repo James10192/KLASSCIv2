@@ -44,10 +44,6 @@ class StudentCountService
         ];
     }
 
-    /**
-     * Helper court : nombre d'étudiants avec inscription active+validée
-     * sur l'année en cours. Pour KPI principal des dashboards.
-     */
     /** Inscrits d'une année : inscription active, dossier étudiant créé, un étudiant compté une fois. */
     public function inscritsDe(int $anneeId): int
     {
@@ -59,6 +55,10 @@ class StudentCountService
             ->count('etudiant_id');
     }
 
+    /**
+     * Helper court : nombre d'étudiants avec inscription active+validée
+     * sur l'année en cours. Pour KPI principal des dashboards.
+     */
     public function inscritsAnneeCourante(): int
     {
         return $this->counts()['inscrits_annee_courante'];

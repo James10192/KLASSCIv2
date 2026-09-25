@@ -52,7 +52,7 @@ class OutilsDePresentationTest extends TestCase
         $this->assertNull($lignes[1]['du']);
         $this->assertSame('neutre', $lignes[1]['s']['ton']);
 
-        foreach (["/\\evil.com", "/\t/evil.com", "//evil.com", "javascript:alert(1)", "/esbtp/x\n//evil"] as $piege) {
+        foreach (["/\\evil.com", "/\t/evil.com", "//evil.com", "javascript:alert(1)", "/esbtp/x\n//evil", "/esbtp/x\n"] as $piege) {
             $this->assertFalse(AfficherTableau::estLienInterne($piege), json_encode($piege));
         }
         $this->assertTrue(AfficherTableau::estLienInterne('/esbtp/paiements?statut=en_attente'));

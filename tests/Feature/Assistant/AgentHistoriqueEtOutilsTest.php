@@ -63,11 +63,17 @@ class AgentHistoriqueEtOutilsTest extends TestCase
         foreach (['A', 'B'] as $lettre) {
             ChatbotMessage::create(['conversation_id' => $conversation->id, 'role' => 'user', 'content' => "Question {$lettre}", 'display_type' => 'text']);
             ChatbotMessage::create([
-                'conversation_id' => $conversation->id, 'role' => 'assistant', 'display_type' => 'text', 'content' => '',
-                'metadata' => ['trace' => [
-                    ['role' => 'assistant', 'texte' => '', 'appels' => [['id' => 'gemini_1', 'nom' => 'search_fees', 'arguments' => ['q' => $lettre]]]],
-                    ['role' => 'outil', 'id' => 'gemini_1', 'nom' => 'search_fees', 'resultat' => '{}'],
-                ]],
+                'conversation_id' => $conversation->id, 'role' => 'assistant', 'display_type' => 'text', 'content' => "Réponse {$lettre}",
+                'metadata' => [
+                    'trace' => [
+                        ['role' => 'assistant', 'texte' => '', 'appels' => [['id' => 'gemini_1', 'nom' => 'search_fees', 'arguments' => ['q' => $lettre]]]],
+                        ['role' => 'outil', 'id' => 'gemini_1', 'nom' => 'search_fees', 'resultat' => '{}'],
+                    ],
+                    'parties' => [
+                        ['type' => 'etape', 'id' => 'gemini_1', 'nom' => 'search_fees', 'etat' => 'termine'],
+                        ['type' => 'texte', 'texte' => "Réponse {$lettre}"],
+                    ],
+                ],
             ]);
         }
 
@@ -75,9 +81,30 @@ class AgentHistoriqueEtOutilsTest extends TestCase
         $ids = collect($messages)->where('role', 'outil')->pluck('id')->all();
 
         $this->assertSame(['h00000001', 'h00000002'], $ids);
-        // Réponse vide après ses outils : un texte neutre évite deux tours utilisateur de suite.
-        $this->assertSame(['user', 'assistant', 'outil', 'assistant', 'user', 'assistant', 'outil', 'assistant', 'user'], array_column($messages, 'role'));
         $this->assertMatchesRegularExpression('/^[A-Za-z0-9]{9}$/', $ids[0], 'format accepté par Mistral');
+    }
+
+    public function test_une_reponse_coupee_apres_ses_outils_ne_rejoue_ni_trace_ni_repere(): void
+    {
+        $user = User::factory()->create();
+        $conversation = ChatbotConversation::create(['user_id' => $user->id, 'session_id' => (string) Str::uuid(), 'is_active' => true, 'last_activity_at' => now()]);
+        ChatbotMessage::create(['conversation_id' => $conversation->id, 'role' => 'user', 'content' => 'Question A', 'display_type' => 'text']);
+        ChatbotMessage::create([
+            'conversation_id' => $conversation->id, 'role' => 'assistant', 'display_type' => 'text', 'content' => '',
+            'metadata' => [
+                'trace' => [
+                    ['role' => 'assistant', 'texte' => '', 'appels' => [['id' => 'x', 'nom' => 'search_fees', 'arguments' => []]]],
+                    ['role' => 'outil', 'id' => 'x', 'nom' => 'search_fees', 'resultat' => '{}'],
+                ],
+                'parties' => [['type' => 'etape', 'id' => 'x', 'nom' => 'search_fees', 'etat' => 'termine']],
+            ],
+        ]);
+
+        $messages = app(ConstructeurDePrompt::class)->messages($conversation, 'Et alors ?');
+
+        // Pas de trace orpheline, pas de repère : les deux questions forment un seul tour.
+        $this->assertSame(['user'], array_column($messages, 'role'));
+        $this->assertSame("Question A\n\nEt alors ?", $messages[0]['texte']);
     }
 
     public function test_le_prompt_porte_l_environnement_et_la_page_ouverte(): void

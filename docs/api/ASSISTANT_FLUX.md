@@ -21,7 +21,7 @@ l'application (`[DOSSO Ibrahim](/esbtp/etudiants/2743)`), blocs ```` ```mermaid 
 Le texte du modèle n'est pas fiable : une injection peut passer par une donnée lue par un outil.
 - Tout HTML issu du Markdown passe par DOMPurify.
 - **Liens** : n'est cliquable qu'un chemin interne qui satisfait
-  `^/(esbtp|dashboard|chatbot)([/?#][A-Za-z0-9/_\-?=&%.#]*)?$` (même règle que
+  `^/(esbtp|dashboard|chatbot)([/?#][A-Za-z0-9/_\-?=&%.#]*)?\z` (même règle que
   `AfficherTableau::estLienInterne`, côté serveur). Tout autre lien est rendu en texte :
   `/\site.tld`, une tabulation ou un retour à la ligne dans l'URL mènent sinon à un autre site.
 - **Mermaid** : `securityLevel: 'strict'` toujours, y compris pour les blocs ```` ```mermaid ```` du texte libre,
@@ -33,7 +33,7 @@ Le texte du modèle n'est pas fiable : une injection peut passer par une donnée
 `id` = identifiant attribué par le serveur (`a00000001`, `a00000002`…), unique dans l'échange quel que soit le fournisseur. Émise plusieurs fois ; la dernière l'emporte.
 
 ```json
-{ "type": "data-etape", "id": "call_1",
+{ "type": "data-etape", "id": "a00000001",
   "data": { "nom": "search_debtors", "libelle": "Recherche des retards de paiement…",
             "etat": "en_cours | termine | echec | retire",
             "resume": "15 étudiants en retard sur 219", "detail": "classe : B2 COM", "duree_ms": 840 } }
@@ -46,7 +46,7 @@ Le texte du modèle n'est pas fiable : une injection peut passer par une donnée
 Même `id` que l'étape qui l'a produit ; émis une fois, juste après l'étape terminée, donc à sa place chronologique.
 
 ```json
-{ "type": "data-widget", "id": "call_1", "data": { "kind": "…", "…": "…", "lien": {"url": "/esbtp/…", "libelle": "…"}, "total": 219 } }
+{ "type": "data-widget", "id": "a00000001", "data": { "kind": "…", "…": "…", "lien": {"url": "/esbtp/…", "libelle": "…"}, "total": 219 } }
 ```
 
 | `kind` | Données |
@@ -67,8 +67,8 @@ antérieurs à la v2, qui gardent `content` + `display_type` / `display_data`) :
 
 ```json
 [ {"type": "texte", "texte": "…"},
-  {"type": "etape", "id": "call_1", "nom": "…", "libelle": "…", "etat": "termine", "resume": "…", "detail": "…", "duree_ms": 840},
-  {"type": "widget", "id": "call_1", "kind": "…", "data": {…}},
+  {"type": "etape", "id": "a00000001", "nom": "…", "libelle": "…", "etat": "termine", "resume": "…", "detail": "…", "duree_ms": 840},
+  {"type": "widget", "id": "a00000001", "kind": "…", "data": {…}},
   {"type": "suites", "data": {…}}, {"type": "lien", "url": "…"} ]
 ```
 

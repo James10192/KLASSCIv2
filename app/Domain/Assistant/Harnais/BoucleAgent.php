@@ -222,6 +222,19 @@ class BoucleAgent
         return $message + ['resultat' => $pourModele];
     }
 
+    /** Étape annoncée de cet outil à laquelle aucun appel n'est encore rattaché. */
+    private function etapeSansAppel(array $tour, string $nom): ?string
+    {
+        $pris = array_column($tour['appels'], 'id');
+        foreach ($tour['puces'] as $puce) {
+            if ($puce['nom'] === $nom && !in_array($puce['id'], $pris, true)) {
+                return $puce['id'];
+            }
+        }
+
+        return null;
+    }
+
     /** Identifiant d'appel propre à l'échange : 9 caractères alphanumériques, accepté par toutes les API. */
     private function nouvelIdentifiant(): string
     {
@@ -274,7 +287,10 @@ class BoucleAgent
 
                     case EvenementModele::OUTIL:
                         $appel = $evenement->donnees;
-                        $appel['id'] = $ids[$appel['id']] ?? $this->nouvelIdentifiant();
+                        // Identifiant inconnu (un fournisseur l'a envoyé après le nom de
+                        // l'outil) : on rattache l'appel à la première étape annoncée du
+                        // même outil encore sans appel, plutôt que d'en ouvrir une seconde.
+                        $appel['id'] = $ids[$appel['id']] ?? $this->etapeSansAppel($tour, $appel['nom']) ?? $this->nouvelIdentifiant();
                         $tour['appels'][] = $appel;
                         break;
 

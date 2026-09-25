@@ -79,20 +79,27 @@ class ConstructeurDePrompt
             $texte = (string) ($msg->content ?? '');
 
             if ($role === 'assistant') {
-                if (in_array($msg->id, $avecOutils, true)) {
+                $final = in_array($msg->id, $avecOutils, true) ? $this->texteFinal($msg) : null;
+                // Une trace ne se rejoue que suivie de sa réponse : une réponse coupée
+                // après ses outils (limite, erreur) n'en a pas, et un repère inventé
+                // à sa place finirait recopié à l'écran, comme l'ancien.
+                if ($final !== null && trim($final) !== '') {
                     foreach ($this->renumeroter($msg->metadata['trace'], $numero) as $etape) {
                         $neutres[] = $etape;
                     }
-                    $texte = $this->texteFinal($msg) ?? $texte;
-                    if (trim($texte) === '') {
-                        // Réponse coupée après ses outils : sans ce tour, certaines API
-                        // (Gemini) recevraient deux tours utilisateur à la suite.
-                        $texte = '(Réponse précédente interrompue.)';
-                    }
+                    $texte = $final;
                 }
                 if (trim($texte) === '') {
                     continue;
                 }
+            }
+
+            $precedent = array_key_last($neutres);
+            if ($role === 'user' && $precedent !== null && $neutres[$precedent]['role'] === 'user') {
+                // Deux questions sans réponse entre elles : un seul tour utilisateur,
+                // que toutes les API acceptent.
+                $neutres[$precedent]['texte'] .= "\n\n" . $texte;
+                continue;
             }
 
             $neutres[] = ['role' => $role, 'texte' => $texte];
@@ -108,7 +115,12 @@ class ConstructeurDePrompt
             array_shift($neutres);
         }
 
-        $neutres[] = ['role' => 'user', 'texte' => $question];
+        $precedent = array_key_last($neutres);
+        if ($precedent !== null && $neutres[$precedent]['role'] === 'user') {
+            $neutres[$precedent]['texte'] .= "\n\n" . $question;
+        } else {
+            $neutres[] = ['role' => 'user', 'texte' => $question];
+        }
 
         return $neutres;
     }

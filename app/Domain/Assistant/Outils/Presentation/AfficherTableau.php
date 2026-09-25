@@ -113,6 +113,6 @@ class AfficherTableau extends OutilDePresentation
      */
     public static function estLienInterne($url): bool
     {
-        return is_string($url) && preg_match('#^/(?:esbtp|dashboard|chatbot)(?:[/?\#][A-Za-z0-9/_\-?=&%.\#]*)?$#', $url) === 1;
+        return is_string($url) && preg_match('#^/(?:esbtp|dashboard|chatbot)(?:[/?\#][A-Za-z0-9/_\-?=&%.\#]*)?\z#', $url) === 1;
     }
 }
