@@ -50,9 +50,13 @@
 .rdr-vide p { font-size: .85rem; margin: 0 auto; max-width: 420px; }
 .rdr-avis { display: flex; align-items: flex-start; gap: .6rem; padding: .75rem 1.25rem; border-bottom: 1px solid var(--rdv-line); background: rgba(4,83,203,.04); font-size: .82rem; color: var(--rdv-text); }
 .rdr-avis i { color: var(--rdv-primary); margin-top: .15rem; }
-.rdr-sans { margin-top: 1rem; }
-.rdr-sans .rdr-carte-tete { justify-content: flex-start; gap: .6rem; }
-.rdr-sans .rdr-carte-tete i { color: var(--rdv-primary); }
+.rdr-sous-tete { display: flex; align-items: center; gap: .6rem; padding: .75rem 1.25rem; border-top: 1px solid var(--rdv-line); border-bottom: 1px solid var(--rdv-line); background: #f8fafc; font-size: .82rem; color: var(--rdv-muted); }
+.rdr-sous-tete i { color: var(--rdv-primary); }
+.rdr-sous-tete strong { color: var(--rdv-dark); }
+.rdr-eleve-meta { display: flex; gap: .85rem; flex-wrap: wrap; margin-top: .25rem; font-size: .78rem; color: var(--rdv-muted); }
+.rdr-eleve-meta span { display: inline-flex; align-items: center; gap: .3rem; }
+/* Le libelle du champ reste lu par les lecteurs d'ecran sans dependre de Bootstrap. */
+.rdr-lecteur { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .rdr-eleve { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: .75rem 1.25rem; border-bottom: 1px solid #f1f5f9; }
 .rdr-eleve:last-child { border-bottom: none; }
 .rdr-eleve-qui { min-width: 0; }
@@ -64,8 +68,13 @@
     .rdr-ligne { grid-template-columns: 56px minmax(0, 1fr); gap: .6rem .85rem; padding: .8rem 1rem; }
     .rdr-statut { grid-column: 2; align-items: flex-start; text-align: left; }
     .rdr-actions { grid-column: 1 / -1; justify-content: flex-start; }
-    .rdr-filtres { width: 100%; }
-    .rdr-groupe { flex: 1 1 auto; flex-wrap: wrap; }
+    /* Une seule rangee qui defile au doigt, plutot que trois blocs empiles
+       qui repoussent le resultat sous la ligne de flottaison. */
+    .rdr-filtres { width: 100%; padding-bottom: 4px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .rdr-filtres::-webkit-scrollbar { display: none; }
+    .rdr-groupe { flex: 0 0 auto; }
+    .rdr-eleve { padding: .8rem 1rem; }
+    .rdr-eleve .rdr-actions { width: 100%; }
 }
 </style>
 @endpush
@@ -96,7 +105,7 @@
     <form class="rdr-barre" method="GET" action="{{ route('esbtp.rendez-vous.recherche') }}" data-rdr-form>
         <label class="rdr-recherche">
             <i class="fas fa-magnifying-glass"></i>
-            <span class="visually-hidden">Rechercher</span>
+            <span class="rdr-lecteur">Rechercher</span>
             <input type="search" name="q" value="{{ $filtres['q'] }}" placeholder="Nom, téléphone, référence ou matricule…" autocomplete="off" autofocus>
         </label>
         <div class="rdr-filtres">
@@ -121,16 +130,23 @@
 
     <div id="rdr-resultats" aria-live="polite">
         <section class="rdr-carte">
-            @if($reservations->total() === 0)
+            @if($reservations->total() === 0 && $elevesSansRdv->isNotEmpty())
+                {{-- Personne n'a reserve, mais la saisie designe un eleve connu :
+                     on le montre tout de suite, sans bloc vide au-dessus. --}}
+                <div class="rdr-carte-tete">
+                    <span><strong>Aucun rendez-vous</strong> pour « {{ $filtres['q'] }} »</span>
+                </div>
+                <div class="rdr-avis">
+                    <i class="fas fa-user-clock"></i>
+                    <span>{{ $elevesSansRdv->count() === 1 ? 'Cet élève est connu de l\'école, mais sa famille n\'a jamais réservé de créneau.' : 'Ces élèves sont connus de l\'école, mais leurs familles n\'ont jamais réservé de créneau.' }}</span>
+                </div>
+                @include('esbtp.rendez-vous.recherche._eleves_sans_rdv')
+            @elseif($reservations->total() === 0)
                 <div class="rdr-vide">
                     <i class="fas fa-magnifying-glass"></i>
                     @if($filtres['q'] !== '')
                         <h3>Aucun rendez-vous pour « {{ $filtres['q'] }} »</h3>
-                        @if($elevesSansRdv->isNotEmpty())
-                            <p>La recherche fonctionne : {{ $elevesSansRdv->count() === 1 ? 'cet élève est connu de l\'école mais sa famille n\'a jamais réservé' : 'ces élèves sont connus de l\'école mais leurs familles n\'ont jamais réservé' }}. Voir ci-dessous.</p>
-                        @else
-                            <p>Vérifiez l'orthographe, cherchez par téléphone ou par référence, ou élargissez la période à « Tous ». Une famille qui n'a jamais réservé n'apparaît pas ici.</p>
-                        @endif
+                        <p>Aucun élève ne porte ce nom ou ce numéro non plus. Vérifiez l'orthographe, cherchez par téléphone ou par référence, ou élargissez la période à « Tous ».</p>
                     @else
                         <h3>Aucun rendez-vous pour ces filtres</h3>
                         <p>Changez la période ou le statut pour voir d'autres rendez-vous.</p>
@@ -153,47 +169,15 @@
                 </ul>
                 <x-liste-infinie :paginateur="$reservations" cible="#rdr-lignes" libelle="rendez-vous"
                                  :url="route('esbtp.rendez-vous.recherche')" />
+                @if($elevesSansRdv->isNotEmpty())
+                    <div class="rdr-sous-tete">
+                        <i class="fas fa-user-clock"></i>
+                        <span><strong>{{ $elevesSansRdv->count() === 1 ? 'Élève connu, sans rendez-vous' : 'Élèves connus, sans rendez-vous' }}</strong> — la famille n'a pas encore réservé.</span>
+                    </div>
+                    @include('esbtp.rendez-vous.recherche._eleves_sans_rdv')
+                @endif
             @endif
         </section>
-
-        @if($elevesSansRdv->isNotEmpty())
-            @php
-                $_voitEleve = auth()->user()?->can('students.view') ?? false;
-                $_voitDemandes = auth()->user()?->can('reinscriptions.demandes.view') ?? false;
-            @endphp
-            <section class="rdr-carte rdr-sans">
-                <div class="rdr-carte-tete">
-                    <i class="fas fa-user-clock"></i>
-                    <span><strong>{{ $elevesSansRdv->count() === 1 ? 'Élève connu, sans rendez-vous' : 'Élèves connus, sans rendez-vous' }}</strong> — la famille n'a pas encore réservé de créneau.</span>
-                </div>
-                <ul class="rdr-lignes">
-                    @foreach($elevesSansRdv as $_eleve)
-                        @php $_demande = $_eleve->derniereDemandeRdv; @endphp
-                        <li class="rdr-eleve">
-                            <div class="rdr-eleve-qui">
-                                <strong>{{ trim($_eleve->nom.' '.$_eleve->prenoms) }}</strong>
-                                <small>
-                                    {{ $_eleve->matricule ?: 'Sans matricule' }} ·
-                                    @if($_demande)
-                                        Demande de réinscription {{ mb_strtolower($_demande->libelleStatut(), 'UTF-8') }}, sans créneau réservé
-                                    @else
-                                        Aucune demande de réinscription déposée
-                                    @endif
-                                </small>
-                            </div>
-                            <div class="rdr-actions">
-                                @if($_demande && $_demande->reference_publique && $_voitDemandes)
-                                    <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.reinscription-demandes.index', ['reference' => $_demande->referencePubliqueAffichee()]) }}"><i class="fas fa-folder-open"></i>Demande</a>
-                                @endif
-                                @if($_voitEleve)
-                                    <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.etudiants.show', $_eleve->id) }}"><i class="fas fa-user"></i>Fiche</a>
-                                @endif
-                            </div>
-                        </li>
-                    @endforeach
-                </ul>
-            </section>
-        @endif
     </div>
 </div>
 @endsection
