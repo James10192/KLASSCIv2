@@ -4,7 +4,7 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPCandidature;
-use App\Services\RendezVous\LiberationRdv;
+use App\Services\RendezVous\ReservateurRdv;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -139,7 +139,7 @@ class ESBTPCandidatureController extends Controller
         );
     }
 
-    public function rejeter(Request $request, ESBTPCandidature $candidature, LiberationRdv $liberation): RedirectResponse
+    public function rejeter(Request $request, ESBTPCandidature $candidature, ReservateurRdv $reservateur): RedirectResponse
     {
         $valide = $request->validate([
             // Un rejet sans motif est un rejet qu'on ne saura pas expliquer a
@@ -147,18 +147,22 @@ class ESBTPCandidatureController extends Controller
             'motif_rejet' => ['required', 'string', 'min:10', 'max:1000'],
         ]);
 
-        $decidee = $this->decider($candidature, [
-            'statut' => ESBTPCandidature::STATUT_REJETEE,
-            'motif_rejet' => $valide['motif_rejet'],
-        ]);
+        // Rejet et liberation du creneau dans la meme transaction : sinon la
+        // famille pourrait deplacer ou reprendre sa place entre les deux.
+        [$decidee, $liberee] = DB::transaction(function () use ($candidature, $valide, $reservateur) {
+            $decidee = $this->decider($candidature, [
+                'statut' => ESBTPCandidature::STATUT_REJETEE,
+                'motif_rejet' => $valide['motif_rejet'],
+            ]);
+
+            return [$decidee, $decidee ? $reservateur->liberer($candidature) : null];
+        });
 
         if (! $decidee) {
             return back()->with('error', 'Cette candidature a déjà été traitée.');
         }
 
-        $liberees = $liberation->apresRejet($candidature);
-
-        return back()->with('success', 'Candidature rejetée.'.LiberationRdv::phrase($liberees));
+        return back()->with('success', 'Candidature rejetée.'.ReservateurRdv::phraseLiberation($liberee));
     }
 
     /**

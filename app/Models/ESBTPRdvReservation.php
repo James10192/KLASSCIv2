@@ -92,9 +92,9 @@ class ESBTPRdvReservation extends Model
 
     /**
      * Le dossier attend encore la famille. Inscrire un dossier ne libere pas sa
-     * reservation, et le rejeter ne libere que les creneaux a venir
-     * (LiberationRdv) : sans ce filtre, un candidat inscrit, ou refuse apres son
-     * creneau, resterait attendu au guichet et dans la liste d'appel.
+     * reservation, et le rejeter ne libere qu'un creneau pas encore commence
+     * (ReservateurRdv::liberer) : sans ce filtre, un candidat inscrit, ou refuse
+     * une fois son creneau commence, resterait attendu au guichet.
      */
     public function scopeDossierOuvert(Builder $query): Builder
     {

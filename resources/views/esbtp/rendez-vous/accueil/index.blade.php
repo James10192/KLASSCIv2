@@ -524,7 +524,7 @@ window.__rdvGuideEtapes = [
     { sel: '.rac-recherche', titre: 'Retrouver une famille', texte: 'Tapez un nom, un téléphone ou une référence. S\'il ne reste qu\'une famille, Entrée la marque reçue.' },
     { sel: '.rac-filtres', titre: 'Filtrer la liste', texte: '« À recevoir » pour voir qui manque encore, « Non venues » pour les familles dont le créneau est passé sans elles.' },
     { sel: '#rac-liste .rac-coche', titre: 'Cocher à l\'arrivée', texte: 'Un clic marque la famille reçue, avec l\'heure et votre nom. Un second clic annule.' },
-    { sel: '#rac-liste .rac-actions', titre: 'Prévenir ou déplacer', texte: '« Prévenue » quand vous avez appelé une famille sans convocation ; « Reprogrammer » propose les prochains créneaux libres et renvoie la convocation.' },
+    { sel: '#rac-liste .rac-actions', titre: 'Dossier, prévenir ou déplacer', texte: '« Dossier » ouvre la candidature ou la demande de la famille ; « Prévenue » quand vous l\'avez appelée faute de convocation ; « Reprogrammer » propose les prochains créneaux libres et renvoie la convocation.' },
     { sel: '[data-rac-non-venues]', titre: 'Les non-venues', texte: 'Un créneau terminé sans la famille la fait passer « non venue », sans clic. Un bouton les reprogramme toutes sur les prochains créneaux libres.' },
     { sel: '.rac-alerte', titre: 'Aucun jour oublié', texte: 'Si des familles non venues d\'un autre jour attendent encore, ce bandeau vous y mène.' },
     { sel: '.rac-jour-nav', titre: 'Changer de jour', texte: 'Préparez demain ou revenez sur hier sans recharger la page.' },

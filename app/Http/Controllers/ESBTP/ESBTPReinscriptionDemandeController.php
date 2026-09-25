@@ -8,10 +8,11 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Services\ReeinscriptionService;
-use App\Services\RendezVous\LiberationRdv;
+use App\Services\RendezVous\ReservateurRdv;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -176,7 +177,7 @@ class ESBTPReinscriptionDemandeController extends Controller
         return back()->with('success', 'Réinscription effectuée. La demande est clôturée.');
     }
 
-    public function rejeter(Request $request, ESBTPReinscriptionDemande $demande, LiberationRdv $liberation): RedirectResponse
+    public function rejeter(Request $request, ESBTPReinscriptionDemande $demande, ReservateurRdv $reservateur): RedirectResponse
     {
         $valide = $request->validate([
             // Un rejet sans motif est un rejet qu'on ne saura pas expliquer a
@@ -186,23 +187,28 @@ class ESBTPReinscriptionDemandeController extends Controller
 
         // Meme reservation atomique que la conversion : deux agents ne doivent
         // pas pouvoir clore la meme demande avec deux motifs differents.
-        $traite = ESBTPReinscriptionDemande::whereKey($demande->id)
-            ->where('statut', ESBTPReinscriptionDemande::STATUT_EN_ATTENTE)
-            ->update([
-                'statut' => ESBTPReinscriptionDemande::STATUT_REJETEE,
-                'motif_rejet' => $valide['motif_rejet'],
-                'traite_par' => auth()->id(),
-                'traite_at' => now(),
-            ]);
+        // Le creneau se libere dans la meme transaction que le rejet : sinon la
+        // famille pourrait deplacer ou reprendre sa place entre les deux.
+        [$traite, $liberee] = DB::transaction(function () use ($demande, $valide, $reservateur) {
+            $traite = ESBTPReinscriptionDemande::whereKey($demande->id)
+                ->where('statut', ESBTPReinscriptionDemande::STATUT_EN_ATTENTE)
+                ->update([
+                    'statut' => ESBTPReinscriptionDemande::STATUT_REJETEE,
+                    'motif_rejet' => $valide['motif_rejet'],
+                    'traite_par' => auth()->id(),
+                    'traite_at' => now(),
+                ]);
+
+            return [$traite, $traite > 0 ? $reservateur->liberer($demande) : null];
+        });
 
         if ($traite === 0) {
             return back()->with('error', 'Cette demande a déjà été traitée.');
         }
 
         $this->oublierLeCompteur();
-        $liberees = $liberation->apresRejet($demande);
 
-        return back()->with('success', 'Demande rejetée.'.LiberationRdv::phrase($liberees));
+        return back()->with('success', 'Demande rejetée.'.ReservateurRdv::phraseLiberation($liberee));
     }
 
     /**
