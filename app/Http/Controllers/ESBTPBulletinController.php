@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ListeInfinie;
 use App\Domain\Bulletins\FiltresBulletins;
 use App\Http\Controllers\Concerns\ExporteBulletinsParTranches;
 use App\Domain\Academique\CoherenceSystemeAcademique;
@@ -114,7 +115,16 @@ class ESBTPBulletinController extends Controller
         $query = ESBTPBulletin::with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name', 'anneeUniversitaire:id,name']);
         $filtres->appliquerA($query);
 
-        $bulletins = $query->orderBy('created_at', 'desc')->paginate(20)->appends($request->query());
+        // L'identifiant departage une generation en masse, ecrite dans la meme
+        // seconde : la liste se charge par tranches au defilement.
+        $bulletins = $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')->paginate(20)->appends($request->query());
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $bulletins,
+                fn ($bulletin) => view('esbtp.bulletins.partials._ligne', compact('bulletin'))->render(),
+            );
+        }
 
         // Statistiques globales scoppées sur l'année universitaire active du filtre.
         $statsScope = ESBTPBulletin::query();

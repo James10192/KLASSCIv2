@@ -271,21 +271,6 @@
     transition: opacity .15s;
 }
 .bul-table-wrap--loading { opacity: .55; pointer-events: none; }
-.bul-page {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 32px; height: 32px;
-    color: var(--bul-primary);
-    background: #fff;
-    border: 1px solid var(--bul-border);
-    border-radius: 8px;
-    text-decoration: none;
-    font-size: .78rem;
-    transition: background .12s, color .12s, border-color .12s;
-    cursor: pointer;
-}
-.bul-page:hover { background: rgba(4, 83, 203, .08); color: var(--bul-primary-d); border-color: rgba(4, 83, 203, .25); }
-.bul-page.disabled { color: #cbd5e1; cursor: not-allowed; background: var(--bul-surface); }
-.bul-pages li { display: flex; }
 .bul-table {
     width: 100%; border-collapse: collapse;
 }
@@ -413,17 +398,6 @@
 .bul-empty-title { font-size: 1.05rem; color: var(--bul-text); font-weight: 700; margin-bottom: .3rem; }
 .bul-empty-msg { font-size: .85rem; max-width: 360px; line-height: 1.5; margin-bottom: 1rem; }
 
-/* ── Pagination ─────────────────────────────────────── */
-.bul-pager {
-    padding: .85rem 1rem;
-    border-top: 1px solid var(--bul-border);
-    background: var(--bul-surface);
-    display: flex; align-items: center; justify-content: space-between;
-    gap: .85rem; flex-wrap: wrap;
-}
-.bul-pager-info { font-size: .78rem; color: var(--bul-muted); }
-.bul-pager-info strong { color: var(--bul-text); font-weight: 700; }
-.bul-pager nav { margin: 0; }
 
 @media (max-width: 768px) {
     .bul-hero { padding: 1.5rem 1.25rem 1.25rem; }
@@ -761,7 +735,6 @@ function bulIndex() {
         loading: false,
         toasts: [],
         toastSeq: 0,
-        currentPage: {{ $bulletins->currentPage() }},
         allIds: @json($bulletins->pluck('id')->all()),
         baseUrl: @json(route('esbtp.bulletins.index')),
 
@@ -773,16 +746,17 @@ function bulIndex() {
                     sel.addEventListener('change', () => { this.fetchPage(1); });
                 });
             }
-            // Click sur les liens de pagination dans le partial AJAX
-            document.addEventListener('click', (ev) => {
-                const a = ev.target.closest('a.bul-page[data-page]');
-                if (a && document.getElementById('bul-table-wrap')?.contains(a)) {
-                    ev.preventDefault();
-                    this.fetchPage(parseInt(a.dataset.page, 10));
-                }
+            // La suite se charge au defilement (x-liste-infinie) : « tout cocher »
+            // porte sur toutes les lignes affichees, donc aussi les ajoutees.
+            document.addEventListener('liste-infinie:ajout', (ev) => {
+                if (!document.getElementById('bul-table-wrap')?.contains(ev.target)) return;
+                ev.detail.lignes.forEach(tr => {
+                    const id = parseInt(tr.dataset.liCle, 10);
+                    if (id && !this.allIds.includes(id)) this.allIds.push(id);
+                });
             });
             // Bouton retour browser : recharger via fetch
-            window.addEventListener('popstate', () => { this.fetchPage(this.currentPage, false); });
+            window.addEventListener('popstate', () => { this.fetchPage(1, false); });
             window.addEventListener('toast', (ev) => this.pushToast(ev.detail));
         },
 
@@ -805,7 +779,6 @@ function bulIndex() {
                 const wrap = document.getElementById('bul-table-wrap');
                 if (wrap) wrap.innerHTML = data.html;
                 this.allIds = data.ids || [];
-                this.currentPage = page;
                 this.updateKpis(data.stats);
                 const formContext = document.getElementById('bul-filter-form');
                 if (formContext) {
@@ -945,8 +918,8 @@ function bulIndex() {
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(data.message || `Erreur HTTP ${res.status}`);
                 this.pushToast({ type: 'success', message: data.message || 'Action effectuée.' });
-                // Refresh table sans reload page
-                await this.fetchPage(this.currentPage, false);
+                // Refresh table sans reload page : la liste repart de sa premiere tranche.
+                await this.fetchPage(1, false);
             } catch (err) {
                 this.pushToast({ type: 'error', message: err.message || 'Erreur inattendue.' });
             } finally {
