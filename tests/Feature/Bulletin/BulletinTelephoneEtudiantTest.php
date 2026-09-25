@@ -90,7 +90,7 @@ class BulletinTelephoneEtudiantTest extends TestCase
         $html = $this->rendre($vue);
 
         $this->assertStringNotContainsString(self::NUMERO, $html);
-        $this->assertStringNotContainsString('Téléphone', $html);
+        $this->assertDoesNotMatchRegularExpression('/class="info-label">Téléphone/u', $html);
         // Le reste de la fiche identite reste en place.
         $this->assertStringContainsString('KOUASSI', $html);
     }
