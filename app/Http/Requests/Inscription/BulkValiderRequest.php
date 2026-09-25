@@ -14,7 +14,9 @@ class BulkValiderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'inscription_ids' => 'required|array',
+            // `scope=filtre` : la selection est tout le filtre de la liste,
+            // recalcule par SelectionDInscriptions, sans liste d'identifiants.
+            'inscription_ids' => 'required_unless:scope,filtre|array',
             'inscription_ids.*' => 'exists:esbtp_inscriptions,id',
         ];
     }

@@ -7,7 +7,7 @@
     $liaisonsExtra = max(0, $liaisonCount - 3);
 @endphp
 
-<tr data-matiere-id="{{ $matiere->id }}" class="position-relative">
+<tr data-matiere-id="{{ $matiere->id }}" data-li-cle="{{ $matiere->id }}" class="position-relative">
     <td>
         <div class="form-check m-0">
             <input class="form-check-input matiere-checkbox" type="checkbox" id="matiere-{{ $matiere->id }}" value="{{ $matiere->id }}">

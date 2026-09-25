@@ -7,6 +7,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Services\CataloguePiecesDossier;
 use App\Services\DossierPiecesEtudiant;
+use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -36,7 +37,7 @@ use Illuminate\Support\Collection;
  */
 class ESBTPSuiviPiecesController extends Controller
 {
-    /** Au-delà, la page ne rend plus service : elle rend une liste à faire défiler. */
+    /** Taille d'une tranche : la liste se charge au défilement. */
     private const PAR_PAGE = 40;
 
     /**
@@ -109,6 +110,15 @@ class ESBTPSuiviPiecesController extends Controller
             ->filter(fn (array $l) => $l['synthese'] !== null)
             ->filter(fn (array $l) => $this->retenue($l['synthese'], (string) $request->input('etat', '')))
             ->values();
+
+        // La suite de la liste : ses lignes seules. La promotion est recalculee
+        // (l'etat d'un dossier n'est pas une colonne), mais pas les compteurs.
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $this->paginateur($lignes, $request),
+                fn (array $ligne) => view('esbtp.pieces-dossier._ligne-suivi', compact('ligne'))->render(),
+            );
+        }
 
         return view('esbtp.pieces-dossier.suivi', $commun + [
             'configure' => true,

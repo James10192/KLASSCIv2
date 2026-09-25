@@ -182,7 +182,8 @@
     $(document).ready(function() {
         // Initialiser DataTables pour chaque tableau
         $('.datatable').DataTable({
-            "paging": true,
+            // Toutes les lignes sont deja chargees : pas de pages, on fait defiler.
+            "paging": false,
             "lengthChange": true,
             "searching": true,
             "ordering": true,

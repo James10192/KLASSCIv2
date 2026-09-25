@@ -73,6 +73,12 @@
     </div>
     <button type="button" class="rdv-nav-btn" data-rdv-semaine="{{ $semaineSuivante }}" aria-label="Semaine suivante"><i class="fas fa-chevron-right"></i></button>
     <button type="button" class="rdv-btn rdv-btn--ghost rdv-btn--sm" data-rdv-semaine="{{ now()->toDateString() }}">Aujourd'hui</button>
+    @unless($semaineVide)
+        <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.feuille.apercu', ['debut' => $debut->toDateString()]) }}" target="_blank" rel="noopener"
+           title="Feuille à imprimer : une page par jour, case « Reçue » et colonne d'observations"><i class="fas fa-print"></i>Imprimer la semaine</a>
+        <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.feuille.excel', ['debut' => $debut->toDateString()]) }}"
+           title="Les familles attendues de la semaine, dans un tableur"><i class="fas fa-file-excel"></i>Excel</a>
+    @endunless
 </nav>
 
 @if($semaineVide)
@@ -112,6 +118,12 @@
                 <header class="rdv-jour-tete">
                     <h3>{{ $jour['libelle'] }} @if($jour['aujourdhui'])<span class="rdv-puce">Aujourd'hui</span>@endif</h3>
                     <span class="rdv-jour-resume">{{ $jour['creneaux']->count() }} créneaux · <strong>{{ $jour['prises'] }}</strong> / {{ $jour['places'] }} places prises ({{ $_taux }} %)</span>
+                    @if($jour['prises'] > 0)
+                        <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.feuille.apercu', ['jour' => $jour['date']]) }}" target="_blank" rel="noopener"
+                           aria-label="Imprimer la feuille du {{ $jour['libelle'] }}"><i class="fas fa-print"></i>Imprimer</a>
+                        <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.feuille.excel', ['jour' => $jour['date']]) }}"
+                           aria-label="Télécharger en Excel les familles du {{ $jour['libelle'] }}"><i class="fas fa-file-excel"></i>Excel</a>
+                    @endif
                 </header>
                 <div class="rdv-slots">
                     @foreach($jour['creneaux'] as $creneau)

@@ -187,6 +187,8 @@
     word-break: break-all;
 }
 .au-code--block { display: inline-block; padding: .35rem .55rem; }
+/* Dans une cellule de tableau, un identifiant court ne se coupe pas chiffre par chiffre. */
+td > .au-code { white-space: nowrap; word-break: normal; }
 .au-changes { font-size: .8rem; color: #475569; }
 .au-changes--empty { color: #94a3b8; font-style: italic; }
 

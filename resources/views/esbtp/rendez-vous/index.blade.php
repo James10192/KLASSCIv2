@@ -28,6 +28,7 @@
                 @can('inscriptions.rdv.accueil')
                     <a class="rdv-btn rdv-btn--glass" href="{{ route('esbtp.rendez-vous.accueil.index') }}"><i class="fas fa-clipboard-check"></i>Accueil du jour</a>
                 @endcan
+                <a class="rdv-btn rdv-btn--glass" href="{{ route('esbtp.rendez-vous.recherche') }}"><i class="fas fa-magnifying-glass"></i>Retrouver une famille</a>
                 <button type="button" class="rdv-btn rdv-btn--glass" data-page-tour-open><i class="fas fa-route"></i>Guide</button>
                 <button type="button" class="rdv-btn rdv-btn--glass" data-page-help-open><i class="fas fa-circle-question"></i>Aide</button>
                 @if($peutConfigurer)

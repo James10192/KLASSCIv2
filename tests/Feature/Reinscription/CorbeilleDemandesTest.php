@@ -186,6 +186,28 @@ class CorbeilleDemandesTest extends TestCase
         $this->assertStringContainsString('acte de naissance', $this->demande->motif_rejet);
     }
 
+    public function test_un_rejet_libere_le_creneau_a_venir_de_la_demande(): void
+    {
+        $creneau = \App\Models\ESBTPRdvCreneau::create([
+            'annee_universitaire_id' => $this->anneeCible->id,
+            'date' => now()->addDays(3)->toDateString(),
+            'heure_debut' => '10:00:00', 'heure_fin' => '10:30:00',
+            'capacite' => 1, 'ouvert' => true,
+        ]);
+        $reservation = \App\Models\ESBTPRdvReservation::create([
+            'creneau_id' => $creneau->id, 'reinscription_demande_id' => $this->demande->id,
+            'statut' => 'confirmee', 'nom' => 'KOUASSI', 'prenoms' => 'Ama',
+            'telephone' => '+2250707070707', 'date_naissance' => '2004-01-01',
+        ]);
+
+        $this->post(route('esbtp.reinscription-demandes.rejeter', $this->demande), [
+            'motif_rejet' => 'Dossier incomplet : acte de naissance manquant.',
+        ])->assertSessionHas('success', fn (string $m) => str_contains($m, 'est libéré'));
+
+        $this->assertSame(\App\Enums\StatutReservationRdv::Liberee, $reservation->fresh()->statut);
+        $this->assertSame(0, $creneau->fresh()->placesPrises());
+    }
+
     public function test_consulter_et_traiter_sont_deux_droits_distincts(): void
     {
         // Un agent qui peut lire la corbeille ne doit pas pouvoir engager

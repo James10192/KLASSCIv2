@@ -127,7 +127,6 @@
 .jc-statut--en_attente { background: rgba(245,158,11,.12); color: #b45309; }
 .jc-statut--rejeté { background: rgba(220,38,38,.12); color: #b91c1c; }
 
-.jc-pagination { padding: 1rem 1.25rem; border-top: 1px solid #f1f5f9; }
 
 .jc-dynamic {
     position: relative;
@@ -337,42 +336,14 @@
                             <th>Statut</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="jc-tbody">
                         @foreach($paiements as $p)
-                        <tr>
-                            <td>{{ optional($p->date_paiement)->format('d/m/Y') ?? '—' }}</td>
-                            <td><a href="{{ route('esbtp.paiements.show', $p->id) }}" class="jc-table-num">{{ $p->numero_recu ?: '#'.$p->id }}</a></td>
-                            <td>
-                                @if($p->inscription && $p->inscription->etudiant)
-                                <div>{{ trim(($p->inscription->etudiant->prenoms ?? '') . ' ' . ($p->inscription->etudiant->nom ?? '')) }}</div>
-                                <div class="jc-table-meta">{{ $p->inscription->etudiant->matricule ?? '—' }}{{ $p->inscription->classe ? ' · ' . $p->inscription->classe->name : '' }}</div>
-                                @else
-                                <span class="jc-table-meta">—</span>
-                                @endif
-                            </td>
-                            <td>{{ $p->fraisCategory->name ?? $p->motif ?? '—' }}</td>
-                            <td>{{ $p->mode_paiement ?? '—' }}</td>
-                            <td class="jc-table-amount {{ $p->status === 'rejeté' ? 'jc-table-amount--rejected' : ($p->status === 'en_attente' ? 'jc-table-amount--pending' : '') }}">
-                                {{ number_format((float) $p->montant, 0, ',', ' ') }}
-                            </td>
-                            <td>{{ $p->createdBy->name ?? '—' }}</td>
-                            <td>
-                                @if($p->validatedBy)
-                                {{ $p->validatedBy->name }}
-                                <div class="jc-table-meta">{{ optional($p->date_validation)->format('d/m/Y H:i') }}</div>
-                                @else
-                                <span class="jc-table-meta">—</span>
-                                @endif
-                            </td>
-                            <td><span class="jc-statut jc-statut--{{ $p->status }}">{{ ucfirst(str_replace('_', ' ', $p->status)) }}</span></td>
-                        </tr>
+                        @include('esbtp.comptabilite.journal-caisse._ligne')
                         @endforeach
                     </tbody>
                 </table>
             </div>
-            <div class="jc-pagination">
-                {{ $paiements->links() }}
-            </div>
+            <x-liste-infinie :paginateur="$paiements" cible="#jc-tbody" libelle="paiements" />
             @endif
         </div>
         </div>
@@ -575,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('click', (event) => {
-        const link = event.target.closest('.jc-btn-reset, .jc-pagination a[href]');
+        const link = event.target.closest('.jc-btn-reset');
         if (!link) return;
 
         event.preventDefault();

@@ -14,6 +14,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
+use App\Support\ListeInfinie;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -35,7 +36,14 @@ class ESBTPSeanceCoursController extends Controller
             $seancesCours = $this->listeFiltree($request)
                 ->orderBy('jour')
                 ->orderBy('heure_debut')
-                ->paginate(25);
+                // Departage stable : la liste se charge par tranches.
+                ->orderBy('esbtp_seance_cours.id')
+                ->paginate(25)
+                ->withQueryString();
+
+            if (ListeInfinie::demandee($request)) {
+                return ListeInfinie::reponse($seancesCours, fn ($seance) => view('esbtp.seances-cours._ligne', compact('seance'))->render());
+            }
 
             // Récupérer tous les emplois du temps pour le filtre
             $emploisTemps = ESBTPEmploiTemps::with('classe')->orderBy('created_at', 'desc')->get();

@@ -170,7 +170,10 @@ class ExamensSystemeDistinctionTest extends TestCase
 
     public function test_index_view_includes_systeme_filter(): void
     {
-        $content = file_get_contents(resource_path('views/esbtp/examens/index.blade.php'));
+        // La ligne du tableau vit dans son partiel : la suite chargee au
+        // defilement la rend aussi.
+        $content = file_get_contents(resource_path('views/esbtp/examens/index.blade.php'))
+            .file_get_contents(resource_path('views/esbtp/examens/_ligne.blade.php'));
         $this->assertStringContainsString('name="systeme"', $content);
         $this->assertStringContainsString('hasMixedSystemes', $content);
         $this->assertStringContainsString('x-systeme-chip', $content);

@@ -82,7 +82,11 @@ class ESBTPPaiementController extends Controller
         ];
         Log::info('ESBTPPaiementController@index start', $baseLogContext);
 
-        $data = $this->filterService->preparePaiementListing($request, $matcher, $baseLogContext, $startMicrotime, 'ESBTPPaiementController@index');
+        $data = $this->filterService->preparePaiementListing(
+            $request, $matcher, $baseLogContext, $startMicrotime, 'ESBTPPaiementController@index',
+            // La suite d'une liste au defilement n'a pas besoin des compteurs.
+            ! ($request->ajax() && $request->input('mode') === 'rows'),
+        );
 
         $completionContext = array_merge($baseLogContext, [
             'timestamp' => now()->toIso8601String(),
@@ -254,7 +258,11 @@ class ESBTPPaiementController extends Controller
         ];
         Log::info('ESBTPPaiementController@refresh start', $baseLogContext);
 
-        $data = $this->filterService->preparePaiementListing($request, $matcher, $baseLogContext, $startMicrotime, 'ESBTPPaiementController@refresh');
+        $data = $this->filterService->preparePaiementListing(
+            $request, $matcher, $baseLogContext, $startMicrotime, 'ESBTPPaiementController@refresh',
+            // La suite d'une liste au defilement n'a pas besoin des compteurs.
+            ! ($request->ajax() && $request->input('mode') === 'rows'),
+        );
 
         Log::info('ESBTPPaiementController@refresh returning AJAX response', array_merge($baseLogContext, [
             'timestamp' => now()->toIso8601String(),

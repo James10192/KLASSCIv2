@@ -4,13 +4,19 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
 use App\Models\ESBTP\PaymentCategory;
+use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
 
 class PaymentCategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $categories = PaymentCategory::orderBy('name')->paginate(20);
+        // Departage stable : la liste se charge par tranches.
+        $categories = PaymentCategory::orderBy('name')->orderBy('id')->paginate(20);
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($categories, fn ($cat) => view('esbtp.payment-categories._ligne', compact('cat'))->render());
+        }
         return view('esbtp.payment-categories.index', compact('categories'));
     }
 

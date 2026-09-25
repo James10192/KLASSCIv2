@@ -100,33 +100,13 @@
     @else
     <table class="juy-table">
         <thead><tr><th>Libellé</th><th>Date</th><th>Parcours/Classe</th><th>Membres</th><th>Statut</th><th>PV</th><th></th></tr></thead>
-        <tbody>
+        <tbody id="juy-tbody">
         @foreach($jurys as $j)
-        <tr>
-            <td style="font-weight:600;color:#0453cb;">{{ $j->libelle }}</td>
-            <td>{{ optional($j->date_jury)->format('d/m/Y') ?? '—' }}</td>
-            <td>{{ $j->parcours?->name ?? '—' }} @if($j->classe) · {{ $j->classe->name }}@endif</td>
-            <td><span style="background:#f1f5f9;padding:.15rem .45rem;border-radius:5px;font-size:.72rem;color:#475569;font-weight:600;">{{ $j->membres->count() }}</span></td>
-            <td><span class="juy-status juy-status--{{ $j->status }}">{{ str_replace('_',' ',$j->status) }}</span></td>
-            <td>
-                @if($j->pv_numero)
-                <span style="font-family:'Courier New',monospace;font-size:.72rem;color:#0453cb;font-weight:700;">{{ $j->pv_numero }}</span>
-                @else
-                <span style="color:#94a3b8;font-size:.78rem;">—</span>
-                @endif
-            </td>
-            <td>
-                <a href="{{ route('esbtp.lmd.jurys.show', $j) }}" style="padding:.3rem .7rem;border-radius:6px;background:#f1f5f9;color:#0453cb;text-decoration:none;font-size:.78rem;font-weight:600;">
-                    <i class="fas fa-eye"></i>
-                </a>
-            </td>
-        </tr>
+        @include('esbtp.lmd.jurys._ligne')
         @endforeach
         </tbody>
     </table>
-    @if($jurys->hasPages())
-        <div style="padding:1rem 1.25rem;border-top:1px solid #e2e8f0;">{{ $jurys->links() }}</div>
-    @endif
+    <x-liste-infinie :paginateur="$jurys" cible="#juy-tbody" libelle="jurys" />
     @endif
 </div>
 

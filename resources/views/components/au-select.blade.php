@@ -247,107 +247,7 @@ if (typeof window.auSelectMatchesQuery !== 'function') {
     };
 }
 
-/**
- * Un element devient BLOC CONTENEUR de ses descendants `position: fixed` des
- * qu'il porte l'une de ces proprietes : transform, filter, backdrop-filter,
- * perspective, contain (layout|paint|strict|content), ou will-change citant
- * l'une d'elles. Les transformations individuelles rotate/scale/translate
- * comptent au meme titre.
- *
- * Ce composant pose son menu en `fixed` avec des coordonnees lues sur le
- * VIEWPORT. Sous un tel ancetre, le navigateur les interprete par rapport a
- * CET ancetre : le menu part de plusieurs centaines de pixels, souvent hors
- * ecran. C'est ce qu'a produit `.card-moderne:hover { transform: ... }` sur
- * /esbtp/paiements/create — le selecteur d'etudiant disparaissait des qu'on
- * survolait la carte qui le contient.
- *
- * Corriger regle par regle est sans fin : la feuille globale en compte des
- * dizaines et il s'en ajoute a chaque page. Cette fonction sert donc a rendre
- * le composant INSENSIBLE au probleme, en detectant la situation pour aller
- * poser le menu ailleurs.
- *
- * Elle recoit un objet de style deja lu (pas un element) pour rester
- * verifiable hors navigateur.
- */
-if (typeof window.auSelectStyleCreeBlocConteneur !== 'function') {
-    window.auSelectStyleCreeBlocConteneur = function (style) {
-        if (! style) {
-            return false;
-        }
-
-        // Une valeur CSS calculee est TOUJOURS une chaine. Tout le reste est
-        // du bruit — a commencer par `style.filter`, qui vaut la methode
-        // `filter` heritee si on tend un tableau au lieu d'un style.
-        var lire = function (nom, variante) {
-            var valeur = style[nom];
-            if (typeof valeur !== 'string' && variante) {
-                valeur = style[variante];
-            }
-            return typeof valeur === 'string' ? valeur.trim().toLowerCase() : '';
-        };
-
-        // `none` et `auto` sont les valeurs calculees d'une propriete absente.
-        var posee = function (valeur) {
-            return valeur !== '' && valeur !== 'none' && valeur !== 'auto';
-        };
-
-        if (posee(lire('transform'))) return true;
-        if (posee(lire('filter'))) return true;
-        if (posee(lire('backdropFilter', 'backdrop-filter'))) return true;
-        if (posee(lire('perspective'))) return true;
-
-        // rotate / scale / translate ecrivent leur valeur neutre differemment
-        // selon le navigateur : `none`, mais aussi `0deg`, `1` ou `0px`. Seul
-        // un deplacement reel cree un bloc conteneur.
-        var rotation = lire('rotate');
-        if (posee(rotation) && ! /^0(deg|rad|grad|turn)?$/.test(rotation)) return true;
-
-        var echelle = lire('scale');
-        if (posee(echelle) && ! /^1(\s+1){0,2}$/.test(echelle)) return true;
-
-        var deplacement = lire('translate');
-        if (posee(deplacement) && ! /^0(px)?(\s+0(px)?){0,2}$/.test(deplacement)) return true;
-
-        if (/\b(layout|paint|strict|content)\b/.test(lire('contain'))) return true;
-
-        if (/\b(transform|filter|backdrop-filter|perspective|rotate|scale|translate|contain)\b/
-            .test(lire('willChange', 'will-change'))) return true;
-
-        return false;
-    };
-}
-
-/**
- * Remonte la chaine des ancetres — l'element lui-meme compris, car il englobe
- * deja le menu — et rend le premier qui rendrait le menu mal place, ou null.
- *
- * `lireStyle` est injectable pour que la remontee soit verifiable sans
- * navigateur ; en production elle lit le style calcule.
- */
-if (typeof window.auSelectAncetreBloquant !== 'function') {
-    window.auSelectAncetreBloquant = function (element, lireStyle) {
-        if (! element) {
-            return null;
-        }
-
-        var lire = typeof lireStyle === 'function'
-            ? lireStyle
-            : function (noeud) { return window.getComputedStyle(noeud); };
-
-        var noeud = element;
-        // Garde-fou : une chaine circulaire ne doit pas figer la page.
-        var restant = 200;
-
-        while (noeud && restant-- > 0) {
-            if (window.auSelectStyleCreeBlocConteneur(lire(noeud))) {
-                return noeud;
-            }
-            noeud = noeud.parentElement || null;
-        }
-
-        return null;
-    };
-}
+@include('components.partials.au-menu-ancrage-js')
 
 if (typeof window.auSelect !== 'function') {
     window.auSelect = function () {
@@ -548,36 +448,19 @@ if (typeof window.auSelect !== 'function') {
              * Rend true si le menu vient d'etre deplace.
              */
             verifierAncrage() {
-                if (this._menuDeplace || ! this._menu || ! this._menu.parentNode) {
+                if (this._menuDeplace || typeof window.auMenuAncrage !== 'object') {
                     return false;
                 }
-                if (typeof window.auSelectAncetreBloquant !== 'function') {
-                    return false;
-                }
-                if (! window.auSelectAncetreBloquant(this._racine)) {
-                    return false;
-                }
+                this._marqueur = window.auMenuAncrage.deplacerSiBloque(this._racine, this._menu);
+                this._menuDeplace = this._marqueur !== null;
 
-                // Le marqueur retient la place exacte du menu dans la racine.
-                this._marqueur = document.createComment('au-select-menu');
-                this._menu.parentNode.insertBefore(this._marqueur, this._menu);
-                document.body.appendChild(this._menu);
-                this._menuDeplace = true;
-
-                return true;
+                return this._menuDeplace;
             },
             rapatrierLeMenu() {
                 if (! this._menuDeplace) {
                     return;
                 }
-                if (this._marqueur && this._marqueur.parentNode) {
-                    this._marqueur.parentNode.insertBefore(this._menu, this._marqueur);
-                    this._marqueur.remove();
-                } else if (this._menu && this._menu.parentNode) {
-                    // La place d'origine a disparu du document : plutot que de
-                    // laisser un menu orphelin sous <body>, on le retire.
-                    this._menu.remove();
-                }
+                window.auMenuAncrage.rapatrier(this._menu, this._marqueur);
                 this._marqueur = null;
                 this._menuDeplace = false;
             },
@@ -592,7 +475,7 @@ if (typeof window.auSelect !== 'function') {
                 if (this._veilleAncrage) {
                     return;
                 }
-                this._veilleAncrage = () => {
+                this._veilleAncrage = window.auMenuAncrage.veiller(() => {
                     if (! this.open || this._menuDeplace) {
                         this.cesserSurveillanceAncrage();
                         return;
@@ -601,14 +484,13 @@ if (typeof window.auSelect !== 'function') {
                         this.positionMenu(true);
                         this.cesserSurveillanceAncrage();
                     }
-                };
-                document.addEventListener('pointerover', this._veilleAncrage, { passive: true, capture: true });
+                });
             },
             cesserSurveillanceAncrage() {
                 if (! this._veilleAncrage) {
                     return;
                 }
-                document.removeEventListener('pointerover', this._veilleAncrage, { capture: true });
+                this._veilleAncrage();
                 this._veilleAncrage = null;
             },
             openAndFocusNext() {

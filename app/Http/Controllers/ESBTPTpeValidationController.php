@@ -8,7 +8,9 @@ use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPTpeDeclaration;
 use App\Models\User;
 use App\Notifications\TpeDeclarationStatusChangedNotification;
+use App\Support\ListeInfinie;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\View\View;
@@ -30,7 +32,7 @@ class ESBTPTpeValidationController extends Controller
     /**
      * Liste les déclarations en_attente filtrées par enseignant principal.
      */
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         $user = $request->user();
 
@@ -47,8 +49,14 @@ class ESBTPTpeValidationController extends Controller
                 'matiere.uniteEnseignement:id,name',
             ])
             ->orderByDesc('created_at')
+            // Departage stable : la liste se charge par tranches.
+            ->orderByDesc('id')
             ->paginate(20)
             ->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($declarationsEnAttente, fn ($decl) => view('esbtp.tpe-validation._ligne', compact('decl'))->render());
+        }
 
         // KPIs : compteurs cours/semaine/mois pour le hero
         $kpiBase = ESBTPTpeDeclaration::query()->pourEnseignant($user);

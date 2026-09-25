@@ -21,6 +21,21 @@ enum StatutReservationRdv: string
         };
     }
 
+    /**
+     * Libelle d'un filtre de liste, vu du guichet : on cherche les familles
+     * « reçues » ou « non venues », pas des rendez-vous « honorés ».
+     */
+    public function libelleFiltre(): string
+    {
+        return match ($this) {
+            self::Confirmee => 'Confirmés',
+            self::Honoree => 'Reçues',
+            self::Manquee => 'Non venues',
+            self::Annulee => 'Annulés',
+            self::Liberee => 'Libérés',
+        };
+    }
+
     public function occupeLeCreneau(): bool
     {
         return in_array($this, self::occupants(), true);

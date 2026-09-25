@@ -8,6 +8,7 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Services\LMD\CodeDeMatiere;
+use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,14 @@ class ESBTPMatiereController extends Controller
      */
     public function index(Request $request)
     {
+        // La suite de la liste : ses lignes seules, sans compteurs ni filtres.
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $this->prepareMatieresListing($request, false)['matieres'],
+                fn ($matiere) => view('esbtp.matieres.partials.matiere-row', compact('matiere'))->render(),
+            );
+        }
+
         $listing = $this->prepareMatieresListing($request);
 
         $filieres = ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
@@ -120,7 +129,7 @@ class ESBTPMatiereController extends Controller
      *
      * @return array{matieres:\Illuminate\Contracts\Pagination\LengthAwarePaginator,summary:array<string,int|null>}
      */
-    private function prepareMatieresListing(Request $request): array
+    private function prepareMatieresListing(Request $request, bool $avecKpis = true): array
     {
         $search = trim((string) $request->input('search'));
         $filiere = $request->input('filiere_filter');
@@ -130,7 +139,7 @@ class ESBTPMatiereController extends Controller
         $coefficientMax = $request->input('coefficient_max');
         $heuresMin = $request->input('heures_min');
         $heuresMax = $request->input('heures_max');
-        $perPage = (int) $request->input('per_page', 15);
+        $perPage = min(100, max(1, (int) $request->input('per_page', 15)));
 
         $totalHeuresExpression = 'COALESCE(heures_cm, 0) + COALESCE(heures_td, 0) + COALESCE(heures_tp, 0) + COALESCE(heures_stage, 0) + COALESCE(heures_perso, 0)';
 
@@ -142,7 +151,9 @@ class ESBTPMatiereController extends Controller
                 'liaisonsFilieresNiveaux.filiere:id,name,code',
                 'liaisonsFilieresNiveaux.niveauEtude:id,name,code',
             ])
-            ->orderBy('name');
+            ->orderBy('name')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('esbtp_matieres.id');
 
         // Filtres filière+niveau via pivot canonique (esbtp_matiere_filiere_niveau).
         // Si les 2 filtres sont actifs → seules les matières liées à CETTE
@@ -204,30 +215,33 @@ class ESBTPMatiereController extends Controller
         // -3 round-trips DB par render et par AJAX refresh sur cette page.
         // reorder() retire l'ORDER BY name (incompatible avec SUM/COUNT global
         // sur MariaDB strict mode).
-        $row = (clone $query)
-            ->withoutEagerLoads()
-            ->reorder()
-            ->selectRaw("
-                COUNT(*) AS total,
-                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS actifs,
-                SUM(CASE WHEN EXISTS (
-                    SELECT 1 FROM esbtp_matiere_filiere_niveau
-                    WHERE esbtp_matiere_filiere_niveau.matiere_id = esbtp_matieres.id
-                ) THEN 1 ELSE 0 END) AS avec_liaisons,
-                SUM({$totalHeuresExpression}) AS heures_totales
-            ")
-            ->first();
+        $kpis = [];
+        if ($avecKpis) {
+            $row = (clone $query)
+                ->withoutEagerLoads()
+                ->reorder()
+                ->selectRaw("
+                    COUNT(*) AS total,
+                    SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS actifs,
+                    SUM(CASE WHEN EXISTS (
+                        SELECT 1 FROM esbtp_matiere_filiere_niveau
+                        WHERE esbtp_matiere_filiere_niveau.matiere_id = esbtp_matieres.id
+                    ) THEN 1 ELSE 0 END) AS avec_liaisons,
+                    SUM({$totalHeuresExpression}) AS heures_totales
+                ")
+                ->first();
 
-        $kpis = [
-            'total'           => (int) ($row->total ?? 0),
-            'actifs'          => (int) ($row->actifs ?? 0),
-            'avec_liaisons'   => (int) ($row->avec_liaisons ?? 0),
-            'heures_totales'  => (int) ($row->heures_totales ?? 0),
-        ];
-        $kpis['inactifs']     = $kpis['total'] - $kpis['actifs'];
-        $kpis['sans_liaison'] = $kpis['total'] - $kpis['avec_liaisons'];
+            $kpis = [
+                'total'           => (int) ($row->total ?? 0),
+                'actifs'          => (int) ($row->actifs ?? 0),
+                'avec_liaisons'   => (int) ($row->avec_liaisons ?? 0),
+                'heures_totales'  => (int) ($row->heures_totales ?? 0),
+            ];
+            $kpis['inactifs']     = $kpis['total'] - $kpis['actifs'];
+            $kpis['sans_liaison'] = $kpis['total'] - $kpis['avec_liaisons'];
+        }
 
-        $matieres = $query->paginate($perPage > 0 ? $perPage : 15)->withQueryString();
+        $matieres = $query->paginate($perPage)->withQueryString();
 
         return [
             'matieres' => $matieres,

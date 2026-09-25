@@ -129,8 +129,11 @@
                             @if($_sansNouvelle)
                                 <button type="button" class="rdv-btn rdv-btn--ghost rdv-btn--sm" data-rac-action="{{ $_url('prevenue') }}" title="Vous l'avez appelée : elle sort de la liste des familles à prévenir"><i class="fas fa-phone-volume"></i>Prévenue</button>
                             @endif
-                            @if($_etat === 'non_venue' && $_ref !== '' && ($resa->candidature ? $_voitCandidatures : $_voitDemandes))
-                                <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" title="Ouvrir le dossier de cette famille, par exemple pour le clore"
+                            {{-- Sur chaque ligne, pas seulement sur les non-venues : l'agent qui
+                                 vient de recevoir une famille a besoin de son dossier pour la
+                                 suite (accepter, inscrire, reinscrire), pas seulement pour clore. --}}
+                            @if($_ref !== '' && ($resa->candidature ? $_voitCandidatures : $_voitDemandes))
+                                <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" title="Ouvrir le dossier de cette famille"
                                    href="{{ $resa->candidature ? route('esbtp.candidatures.index', ['reference' => $_ref]) : route('esbtp.reinscription-demandes.index', ['reference' => $_ref]) }}"><i class="fas fa-folder-open"></i>Dossier</a>
                             @endif
                             @if(in_array($_etat, ['attendu', 'non_venue'], true))
@@ -178,5 +181,8 @@
             </ul>
         </section>
     @endif
-    <p class="rac-aucun" hidden><i class="fas fa-magnifying-glass"></i>Aucune famille ne correspond à la recherche.</p>
+    <p class="rac-aucun" hidden><i class="fas fa-magnifying-glass"></i>Aucune famille ne correspond à la recherche ce jour.
+        {{-- La famille a peut-etre rendez-vous un autre jour : le lien reprend le texte tape. --}}
+        <a class="rdv-lien" href="{{ route('esbtp.rendez-vous.recherche') }}" data-rac-chercher-partout>Chercher tous les jours</a>
+    </p>
 @endif

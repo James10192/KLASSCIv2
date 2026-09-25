@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Rules\MotDePasseChoisi;
 use App\Services\UserService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
+use App\Support\ListeInfinie;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Auth;
@@ -30,9 +31,14 @@ class ESBTPSecretaireController extends Controller
     /**
      * Affiche la liste des secrétaires
      */
-    public function index()
+    public function index(Request $request)
     {
-        $secretaires = User::role('secretaire')->orderBy('name')->paginate(10);
+        // Departage stable : la liste se charge par tranches.
+        $secretaires = User::role('secretaire')->orderBy('name')->orderBy('users.id')->paginate(10);
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($secretaires, fn ($secretaire) => view('esbtp.secretaires._ligne', compact('secretaire'))->render());
+        }
         return view('esbtp.secretaires.index', compact('secretaires'));
     }
 

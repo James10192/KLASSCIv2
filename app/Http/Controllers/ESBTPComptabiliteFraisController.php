@@ -17,6 +17,7 @@ use App\Models\ESBTPClasse;
 use App\Models\User;
 use App\Services\ComptabiliteService;
 use App\Services\PerformanceMonitoringService;
+use App\Support\ListeInfinie;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -233,7 +234,13 @@ class ESBTPComptabiliteFraisController extends Controller
         try {
             $bourses = ESBTPBourse::with(['etudiant', 'anneeUniversitaire', 'createur'])
                 ->orderBy('created_at', 'desc')
+                // Departage stable : la liste se charge par tranches.
+                ->orderBy('id', 'desc')
                 ->paginate(15);
+
+            if (ListeInfinie::demandee(request())) {
+                return ListeInfinie::reponse($bourses, fn ($bourse) => view('esbtp.comptabilite.bourses._ligne', compact('bourse'))->render());
+            }
 
             return view('esbtp.comptabilite.bourses.index', compact('bourses'));
         } catch (\Exception $e) {

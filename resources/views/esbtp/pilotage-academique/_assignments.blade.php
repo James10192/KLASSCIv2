@@ -9,7 +9,7 @@
     <form class="cpa-assignment-form cpa-assignment-composer" x-ref="assignmentForm" @submit.prevent="saveAssignment()">
         <div class="cpa-field cpa-assignment-user">
             <label class="cpa-field-label">Utilisateur</label>
-            <x-au-user-picker name="user_id" :users="$assignmentUsers" placeholder="Choisir un utilisateur" />
+            <x-au-user-picker name="user_id" :users="$assignmentUsers" placeholder="Choisir un utilisateur" :empty-option="false" />
         </div>
         <div class="cpa-field cpa-assignment-class">
             <label class="cpa-field-label">Classe</label>

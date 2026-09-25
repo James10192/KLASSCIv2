@@ -363,7 +363,7 @@ fichier même que la version précédente de ce tableau déclarait couvert « (�
 
 | fichier | ce que l'utilisateur voyait | modèle lu | trouvé par |
 |---|---|---|---|
-| `resources/views/esbtp/seances-cours/index.blade.php` (×2) | colonne horaire, confirmation de suppression | `ESBTPSeanceCours` | lecture |
+| `resources/views/esbtp/seances-cours/_ligne.blade.php` (×2) | colonne horaire, confirmation de suppression | `ESBTPSeanceCours` | lecture |
 | `app/Domain/EmploiTemps/DetectionDesConflits.php` → bandeau de `seances-cours/index` | **« — 2026-09-17 08:00:00 à 2026-09-17 10:00:00 » dans le panneau de conflits** | `ESBTPSeanceCours` | revue adverse |
 | `app/Http/Controllers/ESBTPAttendanceController.php` (×2) | **« Heure: 2026- » dans l'avis d'absence au parent**, export CSV | `ESBTPSeanceCours` (via `->seanceCours`) | lecture |
 | `app/Http/Controllers/ESBTPPlanningGeneralController.php` | `"horaire"` du planning général | `ESBTPSeanceCours` | lecture |

@@ -81,7 +81,7 @@
                         <div class="active tab-pane" id="description">
                             <div class="post">
                                 <div>
-                                    {!! nl2br(e($specialty->description ?? 'Aucune description disponible.')) !!}
+                                    {{ \App\Support\TexteRiche::afficher($specialty->description) ?? 'Aucune description disponible.' }}
                                 </div>
                             </div>
                         </div>
@@ -90,7 +90,7 @@
                         <div class="tab-pane" id="career">
                             <div class="post">
                                 <div>
-                                    {!! nl2br(e($specialty->career_opportunities ?? 'Aucune information sur les débouchés disponible.')) !!}
+                                    {{ \App\Support\TexteRiche::afficher($specialty->career_opportunities) ?? 'Aucune information sur les débouchés disponible.' }}
                                 </div>
                             </div>
                         </div>
@@ -119,7 +119,8 @@
     $(document).ready(function() {
         // Initialiser DataTables
         $('.table').DataTable({
-            "paging": true,
+            // Toutes les lignes sont deja chargees : pas de pages, on fait defiler.
+            "paging": false,
             "lengthChange": true,
             "searching": true,
             "ordering": true,

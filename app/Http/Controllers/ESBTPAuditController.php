@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OwenIt\Auditing\Models\Audit;
 use App\Models\User;
@@ -19,9 +20,21 @@ use Illuminate\Support\Facades\Response;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\AuditExport;
+use App\Support\ListeInfinie;
 
 class ESBTPAuditController extends Controller
 {
+    /** Les modeles dont l'audit comptable suit les operations, avec leur libelle. */
+    private const MODELES_FINANCIERS = [
+        'App\Models\ESBTPPaiement' => 'Paiements',
+        'App\Models\ESBTPDepense' => 'Dépenses',
+        'App\Models\ESBTPFacture' => 'Factures',
+        'App\Models\ESBTPFactureDetail' => 'Détails Factures',
+        'App\Models\ESBTPFraisScolarite' => 'Frais Scolarité',
+        'App\Models\ESBTPSalaire' => 'Salaires',
+        'App\Models\ESBTPBourse' => 'Bourses',
+    ];
+
     /**
      * Constructeur avec middleware de permissions
      */
@@ -73,7 +86,10 @@ class ESBTPAuditController extends Controller
      */
     public function getAuditData(Request $request)
     {
-        $query = Audit::with(['user'])->orderBy('created_at', 'desc');
+        // L'identifiant departage les ecritures d'une meme seconde : le journal se
+        // charge par tranches au defilement, et sans departage une tranche en
+        // repeterait certaines et en sauterait d'autres.
+        $query = Audit::with(['user'])->orderBy('created_at', 'desc')->orderBy('id', 'desc');
         $this->applyCommonFilters($query, $request);
 
         if ($request->filled('search')) {
@@ -89,8 +105,8 @@ class ESBTPAuditController extends Controller
         // Pagination sans comptage : `paginate()` lancait un COUNT(*) sur toute
         // la table `audits` a chaque chargement, meme sans aucun filtre, pour ne
         // servir qu'un total et un nombre de pages. `simplePaginate()` supprime
-        // ce comptage ; la vue affiche desormais la page courante et un bouton
-        // « Suivant » qui sait seulement s'il reste quelque chose apres.
+        // ce comptage ; la vue charge la suite au defilement et sait seulement
+        // s'il reste quelque chose apres.
         $audits = $query->simplePaginate(50);
 
         // Formatage des données pour l'affichage. On envoie `event_raw` (slug
@@ -183,15 +199,8 @@ class ESBTPAuditController extends Controller
     {
         $this->authorize('comptabilite.audit.view');
 
-        $financialModels = [
-            'App\Models\ESBTPPaiement',
-            'App\Models\ESBTPDepense',
-            'App\Models\ESBTPFacture',
-            'App\Models\ESBTPFactureDetail',
-            'App\Models\ESBTPFraisScolarite',
-            'App\Models\ESBTPSalaire',
-            'App\Models\ESBTPBourse',
-        ];
+        $financialModelsLabels = self::MODELES_FINANCIERS;
+        $financialModels = array_keys($financialModelsLabels);
 
         $query = Audit::whereIn('auditable_type', $financialModels)
             ->with(['user'])
@@ -221,7 +230,23 @@ class ESBTPAuditController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $audits = $query->paginate(25)->withQueryString();
+        // Departage stable : la liste se charge par tranches.
+        $audits = $query->orderByDesc('id')->paginate(25)->withQueryString();
+
+        // Précalcule les liens entités liées pour chaque audit de la page courante.
+        // Le resolver eager-load les relations par audit ; sur 25 lignes c'est
+        // acceptable et évite de bombarder le serveur depuis le client.
+        $entityLinksMap = [];
+        foreach ($audits as $a) {
+            $entityLinksMap[$a->id] = $this->entityResolver->resolve($a);
+        }
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $audits,
+                fn ($a) => view('esbtp.audit._ligne-comptabilite', ['a' => $a, 'financialModelsLabels' => $financialModelsLabels, 'entityLinksMap' => $entityLinksMap])->render(),
+            );
+        }
 
         // KPIs financiers (sur 30 derniers jours)
         $since = Carbon::now()->subDays(30);
@@ -245,24 +270,6 @@ class ESBTPAuditController extends Controller
                 ->count(),
         ];
 
-        $financialModelsLabels = [
-            'App\Models\ESBTPPaiement' => 'Paiements',
-            'App\Models\ESBTPDepense' => 'Dépenses',
-            'App\Models\ESBTPFacture' => 'Factures',
-            'App\Models\ESBTPFactureDetail' => 'Détails Factures',
-            'App\Models\ESBTPFraisScolarite' => 'Frais Scolarité',
-            'App\Models\ESBTPSalaire' => 'Salaires',
-            'App\Models\ESBTPBourse' => 'Bourses',
-        ];
-
-        // Précalcule les liens entités liées pour chaque audit de la page courante.
-        // Le resolver eager-load les relations par audit ; sur 25 lignes c'est
-        // acceptable et évite de bombarder le serveur depuis le client.
-        $entityLinksMap = [];
-        foreach ($audits as $a) {
-            $entityLinksMap[$a->id] = $this->entityResolver->resolve($a);
-        }
-
         return view('esbtp.audit.comptabilite', compact('audits', 'kpis', 'financialModelsLabels', 'entityLinksMap'));
     }
 
@@ -282,23 +289,19 @@ class ESBTPAuditController extends Controller
             : now();
 
         $baseQuery = fn () => Audit::whereBetween('created_at', [$dateFrom, $dateTo]);
+        // La fenetre, restreinte a l'utilisateur choisi s'il y en a un.
+        $portee = fn () => $baseQuery()->when($userId, fn ($q) => $q->where('user_id', $userId));
 
-        $query = Audit::with(['user'])
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
-            ->orderBy('created_at', 'desc');
+        // Departage stable : la chronologie se charge par tranches.
+        $activities = $portee()->with(['user'])->orderByDesc('created_at')->orderByDesc('id')
+            ->paginate(50)->withQueryString();
 
-        if ($userId) {
-            $query->where('user_id', $userId);
+        if (ListeInfinie::demandee($request)) {
+            return $this->suiteDeLaChronologie($activities, $userId ? User::find($userId) : null);
         }
-
-        $activities = $query->paginate(50)->withQueryString();
 
         // Top modèles touchés (sur la fenêtre, scoped par user si filtré)
-        $topModelsQuery = $baseQuery();
-        if ($userId) {
-            $topModelsQuery->where('user_id', $userId);
-        }
-        $topModels = $topModelsQuery
+        $topModels = $portee()
             ->select('auditable_type', DB::raw('COUNT(*) as total'))
             ->groupBy('auditable_type')
             ->orderByDesc('total')
@@ -310,11 +313,7 @@ class ESBTPAuditController extends Controller
             ]);
 
         // Top IPs
-        $topIpsQuery = $baseQuery();
-        if ($userId) {
-            $topIpsQuery->where('user_id', $userId);
-        }
-        $topIps = $topIpsQuery
+        $topIps = $portee()
             ->select('ip_address', DB::raw('COUNT(*) as total'))
             ->whereNotNull('ip_address')
             ->groupBy('ip_address')
@@ -323,28 +322,12 @@ class ESBTPAuditController extends Controller
             ->get();
 
         // Heures de pointe (24 buckets)
-        $peakHoursQuery = $baseQuery();
-        if ($userId) {
-            $peakHoursQuery->where('user_id', $userId);
-        }
-        $hoursRaw = $peakHoursQuery
-            ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as total'))
-            ->groupBy(DB::raw('HOUR(created_at)'))
-            ->pluck('total', 'hour')
-            ->toArray();
-        $hourlyDistribution = [];
-        for ($h = 0; $h < 24; $h++) {
-            $hourlyDistribution[$h] = (int) ($hoursRaw[$h] ?? 0);
-        }
+        $hourlyDistribution = $this->repartitionParHeure($portee());
         $peakHour = array_search(max($hourlyDistribution), $hourlyDistribution);
 
         // Statistiques d'activité (recompute totals after applying user filter if any)
-        $totalActionsQuery = $baseQuery();
-        if ($userId) {
-            $totalActionsQuery->where('user_id', $userId);
-        }
         $stats = [
-            'total_actions' => $totalActionsQuery->count(),
+            'total_actions' => $portee()->count(),
             'unique_users' => $baseQuery()->distinct('user_id')->count('user_id'),
             'unique_ips' => $baseQuery()->whereNotNull('ip_address')->distinct('ip_address')->count('ip_address'),
             'peak_hour' => $peakHour !== false ? sprintf('%02dh', $peakHour) : '—',
@@ -361,17 +344,52 @@ class ESBTPAuditController extends Controller
         }
 
         return view('esbtp.audit.user-activity', compact(
-            'activities',
-            'stats',
-            'users',
-            'selectedUser',
-            'topModels',
-            'topIps',
-            'hourlyDistribution',
-            'dateFrom',
-            'dateTo',
-            'entityLinksMap'
+            'activities', 'stats', 'users', 'selectedUser', 'topModels', 'topIps',
+            'hourlyDistribution', 'dateFrom', 'dateTo', 'entityLinksMap'
         ));
+    }
+
+    /**
+     * Nombre d'actions par heure de la journee, de 0 h a 23 h, heures vides comprises.
+     *
+     * @return array<int, int>
+     */
+    private function repartitionParHeure($requete): array
+    {
+        $parHeure = $requete
+            ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as total'))
+            ->groupBy(DB::raw('HOUR(created_at)'))
+            ->pluck('total', 'hour')
+            ->toArray();
+
+        $repartition = [];
+        for ($h = 0; $h < 24; $h++) {
+            $repartition[$h] = (int) ($parHeure[$h] ?? 0);
+        }
+
+        return $repartition;
+    }
+
+    /**
+     * La suite de la chronologie : ses actions seules, avec leurs liens. Le jour
+     * est repete en tete de tranche ; s'il est deja affiche, le defilement
+     * l'ecarte par sa cle.
+     */
+    private function suiteDeLaChronologie($activities, ?User $selectedUser): JsonResponse
+    {
+        $entityLinksMap = [];
+        foreach ($activities as $a) {
+            $entityLinksMap[$a->id] = $this->entityResolver->resolve($a);
+        }
+
+        $lastDay = null;
+
+        return ListeInfinie::reponse($activities, function ($audit) use (&$lastDay, $selectedUser, $entityLinksMap) {
+            $afficherJour = $audit->created_at->format('Y-m-d') !== $lastDay;
+            $lastDay = $audit->created_at->format('Y-m-d');
+
+            return view('esbtp.audit._ligne-activite', compact('audit', 'afficherJour', 'selectedUser', 'entityLinksMap'))->render();
+        });
     }
 
     /**
@@ -761,7 +779,7 @@ class ESBTPAuditController extends Controller
      */
     private function getFilteredAudits($request)
     {
-        $query = Audit::with(['user'])->orderBy('created_at', 'desc');
+        $query = Audit::with(['user'])->orderBy('created_at', 'desc')->orderBy('id', 'desc');
         $this->applyCommonFilters($query, $request);
         return $query->get();
     }

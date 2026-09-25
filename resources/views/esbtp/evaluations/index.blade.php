@@ -1663,7 +1663,7 @@ function initializeEvaluations() {
             .then(response => { if (!response.ok) throw new Error('HTTP ' + response.status); return response.json(); })
             .then(data => {
                 const tbody = resultsContainer.querySelector('tbody');
-                if (tbody && data.rows_html) tbody.insertAdjacentHTML('beforeend', data.rows_html);
+                if (tbody && data.rows_html) window.ListeInfinie.ajouterLignes(tbody, data.rows_html);
                 updateInfiniteScroll(data.pagination || {});
                 initRowInteractions();
             })

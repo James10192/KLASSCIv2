@@ -33,7 +33,7 @@
     }
 @endphp
 
-<tr data-evaluation-id="{{ $evaluation->id }}"
+<tr data-evaluation-id="{{ $evaluation->id }}" data-li-cle="{{ $evaluation->id }}"
     data-is-published="{{ $evaluation->is_published ? '1' : '0' }}"
     data-notes-published="{{ $evaluation->notes_published ? '1' : '0' }}"
     data-status="{{ $evaluation->status }}"

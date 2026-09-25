@@ -18,6 +18,7 @@ use App\Models\ESBTPTeacherAvailability;
 use App\Services\TeacherPlanningService;
 use App\Services\UserService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
+use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -56,7 +57,12 @@ class ESBTPEnseignantController extends Controller
             });
         }
 
-        $teachers = $query->paginate(15);
+        // Departage stable : la liste se charge par tranches.
+        $teachers = $query->orderBy('id')->paginate(15)->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($teachers, fn ($teacher) => view('esbtp.enseignants._ligne', compact('teacher'))->render());
+        }
 
         $specializations = ESBTPTeacher::distinct()->pluck("specialization")->filter();
 

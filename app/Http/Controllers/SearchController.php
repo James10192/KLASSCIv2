@@ -2,679 +2,123 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\Recherche\IndexDesPages;
+use App\Support\Recherche\RechercheDesEntites;
+use Illuminate\Contracts\Auth\Access\Authorizable;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Models\ESBTPEtudiant;
-use App\Models\ESBTPClasse;
-use App\Models\ESBTPFiliere;
-use App\Models\ESBTPMatiere;
-use App\Models\ESBTPTeacher;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
+/**
+ * Recherche globale : la palette Ctrl K / ⌘ K (JSON) et sa page de résultats.
+ *
+ * Les deux lisent les MÊMES sources, filtrées par les mêmes permissions :
+ * IndexDesPages pour les écrans, RechercheDesEntites pour les fiches. Ce qui
+ * n'apparaît pas dans la palette n'apparaît pas non plus sur la page.
+ */
 class SearchController extends Controller
 {
-    private function tokenizeSearch(string $query)
-    {
-        return collect(preg_split('/[\s,]+/u', trim($query), -1, PREG_SPLIT_NO_EMPTY))
-            ->filter()
-            ->values();
+    /** Pages proposées quand la palette s'ouvre vide. */
+    private const NOMBRE_DE_SUGGESTIONS = 6;
+
+    public function __construct(
+        private readonly IndexDesPages $pages,
+        private readonly RechercheDesEntites $entites,
+    ) {
     }
 
-    private function matchesLooseText(string $query, array $haystacks): bool
+    /** GET /search?q=… — la palette. */
+    public function globalSearch(Request $request): JsonResponse
     {
-        $query = trim($query);
-        if ($query === '') {
-            return false;
-        }
+        $saisie = trim((string) $request->query('q', ''));
+        $limite = max(1, min(RechercheDesEntites::LIMITE_PALETTE, (int) $request->query('limit', RechercheDesEntites::LIMITE_PALETTE)));
+        $utilisateur = $request->user();
 
-        $normalizedHaystacks = collect($haystacks)
-            ->filter(fn ($value) => filled($value))
-            ->map(fn ($value) => mb_strtolower((string) $value))
-            ->values();
-
-        if ($normalizedHaystacks->isEmpty()) {
-            return false;
-        }
-
-        $normalizedQuery = mb_strtolower($query);
-
-        if ($normalizedHaystacks->contains(fn ($value) => str_contains($value, $normalizedQuery))) {
-            return true;
-        }
-
-        $tokens = $this->tokenizeSearch($query)
-            ->map(fn ($token) => mb_strtolower((string) $token))
-            ->values();
-
-        return $tokens->count() > 1
-            && $tokens->every(fn ($token) => $normalizedHaystacks->contains(fn ($value) => str_contains($value, $token)));
-    }
-
-    private function applyLooseSearch($queryBuilder, string $query, array $columns, array $concatColumns = [])
-    {
-        $tokens = $this->tokenizeSearch($query);
-
-        return $queryBuilder->where(function ($q) use ($query, $tokens, $columns, $concatColumns) {
-            $likeQuery = '%' . $query . '%';
-
-            foreach ($columns as $column) {
-                $q->orWhere($column, 'LIKE', $likeQuery);
-            }
-
-            foreach ($concatColumns as $concatColumnGroup) {
-                $q->orWhereRaw(
-                    "CONCAT_WS(' ', " . implode(', ', $concatColumnGroup) . ") LIKE ?",
-                    [$likeQuery]
-                );
-            }
-
-            if ($tokens->count() > 1) {
-                $q->orWhere(function ($tokenQuery) use ($tokens, $columns) {
-                    foreach ($tokens as $token) {
-                        $likeToken = '%' . $token . '%';
-                        $tokenQuery->where(function ($inner) use ($columns, $likeToken) {
-                            foreach ($columns as $column) {
-                                $inner->orWhere($column, 'LIKE', $likeToken);
-                            }
-                        });
-                    }
-                });
-            }
-        });
-    }
-
-    private function applyStudentSearch($queryBuilder, string $query)
-    {
-        return $this->applyLooseSearch(
-            $queryBuilder,
-            $query,
-            ['nom', 'prenoms', 'matricule', 'email'],
-            [
-                ['nom', 'prenoms'],
-                ['prenoms', 'nom'],
-            ]
-        );
-    }
-
-    /**
-     * Recherche globale AJAX
-     */
-    public function globalSearch(Request $request)
-    {
-        $query = $request->get('q', '');
-        $limit = $request->get('limit', 5);
-
-        if (strlen($query) < 2) {
-            return response()->json([
-                'success' => false,
-                'message' => 'La recherche doit contenir au moins 2 caractères',
-                'results' => []
-            ]);
-        }
-
-        $user = Auth::user();
-        $results = [];
-
-        try {
-            // Recherche de pages/navigation
-            $navigationResults = $this->searchNavigation($query, $user, $limit);
-            $results = array_merge($results, $navigationResults);
-
-            // Recherche d'actions rapides
-            $actionResults = $this->searchQuickActions($query, $user, $limit);
-            $results = array_merge($results, $actionResults);
-
-            // Recherche de personnel
-            $personnelResults = $this->searchPersonnel($query, $user, $limit);
-            $results = array_merge($results, $personnelResults);
-
-            // Recherche d'étudiants (pour tous les utilisateurs authentifiés)
-            $etudiants = $this->applyStudentSearch(ESBTPEtudiant::query(), $query)
-                ->with(['classe.filiere', 'classe.niveauEtude'])
-                ->limit($limit)
-                ->get();
-
-            foreach ($etudiants as $etudiant) {
-                // Si c'est un étudiant, ne montrer que son propre profil
-                if ($user->can('identity.student') && $user->etudiant && $user->etudiant->id !== $etudiant->id) {
-                    continue;
-                }
-
-                $results[] = [
-                    'category' => 'Étudiants',
-                    'type' => 'etudiant',
-                    'id' => $etudiant->id,
-                    'title' => $etudiant->nom . ' ' . ($etudiant->prenoms ?? ''),
-                    'description' => $etudiant->matricule . ' - ' . ($etudiant->classe ? $etudiant->classe->nom : 'Aucune classe'),
-                    'url' => route('esbtp.etudiants.show', $etudiant->id),
-                    'icon' => 'fas fa-user-graduate',
-                    'color' => 'primary'
-                ];
-            }
-
-            // Recherche de classes (pour admin et secrétaire)
-            if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-                $classes = $this->applyLooseSearch(
-                    ESBTPClasse::query(),
-                    $query,
-                    ['name', 'libelle', 'code']
-                )
-                    ->with(['filiere', 'niveauEtude'])
-                    ->limit($limit)
-                    ->get();
-
-                foreach ($classes as $classe) {
-                    $results[] = [
-                        'category' => 'Classes',
-                        'type' => 'classe',
-                        'id' => $classe->id,
-                        'title' => $classe->name ?? $classe->libelle,
-                        'description' => ($classe->filiere ? $classe->filiere->nom : '') . ' - ' . ($classe->niveauEtude ? $classe->niveauEtude->nom : ''),
-                        'url' => route('esbtp.classes.show', $classe->id),
-                        'icon' => 'fas fa-users',
-                        'color' => 'info'
-                    ];
-                }
-            }
-
-            // Recherche de filières (pour admin et secrétaire)
-            if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-                $filieres = $this->applyLooseSearch(
-                    ESBTPFiliere::query(),
-                    $query,
-                    ['name', 'libelle', 'description']
-                )
-                    ->limit($limit)
-                    ->get();
-
-                foreach ($filieres as $filiere) {
-                    $results[] = [
-                        'category' => 'Filières',
-                        'type' => 'filiere',
-                        'id' => $filiere->id,
-                        'title' => $filiere->name ?? $filiere->libelle,
-                        'description' => $filiere->description ?? 'Aucune description',
-                        'url' => route('esbtp.filieres.show', $filiere->id),
-                        'icon' => 'fas fa-graduation-cap',
-                        'color' => 'success'
-                    ];
-                }
-            }
-
-            // Recherche de matières (pour admin et secrétaire)
-            if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-                $matieres = $this->applyLooseSearch(
-                    ESBTPMatiere::query(),
-                    $query,
-                    ['name', 'description', 'code']
-                )
-                    ->limit($limit)
-                    ->get();
-
-                foreach ($matieres as $matiere) {
-                    $results[] = [
-                        'category' => 'Matières',
-                        'type' => 'matiere',
-                        'id' => $matiere->id,
-                        'title' => $matiere->name,
-                        'description' => $matiere->description ?? 'Aucune description',
-                        'url' => route('esbtp.matieres.show', $matiere->id),
-                        'icon' => 'fas fa-book',
-                        'color' => 'info'
-                    ];
-                }
-            }
-
-            // Recherche d'enseignants (pour admin et secrétaire)
-            if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-                $enseignants = $this->applyLooseSearch(
-                    ESBTPTeacher::query(),
-                    $query,
-                    ['matricule', 'specialization']
-                )
-                    ->orWhereHas('user', function($q) use ($query) {
-                        $this->applyLooseSearch($q, $query, ['name', 'email']);
-                    })
-                    ->with(['user', 'department'])
-                    ->limit($limit)
-                    ->get();
-
-                foreach ($enseignants as $enseignant) {
-                    $results[] = [
-                        'category' => 'Enseignants',
-                        'type' => 'enseignant',
-                        'id' => $enseignant->id,
-                        'title' => $enseignant->user ? $enseignant->user->name : 'Nom non disponible',
-                        'description' => $enseignant->matricule . ' - ' . ($enseignant->specialization ?? 'Spécialisation non définie'),
-                        'url' => route('esbtp.enseignants.show', $enseignant->id),
-                        'icon' => 'fas fa-chalkboard-teacher',
-                        'color' => 'warning'
-                    ];
-                }
-            }
-
+        if (mb_strlen($saisie) < 2) {
             return response()->json([
                 'success' => true,
-                'results' => $results,
-                'total' => count($results)
+                'query' => $saisie,
+                'results' => [],
+                'suggestions' => array_map([$this, 'pageEnResultat'], $this->pages->suggestions($utilisateur, self::NOMBRE_DE_SUGGESTIONS)),
             ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la recherche: ' . $e->getMessage(),
-                'results' => []
-            ], 500);
         }
+
+        $pages = array_map([$this, 'pageEnResultat'], $this->pages->chercher($saisie, $utilisateur, $limite));
+        [$fiches, $partiel] = $this->fiches($saisie, $utilisateur, $limite);
+
+        return response()->json([
+            'success' => true,
+            'query' => $saisie,
+            'results' => array_merge($pages, $fiches),
+            'partial' => $partiel,
+        ]);
     }
 
-    /**
-     * Page de résultats de recherche détaillée
-     */
+    /** GET /search/results?q=…&type=… — la page complète. */
     public function searchResults(Request $request)
     {
-        $query = $request->get('q', '');
-        $type = $request->get('type', 'all');
-        $page = $request->get('page', 1);
-        $perPage = 20;
+        $saisie = trim((string) $request->query('q', ''));
+        $utilisateur = $request->user();
+        $groupesOuverts = $this->entites->groupesOuverts($utilisateur);
+        $type = (string) $request->query('type', 'all');
+        $types = array_merge(['all', 'pages'], $groupesOuverts);
+        $type = in_array($type, $types, true) ? $type : 'all';
 
-        if (strlen($query) < 2) {
-            return redirect()->back()->with('error', 'La recherche doit contenir au moins 2 caractères');
+        $pages = [];
+        $fiches = [];
+        $partiel = false;
+
+        if (mb_strlen($saisie) >= 2) {
+            if ($type === 'all' || $type === 'pages') {
+                $pages = array_map([$this, 'pageEnResultat'], $this->pages->chercher($saisie, $utilisateur, RechercheDesEntites::LIMITE_PAGE));
+            }
+            if ($type !== 'pages') {
+                [$fiches, $partiel] = $this->fiches($saisie, $utilisateur, RechercheDesEntites::LIMITE_PAGE, $type === 'all' ? null : [$type]);
+            }
         }
 
-        $user = Auth::user();
-        $results = [];
+        $groupes = collect(array_merge($pages, $fiches))->groupBy('group');
 
+        return view('search.results', [
+            'query' => $saisie,
+            'type' => $type,
+            'groupes' => $groupes,
+            'groupesOuverts' => $groupesOuverts,
+            'partiel' => $partiel,
+        ]);
+    }
+
+    /**
+     * Les fiches, sans jamais laisser partir le message d'une exception : une
+     * base qui refuse une requête ne doit pas priver l'utilisateur des pages,
+     * ni lui montrer une trace SQL. Le rattrapage est journalisé.
+     *
+     * @return array{0: list<array>, 1: bool}
+     */
+    private function fiches(string $saisie, ?Authorizable $utilisateur, int $limite, ?array $seulement = null): array
+    {
         try {
-            // Recherche d'étudiants
-            if (($type === 'all' || $type === 'etudiants') && ($user->can('students.view') || $user->can('identity.student'))) {
-                $etudiantsQuery = $this->applyStudentSearch(ESBTPEtudiant::query(), $query)
-                    ->with(['classe.filiere', 'classe.niveauEtude']);
+            return [$this->entites->chercher($saisie, $utilisateur, $limite, $seulement), false];
+        } catch (\Throwable $e) {
+            Log::error('Recherche globale : fiches indisponibles', [
+                'user_id' => $utilisateur?->getAuthIdentifier(),
+                'exception' => $e,
+            ]);
 
-                // Si c'est un étudiant, ne montrer que son propre profil
-                if ($user->can('identity.student') && $user->etudiant) {
-                    $etudiantsQuery->where('id', $user->etudiant->id);
-                }
-
-                $results['etudiants'] = $etudiantsQuery->paginate($perPage, ['*'], 'etudiants_page');
-            }
-
-            // Recherche de classes
-            if (($type === 'all' || $type === 'classes') && $user->can('classes.view')) {
-                $results['classes'] = $this->applyLooseSearch(
-                    ESBTPClasse::query(),
-                    $query,
-                    ['name', 'libelle', 'code']
-                )
-                    ->with(['filiere', 'niveauEtude'])
-                    ->paginate($perPage, ['*'], 'classes_page');
-            }
-
-            // Recherche de filières
-            if (($type === 'all' || $type === 'filieres') && $user->can('filieres.view')) {
-                $results['filieres'] = $this->applyLooseSearch(
-                    ESBTPFiliere::query(),
-                    $query,
-                    ['name', 'libelle', 'description']
-                )
-                    ->paginate($perPage, ['*'], 'filieres_page');
-            }
-
-            // Recherche de matières
-            if (($type === 'all' || $type === 'matieres') && $user->can('matieres.view')) {
-                $results['matieres'] = $this->applyLooseSearch(
-                    ESBTPMatiere::query(),
-                    $query,
-                    ['name', 'description', 'code']
-                )
-                    ->paginate($perPage, ['*'], 'matieres_page');
-            }
-
-            // Recherche d'enseignants
-            if (($type === 'all' || $type === 'enseignants') && ($user->can('teachers.view') || $user->hasAnyPermission(['admin.access', 'identity.school_manager']))) {
-                $results['enseignants'] = $this->applyLooseSearch(
-                    ESBTPTeacher::query(),
-                    $query,
-                    ['matricule', 'specialization']
-                )
-                    ->orWhereHas('user', function($q) use ($query) {
-                        $this->applyLooseSearch($q, $query, ['name', 'email']);
-                    })
-                    ->with(['user', 'department'])
-                    ->paginate($perPage, ['*'], 'enseignants_page');
-            }
-
-            return view('search.results', compact('results', 'query', 'type'));
-
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Erreur lors de la recherche: ' . $e->getMessage());
+            return [[], true];
         }
     }
 
-    /**
-     * Recherche de pages/navigation selon le rôle
-     */
-    private function searchNavigation($query, $user, $limit)
+    private function pageEnResultat(array $page): array
     {
-        $results = [];
-        $navigationItems = $this->getNavigationItems($user);
-
-        foreach ($navigationItems as $item) {
-            if ($this->matchesLooseText($query, [$item['title'], $item['description']])) {
-                $results[] = [
-                    'category' => 'Navigation',
-                    'type' => 'navigation',
-                    'id' => $item['route'],
-                    'title' => $item['title'],
-                    'description' => $item['description'],
-                    'url' => $item['url'],
-                    'icon' => $item['icon'],
-                    'color' => 'secondary'
-                ];
-            }
-        }
-
-        return array_slice($results, 0, $limit);
-    }
-
-    /**
-     * Recherche d'actions rapides selon le rôle
-     */
-    private function searchQuickActions($query, $user, $limit)
-    {
-        $results = [];
-        $quickActions = $this->getQuickActions($user);
-
-        foreach ($quickActions as $action) {
-            if ($this->matchesLooseText($query, [$action['title'], $action['description']])) {
-                $results[] = [
-                    'category' => 'Actions Rapides',
-                    'type' => 'action',
-                    'id' => $action['route'],
-                    'title' => $action['title'],
-                    'description' => $action['description'],
-                    'url' => $action['url'],
-                    'icon' => $action['icon'],
-                    'color' => 'warning'
-                ];
-            }
-        }
-
-        return array_slice($results, 0, $limit);
-    }
-
-    /**
-     * Recherche de personnel selon le rôle
-     */
-    private function searchPersonnel($query, $user, $limit)
-    {
-        $results = [];
-
-        if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-            // Recherche des secrétaires
-            $secretaires = \App\Models\User::whereHas('roles', function($q) {
-                $q->where('name', 'secretaire');
-            })
-            ->where(function($q) use ($query) {
-                $this->applyLooseSearch($q, $query, ['name', 'email']);
-            })
-            ->limit($limit)
-            ->get();
-
-            foreach ($secretaires as $secretaire) {
-                $results[] = [
-                    'category' => 'Personnel',
-                    'type' => 'secretaire',
-                    'id' => $secretaire->id,
-                    'title' => $secretaire->name,
-                    'description' => 'Secrétaire - ' . $secretaire->email,
-                    'url' => route('admin.profile'), // Ou une route spécifique si elle existe
-                    'icon' => 'fas fa-user-tie',
-                    'color' => 'info'
-                ];
-            }
-
-            // Recherche des administrateurs
-            $admins = \App\Models\User::whereHas('roles', function($q) {
-                $q->where('name', 'superAdmin');
-            })
-            ->where(function($q) use ($query) {
-                $this->applyLooseSearch($q, $query, ['name', 'email']);
-            })
-            ->limit($limit)
-            ->get();
-
-            foreach ($admins as $admin) {
-                $results[] = [
-                    'category' => 'Personnel',
-                    'type' => 'admin',
-                    'id' => $admin->id,
-                    'title' => $admin->name,
-                    'description' => 'Administrateur - ' . $admin->email,
-                    'url' => route('admin.profile'),
-                    'icon' => 'fas fa-user-shield',
-                    'color' => 'danger'
-                ];
-            }
-        }
-
-        return $results;
-    }
-
-    /**
-     * Obtenir les éléments de navigation selon le rôle
-     */
-    private function getNavigationItems($user)
-    {
-        $items = [];
-
-        // Navigation commune
-        $items[] = [
-            'title' => 'Tableau de bord',
-            'description' => 'Accueil et statistiques principales',
-            'route' => 'dashboard',
-            'url' => route('dashboard'),
-            'icon' => 'fas fa-tachometer-alt'
+        return [
+            'group' => 'Pages',
+            'type' => 'page',
+            'id' => $page['route'],
+            'title' => $page['titre'],
+            'subtitle' => $page['groupe'],
+            'url' => $page['url'],
+            'icon' => $page['icone'],
         ];
-
-        if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-            $items = array_merge($items, [
-                [
-                    'title' => 'Gestion des étudiants',
-                    'description' => 'Inscription, modification et suivi des étudiants',
-                    'route' => 'esbtp.etudiants.index',
-                    'url' => route('esbtp.etudiants.index'),
-                    'icon' => 'fas fa-user-graduate'
-                ],
-                [
-                    'title' => 'Gestion des classes',
-                    'description' => 'Organisation et gestion des classes',
-                    'route' => 'esbtp.classes.index',
-                    'url' => route('esbtp.classes.index'),
-                    'icon' => 'fas fa-users'
-                ],
-                [
-                    'title' => 'Gestion des filières',
-                    'description' => 'Configuration des filières d\'études',
-                    'route' => 'esbtp.filieres.index',
-                    'url' => route('esbtp.filieres.index'),
-                    'icon' => 'fas fa-graduation-cap'
-                ],
-                [
-                    'title' => 'Gestion des matières',
-                    'description' => 'Configuration des matières enseignées',
-                    'route' => 'esbtp.matieres.index',
-                    'url' => route('esbtp.matieres.index'),
-                    'icon' => 'fas fa-book'
-                ],
-                [
-                    'title' => 'Bulletins de notes',
-                    'description' => 'Génération et gestion des bulletins',
-                    'route' => 'esbtp.resultats.index',
-                    'url' => route('esbtp.resultats.index'),
-                    'icon' => 'fas fa-file-alt'
-                ]
-            ]);
-        }
-
-        if ($user->can('admin.access')) {
-            $items = array_merge($items, [
-                [
-                    'title' => 'Gestion des enseignants',
-                    'description' => 'Administration du personnel enseignant',
-                    'route' => 'esbtp.enseignants.index',
-                    'url' => route('esbtp.enseignants.index'),
-                    'icon' => 'fas fa-chalkboard-teacher'
-                ],
-                [
-                    'title' => 'Paramètres système',
-                    'description' => 'Configuration générale de l\'application',
-                    'route' => 'settings.index',
-                    'url' => route('settings.index'),
-                    'icon' => 'fas fa-cogs'
-                ]
-            ]);
-        }
-
-        if ($user->can('identity.teach')) {
-            $items = array_merge($items, [
-                [
-                    'title' => 'Mes cours',
-                    'description' => 'Emploi du temps et cours assignés',
-                    'route' => 'teacher.timetable',
-                    'url' => route('teacher.timetable'),
-                    'icon' => 'fas fa-calendar-alt'
-                ],
-                [
-                    'title' => 'Saisie des notes',
-                    'description' => 'Évaluation et notation des étudiants',
-                    'route' => 'teacher.grades',
-                    'url' => route('teacher.grades'),
-                    'icon' => 'fas fa-edit'
-                ],
-                [
-                    'title' => 'Présences',
-                    'description' => 'Gestion des présences étudiants',
-                    'route' => 'teacher.attendance',
-                    'url' => route('teacher.attendance'),
-                    'icon' => 'fas fa-check-circle'
-                ]
-            ]);
-        }
-
-        if ($user->can('identity.student')) {
-            $items = array_merge($items, [
-                [
-                    'title' => 'Mon profil',
-                    'description' => 'Informations personnelles et académiques',
-                    'route' => 'dashboard.etudiant',
-                    'url' => route('dashboard.etudiant'),
-                    'icon' => 'fas fa-user'
-                ],
-                [
-                    'title' => 'Mes bulletins',
-                    'description' => 'Consultation des bulletins de notes',
-                    'route' => 'dashboard.etudiant',
-                    'url' => route('dashboard.etudiant') . '#bulletins',
-                    'icon' => 'fas fa-file-alt'
-                ],
-                [
-                    'title' => 'Mon emploi du temps',
-                    'description' => 'Planning des cours et examens',
-                    'route' => 'dashboard.etudiant',
-                    'url' => route('dashboard.etudiant') . '#emploi-temps',
-                    'icon' => 'fas fa-calendar'
-                ]
-            ]);
-        }
-
-        return $items;
-    }
-
-    /**
-     * Obtenir les actions rapides selon le rôle
-     */
-    private function getQuickActions($user)
-    {
-        $actions = [];
-
-        if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-            $actions = array_merge($actions, [
-                [
-                    'title' => 'Inscrire un étudiant',
-                    'description' => 'Ajouter un nouvel étudiant au système',
-                    'route' => 'esbtp.inscriptions.create',
-                    'url' => route('esbtp.inscriptions.create'),
-                    'icon' => 'fas fa-user-plus'
-                ],
-                [
-                    'title' => 'Créer une classe',
-                    'description' => 'Ajouter une nouvelle classe',
-                    'route' => 'esbtp.classes.create',
-                    'url' => route('esbtp.classes.create'),
-                    'icon' => 'fas fa-plus-circle'
-                ],
-                [
-                    'title' => 'Nouvelle annonce',
-                    'description' => 'Publier une annonce',
-                    'route' => 'esbtp.annonces.create',
-                    'url' => route('esbtp.annonces.create'),
-                    'icon' => 'fas fa-bullhorn'
-                ]
-            ]);
-        }
-
-        if ($user->can('admin.access')) {
-            $actions = array_merge($actions, [
-                [
-                    'title' => 'Ajouter un enseignant',
-                    'description' => 'Recruter un nouveau professeur',
-                    'route' => 'esbtp.enseignants.create',
-                    'url' => route('esbtp.enseignants.create'),
-                    'icon' => 'fas fa-user-tie'
-                ],
-                [
-                    'title' => 'Créer une filière',
-                    'description' => 'Ajouter une nouvelle filière d\'études',
-                    'route' => 'esbtp.filieres.create',
-                    'url' => route('esbtp.filieres.create'),
-                    'icon' => 'fas fa-graduation-cap'
-                ],
-                [
-                    'title' => 'Ajouter une matière',
-                    'description' => 'Créer une nouvelle matière',
-                    'route' => 'esbtp.matieres.create',
-                    'url' => route('esbtp.matieres.create'),
-                    'icon' => 'fas fa-book-open'
-                ]
-            ]);
-        }
-
-        if ($user->can('identity.teach')) {
-            $actions = array_merge($actions, [
-                [
-                    'title' => 'Saisir les présences',
-                    'description' => 'Marquer les présences du jour',
-                    'route' => 'teacher.attendance',
-                    'url' => route('teacher.attendance'),
-                    'icon' => 'fas fa-check'
-                ],
-                [
-                    'title' => 'Ajouter des notes',
-                    'description' => 'Saisir les notes d\'évaluation',
-                    'route' => 'teacher.grades',
-                    'url' => route('teacher.grades'),
-                    'icon' => 'fas fa-edit'
-                ],
-                [
-                    'title' => 'Programmer un examen',
-                    'description' => 'Planifier une évaluation',
-                    'route' => 'esbtp.evaluations.create',
-                    'url' => route('esbtp.evaluations.create'),
-                    'icon' => 'fas fa-calendar-plus'
-                ]
-            ]);
-        }
-
-        return $actions;
     }
 }

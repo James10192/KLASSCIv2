@@ -338,7 +338,10 @@
                                     name="enseignant_id"
                                     :value="old('enseignant_id')"
                                     :users="$enseignants"
-                                    placeholder="— Sélectionner un enseignant —" />
+                                    placeholder="— Sélectionner un enseignant —"
+                                    empty-label="Aucun enseignant de la plateforme"
+                                    empty-icon="fa-user-slash"
+                                    empty-hint="Pour un enseignant externe, ou sans assignation" />
                                 <div class="ec-hint">L'enseignant pourra saisir les notes directement.</div>
                             </div>
 

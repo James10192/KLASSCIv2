@@ -15,4 +15,13 @@ class StatutReservationRdvTest extends TestCase
         $this->assertFalse(StatutReservationRdv::Annulee->occupeLeCreneau());
         $this->assertFalse(StatutReservationRdv::Liberee->occupeLeCreneau());
     }
+
+    public function test_chaque_statut_a_un_libelle_de_filtre_distinct(): void
+    {
+        $libelles = array_map(fn (StatutReservationRdv $s) => $s->libelleFiltre(), StatutReservationRdv::cases());
+
+        $this->assertCount(count(StatutReservationRdv::cases()), array_unique($libelles));
+        $this->assertSame('Reçues', StatutReservationRdv::Honoree->libelleFiltre());
+        $this->assertSame('Non venues', StatutReservationRdv::Manquee->libelleFiltre());
+    }
 }

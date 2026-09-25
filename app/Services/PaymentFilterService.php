@@ -41,7 +41,10 @@ class PaymentFilterService
             // ce chargement, chaque ligne repartait interroger la base.
             'allocations.fraisCategory:id,name,category_type',
             'categorie',
-        ])->orderByDesc('created_at');
+        ])->orderByDesc('created_at')
+            // Departage stable : la liste se charge par tranches, deux versements
+            // de la meme seconde ne doivent pas changer de place entre deux.
+            ->orderByDesc('esbtp_paiements.id');
 
         // Lot 13 — Ownership : si l'utilisateur n'a PAS `paiements.view` mais a
         // `paiements.view_own`, il ne voit que ce qu'il a encaisse. Applique en
@@ -88,7 +91,12 @@ class PaymentFilterService
     /**
      * Prépare les données de listing des paiements (liste, statistiques, timestamp).
      */
-    public function preparePaiementListing(Request $request, FuzzyNameMatcher $matcher, array $baseLogContext, float $startMicrotime, string $logPrefix): array
+    /**
+     * @param  bool  $avecStats  false pour la suite d'une liste au defilement :
+     *                           les lignes seules, sans la dizaine d'agregats
+     *                           des compteurs, que la page a deja
+     */
+    public function preparePaiementListing(Request $request, FuzzyNameMatcher $matcher, array $baseLogContext, float $startMicrotime, string $logPrefix, bool $avecStats = true): array
     {
         $search = trim((string) $request->input('search'));
         $status = $request->input('status');
@@ -235,6 +243,19 @@ class PaymentFilterService
         }
 
         $paiements->appends($request->query());
+
+        if (! $avecStats) {
+            return [
+                'paiements' => $paiements,
+                'stats' => [],
+                'last_updated_at' => null,
+                'summary' => [
+                    'total' => $paiements->total(),
+                    'page' => $paiements->currentPage(),
+                    'per_page' => $paiements->perPage(),
+                ],
+            ];
+        }
 
         $statsQueryBase = clone $baseQuery;
         if ($search !== '') {

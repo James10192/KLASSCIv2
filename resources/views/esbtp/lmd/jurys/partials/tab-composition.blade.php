@@ -52,7 +52,8 @@
                         name="new_membre_user_id"
                         :users="$enseignants"
                         placeholder="Sélectionner un membre"
-                        x-on:change="newMembreUserId = $event.target.value" />
+                        :empty-option="false"
+                        x-model="newMembreUserId" />
                 </div>
                 <div>
                     <label class="juy-field-label">Rôle</label>

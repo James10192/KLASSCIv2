@@ -126,7 +126,7 @@ class InscriptionSearchService
         });
 
         try {
-            return $candidatesQuery->limit(200)->get();
+            return $candidatesQuery->orderByDesc('esbtp_inscriptions.id')->limit(200)->get();
         } catch (QueryException $e) {
             Log::warning('Inscription search fallback triggered', [
                 'message' => $e->getMessage(),
@@ -142,7 +142,7 @@ class InscriptionSearchService
                 })->orWhere('numero_recu', 'like', $likeSearch);
             });
 
-            return $fallbackQuery->limit(200)->get();
+            return $fallbackQuery->orderByDesc('esbtp_inscriptions.id')->limit(200)->get();
         }
     }
 

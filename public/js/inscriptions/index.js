@@ -192,9 +192,6 @@
                 if (options.pushState !== false) {
                     window.history.pushState({ url: data.url }, '', data.url);
                 }
-                bindPaginationLinks();
-                bindBulkSelection();
-                bindPerPageSelect();
                 bindSortLinks();
                 updateActiveFilterChips();
                 updateKpiActiveState();
@@ -375,36 +372,6 @@
     }
 
     // ====================================================================
-    // Per-page selector
-    // ====================================================================
-
-    function bindPerPageSelect() {
-        const select = resultsContainer.querySelector('#ii-per-page-select');
-        if (!select) return;
-        select.addEventListener('change', () => {
-            document.getElementById('per-page-input').value = select.value;
-            const url = new URL(form.action);
-            const formData = new FormData(form);
-            new URLSearchParams(formData).forEach((v, k) => url.searchParams.set(k, v));
-            url.searchParams.delete('page');
-            fetchResults(url.toString(), { pushState: true });
-        });
-    }
-
-    // ====================================================================
-    // Pagination AJAX
-    // ====================================================================
-
-    function bindPaginationLinks() {
-        resultsContainer.querySelectorAll('.pagination a').forEach((link) => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                fetchResults(link.href, { pushState: true });
-            });
-        });
-    }
-
-    // ====================================================================
     // Row click (JS delegation, skip if target is interactive)
     // ====================================================================
 
@@ -426,37 +393,108 @@
     // Bulk selection
     // ====================================================================
 
+    // Avec le defilement infini, « tout cocher » ne coche que ce qui est charge.
+    // Comme une messagerie, la barre propose alors d'etendre la selection a tout
+    // le filtre : les actions envoient `scope=filtre` et les parametres de la
+    // liste (ceux du bas de liste, donc ceux qui ont rendu ce qu'on voit), et le
+    // serveur recalcule la portee (SelectionDInscriptions).
+    let porteeFiltre = false;
+
+    function basDeListe() { return resultsContainer.querySelector('[data-liste-infinie]'); }
+    function casesDeLaListe() { return resultsContainer.querySelectorAll('.inscription-checkbox'); }
+    function casesCochees() { return resultsContainer.querySelectorAll('.inscription-checkbox:checked'); }
+    function totalDuFiltre() {
+        const bas = basDeListe();
+        return bas && bas.dataset.total !== '' ? Number(bas.dataset.total) : null;
+    }
+    function paramsDeLaListe() { return new URLSearchParams((basDeListe() || {}).dataset?.query || ''); }
+
     function updateSelectionCount() {
-        const count = document.querySelectorAll('.inscription-checkbox:checked').length;
+        const count = porteeFiltre ? (totalDuFiltre() || 0) : casesCochees().length;
         const bar = document.getElementById('ii-bulk-bar');
         const span = document.getElementById('ii-selected-count');
-        if (span) span.textContent = count;
+        if (span) span.textContent = count.toLocaleString('fr-FR');
         if (bar) bar.classList.toggle('ii-bulk-bar--visible', count > 0);
+
+        const toutes = casesDeLaListe();
+        const toutCoche = toutes.length > 0 && casesCochees().length === toutes.length;
+        const bas = basDeListe();
+        const offre = document.getElementById('ii-etendre-filtre');
+        const etendu = document.getElementById('ii-portee-filtre');
+        // La recherche libre ne definit pas un ensemble : pas d'extension.
+        const peutEtendre = toutCoche && !porteeFiltre && !!(bas && bas.dataset.pageSuivante)
+            && !paramsDeLaListe().get('search') && totalDuFiltre() !== null;
+        if (offre) {
+            offre.hidden = !peutEtendre;
+            if (peutEtendre) offre.textContent = 'Sélectionner les ' + totalDuFiltre().toLocaleString('fr-FR') + ' inscriptions du filtre';
+        }
+        if (etendu) etendu.hidden = !porteeFiltre;
     }
 
     function bindBulkSelection() {
-        const selectAll = document.getElementById('select-all-inscriptions');
-        if (selectAll) {
-            selectAll.addEventListener('change', function () {
-                document.querySelectorAll('.inscription-checkbox').forEach((cb) => {
-                    cb.checked = this.checked;
-                });
+        resultsContainer.addEventListener('change', (e) => {
+            if (e.target.id === 'select-all-inscriptions') {
+                porteeFiltre = false;
+                casesDeLaListe().forEach((cb) => { cb.checked = e.target.checked; });
                 updateSelectionCount();
-            });
-        }
-        document.querySelectorAll('.inscription-checkbox').forEach((cb) => {
-            cb.addEventListener('change', () => {
-                updateSelectionCount();
-                const all = document.querySelectorAll('.inscription-checkbox');
-                const checked = document.querySelectorAll('.inscription-checkbox:checked');
-                const sa = document.getElementById('select-all-inscriptions');
-                if (sa) sa.checked = all.length === checked.length && all.length > 0;
-            });
+                return;
+            }
+            if (!e.target.classList.contains('inscription-checkbox')) return;
+            // Decocher une ligne revient a une selection explicite.
+            porteeFiltre = false;
+            const sa = document.getElementById('select-all-inscriptions');
+            const toutes = casesDeLaListe();
+            if (sa) sa.checked = toutes.length > 0 && casesCochees().length === toutes.length;
+            updateSelectionCount();
         });
+
+        // Lignes arrivees au defilement : cochees si tout le filtre est selectionne,
+        // sinon la case « tout » ne dit plus vrai.
+        resultsContainer.addEventListener('liste-infinie:ajout', (e) => {
+            const sa = document.getElementById('select-all-inscriptions');
+            (e.detail.lignes || []).forEach((ligne) => {
+                const cb = ligne.querySelector && ligne.querySelector('.inscription-checkbox');
+                if (cb) cb.checked = porteeFiltre;
+            });
+            if (sa && !porteeFiltre) sa.checked = false;
+            updateSelectionCount();
+        });
+
+        const offre = document.getElementById('ii-etendre-filtre');
+        if (offre) offre.addEventListener('click', () => {
+            porteeFiltre = true;
+            updateSelectionCount();
+        });
+        const annuler = document.getElementById('ii-annuler-portee');
+        if (annuler) annuler.addEventListener('click', clearSelection);
+    }
+
+    /**
+     * Ajoute la selection a une requete : les identifiants coches, ou le filtre.
+     * @return {{filtre: boolean, ids: string[], n: number}}
+     */
+    function ajouterSelection(formData) {
+        if (porteeFiltre) {
+            formData.append('scope', 'filtre');
+            paramsDeLaListe().forEach((v, k) => { if (k !== '_token') formData.append(k, v); });
+            return { filtre: true, ids: [], n: totalDuFiltre() || 0 };
+        }
+        const ids = Array.from(casesCochees()).map((cb) => cb.value);
+        ids.forEach((id) => formData.append('inscription_ids[]', id));
+        return { filtre: false, ids, n: ids.length };
+    }
+
+    function selectionVide() {
+        return !porteeFiltre && casesCochees().length === 0;
+    }
+
+    async function messageDErreur(r, defaut) {
+        try { const j = await r.json(); return j.message || defaut; } catch (e) { return defaut; }
     }
 
     function clearSelection() {
-        document.querySelectorAll('.inscription-checkbox').forEach((cb) => (cb.checked = false));
+        porteeFiltre = false;
+        casesDeLaListe().forEach((cb) => (cb.checked = false));
         const sa = document.getElementById('select-all-inscriptions');
         if (sa) sa.checked = false;
         updateSelectionCount();
@@ -467,39 +505,43 @@
     // Bulk actions
     // ====================================================================
 
+    // Apres une action sur tout le filtre, les lignes touchees ne sont pas
+    // forcement chargees : on recharge la liste plutot que ligne par ligne.
+    function rechargerLaListe() {
+        return fetchResults(window.location.href, { pushState: false });
+    }
+
     window.iiBulkValider = async function () {
-        const ids = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map((cb) => cb.value);
-        if (!ids.length) {
+        if (selectionVide()) {
             showToast('Veuillez sélectionner au moins une inscription.', 'warning');
             return;
         }
+        const formData = new FormData();
+        formData.append('_token', CSRF_TOKEN);
+        const sel = ajouterSelection(formData);
         // Une phrase, pas de HTML : `iiConfirm` rend son message en `textContent`.
         const ok = await window.iiConfirm({
-            title: 'Valider la sélection',
-            message: `Valider ${ids.length} inscription(s) ? Seules celles qui ont un paiement validé le seront, et leurs étudiants seront notifiés. Celles sans paiement ou dont le paiement est encore en attente seront ignorées.`,
+            title: sel.filtre ? 'Valider tout le filtre' : 'Valider la sélection',
+            message: `Valider ${sel.n.toLocaleString('fr-FR')} inscription(s) ? Seules celles qui ont un paiement validé le seront, et leurs étudiants seront notifiés. Celles sans paiement ou dont le paiement est encore en attente seront ignorées.`,
             confirmLabel: 'Valider',
         });
         if (!ok) return;
 
-        const formData = new FormData();
-        formData.append('_token', CSRF_TOKEN);
-        ids.forEach((id) => formData.append('inscription_ids[]', id));
-
-        ids.forEach((id) => setRowLoading(id, true));
+        sel.ids.forEach((id) => setRowLoading(id, true));
 
         fetch(ROUTES.bulkValider, {
             method: 'POST',
             body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
         })
-            .then((r) => {
-                if (!r.ok) throw new Error('Erreur validation.');
+            .then(async (r) => {
+                if (!r.ok) throw new Error(await messageDErreur(r, 'Erreur validation.'));
                 return r.json();
             })
             .then((data) => {
                 if (!data.success) {
                     showToast(data.message || 'Validation échouée.', 'error');
-                    ids.forEach((id) => setRowLoading(id, false));
+                    sel.ids.forEach((id) => setRowLoading(id, false));
                     return;
                 }
                 if (data.message) {
@@ -508,46 +550,45 @@
                 }
                 const problems = data.inscriptions_problemes || {};
                 Object.values(problems).forEach((p) => p?.message && showToast(p.message, 'warning'));
-                ids.forEach((id) => refreshLigne(id, problems[id] ? 'reject' : 'validate'));
+                if (sel.filtre) {
+                    rechargerLaListe();
+                } else {
+                    sel.ids.forEach((id) => refreshLigne(id, problems[id] ? 'reject' : 'validate'));
+                }
                 clearSelection();
             })
             .catch((err) => {
                 showToast(err.message || 'Erreur validation.', 'error');
-                ids.forEach((id) => setRowLoading(id, false));
+                sel.ids.forEach((id) => setRowLoading(id, false));
             });
     };
 
     window.iiBulkAnnuler = function () {
-        const ids = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map((cb) => cb.value);
-        if (!ids.length) {
+        if (selectionVide()) {
             showToast('Veuillez sélectionner au moins une inscription.', 'warning');
             return;
         }
-        // Préparer le modal bulk-annuler avec le count
         const countEl = document.getElementById('ii-bulk-annuler-count');
-        if (countEl) countEl.textContent = ids.length;
+        if (countEl) countEl.textContent = (porteeFiltre ? (totalDuFiltre() || 0) : casesCochees().length).toLocaleString('fr-FR');
         const motifEl = document.getElementById('ii-bulk-annuler-motif');
         if (motifEl) motifEl.value = '';
         const modalEl = document.getElementById('ii-modal-bulk-annuler');
         if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).show();
     };
 
-    // Submit du bulk-annuler modal
     const bulkAnnulerForm = document.getElementById('ii-form-bulk-annuler');
     if (bulkAnnulerForm) {
         bulkAnnulerForm.addEventListener('submit', function (e) {
             e.preventDefault();
             const motif = document.getElementById('ii-bulk-annuler-motif').value.trim();
-            if (!motif) return;
-            const ids = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map((cb) => cb.value);
-            if (!ids.length) return;
+            if (!motif || selectionVide()) return;
 
             const formData = new FormData();
             formData.append('_token', CSRF_TOKEN);
             formData.append('motif', motif);
-            ids.forEach((id) => formData.append('inscription_ids[]', id));
+            const sel = ajouterSelection(formData);
 
-            ids.forEach((id) => setRowLoading(id, true));
+            sel.ids.forEach((id) => setRowLoading(id, true));
             const submitBtn = this.querySelector('button[type="submit"]');
             submitBtn.disabled = true;
             const origHTML = submitBtn.innerHTML;
@@ -556,17 +597,24 @@
             fetch(ROUTES.bulkAnnuler, {
                 method: 'POST',
                 body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
             })
-                .then((r) => r.json())
+                .then(async (r) => {
+                    if (!r.ok) throw new Error(await messageDErreur(r, 'Erreur lors de l\'annulation.'));
+                    return r.json();
+                })
                 .then((data) => {
                     bootstrap.Modal.getInstance(document.getElementById('ii-modal-bulk-annuler')).hide();
                     if (data.success) {
                         showToast(data.message, data.error_count > 0 ? 'warning' : 'success');
-                        (data.processed_ids || ids).forEach((id) => {
-                            const hasErr = data.errors && data.errors[id];
-                            refreshLigne(id, hasErr ? 'reject' : 'cancel');
-                        });
+                        if (sel.filtre) {
+                            rechargerLaListe();
+                        } else {
+                            (data.processed_ids || sel.ids).forEach((id) => {
+                                const hasErr = data.errors && data.errors[id];
+                                refreshLigne(id, hasErr ? 'reject' : 'cancel');
+                            });
+                        }
                     } else {
                         showToast(data.message || 'Erreur annulation.', 'error');
                     }
@@ -574,8 +622,8 @@
                 })
                 .catch((err) => {
                     debugError('[inscriptions] bulk-annuler:', err);
-                    showToast('Erreur lors de l\'annulation.', 'error');
-                    ids.forEach((id) => setRowLoading(id, false));
+                    showToast(err.message || 'Erreur lors de l\'annulation.', 'error');
+                    sel.ids.forEach((id) => setRowLoading(id, false));
                 })
                 .finally(() => {
                     submitBtn.disabled = false;
@@ -585,30 +633,28 @@
     }
 
     window.iiBulkExporter = function () {
-        const ids = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map((cb) => cb.value);
-        if (!ids.length) {
+        if (selectionVide()) {
             showToast('Veuillez sélectionner au moins une inscription.', 'warning');
             return;
         }
-        // Soumettre un form POST invisible pour déclencher le téléchargement CSV
+        const formData = new FormData();
+        formData.append('_token', CSRF_TOKEN);
+        const sel = ajouterSelection(formData);
+        // Formulaire POST invisible : le telechargement part du navigateur.
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = ROUTES.bulkExport;
         form.style.display = 'none';
-        const csrf = document.createElement('input');
-        csrf.name = '_token';
-        csrf.value = CSRF_TOKEN;
-        form.appendChild(csrf);
-        ids.forEach((id) => {
+        formData.forEach((valeur, cle) => {
             const input = document.createElement('input');
-            input.name = 'inscription_ids[]';
-            input.value = id;
+            input.name = cle;
+            input.value = valeur;
             form.appendChild(input);
         });
         document.body.appendChild(form);
         form.submit();
         setTimeout(() => form.remove(), 1000);
-        showToast(`Export CSV de ${ids.length} inscription(s)...`, 'info');
+        showToast(`Export CSV de ${sel.n.toLocaleString('fr-FR')} inscription(s)...`, 'info');
     };
 
     // ====================================================================
@@ -1106,9 +1152,7 @@
     // Init
     // ====================================================================
 
-    bindPaginationLinks();
     bindBulkSelection();
-    bindPerPageSelect();
     bindSortLinks();
     updateActiveFilterChips();
     updateKpiActiveState();
@@ -1146,14 +1190,13 @@
     });
 
     window.iiBulkFraisManquants = function () {
-        const ids = Array.from(document.querySelectorAll('.inscription-checkbox:checked')).map((cb) => cb.value);
-        if (!ids.length) {
+        if (selectionVide()) {
             showToast('Veuillez sélectionner au moins une inscription.', 'warning');
             return;
         }
         const formData = new FormData();
         formData.append('_token', CSRF_TOKEN);
-        ids.forEach((id) => formData.append('inscription_ids[]', id));
+        const sel = ajouterSelection(formData);
         if (window.KlassciRegenererFrais) {
             window.KlassciRegenererFrais.open({
                 previewUrl: ROUTES.fraisManquantsPreview,
@@ -1161,7 +1204,8 @@
                 formData: formData,
                 onDone: function (data) {
                     showToast(data.message || 'Frais régénérés.', 'success');
-                    ids.forEach((id) => refreshLigne(id, 'validate'));
+                    if (sel.filtre) rechargerLaListe();
+                    else sel.ids.forEach((id) => refreshLigne(id, 'validate'));
                     clearSelection();
                 },
             });

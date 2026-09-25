@@ -97,7 +97,7 @@
                         <div class="active tab-pane" id="description">
                             <div class="post">
                                 <div>
-                                    {!! nl2br(e($partnership->description ?? 'Aucune description disponible.')) !!}
+                                    {{ \App\Support\TexteRiche::afficher($partnership->description) ?? 'Aucune description disponible.' }}
                                 </div>
                             </div>
                         </div>
@@ -144,7 +144,8 @@
         
         // Initialiser DataTables
         $('.table').DataTable({
-            "paging": true,
+            // Toutes les lignes sont deja chargees : pas de pages, on fait defiler.
+            "paging": false,
             "lengthChange": true,
             "searching": true,
             "ordering": true,

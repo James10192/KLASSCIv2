@@ -1,0 +1,499 @@
+/* ============================================================================
+   Barre du haut et ses panneaux (notifications, messages, actions rapides,
+   compte) — refonte de septembre 2026.
+
+   Chargée APRÈS les styles en ligne de layouts/app.blade.php : les anciennes
+   règles de la barre y sont en !important, d'où les !important ci-dessous.
+   Toutes les règles sont préfixées par .nextadmin-navbar : rien ne fuit vers
+   les menus des pages.
+
+   Au-dessous de 768 px, quand le shell mobile est actif (body.has-m-shell),
+   c'est public/css/mobile-shell.css qui dessine la barre : on n'y touche pas.
+
+   Repères (shadcn/Radix, Linear, Vercel, GitHub Primer) :
+   barre blanche de 64 px séparée par un filet, boutons icônes de 40 px sans
+   bordure, un seul badge porteur de sens, panneaux de 12 px de rayon avec une
+   ombre douce, lignes de 36 à 40 px, déconnexion en dernier et en rouge.
+   Aucune animation de transform : Popper place les menus par leur transform.
+   ========================================================================== */
+
+@media (min-width: 768px) {
+    /* ---------- La barre ---------- */
+    .nextadmin-navbar {
+        height: 64px !important;
+        min-height: 64px !important;
+        background: #fff !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        box-shadow: none !important;
+        padding: 0 24px !important;
+    }
+    .nextadmin-navbar .navbar-content { gap: 16px; }
+    .nextadmin-navbar .navbar-right { gap: 4px !important; }
+
+    /* Établissement : texte net, sans cadre concurrent des boutons. */
+    .nextadmin-navbar .etb-badge {
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+        padding: 4px 8px 4px 0 !important;
+    }
+
+    /* ---------- Boutons icônes ---------- */
+    .nextadmin-navbar .btn-acasi.icon-only {
+        width: 40px !important;
+        height: 40px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 10px !important;
+        background: transparent !important;
+        color: #475569 !important;
+        font-size: 17px !important;
+        box-shadow: none !important;
+        transform: none !important;
+        transition: background-color .15s ease, color .15s ease !important;
+    }
+    .nextadmin-navbar .btn-acasi.icon-only:hover {
+        background: #f1f5f9 !important;
+        color: #0f172a !important;
+    }
+    .nextadmin-navbar .btn-acasi.icon-only[aria-expanded="true"] {
+        background: rgba(4, 83, 203, .08) !important;
+        color: #0453cb !important;
+    }
+    .nextadmin-navbar .btn-acasi.icon-only:focus { box-shadow: none !important; }
+    .nextadmin-navbar .btn-acasi.icon-only:focus-visible,
+    .nextadmin-navbar .btn-acasi.profile-btn:focus-visible {
+        outline: 2px solid #0453cb !important;
+        outline-offset: 2px;
+        box-shadow: none !important;
+    }
+
+    /* Un seul badge, rouge parce qu'il signale quelque chose à traiter.
+       Plus de pulsation : un compteur qui bat en permanence n'alerte plus. */
+    .nextadmin-navbar .navbar-badge {
+        top: 4px !important;
+        right: 3px !important;
+        min-width: 18px !important;
+        height: 18px !important;
+        padding: 0 5px !important;
+        border-radius: 9px !important;
+        border: 2px solid #fff !important;
+        background: #dc2626 !important;
+        box-shadow: none !important;
+        animation: none !important;
+        font: 700 10px/14px 'Inter', system-ui, sans-serif !important;
+        letter-spacing: 0;
+    }
+
+    /* ---------- Bouton du compte ---------- */
+    .nextadmin-navbar .btn-acasi.profile-btn {
+        height: 44px;
+        margin-left: 8px !important;
+        padding: 4px 10px 4px 4px !important;
+        gap: 10px !important;
+        border: 1px solid transparent !important;
+        border-radius: 12px !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        transform: none !important;
+        position: relative;
+    }
+    /* Filet vertical : sépare « moi » des outils. */
+    .nextadmin-navbar .btn-acasi.profile-btn::before {
+        content: '';
+        position: absolute;
+        left: -9px;
+        top: 10px;
+        bottom: 10px;
+        width: 1px;
+        background: #e2e8f0;
+    }
+    .nextadmin-navbar .btn-acasi.profile-btn:hover { background: #f1f5f9 !important; }
+    .nextadmin-navbar .btn-acasi.profile-btn[aria-expanded="true"] {
+        background: rgba(4, 83, 203, .06) !important;
+        border-color: rgba(4, 83, 203, .18) !important;
+    }
+    .nextadmin-navbar .profile-btn .navbar-avatar {
+        width: 34px !important;
+        height: 34px !important;
+        border: 0 !important;
+        box-shadow: 0 0 0 1px #e2e8f0 !important;
+        transform: none !important;
+    }
+    .nextadmin-navbar .profile-btn .navbar-user-name {
+        font: 600 13.5px/1.2 'Inter', system-ui, sans-serif !important;
+        color: #0f172a !important;
+        max-width: 160px;
+    }
+    .nextadmin-navbar .kbh-chevron {
+        font-size: 10px;
+        color: #94a3b8;
+        transition: transform .15s ease;
+    }
+    .nextadmin-navbar .profile-btn[aria-expanded="true"] .kbh-chevron { transform: rotate(180deg); color: #0453cb; }
+
+    /* ---------- Panneaux ---------- */
+    .nextadmin-navbar .dropdown-menu.custom-dropdown {
+        min-width: 0 !important;
+        width: 380px !important;
+        max-width: calc(100vw - 24px) !important;
+        margin-top: 8px !important;
+        padding: 6px !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 14px !important;
+        background: #fff !important;
+        box-shadow: 0 16px 36px -12px rgba(15, 23, 42, .22), 0 2px 6px rgba(15, 23, 42, .06) !important;
+    }
+    .nextadmin-navbar .dropdown-menu.custom-dropdown[aria-labelledby="profileDropdown"] { width: 288px !important; }
+    .nextadmin-navbar .dropdown-menu.quick-actions-dropdown { width: 344px !important; }
+    /* La flèche décorative ne pointait sur rien une fois le menu recalé. */
+    .nextadmin-navbar .custom-dropdown::before { display: none !important; }
+
+    /* En-tête de panneau */
+    .nextadmin-navbar .custom-dropdown .dropdown-header {
+        padding: 10px 10px 10px 12px !important;
+        margin: 0 0 4px !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-bottom: 1px solid #f1f5f9 !important;
+        border-radius: 0 !important;
+        color: #0f172a !important;
+        font: 700 15px/1.3 'Inter', system-ui, sans-serif !important;
+        letter-spacing: -.01em;
+        text-transform: none;
+    }
+    .nextadmin-navbar .custom-dropdown .dropdown-header button {
+        font: 600 12.5px/1 'Inter', system-ui, sans-serif !important;
+        color: #0453cb !important;
+        opacity: 1 !important;
+        padding: 6px 8px !important;
+        border-radius: 6px;
+    }
+    .nextadmin-navbar .custom-dropdown .dropdown-header button:hover { background: rgba(4, 83, 203, .08); text-decoration: none !important; }
+
+    /* Lignes génériques (compte, pied de panneau) */
+    .nextadmin-navbar .custom-dropdown .dropdown-item {
+        display: flex !important;
+        align-items: center;
+        gap: 10px !important;
+        min-height: 38px;
+        margin: 1px 0 !important;
+        padding: 8px 10px !important;
+        border: 0 !important;
+        border-radius: 8px !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #1e293b !important;
+        font: 500 13.5px/1.35 'Inter', system-ui, sans-serif !important;
+        transform: none !important;
+        white-space: normal;
+    }
+    .nextadmin-navbar .custom-dropdown .dropdown-item > i:first-child {
+        width: 18px;
+        margin: 0 !important;
+        text-align: center;
+        font-size: 14px;
+        color: #64748b;
+    }
+    .nextadmin-navbar .custom-dropdown .dropdown-item:hover,
+    .nextadmin-navbar .custom-dropdown .dropdown-item:focus-visible {
+        background: #f1f5f9 !important;
+        color: #0f172a !important;
+    }
+    .nextadmin-navbar .custom-dropdown .dropdown-item:focus-visible {
+        outline: 2px solid #0453cb;
+        outline-offset: -2px;
+    }
+    .nextadmin-navbar .custom-dropdown .dropdown-item:hover > i:first-child { color: #0453cb; }
+
+    /* Séparateurs : seulement dans le menu du compte, où ils regroupent. */
+    .nextadmin-navbar .custom-dropdown[aria-labelledby="profileDropdown"] .dropdown-divider {
+        display: block !important;
+        margin: 6px -6px !important;
+        border-top: 1px solid #f1f5f9 !important;
+        opacity: 1;
+    }
+
+    /* Déconnexion : dernière, et en rouge (action qui ferme la session). */
+    .nextadmin-navbar .custom-dropdown .dropdown-item.kbh-deconnexion,
+    .nextadmin-navbar .custom-dropdown .dropdown-item.kbh-deconnexion > i:first-child { color: #dc2626 !important; }
+    .nextadmin-navbar .custom-dropdown .dropdown-item.kbh-deconnexion:hover { background: rgba(220, 38, 38, .08) !important; }
+
+    /* Pied « Voir tout » */
+    .nextadmin-navbar .custom-dropdown .dropdown-item.view-all {
+        justify-content: center;
+        margin-top: 4px !important;
+        border-top: 1px solid #f1f5f9 !important;
+        border-radius: 0 0 8px 8px !important;
+        color: #0453cb !important;
+        font-weight: 600 !important;
+        font-size: 13px !important;
+    }
+    .nextadmin-navbar .custom-dropdown .dropdown-item.view-all:hover { background: rgba(4, 83, 203, .06) !important; }
+
+    /* Carte d'identité du menu du compte */
+    .nextadmin-navbar .dropdown-user-details {
+        margin: 0 !important;
+        padding: 10px 10px 12px !important;
+        gap: 12px !important;
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+    }
+    .nextadmin-navbar .dropdown-user-avatar {
+        width: 40px !important;
+        height: 40px !important;
+        flex: 0 0 40px;
+        border: 0 !important;
+        box-shadow: 0 0 0 1px #e2e8f0 !important;
+    }
+    .nextadmin-navbar .dropdown-user-avatar .user-avatar { font-size: 16px !important; background: #0453cb !important; }
+    .nextadmin-navbar .dropdown-user-info { min-width: 0; }
+    .nextadmin-navbar .dropdown-user-name {
+        font: 700 14px/1.3 'Inter', system-ui, sans-serif !important;
+        color: #0f172a !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .nextadmin-navbar .dropdown-user-email {
+        font: 400 12.5px/1.3 'Inter', system-ui, sans-serif !important;
+        color: #64748b !important;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* ---------- Notifications et messages ---------- */
+    .nextadmin-navbar #notifications-list,
+    .nextadmin-navbar #messages-list { max-height: 400px !important; padding: 2px 0; }
+    .nextadmin-navbar .notification-item-container { margin: 0 !important; padding: 0 !important; border: 0 !important; }
+    .nextadmin-navbar .notification-item,
+    .nextadmin-navbar .message-item {
+        align-items: flex-start !important;
+        gap: 12px !important;
+        padding: 10px !important;
+        margin: 1px 0 !important;
+        border: 0 !important;
+        border-left: 0 !important;
+        border-radius: 10px !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        position: relative;
+    }
+    .nextadmin-navbar .notification-item:hover,
+    .nextadmin-navbar .message-item:hover { background: #f8fafc !important; }
+    .nextadmin-navbar .notification-item.unread,
+    .nextadmin-navbar .message-item.unread { background: rgba(4, 83, 203, .04) !important; }
+    .nextadmin-navbar .notification-item.unread::after,
+    .nextadmin-navbar .message-item.unread::after {
+        content: '';
+        position: absolute;
+        right: 12px;
+        top: 16px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #0453cb;
+    }
+    .nextadmin-navbar .notification-item.unread::before,
+    .nextadmin-navbar .message-item.unread::before { display: none !important; }
+
+    /* Pastille d'icône : teinte douce. La couleur garde son sens (avertissement,
+       succès, erreur) sans aplat saturé. */
+    .nextadmin-navbar .notification-icon,
+    .nextadmin-navbar .message-avatar {
+        width: 34px !important;
+        height: 34px !important;
+        min-width: 34px !important;
+        flex: 0 0 34px;
+        border: 0 !important;
+        border-radius: 10px !important;
+        font-size: 14px !important;
+        box-shadow: none !important;
+        background: rgba(4, 83, 203, .08) !important;
+        color: #0453cb !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        margin: 0 !important;
+    }
+    .nextadmin-navbar .notification-icon.bg-success { background: rgba(16, 185, 129, .12) !important; color: #047857 !important; }
+    .nextadmin-navbar .notification-icon.bg-warning { background: rgba(245, 158, 11, .14) !important; color: #b45309 !important; }
+    .nextadmin-navbar .notification-icon.bg-danger { background: rgba(220, 38, 38, .10) !important; color: #b91c1c !important; }
+    .nextadmin-navbar .notification-content,
+    .nextadmin-navbar .message-content { min-width: 0; padding-right: 22px; }
+    .nextadmin-navbar .notification-title,
+    .nextadmin-navbar .message-title {
+        font: 600 13.5px/1.35 'Inter', system-ui, sans-serif !important;
+        color: #0f172a !important;
+        margin: 0 0 2px !important;
+    }
+    .nextadmin-navbar .notification-text,
+    .nextadmin-navbar .message-text {
+        font: 400 12.5px/1.45 'Inter', system-ui, sans-serif !important;
+        color: #64748b !important;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        margin: 0 !important;
+    }
+    .nextadmin-navbar .notification-footer { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .nextadmin-navbar .notification-time,
+    .nextadmin-navbar .message-time { font: 500 11.5px/1.3 'Inter', system-ui, sans-serif !important; color: #94a3b8 !important; opacity: 1 !important; margin: 4px 0 0 !important; }
+    .nextadmin-navbar .notification-footer .notification-time { margin: 0 !important; }
+    .nextadmin-navbar .notification-pill {
+        padding: 1px 7px !important;
+        border: 0 !important;
+        border-radius: 999px !important;
+        background: rgba(4, 83, 203, .08) !important;
+        color: #0453cb !important;
+        font: 600 10.5px/1.6 'Inter', system-ui, sans-serif !important;
+    }
+    /* Supprimer : visible au survol ou au clavier, jamais en permanence. */
+    .nextadmin-navbar .notification-actions,
+    .nextadmin-navbar .message-actions {
+        position: absolute;
+        right: 6px;
+        bottom: 6px;
+        opacity: 0;
+        transition: opacity .12s ease;
+    }
+    .nextadmin-navbar .notification-item:hover .notification-actions,
+    .nextadmin-navbar .message-item:hover .message-actions,
+    .nextadmin-navbar .notification-actions:focus-within,
+    .nextadmin-navbar .message-actions:focus-within { opacity: 1; }
+    .nextadmin-navbar .notification-delete-btn,
+    .nextadmin-navbar .message-delete-btn {
+        width: 26px !important;
+        height: 26px !important;
+        border: 0 !important;
+        border-radius: 7px !important;
+        background: transparent !important;
+        color: #94a3b8 !important;
+        font-size: 12px !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+    .nextadmin-navbar .notification-delete-btn:hover,
+    .nextadmin-navbar .message-delete-btn:hover { background: rgba(220, 38, 38, .08) !important; color: #dc2626 !important; }
+
+    /* État vide */
+    .nextadmin-navbar .dropdown-empty {
+        padding: 28px 16px !important;
+        text-align: center;
+        list-style: none;
+    }
+    .nextadmin-navbar .dropdown-empty i { font-size: 28px !important; color: #cbd5e1 !important; margin-bottom: 10px !important; opacity: 1 !important; }
+    .nextadmin-navbar .dropdown-empty-title { font: 600 14px/1.3 'Inter', system-ui, sans-serif !important; color: #0f172a !important; }
+    .nextadmin-navbar .dropdown-empty-text { font: 400 12.5px/1.45 'Inter', system-ui, sans-serif !important; color: #64748b !important; margin-top: 4px; }
+    .nextadmin-navbar .dropdown-loading { padding: 20px 12px; color: #64748b; font-size: 13px; list-style: none; }
+
+    /* ---------- Actions rapides : tuiles bleues, trois par ligne ---------- */
+    .nextadmin-navbar .quick-actions-grid,
+    .nextadmin-navbar ul.dropdown-menu li div#quick-actions-list {
+        display: grid !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        gap: 4px !important;
+        padding: 4px !important;
+        margin: 0 !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+    }
+    .nextadmin-navbar .quick-actions-grid .quick-action-item {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        min-height: 88px;
+        margin: 0 !important;
+        padding: 12px 6px !important;
+        border: 0 !important;
+        border-radius: 10px !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-align: center;
+        text-decoration: none !important;
+        transform: none !important;
+    }
+    .nextadmin-navbar .quick-actions-grid .quick-action-item:hover { background: #f1f5f9 !important; }
+    .nextadmin-navbar .quick-actions-grid .quick-action-item:focus-visible { outline: 2px solid #0453cb; outline-offset: -2px; }
+    .nextadmin-navbar .quick-actions-grid .quick-action-icon {
+        width: 40px !important;
+        height: 40px !important;
+        margin: 0 !important;
+        border: 0 !important;
+        border-radius: 11px !important;
+        background: rgba(4, 83, 203, .08) !important;
+        color: #0453cb !important;
+        font-size: 16px !important;
+        box-shadow: none !important;
+        transform: none !important;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+    }
+    .nextadmin-navbar .quick-actions-grid .quick-action-item:hover .quick-action-icon { background: #0453cb !important; color: #fff !important; }
+    .nextadmin-navbar .quick-actions-grid .quick-action-text {
+        font: 600 12px/1.3 'Inter', system-ui, sans-serif !important;
+        color: #1e293b !important;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .nextadmin-navbar .quick-actions-grid .dropdown-empty { grid-column: 1 / -1; }
+}
+
+/* Tablette (768-991 px) : pas de recherche dans la barre, cibles de 44 px. */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    .nextadmin-navbar { padding: 0 16px !important; }
+    .nextadmin-navbar .btn-acasi.icon-only,
+    .nextadmin-navbar .navbar-toggle { width: 44px !important; height: 44px !important; }
+    .nextadmin-navbar .navbar-toggle {
+        border: 0 !important;
+        border-radius: 10px !important;
+        background: transparent !important;
+        color: #0f172a !important;
+        box-shadow: none !important;
+    }
+    .nextadmin-navbar .navbar-toggle:hover { background: #f1f5f9 !important; }
+}
+
+/* Sous 768 px SANS shell mobile (réglage d'instance désactivé) : la barre de
+   bureau reste, en compact — boutons de 44 px, pas de nom, panneaux pleine largeur. */
+@media (max-width: 767.98px) {
+    body:not(.has-m-shell) .nextadmin-navbar {
+        height: 56px !important;
+        min-height: 56px !important;
+        padding: 0 8px !important;
+        background: #fff !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        box-shadow: none !important;
+    }
+    body:not(.has-m-shell) .nextadmin-navbar .btn-acasi.icon-only {
+        width: 44px !important;
+        height: 44px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        color: #475569 !important;
+    }
+    body:not(.has-m-shell) .nextadmin-navbar .btn-acasi.profile-btn {
+        padding: 4px !important;
+        border: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    body:not(.has-m-shell) .nextadmin-navbar .navbar-badge { animation: none !important; top: 4px !important; right: 4px !important; }
+    body:not(.has-m-shell) .nextadmin-navbar .dropdown-menu.custom-dropdown {
+        width: calc(100vw - 16px) !important;
+        max-width: none !important;
+        border-radius: 14px !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+}

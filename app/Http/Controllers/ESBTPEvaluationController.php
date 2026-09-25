@@ -16,6 +16,7 @@ use App\Models\ESBTPMatiereFilierNiveau;
 use App\Models\ESBTPNote;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\ListeInfinie;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -41,7 +42,11 @@ class ESBTPEvaluationController extends Controller
 
         $query = ESBTPEvaluation::with(['classe', 'matiere', 'createdBy'])
             ->withCount('notes')
-            ->orderBy('date_evaluation', 'desc');
+            ->orderBy('date_evaluation', 'desc')
+            // Departage stable : la liste se charge par tranches, deux
+            // evaluations du meme jour ne doivent pas changer de place entre
+            // deux tranches.
+            ->orderBy('id', 'desc');
 
         // Filtrer par année universitaire courante
         if ($anneeCourante) {
@@ -83,7 +88,7 @@ class ESBTPEvaluationController extends Controller
         }
 
         // Paginer les résultats
-        $perPage = (int) $request->input('per_page', 15);
+        $perPage = min(100, max(1, (int) $request->input('per_page', 15)));
         $evaluations = $query->paginate($perPage)->appends($request->query());
 
         // Synchroniser les statuts automatiques pour les évaluations visibles
@@ -91,6 +96,14 @@ class ESBTPEvaluationController extends Controller
             $evaluation->syncAutomaticStatus();
             $evaluation->loadMissing(['classe', 'matiere', 'createdBy']);
         });
+
+        // La suite de la liste : ses lignes seules, avant les compteurs.
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $evaluations,
+                fn ($evaluation) => view('esbtp.evaluations.partials.evaluation-row', compact('evaluation'))->render(),
+            );
+        }
 
         // Statistiques pour l'année courante uniquement
         $statsQuery = ESBTPEvaluation::query();
@@ -152,21 +165,6 @@ class ESBTPEvaluationController extends Controller
                 })
                 ->orderBy('date_evaluation', 'desc')
                 ->get();
-        }
-
-        if ($request->ajax() && $request->input('mode') === 'rows') {
-            return response()->json([
-                'success' => true,
-                'rows_html' => $evaluations->getCollection()
-                    ->map(fn ($evaluation) => view('esbtp.evaluations.partials.evaluation-row', compact('evaluation'))->render())
-                    ->implode(''),
-                'pagination' => [
-                    'current_page' => $evaluations->currentPage(),
-                    'next_page' => $evaluations->hasMorePages() ? $evaluations->currentPage() + 1 : null,
-                    'has_more' => $evaluations->hasMorePages(),
-                    'total' => $evaluations->total(),
-                ],
-            ]);
         }
 
         if ($request->ajax()) {

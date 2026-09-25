@@ -451,12 +451,6 @@
     cursor: pointer;
 }
 
-/* ─── Pagination ─── */
-.te-pagination {
-    padding: 1rem 1.5rem;
-    border-top: 1px solid #f3f4f6;
-}
-
 /* ─── Empty State ─── */
 .te-empty {
     padding: 3.5rem 2rem;
@@ -655,68 +649,15 @@
                                 <th style="width: 130px; text-align: center;">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="te-tbody">
                             @foreach($teachers as $teacher)
-                                <tr>
-                                    <td style="padding-left: 1.25rem;">
-                                        <input type="checkbox" class="te-checkbox bulk-select-checkbox" value="{{ $teacher->id }}">
-                                    </td>
-                                    <td>
-                                        <div class="te-teacher-info">
-                                            <div class="te-avatar">
-                                                {{ $teacher->user ? strtoupper(substr($teacher->user->name, 0, 2)) : 'NA' }}
-                                            </div>
-                                            <div>
-                                                <div class="te-teacher-name">{{ $teacher->user->name ?? 'N/A' }}</div>
-                                                <div class="te-teacher-matricule">{{ $teacher->matricule ?? '—' }}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div class="te-teacher-email">{{ $teacher->user->email ?? 'N/A' }}</div>
-                                        @if($teacher->user && $teacher->user->phone)
-                                            <div class="te-teacher-phone">{{ $teacher->user->phone }}</div>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <span style="font-size: 0.85rem; color: #374151;">{{ $teacher->specialization ?? '—' }}</span>
-                                    </td>
-                                    <td>
-                                        <span class="te-status {{ $teacher->status === 'active' ? 'te-status-active' : 'te-status-inactive' }}">
-                                            {{ $teacher->status === 'active' ? 'Actif' : 'Inactif' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="te-actions" style="justify-content: center;">
-                                            <a href="{{ route('esbtp.enseignants.show', $teacher) }}"
-                                               class="te-action-btn te-action-view" title="Voir le profil">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ route('esbtp.enseignants.edit', $teacher) }}"
-                                               class="te-action-btn te-action-edit" title="Modifier">
-                                                <i class="fas fa-pen"></i>
-                                            </a>
-                                            <form action="{{ route('esbtp.enseignants.toggleStatus', $teacher) }}"
-                                                  method="POST" class="d-inline">
-                                                @csrf
-                                                <button type="submit"
-                                                        class="te-action-btn {{ $teacher->status === 'active' ? 'te-action-toggle-off' : 'te-action-toggle-on' }}"
-                                                        title="{{ $teacher->status === 'active' ? 'Désactiver' : 'Activer' }}">
-                                                    <i class="fas fa-{{ $teacher->status === 'active' ? 'pause' : 'play' }}"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
+                                @include('esbtp.enseignants._ligne')
                             @endforeach
                         </tbody>
                     </table>
                 </div>
 
-                {{-- Pagination --}}
-                <div class="te-pagination">
-                    {{ $teachers->appends(request()->query())->links() }}
-                </div>
+                <x-liste-infinie :paginateur="$teachers" cible="#te-tbody" libelle="enseignants" />
             @else
                 <div class="te-empty">
                     <div class="te-empty-icon">
@@ -873,14 +814,14 @@ $(document).ready(function() {
     }
 
     // ═══ Sync table checkboxes → modal ═══
-    document.querySelectorAll('.bulk-select-checkbox').forEach(cb => {
-        cb.addEventListener('change', function() {
-            const modalCb = document.querySelector(`.bulk-modal-checkbox[value="${this.value}"]`);
-            if (modalCb) {
-                modalCb.checked = this.checked;
-                modalCb.dispatchEvent(new Event('change'));
-            }
-        });
+    // Delegue : les lignes chargees au defilement arrivent apres ce script.
+    document.addEventListener('change', function(e) {
+        if (!e.target.matches('.bulk-select-checkbox')) return;
+        const modalCb = document.querySelector(`.bulk-modal-checkbox[value="${e.target.value}"]`);
+        if (modalCb) {
+            modalCb.checked = e.target.checked;
+            modalCb.dispatchEvent(new Event('change'));
+        }
     });
 });
 </script>

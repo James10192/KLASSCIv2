@@ -7,6 +7,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPSessionReport;
 use App\Models\User;
+use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
@@ -62,7 +63,12 @@ class AdminSessionReportController extends Controller
             });
         }
 
-        $reports = $query->orderByDesc('submitted_at')->paginate(15)->withQueryString();
+        // Departage stable : la liste se charge par tranches.
+        $reports = $query->orderByDesc('submitted_at')->orderByDesc('id')->paginate(15)->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($reports, fn ($report) => view('esbtp.rapports-cours._ligne', compact('report'))->render());
+        }
 
         $now = Carbon::now();
         $kpis = [

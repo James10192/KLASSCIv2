@@ -95,7 +95,10 @@ class ExamensMultiClassesTest extends TestCase
 
     public function test_index_view_shows_classes_count_indicator(): void
     {
-        $content = file_get_contents(resource_path('views/esbtp/examens/index.blade.php'));
+        // La ligne du tableau vit dans son partiel : la suite chargee au
+        // defilement la rend aussi.
+        $content = file_get_contents(resource_path('views/esbtp/examens/index.blade.php'))
+            .file_get_contents(resource_path('views/esbtp/examens/_ligne.blade.php'));
         // Affichage "+N" pour classes additionnelles
         $this->assertStringContainsString('$classeNames', $content);
         $this->assertStringContainsString('+{{ $extras }}', $content);

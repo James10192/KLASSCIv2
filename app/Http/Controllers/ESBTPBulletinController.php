@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ListeInfinie;
 use App\Domain\Bulletins\FiltresBulletins;
 use App\Http\Controllers\Concerns\ExporteBulletinsParTranches;
 use App\Domain\Academique\CoherenceSystemeAcademique;
@@ -114,28 +115,28 @@ class ESBTPBulletinController extends Controller
         $query = ESBTPBulletin::with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name', 'anneeUniversitaire:id,name']);
         $filtres->appliquerA($query);
 
-        $bulletins = $query->orderBy('created_at', 'desc')->paginate(20)->appends($request->query());
-
-        // Statistiques globales scoppées sur l'année universitaire active du filtre.
-        $statsScope = ESBTPBulletin::query();
-        if ($annee_id) {
-            $statsScope->where('annee_universitaire_id', $annee_id);
+        // Apres une action groupee, l'ecran relit seulement les lignes touchees
+        // (`lignes[]`) et les compteurs : recharger la liste renverrait en haut
+        // quelqu'un qui travaillait loin dans la liste.
+        $lignesTouchees = ListeInfinie::demandee($request) ? array_map('intval', (array) $request->input('lignes', [])) : [];
+        if ($lignesTouchees !== []) {
+            $query->whereIn('esbtp_bulletins.id', $lignesTouchees);
         }
-        $bulletinCounts = (clone $statsScope)
-            ->selectRaw('COUNT(*) as total, SUM(CASE WHEN is_published = 1 THEN 1 ELSE 0 END) as published, SUM(CASE WHEN is_published = 0 THEN 1 ELSE 0 END) as pending, SUM(CASE WHEN periode = ? THEN 1 ELSE 0 END) as legacy_annuel', ['annuel'])
-            ->first();
-        $coveredStudents = (clone $statsScope)->distinct('etudiant_id')->count('etudiant_id');
 
-        $stats = [
-            'total' => (int) ($bulletinCounts->total ?? 0),
-            'published' => (int) ($bulletinCounts->published ?? 0),
-            'pending' => (int) ($bulletinCounts->pending ?? 0),
-            'covered' => $coveredStudents,
-            'legacy_annuel' => (int) ($bulletinCounts->legacy_annuel ?? 0),
-        ];
-        $stats['publish_pct'] = $stats['total'] > 0
-            ? (int) round($stats['published'] / $stats['total'] * 100)
-            : 0;
+        // L'identifiant departage une generation en masse, ecrite dans la meme
+        // seconde : la liste se charge par tranches au defilement.
+        $bulletins = $query->orderBy('created_at', 'desc')->orderBy('id', 'desc')
+            ->paginate($lignesTouchees === [] ? 20 : max(1, count($lignesTouchees)))->appends($request->query());
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $bulletins,
+                fn ($bulletin) => view('esbtp.bulletins.partials._ligne', compact('bulletin'))->render(),
+                $lignesTouchees === [] ? [] : ['stats' => $this->statistiquesDeLaListe($annee_id)],
+            );
+        }
+
+        $stats = $this->statistiquesDeLaListe($annee_id);
 
         // AJAX no-reload : si requête AJAX, renvoyer le partial table + stats en JSON.
         if ($request->ajax() || $request->wantsJson()) {
@@ -161,6 +162,35 @@ class ESBTPBulletinController extends Controller
             'search',
             'stats'
         ));
+    }
+
+    /**
+     * Compteurs du bandeau, sur l'annee filtree.
+     *
+     * @return array{total: int, published: int, pending: int, covered: int, legacy_annuel: int, publish_pct: int}
+     */
+    private function statistiquesDeLaListe($anneeId): array
+    {
+        $statsScope = ESBTPBulletin::query();
+        if ($anneeId) {
+            $statsScope->where('annee_universitaire_id', $anneeId);
+        }
+        $bulletinCounts = (clone $statsScope)
+            ->selectRaw('COUNT(*) as total, SUM(CASE WHEN is_published = 1 THEN 1 ELSE 0 END) as published, SUM(CASE WHEN is_published = 0 THEN 1 ELSE 0 END) as pending, SUM(CASE WHEN periode = ? THEN 1 ELSE 0 END) as legacy_annuel', ['annuel'])
+            ->first();
+
+        $stats = [
+            'total' => (int) ($bulletinCounts->total ?? 0),
+            'published' => (int) ($bulletinCounts->published ?? 0),
+            'pending' => (int) ($bulletinCounts->pending ?? 0),
+            'covered' => (clone $statsScope)->distinct('etudiant_id')->count('etudiant_id'),
+            'legacy_annuel' => (int) ($bulletinCounts->legacy_annuel ?? 0),
+        ];
+        $stats['publish_pct'] = $stats['total'] > 0
+            ? (int) round($stats['published'] / $stats['total'] * 100)
+            : 0;
+
+        return $stats;
     }
 
     /**
@@ -1565,7 +1595,7 @@ class ESBTPBulletinController extends Controller
      *
      * @return Response
      */
-    public function pending()
+    public function pending(Request $request)
     {
         // Récupérer les bulletins qui ne sont pas publiés ou qui n'ont pas toutes les signatures
         $bulletins = ESBTPBulletin::where('is_published', false)
@@ -1575,7 +1605,13 @@ class ESBTPBulletinController extends Controller
             })
             ->with(['etudiant', 'classe', 'anneeUniversitaire'])
             ->orderBy('created_at', 'desc')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('id', 'desc')
             ->paginate(15);
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($bulletins, fn ($bulletin) => view('esbtp.bulletins._ligne-attente', compact('bulletin'))->render());
+        }
 
         // Statistiques
         $totalPending = ESBTPBulletin::where('is_published', false)->count();

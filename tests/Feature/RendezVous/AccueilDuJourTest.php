@@ -112,7 +112,7 @@ class AccueilDuJourTest extends TestCase
         $inscrit = $this->reservation($this->creneau('09:00', '09:30'), ['nom' => 'INSCRIT'], 'convertie');
         $familles = app(FamillesAPrevenirRdv::class);
 
-        $this->assertSame(AccueilRdv::TRAITEE, $this->accueil()->etat($r->fresh()), 'Rejeter un dossier ne libère pas sa réservation.');
+        $this->assertSame(AccueilRdv::TRAITEE, $this->accueil()->etat($r->fresh()), 'Une réservation restée confirmée sur un dossier rejeté (créneau passé, ou rejet d\'avant la libération) n\'est plus attendue.');
         $this->assertSame(AccueilRdv::TRAITEE, $this->accueil()->etat($inscrit->fresh()), 'Avant la fin du créneau aussi.');
         $this->assertFalse($this->accueil()->enRetard($inscrit->fresh()));
         $this->assertSame([], $familles->lignes(), 'On n\'appelle pas un candidat refusé pour lui rappeler son rendez-vous.');
@@ -439,6 +439,19 @@ class AccueilDuJourTest extends TestCase
 
         $this->actingAs($this->agent)->get(route('esbtp.candidatures.index', ['reference' => strtolower(app(\App\Services\Portail\ReferencePublique::class)->formater($reference))]))
             ->assertOk()->assertSee('VISEE')->assertDontSee('AUTRE')->assertSee('Voir toutes les candidatures');
+    }
+
+    public function test_le_lien_dossier_est_sur_chaque_famille_pas_seulement_les_non_venues(): void
+    {
+        Permission::findOrCreate('inscriptions.candidatures.view', 'web');
+        $this->agent->givePermissionTo('inscriptions.candidatures.view');
+        $attendue = $this->reservation($this->creneau('10:00', '10:30'), ['nom' => 'ATTENDUE']);
+        $reference = $attendue->candidature->assurerReferencePublique();
+
+        $this->actingAs($this->agent)->get(route('esbtp.rendez-vous.accueil.index'))
+            ->assertOk()
+            ->assertSee('ATTENDUE')
+            ->assertSee(route('esbtp.candidatures.index', ['reference' => app(\App\Services\Portail\ReferencePublique::class)->formater($reference)]), false);
     }
 
     public function test_l_export_des_familles_a_prevenir_se_telecharge(): void

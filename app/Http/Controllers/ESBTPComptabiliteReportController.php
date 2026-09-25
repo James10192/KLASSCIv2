@@ -6,6 +6,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPFraisScolarite;
 use App\Models\ESBTPNiveauEtude;
+use App\Support\ListeInfinie;
 
 class ESBTPComptabiliteReportController extends Controller
 {
@@ -35,7 +36,12 @@ class ESBTPComptabiliteReportController extends Controller
             $query->where('annee_universitaire_id', request('annee'));
         }
 
-        $fraisScolarites = $query->orderByDesc('created_at')->paginate(15);
+        // Departage stable : la liste se charge par tranches.
+        $fraisScolarites = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(15)->withQueryString();
+
+        if (ListeInfinie::demandee(request())) {
+            return ListeInfinie::reponse($fraisScolarites, fn ($frais) => view('esbtp.comptabilite.frais-scolarite._ligne', compact('frais'))->render());
+        }
 
         return view('esbtp.comptabilite.frais-scolarite.index', [
             'fraisScolarites' => $fraisScolarites,

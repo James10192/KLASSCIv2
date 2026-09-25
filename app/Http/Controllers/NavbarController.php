@@ -11,6 +11,7 @@ use App\Models\Notification;
 use App\Services\EvaluationGradingShortcutService;
 use App\Services\EvaluationPublishShortcutService;
 use App\Services\TimetableShortcutService;
+use App\Support\PorteDeRoute;
 
 class NavbarController extends Controller
 {
@@ -389,133 +390,74 @@ class NavbarController extends Controller
     public function getQuickActions()
     {
         $user = auth()->user();
-        $actions = [];
 
-        if ($user->can('admin.access')) {
-            $actions = [
-                [
-                    'title' => 'Nouvel étudiant',
-                    'icon' => 'fas fa-user-plus',
-                    'url' => route('esbtp.inscriptions.create'),
-                    'color' => 'primary',
-                ],
-                [
-                    'title' => 'Nouvelle classe',
-                    'icon' => 'fas fa-users',
-                    'url' => route('esbtp.classes.create'),
-                    'color' => 'info',
-                ],
-                [
-                    'title' => 'Créer examen',
-                    'icon' => 'fas fa-file-alt',
-                    'url' => route('esbtp.evaluations.create'),
-                    'color' => 'success',
-                ],
-                [
-                    'title' => 'Nouvelle annonce',
-                    'icon' => 'fas fa-bullhorn',
-                    'url' => route('esbtp.annonces.create'),
-                    'color' => 'warning',
-                ],
-                [
-                    'title' => 'Saisie notes',
-                    'icon' => 'fas fa-clipboard-list',
-                    'url' => route('esbtp.notes.index'),
-                    'color' => 'secondary',
-                ],
-                [
-                    'title' => 'Emploi du temps',
-                    'icon' => 'fas fa-calendar-alt',
-                    'url' => route('esbtp.emploi-temps.index'),
-                    'color' => 'info',
-                ],
-            ];
-        } elseif ($user->can('identity.school_manager')) {
-            $actions = [
-                [
-                    'title' => 'Nouvel étudiant',
-                    'icon' => 'fas fa-user-plus',
-                    'url' => route('esbtp.inscriptions.create'),
-                    'color' => 'primary',
-                ],
-                [
-                    'title' => 'Saisie notes',
-                    'icon' => 'fas fa-clipboard-list',
-                    'url' => route('esbtp.notes.index'),
-                    'color' => 'success',
-                ],
-                [
-                    'title' => 'Nouvelle annonce',
-                    'icon' => 'fas fa-bullhorn',
-                    'url' => route('esbtp.annonces.create'),
-                    'color' => 'warning',
-                ],
-                [
-                    'title' => 'Présences enseignants',
-                    'icon' => 'fas fa-check-circle',
-                    'url' => route('esbtp.teacher-attendance.index'),
-                    'color' => 'info',
-                ],
-            ];
-        } elseif ($user->can('identity.student')) {
-            $actions = [
-                [
-                    'title' => 'Mon emploi du temps',
-                    'icon' => 'fas fa-calendar-alt',
-                    'url' => route('esbtp.mon-emploi-temps.index'),
-                    'color' => 'primary',
-                ],
-                [
-                    'title' => 'Mes notes',
-                    'icon' => 'fas fa-clipboard-list',
-                    'url' => route('esbtp.mes-notes.index'),
-                    'color' => 'success',
-                ],
-                [
-                    'title' => 'Mon bulletin',
-                    'icon' => 'fas fa-file-invoice',
-                    'url' => route('esbtp.mon-bulletin.index'),
-                    'color' => 'info',
-                ],
-                [
-                    'title' => 'Mon profil',
-                    'icon' => 'fas fa-user-circle',
-                    'url' => route('esbtp.mon-profil.index'),
-                    'color' => 'secondary',
-                ],
-            ];
-        } elseif ($user->can('identity.teach')) {
-            $actions = [
-                [
-                    'title' => 'Émargement',
-                    'icon' => 'fas fa-clipboard-check',
-                    'url' => route('esbtp.attendance.mark'),
-                    'color' => 'primary',
-                ],
-                [
-                    'title' => 'Mes cours',
-                    'icon' => 'fas fa-chalkboard-teacher',
-                    'url' => route('dashboard'),
-                    'color' => 'info',
-                ],
-                [
-                    'title' => 'Saisie notes',
-                    'icon' => 'fas fa-clipboard-list',
-                    'url' => route('esbtp.notes.index'),
-                    'color' => 'success',
-                ],
-                [
-                    'title' => 'Mon profil',
-                    'icon' => 'fas fa-user-circle',
-                    'url' => route('admin.profile'),
-                    'color' => 'secondary',
-                ],
-            ];
-        }
+        // Chaque action ne s'affiche que si sa page s'ouvre pour cette personne.
+        // Le profil choisissait la liste en bloc : un caissier, qui porte
+        // `admin.access`, se voyait proposer « Nouvelle classe » ou « Créer
+        // examen » et tombait sur un refus d'accès. La réponse se lit sur la
+        // route elle-même (PorteDeRoute), pas sur une copie de ses permissions.
+        $actions = collect($this->actionsRapidesDuProfil($user))
+            // `!== false` : une route sans garde lisible (l'accueil, le profil)
+            // reste proposée ; seule celle qui refuserait est retirée.
+            ->filter(fn (array $action) => PorteDeRoute::verdict($action['route'], $user) !== false)
+            ->map(fn (array $action) => [
+                'title' => $action['title'],
+                'icon' => $action['icon'],
+                'url' => route($action['route']),
+                'color' => $action['color'],
+            ])
+            ->values()
+            ->all();
 
         return response()->json([
             'actions' => $actions,
         ]);
+    }
+
+    /** @return list<array{title: string, icon: string, route: string, color: string}> */
+    private function actionsRapidesDuProfil($user): array
+    {
+        if ($user->can('admin.access')) {
+            return [
+                ['title' => 'Encaisser', 'icon' => 'fas fa-cash-register', 'route' => 'esbtp.paiements.create', 'color' => 'primary'],
+                ['title' => 'Ma caisse', 'icon' => 'fas fa-wallet', 'route' => 'esbtp.caisse.ma-caisse', 'color' => 'info'],
+                ['title' => 'Nouvel étudiant', 'icon' => 'fas fa-user-plus', 'route' => 'esbtp.inscriptions.create', 'color' => 'primary'],
+                ['title' => 'Nouvelle classe', 'icon' => 'fas fa-users', 'route' => 'esbtp.classes.create', 'color' => 'info'],
+                ['title' => 'Créer examen', 'icon' => 'fas fa-file-alt', 'route' => 'esbtp.evaluations.create', 'color' => 'success'],
+                ['title' => 'Nouvelle annonce', 'icon' => 'fas fa-bullhorn', 'route' => 'esbtp.annonces.create', 'color' => 'warning'],
+                ['title' => 'Saisie notes', 'icon' => 'fas fa-clipboard-list', 'route' => 'esbtp.notes.index', 'color' => 'secondary'],
+                ['title' => 'Emploi du temps', 'icon' => 'fas fa-calendar-alt', 'route' => 'esbtp.emploi-temps.index', 'color' => 'info'],
+            ];
+        }
+
+        if ($user->can('identity.school_manager')) {
+            return [
+                ['title' => 'Nouvel étudiant', 'icon' => 'fas fa-user-plus', 'route' => 'esbtp.inscriptions.create', 'color' => 'primary'],
+                ['title' => 'Saisie notes', 'icon' => 'fas fa-clipboard-list', 'route' => 'esbtp.notes.index', 'color' => 'success'],
+                ['title' => 'Nouvelle annonce', 'icon' => 'fas fa-bullhorn', 'route' => 'esbtp.annonces.create', 'color' => 'warning'],
+                ['title' => 'Présences enseignants', 'icon' => 'fas fa-check-circle', 'route' => 'esbtp.teacher-attendance.index', 'color' => 'info'],
+            ];
+        }
+
+        if ($user->can('identity.student')) {
+            return [
+                ['title' => 'Mon emploi du temps', 'icon' => 'fas fa-calendar-alt', 'route' => 'esbtp.mon-emploi-temps.index', 'color' => 'primary'],
+                ['title' => 'Mes notes', 'icon' => 'fas fa-clipboard-list', 'route' => 'esbtp.mes-notes.index', 'color' => 'success'],
+                ['title' => 'Mon bulletin', 'icon' => 'fas fa-file-invoice', 'route' => 'esbtp.mon-bulletin.index', 'color' => 'info'],
+                ['title' => 'Mon profil', 'icon' => 'fas fa-user-circle', 'route' => 'esbtp.mon-profil.index', 'color' => 'secondary'],
+            ];
+        }
+
+        if ($user->can('identity.teach')) {
+            return [
+                ['title' => 'Émargement', 'icon' => 'fas fa-clipboard-check', 'route' => 'esbtp.attendance.mark', 'color' => 'primary'],
+                ['title' => 'Mes cours', 'icon' => 'fas fa-chalkboard-teacher', 'route' => 'dashboard', 'color' => 'info'],
+                ['title' => 'Saisie notes', 'icon' => 'fas fa-clipboard-list', 'route' => 'esbtp.notes.index', 'color' => 'success'],
+                ['title' => 'Mon profil', 'icon' => 'fas fa-user-circle', 'route' => 'admin.profile', 'color' => 'secondary'],
+            ];
+        }
+
+        return [];
     }
 
     /**
