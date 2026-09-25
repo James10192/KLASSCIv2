@@ -42,6 +42,11 @@ class GetDashboardKpisTool extends ChatbotTool
         $kpis['annee_courante'] = $comptes['annee_courante_label'] ?? 'non définie';
         $kpis['inscrits_annee_courante'] = $comptes['inscrits_annee_courante'];
         $kpis['etudiants_en_base_toutes_annees'] = $comptes['total_base'];
+        $precedente = $this->anneePrecedente($comptes['annee_courante_id'] ?? null);
+        if ($precedente) {
+            $kpis['annee_precedente'] = $precedente->name;
+            $kpis['inscrits_annee_precedente'] = app(\App\Domain\Students\StudentCountService::class)->inscritsDe($precedente->id);
+        }
         $kpis['classes'] = DB::table('esbtp_classes')->whereNull('deleted_at')->count();
         $kpis['enseignants'] = DB::table('esbtp_teachers')->where('is_active', true)->whereNull('deleted_at')->count();
 
@@ -53,7 +58,7 @@ class GetDashboardKpisTool extends ChatbotTool
                 0, ',', ' '
             ) . ' FCFA';
             $kpis['paiements_en_attente'] = DB::table('esbtp_paiements')
-                ->where('status', 'pending')
+                ->where('status', 'en_attente')
                 ->whereNull('deleted_at')
                 ->count();
         }
@@ -71,8 +76,10 @@ class GetDashboardKpisTool extends ChatbotTool
 
         if ($focus === 'general' || $focus === 'attendance') {
             $totalAtt = DB::table('esbtp_attendances')->whereNull('deleted_at')->count();
+            // Un retard est une présence, comme à l'écran des présences
+            // (total_present_with_retards) ; 'retard' subsiste sur d'anciennes lignes.
             $presences = DB::table('esbtp_attendances')
-                ->where('statut', 'present')
+                ->whereIn('statut', ['present', 'late', 'retard'])
                 ->whereNull('deleted_at')
                 ->count();
             $kpis['taux_presence'] = $totalAtt > 0
@@ -90,6 +97,56 @@ class GetDashboardKpisTool extends ChatbotTool
             'count' => 1,
             'display_type' => 'text',
             'kpis' => $kpis,
+            'widget' => $this->widget($kpis, $user),
         ];
+    }
+
+    /** L'année qui commence juste avant l'année courante. */
+    private function anneePrecedente(?int $courante): ?\App\Models\ESBTPAnneeUniversitaire
+    {
+        $annee = $courante ? \App\Models\ESBTPAnneeUniversitaire::find($courante) : null;
+        if (!$annee || !$annee->start_date) {
+            return null;
+        }
+
+        return \App\Models\ESBTPAnneeUniversitaire::query()
+            ->where('start_date', '<', $annee->start_date)
+            ->orderByDesc('start_date')
+            ->first();
+    }
+
+    /** Cartes de chiffres clés, avec le repère de l'année précédente pour les inscrits. */
+    private function widget(array $kpis, $user): array
+    {
+        // Un lien n'apparaît que vers une liste que la personne peut ouvrir : l'outil
+        // est ouvert à dashboard.view, que portent aussi l'étudiant et l'enseignant.
+        // PorteDeRoute lit les vrais middlewares de la route : une permission de liste
+        // sans la porte d'identité de l'écran mènerait encore à un 403.
+        $lien = fn (string $route) => ($user instanceof \Illuminate\Contracts\Auth\Access\Authorizable && \App\Support\PorteDeRoute::ouverte($route, $user)) ? route($route, [], false) : null;
+
+        $elements = [];
+        $inscrits = (int) $kpis['inscrits_annee_courante'];
+        $repere = null;
+        $tonInscrits = null;
+        if (isset($kpis['inscrits_annee_precedente'])) {
+            $avant = (int) $kpis['inscrits_annee_precedente'];
+            $ecart = $inscrits - $avant;
+            $repere = $avant > 0
+                ? sprintf('%s %s %% vs %s (%d)', $ecart >= 0 ? '▲' : '▼', ($ecart >= 0 ? '+' : '') . number_format($ecart / $avant * 100, 1, ',', ' '), $kpis['annee_precedente'], $avant)
+                : sprintf('%d en %s', $avant, $kpis['annee_precedente']);
+            $tonInscrits = $avant > 0 ? ($ecart >= 0 ? 'succes' : 'danger') : null;
+        }
+        $elements[] = ['libelle' => 'Inscrits ' . $kpis['annee_courante'], 'valeur' => $inscrits, 'unite' => null, 'repere' => $repere, 'ton' => $tonInscrits, 'url' => $lien('esbtp.inscriptions.index')];
+        $elements[] = ['libelle' => 'Étudiants en base', 'valeur' => (int) $kpis['etudiants_en_base_toutes_annees'], 'unite' => null, 'repere' => 'toutes années', 'ton' => null, 'url' => $lien('esbtp.etudiants.index')];
+        $elements[] = ['libelle' => 'Classes', 'valeur' => (int) $kpis['classes'], 'unite' => null, 'repere' => null, 'ton' => null, 'url' => $lien('esbtp.classes.index')];
+        $elements[] = ['libelle' => 'Enseignants actifs', 'valeur' => (int) $kpis['enseignants'], 'unite' => null, 'repere' => null, 'ton' => null, 'url' => null];
+        if (isset($kpis['total_paiements'])) {
+            $elements[] = ['libelle' => 'Encaissé (validé)', 'valeur' => (int) preg_replace('/\D/', '', $kpis['total_paiements']), 'unite' => 'FCFA', 'repere' => $kpis['paiements_en_attente'] . ' paiement(s) en attente', 'ton' => $kpis['paiements_en_attente'] > 0 ? 'alerte' : null, 'url' => $lien('esbtp.paiements.index')];
+        }
+        if (isset($kpis['taux_presence'])) {
+            $elements[] = ['libelle' => 'Taux de présence', 'valeur' => $kpis['taux_presence'] === 'N/A' ? null : $kpis['taux_presence'], 'unite' => null, 'repere' => $kpis['absences_non_justifiees'] . ' absence(s) non justifiée(s)', 'ton' => null, 'url' => null];
+        }
+
+        return ['kind' => 'kpis', 'titre' => 'Chiffres clés', 'elements' => $elements];
     }
 }

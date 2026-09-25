@@ -121,6 +121,9 @@ class Gemini extends AdaptateurHttp
                     'parameters' => $this->schemaPortable($o['parametres']) + ['type' => 'object'],
                 ], $requete->outils),
             ]];
+            if ($requete->conclure) {
+                $corps['toolConfig'] = ['functionCallingConfig' => ['mode' => 'NONE']];
+            }
         }
 
         return $corps;

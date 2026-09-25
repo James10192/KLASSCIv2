@@ -52,9 +52,9 @@ class ChatbotController extends Controller
      */
     public function sendMessageStream(Request $request)
     {
-        [$message, $conversationId, $contexte, $modele] = $this->validerMessage($request);
+        [$message, $conversationId, $contexte, $modele, $relance] = $this->validerMessage($request);
 
-        return response()->stream(function () use ($message, $conversationId, $contexte, $modele) {
+        return response()->stream(function () use ($message, $conversationId, $contexte, $modele, $relance) {
             // Un puits lié dans le conteneur remplace la sortie (tests) ; sinon on
             // écrit directement au navigateur, sans tampon intermédiaire.
             $ui = app()->bound(UiMessageStream::class) ? app(UiMessageStream::class) : null;
@@ -68,7 +68,7 @@ class ChatbotController extends Controller
                 $ui = UiMessageStream::versLaSortie();
             }
 
-            $this->chatbotService->sendMessageStream($message, $conversationId, $contexte, $ui, $modele);
+            $this->chatbotService->sendMessageStream($message, $conversationId, $contexte, $ui, $modele, $relance);
         }, 200, UiMessageStream::HEADERS);
     }
 
@@ -76,7 +76,7 @@ class ChatbotController extends Controller
      * Validation commune aux deux routes d'envoi. Choisir son modèle demande la
      * permission assistant.model.choose, et seulement parmi les modèles disponibles.
      *
-     * @return array{0: string, 1: ?string, 2: array, 3: ?string}
+     * @return array{0: string, 1: ?string, 2: array, 3: ?string, 4: bool}
      */
     private function validerMessage(Request $request): array
     {
@@ -87,6 +87,7 @@ class ChatbotController extends Controller
             'current_path' => 'nullable|string|max:1024',
             'page_title' => 'nullable|string|max:255',
             'modele' => ['nullable', 'string', Rule::in(array_keys(app(RegistreDesModeles::class)->disponibles()))],
+            'relance' => 'nullable|boolean',
         ]);
 
         $modele = $validated['modele'] ?? null;
@@ -103,6 +104,7 @@ class ChatbotController extends Controller
                 'page_title' => $validated['page_title'] ?? null,
             ],
             $modele,
+            (bool) ($validated['relance'] ?? false),
         ];
     }
 

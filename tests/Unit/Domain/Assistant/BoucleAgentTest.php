@@ -6,6 +6,7 @@ use App\Domain\Assistant\Flux\UiMessageStream;
 use App\Domain\Assistant\Fournisseurs\EvenementModele;
 use App\Domain\Assistant\Fournisseurs\RequeteModele;
 use App\Domain\Assistant\Harnais\BoucleAgent;
+use App\Domain\Assistant\Harnais\FilDeReponse;
 use App\Domain\Assistant\Modeles\ModeleIa;
 use App\Domain\Assistant\Modeles\RegistreDesModeles;
 use App\Domain\Assistant\Outils\CatalogueOutils;
@@ -117,15 +118,109 @@ class BoucleAgentTest extends TestCase
 
         // Le second tour reçoit l'appel et son résultat, au format neutre.
         $second = $this->faux->recues[1]['requete']->messages;
-        $this->assertSame(['role' => 'assistant', 'texte' => 'Je regarde.', 'appels' => [['id' => 't1', 'nom' => 'outil_permis', 'arguments' => ['search' => 'BTS']]]], $second[1]);
+        // L'identifiant est celui de la boucle, pas celui du fournisseur (t1).
+        $this->assertSame(['role' => 'assistant', 'texte' => 'Je regarde.', 'appels' => [['id' => 'a00000001', 'nom' => 'outil_permis', 'arguments' => ['search' => 'BTS']]]], $second[1]);
         $this->assertSame('outil', $second[2]['role']);
-        $this->assertSame('t1', $second[2]['id']);
+        $this->assertSame('a00000001', $second[2]['id']);
 
-        $outils = array_values(array_filter($this->parts(), fn ($p) => $p['type'] === 'data-outil'));
+        $outils = array_values(array_filter($this->parts(), fn ($p) => $p['type'] === 'data-etape'));
         $this->assertSame(['en_cours', 'termine'], array_column(array_column($outils, 'data'), 'etat'));
         $this->assertSame('Recherche des classes…', $outils[0]['data']['libelle']);
-        $this->assertSame(['t1', 't1'], array_column($outils, 'id'));
+        $this->assertSame(['a00000001', 'a00000001'], array_column($outils, 'id'));
         $this->assertSame(2, count(array_keys($this->types(), 'start-step')));
+    }
+
+    public function test_widget_sous_son_etape_et_resultat_compact_pour_le_modele(): void
+    {
+        $this->faux->scripts['a'] = [
+            FauxFournisseur::outil('t1', 'outil_permis', ['search' => 'BTS'], 'Je regarde.'),
+            FauxFournisseur::texte('Voici les classes.'),
+        ];
+        [$boucle, $catalogue, $ui] = $this->boucle();
+        $user = $this->utilisateur();
+        $fil = new FilDeReponse();
+
+        $r = $boucle->executer([$this->modele('a')], new RequeteModele('sys', [['role' => 'user', 'texte' => 'Classes ?']], $catalogue->schemas($user)), $user, $ui,
+            fn ($nom, $args, $res) => ['kind' => 'table', 'rows' => $res['results']], $fil);
+
+        // L'étape terminée porte un résumé, puis son widget arrive, au même identifiant.
+        $parts = $this->parts();
+        $fin = collect($parts)->where('type', 'data-etape')->last();
+        $this->assertSame('termine', $fin['data']['etat']);
+        $this->assertSame('1 résultat', $fin['data']['resume']);
+        $this->assertSame('search : BTS', $fin['data']['detail']);
+        $widget = collect($parts)->firstWhere('type', 'data-widget');
+        $this->assertSame('a00000001', $widget['id']);
+        $this->assertSame('table', $widget['data']['kind']);
+        $this->assertLessThan(array_search($widget, $parts, true), array_search($fin, $parts, true));
+
+        // Le modèle ne reçoit qu'un résumé, avec la consigne de ne pas recopier le widget.
+        $pourModele = json_decode($this->faux->recues[1]['requete']->messages[2]['resultat'], true);
+        $this->assertSame(1, $pourModele['nombre']);
+        $this->assertSame([['nom' => 'BTS 1']], $pourModele['elements']);
+        $this->assertStringContainsString('widget', $pourModele['affichage']);
+
+        // Le fil garde l'ordre d'affichage, et la trace rejouera l'appel dans l'historique.
+        $this->assertSame(['texte', 'etape', 'widget', 'texte'], array_column($fil->toArray(), 'type'));
+        $this->assertSame(['assistant', 'outil'], array_column($r->trace, 'role'));
+    }
+
+    public function test_un_appel_identique_n_est_ni_rejoue_ni_reaffiche(): void
+    {
+        $this->faux->scripts['a'] = [
+            FauxFournisseur::outil('t1', 'outil_permis', ['search' => 'BTS']),
+            FauxFournisseur::outil('t2', 'outil_permis', ['search' => 'BTS']),
+            FauxFournisseur::texte('Fini.'),
+        ];
+        [$boucle, $catalogue, $ui] = $this->boucle();
+        $user = $this->utilisateur();
+
+        $boucle->executer([$this->modele('a')], new RequeteModele('sys', [['role' => 'user', 'texte' => 'Classes ?']], $catalogue->schemas($user)), $user, $ui,
+            fn () => ['kind' => 'table'], new FilDeReponse());
+
+        $this->assertSame(1, $this->permis->appels);
+        $this->assertSame(1, collect($this->parts())->where('type', 'data-widget')->count());
+        $this->assertSame('retire', collect($this->parts())->where('type', 'data-etape')->where('id', 'a00000002')->last()['data']['etat']);
+        $troisieme = end($this->faux->recues[2]['requete']->messages);
+        $this->assertStringContainsString('Appel identique', $troisieme['resultat']);
+    }
+
+    public function test_le_dernier_tour_demande_de_conclure(): void
+    {
+        config(['assistant.limites.tours' => 2]);
+        $this->faux->scripts['a'] = [
+            FauxFournisseur::outil('t1', 'outil_permis', ['search' => 'BTS']),
+            FauxFournisseur::texte('Conclusion.'),
+        ];
+        [$boucle, $catalogue, $ui] = $this->boucle();
+        $user = $this->utilisateur();
+
+        $r = $boucle->executer([$this->modele('a')], new RequeteModele('sys', [['role' => 'user', 'texte' => 'Classes ?']], $catalogue->schemas($user)), $user, $ui);
+
+        $this->assertSame('Conclusion.', $r->texteDernierTour);
+        $this->assertFalse($this->faux->recues[0]['requete']->conclure);
+        $this->assertTrue($this->faux->recues[1]['requete']->conclure, 'le dernier tour ne peut plus appeler d\'outil');
+        $this->assertNotEmpty($this->faux->recues[1]['requete']->outils, 'mais ses outils restent déclarés');
+    }
+
+    public function test_un_identifiant_repete_par_le_fournisseur_ne_fusionne_pas_deux_etapes(): void
+    {
+        // Gemini recompte ses appels depuis 1 à chaque tour : deux appels distincts, même identifiant.
+        $this->faux->scripts['a'] = [
+            FauxFournisseur::outil('gemini_1', 'outil_permis', ['search' => 'BTS']),
+            FauxFournisseur::outil('gemini_1', 'outil_permis', ['search' => 'Licence']),
+            FauxFournisseur::texte('Deux listes.'),
+        ];
+        [$boucle, $catalogue, $ui] = $this->boucle();
+        $user = $this->utilisateur();
+        $fil = new FilDeReponse();
+
+        $boucle->executer([$this->modele('a')], new RequeteModele('sys', [['role' => 'user', 'texte' => 'Classes ?']], $catalogue->schemas($user)), $user, $ui,
+            fn () => ['kind' => 'table'], $fil);
+
+        $widgets = collect($this->parts())->where('type', 'data-widget')->pluck('id')->all();
+        $this->assertSame(['a00000001', 'a00000002'], $widgets);
+        $this->assertSame(['etape', 'widget', 'etape', 'widget', 'texte'], array_column($fil->toArray(), 'type'));
     }
 
     public function test_outil_non_autorise_ni_declare_ni_execute(): void
@@ -146,7 +241,7 @@ class BoucleAgentTest extends TestCase
         $this->assertSame([], $r->appels);
         $resultat = $this->faux->recues[1]['requete']->messages[2];
         $this->assertSame(['error' => 'Outil indisponible.'], json_decode($resultat['resultat'], true));
-        $dernier = array_values(array_filter($this->parts(), fn ($p) => $p['type'] === 'data-outil'));
+        $dernier = array_values(array_filter($this->parts(), fn ($p) => $p['type'] === 'data-etape'));
         $this->assertSame('echec', end($dernier)['data']['etat']);
     }
 
@@ -300,6 +395,8 @@ class OutilEspion extends ChatbotTool
 {
     public bool $execute = false;
 
+    public int $appels = 0;
+
     public function __construct(private string $nom)
     {
     }
@@ -322,6 +419,7 @@ class OutilEspion extends ChatbotTool
     public function execute(array $args, $user): array
     {
         $this->execute = true;
+        $this->appels++;
 
         return ['results' => [['nom' => 'BTS 1']], 'count' => 1, 'display_type' => 'table'];
     }
