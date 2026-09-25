@@ -273,4 +273,32 @@ class JournalCaisseMobileTest extends TestCase
             ->assertJsonPath('nb_jours', 0)
             ->assertJsonPath('has_more', false);
     }
+
+    public function test_le_bureau_charge_la_suite_du_journal_par_tranches(): void
+    {
+        for ($i = 0; $i < 55; $i++) {
+            $this->paiement();
+        }
+
+        $page = $this->actingAs($this->comptable)->get(route('esbtp.comptabilite.journal-caisse.index'))
+            ->assertOk()
+            ->assertSee('data-page-suivante="2"', false)
+            ->assertDontSee('jc-pagination', false)
+            ->getContent();
+
+        $suite = $this->actingAs($this->comptable)
+            ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('esbtp.comptabilite.journal-caisse.index', ['page' => 2, 'mode' => 'rows']))
+            ->assertOk()
+            ->assertJsonPath('pagination.has_more', false)
+            ->assertJsonMissingPath('totals')
+            ->json('rows_html');
+
+        preg_match_all('/<tr data-li-cle="(\d+)"/', $page, $a);
+        preg_match_all('/<tr data-li-cle="(\d+)"/', $suite, $b);
+        $total = count($a[1]) + count($b[1]);
+        $this->assertSame(50, count($a[1]));
+        $this->assertCount($total, array_unique(array_merge($a[1], $b[1])));
+        $this->assertGreaterThanOrEqual(55, $total);
+    }
 }
