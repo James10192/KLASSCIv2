@@ -151,7 +151,7 @@
                 <select class="rc-select" name="annee_universitaire_id" onchange="document.getElementById('rc-filter-form').submit()">
                     @foreach($annees as $annee)
                         <option value="{{ $annee->id }}" {{ (int) $anneeId === (int) $annee->id ? 'selected' : '' }}>
-                            {{ $annee->name ?? $annee->libelle ?? $annee->id }}
+                            {{ $annee->name ?? $annee->display_name ?? $annee->id }}
                         </option>
                     @endforeach
                 </select>

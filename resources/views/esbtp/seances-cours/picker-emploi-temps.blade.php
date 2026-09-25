@@ -32,7 +32,7 @@
     <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
         <div>
             <h1><i class="fas fa-calendar-plus me-2"></i>Choisir un emploi du temps</h1>
-            <p>Sélectionnez la classe pour laquelle vous voulez ajouter une séance · Année <strong>{{ $annee->libelle ?? '—' }}</strong></p>
+            <p>Sélectionnez la classe pour laquelle vous voulez ajouter une séance · Année <strong>{{ $annee->display_name ?? '—' }}</strong></p>
         </div>
         <a href="{{ route('esbtp.emploi-temps.index') }}"
            style="padding:.55rem 1rem; border-radius:10px; background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.2); text-decoration:none; font-weight:600; font-size:.82rem;">

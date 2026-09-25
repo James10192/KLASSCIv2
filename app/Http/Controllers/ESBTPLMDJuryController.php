@@ -10,6 +10,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPLMDJury;
+use App\Models\ESBTPLMDJuryDecision;
 use App\Models\ESBTPLMDJuryMembre;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPLMDSession;
@@ -85,7 +86,9 @@ class ESBTPLMDJuryController extends Controller
         ];
 
         $parcours = ESBTPLMDParcours::orderBy('name')->get(['id', 'name']);
-        $classes = ESBTPClasse::orderBy('name')->get(['id', 'name']);
+        // Un jury LMD ne délibère que sur des classes LMD : les classes BTS
+        // étaient proposées, et un jury rattaché à « 1BTS IG A » se créait.
+        $classes = ESBTPClasse::where('systeme_academique', 'LMD')->orderBy('name')->get(['id', 'name']);
         $sessions = ESBTPLMDSession::orderByDesc('date_debut')->get(['id', 'libelle']);
         $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'name', 'libelle', 'is_current', 'start_date', 'end_date']);
 
@@ -149,9 +152,11 @@ class ESBTPLMDJuryController extends Controller
             'annee_universitaire_id' => ['required', 'exists:esbtp_annee_universitaires,id'],
             'session_id' => ['nullable', 'exists:esbtp_lmd_sessions,id'],
             'parcours_id' => ['nullable', 'exists:esbtp_lmd_parcours,id'],
-            'classe_id' => ['nullable', 'exists:esbtp_classes,id'],
+            'classe_id' => ['nullable', \Illuminate\Validation\Rule::exists('esbtp_classes', 'id')->where('systeme_academique', 'LMD')],
             'semestre' => ['nullable', 'integer', 'between:1,'.\App\Models\ESBTPNiveauEtude::SEMESTRE_LMD_MAX],
             'libelle' => ['required', 'string', 'max:255'],
+        ], [
+            'classe_id.exists' => 'Un jury LMD ne peut être rattaché qu’à une classe LMD.',
             'date_jury' => ['nullable', 'date'],
             'observations' => ['nullable', 'string', 'max:2000'],
         ]);
@@ -231,15 +236,27 @@ class ESBTPLMDJuryController extends Controller
         }
 
         try {
-            $created = $this->delib->appliquerDecisionsAuto($jury);
+            $resultat = $this->delib->appliquerDecisionsAutoDetaillees($jury);
+        } catch (\LogicException $e) {
+            // Quorum, jury verrouillé : des refus métier dont le message est fait pour l'écran.
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'quorum' => $this->delib->verifierQuorum($jury->fresh()),
+            ], 422);
         } catch (\Throwable $e) {
             Log::warning('Échec du calcul automatique des décisions du jury.', ['jury_id' => $jury->id, 'exception' => $e]);
-            return response()->json(['success' => false, 'message' => 'Les décisions n ont pas pu être calculées.'], 422);
+            return response()->json(['success' => false, 'message' => 'Les décisions n’ont pas pu être calculées.'], 422);
         }
+
+        $incompletes = $resultat['incompletes'];
 
         return response()->json([
             'success' => true,
-            'created_count' => $created,
+            'created_count' => $resultat['ecrites'],
+            'incompletes' => $incompletes,
+            'message' => $resultat['ecrites'].' décision(s) calculée(s).'
+                .($incompletes === [] ? '' : ' '.count($incompletes).' dossier(s) incomplet(s) sans décision automatique : complétez les notes ou tranchez à la main avec un motif.'),
             'stats' => $this->delib->buildStatistiques($jury->fresh('decisions')),
             'readiness' => $this->delib->verifierReadiness($jury->fresh()),
         ]);
@@ -250,7 +267,7 @@ class ESBTPLMDJuryController extends Controller
         abort_unless(auth()->user()?->can('lmd.jury.deliberate'), 403);
 
         $data = $request->validate([
-            'decision' => ['required', 'in:admis,admission_rattrapage,ajourne,exclu,admis_sous_condition,defere'],
+            'decision' => ['required', \Illuminate\Validation\Rule::in(ESBTPLMDJuryDecision::DECISIONS)],
             'motif' => ['required', 'string', 'min:5', 'max:1000'],
             'vote_resultat' => ['nullable', 'in:unanime,majorite,partage_voix_president'],
         ]);
@@ -270,8 +287,11 @@ class ESBTPLMDJuryController extends Controller
                 'id' => $decision->id,
                 'etudiant_id' => $decision->etudiant_id,
                 'decision_auto' => $decision->decision_auto,
+                'decision_auto_label' => ESBTPLMDJuryDecision::libelleDecision($decision->decision_auto),
                 'decision' => $decision->decision,
+                'decision_label' => ESBTPLMDJuryDecision::libelleDecision($decision->decision),
                 'mention' => $decision->mention,
+                'mention_label' => ESBTPLMDJuryDecision::libelleMention($decision->mention),
                 'override_par_jury' => $decision->override_par_jury,
                 'motif_override' => $decision->motif_override,
                 'vote_resultat' => $decision->vote_resultat,

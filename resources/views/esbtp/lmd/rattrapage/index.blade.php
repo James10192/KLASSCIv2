@@ -53,7 +53,7 @@
             <div class="rtp-hero-icon"><i class="fas fa-rotate-right"></i></div>
             <div>
                 <h1>Sessions & Rattrapage LMD</h1>
-                <p>Année universitaire <strong>{{ $annee->libelle ?? '—' }}</strong> · workflow UEMOA 2 sessions</p>
+                <p>Année universitaire <strong>{{ $annee->display_name ?? '—' }}</strong> · workflow UEMOA 2 sessions</p>
             </div>
         </div>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;">

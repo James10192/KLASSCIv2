@@ -83,6 +83,34 @@ class ESBTPLMDJuryDecision extends Model implements Auditable
 
     public const VOTE_RESULTATS = ['unanime', 'majorite', 'partage_voix_president'];
 
+    /** Libellés affichés : les codes ne sortent jamais tels quels à l'écran. */
+    public const LIBELLES_DECISIONS = [
+        'admis' => 'Admis',
+        'admission_rattrapage' => 'Admis au rattrapage',
+        'ajourne' => 'Ajourné',
+        'exclu' => 'Exclu',
+        'admis_sous_condition' => 'Admis sous condition',
+        'defere' => 'Déféré au rectorat',
+    ];
+
+    public const LIBELLES_MENTIONS = [
+        'passable' => 'Passable',
+        'assez_bien' => 'Assez bien',
+        'bien' => 'Bien',
+        'tres_bien' => 'Très bien',
+        'excellent' => 'Excellent',
+    ];
+
+    public static function libelleDecision(?string $code): ?string
+    {
+        return $code === null ? null : (self::LIBELLES_DECISIONS[$code] ?? ucfirst(str_replace('_', ' ', $code)));
+    }
+
+    public static function libelleMention(?string $code): ?string
+    {
+        return $code === null ? null : (self::LIBELLES_MENTIONS[$code] ?? ucfirst(str_replace('_', ' ', $code)));
+    }
+
     public function jury(): BelongsTo
     {
         return $this->belongsTo(ESBTPLMDJury::class, 'jury_id');

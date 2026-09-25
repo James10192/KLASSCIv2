@@ -44,6 +44,38 @@ final class JuryDecisionBulletinPersistenceTest extends OfficialDocumentDatabase
         $this->assertSame(100, DB::table('esbtp_lmd_jury_decisions')->where('id', 1)->value('bulletin_id'));
     }
 
+    public function test_sans_president_aucune_decision_automatique_n_est_ecrite(): void
+    {
+        $jury = $this->seedScopedJury();
+        DB::table('esbtp_lmd_jury_membres')->where('role', 'president')->update(['present' => false]);
+        DB::table('esbtp_lmd_jury_decisions')->delete();
+
+        try {
+            $this->service->appliquerDecisionsAuto($jury);
+            $this->fail('Le quorum aurait dû être exigé.');
+        } catch (\LogicException $e) {
+            $this->assertStringContainsString('Quorum non atteint', $e->getMessage());
+        }
+
+        $this->assertSame(0, DB::table('esbtp_lmd_jury_decisions')->count());
+    }
+
+    public function test_un_dossier_sans_moyenne_est_incomplet_et_non_defere(): void
+    {
+        $jury = $this->seedScopedJury();
+        DB::table('esbtp_lmd_bulletins')->where('id', 100)->update(['moyenne_generale' => null]);
+        // Un inscrit sans bulletin entre dans la cohorte et ressort incomplet.
+        DB::table('esbtp_etudiants')->insert(['id' => 12, 'matricule' => 'LMD003', 'nom' => 'BAMBA', 'prenoms' => 'Ali']);
+        DB::table('esbtp_inscriptions')->insert(['etudiant_id' => 12, 'classe_id' => 1, 'annee_universitaire_id' => 1, 'status' => 'active']);
+
+        $resultat = $this->service->appliquerDecisionsAutoDetaillees($jury);
+
+        $incomplets = collect($resultat['incompletes'])->pluck('etudiant_id')->sort()->values()->all();
+        $this->assertSame([10, 12], $incomplets);
+        $this->assertNull(DB::table('esbtp_lmd_jury_decisions')->where('etudiant_id', 10)->whereNull('deleted_at')->first());
+        $this->assertSame(0, DB::table('esbtp_lmd_jury_decisions')->where('decision', 'defere')->count());
+    }
+
     public function test_override_decision_persists_the_resolved_bulletin_id(): void
     {
         $jury = $this->seedScopedJury();

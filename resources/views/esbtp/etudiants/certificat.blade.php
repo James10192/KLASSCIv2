@@ -316,7 +316,7 @@
                     <tr>
                         <td>
                             @php
-                                $rawAY = $inscription->anneeUniversitaire?->libelle
+                                $rawAY = $inscription->anneeUniversitaire?->display_name
                                     ?? $inscription->anneeUniversitaire?->name ?? null;
                                 $yearText = $rawAY
                                     ? (preg_match('/(\d{4}-\d{4})/', $rawAY, $m) ? $m[1] : $rawAY)

@@ -59,7 +59,7 @@
                 <select class="lmd-select" name="annee_universitaire_id" onchange="this.form.submit()">
                     @foreach($annees as $annee)
                         <option value="{{ $annee->id }}" {{ (int) $anneeId === (int) $annee->id ? 'selected' : '' }}>
-                            {{ $annee->name ?? $annee->libelle ?? $annee->id }}
+                            {{ $annee->name ?? $annee->display_name ?? $annee->id }}
                         </option>
                     @endforeach
                 </select>

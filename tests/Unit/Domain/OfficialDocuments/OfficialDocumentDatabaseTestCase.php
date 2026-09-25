@@ -106,6 +106,8 @@ abstract class OfficialDocumentDatabaseTestCase extends TestCase
         Schema::create('esbtp_classes', function (Blueprint $t): void { $t->id(); $t->string('name'); $t->unsignedBigInteger('parcours_id')->nullable(); $t->timestamps(); $t->softDeletes(); });
         Schema::create('esbtp_lmd_sessions', function (Blueprint $t): void { $t->id(); $t->string('libelle'); $t->timestamps(); $t->softDeletes(); });
         Schema::create('esbtp_etudiants', function (Blueprint $t): void { $t->id(); $t->string('matricule'); $t->string('nom'); $t->string('prenoms'); $t->timestamps(); $t->softDeletes(); });
+        // La cohorte d'un jury de classe lit aussi les inscriptions actives.
+        Schema::create('esbtp_inscriptions', function (Blueprint $t): void { $t->id(); $t->unsignedBigInteger('etudiant_id'); $t->unsignedBigInteger('classe_id')->nullable(); $t->unsignedBigInteger('annee_universitaire_id')->nullable(); $t->string('status')->nullable(); $t->string('workflow_step')->nullable(); $t->timestamps(); $t->softDeletes(); });
     }
 
     private function createPermissionTables(): void

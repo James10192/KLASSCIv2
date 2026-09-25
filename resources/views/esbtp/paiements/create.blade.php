@@ -758,7 +758,7 @@
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-floating-modern">
-                                        <input type="text" class="form-control" value="{{ $inscription->anneeUniversitaire->libelle }}" readonly>
+                                        <input type="text" class="form-control" value="{{ $inscription->anneeUniversitaire->display_name }}" readonly>
                                         <label>Année universitaire</label>
                                     </div>
                                 </div>

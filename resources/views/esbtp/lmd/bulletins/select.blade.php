@@ -476,7 +476,7 @@
                                 <option value="">— Sélectionner —</option>
                                 @foreach($annees as $annee)
                                     <option value="{{ $annee->id }}" {{ ($annee->is_current ?? false) ? 'selected' : '' }}>
-                                        {{ $annee->name ?? $annee->libelle ?? $annee->id }}
+                                        {{ $annee->name ?? $annee->display_name ?? $annee->id }}
                                     </option>
                                 @endforeach
                             </select>

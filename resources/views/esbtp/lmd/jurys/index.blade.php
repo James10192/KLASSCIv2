@@ -49,7 +49,7 @@
             <div class="juy-hero-icon"><i class="fas fa-gavel"></i></div>
             <div>
                 <h1>Jurys de délibération LMD</h1>
-                <p>Année <strong>{{ $annee->libelle ?? '—' }}</strong> · workflow UEMOA + PV légal archivé 5 ans</p>
+                <p>Année <strong>{{ $annee->display_name ?? '—' }}</strong> · workflow UEMOA + PV légal archivé 5 ans</p>
             </div>
         </div>
         <div style="display:flex;gap:.5rem;">
@@ -136,7 +136,7 @@
                 </div>
                 <div>
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Semestre</label>
-                    <x-au-select name="semestre" placeholder="Semestre" icon="fa-layer-group" :options="collect(range(1,8))->mapWithKeys(fn ($s) => [$s => 'S'.$s])" />
+                    <x-au-select name="semestre" placeholder="Semestre" icon="fa-layer-group" :options="collect(range(1, \App\Models\ESBTPNiveauEtude::SEMESTRE_LMD_MAX))->mapWithKeys(fn ($s) => [$s => 'Semestre '.$s])" />
                 </div>
                 <div style="grid-column:1/-1;">
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Date du jury</label>

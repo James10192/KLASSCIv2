@@ -103,7 +103,7 @@
 <div>
     <div class="rtp-card">
         <h2><i class="fas fa-info-circle"></i> Détails</h2>
-        <div class="kv-row"><span>Année</span><span>{{ $session->anneeUniversitaire->libelle ?? '—' }}</span></div>
+        <div class="kv-row"><span>Année</span><span>{{ $session->anneeUniversitaire->display_name ?? '—' }}</span></div>
         <div class="kv-row"><span>Créée le</span><span>{{ $session->created_at?->format('d/m/Y') }}</span></div>
         @if($session->published_at)
         <div class="kv-row"><span>Publiée le</span><span>{{ $session->published_at?->format('d/m/Y H:i') }}</span></div>
