@@ -670,7 +670,7 @@
                 </div>
                 <div class="cs-hero-actions">
                     @if(auth()->user()->can('module.academic_pilotage.access') && auth()->user()->can('academic_pilotage.view'))
-                        <a href="{{ route('esbtp.pilotage-academique.index', array_filter(['class_id' => $classe->id, 'system' => $classe->systeme_academique])) }}#classes" class="cs-btn--glass" title="Consulter la santé académique de cette classe">
+                        <a href="{{ route('esbtp.pilotage-academique.index', array_filter(['classe' => $classe->id])) }}" class="cs-btn--glass" title="Notes manquantes, relances et présence de cette classe">
                             <i class="fas fa-chart-line"></i>Pilotage académique
                         </a>
                     @endif

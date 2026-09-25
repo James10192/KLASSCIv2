@@ -10,6 +10,8 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Services\LMD\CodeDeMaquette;
+use App\Services\LMD\PresentationDesUnites;
 use App\Services\LMD\CodeDeMatiere;
 use App\Services\LMD\CompositionUe;
 use App\Services\LMD\EcritureEcue;
@@ -94,61 +96,10 @@ class ESBTPLMDUEController extends Controller
             // est celle de CETTE maquette : la commune, plus ce que le parcours
             // surcharge. Sans filtre, on montre tout, un element une seule fois.
             $parcoursFiltre = $request->filled('parcours_id') ? (int) $request->parcours_id : null;
+            $presentation = app(PresentationDesUnites::class);
 
             return response()->json([
-                'ues' => $ues->map(function ($ue) use ($parcoursFiltre) {
-                    $ecues = $ue->getEcuesEffectifs($parcoursFiltre);
-                    return [
-                        'id' => $ue->id,
-                        'code' => $ue->code,
-                        'name' => $ue->name,
-                        'type_ue' => $ue->type_ue,
-                        'credit' => $ue->credit,
-                        'description' => $ue->description,
-                        'filiere_id' => $ue->filiere_id,
-                        'niveau_id' => $ue->niveau_id,
-                        // Les elements que CETTE vue montre : filtree sur un
-                        // parcours, ceux de sa maquette. Le compte par cle
-                        // etrangere affichait « 2 » a cote de « Aucun ECUE
-                        // rattache » (USAT).
-                        'matieres_count' => $ecues->pluck('id')->unique()->count(),
-                        // Elements a la fois communs et reserves a un parcours :
-                        // la ligne commune les montre a TOUS les parcours, ce
-                        // que la reservation laisse croire impossible. Calcule
-                        // sur le pivot entier, quel que soit le filtre.
-                        'communs_et_reserves' => $this->communsEtReserves($ue),
-                        'parcours' => $ue->parcoursMultiple->groupBy('id')->map(fn($pivots) => [
-                            'id' => $pivots->first()->id,
-                            'code' => $pivots->first()->code,
-                            'name' => $pivots->first()->name,
-                            'semestres' => $pivots->pluck('pivot.semestre')->sort()->values(),
-                        ])->values(),
-                        // La maquette que porte chaque ligne : 0 pour la composition
-                        // commune, l'identifiant du parcours pour une reservation.
-                        // Sans elle, l'ecran ne peut ni dire a qui appartient un
-                        // element, ni viser la bonne ligne pour le modifier ou le
-                        // retirer.
-                        'ecues' => $ecues->map(function ($e) use ($ue) {
-                            $portee = (int) ($e->pivot->parcours_id ?? 0);
-                            $parcours = $portee > 0 ? $ue->parcoursMultiple->firstWhere('id', $portee) : null;
-
-                            return [
-                                'id' => $e->id,
-                                'code' => $e->code,
-                                'name' => $e->name,
-                                // Le coefficient que les bulletins utilisent vraiment
-                                // (meme repli que LMDBulletinService) : afficher
-                                // « — » laissait croire a un element sans poids.
-                                'coefficient' => $e->pivot->coefficient_ecue ?? $e->coefficient_ecue ?? $e->coefficient ?? 1,
-                                'credit' => $e->pivot->credit_ecue ?? $e->credit_ecue ?? null,
-                                'ordre' => $e->pivot->ordre_bulletin ?? $e->ordre_bulletin ?? 0,
-                                'portee' => $portee,
-                                'portee_code' => $parcours?->code,
-                                'portee_label' => $parcours ? ($parcours->name ?? $parcours->code) : null,
-                            ];
-                        }),
-                    ];
-                }),
+                'ues' => $ues->map(fn ($ue) => $presentation->unite($ue, $parcoursFiltre)),
                 'pagination' => [
                     'current_page' => $ues->currentPage(),
                     'last_page' => $ues->lastPage(),
@@ -164,31 +115,6 @@ class ESBTPLMDUEController extends Controller
         $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
 
         return view('esbtp.lmd.ue.index', compact('ues', 'parcours', 'filieres', 'niveaux'));
-    }
-
-    /**
-     * @return array<int, array{id:int, name:string, reserve_a:array<int,string>}>
-     */
-    private function communsEtReserves(ESBTPUniteEnseignement $ue): array
-    {
-        $codes = $ue->parcoursMultiple->pluck('code', 'id');
-
-        return $ue->ecues->groupBy('id')
-            ->map(function ($lignes) use ($codes) {
-                $portees = $lignes->map(fn ($l) => (int) ($l->pivot->parcours_id ?? 0));
-                if (! $portees->contains(0) || $portees->filter()->isEmpty()) {
-                    return null;
-                }
-
-                return [
-                    'id' => (int) $lignes->first()->id,
-                    'name' => (string) $lignes->first()->name,
-                    'reserve_a' => $portees->filter()->map(fn ($id) => $codes[$id] ?? ('#' . $id))->values()->all(),
-                ];
-            })
-            ->filter()
-            ->values()
-            ->all();
     }
 
     /**
@@ -211,6 +137,9 @@ class ESBTPLMDUEController extends Controller
         $ue->load('matieres', 'parcoursMultiple');
 
         $data = $ue->toArray();
+        // Le formulaire montre le code imprime ; la requete rend sa cle a l'UE.
+        $data['code'] = $ue->code_affiche;
+        $data['propre_a'] = CodeDeMaquette::suffixe($ue->code);
 
         // Ajouter l'ordre du pivot (premier parcours lié)
         $pivot = $ue->parcoursMultiple->first();
@@ -224,7 +153,7 @@ class ESBTPLMDUEController extends Controller
      */
     public function store(UniteEnseignementRequest $request)
     {
-        $donnees = $request->validated();
+        $donnees = $request->donneesAvecLaCle();
 
         $ue = DB::transaction(function () use ($donnees, $request) {
             $ue = new ESBTPUniteEnseignement();
@@ -373,7 +302,7 @@ class ESBTPLMDUEController extends Controller
      */
     public function update(UniteEnseignementRequest $request, ESBTPUniteEnseignement $ue)
     {
-        $donnees = $request->validated();
+        $donnees = $request->donneesAvecLaCle();
 
         DB::transaction(function () use ($donnees, $request, $ue) {
             $ue->fill($this->attributsUe($donnees));
@@ -482,85 +411,109 @@ class ESBTPLMDUEController extends Controller
         int $parcoursId = CompositionUe::COMMUN
     ): void {
         $idsConserves = [];
-
         foreach ($ecues as $index => $ligne) {
-            $code = isset($ligne['code']) && $ligne['code'] !== '' ? $ligne['code'] : null;
-            $credit = isset($ligne['credit_ecue']) && $ligne['credit_ecue'] !== '' ? (int) $ligne['credit_ecue'] : null;
-            $coefficient = isset($ligne['coefficient_ecue']) && $ligne['coefficient_ecue'] !== '' ? (float) $ligne['coefficient_ecue'] : null;
-            $ordre = (int) ($ligne['ordre_bulletin'] ?? 0);
-
-            // Réutilisation par code, comme l'import : les codes ECUE sont uniques
-            // au niveau de l'établissement, deux saisies du même code désignent
-            // la même matière.
-            // Une matière supprimée occupe toujours son code (l'index unique la
-            // compte) : on le lui libère plutôt que de la ressusciter sous le nom
-            // saisi, avec ses notes. Même règle que le modal et l'import.
-            if ($message = $this->codes->libererSiArchive($code)) {
-                $this->codesLiberes[] = $message;
-            }
-            $matiere = $code ? ESBTPMatiere::where('code', $code)->first() : null;
-            $existait = $matiere !== null;
-
-            // Reprendre le code d'un element deja rattache a une AUTRE unite ne
-            // doit pas le lui retirer. Sans ligne de pivot, cette unite-la lit
-            // ses elements par la cle etrangere (getEcuesEffectifs retombe sur
-            // le hasMany) : lui reecrire la cle la depouillerait de l'element et
-            // de ses credits, sans message ni trace. On partage par le pivot.
-            // Defense en profondeur : le FormRequest a deja refuse un code du
-            // cursus BTS, mais la garde est rejouee ici pour que tout appelant
-            // futur de cette methode soit couvert.
-            $this->ecritures->refuserAbsorptionMatiereBts($matiere);
-
-            $proprietaireId = $matiere?->unite_enseignement_id;
-            $appartientAUneAutreUe = $proprietaireId !== null
-                && (int) $proprietaireId !== (int) $ue->id;
-
-            // Avant d'ecrire quoi que ce soit, on affranchit l'unite proprietaire
-            // du repli par cle etrangere : sinon la ligne de pivot que nous
-            // ecrivons plus bas resterait sa seule protection, et les valeurs que
-            // nous posons sur la matiere deviendraient les siennes.
-            if ($appartientAUneAutreUe) {
-                $this->composition->materialiserDepuisCleEtrangere((int) $proprietaireId);
-            }
-
-            $matiere = $matiere ?: new ESBTPMatiere();
-
-            $matiere->fill([
-                'name' => $ligne['name'],
-                'code' => $code,
-                'credit_ecue' => $credit,
-                'coefficient_ecue' => $coefficient,
-                'ordre_bulletin' => $ordre,
-            ]);
-            if (! $appartientAUneAutreUe) {
-                $matiere->unite_enseignement_id = $ue->id;
-            }
-            if (!$existait) {
-                $matiere->is_active = true;
-                $matiere->created_by = auth()->id();
-                if ($ue->niveau_id) {
-                    $matiere->niveau_etude_id = $ue->niveau_id;
-                }
-            }
-            $matiere->updated_by = auth()->id();
-            $this->codes->sousUnicite("ecues.{$index}.code", $code, fn () => $matiere->save());
-
-            // Par le service, jamais par `syncWithoutDetaching` : celui-ci retrouve
-            // la ligne par le seul `matiere_id` et reecrirait une composition
-            // reservee a une autre maquette.
-            $this->composition->poser($ue, (int) $matiere->id, [
-                'coefficient_ecue' => $coefficient,
-                'credit_ecue' => $credit,
-                'ordre_bulletin' => $ordre,
-            ], $parcoursId);
-
-            $idsConserves[] = (int) $matiere->id;
+            $idsConserves[] = $this->enregistrerUnEcue($ue, $index, $ligne, $parcoursId);
         }
 
-        if (!$detacherAbsents) {
-            return;
+        if ($detacherAbsents) {
+            $this->detacherLesAbsents($ue, $idsConserves, $parcoursId);
+        }
+    }
+
+    /** Une ligne du formulaire : l'element retrouve ou cree, pose dans cette maquette. */
+    private function enregistrerUnEcue(ESBTPUniteEnseignement $ue, int|string $index, array $ligne, int $parcoursId): int
+    {
+        $code = isset($ligne['code']) && $ligne['code'] !== '' ? $ligne['code'] : null;
+        $credit = isset($ligne['credit_ecue']) && $ligne['credit_ecue'] !== '' ? (int) $ligne['credit_ecue'] : null;
+        $coefficient = isset($ligne['coefficient_ecue']) && $ligne['coefficient_ecue'] !== '' ? (float) $ligne['coefficient_ecue'] : null;
+        $ordre = (int) ($ligne['ordre_bulletin'] ?? 0);
+
+        $code = $this->cleDeLElement($ue, $index, $code, $ligne['name'] ?? null);
+        $matiere = $code ? ESBTPMatiere::where('code', $code)->first() : null;
+        $existait = $matiere !== null;
+
+        // Reprendre le code d'un element deja rattache a une AUTRE unite ne
+        // doit pas le lui retirer. Sans ligne de pivot, cette unite-la lit
+        // ses elements par la cle etrangere (getEcuesEffectifs retombe sur
+        // le hasMany) : lui reecrire la cle la depouillerait de l'element et
+        // de ses credits, sans message ni trace. On partage par le pivot.
+        // Defense en profondeur : le FormRequest a deja refuse un code du
+        // cursus BTS, mais la garde est rejouee ici pour que tout appelant
+        // futur de cette methode soit couvert.
+        $this->ecritures->refuserAbsorptionMatiereBts($matiere);
+
+        $proprietaireId = $matiere?->unite_enseignement_id;
+        $appartientAUneAutreUe = $proprietaireId !== null
+            && (int) $proprietaireId !== (int) $ue->id;
+
+        // Avant d'ecrire quoi que ce soit, on affranchit l'unite proprietaire
+        // du repli par cle etrangere : sinon la ligne de pivot que nous
+        // ecrivons plus bas resterait sa seule protection, et les valeurs que
+        // nous posons sur la matiere deviendraient les siennes.
+        if ($appartientAUneAutreUe) {
+            $this->composition->materialiserDepuisCleEtrangere((int) $proprietaireId);
         }
 
+        $matiere = $matiere ?: new ESBTPMatiere();
+
+        $matiere->fill([
+            'name' => $ligne['name'],
+            'code' => $code,
+            'credit_ecue' => $credit,
+            'coefficient_ecue' => $coefficient,
+            'ordre_bulletin' => $ordre,
+        ]);
+        if (! $appartientAUneAutreUe) {
+            $matiere->unite_enseignement_id = $ue->id;
+        }
+        if (!$existait) {
+            $matiere->is_active = true;
+            $matiere->created_by = auth()->id();
+            if ($ue->niveau_id) {
+                $matiere->niveau_etude_id = $ue->niveau_id;
+            }
+        }
+        $matiere->updated_by = auth()->id();
+        $this->codes->sousUnicite("ecues.{$index}.code", $code, fn () => $matiere->save());
+
+        // Par le service, jamais par `syncWithoutDetaching` : celui-ci retrouve
+        // la ligne par le seul `matiere_id` et reecrirait une composition
+        // reservee a une autre maquette.
+        $this->composition->poser($ue, (int) $matiere->id, [
+            'coefficient_ecue' => $coefficient,
+            'credit_ecue' => $credit,
+            'ordre_bulletin' => $ordre,
+        ], $parcoursId);
+
+        return (int) $matiere->id;
+    }
+
+    /**
+     * La cle sous laquelle l'element s'enregistre. Réutilisation par code, comme
+     * l'import : deux saisies du même code désignent la même matière — mais le
+     * code imprime renvoye par le formulaire retrouve l'element de CETTE unite,
+     * pas celui d'un autre parcours (CodeDeMaquette), et un code repris avec un
+     * autre intitule est refuse. Une matière supprimée occupe toujours son code
+     * (l'index unique la compte) : on le lui libère plutôt que de la ressusciter
+     * sous le nom saisi, avec ses notes. Même règle que le modal et l'import.
+     */
+    private function cleDeLElement(ESBTPUniteEnseignement $ue, int|string $index, ?string $code, ?string $nom): ?string
+    {
+        $resolution = $code !== null ? app(CodeDeMaquette::class)->resoudreElement($ue, $code, $nom) : null;
+        if ($resolution !== null && $resolution['refus'] !== null) {
+            throw \Illuminate\Validation\ValidationException::withMessages(["ecues.{$index}.code" => $resolution['refus']]);
+        }
+        $code = $resolution['cle'] ?? $code;
+        if ($message = $this->codes->libererSiArchive($code)) {
+            $this->codesLiberes[] = $message;
+        }
+
+        return $code;
+    }
+
+    /** Retire de CETTE maquette les elements que le formulaire ne renvoie plus. */
+    private function detacherLesAbsents(ESBTPUniteEnseignement $ue, array $idsConserves, int $parcoursId): void
+    {
         // On ne compare qu'a CETTE maquette : sans ce scope, enregistrer la
         // composition commune detacherait tout ce qu'un parcours a reserve, et
         // enregistrer celle d'un parcours effacerait la commune.
@@ -693,7 +646,7 @@ class ESBTPLMDUEController extends Controller
             'matiere_id'       => 'nullable|exists:esbtp_matieres,id',
             // Champs pour création d'une nouvelle matière
             'name'             => 'required_without:matiere_id|nullable|string|max:255',
-            'code'             => 'required_without:matiere_id|nullable|string|max:50',
+            'code'             => 'required_without:matiere_id|nullable|string|max:50|not_regex:/~/',
             'credit_ecue'     => 'nullable|integer|min:1',
             'coefficient_ecue' => 'nullable|numeric|min:0',
             'ordre_bulletin'  => 'nullable|integer|min:0',
@@ -734,7 +687,7 @@ class ESBTPLMDUEController extends Controller
     {
         $validated = $request->validate([
             'name'             => 'sometimes|required|string|max:255',
-            'code'             => 'sometimes|required|string|max:50',
+            'code'             => 'sometimes|required|string|max:50|not_regex:/~/',
             'credit_ecue'     => 'nullable|integer|min:1',
             'coefficient_ecue' => 'nullable|numeric|min:0',
             'ordre_bulletin'  => 'nullable|integer|min:0',
@@ -920,7 +873,18 @@ class ESBTPLMDUEController extends Controller
                 ->where('esbtp_ue_matiere.unite_enseignement_id', $ue->id)
                 ->where('esbtp_ue_matiere.parcours_id', $portee))
             ->orderBy('name')
-            ->get(['id', 'name', 'code', 'coefficient_ecue', 'credit_ecue']);
+            ->get(['id', 'name', 'code', 'coefficient_ecue', 'credit_ecue'])
+            // Deux elements differents peuvent imprimer le meme code dans deux
+            // parcours : on montre le code imprime ET le parcours d'une cle
+            // suffixee, sinon les deux « AGR21031 » seraient indiscernables.
+            ->map(fn ($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'code' => $m->code_affiche,
+                'propre_a' => CodeDeMaquette::suffixe($m->code),
+                'coefficient_ecue' => $m->coefficient_ecue,
+                'credit_ecue' => $m->credit_ecue,
+            ]);
 
         return response()->json($matieres);
     }
