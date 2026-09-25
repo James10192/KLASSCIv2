@@ -139,12 +139,39 @@ class AdaptateursTest extends TestCase
 
     public function test_une_panne_http_devient_un_evenement_erreur_sans_exception(): void
     {
+        config(['assistant.limites.pause_ms' => 0]);
         Http::fake(['*' => Http::response(['error' => ['type' => 'overloaded_error', 'message' => 'détail interne']], 529)]);
 
         foreach ([new Anthropic(), new OpenAiCompatible(), new Gemini()] as $adaptateur) {
             $evts = $this->evenements($adaptateur->diffuser($this->requete(), $this->modele('x', 'https://x.test/'), fn () => false));
             $this->assertSame([['erreur', ['code' => 'http_529']]], $evts);
         }
+    }
+
+    public function test_une_surcharge_passagere_se_retente_sur_le_meme_modele(): void
+    {
+        config(['assistant.limites.pause_ms' => 0, 'assistant.limites.tentatives' => 3]);
+        Http::fakeSequence()
+            ->push(['error' => ['type' => 'overloaded_error']], 529)
+            ->push(['error' => ['type' => 'rate_limit_error']], 429)
+            ->push(FluxEnregistres::anthropicTexte(), 200, ['Content-Type' => 'text/event-stream']);
+
+        $evts = $this->evenements((new Anthropic())->diffuser($this->requete(), $this->modele('anthropic', 'https://api.anthropic.test/'), fn () => false));
+
+        $this->assertNotContains('erreur', array_column($evts, 0));
+        $this->assertContains('texte', array_column($evts, 0));
+        Http::assertSentCount(3);
+    }
+
+    public function test_une_erreur_de_requete_ne_se_retente_pas(): void
+    {
+        config(['assistant.limites.pause_ms' => 0, 'assistant.limites.tentatives' => 3]);
+        Http::fake(['*' => Http::response(['error' => ['type' => 'invalid_request_error']], 400)]);
+
+        $evts = $this->evenements((new Anthropic())->diffuser($this->requete(), $this->modele('anthropic', 'https://api.anthropic.test/'), fn () => false));
+
+        $this->assertSame([['erreur', ['code' => 'http_400']]], $evts);
+        Http::assertSentCount(1);
     }
 
     public function test_sans_cle_rien_n_est_envoye(): void

@@ -99,6 +99,11 @@ class BoucleAgent
                 $ui->finishStep();
 
                 if (!$montre && !$delaiDepasse && $candidats !== []) {
+                    // Les puces d'outil annoncées par le modèle abandonné ne décrivent
+                    // plus rien : le suivant repart de zéro. On les retire.
+                    foreach ($tour['puces'] as $puce) {
+                        $ui->data('outil', ['nom' => $puce['nom'], 'etat' => 'retire'], $puce['id']);
+                    }
                     $modele = array_shift($candidats);
                     $tours--;
                     continue;
@@ -167,7 +172,7 @@ class BoucleAgent
      */
     private function unTour(FournisseurDeModele $fournisseur, RequeteModele $requete, ModeleIa $modele, UiMessageStream $ui, callable $arreter): array
     {
-        $tour = ['texte' => '', 'appels' => [], 'raison' => null, 'erreur' => null, 'entree' => 0, 'sortie' => 0];
+        $tour = ['texte' => '', 'appels' => [], 'puces' => [], 'raison' => null, 'erreur' => null, 'entree' => 0, 'sortie' => 0];
         $idTexte = null;
 
         try {
@@ -193,6 +198,7 @@ class BoucleAgent
                             'libelle' => $this->catalogue->libelle($evenement->donnees['nom']),
                             'etat' => 'en_cours',
                         ], $evenement->donnees['id']);
+                        $tour['puces'][] = ['id' => $evenement->donnees['id'], 'nom' => $evenement->donnees['nom']];
                         break;
 
                     case EvenementModele::OUTIL:

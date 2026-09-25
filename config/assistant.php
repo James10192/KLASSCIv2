@@ -29,6 +29,9 @@ return [
         'budget_tokens' => (int) env('ASSISTANT_BUDGET_TOKENS', 60000),
         'delai_secondes' => (int) env('ASSISTANT_DELAI', 90),
         'delai_connexion' => (int) env('ASSISTANT_DELAI_CONNEXION', 15),
+        // Nouvelles tentatives sur le même modèle après 429, 5xx ou coupure réseau.
+        'tentatives' => (int) env('ASSISTANT_TENTATIVES', 3),
+        'pause_ms' => (int) env('ASSISTANT_PAUSE_MS', 600),
         'max_tokens' => (int) env('ASSISTANT_MAX_TOKENS', env('ANTHROPIC_MAX_TOKENS', 2048)),
         'temperature' => (float) env('ASSISTANT_TEMPERATURE', env('ANTHROPIC_TEMPERATURE', 0.2)),
     ],

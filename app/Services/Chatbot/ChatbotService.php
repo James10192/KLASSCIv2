@@ -247,7 +247,13 @@ class ChatbotService
 
             $this->emitDisplayParts($ui, $agentResponse['display_type'], $displayData, $agentResponse['deep_link']);
 
-            $this->updateConversationTitleIfNeeded($conversation, $message);
+            // Titre provisoire tout de suite (la question elle-même) ; le titre rédigé par
+            // le modèle se calcule APRÈS la fin du flux, pour ne pas faire attendre la
+            // réponse d'un second appel au modèle.
+            $titreARediger = empty($conversation->title);
+            if ($titreARediger) {
+                $conversation->update(['title' => $this->sanitizeTitle($message)]);
+            }
 
             $ui->metadata([
                 'conversationId' => $conversation->session_id,
@@ -259,6 +265,10 @@ class ChatbotService
                 $ui->finish();
             }
             $ui->done();
+
+            if ($titreARediger) {
+                $this->redigerTitreApresCoup($conversation, $message);
+            }
 
             return ['success' => empty($agentResponse['erreur'])];
         } catch (\Throwable $e) {
@@ -570,6 +580,19 @@ class ChatbotService
 
         if ($newTitle) {
             $conversation->update(['title' => $newTitle]);
+        }
+    }
+
+    /** Remplace le titre provisoire par celui du modèle, une fois la réponse livrée. */
+    protected function redigerTitreApresCoup(ChatbotConversation $conversation, string $message): void
+    {
+        try {
+            $titre = $this->agent->genererTitre($message);
+            if ($titre) {
+                $conversation->update(['title' => $this->sanitizeTitle($titre)]);
+            }
+        } catch (\Throwable $e) {
+            Log::info('ChatbotService: titre non rédigé', ['conversation_id' => $conversation->id, 'type' => get_class($e)]);
         }
     }
 

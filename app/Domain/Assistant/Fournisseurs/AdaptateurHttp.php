@@ -24,21 +24,39 @@ abstract class AdaptateurHttp implements FournisseurDeModele
             return [null, 'non_configure'];
         }
 
-        try {
-            $reponse = Http::timeout((int) config('assistant.limites.delai_secondes', 90))
-                ->connectTimeout((int) config('assistant.limites.delai_connexion', 15))
-                ->withOptions(['stream' => true])
-                ->withHeaders($entetes)
-                ->post($url, $corps);
-        } catch (\Throwable $e) {
-            $this->journaliserPanne($modele, 'reseau', null);
-            return [null, 'reseau'];
-        }
+        // Une surcharge passagère (429, 5xx, coupure réseau) se retente sur le MÊME
+        // modèle avant de passer au suivant : sur une instance qui n'a qu'une clé,
+        // il n'y a pas de suivant. Rien n'a encore été montré à ce stade, la
+        // nouvelle tentative est donc invisible pour l'utilisateur.
+        $tentatives = max(1, (int) config('assistant.limites.tentatives', 3));
+        $pause = max(0, (int) config('assistant.limites.pause_ms', 600));
 
-        if (!$reponse->successful()) {
-            $statut = $reponse->status();
-            $this->journaliserPanne($modele, 'http_' . $statut, $this->typeErreur($reponse->body()));
-            return [null, $statut === 429 ? 'limite_debit' : 'http_' . $statut];
+        for ($essai = 1; ; $essai++) {
+            $code = null;
+            $type = null;
+            try {
+                $reponse = Http::timeout((int) config('assistant.limites.delai_secondes', 90))
+                    ->connectTimeout((int) config('assistant.limites.delai_connexion', 15))
+                    ->withOptions(['stream' => true])
+                    ->withHeaders($entetes)
+                    ->post($url, $corps);
+                if ($reponse->successful()) {
+                    break;
+                }
+                $statut = $reponse->status();
+                $code = $statut === 429 ? 'limite_debit' : 'http_' . $statut;
+                $type = $this->typeErreur($reponse->body());
+                $passager = $statut === 429 || $statut >= 500;
+            } catch (\Throwable $e) {
+                $code = 'reseau';
+                $passager = true;
+            }
+
+            $this->journaliserPanne($modele, $code, $type);
+            if (!$passager || $essai >= $tentatives) {
+                return [null, $code];
+            }
+            usleep($pause * 1000 * $essai);
         }
 
         return [$reponse->toPsrResponse()->getBody(), null];

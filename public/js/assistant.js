@@ -802,7 +802,13 @@
                     msg.parts.push({ key: uid('p'), type: 'error', text: (e && e.messageUtilisateur) || 'La connexion a été interrompue.' });
                     msg.status = 'error';
                 }).finally(function () {
-                    if (msg.status === 'streaming') { msg.status = 'done'; }
+                    // Flux fermé sans « finish » ni « error » (délai du serveur, coupure du
+                    // proxy) : ne jamais laisser une réponse muette passer pour aboutie.
+                    if (msg.status === 'streaming') {
+                        self.cloreTextes(msg);
+                        msg.parts.push({ key: uid('p'), type: 'error', text: 'La réponse a été interrompue avant la fin. Réessayez.' });
+                        msg.status = 'error';
+                    }
                     self.envoiEnCours = false;
                     self.controleur = null;
                     self.annonce = msg.status === 'error' ? 'Erreur : la réponse n\'a pas abouti.' : self.texteDe(msg).slice(0, 600);
@@ -937,7 +943,10 @@
                     if (fin) { fin.fini = true; }
                 } else if (type === 'data-outil') {
                     var existant = msg.parts.find(function (p) { return p.type === 'outil' && p.id === partie.id; });
-                    if (existant) {
+                    if (partie.data && partie.data.etat === 'retire') {
+                        // Modèle abandonné au profit du suivant : sa puce ne décrit plus rien.
+                        msg.parts = msg.parts.filter(function (p) { return !(p.type === 'outil' && p.id === partie.id); });
+                    } else if (existant) {
                         existant.data = partie.data || {};
                     } else {
                         msg.parts.push({ key: uid('p'), type: 'outil', id: partie.id, data: partie.data || {} });

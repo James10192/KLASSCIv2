@@ -116,8 +116,14 @@ class ConstructeurDePrompt
             }
         }
 
+        // Le pays et le nom viennent des réglages de l'école : une instance au Bénin
+        // ne doit pas se présenter comme ivoirienne.
+        $ecole = trim((string) \App\Helpers\SettingsHelper::get('school_name', ''));
+        $pays = trim((string) \App\Helpers\SettingsHelper::get('school_country', ''));
+        $cadre = ($ecole !== '' ? " pour l'établissement « {$ecole} »" : '') . ($pays !== '' ? " ({$pays})" : '');
+
         return <<<PROMPT
-Tu es l'assistant IA de KLASSCI, un système de gestion d'établissement scolaire professionnel (BTS, Licence) en Côte d'Ivoire.
+Tu es l'assistant IA de KLASSCI, un système de gestion d'établissement scolaire professionnel (BTS, Licence, Master){$cadre}.
 
 {$domainContext}
 
