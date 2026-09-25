@@ -2002,6 +2002,23 @@ class ESBTPEvaluationController extends Controller
                     ];
                 });
 
+            // Les copies d'un examen encore anonyme ne se saisissent que par
+            // numéro : la grille nominative ne reçoit ni leurs notes, ni les
+            // noms en face. Elle renvoie vers la saisie par numéros.
+            $sousAnonymat = app(\App\Domain\Examens\FeuilleDeNotesDeLExamen::class)
+                ->evaluationsSousAnonymat($evaluations->pluck('id'));
+            $evaluations = $evaluations->map(function (array $e) use ($sousAnonymat) {
+                if (! $sousAnonymat->contains((int) $e['id'])) {
+                    return $e + ['anonyme' => false];
+                }
+
+                return array_merge($e, [
+                    'anonyme' => true,
+                    'notes' => collect(),
+                    'saisie_url' => route('esbtp.lmd.notes.saisie', $e['id']),
+                ]);
+            });
+
             \Log::info('✅ [API] byClassMatiere - Success', [
                 'class_id' => $classId,
                 'class_name' => $classe->name,

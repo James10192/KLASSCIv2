@@ -56,6 +56,39 @@ class FeuilleDeNotesDeLExamenTest extends TestCase
         $this->assertNotNull($examen->fresh()->anonymat_leve_at);
     }
 
+    public function test_un_inscrit_tardif_recoit_le_numero_suivant_le_plus_grand(): void
+    {
+        [$examen, $user] = $this->examen(anonyme: true);
+        $service = app(FeuilleDeNotesDeLExamen::class);
+        $evaluation = $service->ouvrir($examen, $user);
+
+        // Un numéro retiré : compter les lignes redonnerait un numéro existant.
+        ESBTPExamenAnonymat::where('examen_planifie_id', $examen->id)->orderBy('numero')->first()->delete();
+        $classe = \App\Models\ESBTPClasse::find($examen->classe_id);
+        ESBTPInscription::factory()->create([
+            'classe_id' => $classe->id, 'annee_universitaire_id' => $examen->annee_universitaire_id,
+            'filiere_id' => $classe->filiere_id, 'niveau_id' => $classe->niveau_etude_id,
+        ]);
+
+        $numeros = $service->numerosPourLaSaisie($evaluation);
+
+        $this->assertSame($numeros->count(), $numeros->unique()->count());
+        $this->assertContains('E'.$examen->id.'-004', $numeros->values()->all());
+    }
+
+    public function test_une_evaluation_sous_anonymat_sort_de_la_grille_jusqu_a_la_levee(): void
+    {
+        [$examen, $user] = $this->examen(anonyme: true);
+        $service = app(FeuilleDeNotesDeLExamen::class);
+        $evaluation = $service->ouvrir($examen, $user);
+
+        $this->assertSame([$evaluation->id], $service->evaluationsSousAnonymat([$evaluation->id])->all());
+
+        $service->leverAnonymat($examen->fresh(), $user);
+
+        $this->assertSame([], $service->evaluationsSousAnonymat([$evaluation->id])->all());
+    }
+
     public function test_une_note_d_un_examen_verrouille_ne_peut_plus_etre_ecrite(): void
     {
         [$examen, $user] = $this->examen(anonyme: false);

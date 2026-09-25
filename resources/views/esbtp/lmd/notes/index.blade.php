@@ -479,6 +479,10 @@
         .ln-modal-toolbar { flex-direction: column; align-items: stretch; }
         .ln-modal-add-btn { margin-left: 0; }
     }
+.ln-anon { display: grid; gap: .5rem; margin-bottom: .75rem; }
+.ln-anon-ligne { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding: .6rem .85rem; border: 1px solid rgba(4,83,203,.2); background: rgba(4,83,203,.05); border-radius: 10px; font-size: .84rem; color: #1e293b; }
+.ln-anon-ligne i { color: #0453cb; }
+.ln-anon-ligne a { margin-left: auto; font-weight: 600; color: #0453cb; text-decoration: none; }
 </style>
 @endpush
 
@@ -1066,6 +1070,22 @@ async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
     }
 }
 
+// ══ Examens anonymes : hors de la grille nominative ══
+function afficherExamensAnonymes(anonymes) {
+    let bloc = document.getElementById('notesAnonymes');
+    if (!bloc) {
+        bloc = document.createElement('div');
+        bloc.id = 'notesAnonymes';
+        bloc.className = 'ln-anon';
+        document.getElementById('notesGridWrap').before(bloc);
+    }
+    bloc.hidden = anonymes.length === 0;
+    bloc.innerHTML = anonymes.map(ev =>
+        '<div class="ln-anon-ligne"><i class="fas fa-user-secret"></i><span><strong>' + escHtml(ev.titre || 'Examen') +
+        '</strong> : copies anonymes, la saisie se fait par numéro.</span><a href="' + ev.saisie_url + '">Saisir par numéro</a></div>'
+    ).join('');
+}
+
 // ══ Build the notes grid (BTS premium pattern with period row + appreciation) ══
 function buildNotesGrid() {
     const periodeFilter = document.getElementById('periodeFilter').value;
@@ -1073,6 +1093,9 @@ function buildNotesGrid() {
 
     // Filter & sort evaluations
     let evals = Object.values(evaluationsData);
+    // Un examen encore anonyme se saisit par numéro, jamais en face des noms.
+    afficherExamensAnonymes(evals.filter(ev => ev.anonyme));
+    evals = evals.filter(ev => !ev.anonyme);
     if (periodeFilter !== 'all') {
         evals = evals.filter(ev => String(parseSemestre(ev.periode)) === periodeFilter);
     }

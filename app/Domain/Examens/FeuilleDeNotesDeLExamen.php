@@ -80,30 +80,57 @@ final class FeuilleDeNotesDeLExamen
      * Un numéro par étudiant de la cohorte. Idempotent : un étudiant déjà
      * numéroté garde son numéro, un inscrit tardif reçoit le suivant.
      *
+     * Toujours sous le verrou de l'examen : deux correcteurs qui ouvrent la
+     * feuille en même temps ne doivent pas tirer le même numéro (unicité
+     * `examen_planifie_id` + `numero`). Le suivant part du plus grand numéro
+     * déjà tiré, pas du nombre de lignes.
+     *
      * @return int le nombre de numéros créés
      */
     public function attribuerNumeros(ESBTPExamenPlanifie $examen): int
     {
-        $cohorte = ESBTPInscription::query()
-            ->where('classe_id', $examen->classe_id)
-            ->where('annee_universitaire_id', $examen->annee_universitaire_id)
-            ->where('status', 'active')
-            ->pluck('etudiant_id')
-            ->unique();
+        return DB::transaction(function () use ($examen): int {
+            ESBTPExamenPlanifie::query()->lockForUpdate()->findOrFail($examen->id);
 
-        $deja = ESBTPExamenAnonymat::where('examen_planifie_id', $examen->id)->pluck('etudiant_id');
-        $aNumeroter = $cohorte->diff($deja)->shuffle()->values();
-        $suivant = (int) ESBTPExamenAnonymat::where('examen_planifie_id', $examen->id)->count() + 1;
+            $cohorte = ESBTPInscription::query()
+                ->where('classe_id', $examen->classe_id)
+                ->where('annee_universitaire_id', $examen->annee_universitaire_id)
+                ->where('status', 'active')
+                ->pluck('etudiant_id')
+                ->unique();
 
-        foreach ($aNumeroter as $i => $etudiantId) {
-            ESBTPExamenAnonymat::create([
-                'examen_planifie_id' => $examen->id,
-                'etudiant_id' => $etudiantId,
-                'numero' => sprintf('%s-%03d', $this->prefixe($examen), $suivant + $i),
-            ]);
-        }
+            $existants = ESBTPExamenAnonymat::where('examen_planifie_id', $examen->id)->get(['etudiant_id', 'numero']);
+            $aNumeroter = $cohorte->diff($existants->pluck('etudiant_id'))->shuffle()->values();
+            $suivant = (int) $existants->map(fn ($a) => (int) substr((string) strrchr((string) $a->numero, '-'), 1))->max() + 1;
 
-        return $aNumeroter->count();
+            foreach ($aNumeroter as $i => $etudiantId) {
+                ESBTPExamenAnonymat::create([
+                    'examen_planifie_id' => $examen->id,
+                    'etudiant_id' => $etudiantId,
+                    'numero' => sprintf('%s-%03d', $this->prefixe($examen), $suivant + $i),
+                ]);
+            }
+
+            return $aNumeroter->count();
+        });
+    }
+
+    /**
+     * Les évaluations, parmi celles données, dont les copies sont encore
+     * anonymes : examen anonyme dont l'anonymat n'est pas levé. Aucun écran
+     * ne doit y montrer un nom à côté d'une note.
+     *
+     * @param  iterable<int>  $evaluationIds
+     * @return Collection<int, int>
+     */
+    public function evaluationsSousAnonymat(iterable $evaluationIds): Collection
+    {
+        return ESBTPExamenPlanifie::query()
+            ->whereIn('evaluation_id', collect($evaluationIds)->all())
+            ->where('is_anonymous', true)
+            ->whereNull('anonymat_leve_at')
+            ->pluck('evaluation_id')
+            ->map(fn ($id) => (int) $id);
     }
 
     /**
@@ -119,9 +146,21 @@ final class FeuilleDeNotesDeLExamen
             return null;
         }
 
-        $this->attribuerNumeros($examen);
+        $numeros = ESBTPExamenAnonymat::where('examen_planifie_id', $examen->id)->pluck('numero', 'etudiant_id');
+        $cohorte = ESBTPInscription::query()
+            ->where('classe_id', $examen->classe_id)
+            ->where('annee_universitaire_id', $examen->annee_universitaire_id)
+            ->where('status', 'active')
+            ->pluck('etudiant_id');
 
-        return ESBTPExamenAnonymat::where('examen_planifie_id', $examen->id)->pluck('numero', 'etudiant_id');
+        // Un inscrit arrivé après l'ouverture de la feuille reçoit son numéro,
+        // sous le verrou de l'examen ; sinon la lecture n'écrit rien.
+        if ($cohorte->diff($numeros->keys())->isNotEmpty()) {
+            $this->attribuerNumeros($examen);
+            $numeros = ESBTPExamenAnonymat::where('examen_planifie_id', $examen->id)->pluck('numero', 'etudiant_id');
+        }
+
+        return $numeros;
     }
 
     public function leverAnonymat(ESBTPExamenPlanifie $examen, User $par): void
