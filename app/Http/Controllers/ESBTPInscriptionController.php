@@ -12,6 +12,8 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
+use App\Services\Inscriptions\SelectionDInscriptions;
+use App\Support\ListeInfinie;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
@@ -129,9 +131,10 @@ class ESBTPInscriptionController extends Controller
 
         // Pagination (whitelist pour éviter DoS)
         $allowedPerPage = [15, 25, 50, 100];
+        // Taille d'une TRANCHE : la liste se charge au defilement.
         $perPage = in_array((int) $request->input("per_page"), $allowedPerPage, true)
             ? (int) $request->input("per_page")
-            : 15;
+            : 25;
 
         // Construire la requête avec les filtres.
         // classe.parcours.mention.domaine eager-loaded pour la cellule LMD-aware
@@ -185,6 +188,15 @@ class ESBTPInscriptionController extends Controller
                 return $inscription;
             })
         );
+
+        // Tranche suivante du defilement : les lignes seules, avant tout ce que
+        // seule la page complete affiche (filtres, compteurs).
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $inscriptions,
+                fn (ESBTPInscription $inscription) => view('esbtp.inscriptions.partials.ligne-inscription', compact('inscription'))->render(),
+            );
+        }
 
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where("is_active", true)->get();
@@ -1853,7 +1865,7 @@ class ESBTPInscriptionController extends Controller
      */
     public function bulkValider(BulkValiderRequest $request)
     {
-        $inscriptionIds = $request->input("inscription_ids", []);
+        $inscriptionIds = app(SelectionDInscriptions::class)->identifiants($request);
         $forceValidation = $request->input("force", false);
 
         try {
@@ -1975,12 +1987,12 @@ class ESBTPInscriptionController extends Controller
     public function bulkAnnuler(Request $request)
     {
         $request->validate([
-            "inscription_ids" => "required|array|min:1",
+            "inscription_ids" => "required_unless:scope,filtre|array|min:1",
             "inscription_ids.*" => "integer|exists:esbtp_inscriptions,id",
             "motif" => "required|string|min:3|max:500",
         ]);
 
-        $ids = $request->input("inscription_ids");
+        $ids = app(SelectionDInscriptions::class)->identifiants($request);
         $motif = $request->input("motif");
         $userId = Auth::id();
         $successCount = 0;
@@ -2015,11 +2027,11 @@ class ESBTPInscriptionController extends Controller
     public function bulkExport(Request $request)
     {
         $request->validate([
-            "inscription_ids" => "required|array|min:1",
+            "inscription_ids" => "required_unless:scope,filtre|array|min:1",
             "inscription_ids.*" => "integer|exists:esbtp_inscriptions,id",
         ]);
 
-        $inscriptions = ESBTPInscription::whereIn("id", $request->input("inscription_ids"))
+        $inscriptions = ESBTPInscription::whereIn("id", app(SelectionDInscriptions::class)->identifiants($request, ecriture: false))
             ->with(["etudiant", "filiere", "niveau", "classe", "anneeUniversitaire"])
             ->get();
 

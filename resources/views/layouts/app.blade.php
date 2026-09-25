@@ -3352,6 +3352,7 @@
 
     <!-- Alpine.js (focus plugin must load BEFORE core for x-trap to register) -->
     <script defer src="{{ asset('js/mobile-shell.js') }}?v={{ @filemtime(public_path('js/mobile-shell.js')) ?: '1' }}"></script>
+    <script defer src="{{ asset('js/liste-infinie.js') }}?v={{ @filemtime(public_path('js/liste-infinie.js')) ?: '1' }}"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     {{-- Shell mobile (feuilles, toasts, tirer-pour-rafraichir, invite d'installation) : attend alpine:init --}}
