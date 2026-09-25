@@ -90,6 +90,25 @@ abstract class ChatbotTool
         return $this->execute($args, $user);
     }
 
+    /**
+     * Libellé montré pendant l'exécution (« Recherche des étudiants… »).
+     */
+    public function libelle(): string
+    {
+        return (string) ($this->toolConfig()['libelle'] ?? 'Consultation des données…');
+    }
+
+    /**
+     * Question d'exemple proposée sur l'écran d'accueil de l'assistant, pour les
+     * seuls utilisateurs qui ont accès à cet outil.
+     */
+    public function suggestion(): ?string
+    {
+        $suggestion = $this->toolConfig()['suggestion'] ?? null;
+
+        return is_string($suggestion) && $suggestion !== '' ? $suggestion : null;
+    }
+
     protected function unavailableResponse(): array
     {
         return [
