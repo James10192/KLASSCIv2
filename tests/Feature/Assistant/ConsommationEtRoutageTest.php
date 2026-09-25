@@ -262,6 +262,44 @@ class ConsommationEtRoutageTest extends TestCase
         $this->assertSame(50000.0, app(BudgetAssistant::class)->budgetMensuelFcfa());
     }
 
+    public function test_cache_froid_le_budget_est_demande_au_master_puis_garde_s_il_devient_injoignable(): void
+    {
+        config([
+            'app.tenant_code' => 'presentation',
+            'assistant.budget.mensuel_fcfa' => 50000,
+            'services.master.api_url' => 'https://master.test/api',
+            'services.master.api_token' => 'jeton',
+        ]);
+        Http::fake(['master.test/*' => Http::sequence()
+            ->push(['plan' => 'elite', 'assistant' => ['budget_mensuel_fcfa' => 8000]])
+            ->push('indisponible', 503)]);
+
+        $this->assertSame(8000.0, app(BudgetAssistant::class)->budgetMensuelFcfa());
+        $this->assertSame('master', app(BudgetAssistant::class)->source());
+        Http::assertSentCount(1); // la réponse est mise en cache comme le fait le paywall
+
+        // Cache du paywall expiré, master en panne : la dernière valeur connue tient.
+        \Illuminate\Support\Facades\Cache::forget('paywall_limits_presentation');
+        $this->assertSame(8000.0, app(BudgetAssistant::class)->budgetMensuelFcfa());
+        // L'échec est retenu : pas un appel de 3 s à chaque échange.
+        $this->assertSame(8000.0, app(BudgetAssistant::class)->budgetMensuelFcfa());
+        Http::assertSentCount(2);
+    }
+
+    public function test_un_echec_au_dernier_palier_n_epingle_rien_de_nouveau(): void
+    {
+        $routeur = app(Routeur::class);
+        $decision = $routeur->decider('Combien ?', new ChatbotConversation(['context' => ['palier' => 'avance']]));
+        $echec = new ResultatBoucle('erreur', '', '', [], 'claude-sonnet', 'anthropic', [], 0, 0, 1, 10);
+
+        // Palier déjà retenu : seule la série de réussites repart de zéro.
+        $this->assertSame(['palier' => 'avance', 'succes_au_palier' => 0],
+            $routeur->palierApres($decision, $echec, new ChatbotConversation(['context' => ['palier' => 'avance', 'succes_au_palier' => 2]])));
+        // Rien de retenu : une question exigeante ratée ne fige pas la conversation au prix fort.
+        $exigeante = new \App\Domain\Assistant\Routage\Decision($decision->candidats, 'avance', 'relance');
+        $this->assertNull($routeur->palierApres($exigeante, $echec, new ChatbotConversation(['context' => []])));
+    }
+
     public function test_un_modele_abandonne_pour_le_suivant_est_compte_en_echec(): void
     {
         // Le premier candidat (OpenRouter) tombe avant d'avoir rien montré ; Claude Sonnet reprend.
@@ -308,7 +346,7 @@ class ConsommationEtRoutageTest extends TestCase
         $this->assertSame(['claude-haiku'], $this->cles(app(Routeur::class)->decider('Bonjour', null)->candidats));
     }
 
-    public function test_un_titre_rate_est_compte_en_echec_et_jamais_a_zero(): void
+    public function test_un_titre_rate_est_compte_en_echec_sans_cout_invente(): void
     {
         config(['assistant.fournisseurs.openrouter.cle' => null, 'assistant.paliers' => ['avance' => ['claude-sonnet']]]);
         Http::fake(['api.anthropic.test/*' => Http::response(['error' => ['type' => 'overloaded_error']], 529)]);
@@ -317,8 +355,9 @@ class ConsommationEtRoutageTest extends TestCase
 
         $ligne = LigneDeConsommation::where('fonction', 'titre')->sole();
         $this->assertSame('echec_fournisseur', $ligne->statut);
-        // Aucun usage rapporté : l'entrée est estimée, pas comptée nulle.
-        $this->assertGreaterThan(0, $ligne->tokens_entree);
+        // Appel refusé par le fournisseur : rien n'a été facturé, rien n'est estimé.
+        $this->assertSame(0, (int) $ligne->tokens_entree);
+        $this->assertEquals(0, $ligne->cout_fcfa);
     }
 
     public function test_la_conversation_oublie_son_palier_une_fois_redescendue(): void

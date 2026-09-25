@@ -15,10 +15,11 @@ use Illuminate\Support\Facades\Log;
  *
  * Pas de budget déclaré (vide ou 0) = pas de limite. D'où vient le budget, dans l'ordre :
  *   1. adminKlassci, qui pilote les coûts de toutes les écoles : champ
- *      `assistant.budget_mensuel_fcfa` de la réponse /tenants/{code}/limits, lue dans
- *      le cache que PaywallMiddleware remplit (5 min) ; aucun appel réseau ici. Ce
- *      cache vide (tâche de fond, cache expiré), c'est le réglage de l'école qui
- *      s'applique jusqu'à la prochaine page servie ;
+ *      `assistant.budget_mensuel_fcfa` de la réponse /tenants/{code}/limits. Lue dans
+ *      le cache que PaywallMiddleware remplit (5 min) ; cache froid — l'assistant
+ *      ne passe pas par ce middleware — on interroge le master (3 s au plus). La
+ *      dernière valeur connue est gardée sans limite de durée : un master
+ *      injoignable ne rend jamais la main au réglage de l'école ;
  *   2. le réglage d'instance `assistant.budget_mensuel_fcfa` (klassci-cli) ;
  *   3. le .env.
  */
@@ -64,14 +65,53 @@ class BudgetAssistant
         return ['valeur' => (float) config('assistant.budget.mensuel_fcfa', 0), 'source' => 'env'];
     }
 
-    /** Budget posé dans adminKlassci, s'il a déjà été lu ; null si le master ne l'a pas fixé. */
+    /** Budget posé dans adminKlassci ; null si le master ne l'a pas fixé (ou n'a jamais répondu). */
     private function budgetDuMaster(): ?float
     {
         $code = config('app.tenant_code');
-        $limites = $code ? Cache::get('paywall_limits_' . $code) : null;
-        $valeur = is_array($limites) ? ($limites['assistant']['budget_mensuel_fcfa'] ?? null) : null;
+        if (! $code) {
+            return null;
+        }
 
-        return is_numeric($valeur) ? (float) $valeur : null;
+        $limites = Cache::get('paywall_limits_' . $code) ?? $this->limitesDuMaster($code);
+        $connu = 'assistant.budget_master.' . $code;
+        if (is_array($limites)) {
+            // Une réponse du master fait foi, y compris quand elle ne fixe rien.
+            $valeur = $limites['assistant']['budget_mensuel_fcfa'] ?? null;
+            Cache::forever($connu, ['valeur' => is_numeric($valeur) ? (float) $valeur : null]);
+        }
+
+        $retenu = Cache::get($connu);
+
+        return is_array($retenu) && is_numeric($retenu['valeur'] ?? null) ? (float) $retenu['valeur'] : null;
+    }
+
+    /**
+     * Cache froid : on interroge le master comme PaywallMiddleware, et on remplit
+     * la même clé. Un échec est retenu une minute pour ne pas ralentir chaque échange.
+     */
+    private function limitesDuMaster(string $code): ?array
+    {
+        $url = config('services.master.api_url');
+        $jeton = config('services.master.api_token');
+        if (! $url || ! $jeton || Cache::has('assistant.master_injoignable')) {
+            return null;
+        }
+
+        try {
+            $reponse = \Illuminate\Support\Facades\Http::withToken($jeton)->timeout(3)->get(rtrim($url, '/') . '/tenants/' . $code . '/limits');
+            if ($reponse->successful() && is_array($donnees = $reponse->json())) {
+                Cache::put('paywall_limits_' . $code, $donnees, 300);
+
+                return $donnees;
+            }
+            Log::warning('assistant.budget_master_illisible', ['statut' => $reponse->status()]);
+        } catch (\Throwable $e) {
+            Log::warning('assistant.budget_master_injoignable', ['erreur' => $e->getMessage()]);
+        }
+        Cache::put('assistant.master_injoignable', true, 60);
+
+        return null;
     }
 
     public function depenseDuMois(): float

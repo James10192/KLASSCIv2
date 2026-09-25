@@ -210,12 +210,13 @@ class Assistant
                 }
             }
             // Un appel est facturé même raté ; il est compté, marqué en échec s'il a échoué.
-            // Sans usage rapporté, les jetons sont estimés (4 caractères par jeton) plutôt
-            // que comptés à zéro : un coût nul mentirait sur un appel bel et bien facturé.
+            // Sans usage rapporté, une réponse reçue est estimée (4 caractères par jeton)
+            // plutôt que comptée à zéro ; un appel refusé (connexion, clé) n'a rien coûté.
+            $estime = ! $erreur && $usage === [];
             $compteur->ajouter(
                 $modele,
-                (int) ($usage['entree'] ?? (int) ceil(mb_strlen($requete->systeme . $message, 'UTF-8') / 4)),
-                (int) ($usage['sortie'] ?? (int) ceil(mb_strlen($texte, 'UTF-8') / 4)),
+                (int) ($usage['entree'] ?? ($estime ? (int) ceil(mb_strlen($requete->systeme . $message, 'UTF-8') / 4) : 0)),
+                (int) ($usage['sortie'] ?? ($estime ? (int) ceil(mb_strlen($texte, 'UTF-8') / 4) : 0)),
                 (int) ($usage['cache'] ?? 0),
                 $usage['cout'] ?? null,
                 0,

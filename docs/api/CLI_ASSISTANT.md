@@ -96,3 +96,9 @@ klassci assistant:budget presentation 15000            # 0 = sans limite
 
 - Septembre 2026 — création.
 - Septembre 2026 — `consommation` et `budget` ajoutés ; `etat` expose `paliers` et `budget` (ajout de champs, non cassant).
+- Septembre 2026 — **changement de sens (cassant pour qui lisait ces champs)** :
+  - `etat.modele_defaut` vaut `null` quand l'école n'a choisi aucun modèle (c'est alors le routeur qui choisit) ;
+    il ne renvoie plus le défaut de la configuration.
+  - `etat.modele_effectif` : modèle d'une question simple en ce moment ; `null` quand l'assistant est en pause budgétaire.
+  - `etat.budget.source` : `master` (adminKlassci), `ecole` ou `env`.
+  - `PUT budget` répond **422** quand le budget est fixé dans adminKlassci : il se modifie là-bas.

@@ -15,7 +15,7 @@ class LigneDeConsommation extends Model
     protected $fillable = [
         'user_id', 'conversation_id', 'message_id', 'fonction', 'modele', 'fournisseur',
         'identifiant_modele', 'palier', 'appels', 'tokens_entree', 'tokens_sortie', 'tokens_cache',
-        'cout_usd', 'cout_fcfa', 'taux_usd_fcfa', 'cout_exact', 'statut', 'latence_ms', 'synchronise_at',
+        'cout_usd', 'cout_fcfa', 'taux_usd_fcfa', 'cout_exact', 'statut', 'latence_ms',
     ];
 
     protected $casts = [
@@ -23,6 +23,5 @@ class LigneDeConsommation extends Model
         'cout_fcfa' => 'float',
         'taux_usd_fcfa' => 'float',
         'cout_exact' => 'boolean',
-        'synchronise_at' => 'datetime',
     ];
 }

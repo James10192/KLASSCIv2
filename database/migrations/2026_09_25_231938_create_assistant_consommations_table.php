@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Une ligne par modèle appelé dans un échange avec l'assistant : ce qu'il a
- * consommé et ce que ça a coûté. Source du budget mensuel de l'école et de
- * la remontée vers adminKlassci (synchronise_at).
+ * consommé et ce que ça a coûté. Source du budget mensuel de l'école ;
+ * adminKlassci la relit (tenant:sync-ai-usage, lecture seule, par identifiant).
  */
 return new class extends Migration
 {
@@ -36,7 +36,6 @@ return new class extends Migration
             // ok | erreur | interrompu | limite | echec_fournisseur (modèle abandonné pour le suivant)
             $table->string('statut', 20)->default('ok');
             $table->unsignedInteger('latence_ms')->default(0);
-            $table->timestamp('synchronise_at')->nullable()->index();
             $table->timestamps();
 
             $table->index('created_at');

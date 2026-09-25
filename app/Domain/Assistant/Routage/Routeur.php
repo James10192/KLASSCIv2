@@ -94,10 +94,12 @@ class Routeur
             || ($resultat->echecsOutils > 0 && trim($resultat->texteDernierTour) === '');
         $garde = $conversation?->context['palier'] ?? null;
         if ($echec) {
-            // Déjà au dernier palier : on y reste, mais la série de réussites repart de zéro.
-            $au = $this->palierAuDessus($decision->palier) ?? $garde ?? $decision->palier;
+            // Déjà au dernier palier : on n'épingle rien de nouveau (ce serait facturer
+            // les questions simples suivantes au prix fort) ; un palier déjà retenu voit
+            // seulement sa série de réussites repartir de zéro.
+            $au = $this->palierAuDessus($decision->palier) ?? $garde;
 
-            return ['palier' => $au, 'succes_au_palier' => 0];
+            return $au ? ['palier' => $au, 'succes_au_palier' => 0] : null;
         }
 
         if (! $garde || $resultat->statut !== 'ok') {
