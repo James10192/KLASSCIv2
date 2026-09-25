@@ -355,7 +355,7 @@
             <div class="sdc-card-icon"><i class="fas fa-list"></i></div>
             <div>
                 <p class="sdc-card-title">Les séances</p>
-                <p class="sdc-card-sub">{{ $seancesCours->total() }} séance(s) — page {{ $seancesCours->currentPage() }} sur {{ max($seancesCours->lastPage(), 1) }}</p>
+                <p class="sdc-card-sub">{{ $seancesCours->total() }} séance(s)</p>
             </div>
         </div>
         <div class="sdc-table-wrap">

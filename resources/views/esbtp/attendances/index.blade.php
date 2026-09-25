@@ -1006,7 +1006,7 @@
                     <i class="fas fa-table"></i>Liste des Présences
                 </h6>
                 <span style="background:rgba(4,83,203,.08);color:#0453cb;padding:.2rem .6rem;border-radius:20px;font-size:.78rem;font-weight:700;">
-                    {{ $attendances->count() }} enregistrements
+                    {{ $attendances->total() }} enregistrements
                 </span>
             </div>
             <div class="table-responsive">

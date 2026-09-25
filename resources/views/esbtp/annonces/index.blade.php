@@ -777,8 +777,11 @@
 @push('scripts')
 <script>
 // Fonction de recherche en temps réel (table + grille)
-document.getElementById('searchInput').addEventListener('input', function() {
-    const searchTerm = this.value.toLowerCase();
+// La recherche ne filtre que les annonces affichees : elle se rejoue donc sur
+// chaque tranche chargee au defilement, sans quoi la suite reviendrait
+// entiere sous un filtre saisi.
+function filtrerAnnonces() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
 
     // Recherche dans le tableau (desktop)
     const table = document.getElementById('annoncesTable');
@@ -804,7 +807,9 @@ document.getElementById('searchInput').addEventListener('input', function() {
             card.style.display = 'none';
         }
     });
-});
+}
+document.getElementById('searchInput').addEventListener('input', filtrerAnnonces);
+document.addEventListener('liste-infinie:ajout', filtrerAnnonces);
 
 // Fonction de suppression d'annonce via modal Bootstrap
 let pendingDeleteId = null;
