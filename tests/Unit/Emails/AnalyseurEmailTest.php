@@ -67,6 +67,26 @@ class AnalyseurEmailTest extends TestCase
         $this->assertSame(EtatEmail::FauteProbable, $this->analyser('a@hotmali.fr')->etat);
     }
 
+    public function test_deux_messageries_a_egale_distance_ne_donnent_aucune_suggestion(): void
+    {
+        // Liste de test : une seconde reference a une lettre de gmail.
+        $listes = json_decode((string) file_get_contents(resource_path('data/domaines-suspects.json')), true);
+        $listes['domaines_reference'][] = 'gmaii.com';
+        $fichier = tempnam(sys_get_temp_dir(), 'domaines');
+        file_put_contents($fichier, json_encode($listes));
+        config(['emails_joignables.fichier_domaines' => $fichier]);
+        $this->app->forgetInstance(\App\Services\Emails\DomainesSuspects::class);
+
+        try {
+            $analyse = app(AnalyseurEmail::class)->analyser('a@gmaij.com');
+            $this->assertSame(EtatEmail::Valide, $analyse->etat, 'gmaij est a une lettre de gmail ET de gmaii : on ne choisit pas.');
+            $this->assertNull($analyse->suggestion);
+            $this->assertSame('a@gmail.com', app(AnalyseurEmail::class)->analyser('a@gmial.com')->suggestion, 'Sans egalite, la suggestion reste.');
+        } finally {
+            @unlink($fichier);
+        }
+    }
+
     public function test_les_noms_reels_voisins_ne_sont_jamais_corriges(): void
     {
         foreach (['ymail.com', 'mail.com', 'email.com', 'gmx.com'] as $domaine) {
@@ -131,6 +151,11 @@ class AnalyseurEmailTest extends TestCase
         $appels = 0;
         $this->app->instance(ResolveurDns::class, new class($appels) implements ResolveurDns
         {
+            public function domaineInexistant(string $domaine): ?bool
+            {
+                return null;
+            }
+
             public function __construct(private int &$appels) {}
 
             public function recoitDuCourrier(string $domaine): bool
@@ -152,6 +177,11 @@ class AnalyseurEmailTest extends TestCase
         $appels = [];
         $this->app->instance(ResolveurDns::class, new class($appels) implements ResolveurDns
         {
+            public function domaineInexistant(string $domaine): ?bool
+            {
+                return null;
+            }
+
             public function __construct(private array &$appels) {}
 
             public function recoitDuCourrier(string $domaine): bool
@@ -175,6 +205,11 @@ class AnalyseurEmailTest extends TestCase
         Cache::flush();
         $this->app->instance(ResolveurDns::class, new class($reponses) implements ResolveurDns
         {
+            public function domaineInexistant(string $domaine): ?bool
+            {
+                return null;
+            }
+
             public function __construct(private readonly array $reponses) {}
 
             public function recoitDuCourrier(string $domaine): bool

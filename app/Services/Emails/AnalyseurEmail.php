@@ -85,7 +85,11 @@ class AnalyseurEmail
         return $tldCorrige !== $tld ? [$nom.'.'.$tldCorrige, true] : null;
     }
 
-    /** Le nom de messagerie de reference le plus proche, a distance 1..max, de meme extension. */
+    /**
+     * Le nom de messagerie de reference le plus proche, a distance 1..max, de
+     * meme extension. Deux references a la meme plus petite distance : aucune
+     * suggestion, on ne choisit pas au hasard la messagerie de la famille.
+     */
     private function nomVoisin(string $nom, string $tld): ?string
     {
         if (in_array($nom, $this->listes->nomsReelsVoisins(), true)) {
@@ -95,6 +99,7 @@ class AnalyseurEmail
         $maximum = $this->listes->distanceMaximale();
         $meilleur = null;
         $meilleureDistance = PHP_INT_MAX;
+        $egalite = false;
 
         foreach ($this->listes->domainesReference() as $reference) {
             [$refNom, $refTld] = $this->decouper($reference);
@@ -103,13 +108,19 @@ class AnalyseurEmail
             }
 
             $distance = DistanceEdition::alignementOptimal($nom, $refNom);
-            if ($distance <= $maximum && $distance < $meilleureDistance) {
+            if ($distance > $maximum) {
+                continue;
+            }
+            if ($distance < $meilleureDistance) {
                 $meilleur = $refNom;
                 $meilleureDistance = $distance;
+                $egalite = false;
+            } elseif ($distance === $meilleureDistance && $refNom !== $meilleur) {
+                $egalite = true;
             }
         }
 
-        return $meilleur !== null && $meilleureDistance > 0 ? $meilleur : null;
+        return $meilleur !== null && $meilleureDistance > 0 && ! $egalite ? $meilleur : null;
     }
 
     /** @return array{0: string, 1: string} */

@@ -27,7 +27,13 @@
                 <div class="lp-hero-icon"><i class="fas fa-sitemap"></i></div>
                 <div>
                     <h1>Planning LMD</h1>
-                    <p>Maquette pédagogique UE / ECUE par parcours et semestre</p>
+                    <p>Maquette pédagogique UE / ECUE par parcours et semestre
+                        @if($annee ?? null)
+                            · <strong>Année {{ $annee->name }}</strong>
+                        @else
+                            · <strong>Aucune année universitaire en cours</strong>
+                        @endif
+                    </p>
                 </div>
             </div>
             <div class="lp-hero-actions">
@@ -56,7 +62,7 @@
                     placeholder="Tous les parcours"
                     :value="$filters['parcours_id']"
                     :searchable="$parcours->count() > 8"
-                    :options="$parcours->mapWithKeys(fn ($p) => [$p->id => $p->label_complet])->all()"
+                    :options="$parcours->mapWithKeys(fn ($p) => [$p->id => trim(($p->code ? $p->code.' · ' : '').$p->name)])->all()"
                     x-on:change="reload($event.target.value, 'parcours_id')" />
             </div>
             <div class="lp-filter-group" data-tour-node="filter-niveau">

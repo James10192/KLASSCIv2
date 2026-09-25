@@ -353,7 +353,7 @@ class ESBTPLMDPlanningController extends Controller
 
     /**
      * Lock or init a planification row for the given (ecue, filiere, contexte)
-     * triple. Returns [$planif, $wasCreated]. Used by bulk path only.
+     * triple. Returns [$planif, $wasCreated]. Used by the unit and bulk paths.
      */
     private function lockOrInitPlanification(int $ecueId, int $filiereId, array $ctx): array
     {
@@ -363,22 +363,49 @@ class ESBTPLMDPlanningController extends Controller
             ->where('niveau_etude_id', $ctx['niveau_id'])
             ->where('semestre', $ctx['semestre'])
             ->where('annee_universitaire_id', $ctx['annee_id'])
+            ->withTrashed()
             ->lockForUpdate()
             ->first();
 
-        if ($planif) {
+        if ($planif && ! $planif->trashed()) {
             return [$planif, false];
         }
 
-        $planif = new ESBTPPlanificationAcademique([
-            'matiere_id'             => $ecueId,
-            'filiere_id'             => $filiereId,
-            'niveau_etude_id'        => $ctx['niveau_id'],
-            'semestre'               => $ctx['semestre'],
-            'annee_universitaire_id' => $ctx['annee_id'],
-        ]);
+        // Une ligne supprimee en douceur occupe encore l'index unique : la
+        // recreer levait un doublon, que l'ecran traduisait en « modifiee par
+        // un autre utilisateur ». On la reprend, remise a neuf : ses anciennes
+        // heures avaient ete supprimees, elles ne reviennent pas.
+        if ($planif) {
+            // Remise a neuf AVANT tout enregistrement : restore() enregistrerait
+            // aussitot l'ancienne ligne, et un echec de la suite (edition en
+            // masse, chaque ECUE dans son try) la laisserait vivante avec ses
+            // anciennes heures. L'appelant fait l'unique save().
+            $planif->forceFill([
+                'deleted_at' => null,
+                'volume_horaire_cm' => 0, 'volume_horaire_td' => 0, 'volume_horaire_tp' => 0,
+                'volume_horaire_projet' => 0, 'volume_horaire_tpe' => 0, 'volume_horaire_total' => 0,
+                'heures_effectuees' => 0, 'derniere_mise_a_jour_heures' => null,
+                'coefficient' => 1,
+                'enseignant_principal_id' => null, 'enseignants_secondaires' => null,
+                'periode_debut' => null, 'periode_fin' => null,
+                'objectifs_pedagogiques' => null, 'prerequis' => null, 'modalites_evaluation' => null,
+                'contraintes_pedagogiques' => null, 'ressources_necessaires' => null, 'observations' => null,
+            ]);
+        } else {
+            $planif = new ESBTPPlanificationAcademique([
+                'matiere_id'             => $ecueId,
+                'filiere_id'             => $filiereId,
+                'niveau_etude_id'        => $ctx['niveau_id'],
+                'semestre'               => $ctx['semestre'],
+                'annee_universitaire_id' => $ctx['annee_id'],
+            ]);
+        }
         $planif->statut    = ESBTPPlanificationAcademique::STATUT_PLANIFIE;
         $planif->is_active = true;
+        // La colonne vaut 0 par defaut, et l'ecran lit « planif ?? ECUE » : une
+        // ligne creee par la saisie d'heures affichait donc 0 credit a la place
+        // de ceux de l'ECUE, et faussait le total CECT du parcours.
+        $planif->credits_ects = app(\App\Services\LMD\CreditDeMaquette::class)->pourFiliere($ecueId, $filiereId);
 
         return [$planif, true];
     }
@@ -394,28 +421,9 @@ class ESBTPLMDPlanningController extends Controller
         // attaquent le même 5-uplet unique, la seconde attendra que la
         // première commit avant de relire — la contrainte unique composite
         // `uniq_planif_academique` reste le filet ultime.
-        $planif = ESBTPPlanificationAcademique::query()
-            ->where('matiere_id', $ecueId)
-            ->where('filiere_id', $context['filiere_id'])
-            ->where('niveau_etude_id', $context['niveau_id'])
-            ->where('semestre', $context['semestre'])
-            ->where('annee_universitaire_id', $context['annee_id'])
-            ->lockForUpdate()
-            ->first();
-
-        $wasCreated = false;
-        if (!$planif) {
-            $planif = new ESBTPPlanificationAcademique([
-                'matiere_id' => $ecueId,
-                'filiere_id' => $context['filiere_id'],
-                'niveau_etude_id' => $context['niveau_id'],
-                'semestre' => $context['semestre'],
-                'annee_universitaire_id' => $context['annee_id'],
-            ]);
-            $planif->statut = ESBTPPlanificationAcademique::STATUT_PLANIFIE;
-            $planif->is_active = true;
-            $wasCreated = true;
-        }
+        // Meme initialisation que l'edition en masse : une seule source, sinon
+        // l'une pose les credits de l'ECUE et l'autre les laisse a zero.
+        [$planif, $wasCreated] = $this->lockOrInitPlanification($ecueId, (int) $context['filiere_id'], $context);
 
         // M1 : fill() AVANT l'assignation created_by/updated_by pour que ces
         // deux colonnes ne puissent jamais être écrasées par une payload
@@ -688,6 +696,12 @@ class ESBTPLMDPlanningController extends Controller
             'semestre' => $this->validateSemestre($request->integer('semestre'), $availableSemestres),
         ];
 
+        // L'annee que la saisie ecrit (resolvePlanificationContext) : la liste
+        // lisait toutes les annees et gardait une ligne au hasard par ECUE, donc
+        // pouvait montrer l'an dernier pendant qu'on ecrivait cette annee.
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $filters['annee_id'] = $annee?->id;
+
         $rows = $parcoursSelected ? $this->buildPlanningRows($parcoursSelected, $filters) : collect();
 
         $kpis = [
@@ -696,7 +710,7 @@ class ESBTPLMDPlanningController extends Controller
             'cect_total' => $rows->sum('cect'),
         ];
 
-        return compact('parcours', 'niveaux', 'parcoursSelected', 'semestresMap', 'availableSemestres', 'filters', 'rows', 'kpis');
+        return compact('parcours', 'niveaux', 'parcoursSelected', 'semestresMap', 'availableSemestres', 'filters', 'rows', 'kpis', 'annee');
     }
 
     /**
@@ -816,13 +830,14 @@ class ESBTPLMDPlanningController extends Controller
 
     private function loadPlanifications(Collection $matiereIds, ESBTPLMDParcours $parcours, array $filters): Collection
     {
-        if ($matiereIds->isEmpty() || !$parcours->filiere_id) {
+        if ($matiereIds->isEmpty() || !$parcours->filiere_id || empty($filters['annee_id'])) {
             return collect();
         }
 
         $query = ESBTPPlanificationAcademique::query()
             ->with('enseignantPrincipal:id,name')
             ->where('filiere_id', $parcours->filiere_id)
+            ->where('annee_universitaire_id', $filters['annee_id'])
             ->whereIn('matiere_id', $matiereIds);
 
         if ($filters['niveau_id']) {

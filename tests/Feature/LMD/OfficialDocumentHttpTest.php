@@ -4,10 +4,8 @@ namespace Tests\Feature\LMD;
 
 use App\Domain\OfficialDocuments\Models\OfficialDocument;
 use App\Domain\OfficialDocuments\Services\OfficialDocumentDownloadService;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Spatie\Permission\Models\Permission;
@@ -28,7 +26,6 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
             fn (string $class): bool => $class !== \App\Http\Middleware\CheckInstalled::class,
         )));
 
-        $this->createPermissionTables();
     }
 
     public function test_public_verification_is_non_enumerating_and_leaks_no_sensitive_fields(): void
@@ -187,7 +184,9 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
         config(['sod.rules' => array_replace((array) config('sod.rules'), [
             'lmd.jury.rectify_pv' => array_replace(
                 (array) config('sod.rules')['lmd.jury.rectify_pv'],
-                ['enabled' => true, 'setting' => null],
+                // Le defaut livre est l'observation, qui laisse passer : le test
+                // exige le mode bloquant, sans reglage d'instance pour le contredire.
+                ['mode' => 'bloquant', 'setting' => null],
             ),
         ])]);
         $jury = $this->seedIssuableJury();
@@ -342,43 +341,6 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
         $prefix = $token[0] === 'a' ? 'b' : 'a';
 
         return $prefix.substr($token, 1);
-    }
-
-    private function createPermissionTables(): void
-    {
-        Schema::create('permissions', function (Blueprint $table): void {
-            $table->id();
-            $table->string('name');
-            $table->string('guard_name');
-            $table->timestamps();
-            $table->unique(['name', 'guard_name']);
-        });
-        Schema::create('roles', function (Blueprint $table): void {
-            $table->id();
-            $table->string('name');
-            $table->string('guard_name');
-            $table->timestamps();
-            $table->unique(['name', 'guard_name']);
-        });
-        Schema::create('model_has_permissions', function (Blueprint $table): void {
-            $table->unsignedBigInteger('permission_id');
-            $table->string('model_type');
-            $table->unsignedBigInteger('model_id');
-            $table->primary(['permission_id', 'model_id', 'model_type']);
-        });
-        Schema::create('model_has_roles', function (Blueprint $table): void {
-            $table->unsignedBigInteger('role_id');
-            $table->string('model_type');
-            $table->unsignedBigInteger('model_id');
-            $table->primary(['role_id', 'model_id', 'model_type']);
-        });
-        Schema::create('role_has_permissions', function (Blueprint $table): void {
-            $table->unsignedBigInteger('permission_id');
-            $table->unsignedBigInteger('role_id');
-            $table->primary(['permission_id', 'role_id']);
-        });
-
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     private function knownDocument(string $code): OfficialDocument
