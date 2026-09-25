@@ -45,7 +45,7 @@ class AcademicPilotageOverviewController extends Controller
             'annees' => ESBTPAnneeUniversitaire::query()->orderByDesc('start_date')->limit(8)->pluck('name', 'id')->all(),
             'annee' => $annee,
             'classes' => $annee ? $this->optionsDeClasses((int) $annee->id, $autorisees) : [],
-            'periodes' => $this->optionsDePeriodes($annee?->id, $autorisees),
+            'periodes' => $this->optionsDePeriodes($annee?->id, $autorisees, $this->periodeDemandee($request)),
             'filtres' => [
                 'annee' => $annee?->id,
                 'periode' => $this->periodeDemandee($request) ?? '',
@@ -130,9 +130,11 @@ class AcademicPilotageOverviewController extends Controller
      *
      * @return array<string, string>
      */
-    private function optionsDePeriodes(?int $anneeId, ?Collection $autorisees): array
+    private function optionsDePeriodes(?int $anneeId, ?Collection $autorisees, ?string $demandee): array
     {
-        $semestres = collect(['semestre1', 'semestre2'])
+        // La période d'un lien partagé figure toujours dans la liste, même
+        // sans évaluation : sinon le sélecteur afficherait autre chose.
+        $semestres = collect(['semestre1', 'semestre2', $demandee])->filter()
             ->merge($anneeId ? $this->apercu->periodesRecentes($anneeId, $autorisees) : [])
             ->reject(fn ($p) => $p === 'annuel')->unique()
             ->sortBy(fn ($p) => (int) substr($p, strlen('semestre')))->values();
