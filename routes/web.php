@@ -181,10 +181,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/mark-all-as-read', [ESBTPNotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-as-read');
     Route::get('/notifications/unread-count', [ESBTPNotificationController::class, 'getUnreadCount'])->name('notifications.unread-count');
 
-    // Route pour les paramÃ¨tres utilisateur
-    Route::get('/settings', function () {
-        return view('settings.index');
-    })->name('settings.index');
+    // L'ancienne page /settings était factice (formulaire qui n'enregistrait rien).
+    // Les vrais réglages d'établissement vivent sur /esbtp/settings ; le nom de
+    // route est conservé pour les liens existants.
+    Route::redirect('/settings', '/esbtp/settings')->name('settings.index');
 });
 
 // Routes contrat expiration (AJAX â€” pas de middleware contract.expiry pour Ã©viter rÃ©cursion)
@@ -1777,10 +1777,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
     // Routes pour les paramÃ¨tres et les rÃ´les
     Route::middleware(['auth', 'permission:system.manage'])->group(function () {
-        Route::get('/settings', function () {
-            return view('admin.settings.index');
-        })->name('settings.index');
-
         Route::get('/roles', function () {
             $roles = \Spatie\Permission\Models\Role::with('permissions')->get();
 
