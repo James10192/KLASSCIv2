@@ -3,6 +3,7 @@
 namespace App\Support\Etudiants;
 
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPInscription;
 
 /**
  * Une ligne de la liste des etudiants sur telephone (partial _index-mobile).
@@ -13,13 +14,18 @@ use App\Models\ESBTPEtudiant;
  */
 final class LigneEtudiantMobile
 {
-    /** @return array<string, mixed> */
-    public static function depuis(ESBTPEtudiant $etudiant, ?int $anneeCouranteId): array
+    /**
+     * @param  ESBTPInscription|null  $derniereConnue  derniere inscription, toutes annees : le
+     *         controleur ne charge que celles de l'annee courante, elle vient d'une requete a part.
+     * @param  array{a11y?: bool, valider?: bool}  $droits
+     * @return array<string, mixed>
+     */
+    public static function depuis(ESBTPEtudiant $etudiant, ?int $anneeCouranteId, ?ESBTPInscription $derniereConnue = null, array $droits = []): array
     {
         $courante = $anneeCouranteId
             ? $etudiant->inscriptions->firstWhere('annee_universitaire_id', $anneeCouranteId)
             : null;
-        $derniere = $courante ?: $etudiant->inscriptions->sortByDesc('created_at')->first();
+        $derniere = $courante ?: ($derniereConnue ?? $etudiant->inscriptions->sortByDesc('created_at')->first());
 
         [$etat, $libelle] = match (true) {
             $courante && $courante->workflow_step === 'etudiant_cree' => ['inscrit', 'Inscrit'],
@@ -42,6 +48,11 @@ final class LigneEtudiantMobile
             'etat_libelle' => $libelle,
             'actif' => $etudiant->statut === 'actif',
             'url' => route('esbtp.etudiants.show', $etudiant),
+            'a11y' => ($droits['a11y'] ?? false) ? $etudiant->accessibilityProfile?->summaryBadge() : null,
+            // L'inscription en cours se valide depuis sa propre page.
+            'a_valider_url' => ($droits['valider'] ?? false) && $etat === 'en_cours'
+                ? route('esbtp.inscriptions.show', $courante)
+                : null,
         ];
     }
 

@@ -17,7 +17,16 @@
         ['type' => 'modale', 'cible' => 'exportModal', 'icone' => 'dl', 'titre' => 'Exporter', 'detail' => 'PDF ou Excel de la liste'],
         ($eimUser?->can('trash.view')) ? ['type' => 'lien', 'url' => route('esbtp.trash.index'), 'icone' => 'inbox', 'titre' => 'Corbeille', 'detail' => 'Étudiants et inscriptions supprimés'] : null,
     ]));
+    // Filtres poses par l'URL que cet ecran ne sait pas regler (classe, filiere...) :
+    // gardes a chaque rechargement et annonces, au lieu d'etre perdus en silence.
+    $eimAutres = collect(request()->query())
+        ->except(['search', 'inscrit_annee_courante', 'page', 'mode'])
+        ->filter(fn ($v) => is_scalar($v) && (string) $v !== '')
+        ->map(fn ($v) => (string) $v)
+        ->all();
     $eimCfg = [
+        'autres' => (object) $eimAutres,
+        'segmentsActifs' => (bool) ($eimListe['segments'] ?? true),
         'filtres' => [
             'search' => (string) request('search', ''),
             'inscrit_annee_courante' => (string) request('inscrit_annee_courante', ''),
@@ -54,7 +63,11 @@
                        x-model="filtres.search"
                        x-on:input.debounce.350ms="recharger()">
             </label>
-            <div class="m-seg eim-seg" role="tablist" aria-label="Filtrer par inscription">
+            <div class="eim-autres" x-show="nbAutres() > 0" x-cloak>
+                <span x-text="nbAutres() + (nbAutres() > 1 ? ' filtres actifs' : ' filtre actif')"></span>
+                <button type="button" x-on:click="effacerAutres()">Effacer</button>
+            </div>
+            <div class="m-seg eim-seg" role="tablist" aria-label="Filtrer par inscription" x-show="segmentsActifs">
                 <template x-for="s in segments" x-bind:key="s.valeur">
                     <button type="button" role="tab"
                             x-bind:aria-selected="filtres.inscrit_annee_courante === s.valeur ? 'true' : 'false'"
@@ -77,13 +90,14 @@
 
         <div class="m-list" x-show="items.length > 0" x-bind:class="chargement ? 'is-loading' : ''" aria-live="polite">
             <template x-for="e in items" x-bind:key="e.id">
+                <div class="eim-item">
                 <a x-bind:href="e.url" class="m-row eim-row">
                     <div class="av eim-av" aria-hidden="true">
                         <template x-if="e.photo"><img x-bind:src="e.photo" alt="" loading="lazy"></template>
                         <template x-if="!e.photo"><span x-text="e.initiales"></span></template>
                     </div>
                     <div class="tt">
-                        <b x-text="e.nom"></b>
+                        <b><span x-text="e.nom"></span><i class="fas fa-universal-access eim-a11y" x-show="e.a11y" x-bind:title="e.a11y" aria-label="Aménagements"></i></b>
                         <span class="eim-sous">
                             <span x-text="classeLigne(e)"></span>
                             <span class="eim-lmd" x-show="e.lmd">LMD</span>
@@ -94,6 +108,10 @@
                         <span class="eim-mat" x-text="e.matricule"></span>
                     </div>
                 </a>
+                <a class="eim-valider" x-show="e.a_valider_url" x-bind:href="e.a_valider_url">
+                    <x-m.icon name="check" /> Inscription à valider
+                </a>
+                </div>
             </template>
         </div>
 
@@ -163,6 +181,16 @@
     .eim-sentinelle { height: 1px; }
     .eim-fin { margin: 0; text-align: center; font-size: 12px; color: #94a3b8; }
     .eim-menu-tt { display: grid; gap: 1px; min-width: 0; }
+    .eim-autres { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; padding: 8px 12px; border-radius: 12px; background: rgba(4,83,203,.08); color: #0453cb; font-size: 13px; font-weight: 600; }
+    .eim-autres button { border: 0; background: transparent; color: #0453cb; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 4px 0; }
+    .eim-a11y { color: #0453cb; font-size: .8em; margin-left: 6px; }
+    /* Chaque ligne est enveloppee (pour porter son lien de validation) : le filet
+       de separation du shell, pose sur .m-list > .m-row, passe sur l'enveloppe. */
+    .eim-screen .m-list > .eim-item { border-bottom: 1px solid #f1f5f9; }
+    .eim-screen .m-list > .eim-item:last-child { border-bottom: 0; }
+    .eim-screen .eim-item > .m-row { border: 0; border-radius: 0; box-shadow: none; min-height: 60px; }
+    .eim-valider { display: flex; align-items: center; gap: 6px; margin: -6px 0 0 64px; padding: 0 12px 10px 0; font-size: 12.5px; font-weight: 700; color: #b45309; text-decoration: none; }
+    .eim-valider svg { width: 16px; height: 16px; }
     .eim-menu-tt small { font-size: 12px; color: #64748b; font-weight: 500; }
 </style>
 @endpush
@@ -173,10 +201,13 @@
         window.eimListe = function (cfg) {
             var initial = cfg.initial || {};
             var filtresInit = Object.assign({ search: '', inscrit_annee_courante: '' }, cfg.filtres || {});
+            var autresInit = Object.assign({}, cfg.autres || {});
 
             return {
                 url: cfg.url,
                 filtres: filtresInit,
+                autres: autresInit,
+                segmentsActifs: cfg.segmentsActifs !== false,
                 segments: [
                     { valeur: '', libelle: 'Tous' },
                     { valeur: 'validee', libelle: 'Inscrits' },
@@ -234,11 +265,19 @@
                     if (small) { small.textContent = this.total + ' étudiant' + (this.total > 1 ? 's' : ''); }
                 },
 
+                nbAutres() {
+                    return Object.keys(this.autres).length;
+                },
+                effacerAutres() {
+                    this.autres = {};
+                    this.recharger();
+                },
                 filtresActifs() {
-                    return this.filtres.search !== '' || this.filtres.inscrit_annee_courante !== '';
+                    return this.filtres.search !== '' || this.filtres.inscrit_annee_courante !== '' || this.nbAutres() > 0;
                 },
                 toutEffacer() {
                     this.filtres = { search: '', inscrit_annee_courante: '' };
+                    this.autres = {};
                     this.recharger();
                 },
                 segment(valeur) {
@@ -248,6 +287,8 @@
                 },
                 parametres() {
                     var p = new URLSearchParams();
+                    var a = this.autres;
+                    Object.keys(a).forEach(function (k) { p.set(k, a[k]); });
                     var f = this.filtres;
                     Object.keys(f).forEach(function (k) { if (f[k] !== '' && f[k] !== null) { p.set(k, f[k]); } });
                     return p;

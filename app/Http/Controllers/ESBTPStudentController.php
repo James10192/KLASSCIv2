@@ -449,12 +449,6 @@ class ESBTPStudentController extends Controller
     ];
 
     /**
-     * La valeur canonique demandee, ou null si le filtre n'est pas pose.
-     *
-     * Tout ce qui n'est pas reconnu est ignore plutot que rendu vide : un
-     * parametre bricole dans l'URL ne doit pas faire disparaitre la liste.
-     */
-    /**
      * Une tranche de la liste du telephone : lignes pretes a afficher, et de quoi
      * demander la suivante.
      *
@@ -462,17 +456,45 @@ class ESBTPStudentController extends Controller
      */
     private function trancheMobile($etudiants, ?ESBTPAnneeUniversitaire $anneeCourante): array
     {
+        $collection = $etudiants->getCollection();
+        $user = auth()->user();
+        $droits = [
+            'a11y' => (bool) $user?->can('students.accessibility.view'),
+            'valider' => (bool) $user?->can('inscriptions.validate'),
+        ];
+
+        // Seules les inscriptions de l'annee courante sont chargees : pour un
+        // etudiant qui n'en a pas, sa derniere classe vient d'une requete unique.
+        $sansCourante = $collection
+            ->filter(fn (ESBTPEtudiant $e) => ! $anneeCourante || ! $e->inscriptions->contains('annee_universitaire_id', $anneeCourante->id))
+            ->pluck('id');
+        $dernieres = $sansCourante->isEmpty() ? collect() : \App\Models\ESBTPInscription::query()
+            ->whereIn('etudiant_id', $sansCourante)
+            ->with(['classe:id,name,systeme_academique', 'anneeUniversitaire:id,name'])
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get()
+            ->unique('etudiant_id')
+            ->keyBy('etudiant_id');
+
         return [
-            'items' => $etudiants->getCollection()
-                ->map(fn (ESBTPEtudiant $e) => \App\Support\Etudiants\LigneEtudiantMobile::depuis($e, $anneeCourante?->id))
+            'items' => $collection
+                ->map(fn (ESBTPEtudiant $e) => \App\Support\Etudiants\LigneEtudiantMobile::depuis($e, $anneeCourante?->id, $dernieres->get($e->id), $droits))
                 ->values()
                 ->all(),
             'has_more' => $etudiants->hasMorePages(),
             'next_page' => $etudiants->currentPage() + 1,
             'total' => $etudiants->total(),
+            'segments' => $anneeCourante !== null,
         ];
     }
 
+    /**
+     * La valeur canonique demandee, ou null si le filtre n'est pas pose.
+     *
+     * Tout ce qui n'est pas reconnu est ignore plutot que rendu vide : un
+     * parametre bricole dans l'URL ne doit pas faire disparaitre la liste.
+     */
     private function sexeDemande($valeur): ?string
     {
         if (! is_string($valeur) || $valeur === '') {

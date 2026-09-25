@@ -107,6 +107,16 @@ class GrilleMobileDefilementTest extends TestCase
             ->json('items'))->pluck('id');
         $this->assertTrue($ids->contains($sans->id));
         $this->assertFalse($ids->contains($inscrit->id));
+
+        // Sans inscription cette annee : la derniere classe connue, avec son annee.
+        $ancienne = \App\Models\ESBTPAnneeUniversitaire::factory()->create(['is_current' => false, 'name' => '2023-2024']);
+        $classe = \App\Models\ESBTPClasse::factory()->create(['name' => 'CLASSE-ANCIENNE']);
+        \App\Models\ESBTPInscription::factory()->create(['etudiant_id' => $sans->id, 'annee_universitaire_id' => $ancienne->id, 'classe_id' => $classe->id]);
+        $ligne = collect($this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('esbtp.etudiants.index', ['mode' => 'mobile', 'inscrit_annee_courante' => 'absente']))
+            ->json('items'))->firstWhere('id', $sans->id);
+        $this->assertSame('CLASSE-ANCIENNE', $ligne['classe']);
+        $this->assertSame('2023-2024', $ligne['annee']);
     }
 
     public function test_l_ecran_du_telephone_se_rend_avec_ses_lignes_et_ses_actions(): void
