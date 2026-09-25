@@ -165,7 +165,10 @@
     display: flex; align-items: center; gap: .5rem;
 }
 .au-select-search > i:first-child { color: #94a3b8; font-size: .8rem; }
-.au-select-search input { flex: 1; border: none; background: transparent; outline: none; font-size: .85rem; color: #1e293b; }
+/* min-width:0 : sans lui, le champ garde sa largeur native (~170px) et deborde
+   d'un menu etroit ; le focus fait alors defiler le menu, qui s'affiche
+   coupe a gauche. */
+.au-select-search input { flex: 1; min-width: 0; width: 100%; border: none; background: transparent; outline: none; font-size: .85rem; color: #1e293b; }
 .au-select-search-clear {
     background: #f1f5f9; border: none; width: 22px; height: 22px;
     border-radius: 50%; cursor: pointer;
