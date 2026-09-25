@@ -6,6 +6,14 @@ use Tests\TestCase;
 
 class ChatbotGovernanceTest extends TestCase
 {
+    /** Les cinq scripts de public/js/assistant/, dans l'ordre de chargement. */
+    private function scriptsAssistant(): string
+    {
+        return collect(['noyau', 'markdown', 'rendus', 'vue', 'composant'])
+            ->map(fn ($nom) => file_get_contents(public_path("js/assistant/{$nom}.js")))
+            ->implode("\n");
+    }
+
     public function test_chatbot_routes_are_throttled(): void
     {
         $route = \Route::getRoutes()->getByName('chatbot.message.stream');
@@ -76,7 +84,7 @@ class ChatbotGovernanceTest extends TestCase
 
     public function test_assistant_renders_and_executes_approval_requests(): void
     {
-        $content = file_get_contents(public_path('js/assistant.js'));
+        $content = $this->scriptsAssistant();
 
         // Les demandes de validation arrivent en partie data-approval-request (ou display_type
         // approval_request dans l'historique) et appellent les routes approve / reject en POST.
@@ -90,7 +98,7 @@ class ChatbotGovernanceTest extends TestCase
 
     public function test_assistant_sanitizes_model_text_and_never_injects_data_as_html(): void
     {
-        $content = file_get_contents(public_path('js/assistant.js'));
+        $content = $this->scriptsAssistant();
 
         $this->assertStringContainsString('window.DOMPurify.sanitize(', $content);
         $this->assertStringContainsString('return echapper(texte)', $content);

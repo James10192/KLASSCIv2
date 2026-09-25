@@ -6,7 +6,7 @@ namespace App\Domain\Assistant\Flux;
  * Ecrit le protocole « UI message stream » v1 du Vercel AI SDK.
  *
  * Chaque partie est un evenement SSE `data: {json}` ; le flux se termine par
- * `data: [DONE]`. Le client (public/js/assistant.js) lit exactement ce format,
+ * `data: [DONE]`. Le client (public/js/assistant/*.js) lit exactement ce format,
  * et n'importe quel client AI SDK (useChat) pourrait le lire aussi.
  *
  * La sortie passe par un « puits » injecte : en production il ecrit et vide les
