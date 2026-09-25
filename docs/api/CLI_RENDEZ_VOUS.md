@@ -35,6 +35,38 @@ automatiquement : l'écran propose de le faire.
 
 Même mesure en local sur le serveur : `php artisan inscriptions:diagnostiquer-rdv [--json]`.
 
+## `GET /rendez-vous/recherche`
+
+Retrouver le rendez-vous d'une famille sans connaître le jour. Ability `cli:read`.
+Mêmes règles que l'écran « Retrouver un rendez-vous » (`App\Services\RendezVous\RechercheRdv`).
+
+| Paramètre | Valeurs | Défaut |
+|---|---|---|
+| `q` | nom, prénoms, courriel, référence du dossier, matricule ; une saisie faite de chiffres cherche le téléphone, le matricule et la référence | — |
+| `quand` | `a_venir`, `passes`, `tous` | `a_venir` sans `q`, `tous` avec |
+| `statut` | une valeur de `App\Enums\StatutReservationRdv` | tous |
+| `type` | `candidature`, `reinscription` | tous |
+| `per_page` / `page` | 1 à 100 | 25 / 1 |
+
+```json
+{ "success": true,
+  "data": {
+    "filtres": { "q": "kouassi", "quand": "tous", "statut": "", "type": "" },
+    "total": 1, "page": 1, "derniere_page": 1,
+    "rendez_vous": [{ "id": 12, "nom": "KOUASSI Ama", "dossier": "candidature",
+      "reference": "AB12-CD34", "matricule": null, "telephone_masque": "+225 07 ** ** ** 56",
+      "date": "2026-10-05", "heure": "10:00-10:30", "statut": "confirmee",
+      "etat_accueil": "attendu", "absences": 0, "recue_le": null }] } }
+```
+
+`filtres` rend les filtres **réellement appliqués**. Une valeur inconnue de `quand`,
+`statut` ou `type` y revient remplacée par sa valeur par défaut, sans erreur : un
+client qui filtre doit comparer ce qu'il a envoyé à ce qu'il reçoit ici (c'est ce
+que fait `klassci rendez-vous:recherche --statut`).
+
+`etat_accueil` (`attendu`, `recu`, `non_venue`, `traite`) n'est renseigné que pour une
+réservation qui tient son créneau ; `null` pour une réservation libérée ou annulée.
+
 ## `POST /rendez-vous/placer`
 
 - 422 avec `message` si rien n'a été tenté : canal fermé, ou aucune place libre.
@@ -69,6 +101,14 @@ un premier courriel, c'est donc **ici** qu'on borne :
 3. `remettre { "quoi": "inconnues" }` pour le reste, puis `envoyer` jusqu'à `restantes: 0`
 
 ## Historique
+
+- 2026-09-25 — **Breaking** : `recherche` rend `telephone_masque` et plus `telephone`,
+  comme `familles`. Le numéro complet reste un critère de recherche (`q`).
+
+- 2026-09-25 — `recherche` : une saisie de chiffres cherche aussi le matricule et la
+  référence, plus seulement le téléphone. Non cassant (plus de résultats, jamais moins).
+
+- 2026-09-25 — ajout de `recherche`. Non cassant.
 
 - 2026-09-23 — **Breaking** : `placer` place aussi les dossiers sans e-mail. La clé
   `sans_email` (dossiers NON placés) disparaît, remplacée par `a_prevenir`

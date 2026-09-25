@@ -153,6 +153,7 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
                 </div>
                 <button type="button" class="rdv-btn rdv-btn--glass" data-page-tour-open><i class="fas fa-route"></i>Guide</button>
                 <button type="button" class="rdv-btn rdv-btn--glass" data-page-help-open><i class="fas fa-circle-question"></i>Aide</button>
+                <a class="rdv-btn rdv-btn--glass" href="{{ route('esbtp.rendez-vous.recherche') }}"><i class="fas fa-magnifying-glass"></i>Retrouver une famille</a>
                 @can('inscriptions.rdv.view')
                     <a class="rdv-btn rdv-btn--white" href="{{ route('esbtp.rendez-vous.index', ['debut' => $jour->toDateString()]) }}" data-rac-planning><i class="fas fa-calendar-week"></i>Planning</a>
                 @endcan
@@ -282,6 +283,12 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
         });
         const aucun = liste.querySelector('.rac-aucun');
         if (aucun) aucun.hidden = visibles.length > 0;
+        const partout = liste.querySelector('[data-rac-chercher-partout]');
+        if (partout) {
+            const url = new URL(partout.href, window.location.origin);
+            url.searchParams.set('q', (champ.value || '').trim());
+            partout.href = url.toString();
+        }
         if (q !== '' && visibles.length === 1) visibles[0].classList.add('is-surlignee');
         return visibles;
     }
@@ -524,7 +531,7 @@ window.__rdvGuideEtapes = [
     { sel: '.rac-recherche', titre: 'Retrouver une famille', texte: 'Tapez un nom, un téléphone ou une référence. S\'il ne reste qu\'une famille, Entrée la marque reçue.' },
     { sel: '.rac-filtres', titre: 'Filtrer la liste', texte: '« À recevoir » pour voir qui manque encore, « Non venues » pour les familles dont le créneau est passé sans elles.' },
     { sel: '#rac-liste .rac-coche', titre: 'Cocher à l\'arrivée', texte: 'Un clic marque la famille reçue, avec l\'heure et votre nom. Un second clic annule.' },
-    { sel: '#rac-liste .rac-actions', titre: 'Prévenir ou déplacer', texte: '« Prévenue » quand vous avez appelé une famille sans convocation ; « Reprogrammer » propose les prochains créneaux libres et renvoie la convocation.' },
+    { sel: '#rac-liste .rac-actions', titre: 'Dossier, prévenir ou déplacer', texte: '« Dossier » ouvre la candidature ou la demande de la famille ; « Prévenue » quand vous l\'avez appelée faute de convocation ; « Reprogrammer » propose les prochains créneaux libres et renvoie la convocation.' },
     { sel: '[data-rac-non-venues]', titre: 'Les non-venues', texte: 'Un créneau terminé sans la famille la fait passer « non venue », sans clic. Un bouton les reprogramme toutes sur les prochains créneaux libres.' },
     { sel: '.rac-alerte', titre: 'Aucun jour oublié', texte: 'Si des familles non venues d\'un autre jour attendent encore, ce bandeau vous y mène.' },
     { sel: '.rac-jour-nav', titre: 'Changer de jour', texte: 'Préparez demain ou revenez sur hier sans recharger la page.' },

@@ -3,7 +3,7 @@
 @section('title', "Journal d'audit & sécurité")
 
 @section('content')
-<div class="container-fluid au-page" x-data="auditPage()" x-init="init()">
+<div class="container-fluid au-page" x-data="auditPage()">
 
     {{-- ═══════════════════════════════ HERO ═══════════════════════════════ --}}
     <div class="au-hero">
@@ -142,7 +142,7 @@
                 <i class="fas fa-list-ul"></i> Logs d'audit
                 {{-- Plus de total : le comptage global sur `audits` a ete supprime (voir
                      le controleur). On annonce donc ce qui est reellement affiche. --}}
-                <span class="au-badge-count" x-show="audits.length > 0" x-cloak x-text="audits.length + ' sur cette page'"></span>
+                <span class="au-badge-count" x-show="audits.length > 0" x-cloak x-text="audits.length + (audits.length > 1 ? ' affichées' : ' affichée')"></span>
             </div>
             <button type="button" class="au-icon-btn" @click="reload()" title="Actualiser">
                 <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i>
@@ -212,18 +212,8 @@
             </table>
         </div>
 
-        {{-- Pagination --}}
-        <div class="au-pagination" x-show="!loading && (hasMore || currentPage > 1)" x-cloak>
-            <button class="au-page-btn" :disabled="currentPage <= 1" @click="changePage(currentPage - 1)">
-                <i class="fas fa-chevron-left"></i> Précédent
-            </button>
-            <div class="au-page-info">
-                Page <strong x-text="currentPage"></strong>
-            </div>
-            <button class="au-page-btn" :disabled="!hasMore" @click="changePage(currentPage + 1)">
-                Suivant <i class="fas fa-chevron-right"></i>
-            </button>
-        </div>
+        {{-- Le journal est dessine par Alpine : son bas de liste vient de ListeInfinie.alpine(). --}}
+        <x-liste-infinie-alpine />
     </div>
 
     {{-- ═══════════════════════════════ MODAL DIFF RAPIDE ═══════════════════════════════ --}}
@@ -254,7 +244,7 @@
                             <tr><th>Champ</th><th>Avant</th><th>Après</th></tr>
                         </thead>
                         <tbody>
-                            <template x-for="(c, i) in quickModalAudit.changes" :key="i">
+                            <template x-for="(c, i) in (quickModalAudit?.changes || [])" :key="i">
                                 <tr>
                                     <td><strong x-text="c.field"></strong></td>
                                     <td><span class="au-diff-old" x-text="c.old"></span></td>
@@ -371,13 +361,10 @@
 @push('scripts')
 <script>
 function auditPage() {
-    return {
-        loading: true,
-        audits: [],
-        currentPage: 1,
-        // Pagination sans comptage : on ne connait pas le nombre total de pages,
-        // seulement s'il reste quelque chose apres celle-ci.
-        hasMore: false,
+    // Chargement par tranches : ListeInfinie.alpine() (public/js/liste-infinie.js)
+    // porte l'observateur, les etats et le dedoublonnage ; la page ne fournit
+    // que sa requete.
+    return Object.assign({
         filters: {
             search: '',
             event: '',
@@ -393,48 +380,11 @@ function auditPage() {
         quickLinks: [],
         quickLinksLoading: false,
 
-        init() {
-            this.reload();
-        },
-
-        reload() {
-            this.currentPage = 1;
-            this.fetchData();
-        },
-
-        changePage(page) {
-            if (page < 1) return;
-            if (page > this.currentPage && !this.hasMore) return;
-            this.currentPage = page;
-            this.fetchData();
-        },
-
-        fetchData() {
-            this.loading = true;
-            const params = { page: this.currentPage };
-            Object.keys(this.filters).forEach(k => {
-                if (this.filters[k]) params[k] = this.filters[k];
-            });
-
-            fetch('{{ route("esbtp.audit.data") }}?' + new URLSearchParams(params), {
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-            })
-                .then(r => r.json())
-                .then(data => {
-                    // event_raw est servi directement par le backend (slug
-                    // Eloquent : created/updated/deleted/...) — pas de
-                    // reverse-map fragile depuis le label FR.
-                    this.audits = data.data || [];
-                    this.currentPage = data.current_page || 1;
-                    this.hasMore = !!data.next_page_url;
-                    this.loading = false;
-                })
-                .catch(err => {
-                    console.error('Audit fetch error:', err);
-                    this.loading = false;
-                    if (window.toastr) toastr.error('Erreur lors du chargement des audits');
-                });
-        },
+        // Alpine appelle init() de lui-meme : pas de x-init="init()" en plus,
+        // qui lancait deux fois le premier chargement.
+        init() { this.liInit(); },
+        destroy() { this.liDetruire(); },
+        reload() { return this.recharger(); },
 
         riskClass(level) {
             const map = { 'Critique': 'critique', 'Élevé': 'eleve', 'Moyen': 'moyen', 'Faible': 'faible' };
@@ -484,7 +434,27 @@ function auditPage() {
                 : '{{ route("esbtp.audit.export.excel") }}';
             window.open(url + '?' + params.toString(), '_blank');
         },
-    };
+    }, ListeInfinie.alpine({
+        champ: 'audits',
+        libelle: 'entrées',
+        // event_raw arrive tel qu'Eloquent l'ecrit (created, updated...) : la vue
+        // choisit sa classe sans traduire le libelle a l'envers.
+        tranche(page) {
+            const params = { page };
+            Object.keys(this.filters).forEach(k => {
+                if (this.filters[k]) params[k] = this.filters[k];
+            });
+            return fetch('{{ route("esbtp.audit.data") }}?' + new URLSearchParams(params), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                // simplePaginate : pas de total, seulement « il en reste ».
+                .then(data => ({ lignes: data.data || [], pagination: { current_page: data.current_page, has_more: !!data.next_page_url, total: null, par_page: data.per_page } }));
+        },
+        echec() {
+            if (window.toastr) toastr.error('Erreur lors du chargement des audits');
+        },
+    }));
 }
 </script>
 @endpush
