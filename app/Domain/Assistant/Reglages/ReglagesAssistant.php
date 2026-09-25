@@ -3,6 +3,8 @@
 namespace App\Domain\Assistant\Reglages;
 
 use App\Domain\Assistant\Cles\CoffreDesCles;
+use App\Domain\Assistant\Consommation\BudgetAssistant;
+use App\Domain\Assistant\Routage\Routeur;
 use App\Domain\Assistant\Diagnostic\DiagnosticAssistant;
 use App\Domain\Assistant\Modeles\ModeleIa;
 use App\Domain\Assistant\Modeles\RegistreDesModeles;
@@ -18,6 +20,7 @@ use InvalidArgumentException;
 class ReglagesAssistant
 {
     public const CLE_MODELE_DEFAUT = 'assistant.modele_defaut';
+    public const CLE_BUDGET = 'assistant.budget_mensuel_fcfa';
 
     public function __construct(
         private CoffreDesCles $coffre,
@@ -42,6 +45,16 @@ class ReglagesAssistant
             ], $this->registre->tous())),
             'modele_defaut' => $this->registre->defaut(),
             'modele_effectif' => $candidats[0]->cle ?? null,
+            // Routage automatique : chaque palier avec ses modèles réellement joignables.
+            'paliers' => array_map(
+                fn (array $cles) => array_values(array_filter($cles, fn ($c) => isset($this->registre->disponibles()[$c]))),
+                app(Routeur::class)->paliers()
+            ),
+            'budget' => [
+                'mensuel_fcfa' => app(BudgetAssistant::class)->budgetMensuelFcfa(),
+                'depense_du_mois_fcfa' => round(app(BudgetAssistant::class)->depenseDuMois(), 2),
+                'etat' => app(BudgetAssistant::class)->etat(),
+            ],
         ];
     }
 
@@ -63,6 +76,18 @@ class ReglagesAssistant
 
         SettingsHelper::setOrCreate(self::CLE_MODELE_DEFAUT, $cle, 'assistant', 'string');
         Cache::forget('setting_' . self::CLE_MODELE_DEFAUT);
+    }
+
+    /** Budget mensuel en FCFA ; 0 retire la limite. */
+    public function definirBudget(float $fcfa): void
+    {
+        if ($fcfa < 0) {
+            throw new InvalidArgumentException('Le budget ne peut pas être négatif.');
+        }
+
+        SettingsHelper::setOrCreate(self::CLE_BUDGET, (string) $fcfa, 'assistant', 'string');
+        Cache::forget('setting_' . self::CLE_BUDGET);
+        app(BudgetAssistant::class)->oublier();
     }
 
     /** @return array<string, mixed> */

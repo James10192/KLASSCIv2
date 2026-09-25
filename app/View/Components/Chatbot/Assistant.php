@@ -74,8 +74,12 @@ class Assistant extends Component
         $registre = app(RegistreDesModeles::class);
         $disponibles = array_values(array_map(fn (ModeleIa $m) => $m->versPublic(), $registre->disponibles()));
 
+        // « Automatique » d'abord et par défaut : le routeur choisit le modèle le
+        // moins cher qui suffit. Forcer un modèle reste possible, pour tester.
+        $auto = ['cle' => 'auto', 'libelle' => 'Automatique', 'fournisseur' => null];
+
         return count($disponibles) > 1
-            ? ['liste' => $disponibles, 'defaut' => $registre->candidats()[0]->cle ?? null]
+            ? ['liste' => array_merge([$auto], $disponibles), 'defaut' => 'auto']
             : [];
     }
 

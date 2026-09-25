@@ -64,7 +64,7 @@ class AdaptateursTest extends TestCase
             ['texte', ['delta' => 'les inscriptions.']],
             ['outil_debut', ['id' => 'toolu_01', 'nom' => 'search_inscriptions']],
             ['outil', ['id' => 'toolu_01', 'nom' => 'search_inscriptions', 'arguments' => ['search' => 'KONAN', 'limit' => 5]]],
-            ['usage', ['entree' => 112, 'sortie' => 42]],
+            ['usage', ['entree' => 112, 'sortie' => 42, 'cache' => 100, 'cout' => null]],
             ['fin', ['raison' => 'outils']],
         ], $evts);
 
@@ -94,7 +94,7 @@ class AdaptateursTest extends TestCase
             ['texte', ['delta' => 'les classes.']],
             ['outil_debut', ['id' => 'call_1', 'nom' => 'search_classes']],
             ['outil', ['id' => 'call_1', 'nom' => 'search_classes', 'arguments' => ['search' => 'BTS']]],
-            ['usage', ['entree' => 120, 'sortie' => 18]],
+            ['usage', ['entree' => 120, 'sortie' => 18, 'cache' => 0, 'cout' => null]],
             ['fin', ['raison' => 'outils']],
         ], $evts);
 
@@ -122,7 +122,7 @@ class AdaptateursTest extends TestCase
             ['texte', ['delta' => 'Voici ']],
             ['outil_debut', ['id' => 'gemini_1', 'nom' => 'search_classes']],
             ['outil', ['id' => 'gemini_1', 'nom' => 'search_classes', 'arguments' => ['search' => 'BTS']]],
-            ['usage', ['entree' => 50, 'sortie' => 9]],
+            ['usage', ['entree' => 50, 'sortie' => 9, 'cache' => 0, 'cout' => null]],
             ['fin', ['raison' => 'outils']],
         ], $evts);
 

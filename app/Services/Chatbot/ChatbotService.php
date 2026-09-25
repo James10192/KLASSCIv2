@@ -122,6 +122,7 @@ class ChatbotService
 
             // 8. Audit log
             $this->auditToolCalls($conversation, $user->id, $agentResponse['tool_calls'] ?? []);
+            $this->retenirRoutage($conversation, $assistantMessage, $agentResponse);
 
             // 9. Mettre à jour la conversation (merge, pas overwrite)
             $conversation->update([
@@ -211,7 +212,7 @@ class ChatbotService
             }
 
             $agentResponse = $this->agent->repondre(
-                $conversation, $message, $user, $preferences, $clientContext, $ui, $modele
+                $conversation, $message, $user, $preferences, $clientContext, $ui, $modele, $relance
             );
 
             $displayData = $agentResponse['display_data'];
@@ -240,6 +241,7 @@ class ChatbotService
             ]);
 
             $this->auditToolCalls($conversation, $user->id, $agentResponse['tool_calls'] ?? []);
+            $this->retenirRoutage($conversation, $assistantMessage, $agentResponse);
 
             $conversation->update([
                 'last_activity_at' => now(),
@@ -636,13 +638,27 @@ class ChatbotService
         ];
     }
 
+    /**
+     * Rattache la consommation de l'échange à son message, et retient le palier
+     * que le routeur a fait monter : la conversation le garde pour la suite.
+     */
+    private function retenirRoutage(ChatbotConversation $conversation, ChatbotMessage $message, array $reponse): void
+    {
+        app(\App\Domain\Assistant\Consommation\JournalDeConsommation::class)
+            ->rattacherAuMessage($reponse['consommation'] ?? [], $message->id);
+
+        if (!empty($reponse['palier'])) {
+            $conversation->update(['context' => array_merge($conversation->context ?? [], ['palier' => $reponse['palier']])]);
+        }
+    }
+
     protected function updateConversationTitleIfNeeded(ChatbotConversation $conversation, string $message): void
     {
         if (!empty($conversation->title)) {
             return;
         }
 
-        $newTitle = $this->agent->genererTitre($message);
+        $newTitle = $this->agent->genererTitre($message, $conversation->user_id, $conversation->id);
         $newTitle = $this->sanitizeTitle($newTitle ?: $message);
 
         if ($newTitle) {
@@ -654,7 +670,7 @@ class ChatbotService
     protected function redigerTitreApresCoup(ChatbotConversation $conversation, string $message): void
     {
         try {
-            $titre = $this->agent->genererTitre($message);
+            $titre = $this->agent->genererTitre($message, $conversation->user_id, $conversation->id);
             if ($titre) {
                 $conversation->update(['title' => $this->sanitizeTitle($titre)]);
             }

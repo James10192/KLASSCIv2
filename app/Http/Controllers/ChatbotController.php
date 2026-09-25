@@ -86,11 +86,12 @@ class ChatbotController extends Controller
             'current_url' => 'nullable|string|max:2048',
             'current_path' => 'nullable|string|max:1024',
             'page_title' => 'nullable|string|max:255',
-            'modele' => ['nullable', 'string', Rule::in(array_keys(app(RegistreDesModeles::class)->disponibles()))],
+            // « auto » = le routeur choisit, comme pour qui n'a pas le choix du modèle.
+            'modele' => ['nullable', 'string', Rule::in(array_merge(['auto'], array_keys(app(RegistreDesModeles::class)->disponibles())))],
             'relance' => 'nullable|boolean',
         ]);
 
-        $modele = $validated['modele'] ?? null;
+        $modele = ($validated['modele'] ?? null) === 'auto' ? null : ($validated['modele'] ?? null);
         if ($modele !== null && !$request->user()->can('assistant.model.choose')) {
             abort(403, "Vous n'avez pas l'autorisation de choisir le modèle de l'assistant.");
         }
