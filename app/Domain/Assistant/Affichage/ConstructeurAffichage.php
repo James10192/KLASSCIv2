@@ -26,6 +26,10 @@ class ConstructeurAffichage
 
     public function enregistrer(ChatbotConversation $conversation, string $nom, array $arguments, array $resultat): void
     {
+        // Un outil de présentation ne lit rien : les suites se règlent sur le dernier outil de données.
+        if (!empty($resultat['affiche'])) {
+            return;
+        }
         $this->dernierOutil = $nom;
         $this->contextProvider->updateFromToolResult($conversation, $nom, $arguments, $resultat);
 
@@ -56,6 +60,74 @@ class ConstructeurAffichage
             $this->displayData = $resultat['guide'];
             $this->displayType = 'checklist';
         }
+    }
+
+    /**
+     * Widget d'UN résultat d'outil, montré juste sous son étape.
+     *
+     * Chaque appel a désormais le sien, à sa place dans le fil : deux recherches
+     * de frais donnent deux tableaux, et non un seul fusionné en fin de réponse.
+     *
+     * @return array{kind: string}|null  les champs du kind, plus `lien` et `total`
+     */
+    public function widgetPour(string $nom, array $resultat): ?array
+    {
+        if (isset($resultat['error'])) {
+            return null;
+        }
+
+        // L'outil a préparé son widget lui-même (graphique, chiffres clés, présentation).
+        if (isset($resultat['widget']['kind'])) {
+            return $resultat['widget'];
+        }
+
+        if (isset($resultat['guide']) && is_array($resultat['guide'])) {
+            return ['kind' => 'checklist'] + $resultat['guide'];
+        }
+
+        $type = $resultat['display_type'] ?? 'text';
+        $lignes = $resultat['results'] ?? [];
+        $donnees = match ($type) {
+            'fee_groups', 'payment_groups' => $lignes === [] ? null : [
+                'groups' => $lignes,
+                'deep_link' => $resultat['deep_link'] ?? null,
+                'total_count' => $resultat['count'] ?? count($lignes),
+            ],
+            'stat_cards' => $lignes === [] ? null : [
+                'stats' => $lignes,
+                'deep_link' => $resultat['deep_link'] ?? null,
+                'total_count' => $resultat['count'] ?? count($lignes),
+            ],
+            'timetable' => $lignes === [] ? null : [
+                'days' => $lignes,
+                'classe' => $resultat['classe'] ?? '',
+                'filiere' => $resultat['filiere'] ?? '',
+                'semestre' => $resultat['semestre'] ?? '',
+                'annee' => $resultat['annee'] ?? '',
+                'periode' => $resultat['periode'] ?? '',
+                'total_count' => $resultat['count'] ?? 0,
+                'deep_link' => $resultat['deep_link'] ?? null,
+            ],
+            'table', 'cards' => $this->buildDisplayData($resultat, $type),
+            default => null,
+        };
+
+        if ($donnees === null) {
+            return null;
+        }
+
+        $lien = $resultat['deep_link'] ?? null;
+
+        return ['kind' => str_replace('_', '-', $type)] + $donnees + [
+            'lien' => is_string($lien) && $lien !== '' ? ['url' => $lien, 'libelle' => 'Tout voir dans KLASSCI'] : null,
+            'total' => $resultat['total'] ?? ($resultat['count'] ?? null),
+        ];
+    }
+
+    /** Suggestions de suite après le dernier outil de données de l'échange. */
+    public function suites(): array
+    {
+        return $this->dernierOutil ? $this->generateFollowUpSuggestions($this->dernierOutil) : [];
     }
 
     /**

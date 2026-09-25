@@ -2288,6 +2288,7 @@ class ESBTPBulletinController extends Controller
                 'bulletin_show_matricule',
                 'bulletin_show_birth_date',
                 'bulletin_show_redoublant',
+                'bulletin_show_student_phone',
                 'bulletin_show_class_info',
                 'bulletin_show_effectif',
                 'bulletin_show_subjects_table',

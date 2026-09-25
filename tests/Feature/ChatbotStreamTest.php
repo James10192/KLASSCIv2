@@ -147,15 +147,18 @@ class ChatbotStreamTest extends TestCase
         // Le modèle demande quand même l'outil : le serveur refuse, sans rien exécuter.
         $second = $recorded[1][0]->data();
         $toolResult = collect(end($second['messages'])['content'])->firstWhere('type', 'tool_result');
-        $this->assertSame('toolu_01', $toolResult['tool_use_id']);
+        // L'identifiant renvoyé à Anthropic est celui de la boucle, cohérent avec son tool_use.
+        $this->assertSame('a00000001', $toolResult['tool_use_id']);
+        $toolUse = collect($second['messages'][count($second['messages']) - 2]['content'])->firstWhere('type', 'tool_use');
+        $this->assertSame('a00000001', $toolUse['id']);
         $this->assertSame(['error' => 'Outil indisponible.'], json_decode($toolResult['content'], true));
 
-        $outil = collect($this->parts())->where('type', 'data-outil')->last();
+        $outil = collect($this->parts())->where('type', 'data-etape')->last();
         $this->assertSame('echec', $outil['data']['etat']);
-        $this->assertSame('toolu_01', $outil['id']);
+        $this->assertSame('a00000001', $outil['id']);
 
         // Aucune donnée d'inscription n'est partie au navigateur.
-        $this->assertEmpty(collect($this->parts())->filter(fn ($p) => in_array($p['type'], ['data-table', 'data-cards'], true)));
+        $this->assertEmpty(collect($this->parts())->filter(fn ($p) => in_array($p['type'], ['data-table', 'data-cards', 'data-widget'], true)));
         $this->assertStringNotContainsString('KONAN', implode('', $this->frames));
 
         $assistant = ChatbotMessage::where('role', 'assistant')->latest('id')->first();
@@ -180,6 +183,33 @@ class ChatbotStreamTest extends TestCase
         $this->assertStringNotContainsString('secret', $error['errorText']);
         $this->assertNotContains('finish', array_column($this->parts(), 'type'));
         $this->assertSame("data: [DONE]\n\n", end($this->frames));
+    }
+
+    public function test_reessayer_apres_une_erreur_remplace_la_reponse_sans_doubler_la_question(): void
+    {
+        Http::fake([
+            'api.anthropic.test/*' => Http::response(['error' => ['type' => 'overloaded_error', 'message' => 'x']], 529),
+        ]);
+        $user = $this->user();
+
+        $this->actingAs($user)->post(route('chatbot.message.stream'), ['message' => 'Bonjour'])->streamedContent();
+        $conversation = \App\Models\ChatbotConversation::where('user_id', $user->id)->latest('id')->first();
+        $this->assertSame(['user', 'assistant'], $conversation->messages()->orderBy('id')->pluck('role')->all());
+
+        $this->actingAs($user)->post(route('chatbot.message.stream'), [
+            'message' => 'Bonjour', 'conversation_id' => $conversation->session_id, 'relance' => true,
+        ])->streamedContent();
+
+        // La réponse ratée est remplacée ; la question n'est pas enregistrée deux fois.
+        $messages = $conversation->messages()->orderBy('id')->get();
+        $this->assertSame(['user', 'assistant'], $messages->pluck('role')->all());
+        $this->assertSame(1, $messages->where('content', 'Bonjour')->count());
+
+        // Sans le drapeau, c'est une nouvelle question.
+        $this->actingAs($user)->post(route('chatbot.message.stream'), [
+            'message' => 'Bonjour', 'conversation_id' => $conversation->session_id,
+        ])->streamedContent();
+        $this->assertSame(4, $conversation->messages()->count());
     }
 
     public function test_choisir_son_modele_demande_la_permission(): void
