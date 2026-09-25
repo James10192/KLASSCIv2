@@ -724,7 +724,7 @@
                     <i class="fas fa-arrow-left me-1"></i><span class="d-none d-sm-inline">Retour</span>
                 </a>
                 @php
-                    $anneeHeaderLabel = $inscription->anneeUniversitaire ? ($inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->libelle ?? '') : '';
+                    $anneeHeaderLabel = $inscription->anneeUniversitaire ? ($inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->display_name ?? '') : '';
                     $anneeIsCurrent = $inscription->anneeUniversitaire && $inscription->anneeUniversitaire->is_current;
                 @endphp
                 <a href="{{ route('esbtp.inscriptions.show', $inscription) }}" class="btn-acasi primary" title="Fiche inscription {{ $anneeHeaderLabel }}">
@@ -822,7 +822,7 @@
                         @endif
                         @if($inscription->anneeUniversitaire)
                         <span class="hero-meta-item">
-                            <i class="fas fa-calendar"></i>{{ $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->libelle }}
+                            <i class="fas fa-calendar"></i>{{ $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->display_name }}
                             @if($inscription->anneeUniversitaire->is_current)
                             <span style="display:inline-flex;align-items:center;gap:4px;background:rgba(16,185,129,.18);color:#10b981;font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.05em;border:1px solid rgba(16,185,129,.3);">
                                 <i class="fas fa-circle" style="font-size:.45rem;"></i>EN COURS
@@ -1137,7 +1137,7 @@
                         <div>
                             <div class="cta-label">Enregistrer un paiement</div>
                             <div class="cta-sub">
-                                Inscription {{ $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->libelle ?? '' }}
+                                Inscription {{ $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->display_name ?? '' }}
                                 @if($inscription->anneeUniversitaire && $inscription->anneeUniversitaire->is_current)
                                 <span style="color:#10b981;font-weight:600;">· en cours</span>
                                 @endif
@@ -1159,7 +1159,7 @@
                     <div class="d-flex flex-column gap-2">
                         @foreach($autresInscriptions as $autreInscription)
                         @php
-                            $anneeLabel = $autreInscription->anneeUniversitaire->name ?? $autreInscription->anneeUniversitaire->libelle ?? 'Année inconnue';
+                            $anneeLabel = $autreInscription->anneeUniversitaire->name ?? $autreInscription->anneeUniversitaire->display_name ?? 'Année inconnue';
                             $classeLabel = $autreInscription->classe->name ?? $autreInscription->classe->nom ?? '';
                         @endphp
                         <a href="{{ route('esbtp.comptabilite.relances.etudiant', $autreInscription) }}"

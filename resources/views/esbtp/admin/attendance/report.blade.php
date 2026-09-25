@@ -5,27 +5,19 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
+    /* En-tête à la charte KLASSCI (bleu), comme les autres écrans d'émargement.
+       Le dégradé violet et la bande oblique décorative sont retirés. */
     .attendance-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: var(--space-xl);
-        border-radius: var(--radius-large);
-        margin-bottom: var(--space-xl);
-        position: relative;
-        overflow: hidden;
-        box-shadow: var(--shadow-elevated);
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        color: #fff;
+        padding: 2rem 2.5rem 1.75rem;
+        border-radius: 18px;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 8px 30px rgba(4,83,203,.18);
     }
-    
-    .attendance-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 120px;
-        height: 100%;
-        background: rgba(255,255,255,0.15);
-        transform: skewX(-15deg);
-        transform-origin: top;
+    @media (max-width: 768px) {
+        .attendance-header { padding: 1.25rem 1.1rem; border-radius: 14px; }
+        .attendance-header .page-title { font-size: 1.25rem; }
     }
 
     .stats-grid {
@@ -54,7 +46,6 @@
 
     .stat-card:hover {
         box-shadow: var(--shadow-hover);
-        transform: translateY(-2px);
     }
 
     .stat-card .stat-icon {
@@ -116,7 +107,6 @@
         position: relative;
         z-index: 1;
         color: white;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
     }
 
     .page-subtitle {
@@ -159,7 +149,6 @@
     }
 
     .stat-mini-card:hover {
-        transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
@@ -234,6 +223,13 @@
             Rapport d'Émargement des Enseignants
         </h1>
         <p class="page-subtitle">Analyse détaillée des présences et statistiques d'émargement</p>
+        @can('comptabilite.salaires.view')
+        @php $raPeriode = isset($endDate) ? \Carbon\Carbon::parse($endDate) : now(); @endphp
+        <a href="{{ route('esbtp.comptabilite.salaires.index', ['preset' => 'month', 'mois' => $raPeriode->month, 'annee' => $raPeriode->year]) }}"
+           style="display:inline-flex;align-items:center;gap:.4rem;margin-top:.9rem;padding:.5rem 1rem;border-radius:10px;background:#fff;color:#0453cb;font-weight:600;font-size:.84rem;text-decoration:none;">
+            <i class="fas fa-file-invoice-dollar"></i>Paie du mois correspondant
+        </a>
+        @endcan
     </div>
 
     <!-- Statistiques principales -->

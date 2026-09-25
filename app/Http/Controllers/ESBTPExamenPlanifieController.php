@@ -377,6 +377,10 @@ class ESBTPExamenPlanifieController extends Controller
             'notesLockedBy',
         ]);
 
+        $anonymats = \Illuminate\Support\Facades\Schema::hasTable('esbtp_examen_anonymats')
+            ? \App\Models\ESBTPExamenAnonymat::where('examen_planifie_id', $examen->id)->count()
+            : 0;
+
         $surveillantsDispo = User::role(['enseignant', 'serviceTechnique', 'secretaire'])
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
@@ -389,7 +393,7 @@ class ESBTPExamenPlanifieController extends Controller
             ->limit(5)
             ->get();
 
-        return view('esbtp.examens.show', compact('examen', 'surveillantsDispo', 'recentAudits'));
+        return view('esbtp.examens.show', compact('examen', 'surveillantsDispo', 'recentAudits', 'anonymats'));
     }
 
     public function edit(ESBTPExamenPlanifie $examen): View
@@ -539,6 +543,39 @@ class ESBTPExamenPlanifieController extends Controller
     /**
      * Lock anti-tampering des notes.
      */
+    /** « Saisir les notes » : crée au besoin la feuille de notes de l'examen, puis l'ouvre. */
+    public function ouvrirFeuilleDeNotes(ESBTPExamenPlanifie $examen)
+    {
+        abort_unless(auth()->user()?->can('lmd.examens.manage') || auth()->user()?->can('lmd.notes.manage'), 403);
+
+        try {
+            $evaluation = app(\App\Domain\Examens\FeuilleDeNotesDeLExamen::class)->ouvrir($examen, auth()->user());
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()->back()->with('error', collect($e->errors())->flatten()->first());
+        }
+
+        return redirect()->route('esbtp.lmd.notes.saisie', $evaluation);
+    }
+
+    /** Levée de l'anonymat : datée, nominative, journalisée. */
+    public function leverAnonymat(ESBTPExamenPlanifie $examen): JsonResponse
+    {
+        abort_unless(auth()->user()?->can('lmd.examens.anonymat.lever'), 403);
+
+        try {
+            app(\App\Domain\Examens\FeuilleDeNotesDeLExamen::class)->leverAnonymat($examen, auth()->user());
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Anonymat levé : les noms apparaissent désormais dans la saisie.',
+            'leve_le' => $examen->fresh()->anonymat_leve_at?->format('d/m/Y à H:i'),
+            'leve_par' => auth()->user()->name,
+        ]);
+    }
+
     public function lockNotes(ESBTPExamenPlanifie $examen): JsonResponse
     {
         abort_unless(auth()->user()?->can('lmd.examens.notes_lock'), 403);

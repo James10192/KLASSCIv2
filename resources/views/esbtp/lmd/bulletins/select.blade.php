@@ -178,6 +178,8 @@
         margin-bottom: .35rem;
     }
     .bs-label .bs-req { color: #dc2626; }
+    .bs-au { display: flex !important; width: 100%; }
+    .bs-au .au-select-trigger { width: 100%; }
     .bs-select {
         width: 100%; padding: .6rem 1rem;
         border: 1.5px solid #e2e8f0; border-radius: 10px;
@@ -461,25 +463,17 @@
                     <div class="bs-row bs-row--2">
                         <div class="bs-field">
                             <label class="bs-label">Classe <span class="bs-req">*</span></label>
-                            <select class="bs-select" x-model="classeId" @change="onClasseChange()" required>
-                                <option value="">— Sélectionner —</option>
-                                @foreach($classes as $c)
-                                    <option value="{{ $c->id }}">
-                                        {{ $c->name }}@if($c->filiere) ({{ $c->filiere->name }})@endif
-                                    </option>
-                                @endforeach
-                            </select>
+                            @php $bsClasses = $classes->mapWithKeys(fn ($c) => [$c->id => $c->name.($c->filiere ? ' ('.$c->filiere->name.')' : '')]); @endphp
+                            <x-au-select class="bs-au" x-model="classeId" @change="onClasseChange()" required
+                                         :options="$bsClasses" placeholder="— Sélectionner une classe —" icon="fa-chalkboard"
+                                         :searchable="$classes->count() > 8" />
                         </div>
                         <div class="bs-field">
                             <label class="bs-label">Année universitaire <span class="bs-req">*</span></label>
-                            <select class="bs-select" x-model="anneeId" @change="onAnneeChange()" required>
-                                <option value="">— Sélectionner —</option>
-                                @foreach($annees as $annee)
-                                    <option value="{{ $annee->id }}" {{ ($annee->is_current ?? false) ? 'selected' : '' }}>
-                                        {{ $annee->name ?? $annee->libelle ?? $annee->id }}
-                                    </option>
-                                @endforeach
-                            </select>
+                            @php $bsAnnees = $annees->mapWithKeys(fn ($an) => [$an->id => $an->name ?? $an->display_name ?? $an->id]); @endphp
+                            <x-au-select class="bs-au" x-model="anneeId" @change="onAnneeChange()" required
+                                         :value="(string) ($annees->where('is_current', true)->first()?->id ?? '')"
+                                         :options="$bsAnnees" placeholder="— Sélectionner une année —" icon="fa-calendar" />
                         </div>
                     </div>
 

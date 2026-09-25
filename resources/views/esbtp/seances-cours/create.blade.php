@@ -331,14 +331,14 @@
                     <div class="sce-hero-kpi">
                         <div class="sce-hero-kpi-icon"><i class="fas fa-clock"></i></div>
                         <div class="sce-hero-kpi-body">
-                            <div class="sce-hero-kpi-value">{{ $planificationData['heures_totales'] }}h</div>
+                            <div class="sce-hero-kpi-value">{{ $planificationData['heures_totales_formatted'] ?? $planificationData['heures_totales'].'h' }}</div>
                             <div class="sce-hero-kpi-label">Volume horaire total</div>
                         </div>
                     </div>
                     <div class="sce-hero-kpi">
                         <div class="sce-hero-kpi-icon"><i class="fas fa-chart-line"></i></div>
                         <div class="sce-hero-kpi-body">
-                            <div class="sce-hero-kpi-value">{{ $planificationData['heures_restantes'] }}h</div>
+                            <div class="sce-hero-kpi-value">{{ $planificationData['heures_restantes_formatted'] ?? $planificationData['heures_restantes'].'h' }}</div>
                             <div class="sce-hero-kpi-label">Heures restantes</div>
                         </div>
                     </div>
@@ -589,7 +589,7 @@
                                     </div>
                                     <div class="stat-item">
                                         <span class="stat-label">Volume</span>
-                                        <span class="stat-value">{{ $planificationData['heures_totales'] }}h totales</span>
+                                        <span class="stat-value">{{ $planificationData['heures_totales_formatted'] ?? $planificationData['heures_totales'].'h' }} totales</span>
                                     </div>
                                 </div>
                             </div>
@@ -1086,6 +1086,8 @@
      data-availability='@json($availabilityData ?? [])'
      data-teachers='@json($teachers->keyBy("id"))'
      data-embed="{{ request()->boolean('embed') ? 1 : 0 }}"
+     data-can-edit-teacher="{{ auth()->user()?->can('teachers.edit') ? 1 : 0 }}"
+     data-availability-url="{{ url('esbtp/enseignants/__ID__/update-availability') }}"
      style="display: none;"></div>
 
 @endsection
@@ -1508,7 +1510,6 @@ function showAvailabilityToast(message, type = 'danger') {
 
 function showFormError(message) {
     showAvailabilityToast(message, 'danger');
-    debugAlert(message);
 }
 
 function setAvailabilityErrorMessage(message) {
@@ -1822,7 +1823,7 @@ document.getElementById('sessionForm').addEventListener('submit', async function
                 errorBox.innerHTML = `<strong>Erreur de validation</strong><ul class="mb-0 ps-3">${list.map((msg) => `<li>${msg}</li>`).join('')}</ul>`;
                     errorBox.style.display = 'block';
                 } else {
-                    alert('Erreur : ' + (payload.message || 'Validation échouée'));
+                    showAvailabilityToast(payload.message || 'Validation échouée', 'danger');
                 }
 
                 if (payload.errors && (payload.errors.matiere_id || payload.errors.teacher_id)) {
@@ -1851,6 +1852,93 @@ document.getElementById('sessionForm').addEventListener('submit', async function
     }
 });
 
+let derogationDisponibilite = null;
+
+/**
+ * Sous le message d'indisponibilité, les deux issues qu'un agent cherchait
+ * jusqu'ici en se connectant avec le compte de l'enseignant :
+ *  - rendre l'enseignant disponible sur ce créneau (qui a le droit de modifier
+ *    les enseignants) ;
+ *  - programmer quand même, en connaissance de cause.
+ * Le serveur n'impose pas la disponibilité : c'est une aide, pas une règle.
+ */
+function proposerRaccourcisDisponibilite(teacherId, jour, heureDebutH, heureFinH) {
+    const zone = document.getElementById('availability-inline-error');
+    if (!zone) return;
+    const peutModifier = seanceDataElement?.dataset.canEditTeacher === '1';
+    const actions = document.createElement('div');
+    actions.className = 'sce-dispo-actions';
+    if (peutModifier) {
+        const rendre = document.createElement('button');
+        rendre.type = 'button';
+        rendre.className = 'btn-acasi primary';
+        rendre.innerHTML = '<i class="fas fa-calendar-check"></i> Le rendre disponible sur ce créneau';
+        rendre.addEventListener('click', () => rendreDisponible(teacherId, jour, heureDebutH, heureFinH, rendre));
+        actions.appendChild(rendre);
+    }
+    const forcer = document.createElement('button');
+    forcer.type = 'button';
+    forcer.className = 'btn-acasi secondary';
+    forcer.innerHTML = '<i class="fas fa-forward"></i> Programmer quand même';
+    forcer.addEventListener('click', () => {
+        const heureDebut = document.getElementById('heure_debut').value;
+        const heureFin = document.getElementById('heure_fin').value;
+        derogationDisponibilite = [teacherId, jour, heureDebut, heureFin].join('|');
+        clearAvailabilityErrors();
+        showAvailabilityToast('Indisponibilité ignorée pour ce créneau. Enregistrez la séance.', 'warning');
+    });
+    actions.appendChild(forcer);
+    zone.appendChild(actions);
+}
+
+function rendreDisponible(teacherId, jour, heureDebutH, heureFinH, bouton) {
+    const dayKeys = {1: 'monday', 2: 'tuesday', 3: 'wednesday', 4: 'thursday', 5: 'friday', 6: 'saturday'};
+    const dayKey = dayKeys[jour];
+    const grille = seanceData.availability[teacherId] = seanceData.availability[teacherId] || {};
+    const ligne = grille[dayKey] = grille[dayKey] || [];
+    // Une modification par heure indisponible seulement : le serveur remplace
+    // tout créneau chevauché, un bloc large effacerait des heures déjà ouvertes.
+    const changes = [];
+    for (let h = heureDebutH; h < Math.max(heureFinH, heureDebutH + 1); h++) {
+        const idx = h - PLAGE_DEBUT;
+        if (ligne[idx] === 'available' || ligne[idx] === 'preferred' || ligne[idx] === 'occupied') continue;
+        changes.push({
+            day: jour - 1,
+            startTime: String(h).padStart(2, '0') + ':00',
+            endTime: String(h + 1).padStart(2, '0') + ':00',
+            status: 'available',
+        });
+    }
+    if (!changes.length) { validateTeacherAvailability(); return; }
+
+    bouton.disabled = true;
+    bouton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Mise à jour…';
+    const url = seanceDataElement.dataset.availabilityUrl.replace('__ID__', encodeURIComponent(teacherId));
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: JSON.stringify({ changes }),
+    })
+    .then(async (r) => {
+        const payload = await r.json().catch(() => ({}));
+        if (!r.ok || payload.success === false) throw payload;
+        changes.forEach((c) => { ligne[parseInt(c.startTime, 10) - PLAGE_DEBUT] = 'available'; });
+        clearAvailabilityErrors();
+        showTeacherAvailability();
+        showAvailabilityToast('Enseignant rendu disponible sur ce créneau.', 'success');
+    })
+    .catch((err) => {
+        bouton.disabled = false;
+        bouton.innerHTML = '<i class="fas fa-calendar-check"></i> Le rendre disponible sur ce créneau';
+        showAvailabilityToast(err?.message || 'Impossible de modifier la disponibilité.', 'danger');
+    });
+}
+
 // Fonction pour valider la disponibilité de l'enseignant
 function validateTeacherAvailability() {
     const teacherSelect = document.getElementById('teacher_id');
@@ -1876,8 +1964,17 @@ function validateTeacherAvailability() {
 
     clearAvailabilityErrors();
 
+    // « Programmer quand même » : l'agent a vu l'indisponibilité et assume.
+    // La dérogation ne vaut que pour ce créneau exact.
+    if (derogationDisponibilite === [teacherId, selectedDay, heureDebut.value, heureFin.value].join('|')) {
+        return true;
+    }
+
     if (!availabilityData[teacherId]) {
-        showFormError('Aucune disponibilité configurée pour cet enseignant.\n\nVeuillez configurer ses disponibilités avant de programmer cette séance.');
+        const errorMessage = 'Aucune disponibilité configurée pour cet enseignant.';
+        showFormError(errorMessage);
+        setAvailabilityErrorMessage(errorMessage);
+        proposerRaccourcisDisponibilite(teacherId, selectedDay, startHour, endHour);
         return false;
     }
 
@@ -1897,6 +1994,7 @@ function validateTeacherAvailability() {
         markAvailabilityErrorRange(selectedDay, startHour, endHour, errorMessage);
         showFormError(errorMessage);
         setAvailabilityErrorMessage(errorMessage);
+        proposerRaccourcisDisponibilite(teacherId, selectedDay, startHour, endHour);
         return false;
     }
 
@@ -1916,6 +2014,7 @@ function validateTeacherAvailability() {
             markAvailabilityError(selectedDay, hour, errorMessage);
             showFormError(errorMessage);
             setAvailabilityErrorMessage(errorMessage);
+            proposerRaccourcisDisponibilite(teacherId, selectedDay, startHour, endHour);
             return false;
         }
         if (status === 'occupied') {
@@ -2042,12 +2141,12 @@ function syncTeacherModalContext() {
 function openTeacherCreateModal() {
     const matiereSelect = document.getElementById('matiere_id');
     if (!matiereSelect || !matiereSelect.value) {
-        alert('Sélectionnez une matière avant de créer un enseignant.');
+        showAvailabilityToast('Sélectionnez une matière avant de créer un enseignant.', 'warning');
         return;
     }
     const selectedOption = matiereSelect.options[matiereSelect.selectedIndex];
     if (!selectedOption.dataset.planificationId) {
-        alert('Cette matière n\'est pas encore configurée dans le planning général.');
+        showAvailabilityToast("Cette matière n'est pas encore configurée dans le planning général.", 'warning');
         return;
     }
     syncTeacherModalContext();
@@ -2207,7 +2306,7 @@ function handleTeacherCreateSubmit(event) {
         })
         .catch(error => {
             if (!errorBox) {
-                alert('Impossible de créer l\'enseignant.');
+                showAvailabilityToast("Impossible de créer l'enseignant.", 'danger');
                 return;
             }
             const messages = [];
@@ -2251,13 +2350,13 @@ let currentPlanificationId = null;
 function openManageTeachersModal() {
     const matiereSelect = document.getElementById('matiere_id');
     if (!matiereSelect || !matiereSelect.value) {
-        alert('Sélectionnez une matière avant de gérer les enseignants.');
+        showAvailabilityToast('Sélectionnez une matière avant de gérer les enseignants.', 'warning');
         return;
     }
     const selectedOption = matiereSelect.options[matiereSelect.selectedIndex];
     const planifId = selectedOption.dataset.planificationId;
     if (!planifId) {
-        alert("Cette matière n'est pas encore configurée dans le planning général.");
+        showAvailabilityToast("Cette matière n'est pas encore configurée dans le planning général.", 'warning');
         return;
     }
     currentPlanificationId = planifId;
@@ -2395,15 +2494,29 @@ function handleAssociateTeacher() {
         if (!r.ok) throw payload;
         return payload;
     })
-    .then(data => {
+    .then(async data => {
         // Re-fetch full data to refresh both lists
         refreshManageTeachersContent();
         // Update matière data-enseignants attribute for the main form
         syncLinkedTeachersToForm(data.linked_ids || []);
+        // La page ne connaît que les enseignants présents à son chargement :
+        // sans cet ajout, l'enseignant associé n'apparaissait qu'après rechargement.
+        integrerEnseignants(data.linked_teachers || []);
+        await chargerDisponibilites(teacherId);
         updateTeachersForSubject();
+        // L'enseignant qu'on vient d'associer est celui qu'on veut programmer :
+        // on le sélectionne plutôt que de laisser l'utilisateur le rechercher.
+        const teacherSelect = document.getElementById('teacher_id');
+        if (teacherSelect && teacherSelect.querySelector(`option[value="${teacherId}"]`)) {
+            teacherSelect.value = String(teacherId);
+            teacherSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            showAvailabilityToast('Enseignant associé et sélectionné pour cette séance.', 'success');
+        } else {
+            showAvailabilityToast('Enseignant associé à la matière.', 'success');
+        }
     })
     .catch(err => {
-        alert(err.message || "Erreur lors de l'association.");
+        showAvailabilityToast(err.message || "Erreur lors de l'association.", 'danger');
     })
     .finally(() => {
         if (btn) {
@@ -2446,7 +2559,7 @@ function handleDissociateTeacher(teacherId) {
         if (err.blocked) {
             showMgtErrorDialog(err.message);
         } else {
-            alert(err.message || 'Erreur lors de la dissociation.');
+            showAvailabilityToast(err.message || 'Erreur lors de la dissociation.', 'danger');
         }
     });
 }
@@ -2472,6 +2585,28 @@ function refreshManageTeachersContent() {
             renderManageTeachersContent(data.linked_teachers, data.available_teachers);
         }
     });
+}
+
+function integrerEnseignants(liste) {
+    liste.forEach((t) => {
+        const id = String(t.id);
+        if (!seanceData.teachers[id]) {
+            seanceData.teachers[id] = { id: t.id, name: t.name, user: { name: t.name } };
+        }
+    });
+}
+
+// Disponibilités réelles de l'enseignant (même format que la grille de la page).
+// Sans elles, un enseignant tout juste associé paraîtrait indisponible partout.
+async function chargerDisponibilites(teacherId) {
+    if (seanceData.availability[teacherId]) return;
+    try {
+        const r = await fetch(`{{ url('esbtp/enseignants') }}/${encodeURIComponent(teacherId)}/availability-data`, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.success && d.data) seanceData.availability[teacherId] = d.data;
+    } catch (e) { /* la validation proposera de le rendre disponible */ }
 }
 
 function syncLinkedTeachersToForm(linkedIds) {
@@ -3225,8 +3360,10 @@ function forceRefreshAvailability() {
     z-index: 1;
 }
 
+.sce-dispo-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; width: 100%; }
 .availability-inline-error {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.75rem;

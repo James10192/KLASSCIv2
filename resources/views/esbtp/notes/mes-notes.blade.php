@@ -269,7 +269,7 @@
                     <select class="form-control" id="annee_universitaire_id" name="annee_universitaire_id">
                         @foreach($anneesUniversitaires as $annee)
                             <option value="{{ $annee->id }}" {{ $anneeId == $annee->id ? 'selected' : '' }}>
-                                {{ $annee->libelle }}
+                                {{ $annee->display_name }}
                             </option>
                         @endforeach
                     </select>

@@ -315,6 +315,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::put('/teacher/profile', [TeacherController::class, 'updateProfile'])->name('teacher.profile.update');
         Route::put('/teacher/profile/password', [TeacherController::class, 'updatePassword'])->name('teacher.profile.password.update');
         Route::get('/teacher/select-call-type/{seance}', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'selectCallType'])->name('teacher.select-call-type');
+        Route::post('/teacher/seances/{seance}/prolongation', [App\Http\Controllers\ESBTP\ProlongationSeanceController::class, 'demander'])->whereNumber('seance')->middleware('throttle:10,1')->name('teacher.prolongation.demander');
 
         // Routes pour les rapports de sÃ©ance
         Route::get('/teacher/session-report/create/{seance}', [App\Http\Controllers\ESBTP\SessionReportController::class, 'create'])->name('teacher.session-report.create');
@@ -2014,6 +2015,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Routes pour l'Ã©margement - Interface Enseignant
+    // Prolongation d'un cours : décision de la coordination, avec contrôle des conflits
+    Route::prefix('esbtp/prolongations')->name('esbtp.prolongations.')->middleware(['auth', 'permission:emargement.prolongation.decide'])->group(function () {
+        Route::get('/', [App\Http\Controllers\ESBTP\ProlongationSeanceController::class, 'index'])->name('index');
+        Route::post('/{prolongation}/accorder', [App\Http\Controllers\ESBTP\ProlongationSeanceController::class, 'accorder'])->whereNumber('prolongation')->middleware('throttle:30,1')->name('accorder');
+        Route::post('/{prolongation}/refuser', [App\Http\Controllers\ESBTP\ProlongationSeanceController::class, 'refuser'])->whereNumber('prolongation')->middleware('throttle:30,1')->name('refuser');
+    });
+
     Route::prefix('esbtp/teacher/attendance')->name('esbtp.teacher.attendance.')->middleware(['auth', 'role:enseignant'])->group(function () {
         Route::get('/', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'index'])->name('index')->middleware('permission:attendances.view_own');
         Route::get('/history', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'history'])->name('history')->middleware('permission:attendances.view_own');
@@ -2517,6 +2525,8 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
         Route::get('/', [TeacherAttendanceController::class, 'index'])->name('index');
         Route::get('/history', [TeacherAttendanceController::class, 'history'])->name('history');
         Route::post('/sign', [TeacherAttendanceController::class, 'sign'])->name('sign');
+        Route::post('/demander-code', \App\Http\Controllers\ESBTP\DemandeDeCodeDEmargementController::class)
+            ->middleware('throttle:6,1')->name('demander-code');
     });
 
     // Route rapport accessible aux enseignants et superadmins
@@ -3539,6 +3549,9 @@ Route::prefix('esbtp/lmd/rattrapage')->name('esbtp.lmd.rattrapage.')
         Route::post('/sessions/{session}/publier', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'publier'])
             ->middleware(['permission:lmd.rattrapage.manage', 'throttle:30,1'])
             ->name('publier');
+        Route::post('/sessions/{session}/rattacher', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'rattacher'])
+            ->middleware(['permission:lmd.rattrapage.manage', 'throttle:30,1'])
+            ->name('rattacher');
 
         // Saisie des notes de seconde session. Le controleur accepte
         // lmd.rattrapage.notes.saisir OU lmd.rattrapage.manage : la garde de route
@@ -3595,6 +3608,12 @@ Route::prefix('esbtp/examens')->name('esbtp.examens.')
         Route::post('/{examen}/surveillants', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'assignSurveillants'])
             ->middleware(['permission:lmd.examens.manage', 'throttle:30,1'])
             ->name('surveillants.assign');
+        Route::post('/{examen}/feuille-de-notes', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'ouvrirFeuilleDeNotes'])
+            ->middleware(['permission:lmd.examens.manage|lmd.notes.manage', 'throttle:30,1'])
+            ->name('feuille-de-notes');
+        Route::post('/{examen}/lever-anonymat', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'leverAnonymat'])
+            ->middleware(['permission:lmd.examens.anonymat.lever', 'throttle:10,1'])
+            ->name('lever-anonymat');
         Route::post('/{examen}/lock-notes', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'lockNotes'])
             ->middleware(['permission:lmd.examens.notes_lock', 'throttle:30,1'])
             ->name('lock-notes');

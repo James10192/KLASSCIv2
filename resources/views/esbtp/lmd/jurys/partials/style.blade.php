@@ -64,5 +64,20 @@
 .juy-readiness{display:flex;align-items:flex-start;gap:.65rem;padding:.8rem 1rem;border-radius:12px;margin-bottom:1.25rem;font-size:.82rem;border:1px solid;}
 .juy-readiness--ok{background:rgba(16,185,129,.08);border-color:rgba(16,185,129,.25);color:#047857;}
 .juy-readiness--ko{background:#fff7ed;border-color:#fed7aa;color:#9a3412;}
+/* Téléphone : la page débordait à 532 px sur un écran de 390. Tableaux
+   défilables dans leur carte, formulaire d'ajout empilé, en-tête resserré. */
+@@media (max-width: 768px){
+  .juy-hero{padding:1.25rem 1.1rem 1rem;border-radius:14px;}
+  .juy-hero h1{font-size:1.2rem;}
+  .juy-kpi{min-width:calc(50% - .4rem);padding:.7rem .75rem;}
+  .juy-card{padding:1rem .85rem;}
+  .juy-card table,.juy-decision-table{display:block;width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .juy-add-membre{grid-template-columns:1fr;}
+  .juy-membre-row{flex-wrap:wrap;gap:.5rem;}
+  .juy-tabs{flex-wrap:nowrap;overflow-x:auto;}
+  .juy-tab{white-space:nowrap;flex-shrink:0;}
+  .juy-actions-bar{padding:.75rem;}
+  .juy-actions-bar > .pv-numero{margin-left:0;width:100%;text-align:center;}
+}
 .juy-signature-canvas{width:100%;height:180px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;touch-action:none;cursor:crosshair;}
 </style>

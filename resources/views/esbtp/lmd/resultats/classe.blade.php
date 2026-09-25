@@ -39,7 +39,9 @@
     }
     .rc-card-body { padding: 1rem 1.25rem; }
     .rc-filters { align-items: flex-end; }
-    .rc-field { min-width: 190px; flex: 1; }
+    .rc-field { min-width: 190px; flex: 1; display: flex; flex-direction: column; }
+    .rc-au { display: flex !important; width: 100%; }
+    .rc-au .au-select-trigger { width: 100%; }
     .rc-label { display: block; font-size: .72rem; text-transform: uppercase; color: #64748b; font-weight: 800; margin-bottom: .3rem; }
     .rc-select, .rc-textarea {
         width: 100%; border: 1.5px solid #e2e8f0; background: #f8fafc;
@@ -140,21 +142,15 @@
         <div class="rc-card-body rc-filters">
             <div class="rc-field">
                 <label class="rc-label">Semestre</label>
-                <select class="rc-select" name="semestre" onchange="document.getElementById('rc-filter-form').submit()">
-                    @foreach($semestresAutorises ?? [1, 2] as $s)
-                        <option value="{{ $s }}" {{ (int) $semestre === (int) $s ? 'selected' : '' }}>Semestre {{ $s }}</option>
-                    @endforeach
-                </select>
+                @php $rcSemestres = collect($semestresAutorises ?? [1, 2])->mapWithKeys(fn ($x) => [$x => 'Semestre '.$x]); @endphp
+                <x-au-select class="rc-au" name="semestre" :value="(string) $semestre" :options="$rcSemestres" icon="fa-layer-group"
+                             :placeholder-is-first-option="false" onchange="document.getElementById('rc-filter-form').submit()" />
             </div>
             <div class="rc-field">
                 <label class="rc-label">Année universitaire</label>
-                <select class="rc-select" name="annee_universitaire_id" onchange="document.getElementById('rc-filter-form').submit()">
-                    @foreach($annees as $annee)
-                        <option value="{{ $annee->id }}" {{ (int) $anneeId === (int) $annee->id ? 'selected' : '' }}>
-                            {{ $annee->name ?? $annee->libelle ?? $annee->id }}
-                        </option>
-                    @endforeach
-                </select>
+                @php $rcAnnees = $annees->mapWithKeys(fn ($an) => [$an->id => $an->name ?? $an->display_name ?? $an->id]); @endphp
+                <x-au-select class="rc-au" name="annee_universitaire_id" :value="(string) $anneeId" :options="$rcAnnees" icon="fa-calendar"
+                             :placeholder-is-first-option="false" onchange="document.getElementById('rc-filter-form').submit()" />
             </div>
         </div>
     </form>
