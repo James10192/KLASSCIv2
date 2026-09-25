@@ -29,44 +29,19 @@ class TeacherAttendanceController extends Controller
     /**
      * Affiche la page d'émargement avec les cours du jour
      */
-    public function index()
+    public function index(\App\Domain\EmploiTemps\JourneeDeLEnseignant $journee, \App\Domain\EmploiTemps\ActiviteDEmargement $activite)
     {
         $user = auth()->user();
-        $today = Carbon::today();
-        
-        // Get today's courses for the teacher  
-        $dayOfWeek = $today->dayOfWeek; // 0=Sunday, 1=Monday, etc.
-        // Convert to database format (1=Monday, 7=Sunday)
-        $dayOfWeekDb = $dayOfWeek == 0 ? 7 : $dayOfWeek;
-        
-        // esbtp_seance_cours.teacher_id est un esbtp_teachers.id (profil),
-        // esbtp_teacher_attendances.teacher_id un users.id (compte).
-        $teacherProfileId = $user->teacherProfile?->id;
+        $maintenant = Carbon::now();
 
-        $todayCourses = ESBTPSeanceCours::with(['matiere', 'emploiTemps.classe'])
-            ->where('teacher_id', $teacherProfileId)
-            ->where('is_active', true)
-            // Les deux écritures de la colonne : l'entier de la liste des
-            // séances comme le libellé de l'emploi du temps. Le `where` sur le
-            // seul entier ne voyait que la moitié des séances — un enseignant
-            // dont l'emploi du temps est saisi depuis l'écran emploi du temps
-            // n'avait donc aucun cours à émarger. Dimanche rend une liste vide,
-            // la semaine allant du lundi au samedi.
-            ->whereIn('jour', \App\Domain\EmploiTemps\JourDeLaSemaine::ecrituresDe($dayOfWeekDb))
-            ->get();
-
-        // Load teacher attendance status for each course
-        $todayCourses->each(function($course) use ($user, $today) {
-            $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
-                ->where('course_id', $course->id)
-                ->whereDate('date', $today)
-                // L'émargement de début décide de l'affichage (présent, en
-                // retard ou absent) ; celui de fin ne le remplace pas.
-                ->orderByRaw("type = 'start' desc")
-                ->first();
-        });
-
-        return view('esbtp.teacher-attendance.index', compact('todayCourses'));
+        // Les cours du jour se lisent par le jour de la semaine, dans les deux
+        // écritures de la colonne (entier ou libellé) : voir JourneeDeLEnseignant.
+        return view('esbtp.teacher-attendance.index', [
+            'coursDuJour' => $journee->coursDuJour($user, $maintenant),
+            'derniers' => $activite->derniers($user),
+            'bilan' => $activite->bilanDuMois($user, $maintenant),
+            'maintenant' => $maintenant,
+        ]);
     }
 
     /**
