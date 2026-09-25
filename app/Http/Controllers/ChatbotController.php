@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Services\Chatbot\ChatbotService;
 use App\Services\Chatbot\ChatbotSetupGuideService;
+use App\Domain\Assistant\Flux\UiMessageStream;
+use App\Domain\Assistant\Modeles\RegistreDesModeles;
+use Illuminate\Validation\Rule;
 use App\Models\ChatbotActionLog;
 use App\Models\ChatbotConversation;
 use App\Models\ChatbotUserPreference;
@@ -33,31 +36,49 @@ class ChatbotController extends Controller
      */
     public function sendMessage(Request $request)
     {
-        $validated = $request->validate([
-            'message' => 'required|string|max:1000',
-            'conversation_id' => 'nullable|string',
-            'current_url' => 'nullable|string|max:2048',
-            'current_path' => 'nullable|string|max:1024',
-            'page_title' => 'nullable|string|max:255',
-        ]);
+        [$message, $conversationId, $contexte, $modele] = $this->validerMessage($request);
 
-        $response = $this->chatbotService->sendMessage(
-            $validated['message'],
-            $validated['conversation_id'] ?? null,
-            [
-                'current_url' => $validated['current_url'] ?? null,
-                'current_path' => $validated['current_path'] ?? null,
-                'page_title' => $validated['page_title'] ?? null,
-            ]
-        );
+        $response = $this->chatbotService->sendMessage($message, $conversationId, $contexte, $modele);
 
         return response()->json($response);
     }
 
     /**
-     * Envoyer un message avec streaming SSE
+     * Envoyer un message en diffusion (protocole UI message stream v1 du Vercel AI SDK).
+     *
+     * Arrêter une réponse = le navigateur coupe la requête (AbortController) :
+     * ignore_user_abort laisse le script finir d'enregistrer ce qui a été montré,
+     * et la boucle de lecture s'arrête dès que connection_aborted() le signale.
      */
     public function sendMessageStream(Request $request)
+    {
+        [$message, $conversationId, $contexte, $modele] = $this->validerMessage($request);
+
+        return response()->stream(function () use ($message, $conversationId, $contexte, $modele) {
+            // Un puits lié dans le conteneur remplace la sortie (tests) ; sinon on
+            // écrit directement au navigateur, sans tampon intermédiaire.
+            $ui = app()->bound(UiMessageStream::class) ? app(UiMessageStream::class) : null;
+            if (!$ui) {
+                ignore_user_abort(true);
+                @set_time_limit((int) config('assistant.limites.delai_secondes', 90) + 30);
+                @ini_set('zlib.output_compression', '0');
+                while (ob_get_level() > 0) {
+                    @ob_end_flush();
+                }
+                $ui = UiMessageStream::versLaSortie();
+            }
+
+            $this->chatbotService->sendMessageStream($message, $conversationId, $contexte, $ui, $modele);
+        }, 200, UiMessageStream::HEADERS);
+    }
+
+    /**
+     * Validation commune aux deux routes d'envoi. Choisir son modèle demande la
+     * permission assistant.model.choose, et seulement parmi les modèles disponibles.
+     *
+     * @return array{0: string, 1: ?string, 2: array, 3: ?string}
+     */
+    private function validerMessage(Request $request): array
     {
         $validated = $request->validate([
             'message' => 'required|string|max:1000',
@@ -65,31 +86,24 @@ class ChatbotController extends Controller
             'current_url' => 'nullable|string|max:2048',
             'current_path' => 'nullable|string|max:1024',
             'page_title' => 'nullable|string|max:255',
+            'modele' => ['nullable', 'string', Rule::in(array_keys(app(RegistreDesModeles::class)->disponibles()))],
         ]);
 
-        return response()->stream(function () use ($validated) {
-            $result = $this->chatbotService->sendMessageStream(
-                $validated['message'],
-                $validated['conversation_id'] ?? null,
-                [
-                    'current_url' => $validated['current_url'] ?? null,
-                    'current_path' => $validated['current_path'] ?? null,
-                    'page_title' => $validated['page_title'] ?? null,
-                ],
-                function (string $event, array $data) {
-                    echo "event: {$event}\ndata: " . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n\n";
-                    if (ob_get_level()) {
-                        ob_flush();
-                    }
-                    flush();
-                }
-            );
-        }, 200, [
-            'Content-Type' => 'text/event-stream',
-            'Cache-Control' => 'no-cache',
-            'Connection' => 'keep-alive',
-            'X-Accel-Buffering' => 'no',
-        ]);
+        $modele = $validated['modele'] ?? null;
+        if ($modele !== null && !$request->user()->can('assistant.model.choose')) {
+            abort(403, "Vous n'avez pas l'autorisation de choisir le modèle de l'assistant.");
+        }
+
+        return [
+            $validated['message'],
+            $validated['conversation_id'] ?? null,
+            [
+                'current_url' => $validated['current_url'] ?? null,
+                'current_path' => $validated['current_path'] ?? null,
+                'page_title' => $validated['page_title'] ?? null,
+            ],
+            $modele,
+        ];
     }
 
     /**
