@@ -690,7 +690,9 @@ class ESBTPSeanceCoursController extends Controller
                     ->with('success', $successMessage);
             } catch (ValidationException $e) {
                 DB::rollBack();
-                \Log::error('Erreur validation transaction création séance', $e->errors());
+                // Refus métier (enseignant ou salle déjà pris) : la personne voit le motif,
+                // ce n'est pas une panne. En `error`, il noyait les vraies erreurs du journal.
+                \Log::info('Création de séance refusée par la validation', $e->errors());
 
                 if ($expectsJson) {
                     return response()->json([
