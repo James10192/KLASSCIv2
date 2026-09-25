@@ -801,37 +801,26 @@ if (typeof window.auSelect !== 'function') {
                 const idx = this.filteredOptions.findIndex(o => !o.placeholder);
                 return idx >= 0 ? idx : -1;
             },
+            // Les fleches parcourent aussi l'invite : c'est la seule facon,
+            // au clavier, de revenir a « Toutes les … » apres un choix.
             focusNextOption() {
-                const options = this.filteredOptions;
-                if (!options.length) return;
-                let idx = this.focusedIndex;
-                for (let i = 0; i < options.length; i++) {
-                    idx = (idx + 1 + options.length) % options.length;
-                    if (!options[idx].placeholder) {
-                        this.focusedIndex = idx;
-                        return;
-                    }
-                }
+                const total = this.filteredOptions.length;
+                if (!total) return;
+                this.focusedIndex = (this.focusedIndex + 1 + total) % total;
             },
             focusPreviousOption() {
-                const options = this.filteredOptions;
-                if (!options.length) return;
-                let idx = this.focusedIndex < 0 ? options.length : this.focusedIndex;
-                for (let i = 0; i < options.length; i++) {
-                    idx = (idx - 1 + options.length) % options.length;
-                    if (!options[idx].placeholder) {
-                        this.focusedIndex = idx;
-                        return;
-                    }
-                }
+                const total = this.filteredOptions.length;
+                if (!total) return;
+                const depart = this.focusedIndex < 0 ? total : this.focusedIndex;
+                this.focusedIndex = (depart - 1 + total) % total;
             },
             /**
              * L'invite (« Toutes les classes ») est une option comme une autre
              * au clic : elle ramene la valeur vide. La refuser laissait le menu
              * ouvert et la valeur figee — impossible de revenir a « toutes »
              * apres avoir choisi une classe, et le clic suivant sur le champ
-             * refermait le menu au lieu de l'ouvrir. Le clavier, lui, continue
-             * de la sauter (focusNextOption), comme avant.
+             * refermait le menu au lieu de l'ouvrir. Meme regle au clavier :
+             * les fleches l'atteignent et Entree la choisit.
              */
             select(opt) {
                 this._value = opt.placeholder ? '' : opt.value;
