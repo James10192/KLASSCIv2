@@ -784,6 +784,18 @@ switch ($Command) {
         Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 12
         break
     }
+    "diagnostics:tc-specialite-leak" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $query = @{}
+        foreach ($arg in $ExtraArgs) {
+            if ($arg -match '^([^=]+)=(.*)$') {
+                $query[$matches[1]] = $matches[2]
+            }
+        }
+        $path = "/diagnostics/tc-specialite-leak{0}" -f (New-KlassciQueryString -Query $query)
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 16
+        break
+    }
     "evaluations:coverage" {
         $cfg = Get-KlassciConfig -TenantCode $Tenant
         $query = @{}
@@ -1084,6 +1096,7 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 academic-pilotage:refresh [presentation] [--limit=100]"
         Write-Host "  .\klassci-cli.ps1 classes [presentation]"
         Write-Host "  .\klassci-cli.ps1 evaluations:coverage [presentation] [systeme=BTS] [year=1] [filiere_id=] [periode=] [annee_id=]"
+        Write-Host "  .\klassci-cli.ps1 diagnostics:tc-specialite-leak [presentation] [annee_universitaire_id=] [classe_id=] [etudiant_id=]"
         Write-Host "  .\klassci-cli.ps1 classes:raw [presentation]"
         Write-Host "  .\klassci-cli.ps1 lmd:tree [presentation]"
         Write-Host "  .\klassci-cli.ps1 lmd:coverage [presentation]"

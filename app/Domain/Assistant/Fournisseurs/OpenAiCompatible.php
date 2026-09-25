@@ -144,7 +144,7 @@ class OpenAiCompatible extends AdaptateurHttp
                     'parameters' => $this->schemaPortable($o['parametres']) + ['type' => 'object'],
                 ],
             ], $requete->outils);
-            $corps['tool_choice'] = 'auto';
+            $corps['tool_choice'] = $requete->conclure ? 'none' : 'auto';
         }
 
         return $corps;

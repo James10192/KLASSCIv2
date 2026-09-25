@@ -697,6 +697,18 @@ class SettingsSeeder extends Seeder
                 'sort_order' => 11
             ],
             [
+                'key' => 'bulletin_show_student_phone',
+                'value' => '1',
+                'type' => 'string',
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'description' => "Afficher le téléphone de l'étudiant",
+                'is_required' => false,
+                'default_value' => '1',
+                'validation_rules' => ['string'],
+                'sort_order' => 11
+            ],
+            [
                 'key' => 'bulletin_show_class_info',
                 'value' => '1',
                 'type' => 'string',
