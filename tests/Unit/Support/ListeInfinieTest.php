@@ -15,7 +15,7 @@ class ListeInfinieTest extends TestCase
         $p = new LengthAwarePaginator(range(16, 30), 40, 15, 2);
 
         $this->assertSame(
-            ['current_page' => 2, 'next_page' => 3, 'has_more' => true, 'total' => 40, 'affiches' => 30],
+            ['current_page' => 2, 'next_page' => 3, 'has_more' => true, 'total' => 40, 'affiches' => 30, 'par_page' => 15],
             ListeInfinie::pagination($p),
         );
     }

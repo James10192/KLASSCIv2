@@ -11,6 +11,8 @@
       - cible      : selecteur CSS du conteneur ou ajouter les lignes (un <tbody>)
       - libelle    : le nom des lignes au pluriel, pour le compteur (« inscriptions »)
       - url        : l'adresse a rappeler, par defaut celle de la page
+      - parametres : a ajouter aux filtres de la requete, et qui les remplacent
+                     (la version d'un index en cache, par exemple)
 
     Les filtres transportes sont ceux de la requete qui a rendu cette tranche,
     pas ceux du formulaire : un filtre modifie sans etre applique ne doit pas
@@ -21,11 +23,12 @@
     'cible',
     'libelle' => 'éléments',
     'url' => null,
+    'parametres' => [],
 ])
 
 @php
     $_pagination = \App\Support\ListeInfinie::pagination($paginateur);
-    $_query = http_build_query(request()->except(['page', 'mode']));
+    $_query = http_build_query(array_merge(request()->except(['page', 'mode']), $parametres));
 @endphp
 
 <div {{ $attributes->merge(['class' => 'li-bas']) }}
@@ -36,7 +39,8 @@
      data-libelle="{{ $libelle }}"
      data-page-suivante="{{ $_pagination['next_page'] ?? '' }}"
      data-total="{{ $_pagination['total'] ?? '' }}"
-     data-affiches="{{ $_pagination['affiches'] }}">
+     data-affiches="{{ $_pagination['affiches'] }}"
+     data-par-page="{{ $_pagination['par_page'] }}">
     <span class="li-compteur" aria-live="polite"></span>
     <button type="button" class="li-plus" data-li-plus hidden>Charger la suite</button>
 </div>

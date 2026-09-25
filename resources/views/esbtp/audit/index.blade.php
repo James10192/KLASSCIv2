@@ -447,7 +447,7 @@ function auditPage() {
             })
                 .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
                 // simplePaginate : pas de total, seulement « il en reste ».
-                .then(data => ({ lignes: data.data || [], pagination: { current_page: data.current_page, has_more: !!data.next_page_url, total: null } }));
+                .then(data => ({ lignes: data.data || [], pagination: { current_page: data.current_page, has_more: !!data.next_page_url, total: null, par_page: data.per_page } }));
         },
         echec() {
             if (window.toastr) toastr.error('Erreur lors du chargement des audits');

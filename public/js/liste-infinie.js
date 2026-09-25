@@ -78,10 +78,23 @@
         bouton.hidden = etat === 'fin';
     }
 
+    /*
+     * La page a demander pour continuer. Le serveur pagine par decalage : si
+     * des lignes ont quitte la liste sans rechargement (restauration,
+     * suppression, action groupee), toute la suite a recule d'autant. On part
+     * donc de ce qui est reellement affiche, pas d'un numero de page retenu :
+     * la tranche qui contient la premiere ligne manquante. Elle recouvre en
+     * partie l'affichage ; le dedoublonnage par cle ecarte ce recouvrement.
+     * Une seule regle, quel que soit le nombre de lignes retirees.
+     */
+    function pageAPrendre(affiches, parPage, repli) {
+        return parPage > 0 ? Math.floor(affiches / parPage) + 1 : repli;
+    }
+
     function adresse(bas) {
         var d = bas.dataset;
         var params = new URLSearchParams(d.query || '');
-        params.set('page', d.pageSuivante);
+        params.set('page', String(pageAPrendre(Number(d.affiches || 0), Number(d.parPage || 0), d.pageSuivante)));
         params.set('mode', 'rows');
         return d.url + (d.url.indexOf('?') === -1 ? '?' : '&') + params.toString();
     }
@@ -91,6 +104,7 @@
         if (!etat || etat.enCours || !bas.dataset.pageSuivante) return;
 
         etat.enCours = true;
+        var retraitsAuDepart = etat.retraits;
         afficherEtat(bas, 'chargement');
 
         fetch(adresse(bas), {
@@ -104,6 +118,10 @@
             .then(function (data) {
                 // La liste a ete remplacee (nouveau filtre) pendant le chargement.
                 if (!bas.isConnected) return;
+                // Des lignes ont quitte la liste pendant le trajet : la tranche a
+                // ete choisie avant, le serveur l'a peut-etre servie apres, et des
+                // lignes manqueraient avant elle. On la jette et on redemande.
+                if (etat.retraits !== retraitsAuDepart) { etat.aRejouer = true; return; }
 
                 var cible = document.querySelector(bas.dataset.cible);
                 var p = data.pagination || {};
@@ -150,6 +168,7 @@
             })
             .finally(function () {
                 etat.enCours = false;
+                if (etat.aRejouer) { etat.aRejouer = false; afficherEtat(bas, 'pret'); charger(bas); return; }
                 // Une tranche courte peut laisser le bas de liste visible : l'observateur
                 // ne se redeclenche pas tout seul, on relance tant qu'il est a l'ecran.
                 if (bas.isConnected && bas.dataset.pageSuivante && bas.dataset.etat === 'pret' && estVisible(bas)) {
@@ -165,7 +184,7 @@
 
     function brancher(bas) {
         if (etats.has(bas)) return;
-        var etat = { enCours: false, observateur: null };
+        var etat = { enCours: false, observateur: null, retraits: 0, aRejouer: false };
         etats.set(bas, etat);
 
         bas.querySelector('[data-li-plus]').addEventListener('click', function () { charger(bas); });
@@ -219,11 +238,8 @@
             liAPlus: false,
             liTotal: null,
             liNumero: 0,
-            // Lignes retirees sur place depuis la derniere tranche : le serveur
-            // pagine par decalage, donc la suite a recule d'autant. La prochaine
-            // demande rejoue la tranche courante (le dedoublonnage ecarte ce qui
-            // est deja affiche) au lieu de sauter ces lignes.
-            liRejouer: false,
+            liParPage: 0,
+            liRetraits: 0,
 
             liInit: function () {
                 injecterStyles();
@@ -248,8 +264,8 @@
                 var avant = this[champ].length;
                 this[champ] = this[champ].filter(function (x) { return cle(x) !== valeur; });
                 if (this[champ].length < avant) {
+                    this.liRetraits++;
                     if (this.liTotal !== null) this.liTotal--;
-                    this.liRejouer = true;
                 }
             },
             liVide: function () { return this[champ].length === 0; },
@@ -265,11 +281,18 @@
                 var numero = ++this.liNumero;
                 if (ajouter) { this.liSuite = true; } else { this.loading = true; this.liSuite = false; }
                 this.liErreur = false;
-                var page = !ajouter ? 1 : (this.liRejouer ? this.liPage : this.liPage + 1);
+                // Depuis ce qui est affiche (pageAPrendre) : des lignes retirees
+                // sur place ne font rien sauter.
+                var page = ajouter ? pageAPrendre(this[champ].length, this.liParPage, this.liPage + 1) : 1;
+                var retraitsAuDepart = this.liRetraits;
+                var rejouer = false;
                 return Promise.resolve(options.tranche.call(this, page))
                     .then(function (res) {
                         // Un filtre ou un onglet change entre-temps : reponse perimee.
                         if (numero !== self.liNumero) return;
+                        // Des lignes retirees pendant le trajet : la tranche, choisie
+                        // avant, laisserait un trou devant elle. On redemande.
+                        if (ajouter && self.liRetraits !== retraitsAuDepart) { rejouer = true; return; }
                         var lignes = res.lignes || [];
                         var p = res.pagination || {};
                         if (ajouter) {
@@ -281,7 +304,7 @@
                             self[champ] = lignes;
                         }
                         self.liPage = p.current_page || page;
-                        self.liRejouer = false;
+                        self.liParPage = Number(p.par_page || 0);
                         self.liAPlus = !!p.has_more;
                         self.liTotal = p.total === undefined ? null : p.total;
                         self.$nextTick(function () {
@@ -300,6 +323,7 @@
                         if (numero !== self.liNumero) return;
                         self.loading = false;
                         self.liSuite = false;
+                        if (rejouer) self.chargerSuite();
                     });
             }
         };
@@ -311,17 +335,16 @@
     // groupee) : le compteur du bas en tient compte.
     function ajuster(bas, retirees) {
         if (!bas || !retirees) return;
+        var e = etats.get(bas);
+        if (e) e.retraits++;
         var d = bas.dataset;
         d.affiches = String(Math.max(0, Number(d.affiches || 0) - retirees));
         if (d.total !== '') d.total = String(Math.max(0, Number(d.total) - retirees));
-        // Pagination par decalage : la suite a recule d'autant de lignes. On
-        // redemande la tranche d'avant ; le dedoublonnage (data-li-cle) ecarte
-        // ce qui est deja affiche, et rien n'est saute.
-        if (d.pageSuivante) d.pageSuivante = String(Math.max(1, Number(d.pageSuivante) - 1));
+        // La page suivante se deduit de `affiches` (pageAPrendre) : rien a reculer ici.
         afficherEtat(bas, d.pageSuivante ? 'pret' : 'fin');
     }
 
-    window.ListeInfinie = { init: init, charger: charger, alpine: alpine, ajuster: ajuster };
+    window.ListeInfinie = { init: init, charger: charger, alpine: alpine, ajuster: ajuster, pageAPrendre: pageAPrendre };
 
     function demarrer() {
         init(document);

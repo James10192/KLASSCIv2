@@ -27,10 +27,13 @@ use Illuminate\Http\Request;
  * distinctes. Un tri sans departage unique n'est pas une liste infinie valable.
  * Le script ecarte aussi une ligne dont la cle (data-li-cle) est deja affichee.
  *
- * Dette connue : c'est une pagination par decalage. Une ligne qui sort du
- * filtre pendant qu'on defile (validee sous un filtre « en attente ») decale la
- * suite d'un cran, et une ligne est sautee. Seule une pagination par curseur
- * supprimerait ce trou.
+ * La pagination est par decalage. Des lignes retirees de l'ecran sans
+ * rechargement (restauration, action groupee) font reculer toute la suite :
+ * le client demande donc la tranche a partir de ce qu'il affiche
+ * (`affiches` / `par_page`, ListeInfinie.pageAPrendre dans liste-infinie.js),
+ * jamais « la page d'apres ». Dette restante : une ligne qui sort du filtre
+ * du fait d'un AUTRE poste, sans que cet ecran le sache, decale encore la
+ * suite d'un cran. Seule une pagination par curseur supprimerait ce trou.
  */
 final class ListeInfinie
 {
@@ -55,7 +58,7 @@ final class ListeInfinie
     }
 
     /**
-     * @return array{current_page: int, next_page: ?int, has_more: bool, total: ?int, affiches: int}
+     * @return array{current_page: int, next_page: ?int, has_more: bool, total: ?int, affiches: int, par_page: int}
      */
     public static function pagination(Paginator $paginateur): array
     {
@@ -69,6 +72,8 @@ final class ListeInfinie
             // Combien de lignes l'ecran porte apres cette tranche. Le compteur ne
             // compte pas les <tr> du DOM : une ligne peut en rendre deux (detail).
             'affiches' => ($paginateur->currentPage() - 1) * $paginateur->perPage() + count($paginateur->items()),
+            // Le client en deduit la tranche a demander apres un retrait sur place.
+            'par_page' => $paginateur->perPage(),
         ];
     }
 }

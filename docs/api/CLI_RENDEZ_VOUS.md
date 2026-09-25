@@ -42,7 +42,7 @@ Mêmes règles que l'écran « Retrouver un rendez-vous » (`App\Services\Rendez
 
 | Paramètre | Valeurs | Défaut |
 |---|---|---|
-| `q` | nom, prénoms, courriel, référence du dossier, matricule ; une saisie de chiffres est lue comme un téléphone | — |
+| `q` | nom, prénoms, courriel, référence du dossier, matricule ; une saisie faite de chiffres cherche le téléphone, le matricule et la référence | — |
 | `quand` | `a_venir`, `passes`, `tous` | `a_venir` sans `q`, `tous` avec |
 | `statut` | une valeur de `App\Enums\StatutReservationRdv` | tous |
 | `type` | `candidature`, `reinscription` | tous |
@@ -93,6 +93,9 @@ un premier courriel, c'est donc **ici** qu'on borne :
 3. `remettre { "quoi": "inconnues" }` pour le reste, puis `envoyer` jusqu'à `restantes: 0`
 
 ## Historique
+
+- 2026-09-25 — `recherche` : une saisie de chiffres cherche aussi le matricule et la
+  référence, plus seulement le téléphone. Non cassant (plus de résultats, jamais moins).
 
 - 2026-09-25 — ajout de `recherche`. Non cassant.
 
