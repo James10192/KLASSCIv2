@@ -8,6 +8,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Services\ReeinscriptionService;
+use App\Services\RendezVous\RendezVousApresInscription;
 use App\Services\RendezVous\ReservateurRdv;
 use App\Support\ListeInfinie;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +31,8 @@ use Illuminate\View\View;
  */
 class ESBTPReinscriptionDemandeController extends Controller
 {
+    use \App\Http\Controllers\Concerns\RepondEnJsonOuRedirige;
+
     public function __construct(private readonly ReeinscriptionService $reinscription)
     {
         $this->middleware('permission:reinscriptions.demandes.view')->only('index');
@@ -90,7 +93,7 @@ class ESBTPReinscriptionDemandeController extends Controller
      * La classe est choisie ICI, par la scolarite. Celle portee par la demande
      * n'est qu'un point de depart : l'etudiant ne decide pas de son affectation.
      */
-    public function convertir(Request $request, ESBTPReinscriptionDemande $demande): RedirectResponse
+    public function convertir(Request $request, ESBTPReinscriptionDemande $demande): RedirectResponse|JsonResponse
     {
         $valide = $request->validate([
             // La fenetre ne propose que les classes actives ; sans ce filtre,
@@ -104,7 +107,7 @@ class ESBTPReinscriptionDemandeController extends Controller
         // l'ecole a bascule d'annee depuis, la convertir telle quelle
         // reinscrirait l'etudiant dans une annee revolue.
         if (! optional($demande->anneeUniversitaire)->is_current) {
-            return back()->with('error', "Cette demande vise une année qui n'est plus l'année en cours. Rejetez-la et invitez l'étudiant à déposer de nouveau.");
+            return $this->repondre($request, false, "Cette demande vise une année qui n'est plus l'année en cours. Rejetez-la et invitez l'étudiant à déposer de nouveau.");
         }
 
         // Du temps a pu passer entre le depot et cette conversion : l'ecole a
@@ -112,7 +115,7 @@ class ESBTPReinscriptionDemandeController extends Controller
         // tout creerait une seconde inscription, donc un second jeu de frais
         // pour la meme famille.
         if (ESBTPInscription::aUneInscriptionVivantePour($demande->etudiant_id, $demande->annee_universitaire_id)) {
-            return back()->with('error', "Cet étudiant a déjà une inscription pour cette année. Rejetez la demande plutôt que de la convertir.");
+            return $this->repondre($request, false, "Cet étudiant a déjà une inscription pour cette année. Rejetez la demande plutôt que de la convertir.");
         }
 
 
@@ -133,7 +136,7 @@ class ESBTPReinscriptionDemandeController extends Controller
             ]);
 
         if ($reserve === 0) {
-            return back()->with('error', 'Cette demande a déjà été traitée.');
+            return $this->repondre($request, false, 'Cette demande a déjà été traitée.');
         }
 
         try {
@@ -171,11 +174,13 @@ class ESBTPReinscriptionDemandeController extends Controller
                 'motif' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Réinscription impossible : '.$e->getMessage());
+            return $this->repondre($request, false, 'Réinscription impossible : '.$e->getMessage());
         }
 
         ESBTPReinscriptionDemande::whereKey($demande->id)
             ->update(['inscription_id' => $inscription->id]);
+
+        app(RendezVousApresInscription::class)->clore($demande, auth()->id());
 
         $this->oublierLeCompteur();
 
@@ -186,10 +191,10 @@ class ESBTPReinscriptionDemandeController extends Controller
             'traite_par' => auth()->id(),
         ]);
 
-        return back()->with('success', 'Réinscription effectuée. La demande est clôturée.');
+        return $this->repondre($request, true, 'Réinscription effectuée. La demande est clôturée.');
     }
 
-    public function rejeter(Request $request, ESBTPReinscriptionDemande $demande, ReservateurRdv $reservateur): RedirectResponse
+    public function rejeter(Request $request, ESBTPReinscriptionDemande $demande, ReservateurRdv $reservateur): RedirectResponse|JsonResponse
     {
         $valide = $request->validate([
             // Un rejet sans motif est un rejet qu'on ne saura pas expliquer a
@@ -215,12 +220,12 @@ class ESBTPReinscriptionDemandeController extends Controller
         });
 
         if ($traite === 0) {
-            return back()->with('error', 'Cette demande a déjà été traitée.');
+            return $this->repondre($request, false, 'Cette demande a déjà été traitée.');
         }
 
         $this->oublierLeCompteur();
 
-        return back()->with('success', 'Demande rejetée.'.ReservateurRdv::phraseLiberation($liberee));
+        return $this->repondre($request, true, 'Demande rejetée.'.ReservateurRdv::phraseLiberation($liberee));
     }
 
     /**

@@ -380,6 +380,23 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('throttle:30,1')->name('rejeter');
         });
 
+        // Demandes d'inscription : candidatures et demandes de reinscription dans
+        // une seule file. Lecture et preparation ici ; les decisions restent sur
+        // les routes des deux corbeilles, qui repondent aussi en JSON.
+        Route::prefix('inscriptions/demandes')->middleware(['auth', 'paywall'])->name('demandes.')->group(function () {
+            $c = \App\Http\Controllers\ESBTP\ESBTPDemandesInscriptionController::class;
+            $lire = 'permission:inscriptions.candidatures.view|reinscriptions.demandes.view';
+            Route::get('/', [$c, 'index'])->middleware($lire)->name('index');
+            Route::get('/creneaux', [$c, 'creneaux'])->middleware(['permission:inscriptions.rdv.manage', 'throttle:60,1'])->name('creneaux');
+            Route::get('/nouvelle/{candidature}/inscription', [$c, 'preparerInscription'])
+                ->middleware(['permission:inscriptions.candidatures.process', 'can:inscriptions.ouvrir-formulaire', 'throttle:60,1'])
+                ->name('preparer-inscription');
+            Route::get('/{type}/{id}', [$c, 'dossier'])->middleware([$lire, 'throttle:120,1'])
+                ->whereIn('type', ['nouvelle', 'reinscription'])->whereNumber('id')->name('dossier');
+            Route::post('/{type}/{id}/rendez-vous', [$c, 'fixerRendezVous'])->middleware(['permission:inscriptions.rdv.manage', 'throttle:30,1'])
+                ->whereIn('type', ['nouvelle', 'reinscription'])->whereNumber('id')->name('rendez-vous');
+        });
+
         Route::prefix('inscriptions')->middleware(['auth', 'paywall'])->name('rendez-vous.')->group(function () {
             Route::get('/rendez-vous', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'index'])
                 ->middleware('permission:inscriptions.rdv.view')

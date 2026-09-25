@@ -318,6 +318,47 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('reinscriptionDemandesEnAttente', $enAttente);
             $view->with('candidaturesEnAttente', $this->candidaturesEnAttente());
+            // L'entree unique « Demandes d'inscription » : ce qui attend une
+            // decision, dans les types que l'agent peut lire. Une candidature
+            // acceptee attend encore son inscription, elle compte.
+            $view->with('demandesATraiter', $enAttente + $this->candidaturesATraiter());
+            $view->with('accueilAttendues', $this->famillesAttenduesAujourdhui());
+        });
+    }
+
+    private function candidaturesATraiter(): int
+    {
+        if (! auth()->check() || ! auth()->user()->can('inscriptions.candidatures.view')) {
+            return 0;
+        }
+
+        return Cache::remember('admissions.candidatures.a_traiter', 60, function (): int {
+            if (! Schema::hasTable('esbtp_candidatures')) {
+                return 0;
+            }
+
+            return ESBTPCandidature::whereIn('statut', [ESBTPCandidature::STATUT_EN_ATTENTE, ESBTPCandidature::STATUT_ACCEPTEE])->count();
+        });
+    }
+
+    /** Familles encore attendues au guichet aujourd'hui : pas reçues, creneau pas termine, dossier ouvert. */
+    private function famillesAttenduesAujourdhui(): int
+    {
+        if (! auth()->check() || ! auth()->user()->can('inscriptions.rdv.accueil')) {
+            return 0;
+        }
+
+        return Cache::remember('admissions.accueil.attendues.'.now()->format('Y-m-d-H-i'), 60, function (): int {
+            if (! Schema::hasTable('esbtp_rdv_reservations')) {
+                return 0;
+            }
+
+            return \App\Models\ESBTPRdvReservation::query()
+                ->where('statut', \App\Enums\StatutReservationRdv::Confirmee->value)
+                // Creneau pas termine : le meme compte que « À recevoir » sur l'Accueil du jour.
+                ->whereHas('creneau', fn ($c) => $c->whereDate('date', today())->whereTime('heure_fin', '>', now()->format('H:i:s')))
+                ->dossierOuvert()
+                ->count();
         });
     }
 

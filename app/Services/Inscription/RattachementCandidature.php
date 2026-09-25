@@ -135,6 +135,12 @@ final class RattachementCandidature
             return "L'inscription est enregistrée, mais la candidature en ligne est restée « acceptée » dans la corbeille : son bouton « Créer l'inscription » est toujours affiché, ne vous en resservez pas. Signalez-le au support.";
         }
 
+        // La famille est inscrite : son rendez-vous du jour devient honore, un
+        // rendez-vous a venir rend sa place. Voir RendezVousApresInscription.
+        if ($issue === ClotureCandidature::Fermee && ($candidature = \App\Models\ESBTPCandidature::find($id)) !== null) {
+            app(\App\Services\RendezVous\RendezVousApresInscription::class)->clore($candidature, auth()->id());
+        }
+
         if ($issue !== ClotureCandidature::Fermee) {
             Log::warning('Candidature non fermee', [
                 'candidature_id' => $id,

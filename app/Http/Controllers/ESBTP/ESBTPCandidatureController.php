@@ -48,6 +48,8 @@ use Illuminate\View\View;
  */
 class ESBTPCandidatureController extends Controller
 {
+    use \App\Http\Controllers\Concerns\RepondEnJsonOuRedirige;
+
     public function __construct()
     {
         $this->middleware('permission:inscriptions.candidatures.view')->only('index');
@@ -106,10 +108,10 @@ class ESBTPCandidatureController extends Controller
      * file d'attente et le range dans « a inscrire ». L'inscription elle-meme
      * se fait par le flux habituel, avec les pieces sous les yeux.
      */
-    public function accepter(Request $request, ESBTPCandidature $candidature): RedirectResponse
+    public function accepter(Request $request, ESBTPCandidature $candidature): RedirectResponse|JsonResponse
     {
         if (! $this->decider($candidature, ['statut' => ESBTPCandidature::STATUT_ACCEPTEE])) {
-            return back()->with('error', 'Cette candidature a déjà été traitée.');
+            return $this->repondre($request, false, 'Cette candidature a déjà été traitée.');
         }
 
         Log::info('Candidature acceptee', [
@@ -137,6 +139,12 @@ class ESBTPCandidatureController extends Controller
         // pose la meme question pour afficher son lien, et interroge le meme
         // Gate — sans quoi le bouton resterait visible la ou la redirection
         // s'abstient, et rendrait le 403 que tout ceci evite.
+        // L'ecran des demandes enchaine lui-meme sur « Accepter et inscrire » :
+        // il n'a besoin que de savoir que la decision est prise.
+        if ($request->expectsJson()) {
+            return $this->repondre($request, true, 'Candidature acceptée.');
+        }
+
         if ($request->user()?->can('inscriptions.ouvrir-formulaire')) {
             return redirect()
                 ->route('esbtp.inscriptions.create', ['candidature' => $candidature->id])
@@ -151,7 +159,7 @@ class ESBTPCandidatureController extends Controller
         );
     }
 
-    public function rejeter(Request $request, ESBTPCandidature $candidature, ReservateurRdv $reservateur): RedirectResponse
+    public function rejeter(Request $request, ESBTPCandidature $candidature, ReservateurRdv $reservateur): RedirectResponse|JsonResponse
     {
         $valide = $request->validate([
             // Un rejet sans motif est un rejet qu'on ne saura pas expliquer a
@@ -171,10 +179,10 @@ class ESBTPCandidatureController extends Controller
         });
 
         if (! $decidee) {
-            return back()->with('error', 'Cette candidature a déjà été traitée.');
+            return $this->repondre($request, false, 'Cette candidature a déjà été traitée.');
         }
 
-        return back()->with('success', 'Candidature rejetée.'.ReservateurRdv::phraseLiberation($liberee));
+        return $this->repondre($request, true, 'Candidature rejetée.'.ReservateurRdv::phraseLiberation($liberee));
     }
 
     /**

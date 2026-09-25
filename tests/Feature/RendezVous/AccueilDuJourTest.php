@@ -446,12 +446,12 @@ class AccueilDuJourTest extends TestCase
         Permission::findOrCreate('inscriptions.candidatures.view', 'web');
         $this->agent->givePermissionTo('inscriptions.candidatures.view');
         $attendue = $this->reservation($this->creneau('10:00', '10:30'), ['nom' => 'ATTENDUE']);
-        $reference = $attendue->candidature->assurerReferencePublique();
 
+        // Le dossier s'ouvre dans la file des demandes d'inscription, sur cette famille.
         $this->actingAs($this->agent)->get(route('esbtp.rendez-vous.accueil.index'))
             ->assertOk()
             ->assertSee('ATTENDUE')
-            ->assertSee(route('esbtp.candidatures.index', ['reference' => app(\App\Services\Portail\ReferencePublique::class)->formater($reference)]), false);
+            ->assertSee(e(\App\Domain\Admissions\DemandeDInscription::lien($attendue->candidature_id, null)), false);
     }
 
     public function test_l_export_des_familles_a_prevenir_se_telecharge(): void

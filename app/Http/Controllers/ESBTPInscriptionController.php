@@ -401,8 +401,57 @@ class ESBTPInscriptionController extends Controller
 
     /**
      * Enregistrer une nouvelle inscription.
+     *
+     * Deux ecrans y arrivent : le formulaire complet, qui attend une
+     * redirection, et la fenetre « Accepter et inscrire » des demandes, qui
+     * appelle en arriere-plan. La logique est la meme ; seule la reponse est
+     * traduite, par enJson().
      */
     public function store(
+        \App\Http\Requests\Inscription\StoreInscriptionRequest $request,
+        StudentDuplicateDetector $duplicateDetector,
+    ) {
+        $reponse = $this->enregistrer($request, $duplicateDetector);
+
+        return $request->expectsJson() && $reponse instanceof \Illuminate\Http\RedirectResponse
+            ? $this->enJson($reponse)
+            : $reponse;
+    }
+
+    /**
+     * La redirection d'enregistrer(), dite en JSON.
+     *
+     * Un refus a pose son message en session pour la page suivante : il est lu
+     * puis retire, sinon il s'afficherait sur le prochain ecran ouvert. Un
+     * succes garde ses messages : la fiche de l'inscription, ouverte juste
+     * apres, les montre (identifiants du compte, demande de photo).
+     */
+    private function enJson(\Illuminate\Http\RedirectResponse $reponse): \Illuminate\Http\JsonResponse
+    {
+        $session = session();
+        $erreurs = $session->get('errors')?->getBag('default')->toArray() ?? [];
+
+        if ($session->has('error') || $erreurs !== []) {
+            $corps = [
+                'ok' => false,
+                'message' => $session->get('error') ?? collect($erreurs)->flatten()->first(),
+                'errors' => $erreurs,
+                'doublons' => $session->get('duplicate_suggestions', []),
+            ];
+            $session->forget(['error', 'errors', 'duplicate_suggestions', 'paywall_contact', '_old_input']);
+
+            return response()->json($corps, 422);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'message' => $session->get('success'),
+            'warning' => $session->get('warning'),
+            'redirect' => $reponse->getTargetUrl(),
+        ]);
+    }
+
+    private function enregistrer(
         \App\Http\Requests\Inscription\StoreInscriptionRequest $request,
         StudentDuplicateDetector $duplicateDetector,
     ) {
