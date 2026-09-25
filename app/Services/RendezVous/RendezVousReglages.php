@@ -37,6 +37,21 @@ class RendezVousReglages
     /** Minutes apres le debut d'un creneau au-dela desquelles une famille attendue est « en retard ». */
     public const GRACE = 'inscriptions.rdv.grace_no_show_minutes';
 
+    /** Proposer la convocation par WhatsApp, apres accord, aux familles que le courriel n'a pas atteintes. */
+    public const WHATSAPP_RELAIS = 'inscriptions.rdv.whatsapp_relais';
+
+    /** Le message de demande d'accord. Vide : TEXTE_ACCORD_DEFAUT. */
+    public const WHATSAPP_TEXTE_ACCORD = 'inscriptions.rdv.whatsapp_texte_accord';
+
+    /**
+     * Nomme l'ecole ET KLASSCI : la famille recoit un message d'un numero
+     * qu'elle ne connait pas, elle doit savoir qui lui ecrit et pour quoi.
+     * Reperes : {ecole}, {candidat}, {date}, {heure}, {reference}.
+     */
+    public const TEXTE_ACCORD_DEFAUT = 'Bonjour, ici le service des inscriptions de {ecole}, via KLASSCI. '
+        .'Nous avons un rendez-vous d\'inscription pour {candidat} le {date} à {heure}. '
+        .'Acceptez-vous de recevoir la convocation sur WhatsApp ? Répondez OUI ou NON.';
+
     /** @return list<string> */
     public static function clesTexte(): array
     {
@@ -65,6 +80,29 @@ class RendezVousReglages
     public function enabled(): bool
     {
         return $this->flag(self::ENABLED);
+    }
+
+    /**
+     * Les reglages du relais WhatsApp, a part : ils n'existent qu'une fois leur
+     * migration passee, et Setting::set() leve sur une cle absente.
+     *
+     * @return array{bascules: list<string>, textes: list<string>}
+     */
+    public static function clesWhatsapp(): array
+    {
+        return ['bascules' => [self::WHATSAPP_RELAIS], 'textes' => [self::WHATSAPP_TEXTE_ACCORD]];
+    }
+
+    public function whatsappRelais(): bool
+    {
+        return $this->flag(self::WHATSAPP_RELAIS);
+    }
+
+    public function texteAccordWhatsapp(): string
+    {
+        $texte = $this->valeur(self::WHATSAPP_TEXTE_ACCORD, '');
+
+        return $texte !== '' ? $texte : self::TEXTE_ACCORD_DEFAUT;
     }
 
     public function pourGeneration(): CreneauRegle

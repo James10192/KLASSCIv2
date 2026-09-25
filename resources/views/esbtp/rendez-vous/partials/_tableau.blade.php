@@ -38,6 +38,31 @@
                 <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.familles.excel') }}"><i class="fas fa-file-excel"></i>Excel</a>
             </div>
         @endif
+        @if($whatsappActif ?? false)
+            <div class="rdv-wa" id="rdv-whatsapp">
+                <div class="rdv-wa-tete">
+                    <i class="fab fa-whatsapp" aria-hidden="true"></i>
+                    <p><strong>Convocation par WhatsApp</strong> — la famille reçoit d'abord une demande d'accord ; la convocation part seulement si elle répond OUI. Sans réponse sous 48 h, ou sur un refus, elle reste sur la liste d'appel avec le motif.</p>
+                    @if($whatsappEligibles > 0)
+                        <button type="button" class="rdv-btn rdv-btn--primary rdv-btn--sm" data-rdv-whatsapp
+                                data-confirm="{{ $whatsappEligibles }} famille{{ $whatsappEligibles > 1 ? 's' : '' }} sans convocation reçue par e-mail vont recevoir une demande d'accord sur WhatsApp. La convocation partira pour celles qui répondent OUI.">
+                            <i class="fab fa-whatsapp"></i>Prévenir par WhatsApp ({{ $whatsappEligibles }})
+                        </button>
+                    @endif
+                </div>
+                @if(count($whatsappSuivi) > 0)
+                    <ul class="rdv-wa-liste">
+                        @foreach($whatsappSuivi as $_wa)
+                            <li>
+                                <span class="rdv-wa-nom">{{ $_wa['nom'] }}</span>
+                                <span class="rdv-wa-quand">{{ $_wa['quand'] }}</span>
+                                <span class="rdv-badge rdv-badge--{{ $_wa['ton'] }}" @if($_wa['detail']) title="{{ $_wa['detail'] }}" @endif>{{ $_wa['libelle'] }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        @endif
         @if($peutGerer)
             <div class="rdv-conv-actions">
                 @if($_conv['en_attente'] > 0)

@@ -42,8 +42,7 @@ class CourrielConvocationRdv
         ]);
 
         $donnees = $this->donneesConvocation($reservation, $action);
-        $texte = $donnees['sujet']."\n\n".$donnees['date'].' '.$donnees['heure']."\nRéférence : ".$donnees['reference']
-            ."\nPDF : ".$donnees['lienPdf'];
+        $texte = $donnees['sujet']."\n\n".self::resumeCourt($donnees)."\nPDF : ".$donnees['lienPdf'];
         $html = View::make('esbtp.emails.parents.rendez-vous-convocation', $donnees)->render();
 
         return $this->mailpulse->sendEmailMessage([
@@ -63,9 +62,23 @@ class CourrielConvocationRdv
     }
 
     /**
+     * Le resume court de la convocation (jour, heure, reference), le meme dans
+     * le courriel et dans la legende du document WhatsApp.
+     *
+     * @param  array<string, mixed>  $donnees
+     */
+    public static function resumeCourt(array $donnees): string
+    {
+        return $donnees['date'].' '.$donnees['heure']."\nRéférence : ".$donnees['reference'];
+    }
+
+    /**
+     * Ce que la convocation dit de ce rendez-vous. Assure la reference publique
+     * du dossier : une convocation sans reference enverrait vers un lien mort.
+     *
      * @return array<string, mixed>
      */
-    private function donneesConvocation(ESBTPRdvReservation $reservation, string $action): array
+    public function donneesConvocation(ESBTPRdvReservation $reservation, string $action): array
     {
         $creneau = $reservation->creneau;
         $ecole = SettingsHelper::getSchoolInfo();

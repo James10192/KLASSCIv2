@@ -10,6 +10,7 @@ use App\Services\RendezVous\AffecteurDossiersRdv;
 use App\Services\RendezVous\FamillesAPrevenirRdv;
 use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\RendezVous\GenerateurCreneaux;
+use App\Services\RendezVous\RelaisWhatsappConvocationRdv;
 use App\Services\RendezVous\RendezVousReglages;
 use App\Services\RendezVous\TableauRendezVous;
 use Illuminate\Http\JsonResponse;
@@ -35,6 +36,7 @@ class ESBTPRendezVousController extends Controller
             'rdv' => $this->reglages,
             'aPrevenir' => app(FamillesAPrevenirRdv::class)->compter(),
         ];
+        $donnees += $this->relaisWhatsapp($request);
 
         if ($request->boolean('fragment')) {
             return response()->json([
@@ -46,6 +48,24 @@ class ESBTPRendezVousController extends Controller
         }
 
         return view('esbtp.rendez-vous.index', $donnees);
+    }
+
+    /**
+     * Le bouton et les badges WhatsApp n'existent que reglage allume ET
+     * permission donnee : aucun bloc ne s'affiche pour dire « pas le droit ».
+     *
+     * @return array{whatsappActif: bool, whatsappEligibles: int, whatsappSuivi: list<array<string, mixed>>}
+     */
+    private function relaisWhatsapp(Request $request): array
+    {
+        $relais = app(RelaisWhatsappConvocationRdv::class);
+        $actif = $relais->actif() && ($request->user()?->can('inscriptions.rdv.whatsapp') ?? false);
+
+        return [
+            'whatsappActif' => $actif,
+            'whatsappEligibles' => $actif ? $relais->compterEligibles() : 0,
+            'whatsappSuivi' => $actif ? $relais->suivi() : [],
+        ];
     }
 
     public function enregistrerReglages(Request $request): JsonResponse
@@ -77,9 +97,39 @@ class ESBTPRendezVousController extends Controller
             Setting::set($cle, $allume ? '1' : '0', $auteur);
         }
 
+        $this->enregistrerReglagesWhatsapp($brut, $auteur);
+
         Setting::clearCache();
 
         return response()->json(['message' => 'Réglages enregistrés.']);
+    }
+
+    /**
+     * Seulement si le formulaire les porte (un reglage absent de l'ecran n'est
+     * pas remis a zero) et si leur ligne existe (Setting::set leve sinon).
+     *
+     * @param  array<string, mixed>  $brut
+     */
+    private function enregistrerReglagesWhatsapp(array $brut, ?int $auteur): void
+    {
+        $cles = RendezVousReglages::clesWhatsapp();
+        $present = fn (string $cle) => array_key_exists($cle, $brut) || array_key_exists(str_replace('.', '_', $cle), $brut);
+        if (! array_key_exists('whatsapp_formulaire', $brut)) {
+            return;
+        }
+
+        foreach ($cles['bascules'] as $cle) {
+            if (Setting::query()->where('key', $cle)->exists()) {
+                $allume = filter_var($brut[$cle] ?? $brut[str_replace('.', '_', $cle)] ?? false, FILTER_VALIDATE_BOOLEAN);
+                Setting::set($cle, $allume ? '1' : '0', $auteur);
+            }
+        }
+        foreach ($cles['textes'] as $cle) {
+            if ($present($cle) && Setting::query()->where('key', $cle)->exists()) {
+                $soumis = $brut[$cle] ?? $brut[str_replace('.', '_', $cle)] ?? '';
+                Setting::set($cle, is_string($soumis) ? mb_substr(trim($soumis), 0, 900) : '', $auteur);
+            }
+        }
     }
 
     public function generer(GenerateurCreneaux $generateur): JsonResponse

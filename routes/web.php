@@ -427,6 +427,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/rendez-vous/convocations/envoyer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'envoyerConvocations'])
                 ->middleware(['permission:inscriptions.rdv.manage', 'throttle:60,1'])
                 ->name('convocations.envoyer');
+            // Convocation par WhatsApp apres accord de la famille, par paquets.
+            Route::post('/rendez-vous/convocations/whatsapp', [\App\Http\Controllers\ESBTP\ESBTPRendezVousWhatsappController::class, 'envoyer'])
+                ->middleware(['permission:inscriptions.rdv.whatsapp', 'throttle:30,1'])
+                ->name('convocations.whatsapp');
             Route::post('/rendez-vous/convocations/remettre', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'remettreConvocations'])
                 ->middleware(['permission:inscriptions.rdv.manage', 'throttle:10,1'])
                 ->name('convocations.remettre');

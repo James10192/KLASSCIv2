@@ -11,6 +11,12 @@ use Illuminate\Support\Str;
 
 class MailPulseClient
 {
+    /** La commande attend l'accord du destinataire (champ `consent`) : rien n'est encore parti. */
+    public const CONSENT_PENDING = 'consent_pending';
+
+    /** Le destinataire a repondu NON ou STOP : MailPulse n'enverra rien a ce numero. */
+    public const CONSENT_REFUSED = 'consent_refused';
+
     public function createOrUpdateContact(array $contact): MailPulseResult
     {
         return $this->post(
@@ -137,6 +143,29 @@ class MailPulseClient
         $requestHeader = $response->header('x-request-id') ?: $response->header('x-vercel-id') ?: $requestId;
         $state = is_string($body['dispatch_state'] ?? null) ? $body['dispatch_state'] : null;
         $operationId = is_string($body['operation_id'] ?? null) ? $body['operation_id'] : null;
+
+        $operationId ??= is_string($body['operationId'] ?? null) ? $body['operationId'] : null;
+
+        // Envoi soumis a consentement : la commande est gardee chez MailPulse
+        // jusqu'a la reponse du destinataire, ou refusee net s'il a dit STOP.
+        if ($response->status() === 202 && ($body['status'] ?? null) === self::CONSENT_PENDING) {
+            return new MailPulseResult(true, self::CONSENT_PENDING, 202, $requestHeader, $operationId, null, null, null, self::CONSENT_PENDING, false);
+        }
+
+        if ($response->status() === 409 && ($body['code'] ?? null) === self::CONSENT_REFUSED) {
+            return new MailPulseResult(
+                false,
+                self::CONSENT_REFUSED,
+                409,
+                $requestHeader,
+                $operationId,
+                self::CONSENT_REFUSED,
+                'Le destinataire a refusé les messages WhatsApp (NON ou STOP).',
+                'Ne relancez pas : prévenez la famille par un autre canal.',
+                'rejected',
+                false,
+            );
+        }
 
         if ($response->status() === 202 && in_array($state, ['accepted', 'pending_reconciliation'], true)) {
             return new MailPulseResult(true, $state, 202, $requestHeader, $operationId, null, null, null, $state, false);

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ParentChatbotInboundEvent;
 use App\Services\ParentChatbot\ParentChatbotInboundSignature;
 use App\Services\ParentChatbot\ParentChatbotResponder;
+use App\Services\RendezVous\SuiviWhatsappConvocationRdv;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -19,6 +20,12 @@ class ParentChatbotInboundController extends Controller
     ): JsonResponse {
         if (! $signature->isValid($request)) {
             return response()->json(['message' => 'Unauthorized.'], 401);
+        }
+
+        // Un seul point d'arrivee peut etre configure chez MailPulse : les comptes
+        // rendus d'envoi soumis a consentement y arrivent aussi.
+        if (in_array($request->input('event'), SuiviWhatsappConvocationRdv::evenements(), true)) {
+            return app(MailPulseEvenementsController::class)($request, $signature, app(SuiviWhatsappConvocationRdv::class));
         }
 
         $payload = $request->validate([

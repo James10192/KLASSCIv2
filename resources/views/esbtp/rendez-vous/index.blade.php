@@ -13,6 +13,7 @@
      data-url-placer="{{ route('esbtp.rendez-vous.placer') }}"
      data-url-envoyer="{{ route('esbtp.rendez-vous.convocations.envoyer') }}"
      data-url-remettre="{{ route('esbtp.rendez-vous.convocations.remettre') }}"
+     data-url-whatsapp="{{ route('esbtp.rendez-vous.convocations.whatsapp') }}"
      data-debut="{{ $debut->toDateString() }}">
 
     <div class="rdv-hero">
@@ -259,6 +260,38 @@
         }
     }
 
+    // Meme principe que les courriels : un paquet par appel, tant qu'il en reste.
+    // Rien ne part sans accord : MailPulse envoie d'abord la demande, puis la
+    // convocation sur OUI. L'ecran n'affiche donc que des demandes posees.
+    let whatsappEnCours = false;
+    async function prevenirParWhatsapp() {
+        if (whatsappEnCours) return;
+        whatsappEnCours = true;
+        let demandees = 0, envoyees = 0, refusees = 0, echecs = 0;
+        try {
+            for (;;) {
+                const r = await envoyerPost(page.dataset.urlWhatsapp);
+                demandees += r.demandees; envoyees += r.envoyees; refusees += r.refusees; echecs += r.echecs;
+                if (r.bloque) {
+                    notifier('error', 'Envoi WhatsApp interrompu : ' + r.bloque);
+                    break;
+                }
+                if (r.restantes === 0 || r.demandees + r.envoyees + r.refusees + r.echecs === 0) break;
+            }
+            const morceaux = [];
+            if (demandees) morceaux.push(demandees + ' demande(s) d\'accord en file');
+            if (envoyees) morceaux.push(envoyees + ' convocation(s) envoyée(s) directement (accord déjà donné)');
+            if (refusees) morceaux.push(refusees + ' refus déjà enregistré(s)');
+            if (echecs) morceaux.push(echecs + ' échec(s)');
+            if (morceaux.length) notifier(refusees + echecs > 0 ? 'warning' : 'success', morceaux.join(', ') + '.');
+        } catch (e) {
+            notifier('error', e.message);
+        } finally {
+            whatsappEnCours = false;
+            rafraichir();
+        }
+    }
+
     function ouvrirReglages() {
         const reglages = document.getElementById('reglages');
         if (!reglages) return;
@@ -267,7 +300,7 @@
     }
 
     document.addEventListener('click', async function (ev) {
-        const el = ev.target.closest('[data-rdv-ouvrir-reglages], [data-rdv-action], [data-rdv-semaine], [data-rdv-basculer], [data-rdv-envoyer], [data-rdv-remettre]');
+        const el = ev.target.closest('[data-rdv-ouvrir-reglages], [data-rdv-action], [data-rdv-semaine], [data-rdv-basculer], [data-rdv-envoyer], [data-rdv-remettre], [data-rdv-whatsapp]');
         if (!el || !page.contains(el)) return;
         ev.preventDefault();
 
@@ -275,6 +308,7 @@
         if (el.dataset.rdvSemaine) return rafraichir(el.dataset.rdvSemaine, true);
         if (el.hasAttribute('data-rdv-envoyer')) return envoyerConvocations();
         if (el.dataset.confirm && !(await confirmer(el.dataset.confirm))) return;
+        if (el.hasAttribute('data-rdv-whatsapp')) return occuper(el, prevenirParWhatsapp);
 
         await occuper(el, async () => {
             try {

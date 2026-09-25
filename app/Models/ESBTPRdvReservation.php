@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Contracts\PorteurDeRendezVous;
 use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutReservationRdv;
+use App\Enums\StatutWhatsappRdv;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,6 +38,17 @@ class ESBTPRdvReservation extends Model
         'convocation_delivree_at',
         'convocation_synchro_at',
         'convocation_code_distant',
+        'whatsapp_statut',
+        'whatsapp_tentative',
+        'whatsapp_idempotency_key',
+        'whatsapp_operation_id',
+        'whatsapp_demandee_at',
+        'whatsapp_accord_demande_at',
+        'whatsapp_accord_at',
+        'whatsapp_envoyee_at',
+        'whatsapp_remise_at',
+        'whatsapp_erreur',
+        'whatsapp_demandee_par',
     ];
 
     protected $casts = [
@@ -49,6 +61,13 @@ class ESBTPRdvReservation extends Model
         'accueilli_at' => 'datetime',
         'convocation_delivree_at' => 'datetime',
         'convocation_synchro_at' => 'datetime',
+        'whatsapp_statut' => StatutWhatsappRdv::class,
+        'whatsapp_tentative' => 'integer',
+        'whatsapp_demandee_at' => 'datetime',
+        'whatsapp_accord_demande_at' => 'datetime',
+        'whatsapp_accord_at' => 'datetime',
+        'whatsapp_envoyee_at' => 'datetime',
+        'whatsapp_remise_at' => 'datetime',
     ];
 
     public function creneau(): BelongsTo

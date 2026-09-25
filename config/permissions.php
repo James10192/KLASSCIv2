@@ -422,6 +422,12 @@ return [
             'group' => 'Inscriptions',
             'icon' => 'fa-clipboard-check',
         ],
+        'inscriptions.rdv.whatsapp' => [
+            'label' => 'Envoyer la convocation de rendez-vous par WhatsApp (après accord de la famille)',
+            'description' => 'Proposer la convocation par WhatsApp aux familles que le courriel n\'a pas atteintes. La famille reçoit d\'abord une demande d\'accord ; la convocation part seulement si elle répond OUI.',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-comment-dots',
+        ],
         'inscriptions.manage' => [
             'label' => 'Gérer toutes les inscriptions (action globale)',
             'group' => 'Inscriptions',

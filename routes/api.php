@@ -136,6 +136,11 @@ Route::post('/v1/integrations/mailpulse/parent-chatbot/inbound', App\Http\Contro
     ->middleware('throttle:30,1')
     ->name('api.mailpulse.parent-chatbot.inbound');
 
+// Comptes rendus d'un envoi soumis a consentement (convocation de rendez-vous par WhatsApp).
+Route::post('/v1/integrations/mailpulse/events', App\Http\Controllers\API\MailPulseEvenementsController::class)
+    ->middleware('throttle:120,1')
+    ->name('api.mailpulse.events');
+
 // Throttled because the link is unauthenticated by design and each hit renders
 // a full PDF: a link forwarded into a group chat must not become a CPU sink.
 Route::get('/v1/parent-chatbot/report-cards/{bulletin}', App\Http\Controllers\ParentChatbotReportCardController::class)

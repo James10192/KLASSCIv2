@@ -90,6 +90,25 @@
             </div>
         </fieldset>
 
+        @if(\App\Services\RendezVous\RelaisWhatsappConvocationRdv::deploye())
+            <fieldset>
+                <legend>Convocation par WhatsApp</legend>
+                <input type="hidden" name="whatsapp_formulaire" value="1">
+                <label class="rdv-bascule">
+                    <input type="checkbox" name="{{ $rdv::WHATSAPP_RELAIS }}" value="1" @checked($rdv->whatsappRelais())>
+                    <span class="rdv-bascule-piste" aria-hidden="true"><span></span></span>
+                    <span class="rdv-bascule-texte">
+                        <strong>Proposer la convocation par WhatsApp aux familles que le courriel n'a pas atteintes</strong>
+                        <span>Chaque famille reçoit d'abord une demande d'accord. La convocation part seulement sur « OUI » ; « NON » ou « STOP » est respecté, et sans réponse sous 48 h la famille reste à appeler.</span>
+                    </span>
+                </label>
+                <label class="rdv-champ">
+                    <span>Message de demande d'accord <em>repères : {ecole}, {candidat}, {date}, {heure}, {reference}</em></span>
+                    <textarea name="{{ $rdv::WHATSAPP_TEXTE_ACCORD }}" rows="3" maxlength="900" placeholder="{{ $rdv::TEXTE_ACCORD_DEFAUT }}">{{ $rdv->valeur($rdv::WHATSAPP_TEXTE_ACCORD) }}</textarea>
+                </label>
+            </fieldset>
+        @endif
+
         <label class="rdv-bascule">
             <input type="checkbox" name="{{ $rdv::ENABLED }}" value="1" @checked($_ouvert)>
             <span class="rdv-bascule-piste" aria-hidden="true"><span></span></span>

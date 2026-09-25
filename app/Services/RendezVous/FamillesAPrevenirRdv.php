@@ -4,6 +4,7 @@ namespace App\Services\RendezVous;
 
 use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutReservationRdv;
+use App\Enums\StatutWhatsappRdv;
 use App\Models\ESBTPRdvReservation;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,7 +19,8 @@ use Illuminate\Support\Facades\DB;
  * c'est l'accueil du jour qui prend le relais. Un dossier clos (inscrit ou
  * refuse) non plus : on n'appelle pas un candidat refuse pour lui rappeler son
  * rendez-vous. Une famille prevenue par telephone en sort : la liste raccourcit
- * au fil des appels.
+ * au fil des appels. Une convocation remise par WhatsApp aussi ; un accord
+ * WhatsApp en attente, refuse ou reste sans reponse, non : l'appel reste la.
  *
  * concerne() et requete() disent la meme chose, l'une pour une ligne en main,
  * l'autre en SQL : l'ecran, le verrou et la liste d'appel ne peuvent pas
@@ -49,6 +51,7 @@ class FamillesAPrevenirRdv
         return $r->statut === StatutReservationRdv::Confirmee
             && ($r->convocation_statut === null || in_array($r->convocation_statut, self::A_PREVENIR, true))
             && $r->creneau !== null && ! $r->creneau->aCommence()
+            && ! ($r->whatsapp_statut?->aAtteintLaFamille() ?? false)
             && $r->dossierOuvert();
     }
 
@@ -140,6 +143,18 @@ class FamillesAPrevenirRdv
         // Une adresse presente mais jamais prouvee retient aussi la convocation
         // (MessagerieRdv::emailValide) : « pas d'adresse » enverrait l'agent
         // chercher un courriel qui existe.
+        $base = $this->motifCourriel($r);
+        $whatsapp = $r->whatsapp_statut;
+        if ($whatsapp === null) {
+            return $base;
+        }
+
+        // L'appel reste necessaire : on dit ou en est WhatsApp, et pourquoi il n'a pas suffi.
+        return $base.' — '.$whatsapp->label().($whatsapp->estUnRetourALAppel() && $r->whatsapp_erreur ? ' : '.$r->whatsapp_erreur : '');
+    }
+
+    private function motifCourriel(ESBTPRdvReservation $r): string
+    {
         if ($r->convocation_statut === StatutConvocationRdv::SansEmail && $r->porteur()?->contactAConfirmer()) {
             return 'Contact non confirmé : code jamais saisi par la famille';
         }
@@ -164,6 +179,10 @@ class FamillesAPrevenirRdv
                 $q->whereIn('esbtp_rdv_reservations.convocation_statut', array_column(self::A_PREVENIR, 'value'))
                     ->orWhereNull('esbtp_rdv_reservations.convocation_statut');
             })
+            // Une convocation remise par WhatsApp : la famille n'est plus a appeler.
+            ->when(RelaisWhatsappConvocationRdv::deploye(), fn (Builder $q) => $q->where(fn (Builder $w) => $w
+                ->whereNull('esbtp_rdv_reservations.whatsapp_statut')
+                ->orWhereNotIn('esbtp_rdv_reservations.whatsapp_statut', StatutWhatsappRdv::valeursRemises())))
             ->where(function (Builder $q) use ($maintenant) {
                 $q->whereDate('c.date', '>', $maintenant->toDateString())
                     ->orWhere(fn (Builder $j) => $j->whereDate('c.date', $maintenant->toDateString())

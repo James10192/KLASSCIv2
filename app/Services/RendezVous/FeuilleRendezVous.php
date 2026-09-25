@@ -69,7 +69,7 @@ class FeuilleRendezVous
                     'telephone' => (string) $r->telephone,
                     'contact2_nom' => $second['nom'] ?? null,
                     'contact2_telephone' => $second['telephone'] ?? null,
-                    'convocation' => $this->convocation($r->convocation_statut),
+                    'convocation' => $this->convocation($r),
                     'statut' => match ($r->statut) {
                         StatutReservationRdv::Honoree => 'Reçue',
                         StatutReservationRdv::Manquee => 'Non venue',
@@ -80,7 +80,21 @@ class FeuilleRendezVous
             })->all();
     }
 
-    private function convocation(?StatutConvocationRdv $statut): string
+    private function convocation(ESBTPRdvReservation $r): string
+    {
+        // Le relais WhatsApp porte le canal quand le courriel n'a pas pu.
+        $whatsapp = $r->whatsapp_statut;
+        if ($whatsapp?->aAtteintLaFamille()) {
+            return 'WhatsApp';
+        }
+        $parCourriel = $this->parCourriel($r->convocation_statut);
+
+        return $whatsapp !== null && $parCourriel === 'À prévenir'
+            ? $parCourriel.' ('.$whatsapp->label().')'
+            : $parCourriel;
+    }
+
+    private function parCourriel(?StatutConvocationRdv $statut): string
     {
         return match ($statut) {
             null => 'Non suivie',
