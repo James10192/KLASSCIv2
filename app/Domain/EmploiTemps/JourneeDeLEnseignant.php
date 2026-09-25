@@ -82,7 +82,7 @@ final class JourneeDeLEnseignant
         $file = [];
 
         foreach ($cours as $c) {
-            $lieu = trim(($c->classe() ?? '').($c->salle() ? ' · salle '.$c->salle() : ''), ' ·');
+            $lieu = collect([$c->classe(), $c->salle()])->filter()->implode(' · ');
             if ($c->demandeUnEmargement()) {
                 $file[] = [
                     'rang' => $urgence[$c->etat],
@@ -185,7 +185,7 @@ final class JourneeDeLEnseignant
                     'fin' => HeureDeSeance::hi($s->getAttributes()['heure_fin'] ?? null) ?? '--:--',
                     'matiere' => $s->matiere->name ?? 'Matière non définie',
                     'classe' => $s->emploiTemps->classe->name ?? $s->classe->name ?? null,
-                    'salle' => $s->salle ?: null,
+                    'salle' => CoursDuJour::libelleSalle($s->salle),
                 ];
             })
             ->filter()

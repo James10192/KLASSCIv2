@@ -155,6 +155,14 @@ class JourneeDeLEnseignantTest extends TestCase
             ->assertSee('Présent si vous émargez avant');
     }
 
+    public function test_la_salle_n_est_pas_prefixee_deux_fois(): void
+    {
+        $this->assertSame('Salle B12', CoursDuJour::libelleSalle('B12'));
+        $this->assertSame('Salle E2E', CoursDuJour::libelleSalle('Salle E2E'));
+        $this->assertSame('Amphi A', CoursDuJour::libelleSalle('Amphi A'));
+        $this->assertNull(CoursDuJour::libelleSalle('  '));
+    }
+
     private function etatA(string $heure): string
     {
         Carbon::setTestNow('2026-02-04 '.$heure.':00');

@@ -287,7 +287,7 @@
                                     <div class="ted-slot-name">{{ $cours->matiere() }}</div>
                                     <div class="ted-slot-meta">
                                         @if($cours->classe())<span><i class="fas fa-users me-1"></i>{{ $cours->classe() }}</span>@endif
-                                        @if($cours->salle())<span><i class="fas fa-door-open me-1"></i>Salle {{ $cours->salle() }}</span>@endif
+                                        @if($cours->salle())<span><i class="fas fa-door-open me-1"></i>{{ $cours->salle() }}</span>@endif
                                     </div>
                                 </div>
                                 <div class="ted-slot-actions">
@@ -387,7 +387,7 @@
                             @foreach($prochainsCours as $prochain)
                                 <div class="ted-next-row">
                                     <div class="ted-next-when">{{ $prochain['jour'] }}<small>{{ $prochain['debut'] }} – {{ $prochain['fin'] }}</small></div>
-                                    <div class="ted-next-what">{{ $prochain['matiere'] }}<small>{{ collect([$prochain['classe'], $prochain['salle'] ? 'Salle '.$prochain['salle'] : null])->filter()->implode(' · ') }}</small></div>
+                                    <div class="ted-next-what">{{ $prochain['matiere'] }}<small>{{ collect([$prochain['classe'], $prochain['salle']])->filter()->implode(' · ') }}</small></div>
                                 </div>
                             @endforeach
                         </div>

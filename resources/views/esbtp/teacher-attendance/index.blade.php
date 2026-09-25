@@ -220,7 +220,7 @@
                                     <h3>{{ $cours->matiere() }}</h3>
                                     <div class="tae-meta">
                                         <span><i class="fas fa-users"></i>{{ $cours->classe() ?? 'Classe non renseignée' }}</span>
-                                        @if($cours->salle())<span><i class="fas fa-door-open"></i>Salle {{ $cours->salle() }}</span>@endif
+                                        @if($cours->salle())<span><i class="fas fa-door-open"></i>{{ $cours->salle() }}</span>@endif
                                     </div>
                                 </div>
                                 <span class="tae-chip tae-chip--{{ $cours->ton() }}">{{ $cours->libelle() }}</span>

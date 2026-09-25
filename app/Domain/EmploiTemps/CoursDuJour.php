@@ -53,9 +53,20 @@ final class CoursDuJour
         return $this->seance->emploiTemps->classe->name ?? $this->seance->classe->name ?? null;
     }
 
+    /** « Salle B12 », sans doubler le mot quand l'école l'a déjà saisi. */
     public function salle(): ?string
     {
-        return $this->seance->salle ?: null;
+        return self::libelleSalle($this->seance->salle);
+    }
+
+    public static function libelleSalle(?string $salle): ?string
+    {
+        $salle = trim((string) $salle);
+        if ($salle === '') {
+            return null;
+        }
+
+        return preg_match('/^(salle|amphi|labo|atelier)\b/iu', $salle) ? $salle : 'Salle '.$salle;
     }
 
     /** Le cours attend-il un geste de l'enseignant maintenant ? */
