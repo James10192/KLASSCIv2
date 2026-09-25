@@ -19,7 +19,11 @@ class IndicateursAssistantTest extends TestCase
 
     public function test_les_inscrits_sont_ceux_de_l_annee_courante_comme_au_tableau_de_bord(): void
     {
+        // Un étudiant sans inscription cette année : il compte dans la base, pas
+        // parmi les inscrits. C'est l'écart que l'assistant confondait.
+        \App\Models\ESBTPEtudiant::factory()->create();
         $comptes = app(StudentCountService::class)->counts();
+        $this->assertGreaterThan($comptes['inscrits_annee_courante'], $comptes['total_base']);
 
         $kpis = (new GetDashboardKpisTool())->execute(['focus' => 'general'], User::factory()->create())['kpis'];
 
