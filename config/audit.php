@@ -62,7 +62,10 @@ return [
         'updated',
         'deleted',
         'restored',
-        'retrieved', // Added for security auditing of data access
+        // Pas de 'retrieved' : une lecture n'ecrit rien dans le journal. Chaque
+        // chargement d'un modele audite en ecrivait une ligne vide, et la table
+        // grossissait sans fin (le pilotage academique en ecrivait des dizaines
+        // par visite). Tous les modeles le desactivaient deja un par un.
     ],
 
     /*

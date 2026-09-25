@@ -76,30 +76,25 @@ final class FiltresDuJournal
         }
     }
 
-    /** La requete de l'ecran, sans taches automatiques ni consultations si elles sont masquees. */
+    /** La requete de l'ecran, hors taches automatiques si elles sont masquees. */
     public function requete(): Builder
     {
-        return $this->base()->when(! $this->automatiques && $this->idObjet === null, fn (Builder $q) => self::sansBruit($q));
+        return $this->base()->when(! $this->automatiques && $this->idObjet === null, fn (Builder $q) => $q->whereNotNull('user_id'));
     }
 
     /**
-     * Ce que le masquage retire : les taches automatiques, et les consultations
-     * (chaque visite d'une page en ecrit une, sans rien changer).
+     * Les lignes de consultation ecrites avant que 'retrieved' ne soit retire
+     * de config/audit.php : vides, sans auteur utile, elles ne se montrent nulle part.
      */
-    public static function sansBruit(Builder $q): Builder
+    public static function sansConsultationsHeritees(Builder $q): Builder
     {
-        return $q->whereNotNull('user_id')->where('event', '!=', 'retrieved');
-    }
-
-    public static function bruit(Builder $q): Builder
-    {
-        return $q->where(fn (Builder $b) => $b->whereNull('user_id')->orWhere('event', 'retrieved'));
+        return $q->where('event', '!=', 'retrieved');
     }
 
     /** La meme vue, sans le choix sur les taches automatiques : pour les compter. */
     public function base(): Builder
     {
-        $requete = ThemesDuJournal::appliquer(Audit::query(), $this->theme)
+        $requete = ThemesDuJournal::appliquer(self::sansConsultationsHeritees(Audit::query()), $this->theme)
             ->when($this->aucunOnglet, fn (Builder $q) => $q->whereRaw('0 = 1'))
             ->when($this->depuisLe(), fn (Builder $q, Carbon $d) => $q->where('created_at', '>=', $d))
             ->when($this->au, fn (Builder $q, Carbon $d) => $q->where('created_at', '<=', $d))

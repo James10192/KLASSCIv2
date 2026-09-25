@@ -107,24 +107,24 @@ class JournalAuditDefilementTest extends TestCase
         $this->audit(['user_id' => null, 'user_type' => null]);
 
         $this->get(route('esbtp.audit.index'))->assertOk()
-            ->assertSee('2 consultations ou tâches automatiques', false)
+            ->assertSee('2 tâches automatiques', false)
             ->assertSee('Les afficher');
 
         preg_match_all('/class="jda-ligne/', $this->tranche(['auto' => 1])->json('rows_html'), $m);
         $this->assertCount(3, $m[0]);
     }
 
-    public function test_les_consultations_sont_masquees_avec_les_taches_automatiques(): void
+    public function test_une_consultation_heritee_n_apparait_nulle_part(): void
     {
         DB::table('audits')->delete();
         $modif = $this->audit([]);
         $consultation = $this->audit(['event' => 'retrieved']);
 
-        $html = (string) $this->tranche()->json('rows_html');
-        $this->assertStringContainsString('data-li-cle="'.$modif.'"', $html);
-        $this->assertStringNotContainsString('data-li-cle="'.$consultation.'"', $html);
-        $this->get(route('esbtp.audit.index'))->assertSee('1 consultation ou tâche automatique', false);
-        $this->assertStringContainsString('data-li-cle="'.$consultation.'"', (string) $this->tranche(['auto' => 1])->json('rows_html'));
+        foreach ([[], ['auto' => 1]] as $parametres) {
+            $html = (string) $this->tranche($parametres)->json('rows_html');
+            $this->assertStringContainsString('data-li-cle="'.$modif.'"', $html);
+            $this->assertStringNotContainsString('data-li-cle="'.$consultation.'"', $html);
+        }
     }
 
     public function test_un_filtre_ne_recharge_que_la_liste_et_le_compte_a_regarder(): void

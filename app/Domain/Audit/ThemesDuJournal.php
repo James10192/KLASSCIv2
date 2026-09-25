@@ -137,7 +137,7 @@ final class ThemesDuJournal
      */
     public static function motifs(Audit $audit): array
     {
-        // Une consultation ne se signale jamais : chaque visite de page en ecrit.
+        // Une consultation (ligne heritee d'avant le retrait de 'retrieved') ne se signale jamais.
         if ($audit->user_id === null || $audit->event === 'retrieved') {
             return [];
         }

@@ -128,9 +128,7 @@ class ESBTPAuditController extends Controller
         $du = FiltresDuJournal::date($request->query('date_from'))?->startOfDay() ?? now()->subDays(30)->startOfDay();
         $au = FiltresDuJournal::date($request->query('date_to'))?->endOfDay() ?? now();
 
-        // Ce que les personnes ont fait : ni les consultations (chaque visite
-        // de page en ecrit une) ni les taches automatiques.
-        $portee = fn () => FiltresDuJournal::sansBruit(Audit::whereBetween('created_at', [$du, $au]))
+        $portee = fn () => FiltresDuJournal::sansConsultationsHeritees(Audit::whereBetween('created_at', [$du, $au]))
             ->when($userId, fn ($q) => $q->where('user_id', $userId));
         $tranche = $portee()->with('user.roles:id,name')->orderByDesc('created_at')->orderByDesc('id')
             ->paginate(self::PAR_TRANCHE)->withQueryString();
@@ -148,7 +146,7 @@ class ESBTPAuditController extends Controller
             'tranche' => $tranche,
             'stats' => [
                 'total_actions' => $tranche->total(),
-                'unique_users' => FiltresDuJournal::sansBruit(Audit::whereBetween('created_at', [$du, $au]))->distinct('user_id')->count('user_id'),
+                'unique_users' => FiltresDuJournal::sansConsultationsHeritees(Audit::whereBetween('created_at', [$du, $au]))->distinct('user_id')->count('user_id'),
                 'unique_ips' => $portee()->whereNotNull('ip_address')->distinct('ip_address')->count('ip_address'),
                 'peak_hour' => $pointe !== null ? sprintf('%02dh', $pointe) : '—',
                 'a_regarder' => ThemesDuJournal::aRegarder($portee())->count(),
@@ -214,7 +212,7 @@ class ESBTPAuditController extends Controller
      */
     private function automatiques(FiltresDuJournal $filtres): array
     {
-        return JournalLisible::resumeAutomatique(FiltresDuJournal::bruit($filtres->base())
+        return JournalLisible::resumeAutomatique($filtres->base()->whereNull('user_id')
             ->selectRaw('auditable_type, COUNT(*) as total')->groupBy('auditable_type')->pluck('total', 'auditable_type'));
     }
 

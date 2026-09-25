@@ -204,9 +204,8 @@ class ListesLot2DefilementTest extends TestCase
                 'user_id' => auth()->id(), 'user_type' => \App\Models\User::class]);
         }
 
-        // La mise en place du test ecrit elle aussi des actions, toutes du jour ;
-        // la page ne compte ni les consultations ni les taches automatiques.
-        $total = DB::table('audits')->whereNotNull('user_id')->where('event', '!=', 'retrieved')->count();
+        // La mise en place du test ecrit elle aussi des actions, toutes du jour.
+        $total = DB::table('audits')->where('event', '!=', 'retrieved')->count();
 
         $html = $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
             ->getJson(route('esbtp.audit.user-activity', ['page' => 2, 'mode' => 'rows']))
