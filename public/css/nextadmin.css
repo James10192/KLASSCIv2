@@ -1311,7 +1311,6 @@ body {
         var(--secondary-soft) 100%
     );
     color: var(--primary);
-    transform: translateX(5px);
 }
 
 .dropdown-item i {
