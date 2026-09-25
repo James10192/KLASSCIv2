@@ -179,6 +179,12 @@ return [
             'group' => 'Communication',
             'icon' => 'fa-comments',
         ],
+        'assistant.model.choose' => [
+            'label' => "Choisir le modèle d'IA de l'assistant",
+            'description' => "Affiche le sélecteur de modèle dans l'assistant, parmi les modèles autorisés par l'école.",
+            'group' => 'Communication',
+            'icon' => 'fa-microchip',
+        ],
         'sod.bypass' => [
             'label' => 'Contourner la separation des devoirs',
             'description' => 'Autorise un acteur habilite a executer une action meme lorsqu une regle maker-checker est active. A reserver aux super administrateurs et procedures de secours.',

@@ -74,15 +74,38 @@ class ChatbotGovernanceTest extends TestCase
         $this->assertStringContainsString('DB::beginTransaction();', $content);
     }
 
-    public function test_chatbot_widget_renders_and_executes_approval_requests(): void
+    public function test_assistant_renders_and_executes_approval_requests(): void
     {
-        $content = file_get_contents(public_path('js/chatbot-widget.js'));
+        $content = file_get_contents(public_path('js/assistant.js'));
 
-        $this->assertStringContainsString('buildApprovalRequestFromData', $content);
-        $this->assertStringContainsString("message.display_type === 'approval_request'", $content);
-        $this->assertStringContainsString('approve_chatbot_action', $content);
-        $this->assertStringContainsString('reject_chatbot_action', $content);
-        $this->assertStringContainsString('handleApprovalAction', $content);
-        $this->assertStringContainsString("method: 'POST'", $content);
+        // Les demandes de validation arrivent en partie data-approval-request (ou display_type
+        // approval_request dans l'historique) et appellent les routes approve / reject en POST.
+        $this->assertStringContainsString("'approval-request': function (data, ctx)", $content);
+        $this->assertStringContainsString('approval.approve_url', $content);
+        $this->assertStringContainsString('approval.reject_url', $content);
+        $this->assertStringContainsString('deciderAction: function (url, approuver)', $content);
+        $this->assertStringContainsString("method: methode || 'POST'", $content);
+        $this->assertStringContainsString("type.replace(/_/g, '-')", $content);
+    }
+
+    public function test_assistant_sanitizes_model_text_and_never_injects_data_as_html(): void
+    {
+        $content = file_get_contents(public_path('js/assistant.js'));
+
+        $this->assertStringContainsString('window.DOMPurify.sanitize(', $content);
+        $this->assertStringContainsString('return echapper(texte)', $content);
+        $this->assertStringNotContainsString('.innerHTML', $content);
+        $this->assertStringContainsString("integrity: 'sha384-", $content);
+    }
+
+    public function test_old_widget_is_gone(): void
+    {
+        $this->assertFileDoesNotExist(public_path('js/chatbot-widget.js'));
+        $this->assertFileDoesNotExist(public_path('css/chatbot-widget.css'));
+        $this->assertFileDoesNotExist(resource_path('views/components/chatbot/widget.blade.php'));
+
+        $layout = file_get_contents(resource_path('views/layouts/app.blade.php'));
+        $this->assertStringContainsString('<x-chatbot.assistant />', $layout);
+        $this->assertStringNotContainsString('KLASSCI_CHATBOT_CONFIG', $layout);
     }
 }

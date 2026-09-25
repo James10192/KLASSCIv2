@@ -9,6 +9,8 @@ use App\Models\ChatbotUserPreference;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
+use App\Domain\Assistant\Assistant;
+use App\Domain\Assistant\Flux\UiMessageStream;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -16,19 +18,18 @@ use Illuminate\Support\Facades\Route;
 /**
  * Service principal du Chatbot KLASSCI.
  *
- * Orchestration simplifiée avec ClaudeAgentService :
  * 1. Gestion conversation (création, historique)
- * 2. Appel agent Claude (tool calling natif)
+ * 2. Appel de l'assistant (App\Domain\Assistant : multi-modèle, outils, repli)
  * 3. Persistence messages + audit
  * 4. Formulaires intégrés (frais, inscriptions)
  */
 class ChatbotService
 {
-    protected ClaudeAgentService $agent;
+    protected Assistant $agent;
     protected ChatbotSetupGuideService $setupGuide;
 
     public function __construct(
-        ClaudeAgentService $agent,
+        Assistant $agent,
         ChatbotSetupGuideService $setupGuide
     ) {
         $this->agent = $agent;
@@ -38,7 +39,7 @@ class ChatbotService
     /**
      * Envoyer un message et obtenir une réponse.
      */
-    public function sendMessage(string $message, ?string $sessionId = null, ?array $clientContext = null): array
+    public function sendMessage(string $message, ?string $sessionId = null, ?array $clientContext = null, ?string $modele = null): array
     {
         $user = Auth::user();
         if (!$user) {
@@ -80,13 +81,15 @@ class ChatbotService
                 ]);
             }
 
-            // 5. Appel agent Claude (tool calling)
-            $agentResponse = $this->agent->chat(
+            // 5. Appel de l'assistant (même boucle que la diffusion, sortie muette)
+            $agentResponse = $this->agent->repondre(
                 $conversation,
                 $message,
                 $user,
                 $preferences,
-                $clientContext
+                $clientContext,
+                UiMessageStream::silencieux(),
+                $modele
             );
 
             // 6. Construire les display_data finales
@@ -108,7 +111,7 @@ class ChatbotService
                 'deep_link' => $agentResponse['deep_link'],
                 'metadata' => [
                     'tool_calls' => $agentResponse['tool_calls'],
-                    'engine' => 'claude',
+                    'engine' => $agentResponse['modele'] ?? null,
                 ],
             ]);
 
@@ -131,7 +134,7 @@ class ChatbotService
             Log::info('ChatbotService: success', ['duration_ms' => $duration]);
 
             return [
-                'success' => true,
+                'success' => empty($agentResponse['erreur']),
                 'message' => $assistantMessage->content,
                 'display_type' => $assistantMessage->display_type,
                 'display_data' => $assistantMessage->display_data,
@@ -154,20 +157,34 @@ class ChatbotService
     }
 
     /**
-     * Envoyer un message avec streaming SSE.
-     * Réutilise la logique de sendMessage mais avec chatStream pour le streaming texte.
+     * Envoyer un message en diffusion, au protocole UI message stream v1.
+     *
+     * Ordre des parties : start (avec l'identifiant de conversation) → steps du
+     * modèle (texte, outils) → données d'affichage (data-table, data-cards…) →
+     * message-metadata (message enregistré) → finish → [DONE].
+     *
+     * La réponse est enregistrée comme avec sendMessage, y compris quand le
+     * navigateur a coupé en route (bouton Arrêter) : l'historique garde ce qui a
+     * été montré.
      */
-    public function sendMessageStream(string $message, ?string $sessionId, ?array $clientContext, callable $onEvent): array
+    public function sendMessageStream(string $message, ?string $sessionId, ?array $clientContext, UiMessageStream $ui, ?string $modele = null): array
     {
         $user = Auth::user();
         if (!$user) {
-            $onEvent('error', ['message' => 'Non connecté']);
+            $ui->start((string) \Str::uuid());
+            $ui->error('Vous devez être connecté pour utiliser l\'assistant.');
+            $ui->done();
             return ['success' => false];
         }
 
         try {
             $conversation = $this->getOrCreateConversation($user->id, $sessionId);
             $preferences = $this->getUserPreferences($user->id);
+
+            $ui->start((string) \Str::uuid(), ['conversationId' => $conversation->session_id]);
+
+            $preferredNameCandidate = $this->detectPreferredName($message);
+            $memoryAction = $this->buildMemoryAction($preferredNameCandidate, $preferences);
 
             ChatbotMessage::create([
                 'conversation_id' => $conversation->id,
@@ -186,11 +203,18 @@ class ChatbotService
                 ]);
             }
 
-            $agentResponse = $this->agent->chatStream(
-                $conversation, $message, $user, $preferences, $clientContext, $onEvent
+            $agentResponse = $this->agent->repondre(
+                $conversation, $message, $user, $preferences, $clientContext, $ui, $modele
             );
 
             $displayData = $agentResponse['display_data'];
+            if ($memoryAction && empty($agentResponse['erreur'])) {
+                $displayData = $displayData ?? [];
+                $displayData['follow_up_actions'] = array_values(array_filter(
+                    array_merge($displayData['follow_up_actions'] ?? [], [$memoryAction])
+                ));
+            }
+
             $assistantMessage = ChatbotMessage::create([
                 'conversation_id' => $conversation->id,
                 'role' => 'assistant',
@@ -200,7 +224,8 @@ class ChatbotService
                 'deep_link' => $agentResponse['deep_link'],
                 'metadata' => [
                     'tool_calls' => $agentResponse['tool_calls'],
-                    'engine' => 'claude',
+                    'engine' => $agentResponse['modele'] ?? null,
+                    'interrompu' => !empty($agentResponse['interrompu']),
                 ],
             ]);
 
@@ -214,18 +239,51 @@ class ChatbotService
                 ])),
             ]);
 
+            if (!empty($agentResponse['interrompu'])) {
+                $ui->abort();
+                $ui->done();
+                return ['success' => true, 'interrompu' => true];
+            }
+
+            $this->emitDisplayParts($ui, $agentResponse['display_type'], $displayData, $agentResponse['deep_link']);
+
             $this->updateConversationTitleIfNeeded($conversation, $message);
 
-            $onEvent('complete', [
-                'conversation_id' => $conversation->session_id,
-                'message_id' => $assistantMessage->id,
+            $ui->metadata([
+                'conversationId' => $conversation->session_id,
+                'dbMessageId' => $assistantMessage->id,
+                'title' => $conversation->fresh()->title,
             ]);
 
-            return ['success' => true];
+            if (empty($agentResponse['erreur'])) {
+                $ui->finish();
+            }
+            $ui->done();
+
+            return ['success' => empty($agentResponse['erreur'])];
         } catch (\Throwable $e) {
-            Log::error('ChatbotService: stream error', ['error' => $e->getMessage()]);
-            $onEvent('error', ['message' => "Désolé, une erreur s'est produite."]);
+            Log::error('ChatbotService: stream error', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            $ui->error("Désolé, une erreur s'est produite. Veuillez réessayer.");
+            $ui->done();
             return ['success' => false];
+        }
+    }
+
+    /**
+     * Les résultats riches partent en parties `data-<type>` qui reprennent telles
+     * quelles les formes de display_data (celles que l'historique renvoie aussi).
+     */
+    public function emitDisplayParts(UiMessageStream $ui, ?string $displayType, ?array $displayData, ?string $deepLink): void
+    {
+        if ($displayType && $displayType !== 'text' && $displayData) {
+            $ui->data(str_replace('_', '-', $displayType), $displayData);
+        } elseif ($displayData) {
+            // Réponse texte accompagnée d'actions (mémoriser un nom, etc.)
+            $ui->data('suites', array_intersect_key($displayData, array_flip(['follow_up', 'follow_up_actions'])));
+        }
+
+        if ($deepLink) {
+            $ui->data('lien', ['url' => $deepLink]);
         }
     }
 
@@ -507,7 +565,7 @@ class ChatbotService
             return;
         }
 
-        $newTitle = $this->agent->generateTitle($message);
+        $newTitle = $this->agent->genererTitre($message);
         $newTitle = $this->sanitizeTitle($newTitle ?: $message);
 
         if ($newTitle) {

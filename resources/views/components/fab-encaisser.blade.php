@@ -23,7 +23,7 @@
 
 @push('styles')
 <style>
-body.has-fab-encaisser .chatbot-widget {
+body.has-fab-encaisser .ast-launcher {
     bottom: 108px !important;
 }
 
@@ -101,7 +101,7 @@ body.has-fab-encaisser .chatbot-widget {
 
 /* Mobile : compacte le label et masque le raccourci clavier */
 @media (max-width: 768px) {
-    body.has-fab-encaisser .chatbot-widget {
+    body.has-fab-encaisser .ast-launcher {
         bottom: 84px !important;
     }
 

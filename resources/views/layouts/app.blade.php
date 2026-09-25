@@ -67,23 +67,18 @@
     <link href="{{ asset('css/form-interaction-fix.css') }}" rel="stylesheet">
     <!-- Modal Force Fix - DEBUG MODE -->
     <link href="{{ asset('css/modal-force-fix.css') }}" rel="stylesheet">
-    <!-- Chatbot Widget -->
-    <link href="{{ asset('css/chatbot-widget.css') }}" rel="stylesheet">
+    {{-- Assistant IA (namespace ast-*) : panneau lateral, feuille plein ecran sur telephone. --}}
+    <link href="{{ asset('css/assistant.css') }}?v={{ @filemtime(public_path('css/assistant.css')) ?: '1' }}" rel="stylesheet">
 
     {{-- Shell mobile generalise (PWA, prefixe m-) : barre d'onglets, feuilles, pile des flottants.
-         Absorbe l'ancien mobile-student.css (alias .stu-* conserves). Charge APRES chatbot-widget.css
+         Absorbe l'ancien mobile-student.css (alias .stu-* conserves). Charge APRES assistant.css
          et dashboard-moderne.css pour pouvoir surcharger leurs positions en mobile. --}}
     <link href="{{ asset('css/mobile-shell.css') }}?v={{ @filemtime(public_path('css/mobile-shell.css')) ?: '1' }}" rel="stylesheet">
 
     <!-- Styles supplémentaires -->
     <style>
-        /* Shell mobile (< 768px) : l'assistant IA n'est pas charge (voir garde JS avant son include)
-           et le rappel NON bloquant de renouvellement (.m-ce-deferred) n'est pas affiche. */
+        /* Shell mobile (< 768px) : le rappel NON bloquant de renouvellement (.m-ce-deferred) n'est pas affiche. */
         @media (max-width: 767.98px) {
-            .m-chatbot-host,
-            .m-chatbot-host #chatbot-widget,
-            .m-chatbot-host #chatbot-backdrop,
-            .m-chatbot-host #chatbot-settings-modal { display: none !important; }
             .m-ce-deferred #contractExpiryModal,
             .m-ce-deferred #ce-strip { display: none !important; }
         }
@@ -3278,27 +3273,10 @@
         </main>
     </div>
 
-    {{-- Assistant IA : desactive sous 768px (shell mobile). Le widget pousse lui-meme son script
-         (chatbot-widget.js, defer) dans la pile 'scripts' : on ne peut pas le rendre conditionnel d'ici
-         sans toucher le composant. On neutralise donc son initialisation : sous 768px, la configuration
-         globale qu'il ecrit (window.KLASSCI_CHATBOT_CONFIG) est absorbee par un accesseur qui ne retient
-         rien, et chatbot-widget.js, qui exige cette configuration, n'instancie jamais le widget.
-         Le HTML est masque par CSS (.m-chatbot-host, bloc de styles du head). --}}
-    <script>
-    (function () {
-        if (!window.matchMedia || !window.matchMedia('(max-width:767.98px)').matches) return;
-        try {
-            Object.defineProperty(window, 'KLASSCI_CHATBOT_CONFIG', {
-                configurable: true,
-                get: function () { return undefined; },
-                set: function () { /* ignore sous 768px : l'assistant n'est pas charge en mobile */ }
-            });
-        } catch (e) { /* silencieux */ }
-    })();
-    </script>
-    <div class="m-chatbot-host">
-        @include('components.chatbot.widget')
-    </div>
+    {{-- Assistant IA : panneau lateral sur ordinateur, plein ecran sur telephone (shell mobile compris). --}}
+    @auth
+        <x-chatbot.assistant />
+    @endauth
 
     {{-- KLASSCI Care : fenetre « Aide / Signaler », ouverte depuis le menu du compte. --}}
     <x-support.lanceur />

@@ -175,6 +175,7 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | rendez-vous d'inscription | `rdv-*` | `rdv-hero`, `rdv-kpi`, `rdv-slot`, `rdv-jauge`, `rdv-resas`, `rdv-switch`, `rdv-reglages` |
 | retrouver un rendez-vous | `rdr-*` (sur la base `rdv-*`) | `rdr-ligne`, `rdr-quand`, `rdr-groupe`, `rdr-recherche` |
 | étudiants sur téléphone (shell m-*) | `eim-*` (liste), `etm-*` (carte hors shell) | `eim-row`, `eim-av`, `eim-seg`, `etm-card` |
+| assistant IA (panneau, chatbot) | `ast-*` | `ast-panel`, `ast-launcher`, `ast-thread`, `ast-composer`, `ast-tool`, `ast-card` |
 
 Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 
