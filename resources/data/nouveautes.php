@@ -22,6 +22,17 @@ return [
     'titre' => 'Septembre 2026',
     'entrees' => [
         [
+            'titre' => 'Chercher partout avec Ctrl K',
+            'icone' => 'fa-magnifying-glass',
+            'texte' => 'Ctrl K (⌘ K sur Mac) ouvre une recherche qui trouve les pages de l’application et les fiches : étudiants, paiements, classes, matières. Les flèches parcourent les résultats, Entrée ouvre, Échap ferme. Vous ne voyez que ce que votre compte peut ouvrir.',
+            'captures' => [
+                'avant' => 'images/nouveautes/2026-09/recherche-bureau-avant.webp',
+                'apres' => 'images/nouveautes/2026-09/recherche-bureau-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Taper « paie » ne trouvait rien ; la recherche propose maintenant les pages correspondantes.',
+            ],
+        ],
+        [
             'titre' => 'Un écran d’encaissement refait',
             'icone' => 'fa-cash-register',
             'texte' => 'Au bureau, quatre étapes numérotées à gauche et, à droite, un panneau qui reste visible avec le reste à payer frais par frais et le bouton d’enregistrement. Sur téléphone, le récapitulatif s’affiche avant le choix du mode, et le premier chiffre tapé remplace le montant proposé.',
