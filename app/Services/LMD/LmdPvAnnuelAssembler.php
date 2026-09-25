@@ -81,7 +81,7 @@ class LmdPvAnnuelAssembler
             'primary' => $pdfSettings['primary_color'] ?? '#0453cb',
             'logo_binary' => $logo ? base64_decode($logo['b64'], true) : null,
             'ues_header' => $ues->map(fn ($r) => [
-                'code' => $r->uniteEnseignement?->code,
+                'code' => $r->uniteEnseignement?->code_affiche,
                 'name' => $r->uniteEnseignement?->name,
                 'credit' => $r->credit,
             ])->all(),
@@ -142,7 +142,7 @@ class LmdPvAnnuelAssembler
         foreach ($bulletins as $bulletin) {
             foreach ($bulletin->resultatsUEs as $ue) {
                 $out[$ue->unite_enseignement_id] = [
-                    'code' => $ue->uniteEnseignement?->code,
+                    'code' => $ue->uniteEnseignement?->code_affiche,
                     'name' => $ue->uniteEnseignement?->name,
                     'moyenne' => $ue->moyenne,
                     'mention' => $ue->mention,
@@ -163,12 +163,12 @@ class LmdPvAnnuelAssembler
             foreach ($bulletin->resultatsUEs as $ue) {
                 if (! $ue->isValidee()) {
                     $failed[] = [
-                        'ue' => $ue->uniteEnseignement?->code.' — '.$ue->uniteEnseignement?->name,
+                        'ue' => $ue->uniteEnseignement?->code_affiche.' — '.$ue->uniteEnseignement?->name,
                         'statut' => $ue->statut,
                         'moyenne' => $ue->moyenne,
                         'ie' => $ue->resultatsECUEs
                             ->filter(fn ($e) => (float) $e->moyenne < 10)
-                            ->map(fn ($e) => $e->matiere?->code ?? $e->id)
+                            ->map(fn ($e) => $e->matiere?->code_affiche ?? $e->id)
                             ->values()
                             ->all(),
                     ];

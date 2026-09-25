@@ -3,6 +3,7 @@
 use App\Http\Controllers\AcademicPilotage\AcademicAssignmentController;
 use App\Http\Controllers\AcademicPilotage\AcademicAlertController;
 use App\Http\Controllers\AcademicPilotage\AcademicPilotageController;
+use App\Http\Controllers\AcademicPilotage\AcademicPilotageOverviewController;
 use App\Http\Controllers\AcademicPilotage\GradeSheetController;
 use App\Http\Controllers\AcademicPilotage\GradeSheetDocumentController;
 use App\Http\Middleware\ForceJsonResponse;
@@ -16,12 +17,31 @@ Route::prefix('esbtp')->name('esbtp.')
         'paywall',
     ])
     ->group(function () {
-        Route::get('/pilotage-academique', [AcademicPilotageController::class, 'index'])
+        // Le tableau de bord : notes manquantes, relances, presence. Il ne
+        // lit que la couverture et les appels, jamais les instantanes du
+        // moteur de sante, qui restaient vides tant que personne ne les
+        // « synchronisait ».
+        Route::get('/pilotage-academique', [AcademicPilotageOverviewController::class, 'index'])
             ->middleware([
                 'permission:module.academic_pilotage.access',
                 'permission:academic_pilotage.view',
             ])
             ->name('pilotage-academique.index');
+        Route::get('/pilotage-academique/apercu', [AcademicPilotageOverviewController::class, 'apercu'])
+            ->middleware([
+                ForceJsonResponse::class,
+                'permission:module.academic_pilotage.access',
+                'permission:academic_pilotage.view',
+                'throttle:60,1',
+            ])
+            ->name('pilotage-academique.apercu');
+        // L'outil de travail : fiches de notes, alertes, affectations.
+        Route::get('/pilotage-academique/fiches', [AcademicPilotageController::class, 'index'])
+            ->middleware([
+                'permission:module.academic_pilotage.access',
+                'permission:academic_pilotage.view',
+            ])
+            ->name('pilotage-academique.fiches');
         Route::get('/pilotage-academique/data', [AcademicPilotageController::class, 'data'])
             ->middleware([
                 ForceJsonResponse::class,

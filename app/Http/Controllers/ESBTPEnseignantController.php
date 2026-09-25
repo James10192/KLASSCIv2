@@ -15,7 +15,6 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPTeacherAvailability;
-use App\Services\Scoring\PersonnelScoringService;
 use App\Services\TeacherPlanningService;
 use App\Services\UserService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
@@ -396,10 +395,7 @@ class ESBTPEnseignantController extends Controller
         );
 
         $realAvailability = $this->planningService->getAvailabilityMatrix($enseignant)['availability'];
-        $performanceScore = $enseignant->user
-            ? (app(PersonnelScoringService::class)->latestFor($enseignant->user)
-                ?: app(PersonnelScoringService::class)->calculate($enseignant->user))
-            : null;
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resumePour($enseignant->user, auth()->user());
 
         // Passer $enseignant en tant que $teacher pour la compatibilité avec la vue
         $teacher = $enseignant;
@@ -411,7 +407,7 @@ class ESBTPEnseignantController extends Controller
                 "teachingPlanning",
                 "anneeCourante",
                 "periode",
-                "performanceScore",
+                "activite",
             ),
         );
     }
