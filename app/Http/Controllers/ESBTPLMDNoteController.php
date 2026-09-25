@@ -166,8 +166,14 @@ class ESBTPLMDNoteController extends Controller
         $notesExistantes = $existingNotes->pluck('note', 'etudiant_id')->toArray();
         $absencesExistantes = $existingNotes->pluck('is_absent', 'etudiant_id')->toArray();
 
+        // Examen anonyme non levé : numéros à la place des noms, dans l'ordre des numéros.
+        $numerosAnonymat = app(\App\Domain\Examens\FeuilleDeNotesDeLExamen::class)->numerosPourLaSaisie($evaluation);
+        if ($numerosAnonymat !== null) {
+            $etudiants = $etudiants->sortBy(fn ($e) => $numerosAnonymat[$e->id] ?? 'ZZZ')->values();
+        }
+
         return view('esbtp.lmd.notes.saisie-rapide', compact(
-            'evaluation', 'etudiants', 'notesExistantes', 'absencesExistantes'
+            'evaluation', 'etudiants', 'notesExistantes', 'absencesExistantes', 'numerosAnonymat'
         ));
     }
 
@@ -176,16 +182,34 @@ class ESBTPLMDNoteController extends Controller
      */
     public function saveBulk(Request $request)
     {
+        // « 12,5 » est une note : la virgule décimale est remplacée avant la
+        // validation numérique, qui la refusait.
+        $request->merge(['notes' => collect($request->input('notes', []))->map(function ($n) {
+            if (is_array($n) && isset($n['note']) && is_string($n['note'])) {
+                $n['note'] = trim(str_replace(',', '.', $n['note'])) === '' ? null : trim(str_replace([',', ' '], ['.', ''], $n['note']));
+            }
+
+            return $n;
+        })->all()]);
+
         $request->validate([
             'evaluation_id' => 'required|exists:esbtp_evaluations,id',
             'notes' => 'required|array',
             'notes.*.etudiant_id' => 'required|exists:esbtp_etudiants,id',
             'notes.*.note' => 'nullable|numeric|min:0',
+        ], [
+            'notes.*.note.numeric' => 'Une note n’est pas un nombre : saisissez par exemple 12,5.',
             'notes.*.is_absent' => 'nullable|boolean',
         ]);
 
         $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
         $evaluation->loadMissing('classe');
+
+        $bareme = (float) ($evaluation->bareme ?: 20);
+        $horsBareme = collect($request->notes)->filter(fn ($n) => ($n['note'] ?? null) !== null && (float) $n['note'] > $bareme);
+        if ($horsBareme->isNotEmpty()) {
+            return redirect()->back()->withInput()->with('error', $horsBareme->count().' note(s) dépassent le barème de '.rtrim(rtrim(number_format($bareme, 2, ',', ''), '0'), ',').' : rien n’a été enregistré.');
+        }
         abort_unless($evaluation->classe?->systeme_academique === 'LMD', 422, 'La saisie groupée est réservée aux classes LMD.');
         $this->assertEvaluationConfieeAEnseignant($evaluation);
 

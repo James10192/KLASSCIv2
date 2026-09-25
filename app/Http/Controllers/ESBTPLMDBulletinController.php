@@ -583,6 +583,17 @@ class ESBTPLMDBulletinController extends Controller
      */
     public function togglePublication(ESBTPLMDBulletin $bulletin)
     {
+        // Un bulletin sans aucune note retenue se publiait à 0,00 et 0 crédit,
+        // en PDF officiel signé. Dépublier reste toujours possible.
+        if (! $bulletin->is_published) {
+            $aUneNote = $bulletin->resultatsECUEs()->get()
+                ->contains(fn ($r) => $this->service->noteEffectiveECUE($r) !== null);
+
+            if (! $aUneNote) {
+                return redirect()->back()->with('error', 'Ce bulletin ne porte aucune note : il ne peut pas être publié. Faites saisir et valider les notes, puis régénérez-le.');
+            }
+        }
+
         $bulletin->update([
             'is_published' => ! $bulletin->is_published,
         ]);

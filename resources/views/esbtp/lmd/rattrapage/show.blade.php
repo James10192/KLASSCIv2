@@ -59,6 +59,34 @@
     </div>
 </div>
 
+@if($session->type === 'rattrapage' && ! $session->parent_session_id)
+<div class="rtp-card" style="border-color:rgba(245,158,11,.4);margin-bottom:1.25rem;" x-data="{ parent: '', envoi: false, message: '' }">
+    <h2><i class="fas fa-link"></i> Session d’origine manquante</h2>
+    <p style="font-size:.86rem;color:#475569;margin:0 0 .75rem;">Ce rattrapage n’est rattaché à aucune session normale : ses notes ne peuvent pas compléter les résultats de première session, et il ne peut pas être publié.</p>
+    @can('lmd.rattrapage.manage')
+        @if($sessionsNormales->isNotEmpty())
+            <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;">
+                <div style="flex:1;min-width:240px;display:flex;flex-direction:column;">
+                    <x-au-select name="parent_session_id" x-model="parent" placeholder="Choisir la session normale" icon="fa-calendar-check" :options="$sessionsNormales" />
+                </div>
+                <button type="button" class="rtp-btn rtp-btn--primary" :disabled="!parent || envoi" @click="
+                    envoi = true; message = '';
+                    fetch('{{ route('esbtp.lmd.rattrapage.rattacher', $session) }}', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }, body: JSON.stringify({ parent_session_id: parent }) })
+                        .then(async r => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.message || (d.errors ? Object.values(d.errors).flat()[0] : 'Erreur ' + r.status)); return d; })
+                        .then(d => { window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: d.message } })); window.location.reload(); })
+                        .catch(e => { message = e.message; envoi = false; });
+                ">
+                    <i class="fas fa-link"></i> Rattacher à la session normale
+                </button>
+            </div>
+            <div x-show="message" x-cloak x-text="message" style="margin-top:.5rem;color:#b91c1c;font-size:.82rem;"></div>
+        @else
+            <p style="font-size:.86rem;color:#475569;margin:0;">Aucune session normale n’existe pour cette année : créez-la d’abord depuis la liste des sessions.</p>
+        @endif
+    @endcan
+</div>
+@endif
+
 <div style="display:grid;grid-template-columns:2fr 1fr;gap:1.25rem;">
 <div>
     <div class="rtp-card">
@@ -132,7 +160,8 @@
             @endif
 
             @if($session->status !== 'published')
-            <button type="button" class="rtp-btn rtp-btn--success" @click="publier()" :disabled="busy">
+            <button type="button" class="rtp-btn rtp-btn--success" @click="publier()" :disabled="busy || {{ $session->examens->isEmpty() || ($session->type === 'rattrapage' && ! $session->parent_session_id) ? 'true' : 'false' }}"
+                    title="{{ $session->examens->isEmpty() ? 'Aucun examen : rien à publier' : 'Publier la session' }}">
                 <i class="fas fa-flag-checkered"></i> <span x-text="busy ? 'Publication…' : 'Publier'"></span>
             </button>
             @endif

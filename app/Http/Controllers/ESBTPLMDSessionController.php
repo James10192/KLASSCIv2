@@ -56,8 +56,11 @@ class ESBTPLMDSessionController extends Controller
         $parcours = ESBTPLMDParcours::orderBy('name')->get(['id', 'name']);
         $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'name', 'libelle', 'is_current', 'start_date', 'end_date']);
 
+        $sessionsNormales = ESBTPLMDSession::normales()->forAnnee((int) $annee->id)
+            ->orderByDesc('id')->pluck('libelle', 'id');
+
         return view('esbtp.lmd.rattrapage.index', compact(
-            'sessions', 'kpis', 'parcours', 'annee', 'annees'
+            'sessions', 'kpis', 'parcours', 'annee', 'annees', 'sessionsNormales'
         ));
     }
 
@@ -67,7 +70,14 @@ class ESBTPLMDSessionController extends Controller
 
         $session->load(['anneeUniversitaire', 'parcours', 'parentSession', 'childrenSessions', 'examens']);
 
-        return view('esbtp.lmd.rattrapage.show', compact('session'));
+        // Une session de rattrapage sans session d'origine est un cul-de-sac :
+        // on propose les sessions normales de la même année pour la rattacher.
+        $sessionsNormales = $session->type === 'rattrapage' && ! $session->parent_session_id
+            ? ESBTPLMDSession::normales()->forAnnee((int) $session->annee_universitaire_id)
+                ->orderByDesc('id')->pluck('libelle', 'id')
+            : collect();
+
+        return view('esbtp.lmd.rattrapage.show', compact('session', 'sessionsNormales'));
     }
 
     /**
@@ -245,11 +255,16 @@ class ESBTPLMDSessionController extends Controller
             'annee_universitaire_id' => ['required', 'exists:esbtp_annee_universitaires,id'],
             'parcours_id' => ['nullable', 'exists:esbtp_lmd_parcours,id'],
             'type' => ['required', 'in:normale,rattrapage,extra'],
-            'parent_session_id' => ['nullable', 'exists:esbtp_lmd_sessions,id'],
+            // Un rattrapage se rattache à SA session normale : sans elle, ses
+            // notes n'ont aucun résultat de première session à compléter.
+            'parent_session_id' => ['nullable', 'required_if:type,rattrapage', \Illuminate\Validation\Rule::exists('esbtp_lmd_sessions', 'id')->where('type', 'normale')->where('annee_universitaire_id', $request->input('annee_universitaire_id'))],
             'semestre' => ['nullable', 'integer', 'between:1,'.\App\Models\ESBTPNiveauEtude::SEMESTRE_LMD_MAX],
             'libelle' => ['required', 'string', 'max:255'],
             'date_debut' => ['nullable', 'date'],
             'date_fin' => ['nullable', 'date', 'after_or_equal:date_debut'],
+        ], [
+            'parent_session_id.required_if' => 'Choisissez la session normale que ce rattrapage complète.',
+            'parent_session_id.exists' => 'La session d’origine doit être une session normale de la même année.',
         ]);
         $data['status'] = 'draft';
         $data['created_by'] = auth()->id();
@@ -374,6 +389,14 @@ class ESBTPLMDSessionController extends Controller
             return response()->json(['success' => false, 'message' => 'Déjà publiée'], 422);
         }
 
+        if ($session->type === 'rattrapage' && ! $session->parent_session_id) {
+            return response()->json(['success' => false, 'message' => 'Rattachez d’abord cette session à sa session normale.'], 422);
+        }
+
+        if ($session->examens()->count() === 0) {
+            return response()->json(['success' => false, 'message' => 'Aucun examen dans cette session : il n’y a rien à publier.'], 422);
+        }
+
         $session->update([
             'status' => 'published',
             'published_at' => now(),
@@ -388,6 +411,31 @@ class ESBTPLMDSessionController extends Controller
                 'published_at' => $session->published_at?->toIso8601String(),
             ],
         ]);
+    }
+
+    /**
+     * Rattache une session de rattrapage créée sans session d'origine.
+     * Raccourci du message « session sans session parent », qui ne proposait rien.
+     */
+    public function rattacher(Request $request, ESBTPLMDSession $session): JsonResponse
+    {
+        abort_unless(auth()->user()?->can('lmd.rattrapage.manage'), 403);
+
+        if ($session->type !== 'rattrapage' || $session->parent_session_id || $session->status === 'published') {
+            return response()->json(['success' => false, 'message' => 'Cette session n’a pas besoin d’être rattachée.'], 422);
+        }
+
+        $data = $request->validate([
+            'parent_session_id' => ['required', \Illuminate\Validation\Rule::exists('esbtp_lmd_sessions', 'id')
+                ->where('type', 'normale')
+                ->where('annee_universitaire_id', $session->annee_universitaire_id)],
+        ], [
+            'parent_session_id.exists' => 'Choisissez une session normale de la même année.',
+        ]);
+
+        $session->update(['parent_session_id' => (int) $data['parent_session_id'], 'updated_by' => auth()->id()]);
+
+        return response()->json(['success' => true, 'message' => 'Session rattachée à sa session normale.']);
     }
 
     private function resolveAnnee(Request $request): ESBTPAnneeUniversitaire

@@ -453,7 +453,11 @@ class ESBTPEvaluationController extends Controller
             $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_debut);
             $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_fin);
             if ($endAt->lessThanOrEqualTo($startAt)) {
-                $endAt = $endAt->addDay();
+                // Des heures inversées donnaient 22 h d'épreuve (1 320 min) en
+                // passant au lendemain. Une évaluation ne dure pas une nuit : on refuse.
+                return redirect()->back()
+                    ->with('error', 'L’heure de fin doit suivre l’heure de début.')
+                    ->withInput();
             }
             $calculatedDuration = $endAt->diffInMinutes($startAt);
 
@@ -722,7 +726,11 @@ class ESBTPEvaluationController extends Controller
             $startAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_debut);
             $endAt = Carbon::createFromFormat('Y-m-d H:i', $request->date_evaluation.' '.$request->heure_fin);
             if ($endAt->lessThanOrEqualTo($startAt)) {
-                $endAt = $endAt->addDay();
+                // Des heures inversées donnaient 22 h d'épreuve (1 320 min) en
+                // passant au lendemain. Une évaluation ne dure pas une nuit : on refuse.
+                return redirect()->back()
+                    ->with('error', 'L’heure de fin doit suivre l’heure de début.')
+                    ->withInput();
             }
             $calculatedDuration = $endAt->diffInMinutes($startAt);
 

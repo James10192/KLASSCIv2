@@ -1592,6 +1592,12 @@ return [
             'group' => 'LMD',
             'icon' => 'fa-lock',
         ],
+        'lmd.examens.anonymat.lever' => [
+            'label' => 'Lever l’anonymat des copies d’un examen',
+            'description' => 'Fait apparaître les noms à la place des numéros d’anonymat dans la saisie des notes ; la levée est datée et nominative',
+            'group' => 'LMD',
+            'icon' => 'fa-mask',
+        ],
 
         // ===== Rattrapage LMD (PR10 — sessions 2e session) =====
         'lmd.rattrapage.view' => [
@@ -2396,7 +2402,7 @@ return [
             'session_reports.view',
             'planning.view', 'planning.edit', 'planning.manage',
             'lmd.planning.view', 'lmd.planning.edit',
-            'lmd.examens.view', 'lmd.examens.manage', 'lmd.examens.notes_lock',
+            'lmd.examens.view', 'lmd.examens.manage', 'lmd.examens.notes_lock', 'lmd.examens.anonymat.lever',
             'lmd.rattrapage.view', 'lmd.rattrapage.manage',
             'lmd.credit_wallet.view',
             'lmd.jury.view', 'lmd.jury.preside', 'lmd.jury.deliberate', 'lmd.jury.publish',

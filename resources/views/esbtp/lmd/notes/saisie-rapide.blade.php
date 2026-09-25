@@ -64,7 +64,7 @@
                 <thead>
                     <tr>
                         <th style="width: 40px;">#</th>
-                        <th>Étudiant</th>
+                        <th>{{ $numerosAnonymat !== null ? 'Copie (anonymat)' : 'Étudiant' }}</th>
                         <th style="width: 100px;">Matricule</th>
                         <th style="width: 120px; text-align: center;">Note /{{ $evaluation->bareme }}</th>
                         <th style="width: 80px; text-align: center;">Absent</th>
@@ -74,18 +74,23 @@
                     @foreach($etudiants as $index => $etudiant)
                         <tr>
                             <td class="lmd-student-num">{{ $index + 1 }}</td>
-                            <td>
-                                <span class="lmd-student-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</span>
-                            </td>
-                            <td class="lmd-student-matricule">{{ $etudiant->matricule }}</td>
+                            @if($numerosAnonymat !== null)
+                                <td><span class="lmd-student-name"><i class="fas fa-mask" style="color:#0453cb;margin-right:.35rem;"></i>{{ $numerosAnonymat[$etudiant->id] ?? 'Copie sans numéro' }}</span></td>
+                                <td class="lmd-student-matricule">—</td>
+                            @else
+                                <td>
+                                    <span class="lmd-student-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</span>
+                                </td>
+                                <td class="lmd-student-matricule">{{ $etudiant->matricule }}</td>
+                            @endif
                             <td style="text-align: center;">
                                 <input type="hidden" name="notes[{{ $index }}][etudiant_id]" value="{{ $etudiant->id }}">
-                                <input type="number"
+                                <input type="text"
                                        name="notes[{{ $index }}][note]"
                                        class="lmd-note-input"
-                                       value="{{ $notesExistantes[$etudiant->id] ?? '' }}"
-                                       min="0" max="{{ $evaluation->bareme }}" step="0.01"
-                                       inputmode="decimal" lang="fr"
+                                       value="{{ isset($notesExistantes[$etudiant->id]) ? str_replace('.', ',', (string) $notesExistantes[$etudiant->id]) : '' }}"
+                                       pattern="^\d+([.,]\d{1,2})?$" title="Nombre entre 0 et {{ $evaluation->bareme }}, par exemple 12,5"
+                                       inputmode="decimal" autocomplete="off"
                                        placeholder="--"
                                        data-bareme="{{ $evaluation->bareme }}"
                                        oninput="colorNote(this)">
@@ -119,7 +124,7 @@
 @push('scripts')
 <script>
 function colorNote(input) {
-    const val = parseFloat(input.value);
+    const val = parseFloat(String(input.value).replace(',', '.'));
     const bareme = parseFloat(input.dataset.bareme) || 20;
     const pct = val / bareme;
     input.classList.remove('note-high', 'note-low');

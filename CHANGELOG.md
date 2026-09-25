@@ -13,6 +13,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Ajouts
+- **Examens : de l'examen à la saisie des notes** (`/esbtp/examens/{id}`). Le bouton « Ouvrir la feuille de notes » crée une fois pour toutes l'évaluation de l'examen (classe, élément constitutif, barème, coefficient, semestre) et ouvre sa saisie ; il devient ensuite « Saisir les notes ».
+- **Examens : anonymat réel des copies.** Un examen anonyme attribue un numéro à chaque copie, dans un ordre tiré au sort ; la saisie affiche les numéros au lieu des noms. La levée de l'anonymat est un droit à part (« Lever l'anonymat des copies d'un examen »), datée et nominative.
+- **Rattrapage : « Rattacher à la session normale »** sur une session de rattrapage créée sans session d'origine, qui restait un cul-de-sac. Depuis la liste des ajournés, un lien ouvre la session de chaque jury pour lancer le rattrapage, et un bouton mène aux sessions de rattrapage.
 - **Paie : payer les heures réellement émargées** (Paie → Paramètres → Heures payées). Au choix de l'école : la durée prévue de chaque séance faite (fonctionnement actuel, par défaut) ou la durée depuis l'émargement de début jusqu'à la fin prévue, prolongations accordées comprises. Un retard de 40 minutes n'est plus payé comme une heure pleine.
 - **Paie : « Taux horaire manquant — Renseigner ».** Un enseignant qui a fait des heures sans taux renseigné apparaît dans l'état de paie avec ce repère et un lien vers sa fiche, au lieu d'être absent de la liste sans explication. La préparation d'un bulletin le signale aussi.
 - **Notes LMD : bouton « Valider mes notes »** (`/esbtp/lmd/notes`). La saisie reste enregistrée en brouillon à chaque note ; le nouveau bouton valide d'un coup les notes de la grille, qui alimentent alors les fiches et les bulletins. « Enregistrer le brouillon » garde l'ancien comportement.
@@ -71,6 +74,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **KLASSCI Care s'active à distance, sans passer par le serveur** — l'identifiant qui relie une instance au support (`MASTER_SUPPORT_TOKEN`) se pose désormais par le CLI (`klassci env <instance> MASTER_SUPPORT_TOKEN --value=…`), comme le code d'instance ou le secret du portail de réinscription. Le jeton est contrôlé à la forme exacte qu'émet adminKlassci, 56 caractères : un jeton tronqué au copier-coller est refusé tout de suite au lieu d'échouer plus tard, en silence, à la première demande d'aide. Il n'est jamais relu, seule son empreinte l'est.
 
 ### Correctifs
+- **Examens : le verrou des notes protège vraiment les notes.** Une fois l'examen verrouillé, aucune note de sa feuille ne peut plus être écrite, quel que soit l'écran. Le verrou n'était lu par rien.
+- **Rattrapage : une session de rattrapage exige sa session normale d'origine** à la création, et une session sans examen ne peut plus être publiée.
+- **Bulletins LMD : un bulletin sans aucune note ne peut plus être publié** (il sortait à 0,00 et 0 crédit en PDF officiel). Le dépublier reste possible.
+- **Saisie rapide LMD : la virgule est acceptée et le barème contrôlé** ; une note au-delà du barème n'enregistre rien et le dit. Les formulaires de création d'évaluation refusent des heures inversées au lieu de compter 22 heures.
+- **Examen : le bouton du bloc Surveillants s'appelle « Ajouter un surveillant »** (il disait « Ajouter au jury »).
 - **Paie : un bulletin à net négatif ne peut plus être enregistré ni validé.** La préparation affiche le net en rouge avec la raison (retenues supérieures au brut) et désactive l'enregistrement ; un bulletin déjà enregistré avec un net négatif est refusé à la validation.
 - **Fiche de paie PDF : le net à payer est lisible** (il était écrit en blanc sur un fond que le moteur PDF ne dessinait pas) **et les marges ne tombent plus à zéro** quand le réglage de marge est vide : toute marge PDF vide reprend la valeur livrée, avec 5 mm au minimum.
 - **Jury LMD : plus aucune décision automatique sans quorum.** Le calcul refuse de s'exécuter tant que le président est absent ou que le nombre de membres présents est sous le quorum de l'école, et le dit ; le jury ne passe plus « en cours » pour rien.

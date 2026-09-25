@@ -3519,6 +3519,9 @@ Route::prefix('esbtp/lmd/rattrapage')->name('esbtp.lmd.rattrapage.')
         Route::post('/sessions/{session}/publier', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'publier'])
             ->middleware(['permission:lmd.rattrapage.manage', 'throttle:30,1'])
             ->name('publier');
+        Route::post('/sessions/{session}/rattacher', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'rattacher'])
+            ->middleware(['permission:lmd.rattrapage.manage', 'throttle:30,1'])
+            ->name('rattacher');
 
         // Saisie des notes de seconde session. Le controleur accepte
         // lmd.rattrapage.notes.saisir OU lmd.rattrapage.manage : la garde de route
@@ -3575,6 +3578,12 @@ Route::prefix('esbtp/examens')->name('esbtp.examens.')
         Route::post('/{examen}/surveillants', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'assignSurveillants'])
             ->middleware(['permission:lmd.examens.manage', 'throttle:30,1'])
             ->name('surveillants.assign');
+        Route::post('/{examen}/feuille-de-notes', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'ouvrirFeuilleDeNotes'])
+            ->middleware(['permission:lmd.examens.manage|lmd.notes.manage', 'throttle:30,1'])
+            ->name('feuille-de-notes');
+        Route::post('/{examen}/lever-anonymat', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'leverAnonymat'])
+            ->middleware(['permission:lmd.examens.anonymat.lever', 'throttle:10,1'])
+            ->name('lever-anonymat');
         Route::post('/{examen}/lock-notes', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'lockNotes'])
             ->middleware(['permission:lmd.examens.notes_lock', 'throttle:30,1'])
             ->name('lock-notes');
