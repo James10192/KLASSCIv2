@@ -1510,7 +1510,6 @@ function showAvailabilityToast(message, type = 'danger') {
 
 function showFormError(message) {
     showAvailabilityToast(message, 'danger');
-    debugAlert(message);
 }
 
 function setAvailabilityErrorMessage(message) {
@@ -1972,7 +1971,10 @@ function validateTeacherAvailability() {
     }
 
     if (!availabilityData[teacherId]) {
-        showFormError('Aucune disponibilité configurée pour cet enseignant.\n\nVeuillez configurer ses disponibilités avant de programmer cette séance.');
+        const errorMessage = 'Aucune disponibilité configurée pour cet enseignant.';
+        showFormError(errorMessage);
+        setAvailabilityErrorMessage(errorMessage);
+        proposerRaccourcisDisponibilite(teacherId, selectedDay, startHour, endHour);
         return false;
     }
 
@@ -2492,11 +2494,15 @@ function handleAssociateTeacher() {
         if (!r.ok) throw payload;
         return payload;
     })
-    .then(data => {
+    .then(async data => {
         // Re-fetch full data to refresh both lists
         refreshManageTeachersContent();
         // Update matière data-enseignants attribute for the main form
         syncLinkedTeachersToForm(data.linked_ids || []);
+        // La page ne connaît que les enseignants présents à son chargement :
+        // sans cet ajout, l'enseignant associé n'apparaissait qu'après rechargement.
+        integrerEnseignants(data.linked_teachers || []);
+        await chargerDisponibilites(teacherId);
         updateTeachersForSubject();
         // L'enseignant qu'on vient d'associer est celui qu'on veut programmer :
         // on le sélectionne plutôt que de laisser l'utilisateur le rechercher.
@@ -2504,8 +2510,10 @@ function handleAssociateTeacher() {
         if (teacherSelect && teacherSelect.querySelector(`option[value="${teacherId}"]`)) {
             teacherSelect.value = String(teacherId);
             teacherSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            showAvailabilityToast('Enseignant associé et sélectionné pour cette séance.', 'success');
+        } else {
+            showAvailabilityToast('Enseignant associé à la matière.', 'success');
         }
-        showAvailabilityToast('Enseignant associé et sélectionné pour cette séance.', 'success');
     })
     .catch(err => {
         showAvailabilityToast(err.message || "Erreur lors de l'association.", 'danger');
@@ -2577,6 +2585,28 @@ function refreshManageTeachersContent() {
             renderManageTeachersContent(data.linked_teachers, data.available_teachers);
         }
     });
+}
+
+function integrerEnseignants(liste) {
+    liste.forEach((t) => {
+        const id = String(t.id);
+        if (!seanceData.teachers[id]) {
+            seanceData.teachers[id] = { id: t.id, name: t.name, user: { name: t.name } };
+        }
+    });
+}
+
+// Disponibilités réelles de l'enseignant (même format que la grille de la page).
+// Sans elles, un enseignant tout juste associé paraîtrait indisponible partout.
+async function chargerDisponibilites(teacherId) {
+    if (seanceData.availability[teacherId]) return;
+    try {
+        const r = await fetch(`{{ url('esbtp/enseignants') }}/${encodeURIComponent(teacherId)}/availability-data`, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.success && d.data) seanceData.availability[teacherId] = d.data;
+    } catch (e) { /* la validation proposera de le rendre disponible */ }
 }
 
 function syncLinkedTeachersToForm(linkedIds) {
