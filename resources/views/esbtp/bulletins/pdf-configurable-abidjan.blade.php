@@ -562,10 +562,12 @@
                                 <td class="info-value">{{ ($inscription?->is_redoublant ?? false) ? 'Oui' : 'Non' }}</td>
                             </tr>
                         @endif
+                        @if(($settings['bulletin_show_student_phone'] ?? '1') == '1')
                         <tr>
                                 <td class="info-label">Téléphone :</td>
                                 <td class="info-value">{{ $etudiant->telephone ?? 'Non renseigné' }}</td>
                             </tr>
+                        @endif
                         </table>
                     </td>
                     <td class="info-group">

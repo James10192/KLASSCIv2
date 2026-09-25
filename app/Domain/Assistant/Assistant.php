@@ -8,6 +8,7 @@ use App\Domain\Assistant\Fournisseurs\EvenementModele;
 use App\Domain\Assistant\Fournisseurs\RequeteModele;
 use App\Domain\Assistant\Harnais\BoucleAgent;
 use App\Domain\Assistant\Harnais\ConstructeurDePrompt;
+use App\Domain\Assistant\Harnais\FilDeReponse;
 use App\Domain\Assistant\Harnais\ResultatBoucle;
 use App\Domain\Assistant\Modeles\RegistreDesModeles;
 use App\Domain\Assistant\Outils\CatalogueOutils;
@@ -60,12 +61,18 @@ class Assistant
         );
 
         $affichage = new ConstructeurAffichage($this->contextProvider);
+        $fil = new FilDeReponse();
         $resultat = $this->boucle->executer(
             $this->registre->candidats($modeleDemande),
             $requete,
             $user,
             $ui,
-            fn (string $nom, array $args, array $res) => $affichage->enregistrer($conversation, $nom, $args, $res)
+            function (string $nom, array $args, array $res) use ($affichage, $conversation): ?array {
+                $affichage->enregistrer($conversation, $nom, $args, $res);
+
+                return $affichage->widgetPour($nom, $res);
+            },
+            $fil,
         );
 
         $this->journaliser($resultat, $conversation, $user);
@@ -80,6 +87,9 @@ class Assistant
                 'erreur' => $resultat->estErreur(),
                 'interrompu' => $resultat->estInterrompu(),
                 'modele' => $resultat->modele,
+                'parties' => $fil->toArray(),
+                'trace' => $resultat->trace,
+                'suites' => [],
             ];
         }
 
@@ -102,6 +112,7 @@ class Assistant
                 : $final['text'];
         }
         $ui->text($ajout);
+        $fil->texte($ajout);
         $texte = $ajout === '' ? $resultat->texte : trim($resultat->texte . "\n\n" . $ajout);
 
         return [
@@ -113,6 +124,9 @@ class Assistant
             'erreur' => false,
             'interrompu' => false,
             'modele' => $resultat->modele,
+            'parties' => $fil->toArray(),
+            'trace' => $resultat->trace,
+            'suites' => $affichage->suites(),
         ];
     }
 
