@@ -57,7 +57,11 @@ class GrilleMobileDefilementTest extends TestCase
             ->json('html');
 
         $this->assertStringContainsString('id="etudiants-grid-mobile"', $tranche);
-        $this->assertGreaterThan(0, substr_count($tranche, 'class="student-card'));
+        $this->assertGreaterThan(0, substr_count($tranche, 'class="etm-card'));
+
+        // Le defilement n'ajoute a la grille que les elements portant la classe de
+        // la carte : si l'une change sans l'autre, la grille s'arrete en silence.
+        $this->assertStringContainsString("carte.classList.contains('etm-card')", $html);
     }
 
     public function test_le_tri_finit_par_l_identifiant(): void
