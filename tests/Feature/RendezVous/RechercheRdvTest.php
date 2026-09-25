@@ -167,7 +167,9 @@ class RechercheRdvTest extends TestCase
             ->assertJsonPath('data.rendez_vous.0.id', $ama->id)
             ->assertJsonPath('data.rendez_vous.0.reference', 'ABCD-1234')
             ->assertJsonPath('data.rendez_vous.0.date', Carbon::today()->addDays(2)->toDateString())
-            ->assertJsonPath('data.rendez_vous.0.etat_accueil', 'attendu');
+            ->assertJsonPath('data.rendez_vous.0.etat_accueil', 'attendu')
+            ->assertJsonMissingPath('data.rendez_vous.0.telephone')
+            ->assertJsonPath('data.rendez_vous.0.telephone_masque', \App\Services\Verification\MasqueContact::telephoneGroupe('+2250707123456'));
     }
 
     public function test_un_matricule_fait_de_chiffres_retrouve_la_reinscription(): void

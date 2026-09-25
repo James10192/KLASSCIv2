@@ -13,14 +13,6 @@
     foreach (range($anneeCourante, $anneeCourante - 4) as $a) {
         $anneeOptions[$a] = (string) $a;
     }
-    $libellesStatut = [
-        'present' => ['Présent', 'success'],
-        'fait' => ['Présent', 'success'],
-        'late' => ['En retard', 'warning'],
-        'absent' => ['Absent', 'danger'],
-        'not_signed' => ['Non émargé', 'danger'],
-        'bloqué' => ['Bloqué', 'danger'],
-    ];
 @endphp
 
 @section('content')

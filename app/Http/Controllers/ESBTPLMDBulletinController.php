@@ -59,6 +59,11 @@ class ESBTPLMDBulletinController extends Controller
             });
         }
 
+        // Base des indicateurs, prise AVANT la pagination : paginate() pose sa
+        // limite et son decalage sur la requete elle-meme, et une page 2 aurait
+        // compte les publies de zero ligne.
+        $base = clone $query;
+
         // Departage stable : la liste se charge par tranches.
         $bulletins = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
 
@@ -75,8 +80,8 @@ class ESBTPLMDBulletinController extends Controller
         // Sur tous les bulletins filtres, pas sur la premiere tranche : la
         // liste se lit d'un seul tenant au defilement.
         $kpis = [
-            'publies' => (clone $query)->reorder()->where('is_published', true)->count(),
-            'moyenne' => (clone $query)->reorder()->avg('moyenne_generale'),
+            'publies' => (clone $base)->where('is_published', true)->count(),
+            'moyenne' => (clone $base)->avg('moyenne_generale'),
         ];
 
         return view('esbtp.lmd.bulletins.index', compact('bulletins', 'classes', 'annees', 'kpis'));

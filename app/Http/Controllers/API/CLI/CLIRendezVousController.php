@@ -10,6 +10,7 @@ use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\RendezVous\GenerateurCreneaux;
 use App\Services\RendezVous\AccueilRdv;
 use App\Services\RendezVous\RechercheRdv;
+use App\Services\Verification\MasqueContact;
 use App\Models\ESBTPRdvReservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -93,7 +94,10 @@ class CLIRendezVousController extends BaseApiController
                 'dossier' => $r->candidature_id !== null ? 'candidature' : 'reinscription',
                 'reference' => $r->porteur()?->referencePubliqueAffichee(),
                 'matricule' => $r->demande?->etudiant?->matricule,
-                'telephone' => $r->telephone,
+                // Masque, comme la liste des familles a recontacter : le jeton CLI
+                // n'est pas l'ecran d'un agent, et la reponse finit dans un terminal
+                // ou un journal. Le numero complet sert a chercher, pas a lire.
+                'telephone_masque' => $r->telephone ? MasqueContact::telephoneGroupe($r->telephone) : null,
                 'date' => $r->creneau?->date?->toDateString(),
                 'heure' => $r->creneau ? $r->creneau->heureDebutHi().'-'.$r->creneau->heureFinHi() : null,
                 'statut' => $r->statut?->value,

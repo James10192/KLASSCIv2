@@ -245,6 +245,10 @@ class ListesLot2DefilementTest extends TestCase
 
         $this->assertSame(20, $kpis['publies']);
         $this->assertEquals(10, $kpis['moyenne']);
+
+        // Une ancienne adresse en ?page=2 ne change rien aux indicateurs.
+        $kpis = $this->get(route('esbtp.lmd.bulletins.index', ['page' => 2]))->assertOk()->viewData('kpis');
+        $this->assertSame(20, $kpis['publies']);
     }
 
     public function test_coordinateurs_les_compteurs_portent_sur_tous(): void

@@ -51,7 +51,7 @@ Mêmes règles que l'écran « Retrouver un rendez-vous » (`App\Services\Rendez
 ```json
 { "total": 1, "page": 1, "derniere_page": 1,
   "rendez_vous": [{ "id": 12, "nom": "KOUASSI Ama", "dossier": "candidature",
-    "reference": "AB12-CD34", "matricule": null, "telephone": "+2250707123456",
+    "reference": "AB12-CD34", "matricule": null, "telephone_masque": "+225 07 ** ** ** 56",
     "date": "2026-10-05", "heure": "10:00-10:30", "statut": "confirmee",
     "etat_accueil": "attendu", "absences": 0, "recue_le": null }] }
 ```
@@ -93,6 +93,9 @@ un premier courriel, c'est donc **ici** qu'on borne :
 3. `remettre { "quoi": "inconnues" }` pour le reste, puis `envoyer` jusqu'à `restantes: 0`
 
 ## Historique
+
+- 2026-09-25 — **Breaking** : `recherche` rend `telephone_masque` et plus `telephone`,
+  comme `familles`. Le numéro complet reste un critère de recherche (`q`).
 
 - 2026-09-25 — `recherche` : une saisie de chiffres cherche aussi le matricule et la
   référence, plus seulement le téléphone. Non cassant (plus de résultats, jamais moins).

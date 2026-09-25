@@ -1,6 +1,6 @@
 {{-- Un emargement de l'enseignant : rendu par la page et par la suite chargee au defilement. --}}
 @php
-    $libellesStatut ??= [
+    $libellesStatut = [
         'present' => ['Présent', 'success'],
         'fait' => ['Présent', 'success'],
         'late' => ['En retard', 'warning'],
