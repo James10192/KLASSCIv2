@@ -18,8 +18,8 @@ use Tests\TestCase;
 class AnalyseurEmailTest extends TestCase
 {
     /**
-     * Empreinte du fichier partage avec klassci-landing (scripts/verifier-email.mjs),
-     * apres ajout de la faute glail.com relevee sur les reservations de l'ESBTP Abidjan.
+     * Empreinte du JSON compact partage avec klassci-landing (scripts/verifier-email.mjs) :
+     * a recalculer des deux cotes a chaque modification du fichier.
      */
     private const EMPREINTE_LANDING = 'eef55ca82163b43e1245db191cc4322894a0ec5c3feaaf215c987eff1517ee22';
 
