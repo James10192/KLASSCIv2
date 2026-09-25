@@ -123,7 +123,7 @@ class ListesLot2DefilementTest extends TestCase
             'presences' => ['esbtp.attendances.index', 'esbtp_attendances', '`esbtp_attendances`.`id` desc'],
             'rapports de cours' => ['esbtp.rapports-cours.index', 'esbtp_session_reports', '`id` desc'],
             'declarations TPE' => ['esbtp.tpe-validation.index', 'esbtp_tpe_declarations', '`id` desc'],
-            'audit comptable' => ['esbtp.audit.comptabilite', 'audits', '`id` desc'],
+            'journal d audit' => ['esbtp.audit.index', 'audits', '`id` desc'],
             'activite des utilisateurs' => ['esbtp.audit.user-activity', 'audits', '`id` desc'],
             'jurys LMD' => ['esbtp.lmd.jurys.index', 'esbtp_lmd_jurys', '`id` desc'],
             'sessions de rattrapage' => ['esbtp.lmd.rattrapage.index', 'esbtp_lmd_sessions', '`id` desc'],
@@ -200,11 +200,12 @@ class ListesLot2DefilementTest extends TestCase
         // milieu de ce jour. Elle repete l'en-tete, avec la cle du jour, pour que
         // le defilement l'ecarte au lieu de l'afficher deux fois.
         for ($i = 0; $i < 51; $i++) {
-            $this->ligneMinimale('audits', ['auditable_type' => 'App\\Models\\ESBTPPaiement', 'event' => 'updated', 'created_at' => now()->startOfSecond(), 'updated_at' => now()]);
+            $this->ligneMinimale('audits', ['auditable_type' => 'App\\Models\\ESBTPPaiement', 'event' => 'updated', 'created_at' => now()->startOfSecond(), 'updated_at' => now(),
+                'user_id' => auth()->id(), 'user_type' => \App\Models\User::class]);
         }
 
         // La mise en place du test ecrit elle aussi des actions, toutes du jour.
-        $total = DB::table('audits')->count();
+        $total = DB::table('audits')->where('event', '!=', 'retrieved')->count();
 
         $html = $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
             ->getJson(route('esbtp.audit.user-activity', ['page' => 2, 'mode' => 'rows']))
@@ -213,7 +214,7 @@ class ListesLot2DefilementTest extends TestCase
             ->json('rows_html');
 
         $this->assertSame(1, substr_count($html, 'data-li-cle="jour-'.now()->format('Y-m-d').'"'));
-        $this->assertSame(min($total, 100) - 50, substr_count($html, 'au-timeline-item '));
+        $this->assertSame(min($total, 100) - 50, substr_count($html, 'class="jda-ligne'));
     }
 
     public function test_suivi_des_pieces_la_suite_repond_en_lignes_seules(): void

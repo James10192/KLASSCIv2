@@ -54,6 +54,9 @@ class AcademicAlert extends Model implements AuditableContract
         'dismissed_at' => 'datetime',
     ];
 
+    /** Jamais 'retrieved' : chaque lecture ecrirait une ligne vide dans le journal. */
+    protected $auditEvents = ['created', 'updated', 'deleted', 'restored'];
+
     protected $auditInclude = [
         'severity',
         'status',
