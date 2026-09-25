@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\API\CLI\CLICorrectionFautesController;
 use App\Http\Controllers\API\CLI\CLIEmailsController;
+use App\Http\Controllers\API\CLI\CLIRenvoiConvocationsController;
 use App\Http\Controllers\API\CLI\CLIRattrapageConvocationsController;
 use App\Http\Controllers\API\CLI\CLISuiviConvocationsController;
 use Illuminate\Support\Facades\Route;
@@ -23,3 +24,8 @@ Route::get('/rendez-vous/familles', [CLISuiviConvocationsController::class, 'fam
 // Convocations d'avant le suivi : rattacher l'identifiant MailPulse (simulation par defaut).
 Route::post('/rendez-vous/rattrapage-convocations', CLIRattrapageConvocationsController::class)
     ->middleware('throttle:5,1')->name('rendez-vous.rattrapage-convocations');
+// Renvoi CIBLE de convocations (1 a 50 reservations), jamais toute l'ecole.
+Route::get('/rendez-vous/convocations/adresses-corrigees', [CLIRenvoiConvocationsController::class, 'adressesCorrigees'])
+    ->name('rendez-vous.convocations.adresses-corrigees');
+Route::post('/rendez-vous/convocations/renvoyer', [CLIRenvoiConvocationsController::class, 'renvoyer'])
+    ->middleware('throttle:10,1')->name('rendez-vous.convocations.renvoyer');
