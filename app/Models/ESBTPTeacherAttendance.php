@@ -19,6 +19,8 @@ class ESBTPTeacherAttendance extends Model
         'daily_code_id',
         'date',
         'status',
+        'minutes_retard',
+        'justification',
         'type', // 'start' ou 'end'
         'attempts',
         'validated_at',

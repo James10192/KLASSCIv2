@@ -29,15 +29,16 @@ class ESBTPTeacherAttendanceController extends Controller
             ->latest()
             ->first();
 
-        $todayAttendances = ESBTPTeacherAttendance::with(['teacher', 'course.matiere'])
+        $todayAttendances = ESBTPTeacherAttendance::with(['teacher', 'course.matiere', 'course.emploiTemps.classe'])
             ->whereDate('created_at', $date)
             ->orderBy('created_at', 'desc')
             ->get();
 
         $codeStats = $dailyCode ? $dailyCode->getAttemptsStatistics() : null;
         $settings = ESBTPAttendanceSettings::getAll();
+        $prolongationsEnAttente = \App\Models\ESBTPProlongationSeance::where('statut', \App\Models\ESBTPProlongationSeance::EN_ATTENTE)->count();
 
-        return view('esbtp.admin.attendance.index', compact('dailyCode', 'todayAttendances', 'codeStats', 'settings'));
+        return view('esbtp.admin.attendance.index', compact('dailyCode', 'todayAttendances', 'codeStats', 'settings', 'prolongationsEnAttente', 'date'));
     }
 
     /**
@@ -492,6 +493,7 @@ class ESBTPTeacherAttendanceController extends Controller
 
             return response()->json([
                 'success' => true,
+                'id' => $dailyCode->id,
                 'code' => $dailyCode->code,
                 'valid_until' => $dailyCode->valid_until->format('Y-m-d H:i:s'),
                 'remaining_minutes' => $dailyCode->getRemainingValidityInMinutes()

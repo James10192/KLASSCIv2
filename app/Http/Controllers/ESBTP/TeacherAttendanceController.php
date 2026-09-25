@@ -20,6 +20,8 @@ use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
+use App\Domain\EmploiTemps\FenetresDEmargement;
+use App\Domain\EmploiTemps\ProlongationDeSeance;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -59,6 +61,9 @@ class TeacherAttendanceController extends Controller
             $course->teacherAttendance = ESBTPTeacherAttendance::where('teacher_id', $user->id)
                 ->where('course_id', $course->id)
                 ->whereDate('date', $today)
+                // L'émargement de début décide de l'affichage (présent, en
+                // retard ou absent) ; celui de fin ne le remplace pas.
+                ->orderByRaw("type = 'start' desc")
                 ->first();
         });
 
@@ -134,12 +139,13 @@ class TeacherAttendanceController extends Controller
         // Valider les données du formulaire
         $request->validate([
             'code' => 'required|string|size:6',
-            'course_id' => 'required|exists:esbtp_seance_cours,id'
+            'course_id' => 'required|exists:esbtp_seance_cours,id',
+            'justification' => 'nullable|string|max:1000',
         ]);
 
         try {
             // Find the active daily code
-            $dailyCode = ESBTPDailyCode::where('code', $request->code)
+            $dailyCode = ESBTPDailyCode::where('code', mb_strtoupper(trim((string) $request->code)))
                 ->where('status', 'active')
                 ->where('is_active', true)
                 ->first();
@@ -179,10 +185,13 @@ class TeacherAttendanceController extends Controller
                 ->first();
 
             // **DÉTERMINER QUEL TYPE D'ÉMARGEMENT FAIRE**
+            // Les délais sont des réglages d'école (FenetresDEmargement), et la
+            // fin tient compte d'une prolongation accordée pour aujourd'hui.
+            $fenetres = app(FenetresDEmargement::class);
             $now = Carbon::now();
             $heureDebut = Carbon::parse($seanceCours->heure_debut);
-            $heureFin = Carbon::parse($seanceCours->heure_fin);
-            $fenetreClotureDebut = $heureFin->copy()->subMinutes(20);
+            $heureFin = app(ProlongationDeSeance::class)->heureFinEffective($seanceCours);
+            $fenetreClotureDebut = $fenetres->ouvertureFin($heureFin);
 
             // Est-on dans la fenêtre de clôture?
             $isInClosingWindow = $now->gte($fenetreClotureDebut);
@@ -219,20 +228,28 @@ class TeacherAttendanceController extends Controller
             if ($emargementType === 'start') {
                 // ========== ÉMARGEMENT DE DÉBUT ==========
 
-                // FENÊTRE 1 : AVANT heure_debut → ❌ IMPOSSIBLE d'émarger
-                if ($now < $heureDebut) {
+                // FENÊTRE 1 : avant l'ouverture (début − avance autorisée) → refus
+                $ouverture = $fenetres->ouvertureDebut($heureDebut);
+                if ($now < $ouverture) {
                     $dailyCode->recordAttempt(false);
-                    return back()->with('error', 'Vous ne pouvez pas émarger avant le début du cours (' . $heureDebut->format('H:i') . ').');
+                    return back()->with('error', 'L\'émargement de ce cours ouvre à ' . $ouverture->format('H:i') . '.');
                 }
 
-                // FENÊTRE 2 : heure_debut → heure_debut + 20min → ✅ PRÉSENT
-                $limite20min = $heureDebut->copy()->addMinutes(20);
+                $limite20min = $fenetres->limitePresent($heureDebut);
+                $limite45min = $fenetres->limiteRetard($heureDebut);
+                $minutesRetard = $now->gt($limite20min) ? (int) $heureDebut->diffInMinutes($now) : null;
+                $justification = trim((string) $request->input('justification', ''));
 
-                // FENÊTRE 3 : heure_debut + 20min → heure_debut + 45min → ⚠️ RETARD
-                $limite45min = $heureDebut->copy()->addMinutes(45);
-
-                // FENÊTRE 4 : heure_debut + 45min et plus → ❌ ABSENT (workflow fermé)
-                if ($now > $limite45min) {
+                // Au-delà du délai de retard : la conduite est un réglage d'école.
+                if ($now > $limite45min && $fenetres->exigeJustification()) {
+                    if (mb_strlen($justification) < 5) {
+                        // Pas un refus : on redemande, avec le champ de motif ouvert.
+                        return back()
+                            ->withInput()
+                            ->with('justification_requise', $seanceCours->id)
+                            ->with('error', 'Vous émargez ' . $minutesRetard . ' minutes après le début. Indiquez le motif du retard pour que votre émargement soit enregistré.');
+                    }
+                } elseif ($now > $limite45min) {
                     // Marquer enseignant ABSENT
                     ESBTPTeacherAttendance::create([
                         'teacher_id' => $user->id, // users.id (FK), pas le profil esbtp_teachers
@@ -240,10 +257,11 @@ class TeacherAttendanceController extends Controller
                         'daily_code_id' => $dailyCode->id,
                         'date' => now()->toDateString(),
                         'status' => 'absent',
+                        'minutes_retard' => $minutesRetard,
                         'type' => 'start',
                         'attempts' => 1,
                         'ip_address' => $request->ip(),
-                        'device_info' => json_encode(['user_agent' => $request->userAgent()]),
+                        'device_info' => ['user_agent' => $request->userAgent()],
                         'validated_at' => now()
                     ]);
 
@@ -255,7 +273,7 @@ class TeacherAttendanceController extends Controller
                     $dailyCode->recordAttempt(true);
 
                     return redirect()->route('teacher.dashboard')
-                        ->with('error', 'Délai d\'émargement dépassé (45 minutes après le début). Vous êtes marqué ABSENT. La séance ne sera pas comptabilisée.');
+                        ->with('error', 'Délai d\'émargement dépassé (' . $fenetres->minutes(FenetresDEmargement::CLE_RETARD) . ' minutes après le début). Vous êtes marqué absent : la séance ne sera pas comptée. Adressez-vous à la coordination si c\'est une erreur.');
                 }
 
                 // Déterminer le statut : present ou late
@@ -268,10 +286,12 @@ class TeacherAttendanceController extends Controller
                     'daily_code_id' => $dailyCode->id,
                     'date' => now()->toDateString(),
                     'status' => $status,
+                    'minutes_retard' => $status === 'late' ? $minutesRetard : null,
+                    'justification' => $justification !== '' ? mb_substr($justification, 0, 1000) : null,
                     'type' => 'start',
                     'attempts' => 1,
                     'ip_address' => $request->ip(),
-                    'device_info' => json_encode(['user_agent' => $request->userAgent()]),
+                    'device_info' => ['user_agent' => $request->userAgent()],
                     'validated_at' => now()
                 ]);
 
@@ -301,14 +321,13 @@ class TeacherAttendanceController extends Controller
 
                 // Vérifier qu'on est dans la fenêtre de clôture
                 if (!$isInClosingWindow) {
-                    return back()->with('error', 'L\'émargement de fin ne peut être fait qu\'à partir de ' . $fenetreClotureDebut->format('H:i') . ' (20 minutes avant la fin du cours).');
+                    return back()->with('error', 'L\'émargement de fin ne peut être fait qu\'à partir de ' . $fenetreClotureDebut->format('H:i') . '.');
                 }
 
-                // FENÊTRE : heure_fin - 20min → heure_fin + 30min → ✅ OK
-                $fenetreClotureFin = $heureFin->copy()->addMinutes(30);
+                $fenetreClotureFin = $fenetres->fermetureFin($heureFin);
 
                 if ($now > $fenetreClotureFin) {
-                    return back()->with('error', 'Délai d\'émargement de fin dépassé (30 minutes après la fin du cours).');
+                    return back()->with('error', 'Délai d\'émargement de fin dépassé (' . $fenetreClotureFin->format('H:i') . '). Si le cours a été prolongé, la prolongation doit être accordée avant cette heure.');
                 }
 
                 // Créer l'émargement de FIN
@@ -321,7 +340,7 @@ class TeacherAttendanceController extends Controller
                     'type' => 'end',
                     'attempts' => 1,
                     'ip_address' => $request->ip(),
-                    'device_info' => json_encode(['user_agent' => $request->userAgent()]),
+                    'device_info' => ['user_agent' => $request->userAgent()],
                     'validated_at' => now()
                 ]);
 
@@ -938,17 +957,22 @@ class TeacherAttendanceController extends Controller
 
         // **VÉRIFICATION DE LA FENÊTRE POUR L'APPEL DE FIN**
         $now = Carbon::now();
-        $heureFin = Carbon::parse($seance->heure_fin);
-        $fenetreDebut = $heureFin->copy()->subMinutes(20); // 20 minutes avant la fin
+        $heureFin = app(ProlongationDeSeance::class)->heureFinEffective($seance);
+        $fenetreDebut = app(FenetresDEmargement::class)->ouvertureFin($heureFin);
 
-        // Vérifier si on peut faire l'appel de fin (dans la fenêtre 20 min avant fin)
+        // Vérifier si on peut faire l'appel de fin (fenêtre de fin réglée par l'école)
         $canEndCall = $now >= $fenetreDebut;
         $endCallMessage = null;
 
         if (!$canEndCall) {
-            $endCallMessage = 'L\'appel de fin sera disponible à partir de ' . $fenetreDebut->format('H:i') . ' (20 minutes avant la fin du cours).';
+            $endCallMessage = 'L\'appel de fin sera disponible à partir de ' . $fenetreDebut->format('H:i') . '.';
         }
 
-        return view('teacher.select-call-type', compact('seance', 'workflow', 'canEndCall', 'endCallMessage'));
+        $prolongations = \App\Models\ESBTPProlongationSeance::where('seance_cours_id', $seance->id)
+            ->whereDate('date', today())
+            ->latest()
+            ->get();
+
+        return view('teacher.select-call-type', compact('seance', 'workflow', 'canEndCall', 'endCallMessage', 'prolongations', 'heureFin'));
     }
 }

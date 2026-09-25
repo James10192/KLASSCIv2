@@ -315,6 +315,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::put('/teacher/profile', [TeacherController::class, 'updateProfile'])->name('teacher.profile.update');
         Route::put('/teacher/profile/password', [TeacherController::class, 'updatePassword'])->name('teacher.profile.password.update');
         Route::get('/teacher/select-call-type/{seance}', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'selectCallType'])->name('teacher.select-call-type');
+        Route::post('/teacher/seances/{seance}/prolongation', [App\Http\Controllers\ESBTP\ProlongationSeanceController::class, 'demander'])->whereNumber('seance')->middleware('throttle:10,1')->name('teacher.prolongation.demander');
 
         // Routes pour les rapports de sÃ©ance
         Route::get('/teacher/session-report/create/{seance}', [App\Http\Controllers\ESBTP\SessionReportController::class, 'create'])->name('teacher.session-report.create');
@@ -1994,6 +1995,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Routes pour l'Ã©margement - Interface Enseignant
+    // Prolongation d'un cours : décision de la coordination, avec contrôle des conflits
+    Route::prefix('esbtp/prolongations')->name('esbtp.prolongations.')->middleware(['auth', 'permission:emargement.prolongation.decide'])->group(function () {
+        Route::get('/', [App\Http\Controllers\ESBTP\ProlongationSeanceController::class, 'index'])->name('index');
+        Route::post('/{prolongation}/accorder', [App\Http\Controllers\ESBTP\ProlongationSeanceController::class, 'accorder'])->whereNumber('prolongation')->middleware('throttle:30,1')->name('accorder');
+        Route::post('/{prolongation}/refuser', [App\Http\Controllers\ESBTP\ProlongationSeanceController::class, 'refuser'])->whereNumber('prolongation')->middleware('throttle:30,1')->name('refuser');
+    });
+
     Route::prefix('esbtp/teacher/attendance')->name('esbtp.teacher.attendance.')->middleware(['auth', 'role:enseignant'])->group(function () {
         Route::get('/', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'index'])->name('index')->middleware('permission:attendances.view_own');
         Route::get('/history', [App\Http\Controllers\ESBTP\TeacherAttendanceController::class, 'history'])->name('history')->middleware('permission:attendances.view_own');

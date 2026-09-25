@@ -1327,6 +1327,9 @@
                 </div>
             </div>
 
+
+            @include('esbtp.settings.partials.emargement')
+
                 </div>
                 <!-- End Tab 1: Général -->
 

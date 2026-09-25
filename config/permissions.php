@@ -888,6 +888,12 @@ return [
         ],
 
         // ===== Présences =====
+        'emargement.prolongation.decide' => [
+            'label' => 'Accorder ou refuser la prolongation d’un cours',
+            'description' => 'Décide des demandes de prolongation des enseignants, après contrôle des conflits (classe, salle, autre cours de l’enseignant)',
+            'group' => 'Présences',
+            'icon' => 'fa-clock-rotate-left',
+        ],
         'attendances.view' => [
             'label' => 'Voir les présences',
             'group' => 'Présences',
@@ -2355,6 +2361,7 @@ return [
         ],
 
         'coordinateur' => [
+            'emargement.prolongation.decide',
             'admin.access', 'dashboard.view',
             'students.view', 'students.view_own',
             'students.create', 'students.edit', 'students.delete',
@@ -2434,6 +2441,7 @@ return [
         ],
 
         'directeurEtudes' => [
+            'emargement.prolongation.decide',
             'dashboard.view',
             'students.view', 'students.view_own',
             'students.accessibility.view', 'students.accessibility.view_full',

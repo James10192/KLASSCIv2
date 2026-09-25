@@ -321,13 +321,13 @@
             </div>
             <div class="course-detail-item">
                 <i class="fas fa-users"></i>
-                <span>{{ $seance->classe->name ?? 'Classe non définie' }}</span>
+                <span>{{ $seance->emploiTemps->classe->name ?? $seance->classe->name ?? 'Classe non définie' }}</span>
             </div>
             <div class="course-detail-item">
                 <i class="fas fa-clock"></i>
                 <span>
                     {{ $seance->heure_debut ? \Carbon\Carbon::parse($seance->heure_debut)->format('H:i') : 'N/A' }} - 
-                    {{ $seance->heure_fin ? \Carbon\Carbon::parse($seance->heure_fin)->format('H:i') : 'N/A' }}
+                    {{ isset($heureFin) ? $heureFin->format('H:i') : ($seance->heure_fin ? \Carbon\Carbon::parse($seance->heure_fin)->format('H:i') : 'N/A') }}
                 </span>
             </div>
             <div class="course-detail-item">
@@ -401,6 +401,10 @@
             </div>
         </div>
     </div>
+
+    @if($workflow->attendance_start_signed && ! $workflow->attendance_end_signed && isset($prolongations))
+        @include('teacher.partials.prolongation-card')
+    @endif
 
     <!-- Sélection du type d'appel -->
     <div class="call-type-selection">
