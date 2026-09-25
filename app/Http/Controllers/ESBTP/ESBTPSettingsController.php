@@ -56,7 +56,10 @@ class ESBTPSettingsController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('role:superAdmin|secretaire');
+        // Pas de liste de rôles ici : chaque route porte sa permission (system.manage
+        // pour la page et l'enregistrement, settings.pdf.manage pour l'aperçu PDF,
+        // en lecture seule). Un rôle personnalisé à qui l'école donne la permission
+        // doit ouvrir la page, pas tomber sur une 403 depuis le lien « Paramètres ».
     }
 
     /**
