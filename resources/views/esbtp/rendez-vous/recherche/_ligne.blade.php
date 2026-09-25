@@ -53,7 +53,7 @@
     <div class="rdr-actions">
         @if($_voitDossier)
             <a class="rdv-btn rdv-btn--ghost rdv-btn--sm"
-               href="{{ $_estCandidature ? route('esbtp.candidatures.index', ['reference' => $_ref]) : route('esbtp.reinscription-demandes.index', ['reference' => $_ref]) }}"><i class="fas fa-folder-open"></i>Dossier</a>
+               href="{{ \App\Domain\Admissions\DemandeDInscription::lien($resa->candidature_id, $resa->reinscription_demande_id) }}"><i class="fas fa-folder-open"></i>Dossier</a>
         @endif
         @if($_jour && $_voitAccueil)
             <a class="rdv-btn rdv-btn--primary rdv-btn--sm" href="{{ route('esbtp.rendez-vous.accueil.index', ['jour' => $_jour->toDateString()]) }}"><i class="fas fa-clipboard-check"></i>Voir le jour</a>

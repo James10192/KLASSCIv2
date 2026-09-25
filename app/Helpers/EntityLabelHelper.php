@@ -22,9 +22,18 @@ class EntityLabelHelper
         'App\Models\ESBTPPaiement' => 'Paiement',
         'App\Models\ESBTPDepense' => 'Dépense',
         'App\Models\ESBTPFacture' => 'Facture',
-        'App\Models\ESBTPFactureDetail' => 'Détail facture',
+        'App\Models\ESBTPFactureDetail' => 'Détail de facture',
         'App\Models\ESBTPFraisScolarite' => 'Frais de scolarité',
         'App\Models\ESBTPFraisCategorie' => 'Catégorie de frais',
+        'App\Models\ESBTPFraisCategory' => 'Catégorie de frais',
+        'App\Models\ESBTPFraisSubscription' => 'Frais souscrit',
+        'App\Models\ESBTPFraisOption' => 'Option de frais',
+        'App\Models\ESBTPCandidature' => 'Demande d\'inscription',
+        'App\Models\ESBTPReinscriptionDemande' => 'Demande de réinscription',
+        'App\Models\ESBTPStudentAccessibilityProfile' => 'Profil d\'accessibilité',
+        'App\Models\Setting' => 'Réglage',
+        'Spatie\Permission\Models\Role' => 'Rôle',
+        'Spatie\Permission\Models\Permission' => 'Permission',
         'App\Models\ESBTPSalaire' => 'Salaire',
         'App\Models\ESBTPBourse' => 'Bourse',
         'App\Models\ESBTPEtudiant' => 'Étudiant',
@@ -78,7 +87,25 @@ class EntityLabelHelper
     public static function plural(?string $class): string
     {
         $label = self::for($class);
+        if ($label === '—') {
+            return $label;
+        }
 
-        return $label === '—' ? $label : Str::plural($label);
+        // Pluriel francais : chaque mot jusqu'au complement (« Catégories de
+        // frais », « Années universitaires »). Str::plural suit l'anglais.
+        $mots = explode(' ', $label);
+        foreach ($mots as $i => $mot) {
+            if (in_array(mb_strtolower($mot, 'UTF-8'), ['de', 'du', 'des'], true) || str_starts_with($mot, "d'")) {
+                break;
+            }
+            $mots[$i] = match (true) {
+                preg_match('/[sxz]$/iu', $mot) === 1, preg_match('/^[A-Z]{2,}$/', $mot) === 1 => $mot,
+                preg_match('/al$/iu', $mot) === 1 => mb_substr($mot, 0, -2).'aux',
+                preg_match('/(eau|eu)$/iu', $mot) === 1 => $mot.'x',
+                default => $mot.'s',
+            };
+        }
+
+        return implode(' ', $mots);
     }
 }

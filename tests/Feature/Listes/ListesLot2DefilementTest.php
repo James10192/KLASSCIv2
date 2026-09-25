@@ -123,7 +123,7 @@ class ListesLot2DefilementTest extends TestCase
             'presences' => ['esbtp.attendances.index', 'esbtp_attendances', '`esbtp_attendances`.`id` desc'],
             'rapports de cours' => ['esbtp.rapports-cours.index', 'esbtp_session_reports', '`id` desc'],
             'declarations TPE' => ['esbtp.tpe-validation.index', 'esbtp_tpe_declarations', '`id` desc'],
-            'audit comptable' => ['esbtp.audit.comptabilite', 'audits', '`id` desc'],
+            'journal d audit' => ['esbtp.audit.index', 'audits', '`id` desc'],
             'activite des utilisateurs' => ['esbtp.audit.user-activity', 'audits', '`id` desc'],
             'jurys LMD' => ['esbtp.lmd.jurys.index', 'esbtp_lmd_jurys', '`id` desc'],
             'sessions de rattrapage' => ['esbtp.lmd.rattrapage.index', 'esbtp_lmd_sessions', '`id` desc'],
@@ -213,7 +213,7 @@ class ListesLot2DefilementTest extends TestCase
             ->json('rows_html');
 
         $this->assertSame(1, substr_count($html, 'data-li-cle="jour-'.now()->format('Y-m-d').'"'));
-        $this->assertSame(min($total, 100) - 50, substr_count($html, 'au-timeline-item '));
+        $this->assertSame(min($total, 100) - 50, substr_count($html, 'class="jda-ligne'));
     }
 
     public function test_suivi_des_pieces_la_suite_repond_en_lignes_seules(): void

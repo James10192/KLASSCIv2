@@ -33,7 +33,7 @@
             <span class="au-eh__count">{{ $audits->count() }}</span>
         </h3>
         @if($showLinkToFull && $audits->count() > 0)
-            <a href="{{ route('esbtp.audit.index') }}?model_type={{ urlencode(get_class($model)) }}&search={{ $model->getKey() }}"
+            <a href="{{ route('esbtp.audit.index', ['model_type' => get_class($model), 'objet_id' => $model->getKey(), 'periode' => 'tout', 'auto' => 1]) }}"
                class="au-eh__link">
                 Voir tout <i class="fas fa-arrow-right"></i>
             </a>

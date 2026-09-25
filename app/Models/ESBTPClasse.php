@@ -356,11 +356,7 @@ class ESBTPClasse extends Model implements Auditable
             return 0;
         }
 
-        $count = $this->inscriptions()
-                    ->where('status', 'active')
-                    ->where('workflow_step', 'etudiant_cree')
-                    ->where('annee_universitaire_id', $anneeCourante->id)
-                    ->count();
+        $count = $this->inscriptions()->occupeUnePlace($anneeCourante->id)->count();
 
         // Log pour debugging (à retirer en production)
         if (config('app.debug')) {
@@ -368,6 +364,22 @@ class ESBTPClasse extends Model implements Auditable
         }
 
         return $count;
+    }
+
+    /**
+     * Les places prises de chaque classe pour l'annee courante, en une requete :
+     * la meme regle que nombre_etudiants, pour les ecrans qui listent toutes
+     * les classes a la fois.
+     *
+     * @return \Illuminate\Support\Collection<int, int> classe_id => places prises
+     */
+    public static function placesPrisesParClasse(): \Illuminate\Support\Collection
+    {
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
+
+        return $annee === null ? collect() : ESBTPInscription::query()->occupeUnePlace((int) $annee)
+            ->selectRaw('classe_id, COUNT(*) as n')->groupBy('classe_id')->pluck('n', 'classe_id')
+            ->map(fn ($n) => (int) $n);
     }
 
     /**
