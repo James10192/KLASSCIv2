@@ -449,7 +449,13 @@ if (typeof window.mabEncaisser !== 'function') {
                         return;
                     }
                     this.etape = 3;
-                    if (this.montant === 0) { this.montant = Math.round(this.resteChoisi); this.propose = this.montant > 0; }
+                    // Un montant encore « proposé » suit le choix des frais : revenir
+                    // cocher un frais de plus doit proposer le nouveau reste dû.
+                    if (this.montant === 0 || this.propose) {
+                        this.montant = Math.round(this.resteChoisi);
+                        this.propose = this.montant > 0;
+                        this.confirme = false;
+                    }
                     this.planifierApercu();
                     return;
                 }
