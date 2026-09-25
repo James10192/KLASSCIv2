@@ -50,12 +50,6 @@ final class ActiviteDuPersonnel
     }
 
     /**
-     * Le résumé de l'année universitaire en cours pour une personne, posé sur
-     * sa fiche de profil. Null si la personne n'a rien à constater.
-     *
-     * @return array<string, mixed>|null
-     */
-    /**
      * Qui peut lire l'activité de qui : tout le personnel avec
      * `performance.view_all`, soi-même avec `performance.view`. La même règle
      * garde la page de détail et le résumé posé sur les fiches de profil.
@@ -75,6 +69,12 @@ final class ActiviteDuPersonnel
         return self::peutLire($lecteur, $user?->id === null ? null : (int) $user->id) ? $this->resume($user) : null;
     }
 
+    /**
+     * Le résumé de l'année universitaire en cours pour une personne, posé sur
+     * sa fiche de profil. Null si la personne n'a rien à constater.
+     *
+     * @return array<string, mixed>|null
+     */
     public function resume(?\App\Models\User $user): ?array
     {
         if ($user === null) {
