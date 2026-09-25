@@ -49,6 +49,7 @@ class PdfDocumentMargesTest extends TestCase
         Cache::flush();
 
         $this->assertSame(0, \App\Helpers\SettingsHelper::entierPose('pdf_font_size', 12));
+        $this->assertMatchesRegularExpression('/body \\{[^}]*font-size: 8px;/', $this->rendu());
     }
 
     private function marges(int $haut, int $droite, int $bas, int $gauche): void
