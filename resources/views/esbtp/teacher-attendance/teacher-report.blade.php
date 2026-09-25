@@ -81,58 +81,6 @@
     .tdr-alert i { margin-top: 2px; }
     .tdr-alerts-scroll { max-height: 260px; overflow-y: auto; }
 
-    .tdr-score-card {
-        background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 1.25rem;
-        padding: 1rem 1.1rem; box-shadow: 0 1px 3px rgba(15,23,42,.04);
-    }
-    .tdr-score-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .9rem; }
-    .tdr-score-head-main { display: flex; align-items: center; gap: .75rem; min-width: 0; }
-    .tdr-score-icon {
-        width: 38px; height: 38px; border-radius: 10px;
-        background: linear-gradient(135deg, #0453cb, #5e91de); color: #fff;
-        display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .tdr-score-title { color: #1e293b; font-size: .96rem; font-weight: 800; }
-    .tdr-score-sub { color: #64748b; font-size: .76rem; margin-top: .1rem; }
-    .tdr-score-link {
-        display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
-        min-height: 34px; padding: .4rem .75rem; border-radius: 999px;
-        background: #0453cb; color: #fff; font-size: .74rem; font-weight: 900;
-        text-decoration: none; white-space: nowrap; box-shadow: 0 8px 18px rgba(4,83,203,.14);
-    }
-    .tdr-score-link:hover { background: #0346ad; color: #fff; text-decoration: none; }
-    .tdr-score-main { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: .9rem; align-items: stretch; }
-    .tdr-score-value {
-        border-radius: 14px; color: #fff; padding: 1rem;
-        background: linear-gradient(135deg, #0453cb, #5e91de);
-        display: flex; flex-direction: column; justify-content: center; min-height: 110px;
-    }
-    .tdr-score-value strong { font-size: 2rem; line-height: 1; font-weight: 900; }
-    .tdr-score-value span { margin-top: .45rem; font-size: .72rem; font-weight: 800; text-transform: uppercase; opacity: .82; }
-    .tdr-score-meta { display: flex; flex-wrap: wrap; align-content: center; gap: .5rem; }
-    .tdr-score-badge,
-    .tdr-score-chip {
-        display: inline-flex; align-items: center; gap: .35rem; min-height: 34px;
-        border-radius: 999px; padding: .35rem .7rem; font-size: .74rem; font-weight: 800;
-        border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b;
-    }
-    .tdr-score-badge.success { background: rgba(16,185,129,.12); color: #047857; border-color: rgba(16,185,129,.22); }
-    .tdr-score-badge.primary { background: rgba(4,83,203,.10); color: #0453cb; border-color: rgba(4,83,203,.18); }
-    .tdr-score-badge.warning { background: rgba(217,119,6,.12); color: #92400e; border-color: rgba(217,119,6,.22); }
-    .tdr-score-badge.danger { background: rgba(220,38,38,.10); color: #b91c1c; border-color: rgba(220,38,38,.18); }
-    .tdr-score-badge.muted { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
-    .tdr-score-dims { display: grid; gap: .65rem; margin-top: .95rem; }
-    .tdr-score-dim { border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; padding: .75rem .85rem; }
-    .tdr-score-dim-top { display: flex; align-items: center; justify-content: space-between; gap: .75rem; font-size: .8rem; font-weight: 800; color: #1e293b; }
-    .tdr-score-dim-top b { color: #0453cb; white-space: nowrap; }
-    .tdr-score-bar { height: 8px; border-radius: 999px; overflow: hidden; background: #e2e8f0; margin-top: .55rem; }
-    .tdr-score-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0453cb, #5e91de); }
-    .tdr-score-empty {
-        border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #64748b;
-        padding: .9rem 1rem; display: flex; align-items: center; gap: .65rem; font-size: .82rem; font-weight: 700;
-    }
-    .tdr-score-empty i { color: #0453cb; }
-    .tdr-score-empty.compact { display: block; padding: .7rem .85rem; }
 
     /* Réutilise les styles de lignes séances de la page report (tar-*) */
     .tdr-seances { max-height: 62vh; overflow-y: auto; }
@@ -181,9 +129,6 @@
     @media (max-width: 992px) { .tdr-grid { grid-template-columns: 1fr; } }
     @media (max-width: 768px) {
         .tdr-hero { padding: 1.4rem 1.25rem; }
-        .tdr-score-head { align-items: flex-start; flex-direction: column; }
-        .tdr-score-link { width: 100%; }
-        .tdr-score-main { grid-template-columns: 1fr; }
     }
 </style>
 @endpush
@@ -237,10 +182,10 @@
         <span class="tdr-period-lbl" x-text="periodeLabel">{{ $from->format('d/m/Y') }} → {{ $to->format('d/m/Y') }}</span>
     </div>
 
-    @if($performanceScore || auth()->user()?->can('performance.view_all') || ((int) $teacher->user_id === (int) auth()->id() && auth()->user()?->can('performance.view')))
-        <div id="tdrPerformance">
-            @include('esbtp.teacher-attendance.partials._teacher_performance', ['performanceScore' => $performanceScore])
-        </div>
+    @if(auth()->user()?->can('performance.view_all') || ((int) $teacher->user_id === (int) auth()->id() && auth()->user()?->can('performance.view')))
+        <p class="tdr-period-lbl" style="margin:0 0 .75rem;">
+            <a href="{{ route('esbtp.personnel.performance.show', ['user' => $teacher->user_id]) }}"><i class="fas fa-list-check"></i> Activité de l'enseignant : séances non émargées et notes à rendre</a>
+        </p>
     @endif
 
     <div class="tdr-grid">
@@ -334,9 +279,6 @@ function teacherPage() {
                 document.getElementById('tdrKpis').innerHTML = d.kpis_html;
                 document.getElementById('tdrTypes').innerHTML = d.types_html;
                 document.getElementById('tdrWarnings').innerHTML = d.warnings_html;
-                if (d.performance_html && document.getElementById('tdrPerformance')) {
-                    document.getElementById('tdrPerformance').innerHTML = d.performance_html;
-                }
                 // NE PAS toucher #tdrSeances : la ligne animée reste intacte.
             } catch (e) { /* silencieux */ }
         },
@@ -360,9 +302,6 @@ function teacherPage() {
                 document.getElementById('tdrKpis').innerHTML = d.kpis_html;
                 document.getElementById('tdrTypes').innerHTML = d.types_html;
                 document.getElementById('tdrWarnings').innerHTML = d.warnings_html;
-                if (d.performance_html && document.getElementById('tdrPerformance')) {
-                    document.getElementById('tdrPerformance').innerHTML = d.performance_html;
-                }
                 document.getElementById('tdrSeances').innerHTML = d.seances_html
                     || '<div class="tdr-empty"><i class="fas fa-calendar-times"></i><p>Aucune séance.</p></div>';
                 this.hasMore = d.has_more; this.nextPage = d.next_page;

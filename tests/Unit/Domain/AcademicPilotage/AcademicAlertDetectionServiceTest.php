@@ -46,9 +46,19 @@ class AcademicAlertDetectionServiceTest extends AcademicPilotageDatabaseTestCase
             ]);
         }
 
+        // La classe 11 saisit ses notes directement : une évaluation, aucune fiche.
+        DB::table('esbtp_evaluations')->insert([
+            'classe_id' => 11, 'annee_universitaire_id' => 20, 'periode' => 'Semestre 1', 'status' => 'completed',
+        ]);
+
         $this->artisan('academic-pilotage:refresh-alerts --chunk-size=1 --period=S1')
             ->expectsOutputToContain('classes=3')
             ->assertExitCode(0);
+
+        $nonConfigurees = DB::table('esbtp_academic_alerts')
+            ->where('type', 'assessment_not_configured')->pluck('classe_id')->map(fn ($id) => (int) $id)->sort()->values()->all();
+        $this->assertNotContains(11, $nonConfigurees, 'Une classe qui a des évaluations n\'est pas « non configurée ».');
+        $this->assertContains(12, $nonConfigurees);
     }
 
     private function createCommandSourceSchema(): void
