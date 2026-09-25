@@ -2,220 +2,106 @@
 
 @section('title', 'Résultats de recherche')
 
+@push('styles')
+<style>
+    .srp-wrap { max-width: 960px; margin: 0 auto; }
+    .srp-form { display: flex; gap: .5rem; margin-bottom: 1rem; }
+    .srp-form input {
+        flex: 1; min-width: 0; height: 44px; padding: 0 1rem 0 2.6rem;
+        border: 1px solid #e2e8f0; border-radius: 12px; font-size: .95rem; color: #0f172a;
+        background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' viewBox='0 0 24 24'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 14px 50%;
+    }
+    .srp-form input:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
+    .srp-form button { height: 44px; padding: 0 1.1rem; border: 0; border-radius: 12px; background: #0453cb; color: #fff; font-weight: 600; }
+    .srp-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem; }
+    .srp-chip { padding: .35rem .8rem; border-radius: 999px; border: 1px solid #dbe4f0; background: #fff; color: #334155; font-size: .82rem; font-weight: 600; text-decoration: none; }
+    .srp-chip:hover { border-color: #0453cb; color: #0453cb; }
+    .srp-chip--active { background: #0453cb; border-color: #0453cb; color: #fff; }
+    .srp-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06); margin-bottom: 1rem; overflow: hidden; }
+    .srp-card h2 { margin: 0; padding: .8rem 1.1rem; font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #64748b; border-bottom: 1px solid #eef2f7; }
+    .srp-item { display: flex; align-items: center; gap: .85rem; padding: .7rem 1.1rem; text-decoration: none; color: inherit; border-bottom: 1px solid #f1f5f9; }
+    .srp-item:last-child { border-bottom: 0; }
+    .srp-item:hover { background: #f5f8fd; }
+    .srp-ico { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: rgba(4,83,203,.08); color: #0453cb; font-size: .9rem; }
+    .srp-txt { min-width: 0; }
+    .srp-title { font-weight: 600; color: #0f172a; font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .srp-sub { color: #64748b; font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .srp-empty { text-align: center; padding: 3rem 1rem; color: #64748b; }
+    .srp-empty i { font-size: 2rem; color: #94a3b8; margin-bottom: .75rem; }
+    .srp-note { padding: .7rem 1rem; border-radius: 10px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-size: .85rem; margin-bottom: 1rem; }
+</style>
+@endpush
+
 @section('content')
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h4 class="card-title mb-0">
-                        <i class="fas fa-search me-2"></i>
-                        Résultats de recherche pour "{{ $query }}"
-                    </h4>
-                </div>
-                <div class="card-body">
-                    @if(strlen($query) < 2)
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Veuillez saisir au moins 2 caractères pour effectuer une recherche.
-                        </div>
-                    @else
-                        <!-- Filtres de type -->
-                        <div class="mb-4">
-                            <div class="btn-group" role="group">
-                                <a href="{{ route('search.results', ['q' => $query, 'type' => 'all']) }}"
-                                   class="btn {{ $type === 'all' ? 'btn-primary' : 'btn-outline-primary' }}">
-                                    Tous les résultats
-                                </a>
-                                @if($results['etudiants']->count() > 0)
-                                <a href="{{ route('search.results', ['q' => $query, 'type' => 'etudiants']) }}"
-                                   class="btn {{ $type === 'etudiants' ? 'btn-primary' : 'btn-outline-primary' }}">
-                                    Étudiants ({{ $results['etudiants']->count() }})
-                                </a>
-                                @endif
-                                @if($results['classes']->count() > 0)
-                                <a href="{{ route('search.results', ['q' => $query, 'type' => 'classes']) }}"
-                                   class="btn {{ $type === 'classes' ? 'btn-primary' : 'btn-outline-primary' }}">
-                                    Classes ({{ $results['classes']->count() }})
-                                </a>
-                                @endif
-                                @if($results['filieres']->count() > 0)
-                                <a href="{{ route('search.results', ['q' => $query, 'type' => 'filieres']) }}"
-                                   class="btn {{ $type === 'filieres' ? 'btn-primary' : 'btn-outline-primary' }}">
-                                    Filières ({{ $results['filieres']->count() }})
-                                </a>
-                                @endif
-                                @if($results['matieres']->count() > 0)
-                                <a href="{{ route('search.results', ['q' => $query, 'type' => 'matieres']) }}"
-                                   class="btn {{ $type === 'matieres' ? 'btn-primary' : 'btn-outline-primary' }}">
-                                    Matières ({{ $results['matieres']->count() }})
-                                </a>
-                                @endif
-                                @if($results['enseignants']->count() > 0)
-                                <a href="{{ route('search.results', ['q' => $query, 'type' => 'enseignants']) }}"
-                                   class="btn {{ $type === 'enseignants' ? 'btn-primary' : 'btn-outline-primary' }}">
-                                    Enseignants ({{ $results['enseignants']->count() }})
-                                </a>
-                                @endif
-                            </div>
-                        </div>
-
-                        <!-- Résultats -->
-                        @if($type === 'all' || $type === 'etudiants')
-                            @if($results['etudiants']->count() > 0)
-                                <div class="mb-4">
-                                    <h5 class="mb-3">
-                                        <i class="fas fa-user-graduate me-2"></i>
-                                        Étudiants
-                                    </h5>
-                                    <div class="row">
-                                        @foreach($results['etudiants'] as $etudiant)
-                                            <div class="col-md-6 col-lg-4 mb-3">
-                                                <div class="card h-100">
-                                                    <div class="card-body">
-                                                        <h6 class="card-title">{{ $etudiant->nom }} {{ $etudiant->prenom }}</h6>
-                                                        <p class="card-text">
-                                                            <small class="text-muted">{{ $etudiant->matricule }}</small><br>
-                                                            @if($etudiant->classe)
-                                                                <span class="badge bg-primary">{{ $etudiant->classe->nom }}</span>
-                                                            @endif
-                                                        </p>
-                                                        <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}" class="btn btn-sm btn-outline-primary">
-                                                            Voir le profil
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-                        @endif
-
-                        @if($type === 'all' || $type === 'classes')
-                            @if($results['classes']->count() > 0)
-                                <div class="mb-4">
-                                    <h5 class="mb-3">
-                                        <i class="fas fa-users me-2"></i>
-                                        Classes
-                                    </h5>
-                                    <div class="row">
-                                        @foreach($results['classes'] as $classe)
-                                            <div class="col-md-6 col-lg-4 mb-3">
-                                                <div class="card h-100">
-                                                    <div class="card-body">
-                                                        <h6 class="card-title">{{ $classe->nom }}</h6>
-                                                        <p class="card-text">
-                                                            @if($classe->filiere)
-                                                                <span class="badge bg-info">{{ $classe->filiere->nom }}</span>
-                                                            @endif
-                                                            @if($classe->niveauEtude)
-                                                                <span class="badge bg-secondary">{{ $classe->niveauEtude->nom }}</span>
-                                                            @endif
-                                                        </p>
-                                                        <a href="{{ route('esbtp.classes.show', $classe->id) }}" class="btn btn-sm btn-outline-primary">
-                                                            Voir la classe
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-                        @endif
-
-                        @if($type === 'all' || $type === 'filieres')
-                            @if($results['filieres']->count() > 0)
-                                <div class="mb-4">
-                                    <h5 class="mb-3">
-                                        <i class="fas fa-school me-2"></i>
-                                        Filières
-                                    </h5>
-                                    <div class="row">
-                                        @foreach($results['filieres'] as $filiere)
-                                            <div class="col-md-6 col-lg-4 mb-3">
-                                                <div class="card h-100">
-                                                    <div class="card-body">
-                                                        <h6 class="card-title">{{ $filiere->nom }}</h6>
-                                                        <p class="card-text">{{ \Str::limit($filiere->description, 100) }}</p>
-                                                        <a href="{{ route('esbtp.filieres.show', $filiere->id) }}" class="btn btn-sm btn-outline-primary">
-                                                            Voir la filière
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-                        @endif
-
-                        @if($type === 'all' || $type === 'matieres')
-                            @if($results['matieres']->count() > 0)
-                                <div class="mb-4">
-                                    <h5 class="mb-3">
-                                        <i class="fas fa-book me-2"></i>
-                                        Matières
-                                    </h5>
-                                    <div class="row">
-                                        @foreach($results['matieres'] as $matiere)
-                                            <div class="col-md-6 col-lg-4 mb-3">
-                                                <div class="card h-100">
-                                                    <div class="card-body">
-                                                        <h6 class="card-title">{{ $matiere->nom }}</h6>
-                                                        <p class="card-text">{{ \Str::limit($matiere->description, 100) }}</p>
-                                                        <a href="{{ route('esbtp.matieres.show', $matiere->id) }}" class="btn btn-sm btn-outline-primary">
-                                                            Voir la matière
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-                        @endif
-
-                        @if($type === 'all' || $type === 'enseignants')
-                            @if($results['enseignants']->count() > 0)
-                                <div class="mb-4">
-                                    <h5 class="mb-3">
-                                        <i class="fas fa-chalkboard-teacher me-2"></i>
-                                        Enseignants
-                                    </h5>
-                                    <div class="row">
-                                        @foreach($results['enseignants'] as $enseignant)
-                                            <div class="col-md-6 col-lg-4 mb-3">
-                                                <div class="card h-100">
-                                                    <div class="card-body">
-                                                        <h6 class="card-title">{{ $enseignant->nom }} {{ $enseignant->prenom }}</h6>
-                                                        <p class="card-text">
-                                                            <small class="text-muted">{{ $enseignant->email }}</small>
-                                                        </p>
-                                                        <a href="{{ route('esbtp.enseignants.show', $enseignant->id) }}" class="btn btn-sm btn-outline-primary">
-                                                            Voir le profil
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </div>
-                            @endif
-                        @endif
-
-                        @if(collect($results)->sum(function($collection) { return $collection->count(); }) === 0)
-                            <div class="text-center py-5">
-                                <i class="fas fa-search fa-3x text-muted mb-3"></i>
-                                <h5 class="text-muted">Aucun résultat trouvé</h5>
-                                <p class="text-muted">Essayez avec d'autres mots-clés ou vérifiez l'orthographe.</p>
-                            </div>
-                        @endif
-                    @endif
-                </div>
-            </div>
+@php
+    $libellesTypes = [
+        'all' => 'Tout',
+        'pages' => 'Pages',
+        'etudiants' => 'Étudiants',
+        'paiements' => 'Paiements',
+        'classes' => 'Classes',
+        'filieres' => 'Filières',
+        'matieres' => 'Matières',
+        'enseignants' => 'Enseignants',
+    ];
+    $typesVisibles = array_merge(['all', 'pages'], $groupesOuverts);
+@endphp
+<div class="srp-wrap">
+    <div class="dashboard-header">
+        <div class="header-left">
+            <h1><i class="fas fa-magnifying-glass me-2"></i>Recherche</h1>
+            <p class="header-subtitle">
+                @if(mb_strlen($query) >= 2)
+                    Résultats pour « {{ $query }} »
+                @else
+                    Tapez au moins deux caractères. Astuce : Ctrl K (⌘ K sur Mac) ouvre la recherche depuis n'importe quelle page.
+                @endif
+            </p>
         </div>
     </div>
+
+    <form class="srp-form" method="GET" action="{{ route('search.results') }}" role="search">
+        <input type="search" name="q" value="{{ $query }}" minlength="2" required autocomplete="off" aria-label="Rechercher dans l'application" placeholder="Rechercher un étudiant, un reçu, une page…">
+        <input type="hidden" name="type" value="{{ $type }}">
+        <button type="submit">Rechercher</button>
+    </form>
+
+    @if(mb_strlen($query) >= 2)
+        <nav class="srp-chips" aria-label="Filtrer les résultats">
+            @foreach($typesVisibles as $t)
+                <a href="{{ route('search.results', ['q' => $query, 'type' => $t]) }}"
+                   class="srp-chip {{ $type === $t ? 'srp-chip--active' : '' }}"
+                   @if($type === $t) aria-current="true" @endif>{{ $libellesTypes[$t] ?? $t }}</a>
+            @endforeach
+        </nav>
+
+        @if($partiel)
+            <div class="srp-note" role="status">
+                <i class="fas fa-triangle-exclamation me-1"></i>Une partie des résultats est momentanément indisponible. Réessayez dans un instant.
+            </div>
+        @endif
+
+        @forelse($groupes as $nomGroupe => $resultats)
+            <section class="srp-card" aria-label="{{ $nomGroupe }}">
+                <h2>{{ $nomGroupe }} <span class="text-muted">({{ $resultats->count() }})</span></h2>
+                @foreach($resultats as $resultat)
+                    <a href="{{ $resultat['url'] }}" class="srp-item">
+                        <span class="srp-ico"><i class="fas {{ $resultat['icon'] }}" aria-hidden="true"></i></span>
+                        <span class="srp-txt">
+                            <span class="srp-title d-block">{{ $resultat['title'] }}</span>
+                            @if($resultat['subtitle'] !== '')
+                                <span class="srp-sub d-block">{{ $resultat['subtitle'] }}</span>
+                            @endif
+                        </span>
+                    </a>
+                @endforeach
+            </section>
+        @empty
+            <div class="srp-card srp-empty">
+                <i class="fas fa-magnifying-glass d-block"></i>
+                Aucun résultat pour « {{ $query }} ».
+            </div>
+        @endforelse
+    @endif
 </div>
 @endsection
