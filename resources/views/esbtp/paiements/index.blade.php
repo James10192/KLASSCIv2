@@ -2138,7 +2138,8 @@ function showYearChangeInfo() {
                         // Cleanup animation class
                         setTimeout(() => row.classList.remove('pi-row-enter'), 600);
                     });
-                    modals.forEach((m) => document.body.appendChild(m));
+                    // La modale d'une ligne deja affichee est deja la : pas de second id.
+                    modals.forEach((m) => { if (!document.getElementById(m.id)) document.body.appendChild(m); });
 
                     // Update compteur affiche
                     const shown = document.getElementById('pi-rows-shown');

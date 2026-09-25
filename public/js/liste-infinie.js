@@ -165,7 +165,7 @@
     // Ajoute des lignes en bas de `cible`, sans repeter une ligne deja affichee
     // (data-li-cle) : seconde ceinture du tri stable, pour une ligne creee en
     // tete pendant qu'on defile. Rend les lignes reellement ajoutees. Sert aussi
-    // aux listes qui gardent leur propre defilement (evaluations, paiements…).
+    // aux listes qui gardent leur propre defilement (evaluations, matieres).
     function ajouterLignes(cible, html) {
         var avant = cible.lastElementChild;
         cible.insertAdjacentHTML('beforeend', html);
