@@ -52,8 +52,9 @@ abstract class AdaptateurHttp implements FournisseurDeModele
                 $passager = true;
             }
 
-            $this->journaliserPanne($modele, $code, $type);
-            if (!$passager || $essai >= $tentatives) {
+            $definitif = !$passager || $essai >= $tentatives;
+            $this->journaliserPanne($modele, $code, $type, $definitif);
+            if ($definitif) {
                 return [null, $code];
             }
             usleep($pause * 1000 * $essai);
@@ -75,9 +76,14 @@ abstract class AdaptateurHttp implements FournisseurDeModele
         return is_scalar($type) ? mb_substr((string) $type, 0, 60) : null;
     }
 
-    protected function journaliserPanne(ModeleIa $modele, string $code, ?string $type): void
+    /**
+     * Un échec définitif part en `error` : la production ne garde souvent que ce
+     * niveau, et c'est la seule trace qui explique une réponse refusée. Une
+     * tentative qui sera rejouée reste un `warning`.
+     */
+    protected function journaliserPanne(ModeleIa $modele, string $code, ?string $type, bool $definitif = true): void
     {
-        Log::warning('assistant.fournisseur_en_echec', [
+        Log::log($definitif ? 'error' : 'warning', 'assistant.fournisseur_en_echec', [
             'fournisseur' => $modele->fournisseur,
             'modele' => $modele->cle,
             'code' => $code,
