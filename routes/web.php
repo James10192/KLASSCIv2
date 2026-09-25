@@ -415,6 +415,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/pdf', [$c, 'pdf'])->middleware('throttle:10,1')->name('pdf');
                 Route::get('/excel', [$c, 'excel'])->middleware('throttle:10,1')->name('excel');
             });
+            // Feuille de suivi a imprimer : la semaine affichee, ou une journee.
+            Route::prefix('/rendez-vous/feuille')->middleware('permission:inscriptions.rdv.view|inscriptions.rdv.accueil')->name('feuille.')->group(function () {
+                $c = \App\Http\Controllers\ESBTP\ESBTPRendezVousFeuilleController::class;
+                Route::get('/apercu', [$c, 'apercu'])->middleware('throttle:60,1')->name('apercu');
+                Route::get('/pdf', [$c, 'pdf'])->middleware('throttle:10,1')->name('pdf');
+                Route::get('/excel', [$c, 'excel'])->middleware('throttle:10,1')->name('excel');
+            });
             // Appele en boucle par l'ecran, un paquet borne a la fois : le debit
             // tient compte de cette boucle (15 par paquet, 60 paquets/min).
             Route::post('/rendez-vous/convocations/envoyer', [\App\Http\Controllers\ESBTP\ESBTPRendezVousController::class, 'envoyerConvocations'])
