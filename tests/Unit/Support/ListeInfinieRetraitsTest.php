@@ -69,6 +69,7 @@ class ListeInfinieRetraitsTest extends TestCase
             'insertion en tete' => ['insertion_en_tete', 'Une ligne ecrite en tete pendant le defilement ne fait pas boucler la liste Alpine.'],
             'serveur sans retrait' => ['serveur_sans_retrait', 'Liste rendue par le serveur : defilement ordinaire.'],
             'serveur plus qu\'une tranche' => ['serveur_plus_qu_une_tranche', 'Liste rendue par le serveur : retrait de plus d\'une tranche.'],
+            'serveur insertion en tete' => ['serveur_insertion_en_tete', 'Liste rendue par le serveur : une ligne ecrite en tete ne fait ni boucler ni repeter.'],
             'serveur retrait pendant un chargement' => ['serveur_retrait_pendant_un_chargement', 'Liste rendue par le serveur : retrait pendant un chargement.'],
         ];
     }

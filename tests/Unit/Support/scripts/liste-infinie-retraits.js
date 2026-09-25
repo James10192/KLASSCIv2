@@ -221,6 +221,22 @@ const scenarios = {
         await jusquauBoutServeur(bas);
         return verdictServeur(c, srv);
     },
+    async serveur_insertion_en_tete() {
+        // Une inscription arrive en tete apres le rendu de la premiere tranche.
+        const srv = serveur(95); const { bas, c } = basServeur(srv, 20);
+        srv.lignes.unshift(1000);
+        let chargements = 0;
+        for (let i = 0; i < 40 && bas.dataset.pageSuivante; i++) {
+            chargements++;
+            LI.charger(bas);
+            await new Promise(r => setTimeout(r, 0));
+            await new Promise(r => setTimeout(r, 0));
+        }
+        const vus = c.enfants.map(e => e.cle);
+        const attendu = srv.lignes.filter(id => id !== 1000);
+        const ok = JSON.stringify(vus) === JSON.stringify(attendu) && chargements <= 5;
+        return { ok, detail: ok ? '' : `${chargements} chargements, ${vus.length} lignes affichees sur ${attendu.length}` };
+    },
     async serveur_retrait_pendant_un_chargement() {
         const srv = serveur(120);
         let pendant = null;

@@ -27,6 +27,11 @@ use Illuminate\Support\Facades\Cache;
  * ecrase le sien : la visite d'un autre agent ne reordonne pas la liste qu'on
  * est en train de faire defiler, et il n'y a jamais qu'une entree par agent et
  * par jeu de filtres, quel que soit le nombre de visites.
+ *
+ * Limite assumee : un meme agent qui ouvre la meme liste dans deux onglets
+ * voit le second ecraser l'index du premier. Le defilement du premier peut
+ * alors repeter ou sauter une ligne ; il ne boucle pas (dedoublonnage, et
+ * position annoncee par le serveur). Recharger l'onglet suffit.
  */
 class ListeDesRelances
 {
