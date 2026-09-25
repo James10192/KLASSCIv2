@@ -50,13 +50,17 @@ class ESBTPLMDJuryController extends Controller
         $limiteAuxSiens = $this->limiteAuxJurysDuMembre();
         $membreDe = fn ($q) => $q->whereHas('membres', fn ($m) => $m->where('user_id', auth()->id()));
 
-        $jurys = ESBTPLMDJury::query()
-            ->with(['parcours', 'classe', 'membres'])
+        // Base filtree prise AVANT la pagination : paginate() pose limit et
+        // offset sur le constructeur, et les compteurs doivent suivre les filtres.
+        $base = ESBTPLMDJury::query()
             ->where('annee_universitaire_id', $annee->id)
             ->when($limiteAuxSiens, $membreDe)
             ->when((int) $request->input('classe_id'), fn ($q, $id) => $q->where('classe_id', $id))
             ->when((int) $request->input('parcours_id'), fn ($q, $id) => $q->where('parcours_id', $id))
-            ->when((int) $request->input('semestre'), fn ($q, $s) => $q->where('semestre', $s))
+            ->when((int) $request->input('semestre'), fn ($q, $s) => $q->where('semestre', $s));
+
+        $jurys = (clone $base)
+            ->with(['parcours', 'classe', 'membres'])
             ->orderByDesc('date_jury')
             // Departage stable : la liste se charge par tranches.
             ->orderByDesc('id')
@@ -67,11 +71,9 @@ class ESBTPLMDJuryController extends Controller
             return ListeInfinie::reponse($jurys, fn ($j) => view('esbtp.lmd.jurys._ligne', compact('j'))->render());
         }
 
-        // Les compteurs suivent le meme perimetre que la liste, sinon la page
-        // annoncerait des jurys qu'elle n'affiche pas.
-        $compteur = fn (?string $status = null) => ESBTPLMDJury::query()
-            ->where('annee_universitaire_id', $annee->id)
-            ->when($limiteAuxSiens, $membreDe)
+        // Les compteurs suivent le meme perimetre que la liste, filtres compris,
+        // sinon la page annoncerait des jurys qu'elle n'affiche pas.
+        $compteur = fn (?string $status = null) => (clone $base)
             ->when($status !== null, fn ($q) => $q->where('status', $status))
             ->count();
 

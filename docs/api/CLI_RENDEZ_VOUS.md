@@ -49,12 +49,20 @@ Mêmes règles que l'écran « Retrouver un rendez-vous » (`App\Services\Rendez
 | `per_page` / `page` | 1 à 100 | 25 / 1 |
 
 ```json
-{ "total": 1, "page": 1, "derniere_page": 1,
-  "rendez_vous": [{ "id": 12, "nom": "KOUASSI Ama", "dossier": "candidature",
-    "reference": "AB12-CD34", "matricule": null, "telephone_masque": "+225 07 ** ** ** 56",
-    "date": "2026-10-05", "heure": "10:00-10:30", "statut": "confirmee",
-    "etat_accueil": "attendu", "absences": 0, "recue_le": null }] }
+{ "success": true,
+  "data": {
+    "filtres": { "q": "kouassi", "quand": "tous", "statut": "", "type": "" },
+    "total": 1, "page": 1, "derniere_page": 1,
+    "rendez_vous": [{ "id": 12, "nom": "KOUASSI Ama", "dossier": "candidature",
+      "reference": "AB12-CD34", "matricule": null, "telephone_masque": "+225 07 ** ** ** 56",
+      "date": "2026-10-05", "heure": "10:00-10:30", "statut": "confirmee",
+      "etat_accueil": "attendu", "absences": 0, "recue_le": null }] } }
 ```
+
+`filtres` rend les filtres **réellement appliqués**. Une valeur inconnue de `quand`,
+`statut` ou `type` y revient remplacée par sa valeur par défaut, sans erreur : un
+client qui filtre doit comparer ce qu'il a envoyé à ce qu'il reçoit ici (c'est ce
+que fait `klassci rendez-vous:recherche --statut`).
 
 `etat_accueil` (`attendu`, `recu`, `non_venue`, `traite`) n'est renseigné que pour une
 réservation qui tient son créneau ; `null` pour une réservation libérée ou annulée.

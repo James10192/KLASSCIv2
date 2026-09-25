@@ -263,4 +263,28 @@ class ListesLot2DefilementTest extends TestCase
         $this->assertSame(11, $compteurs['actifs']);
         $this->assertSame(1, $compteurs['inactifs']);
     }
+
+    public function test_jurys_lmd_les_compteurs_suivent_les_filtres(): void
+    {
+        // Deux jurys au semestre 1, un au semestre 2 : filtre sur le semestre 1.
+        foreach ([1, 1, 2] as $semestre) {
+            $this->ligneMinimale('esbtp_lmd_jurys', ['annee_universitaire_id' => $this->annee->id, 'semestre' => $semestre, 'status' => 'preparation']);
+        }
+
+        $kpis = $this->get(route('esbtp.lmd.jurys.index', ['semestre' => 1]))->assertOk()->viewData('kpis');
+
+        $this->assertSame(2, $kpis['total']);
+        $this->assertSame(2, $kpis['preparation']);
+    }
+
+    public function test_sessions_lmd_les_compteurs_suivent_les_filtres(): void
+    {
+        foreach ([1, 1, 2] as $semestre) {
+            $this->ligneMinimale('esbtp_lmd_sessions', ['annee_universitaire_id' => $this->annee->id, 'semestre' => $semestre, 'type' => 'rattrapage']);
+        }
+
+        $kpis = $this->get(route('esbtp.lmd.rattrapage.index', ['semestre' => 1]))->assertOk()->viewData('kpis');
+
+        $this->assertSame(2, $kpis['rattrapages']);
+    }
 }

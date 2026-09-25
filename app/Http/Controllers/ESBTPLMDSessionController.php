@@ -27,11 +27,15 @@ class ESBTPLMDSessionController extends Controller
 
         $annee = $this->resolveAnnee($request);
 
-        $sessions = ESBTPLMDSession::query()
-            ->with(['anneeUniversitaire', 'parcours', 'parentSession'])
+        // Base filtree prise AVANT la pagination : les compteurs suivent les
+        // memes filtres que la liste, et paginate() modifie le constructeur.
+        $base = ESBTPLMDSession::query()
             ->where('annee_universitaire_id', $annee->id)
             ->when((int) $request->input('parcours_id'), fn ($q, $id) => $q->where('parcours_id', $id))
-            ->when((int) $request->input('semestre'), fn ($q, $s) => $q->where('semestre', $s))
+            ->when((int) $request->input('semestre'), fn ($q, $s) => $q->where('semestre', $s));
+
+        $sessions = (clone $base)
+            ->with(['anneeUniversitaire', 'parcours', 'parentSession'])
             ->orderByDesc('date_debut')
             // Departage stable : la liste se charge par tranches.
             ->orderByDesc('id')
@@ -43,10 +47,10 @@ class ESBTPLMDSessionController extends Controller
         }
 
         $kpis = [
-            'normales' => ESBTPLMDSession::forAnnee($annee->id)->normales()->count(),
-            'rattrapages' => ESBTPLMDSession::forAnnee($annee->id)->rattrapages()->count(),
-            'en_cours' => ESBTPLMDSession::forAnnee($annee->id)->whereIn('status', ['planned', 'in_progress'])->count(),
-            'publiees' => ESBTPLMDSession::forAnnee($annee->id)->where('status', 'published')->count(),
+            'normales' => (clone $base)->normales()->count(),
+            'rattrapages' => (clone $base)->rattrapages()->count(),
+            'en_cours' => (clone $base)->whereIn('status', ['planned', 'in_progress'])->count(),
+            'publiees' => (clone $base)->where('status', 'published')->count(),
         ];
 
         $parcours = ESBTPLMDParcours::orderBy('name')->get(['id', 'name']);

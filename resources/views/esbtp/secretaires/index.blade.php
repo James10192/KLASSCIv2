@@ -79,8 +79,14 @@
         // DataTables : sans cet enregistrement, un tri ou une recherche les
         // ferait disparaitre.
         document.addEventListener('liste-infinie:ajout', function (event) {
+            // Une recherche DataTables retire du DOM les lignes filtrees : le
+            // dedoublonnage du defilement ne les voit plus. On compare donc aux
+            // lignes que DataTables tient deja, visibles ou non.
+            const connues = new Set(table.rows().nodes().toArray().map(n => n.dataset.liCle));
             const lignes = (event.detail.lignes || []).filter(l => l.closest('#secretairesTable'));
-            if (lignes.length) table.rows.add(lignes).draw(false);
+            const nouvelles = lignes.filter(l => !connues.has(l.dataset.liCle));
+            lignes.filter(l => connues.has(l.dataset.liCle)).forEach(l => l.remove());
+            if (nouvelles.length) table.rows.add(nouvelles).draw(false);
         });
     });
 </script>
