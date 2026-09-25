@@ -79,6 +79,8 @@
     }
 
     $logoMaxHeight = max(20, min(120, (int) ($pdf['logo_size'] ?? 60)));
+    // L'ecran impose 8 a 16 px ; un 0 enregistre (esbtp-abidjan) rendait le corps invisible.
+    $taillePolice = max(8, min(16, (int) ($pdf['font_size'] ?? 12)));
     $signatureHeight = max(40, min(200, (int) ($pdf['signature_height'] ?? 80)));
     $watermarkOpacity = max(0, min(0.5, (float) ($pdf['watermark_opacity'] ?? 0.05)));
     $watermarkRotation = (int) ($pdf['watermark_rotation'] ?? -30);
@@ -108,7 +110,7 @@
         }
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: {{ ($pdf['font_size'] ?? 11) }}px;
+            font-size: {{ $taillePolice }}px;
             color: {{ $textColor }};
             margin: 0;
             line-height: 1.4;

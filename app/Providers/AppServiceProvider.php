@@ -51,6 +51,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Une instance par requête : le coffre mémorise ses lectures, et le registre
+        // des modèles le consulte à chaque appel. Sans cela, une requête et un
+        // déchiffrement par fournisseur à chaque résolution.
+        $this->app->scoped(\App\Domain\Assistant\Cles\CoffreDesCles::class);
+
         // Singleton : le service memorise ses resolutions de chemin. Resolu a la
         // volee, le conteneur en reconstruisait une instance neuve a chaque acces
         // a photo_url — donc un memo toujours vide, et une liste de cinquante

@@ -1089,6 +1089,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="assistant-tab" data-bs-toggle="tab" data-bs-target="#assistant" type="button" role="tab">
+                    <i class="fas fa-wand-magic-sparkles"></i> Assistant IA
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="lmd-tab" data-bs-toggle="tab" data-bs-target="#lmd" type="button" role="tab">
                     <i class="fas fa-graduation-cap"></i> Système LMD
                 </button>
@@ -1727,17 +1732,17 @@
                         <label class="form-label-modern">
                             <i class="fas fa-signature text-primary"></i>
                             Hauteur des signatures (px) :
-                            <span style="color: #0453cb; font-weight: 700;">{{ \App\Helpers\SettingsHelper::get('pdf_signature_height', '80') }} px</span>
+                            <span style="color: #0453cb; font-weight: 700;">{{ \App\Helpers\SettingsHelper::entierPose('pdf_signature_height', 80) }} px</span>
                         </label>
                         <div style="display: flex; gap: .75rem; align-items: center;">
                             <input type="range" min="40" max="200" step="10"
-                                   value="{{ \App\Helpers\SettingsHelper::get('pdf_signature_height', '80') }}"
+                                   value="{{ \App\Helpers\SettingsHelper::entierPose('pdf_signature_height', 80) }}"
                                    oninput="this.nextElementSibling.value = this.value; this.previousElementSibling.querySelector('span').textContent = this.value + ' px';"
                                    style="flex: 1;">
                             <input type="number" min="40" max="200" step="10"
                                    class="form-control form-control-modern"
                                    name="setting_pdf_signature_height"
-                                   value="{{ \App\Helpers\SettingsHelper::get('pdf_signature_height', '80') }}"
+                                   value="{{ \App\Helpers\SettingsHelper::entierPose('pdf_signature_height', 80) }}"
                                    style="width: 80px;">
                         </div>
                         <small class="text-muted"><i class="fas fa-info-circle"></i> Hauteur max des images signature directeur/secrétaire dans les bulletins/certificats. Défaut : 80 px.</small>
@@ -3447,6 +3452,10 @@
                     }
                 </style>
 
+                <div class="tab-pane fade" id="assistant" role="tabpanel">
+                    @include('esbtp.settings.partials.assistant')
+                </div>
+
                 <div class="tab-pane fade" id="lmd" role="tabpanel">
                     @php
                         $lmdSettings = \App\Models\Setting::where('group', 'lmd')->get()->keyBy('key');
@@ -4530,12 +4539,12 @@ document.addEventListener('DOMContentLoaded', () => {
 window.pdfAdvancedSection = function () {
     return {
         settings: {
-            pdf_logo_size: '{{ \App\Helpers\SettingsHelper::get("pdf_logo_size", "60") }}',
-            pdf_font_size: '{{ \App\Helpers\SettingsHelper::get("pdf_font_size", "12") }}',
-            pdf_margin_top: '{{ \App\Helpers\SettingsHelper::get("pdf_margin_top", "20") }}',
-            pdf_margin_bottom: '{{ \App\Helpers\SettingsHelper::get("pdf_margin_bottom", "20") }}',
-            pdf_margin_left: '{{ \App\Helpers\SettingsHelper::get("pdf_margin_left", "15") }}',
-            pdf_margin_right: '{{ \App\Helpers\SettingsHelper::get("pdf_margin_right", "15") }}',
+            pdf_logo_size: '{{ \App\Helpers\SettingsHelper::entierPose("pdf_logo_size", 60) }}',
+            pdf_font_size: '{{ \App\Helpers\SettingsHelper::entierPose("pdf_font_size", 12) }}',
+            pdf_margin_top: '{{ \App\Helpers\SettingsHelper::entierPose("pdf_margin_top", 20) }}',
+            pdf_margin_bottom: '{{ \App\Helpers\SettingsHelper::entierPose("pdf_margin_bottom", 20) }}',
+            pdf_margin_left: '{{ \App\Helpers\SettingsHelper::entierPose("pdf_margin_left", 15) }}',
+            pdf_margin_right: '{{ \App\Helpers\SettingsHelper::entierPose("pdf_margin_right", 15) }}',
         },
     };
 };
