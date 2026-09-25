@@ -1,6 +1,6 @@
 {{-- Modal d'affichage des credentials --}}
 @if(session('credentials'))
-<div id="credentialsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+<div id="credentialsModal" data-fenetre-prioritaire class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1090; overflow-y: auto; padding: 16px 0;">
     <div class="card-moderne" style="max-width: 500px; width: 90%; padding: var(--space-xl); margin: auto; background-color: var(--surface); border-radius: var(--radius-medium); box-shadow: var(--shadow-elevated);">
         <div style="text-align: center; margin-bottom: var(--space-lg);">
             <div style="width: 80px; height: 80px; background-color: var(--success); border-radius: var(--radius-circle); margin: 0 auto var(--space-md); display: flex; align-items: center; justify-content: center;">
@@ -45,15 +45,30 @@
         </div>
 
         @if(session('created_teacher_id'))
-        <div style="background-color: rgba(59, 130, 246, 0.1); border-radius: var(--radius-small); padding: var(--space-md); margin-bottom: var(--space-lg); border-left: 4px solid var(--primary);">
-            <div style="display: flex; align-items: flex-start; gap: var(--space-sm);">
-                <i class="fas fa-info-circle" style="color: var(--primary); margin-top: 2px;"></i>
-                <div>
-                    <p style="margin: 0; font-size: var(--text-small); color: var(--text-primary); font-weight: 600;">Gestion de la disponibilité</p>
-                    <p style="margin: var(--space-xs) 0 0 0; font-size: var(--text-small); color: var(--text-secondary);">
-                        Pour gérer la disponibilité de cet enseignant, consultez sa fiche détaillée. Vous pourrez le faire à tout moment.
-                    </p>
-                </div>
+        @php $_nouvelEnseignant = session('created_teacher_id'); @endphp
+        {{-- Les quatre gestes qui suivent toujours la création d'un enseignant :
+             sans eux, l'agent repart chercher chaque écran dans le menu. --}}
+        <div style="margin-bottom: var(--space-lg);">
+            <p style="margin: 0 0 var(--space-sm) 0; font-size: var(--text-small); color: var(--text-primary); font-weight: 600;">Et maintenant</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-sm);">
+                @can('teachers.edit')
+                <a href="{{ route('esbtp.enseignants.matieres', $_nouvelEnseignant) }}" class="btn-acasi secondary" style="text-decoration: none; justify-content: center;">
+                    <i class="fas fa-book" style="margin-right: var(--space-xs);"></i>Associer des matières
+                </a>
+                @endcan
+                <a href="{{ route('esbtp.enseignants.show', $_nouvelEnseignant) }}#disponibilites" class="btn-acasi secondary" style="text-decoration: none; justify-content: center;">
+                    <i class="fas fa-calendar-check" style="margin-right: var(--space-xs);"></i>Disponibilités
+                </a>
+                @can('comptabilite.salaires.set_rate')
+                <a href="{{ route('esbtp.enseignants.edit', $_nouvelEnseignant) }}#taux" class="btn-acasi secondary" style="text-decoration: none; justify-content: center;">
+                    <i class="fas fa-coins" style="margin-right: var(--space-xs);"></i>Taux horaire
+                </a>
+                @endcan
+                @if(Route::has('esbtp.seances-cours.create'))
+                <a href="{{ route('esbtp.seances-cours.create') }}" class="btn-acasi secondary" style="text-decoration: none; justify-content: center;">
+                    <i class="fas fa-calendar-plus" style="margin-right: var(--space-xs);"></i>Programmer une séance
+                </a>
+                @endif
             </div>
         </div>
         @endif

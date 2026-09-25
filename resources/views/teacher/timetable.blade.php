@@ -240,7 +240,7 @@
                                 <!-- Action si disponible -->
                                 @if($statusInfo['badge'] === 'Disponible')
                                     <div class="course-list-action">
-                                        <a href="{{ route('esbtp.attendance.mark') }}" class="btn btn-primary btn-sm w-100">
+                                        <a href="{{ route('esbtp.teacher-attendance.index') }}" class="btn btn-primary btn-sm w-100">
                                             <i class="fas fa-signature"></i> Émarger maintenant
                                         </a>
                                     </div>
@@ -351,7 +351,7 @@
                                                     <!-- Bouton action pour cours disponibles -->
                                                     @if($statusInfo['badge'] === 'Disponible')
                                                         <div class="course-action mt-2 d-none d-md-block">
-                                                            <a href="{{ route('esbtp.attendance.mark') }}" class="btn btn-sm btn-primary btn-block">
+                                                            <a href="{{ route('esbtp.teacher-attendance.index') }}" class="btn btn-sm btn-primary btn-block">
                                                                 <i class="fas fa-signature"></i> Émarger
                                                             </a>
                                                         </div>

@@ -61,7 +61,7 @@
                                                 <th>Volumes horaires :</th>
                                                 <td>
                                                     <span class="text-muted">Configurés dans le Planning Général</span>
-                                                    <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="text-primary ms-2">Voir</a>
+                                                    <a href="{{ route('esbtp.planning-general.repartition-matieres', ['search' => $matiere->name]) }}" class="text-primary ms-2">Voir</a>
                                                 </td>
                                             </tr>
                                             <tr>
@@ -117,7 +117,7 @@
                             <div class="text-muted">
                                 <i class="fas fa-exclamation-triangle me-1"></i>
                                 Aucune configuration dans le planning général -
-                                <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="text-primary">Configurer maintenant</a>
+                                <a href="{{ route('esbtp.planning-general.repartition-matieres', ['search' => $matiere->name]) }}" class="text-primary">Configurer maintenant</a>
                             </div>
                         @endif
                     </div>
@@ -321,8 +321,8 @@
                             Les affectations d'enseignants sont gérées via le module <strong>Planning Général</strong>
                             pour assurer une planification cohérente et centralisée.
                         </p>
-                        <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-external-link-alt me-1"></i>Aller au Planning Général
+                        <a href="{{ route('esbtp.planning-general.repartition-matieres', ['search' => $matiere->name]) }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-external-link-alt me-1"></i>Ouvrir la planification de cette matière
                         </a>
                     </div>
 
@@ -358,7 +358,7 @@
                                                 <span class="badge bg-success">{{ $combo['volume_horaire'] }}h</span>
                                             </td>
                                             <td class="text-end">
-                                                <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn btn-sm btn-outline-warning" title="Gérer dans le Planning Général">
+                                                <a href="{{ route('esbtp.planning-general.repartition-matieres', array_filter(['search' => $matiere->name, 'filiere_id' => $combo['filiere']->id ?? null, 'niveau_id' => $combo['niveau']->id ?? null])) }}" class="btn btn-sm btn-outline-primary" title="Gérer les enseignants de cette combinaison">
                                                     <i class="fas fa-cog"></i>
                                                 </a>
                                             </td>
@@ -371,8 +371,8 @@
                         <div class="text-muted text-center py-3">
                             <i class="fas fa-info-circle me-1"></i>Aucun enseignant assigné pour l'année {{ $anneeUniversitaireCourante->name ?? 'courante' }}
                             <div class="mt-2">
-                                <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-plus me-1"></i>Configurer dans le Planning Général
+                                <a href="{{ route('esbtp.planning-general.repartition-matieres', ['search' => $matiere->name]) }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-plus me-1"></i>Configurer cette matière dans le Planning Général
                                 </a>
                             </div>
                         </div>

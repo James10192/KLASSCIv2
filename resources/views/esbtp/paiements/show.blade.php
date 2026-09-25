@@ -564,7 +564,7 @@
                         <span class="ps-info-lbl">Année universitaire</span>
                         <span class="ps-info-val">
                             @if($paiement->inscription->anneeUniversitaire)
-                                <span class="ps-badge amber"><i class="fas fa-calendar-alt"></i> {{ $paiement->inscription->anneeUniversitaire->libelle ?: ($paiement->inscription->anneeUniversitaire->annee_debut . '-' . $paiement->inscription->anneeUniversitaire->annee_fin) }}</span>
+                                <span class="ps-badge amber"><i class="fas fa-calendar-alt"></i> {{ $paiement->inscription->anneeUniversitaire->display_name ?: ($paiement->inscription->anneeUniversitaire->annee_debut . '-' . $paiement->inscription->anneeUniversitaire->annee_fin) }}</span>
                             @else <span style="color:var(--k-muted);">—</span> @endif
                         </span>
                     </div>

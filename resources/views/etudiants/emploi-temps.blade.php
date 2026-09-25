@@ -482,7 +482,7 @@
                         </div>
                         
                         <div class="info-card">
-                            <div class="info-card-value">{{ $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->libelle ?? 'Non définie' }}</div>
+                            <div class="info-card-value">{{ $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->display_name ?? 'Non définie' }}</div>
                             <div class="info-card-label">
                                 <i class="fas fa-calendar-check me-1"></i>
                                 Année universitaire
@@ -790,7 +790,7 @@
                     </div>
                     <div style="color: var(--text-secondary); font-size: var(--text-sm);">
                         <i class="fas fa-calendar me-1"></i>
-                        Année {{ $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->libelle ?? 'N/A' }}
+                        Année {{ $inscription->anneeUniversitaire->name ?? $inscription->anneeUniversitaire->display_name ?? 'N/A' }}
                     </div>
                 </div>
             </div>

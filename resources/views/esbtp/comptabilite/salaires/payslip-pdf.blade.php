@@ -25,9 +25,11 @@
         .bp-sub td { border-top: 2px solid #cbd5e1; font-weight: 700; background: #eff6ff !important; }
         .bp-sub--neg td { background: #fef2f2 !important; color: #b91c1c; }
         .bp-net { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        .bp-net td { padding: 10px 12px; background: linear-gradient(135deg, #0a3d8f, #0453cb); color: #fff; }
+        .bp-net td { padding: 10px 12px; background-color: #0453cb; color: #ffffff; }
+        /* Couleur pleine : DomPDF ne dessine pas les dégradés, et le net écrit en
+           blanc sur un fond absent était invisible sur la fiche imprimée. */
         .bp-net .bp-net-lbl { font-size: 11px; font-weight: 700; }
-        .bp-net .bp-net-val { font-size: 18px; font-weight: 800; text-align: right; }
+        .bp-net .bp-net-val { font-size: 18px; font-weight: 700; text-align: right; }
         .bp-pay { margin-top: 12px; font-size: 10px; }
         .bp-sign { width: 100%; border-collapse: collapse; margin-top: 26px; }
         .bp-sign td { width: 50%; padding: 6px 10px; font-size: 9px; color: #64748b; vertical-align: top; }
@@ -83,7 +85,7 @@
     {{-- Net --}}
     <table class="bp-net">
         <tr>
-            <td class="bp-net-lbl">NET À PAYER</td>
+            <td class="bp-net-lbl">Net à payer</td>
             <td class="bp-net-val">{{ $fmt($salaire->net_a_payer) }} FCFA</td>
         </tr>
     </table>

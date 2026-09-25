@@ -805,7 +805,7 @@
                             <div class="pc-facts">
                                 <div><span>Filière</span><b>{{ $inscription->filiere->name ?? 'N/A' }}</b></div>
                                 <div><span>Niveau d'études</span><b>{{ $inscription->niveauEtude->name ?? 'N/A' }}</b></div>
-                                <div><span>Année universitaire</span><b>{{ $inscription->anneeUniversitaire->libelle ?? $inscription->anneeUniversitaire->name ?? 'N/A' }}</b></div>
+                                <div><span>Année universitaire</span><b>{{ $inscription->anneeUniversitaire->display_name ?? 'N/A' }}</b></div>
                                 <input type="hidden" name="inscription_id" value="{{ $inscription->id }}">
                             </div>
                         @else
