@@ -168,6 +168,155 @@ class EcuePorteeDepuisEcranTest extends TestCase
         $this->assertNotContains('TOPO-TIR', $this->vusPar($this->batiment), 'Un element reserve a Travaux Publics ne doit pas entrer dans la maquette de Batiment.');
     }
 
+    public function test_changer_la_maquette_d_un_element_commun_le_deplace(): void
+    {
+        // Le cas USAT : un element pose en commun, puis modifie en « Reservee a
+        // Batiment ». La ligne commune doit partir, sinon Travaux Publics le
+        // voit toujours alors que l'ecran affirme le contraire.
+        $this->composition->retirer($this->ue, [(int) $this->ecueBu->id], (int) $this->batiment->id);
+        $this->composition->poser($this->ue, (int) $this->ecueBu->id, ['coefficient_ecue' => 1, 'credit_ecue' => 3, 'ordre_bulletin' => 0]);
+        $this->assertContains('ECUE-BU', $this->vusPar($this->travauxPublics));
+
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.ecue.update', [$this->ue, $this->ecueBu]), [
+                'credit_ecue' => 3,
+                'parcours_id' => $this->batiment->id,
+                'portee_origine' => 0,
+                'garder_origine' => 0,
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseMissing('esbtp_ue_matiere', [
+            'unite_enseignement_id' => $this->ue->id,
+            'matiere_id' => $this->ecueBu->id,
+            'parcours_id' => CompositionUe::COMMUN,
+        ]);
+        $this->assertContains('ECUE-BU', $this->vusPar($this->batiment));
+        $this->assertNotContains('ECUE-BU', $this->vusPar($this->travauxPublics));
+    }
+
+    public function test_repasser_un_element_reserve_en_commun_le_rend_a_tous(): void
+    {
+        // L'import a reserve ECUE-BU a Batiment. On le rend commun.
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.ecue.update', [$this->ue, $this->ecueBu]), [
+                'credit_ecue' => 3,
+                'portee_origine' => $this->batiment->id,
+                'garder_origine' => 0,
+            ])
+            ->assertOk();
+
+        $lignes = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $this->ue->id)
+            ->where('matiere_id', $this->ecueBu->id)
+            ->pluck('parcours_id')->map(fn ($id) => (int) $id)->all();
+
+        $this->assertSame([CompositionUe::COMMUN], $lignes, 'Une seule ligne, la commune.');
+        $this->assertContains('ECUE-BU', $this->vusPar($this->travauxPublics));
+    }
+
+    public function test_garder_aussi_l_origine_conserve_la_surcharge(): void
+    {
+        $this->composition->poser($this->ue, (int) $this->ecueBu->id, ['coefficient_ecue' => 1, 'credit_ecue' => 3, 'ordre_bulletin' => 0]);
+
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.ecue.update', [$this->ue, $this->ecueBu]), [
+                'coefficient_ecue' => 2,
+                'parcours_id' => $this->travauxPublics->id,
+                'portee_origine' => 0,
+                'garder_origine' => 1,
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('esbtp_ue_matiere', [
+            'unite_enseignement_id' => $this->ue->id,
+            'matiere_id' => $this->ecueBu->id,
+            'parcours_id' => CompositionUe::COMMUN,
+        ]);
+        $this->assertDatabaseHas('esbtp_ue_matiere', [
+            'unite_enseignement_id' => $this->ue->id,
+            'matiere_id' => $this->ecueBu->id,
+            'parcours_id' => $this->travauxPublics->id,
+        ]);
+    }
+
+    public function test_le_compte_d_ecue_suit_la_maquette_filtree(): void
+    {
+        // ECUE-BU est reserve a Batiment : Travaux Publics n'en voit aucun.
+        $compte = fn ($parcoursId) => $this->actingAs($this->acteur)
+            ->getJson(route('esbtp.lmd.ue.index', ['format' => 'json', 'search' => 'UE-PARTAGEE', 'parcours_id' => $parcoursId]))
+            ->assertOk()->json('ues.0.matieres_count');
+
+        $this->assertSame(0, $compte($this->travauxPublics->id));
+        $this->assertSame(1, $compte($this->batiment->id));
+    }
+
+    public function test_retirer_la_derniere_ligne_d_un_element_demande_confirmation(): void
+    {
+        // ECUE-BU n'a qu'une ligne (reservee a Batiment) : la retirer le ferait
+        // sortir du LMD. Le serveur refuse sans confirmation explicite.
+        $url = route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]);
+
+        $this->actingAs($this->acteur)
+            ->deleteJson($url, ['parcours_id' => $this->batiment->id])
+            ->assertStatus(409)
+            ->assertJson(['confirmation_requise' => true]);
+        $this->assertContains('ECUE-BU', $this->vusPar($this->batiment), 'Rien ne doit etre retire sans confirmation.');
+
+        $this->actingAs($this->acteur)
+            ->deleteJson($url, ['parcours_id' => $this->batiment->id, 'confirmer_sortie' => true])
+            ->assertOk();
+        $this->assertNotContains('ECUE-BU', $this->vusPar($this->batiment));
+    }
+
+    public function test_une_ligne_dans_une_autre_ue_n_evite_pas_la_confirmation(): void
+    {
+        // La cle etrangere est coupee des qu'il ne reste plus de ligne dans
+        // CETTE unite : une ligne ailleurs ne retient pas l'element dans le LMD.
+        $autre = $this->ue->replicate();
+        $autre->code = 'UE-AUTRE';
+        $autre->save();
+        DB::table('esbtp_ue_matiere')->insert([
+            'unite_enseignement_id' => $autre->id, 'matiere_id' => $this->ecueBu->id,
+            'parcours_id' => 0, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->acteur)
+            ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]), ['parcours_id' => $this->batiment->id])
+            ->assertStatus(409);
+    }
+
+    public function test_la_liste_montre_le_coefficient_que_le_bulletin_utilise(): void
+    {
+        // Enregistre sans coefficient : le bulletin retombe sur la matiere,
+        // puis sur 1. La liste affichait « Coeff. — ».
+        DB::table('esbtp_ue_matiere')->where('matiere_id', $this->ecueBu->id)->update(['coefficient_ecue' => null]);
+        DB::table('esbtp_matieres')->where('id', $this->ecueBu->id)->update(['coefficient_ecue' => null]);
+
+        $ecues = $this->actingAs($this->acteur)
+            ->getJson(route('esbtp.lmd.ue.index', ['format' => 'json', 'search' => 'UE-PARTAGEE', 'parcours_id' => $this->batiment->id]))
+            ->assertOk()
+            ->json('ues.0.ecues');
+
+        $bu = collect($ecues)->firstWhere('code', 'ECUE-BU');
+        $attendu = DB::table('esbtp_matieres')->where('id', $this->ecueBu->id)->value('coefficient') ?? 1;
+        $this->assertEquals($attendu, $bu['coefficient']);
+    }
+
+    public function test_la_liste_signale_un_element_a_la_fois_commun_et_reserve(): void
+    {
+        // L'import a reserve ECUE-BU a Batiment ; on ajoute la ligne commune.
+        $this->composition->poser($this->ue, (int) $this->ecueBu->id, ['coefficient_ecue' => 1, 'credit_ecue' => 3, 'ordre_bulletin' => 0]);
+
+        $doubles = $this->actingAs($this->acteur)
+            ->getJson(route('esbtp.lmd.ue.index', ['format' => 'json', 'search' => 'UE-PARTAGEE', 'parcours_id' => $this->travauxPublics->id]))
+            ->assertOk()
+            ->json('ues.0.communs_et_reserves');
+
+        $this->assertCount(1, $doubles, 'Le signalement vaut quel que soit le filtre de parcours.');
+        $this->assertSame(['BU'], $doubles[0]['reserve_a']);
+    }
+
     public function test_le_retrait_vise_la_maquette_de_la_ligne_cliquee(): void
     {
         $this->composition->poser($this->ue, (int) $this->ecueBu->id, [
@@ -330,6 +479,21 @@ class EcuePorteeDepuisEcranTest extends TestCase
         // L'onglet « Lier un existant » ne liste pas les matieres BTS : le proposer mentirait.
         $this->assertStringContainsString('cursus BTS', $erreur);
         $this->assertStringNotContainsString('Lier un existant', $erreur);
+    }
+
+    public function test_modifier_une_ue_sans_tous_ses_champs_garde_les_autres(): void
+    {
+        $avant = $this->ue->fresh();
+
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.update', $this->ue), ['name' => 'Intitule revu', 'type_ue' => 'fondamentale'])
+            ->assertOk();
+
+        $apres = $this->ue->fresh();
+        $this->assertSame('Intitule revu', $apres->name);
+        $this->assertSame($avant->code, $apres->code, 'Le code non envoye ne doit pas etre efface.');
+        $this->assertSame((int) $avant->credit, (int) $apres->credit);
+        $this->assertSame($avant->semestre, $apres->semestre);
     }
 
     public function test_le_formulaire_d_ue_libere_le_code_au_lieu_de_ressusciter_la_matiere(): void

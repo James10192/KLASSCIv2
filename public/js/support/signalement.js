@@ -97,6 +97,9 @@
             $('[data-sp-recap-description]').textContent = etat.description;
             $('[data-sp-recap-page]').textContent = window.location.pathname;
             afficherCapture();
+            /* Le moteur de rendu pese ~200 Ko : il se charge pendant que la personne
+               relit, pas apres qu'elle a appuye sur « Capturer ». */
+            if (CONFIG.capture && !etat.capture) { outilsCapture().catch(function () {}); }
         }
         /* Le bouton clique vient d'etre masque : sans ceci, le focus tombe sur la page.
            A l'ouverture, la fenetre est encore invisible, shown.bs.modal s'en charge. */
@@ -303,7 +306,11 @@
         if (etat.capture) {
             $('[data-sp-capture-vignette]').src = etat.capture.url;
             $('[data-sp-capture-taille]').textContent = Math.max(1, Math.round(etat.capture.blob.size / 1024)) + ' Ko';
-            note.textContent = 'Nous joignons la page, votre navigateur, un code de suivi technique et la capture que vous avez vérifiée, champs de saisie masqués.';
+            /* Seule une capture de l'ecran a ses champs masques d'office : une image
+               choisie arrive telle quelle, et le dire autrement serait mentir. */
+            note.textContent = etat.capture.source === 'fichier'
+                ? 'Nous joignons la page, votre navigateur, un code de suivi technique et l\'image que vous avez choisie, telle que vous l\'avez vérifiée.'
+                : 'Nous joignons la page, votre navigateur, un code de suivi technique et la capture que vous avez vérifiée, champs de saisie masqués.';
         } else {
             note.textContent = 'Nous joignons automatiquement la page, votre navigateur et un code de suivi technique. Aucun contenu de la page n\'est transmis.';
         }
@@ -311,7 +318,8 @@
         choix.hidden = !!etat.capture;
     }
 
-    function ouvrirEditeur(source) {
+    function ouvrirEditeur(source, provenance) {
+        editeurProvenance = provenance;
         var cadre = $('[data-sp-toile]');
         editeur = new window.KlassciCapture.Editeur(cadre, source);
         choisirOutil('cadre');
@@ -326,28 +334,59 @@
         if (editeur) { editeur.choisir(outil); }
     }
 
+    /*
+     * Au-dela, on rend la main : sur un telephone lent et une page lourde, le
+     * rendu peut durer bien plus, et la personne n'a aucun moyen de le savoir.
+     * Le rendu en cours ne s'annule pas ; son resultat tardif est simplement ignore.
+     */
+    var CAPTURE_DELAI_MAX_MS = 25000;
+    var editeurProvenance = 'ecran';
+    var tentativeCapture = 0;
+
     function capturerEcran() {
-        var bouton = $('[data-sp-capturer]');
-        var libelle = $('[data-sp-capturer-libelle]');
-        bouton.disabled = true;
-        libelle.textContent = 'Capture…';
-        outilsCapture().then(function () {
-            return window.KlassciCapture.capturer();
-        }).then(ouvrirEditeur).catch(function () {
-            erreur('La capture n\'a pas pu être faite sur cette page. Vous pouvez choisir une image à la place.');
+        var tentative = ++tentativeCapture;
+        $('[data-sp-capturer]').disabled = true;
+        $('[data-sp-capturer-libelle]').textContent = 'Capture en cours…';
+        var delai = new Promise(function (resoudre, rejeter) {
+            setTimeout(function () { rejeter(new Error('delai')); }, CAPTURE_DELAI_MAX_MS);
+        });
+        Promise.race([
+            outilsCapture().then(function () { return window.KlassciCapture.capturer(); }),
+            delai
+        ]).then(function (source) {
+            if (tentative === tentativeCapture) { ouvrirEditeur(source, 'ecran'); }
+        }).catch(function (e) {
+            if (tentative !== tentativeCapture) { return; }
+            erreur(e && e.message === 'delai'
+                ? 'La capture prend trop de temps sur cet appareil. Faites une capture avec les touches de votre appareil, puis « Choisir une image ».'
+                : 'La capture n\'a pas pu être faite sur cette page. Vous pouvez choisir une image à la place.');
         }).then(function () {
-            bouton.disabled = false;
-            libelle.textContent = 'Capturer l\'écran';
+            if (tentative === tentativeCapture) { remettreBoutonCapture(); }
         });
     }
 
+    function remettreBoutonCapture() {
+        var bouton = $('[data-sp-capturer]');
+        if (!bouton) { return; }
+        bouton.disabled = false;
+        $('[data-sp-capturer-libelle]').textContent = 'Capturer l\'écran';
+    }
+
+    /* Fenetre fermee pendant le rendu : son resultat n'ouvrira pas l'editeur a la reouverture. */
+    function abandonnerCapture() {
+        tentativeCapture++;
+        remettreBoutonCapture();
+    }
+
     function capturerFichier(champ) {
+        /* Une image choisie pendant un rendu en cours : le rendu ne la remplacera pas. */
+        abandonnerCapture();
         var fichier = champ.files && champ.files[0];
         champ.value = '';
         if (!fichier) { return; }
         charger(CONFIG.capture.script).then(function () {
             return window.KlassciCapture.depuisFichier(fichier);
-        }).then(ouvrirEditeur).catch(function () {
+        }).then(function (source) { ouvrirEditeur(source, 'fichier'); }).catch(function () {
             erreur('Cette image n\'a pas pu être ouverte. Choisissez une capture PNG, JPEG ou WebP.');
         });
     }
@@ -361,7 +400,7 @@
                 return;
             }
             if (etat.capture) { URL.revokeObjectURL(etat.capture.url); }
-            etat.capture = { blob: blob, url: URL.createObjectURL(blob), cle: nouvelleCle(), operations: editeur.operations.slice() };
+            etat.capture = { blob: blob, url: URL.createObjectURL(blob), cle: nouvelleCle(), operations: editeur.operations.slice(), source: editeurProvenance };
             aller('recap');
         }).catch(function () {
             erreur('La capture n\'a pas pu être préparée. Réessayez, ou choisissez une image.');
@@ -511,6 +550,7 @@
 
     /* Le focus revient a ce qui a ouvert la fenetre. */
     racine.addEventListener('hidden.bs.modal', function () {
+        abandonnerCapture();
         if (etat.declencheur && typeof etat.declencheur.focus === 'function' && document.contains(etat.declencheur)) {
             etat.declencheur.focus();
         }

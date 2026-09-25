@@ -316,6 +316,14 @@ Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(func
     // Statut des cours
     Route::put('/cours/{coursId}/statut', [App\Http\Controllers\API\LMSWriteController::class, 'updateCourseStatus'])
         ->name('cours.statut.update');
+
+    // ================================
+    // SYNCHRONISATION v2 (jeton serveur)
+    // ================================
+
+    // « Ce qui a change depuis », tous types confondus (docs/api/LMS_SYNCHRONISATION.md)
+    Route::get('/v2/sync', [App\Http\Controllers\API\LMSSyncController::class, 'sync'])
+        ->name('v2.sync');
 });
 
 // ================================
@@ -370,6 +378,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/recouvrement', [App\Http\Controllers\API\CLI\CLIDataController::class, 'recouvrement'])->name('recouvrement');
     Route::get('/journal-caisse', [App\Http\Controllers\API\CLI\CLIDataController::class, 'journalCaisse'])->name('journal-caisse');
     Route::get('/audit-comptable', [App\Http\Controllers\API\CLI\CLIDataController::class, 'auditComptable'])->name('audit-comptable');
+    Route::get('/usage/pages', [App\Http\Controllers\API\CLI\CLIUsageController::class, 'pages'])->name('usage.pages');
     Route::get('/settings', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settings'])->name('settings');
     Route::get('/frais/bareme', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'bareme'])->name('frais.bareme');
     Route::get('/frais/soldes-inscription', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'soldesInscription'])->name('frais.soldes-inscription');
@@ -515,6 +524,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
 
     // LMD hierarchy (read)
     Route::get('/lmd/tree', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'tree'])->name('lmd.tree');
+    // La maquette vue par chaque parcours : origine de chaque element (commun,
+    // reserve, cle etrangere) et masse horaire planifiee. Lecture seule.
+    Route::get('/lmd/maquette', [App\Http\Controllers\API\CLI\CLILMDMaquetteController::class, 'lire'])->name('lmd.maquette');
 
     // Admin endpoints — throttled at 60/min (matches outer group; auth:sanctum + tokenCan('cli:admin')
     // already gates access. Higher throughput needed for bulk operations like LMD import.)
@@ -620,6 +632,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // (dry_run par défaut SAFE, garde-fou évaluations). Idempotent.
         Route::post('/lmd/cleanup', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'cleanup'])->name('lmd.cleanup');
 
+        // Planifications LMD laissees a 0 credit par la saisie d'heures : recense,
+        // repare sur demande (dry_run par defaut). Un 0 modifie a la main est garde.
+        Route::post('/lmd/planifications/reparer-credits', [App\Http\Controllers\API\CLI\CLILMDMaquetteController::class, 'reparerCredits'])->name('lmd.planifications.reparer-credits');
+
         // LMD link-classes — rattache des classes LMD à un parcours (parcours_id +
         // filiere_id dérivé + systeme=LMD). Domaine/Mention via parcours. Dry-run par défaut.
         Route::post('/lmd/link-classes', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'linkClasses'])->name('lmd.link-classes');
@@ -716,5 +732,22 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // ecrase les moyennes enregistrees, y compris celles saisies a la main.
         Route::post('/notes/recompute', [App\Http\Controllers\API\CLI\CLINotesRecomputeController::class, 'notesRecompute'])
             ->name('notes.recompute');
+        // Enregistrer ou retirer les moyennes de matiere d'UN eleve (reclamation
+        // traitee a distance). Simulation par defaut, motif obligatoire.
+        Route::post('/resultats/moyennes', [App\Http\Controllers\API\CLI\CLIMoyennesController::class, 'enregistrer'])
+            ->name('resultats.moyennes');
+        // Corriger des notes EXISTANTES d'un eleve, puis recalculer ses moyennes
+        // (synchrone). Simulation par defaut, motif obligatoire.
+        Route::post('/notes/corriger', [App\Http\Controllers\API\CLI\CLIMoyennesController::class, 'corrigerNotes'])
+            ->name('notes.corriger');
+        // Jetons SERVEUR du LMS (compte technique « Service LMS ») : le jeton
+        // en clair n'est rendu qu'a la creation. Voir docs/api/LMS_JETON_SERVEUR.md.
+        Route::post('/lms/jeton-serveur', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'creer'])
+            ->name('lms.jeton-serveur.creer');
+        Route::get('/lms/jetons-serveur', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'lister'])
+            ->name('lms.jetons-serveur');
+        Route::delete('/lms/jeton-serveur/{id}', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'revoquer'])
+            ->whereNumber('id')
+            ->name('lms.jeton-serveur.revoquer');
     });
 });

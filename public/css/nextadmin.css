@@ -2004,3 +2004,21 @@ body {
 .list-group-item:hover .btn {
     z-index: 15;
 }
+
+/* ============= Barre du haut : rien ne sort de l'écran (sept. 2026) =============
+   Mesuré sur ISLG et USAT : le bouton de profil dépassait de 10 à 125 px, de
+   1024 à 1440 px de large. La recherche (flex: 1) gardait sa largeur minimale
+   de champ, le nom d'école et le nom de l'utilisateur ne se coupaient pas.
+   C'est la recherche qui cède maintenant, et les noms longs s'abrègent. */
+.navbar-left { min-width: 0; flex-shrink: 1; }
+.navbar-center { min-width: 0; }
+.navbar-search, .navbar-search input { min-width: 0; }
+.navbar-right { flex-shrink: 0; }
+.btn-acasi.profile-btn { max-width: 230px; min-width: 0; }
+.navbar-user-info { min-width: 0; }
+.navbar-user-name, .navbar-user-role { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1199.98px) {
+    /* Entre tablette et grand écran, l'avatar suffit : le nom reste dans le menu. */
+    .btn-acasi.profile-btn .navbar-user-info { display: none !important; }
+    .btn-acasi.profile-btn { padding: 6px 8px; }
+}

@@ -44,6 +44,8 @@
     /* ── Filters ── */
     .lu-filters { background: #fff; border-radius: 14px; padding: 1rem 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.03); border: 1px solid #e8ecf1; display: flex; align-items: flex-end; gap: .85rem; flex-wrap: wrap; animation: lu-fadeUp .45s ease-out .1s both; }
     .lu-filter-group { display: flex; flex-direction: column; gap: .3rem; flex: 1; min-width: 140px; }
+    .lu-au-full { display: flex !important; width: 100%; }
+    .lu-au-full .au-select-trigger { width: 100%; }
     .lu-filter-label { font-size: .72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
     .lu-filter-control { padding: .5rem .75rem; border: 1.5px solid #e2e8f0; border-radius: 9px; font-size: .86rem; color: #1e293b; background: #f8fafc; transition: all .2s; width: 100%; }
     .lu-filter-control:focus { outline: none; border-color: #0453cb; background: #fff; box-shadow: 0 0 0 3px rgba(4,83,203,.08); }
@@ -87,6 +89,9 @@
     .lu-parcours-badge-sem { font-size: .6rem; color: #818cf8; }
     /* Portee d'un element : commun a toutes les maquettes, ou reserve a un parcours */
     .lu-portee-badge { display: inline-flex; align-items: center; gap: .25rem; margin-left: .45rem; padding: .1rem .4rem; border-radius: 5px; font-size: .64rem; font-weight: 600; letter-spacing: .02em; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; vertical-align: middle; }
+    .lu-double-alerte { display: inline-flex; align-items: center; gap: .3rem; margin-left: .5rem; padding: .12rem .45rem; border-radius: 6px; font-size: .66rem; font-weight: 700; background: rgba(245,158,11,.12); color: #b45309; border: 1px solid rgba(245,158,11,.35); vertical-align: middle; }
+    .lu-double-ligne td { background: #fffbeb; }
+    .lu-double-texte { font-size: .8rem; color: #92400e; line-height: 1.5; }
     .lu-portee-badge--reserve { background: #eef2ff; color: #4338ca; border-color: #c7d2fe; }
     .lu-empty { text-align: center; padding: 4rem 2rem; }
     .lu-empty-icon { width: 76px; height: 76px; border-radius: 20px; background: #f1f5f9; display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; color: #cbd5e1; margin-bottom: 1.15rem; }
@@ -218,21 +223,20 @@
         </div>
         <div class="lu-filter-group">
             <label class="lu-filter-label">@rang('parcours')</label>
-            <select class="lu-filter-control" x-model="filters.parcours_id" @change="loadUes()">
-                <option value="">Tous</option>
-                @foreach($parcours as $p)
-                    <option value="{{ $p->id }}">{{ $p->code }} — {{ $p->name }}</option>
-                @endforeach
-            </select>
+            @php
+                $_optionsParcours = $parcours->mapWithKeys(fn ($p) => [$p->id => trim(($p->code ? $p->code . ' · ' : '') . $p->name)])->all();
+            @endphp
+            <x-au-select class="lu-au-full" x-model="filters.parcours_id" @change="loadUes()"
+                :value="(string) request('parcours_id', '')" placeholder="Tous" icon="fa-route"
+                :searchable="count($_optionsParcours) > 8" :options="$_optionsParcours" />
         </div>
-        <div class="lu-filter-group" style="max-width:160px;">
+        <div class="lu-filter-group" style="max-width:200px;">
             <label class="lu-filter-label">Type UE</label>
-            <select class="lu-filter-control" x-model="filters.type_ue" @change="loadUes()">
-                <option value="">Tous</option>
-                @foreach(\App\Enums\TypeUE::cases() as $type)
-                    <option value="{{ $type->value }}">{{ $type->label() }}</option>
-                @endforeach
-            </select>
+            @php
+                $_optionsTypes = collect(\App\Enums\TypeUE::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all();
+            @endphp
+            <x-au-select class="lu-au-full" x-model="filters.type_ue" @change="loadUes()"
+                :value="(string) request('type_ue', '')" placeholder="Tous" :options="$_optionsTypes" />
         </div>
     </div>
 
@@ -284,7 +288,13 @@
                                 <span class="lu-arrow" :class="{ 'lu-open': openRow === ue.id }">&#9654;</span>
                             </td>
                             <td><span class="lu-code" x-text="ue.code"></span></td>
-                            <td><span class="lu-name" x-text="ue.name"></span></td>
+                            <td>
+                                <span class="lu-name" x-text="ue.name"></span>
+                                <span class="lu-double-alerte" x-show="(ue.communs_et_reserves || []).length" x-cloak
+                                      title="Un élément est à la fois dans la version commune et réservé à un parcours : tous les parcours le voient donc encore.">
+                                    <i class="fas fa-exclamation-triangle"></i>Commun + réservé
+                                </span>
+                            </td>
                             <td>
                                 <span x-show="ue.type_ue" class="lu-type-badge"
                                       :class="'lu-type--' + ue.type_ue"
@@ -349,6 +359,19 @@
                                             <i class="fas fa-unlink" style="font-size:.7rem;"></i>
                                         </button>
                                     </div>
+                                </td>
+                            </tr>
+                        </template>
+                        <template x-for="d in (ue.communs_et_reserves || [])" :key="'double-' + d.id">
+                            <tr class="lu-sub-row lu-double-ligne" x-show="openRow === ue.id" x-cloak>
+                                <td></td>
+                                <td colspan="7" class="lu-double-texte">
+                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                    « <strong x-text="d.name"></strong> » est réservé à <strong x-text="d.reserve_a.join(', ')"></strong>,
+                                    mais il est aussi dans la version <strong>Commun</strong> : les autres parcours le voient donc encore.
+                                    S'il ne concerne que <span x-text="d.reserve_a.join(', ')"></span>, retirez sa ligne « Commun » avec le bouton
+                                    <i class="fas fa-unlink" style="font-size:.7rem;"></i> (la ligne « Commun » se voit quand le filtre Parcours est sur « Tous »).
+                                    Si c'est voulu (valeurs propres à ce parcours), laissez tel quel.
                                 </td>
                             </tr>
                         </template>
@@ -521,6 +544,11 @@
                             <option value="">Commune à tous les parcours de l'UE</option>
                         </select>
                         <div id="ecue_portee_hint" style="margin-top:.45rem; font-size:.74rem; color:#64748b; line-height:1.45;"></div>
+                        {{-- En modification seulement : changer la maquette deplace l'element --}}
+                        <label id="ecue_garder_block" style="display:none; margin-top:.6rem; font-size:.76rem; color:#334155; cursor:pointer;">
+                            <input type="checkbox" id="ecue_garder_origine" onchange="onEcuePorteeChange()" style="margin-right:.35rem;">
+                            Garder aussi l'élément dans « <span id="ecue_origine_label"></span> »
+                        </label>
                     </div>
 
                     {{-- Tabs: Créer / Lier existant --}}
@@ -572,7 +600,7 @@
                         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:.75rem;">
                             <div>
                                 <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;"><i class="fas fa-balance-scale" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Coefficient</label>
-                                <input type="number" class="form-control" name="coefficient_ecue" id="ecue_coefficient" min="0" step="0.5" placeholder="1" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                                <input type="number" class="form-control" name="coefficient_ecue" id="ecue_coefficient" min="0" step="0.5" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
                             </div>
                             <div>
                                 <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;"><i class="fas fa-award" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Crédits</label>
@@ -784,19 +812,24 @@ function ueManager() {
         },
 
         // ── Delete ECUE ──
-        async deleteEcue(ue, ecue) {
+        async deleteEcue(ue, ecue, confirmerSortie = false) {
             const maquette = ecue.portee
                 ? `de la maquette ${ecue.portee_label || ecue.portee_code}`
                 : 'de la composition commune (tous les parcours de l\'UE)';
-            if (!confirm(`Retirer « ${ecue.name} » ${maquette} ?`)) return;
+            if (!confirmerSortie && !confirm(`Retirer « ${ecue.name} » ${maquette} ?`)) return;
             try {
                 const resp = await fetch(`${BASE}/${ue.id}/ecue/${ecue.id}`, {
                     method: 'DELETE',
                     headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
                     // La ligne visee : celle de CETTE maquette, et d'elle seule.
-                    body: JSON.stringify({ parcours_id: ecue.portee || null }),
+                    body: JSON.stringify({ parcours_id: ecue.portee || null, confirmer_sortie: confirmerSortie }),
                 });
                 const data = await resp.json();
+                // Derniere ligne de l'element : le serveur demande une seconde confirmation.
+                if (resp.status === 409 && data.confirmation_requise) {
+                    if (confirm(data.message)) return this.deleteEcue(ue, ecue, true);
+                    return;
+                }
                 if (resp.ok && data.success) {
                     ue.ecues = (ue.ecues || []).filter(e => !(e.id === ecue.id && (e.portee || 0) === (ecue.portee || 0)));
                     ue.matieres_count = new Set(ue.ecues.map(e => e.id)).size;
@@ -1057,7 +1090,7 @@ function onMatiereSelected(option) {
     document.getElementById('ecue_preview_name').textContent = option.dataset.name || '';
     document.getElementById('ecue_preview_code').textContent = option.dataset.code ? '(' + option.dataset.code + ')' : '';
     preview.style.display = 'block';
-    if (option.dataset.coeff && !document.getElementById('ecue_coefficient').value) document.getElementById('ecue_coefficient').value = option.dataset.coeff;
+    if (option.dataset.coeff) document.getElementById('ecue_coefficient').value = option.dataset.coeff;
     if (option.dataset.credit && !document.getElementById('ecue_credit').value) { document.getElementById('ecue_credit').value = option.dataset.credit; updateCreditGauge(); }
 }
 
@@ -1095,16 +1128,41 @@ function onEcuePorteeChange() {
         const nom = sel.options[sel.selectedIndex].textContent.replace(/^Réservée à /, '');
         hint.textContent = 'Visible et compté uniquement dans la maquette ' + nom + '. Les autres parcours de l\'unité ne le voient pas.';
     }
+    // En modification : la maquette choisie differe de celle de la ligne ouverte.
+    const garderBlock = document.getElementById('ecue_garder_block');
+    const change = ecueIsEditMode && String(sel.value || '0') !== String(ecueOriginePortee || '0');
+    garderBlock.style.display = change ? 'block' : 'none';
+    if (change) {
+        const origine = Array.from(sel.options).find(o => String(o.value || '0') === String(ecueOriginePortee || '0'));
+        document.getElementById('ecue_origine_label').textContent = origine ? origine.textContent : 'l\'ancienne maquette';
+        // Qui perd l'element : en quittant le commun, tous les parcours sauf la cible.
+        const perdants = !ecueOriginePortee
+            ? Array.from(sel.options).filter(o => o.value && o.value !== sel.value).map(o => o.textContent.replace(/^Réservée à /, ''))
+            : [origine ? origine.textContent.replace(/^Réservée à /, '') : ''];
+        hint.textContent = document.getElementById('ecue_garder_origine').checked
+            ? 'L\'élément restera AUSSI dans « ' + (origine ? origine.textContent : '') + ' ».'
+            : 'L\'élément sera DÉPLACÉ. ' + (perdants.filter(Boolean).length
+                ? perdants.join(', ') + ' ne l\'aura plus dans sa maquette. Cochez la case ci-dessous si ' + (perdants.length > 1 ? 'ces parcours doivent' : 'ce parcours doit') + ' le garder.'
+                : '');
+    }
     // La liste des matieres proposees depend de la maquette visee.
     lastLoadedUeId = null;
     if (ecueActiveTab === 'link') loadMatieresDisponibles();
 }
 
+// Maquette de la ligne ouverte en modification (0 = commune).
+let ecueOriginePortee = 0;
+
 function openEcueCreateModal(ueId, ueName, ueCredit, creditsUsed, parcoursList, porteeParDefaut) {
     ecueUeCredit = ueCredit; ecueCreditsUsed = creditsUsed; ecueOwnCredit = 0; ecueCurrentUeId = ueId; ecueIsEditMode = false;
+    ecueOriginePortee = 0;
+    document.getElementById('ecue_garder_origine').checked = false;
     document.getElementById('ecue_form').action = `${BASE}/${ueId}/ecue`;
     document.getElementById('ecue_form').reset();
     document.getElementById('ecue_method').value = 'POST';
+    // Une vraie valeur, pas un exemple grise : laissee vide, la case
+    // n'enregistrait rien et la liste affichait « Coeff. — ».
+    document.getElementById('ecue_coefficient').value = '1';
     remplirEcuePortee(parcoursList, porteeParDefaut);
     document.getElementById('ecue_matiere_id').value = '';
     document.getElementById('ecue_ue_label').textContent = ueName;
@@ -1123,8 +1181,11 @@ function openEcueEditModalFn(ueId, ecue, ueCredit, creditsUsed, ueName, parcours
     ecueCurrentUeId = ueId; ecueIsEditMode = true;
     document.getElementById('ecue_form').action = `${BASE}/${ueId}/ecue/${ecue.id}`;
     document.getElementById('ecue_method').value = 'PUT';
-    // On modifie la ligne que l'on regarde : sa propre maquette. Choisir un
-    // parcours sur un element commun cree une surcharge propre a ce parcours.
+    // On modifie la ligne que l'on regarde : sa propre maquette. Changer la
+    // maquette DEPLACE l'element ; la case « Garder aussi » permet la
+    // surcharge (un parcours pose ses propres valeurs sur un element commun).
+    ecueOriginePortee = ecue.portee || 0;
+    document.getElementById('ecue_garder_origine').checked = false;
     remplirEcuePortee(parcoursList, ecue.portee || '');
     document.getElementById('ecue_matiere_id').value = '';
     document.getElementById('ecue_modal_title').textContent = 'Modifier l\'ECUE';
@@ -1167,6 +1228,10 @@ document.getElementById('ecue_form').addEventListener('submit', async function(e
     const body = {};
     formData.forEach((v, k) => { if (v !== '' && k !== '_method') body[k] = v; });
     if (ecueActiveTab === 'link') { delete body.name; delete body.code; }
+    if (ecueIsEditMode) {
+        body.portee_origine = ecueOriginePortee || 0;
+        body.garder_origine = document.getElementById('ecue_garder_origine').checked ? 1 : 0;
+    }
 
     const isPut = document.getElementById('ecue_method').value === 'PUT';
     try {
