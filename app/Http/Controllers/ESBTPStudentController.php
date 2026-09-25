@@ -373,6 +373,11 @@ class ESBTPStudentController extends Controller
             'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
         ]));
 
+        // Liste du telephone (partial _index-mobile) : lignes en JSON, meme requete filtree.
+        if ($request->input('mode') === 'mobile') {
+            return response()->json($this->trancheMobile($etudiants, $anneeCourante));
+        }
+
         if ($request->ajax()) {
             \Log::info('ESBTPStudentController@index returning AJAX response', array_merge($baseLogContext, [
                 'timestamp' => now()->toIso8601String(),
@@ -403,8 +408,11 @@ class ESBTPStudentController extends Controller
             'etudiants_for_bulk_count' => $etudiantsForBulk->count(),
         ]));
 
+        $listeMobile = $this->trancheMobile($etudiants, $anneeCourante);
+
         return view('esbtp.etudiants.index', compact(
             'etudiants',
+            'listeMobile',
             'etudiantsForBulk',
             'filieres',
             'niveaux',
@@ -446,6 +454,25 @@ class ESBTPStudentController extends Controller
      * Tout ce qui n'est pas reconnu est ignore plutot que rendu vide : un
      * parametre bricole dans l'URL ne doit pas faire disparaitre la liste.
      */
+    /**
+     * Une tranche de la liste du telephone : lignes pretes a afficher, et de quoi
+     * demander la suivante.
+     *
+     * @return array{items: array<int, array<string, mixed>>, has_more: bool, next_page: int, total: int}
+     */
+    private function trancheMobile($etudiants, ?ESBTPAnneeUniversitaire $anneeCourante): array
+    {
+        return [
+            'items' => $etudiants->getCollection()
+                ->map(fn (ESBTPEtudiant $e) => \App\Support\Etudiants\LigneEtudiantMobile::depuis($e, $anneeCourante?->id))
+                ->values()
+                ->all(),
+            'has_more' => $etudiants->hasMorePages(),
+            'next_page' => $etudiants->currentPage() + 1,
+            'total' => $etudiants->total(),
+        ];
+    }
+
     private function sexeDemande($valeur): ?string
     {
         if (! is_string($valeur) || $valeur === '') {
