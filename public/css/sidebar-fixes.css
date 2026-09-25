@@ -187,40 +187,6 @@
     color: var(--primary) !important;
 }
 
-/* 7. Corrections Search Input */
-#global-search {
-    transition: all 0.3s ease !important;
-}
-
-#global-search:focus {
-    box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.2) !important;
-    border-color: var(--primary) !important;
-}
-
-#search-results {
-    position: absolute !important;
-    top: 100% !important;
-    left: 0 !important;
-    right: 0 !important;
-    background: white !important;
-    border-radius: 12px !important;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
-    z-index: 1060 !important;
-    max-height: 400px !important;
-    overflow-y: auto !important;
-    margin-top: 8px !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    transform: translateY(-10px) !important;
-    transition: all 0.3s ease !important;
-}
-
-#search-results.show {
-    opacity: 1 !important;
-    visibility: visible !important;
-    transform: translateY(0) !important;
-}
-
 /* 8. Corrections Notifications et Messages */
 .notification-item,
 .message-item {
@@ -319,15 +285,7 @@
 
 /* 12. Corrections Responsive */
 @media (max-width: 767.98px) {
-    .navbar-search {
-        max-width: 200px !important;
-    }
-
     .dropdown-menu {
-        max-width: 300px !important;
-    }
-
-    #search-results {
         max-width: 300px !important;
     }
 }
@@ -379,10 +337,6 @@ button:focus,
 
 .dropdown-menu {
     z-index: 1045 !important;
-}
-
-#search-results {
-    z-index: 1047 !important;
 }
 
 :root {
