@@ -129,6 +129,21 @@ class ActiviteDuPersonnelTest extends TestCase
         self::assertSame(1, $ligne['evaluations_en_retard']);
     }
 
+    public function test_un_paiement_valide_se_compte_a_celui_qui_l_a_valide(): void
+    {
+        // Les écrans de validation écrivent validateur_id, pas validated_by :
+        // compter l'autre colonne affichait zéro validation à tout le monde.
+        $caissier = User::factory()->create();
+        $comptable = User::factory()->create();
+        $inscription = \App\Models\ESBTPInscription::where('etudiant_id', $this->etudiantInscrit()->id)->firstOrFail();
+        \App\Models\ESBTPPaiement::factory()->pour($inscription)->create([
+            'created_by' => $caissier->id, 'validateur_id' => $comptable->id, 'date_validation' => now(),
+        ]);
+
+        self::assertSame(1, $this->ligne($comptable)['paiements_valides'] ?? null);
+        self::assertSame(1, $this->ligne($caissier)['paiements_saisis'] ?? null);
+    }
+
     public function test_la_liste_exige_de_voir_tout_le_personnel(): void
     {
         $secretaire = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);

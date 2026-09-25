@@ -134,6 +134,23 @@ class ApercuDuPilotageTest extends TestCase
         self::assertSame('evaluation', $ligne['enseignant']['source'] ?? null);
     }
 
+    public function test_la_presence_du_semestre_lit_l_emploi_du_temps_tel_qu_il_est_saisi(): void
+    {
+        // L'écran de saisie écrit « Semestre 1 » : ne comparer que « semestre1 »
+        // faisait retomber la fenêtre sur l'année entière, sans le dire.
+        \Illuminate\Support\Facades\DB::table('esbtp_emploi_temps')->insert([
+            'titre' => 'EDT', 'classe_id' => $this->classe->id, 'semestre' => 'Semestre 1',
+            'date_debut' => '2026-01-05', 'date_fin' => '2026-03-27',
+            'annee_universitaire_id' => $this->annee->id, 'is_active' => 1, 'is_current' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $fenetre = app(\App\Domain\AcademicPilotage\Services\PresenceDuPerimetre::class)->fenetre((int) $this->annee->id, 'semestre1');
+
+        self::assertSame('emploi_du_temps', $fenetre['source']);
+        self::assertSame('2026-01-05', substr($fenetre['debut'], 0, 10));
+    }
+
     public function test_une_classe_hors_perimetre_est_refusee(): void
     {
         $enseignantSeul = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);

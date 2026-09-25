@@ -50,7 +50,9 @@ final class PresenceDuPerimetre
 
         $edt = DB::table('esbtp_emploi_temps')
             ->where('annee_universitaire_id', $anneeId)
-            ->where('semestre', $periode)
+            // Les emplois du temps s'écrivent « Semestre 1 » à la saisie, « semestre1 »
+            // ailleurs : comparer une seule orthographe retombait sur l'année entière.
+            ->whereIn('semestre', app(AcademicPeriodNormalizer::class)->databaseVariants($periode))
             ->whereNull('deleted_at')
             ->selectRaw('MIN(date_debut) as debut, MAX(date_fin) as fin')
             ->first();

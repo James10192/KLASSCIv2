@@ -34,6 +34,9 @@ return new class extends Migration
 
         if ($recalculer->isNotEmpty()) {
             DB::table('role_has_permissions')->whereIn('permission_id', $recalculer)->delete();
+            if (Schema::hasTable('model_has_permissions')) {
+                DB::table('model_has_permissions')->whereIn('permission_id', $recalculer)->delete();
+            }
         }
 
         app()['cache']->forget('spatie.permission.cache');

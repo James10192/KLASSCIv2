@@ -78,7 +78,7 @@ final class ActiviteDuPersonnel
         $seances = $this->seances($fenetre, $seulement)->keyBy('user_id');
         $evaluations = $this->evaluations($fenetre, $seulement);
         $saisis = $this->compterParAuteur('esbtp_paiements', 'created_by', 'created_at', $fenetre, $seulement, fn (Builder $q) => $q->whereNull('deleted_at'));
-        $valides = $this->compterParAuteur('esbtp_paiements', 'validated_by', 'date_validation', $fenetre, $seulement, fn (Builder $q) => $q->whereNull('deleted_at')->where('status', 'validé'));
+        $valides = $this->compterParAuteur('esbtp_paiements', 'validateur_id', 'date_validation', $fenetre, $seulement, fn (Builder $q) => $q->whereNull('deleted_at')->where('status', 'validé'));
         $inscriptions = $this->compterParAuteur('esbtp_inscriptions', 'created_by', 'created_at', $fenetre, $seulement, fn (Builder $q) => $q->whereNull('deleted_at'));
         $attente = $this->paiementsEnAttenteParAuteur($seulement);
 
