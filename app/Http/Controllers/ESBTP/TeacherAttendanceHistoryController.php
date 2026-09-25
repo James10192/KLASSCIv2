@@ -5,6 +5,7 @@ namespace App\Http\Controllers\ESBTP;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\ESBTPTeacherAttendance;
+use App\Support\ListeInfinie;
 use Carbon\Carbon;
 
 class TeacherAttendanceHistoryController extends Controller
@@ -31,8 +32,14 @@ class TeacherAttendanceHistoryController extends Controller
             ->with(['course.matiere', 'course.classe', 'dailyCode'])
             ->orderBy('date', 'desc')
             ->orderBy('validated_at', 'desc')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('id', 'desc')
             ->paginate(15)
             ->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($attendances, fn ($attendance) => view('esbtp.teacher.attendance._ligne', compact('attendance'))->render());
+        }
 
         // Les compteurs portent sur l'ensemble de la période, pas sur la page courante.
         $countsByStatus = (clone $baseQuery)

@@ -8,12 +8,12 @@
       - $inscriptions : LengthAwarePaginator
       - $sort : string (default 'created_at')
       - $dir : string (default 'desc')
-      - $perPage : int (default 15)
+      - $perPage : int, taille d'une tranche (default 25)
 --}}
 @php
     $sort = $sort ?? 'created_at';
     $dir = $dir ?? 'desc';
-    $perPage = $perPage ?? 15;
+    $perPage = $perPage ?? 25;
 
     $sortUrl = function (string $column) use ($sort, $dir) {
         $params = request()->query();
@@ -78,7 +78,7 @@
                     <th class="ii-col-actions" style="width:120px;">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="ii-tbody">
                 @foreach($inscriptions as $inscription)
                     @include('esbtp.inscriptions.partials.ligne-inscription', ['inscription' => $inscription])
                 @endforeach
@@ -86,20 +86,9 @@
         </table>
     </div>
 
-    <div class="ii-table-footer">
-        <div class="ii-per-page">
-            <label for="ii-per-page-select" class="ii-per-page-label">Afficher</label>
-            <select id="ii-per-page-select" class="ii-per-page-select" aria-label="Nombre d'inscriptions par page">
-                @foreach([15, 25, 50, 100] as $option)
-                    <option value="{{ $option }}" @selected($perPage === $option)>{{ $option }}</option>
-                @endforeach
-            </select>
-            <span class="ii-per-page-hint">par page · {{ $inscriptions->total() }} inscription{{ $inscriptions->total() > 1 ? 's' : '' }} au total</span>
-        </div>
-        <div class="ii-pagination">
-            {{ $inscriptions->appends(request()->query())->onEachSide(1)->links('pagination::bootstrap-5') }}
-        </div>
-    </div>
+    {{-- La suite se charge au defilement ; `per_page` reste accepte par l'URL
+         comme taille de tranche, sans selecteur. --}}
+    <x-liste-infinie :paginateur="$inscriptions" cible="#ii-tbody" libelle="inscriptions" />
 @else
     <div class="ii-empty">
         <div class="ii-empty-icon"><i class="fas fa-file-circle-question"></i></div>
