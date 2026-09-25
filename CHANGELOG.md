@@ -13,6 +13,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Ajouts
+- **Séances : « Le rendre disponible sur ce créneau » et « Programmer quand même »** sous le message d'indisponibilité d'un enseignant (`/esbtp/seances-cours/create`). Il n'est plus nécessaire de se connecter avec le compte de l'enseignant pour ouvrir son créneau ; la première action exige la permission de modifier les enseignants.
+- **Choix de l'emploi du temps pour ajouter une séance : recherche et période.** Une carte par classe (la semaine en cours d'office, le nombre d'autres semaines indiqué), recherche par classe, filière ou niveau, et filtre « Cette semaine / En cours et à venir / Tout ». Les emplois du temps expirés sont masqués par défaut.
+- **Après la création d'un enseignant, quatre raccourcis** dans la fenêtre des identifiants : associer des matières, disponibilités, taux horaire, programmer une séance.
 - **Examens : de l'examen à la saisie des notes** (`/esbtp/examens/{id}`). Le bouton « Ouvrir la feuille de notes » crée une fois pour toutes l'évaluation de l'examen (classe, élément constitutif, barème, coefficient, semestre) et ouvre sa saisie ; il devient ensuite « Saisir les notes ».
 - **Examens : anonymat réel des copies.** Un examen anonyme attribue un numéro à chaque copie, dans un ordre tiré au sort ; la saisie affiche les numéros au lieu des noms. La levée de l'anonymat est un droit à part (« Lever l'anonymat des copies d'un examen »), datée et nominative.
 - **Rattrapage : « Rattacher à la session normale »** sur une session de rattrapage créée sans session d'origine, qui restait un cul-de-sac. Depuis la liste des ajournés, un lien ouvre la session de chaque jury pour lancer le rattrapage, et un bouton mène aux sessions de rattrapage.
@@ -325,6 +328,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **L'enseignant posé sur le planning LMD apparaît enfin à la création d'une séance** — le formulaire d'ajout de séance vidait la liste des enseignants des ECUE, alors que la page Planning LMD les affichait. On reprend l'enseignant principal (et les assignations) de la planification.
 
 ### Améliorations
+- **Séances : l'enseignant tout juste associé à une matière est sélectionné d'office**, et les erreurs de la gestion des enseignants s'affichent dans la page au lieu d'une alerte bloquante.
+- **Fiche matière : les liens vers le Planning Général ouvrent la planification de cette matière**, et de la bonne filière et du bon niveau depuis chaque combinaison, au lieu de la page générale.
 
 - **Liste des étudiants sur téléphone : un vrai écran d'application** (`/esbtp/etudiants`, partial `_index-mobile`, namespace `eim-*`) — barre d'application (titre, nombre d'étudiants, « + » pour ajouter, menu des autres actions), recherche collée en haut, segments Tous / Inscrits / En cours / Sans inscription, une ligne par étudiant (photo ou initiales, classe, état de l'inscription, matricule) chargée au défilement. Les lignes sont construites par `App\Support\Etudiants\LigneEtudiantMobile` et servies en JSON (`mode=mobile`) sur la même requête filtrée que le bureau. L'export et la réinscription groupée s'ouvrent depuis le menu, sur les mêmes modales.
 - **Fiche étudiant sur téléphone refaite** (`/esbtp/etudiants`) — carte compacte au namespace `etm-*` : initiales ou photo, nom sur deux lignes au plus, statut en pastille, bloc classe (LMD, inscription validée ou en cours, affectation), téléphone cliquable, boutons Voir et Modifier en bleu. Les classes génériques (`.student-photo`, `.badge`, `.info-row`) redéfinies par d'autres feuilles déformaient l'ancienne carte (grand vide dans l'en-tête, halo, textes démesurés). Le bouton des filtres ne passe plus sous la barre de navigation du téléphone.
@@ -408,6 +413,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Plus aucun mot de passe du Service Technique dans le code** — les deux comptes de support d'African Digit Consulting étaient créés avec des mots de passe écrits en clair dans le dépôt, identiques sur chaque instance, et réaffichés par la commande d'installation. Ils se lisent désormais dans l'environnement de l'instance (`SERVICE_TECHNIQUE_PASSWORD`, `SERVICE_TECHNIQUE_BACKUP_PASSWORD`) ou se génèrent au hasard, affichés une seule fois à la création. Un compte existant garde son mot de passe : ceux créés avant ce changement doivent être renouvelés, les anciens restant lisibles dans l'historique.
 
 ### Corrections
+- **Séances : les heures s'affichent en « 7h46 »** et non plus « 7.7666666666667h » dans l'en-tête de l'ajout de séance.
 
 - **Composition du jury LMD : le bouton « Ajouter » ne s'activait jamais** — choisir un membre dans la liste n'était pas transmis à l'écran, si bien qu'on ne pouvait ajouter aucun membre au jury. Même cause sur le journal d'audit : le filtre « Utilisateur » des filtres avancés n'avait aucun effet, et « Réinitialiser » laissait l'ancien nom affiché. Les deux fonctionnent.
 

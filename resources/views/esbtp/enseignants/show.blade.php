@@ -1011,7 +1011,7 @@
             </div>
 
             {{-- Disponibilites hebdomadaires --}}
-            <div class="es-availability-section">
+            <div class="es-availability-section" id="disponibilites">
                 <div class="es-card-header">
                     <div class="es-card-title">
                         <div class="es-card-title-icon"><i class="fas fa-calendar-alt"></i></div>
