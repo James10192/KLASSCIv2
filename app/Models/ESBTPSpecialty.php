@@ -25,6 +25,8 @@ class ESBTPSpecialty extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'description' => \App\Casts\TexteRicheCast::class,
+        'career_opportunities' => \App\Casts\TexteRicheCast::class,
     ];
 
     public function department()
