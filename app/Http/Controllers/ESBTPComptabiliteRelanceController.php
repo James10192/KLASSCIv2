@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
 use App\Models\ESBTPComptabiliteConfiguration;
 use App\Models\ESBTPFraisScolarite;
@@ -112,7 +113,11 @@ class ESBTPComptabiliteRelanceController extends Controller
         $filiereId    = $request->input('filiere_id', '');
         $classeId     = $request->input('classe_id', '');
         $anneeId      = $request->input('annee_id', '');
-        $perPage      = (int) $request->input('per_page', 25);
+        // Taille d'une tranche du defilement. Le selecteur « Par page » a disparu,
+        // mais une adresse enregistree peut encore porter per_page.
+        $perPage      = in_array((int) $request->input('per_page'), [10, 25, 50, 100], true)
+            ? (int) $request->input('per_page')
+            : 25;
 
         // Année universitaire : paramètre ou active
         $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
@@ -131,7 +136,11 @@ class ESBTPComptabiliteRelanceController extends Controller
         ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
         ->when($filiereId, fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filiereId)))
         ->when($search, fn ($q) => $q->whereHas('etudiant', fn ($e) => $e->where('nom', 'like', "%$search%")->orWhere('prenoms', 'like', "%$search%")->orWhere('matricule', 'like', "%$search%")))
-        ->latest('created_at');
+        ->latest('created_at')
+        // Departage stable : la liste se charge par tranches, chacune relisant
+        // cette requete ; deux inscriptions de la meme seconde changeraient
+        // sinon d'ordre d'une tranche a l'autre.
+        ->orderByDesc('id');
 
         // Calculer risk levels via le service partagé
         $allInscriptions = $query->get();
@@ -159,6 +168,16 @@ class ESBTPComptabiliteRelanceController extends Controller
             $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
+
+        // Tranche suivante du defilement. Le solde se calcule en memoire sur
+        // toute l'annee : chaque tranche refait ce calcul, comme le faisait
+        // chaque page avant, mais pas les listes de filtres ni l'ecran mobile.
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $paginated,
+                fn ($row) => view('esbtp.comptabilite.relances._ligne', compact('row'))->render(),
+            );
+        }
 
         // Données filtres
         $filieres = \App\Models\ESBTPFiliere::orderBy('name')->get();
