@@ -1607,6 +1607,7 @@
                 <h4 style="margin-top: 24px; font-size: 0.95rem; color: #64748b; font-weight: 600;">
                     <i class="fas fa-arrows-alt text-primary"></i> Marges (mm)
                 </h4>
+                <p style="font-size: .78rem; color: #64748b; margin: 4px 0 0;">Une imprimante n'imprime pas au bord de la feuille : en dessous de 10 mm, les documents gardent 10 mm.</p>
                 <div class="settings-grid-4" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px;">
                     <div class="form-group">
                         <label class="form-label-modern" style="font-size: .8rem;">Haut</label>

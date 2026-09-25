@@ -69,6 +69,15 @@
         }
     }
 
+    // Une imprimante n'imprime pas au ras du bord : sous ce plancher, le
+    // texte est rogne a l'impression. Une marge a 0 (esbtp-abidjan, 2026-09)
+    // collait tableaux et bandeau aux bords de la feuille.
+    $margeMin = 10;
+    $marges = [];
+    foreach (['top' => 20, 'right' => 15, 'bottom' => 20, 'left' => 15] as $cote => $defaut) {
+        $marges[$cote] = max($margeMin, (int) ($pdf['margin_'.$cote] ?? $defaut));
+    }
+
     $logoMaxHeight = max(20, min(120, (int) ($pdf['logo_size'] ?? 60)));
     $signatureHeight = max(40, min(200, (int) ($pdf['signature_height'] ?? 80)));
     $watermarkOpacity = max(0, min(0.5, (float) ($pdf['watermark_opacity'] ?? 0.05)));
@@ -95,10 +104,7 @@
     <title>{{ $title }}</title>
     <style>
         @page {
-            margin: {{ ($pdf['margin_top'] ?? 20) }}mm
-                    {{ ($pdf['margin_right'] ?? 15) }}mm
-                    {{ ($pdf['margin_bottom'] ?? 20) }}mm
-                    {{ ($pdf['margin_left'] ?? 15) }}mm;
+            margin: {{ $marges['top'] }}mm {{ $marges['right'] }}mm {{ $marges['bottom'] }}mm {{ $marges['left'] }}mm;
         }
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
