@@ -92,13 +92,14 @@ class Routeur
 
         $echec = $resultat->estErreur()
             || ($resultat->echecsOutils > 0 && trim($resultat->texteDernierTour) === '');
+        $garde = $conversation?->context['palier'] ?? null;
         if ($echec) {
-            $au = $this->palierAuDessus($decision->palier);
+            // Déjà au dernier palier : on y reste, mais la série de réussites repart de zéro.
+            $au = $this->palierAuDessus($decision->palier) ?? $garde ?? $decision->palier;
 
-            return $au ? ['palier' => $au, 'succes_au_palier' => 0] : null;
+            return ['palier' => $au, 'succes_au_palier' => 0];
         }
 
-        $garde = $conversation?->context['palier'] ?? null;
         if (! $garde || $resultat->statut !== 'ok') {
             return null;
         }
@@ -171,8 +172,9 @@ class Routeur
      *
      * Le modèle par défaut choisi par l'école (réglage `assistant.modele_defaut`,
      * klassci-cli `assistant:modele`) passe en tête de son palier : c'est ainsi
-     * qu'il garde un sens avec le routage. Hors de tout palier, il prend la tête
-     * du premier.
+     * qu'il garde un sens avec le routage. Hors de tout palier, il est ignoré :
+     * le placer d'office dans un palier ferait passer un modèle cher pour un
+     * modèle économique, jusque dans le mode « budget atteint ».
      *
      * @return array<string, string[]>
      */
@@ -184,15 +186,11 @@ class Routeur
         ));
 
         $prefere = $this->registre->defautChoisiParLEcole();
-        if ($prefere && $paliers !== []) {
-            $cible = array_key_first($paliers);
-            foreach ($paliers as $nom => $cles) {
-                if (in_array($prefere, $cles, true)) {
-                    $cible = $nom;
-                    break;
-                }
+        foreach ($paliers as $nom => $cles) {
+            if ($prefere && in_array($prefere, $cles, true)) {
+                $paliers[$nom] = array_values(array_unique(array_merge([$prefere], $cles)));
+                break;
             }
-            $paliers[$cible] = array_values(array_unique(array_merge([$prefere], $paliers[$cible])));
         }
 
         return $paliers;

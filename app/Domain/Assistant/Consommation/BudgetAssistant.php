@@ -16,7 +16,9 @@ use Illuminate\Support\Facades\Log;
  * Pas de budget déclaré (vide ou 0) = pas de limite. D'où vient le budget, dans l'ordre :
  *   1. adminKlassci, qui pilote les coûts de toutes les écoles : champ
  *      `assistant.budget_mensuel_fcfa` de la réponse /tenants/{code}/limits, lue dans
- *      le cache que PaywallMiddleware remplit (5 min) ; aucun appel réseau ici ;
+ *      le cache que PaywallMiddleware remplit (5 min) ; aucun appel réseau ici. Ce
+ *      cache vide (tâche de fond, cache expiré), c'est le réglage de l'école qui
+ *      s'applique jusqu'à la prochaine page servie ;
  *   2. le réglage d'instance `assistant.budget_mensuel_fcfa` (klassci-cli) ;
  *   3. le .env.
  */
@@ -30,9 +32,23 @@ class BudgetAssistant
 
     public function budgetMensuelFcfa(): ?float
     {
+        $valeur = $this->lire()['valeur'];
+
+        return $valeur > 0 ? $valeur : null;
+    }
+
+    /** D'où vient le budget en vigueur : master (adminKlassci), ecole (réglage) ou env. */
+    public function source(): string
+    {
+        return $this->lire()['source'];
+    }
+
+    /** @return array{valeur: float, source: string} */
+    private function lire(): array
+    {
         $master = $this->budgetDuMaster();
         if ($master !== null) {
-            return $master > 0 ? $master : null;
+            return ['valeur' => $master, 'source' => 'master'];
         }
 
         try {
@@ -41,9 +57,11 @@ class BudgetAssistant
             Log::warning('assistant.budget_illisible', ['erreur' => $e->getMessage()]);
             $reglage = null;
         }
-        $valeur = (float) (($reglage !== null && $reglage !== '') ? $reglage : config('assistant.budget.mensuel_fcfa', 0));
+        if ($reglage !== null && $reglage !== '') {
+            return ['valeur' => (float) $reglage, 'source' => 'ecole'];
+        }
 
-        return $valeur > 0 ? $valeur : null;
+        return ['valeur' => (float) config('assistant.budget.mensuel_fcfa', 0), 'source' => 'env'];
     }
 
     /** Budget posé dans adminKlassci, s'il a déjà été lu ; null si le master ne l'a pas fixé. */

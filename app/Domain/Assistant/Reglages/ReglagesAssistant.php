@@ -34,7 +34,9 @@ class ReglagesAssistant
     {
         // Le routeur choisit le modèle de chaque échange : l'état annonce celui
         // d'une question simple, pas le « défaut » historique qu'il n'emploie plus.
-        $effectif = app(Routeur::class)->modelePourQuestionSimple() ?? ($this->registre->candidats()[0] ?? null);
+        $budget = app(BudgetAssistant::class);
+        $enPause = $budget->etat() === BudgetAssistant::PAUSE;
+        $effectif = $enPause ? null : (app(Routeur::class)->modelePourQuestionSimple() ?? ($this->registre->candidats()[0] ?? null));
 
         return [
             'fournisseurs' => $this->coffre->etat(),
@@ -45,7 +47,8 @@ class ReglagesAssistant
                 'identifiant' => $m->identifiant,
                 'configure' => $m->estConfigure(),
             ], $this->registre->tous())),
-            'modele_defaut' => $this->registre->defaut(),
+            // Préférence posée par l'école, null si elle n'en a posé aucune.
+            'modele_defaut' => $this->registre->defautChoisiParLEcole(),
             'modele_effectif' => $effectif?->cle,
             // Routage automatique : chaque palier avec ses modèles réellement joignables.
             'paliers' => array_map(
@@ -53,9 +56,10 @@ class ReglagesAssistant
                 app(Routeur::class)->paliers()
             ),
             'budget' => [
-                'mensuel_fcfa' => app(BudgetAssistant::class)->budgetMensuelFcfa(),
-                'depense_du_mois_fcfa' => round(app(BudgetAssistant::class)->depenseDuMois(), 2),
-                'etat' => app(BudgetAssistant::class)->etat(),
+                'mensuel_fcfa' => $budget->budgetMensuelFcfa(),
+                'source' => $budget->source(),
+                'depense_du_mois_fcfa' => round($budget->depenseDuMois(), 2),
+                'etat' => $budget->etat(),
             ],
         ];
     }
@@ -85,6 +89,10 @@ class ReglagesAssistant
     {
         if ($fcfa < 0) {
             throw new InvalidArgumentException('Le budget ne peut pas être négatif.');
+        }
+        // Un budget fixé dans adminKlassci prime : l'enregistrer ici ne changerait rien.
+        if (app(BudgetAssistant::class)->source() === 'master') {
+            throw new InvalidArgumentException("Le budget d'IA de cette école est fixé dans adminKlassci : c'est là qu'il se modifie.");
         }
 
         SettingsHelper::setOrCreate(self::CLE_BUDGET, (string) $fcfa, 'assistant', 'string');

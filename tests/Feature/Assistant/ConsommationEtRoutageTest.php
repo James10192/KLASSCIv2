@@ -293,4 +293,70 @@ class ConsommationEtRoutageTest extends TestCase
 
         $spy->shouldHaveReceived('repondre')->withArgs(fn (...$a) => ($a[7] ?? null) === true);
     }
+
+    public function test_budget_atteint_sans_palier_economique_joignable_le_seul_modele_le_moins_cher(): void
+    {
+        config([
+            'assistant.fournisseurs.openrouter.cle' => null,
+            'assistant.budget.mensuel_fcfa' => 100,
+            'assistant.paliers' => ['economique' => ['or-gemini-flash-lite'], 'standard' => ['claude-haiku'], 'avance' => ['claude-sonnet']],
+        ]);
+        LigneDeConsommation::create(['fonction' => 'question', 'modele' => 'x', 'fournisseur' => 'x', 'identifiant_modele' => 'x', 'cout_fcfa' => 105, 'taux_usd_fcfa' => 600]);
+        app(BudgetAssistant::class)->oublier();
+
+        // Haiku (1 $ + 5 $) plutôt que Sonnet (3 $ + 15 $), et lui seul.
+        $this->assertSame(['claude-haiku'], $this->cles(app(Routeur::class)->decider('Bonjour', null)->candidats));
+    }
+
+    public function test_un_titre_rate_est_compte_en_echec_et_jamais_a_zero(): void
+    {
+        config(['assistant.fournisseurs.openrouter.cle' => null, 'assistant.paliers' => ['avance' => ['claude-sonnet']]]);
+        Http::fake(['api.anthropic.test/*' => Http::response(['error' => ['type' => 'overloaded_error']], 529)]);
+
+        $this->assertNull(app(\App\Domain\Assistant\Assistant::class)->genererTitre('Combien d\'inscrits ?', null, null));
+
+        $ligne = LigneDeConsommation::where('fonction', 'titre')->sole();
+        $this->assertSame('echec_fournisseur', $ligne->statut);
+        // Aucun usage rapporté : l'entrée est estimée, pas comptée nulle.
+        $this->assertGreaterThan(0, $ligne->tokens_entree);
+    }
+
+    public function test_la_conversation_oublie_son_palier_une_fois_redescendue(): void
+    {
+        $spy = \Mockery::spy(\App\Domain\Assistant\Assistant::class);
+        $spy->shouldReceive('repondre')->andReturn(['text' => 'ok', 'tool_calls' => [], 'display_type' => 'text', 'display_data' => null, 'deep_link' => null, 'erreur' => false, 'interrompu' => false, 'modele' => null, 'parties' => [], 'trace' => [], 'suites' => [], 'consommation' => [], 'palier' => ['palier' => null, 'succes_au_palier' => 0]]);
+        $spy->shouldReceive('genererTitre')->andReturn('Titre');
+        $this->app->instance(\App\Domain\Assistant\Assistant::class, $spy);
+        $user = $this->user();
+        $this->actingAs($user);
+        $conversation = ChatbotConversation::create(['user_id' => $user->id, 'session_id' => (string) Str::uuid(), 'title' => 'x', 'context' => ['palier' => 'standard', 'succes_au_palier' => 2], 'last_activity_at' => now()]);
+
+        app(\App\Services\Chatbot\ChatbotService::class)->sendMessage('Bonjour', $conversation->session_id);
+
+        $contexte = $conversation->fresh()->context ?? [];
+        $this->assertArrayNotHasKey('palier', $contexte);
+        $this->assertArrayNotHasKey('succes_au_palier', $contexte);
+    }
+
+    public function test_un_budget_fixe_par_adminklassci_ne_se_modifie_pas_depuis_l_ecole(): void
+    {
+        config(['app.tenant_code' => 'presentation']);
+        \Illuminate\Support\Facades\Cache::put('paywall_limits_presentation', ['assistant' => ['budget_mensuel_fcfa' => 12000]], 300);
+        $reglages = app(\App\Domain\Assistant\Reglages\ReglagesAssistant::class);
+
+        $this->assertSame('master', $reglages->etat()['budget']['source']);
+        $this->expectExceptionMessage('adminKlassci');
+        $reglages->definirBudget(5000);
+    }
+
+    public function test_l_etat_ne_prete_pas_de_preference_a_l_ecole_ni_de_modele_en_pause(): void
+    {
+        $reglages = app(\App\Domain\Assistant\Reglages\ReglagesAssistant::class);
+        $this->assertNull($reglages->etat()['modele_defaut']);
+
+        config(['assistant.budget.mensuel_fcfa' => 10]);
+        LigneDeConsommation::create(['fonction' => 'question', 'modele' => 'x', 'fournisseur' => 'x', 'identifiant_modele' => 'x', 'cout_fcfa' => 50, 'taux_usd_fcfa' => 600]);
+        app(BudgetAssistant::class)->oublier();
+        $this->assertNull($reglages->etat()['modele_effectif']);
+    }
 }

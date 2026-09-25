@@ -210,7 +210,17 @@ class Assistant
                 }
             }
             // Un appel est facturé même raté ; il est compté, marqué en échec s'il a échoué.
-            $compteur->ajouter($modele, (int) ($usage['entree'] ?? 0), (int) ($usage['sortie'] ?? 0), (int) ($usage['cache'] ?? 0), $usage['cout'] ?? null, 0, $erreur || trim($texte) === '');
+            // Sans usage rapporté, les jetons sont estimés (4 caractères par jeton) plutôt
+            // que comptés à zéro : un coût nul mentirait sur un appel bel et bien facturé.
+            $compteur->ajouter(
+                $modele,
+                (int) ($usage['entree'] ?? (int) ceil(mb_strlen($requete->systeme . $message, 'UTF-8') / 4)),
+                (int) ($usage['sortie'] ?? (int) ceil(mb_strlen($texte, 'UTF-8') / 4)),
+                (int) ($usage['cache'] ?? 0),
+                $usage['cout'] ?? null,
+                0,
+                $erreur || trim($texte) === ''
+            );
 
             if (!$erreur && trim($texte) !== '') {
                 $titre = mb_substr(trim($texte, " \t\n\r\"'"), 0, 40, 'UTF-8');

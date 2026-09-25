@@ -38,9 +38,14 @@ Réponse d'état (`data`) :
   "modele_defaut": "or-gpt-4o-mini",
   "modele_effectif": "or-gpt-4o-mini",
   "paliers": { "economique": ["or-gemini-flash-lite"], "standard": ["or-gemini-flash"], "avance": [] },
-  "budget": { "mensuel_fcfa": 15000, "depense_du_mois_fcfa": 1240.5, "etat": "normal" }
+  "budget": { "mensuel_fcfa": 15000, "source": "master", "depense_du_mois_fcfa": 1240.5, "etat": "normal" }
 }
 ```
+
+`budget.source` : d'où vient le budget en vigueur — `master` (fixé dans
+adminKlassci, champ `assistant.budget_mensuel_fcfa` de `/tenants/{code}/limits` ;
+il prime, et `PUT /assistant/budget` répond alors 422), `ecole` (réglage posé par
+klassci-cli) ou `env`. En pause, `modele_effectif` vaut `null`.
 
 `paliers` : modèles réellement joignables de chaque palier du routage automatique,
 dans l'ordre d'essai. `budget.etat` : `normal`, `economique` (budget atteint :
