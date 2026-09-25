@@ -58,9 +58,15 @@
 <div class="container-fluid" x-data="{
         code: @js($aemCodeActif ? $dailyCode->code : null),
         codeId: @js($aemCodeActif ? $dailyCode->id : null),
-        jusqua: @js($aemCodeActif ? $dailyCode->valid_until->format('H:i') : null),
+        jusqua: @js($aemCodeActif ? ($dailyCode->valid_until->isToday() ? $dailyCode->valid_until->format('H:i') : $dailyCode->valid_until->format('d/m H:i')) : null),
         envoi: false, confirmer: false,
-        entetes() { return { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }; },
+        echeance(v) {
+                // Un code vaut souvent jusqu'au lendemain : l'heure seule laissait croire qu'il expirait tout à l'heure.
+                const jour = v.substring(0, 10), heure = v.substring(11, 16);
+                const auj = new Date(); const iso = auj.getFullYear() + '-' + String(auj.getMonth() + 1).padStart(2, '0') + '-' + String(auj.getDate()).padStart(2, '0');
+                return jour === iso ? heure : jour.substring(8, 10) + '/' + jour.substring(5, 7) + ' ' + heure;
+            },
+            entetes() { return { 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }; },
         toast(type, message) { window.dispatchEvent(new CustomEvent('toast', { detail: { type, message } })); },
         async generer() {
             this.envoi = true;
@@ -68,7 +74,7 @@
                 const r = await fetch(@js(route('esbtp.admin.attendance.generate-code')), { method: 'POST', headers: this.entetes() });
                 const d = await r.json().catch(() => ({}));
                 if (!r.ok || !d.success) throw new Error(d.message || 'Génération impossible.');
-                this.code = d.code; this.jusqua = (d.valid_until || '').substring(11, 16); this.codeId = d.id || null;
+                this.code = d.code; this.jusqua = this.echeance(d.valid_until || ''); this.codeId = d.id || null;
                 this.toast('success', 'Code du jour généré : ' + d.code);
             } catch (e) { this.toast('error', e.message); } finally { this.envoi = false; }
         },

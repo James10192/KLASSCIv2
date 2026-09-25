@@ -413,7 +413,7 @@
                                 <div class="acode-info-icon orange"><i class="fas fa-hourglass-half"></i></div>
                                 <div>
                                     <div class="acode-info-label">Expiration</div>
-                                    <div class="acode-info-value">{{ $activeCode->valid_until->format('H:i') }}</div>
+                                    <div class="acode-info-value">{{ $activeCode->valid_until->isToday() ? $activeCode->valid_until->format('H:i') : $activeCode->valid_until->format('d/m H:i') }}</div>
                                     <div class="acode-info-extra">{{ $activeCode->valid_until->format('d/m/Y') }}</div>
                                 </div>
                             </div>
