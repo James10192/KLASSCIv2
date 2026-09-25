@@ -20,7 +20,7 @@
     // Filtres poses par l'URL que cet ecran ne sait pas regler (classe, filiere...) :
     // gardes a chaque rechargement et annonces, au lieu d'etre perdus en silence.
     $eimAutres = collect(request()->query())
-        ->except(['search', 'inscrit_annee_courante', 'page', 'mode'])
+        ->except(['search', 'inscrit_annee_courante', 'page', 'mode', 'sort', 'order', 'per_page', 'open_bulk'])
         ->filter(fn ($v) => is_scalar($v) && (string) $v !== '')
         ->map(fn ($v) => (string) $v)
         ->all();
