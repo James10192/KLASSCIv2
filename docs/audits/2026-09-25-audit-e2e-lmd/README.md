@@ -72,3 +72,48 @@ Version illustrée complète : page Claude « Audit E2E LMD KLASSCI » (lien don
 - [Charte des examens, Aix-Marseille Université](https://www.univ-amu.fr/system/files/2018-09/DEVE-HANDI-charte_des_examens.pdf)
 - [OSE, paiement des vacataires — Campus Matin](https://www.campusmatin.com/numerique/equipements-systemes-informations/une-application-open-source-pour-reduire-les-delais-de-paiement-des-vacataires.html)
 - [Procédure de soutenance de master, Université de Sétif](https://www.univ-setif.dz/externe/Soutenance-Master.pdf)
+
+---
+
+# Seconde passe (même jour) : utilisation réelle, téléphone, compte enseignant
+
+## Urgent — sécurité production
+
+Le mode débogage est actif sur **esbtp-abidjan** et **ephrata** (et presentation) : une adresse inexistante,
+appelée sans connexion, renvoie la trace Laravel complète avec le chemin serveur. yakro, islg, usat : corrects.
+Correction : `APP_DEBUG=false` dans le `.env` de chaque serveur, puis `config:clear`. Rien n'a été modifié.
+
+## Défauts prouvés en utilisant l'application
+
+| # | Défaut | Preuve |
+|---|---|---|
+| 1 | « 1,5 » saisi en note LMD est enregistré **15** (virgule ignorée par le champ numérique ; dépend de la langue du navigateur) | ![](captures/v2-virgule-15.jpg) |
+| 2 | Notes refusées par le serveur (25/20, −3) gardées dans la grille, comptées dans la moyenne (40,38/20) et présentées « en attente réseau » | ![](captures/v2-notes-refusees-comptees.jpg) |
+| 3 | Saisie LMD en brouillon sans validation ; bulletin exige des fiches validées dans Pilotage (message pointant vers Notes LMD) ; Pilotage limité à S1/S2/Annuel | ![](captures/v2-pilotage-fiches.jpg) |
+| 4 | Bulletin officiel généré sur une note brouillon : moyenne 8,50, rang 1/1 sur 1 matière / 19 | ![](captures/v2-bulletin-brouillon.jpg) |
+| 5 | Jury : 4 décisions écrites sans quorum (`readiness.ok=false`), `DEFERE` pour les dossiers vides, cohorte fausse, passage « en cours » | ![](captures/v2-jury-sans-quorum.jpg) |
+| 6 | Enseignant : fenêtre de saisie du code d'émargement sous le fond grisé → clic impossible | ![](captures/v2-modale-bloquee.jpg) |
+| 7 | Nouvel enseignant indisponible partout par défaut, bouton « Gérer les enseignants » caché, alerte native, grille limitée à 17 h, absent de la paie sans taux | ![](captures/v2-dispo-rouge.jpg) |
+| 8 | Absent d'office à +45 min côté enseignant, affiché « EN RETARD » côté administration (`admin/attendance/index.blade.php:116`), compteur « En retard 0 » | ![](captures/v2-admin-absent-en-retard.jpg) |
+| 9 | Trois rappels empilés sur le formulaire de séance ; popups sur le changement de mot de passe imposé | ![](captures/v2-rappels-empiles.jpg) |
+| 10 | Même mot de passe de départ pour tous les comptes sans réglage (`UserService::defaultPassword()`) ; changement forcé à la 1re connexion | code |
+| 11 | 8 classes LMD sur 9 de la démo inutilisables (sans étudiant ou sans UE) | — |
+| 12 | Jury : classes BTS proposées, semestres limités à S8 (pas de jury M2) ; heures inversées → 1 320 min | — |
+
+Bien fait : contrôle de conflit (enseignant + salle + classe) à la création de séance — brique prête pour la prolongation ;
+écran « Gestion de la séance » en 5 étapes ; contrôle avant génération des bulletins avec motif écrit ; refus serveur des notes hors barème.
+
+## Écrans à refaire (balayage 106 pages, ordinateur + téléphone)
+
+Téléphone : fiche enseignant (textes superposés), jury (page de 532 px sur 390), émargements admin (blocs colorés, tableau coupé),
+rapport d'émargement (violet). Ordinateur : présences, rapport de présence, codes d'émargement, années universitaires,
+annonces, frais, disponibilités enseignant, tableau de bord enseignant, fiche de paie PDF. Partout sur téléphone :
+rappel mot de passe = ¼ d'écran, tableaux larges tronqués.
+
+![](captures/m-enseignant-fiche.jpg) ![](captures/m-jury-deborde.jpg) ![](captures/m-emargements-admin.jpg) ![](captures/d-presences.jpg)
+
+## Données de test créées sur presentation (préfixe E2E-0925)
+
+Évaluation TP 86 + 4 notes brouillon (B3 COM) ; bulletin S3 de Domy Marc régénéré ; jury 4 et ses 4 décisions ;
+enseignant n° 20 « E2E-0925 Enseignant Test » (associé à Anglais B2 COM, dispo vendredi 15-17 h) ; séances 368 et 369,
+deux émargements, un code du jour.
