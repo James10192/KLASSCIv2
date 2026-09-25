@@ -150,12 +150,12 @@ class ChatbotStreamTest extends TestCase
         $this->assertSame('toolu_01', $toolResult['tool_use_id']);
         $this->assertSame(['error' => 'Outil indisponible.'], json_decode($toolResult['content'], true));
 
-        $outil = collect($this->parts())->where('type', 'data-outil')->last();
+        $outil = collect($this->parts())->where('type', 'data-etape')->last();
         $this->assertSame('echec', $outil['data']['etat']);
         $this->assertSame('toolu_01', $outil['id']);
 
         // Aucune donnée d'inscription n'est partie au navigateur.
-        $this->assertEmpty(collect($this->parts())->filter(fn ($p) => in_array($p['type'], ['data-table', 'data-cards'], true)));
+        $this->assertEmpty(collect($this->parts())->filter(fn ($p) => in_array($p['type'], ['data-table', 'data-cards', 'data-widget'], true)));
         $this->assertStringNotContainsString('KONAN', implode('', $this->frames));
 
         $assistant = ChatbotMessage::where('role', 'assistant')->latest('id')->first();

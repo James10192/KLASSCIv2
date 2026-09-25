@@ -112,6 +112,8 @@ class ChatbotService
                 'metadata' => [
                     'tool_calls' => $agentResponse['tool_calls'],
                     'engine' => $agentResponse['modele'] ?? null,
+                    'parties' => $this->partiesAEnregistrer($agentResponse, $memoryAction),
+                    'trace' => $agentResponse['trace'] ?? [],
                 ],
             ]);
 
@@ -226,6 +228,8 @@ class ChatbotService
                     'tool_calls' => $agentResponse['tool_calls'],
                     'engine' => $agentResponse['modele'] ?? null,
                     'interrompu' => !empty($agentResponse['interrompu']),
+                    'parties' => $this->partiesAEnregistrer($agentResponse, $memoryAction),
+                    'trace' => $agentResponse['trace'] ?? [],
                 ],
             ]);
 
@@ -245,7 +249,13 @@ class ChatbotService
                 return ['success' => true, 'interrompu' => true];
             }
 
-            $this->emitDisplayParts($ui, $agentResponse['display_type'], $displayData, $agentResponse['deep_link']);
+            // Les widgets sont déjà partis, chacun sous son étape : il ne reste que
+            // les suites proposées et, faute de widget, le lien vers la page.
+            foreach ($this->partiesDeFin($agentResponse, $memoryAction) as $partie) {
+                $partie['type'] === 'suites'
+                    ? $ui->data('suites', $partie['data'])
+                    : $ui->data('lien', ['url' => $partie['url']]);
+            }
 
             // Titre provisoire tout de suite (la question elle-même) ; le titre rédigé par
             // le modèle se calcule APRÈS la fin du flux, pour ne pas faire attendre la
@@ -280,21 +290,40 @@ class ChatbotService
     }
 
     /**
-     * Les résultats riches partent en parties `data-<type>` qui reprennent telles
-     * quelles les formes de display_data (celles que l'historique renvoie aussi).
+     * Parties de fin d'échange : suites proposées, et le lien vers la page quand
+     * aucun widget ne le porte déjà.
      */
-    public function emitDisplayParts(UiMessageStream $ui, ?string $displayType, ?array $displayData, ?string $deepLink): void
+    private function partiesDeFin(array $agentResponse, ?array $memoryAction): array
     {
-        if ($displayType && $displayType !== 'text' && $displayData) {
-            $ui->data(str_replace('_', '-', $displayType), $displayData);
-        } elseif ($displayData) {
-            // Réponse texte accompagnée d'actions (mémoriser un nom, etc.)
-            $ui->data('suites', array_intersect_key($displayData, array_flip(['follow_up', 'follow_up_actions'])));
+        if (!empty($agentResponse['erreur']) || !empty($agentResponse['interrompu'])) {
+            return [];
         }
 
-        if ($deepLink) {
-            $ui->data('lien', ['url' => $deepLink]);
+        $parties = [];
+        $suites = array_filter([
+            'follow_up' => $agentResponse['suites'] ?? [],
+            'follow_up_actions' => $memoryAction ? [$memoryAction] : [],
+        ]);
+        if ($suites !== []) {
+            $parties[] = ['type' => 'suites', 'data' => $suites];
         }
+
+        $aDesWidgets = collect($agentResponse['parties'] ?? [])->contains(fn ($p) => ($p['type'] ?? '') === 'widget');
+        if (!$aDesWidgets && !empty($agentResponse['deep_link'])) {
+            $parties[] = ['type' => 'lien', 'url' => $agentResponse['deep_link']];
+        }
+
+        return $parties;
+    }
+
+    /** Ce que l'historique rouvrira : le fil de la réponse, puis ses parties de fin. */
+    private function partiesAEnregistrer(array $agentResponse, ?array $memoryAction): ?array
+    {
+        if (!isset($agentResponse['parties'])) {
+            return null;
+        }
+
+        return array_merge($agentResponse['parties'], $this->partiesDeFin($agentResponse, $memoryAction));
     }
 
     /**
@@ -317,6 +346,7 @@ class ChatbotService
                     'display_type' => $message->display_type,
                     'display_data' => $message->display_data,
                     'deep_link' => $message->deep_link,
+                    'parties' => $message->metadata['parties'] ?? null,
                     'created_at' => $message->created_at->toIso8601String(),
                 ];
             });

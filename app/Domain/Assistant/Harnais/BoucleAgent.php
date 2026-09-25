@@ -14,10 +14,16 @@ use Illuminate\Support\Facades\Log;
  * Boucle d'agent, indépendante du fournisseur.
  *
  * Un tour = un appel au modèle = un « step » du protocole UI message stream :
- * start-step, texte diffusé (text-start/delta/end), puces d'outil (data-outil,
- * « en cours » puis « terminé »), finish-step. Si le modèle demande des outils,
- * la boucle les exécute (CatalogueOutils, permissions revérifiées), renvoie
- * les résultats et relance un tour.
+ * start-step, texte diffusé (text-start/delta/end), étapes (data-etape,
+ * « en cours » puis « terminée » avec un résumé), finish-step. Si le modèle
+ * demande des outils, la boucle les exécute (CatalogueOutils, permissions
+ * revérifiées), montre le widget de chaque résultat juste sous son étape
+ * (data-widget), renvoie au modèle une version COMPACTE du résultat
+ * (ResumeOutil) et relance un tour.
+ *
+ * Un appel identique à un appel déjà fait dans l'échange (même outil, mêmes
+ * arguments) n'est pas rejoué : le modèle reçoit le résultat déjà obtenu, et
+ * l'écran ne montre ni seconde étape ni second widget.
  *
  * Garde-fous, tous réglés dans config/assistant.php :
  *  - nombre de tours maximal ;
@@ -36,10 +42,14 @@ class BoucleAgent
 
     /**
      * @param ModeleIa[] $candidats ordre d'essai (RegistreDesModeles::candidats)
-     * @param callable(string $nom, array $arguments, array $resultat):void|null $surResultat
+     * @param callable(string $nom, array $arguments, array $resultat):?array|null $surResultat
+     *        rend le widget du résultat (ou null)
      */
-    public function executer(array $candidats, RequeteModele $requete, $user, UiMessageStream $ui, ?callable $surResultat = null): ResultatBoucle
+    public function executer(array $candidats, RequeteModele $requete, $user, UiMessageStream $ui, ?callable $surResultat = null, ?FilDeReponse $fil = null): ResultatBoucle
     {
+        $fil ??= new FilDeReponse();
+        $deja = [];
+        $trace = [];
         $maxTours = max(1, (int) config('assistant.limites.tours', 4));
         $budget = (int) config('assistant.limites.budget_tokens', 60000);
         $echeance = microtime(true) + (int) config('assistant.limites.delai_secondes', 90);
@@ -77,7 +87,7 @@ class BoucleAgent
             $tours++;
             $ui->startStep();
 
-            $tour = $this->unTour($this->fournisseur($modele), $requete, $modele, $ui, $arreter);
+            $tour = $this->unTour($this->fournisseur($modele), $requete, $modele, $ui, $arreter, $fil);
             $entree += $tour['entree'];
             $sortie += $tour['sortie'];
 
@@ -102,7 +112,8 @@ class BoucleAgent
                     // Les puces d'outil annoncées par le modèle abandonné ne décrivent
                     // plus rien : le suivant repart de zéro. On les retire.
                     foreach ($tour['puces'] as $puce) {
-                        $ui->data('outil', ['nom' => $puce['nom'], 'etat' => 'retire'], $puce['id']);
+                        $ui->data('etape', ['nom' => $puce['nom'], 'etat' => 'retire'], $puce['id']);
+                        $fil->retirerEtape($puce['id']);
                     }
                     $modele = array_shift($candidats);
                     $tours--;
@@ -127,29 +138,62 @@ class BoucleAgent
 
             // Le modèle demande des outils : on les exécute, puis on relance un tour.
             $messages = $requete->messages;
-            $messages[] = ['role' => 'assistant', 'texte' => $tour['texte'], 'appels' => $tour['appels']];
+            $messageAssistant = ['role' => 'assistant', 'texte' => $tour['texte'], 'appels' => $tour['appels']];
+            $messages[] = $messageAssistant;
+            $trace[] = $messageAssistant;
             foreach ($tour['appels'] as $appel) {
-                $resultat = $this->catalogue->executer($appel['nom'], $appel['arguments'], $user);
-                $ok = !isset($resultat['error']);
-                $ui->data('outil', [
-                    'nom' => $appel['nom'],
-                    'libelle' => $this->catalogue->libelle($appel['nom']),
-                    'etat' => $ok ? 'termine' : 'echec',
-                ], $appel['id']);
+                $cle = $appel['nom'] . ':' . json_encode($this->trier($appel['arguments']));
+                $debutAppel = microtime(true);
 
-                if ($ok) {
-                    $appelsFaits[] = ['tool' => $appel['nom'], 'args' => $appel['arguments'], 'result_count' => $resultat['count'] ?? null];
-                    if ($surResultat) {
-                        $surResultat($appel['nom'], $appel['arguments'], $resultat);
+                if (isset($deja[$cle])) {
+                    // Déjà fait dans cet échange : on redonne le résultat, sans rien réafficher.
+                    $ui->data('etape', ['nom' => $appel['nom'], 'etat' => 'retire'], $appel['id']);
+                    $fil->retirerEtape($appel['id']);
+                    $pourModele = $deja[$cle] . "\n(Appel identique déjà fait dans cet échange : ne le refais pas, utilise ce résultat.)";
+                } else {
+                    $resultat = $this->catalogue->executer($appel['nom'], $appel['arguments'], $user);
+                    $ok = !isset($resultat['error']);
+                    $widget = ($ok && $surResultat) ? $surResultat($appel['nom'], $appel['arguments'], $resultat) : null;
+
+                    $etape = [
+                        'nom' => $appel['nom'],
+                        'libelle' => $this->catalogue->libelle($appel['nom']),
+                        'etat' => $ok ? 'termine' : 'echec',
+                        'resume' => \App\Domain\Assistant\Outils\ResumeOutil::resumeCourt($appel['nom'], $resultat),
+                        'detail' => $ok ? $this->detail($appel['arguments']) : null,
+                        'duree_ms' => (int) round((microtime(true) - $debutAppel) * 1000),
+                    ];
+                    $ui->data('etape', $etape, $appel['id']);
+                    $fil->etape($appel['id'], $etape);
+
+                    if ($widget) {
+                        $ui->data('widget', $widget, $appel['id']);
+                        $fil->widget($appel['id'], $widget);
                     }
+
+                    if ($ok) {
+                        $appelsFaits[] = ['tool' => $appel['nom'], 'args' => $appel['arguments'], 'result_count' => $resultat['count'] ?? null];
+                    }
+
+                    $pourModele = \App\Domain\Assistant\Outils\ResumeOutil::pourModele($appel['nom'], $resultat, $widget !== null);
+                    $deja[$cle] = $pourModele;
                 }
 
-                $messages[] = [
+                $messageOutil = [
                     'role' => 'outil',
                     'id' => $appel['id'],
                     'nom' => $appel['nom'],
-                    'resultat' => json_encode($resultat, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+                    'resultat' => $pourModele,
                 ];
+                $messages[] = $messageOutil;
+                $trace[] = $messageOutil;
+            }
+
+            // Dernier tour permis : le modèle doit conclure avec ce qu'il a, sinon
+            // l'utilisateur ne reçoit que des étapes sans réponse.
+            if ($tours === $maxTours - 1 && $messages !== []) {
+                $dernier = array_key_last($messages);
+                $messages[$dernier]['resultat'] .= "\n(Dernier tour : réponds maintenant à l'utilisateur avec ce que tu as, sans appeler d'autre outil.)";
             }
             $requete = $requete->avecMessages($messages);
             $texteTour = '';
@@ -164,16 +208,17 @@ class BoucleAgent
             }
         }
 
-        return $this->resultat($statut, $texte, $texteTour, $appelsFaits, $modele, $essais, $entree, $sortie, $tours, $debut);
+        return $this->resultat($statut, $texte, $texteTour, $appelsFaits, $modele, $essais, $entree, $sortie, $tours, $debut, $trace);
     }
 
     /**
      * Un appel au modèle : diffuse le texte au fil de l'eau et collecte les appels d'outil.
      */
-    private function unTour(FournisseurDeModele $fournisseur, RequeteModele $requete, ModeleIa $modele, UiMessageStream $ui, callable $arreter): array
+    private function unTour(FournisseurDeModele $fournisseur, RequeteModele $requete, ModeleIa $modele, UiMessageStream $ui, callable $arreter, FilDeReponse $fil): array
     {
         $tour = ['texte' => '', 'appels' => [], 'puces' => [], 'raison' => null, 'erreur' => null, 'entree' => 0, 'sortie' => 0];
         $idTexte = null;
+        $bloc = '';
 
         try {
             foreach ($fournisseur->diffuser($requete, $modele, $arreter) as $evenement) {
@@ -189,15 +234,18 @@ class BoucleAgent
                         }
                         $ui->textDelta($idTexte, $evenement->donnees['delta']);
                         $tour['texte'] .= $evenement->donnees['delta'];
+                        $bloc .= $evenement->donnees['delta'];
                         break;
 
                     case EvenementModele::OUTIL_DEBUT:
-                        $this->fermerTexte($ui, $idTexte);
-                        $ui->data('outil', [
+                        $this->fermerTexte($ui, $idTexte, $fil, $bloc);
+                        $enCours = [
                             'nom' => $evenement->donnees['nom'],
                             'libelle' => $this->catalogue->libelle($evenement->donnees['nom']),
                             'etat' => 'en_cours',
-                        ], $evenement->donnees['id']);
+                        ];
+                        $ui->data('etape', $enCours, $evenement->donnees['id']);
+                        $fil->etape($evenement->donnees['id'], $enCours);
                         $tour['puces'][] = ['id' => $evenement->donnees['id'], 'nom' => $evenement->donnees['nom']];
                         break;
 
@@ -225,7 +273,7 @@ class BoucleAgent
             $tour['erreur'] = 'exception';
         }
 
-        $this->fermerTexte($ui, $idTexte);
+        $this->fermerTexte($ui, $idTexte, $fil, $bloc);
 
         if ($tour['erreur'] === null && $tour['raison'] === null && !$ui->aborted()) {
             $tour['erreur'] = 'flux_incomplet';
@@ -234,12 +282,41 @@ class BoucleAgent
         return $tour;
     }
 
-    private function fermerTexte(UiMessageStream $ui, ?string &$idTexte): void
+    private function fermerTexte(UiMessageStream $ui, ?string &$idTexte, FilDeReponse $fil, string &$bloc): void
     {
         if ($idTexte !== null) {
             $ui->textEnd($idTexte);
             $idTexte = null;
         }
+        if ($bloc !== '') {
+            $fil->texte($bloc);
+            $bloc = '';
+        }
+    }
+
+    /** Arguments lisibles sous l'étape : « classe : 2A BTS · période : S1 ». */
+    private function detail(array $arguments): ?string
+    {
+        $morceaux = [];
+        foreach ($arguments as $cle => $valeur) {
+            if (is_scalar($valeur) && $valeur !== '' && $valeur !== null) {
+                $valeur = is_bool($valeur) ? ($valeur ? 'oui' : 'non') : (string) $valeur;
+                $morceaux[] = str_replace('_', ' ', (string) $cle) . ' : ' . mb_strimwidth($valeur, 0, 40, '…', 'UTF-8');
+            }
+            if (count($morceaux) === 3) {
+                break;
+            }
+        }
+
+        return $morceaux === [] ? null : implode(' · ', $morceaux);
+    }
+
+    /** Arguments dans un ordre stable, pour reconnaître deux appels identiques. */
+    private function trier(array $arguments): array
+    {
+        ksort($arguments);
+
+        return $arguments;
     }
 
     private function fournisseur(ModeleIa $modele): FournisseurDeModele
@@ -258,7 +335,7 @@ class BoucleAgent
         return $texte === '' ? $ajout : $texte . "\n\n" . $ajout;
     }
 
-    private function resultat(string $statut, string $texte, string $texteTour, array $appels, ?ModeleIa $modele, array $essais, int $entree, int $sortie, int $tours, float $debut): ResultatBoucle
+    private function resultat(string $statut, string $texte, string $texteTour, array $appels, ?ModeleIa $modele, array $essais, int $entree, int $sortie, int $tours, float $debut, array $trace = []): ResultatBoucle
     {
         return new ResultatBoucle(
             statut: $statut,
@@ -272,6 +349,7 @@ class BoucleAgent
             tokensSortie: $sortie,
             tours: $tours,
             latenceMs: (int) round((microtime(true) - $debut) * 1000),
+            trace: $trace,
         );
     }
 }

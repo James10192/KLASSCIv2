@@ -26,8 +26,8 @@ return [
     'repli' => $liste(env('ASSISTANT_REPLI', 'or-gpt-4o-mini,or-deepseek,claude-haiku,gpt-4o-mini,gemini-flash,mistral-small')),
 
     'limites' => [
-        'tours' => (int) env('ASSISTANT_MAX_TOURS', 4),
-        'budget_tokens' => (int) env('ASSISTANT_BUDGET_TOKENS', 60000),
+        'tours' => (int) env('ASSISTANT_MAX_TOURS', 8),
+        'budget_tokens' => (int) env('ASSISTANT_BUDGET_TOKENS', 150000),
         'delai_secondes' => (int) env('ASSISTANT_DELAI', 90),
         'delai_connexion' => (int) env('ASSISTANT_DELAI_CONNEXION', 15),
         // Nouvelles tentatives sur le même modèle après 429, 5xx ou coupure réseau.
@@ -107,6 +107,29 @@ return [
             'fournisseur' => 'openrouter',
             'modele' => env('OPENROUTER_MODEL_DEEPSEEK', 'deepseek/deepseek-v3.2'),
             'libelle' => 'DeepSeek V3.2 (OpenRouter)',
+            'outils' => true,
+            'diffusion' => true,
+        ],
+        // Candidats plus solides en appel d'outils, pour un vrai agent. Choisis sur
+        // un jeu de questions réelles, pas sur la réputation : voir docs/api/CLI_ASSISTANT.md.
+        'or-gemini-flash' => [
+            'fournisseur' => 'openrouter',
+            'modele' => env('OPENROUTER_MODEL_GEMINI_FLASH', 'google/gemini-3.8-flash'),
+            'libelle' => 'Gemini Flash (OpenRouter)',
+            'outils' => true,
+            'diffusion' => true,
+        ],
+        'or-gpt-4.1-mini' => [
+            'fournisseur' => 'openrouter',
+            'modele' => env('OPENROUTER_MODEL_GPT41', 'openai/gpt-4.1-mini'),
+            'libelle' => 'GPT-4.1 mini (OpenRouter)',
+            'outils' => true,
+            'diffusion' => true,
+        ],
+        'or-claude-haiku' => [
+            'fournisseur' => 'openrouter',
+            'modele' => env('OPENROUTER_MODEL_HAIKU', 'anthropic/claude-haiku-4.5'),
+            'libelle' => 'Claude Haiku 4.5 (OpenRouter)',
             'outils' => true,
             'diffusion' => true,
         ],

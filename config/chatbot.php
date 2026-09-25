@@ -110,6 +110,12 @@ return [
             'libelle' => 'Calcul du résumé financier…',
             'suggestion' => 'Fais-moi le point sur les encaissements',
         ],
+        'evolution_encaissements' => [
+            'enabled' => true,
+            'any_permissions' => ['comptabilite.dashboard.view', 'paiements.view'],
+            'libelle' => 'Calcul des encaissements par mois…',
+            'suggestion' => 'Montre-moi les encaissements des six derniers mois',
+        ],
         'get_dashboard_kpis' => [
             'enabled' => true,
             'any_permissions' => ['dashboard.view'],
