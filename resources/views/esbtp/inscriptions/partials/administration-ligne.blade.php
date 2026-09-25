@@ -13,7 +13,7 @@
     $hue = crc32($fullName) % 360;
     $photoUrl = $inscription->etudiant->photo_url ?? null;
 @endphp
-<tr data-inscription-id="{{ $inscription->id }}"
+<tr data-inscription-id="{{ $inscription->id }}" data-li-cle="{{ $inscription->id }}"
     data-href="{{ route('esbtp.inscriptions.show', $inscription->id) }}"
     data-has-payment="{{ $hasPayment ? 1 : 0 }}"
     data-payment-status="{{ $paymentStatus }}"

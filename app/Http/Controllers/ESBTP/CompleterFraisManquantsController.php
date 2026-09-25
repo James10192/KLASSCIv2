@@ -4,8 +4,7 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
-use App\Models\ESBTPInscription;
-use App\Services\Inscriptions\FiltresListeInscriptions;
+use App\Services\Inscriptions\SelectionDInscriptions;
 use App\Services\Frais\SouscriptionsObligatoiresManquantes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -134,19 +133,9 @@ class CompleterFraisManquantsController extends Controller
         }
 
         if ($scope === 'filtre') {
-            // La recherche libre passe par un score de ressemblance plafonné :
-            // elle retrouve une personne, elle ne définit pas un ensemble. En
-            // faire une portée d'écriture donnerait un résultat qui dépend d'un
-            // seuil, que personne ne peut vérifier avant de confirmer.
-            abort_if(
-                filled($request->input('search')),
-                422,
-                "Une recherche libre ne définit pas une portée : videz la recherche, ou cochez les lignes à régénérer.",
-            );
-
-            $filtres = app(FiltresListeInscriptions::class);
-
-            return [null, null, $filtres->appliquer(ESBTPInscription::query(), $request)];
+            // Meme definition de « tout le filtre » que les actions groupees de la
+            // liste : un seul proprietaire, SelectionDInscriptions.
+            return [null, null, app(SelectionDInscriptions::class)->requete($request)];
         }
 
         return [array_map('intval', $validated['inscription_ids']), null, null];
