@@ -2913,12 +2913,7 @@ Route::middleware(['auth', 'throttle:audit'])->prefix('esbtp/audit')->name('esbt
     // Page principale d'audit
     Route::get('/', [ESBTPAuditController::class, 'index'])->name('index');
 
-    // DonnÃ©es d'audit via AJAX (avec rate limiting strict)
-    Route::get('/data', [ESBTPAuditController::class, 'getAuditData'])
-        ->middleware('throttle:30,1')
-        ->name('data');
-
-    // Audits spÃ©cifiques Ã  la comptabilitÃ© (avant /{id} pour Ã©viter capture wildcard)
+    // L'ancien audit comptable : l'onglet Finances du journal (avant /{id}).
     Route::get('/comptabilite', [ESBTPAuditController::class, 'comptabiliteAudits'])
         ->middleware('permission:comptabilite.audit.view')
         ->name('comptabilite');
@@ -2933,12 +2928,6 @@ Route::middleware(['auth', 'throttle:audit'])->prefix('esbtp/audit')->name('esbt
         Route::get('/export/excel', [ESBTPAuditController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export/pdf', [ESBTPAuditController::class, 'exportPdf'])->name('export.pdf');
     });
-
-    // Liens entitÃ©s liÃ©es d'un audit (AJAX, pour modal "AperÃ§u rapide")
-    Route::get('/{id}/related-links', [ESBTPAuditController::class, 'relatedLinks'])
-        ->where('id', '[0-9]+')
-        ->middleware('throttle:60,1')
-        ->name('related-links');
 
     // DÃ©tails d'un audit spÃ©cifique (en dernier pour Ã©viter conflit avec routes nommÃ©es ci-dessus)
     Route::get('/{id}', [ESBTPAuditController::class, 'show'])
