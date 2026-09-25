@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ListeInfinie;
 use App\Domain\Trash\Actions\ForceDeleteEtudiantWithDependencies;
 use App\Models\ESBTPEtudiant;
 use App\Services\Trash\TrashAuditService;
@@ -55,7 +56,8 @@ class ESBTPEtudiantTrashController extends Controller
     {
         abort_unless(Auth::user()?->can('trash.view'), 403, 'Accès à la corbeille refusé.');
 
-        $perPage = (int) $request->input('per_page', 20);
+        // Taille d'une tranche du defilement, bornee : la valeur vient de l'URL.
+        $perPage = min(100, max(1, (int) $request->input('per_page', 20)));
         $search = trim((string) $request->input('search', ''));
         $range = $request->input('range'); // null|'this_week'|'this_month'|'older'
 
@@ -78,13 +80,21 @@ class ESBTPEtudiantTrashController extends Controller
             $query->where('deleted_at', '<', $now->copy()->subDays(30));
         }
 
-        $etudiants = $query->orderByDesc('deleted_at')->paginate($perPage);
+        // Departage par id : une suppression en masse tombe dans la meme seconde,
+        // et la liste se charge par tranches.
+        $etudiants = $query->orderByDesc('deleted_at')->orderByDesc('id')->paginate($perPage);
         $deleters = $this->trashAudit->batchDeleters(ESBTPEtudiant::class, $etudiants->getCollection());
         $kpis = $this->trashAudit->bucketsByAge(ESBTPEtudiant::class);
 
         return response()->json([
             'success' => true,
             'kpis' => $kpis,
+            // Contrat du defilement (has_more, next_page, affiches), plus les
+            // champs d'avant pour qui les lisait deja.
+            'pagination' => ListeInfinie::pagination($etudiants) + [
+                'last_page' => $etudiants->lastPage(),
+                'per_page' => $etudiants->perPage(),
+            ],
             'items' => $etudiants->getCollection()->map(fn ($e) => [
                 'id' => $e->id,
                 'matricule' => $e->matricule,
@@ -95,12 +105,6 @@ class ESBTPEtudiantTrashController extends Controller
                 'deleted_at' => $e->deleted_at?->toIso8601String(),
                 'deleter' => $deleters[$e->id] ?? null,
             ])->all(),
-            'pagination' => [
-                'current_page' => $etudiants->currentPage(),
-                'last_page' => $etudiants->lastPage(),
-                'per_page' => $etudiants->perPage(),
-                'total' => $etudiants->total(),
-            ],
         ]);
     }
 

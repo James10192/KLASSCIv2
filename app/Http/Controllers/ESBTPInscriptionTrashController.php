@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ListeInfinie;
 use App\Domain\Trash\Actions\ForceDeleteInscriptionWithDependencies;
 use App\Domain\Trash\ErreurDeSuppression;
 use App\Models\ESBTPEtudiant;
@@ -52,7 +53,8 @@ class ESBTPInscriptionTrashController extends Controller
     {
         abort_unless(Auth::user()?->can('trash.view'), 403, 'Accès à la corbeille refusé.');
 
-        $perPage = (int) $request->input('per_page', 20);
+        // Taille d'une tranche du defilement, bornee : la valeur vient de l'URL.
+        $perPage = min(100, max(1, (int) $request->input('per_page', 20)));
         $search = trim((string) $request->input('search', ''));
         $range = $request->input('range');
 
@@ -76,13 +78,21 @@ class ESBTPInscriptionTrashController extends Controller
             $query->where('deleted_at', '<', $now->copy()->subDays(30));
         }
 
-        $inscriptions = $query->orderByDesc('deleted_at')->paginate($perPage);
+        // Departage par id : une suppression en masse tombe dans la meme seconde,
+        // et la liste se charge par tranches.
+        $inscriptions = $query->orderByDesc('deleted_at')->orderByDesc('id')->paginate($perPage);
         $deleters = $this->trashAudit->batchDeleters(ESBTPInscription::class, $inscriptions->getCollection());
         $kpis = $this->trashAudit->bucketsByAge(ESBTPInscription::class);
 
         return response()->json([
             'success' => true,
             'kpis' => $kpis,
+            // Contrat du defilement (has_more, next_page, affiches), plus les
+            // champs d'avant pour qui les lisait deja.
+            'pagination' => ListeInfinie::pagination($inscriptions) + [
+                'last_page' => $inscriptions->lastPage(),
+                'per_page' => $inscriptions->perPage(),
+            ],
             'items' => $inscriptions->getCollection()->map(function ($i) use ($deleters) {
                 $etudiantSoftDeleted = $i->etudiant && $i->etudiant->trashed();
                 // Sécurité : si etudiant chargé via withTrashed (relation might exclude trashed by default)
@@ -106,12 +116,6 @@ class ESBTPInscriptionTrashController extends Controller
                     'deleter' => $deleters[$i->id] ?? null,
                 ];
             })->all(),
-            'pagination' => [
-                'current_page' => $inscriptions->currentPage(),
-                'last_page' => $inscriptions->lastPage(),
-                'per_page' => $inscriptions->perPage(),
-                'total' => $inscriptions->total(),
-            ],
         ]);
     }
 

@@ -357,7 +357,7 @@
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content" x-data="trashIndex()" x-init="init()">
+    <div class="main-content" x-data="trashIndex()">
 
         {{-- Hero --}}
         <div class="tr-hero">
@@ -623,6 +623,15 @@
                         </tbody>
                     </table>
                 </template>
+            </div>
+
+            {{-- Bas de liste : la suite de l'onglet se charge en approchant
+                 (memes classes li-* que le composant x-liste-infinie). --}}
+            <div class="li-bas" x-ref="basDeListe" x-show="!loading && items.length > 0" x-cloak
+                 :data-etat="erreurSuite ? 'erreur' : (loadingMore ? 'chargement' : (hasMore ? 'pret' : 'fin'))">
+                <span class="li-compteur" aria-live="polite" x-text="compteurBas()"></span>
+                <button type="button" class="li-plus" x-show="hasMore || erreurSuite" :disabled="loadingMore"
+                        @click="chargerSuite()" x-text="erreurSuite ? 'Réessayer' : 'Charger la suite'"></button>
             </div>
         </div>
 
@@ -897,6 +906,14 @@ function trashIndex() {
         loading: false,
         items: [],
         kpis: { total: '—', this_week: '—', older_than_30: '—' },
+        page: 1,
+        hasMore: false,
+        total: null,
+        loadingMore: false,
+        erreurSuite: false,
+        // Numero du dernier chargement : une reponse d'un onglet ou d'un filtre
+        // quitte entre-temps est jetee.
+        requete: 0,
 
         // Dialog unifié (restore + force delete)
         depModalOpen: false,
@@ -916,7 +933,35 @@ function trashIndex() {
             return this.tab === 'etudiants' ? 'étudiants' : this.tab === 'inscriptions' ? 'inscriptions' : 'paiements';
         },
 
-        init() { this.reload(); },
+        // Alpine appelle init() de lui-meme : le x-init="init()" retire lancait
+        // deux fois le premier chargement.
+        init() {
+            this.reload();
+            if ('IntersectionObserver' in window) {
+                this._observateur = new IntersectionObserver((entrees) => {
+                    if (entrees.some(e => e.isIntersecting)) this.chargerSuite();
+                }, { rootMargin: '600px 0px' });
+                this._observateur.observe(this.$refs.basDeListe);
+            }
+        },
+
+        destroy() {
+            if (this._observateur) this._observateur.disconnect();
+        },
+
+        chargerSuite() {
+            if (this.loading || this.loadingMore || !this.hasMore) return;
+            this.charger(true);
+        },
+
+        compteurBas() {
+            if (this.erreurSuite) return 'La suite n’a pas pu être chargée.';
+            if (this.loadingMore) return 'Chargement…';
+            const n = this.items.length.toLocaleString('fr-FR');
+            const libelle = this.activeTabLabel;
+            if (!this.hasMore) return 'Fin de la corbeille · ' + n + ' ' + libelle;
+            return n + (this.total !== null ? ' sur ' + this.total.toLocaleString('fr-FR') : '') + ' ' + libelle;
+        },
 
         switchTab(t) {
             if (t === this.tab) return;
@@ -932,24 +977,61 @@ function trashIndex() {
             this.toast.timer = setTimeout(() => { this.toast.show = false; }, durationMs);
         },
 
-        async reload() {
-            this.loading = true;
+        reload() {
+            return this.charger(false);
+        },
+
+        async charger(ajouter) {
+            const numero = ++this.requete;
+            if (ajouter) {
+                this.loadingMore = true;
+            } else {
+                this.loading = true;
+                this.loadingMore = false;
+            }
+            this.erreurSuite = false;
             try {
                 const url = new URL(`{{ url('/esbtp/trash') }}/${this.tab}`, window.location.origin);
                 if (this.search) url.searchParams.append('search', this.search);
                 if (this.range) url.searchParams.append('range', this.range);
+                url.searchParams.append('page', ajouter ? this.page + 1 : 1);
                 const res = await fetch(url.toString(), {
                     headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
                     credentials: 'same-origin',
                 });
                 const data = await res.json();
+                if (numero !== this.requete) return;
                 if (!data.success) throw new Error(data.message || 'Erreur de chargement');
-                this.items = data.items || [];
+                const lignes = data.items || [];
+                if (ajouter) {
+                    // Une suppression faite pendant qu'on defile decale la suite :
+                    // on n'affiche pas deux fois la meme ligne.
+                    const vus = new Set(this.items.map(i => i.id));
+                    this.items.push(...lignes.filter(i => !vus.has(i.id)));
+                } else {
+                    this.items = lignes;
+                }
+                const p = data.pagination || {};
+                this.page = p.current_page || 1;
+                this.hasMore = !!p.has_more;
+                this.total = p.total ?? null;
                 this.kpis = data.kpis || { total: 0, this_week: 0, older_than_30: 0 };
+                this.$nextTick(() => {
+                    const bas = this.$refs.basDeListe;
+                    if (this.hasMore && bas && bas.getBoundingClientRect().top < window.innerHeight + 600) this.chargerSuite();
+                });
             } catch (e) {
-                this.showToast('error', 'Erreur de chargement : ' + e.message);
+                if (numero !== this.requete) return;
+                if (ajouter) {
+                    this.erreurSuite = true;
+                } else {
+                    this.showToast('error', 'Erreur de chargement : ' + e.message);
+                }
             } finally {
-                this.loading = false;
+                if (numero === this.requete) {
+                    this.loading = false;
+                    this.loadingMore = false;
+                }
             }
         },
 
