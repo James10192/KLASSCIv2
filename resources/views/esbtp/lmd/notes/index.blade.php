@@ -217,11 +217,11 @@
     .ln-modal-add-btn {
         display: inline-flex; align-items: center; gap: .3rem;
         padding: .45rem .85rem; border-radius: 9px; font-size: .82rem;
-        font-weight: 600; background: #059669; color: #fff; border: none;
+        font-weight: 600; background: #0453cb; color: #fff; border: none;
         cursor: pointer; transition: all .2s; margin-left: auto;
         text-decoration: none;
     }
-    .ln-modal-add-btn:hover { background: #047857; color: #fff; text-decoration: none; }
+    .ln-modal-add-btn:hover { background: #033a8e; color: #fff; text-decoration: none; }
 
     /* ── Callout intro ── */
     .ln-callout {
@@ -322,6 +322,7 @@
     .ln-note-input.ln-pending { border-color: #b45309; background: #fffbeb; }
     .ln-note-input.ln-syncing { border-color: #0453cb; background: #eff6ff; }
     .ln-note-input.ln-error { border-color: #dc2626; background: #fef2f2; }
+    .ln-note-input.ln-refused { border-color: #dc2626; background: #fef2f2; color: #b91c1c; text-decoration: line-through; }
 
     .ln-abs-wrap { display: flex; align-items: center; }
     .ln-abs-check { display: none; }
@@ -330,14 +331,14 @@
         display: flex; align-items: center; justify-content: center;
         font-size: .6rem; color: #cbd5e1; transition: all .15s;
     }
-    .ln-abs-label:hover { color: #ef4444; background: #fef2f2; }
-    .ln-abs-check:checked + .ln-abs-label { color: #fff; background: #ef4444; }
+    .ln-abs-label:hover { color: #dc2626; background: #fef2f2; }
+    .ln-abs-check:checked + .ln-abs-label { color: #fff; background: #dc2626; }
 
     .ln-note-cell { display: flex; align-items: center; gap: .2rem; justify-content: center; }
 
     /* Average & Appreciation columns */
     .ln-avg { font-weight: 700; font-size: .88rem; }
-    .ln-avg--pass { color: #059669; }
+    .ln-avg--pass { color: #0453cb; }
     .ln-avg--fail { color: #dc2626; }
 
     .ln-appr {
@@ -370,7 +371,7 @@
     .ln-modal-loading i { font-size: 2rem; }
     .ln-autosave-info {
         padding: .6rem 1.5rem; background: #f0fdf4; border-top: 1px solid #bbf7d0;
-        font-size: .78rem; color: #059669; display: flex; align-items: center; gap: .4rem;
+        font-size: .78rem; color: #0453cb; display: flex; align-items: center; gap: .4rem;
     }
     .ln-autosave-info.ln-autosave-info--pending { background: #fffbeb; border-color: #fde68a; color: #92400e; }
     .ln-autosave-info.ln-autosave-info--syncing { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
@@ -399,7 +400,7 @@
     .ln-eval-modal .modal-content { border-radius: 16px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,.18); overflow: hidden; }
     .ln-eval-modal-hero {
         padding: 1.25rem 1.5rem;
-        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 50%, #3b7ddb 100%);
         color: #fff;
     }
     .ln-eval-modal-hero h5 { font-size: 1.05rem; font-weight: 700; margin: 0; color: #fff; }
@@ -407,8 +408,8 @@
     .ln-eval-modal .btn-close { filter: brightness(0) invert(1); opacity: .7; }
     .ln-eval-autopub {
         display: flex; align-items: center; gap: .5rem;
-        padding: .6rem 1.25rem; background: #f0fdf4; border-bottom: 1px solid #bbf7d0;
-        font-size: .78rem; color: #059669;
+        padding: .6rem 1.25rem; background: rgba(4,83,203,.05); border-bottom: 1px solid rgba(4,83,203,.15);
+        font-size: .78rem; color: #0453cb;
     }
     .ln-eval-section {
         padding: .85rem 1.25rem; border-bottom: 1px solid #f1f5f9;
@@ -427,13 +428,14 @@
         padding: .4rem .65rem; font-size: .84rem; transition: all .2s;
     }
     .ln-eval-field input:focus, .ln-eval-field select:focus, .ln-eval-field textarea:focus {
-        border-color: #059669; box-shadow: 0 0 0 3px rgba(5,150,105,.08); outline: none;
+        border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.08); outline: none;
     }
-    .ln-eval-field .is-invalid { border-color: #ef4444 !important; }
-    .ln-eval-field .invalid-feedback { font-size: .72rem; color: #ef4444; margin-top: .15rem; }
+    .ln-eval-field .is-invalid { border-color: #dc2626 !important; }
+    .ln-eval-field .invalid-feedback { font-size: .72rem; color: #dc2626; margin-top: .15rem; }
+    .ln-eval-duree-badge--ko { color: #b91c1c !important; background: rgba(220,38,38,.08) !important; border-color: rgba(220,38,38,.25) !important; }
     .ln-eval-duree-badge {
         display: inline-block; font-size: .72rem; font-weight: 600;
-        padding: .15rem .5rem; border-radius: 20px; background: #f0fdf4; color: #059669;
+        padding: .15rem .5rem; border-radius: 20px; background: rgba(4,83,203,.08); color: #0453cb;
         margin-top: .3rem;
     }
     .ln-eval-errors {
@@ -444,10 +446,10 @@
     .ln-eval-submit-btn {
         display: inline-flex; align-items: center; gap: .35rem;
         padding: .55rem 1.25rem; border-radius: 9px; font-size: .88rem;
-        font-weight: 600; background: #059669; color: #fff; border: none;
+        font-weight: 600; background: #0453cb; color: #fff; border: none;
         cursor: pointer; transition: all .2s;
     }
-    .ln-eval-submit-btn:hover { background: #047857; }
+    .ln-eval-submit-btn:hover { background: #033a8e; }
     .ln-eval-submit-btn:disabled { opacity: .6; cursor: not-allowed; }
 
     /* Modal slide animation */
@@ -675,7 +677,7 @@
                 {{-- Auto-save info --}}
                 <div class="ln-autosave-info" id="autosaveInfo" style="display:none;">
                     <i class="fas fa-check-circle"></i>
-                    <span id="autosaveStatusText">Les notes sont automatiquement enregistrées à chaque modification.</span>
+                    <span id="autosaveStatusText">Chaque note est enregistrée en brouillon dès sa saisie. « Valider mes notes » les rend officielles pour les fiches et les bulletins.</span>
                     <span class="ln-offline-badge" id="offlineQueueCount" style="display:none;"></span>
                 </div>
             </div>
@@ -684,9 +686,13 @@
                 <button type="button" class="ln-modal-fbtn ln-modal-fbtn--close" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i> Fermer
                 </button>
-                <button type="button" class="ln-modal-fbtn ln-modal-fbtn--action" id="saveAllNotesBtn"
-                        style="display:none;" onclick="saveAllNotes()">
-                    <i class="fas fa-save"></i> Enregistrer tout
+                <button type="button" class="ln-modal-fbtn ln-modal-fbtn--close" id="saveAllNotesBtn"
+                        style="display:none;" onclick="saveAllNotes()" title="Enregistre en brouillon : modifiable, pas encore pris dans les bulletins">
+                    <i class="fas fa-save"></i> Enregistrer le brouillon
+                </button>
+                <button type="button" class="ln-modal-fbtn ln-modal-fbtn--action" id="validateNotesBtn"
+                        style="display:none;" onclick="validerMesNotes()" title="Valide les notes saisies : elles alimentent les fiches et les bulletins">
+                    <i class="fas fa-check-double"></i> Valider mes notes
                 </button>
             </div>
         </div>
@@ -866,6 +872,7 @@ async function openNotesModal(classeId, classeName) {
     document.getElementById('autosaveInfo').style.display = 'none';
     document.getElementById('createEvalBtn').style.display = 'none';
     document.getElementById('saveAllNotesBtn').style.display = 'none';
+    document.getElementById('validateNotesBtn').style.display = 'none';
     document.getElementById('nkpi_etudiants').textContent = '—';
     document.getElementById('nkpi_evals').textContent = '—';
     document.getElementById('nkpi_matieres').textContent = '—';
@@ -931,12 +938,11 @@ async function openNotesModal(classeId, classeName) {
             document.getElementById('notesEmpty').innerHTML =
                 '<i class="fas fa-exclamation-triangle" style="color:#d97706; font-size:2rem; opacity:.7; display:block; margin-bottom:.75rem;"></i>' +
                 '<strong style="color:#1e293b;">Aucune UE liée à cette classe</strong><br>' +
-                '<span style="font-size:.84rem;">Pour saisir des notes, vous devez d\'abord :</span>' +
-                '<div style="text-align:left; max-width:360px; margin:.75rem auto 0; font-size:.84rem; color:#475569;">' +
-                '1. Lier la classe à un <strong>parcours</strong> (dans Gestion des classes)<br>' +
-                '2. Lier des <strong>UEs au parcours</strong> (dans <a href="{{ route("esbtp.lmd.parcours-domain.index") }}" style="color:#0453cb; text-decoration:underline;">Parcours LMD</a>)<br>' +
-                '3. Les UEs doivent avoir des <strong>ECUEs (matières)</strong> rattachés' +
-                '</div>';
+                (data.classe.parcours_id
+                    ? '<span style="font-size:.84rem;">Le parcours de cette classe n\'a aucune UE pour ses semestres.</span>' +
+                      '<div style="margin-top:.85rem;"><a class="ln-modal-fbtn ln-modal-fbtn--action" style="display:inline-flex;text-decoration:none;" href="' + data.classe.ue_url + '"><i class="fas fa-link"></i> Lier des UE à ce parcours</a></div>'
+                    : '<span style="font-size:.84rem;">Cette classe n\'est rattachée à aucun parcours.</span>' +
+                      '<div style="margin-top:.85rem;"><a class="ln-modal-fbtn ln-modal-fbtn--action" style="display:inline-flex;text-decoration:none;" href="' + data.classe.edit_url + '"><i class="fas fa-route"></i> Rattacher la classe à son parcours</a></div>');
         } else {
             document.getElementById('notesEmpty').innerHTML =
                 '<i class="fas fa-hand-pointer"></i>Sélectionnez une UE puis un ECUE pour afficher la grille de notes.';
@@ -963,6 +969,7 @@ document.getElementById('ueSelect').addEventListener('change', function() {
     document.getElementById('autosaveInfo').style.display = 'none';
     document.getElementById('createEvalBtn').style.display = 'none';
     document.getElementById('saveAllNotesBtn').style.display = 'none';
+    document.getElementById('validateNotesBtn').style.display = 'none';
     document.getElementById('notesEmpty').style.display = 'block';
     document.getElementById('notesEmpty').innerHTML =
         '<i class="fas fa-hand-pointer"></i>Sélectionnez un ECUE pour afficher la grille de notes.';
@@ -1070,6 +1077,7 @@ function buildNotesGrid() {
         document.getElementById('notesGridWrap').style.display = 'none';
         document.getElementById('notesEmpty').style.display = 'block';
         document.getElementById('saveAllNotesBtn').style.display = 'none';
+        document.getElementById('validateNotesBtn').style.display = 'none';
         document.getElementById('notesEmpty').innerHTML =
             '<i class="fas fa-filter" style="color:#94a3b8;"></i>' +
             '<div style="margin-top:.5rem;">Aucune évaluation pour ce filtre de période.</div>';
@@ -1135,9 +1143,10 @@ function buildNotesGrid() {
             const bareme = ev.bareme || 20;
             const uid = stu.id + '-' + ev.id;
             bodyHtml += `<td><div class="ln-note-cell">
-                <input type="number" class="ln-note-input" step="0.01" inputmode="decimal" lang="fr" min="0" max="${bareme}"
-                       value="${isAbsent ? '' : noteVal}"
-                       data-student-id="${stu.id}" data-eval-id="${ev.id}"
+                <input type="text" class="ln-note-input" inputmode="decimal" autocomplete="off"
+                       value="${isAbsent ? '' : String(noteVal).replace('.', ',')}"
+                       data-student-id="${stu.id}" data-eval-id="${ev.id}" data-bareme="${bareme}"
+                       aria-label="Note sur ${bareme}"
                        ${isDisabled ? 'disabled' : ''}
                        ${isLocked ? 'title="Vous n\'avez pas la permission de modifier les notes existantes"' : ''}
                        onchange="saveNote(${stu.id}, ${ev.id}, this.value)">
@@ -1173,6 +1182,7 @@ function buildNotesGrid() {
     document.getElementById('notesEmpty').style.display = 'none';
     document.getElementById('autosaveInfo').style.display = 'flex';
     document.getElementById('saveAllNotesBtn').style.display = 'inline-flex';
+    document.getElementById('validateNotesBtn').style.display = 'inline-flex';
 
     // Calculate
     students.forEach(stu => calculateStudentAverage(stu.id));
@@ -1186,7 +1196,20 @@ function saveNote(studentId, evaluationId, noteValue) {
     const absCheckbox = document.querySelector(`.ln-abs-check[data-student-id="${studentId}"][data-eval-id="${evaluationId}"]`);
     const isAbsent = absCheckbox?.checked || false;
     const input = document.querySelector(`.ln-note-input[data-student-id="${studentId}"][data-eval-id="${evaluationId}"]`);
-    const payload = buildNotePayload(studentId, evaluationId, noteValue, isAbsent);
+
+    // La virgule est acceptée (« 1,5 ») : un champ numérique l'ignorait selon
+    // la langue du navigateur et enregistrait 15. Une valeur illisible ou hors
+    // barème est refusée ICI, n'est pas envoyée et ne compte dans aucune moyenne.
+    let valeur = 0;
+    if (!isAbsent) {
+        if (String(noteValue ?? '').trim() === '') { clearNoteError(input); return; }
+        const lue = lireNote(noteValue, input?.dataset.bareme);
+        if (lue.erreur) { markNoteRefused(input, lue.erreur); calculateStudentAverage(studentId); calculateClassAverages(); return; }
+        valeur = lue.valeur;
+        if (input) input.value = String(valeur).replace('.', ',');
+    }
+    clearNoteError(input);
+    const payload = buildNotePayload(studentId, evaluationId, valeur, isAbsent);
 
     applyNoteLocally(payload);
     calculateStudentAverage(studentId);
@@ -1203,6 +1226,15 @@ function saveNote(studentId, evaluationId, noteValue) {
         markNoteSaved(input);
         removeOfflineNote(noteMutationKey(payload));
     }).catch(err => {
+        if (err.refusee) {
+            // Refus du serveur : ce n'est PAS une attente réseau. On ne garde
+            // rien en file, on le dit, et la note sort des moyennes.
+            removeOfflineNote(noteMutationKey(payload));
+            markNoteRefused(input, err.message);
+            calculateStudentAverage(studentId);
+            calculateClassAverages();
+            return;
+        }
         console.error('Save error:', err);
         queueOfflineNote(payload, input, err.message);
     }).finally(() => {
@@ -1220,7 +1252,54 @@ function sendNoteMutation(payload) {
             'Accept': 'application/json',
         },
         body: JSON.stringify(payload)
-    }).then(r => r.json());
+    }).then(async r => {
+        const data = await r.json().catch(() => ({}));
+        if (r.status >= 400 && r.status < 500) {
+            const detail = data.errors ? Object.values(data.errors).flat()[0] : null;
+            const err = new Error(detail || data.message || 'Note refusée.');
+            err.refusee = true;
+            throw err;
+        }
+        if (!r.ok) throw new Error(data.message || ('Erreur serveur ' + r.status));
+        return data;
+    });
+}
+
+// ══ Lecture d'une note saisie ══
+function lireNote(brut, bareme) {
+    const texte = String(brut ?? '').trim().replace(/\s/g, '').replace(',', '.');
+    const max = parseFloat(bareme) || 20;
+    if (!/^\d+(\.\d{1,2})?$/.test(texte)) {
+        return { erreur: 'Note illisible : saisissez un nombre, par exemple 12,5.' };
+    }
+    const valeur = parseFloat(texte);
+    if (valeur < 0 || valeur > max) {
+        return { erreur: `Note refusée : elle doit être comprise entre 0 et ${String(max).replace('.', ',')}.` };
+    }
+    return { valeur };
+}
+
+// La valeur retenue pour les moyennes : jamais une note refusée.
+function noteRetenue(inp) {
+    if (!inp || inp.classList.contains('ln-refused')) return NaN;
+    const lue = lireNote(inp.value, inp.dataset.bareme);
+    return lue.erreur ? NaN : lue.valeur;
+}
+
+function markNoteRefused(input, message) {
+    if (!input) return;
+    input.classList.remove('ln-saved', 'ln-pending', 'ln-syncing', 'ln-error');
+    input.classList.add('ln-refused');
+    input.title = message;
+    input.setAttribute('aria-invalid', 'true');
+    window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message } }));
+}
+
+function clearNoteError(input) {
+    if (!input) return;
+    input.classList.remove('ln-refused');
+    input.removeAttribute('aria-invalid');
+    input.title = '';
 }
 
 // ══ Save all notes at once ══
@@ -1232,28 +1311,60 @@ function saveAllNotes() {
         const eid = inp.dataset.evalId;
         const absCheck = document.querySelector(`.ln-abs-check[data-student-id="${sid}"][data-eval-id="${eid}"]`);
         const isAbsent = absCheck?.checked || false;
-        const val = parseFloat(inp.value);
+        const val = noteRetenue(inp);
         if (!isNaN(val) || isAbsent) {
             notes.push({
                 etudiant_id: parseInt(sid),
                 evaluation_id: parseInt(eid),
-                note: isAbsent ? 0 : (val || 0),
+                note: isAbsent ? 0 : val,
                 is_absent: isAbsent ? 'on' : '',
             });
         }
     });
     if (notes.length === 0) return;
+    envoyerLot(notes, false);
+}
 
-    const btn = document.getElementById('saveAllNotesBtn');
+// ══ Valider mes notes : les brouillons deviennent des notes validées ══
+function validerMesNotes() {
+    const refusees = document.querySelectorAll('.ln-note-input.ln-refused').length;
+    if (refusees > 0) {
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: refusees + ' note(s) refusée(s) : corrigez-les avant de valider.' } }));
+        return;
+    }
+    const notes = [];
+    document.querySelectorAll('.ln-note-input').forEach(inp => {
+        const sid = inp.dataset.studentId, eid = inp.dataset.evalId;
+        const isAbsent = document.querySelector(`.ln-abs-check[data-student-id="${sid}"][data-eval-id="${eid}"]`)?.checked || false;
+        const val = noteRetenue(inp);
+        if (!isNaN(val) || isAbsent) {
+            notes.push({ etudiant_id: parseInt(sid), evaluation_id: parseInt(eid), note: isAbsent ? 0 : val, is_absent: isAbsent ? 'on' : '' });
+        }
+    });
+    if (notes.length === 0) {
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message: 'Aucune note à valider.' } }));
+        return;
+    }
+    envoyerLot(notes, true);
+}
+
+function envoyerLot(notes, submitFinal) {
+    const inputs = document.querySelectorAll('.ln-note-input');
+    const btn = document.getElementById(submitFinal ? 'validateNotesBtn' : 'saveAllNotesBtn');
+    const libelle = btn ? btn.innerHTML : '';
 
     if (!navigator.onLine) {
+        if (submitFinal) {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'La validation demande une connexion. Vos brouillons sont conservés.' } }));
+            return;
+        }
         notes.forEach(note => queueOfflineNote(note, findNoteInput(note)));
         updateOfflineQueueIndicator();
         return;
     }
 
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (submitFinal ? 'Validation...' : 'Enregistrement...');
 
     fetch('{{ route("esbtp.notes.save-ajax-bulk") }}', {
         method: 'POST',
@@ -1262,22 +1373,42 @@ function saveAllNotes() {
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
             'Accept': 'application/json',
         },
-        body: JSON.stringify({ notes })
-    }).then(r => r.json()).then(data => {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-save"></i> Enregistrer tout';
-        if (data.success) {
-            // Flash all inputs green
-            inputs.forEach(inp => {
-                inp.classList.add('ln-saved');
-                setTimeout(() => inp.classList.remove('ln-saved'), 1500);
-            });
+        body: JSON.stringify({ notes, submit_final: submitFinal })
+    }).then(async r => {
+        const data = await r.json().catch(() => ({}));
+        if (r.status >= 400 && r.status < 500) {
+            const err = new Error(data.errors ? Object.values(data.errors).flat()[0] : (data.message || 'Enregistrement refusé.'));
+            err.refusee = true;
+            throw err;
         }
-    }).catch(err => {
-        console.error('Bulk save error:', err);
-        notes.forEach(note => queueOfflineNote(note, findNoteInput(note), err.message));
+        if (!r.ok) throw new Error(data.message || ('Erreur serveur ' + r.status));
+        return data;
+    }).then(data => {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-save"></i> Enregistrer tout';
+        btn.innerHTML = libelle;
+        (data.refused || []).forEach(ligne => {
+            markNoteRefused(findNoteInput(ligne), ligne.message || ligne.raison || 'Note refusée.');
+        });
+        const refusees = new Set((data.refused || []).map(l => l.etudiant_id + ':' + l.evaluation_id));
+        inputs.forEach(inp => {
+            if (refusees.has(inp.dataset.studentId + ':' + inp.dataset.evalId)) return;
+            if (inp.classList.contains('ln-refused')) return;
+            inp.classList.add('ln-saved');
+            setTimeout(() => inp.classList.remove('ln-saved'), 1500);
+        });
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: data.success ? 'success' : 'warning', message: data.message || 'Notes enregistrées.' } }));
+        (currentClasseData?.etudiants || []).forEach(stu => calculateStudentAverage(stu.id));
+        calculateClassAverages();
+    }).catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = libelle;
+        if (err.refusee) {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: err.message } }));
+            return;
+        }
+        console.error('Bulk save error:', err);
+        if (!submitFinal) notes.forEach(note => queueOfflineNote(note, findNoteInput(note), err.message));
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Connexion perdue : ' + (submitFinal ? 'la validation n’a pas abouti.' : 'les notes sont gardées sur cet appareil.') } }));
     });
 }
 
@@ -1376,6 +1507,11 @@ async function replayOfflineNoteQueue() {
             removeOfflineNote(item.key);
             markNoteSaved(input);
         } catch (err) {
+            if (err.refusee) {
+                removeOfflineNote(item.key);
+                markNoteRefused(input, err.message);
+                continue;
+            }
             queueOfflineNote(item.payload, input, err.message);
             break;
         } finally {
@@ -1412,7 +1548,7 @@ function updateOfflineQueueIndicator(mode = null) {
         return;
     }
 
-    text.textContent = 'Les notes sont automatiquement enregistrées à chaque modification.';
+    text.textContent = 'Chaque note est enregistrée en brouillon dès sa saisie. « Valider mes notes » les rend officielles pour les fiches et les bulletins.';
 }
 
 // ══ Calculate student average + appreciation ══
@@ -1424,7 +1560,7 @@ function calculateStudentAverage(studentId) {
         const evalId = inp.dataset.evalId;
         const absCheck = document.querySelector(`.ln-abs-check[data-student-id="${studentId}"][data-eval-id="${evalId}"]`);
         if (absCheck?.checked) return;
-        const val = parseFloat(inp.value);
+        const val = noteRetenue(inp);
         if (isNaN(val)) return;
         const params = evalParamsCache[evalId] || { bareme: 20, coefficient: 1 };
         const normalized = (val / params.bareme) * 20;
@@ -1465,7 +1601,7 @@ function calculateClassAverages() {
             const sid = inp.dataset.studentId;
             const absCheck = document.querySelector(`.ln-abs-check[data-student-id="${sid}"][data-eval-id="${ev.id}"]`);
             if (absCheck?.checked) return;
-            const val = parseFloat(inp.value);
+            const val = noteRetenue(inp);
             if (!isNaN(val)) { sum += val; count++; }
         });
         const el = document.getElementById('class-avg-' + ev.id);
@@ -1540,14 +1676,27 @@ function updateEvalDuree() {
     if (!debut || !fin) return;
     const [dh, dm] = debut.split(':').map(Number);
     const [fh, fm] = fin.split(':').map(Number);
-    let diff = (fh * 60 + fm) - (dh * 60 + dm);
-    if (diff <= 0) diff += 24 * 60;
+    const diff = (fh * 60 + fm) - (dh * 60 + dm);
+    const badge = document.getElementById('evalDureeBadge');
+    // Heures inversées : on le dit au lieu d'ajouter 24 h (1 320 min pour 10:00 → 08:00).
+    if (diff <= 0) {
+        document.getElementById('evalDuree').value = '';
+        badge.textContent = 'L’heure de fin doit suivre l’heure de début';
+        badge.classList.add('ln-eval-duree-badge--ko');
+        return;
+    }
+    badge.classList.remove('ln-eval-duree-badge--ko');
     document.getElementById('evalDuree').value = diff;
-    document.getElementById('evalDureeBadge').textContent = diff + ' min';
+    badge.textContent = diff >= 60 ? Math.floor(diff / 60) + ' h' + (diff % 60 ? ' ' + String(diff % 60).padStart(2, '0') : '') : diff + ' min';
 }
 
 async function submitEvaluation() {
     const btn = document.getElementById('evalSubmitBtn');
+    updateEvalDuree();
+    if (!document.getElementById('evalDuree').value) {
+        window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'L’heure de fin doit suivre l’heure de début.' } }));
+        return;
+    }
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création...';
 

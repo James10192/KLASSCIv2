@@ -63,7 +63,7 @@ class AcademicPilotageController extends Controller
                 ->all(),
             'initialFilters' => [
                 'year_id' => $year?->id,
-                'period' => $request->input('period', 'semestre1'),
+                'period' => $this->period($request),
                 'system' => $request->input('system', ''),
                 'class_id' => $request->input('class_id', ''),
             ],
@@ -436,24 +436,64 @@ class AcademicPilotageController extends Controller
 
     private function period(Request $request): string
     {
-        return (string) $request->input('period', 'semestre1');
+        try {
+            // « 3 », « S3 », « Semestre 3 » : les liens d'autres écrans
+            // passent la période sous leur propre écriture.
+            $period = app(\App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer::class)
+                ->normalize((string) $request->input('period', 'semestre1'));
+        } catch (\InvalidArgumentException) {
+            return 'semestre1';
+        }
+
+        return array_key_exists($period, $this->periodOptions()) ? $period : 'semestre1';
     }
 
     private function system(Request $request): ?string
     {
         $system = strtoupper(trim((string) $request->input('system', '')));
 
-        return in_array($system, ['BTS', 'LMD'], true) ? $system : null;
+        if (in_array($system, ['BTS', 'LMD'], true)) {
+            return $system;
+        }
+
+        // Un semestre au-delà du deuxième n'existe qu'en LMD : le BTS le refuse.
+        // Sans système choisi, on se limite donc au LMD au lieu de mêler deux
+        // systèmes dont l'un n'a pas de sens pour cette période.
+        return preg_match('/^semestre([3-9]|10)$/', $this->period($request)) === 1 ? 'LMD' : null;
     }
 
+    /**
+     * Les semestres 3 à 10 n'apparaissent que si l'instance a des classes LMD :
+     * une note de L2, L3 ou de master se saisit en S3 et au-delà, et le filtre
+     * limité à S1/S2 affichait « aucune note attendue » pour elles.
+     */
     private function periodOptions(): array
     {
-        return [
+        if ($this->periodesMemo !== null) {
+            return $this->periodesMemo;
+        }
+
+        $options = [
             'semestre1' => 'Semestre 1',
             'semestre2' => 'Semestre 2',
-            'annuel' => 'Annuel',
         ];
+
+        $aDesClassesLmd = ESBTPClasse::query()
+            ->without(['filiere', 'niveau', 'annee'])
+            ->where('is_active', true)
+            ->where('systeme_academique', 'LMD')
+            ->exists();
+
+        if ($aDesClassesLmd) {
+            foreach (range(3, 10) as $numero) {
+                $options['semestre'.$numero] = 'Semestre '.$numero.' (LMD)';
+            }
+        }
+
+        return $this->periodesMemo = $options + ['annuel' => 'Annuel'];
     }
+
+    private ?array $periodesMemo = null;
 
     private function snapshotPayload(?AcademicMetricSnapshot $snapshot): ?array
     {

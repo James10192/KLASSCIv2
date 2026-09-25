@@ -121,6 +121,13 @@ class ESBTPLMDNoteController extends Controller
                 'filiere' => $classe->filiere?->name,
                 'niveau' => $classe->niveau?->name,
                 'semestres' => $classe->getSemestresLMD(),
+                'parcours_id' => $classe->parcours_id,
+                // Raccourcis de l'état vide « aucune UE » : ouvrir directement
+                // la classe ou les UE de SON parcours, pas la liste générale.
+                'edit_url' => route('esbtp.classes.edit', $classe->id),
+                'ue_url' => $classe->parcours_id
+                    ? route('esbtp.lmd.ue.index', ['parcours_id' => $classe->parcours_id])
+                    : null,
             ],
             'etudiants' => $etudiants,
             'evaluations' => $evaluations,

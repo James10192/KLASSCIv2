@@ -436,10 +436,10 @@ class ESBTPLMDBulletinController extends Controller
         }
 
         if ($hasOverride) {
-            return count($blocking)." dossier(s) incomplet(s) ou non vérifié(s). Vérifiez les fiches dans Notes LMD. Si vous assumez un bulletin provisoire, renseignez un motif explicite pour continuer.";
+            return count($blocking)." dossier(s) incomplet(s) ou non vérifié(s). Vérifiez les fiches dans le Pilotage académique (lien sous chaque étudiant). Si vous assumez un bulletin provisoire, renseignez un motif explicite pour continuer.";
         }
 
-        return count($blocking)." dossier(s) incomplet(s) ou non vérifié(s). Ouvrez Notes LMD pour synchroniser, compléter et valider les fiches de notes avant génération.";
+        return count($blocking)." dossier(s) incomplet(s) ou non vérifié(s). Ouvrez les fiches de notes dans le Pilotage académique (lien sous chaque étudiant) pour les synchroniser, les compléter et les valider avant génération.";
     }
 
     private function isStudentInGenerationCohort(int $studentId, int $classId, int $academicYearId): bool
