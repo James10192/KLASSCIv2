@@ -568,7 +568,12 @@ class ESBTPExamenPlanifieController extends Controller
             return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
         }
 
-        return response()->json(['success' => true, 'message' => 'Anonymat levé : les noms apparaissent désormais dans la saisie.']);
+        return response()->json([
+            'success' => true,
+            'message' => 'Anonymat levé : les noms apparaissent désormais dans la saisie.',
+            'leve_le' => $examen->fresh()->anonymat_leve_at?->format('d/m/Y à H:i'),
+            'leve_par' => auth()->user()->name,
+        ]);
     }
 
     public function lockNotes(ESBTPExamenPlanifie $examen): JsonResponse

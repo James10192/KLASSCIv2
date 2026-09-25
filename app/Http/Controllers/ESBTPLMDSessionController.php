@@ -435,7 +435,13 @@ class ESBTPLMDSessionController extends Controller
 
         $session->update(['parent_session_id' => (int) $data['parent_session_id'], 'updated_by' => auth()->id()]);
 
-        return response()->json(['success' => true, 'message' => 'Session rattachée à sa session normale.']);
+        $parent = ESBTPLMDSession::find($data['parent_session_id']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Session rattachée à sa session normale.',
+            'parent' => ['libelle' => $parent?->libelle, 'url' => $parent ? route('esbtp.lmd.rattrapage.show', $parent) : null],
+        ]);
     }
 
     private function resolveAnnee(Request $request): ESBTPAnneeUniversitaire

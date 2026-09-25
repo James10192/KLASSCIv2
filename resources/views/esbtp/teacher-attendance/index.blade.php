@@ -119,10 +119,19 @@
                             @endif
                             <button type="submit" class="tae-btn"><i class="fas fa-signature me-1"></i>Émarger</button>
                         </form>
-                        <form action="{{ route('esbtp.teacher-attendance.demander-code') }}" method="POST" class="tae-demande">
+                        <form action="{{ route('esbtp.teacher-attendance.demander-code') }}" method="POST" class="tae-demande"
+                              x-data="{ envoi: false, reponse: null }"
+                              @submit.prevent="
+                                  envoi = true;
+                                  fetch($el.action, { method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }, body: new FormData($el) })
+                                      .then(async r => { const d = await r.json().catch(() => ({ message: 'Erreur ' + r.status })); reponse = d; window.dispatchEvent(new CustomEvent('toast', { detail: { type: r.ok ? (d.type === 'info' ? 'info' : 'success') : 'error', message: d.message } })); })
+                                      .catch(() => { reponse = { message: 'La demande n’a pas pu être envoyée. Réessayez.' }; })
+                                      .finally(() => envoi = false);
+                              ">
                             @csrf
                             <input type="hidden" name="course_id" value="{{ $course->id }}">
-                            <button type="submit" class="tae-lien"><i class="fas fa-bell me-1"></i>Je n’ai pas le code — le demander à la coordination</button>
+                            <button type="submit" class="tae-lien" x-show="!reponse || !reponse.success" :disabled="envoi"><i class="fas fa-bell me-1"></i>Je n’ai pas le code — le demander à la coordination</button>
+                            <span class="tae-lien" x-show="reponse" x-cloak x-text="reponse && reponse.message"></span>
                         </form>
                     @endif
                 </div>

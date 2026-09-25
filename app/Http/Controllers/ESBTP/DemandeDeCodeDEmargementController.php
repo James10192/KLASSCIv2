@@ -34,7 +34,7 @@ final class DemandeDeCodeDEmargementController extends Controller
 
         $cle = 'demande-code-emargement:'.$user->id.':'.$seance->id.':'.now()->toDateString();
         if (Cache::has($cle)) {
-            return back()->with('info', 'Votre demande a déjà été envoyée à la coordination. Elle vous communiquera le code du jour.');
+            return $this->repondre($request, 'info', 'Votre demande a déjà été envoyée à la coordination. Elle vous communiquera le code du jour.');
         }
 
         $destinataires = User::permission('attendances.generate_codes')
@@ -43,7 +43,7 @@ final class DemandeDeCodeDEmargementController extends Controller
             ->get();
 
         if ($destinataires->isEmpty()) {
-            return back()->with('error', 'Personne n’a le droit de générer les codes d’émargement dans cet établissement. Contactez l’administration.');
+            return $this->repondre($request, 'error', 'Personne n’a le droit de générer les codes d’émargement dans cet établissement. Contactez l’administration.');
         }
 
         $heure = \App\Domain\EmploiTemps\HeureDeSeance::hi($seance->getAttributes()['heure_debut'] ?? null);
@@ -75,11 +75,21 @@ final class DemandeDeCodeDEmargementController extends Controller
         }
 
         if ($envoyees === 0) {
-            return back()->with('error', 'La demande n’a pas pu être envoyée. Réessayez dans un instant.');
+            return $this->repondre($request, 'error', 'La demande n’a pas pu être envoyée. Réessayez dans un instant.');
         }
 
         Cache::put($cle, true, now()->addMinutes(self::DELAI_ENTRE_DEMANDES_MINUTES));
 
-        return back()->with('success', 'Demande envoyée à la coordination ('.$envoyees.' personne'.($envoyees > 1 ? 's' : '').'). Vous serez prévenu dans votre cloche.');
+        return $this->repondre($request, 'success', 'Demande envoyée à la coordination ('.$envoyees.' personne'.($envoyees > 1 ? 's' : '').'). Vous serez prévenu dans votre cloche.');
+    }
+
+    /** Réponse JSON pour l'écran (sans rechargement), redirection sinon. */
+    private function repondre(Request $request, string $type, string $message)
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['success' => $type !== 'error', 'type' => $type, 'message' => $message], $type === 'error' ? 422 : 200);
+        }
+
+        return back()->with($type, $message);
     }
 }
