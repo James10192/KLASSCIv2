@@ -1687,7 +1687,9 @@ class ESBTPInscriptionController extends Controller
         if (!in_array($dir, ["asc", "desc"], true)) {
             $dir = "desc";
         }
-        $query->orderBy($sort, $dir);
+        $query->orderBy($sort, $dir)
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy("esbtp_inscriptions.id", $dir);
 
         // Pagination (whitelist per_page)
         $perPage = (int) $request->input("per_page", 25);
@@ -1706,6 +1708,14 @@ class ESBTPInscriptionController extends Controller
 
             return $inscription;
         });
+
+        // La suite de la liste : ses lignes seules, avant filtres et compteurs.
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $inscriptions,
+                fn ($inscription) => view("esbtp.inscriptions.partials.administration-ligne", compact("inscription"))->render(),
+            );
+        }
 
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where("is_active", true)->get();
@@ -2676,9 +2686,18 @@ class ESBTPInscriptionController extends Controller
             ->when($condition !== '', fn($q) => $q->where('condition_reserve', $condition))
             ->when($hasPayment === 'yes', fn($q) => $q->whereHas('paiements', fn($pq) => $pq->where('status', 'validé')))
             ->when($hasPayment === 'no', fn($q) => $q->whereDoesntHave('paiements', fn($pq) => $pq->where('status', 'validé')))
-            ->orderBy($sort, $dir);
+            ->orderBy($sort, $dir)
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('esbtp_inscriptions.id', $dir);
 
         $inscriptions = $query->paginate($perPage)->appends($request->query());
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $inscriptions,
+                fn ($inscription) => view('esbtp.inscriptions.partials.sous-reserve-ligne', compact('inscription', 'anneeEnCours'))->render(),
+            );
+        }
 
         // Stats globales (non filtrees par filtres, juste is_sous_reserve)
         $statsBase = ESBTPInscription::where('is_sous_reserve', true)

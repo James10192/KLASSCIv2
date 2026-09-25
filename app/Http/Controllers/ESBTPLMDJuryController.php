@@ -16,6 +16,7 @@ use App\Models\ESBTPLMDSession;
 use App\Models\User;
 use App\Services\JuryDeliberationService;
 use App\Services\Security\SeparationOfDutiesService;
+use App\Support\ListeInfinie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,7 +38,7 @@ class ESBTPLMDJuryController extends Controller
         $this->middleware('auth');
     }
 
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         abort_unless(auth()->user()?->can('lmd.jury.view'), 403);
 
@@ -57,8 +58,14 @@ class ESBTPLMDJuryController extends Controller
             ->when((int) $request->input('parcours_id'), fn ($q, $id) => $q->where('parcours_id', $id))
             ->when((int) $request->input('semestre'), fn ($q, $s) => $q->where('semestre', $s))
             ->orderByDesc('date_jury')
+            // Departage stable : la liste se charge par tranches.
+            ->orderByDesc('id')
             ->paginate(20)
             ->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($jurys, fn ($j) => view('esbtp.lmd.jurys._ligne', compact('j'))->render());
+        }
 
         // Les compteurs suivent le meme perimetre que la liste, sinon la page
         // annoncerait des jurys qu'elle n'affiche pas.

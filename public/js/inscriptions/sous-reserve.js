@@ -164,22 +164,8 @@
         window.location.href = row.dataset.href;
     });
 
-    // =========================================================================
-    // Pagination (AJAX)
-    // =========================================================================
-    document.addEventListener('click', (e) => {
-        const link = e.target.closest('#isr-results .pagination a');
-        if (!link) return;
-        e.preventDefault();
-        try {
-            const url = new URL(link.href, window.location.origin);
-            const page = url.searchParams.get('page') || '1';
-            currentFilters.page = page;
-            fetchResults({ keepPage: true });
-        } catch (_) {
-            window.location.href = link.href;
-        }
-    });
+    // La suite de la liste se charge au defilement (x-liste-infinie) : plus de
+    // pagination a intercepter.
 
     // =========================================================================
     // Checkboxes / bulk

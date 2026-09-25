@@ -226,64 +226,15 @@
             @if($activities->isEmpty())
                 <div class="au-empty"><i class="fas fa-inbox"></i> Aucune action sur la période</div>
             @else
-                <div class="au-timeline" x-data="{ openIds: [] }">
+                <div class="au-timeline" id="aua-chronologie" x-data="{ openIds: [] }">
                     @php $lastDay = null; @endphp
                     @foreach($activities as $audit)
-                        @php
-                            $day = $audit->created_at->format('Y-m-d');
-                            $event = $audit->event;
-                            $modelLabel = \App\Helpers\EntityLabelHelper::for($audit->auditable_type);
-                            $rowLinks = $entityLinksMap[$audit->id] ?? [];
-                            $rowLinksCount = count($rowLinks);
-                        @endphp
-                        @if($day !== $lastDay)
-                            <div class="au-timeline-day">
-                                <i class="far fa-calendar"></i>
-                                {{ $audit->created_at->translatedFormat('l j F Y') }}
-                            </div>
-                            @php $lastDay = $day; @endphp
-                        @endif
-                        <div class="au-timeline-item au-timeline-item--{{ $event }}">
-                            <div class="au-timeline-time">{{ $audit->created_at->format('H:i:s') }}</div>
-                            <div class="au-timeline-dot"></div>
-                            <div class="au-timeline-content">
-                                <div class="au-timeline-meta">
-                                    @if(!$selectedUser)
-                                        <strong>{{ $audit->user?->name ?? 'Système' }}</strong>
-                                    @endif
-                                    <span class="au-chip au-chip--{{ $event }}">{{ $eventLabels[$event] ?? $event }}</span>
-                                    <span class="au-chip au-chip--neutral">{{ $modelLabel }} #{{ $audit->auditable_id }}</span>
-                                    @if($audit->ip_address)
-                                        <span class="au-timeline-ip"><i class="fas fa-network-wired"></i> {{ $audit->ip_address }}</span>
-                                    @endif
-                                </div>
-                                <div class="au-timeline-actions-row">
-                                    @if($rowLinksCount > 0)
-                                        <button type="button" class="au-links-pill au-links-pill--sm"
-                                                @click="openIds.includes({{ $audit->id }}) ? openIds = openIds.filter(i => i !== {{ $audit->id }}) : openIds.push({{ $audit->id }})">
-                                            <i class="fas fa-project-diagram"></i>
-                                            <span x-show="!openIds.includes({{ $audit->id }})">{{ $rowLinksCount }} lien{{ $rowLinksCount > 1 ? 's' : '' }}</span>
-                                            <span x-show="openIds.includes({{ $audit->id }})" x-cloak>Replier</span>
-                                            <i class="fas fa-chevron-down au-toggle-caret" :class="openIds.includes({{ $audit->id }}) ? 'au-toggle-caret--open' : ''"></i>
-                                        </button>
-                                    @endif
-                                    <a href="{{ route('esbtp.audit.show', $audit->id) }}" class="au-timeline-link">
-                                        Détail <i class="fas fa-arrow-right"></i>
-                                    </a>
-                                </div>
-                                @if($rowLinksCount > 0)
-                                    <div class="au-timeline-links" x-show="openIds.includes({{ $audit->id }})" x-cloak x-transition.opacity>
-                                        <x-audit-links :links="$rowLinks" :compact="true" />
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
+                        @php $afficherJour = $audit->created_at->format('Y-m-d') !== $lastDay; $lastDay = $audit->created_at->format('Y-m-d'); @endphp
+                        @include('esbtp.audit._ligne-activite')
                     @endforeach
                 </div>
 
-                <div class="au-pagination">
-                    {{ $activities->links('pagination::bootstrap-5') }}
-                </div>
+                <x-liste-infinie :paginateur="$activities" cible="#aua-chronologie" libelle="actions" />
             @endif
         </div>
     </div>

@@ -7,6 +7,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPLMDSession;
 use App\Services\RattrapageSchedulingService;
+use App\Support\ListeInfinie;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -20,7 +21,7 @@ class ESBTPLMDSessionController extends Controller
         $this->middleware('auth');
     }
 
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         abort_unless(auth()->user()?->can('lmd.rattrapage.view'), 403);
 
@@ -32,8 +33,14 @@ class ESBTPLMDSessionController extends Controller
             ->when((int) $request->input('parcours_id'), fn ($q, $id) => $q->where('parcours_id', $id))
             ->when((int) $request->input('semestre'), fn ($q, $s) => $q->where('semestre', $s))
             ->orderByDesc('date_debut')
+            // Departage stable : la liste se charge par tranches.
+            ->orderByDesc('id')
             ->paginate(20)
             ->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($sessions, fn ($s) => view('esbtp.lmd.rattrapage._ligne', compact('s'))->render());
+        }
 
         $kpis = [
             'normales' => ESBTPLMDSession::forAnnee($annee->id)->normales()->count(),

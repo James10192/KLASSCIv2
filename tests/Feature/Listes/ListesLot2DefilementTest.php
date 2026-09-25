@@ -83,6 +83,9 @@ class ListesLot2DefilementTest extends TestCase
             'esbtp_examens_planifies' => $this->ligneMinimale($table, ['annee_universitaire_id' => $this->annee->id]),
             'esbtp_attendances' => $this->ligneMinimale($table, ['annee_universitaire_id' => $this->annee->id, 'call_type' => 'merged']),
             'esbtp_session_reports' => $this->ligneMinimale($table, ['status' => 'submitted']),
+            'audits' => $this->ligneMinimale($table, ['auditable_type' => 'App\\Models\\ESBTPPaiement', 'event' => 'updated', 'created_at' => now(), 'updated_at' => now()]),
+            'esbtp_lmd_jurys', 'esbtp_lmd_sessions' => $this->ligneMinimale($table, ['annee_universitaire_id' => $this->annee->id]),
+            'esbtp_inscriptions' => $this->ligneMinimale($table, ['status' => 'en_attente', 'is_sous_reserve' => 1, 'annee_universitaire_id' => $this->annee->id]),
             'esbtp_tpe_declarations' => $this->ligneMinimale($table, [
                 'statut' => \App\Enums\TpeDeclarationStatut::EN_ATTENTE->value,
                 'matiere_id' => $this->ligneMinimale('esbtp_planifications_academiques', ['enseignant_principal_id' => $user, 'is_active' => 1, 'matiere_id' => 987654]) ? 987654 : 0,
@@ -105,6 +108,13 @@ class ListesLot2DefilementTest extends TestCase
             'presences' => ['esbtp.attendances.index', 'esbtp_attendances', '`esbtp_attendances`.`id` desc'],
             'rapports de cours' => ['esbtp.rapports-cours.index', 'esbtp_session_reports', '`id` desc'],
             'declarations TPE' => ['esbtp.tpe-validation.index', 'esbtp_tpe_declarations', '`id` desc'],
+            'audit comptable' => ['esbtp.audit.comptabilite', 'audits', '`id` desc'],
+            'activite des utilisateurs' => ['esbtp.audit.user-activity', 'audits', '`id` desc'],
+            'jurys LMD' => ['esbtp.lmd.jurys.index', 'esbtp_lmd_jurys', '`id` desc'],
+            'sessions de rattrapage' => ['esbtp.lmd.rattrapage.index', 'esbtp_lmd_sessions', '`id` desc'],
+            'bulletins LMD' => ['esbtp.lmd.bulletins.index', 'esbtp_lmd_bulletins', '`id` desc'],
+            'inscriptions a valider' => ['esbtp.inscriptions.administration', 'esbtp_inscriptions', '`esbtp_inscriptions`.`id` desc'],
+            'inscriptions sous reserve' => ['esbtp.inscriptions.sous-reserve', 'esbtp_inscriptions', '`esbtp_inscriptions`.`id` desc'],
         ];
     }
 
@@ -156,5 +166,38 @@ class ListesLot2DefilementTest extends TestCase
         $this->assertStringContainsString('annonce-card', $grille);
         $this->assertStringContainsString('data-li-cle="'.$annonce->id.'"', $grille);
         $this->assertStringStartsWith('<tr', trim(preg_replace('/\{\{--.*?--\}\}/s', '', $tableau)));
+    }
+
+    public function test_activite_une_tranche_ouverte_sur_un_jour_deja_affiche_porte_sa_cle(): void
+    {
+        // 51 actions du meme jour : la tranche 2 (50 par tranche) commence au
+        // milieu de ce jour. Elle repete l'en-tete, avec la cle du jour, pour que
+        // le defilement l'ecarte au lieu de l'afficher deux fois.
+        for ($i = 0; $i < 51; $i++) {
+            $this->ligneMinimale('audits', ['auditable_type' => 'App\\Models\\ESBTPPaiement', 'event' => 'updated', 'created_at' => now()->startOfSecond(), 'updated_at' => now()]);
+        }
+
+        // La mise en place du test ecrit elle aussi des actions, toutes du jour.
+        $total = DB::table('audits')->count();
+
+        $html = $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('esbtp.audit.user-activity', ['page' => 2, 'mode' => 'rows']))
+            ->assertOk()
+            ->assertJsonPath('pagination.affiches', min($total, 100))
+            ->json('rows_html');
+
+        $this->assertSame(1, substr_count($html, 'data-li-cle="jour-'.now()->format('Y-m-d').'"'));
+        $this->assertSame(min($total, 100) - 50, substr_count($html, 'au-timeline-item '));
+    }
+
+    public function test_suivi_des_pieces_la_suite_repond_en_lignes_seules(): void
+    {
+        $this->ligneMinimale('esbtp_pieces_dossier', ['is_active' => 1]);
+
+        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('esbtp.pieces-dossier.suivi', ['page' => 2, 'mode' => 'rows']))
+            ->assertOk()
+            ->assertJsonStructure(['success', 'rows_html', 'pagination' => ['next_page', 'has_more', 'affiches']])
+            ->assertJsonMissingPath('kpis');
     }
 }

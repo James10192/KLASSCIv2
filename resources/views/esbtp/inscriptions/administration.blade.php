@@ -1640,7 +1640,13 @@
         bindInscriptionActions();
         bindBulkSelectionHandlers();
         updateInscriptionSelectionCount();
-        bindPaginationLinks();
+
+        // Les lignes chargees au defilement recoivent leurs actions et leur case.
+        document.addEventListener('liste-infinie:ajout', function (event) {
+            (event.detail.lignes || []).forEach(ligne => bindInscriptionActions(ligne));
+            bindBulkSelectionHandlers();
+            updateInscriptionSelectionCount();
+        });
 
         if (headerSearch && formSearchInput) {
             headerSearch.value = headerSearch.value || formSearchInput.value || '';
@@ -1677,19 +1683,6 @@
             const params = new URLSearchParams(formData);
             const targetUrl = `${form.action}?${params.toString()}`;
             fetchResults(targetUrl, { pushState: true });
-        }
-
-        function bindPaginationLinks() {
-            if (!resultsContainer) {
-                return;
-            }
-
-            resultsContainer.querySelectorAll('.pagination a').forEach(link => {
-                link.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    fetchResults(this.href, { pushState: true });
-                });
-            });
         }
 
         function setLoading(isLoading) {
@@ -1730,7 +1723,6 @@
                 bindInscriptionActions(resultsContainer);
                 bindBulkSelectionHandlers();
                 updateInscriptionSelectionCount();
-                bindPaginationLinks();
             })
             .catch(error => {
                 debugError(error);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use OwenIt\Auditing\Models\Audit;
 use App\Models\User;
@@ -19,9 +20,21 @@ use Illuminate\Support\Facades\Response;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Exports\AuditExport;
+use App\Support\ListeInfinie;
 
 class ESBTPAuditController extends Controller
 {
+    /** Les modeles dont l'audit comptable suit les operations, avec leur libelle. */
+    private const MODELES_FINANCIERS = [
+        'App\Models\ESBTPPaiement' => 'Paiements',
+        'App\Models\ESBTPDepense' => 'Dépenses',
+        'App\Models\ESBTPFacture' => 'Factures',
+        'App\Models\ESBTPFactureDetail' => 'Détails Factures',
+        'App\Models\ESBTPFraisScolarite' => 'Frais Scolarité',
+        'App\Models\ESBTPSalaire' => 'Salaires',
+        'App\Models\ESBTPBourse' => 'Bourses',
+    ];
+
     /**
      * Constructeur avec middleware de permissions
      */
@@ -186,15 +199,8 @@ class ESBTPAuditController extends Controller
     {
         $this->authorize('comptabilite.audit.view');
 
-        $financialModels = [
-            'App\Models\ESBTPPaiement',
-            'App\Models\ESBTPDepense',
-            'App\Models\ESBTPFacture',
-            'App\Models\ESBTPFactureDetail',
-            'App\Models\ESBTPFraisScolarite',
-            'App\Models\ESBTPSalaire',
-            'App\Models\ESBTPBourse',
-        ];
+        $financialModelsLabels = self::MODELES_FINANCIERS;
+        $financialModels = array_keys($financialModelsLabels);
 
         $query = Audit::whereIn('auditable_type', $financialModels)
             ->with(['user'])
@@ -224,7 +230,23 @@ class ESBTPAuditController extends Controller
             $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $audits = $query->paginate(25)->withQueryString();
+        // Departage stable : la liste se charge par tranches.
+        $audits = $query->orderByDesc('id')->paginate(25)->withQueryString();
+
+        // Précalcule les liens entités liées pour chaque audit de la page courante.
+        // Le resolver eager-load les relations par audit ; sur 25 lignes c'est
+        // acceptable et évite de bombarder le serveur depuis le client.
+        $entityLinksMap = [];
+        foreach ($audits as $a) {
+            $entityLinksMap[$a->id] = $this->entityResolver->resolve($a);
+        }
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $audits,
+                fn ($a) => view('esbtp.audit._ligne-comptabilite', compact('a', 'financialModelsLabels', 'entityLinksMap'))->render(),
+            );
+        }
 
         // KPIs financiers (sur 30 derniers jours)
         $since = Carbon::now()->subDays(30);
@@ -247,24 +269,6 @@ class ESBTPAuditController extends Controller
                 ->where('created_at', '>=', $weekStart)
                 ->count(),
         ];
-
-        $financialModelsLabels = [
-            'App\Models\ESBTPPaiement' => 'Paiements',
-            'App\Models\ESBTPDepense' => 'Dépenses',
-            'App\Models\ESBTPFacture' => 'Factures',
-            'App\Models\ESBTPFactureDetail' => 'Détails Factures',
-            'App\Models\ESBTPFraisScolarite' => 'Frais Scolarité',
-            'App\Models\ESBTPSalaire' => 'Salaires',
-            'App\Models\ESBTPBourse' => 'Bourses',
-        ];
-
-        // Précalcule les liens entités liées pour chaque audit de la page courante.
-        // Le resolver eager-load les relations par audit ; sur 25 lignes c'est
-        // acceptable et évite de bombarder le serveur depuis le client.
-        $entityLinksMap = [];
-        foreach ($audits as $a) {
-            $entityLinksMap[$a->id] = $this->entityResolver->resolve($a);
-        }
 
         return view('esbtp.audit.comptabilite', compact('audits', 'kpis', 'financialModelsLabels', 'entityLinksMap'));
     }
@@ -294,7 +298,12 @@ class ESBTPAuditController extends Controller
             $query->where('user_id', $userId);
         }
 
-        $activities = $query->paginate(50)->withQueryString();
+        // Departage stable : la chronologie se charge par tranches.
+        $activities = $query->orderByDesc('id')->paginate(50)->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return $this->suiteDeLaChronologie($activities, $userId ? User::find($userId) : null);
+        }
 
         // Top modèles touchés (sur la fenêtre, scoped par user si filtré)
         $topModelsQuery = $baseQuery();
@@ -375,6 +384,28 @@ class ESBTPAuditController extends Controller
             'dateTo',
             'entityLinksMap'
         ));
+    }
+
+    /**
+     * La suite de la chronologie : ses actions seules, avec leurs liens. Le jour
+     * est repete en tete de tranche ; s'il est deja affiche, le defilement
+     * l'ecarte par sa cle.
+     */
+    private function suiteDeLaChronologie($activities, ?User $selectedUser): JsonResponse
+    {
+        $entityLinksMap = [];
+        foreach ($activities as $a) {
+            $entityLinksMap[$a->id] = $this->entityResolver->resolve($a);
+        }
+
+        $lastDay = null;
+
+        return ListeInfinie::reponse($activities, function ($audit) use (&$lastDay, $selectedUser, $entityLinksMap) {
+            $afficherJour = $audit->created_at->format('Y-m-d') !== $lastDay;
+            $lastDay = $audit->created_at->format('Y-m-d');
+
+            return view('esbtp.audit._ligne-activite', compact('audit', 'afficherJour', 'selectedUser', 'entityLinksMap'))->render();
+        });
     }
 
     /**

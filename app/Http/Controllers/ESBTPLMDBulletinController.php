@@ -13,6 +13,7 @@ use App\Services\DocumentPrintGuard;
 use App\Services\LMD\Exceptions\MaquetteSansCompositionException;
 use App\Services\LMD\LmdCreditWalletService;
 use App\Services\LMDBulletinService;
+use App\Support\ListeInfinie;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
@@ -58,7 +59,12 @@ class ESBTPLMDBulletinController extends Controller
             });
         }
 
-        $bulletins = $query->orderByDesc('created_at')->paginate(20)->withQueryString();
+        // Departage stable : la liste se charge par tranches.
+        $bulletins = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($bulletins, fn ($b) => view('esbtp.lmd.bulletins._ligne', compact('b'))->render());
+        }
 
         $classes = ESBTPClasse::where('systeme_academique', 'LMD')
             ->orderBy('name')
