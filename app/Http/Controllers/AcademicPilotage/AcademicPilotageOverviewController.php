@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\AcademicPilotage;
 
 use App\Domain\AcademicPilotage\Services\AcademicActorScopeService;
+use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Domain\AcademicPilotage\Services\ApercuDuPilotage;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -44,10 +45,10 @@ class AcademicPilotageOverviewController extends Controller
             'annees' => ESBTPAnneeUniversitaire::query()->orderByDesc('start_date')->limit(8)->pluck('name', 'id')->all(),
             'annee' => $annee,
             'classes' => $annee ? $this->optionsDeClasses((int) $annee->id, $autorisees) : [],
-            'periodes' => self::PERIODES,
+            'periodes' => $this->optionsDePeriodes($annee?->id, $autorisees, $this->periodeDemandee($request)),
             'filtres' => [
                 'annee' => $annee?->id,
-                'periode' => $this->periode($request, $annee?->id, $autorisees),
+                'periode' => $this->periodeDemandee($request) ?? '',
                 'systeme' => $this->systeme($request) ?? '',
                 'classe' => $request->integer('classe') ?: '',
             ],
@@ -68,15 +69,19 @@ class AcademicPilotageOverviewController extends Controller
         $classe = $request->integer('classe') ?: null;
         abort_if($classe !== null && $autorisees !== null && ! $autorisees->contains($classe), 403, 'Cette classe est hors de votre périmètre.');
 
-        $periode = $this->periode($request, (int) $annee->id, $autorisees);
-        $donnees = $this->apercu->construire((int) $annee->id, $periode, $this->systeme($request), $classe, $autorisees);
+        $periode = $this->periodeDemandee($request);
+        if ($periode === null) {
+            ['periode' => $periode, 'donnees' => $donnees] = $this->apercu->choisirLaPeriode((int) $annee->id, $this->systeme($request), $classe, $autorisees);
+        } else {
+            $donnees = $this->apercu->construire((int) $annee->id, $periode, $this->systeme($request), $classe, $autorisees);
+        }
 
         return response()->json([
             'periode' => $periode,
             'html' => view('esbtp.pilotage-academique.partials._apercu', [
                 'd' => $donnees,
                 'annee' => $annee,
-                'periodeLabel' => self::PERIODES[$periode] ?? $periode,
+                'periodeLabel' => self::libelle($periode),
                 'classeFiltree' => $classe,
             ])->render(),
         ]);
@@ -101,18 +106,47 @@ class AcademicPilotageOverviewController extends Controller
     }
 
     /**
-     * La période demandée, sinon celle des dernières évaluations passées :
-     * en mai, la page s'ouvre sur le second semestre.
+     * La période demandée, ou null : la page choisit alors elle-même la période
+     * la plus récente qui attend des notes (voir ApercuDuPilotage).
      */
-    private function periode(Request $request, ?int $anneeId, ?Collection $autorisees): string
+    private function periodeDemandee(Request $request): ?string
     {
-        $demandee = (string) $request->input('periode', '');
-
-        if (isset(self::PERIODES[$demandee])) {
-            return $demandee;
+        $demandee = trim((string) $request->input('periode', ''));
+        if ($demandee === '') {
+            return null;
         }
 
-        return $anneeId ? $this->apercu->periodeCourante($anneeId, $autorisees) : 'semestre1';
+        try {
+            return app(AcademicPeriodNormalizer::class)->normalize($demandee);
+        } catch (\InvalidArgumentException) {
+            return null;
+        }
+    }
+
+    /**
+     * « Période en cours » d'abord, puis les deux semestres, les autres
+     * semestres que portent les évaluations de l'année (un parcours LMD va
+     * jusqu'au sixième), et l'année.
+     *
+     * @return array<string, string>
+     */
+    private function optionsDePeriodes(?int $anneeId, ?Collection $autorisees, ?string $demandee): array
+    {
+        // La période d'un lien partagé figure toujours dans la liste, même
+        // sans évaluation : sinon le sélecteur afficherait autre chose.
+        $semestres = collect(['semestre1', 'semestre2', $demandee])->filter()
+            ->merge($anneeId ? $this->apercu->periodesRecentes($anneeId, $autorisees) : [])
+            ->reject(fn ($p) => $p === 'annuel')->unique()
+            ->sortBy(fn ($p) => (int) substr($p, strlen('semestre')))->values();
+
+        return ['' => 'Période en cours']
+            + $semestres->mapWithKeys(fn ($p) => [$p => self::libelle($p)])->all()
+            + ['annuel' => self::PERIODES['annuel']];
+    }
+
+    private static function libelle(string $periode): string
+    {
+        return self::PERIODES[$periode] ?? (str_starts_with($periode, 'semestre') ? 'Semestre '.substr($periode, strlen('semestre')) : $periode);
     }
 
     private function systeme(Request $request): ?string
