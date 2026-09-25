@@ -278,7 +278,7 @@
                         <label class="rd-label" for="rd-motif">Motif du rejet</label>
                         <textarea class="rd-textarea" id="rd-motif" name="motif_rejet"
                                   minlength="10" maxlength="1000" required x-model="motif"></textarea>
-                        <div class="rd-hint">Ce motif reste interne. Il vous servira si la famille appelle.</div>
+                        <div class="rd-hint">Ce motif reste interne. Il vous servira si la famille appelle. Si la famille a un rendez-vous à venir, son créneau est libéré pour une autre.</div>
                     </div>
                     <div class="rd-modal-foot">
                         <button type="button" class="rd-btn" @click="rejetOuvert = false">Annuler</button>

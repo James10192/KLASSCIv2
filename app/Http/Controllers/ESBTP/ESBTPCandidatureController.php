@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPCandidature;
+use App\Services\RendezVous\LiberationRdv;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -138,7 +139,7 @@ class ESBTPCandidatureController extends Controller
         );
     }
 
-    public function rejeter(Request $request, ESBTPCandidature $candidature): RedirectResponse
+    public function rejeter(Request $request, ESBTPCandidature $candidature, LiberationRdv $liberation): RedirectResponse
     {
         $valide = $request->validate([
             // Un rejet sans motif est un rejet qu'on ne saura pas expliquer a
@@ -151,9 +152,13 @@ class ESBTPCandidatureController extends Controller
             'motif_rejet' => $valide['motif_rejet'],
         ]);
 
-        return $decidee
-            ? back()->with('success', 'Candidature rejetée.')
-            : back()->with('error', 'Cette candidature a déjà été traitée.');
+        if (! $decidee) {
+            return back()->with('error', 'Cette candidature a déjà été traitée.');
+        }
+
+        $liberees = $liberation->apresRejet($candidature);
+
+        return back()->with('success', 'Candidature rejetée.'.LiberationRdv::phrase($liberees));
     }
 
     /**

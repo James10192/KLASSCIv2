@@ -385,6 +385,7 @@
                 <label for="cd-motif" class="form-label">Motif du rejet</label>
                 <textarea class="form-control" id="cd-motif" name="motif_rejet" rows="3" minlength="10" maxlength="1000" required
                           placeholder="Ce motif vous servira à répondre à la famille si elle rappelle."></textarea>
+                <div class="form-text">Si la famille a un rendez-vous à venir, son créneau est libéré pour une autre.</div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">Annuler</button>

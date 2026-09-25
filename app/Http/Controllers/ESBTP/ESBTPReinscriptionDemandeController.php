@@ -8,6 +8,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Services\ReeinscriptionService;
+use App\Services\RendezVous\LiberationRdv;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -175,7 +176,7 @@ class ESBTPReinscriptionDemandeController extends Controller
         return back()->with('success', 'Réinscription effectuée. La demande est clôturée.');
     }
 
-    public function rejeter(Request $request, ESBTPReinscriptionDemande $demande): RedirectResponse
+    public function rejeter(Request $request, ESBTPReinscriptionDemande $demande, LiberationRdv $liberation): RedirectResponse
     {
         $valide = $request->validate([
             // Un rejet sans motif est un rejet qu'on ne saura pas expliquer a
@@ -199,8 +200,9 @@ class ESBTPReinscriptionDemandeController extends Controller
         }
 
         $this->oublierLeCompteur();
+        $liberees = $liberation->apresRejet($demande);
 
-        return back()->with('success', 'Demande rejetée.');
+        return back()->with('success', 'Demande rejetée.'.LiberationRdv::phrase($liberees));
     }
 
     /**
