@@ -3,6 +3,7 @@
 namespace Tests\Feature\EmploiTemps;
 
 use App\Domain\EmploiTemps\FenetresDEmargement;
+use App\Domain\EmploiTemps\MomentDEmargement;
 use App\Domain\EmploiTemps\ProlongationDeSeance;
 use App\Models\ESBTPProlongationSeance;
 use App\Models\ESBTPSeanceCours;
@@ -80,6 +81,47 @@ class ProlongationEtFenetresDEmargementTest extends TestCase
         Cache::flush();
 
         $this->assertSame(20, (new FenetresDEmargement())->minutes(FenetresDEmargement::CLE_PRESENT));
+    }
+
+    public function test_un_seul_classement_decide_du_moment_d_emargement(): void
+    {
+        $f = new FenetresDEmargement();
+        $debut = Carbon::parse('2026-09-14 08:00');
+
+        $this->assertSame(MomentDEmargement::TropTot, $f->classerDebut(Carbon::parse('2026-09-14 07:59'), $debut));
+        $this->assertSame(MomentDEmargement::Present, $f->classerDebut(Carbon::parse('2026-09-14 08:20'), $debut));
+        $this->assertSame(MomentDEmargement::Retard, $f->classerDebut(Carbon::parse('2026-09-14 08:45'), $debut));
+        $this->assertSame(MomentDEmargement::Depasse, $f->classerDebut(Carbon::parse('2026-09-14 08:46'), $debut));
+        $this->assertTrue($f->marqueAbsentDOffice());
+    }
+
+    public function test_un_retard_regle_a_90_minutes_ne_classe_pas_depasse_a_50_minutes(): void
+    {
+        (new FenetresDEmargement())->ensureDefaults();
+        DB::table('settings')->where('key', FenetresDEmargement::CLE_RETARD)->update(['value' => '90']);
+        DB::table('settings')->where('key', FenetresDEmargement::CLE_DEPASSEMENT)->update(['value' => 'justification']);
+        Cache::flush();
+
+        $f = new FenetresDEmargement();
+        $debut = Carbon::parse('2026-09-14 08:00');
+        $this->assertSame(MomentDEmargement::Retard, $f->classerDebut(Carbon::parse('2026-09-14 08:50'), $debut));
+        // Retard accepté avec motif : la tâche planifiée ne doit rien marquer absent.
+        $this->assertFalse($f->marqueAbsentDOffice());
+    }
+
+    public function test_la_fenetre_de_fin_suit_la_prolongation_accordee(): void
+    {
+        $service = new ProlongationDeSeance();
+        $seance = ESBTPSeanceCours::find(1);
+        DB::table('esbtp_seance_cours')->where('id', 3)->delete();
+
+        [$ouverture, $fermeture] = (new FenetresDEmargement())->fenetreDeFin($seance);
+        $this->assertSame(['09:40', '10:30'], [$ouverture->format('H:i'), $fermeture->format('H:i')]);
+
+        $service->accorder($service->demander($seance, User::find(1), 20, 'Fin du chapitre sur les poutres'), User::find(2));
+
+        [$ouverture, $fermeture] = (new FenetresDEmargement())->fenetreDeFin($seance->fresh());
+        $this->assertSame(['10:00', '10:50'], [$ouverture->format('H:i'), $fermeture->format('H:i')]);
     }
 
     public function test_une_prolongation_sur_un_creneau_libre_est_accordee_et_deplace_la_fin(): void

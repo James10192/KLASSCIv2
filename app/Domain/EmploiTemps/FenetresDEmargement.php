@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\EmploiTemps;
 
+use App\Models\ESBTPSeanceCours;
 use App\Models\Setting;
 use Carbon\Carbon;
 
@@ -146,5 +147,41 @@ final class FenetresDEmargement
     public function fermetureFin(Carbon $heureFin): Carbon
     {
         return $heureFin->copy()->addMinutes($this->minutes(self::CLE_APRES_FIN));
+    }
+
+    /**
+     * La seule décision sur un émargement de début : trop tôt, présent, en
+     * retard, ou au-delà du délai. Tous les écrans et la tâche planifiée la
+     * lisent ici, pour qu'un délai réglé par l'école vaille partout.
+     */
+    public function classerDebut(Carbon $maintenant, Carbon $heureDebut): MomentDEmargement
+    {
+        return match (true) {
+            $maintenant->lt($this->ouvertureDebut($heureDebut)) => MomentDEmargement::TropTot,
+            $maintenant->lte($this->limitePresent($heureDebut)) => MomentDEmargement::Present,
+            $maintenant->lte($this->limiteRetard($heureDebut)) => MomentDEmargement::Retard,
+            default => MomentDEmargement::Depasse,
+        };
+    }
+
+    /**
+     * Fenêtre de l'émargement de fin, prolongation accordée comprise.
+     *
+     * @return array{0: Carbon, 1: Carbon} ouverture, fermeture
+     */
+    public function fenetreDeFin(ESBTPSeanceCours $seance, ?Carbon $date = null): array
+    {
+        $fin = app(ProlongationDeSeance::class)->heureFinEffective($seance, $date);
+
+        return [$this->ouvertureFin($fin), $this->fermetureFin($fin)];
+    }
+
+    /**
+     * Au-delà du délai, l'école a-t-elle choisi l'absence d'office ? Sinon le
+     * retard reste émargeable avec un motif, et rien ne doit marquer absent.
+     */
+    public function marqueAbsentDOffice(): bool
+    {
+        return ! $this->exigeJustification();
     }
 }

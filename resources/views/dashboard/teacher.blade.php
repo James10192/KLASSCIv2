@@ -656,13 +656,13 @@
                     $now = \Carbon\Carbon::now();
                     $validPendingRollCalls = $pendingRollCalls->filter(function($cours) use ($now) {
                         $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
-                        $expiredWindow = $courseEnd->copy()->addMinutes(30); // 30 min après la fin pour faire l'appel
+                        $expiredWindow = app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fermetureFin($courseEnd); // fenêtre de fin réglée par l'école
                         return $now->lte($expiredWindow);
                     });
                     
                     $expiredRollCalls = $pendingRollCalls->filter(function($cours) use ($now) {
                         $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
-                        $expiredWindow = $courseEnd->copy()->addMinutes(30);
+                        $expiredWindow = app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fermetureFin($courseEnd);
                         return $now->gt($expiredWindow);
                     });
                 @endphp
@@ -762,10 +762,10 @@
                                         }
 
                                         // FENÊTRES D'ÉMARGEMENT
-                                        $limite20min = $courseStart->copy()->addMinutes(20);
-                                        $limite45min = app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->limiteRetard($courseStart);
-                                        $fenetreClotureDebut = $courseEnd->copy()->subMinutes(20);
-                                        $fenetreClotureFin = $courseEnd->copy()->addMinutes(30);
+                                        $_fenetres = app(\App\Domain\EmploiTemps\FenetresDEmargement::class);
+                                        $limite20min = $_fenetres->limitePresent($courseStart);
+                                        $limite45min = $_fenetres->limiteRetard($courseStart);
+                                        [$fenetreClotureDebut, $fenetreClotureFin] = $_fenetres->fenetreDeFin($cours);
 
                                         // Vérifier appels étudiants
                                         $hasStudentCall = \App\Models\ESBTPAttendance::where('seance_cours_id', $cours->id)->exists();
@@ -787,7 +787,7 @@
                                         $bothEmargementsDone = $emargementDebut && $emargementFin;
                                         $hasTeacherAttendance = $emargementDebut !== null; // Pour compatibilité
 
-                                        $isAppelExpired = $now->gt($courseEnd->copy()->addMinutes(30)) && !$hasStudentCall;
+                                        $isAppelExpired = $now->gt(app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fermetureFin($courseEnd)) && !$hasStudentCall;
                                         $isCourseActive = $now->between($courseStart, $courseEnd);
                                     @endphp
                                     
@@ -906,7 +906,7 @@
                             @php
                                 $now = \Carbon\Carbon::now();
                                 $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
-                                $expiredWindow = $courseEnd->copy()->addMinutes(30);
+                                $expiredWindow = app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fermetureFin($courseEnd);
                                 $isStillValid = $now->lte($expiredWindow);
                             @endphp
                             
