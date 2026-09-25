@@ -724,6 +724,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
             ->name('diagnostics.settings-duplicates');
         Route::get('/diagnostics/evaluation-system-mismatch', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationSystemMismatch'])
             ->name('diagnostics.evaluation-system-mismatch');
+        // Lecture seule : matieres de specialite qui atteignent un bulletin de
+        // tronc commun, etudiant par etudiant, avec la cause et l'action suggeree.
+        Route::get('/diagnostics/tc-specialite-leak', [App\Http\Controllers\API\CLI\CLITcSpecialiteLeakController::class, 'index'])
+            ->name('diagnostics.tc-specialite-leak');
         // Unicité des notes : la migration ne la pose pas tant que des notes
         // sont en double. Lister, trancher, puis poser — sans SSH.
         Route::get('/diagnostics/notes-doublons', [App\Http\Controllers\API\CLI\CLINotesUniciteController::class, 'index'])
