@@ -130,9 +130,21 @@ class CaissierAccueilMobileTest extends TestCase
         $this->assertSame(['count' => 1, 'total' => 25000.0], $caisse['mobile']);
         $this->assertSame(['count' => 1, 'total' => 300000.0], $caisse['autres']);
         $this->assertSame(2, $caisse['a_valider']);
-        $this->assertSame(1, $caisse['annulables']);
+        // L'espèces validé de 10h42 et l'attente de 10h44 : un versement
+        // validé récent de son auteur s'annule aussi (la caisse valide à
+        // l'encaissement dans plusieurs écoles).
+        $this->assertSame(2, $caisse['annulables']);
         $this->assertTrue($caisse['peut_annuler']);
         $this->assertSame(5, $caisse['fenetre_annulation_minutes']);
+
+        // Bureau « guichet » : affluence par heure, repère sur la moyenne,
+        // compte à rebours sur les saisies encore annulables.
+        $affluence = collect($response->viewData('affluence'));
+        $this->assertSame(1, $affluence->firstWhere('heure', 9)['count']);
+        $this->assertSame(4, $affluence->firstWhere('heure', 10)['count']); // 10h00, 10h12, 10h42, 10h44 ; le rejet de 9h30 ne compte pas
+        $response->assertSee('Ma caisse du jour', false);
+        $response->assertSee('Caisse ouverte à 07:58', false);
+        $response->assertSee('annulable encore', false);
 
         // Le DOM mobile est rendu, à côté du bureau.
         $response->assertSee('has-m-shell m-profile-caissier', false);

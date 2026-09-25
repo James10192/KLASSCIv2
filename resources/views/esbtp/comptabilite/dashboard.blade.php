@@ -1,876 +1,130 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard Comptabilité')
-
-@push('styles')
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<style>
-
-/* ── Typographie financière ── */
-body, .filters-bar, .kpi-label, .filter-label, .filter-select {
-    font-family: 'DM Sans', sans-serif;
-}
-.kpi-value,
-#kpi-total-due, #kpi-total-paid, #kpi-overdue, #kpi-pending, #kpi-taux {
-    font-family: 'JetBrains Mono', monospace !important;
-    letter-spacing: -.02em;
-}
-
-/* ── Animations d'entrée réduites (dc-*) ── */
-@keyframes dc-fade-in {
-    from { opacity: 0; transform: translateY(6px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-.dash-hero   { animation: dc-fade-in .2s ease both; }
-.filters-bar { animation: dc-fade-in .2s ease .05s both; }
-.kpi-strip .kpi-card { animation: dc-fade-in .2s ease .1s both; }
-
-/* Respect motion preferences (WCAG 2.2) */
-@media (prefers-reduced-motion: reduce) {
-    .dash-hero, .filters-bar, .kpi-strip .kpi-card,
-    .chart-card, .bottom-row {
-        animation: none !important;
-    }
-    .aging-seg { transition: none !important; }
-}
-
-/* ── KPI cards — precision touch ── */
-.kpi-card {
-    border-top: 3px solid transparent;
-    transition: box-shadow .2s, transform .2s, border-color .2s;
-}
-.kpi-card:nth-child(1) { border-top-color: #0453cb; }
-.kpi-card:nth-child(2) { border-top-color: #10b981; }
-.kpi-card:nth-child(3) { border-top-color: #ef4444; }
-.kpi-card:nth-child(4) { border-top-color: #3b82f6; }
-.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.10); }
-
-/* ── Chart cards ── */
-.chart-card {
-    background: #fff;
-    border-radius: 14px;
-    padding: 24px;
-    box-shadow: 0 1px 12px rgba(0,0,0,.06);
-    border: 1px solid rgba(0,0,0,.05);
-    animation: dc-fade-in .5s ease .4s both;
-}
-
-/* ── Aging bar segments ── */
-.aging-bar-track {
-    display: flex;
-    height: 8px;
-    border-radius: 4px;
-    overflow: hidden;
-    margin: 10px 0;
-    background: #f1f5f9;
-}
-.aging-seg {
-    height: 100%;
-    transition: width .6s cubic-bezier(.22,.68,0,1.2);
-}
-.aging-seg-recent  { background: #10b981; }
-.aging-seg-moderate{ background: #f59e0b; }
-.aging-seg-serious { background: #f97316; }
-.aging-seg-critical{ background: #ef4444; }
-
-/* ── Bottom section fade-in ── */
-.bottom-row { animation: dc-fade-in .25s ease .15s both; }
-
-/* ── Hero premium (dc-*) — monochrome bleu, pas d'orbs décoratives ── */
-.dash-hero {
-    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
-    border-radius: 16px;
-    padding: 32px 36px;
-    margin-bottom: 28px;
-    position: relative;
-    overflow: hidden;
-}
-.dash-hero-title {
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: #fff;
-    margin: 0 0 4px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-.dash-hero-subtitle {
-    color: rgba(255,255,255,.6);
-    font-size: .92rem;
-    margin: 0;
-}
-.dash-hero-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    background: rgba(16,185,129,.18);
-    color: #10b981;
-    border: 1px solid rgba(16,185,129,.35);
-    border-radius: 20px;
-    padding: 2px 10px;
-    font-size: .78rem;
-    font-weight: 600;
-    vertical-align: middle;
-}
-.dash-hero-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-.hero-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 18px;
-    border-radius: 8px;
-    font-size: .85rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: opacity .15s, transform .15s;
-    white-space: nowrap;
-}
-.hero-btn:hover { opacity: .9; transform: translateY(-1px); }
-.hero-btn-primary { background: #0453cb; color: #fff; }
-.hero-btn-outline { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.25); }
-
-/* ── Filtres AJAX ── */
-.filters-bar {
-    background: #fff;
-    border-radius: 14px;
-    padding: 16px 20px;
-    margin-bottom: 24px;
-    box-shadow: 0 1px 8px rgba(0,0,0,.05);
-    border: 1px solid rgba(4,83,203,.07);
-    display: flex;
-    align-items: stretch;
-    gap: 0;
-}
-.filters-bar-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 9px;
-    background: rgba(4,83,203,.08);
-    color: #0453cb;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: .8rem;
-    flex-shrink: 0;
-    align-self: flex-end;
-    margin-bottom: 2px;
-    margin-right: 16px;
-}
-.filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1 1 0;
-    min-width: 0;
-    padding: 0 16px;
-    border-right: 1px solid #eef2f7;
-}
-.filter-group:first-of-type { padding-left: 0; }
-.filter-group:last-of-type { border-right: none; }
-.filter-label {
-    font-size: .67rem;
-    font-weight: 700;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    line-height: 1;
-    white-space: nowrap;
-}
-.filter-select {
-    appearance: none;
-    -webkit-appearance: none;
-    background-color: #fff;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 8px 32px 8px 12px;
-    font-size: .875rem;
-    font-weight: 500;
-    color: #1e293b;
-    cursor: pointer;
-    outline: none;
-    transition: all 0.2s ease;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%234b5563' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-    width: 100%;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
-}
-.filter-select:hover {
-    border-color: #94a3b8;
-    box-shadow: 0 2px 4px rgba(15, 23, 42, 0.08);
-}
-.filter-select:focus {
-    border-color: #0453cb;
-    box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1), 0 2px 4px rgba(15, 23, 42, 0.08);
-    outline: none;
-}
-.filter-select.has-value {
-    border-color: #0453cb;
-    color: #0453cb;
-    font-weight: 600;
-    box-shadow: 0 2px 4px rgba(4, 83, 203, 0.08);
-}
-.filters-bar-actions {
-    display: flex;
-    align-items: flex-end;
-    gap: 8px;
-    flex-shrink: 0;
-    padding-left: 20px;
-    padding-bottom: 2px;
-}
-.filter-active-pill {
-    display: none;
-    align-items: center;
-    gap: 5px;
-    font-size: .72rem;
-    font-weight: 700;
-    color: #0453cb;
-    padding: 5px 10px;
-    background: rgba(4,83,203,.09);
-    border-radius: 20px;
-    border: 1px solid rgba(4,83,203,.15);
-    white-space: nowrap;
-    line-height: 1;
-}
-.filter-active-pill.active { display: inline-flex; }
-.filter-active-pill i { font-size: .55rem; }
-.filter-reset-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: .78rem;
-    font-weight: 600;
-    color: #94a3b8;
-    padding: 5px 12px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: background .12s, color .12s, border-color .12s;
-    white-space: nowrap;
-    line-height: 1;
-}
-.filter-reset-btn:hover {
-    background: #fff0f0;
-    color: #e53e3e;
-    border-color: rgba(229,62,62,.25);
-}
-.filter-default-hint {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: .67rem; font-weight: 600; color: #94a3b8;
-    margin-top: 4px; line-height: 1;
-    transition: opacity .15s;
-}
-.filter-default-hint i { font-size: .45rem; color: #10b981; }
-.filter-default-hint.hidden { display: none; }
-@media (max-width: 768px) {
-    .filters-bar { flex-wrap: wrap; gap: 12px; padding: 14px 16px; }
-    .filters-bar-icon { display: none; }
-    .filter-group { flex: 1 1 40%; padding: 0; border-right: none; }
-    .filters-bar-actions { padding-left: 0; width: 100%; justify-content: flex-end; }
-    .filter-select { border-bottom: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc; padding: 7px 28px 7px 10px; }
-    .filter-select.has-value { background-color: #f0f5ff; }
-}
-
-/* ── Action Feed (Aujourd'hui) ── */
-.dc-feed {
-    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 14px 18px 16px;
-    margin-bottom: 18px;
-    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
-}
-.dc-feed-head {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
-}
-.dc-feed-title {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-size: .82rem; font-weight: 700; color: #1e293b;
-    letter-spacing: -.01em;
-}
-.dc-feed-title i { color: #0453cb; font-size: .9rem; }
-.dc-feed-date { font-weight: 500; color: #64748b; font-size: .78rem; }
-.dc-feed-allclear {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: rgba(16,185,129,.10); color: #059669;
-    padding: 4px 10px; border-radius: 999px;
-    font-size: .72rem; font-weight: 600;
-}
-.dc-feed-cards {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
-}
-@media (max-width: 768px) { .dc-feed-cards { grid-template-columns: 1fr; } }
-.dc-feed-card {
-    display: flex; align-items: center; gap: 12px;
-    background: #fff;
-    border: 1px solid #e2e8f0; border-radius: 11px;
-    padding: 10px 14px;
-    text-decoration: none;
-    transition: all .15s ease;
-}
-.dc-feed-card:hover {
-    border-color: #c7d2fe;
-    box-shadow: 0 4px 14px rgba(4,83,203,.08);
-    transform: translateY(-1px);
-    text-decoration: none;
-}
-.dc-feed-card.is-active {
-    background: linear-gradient(135deg, #fff 0%, #fffbeb 100%);
-    border-color: #fde68a;
-}
-.dc-feed-card.is-active#dc-feed-card-overdue {
-    background: linear-gradient(135deg, #fff 0%, #fef2f2 100%);
-    border-color: #fecaca;
-}
-.dc-feed-card-icon {
-    width: 36px; height: 36px; border-radius: 9px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: .85rem; flex-shrink: 0;
-}
-.dc-feed-card-body { flex: 1; min-width: 0; }
-.dc-feed-card-value {
-    font-size: 1.15rem; font-weight: 800; color: #0f172a;
-    line-height: 1; letter-spacing: -.02em;
-}
-.dc-feed-card-label {
-    font-size: .72rem; font-weight: 600; color: #64748b;
-    margin-top: 2px;
-}
-.dc-feed-card-cta {
-    color: #94a3b8; font-size: .8rem;
-    transition: transform .15s ease, color .15s ease;
-}
-.dc-feed-card:hover .dc-feed-card-cta {
-    color: #0453cb; transform: translateX(2px);
-}
-
-/* ── KPI Strip ── */
-.kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-@media (max-width: 992px) { .kpi-strip { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 576px) { .kpi-strip { grid-template-columns: 1fr; } }
-
-.kpi-card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 1px 8px rgba(0,0,0,.06);
-    border: 1px solid rgba(0,0,0,.06);
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    transition: box-shadow .15s;
-}
-.kpi-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.1); }
-.kpi-main {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    flex: 1;
-}
-.kpi-icon {
-    width: 44px; height: 44px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    color: #fff;
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-.kpi-text { flex: 1; min-width: 0; }
-.kpi-value {
-    font-size: 1.22rem;
-    font-weight: 700;
-    line-height: 1.15;
-    word-break: break-word;
-    overflow-wrap: anywhere;
-}
-.kpi-label {
-    font-size: .80rem;
-    color: #64748b;
-    font-weight: 500;
-    margin-top: 3px;
-    line-height: 1.3;
-}
-.kpi-footer {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid #f1f5f9;
-}
-.kpi-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: .72rem;
-    font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 20px;
-    width: fit-content;
-}
-
-/* ── Aging Card ── */
-.aging-card {
-    padding: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.aging-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 20px 20px 16px;
-    border-bottom: 1px solid #f1f5f9;
-}
-
-.aging-title {
-    font-size: .88rem;
-    font-weight: 700;
-    color: #1e293b;
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    letter-spacing: -.01em;
-}
-.aging-title i { color: #5e91de; font-size: .8rem; }
-
-.aging-subtitle {
-    margin-top: 3px;
-    font-size: .78rem;
-    color: #64748b;
-}
-
-.aging-cta-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: .78rem;
-    font-weight: 600;
-    background: linear-gradient(135deg,#0453cb,#5e91de);
-    color: #fff;
-    text-decoration: none;
-    white-space: nowrap;
-    transition: opacity .15s, transform .15s;
-    box-shadow: 0 2px 8px rgba(4,83,203,.25);
-}
-.aging-cta-btn:hover { opacity: .9; transform: translateY(-1px); color:#fff; }
-
-.aging-rows {
-    flex: 1;
-    padding: 8px 0;
-}
-
-.aging-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 20px;
-    transition: background .12s;
-    cursor: default;
-}
-.aging-row:hover { background: rgba(4,83,203,.03); }
-
-.aging-row-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 0 0 165px;
-    min-width: 0;
-}
-
-.aging-icon-badge {
-    flex-shrink: 0;
-    width: 34px;
-    height: 34px;
-    border-radius: 9px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: .8rem;
-}
-
-.aging-row-labels {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-.aging-row-range {
-    font-size: .80rem;
-    font-weight: 700;
-    color: #1e293b;
-    letter-spacing: -.01em;
-    line-height: 1.2;
-}
-.aging-row-sub {
-    font-size: .70rem;
-    font-weight: 600;
-    line-height: 1.2;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-}
-
-.aging-row-bar-wrap {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-}
-
-.aging-bar-track {
-    height: 6px;
-    background: #f1f5f9;
-    border-radius: 4px;
-    overflow: hidden;
-}
-.aging-bar-fill {
-    height: 100%;
-    border-radius: 4px;
-    transition: width .4s cubic-bezier(.4,0,.2,1);
-    min-width: 3px;
-}
-
-.aging-amount {
-    font-size: .79rem;
-    font-weight: 600;
-    white-space: nowrap;
-    line-height: 1;
-}
-
-.aging-count-bubble {
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 46px;
-    padding: 5px 4px;
-    border-radius: 8px;
-    text-align: center;
-}
-.aging-count {
-    font-size: .95rem;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -.02em;
-}
-.aging-count-label {
-    font-size: .60rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    opacity: .75;
-    line-height: 1;
-}
-
-.aging-footer {
-    padding: 12px 20px;
-    border-top: 1px solid #f1f5f9;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-}
-.aging-footer-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: .78rem;
-    font-weight: 600;
-    color: #0453cb;
-    text-decoration: none;
-    transition: gap .15s;
-}
-.aging-footer-link:hover { gap: 8px; color: #0453cb; }
-
-/* ── Chart ── */
-.chart-card {
-    background: #fff;
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: 0 1px 8px rgba(0,0,0,.06);
-    border: 1px solid rgba(0,0,0,.06);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-.chart-canvas-wrap { flex: 1; min-height: 180px; position: relative; }
-
-/* ── Paiements en attente — redesign feed cards ── */
-.pending-card {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 1px 8px rgba(0,0,0,.06);
-    border: 1px solid rgba(0,0,0,.06);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-.pending-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 18px 20px 14px;
-    border-bottom: 1px solid #f1f5f9;
-}
-.pending-card-title {
-    font-size: .88rem;
-    font-weight: 700;
-    color: #1e293b;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.pending-count-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 22px;
-    height: 22px;
-    padding: 0 7px;
-    border-radius: 11px;
-    background: rgba(4,83,203,.1);
-    color: #0453cb;
-    font-size: .72rem;
-    font-weight: 700;
-}
-.pending-see-all {
-    font-size: .78rem;
-    font-weight: 600;
-    color: #5e91de;
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: 6px;
-    border: 1px solid rgba(94,145,222,.25);
-    transition: background .12s, color .12s;
-}
-.pending-see-all:hover { background: rgba(94,145,222,.08); color: #0453cb; }
-.pending-feed { flex: 1; overflow-y: auto; max-height: 340px; }
-.pending-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 20px;
-    border-bottom: 1px solid #f8fafc;
-    transition: background .1s;
-}
-.pending-item:last-child { border-bottom: none; }
-.pending-item:hover { background: #fafbfd; }
-.pending-avatar {
-    width: 38px; height: 38px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #0453cb, #5e91de);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: .8rem;
-    font-weight: 700;
-    color: #fff;
-    flex-shrink: 0;
-    letter-spacing: .5px;
-}
-.pending-info { flex: 1; min-width: 0; }
-.pending-name {
-    font-size: .84rem;
-    font-weight: 600;
-    color: #1e293b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.pending-meta {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 2px;
-    flex-wrap: wrap;
-}
-.pending-cat {
-    font-size: .72rem;
-    color: #64748b;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 130px;
-}
-.pending-date-dot {
-    width: 3px; height: 3px;
-    border-radius: 50%;
-    background: #cbd5e1;
-    flex-shrink: 0;
-}
-.pending-date {
-    font-size: .72rem;
-    color: #94a3b8;
-    white-space: nowrap;
-}
-.pending-right {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 5px;
-    flex-shrink: 0;
-}
-.pending-amount {
-    font-size: .88rem;
-    font-weight: 700;
-    color: #0453cb;
-    white-space: nowrap;
-}
-.pending-action-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: .7rem;
-    font-weight: 600;
-    padding: 3px 9px;
-    border-radius: 5px;
-    background: rgba(4,83,203,.09);
-    color: #0453cb;
-    text-decoration: none;
-    border: 1px solid rgba(4,83,203,.15);
-    transition: background .12s;
-}
-.pending-action-btn:hover { background: rgba(4,83,203,.16); color: #0453cb; }
-.pending-empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 48px 20px;
-    gap: 10px;
-    color: #64748b;
-}
-.pending-empty-icon {
-    width: 52px; height: 52px;
-    border-radius: 50%;
-    background: rgba(16,185,129,.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.4rem;
-    color: #10b981;
-}
-
-/* ── Quick actions — redesign premium tiles ── */
-.qa-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-}
-.qa-tile {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 14px;
-    border-radius: 10px;
-    text-decoration: none;
-    background: #fafbfc;
-    border: 1px solid #f0f4f8;
-    transition: background .12s, box-shadow .12s, transform .12s;
-    position: relative;
-    overflow: hidden;
-}
-.qa-tile::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, transparent 60%, rgba(4,83,203,.04) 100%);
-    pointer-events: none;
-}
-.qa-tile:hover {
-    background: #fff;
-    box-shadow: 0 4px 16px rgba(4,83,203,.1);
-    border-color: rgba(4,83,203,.18);
-    transform: translateY(-2px);
-}
-.qa-icon {
-    width: 40px; height: 40px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    flex-shrink: 0;
-}
-.qa-label {
-    font-size: .8rem;
-    font-weight: 600;
-    color: #1e293b;
-    line-height: 1.2;
-}
-.qa-sublabel {
-    font-size: .7rem;
-    color: #94a3b8;
-    font-weight: 400;
-    margin-top: 1px;
-}
-.qa-arrow {
-    margin-left: auto;
-    font-size: .65rem;
-    color: #cbd5e1;
-    transition: color .12s, transform .12s;
-}
-.qa-tile:hover .qa-arrow { color: #0453cb; transform: translateX(2px); }
-
-/* ── Loading overlay ── */
-#dash-loading {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(255,255,255,.5);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-}
-#dash-loading.show { display: flex; }
-.spinner-ring {
-    width: 40px; height: 40px;
-    border: 3px solid #e2e8f0;
-    border-top-color: #0453cb;
-    border-radius: 50%;
-    animation: spin .7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Taux de recouvrement bar ── */
-.recovery-bar-wrap { height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; margin-top: 4px; }
-.recovery-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #10b981, #0453cb); transition: width .6s ease; }
-</style>
-@endpush
+@section('title', 'Analyse financière')
 
 @push('styles')
 <style>
-/* Écran mobile du tableau de bord comptable (shell m-*, préfixe dm-). Le socle
-   mobile-shell.css porte les classes m-* ; ici seulement ce qui est propre à l'écran. */
-.dm-contenu { display: grid; gap: 14px; }
-.dm-screen .m-kpi .d { min-height: 14px; }
-.dm-screen .m-row .tt b { white-space: normal; line-height: 1.25; }
-.dm-axe { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-top: -4px; }
-.dm-vide, .dm-total { margin: 0; font-size: 12.5px; color: #64748b; }
-.dm-total b { color: #0f172a; font-variant-numeric: tabular-nums; }
-.dm-lbl { display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px; }
-.dm-opt { max-height: 40vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.dm-opt label { position: relative; }
-.dm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+/* ═══════════ Analyse financière — namespace af- — maquette B (cockpit bleu)
+   Rule premium-dashboard. Même calcul que l'accueil comptable
+   (BuildDashboardDataAction) ; les filtres rechargent en AJAX. ═══════════ */
+.af-wrap { padding: 1.5rem; max-width: 1360px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.1rem; }
+.af-num { font-variant-numeric: tabular-nums; }
+.af-busy { opacity: .55; transition: opacity .2s ease; pointer-events: none; }
+
+.af-hero { background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 45%, #3b7ddb 100%); border-radius: 20px; padding: 1.5rem 1.6rem 1.3rem; color: #fff; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 1.5rem; }
+.af-crumb { font-size: .76rem; color: rgba(255,255,255,.65); }
+.af-crumb a { color: rgba(255,255,255,.8); text-decoration: none; }
+.af-hero h1 { margin: .2rem 0 0; font-size: 1.5rem; font-weight: 800; color: #fff; letter-spacing: -.02em; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.af-pill { font-size: .72rem; font-weight: 700; padding: .2rem .6rem; border-radius: 99px; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.2); }
+.af-big-lbl { margin-top: 1rem; font-size: .76rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.72); }
+.af-big { display: flex; align-items: baseline; gap: .5rem; white-space: nowrap; }
+.af-big b { font-size: clamp(1.9rem, 3.4vw, 2.7rem); font-weight: 800; letter-spacing: -.03em; }
+.af-big small { font-size: .9rem; font-weight: 700; color: rgba(255,255,255,.7); }
+.af-delta { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; font-size: .82rem; color: rgba(255,255,255,.8); }
+.af-delta-chip { background: #fff; font-size: .74rem; font-weight: 800; padding: .2rem .55rem; border-radius: 99px; }
+.af-delta-chip.is-up { color: #047857; } .af-delta-chip.is-down { color: #b91c1c; } .af-delta-chip.is-flat { color: #475569; }
+.af-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; margin-top: 1rem; }
+.af-tile { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); border-radius: 14px; padding: .7rem .8rem; color: #fff; display: flex; flex-direction: column; gap: .15rem; text-decoration: none; min-width: 0; }
+a.af-tile:hover { background: rgba(255,255,255,.18); color: #fff; }
+.af-tile span { font-size: .66rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: rgba(255,255,255,.72); }
+.af-tile b { font-size: 1.05rem; font-weight: 800; white-space: nowrap; }
+.af-tile small { font-size: .7rem; color: rgba(255,255,255,.72); }
+.af-tile--white { background: #fff; border-color: #fff; color: #0f172a; }
+a.af-tile--white:hover { background: #f8fafc; color: #0f172a; }
+.af-tile--white span { color: #b91c1c; } .af-tile--white small { color: #64748b; }
+.af-hero-chart { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); border-radius: 16px; padding: .9rem 1rem .6rem; display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.af-hero-chart-h { display: flex; justify-content: space-between; align-items: center; gap: .5rem; font-size: .86rem; font-weight: 700; }
+.af-seg { display: inline-flex; background: rgba(255,255,255,.12); border-radius: 8px; padding: 3px; }
+.af-seg button { border: 0; background: transparent; color: rgba(255,255,255,.8); font-size: .74rem; font-weight: 700; padding: .3rem .65rem; border-radius: 6px; cursor: pointer; }
+.af-seg button.is-on { background: #fff; color: #0453cb; }
+.af-hero-canvas { position: relative; height: 210px; }
+
+.af-filters { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: .8rem 1rem; display: flex; align-items: flex-end; gap: .9rem; flex-wrap: wrap; }
+.af-field { display: flex; flex-direction: column; gap: .3rem; flex: 1 1 200px; min-width: 0; }
+.af-field > label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #64748b; }
+.af-field .au-select { display: flex; width: 100%; }
+.af-reset { border: 1px solid #dbe5f3; background: #fff; color: #0453cb; font-weight: 700; font-size: .82rem; border-radius: 10px; padding: .6rem .9rem; cursor: pointer; white-space: nowrap; }
+.af-reset:hover { border-color: #0453cb; }
+
+.af-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .9rem; }
+.af-kpi { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1rem 1.1rem; display: flex; flex-direction: column; gap: .35rem; color: #1e293b; text-decoration: none; }
+a.af-kpi[href]:hover { border-color: #b9cdee; box-shadow: 0 8px 26px rgba(4,83,203,.08); color: #1e293b; }
+.af-kpi-l { font-size: .8rem; font-weight: 600; color: #64748b; }
+.af-kpi-v { display: flex; align-items: baseline; gap: .35rem; white-space: nowrap; }
+.af-kpi-v b { font-size: clamp(1.15rem, 1.7vw, 1.45rem); font-weight: 800; color: #0f172a; }
+.af-kpi-v small { font-size: .72rem; font-weight: 700; color: #94a3b8; }
+.af-kpi-r { font-size: .75rem; color: #64748b; }
+.af-meter { height: 6px; background: #eef2f7; border-radius: 99px; overflow: hidden; }
+.af-meter > i { display: block; height: 100%; background: linear-gradient(90deg, #0453cb, #5e91de); border-radius: 99px; }
+
+.af-row { display: grid; gap: 1rem; }
+.af-row--3 { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); }
+.af-row--2 { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.af-card { background: #fff; border-radius: 16px; padding: 1.1rem 1.2rem; box-shadow: 0 1px 3px rgba(15,23,42,.05); border: 1px solid #edf1f7; display: flex; flex-direction: column; gap: .75rem; min-width: 0; }
+.af-card-h { display: flex; justify-content: space-between; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.af-card-t { font-size: .95rem; font-weight: 800; color: #0f172a; }
+.af-card-s { font-size: .76rem; color: #64748b; }
+.af-lnk { font-size: .8rem; font-weight: 700; color: #0453cb; text-decoration: none; white-space: nowrap; }
+.af-lnk:hover { color: #033a8e; }
+.af-empty { font-size: .84rem; color: #64748b; padding: 1rem 0; text-align: center; }
+.af-clear { display: flex; gap: .6rem; align-items: center; padding: .8rem; border-radius: 12px; background: #f0fdf4; color: #047857; font-weight: 600; font-size: .86rem; }
+
+.af-todo { display: flex; gap: .7rem; align-items: center; padding: .65rem .75rem; border-radius: 12px; border: 1px solid #eef2f7; color: #1e293b; text-decoration: none; }
+a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
+.af-dot { width: 9px; height: 9px; border-radius: 99px; flex-shrink: 0; }
+.af-dot--bad { background: #dc2626; } .af-dot--warn { background: #f59e0b; } .af-dot--ok { background: #10b981; } .af-dot--info { background: #0453cb; }
+.af-todo-t { flex: 1; font-size: .84rem; font-weight: 600; min-width: 0; }
+.af-todo-t small { display: block; font-weight: 500; color: #64748b; font-size: .74rem; }
+.af-todo-n { font-size: .9rem; font-weight: 800; color: #0f172a; white-space: nowrap; }
+
+.af-donut { display: flex; align-items: center; gap: 1rem; }
+.af-donut-c { position: relative; width: 132px; height: 132px; flex-shrink: 0; }
+.af-donut-mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.af-donut-mid b { font-size: 1rem; font-weight: 800; color: #0f172a; }
+.af-donut-mid small { font-size: .68rem; color: #64748b; }
+.af-leg { display: flex; flex-direction: column; gap: .45rem; font-size: .8rem; min-width: 0; flex: 1; }
+.af-leg > span { display: flex; align-items: center; gap: .5rem; white-space: nowrap; }
+.af-leg > span > span { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.af-leg i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.af-leg b { margin-left: auto; padding-left: .5rem; font-variant-numeric: tabular-nums; }
+
+.af-age { display: flex; flex-direction: column; gap: .3rem; }
+.af-age-l { display: flex; justify-content: space-between; gap: .5rem; font-size: .8rem; }
+.af-age-l span { color: #475569; font-weight: 600; }
+.af-age-l b { color: #0f172a; white-space: nowrap; }
+.af-age-t { height: 8px; background: #eef2f7; border-radius: 99px; overflow: hidden; }
+.af-age-t > i { display: block; height: 100%; border-radius: 99px; }
+
+.af-heat { display: grid; grid-template-columns: 34px repeat(12, minmax(0, 1fr)); gap: 4px; font-size: .7rem; color: #94a3b8; align-items: center; }
+.af-heat .c { height: 20px; border-radius: 5px; }
+.af-heat-leg { display: flex; align-items: center; gap: 4px; font-size: .7rem; color: #94a3b8; justify-content: flex-end; }
+.af-heat-leg i { width: 14px; height: 10px; border-radius: 3px; display: inline-block; }
+
+.af-cls { display: grid; grid-template-columns: minmax(90px, 140px) minmax(0, 1fr) 52px; gap: .6rem; align-items: center; font-size: .8rem; }
+.af-cls b { color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.af-cls .t { height: 10px; background: #eef2f7; border-radius: 99px; overflow: hidden; }
+.af-cls .t > i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #0453cb, #5e91de); }
+.af-cls em { font-style: normal; font-weight: 800; text-align: right; color: #0f172a; }
+
+.af-pend { display: flex; align-items: center; gap: .75rem; padding: .6rem 0; border-top: 1px solid #f1f5f9; }
+.af-pend:first-of-type { border-top: 0; }
+.af-av { width: 34px; height: 34px; border-radius: 10px; background: #e8f0fc; color: #0453cb; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: .74rem; flex-shrink: 0; }
+.af-pend-b { flex: 1; min-width: 0; font-size: .84rem; }
+.af-pend-b b { display: block; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.af-pend-b small { color: #64748b; font-size: .74rem; }
+.af-pend-m { font-weight: 800; color: #0f172a; white-space: nowrap; font-size: .86rem; }
+.af-btn-s { font-size: .76rem; font-weight: 700; padding: .35rem .65rem; border: 1px solid #dbe5f3; border-radius: 8px; color: #0453cb; text-decoration: none; white-space: nowrap; }
+.af-btn-s:hover { border-color: #0453cb; color: #033a8e; }
+
+.af-qa { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+.af-qa a { display: flex; align-items: center; gap: .6rem; padding: .7rem; border: 1px solid #eef2f7; border-radius: 12px; color: #1e293b; text-decoration: none; font-size: .82rem; font-weight: 700; }
+.af-qa a:hover { border-color: #b9cdee; color: #0453cb; }
+.af-qa i { width: 32px; height: 32px; border-radius: 9px; background: #e8f0fc; color: #0453cb; display: inline-flex; align-items: center; justify-content: center; font-size: .82rem; flex-shrink: 0; }
+.af-qa small { display: block; font-weight: 500; color: #64748b; font-size: .72rem; }
+
+@media (max-width: 1180px) { .af-hero { grid-template-columns: 1fr; } .af-row--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 860px) { .af-row--3, .af-row--2 { grid-template-columns: 1fr; } .af-tiles { grid-template-columns: 1fr; } }
+@media (max-width: 576px) { .af-wrap { padding: 1rem .75rem; } .af-donut { flex-direction: column; align-items: stretch; } .af-donut-c { margin: 0 auto; } }
 </style>
 @endpush
 
@@ -886,548 +140,258 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
     $dmRecMetrics = ($dmUser && $dmUser->can('comptabilite.reconciliation.view'))
         ? app(\App\Domain\Comptabilite\Reconciliation\Services\ReconciliationMetricsService::class)->snapshot()
         : null;
+
+    $afAnneeCourante = $anneeActive ? (string) ($anneeActive->name ?? $anneeActive->libelle) : null;
+    $afOptionsAnnee = ['' => $afAnneeCourante ? 'Année en cours ('.$afAnneeCourante.')' : 'Année en cours'];
+    foreach ($annees as $a) {
+        $afOptionsAnnee[(string) $a->id] = (string) ($a->name ?? $a->libelle);
+    }
+    $afOptionsFiliere = ['' => 'Toutes les filières'];
+    foreach ($filieres as $f) {
+        $afOptionsFiliere[(string) $f->id] = (string) ($f->name ?? $f->nom);
+    }
+    $afOptionsClasse = ['' => 'Toutes les classes'];
+    foreach ($classes as $cl) {
+        $afOptionsClasse[(string) $cl->id] = (string) ($cl->name ?? $cl->nom);
+    }
+
+    $afAujourdhui = now()->toDateString();
+    // État initial du composant : exactement la forme que renvoie dashboardData(),
+    // pour qu'un filtre ne fasse que remplacer l'objet.
+    $afInit = [
+        'donnees' => [
+            'totalDue' => $totalDue, 'countDue' => $countDue, 'totalPaid' => $totalPaid,
+            'totalOverdue' => $totalOverdue, 'countOverdueTotal' => $countOverdueTotal,
+            'countToValidate' => $countToValidate, 'totalPending' => $totalPending,
+            'countValidatedToday' => $countValidatedToday, 'totalValidatedToday' => $totalValidatedToday,
+            'totalPaidYesterday' => $totalPaidYesterday, 'totalPaidMonth' => $totalPaidMonth,
+            'totalPaidPrevMonthToDate' => $totalPaidPrevMonthToDate,
+            'labelsMois' => $labelsMois, 'dataEncaissements' => $dataEncaissements,
+            'labelAnneePrecedente' => $labelAnneePrecedente, 'dataEncaissementsPrecedente' => $dataEncaissementsPrecedente,
+            'serieJours' => $serieJours, 'modes' => $modes, 'recouvrementParClasse' => $recouvrementParClasse,
+            'agingBuckets' => $agingBuckets,
+            'paiementsEnAttente' => \App\Actions\Comptabilite\BuildDashboardDataAction::pendingPaymentsToArray($paiementsEnAttente),
+            'anneeLabel' => $annee ? (string) ($annee->name ?? $annee->libelle) : '',
+        ],
+        'url' => route('esbtp.comptabilite.dashboard.data'),
+        'liens' => [
+            'paiements' => route('esbtp.paiements.index'),
+            'aValider' => route('esbtp.paiements.index', ['status' => 'en_attente']),
+            'duJour' => route('esbtp.paiements.index', ['status' => 'validé', 'date_debut' => $afAujourdhui, 'date_fin' => $afAujourdhui]),
+            'duMois' => route('esbtp.paiements.index', ['status' => 'validé', 'date_debut' => now()->startOfMonth()->toDateString(), 'date_fin' => $afAujourdhui]),
+            'valides' => route('esbtp.paiements.index', ['status' => 'validé']),
+            'relances' => route('esbtp.comptabilite.relances.index'),
+            'suivi' => route('esbtp.paiements.suivi-categories'),
+        ],
+        'droits' => [
+            'voir' => $dmUser?->canany(['paiements.view', 'paiements.view_own']) ?? false,
+            'valider' => $dmUser?->can('paiements.validate') ?? false,
+            'relancer' => $dmUser?->can('comptabilite.relances.send') ?? false,
+        ],
+    ];
 @endphp
 
-{{-- Loading overlay --}}
-<div id="dash-loading">
-    <div class="spinner-ring"></div>
-</div>
-
-{{-- Enveloppe de bascule : .dashboard-acasi garde son display:flex, la bascule
-     mobile/bureau se joue sur ce bloc parent (mobile-shell.css charge après dashboard-moderne.css). --}}
 <div class="{{ $dmShell ? 'm-only-desktop' : '' }}" id="dm-bureau">
-<div class="dashboard-acasi">
-    <div class="main-content">
+<script type="application/json" id="af-init">@json($afInit)</script>
+<div class="af-wrap" x-data="afDash()" :class="{ 'af-busy': charge }">
 
-        @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show rounded-3 mb-4">
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show rounded-3 mb-0">
             <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
         </div>
-        @endif
+    @endif
 
-        {{-- ── HERO ── --}}
-        <div class="dash-hero">
-            <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
-                <div>
-                    <nav aria-label="breadcrumb" class="mb-2">
-                        <ol class="breadcrumb mb-0" style="font-size:.78rem;opacity:.6;">
-                            <li class="breadcrumb-item"><a href="{{ route('dashboard') }}" class="text-white text-decoration-none">Accueil</a></li>
-                            <li class="breadcrumb-item text-white active">Dashboard Comptabilité</li>
-                        </ol>
-                    </nav>
-                    <h1 class="dash-hero-title">
-                        <i class="fas fa-chart-line" style="color:#5e91de;"></i>
-                        Dashboard Comptabilité
-                        @if($anneeActive)
-                        <span class="dash-hero-pill">
-                            <i class="fas fa-circle" style="font-size:.5rem;"></i>
-                            {{ $anneeActive->name ?? $anneeActive->libelle }} — en cours
-                        </span>
-                        @endif
-                    </h1>
-                    <p class="dash-hero-subtitle">
-                        Vue financière · Tous frais & paiements
-                        @if($annee && $annee->id !== ($anneeActive->id ?? null))
-                        <span style="color:#5e91de;"> · Filtré sur {{ $annee->name ?? $annee->libelle }}</span>
-                        @endif
-                    </p>
-                </div>
-                <div class="dash-hero-actions">
-                    <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="hero-btn hero-btn-outline">
-                        <i class="fas fa-bell"></i>
-                        <span class="d-none d-sm-inline">Relances</span>
-                    </a>
-                    <a href="{{ route('esbtp.paiements.index') }}" class="hero-btn hero-btn-primary">
-                        <i class="fas fa-money-bill-wave"></i>
-                        <span class="d-none d-sm-inline">Paiements</span>
-                    </a>
-                </div>
+    {{-- ─── Hero cockpit : le mois et sa tendance ─── --}}
+    <div class="af-hero">
+        <div>
+            <div class="af-crumb"><a href="{{ route('dashboard') }}">Accueil</a> · Analyse financière</div>
+            <h1>Analyse financière <span class="af-pill" x-text="d.anneeLabel || 'Année en cours'">{{ $annee ? ($annee->name ?? $annee->libelle) : 'Année en cours' }}</span></h1>
+            <div class="af-big-lbl">Encaissé ce mois</div>
+            <div class="af-big af-num"><b x-text="fmt(d.totalPaidMonth)">{{ number_format($totalPaidMonth, 0, ',', ' ') }}</b><small>FCFA</small></div>
+            <div class="af-delta">
+                <span class="af-delta-chip" :class="chip(d.totalPaidMonth, d.totalPaidPrevMonthToDate).cls" x-text="chip(d.totalPaidMonth, d.totalPaidPrevMonthToDate).txt"></span>
+                <span>vs <span class="af-num" x-text="fmt(d.totalPaidPrevMonthToDate)"></span> au même jour du mois dernier</span>
             </div>
-        </div>
-
-        {{-- PR6 Widget santé Réconciliation Caisse --}}
-        @include('esbtp.comptabilite.partials._reconciliation_health_widget', ['recMetrics' => $dmRecMetrics])
-
-        {{-- ── FILTRES AJAX ── --}}
-        <div class="filters-bar">
-            <div class="filters-bar-icon">
-                <i class="fas fa-sliders-h"></i>
-            </div>
-
-            <div class="filter-group">
-                <label class="filter-label" for="f-annee">Année</label>
-                <select id="f-annee" class="filter-select {{ ($annee) ? 'has-value' : '' }}">
-                    <option value="">Toutes les années</option>
-                    @foreach($annees as $a)
-                    <option value="{{ $a->id }}"
-                        {{ $annee && $annee->id == $a->id ? 'selected' : '' }}>
-                        {{ $a->name ?? $a->libelle }}@if($a->is_current) ✦@endif
-                    </option>
-                    @endforeach
-                </select>
-                @if($anneeActive)
-                <span class="filter-default-hint" id="filter-annee-hint">
-                    <i class="fas fa-circle-dot"></i>
-                    {{ $anneeActive->name ?? $anneeActive->libelle }} par défaut
-                </span>
-                @endif
-            </div>
-
-            <div class="filters-bar-sep"></div>
-
-            <div class="filter-group">
-                <label class="filter-label" for="f-filiere">Filière</label>
-                <select id="f-filiere" class="filter-select {{ request('filiere') ? 'has-value' : '' }}">
-                    <option value="">Toutes les filières</option>
-                    @foreach($filieres as $f)
-                    <option value="{{ $f->id }}" {{ request('filiere') == $f->id ? 'selected' : '' }}>
-                        {{ $f->name ?? $f->nom }}
-                    </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="filters-bar-sep"></div>
-
-            <div class="filter-group">
-                <label class="filter-label" for="f-classe">Classe</label>
-                <select id="f-classe" class="filter-select {{ request('classe') ? 'has-value' : '' }}">
-                    <option value="">Toutes les classes</option>
-                    @foreach($classes as $c)
-                    <option value="{{ $c->id }}" {{ request('classe') == $c->id ? 'selected' : '' }}>
-                        {{ $c->name ?? $c->nom }}
-                    </option>
-                    @endforeach
-                </select>
-            </div>
-
-            <div class="filters-bar-actions">
-                <span class="filter-active-pill" id="filter-active-badge">
-                    <i class="fas fa-circle"></i>
-                    Filtres actifs
-                </span>
-                <button type="button" id="btn-reset-filters" class="filter-reset-btn">
-                    <i class="fas fa-times"></i>Réinitialiser
-                </button>
-            </div>
-        </div>
-
-        {{-- ── ACTION FEED ── (Aujourd'hui : N à valider · M en retard · K validés) --}}
-        @php
-            $hasActions = ($countToValidate ?? 0) > 0 || ($countOverdueTotal ?? 0) > 0;
-            $todayLabel = \Carbon\Carbon::today()->translatedFormat('l j F');
-        @endphp
-        <div class="dc-feed" id="dc-action-feed">
-            <div class="dc-feed-head">
-                <div class="dc-feed-title">
-                    <i class="fas fa-bolt"></i>
-                    <span>Aujourd'hui</span>
-                    <span class="dc-feed-date">· {{ ucfirst($todayLabel) }}</span>
-                </div>
-                @if(!$hasActions)
-                <span class="dc-feed-allclear">
-                    <i class="fas fa-check-circle"></i>
-                    Tout est à jour, rien d'urgent
-                </span>
-                @endif
-            </div>
-            <div class="dc-feed-cards">
-                {{-- À VALIDER --}}
-                @can('paiements.validate')
-                <a href="{{ route('esbtp.paiements.index', ['status' => 'en_attente']) }}"
-                   class="dc-feed-card {{ ($countToValidate ?? 0) > 0 ? 'is-active' : '' }}"
-                   id="dc-feed-card-validate">
-                    <div class="dc-feed-card-icon" style="background:rgba(245,158,11,.12);color:#d97706;">
-                        <i class="fas fa-stamp"></i>
-                    </div>
-                    <div class="dc-feed-card-body">
-                        <div class="dc-feed-card-value" id="dc-feed-validate-count">{{ $countToValidate ?? 0 }}</div>
-                        <div class="dc-feed-card-label">à valider</div>
-                    </div>
-                    <div class="dc-feed-card-cta">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
+            <div class="af-tiles">
+                <a class="af-tile" :href="droits.voir ? liens.duJour : null">
+                    <span>Aujourd'hui</span><b class="af-num" x-text="fmt(d.totalValidatedToday)"></b>
+                    <small x-text="chip(d.totalValidatedToday, d.totalPaidYesterday).txt + ' vs hier'"></small>
                 </a>
-                @endcan
+                <a class="af-tile" :href="droits.voir ? liens.suivi : null">
+                    <span>Recouvrement</span><b class="af-num" x-text="taux() === null ? '—' : taux().toFixed(1).replace('.', ',') + ' %'"></b>
+                    <small x-text="'sur ' + fmtCourt(d.totalDue) + ' dus'"></small>
+                </a>
+                <a class="af-tile af-tile--white" :href="droits.voir ? liens.aValider : null">
+                    <span>À valider</span><b class="af-num" x-text="d.countToValidate"></b>
+                    <small x-text="fmt(d.totalPending) + ' FCFA'"></small>
+                </a>
+            </div>
+        </div>
+        <div class="af-hero-chart">
+            <div class="af-hero-chart-h">
+                <span x-text="vue === 'mois' ? 'Encaissements nets par mois' : 'Encaissements nets par semaine'"></span>
+                <span class="af-seg" role="group" aria-label="Période du graphique">
+                    <button type="button" :class="{ 'is-on': vue === 'mois' }" @click="vue = 'mois'; dessiner()">Mois</button>
+                    <button type="button" :class="{ 'is-on': vue === 'semaines' }" @click="vue = 'semaines'; dessiner()">12 semaines</button>
+                </span>
+            </div>
+            <div class="af-hero-canvas"><canvas id="afHeroChart" aria-label="Encaissements nets"></canvas></div>
+        </div>
+    </div>
 
-                {{-- EN RETARD --}}
+    @include('esbtp.comptabilite.partials._reconciliation_health_widget', ['recMetrics' => $dmRecMetrics])
+
+    {{-- ─── Filtres (AJAX, sans rechargement) ─── --}}
+    <div class="af-filters">
+        <div class="af-field">
+            <label for="f-annee">Année</label>
+            <x-au-select id="f-annee" name="annee" icon="fa-calendar" :options="$afOptionsAnnee" :value="request('annee', '')" :placeholder-is-first-option="false" />
+        </div>
+        <div class="af-field">
+            <label for="f-filiere">Filière</label>
+            <x-au-select id="f-filiere" name="filiere" icon="fa-layer-group" :searchable="count($afOptionsFiliere) > 8" :options="$afOptionsFiliere" :value="request('filiere', '')" :placeholder-is-first-option="false" />
+        </div>
+        <div class="af-field">
+            <label for="f-classe">Classe</label>
+            <x-au-select id="f-classe" name="classe" icon="fa-users" :searchable="true" :options="$afOptionsClasse" :value="request('classe', '')" :placeholder-is-first-option="false" />
+        </div>
+        <button type="button" class="af-reset" @click="reinitialiser()"><i class="fas fa-rotate-left"></i> Réinitialiser</button>
+    </div>
+
+    {{-- ─── Les quatre chiffres de la période filtrée ─── --}}
+    <div class="af-kpis">
+        <a class="af-kpi" :href="droits.voir ? liens.suivi : null">
+            <span class="af-kpi-l">Total dû</span>
+            <span class="af-kpi-v af-num"><b x-text="fmt(d.totalDue)"></b><small>FCFA</small></span>
+            <span class="af-kpi-r" x-text="d.countDue + ' inscription' + (d.countDue > 1 ? 's' : '') + ' avec des frais'"></span>
+        </a>
+        <a class="af-kpi" :href="droits.voir ? liens.valides : null">
+            <span class="af-kpi-l">Encaissé sur la période</span>
+            <span class="af-kpi-v af-num"><b x-text="fmt(d.totalPaid)"></b><small>FCFA</small></span>
+            <span class="af-meter"><i :style="'width:' + (taux() || 0) + '%'"></i></span>
+            <span class="af-kpi-r" x-text="taux() === null ? 'aucun frais dû sur ce périmètre' : taux().toFixed(1).replace('.', ',') + ' % du total dû'"></span>
+        </a>
+        <a class="af-kpi" :href="droits.relancer ? liens.relances : null">
+            <span class="af-kpi-l">Reste à percevoir (total)</span>
+            <span class="af-kpi-v af-num"><b x-text="fmt(Math.max(0, d.totalDue - d.totalPaid))"></b><small>FCFA</small></span>
+            <span class="af-kpi-r">échu ou non</span>
+        </a>
+        <a class="af-kpi" :href="droits.relancer ? liens.relances : null">
+            <span class="af-kpi-l">Impayés échus</span>
+            <span class="af-kpi-v af-num"><b x-text="fmt(d.totalOverdue)"></b><small>FCFA</small></span>
+            <span class="af-kpi-r" x-text="d.countOverdueTotal + ' étudiant' + (d.countOverdueTotal > 1 ? 's' : '') + ' en retard'"></span>
+        </a>
+    </div>
+
+    {{-- ─── À faire | modes | ancienneté ─── --}}
+    <div class="af-row af-row--3">
+        <div class="af-card">
+            <div class="af-card-h"><span class="af-card-t">À faire maintenant</span><span class="af-card-s">{{ now()->format('H:i') }}</span></div>
+            <template x-if="droits.valider && d.countToValidate > 0">
+                <a class="af-todo" :href="liens.aValider"><span class="af-dot af-dot--bad"></span><span class="af-todo-t">Versements à valider<small x-text="fmt(d.totalPending) + ' FCFA en attente'"></small></span><span class="af-todo-n" x-text="d.countToValidate"></span></a>
+            </template>
+            <template x-if="droits.relancer && d.countOverdueTotal > 0">
+                <a class="af-todo" :href="liens.relances"><span class="af-dot af-dot--warn"></span><span class="af-todo-t">Étudiants à relancer<small x-text="fmt(d.totalOverdue) + ' FCFA échus'"></small></span><span class="af-todo-n" x-text="d.countOverdueTotal"></span></a>
+            </template>
+            <a class="af-todo" :href="droits.voir ? liens.duJour : null"><span class="af-dot af-dot--ok"></span><span class="af-todo-t">Validés aujourd'hui<small x-text="fmt(d.totalValidatedToday) + ' FCFA'"></small></span><span class="af-todo-n" x-text="d.countValidatedToday"></span></a>
+            <template x-if="!(droits.valider && d.countToValidate > 0) && !(droits.relancer && d.countOverdueTotal > 0)">
+                <div class="af-clear"><i class="fas fa-circle-check"></i> Rien d’urgent sur ce périmètre.</div>
+            </template>
+        </div>
+
+        <div class="af-card">
+            <div class="af-card-h"><span class="af-card-t">Modes de paiement</span><span class="af-card-s">encaissements, hors avoirs</span></div>
+            <div class="af-donut" x-show="d.modes.length">
+                <div class="af-donut-c"><canvas id="afDonut" aria-label="Répartition par mode de paiement"></canvas>
+                    <div class="af-donut-mid"><b class="af-num" x-text="fmtCourt(d.modes.reduce((s, m) => s + m.total, 0))"></b><small>FCFA encaissés</small></div></div>
+                <div class="af-leg">
+                    <template x-for="(m, i) in d.modes.slice(0, 5)" :key="m.mode">
+                        <span><i :style="'background:' + teinte(i)"></i><span x-text="m.mode"></span><b x-text="part(m.total) + ' %'"></b></span>
+                    </template>
+                </div>
+            </div>
+            <div class="af-empty" x-show="!d.modes.length">Aucun encaissement validé sur ce périmètre.</div>
+        </div>
+
+        <div class="af-card">
+            <div class="af-card-h"><span class="af-card-t">Impayés par ancienneté</span>
+                <a class="af-lnk" :href="liens.relances" x-show="droits.relancer">Relancer →</a></div>
+            <template x-for="b in anciennete()" :key="b.cle">
+                <div class="af-age">
+                    <div class="af-age-l"><span x-text="b.lib + ' · ' + b.count + ' étud.'"></span><b class="af-num" x-text="fmt(b.amount)"></b></div>
+                    <div class="af-age-t"><i :style="'width:' + b.pct + '%;background:' + b.teinte"></i></div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    {{-- ─── Activité (carte de chaleur) | classes les moins recouvrées ─── --}}
+    <div class="af-row af-row--2">
+        <div class="af-card">
+            <div class="af-card-h"><span class="af-card-t">Activité de la caisse · 12 dernières semaines</span>
+                <span class="af-heat-leg">moins <i style="background:#eef3fa"></i><i style="background:#c9dbf6"></i><i style="background:#8fb3ec"></i><i style="background:#3b7ddb"></i><i style="background:#033a8e"></i> plus</span></div>
+            <div class="af-heat">
+                <template x-for="(ligne, j) in chaleur()" :key="j">
+                    <div style="display: contents">
+                        <span x-text="['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'][j]"></span>
+                        <template x-for="(c, k) in ligne" :key="k">
+                            <span class="c" :style="'background:' + c.teinte" :title="c.titre"></span>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <div class="af-card">
+            <div class="af-card-h"><span class="af-card-t">Classes les moins recouvrées</span>
+                <a class="af-lnk" :href="liens.suivi" x-show="droits.voir">Suivi par frais →</a></div>
+            <template x-for="cl in d.recouvrementParClasse" :key="cl.classe_id">
+                <div class="af-cls" :title="fmt(cl.paye) + ' encaissés sur ' + fmt(cl.du) + ' FCFA dus'">
+                    <b x-text="cl.classe"></b><span class="t"><i :style="'width:' + cl.taux + '%'"></i></span><em class="af-num" x-text="Math.round(cl.taux) + ' %'"></em>
+                </div>
+            </template>
+            <div class="af-empty" x-show="!d.recouvrementParClasse.length">Aucun frais dû sur ce périmètre.</div>
+        </div>
+    </div>
+
+    {{-- ─── Paiements en attente | accès rapides ─── --}}
+    <div class="af-row af-row--2">
+        <div class="af-card">
+            <div class="af-card-h"><span class="af-card-t">Paiements en attente de validation</span>
+                <a class="af-lnk" :href="liens.aValider" x-show="droits.voir">Voir tout →</a></div>
+            <template x-for="p in d.paiementsEnAttente" :key="p.url">
+                <div class="af-pend">
+                    <span class="af-av" x-text="((p.nom || '').charAt(0) + (p.prenoms || '').charAt(0)).toUpperCase()"></span>
+                    <span class="af-pend-b"><b x-text="(p.nom || '') + ' ' + (p.prenoms || '')"></b><small x-text="p.categorie + ' · ' + p.date"></small></span>
+                    <span class="af-pend-m af-num" x-text="fmt(p.montant) + ' FCFA'"></span>
+                    <a class="af-btn-s" :href="p.url">Ouvrir</a>
+                </div>
+            </template>
+            <div class="af-clear" x-show="!d.paiementsEnAttente.length"><i class="fas fa-circle-check"></i> Aucun paiement en attente.</div>
+        </div>
+
+        <div class="af-card">
+            <div class="af-card-h"><span class="af-card-t">Accès rapides</span></div>
+            <div class="af-qa">
+                @canany(['paiements.view', 'paiements.view_own'])
+                    <a href="{{ route('esbtp.paiements.index') }}"><i class="fas fa-money-bill-wave"></i><span>Paiements<small>Historique</small></span></a>
+                    <a href="{{ route('esbtp.paiements.suivi-categories') }}"><i class="fas fa-chart-pie"></i><span>Suivi<small>Par catégorie</small></span></a>
+                @endcanany
                 @can('comptabilite.relances.send')
-                <a href="{{ route('esbtp.comptabilite.relances.index') }}"
-                   class="dc-feed-card {{ ($countOverdueTotal ?? 0) > 0 ? 'is-active' : '' }}"
-                   id="dc-feed-card-overdue">
-                    <div class="dc-feed-card-icon" style="background:rgba(220,38,38,.10);color:#dc2626;">
-                        <i class="fas fa-bell"></i>
-                    </div>
-                    <div class="dc-feed-card-body">
-                        <div class="dc-feed-card-value" id="dc-feed-overdue-count">{{ $countOverdueTotal ?? 0 }}</div>
-                        <div class="dc-feed-card-label">étudiant{{ ($countOverdueTotal ?? 0) > 1 ? 's' : '' }} en retard</div>
-                    </div>
-                    <div class="dc-feed-card-cta">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
+                    <a href="{{ route('esbtp.comptabilite.relances.index') }}"><i class="fas fa-paper-plane"></i><span>Relances<small>Impayés</small></span></a>
                 @endcan
-
-                {{-- VALIDÉS AUJOURD'HUI (rassurant) --}}
-                @php $todayYmd = \Carbon\Carbon::today()->format('Y-m-d'); @endphp
-                <a href="{{ route('esbtp.paiements.index', ['status' => 'validé', 'date_debut' => $todayYmd, 'date_fin' => $todayYmd]) }}"
-                   class="dc-feed-card dc-feed-card--positive"
-                   id="dc-feed-card-validated">
-                    <div class="dc-feed-card-icon" style="background:rgba(16,185,129,.12);color:#059669;">
-                        <i class="fas fa-check-double"></i>
-                    </div>
-                    <div class="dc-feed-card-body">
-                        <div class="dc-feed-card-value" id="dc-feed-validated-count">{{ $countValidatedToday ?? 0 }}</div>
-                        <div class="dc-feed-card-label">
-                            validé{{ ($countValidatedToday ?? 0) > 1 ? 's' : '' }} aujourd'hui
-                            @if(($totalValidatedToday ?? 0) > 0)
-                            · <span id="dc-feed-validated-amount">{{ number_format($totalValidatedToday, 0, ',', ' ') }}</span>&thinsp;F
-                            @endif
-                        </div>
-                    </div>
-                    <div class="dc-feed-card-cta">
-                        <i class="fas fa-arrow-right"></i>
-                    </div>
-                </a>
+                @can('frais.view')
+                    <a href="{{ route('esbtp.frais.index') }}"><i class="fas fa-tags"></i><span>Frais<small>Catégories</small></span></a>
+                @endcan
+                @can('frais.configure')
+                    <a href="{{ route('esbtp.frais.configure') }}"><i class="fas fa-sliders-h"></i><span>Configuration<small>Frais et tarifs</small></span></a>
+                @endcan
+                @can('comptabilite.reports.export')
+                    <a href="{{ route('esbtp.paiements.index', ['format' => 'export-excel']) }}"><i class="fas fa-file-excel"></i><span>Export<small>Excel</small></span></a>
+                @endcan
             </div>
         </div>
-
-        {{-- ── KPI STRIP ── --}}
-        <div class="kpi-strip" id="kpi-strip">
-            @php
-                $tauxRecouvrement = $totalDue > 0 ? min(100, round(($totalPaid / $totalDue) * 100, 1)) : 0;
-            @endphp
-            {{-- KPI 1 : Total frais dus --}}
-            <div class="kpi-card">
-                <div class="kpi-main">
-                    <div class="kpi-icon" style="background:linear-gradient(135deg,#0453cb,#5e91de);">
-                        <i class="fas fa-wallet"></i>
-                    </div>
-                    <div class="kpi-text">
-                        <div id="kpi-total-due" class="kpi-value" style="color:#0453cb;">{{ number_format($totalDue, 0, ',', ' ') }}</div>
-                        <div class="kpi-label">FCFA · Total frais dus</div>
-                    </div>
-                </div>
-                <div class="kpi-footer">
-                    <div class="kpi-badge" style="background:rgba(4,83,203,.1);color:#0453cb;">
-                        <i class="fas fa-users" style="font-size:.6rem;"></i>
-                        <span id="kpi-subscriptions">{{ $countDue }} souscriptions</span>
-                    </div>
-                </div>
-            </div>
-
-            {{-- KPI 2 : Encaissé --}}
-            <div class="kpi-card">
-                <div class="kpi-main">
-                    <div class="kpi-icon" style="background:linear-gradient(135deg,#10b981,#059669);">
-                        <i class="fas fa-coins"></i>
-                    </div>
-                    <div class="kpi-text">
-                        <div id="kpi-total-paid" class="kpi-value" style="color:#10b981;">{{ number_format($totalPaid, 0, ',', ' ') }}</div>
-                        <div class="kpi-label">FCFA · Encaissé</div>
-                    </div>
-                </div>
-                <div class="kpi-footer">
-                    <div class="d-flex justify-content-between mb-1" style="font-size:.72rem;color:#64748b;">
-                        <span>Taux recouvrement</span>
-                        <span id="kpi-taux" class="fw-bold" style="color:#10b981;">{{ $tauxRecouvrement }}%</span>
-                    </div>
-                    <div class="recovery-bar-wrap">
-                        <div id="kpi-recovery-bar" class="recovery-bar" style="width:{{ min($tauxRecouvrement, 100) }}%;"></div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- KPI 3 : Restant dû --}}
-            <div class="kpi-card">
-                <div class="kpi-main">
-                    <div class="kpi-icon" style="background:linear-gradient(135deg,#1e293b,#334155);">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div class="kpi-text">
-                        <div id="kpi-overdue" class="kpi-value" style="color:#1e293b;">{{ number_format($totalOverdue, 0, ',', ' ') }}</div>
-                        <div class="kpi-label">FCFA · Restant impayé</div>
-                    </div>
-                </div>
-                <div class="kpi-footer">
-                    <div class="kpi-badge" style="background:rgba(30,41,59,.1);color:#1e293b;">
-                        <i class="fas fa-clock" style="font-size:.6rem;"></i>
-                        <span id="kpi-count-overdue">{{ $countOverdue }} étudiants concernés</span>
-                    </div>
-                </div>
-            </div>
-
-            {{-- KPI 4 : En attente de validation --}}
-            <div class="kpi-card">
-                <div class="kpi-main">
-                    <div class="kpi-icon" style="background:linear-gradient(135deg,#5e91de,#0453cb);">
-                        <i class="fas fa-hourglass-half"></i>
-                    </div>
-                    <div class="kpi-text">
-                        <div id="kpi-pending" class="kpi-value" style="color:#0453cb;">{{ $countPartiallyPaid }}</div>
-                        <div class="kpi-label">Paiements en attente</div>
-                    </div>
-                </div>
-                <div class="kpi-footer">
-                    <div class="kpi-badge" style="background:rgba(94,145,222,.15);color:#0453cb;">
-                        <i class="fas fa-check-circle" style="font-size:.6rem;"></i>
-                        <span id="kpi-validated">{{ $countPaid }} déjà validés</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- ── AGING + GRAPHIQUE ── --}}
-        <div class="row g-4 mb-4">
-
-            {{-- Aging Buckets --}}
-            <div class="col-12 col-lg-5">
-                <div class="main-card h-100 aging-card" id="aging-section">
-
-                    @php
-                        $agingConfig = [
-                            '0-30'  => ['label' => 'Récents (moins d\'1 mois)',     'sublabel' => 'À surveiller',           'color' => '#10b981', 'bg' => 'rgba(16,185,129,.10)',  'risk' => 'Faible',   'icon' => 'fa-circle-check',          'tooltip' => 'Retard inférieur à 30 jours. Surveillez sans alerter — un rappel doux suffit en général.'],
-                            '31-60' => ['label' => 'À relancer (1 à 2 mois)',       'sublabel' => 'Relance recommandée',    'color' => '#5e91de', 'bg' => 'rgba(94,145,222,.12)',  'risk' => 'Modéré',   'icon' => 'fa-clock',                 'tooltip' => 'Retard entre 30 et 60 jours. Envoyez une relance écrite (SMS, email ou WhatsApp).'],
-                            '61-90' => ['label' => 'Critiques (2 à 3 mois)',        'sublabel' => 'Action immédiate',       'color' => '#0453cb', 'bg' => 'rgba(4,83,203,.12)',    'risk' => 'Élevé',    'icon' => 'fa-triangle-exclamation',  'tooltip' => 'Retard entre 60 et 90 jours. Contactez l\'étudiant ou le parent par téléphone.'],
-                            '90+'   => ['label' => 'Très critiques (plus de 3 mois)', 'sublabel' => 'Mise en demeure',     'color' => '#1e293b', 'bg' => 'rgba(30,41,59,.12)',    'risk' => 'Critique', 'icon' => 'fa-skull',                 'tooltip' => 'Retard supérieur à 90 jours. Considérez une mise en demeure formelle ou un agent de recouvrement.'],
-                        ];
-                        $agingTotalAmount = array_sum(array_column($agingBuckets, 'amount'));
-                        $agingTotalCount  = array_sum(array_column($agingBuckets, 'count'));
-                    @endphp
-
-                    {{-- Header --}}
-                    <div class="aging-header">
-                        <div>
-                            <div class="aging-title">
-                                <i class="fas fa-hourglass-half"></i>
-                                Retard de paiement
-                            </div>
-                            <div class="aging-subtitle">
-                                <span id="aging-total-count">{{ $agingTotalCount }}</span> étudiant{{ $agingTotalCount > 1 ? 's' : '' }} en retard ·
-                                <span id="aging-total-amount">{{ number_format($agingTotalAmount, 0, ',', ' ') }}</span>&nbsp;FCFA
-                                <span title="Délai calculé depuis la date d'échéance de chaque catégorie de frais (configurable dans Frais → Configurer)" style="cursor:help;color:#94a3b8;font-size:.8em;"> <i class="fas fa-circle-info"></i></span>
-                            </div>
-                        </div>
-                        <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="aging-cta-btn">
-                            <i class="fas fa-paper-plane"></i>
-                            Relancer
-                        </a>
-                    </div>
-
-                    {{-- Bucket rows --}}
-                    <div class="aging-rows">
-                        @foreach($agingBuckets as $key => $bucket)
-                        @php
-                            $cfg = $agingConfig[$key] ?? ['label' => $key, 'sublabel' => '', 'color' => '#64748b', 'bg' => 'rgba(100,116,139,.1)', 'risk' => '—', 'icon' => 'fa-circle'];
-                            $pct = $agingTotalAmount > 0 ? round(($bucket['amount'] / $agingTotalAmount) * 100) : 0;
-                        @endphp
-                        <div class="aging-row" data-aging="{{ $key }}" title="{{ $cfg['tooltip'] ?? '' }}">
-                            {{-- Left: icon badge + labels --}}
-                            <div class="aging-row-left">
-                                <div class="aging-icon-badge" style="background:{{ $cfg['bg'] }};color:{{ $cfg['color'] }};">
-                                    <i class="fas {{ $cfg['icon'] }}"></i>
-                                </div>
-                                <div class="aging-row-labels">
-                                    <span class="aging-row-range">{{ $cfg['label'] }}</span>
-                                    <span class="aging-row-sub" style="color:{{ $cfg['color'] }};">{{ $cfg['sublabel'] }}</span>
-                                </div>
-                            </div>
-
-                            {{-- Center: bar + amount --}}
-                            <div class="aging-row-bar-wrap">
-                                <div class="aging-bar-track">
-                                    <div class="aging-bar-fill" style="width:{{ $pct }}%;background:{{ $cfg['color'] }};"></div>
-                                </div>
-                                <span class="aging-amount" style="color:#1e293b;">
-                                    {{ number_format($bucket['amount'], 0, ',', ' ') }}&thinsp;F
-                                </span>
-                            </div>
-
-                            {{-- Right: count bubble --}}
-                            <div class="aging-count-bubble" style="background:{{ $cfg['bg'] }};color:{{ $cfg['color'] }};">
-                                <span class="aging-count">{{ $bucket['count'] }}</span>
-                                <span class="aging-count-label">étud.</span>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
-
-                    {{-- Footer actions --}}
-                    <div class="aging-footer">
-                        <a href="{{ route('esbtp.paiements.index') }}" class="aging-footer-link">
-                            <i class="fas fa-arrow-right"></i>
-                            Tous les paiements
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Graphique Encaissements --}}
-            <div class="col-12 col-lg-7">
-                <div class="chart-card" id="chart-section">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <h6 class="fw-bold mb-0" style="color:#1e293b;">
-                            <i class="fas fa-chart-line me-2" style="color:#0453cb;"></i>Encaissements mensuels
-                        </h6>
-                        <span id="chart-annee-label" style="font-size:.78rem;color:#64748b;">{{ $annee ? ($annee->name ?? $annee->libelle) : '' }}</span>
-                    </div>
-                    <div class="chart-canvas-wrap">
-                        <canvas id="encaissementsChart"></canvas>
-                        <div id="chart-empty" class="text-center text-muted py-5" style="display:none;">
-                            <i class="fas fa-chart-line fa-3x mb-3 opacity-25"></i>
-                            <p class="mb-0" style="font-size:.9rem;">Aucune donnée sur cette période</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- ── PAIEMENTS EN ATTENTE + ACCÈS RAPIDES ── --}}
-        <div class="row g-4">
-
-            {{-- Paiements en attente --}}
-            <div class="col-12 col-lg-8">
-                <div class="pending-card" id="pending-section">
-                    <div class="pending-card-header">
-                        <div class="pending-card-title">
-                            <i class="fas fa-hourglass-half" style="color:#5e91de;font-size:.9rem;"></i>
-                            Paiements en attente
-                            <span id="pending-count-badge" class="pending-count-pill" style="{{ $countPartiallyPaid > 0 ? '' : 'display:none;' }}">{{ $countPartiallyPaid }}</span>
-                        </div>
-                        <a href="{{ route('esbtp.paiements.index', ['status' => 'en_attente']) }}" class="pending-see-all">
-                            Voir tout <i class="fas fa-arrow-right" style="font-size:.65rem;"></i>
-                        </a>
-                    </div>
-
-                    {{-- Empty state --}}
-                    <div id="pending-empty" class="pending-empty-state" style="{{ $paiementsEnAttente->isEmpty() ? '' : 'display:none;' }}">
-                        <div class="pending-empty-icon">
-                            <i class="fas fa-check-double"></i>
-                        </div>
-                        <div style="text-align:center;">
-                            <div style="font-weight:600;color:#1e293b;font-size:.88rem;">Aucun paiement en attente</div>
-                            <div style="font-size:.78rem;color:#94a3b8;margin-top:3px;">Tous les paiements ont été traités</div>
-                        </div>
-                    </div>
-
-                    {{-- Feed cards --}}
-                    <div class="pending-feed" id="pending-tbody" style="{{ $paiementsEnAttente->isEmpty() ? 'display:none;' : '' }}">
-                        @foreach($paiementsEnAttente as $paiement)
-                        @php
-                            $etudiant = $paiement->inscription->etudiant ?? null;
-                            $nom = $etudiant->nom ?? 'N/A';
-                            $prenoms = $etudiant->prenoms ?? '';
-                            $initials = mb_strtoupper(mb_substr($nom, 0, 1) . mb_substr($prenoms, 0, 1));
-                            $categorie = $paiement->fraisCategory->name ?? $paiement->motif ?? '—';
-                            $dateStr = \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y');
-                        @endphp
-                        <div class="pending-item">
-                            <div class="pending-avatar">{{ $initials }}</div>
-                            <div class="pending-info">
-                                <div class="pending-name">{{ $nom }} {{ $prenoms }}</div>
-                                <div class="pending-meta">
-                                    <span class="pending-cat">{{ $categorie }}</span>
-                                    <span class="pending-date-dot"></span>
-                                    <span class="pending-date">{{ $dateStr }}</span>
-                                </div>
-                            </div>
-                            <div class="pending-right">
-                                <span class="pending-amount">{{ number_format($paiement->montant, 0, ',', ' ') }} F</span>
-                                <a href="{{ route('esbtp.paiements.show', $paiement) }}" class="pending-action-btn">
-                                    <i class="fas fa-eye"></i> Voir
-                                </a>
-                            </div>
-                        </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-
-            {{-- Accès rapides --}}
-            <div class="col-12 col-lg-4">
-                <div class="main-card p-4 h-100">
-                    <h6 class="fw-bold mb-3" style="color:#1e293b;font-size:.88rem;">
-                        <i class="fas fa-bolt me-2" style="color:#0453cb;"></i>Accès rapides
-                    </h6>
-                    <div class="qa-grid">
-                        @can('frais.view')
-<a href="{{ route('esbtp.frais.index') }}" class="qa-tile">
-                            <div class="qa-icon" style="background:rgba(4,83,203,.1);">
-                                <i class="fas fa-tags" style="color:#0453cb;"></i>
-                            </div>
-                            <div>
-                                <div class="qa-label">Frais</div>
-                                <div class="qa-sublabel">Catégories</div>
-                            </div>
-                            <i class="fas fa-chevron-right qa-arrow"></i>
-                        </a>
-                        @endcan
-                        @canany(['paiements.view', 'paiements.view_own'])
-<a href="{{ route('esbtp.paiements.index') }}" class="qa-tile">
-                            <div class="qa-icon" style="background:rgba(16,185,129,.1);">
-                                <i class="fas fa-money-bill-wave" style="color:#10b981;"></i>
-                            </div>
-                            <div>
-                                <div class="qa-label">Paiements</div>
-                                <div class="qa-sublabel">Historique</div>
-                            </div>
-                            <i class="fas fa-chevron-right qa-arrow"></i>
-                        </a>
-                        @endcanany
-                        @can('comptabilite.relances.send')
-<a href="{{ route('esbtp.comptabilite.relances.index') }}" class="qa-tile">
-                            <div class="qa-icon" style="background:rgba(94,145,222,.1);">
-                                <i class="fas fa-paper-plane" style="color:#5e91de;"></i>
-                            </div>
-                            <div>
-                                <div class="qa-label">Relances</div>
-                                <div class="qa-sublabel">Impayés</div>
-                            </div>
-                            <i class="fas fa-chevron-right qa-arrow"></i>
-                        </a>
-                        @endcan
-                        @can('frais.configure')
-                        <a href="{{ route('esbtp.frais.configure') }}" class="qa-tile">
-                            <div class="qa-icon" style="background:rgba(30,41,59,.07);">
-                                <i class="fas fa-sliders-h" style="color:#475569;"></i>
-                            </div>
-                            <div>
-                                <div class="qa-label">Config</div>
-                                <div class="qa-sublabel">Frais & Tarifs</div>
-                            </div>
-                            <i class="fas fa-chevron-right qa-arrow"></i>
-                        </a>
-                        @endcan
-                        @canany(['paiements.view', 'paiements.view_own'])
-<a href="{{ route('esbtp.paiements.suivi-categories') }}" class="qa-tile">
-                            <div class="qa-icon" style="background:rgba(4,83,203,.1);">
-                                <i class="fas fa-chart-pie" style="color:#0453cb;"></i>
-                            </div>
-                            <div>
-                                <div class="qa-label">Suivi</div>
-                                <div class="qa-sublabel">Par catégorie</div>
-                            </div>
-                            <i class="fas fa-chevron-right qa-arrow"></i>
-                        </a>
-                        @endcanany
-                        @can('comptabilite.reports.export')
-                        <a href="{{ route('esbtp.paiements.index', ['format' => 'export-excel']) }}" class="qa-tile">
-                            <div class="qa-icon" style="background:rgba(16,185,129,.1);">
-                                <i class="fas fa-file-excel" style="color:#10b981;"></i>
-                            </div>
-                            <div>
-                                <div class="qa-label">Export</div>
-                                <div class="qa-sublabel">Excel</div>
-                            </div>
-                            <i class="fas fa-chevron-right qa-arrow"></i>
-                        </a>
-                        @endcan
-                    </div>
-                </div>
-            </div>
-        </div>
-
     </div>
 </div>
 </div>
@@ -1726,307 +690,225 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
 <x-fab-encaisser />
 @endsection
 
+@push('styles')
+<style>
+/* Écran mobile du tableau de bord comptable (shell m-*, préfixe dm-). Le socle
+   mobile-shell.css porte les classes m-* ; ici seulement ce qui est propre à l'écran. */
+.dm-contenu { display: grid; gap: 14px; }
+.dm-screen .m-kpi .d { min-height: 14px; }
+.dm-screen .m-row .tt b { white-space: normal; line-height: 1.25; }
+.dm-axe { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-top: -4px; }
+.dm-vide, .dm-total { margin: 0; font-size: 12.5px; color: #64748b; }
+.dm-total b { color: #0f172a; font-variant-numeric: tabular-nums; }
+.dm-lbl { display: block; font-size: 12px; font-weight: 600; color: #64748b; margin-bottom: 6px; }
+.dm-opt { max-height: 40vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.dm-opt label { position: relative; }
+.dm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+</style>
+@endpush
+
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
     'use strict';
+    // Les instances Chart.js restent hors d'Alpine : un proxy réactif autour
+    // d'un graphique le ralentit et casse ses mises à jour.
+    let graphe = null;
+    let anneau = null;
+    const TEINTES = ['#033a8e', '#0453cb', '#3b7ddb', '#5e91de', '#a9c5ee', '#d6e4f8'];
+    const nf = new Intl.NumberFormat('fr-FR');
 
-    // ── State ──────────────────────────────────────────────────────────────
-    let chartInstance = null;
-    const AJAX_URL = '{{ route("esbtp.comptabilite.dashboard.data") }}';
+    window.afDash = function () {
+        const init = JSON.parse(document.getElementById('af-init').textContent);
+        return {
+            d: init.donnees,
+            liens: init.liens,
+            droits: init.droits,
+            url: init.url,
+            vue: 'mois',
+            charge: false,
+            _ecoute: null,
 
-    // Initial data from server (used for first render without AJAX)
-    const initialData = {
-        labels:   @json($labelsMois),
-        datasets: @json($dataEncaissements),
-    };
+            _requete: null,
+            _reinit: false,
 
-    // ── Chart bootstrap ────────────────────────────────────────────────────
-    function renderChart(labels, data) {
-        const ctx = document.getElementById('encaissementsChart');
-        const emptyDiv = document.getElementById('chart-empty');
-
-        if (!ctx) return;
-
-        if (!labels || labels.length === 0) {
-            ctx.style.display = 'none';
-            emptyDiv.style.display = 'block';
-            return;
-        }
-
-        ctx.style.display = 'block';
-        emptyDiv.style.display = 'none';
-
-        if (chartInstance) chartInstance.destroy();
-
-        const canvasCtx = ctx.getContext('2d');
-        const grad = canvasCtx.createLinearGradient(0, 0, 0, ctx.offsetHeight || 240);
-        grad.addColorStop(0, 'rgba(4,83,203,0.22)');
-        grad.addColorStop(0.55, 'rgba(4,83,203,0.07)');
-        grad.addColorStop(1, 'rgba(4,83,203,0.00)');
-
-        chartInstance = new Chart(canvasCtx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Encaissements (FCFA)',
-                    data: data,
-                    borderColor: '#0453cb',
-                    backgroundColor: grad,
-                    tension: 0.4,
-                    fill: true,
-                    pointBackgroundColor: '#0453cb',
-                    pointBorderColor: '#fff',
-                    pointBorderWidth: 2,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                }]
+            init() {
+                this._ecoute = (ev) => {
+                    if (this._reinit) return;
+                    if (['f-annee', 'f-filiere', 'f-classe'].includes(ev.target && ev.target.id)) this.recharger();
+                };
+                document.addEventListener('change', this._ecoute);
+                this.$nextTick(() => this.dessiner());
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        backgroundColor: '#0f172a',
-                        titleColor: '#94a3b8',
-                        bodyColor: '#fff',
-                        padding: 10,
-                        cornerRadius: 8,
-                        callbacks: {
-                            label: function(ctx) {
-                                return ' ' + new Intl.NumberFormat('fr-FR').format(ctx.raw) + ' FCFA';
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            color: '#94a3b8',
-                            callback: function(val) {
-                                return new Intl.NumberFormat('fr-FR', { notation: 'compact', maximumFractionDigits: 0 }).format(val);
-                            }
-                        },
-                        grid: { color: 'rgba(0,0,0,0.04)' }
-                    },
-                    x: {
-                        ticks: { color: '#94a3b8', font: { size: 11 } },
-                        grid: { display: false }
+            destroy() {
+                document.removeEventListener('change', this._ecoute);
+            },
+
+            fmt(n) { return nf.format(Math.round(Number(n) || 0)); },
+            fmtCourt(n) {
+                const v = Math.abs(Number(n) || 0);
+                if (v >= 1e9) return (n / 1e9).toFixed(1).replace('.', ',').replace(',0', '') + ' Md';
+                if (v >= 1e6) return (n / 1e6).toFixed(1).replace('.', ',').replace(',0', '') + ' M';
+                if (v >= 1e4) return Math.round(n / 1e3) + ' k';
+                return this.fmt(n);
+            },
+            taux() { return this.d.totalDue > 0 ? Math.min(100, this.d.totalPaid / this.d.totalDue * 100) : null; },
+            chip(actuel, reference) {
+                if (Math.abs(reference) < 0.01) return { cls: 'is-flat', txt: '—' };
+                const v = (actuel - reference) / Math.abs(reference) * 100;
+                const txt = (v >= 0 ? '▲ ' : '▼ ') + Math.abs(v).toFixed(Math.abs(v) < 10 ? 1 : 0).replace('.', ',') + ' %';
+                return { cls: Math.abs(v) < 0.05 ? 'is-flat' : (v > 0 ? 'is-up' : 'is-down'), txt };
+            },
+            teinte(i) { return TEINTES[Math.min(i, TEINTES.length - 1)]; },
+            part(total) {
+                const somme = this.d.modes.reduce((s, m) => s + Math.max(0, m.total), 0);
+                return somme > 0 ? Math.round(Math.max(0, total) / somme * 100) : 0;
+            },
+            anciennete() {
+                const libs = { '0-30': 'Moins d’un mois', '31-60': '1 à 2 mois', '61-90': '2 à 3 mois', '90+': 'Plus de 3 mois' };
+                const teintes = { '0-30': '#a9c5ee', '31-60': '#5e91de', '61-90': '#0453cb', '90+': '#033a8e' };
+                const b = this.d.agingBuckets || {};
+                const max = Math.max(1, ...Object.values(b).map((x) => x.amount || 0));
+                return Object.keys(libs).map((cle) => ({
+                    cle, lib: libs[cle], teinte: teintes[cle],
+                    count: (b[cle] && b[cle].count) || 0,
+                    amount: (b[cle] && b[cle].amount) || 0,
+                    pct: Math.round(((b[cle] && b[cle].amount) || 0) / max * 100),
+                }));
+            },
+            // 12 semaines × 7 jours, lundi en haut, la semaine en cours à droite.
+            chaleur() {
+                const jours = this.d.serieJours || [];
+                const max = Math.max(1, ...jours.map((j) => j.total));
+                const paliers = ['#eef3fa', '#c9dbf6', '#8fb3ec', '#3b7ddb', '#033a8e'];
+                const lignes = Array.from({ length: 7 }, () => []);
+                if (!jours.length) return lignes;
+                const premier = new Date(jours[0].jour + 'T00:00:00');
+                const decalage = (premier.getDay() + 6) % 7;
+                const cases = Array(decalage).fill(null).concat(jours);
+                while (cases.length % 7) cases.push(null);
+                const colonnes = cases.length / 7;
+                const debut = Math.max(0, colonnes - 12) * 7;
+                for (let i = debut; i < cases.length; i++) {
+                    const j = cases[i];
+                    const palier = !j ? 0 : (j.total <= 0 ? 0 : Math.min(4, 1 + Math.floor(j.total / max * 3.999)));
+                    const date = j ? new Date(j.jour + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
+                    lignes[i % 7].push({ teinte: j ? paliers[palier] : 'transparent', titre: j ? date + ' : ' + this.fmt(j.total) + ' FCFA' : '' });
+                }
+                return lignes;
+            },
+
+            async recharger() {
+                const p = new URLSearchParams();
+                const v = (id) => (document.getElementById(id) || {}).value || '';
+                if (v('f-annee')) p.set('annee', v('f-annee'));
+                if (v('f-filiere')) p.set('filiere', v('f-filiere'));
+                if (v('f-classe')) p.set('classe', v('f-classe'));
+                // Deux filtres changés vite : seule la dernière requête compte,
+                // sinon la plus lente écrasait la plus récente.
+                if (this._requete) this._requete.abort();
+                const requete = new AbortController();
+                this._requete = requete;
+                this.charge = true;
+                try {
+                    const r = await fetch(this.url + '?' + p.toString(), { signal: requete.signal, headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    this.d = await r.json();
+                    history.replaceState(null, '', location.pathname + (p.toString() ? '?' + p.toString() : ''));
+                    this.$nextTick(() => this.dessiner());
+                } catch (e) {
+                    if (e.name === 'AbortError') return;
+                    window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: 'Les chiffres n’ont pas pu être rechargés. Réessayez.' } }));
+                } finally {
+                    if (this._requete === requete) {
+                        this._requete = null;
+                        this.charge = false;
                     }
                 }
-            }
-        });
-    }
+            },
+            reinitialiser() {
+                // Le composant de sélection ne relit sa valeur que sur « change » :
+                // sans l'événement, il gardait l'ancien libellé sur des chiffres
+                // non filtrés. On l'émet, en ignorant l'écoute, puis un seul rechargement.
+                this._reinit = true;
+                ['f-annee', 'f-filiere', 'f-classe'].forEach((id) => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    el.value = '';
+                    el.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                this._reinit = false;
+                this.recharger();
+            },
 
-    // ── KPI helpers ────────────────────────────────────────────────────────
-    function fmt(n) { return new Intl.NumberFormat('fr-FR').format(Math.round(n)); }
-
-    function updateKPIs(d) {
-        const taux = d.totalDue > 0 ? Math.min(100, ((d.totalPaid / d.totalDue) * 100)) : 0;
-
-        document.getElementById('kpi-total-due').textContent   = fmt(d.totalDue);
-        document.getElementById('kpi-total-paid').textContent  = fmt(d.totalPaid);
-        document.getElementById('kpi-overdue').textContent     = fmt(d.totalOverdue);
-        document.getElementById('kpi-pending').textContent     = d.countPartiallyPaid;
-        document.getElementById('kpi-subscriptions').textContent = d.countDue + ' souscriptions';
-        document.getElementById('kpi-validated').textContent   = d.countPaid + ' déjà validés';
-        document.getElementById('kpi-count-overdue').textContent = d.countOverdue + ' étudiants concernés';
-        document.getElementById('kpi-taux').textContent        = taux.toFixed(1) + '%';
-        document.getElementById('kpi-recovery-bar').style.width = taux.toFixed(1) + '%';
-
-        updateActionFeed(d);
-    }
-
-    function updateActionFeed(d) {
-        const validateEl = document.getElementById('dc-feed-validate-count');
-        if (validateEl) {
-            validateEl.textContent = d.countToValidate ?? 0;
-            const card = document.getElementById('dc-feed-card-validate');
-            if (card) card.classList.toggle('is-active', (d.countToValidate ?? 0) > 0);
-        }
-
-        const overdueEl = document.getElementById('dc-feed-overdue-count');
-        if (overdueEl) {
-            overdueEl.textContent = d.countOverdueTotal ?? 0;
-            const card = document.getElementById('dc-feed-card-overdue');
-            if (card) card.classList.toggle('is-active', (d.countOverdueTotal ?? 0) > 0);
-        }
-
-        const validatedEl = document.getElementById('dc-feed-validated-count');
-        if (validatedEl) validatedEl.textContent = d.countValidatedToday ?? 0;
-        const validatedAmount = document.getElementById('dc-feed-validated-amount');
-        if (validatedAmount && (d.totalValidatedToday ?? 0) > 0) {
-            validatedAmount.textContent = fmt(d.totalValidatedToday);
-        }
-    }
-
-    function updateAging(buckets) {
-        const colors = {
-            '0-30':  { color: '#10b981', bg: 'rgba(16,185,129,.12)',  risk: 'Faible' },
-            '31-60': { color: '#5e91de', bg: 'rgba(94,145,222,.12)',  risk: 'Modéré' },
-            '61-90': { color: '#0453cb', bg: 'rgba(4,83,203,.12)',    risk: 'Élevé' },
-            '90+':   { color: '#1e293b', bg: 'rgba(30,41,59,.12)',    risk: 'Critique' },
+            dessiner() {
+                if (typeof Chart === 'undefined') return;
+                this.dessinerTendance();
+                this.dessinerAnneau();
+            },
+            dessinerTendance() {
+                const el = document.getElementById('afHeroChart');
+                if (!el) return;
+                let labels = this.d.labelsMois || [];
+                let data = this.d.dataEncaissements || [];
+                let prec = this.vue === 'mois' ? (this.d.dataEncaissementsPrecedente || []) : [];
+                if (this.vue === 'semaines') {
+                    const jours = this.d.serieJours || [];
+                    labels = []; data = [];
+                    for (let i = 0; i < jours.length; i += 7) {
+                        const tranche = jours.slice(i, i + 7);
+                        labels.push(new Date(tranche[0].jour + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }));
+                        data.push(tranche.reduce((s, j) => s + j.total, 0));
+                    }
+                }
+                const ctx = el.getContext('2d');
+                const grad = ctx.createLinearGradient(0, 0, 0, 210);
+                grad.addColorStop(0, 'rgba(255,255,255,0.35)');
+                grad.addColorStop(1, 'rgba(255,255,255,0)');
+                const sets = [{ label: this.vue === 'mois' ? (this.d.anneeLabel || 'Année') : 'Semaine', data, borderColor: '#fff', backgroundColor: grad,
+                    fill: true, tension: 0.35, borderWidth: 2.4, pointRadius: 0, pointHoverRadius: 5, pointHoverBackgroundColor: '#fff' }];
+                if (prec.length) {
+                    sets.push({ label: this.d.labelAnneePrecedente || 'Année précédente', data: prec, borderColor: 'rgba(255,255,255,.55)',
+                        borderDash: [5, 5], borderWidth: 1.6, fill: false, tension: 0.35, pointRadius: 0 });
+                }
+                if (graphe) graphe.destroy();
+                graphe = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels, datasets: sets },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f172a', padding: 10, cornerRadius: 10,
+                            callbacks: { label: (i) => ' ' + i.dataset.label + ' : ' + nf.format(Math.round(i.raw)) + ' FCFA' } } },
+                        scales: {
+                            y: { beginAtZero: true, border: { display: false }, grid: { color: 'rgba(255,255,255,.12)' },
+                                ticks: { color: 'rgba(255,255,255,.7)', callback: (v) => new Intl.NumberFormat('fr-FR', { notation: 'compact' }).format(v) } },
+                            x: { grid: { display: false }, border: { display: false }, ticks: { color: 'rgba(255,255,255,.7)', maxRotation: 0, autoSkip: true } },
+                        },
+                    },
+                });
+            },
+            dessinerAnneau() {
+                const el = document.getElementById('afDonut');
+                if (!el) return;
+                const modes = this.d.modes.slice(0, 5).filter((m) => m.total > 0);
+                if (anneau) anneau.destroy();
+                anneau = null;
+                if (!modes.length) return;
+                anneau = new Chart(el.getContext('2d'), {
+                    type: 'doughnut',
+                    data: { labels: modes.map((m) => m.mode), datasets: [{ data: modes.map((m) => m.total), backgroundColor: modes.map((_, i) => TEINTES[i]), borderWidth: 2, borderColor: '#fff' }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '72%',
+                        plugins: { legend: { display: false }, tooltip: { backgroundColor: '#0f172a', callbacks: { label: (i) => ' ' + i.label + ' : ' + nf.format(Math.round(i.raw)) + ' FCFA' } } } },
+                });
+            },
         };
-        let totalCount = 0, totalAmount = 0;
-
-        Object.keys(buckets).forEach(function(key) {
-            const b = buckets[key];
-            totalCount  += b.count;
-            totalAmount += b.amount;
-            const row = document.querySelector('[data-aging="' + key + '"]');
-            if (!row) return;
-            const cfg = colors[key] || { color: '#64748b', bg: 'rgba(0,0,0,.05)', risk: '—' };
-            row.querySelector('.aging-count').textContent  = b.count;
-            row.querySelector('.aging-amount').textContent = fmt(b.amount) + ' F';
-        });
-
-        const totalCountEl = document.getElementById('aging-total-count');
-        const totalAmountEl = document.getElementById('aging-total-amount');
-        if (totalCountEl) totalCountEl.textContent = totalCount;
-        if (totalAmountEl) totalAmountEl.textContent = fmt(totalAmount) + ' F';
-    }
-
-    function updatePending(payments) {
-        const feed = document.getElementById('pending-tbody');
-        const emptyDiv = document.getElementById('pending-empty');
-        const countBadge = document.getElementById('pending-count-badge');
-
-        if (!payments || payments.length === 0) {
-            if (feed) feed.style.display = 'none';
-            if (emptyDiv) emptyDiv.style.display = 'flex';
-            if (countBadge) countBadge.style.display = 'none';
-            return;
-        }
-
-        if (emptyDiv) emptyDiv.style.display = 'none';
-        if (feed) feed.style.display = 'block';
-        if (countBadge) {
-            countBadge.textContent = payments.length;
-            countBadge.style.display = 'inline-flex';
-        }
-
-        if (!feed) return;
-        feed.innerHTML = payments.map(function(p) {
-            const nom = p.nom || 'N/A';
-            const prenoms = p.prenoms || '';
-            const initials = (nom.charAt(0) + prenoms.charAt(0)).toUpperCase();
-            return '<div class="pending-item">'
-                + '<div class="pending-avatar">' + initials + '</div>'
-                + '<div class="pending-info">'
-                +   '<div class="pending-name">' + nom + ' ' + prenoms + '</div>'
-                +   '<div class="pending-meta">'
-                +     '<span class="pending-cat">' + (p.categorie || '—') + '</span>'
-                +     '<span class="pending-date-dot"></span>'
-                +     '<span class="pending-date">' + (p.date || '') + '</span>'
-                +   '</div>'
-                + '</div>'
-                + '<div class="pending-right">'
-                +   '<span class="pending-amount">' + fmt(p.montant) + ' F</span>'
-                +   '<a href="' + p.url + '" class="pending-action-btn"><i class="fas fa-eye"></i> Voir</a>'
-                + '</div>'
-                + '</div>';
-        }).join('');
-    }
-
-    // ── AJAX load ──────────────────────────────────────────────────────────
-    function loadData(annee, filiere, classe) {
-        const loading = document.getElementById('dash-loading');
-        if (loading) loading.classList.add('show');
-
-        const params = new URLSearchParams();
-        if (annee)   params.set('annee', annee);
-        if (filiere) params.set('filiere', filiere);
-        if (classe)  params.set('classe', classe);
-
-        fetch(AJAX_URL + '?' + params.toString(), {
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            updateKPIs(data);
-            updateAging(data.agingBuckets || {});
-            updatePending(data.paiementsEnAttente || []);
-            renderChart(data.labelsMois || [], data.dataEncaissements || []);
-
-            // Update chart subtitle
-            const subtitle = document.getElementById('chart-annee-label');
-            if (subtitle) subtitle.textContent = data.anneeLabel || '';
-        })
-        .catch(function(err) {
-            console.error('Dashboard AJAX error:', err);
-        })
-        .finally(function() {
-            if (loading) loading.classList.remove('show');
-        });
-    }
-
-    // ── Filter badge + has-value state ─────────────────────────────────────
-    function updateFilterBadge() {
-        const anneeEl   = document.getElementById('f-annee');
-        const filiereEl = document.getElementById('f-filiere');
-        const classeEl  = document.getElementById('f-classe');
-
-        const hasFilter = (anneeEl && anneeEl.value)
-            || (filiereEl && filiereEl.value)
-            || (classeEl  && classeEl.value);
-
-        const badge = document.getElementById('filter-active-badge');
-        if (badge) badge.classList.toggle('active', !!hasFilter);
-
-        // Update has-value class for styled selects
-        [anneeEl, filiereEl, classeEl].forEach(function(el) {
-            if (el) el.classList.toggle('has-value', !!el.value);
-        });
-
-        // Show "année en cours par défaut" hint only when no année is selected
-        const anneeHint = document.getElementById('filter-annee-hint');
-        if (anneeHint) anneeHint.classList.toggle('hidden', !!(anneeEl && anneeEl.value));
-    }
-
-    // ── Init ───────────────────────────────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', function () {
-        // Render initial chart with server data
-        renderChart(initialData.labels, initialData.datasets);
-
-        // Count-up animation supprimée : chiffres financiers s'affichent direct
-        // (fade-in CSS géré par .dash-hero / .kpi-strip animations, respect
-        // prefers-reduced-motion pour vestibular disorders).
-
-        // Filter change → AJAX
-        ['f-annee', 'f-filiere', 'f-classe'].forEach(function(id) {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.addEventListener('change', function () {
-                updateFilterBadge();
-                loadData(
-                    document.getElementById('f-annee').value,
-                    document.getElementById('f-filiere').value,
-                    document.getElementById('f-classe').value
-                );
-            });
-        });
-
-        // Reset button
-        const resetBtn = document.getElementById('btn-reset-filters');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', function () {
-                document.getElementById('f-annee').value   = '';
-                document.getElementById('f-filiere').value = '';
-                document.getElementById('f-classe').value  = '';
-                updateFilterBadge();
-                loadData('', '', '');
-            });
-        }
-
-        updateFilterBadge();
-    });
+    };
 })();
 </script>
 @endpush
+
 
 @push('scripts')
 <script>

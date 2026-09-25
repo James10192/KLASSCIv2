@@ -17,6 +17,12 @@ class TenantScolariteSettings
     public const REINSCRIPTION_EN_LIGNE = 'reinscriptions.en_ligne.enabled';
     public const CONFIRMER_STATUT_ETABLISSEMENT = 'inscriptions.confirmer_statut_etablissement';
 
+    /**
+     * Verification du contact (e-mail ou WhatsApp) des demandes deposees sur le
+     * portail public. Desactivee par defaut : c'est une politique d'ecole.
+     */
+    public const VERIFICATION_CONTACT = 'inscriptions.portail.verification_contact';
+
     public function splitRolesEnabled(): bool
     {
         return $this->flag(self::SPLIT_ROLES);
@@ -70,6 +76,11 @@ class TenantScolariteSettings
                 ESBTPFraisCategory::AUDIENCE_ANCIENS,
             ])
             ->exists();
+    }
+
+    public function verificationContactActive(): bool
+    {
+        return $this->flag(self::VERIFICATION_CONTACT);
     }
 
     private function flag(string $key, string $default = '0'): bool

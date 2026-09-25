@@ -14,6 +14,8 @@ use App\Models\User;
  * caisse, puis comptabilite, puis enseignant, puis etudiant. Un role custom qui
  * ne porte aucune de ces permissions peut tout de meme declarer son profil
  * (colonne roles.mobile_profile, choisie par l'ecole dans le formulaire du role).
+ * A defaut, qui gere des dossiers (inscriptions, etudiants, classes) recoit le
+ * profil « scolarite ».
  *
  * Le superAdmin voit tout : il recoit « comptable » par defaut et peut basculer
  * de profil pour la session (route POST mobile.profil) afin de verifier chacun.
@@ -32,12 +34,27 @@ class MobileProfileResolver
     public const COMPTABLE = 'comptable';
     public const ENSEIGNANT = 'enseignant';
     public const ETUDIANT = 'etudiant';
+    public const SCOLARITE = 'scolarite';
 
     public const PROFILS = [
         self::CAISSIER,
         self::COMPTABLE,
         self::ENSEIGNANT,
         self::ETUDIANT,
+        self::SCOLARITE,
+    ];
+
+    /**
+     * Profil de repli : la personne n'est ni a la caisse, ni en comptabilite,
+     * ni enseignante, ni etudiante, et aucun de ses roles n'a declare de
+     * profil — mais elle gere des dossiers (secretariat, scolarite, agent
+     * d'inscription, coordination). Sans ce repli, elle recevait la mise en
+     * page de bureau sur son telephone.
+     */
+    private const PERMISSIONS_SCOLARITE = [
+        'inscriptions.view',
+        'students.view',
+        'classes.view',
     ];
 
     /**
@@ -73,6 +90,7 @@ class MobileProfileResolver
             self::COMPTABLE => 'Comptabilité',
             self::ENSEIGNANT => 'Enseignant',
             self::ETUDIANT => 'Étudiant',
+            self::SCOLARITE => 'Scolarité (dossiers, inscriptions)',
         ];
     }
 
@@ -150,7 +168,18 @@ class MobileProfileResolver
             }
         }
 
-        return $this->profilDesRoles($user);
+        $profil = $this->profilDesRoles($user);
+        if ($profil !== null) {
+            return $profil;
+        }
+
+        foreach (self::PERMISSIONS_SCOLARITE as $permission) {
+            if ($user->can($permission)) {
+                return self::SCOLARITE;
+            }
+        }
+
+        return null;
     }
 
     /**

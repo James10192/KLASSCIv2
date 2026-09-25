@@ -19,10 +19,27 @@ class ScolariteGuardsTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_hors_especes_ouvre_tous_les_modes_sauf_le_tiroir(): void
+    {
+        $user = Mockery::mock(User::class);
+        $user->shouldReceive('can')->with('paiements.create')->andReturn(false);
+        $user->shouldReceive('can')->with('paiements.create.non_cash')->andReturn(true);
+
+        $guard = new MobileMoneyPaymentGuard();
+        $modes = $guard->allowedModes($user);
+
+        $this->assertTrue($guard->canCreate($user));
+        $this->assertNotContains(ModePaiement::ESPECES->value, $modes);
+        $this->assertCount(count(ModePaiement::cases()) - 1, $modes);
+        $this->assertFalse($guard->allowsMode($user, 'Espèces'));
+        $this->assertTrue($guard->allowsMode($user, 'cheque'));
+    }
+
     public function test_comptable_is_limited_to_mobile_money_modes(): void
     {
         $user = Mockery::mock(User::class);
         $user->shouldReceive('can')->with('paiements.create')->andReturn(false);
+        $user->shouldReceive('can')->with('paiements.create.non_cash')->andReturn(false);
         $user->shouldReceive('can')->with('paiements.create.mobile_money')->andReturn(true);
 
         $guard = new MobileMoneyPaymentGuard();

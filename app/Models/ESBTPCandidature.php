@@ -21,6 +21,7 @@ use OwenIt\Auditing\Contracts\Auditable;
  */
 class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
 {
+    use Concerns\AttendVerificationContact;
     use Concerns\EstPorteurDeRendezVous;
     use Concerns\HasReferencePublique;
     use HasFactory;
@@ -215,6 +216,8 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         'etudiant_id', 'inscription_id',
         'reference_publique',
         'rdv_invite_at',
+        // verification_contact, email_verifie_at, telephone_verifie_at : jamais
+        // par affectation de masse, seulement par la verification (forceFill).
     ];
 
     protected $casts = [
@@ -222,6 +225,9 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         'consentement_at' => 'datetime',
         'traite_at' => 'datetime',
         'rdv_invite_at' => 'datetime',
+        'email_verifie_at' => 'datetime',
+        'telephone_verifie_at' => 'datetime',
+        'contact_confirme_at' => 'datetime',
         'annee_bac' => 'integer',
         'est_transfert' => 'boolean',
         'annee_derniere_inscription' => 'integer',
@@ -244,6 +250,8 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         // dire que le dossier a change de personne. Les autres champs restent
         // dehors, par minimisation : ce sont ceux-la qui portent la decision.
         'nom', 'prenoms', 'date_naissance',
+        // « Confirmer le contact » est un geste d'agent : qui, quand, et l'etat.
+        'verification_contact', 'contact_confirme_par', 'contact_confirme_at',
     ];
 
     public function anneeUniversitaire(): BelongsTo
@@ -321,5 +329,10 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
     public function emailRdv(): ?string
     {
         return $this->email;
+    }
+
+    public function typeDemandePublique(): string
+    {
+        return 'candidature';
     }
 }

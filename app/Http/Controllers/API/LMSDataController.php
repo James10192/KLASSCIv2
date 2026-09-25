@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Support\Lms\GardeEcritureLms;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Models\ESBTPMatiere;
@@ -2453,6 +2454,10 @@ class LMSDataController extends BaseApiController
             return $this->errorResponse('Séance introuvable', [], 404);
         }
 
+        if (! GardeEcritureLms::peutGererLaSeance($request->user(), $seance)) {
+            return $this->errorResponse('Vous ne pouvez pas enregistrer les présences de cette séance.', [], 403);
+        }
+
         $created = 0;
         $updated = 0;
         $errors = [];
@@ -2618,6 +2623,10 @@ class LMSDataController extends BaseApiController
 
         if (!$seance) {
             return $this->errorResponse('Séance introuvable', [], 404);
+        }
+
+        if (! GardeEcritureLms::peutGererLaSeance($request->user(), $seance)) {
+            return $this->errorResponse('Vous ne pouvez pas envoyer de rappel pour cette séance.', [], 403);
         }
 
         // Canaux par défaut si non spécifiés
@@ -2880,6 +2889,12 @@ class LMSDataController extends BaseApiController
             return $this->errorResponse('Évaluation introuvable', [], 404);
         }
 
+        // Le login du LMS donne un jeton a tous, eleves compris : sans ce
+        // controle, un eleve pouvait ecrire ses propres notes.
+        if (! GardeEcritureLms::peutNoter($request->user(), $evaluation)) {
+            return $this->errorResponse('Vous ne pouvez pas saisir les notes de cette évaluation.', [], 403);
+        }
+
         // Vérifier que l'évaluation appartient à l'année universitaire courante
         $annee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         if (!$annee) {
@@ -2942,9 +2957,6 @@ class LMSDataController extends BaseApiController
                     'classe_id' => $evaluation->classe_id,
                     'note' => $noteData['note'],
                     'is_absent' => $noteData['is_absent'] ?? false,
-                    'commentaire' => isset($noteData['commentaire'])
-                        ? 'Note soumise via LMS - ' . $noteData['commentaire']
-                        : 'Note soumise via LMS',
                     'appreciation' => $noteData['appreciation'] ?? null,
                     'type_evaluation' => $evaluation->type,
                     'annee_universitaire' => $annee->nom ?? null,
@@ -2952,7 +2964,15 @@ class LMSDataController extends BaseApiController
                 ];
 
                 if ($existingNote) {
-                    // Mise à jour
+                    // Mise à jour. Le commentaire est la trace de l'enseignant :
+                    // il n'est remplace que si le LMS en envoie un, et n'est
+                    // plus ecrase par « Note soumise via LMS ».
+                    if (isset($noteData['commentaire'])) {
+                        $notePayload['commentaire'] = $noteData['commentaire'];
+                    }
+                    if (! array_key_exists('appreciation', $noteData)) {
+                        unset($notePayload['appreciation']);
+                    }
                     $existingNote->update($notePayload);
                     $updated++;
 
@@ -2963,6 +2983,9 @@ class LMSDataController extends BaseApiController
                     ]);
                 } else {
                     // Création
+                    $notePayload['commentaire'] = isset($noteData['commentaire'])
+                        ? 'Note soumise via LMS - ' . $noteData['commentaire']
+                        : 'Note soumise via LMS';
                     $notePayload['created_by'] = auth()->id() ?? null;
                     \App\Models\ESBTPNote::create($notePayload);
                     $created++;

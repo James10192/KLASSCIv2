@@ -129,6 +129,9 @@ jobs:
           fi
           printf '%s\n' "${FICHIERS[@]}"
           php bin/verifier-classes.php "${FICHIERS[@]}"
+          # Namespace et nom de classe doivent suivre le chemin a la casse pres :
+          # PSR-4 y est sensible sous Linux, pas sous Windows ni macOS.
+          php bin/verifier-casse-psr4.php "${FICHIERS[@]}"
 
       - name: Check Blade syntax
         run: |

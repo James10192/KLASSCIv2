@@ -121,7 +121,7 @@
                 <div>
                     <h2 class="lpx-hero-title">Examens planifiés</h2>
                     <p class="lpx-hero-subtitle">
-                        Sessions LMD UEMOA — Phase 1 (scope query <code>type_seance ∈ EXAMEN/PARTIEL/RATTRAPAGE/SOUTENANCE</code>)
+                        Examens, partiels, rattrapages et soutenances des classes LMD
                     </p>
                 </div>
             </div>
