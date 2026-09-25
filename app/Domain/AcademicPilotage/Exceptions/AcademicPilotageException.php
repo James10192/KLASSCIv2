@@ -28,6 +28,8 @@ final class AcademicPilotageException extends RuntimeException
 
     public const INVALID_ENTRY_EVIDENCE = 'academic_pilotage.invalid_entry_evidence';
 
+    public const EXAM_NOTES_LOCKED = 'academic_pilotage.exam_notes_locked';
+
     public const VALIDATED_NOTE_LOCKED = 'academic_pilotage.validated_note_locked';
 
     public const INVALID_DOCUMENT_CONTENT = 'academic_pilotage.invalid_document_content';
@@ -150,6 +152,16 @@ final class AcademicPilotageException extends RuntimeException
             self::VALIDATED_NOTE_LOCKED,
             'Cette note appartient à une fiche validée. Rouvrez la fiche avant de modifier la note.',
             ['grade_sheet_id' => $gradeSheetId],
+            409,
+        );
+    }
+
+    public static function examNotesLocked(int $examenId): self
+    {
+        return new self(
+            self::EXAM_NOTES_LOCKED,
+            'Les notes de cet examen sont verrouillées. Seul le déverrouillage de l’examen permet de les modifier.',
+            ['examen_planifie_id' => $examenId],
             409,
         );
     }

@@ -66,7 +66,7 @@
                                             @forelse($etudiant->inscriptions->where('status', 'active') as $inscription)
                                                 <li class="list-group-item d-flex justify-content-between align-items-center">
                                                     {{ $inscription->filiere->name ?? 'N/A' }} - {{ $inscription->niveauEtude->name ?? 'N/A' }}
-                                                    <span class="badge badge-primary">{{ $inscription->anneeUniversitaire->libelle ?? 'N/A' }}</span>
+                                                    <span class="badge badge-primary">{{ $inscription->anneeUniversitaire->display_name ?? 'N/A' }}</span>
                                                 </li>
                                             @empty
                                                 <li class="list-group-item">Aucune inscription active</li>
@@ -110,7 +110,7 @@
                                                         <br><small class="text-muted">{{ $paiement->tranche }}</small>
                                                     @endif
                                                 </td>
-                                                <td>{{ $paiement->inscription->anneeUniversitaire->libelle }}</td>
+                                                <td>{{ $paiement->inscription->anneeUniversitaire->display_name }}</td>
                                                 <td>{{ $paiement->mode_paiement }}</td>
                                                 <td>
                                                     <span class="badge badge-{{ $paiement->status_class }}">

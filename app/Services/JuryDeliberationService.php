@@ -147,10 +147,36 @@ class JuryDeliberationService
     /**
      * Applique en bulk les decisions auto pour tous les etudiants concernes par ce jury.
      * Idempotent : ne recree pas une decision deja presente sauf si override=false.
+     *
+     * @return int le nombre de décisions écrites
      */
     public function appliquerDecisionsAuto(ESBTPLMDJury $jury): int
     {
-        return DB::transaction(function () use ($jury): int {
+        return $this->appliquerDecisionsAutoDetaillees($jury)['ecrites'];
+    }
+
+    /**
+     * Le calcul automatique, avec ce qu'il a volontairement laissé de côté.
+     *
+     * Deux gardes, ajoutées après l'audit du 25 septembre 2026 :
+     *  - le QUORUM avant toute écriture. Quatre décisions avaient été écrites
+     *    sur un jury sans président, et le jury était passé « en cours » ;
+     *  - un dossier sans moyenne ou sans crédits n'a PAS de décision
+     *    automatique. Il recevait « déféré au rectorat », une décision réelle et
+     *    lourde, là où il n'y avait qu'une donnée manquante. Il est désormais
+     *    rendu comme « dossier incomplet », et le jury tranche à la main s'il le
+     *    faut (avec motif).
+     *
+     * @return array{ecrites:int, incompletes: list<array{etudiant_id:int, nom:string, raison:string}>}
+     */
+    public function appliquerDecisionsAutoDetaillees(ESBTPLMDJury $jury): array
+    {
+        $quorum = $this->verifierQuorum($jury);
+        if (! $quorum['ok']) {
+            throw new \LogicException('Quorum non atteint : '.implode(', ', $quorum['reasons']).'. Complétez la composition du jury avant de calculer les décisions.');
+        }
+
+        return DB::transaction(function () use ($jury): array {
             $lockedJury = $this->lockMutableJury($jury->id, true);
             $students = $this->getEtudiantsForJury($lockedJury)->sortBy('id')->values();
             $existing = ESBTPLMDJuryDecision::query()
@@ -160,6 +186,7 @@ class JuryDeliberationService
                 ->get()
                 ->keyBy('etudiant_id');
             $count = 0;
+            $incompletes = [];
 
             foreach ($students as $student) {
                 $decision = $existing->get($student->id);
@@ -170,6 +197,19 @@ class JuryDeliberationService
                     continue;
                 }
                 $calculation = $this->calculerDecisionAuto($student, $lockedJury);
+
+                if ($raison = $this->raisonDIncompletude($calculation)) {
+                    // Une décision automatique antérieure, calculée quand les
+                    // données existaient, ne doit pas survivre à leur retrait.
+                    $decision?->delete();
+                    $incompletes[] = [
+                        'etudiant_id' => (int) $student->id,
+                        'nom' => trim(($student->nom ?? '').' '.($student->prenoms ?? '')),
+                        'raison' => $raison,
+                    ];
+                    continue;
+                }
+
                 $attributes = $this->attributsDeDecision($calculation);
                 if ($decision) {
                     $decision->forceFill($attributes)->save();
@@ -181,8 +221,25 @@ class JuryDeliberationService
                 }
                 $count++;
             }
-            return $count;
+
+            return ['ecrites' => $count, 'incompletes' => $incompletes];
         });
+    }
+
+    /** Pourquoi un dossier ne peut pas recevoir de décision automatique, ou null. */
+    private function raisonDIncompletude(array $calculation): ?string
+    {
+        if (($calculation['bulletin_id'] ?? null) === null) {
+            return 'Aucun bulletin généré pour la période délibérée.';
+        }
+        if ($calculation['moyenne'] === null) {
+            return 'Moyenne non calculée : aucune note retenue.';
+        }
+        if ($calculation['credits_obtenus'] === null || $calculation['credits_attendus'] === null) {
+            return 'Crédits absents du bulletin.';
+        }
+
+        return null;
     }
 
     /**
@@ -571,6 +628,41 @@ class JuryDeliberationService
         });
     }
 
+    /**
+     * Un jury se compose presque toujours des mêmes personnes d'une session à
+     * l'autre : on reprend celles du dernier jury du même parcours (ou de la
+     * même classe), à défaut du dernier jury de l'établissement. Les membres
+     * repris restent modifiables et retirables tant que le PV n'est pas généré.
+     */
+    public function reprendreLaDerniereComposition(ESBTPLMDJury $jury): int
+    {
+        $precedents = ESBTPLMDJury::query()
+            ->where('id', '!=', $jury->id)
+            ->whereHas('membres');
+
+        $source = null;
+        if ($jury->parcours_id || $jury->classe_id) {
+            $source = (clone $precedents)
+                ->where(fn ($q) => $q
+                    ->when($jury->parcours_id, fn ($w) => $w->orWhere('parcours_id', $jury->parcours_id))
+                    ->when($jury->classe_id, fn ($w) => $w->orWhere('classe_id', $jury->classe_id)))
+                ->latest('id')
+                ->first();
+        }
+        $source ??= $precedents->latest('id')->first();
+        if (! $source) {
+            return 0;
+        }
+
+        $repris = 0;
+        foreach ($source->membres()->whereHas('user', fn ($u) => $u->where('is_active', true))->get() as $membre) {
+            $this->addOrUpdateMembre($jury, ['user_id' => $membre->user_id, 'role' => $membre->role]);
+            $repris++;
+        }
+
+        return $repris;
+    }
+
     public function addOrUpdateMembre(ESBTPLMDJury $jury, array $attributes): ESBTPLMDJuryMembre
     {
         return DB::transaction(function () use ($jury, $attributes): ESBTPLMDJuryMembre {
@@ -698,9 +790,23 @@ class JuryDeliberationService
     {
         $etudiantIds = ESBTPLMDBulletin::query()
             ->forJury($jury)
-            ->pluck('etudiant_id')
-            ->unique()
-            ->values();
+            ->pluck('etudiant_id');
+
+        // Un jury de classe délibère sur les INSCRITS de la classe, pas sur ceux
+        // qui ont déjà un bulletin : un inscrit sans bulletin était absent de la
+        // délibération sans que personne le voie. Il y entre désormais, et
+        // ressort « dossier incomplet ».
+        if ($jury->classe_id) {
+            $etudiantIds = $etudiantIds->merge(
+                \App\Models\ESBTPInscription::query()
+                    ->where('classe_id', $jury->classe_id)
+                    ->where('annee_universitaire_id', $jury->annee_universitaire_id)
+                    ->where('status', 'active')
+                    ->pluck('etudiant_id')
+            );
+        }
+
+        $etudiantIds = $etudiantIds->filter()->unique()->values();
         if ($etudiantIds->isEmpty()) {
             return collect();
         }

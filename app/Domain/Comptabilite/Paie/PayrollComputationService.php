@@ -91,6 +91,7 @@ class PayrollComputationService
         $summary = $this->hours->summary($teacher, $from, $to);
 
         // Gains : heures réalisées facturables (CM/TD/TP) × taux du type.
+        $avertissements = [];
         $gains = [];
         $base = 0.0;
         $heuresTotal = 0.0;
@@ -101,6 +102,15 @@ class PayrollComputationService
             }
             $type = TypeSeance::tryFrom($pt['type']) ?? TypeSeance::AUTRE;
             $taux = $teacher->tauxPour($type);
+            if ($taux <= 0) {
+                // Des heures faites mais aucun taux : la ligne vaudrait 0 sans
+                // que personne ne le voie. On la garde, et on le dit.
+                $avertissements[] = sprintf(
+                    'Taux horaire manquant pour %s : %s h réalisées ne sont pas rémunérées. Renseignez le taux sur la fiche de l’enseignant.',
+                    $pt['label'],
+                    rtrim(rtrim(number_format($pt['heures_realisees'], 2, ',', ' '), '0'), ',')
+                );
+            }
             $montant = round($pt['heures_realisees'] * $taux, 2);
             $base += $montant;
             $heuresTotal += $pt['heures_realisees'];
@@ -171,6 +181,16 @@ class PayrollComputationService
         $totalRetenues = round(array_sum(array_column($retenues, 'montant')), 2);
         $net = round($brut - $totalRetenues, 2);
 
+        $netNegatifMessage = null;
+        if ($net < 0) {
+            $netNegatifMessage = 'Les retenues ('.number_format($totalRetenues, 0, ',', ' ').' FCFA) dépassent le brut ('
+                .number_format($brut, 0, ',', ' ').' FCFA) : le net serait négatif. Réduisez les retenues ou reportez-les sur un autre mois.';
+            $avertissements[] = $netNegatifMessage;
+        }
+        if ($heuresTotal <= 0 && $primesTotal <= 0) {
+            $avertissements[] = 'Aucune heure réalisée sur la période : vérifiez les émargements avant de préparer ce bulletin.';
+        }
+
         return [
             'periode'          => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
             'heures_total'     => round($heuresTotal, 2),
@@ -184,6 +204,9 @@ class PayrollComputationService
             'cnps'             => $cnps,
             'total_retenues'   => $totalRetenues,
             'net'              => $net,
+            'net_negatif'      => $net < 0,
+            'net_negatif_message' => $netNegatifMessage,
+            'avertissements'   => $avertissements,
             'lignes'           => array_merge($gains, $retenues),
         ];
     }

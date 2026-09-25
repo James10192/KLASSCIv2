@@ -894,6 +894,12 @@ return [
         ],
 
         // ===== Présences =====
+        'emargement.prolongation.decide' => [
+            'label' => 'Accorder ou refuser la prolongation d’un cours',
+            'description' => 'Décide des demandes de prolongation des enseignants, après contrôle des conflits (classe, salle, autre cours de l’enseignant)',
+            'group' => 'Présences',
+            'icon' => 'fa-clock-rotate-left',
+        ],
         'attendances.view' => [
             'label' => 'Voir les présences',
             'group' => 'Présences',
@@ -1591,6 +1597,12 @@ return [
             'label' => 'Verrouiller les notes d\'un examen (anti-tampering)',
             'group' => 'LMD',
             'icon' => 'fa-lock',
+        ],
+        'lmd.examens.anonymat.lever' => [
+            'label' => 'Lever l’anonymat des copies d’un examen',
+            'description' => 'Fait apparaître les noms à la place des numéros d’anonymat dans la saisie des notes ; la levée est datée et nominative',
+            'group' => 'LMD',
+            'icon' => 'fa-mask',
         ],
 
         // ===== Rattrapage LMD (PR10 — sessions 2e session) =====
@@ -2351,6 +2363,7 @@ return [
         ],
 
         'coordinateur' => [
+            'emargement.prolongation.decide',
             'admin.access', 'dashboard.view',
             'students.view', 'students.view_own',
             'students.create', 'students.edit', 'students.delete',
@@ -2385,7 +2398,7 @@ return [
             'session_reports.view',
             'planning.view', 'planning.edit', 'planning.manage',
             'lmd.planning.view', 'lmd.planning.edit',
-            'lmd.examens.view', 'lmd.examens.manage', 'lmd.examens.notes_lock',
+            'lmd.examens.view', 'lmd.examens.manage', 'lmd.examens.notes_lock', 'lmd.examens.anonymat.lever',
             'lmd.rattrapage.view', 'lmd.rattrapage.manage',
             'lmd.credit_wallet.view',
             'lmd.jury.view', 'lmd.jury.preside', 'lmd.jury.deliberate', 'lmd.jury.publish',
@@ -2430,6 +2443,7 @@ return [
         ],
 
         'directeurEtudes' => [
+            'emargement.prolongation.decide',
             'dashboard.view',
             'students.view', 'students.view_own',
             'students.accessibility.view', 'students.accessibility.view_full',

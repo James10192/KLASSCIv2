@@ -349,7 +349,7 @@
                 <p class="header-subtitle">Interface coordinateur — génération et gestion des codes quotidiens</p>
             </div>
             <div class="header-actions">
-                <span style="background:rgba(255,255,255,0.15);color:#fff;padding:0.4rem 0.9rem;border-radius:var(--radius-medium);font-size:0.85rem;display:flex;align-items:center;gap:0.4rem;">
+                <span style="background:rgba(4,83,203,.08);color:#0453cb;border:1px solid rgba(4,83,203,.18);padding:0.4rem 0.9rem;border-radius:var(--radius-medium);font-size:0.85rem;font-weight:600;display:flex;align-items:center;gap:0.4rem;">
                     <i class="fas fa-calendar"></i>{{ now()->format('d/m/Y') }}
                 </span>
             </div>
@@ -413,7 +413,7 @@
                                 <div class="acode-info-icon orange"><i class="fas fa-hourglass-half"></i></div>
                                 <div>
                                     <div class="acode-info-label">Expiration</div>
-                                    <div class="acode-info-value">{{ $activeCode->valid_until->format('H:i') }}</div>
+                                    <div class="acode-info-value">{{ $activeCode->valid_until->isToday() ? $activeCode->valid_until->format('H:i') : $activeCode->valid_until->format('d/m H:i') }}</div>
                                     <div class="acode-info-extra">{{ $activeCode->valid_until->format('d/m/Y') }}</div>
                                 </div>
                             </div>

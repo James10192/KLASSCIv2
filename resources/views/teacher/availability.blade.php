@@ -11,17 +11,17 @@
     }
 
     .availability-header {
-        background: linear-gradient(135deg, var(--primary), var(--accent-blue));
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
         color: white;
-        padding: var(--space-xl);
-        border-radius: var(--radius-medium);
+        padding: 2rem 2.5rem 1.75rem;
+        border-radius: 18px;
         margin-bottom: var(--space-lg);
         box-shadow: var(--shadow-medium);
     }
 
     .availability-header h1 {
         margin: 0;
-        font-size: 2.5rem;
+        font-size: 1.45rem;
         font-weight: 700;
     }
 
@@ -106,9 +106,9 @@
     }
     
     .btn-cancel-availability {
-        background: var(--danger);
-        color: white;
-        border: none;
+        background: #fff;
+        color: #0453cb;
+        border: 1px solid rgba(4, 83, 203, 0.3);
         padding: var(--space-sm) var(--space-md);
         border-radius: var(--radius-medium);
         font-size: 0.9rem;
@@ -121,9 +121,8 @@
     }
     
     .btn-cancel-availability:hover {
-        background: var(--danger-dark);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(var(--danger-rgb), 0.3);
+        background: rgba(4, 83, 203, 0.06);
+        border-color: #0453cb;
     }
 
     /* Grille de disponibilités - identique à la page admin */
@@ -303,22 +302,23 @@
     }
 
     .alert-info {
-        background-color: rgba(6, 182, 212, 0.1);
-        color: var(--accent-blue);
-        border: 1px solid rgba(6, 182, 212, 0.2);
+        background-color: rgba(4, 83, 203, 0.08);
+        color: #0453cb;
+        border: 1px solid rgba(4, 83, 203, 0.2);
     }
 
     /* Instructions d'utilisation */
     .instructions {
-        background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(16, 185, 129, 0.1));
-        border: 1px solid rgba(6, 182, 212, 0.2);
+        background: rgba(4, 83, 203, 0.05);
+        border: 1px solid rgba(4, 83, 203, 0.15);
         border-radius: var(--radius-medium);
         padding: var(--space-lg);
         margin-bottom: var(--space-lg);
     }
 
     .instructions h3 {
-        color: var(--accent-blue);
+        color: #0453cb;
+        font-size: 1.05rem;
         margin: 0 0 var(--space-md) 0;
         display: flex;
         align-items: center;
@@ -377,12 +377,11 @@
 
         <!-- Instructions -->
         <div class="instructions">
-            <h3><i class="fas fa-info-circle"></i> Instructions</h3>
+            <h3><i class="fas fa-info-circle"></i> Comment faire</h3>
             <ul>
-                <li>Cliquez sur <strong>"Modifier"</strong> pour activer le mode édition</li>
-                <li>Cliquez sur les créneaux pour changer votre disponibilité</li>
-                <li><strong>Non disponible</strong> → <strong>Disponible</strong> → <strong>Préféré</strong></li>
-                <li>Cliquez <strong>"Sauvegarder"</strong> pour enregistrer vos modifications</li>
+                <li>Cliquez sur une case pour passer de <strong>Non disponible</strong> à <strong>Disponible</strong>, puis à <strong>Préféré</strong>.</li>
+                <li><strong>« Ouvrir la semaine »</strong> rend disponibles d’un coup toutes les heures du lundi au vendredi ; retouchez ensuite les exceptions.</li>
+                <li>Pensez à <strong>Sauvegarder</strong> : rien n’est enregistré avant.</li>
             </ul>
         </div>
 
@@ -394,6 +393,10 @@
                     Grille de disponibilité
                 </div>
                 <div class="availability-actions">
+                    <button type="button" id="ouvrirSemaineBtn" class="btn-edit-availability" onclick="ouvrirLaSemaine()" style="display: none;" title="Lundi à vendredi, toutes les heures de la grille">
+                        <i class="fas fa-calendar-week me-1"></i>
+                        Ouvrir la semaine
+                    </button>
                     <button id="editAvailabilityBtn" class="btn-edit-availability" onclick="toggleEditMode()">
                         <i class="fas fa-edit me-1"></i>
                         <span class="edit-text">Modifier</span>
@@ -508,12 +511,16 @@ window.toggleEditMode = function() {
         editBtn.style.display = 'none';
         saveBtn.style.display = 'flex';
         cancelBtn.style.display = 'flex';
+        const ouvrirBtn = document.getElementById('ouvrirSemaineBtn');
+        if (ouvrirBtn) ouvrirBtn.style.display = 'flex';
         
         // Changer le style du header pour indiquer le mode édition
-        document.querySelector('.availability-main-section').style.background = 'linear-gradient(135deg, #fef3c7, #fde68a)';
+        document.querySelector('.availability-main-section').style.background = 'linear-gradient(135deg, #eef4ff, #dbe7fb)';
         
-        // Afficher un message d'aide
-        window.showNotification('Mode édition activé. Cliquez sur les créneaux pour modifier la disponibilité.', 'info');
+        // Afficher un message d'aide (pas à l'ouverture de la page, où il n'a rien appris)
+        if (!window.__ouvertureSilencieuse) {
+            window.showNotification('Mode édition activé. Cliquez sur les créneaux pour modifier la disponibilité.', 'info');
+        }
     } else {
         // Désactiver le mode édition
         slots.forEach(slot => {
@@ -524,6 +531,8 @@ window.toggleEditMode = function() {
         editBtn.style.display = 'flex';
         saveBtn.style.display = 'none';
         cancelBtn.style.display = 'none';
+        const ouvrirBtn = document.getElementById('ouvrirSemaineBtn');
+        if (ouvrirBtn) ouvrirBtn.style.display = 'none';
         
         document.querySelector('.availability-main-section').style.background = 'linear-gradient(135deg, #f8fafc, #e2e8f0)';
     }
@@ -568,6 +577,36 @@ window.toggleSlotStatus = function(slot) {
     // Marquer comme modifié
     window.modifiedSlots.add(slot.id);
 }
+
+/**
+ * Un enseignant tout juste créé est indisponible partout : cocher soixante
+ * cases une à une décourageait. On ouvre lundi-vendredi d'un coup, sans
+ * toucher aux créneaux déjà marqués « Préféré ».
+ */
+window.ouvrirLaSemaine = function() {
+    if (!window.isEditMode) window.toggleEditMode();
+    let ouverts = 0;
+    document.querySelectorAll('.availability-slot').forEach(slot => {
+        if (parseInt(slot.dataset.day, 10) > 4) return; // samedi exclu
+        if (!slot.classList.contains('unavailable')) return;
+        slot.classList.remove('unavailable');
+        slot.classList.add('available');
+        slot.textContent = '✓';
+        window.modifiedSlots.add(slot.id);
+        ouverts++;
+    });
+    window.showNotification(ouverts
+        ? ouverts + ' créneau(x) ouvert(s) du lundi au vendredi. Retouchez les exceptions puis sauvegardez.'
+        : 'Toute la semaine est déjà ouverte.', 'info');
+}
+
+// La page sert à modifier : on l'ouvre directement en édition.
+document.addEventListener('DOMContentLoaded', function () {
+    if (window.isEditMode || !document.getElementById('editAvailabilityBtn')) return;
+    window.__ouvertureSilencieuse = true;
+    window.toggleEditMode();
+    window.__ouvertureSilencieuse = false;
+});
 
 window.cancelEditMode = function() {
     if (!window.isEditMode) return;

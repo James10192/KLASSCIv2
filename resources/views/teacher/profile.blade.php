@@ -389,7 +389,7 @@ use Illuminate\Support\Facades\Storage;
                                 </a>
                             </div>
                             <div class="col-md-4">
-                                <a href="{{ route('esbtp.attendance.mark') }}" class="btn-acasi secondary" style="width: 100%; justify-content: center;">
+                                <a href="{{ route('esbtp.teacher-attendance.index') }}" class="btn-acasi secondary" style="width: 100%; justify-content: center;">
                                     <i class="fas fa-user-check"></i>
                                     Émargement
                                 </a>
