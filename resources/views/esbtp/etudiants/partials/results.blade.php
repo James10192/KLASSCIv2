@@ -319,7 +319,7 @@
 
 <!-- Vue Mobile : Cards Grid (visible ≤ 992px) -->
 <div class="mobile-view">
-    <div class="students-grid">
+    <div class="students-grid" id="etudiants-grid-mobile">
         @forelse ($etudiants as $etudiant)
             @php
                 $pendingInscription = $etudiant->pending_inscriptions->first();
@@ -548,6 +548,20 @@
             </div>
         @endforelse
     </div>
+
+    {{-- Seconde sentinelle : celle du tableau vit dans la vue bureau, cachee sous
+         992px, et un element cache ne croise jamais l'ecran. Sans elle, la grille
+         mobile s'arretait a sa premiere tranche. --}}
+    @if($etudiants->total() > 0)
+        <div id="etudiants-sentinel-mobile" style="padding: 1rem; text-align: center;">
+            <div class="eu-sentinel-spinner" style="display:none; align-items:center; justify-content:center; gap:.6rem; color:#0453cb; font-size:.85rem; font-weight:600;">
+                <i class="fas fa-spinner fa-spin"></i><span>Chargement...</span>
+            </div>
+            @if(! $etudiants->hasMorePages())
+                <div style="color:#64748b; font-size:.78rem; font-style:italic;">Toutes les {{ $etudiants->total() }} fiches affichées.</div>
+            @endif
+        </div>
+    @endif
 </div>
 
 {{-- Pagination Laravel remplacée par infinite scroll (sentinel ci-dessus, JS dans index) --}}

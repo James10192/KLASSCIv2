@@ -3845,6 +3845,10 @@
         function bindInfiniteScroll() {
             if (infiniteObserver) { infiniteObserver.disconnect(); infiniteObserver = null; }
             const sentinel = document.getElementById('etudiants-sentinel');
+            // La grille mobile a sa propre sentinelle : celle du tableau est cachee
+            // sous 992px et ne croise donc jamais l'ecran d'un telephone.
+            const sentinelMobile = document.getElementById('etudiants-sentinel-mobile');
+            const grilleMobile = document.getElementById('etudiants-grid-mobile');
             const tbody = document.getElementById('etudiants-tbody');
             if (!sentinel || !tbody) return;
             infiniteObserver = new IntersectionObserver(async (entries) => {
@@ -3852,7 +3856,7 @@
                     if (!entry.isIntersecting || infiniteLoading) continue;
                     if (tbody.dataset.hasMore !== '1') { infiniteObserver.disconnect(); continue; }
                     infiniteLoading = true;
-                    const spinner = sentinel.querySelector('.eu-sentinel-spinner');
+                    const spinner = entry.target.querySelector('.eu-sentinel-spinner');
                     if (spinner) spinner.style.display = 'flex';
                     try {
                         const nextPage = parseInt(tbody.dataset.nextPage || '2', 10);
@@ -3870,8 +3874,16 @@
                             tbody.dataset.nextPage = newTbody.dataset.nextPage || String(nextPage + 1);
                             tbody.dataset.currentPage = newTbody.dataset.currentPage || String(nextPage);
                         }
+                        const newGrille = tmp.querySelector('#etudiants-grid-mobile');
+                        if (newGrille && grilleMobile) {
+                            Array.from(newGrille.children)
+                                .filter((carte) => carte.classList.contains('student-card'))
+                                .forEach((carte) => grilleMobile.appendChild(carte));
+                        }
                         const newSentinel = tmp.querySelector('#etudiants-sentinel');
                         if (newSentinel) sentinel.innerHTML = newSentinel.innerHTML;
+                        const newSentinelMobile = tmp.querySelector('#etudiants-sentinel-mobile');
+                        if (newSentinelMobile && sentinelMobile) sentinelMobile.innerHTML = newSentinelMobile.innerHTML;
                         // Re-bind row click on new rows
                         bindRowClick();
                     } catch (e) {
@@ -3883,6 +3895,7 @@
                 }
             }, { rootMargin: '200px' });
             infiniteObserver.observe(sentinel);
+            if (sentinelMobile) infiniteObserver.observe(sentinelMobile);
         }
 
         function bindRowClick() {
