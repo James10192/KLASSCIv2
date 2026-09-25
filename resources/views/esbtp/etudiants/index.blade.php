@@ -681,9 +681,15 @@
     .etm-card--attente { border-left: 4px solid #f59e0b; }
 
     .etm-tete { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    /* Cadre fixe qui rogne : une regle globale impose height:auto aux images,
+       et une photo portrait debordait a 44 x 59. */
     .etm-avatar {
         width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-        object-fit: cover; object-position: center top; background: rgba(4,83,203,.08);
+        overflow: hidden; background: rgba(4,83,203,.08);
+    }
+    .etm-avatar > img {
+        display: block; width: 100%; height: 100%; min-height: 100%;
+        object-fit: cover; object-position: center 20%;
     }
     .etm-avatar--initiales {
         display: grid; place-items: center;

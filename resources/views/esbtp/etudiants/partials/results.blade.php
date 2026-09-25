@@ -404,7 +404,7 @@
             <article data-li-cle="{{ $etudiant->id }}" class="etm-card {{ $pendingInscription ? 'etm-card--attente' : '' }}">
                 <header class="etm-tete">
                     @if($etudiant->photo_url)
-                        <img src="{{ $etudiant->photo_url }}" alt="" class="etm-avatar" loading="lazy">
+                        <span class="etm-avatar"><img src="{{ $etudiant->photo_url }}" alt="" loading="lazy"></span>
                     @else
                         <span class="etm-avatar etm-avatar--initiales" aria-hidden="true">{{ $etmInitiales ?: '?' }}</span>
                     @endif
