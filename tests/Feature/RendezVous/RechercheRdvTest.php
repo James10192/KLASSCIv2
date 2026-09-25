@@ -267,7 +267,7 @@ class RechercheRdvTest extends TestCase
         $resa = $this->reinscription($eleve, 'KOUADIO', 'Yao Pierre', '+2250707070707');
         $this->rdv('TRAORE', 'Issa', 2);
 
-        foreach (['kouadio georges', 'MESBTP25-0368', '0368', '+225 05 00 50 82 92', '05 00 50 82 92'] as $saisie) {
+        foreach (['kouadio georges', 'MESBTP25-0368', '0368', '+225 05 00 50 82 92', '05 00 50 82 92', '+225 0500 50'] as $saisie) {
             $this->assertSame([$resa->id], $this->cles($this->chercher($saisie)), $saisie);
         }
     }

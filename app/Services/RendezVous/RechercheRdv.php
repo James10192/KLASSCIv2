@@ -346,6 +346,18 @@ class RechercheRdv
         $parties = PhoneNormalizer::decomposer($q);
         if ($parties !== null && $parties['indicatif'] !== null && strlen($parties['national']) >= 4) {
             $variantes[] = $parties['national'];
+        } else {
+            // Un debut de numero (« +225 0500 50 ») n'est pas un numero valide,
+            // et decomposer() le refuse. On retire quand meme l'indicatif de
+            // l'instance, pour chercher ce debut dans la fiche de l'eleve.
+            $indicatif = PhoneNormalizer::indicatifNationalParDefaut();
+            $international = str_starts_with(ltrim($q), '+') || str_starts_with($chiffres, '00');
+            foreach (['00'.$indicatif, $indicatif] as $prefixe) {
+                if ($international && str_starts_with($chiffres, $prefixe) && strlen($chiffres) - strlen($prefixe) >= 4) {
+                    $variantes[] = substr($chiffres, strlen($prefixe));
+                    break;
+                }
+            }
         }
 
         return array_values(array_unique($variantes));
@@ -413,7 +425,8 @@ class RechercheRdv
     /**
      * Le repli, seulement quand l'exact ne rend rien : SQL reunit les
      * candidats plausibles (un mot, ou le debut d'un mot long, suffit), puis
-     * FuzzyNameMatcher les juge avec la regle de la liste des etudiants.
+     * FuzzyNameMatcher les juge avec le meme calcul de score que la liste des
+     * etudiants, mais un seuil propre (SEUIL_APPROCHANT, 70 ici contre 35 la-bas).
      *
      * @return list<int>
      */

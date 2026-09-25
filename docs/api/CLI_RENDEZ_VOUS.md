@@ -62,7 +62,7 @@ Mêmes règles que l'écran « Retrouver un rendez-vous » (`App\Services\Rendez
     "autres_eleves_sans_rendez_vous": false } }
 ```
 
-Le texte se compare comme la liste des étudiants (`FuzzyNameMatcher`) : accents,
+Le texte se compare avec le même calcul de score que la liste des étudiants (`FuzzyNameMatcher`, mais un seuil propre) : accents,
 apostrophes, tirets et ordre des noms n'y font rien. Si aucun rendez-vous ne répond
 exactement, la liste propose les orthographes voisines (score ≥ 70 : une lettre de
 distance sur un nom tapé seul passe, deux non) et `approchant`
