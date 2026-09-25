@@ -89,7 +89,7 @@ class ESBTPExamenPlanifieController extends Controller
         $hasMixedSystemes = $systemesPresents->count() >= 2;
 
         if (ListeInfinie::demandee($request)) {
-            return ListeInfinie::reponse($examens, fn ($e) => view('esbtp.examens._ligne', compact('e', 'hasMixedSystemes'))->render());
+            return ListeInfinie::reponse($examens, fn ($e) => view('esbtp.examens._ligne', ['e' => $e, 'hasMixedSystemes' => $hasMixedSystemes])->render());
         }
 
         $kpis = $this->buildKpis($annee);
