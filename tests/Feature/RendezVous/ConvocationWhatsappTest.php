@@ -230,6 +230,20 @@ class ConvocationWhatsappTest extends TestCase
         $this->assertContains($r->id, $this->aAppeler(), 'Un refus renvoie la famille à l\'appel.');
     }
 
+    public function test_une_demande_mise_en_file_par_mailpulse_n_arrete_pas_le_lot(): void
+    {
+        $this->allumer();
+        // Plafond du jour atteint ou heures de silence : MailPulse garde la demande.
+        Http::fake(['*' => Http::response(['accepted' => false, 'status' => 'queued', 'operation_id' => 'op_q', 'dispatch_state' => 'queued'], 202)]);
+        $r = $this->reservation();
+
+        $rapport = app(RelaisWhatsappConvocationRdv::class)->envoyerUnPaquet($this->agent->id);
+
+        $this->assertSame(1, $rapport['demandees']);
+        $this->assertNull($rapport['bloque'] ?? null);
+        $this->assertSame('op_q', $r->fresh()->whatsapp_operation_id);
+    }
+
     public function test_un_accord_deja_donne_part_tout_de_suite(): void
     {
         $this->allumer();

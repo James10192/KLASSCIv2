@@ -148,7 +148,9 @@ class MailPulseClient
 
         // Envoi soumis a consentement : la commande est gardee chez MailPulse
         // jusqu'a la reponse du destinataire, ou refusee net s'il a dit STOP.
-        if ($response->status() === 202 && ($body['status'] ?? null) === self::CONSENT_PENDING) {
+        // `queued` : MailPulse garde la demande pour plus tard (plafond du jour
+        // atteint ou heures de silence). Rien n'a echoue, les evenements suivront.
+        if ($response->status() === 202 && in_array($body['status'] ?? null, [self::CONSENT_PENDING, 'queued'], true)) {
             return new MailPulseResult(true, self::CONSENT_PENDING, 202, $requestHeader, $operationId, null, null, null, self::CONSENT_PENDING, false);
         }
 
