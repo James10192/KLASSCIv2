@@ -420,6 +420,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Plus aucun mot de passe du Service Technique dans le code** — les deux comptes de support d'African Digit Consulting étaient créés avec des mots de passe écrits en clair dans le dépôt, identiques sur chaque instance, et réaffichés par la commande d'installation. Ils se lisent désormais dans l'environnement de l'instance (`SERVICE_TECHNIQUE_PASSWORD`, `SERVICE_TECHNIQUE_BACKUP_PASSWORD`) ou se génèrent au hasard, affichés une seule fois à la création. Un compte existant garde son mot de passe : ceux créés avant ce changement doivent être renouvelés, les anciens restant lisibles dans l'historique.
 
 ### Corrections
+- **Annonces : les quatre indicateurs tiennent sur une ligne** (« Urgentes » était seul sur la sienne). **Codes d'émargement : la date du jour est lisible** (blanc sur blanc). **Rapport de présence : choix de la classe au sélecteur de la charte**, avec recherche.
 - **Téléphone : fiche enseignant lisible** (nom, boutons et indicateurs ne se chevauchent plus), **page du jury sans débordement** (tableaux défilables dans leur carte, onglets sur une ligne défilante, formulaire d'ajout de membre empilé).
 - **Rapport d'émargement des enseignants aux couleurs de la charte** : l'en-tête violet passe au bleu KLASSCI.
 - **Planning général : les compteurs « matières » et « enseignants » du bandeau restaient à 0** ou faux. Ils sont désormais comptés sur les séances programmées de l'année.

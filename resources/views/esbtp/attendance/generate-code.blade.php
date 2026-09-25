@@ -349,7 +349,7 @@
                 <p class="header-subtitle">Interface coordinateur — génération et gestion des codes quotidiens</p>
             </div>
             <div class="header-actions">
-                <span style="background:rgba(255,255,255,0.15);color:#fff;padding:0.4rem 0.9rem;border-radius:var(--radius-medium);font-size:0.85rem;display:flex;align-items:center;gap:0.4rem;">
+                <span style="background:rgba(4,83,203,.08);color:#0453cb;border:1px solid rgba(4,83,203,.18);padding:0.4rem 0.9rem;border-radius:var(--radius-medium);font-size:0.85rem;font-weight:600;display:flex;align-items:center;gap:0.4rem;">
                     <i class="fas fa-calendar"></i>{{ now()->format('d/m/Y') }}
                 </span>
             </div>
