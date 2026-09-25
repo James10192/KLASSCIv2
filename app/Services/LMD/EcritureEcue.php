@@ -31,7 +31,7 @@ class EcritureEcue
     public function ajouter(ESBTPUniteEnseignement $ue, int $portee, array $donnees): ?string
     {
         $pivot = $this->pivot($donnees);
-        $donnees = $this->avecLaCle($ue, $donnees);
+        $donnees = $this->avecLaCle($ue, $donnees, null, $portee);
 
         return DB::transaction(function () use ($ue, $portee, $donnees, $pivot) {
             $codeLibere = null;
@@ -84,7 +84,7 @@ class EcritureEcue
         if (isset($donnees['code']) && mb_strtoupper((string) $donnees['code']) === mb_strtoupper((string) $ecue->code_affiche)) {
             $donnees['code'] = $ecue->code;
         } else {
-            $donnees = $this->avecLaCle($ue, $donnees, (int) $ecue->id);
+            $donnees = $this->avecLaCle($ue, $donnees, (int) $ecue->id, $portee);
         }
 
         $maj = fn () => $ecue->update([
@@ -169,11 +169,17 @@ class EcritureEcue
      * cle suffixee du meme parcours : l'element imprime son code, sans
      * toucher a celui de l'autre parcours (CodeDeMaquette).
      */
-    private function avecLaCle(ESBTPUniteEnseignement $ue, array $donnees, ?int $saufMatiereId = null): array
+    private function avecLaCle(ESBTPUniteEnseignement $ue, array $donnees, ?int $saufMatiereId = null, int $portee = CompositionUe::COMMUN): array
     {
-        $suffixe = CodeDeMaquette::suffixe($ue->code);
-        if ($suffixe !== null && ! empty($donnees['code']) && empty($donnees['matiere_id'])) {
-            $donnees['code'] = $this->maquette->cleElementPropre((string) $donnees['code'], $ue, $suffixe, $saufMatiereId);
+        if (! empty($donnees['code']) && empty($donnees['matiere_id'])) {
+            $donnees['code'] = $this->maquette->resoudreElement(
+                $ue,
+                (string) $donnees['code'],
+                null,
+                $portee === CompositionUe::COMMUN ? null : $portee,
+                null,
+                $saufMatiereId
+            )['cle'];
         }
 
         return $donnees;

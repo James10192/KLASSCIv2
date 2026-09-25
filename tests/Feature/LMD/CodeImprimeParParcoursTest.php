@@ -181,6 +181,37 @@ class CodeImprimeParParcoursTest extends TestCase
         $this->assertSame('Génétique vegetale', ESBTPMatiere::where('code', 'AGR21031')->value('name'));
     }
 
+    public function test_une_coquille_se_corrige_depuis_le_formulaire_quand_un_seul_parcours_voit_l_element(): void
+    {
+        $acteur = $this->acteur();
+        $ue = ESBTPUniteEnseignement::where('code', 'AGR2103')->firstOrFail();
+
+        $this->actingAs($acteur)->putJson(route('esbtp.lmd.ue.update', $ue), [
+            'name' => $ue->name, 'code' => 'AGR2103', 'credit' => 4, 'type_ue' => 'fondamentale',
+            'ecues' => [['name' => 'Génétique végétale', 'code' => 'AGR21031', 'credit_ecue' => 2]],
+        ])->assertOk();
+
+        $this->assertSame('Génétique végétale', ESBTPMatiere::where('code', 'AGR21031')->value('name'));
+    }
+
+    public function test_l_import_refuse_de_renommer_une_ue_partagee_meme_depuis_le_parcours_de_sa_fiche(): void
+    {
+        $lpa = $this->parcoursSansMaquette('LPA', 'Productions Animales');
+        $ue = ESBTPUniteEnseignement::where('code', 'AGR2103')->firstOrFail();
+        app(ParcoursUeSyncService::class)->sync($lpa, [[
+            'id' => $ue->id, 'semestres' => [3], 'is_optional' => false, 'ordre' => 0,
+        ]], detachMissing: false);
+
+        try {
+            $this->import->import($this->maquette('LPV', 'Productions Vegetales', 'vegetale', nomUe: 'AUTRE INTITULE'));
+            $this->fail("L'import aurait renommé une UE que Productions Animales imprime aussi.");
+        } catch (ConflitDeMaquette $e) {
+            $this->assertContains('UE', collect($e->conflits())->pluck('type')->all());
+        }
+
+        $this->assertSame('AMELIORATION GENETIQUE ET REPRODUCTION', $ue->fresh()->name);
+    }
+
     private function acteur(): User
     {
         foreach (['admin.access', 'module.lmd.access', 'lmd.structure.view', 'lmd.structure.manage', 'lmd.structure.delete'] as $permission) {

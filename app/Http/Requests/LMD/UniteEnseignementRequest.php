@@ -144,6 +144,17 @@ class UniteEnseignementRequest extends FormRequest
         return $this->cle;
     }
 
+    /** Les donnees validees, le code remplace par sa cle interne. */
+    public function donneesAvecLaCle(): array
+    {
+        $donnees = $this->validated();
+        if (array_key_exists('code', $donnees) && $this->cle !== null) {
+            $donnees['code'] = $this->cle;
+        }
+
+        return $donnees;
+    }
+
     /**
      * Le code n'est unique que DANS un parcours (CodeDeMaquette).
      *
@@ -187,10 +198,12 @@ class UniteEnseignementRequest extends FormRequest
             ->when($ue, fn ($q) => $q->where('id', '!=', $ue->id))
             ->first(['id', 'name']);
         if ($prise) {
-            $validator->errors()->add('code', sprintf(
-                'Ce code est déjà celui de l\'UE « %s ». S\'il s\'agit d\'une autre UE, propre à un parcours, cochez « UE propre à ce parcours » et choisissez le parcours.',
-                $prise->name
-            ));
+            $validator->errors()->add('code', $this->boolean('propre_au_parcours')
+                ? sprintf('Ce parcours a déjà son UE propre « %s » sous ce code : modifiez-la plutôt que d\'en créer une seconde.', $prise->name)
+                : sprintf(
+                    'Ce code est déjà celui de l\'UE « %s ». S\'il s\'agit d\'une autre UE, propre à un parcours, cochez « UE propre à ce parcours » et choisissez le parcours.',
+                    $prise->name
+                ));
 
             return;
         }

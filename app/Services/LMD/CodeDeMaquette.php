@@ -110,45 +110,121 @@ class CodeDeMaquette
     }
 
     /**
-     * L'element sert-il ailleurs que dans cette unite, pour ce parcours ?
+     * L'element est-il vu ailleurs que par ce parcours, dans cette unite ?
      *
      * Le renommer depuis ici le renommerait aussi la-bas — c'est le renommage
-     * silencieux qui imprimait « Genetique vegetale » sur les releves de
-     * Productions Animales. Ailleurs, c'est :
+     * silencieux qui aurait imprime « Genetique animale » sur les releves de
+     * Productions Vegetales. Ailleurs, c'est :
      *  - une autre unite (pivot ou cle etrangere) ;
-     *  - dans cette unite, une ligne reservee a un autre parcours ;
-     *  - dans cette unite, la composition commune, si l'unite sert aussi un
-     *    autre parcours (quand `$parcoursId` est connu).
+     *  - dans cette unite, un autre parcours qui le VOIT : une ligne reservee
+     *    vaut pour son parcours, une ligne commune (ou la seule cle etrangere)
+     *    pour tous les parcours de l'unite.
+     *
+     * Sans parcours designe (formulaire d'UE), l'element est « ailleurs » des
+     * que deux parcours le voient. Un element importe pour un seul parcours se
+     * corrige donc librement : une ligne reservee n'est pas un autre usage.
      */
     public function servieAilleurs(int $matiereId, int $ueId, ?int $parcoursId = null): bool
     {
         $lignes = DB::table('esbtp_ue_matiere')->where('matiere_id', $matiereId)->get(['unite_enseignement_id', 'parcours_id']);
-
-        if ($lignes->contains(fn ($l) => (int) $l->unite_enseignement_id !== $ueId)) {
-            return true;
-        }
-
         $cle = DB::table('esbtp_matieres')->where('id', $matiereId)->value('unite_enseignement_id');
-        if ($cle !== null && (int) $cle !== $ueId) {
+
+        if ($lignes->contains(fn ($l) => (int) $l->unite_enseignement_id !== $ueId)
+            || ($cle !== null && (int) $cle !== $ueId && $lignes->isEmpty())) {
             return true;
         }
 
-        $parcoursAdmis = [CompositionUe::COMMUN, (int) ($parcoursId ?? CompositionUe::COMMUN)];
-        if ($lignes->contains(fn ($l) => ! in_array((int) $l->parcours_id, $parcoursAdmis, true))) {
-            return true;
+        $parcoursDeLUnite = DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $ueId)
+            ->distinct()->pluck('parcours_id')->map(fn ($id) => (int) $id);
+
+        $voient = collect();
+        foreach ($lignes as $ligne) {
+            $voient = (int) $ligne->parcours_id === CompositionUe::COMMUN
+                ? $voient->merge($parcoursDeLUnite)
+                : $voient->push((int) $ligne->parcours_id);
+        }
+        if ($lignes->isEmpty() && (int) $cle === $ueId) {
+            $voient = $parcoursDeLUnite;
+        }
+        $voient = $voient->unique()->values();
+
+        return $parcoursId === null
+            ? $voient->count() > 1
+            : $voient->contains(fn ($id) => $id !== $parcoursId);
+    }
+
+    /**
+     * Ce qu'un code saisi pour un element de cette unite designe, et s'il faut
+     * refuser — la seule reponse du depot, pour l'import, le formulaire d'UE et
+     * la modale ECUE (trois copies divergeaient).
+     *
+     * 1. L'element de CETTE unite (pour ce parcours) qui imprime deja ce code :
+     *    c'est lui, quelle que soit sa cle. Un formulaire qui renvoie le code
+     *    imprime retrouve donc le bon element, pas celui de l'autre parcours.
+     * 2. Sinon, dans une unite propre a un parcours, une cle derivee.
+     * 3. Sinon, le code tel quel, et la matiere qui le porte peut-etre.
+     *
+     * `refus` est rempli quand l'element trouve a un autre intitule et qu'un
+     * autre parcours ou une autre unite le voit : l'ecrire le renommerait
+     * la-bas.
+     *
+     * @return array{cle: string, matiere: ?ESBTPMatiere, refus: ?string}
+     */
+    public function resoudreElement(
+        ESBTPUniteEnseignement $ue,
+        string $codeSaisi,
+        ?string $nom,
+        ?int $parcoursId = null,
+        ?string $suffixe = null,
+        ?int $saufMatiereId = null
+    ): array {
+        $suffixe ??= self::suffixe($ue->code);
+
+        $matiere = $this->elementDeLUnite($ue, $codeSaisi, $parcoursId, $saufMatiereId);
+        if ($matiere !== null) {
+            $cle = (string) $matiere->code;
+        } else {
+            $cle = $suffixe !== null
+                ? $this->cleElementPropre($codeSaisi, $ue, $suffixe, $saufMatiereId)
+                : $codeSaisi;
+            $matiere = ESBTPMatiere::where('code', $cle)
+                ->when($saufMatiereId, fn ($q) => $q->where('id', '!=', $saufMatiereId))
+                ->first();
         }
 
-        if ($parcoursId === null) {
-            return false;
+        $refus = null;
+        if ($matiere !== null && $nom !== null && ! self::memeIntitule($matiere->name, $nom)
+            && $this->servieAilleurs((int) $matiere->id, (int) $ue->id, $parcoursId)) {
+            $refus = sprintf(
+                "Le code « %s » est déjà celui de « %s », utilisé par un autre parcours ou une autre UE. "
+                . "L'enregistrer sous le nom « %s » le renommerait aussi là-bas. S'il s'agit d'un autre élément, "
+                . "créez une UE propre à ce parcours (case « Cette UE est propre à un parcours », ou \"propre_au_parcours\": true à l'import).",
+                self::affiche($matiere->code),
+                $matiere->name,
+                $nom
+            );
         }
 
-        $communeIci = $lignes->contains(fn ($l) => (int) $l->parcours_id === CompositionUe::COMMUN)
-            || ($lignes->isEmpty() && (int) $cle === $ueId);
+        return ['cle' => $cle, 'matiere' => $matiere, 'refus' => $refus];
+    }
 
-        return $communeIci && DB::table('esbtp_lmd_parcours_ue')
-            ->where('unite_enseignement_id', $ueId)
-            ->where('parcours_id', '!=', $parcoursId)
-            ->exists();
+    /** L'element de cette unite, vu par ce parcours, qui imprime ce code. */
+    private function elementDeLUnite(ESBTPUniteEnseignement $ue, string $codeSaisi, ?int $parcoursId, ?int $saufMatiereId): ?ESBTPMatiere
+    {
+        $lignes = DB::table('esbtp_ue_matiere')->where('unite_enseignement_id', $ue->id)->get(['matiere_id', 'parcours_id']);
+        $visibles = $lignes
+            ->filter(fn ($l) => $parcoursId === null || in_array((int) $l->parcours_id, [CompositionUe::COMMUN, $parcoursId], true))
+            ->pluck('matiere_id')->map(fn ($id) => (int) $id)->all();
+        $auPivot = $lignes->pluck('matiere_id')->map(fn ($id) => (int) $id)->all();
+
+        return ESBTPMatiere::where(fn ($q) => $q->whereIn('id', $visibles ?: [0])->orWhere('unite_enseignement_id', $ue->id))
+            ->when($saufMatiereId, fn ($q) => $q->where('id', '!=', $saufMatiereId))
+            ->get()
+            // La cle etrangere ne vaut que pour ce que le pivot ignore : un
+            // element reserve a un autre parcours la porte aussi (l'import ecrit
+            // les deux), il ne doit pas etre pris pour le notre.
+            ->filter(fn ($m) => in_array((int) $m->id, $visibles, true) || ! in_array((int) $m->id, $auPivot, true))
+            ->first(fn ($m) => $this->imprimeLeMeme($m->code, $codeSaisi));
     }
 
     /**

@@ -86,6 +86,24 @@ class LMDImportService
                 $propre = (bool) ($ueSpec['propre_au_parcours'] ?? false);
                 [$ue, $ueCreated] = $this->upsertUE($ueSpec, $parcours, $filiere, $niveau, $userId, $propre);
                 $stats[$ueCreated ? 'ues_attached' : 'ues_updated']++;
+
+                // Un parcours n'imprime jamais deux fois le meme code. Le
+                // rattachement le refuserait d'une exception ; on le range avec
+                // les autres conflits, pour que l'ecole les voie tous d'un coup.
+                if ($deja = $this->maquette->autreUniteDuParcours((int) $parcours->id, $ue->code, (int) $ue->id)) {
+                    $this->conflits[] = [
+                        'type' => 'UE',
+                        'code' => (string) CodeDeMaquette::affiche($ue->code),
+                        'detail' => sprintf(
+                            "Le parcours %s porte déjà l'UE « %s » sous le code %s. Retirez-la d'abord du parcours (« Lier à des parcours »).",
+                            $parcours->code,
+                            $deja->name,
+                            CodeDeMaquette::affiche($deja->code)
+                        ),
+                    ];
+
+                    continue;
+                }
                 // Une unite partagee garde le credit de sa fiche. Si cette maquette
                 // lui en donne un autre, il est a elle seule : sur le pivot.
                 $creditMaquette = (int) ($ueSpec['credit'] ?? 0);
@@ -293,25 +311,34 @@ class LMDImportService
         // pas. Ce qui lui est propre vit dans les pivots — son semestre et son
         // credit dans `esbtp_lmd_parcours_ue`, ses elements dans `esbtp_ue_matiere`
         // avec son `parcours_id` — et c est l appelant qui les y ecrit.
+        // Partager une unite dont l'intitule differe imprimerait celui d'un autre
+        // parcours sur ses releves. Le partage se lit sur la fiche ET sur le
+        // pivot : une unite dont la fiche nomme ce parcours peut etre rattachee
+        // a un autre (cas USAT, AGR2103 partagee). C'est le signe que l'ecole
+        // parle d'une AUTRE unite sous le meme code : elle doit le dire.
+        $partageeAilleurs = $existing !== null && (
+            ($existing->parcours_id !== null && (int) $existing->parcours_id !== (int) $parcours->id)
+            || DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $existing->id)
+                ->where('parcours_id', '!=', $parcours->id)->exists()
+        );
+        if ($partageeAilleurs && ! CodeDeMaquette::memeIntitule($existing->name, $data['name'] ?? null)) {
+            $this->conflits[] = [
+                'type' => 'UE',
+                'code' => (string) $code,
+                'detail' => sprintf(
+                    "Le code « %s » est déjà celui de l'UE « %s », utilisée par un autre parcours. Si « %s » est une autre unité propre à ce parcours, ajoutez \"propre_au_parcours\": true à cette UE.",
+                    CodeDeMaquette::affiche($code),
+                    $existing->name,
+                    $data['name'] ?? ''
+                ),
+            ];
+
+            return [$existing, false];
+        }
+
         if ($existing !== null
             && $existing->parcours_id !== null
             && (int) $existing->parcours_id !== (int) $parcours->id) {
-            // Partager une unite dont l'intitule differe imprimerait celui de
-            // l'autre parcours sur nos releves. C'est le signe que l'ecole parle
-            // d'une AUTRE unite sous le meme code : elle doit le dire.
-            if (! CodeDeMaquette::memeIntitule($existing->name, $data['name'] ?? null)) {
-                $this->conflits[] = [
-                    'type' => 'UE',
-                    'code' => (string) $code,
-                    'detail' => sprintf(
-                        "Le code « %s » est déjà celui de l'UE « %s » d'un autre parcours. Si « %s » est une autre unité propre à ce parcours, ajoutez \"propre_au_parcours\": true à cette UE.",
-                        $code,
-                        $existing->name,
-                        $data['name'] ?? ''
-                    ),
-                ];
-            }
-
             return [$existing, false];
         }
 
@@ -346,8 +373,18 @@ class LMDImportService
         ?ESBTPLMDParcours $parcoursPropre = null
     ): array {
         $code = $data['code'] ?? null;
-        if ($parcoursPropre !== null && $code !== null) {
-            $code = $this->maquette->cleElementPropre($code, $ue, CodeDeMaquette::suffixePour($parcoursPropre->code));
+        // Ce que ce code designe dans cette unite, pour ce parcours, et s'il
+        // faut refuser : la seule reponse du depot (CodeDeMaquette).
+        $resolution = null;
+        if ($code !== null) {
+            $resolution = $this->maquette->resoudreElement(
+                $ue,
+                $code,
+                $data['name'] ?? null,
+                $parcoursId === CompositionUe::COMMUN ? null : $parcoursId,
+                $parcoursPropre ? CodeDeMaquette::suffixePour($parcoursPropre->code) : null,
+            );
+            $code = $resolution['cle'];
         }
         // Un code tenu par une matiere supprimee faisait echouer l'insertion sur
         // l'index unique. On le libere ici ; la transaction de l'import annule
@@ -384,22 +421,10 @@ class LMDImportService
         }
 
         // Meme code, autre intitule, sur un element que voit aussi un autre
-        // parcours : le renommer ici le renommerait la-bas. C'est ce qui aurait
-        // imprime « Genetique animale » sur les releves de Productions
-        // Vegetales. On refuse, et on dit comment obtenir deux elements.
-        if ($existing !== null && ! $appartientAilleurs
-            && ! CodeDeMaquette::memeIntitule($existing->name, $data['name'] ?? null)
-            && $this->maquette->servieAilleurs((int) $existing->id, (int) $ue->id, $parcoursId === CompositionUe::COMMUN ? null : $parcoursId)) {
-            $this->conflits[] = [
-                'type' => 'ECUE',
-                'code' => (string) $code,
-                'detail' => sprintf(
-                    "Le code « %s » est déjà celui de l'élément « %s », utilisé par un autre parcours. L'importer sous le nom « %s » le renommerait aussi là-bas. Si c'est un autre élément, marquez son UE \"propre_au_parcours\": true.",
-                    $code,
-                    $existing->name,
-                    $data['name'] ?? ''
-                ),
-            ];
+        // parcours : le renommer ici le renommerait la-bas. On refuse, et on
+        // dit comment obtenir deux elements.
+        if ($existing !== null && ! $appartientAilleurs && ($resolution['refus'] ?? null) !== null) {
+            $this->conflits[] = ['type' => 'ECUE', 'code' => (string) $code, 'detail' => $resolution['refus']];
 
             return [$existing, false];
         }

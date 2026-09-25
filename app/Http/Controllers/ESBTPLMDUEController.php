@@ -232,7 +232,7 @@ class ESBTPLMDUEController extends Controller
      */
     public function store(UniteEnseignementRequest $request)
     {
-        $donnees = $this->avecLaCle($request);
+        $donnees = $request->donneesAvecLaCle();
 
         $ue = DB::transaction(function () use ($donnees, $request) {
             $ue = new ESBTPUniteEnseignement();
@@ -381,7 +381,7 @@ class ESBTPLMDUEController extends Controller
      */
     public function update(UniteEnseignementRequest $request, ESBTPUniteEnseignement $ue)
     {
-        $donnees = $this->avecLaCle($request);
+        $donnees = $request->donneesAvecLaCle();
 
         DB::transaction(function () use ($donnees, $request, $ue) {
             $ue->fill($this->attributsUe($donnees));
@@ -398,20 +398,6 @@ class ESBTPLMDUEController extends Controller
 
         return redirect()->route('esbtp.lmd.ue.show', $ue)
             ->with('success', $this->avecCodesLiberes('Unité d\'Enseignement mise à jour avec succès.'));
-    }
-
-    /**
-     * Les donnees validees, le code remplace par sa cle interne : suffixee du
-     * parcours pour une UE qui lui est propre (CodeDeMaquette).
-     */
-    private function avecLaCle(UniteEnseignementRequest $request): array
-    {
-        $donnees = $request->validated();
-        if (array_key_exists('code', $donnees) && $request->cle() !== null) {
-            $donnees['code'] = $request->cle();
-        }
-
-        return $donnees;
     }
 
     private function avecCodesLiberes(string $message): string
@@ -517,32 +503,19 @@ class ESBTPLMDUEController extends Controller
             // Une matière supprimée occupe toujours son code (l'index unique la
             // compte) : on le lui libère plutôt que de la ressusciter sous le nom
             // saisi, avec ses notes. Même règle que le modal et l'import.
-            // Une UE propre a un parcours donne a ses elements une cle suffixee
-            // du meme parcours quand leur code imprime est deja pris ailleurs
-            // (AGR21031 « Genetique animale » a cote de la vegetale).
-            $suffixe = CodeDeMaquette::suffixe($ue->code);
-            if ($suffixe !== null && $code !== null) {
-                $code = app(CodeDeMaquette::class)->cleElementPropre($code, $ue, $suffixe);
+            // Ce que ce code designe dans cette unite, et s'il faut refuser : le
+            // code imprime renvoye par le formulaire retrouve l'element de CETTE
+            // unite, pas celui d'un autre parcours (CodeDeMaquette).
+            $resolution = $code !== null ? app(CodeDeMaquette::class)->resoudreElement($ue, $code, $ligne['name'] ?? null) : null;
+            if ($resolution !== null && $resolution['refus'] !== null) {
+                throw \Illuminate\Validation\ValidationException::withMessages(["ecues.{$index}.code" => $resolution['refus']]);
             }
+            $code = $resolution['cle'] ?? $code;
             if ($message = $this->codes->libererSiArchive($code)) {
                 $this->codesLiberes[] = $message;
             }
             $matiere = $code ? ESBTPMatiere::where('code', $code)->first() : null;
             $existait = $matiere !== null;
-
-            // Meme code, autre intitule, sur un element qu'une autre unite ou un
-            // autre parcours utilise : le renommer ici le renommerait la-bas, en
-            // silence. On refuse et on dit comment obtenir deux elements.
-            if ($matiere && ! CodeDeMaquette::memeIntitule($matiere->name, $ligne['name'] ?? null)
-                && app(CodeDeMaquette::class)->servieAilleurs((int) $matiere->id, (int) $ue->id)) {
-                throw \Illuminate\Validation\ValidationException::withMessages(["ecues.{$index}.code" => sprintf(
-                    'Le code « %s » est déjà celui de « %s », utilisé ailleurs. L\'enregistrer sous le nom « %s » le renommerait aussi là-bas. '
-                    . 'S\'il s\'agit d\'un autre élément, propre à un parcours, créez une UE propre à ce parcours.',
-                    $matiere->code_affiche,
-                    $matiere->name,
-                    $ligne['name'] ?? ''
-                )]);
-            }
 
             // Reprendre le code d'un element deja rattache a une AUTRE unite ne
             // doit pas le lui retirer. Sans ligne de pivot, cette unite-la lit

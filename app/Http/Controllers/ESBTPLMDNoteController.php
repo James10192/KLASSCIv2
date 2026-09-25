@@ -106,7 +106,7 @@ class ESBTPLMDNoteController extends Controller
                 ->flatMap(fn ($ue) => $ue->matieres->map(fn ($m) => [
                     'id' => $m->id,
                     'name' => $m->name,
-                    'code' => $m->code,
+                    'code' => $m->code_affiche,
                     'ue_name' => $ue->name,
                     'ue_code' => $ue->code_affiche,
                 ]))

@@ -3738,7 +3738,7 @@
                         <tr style="background:#f0fdf4; font-weight:600;">
                             <td style="padding:.55rem .75rem;">
                                 <i class="fas fa-folder-open" style="color:#059669; font-size:.7rem; margin-right:.35rem;"></i>
-                                {{ $ue?->code ?? '' }} — {{ $ue?->name ?? 'UE inconnue' }}
+                                {{ $ue?->code_affiche ?? '' }} — {{ $ue?->name ?? 'UE inconnue' }}
                             </td>
                             <td style="text-align:center; font-weight:700; color:{{ $resUE->moyenne >= 10 ? '#059669' : '#ef4444' }};">{{ $resUE->moyenne !== null ? number_format($resUE->moyenne, 2) : '—' }}</td>
                             <td style="text-align:center; font-weight:700;">{{ $resUE->credit ?? '—' }}</td>
@@ -3747,7 +3747,7 @@
                         </tr>
                         @foreach($_bul->resultatsECUEs->where('resultat_ue_id', $resUE->id)->sortBy(fn($e) => $e->matiere?->code ?? '') as $resECUE)
                             <tr style="font-size:.8rem;">
-                                <td style="padding:.4rem .75rem .4rem 2.5rem; color:#475569;"><i class="fas fa-file-alt" style="font-size:.6rem; color:#94a3b8; margin-right:.3rem;"></i>{{ $resECUE->matiere?->code ?? '' }} — {{ $resECUE->matiere?->name ?? '—' }}</td>
+                                <td style="padding:.4rem .75rem .4rem 2.5rem; color:#475569;"><i class="fas fa-file-alt" style="font-size:.6rem; color:#94a3b8; margin-right:.3rem;"></i>{{ $resECUE->matiere?->code_affiche ?? '' }} — {{ $resECUE->matiere?->name ?? '—' }}</td>
                                 <td style="text-align:center; color:{{ ($resECUE->moyenne ?? 0) >= 10 ? '#059669' : '#ef4444' }}; font-weight:600;">{{ $resECUE->moyenne !== null ? number_format($resECUE->moyenne, 2) : '—' }}</td>
                                 <td style="text-align:center;">{{ $resECUE->credit ?? '—' }}</td>
                                 <td style="text-align:center; font-size:.72rem; color:#94a3b8;">—</td>
