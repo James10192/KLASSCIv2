@@ -35,29 +35,62 @@ final class ApercuDuPilotage
         private readonly PresenceDuPerimetre $presence,
     ) {}
 
+    /** Au plus autant de périodes essayées quand la page choisit seule. */
+    private const PERIODES_ESSAYEES = 3;
+
     /**
-     * La période ouverte par défaut : celle de la dernière évaluation passée.
+     * Les périodes des évaluations passées de l'année, la plus récente d'abord.
+     * Une période que le normaliseur refuse est ignorée.
      *
-     * Déduite des données, pas du calendrier : une école qui commence son
-     * second semestre en janvier et une autre qui le commence en mars ne
-     * tombent pas au même mois.
+     * @return list<string>
      */
-    public function periodeCourante(int $anneeId, ?Collection $classesAutorisees): string
+    public function periodesRecentes(int $anneeId, ?Collection $classesAutorisees): array
     {
-        $brute = DB::table('esbtp_evaluations')
+        return DB::table('esbtp_evaluations')
             ->where('annee_universitaire_id', $anneeId)
             ->whereNull('deleted_at')
             ->where('status', '!=', 'cancelled')
             ->where('date_evaluation', '<=', now())
+            ->whereNotNull('periode')
             ->when($classesAutorisees !== null, fn ($q) => $q->whereIn('classe_id', $classesAutorisees))
-            ->orderByDesc('date_evaluation')
-            ->value('periode');
+            ->groupBy('periode')
+            ->orderByRaw('MAX(date_evaluation) DESC')
+            ->pluck('periode')
+            ->map(function ($brute) {
+                try {
+                    return $this->periodes->normalize((string) $brute);
+                } catch (\InvalidArgumentException) {
+                    return null;
+                }
+            })
+            ->filter()->unique()->values()->all();
+    }
 
-        try {
-            return $brute ? $this->periodes->normalize($brute) : 'semestre1';
-        } catch (\InvalidArgumentException) {
-            return 'semestre1';
+    /**
+     * La page s'ouvre sur la période la plus récente QUI ATTEND DES NOTES.
+     *
+     * Prendre celle de la dernière évaluation passée ne suffit pas : sur une
+     * instance mixte, une seule évaluation LMD de semestre 3 faisait ouvrir la
+     * page sur un constat vide, pendant que le semestre 1 comptait trente notes
+     * manquantes. On essaie les périodes récentes dans l'ordre, et la première
+     * qui attend des notes l'emporte ; sans aucune, la plus récente.
+     *
+     * @return array{periode: string, donnees: array<string, mixed>}
+     */
+    public function choisirLaPeriode(int $anneeId, ?string $systeme, ?int $classeId, ?Collection $classesAutorisees): array
+    {
+        $candidates = array_slice($this->periodesRecentes($anneeId, $classesAutorisees), 0, self::PERIODES_ESSAYEES) ?: ['semestre1'];
+        $premier = null;
+
+        foreach ($candidates as $periode) {
+            $donnees = $this->construire($anneeId, $periode, $systeme, $classeId, $classesAutorisees);
+            $premier ??= ['periode' => $periode, 'donnees' => $donnees];
+            if (($donnees['kpis']['notes_attendues'] ?? 0) > 0) {
+                return ['periode' => $periode, 'donnees' => $donnees];
+            }
         }
+
+        return $premier;
     }
 
     /**
