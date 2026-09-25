@@ -114,6 +114,13 @@ class JournalAuditDefilementTest extends TestCase
         $this->assertCount(3, $m[0]);
     }
 
+    public function test_l_auteur_d_un_compte_supprime_n_est_pas_le_systeme(): void
+    {
+        $this->audit(['user_id' => 999999]);
+
+        $this->assertStringContainsString('Compte supprimé', (string) $this->tranche()->json('rows_html'));
+    }
+
     public function test_une_consultation_heritee_n_apparait_nulle_part(): void
     {
         DB::table('audits')->delete();

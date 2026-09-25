@@ -100,7 +100,7 @@ class ESBTPAuditController extends Controller
         // La vie de l'objet autour de cette action : les quinze d'avant, celle-ci
         // et les quinze d'apres. Au-dela, « Voir toute son histoire » ouvre le
         // journal filtre sur l'objet.
-        $memeObjet = fn () => Audit::with('user.roles:id,name')
+        $memeObjet = fn () => FiltresDuJournal::sansConsultationsHeritees(Audit::with('user.roles:id,name'))
             ->where('auditable_type', $audit->auditable_type)->where('auditable_id', $audit->auditable_id);
         $avant = $memeObjet()->where('id', '<', $audit->id)->orderByDesc('id')->limit(self::VIE_DE_CHAQUE_COTE)->get();
         $apres = $memeObjet()->where('id', '>', $audit->id)->orderBy('id')->limit(self::VIE_DE_CHAQUE_COTE)->get();
