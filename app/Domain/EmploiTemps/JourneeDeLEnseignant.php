@@ -5,6 +5,7 @@ namespace App\Domain\EmploiTemps;
 use App\Models\ESBTPAttendance;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPSeanceCours;
+use App\Models\ESBTPSessionWorkflow;
 use App\Models\ESBTPTeacherAttendance;
 use App\Models\User;
 use Carbon\Carbon;
@@ -58,9 +59,15 @@ final class JourneeDeLEnseignant
             ->distinct()
             ->pluck('seance_cours_id')
             ->flip();
+        // La condition même de sign() pour l'émargement de fin.
+        $appelsDeDebut = ESBTPSessionWorkflow::where('teacher_id', $user->id)
+            ->whereIn('seance_cours_id', $ids)
+            ->where('call_start_done', true)
+            ->pluck('seance_cours_id')
+            ->flip();
 
         return $seances
-            ->map(fn (ESBTPSeanceCours $s) => $this->decrire($s, $emargements->get($s->id, collect()), isset($appels[$s->id]), $maintenant))
+            ->map(fn (ESBTPSeanceCours $s) => $this->decrire($s, $emargements->get($s->id, collect()), isset($appels[$s->id]), isset($appelsDeDebut[$s->id]), $maintenant))
             ->filter()
             ->sortBy(fn (CoursDuJour $c) => $c->debut->timestamp)
             ->values();
@@ -107,7 +114,7 @@ final class JourneeDeLEnseignant
             }
         }
 
-        foreach ($evaluationsANoter as $evaluation) {
+        foreach ($evaluationsANoter->take(5) as $evaluation) {
             $file[] = [
                 'rang' => 5,
                 'ton' => 'primary',
@@ -115,7 +122,7 @@ final class JourneeDeLEnseignant
                 'titre' => 'Saisir les notes — '.($evaluation->titre ?: ($evaluation->matiere->name ?? 'Évaluation')),
                 'detail' => trim(($evaluation->classe->name ?? '').' · passée le '.optional($evaluation->date_evaluation)->format('d/m'), ' ·'),
                 'action' => 'Saisir',
-                'url' => route('teacher.grades'),
+                'url' => route('teacher.grades', ['evaluation' => $evaluation->id]),
             ];
         }
 
@@ -126,6 +133,9 @@ final class JourneeDeLEnseignant
 
     /**
      * Évaluations passées de l'année en cours, sans aucune note saisie.
+     *
+     * Rend jusqu'à `$limite + 1` lignes : la dernière dit seulement qu'il y en
+     * a davantage, pour que l'écran affiche « 5+ » à bon escient.
      *
      * @return Collection<int, ESBTPEvaluation>
      */
@@ -143,7 +153,7 @@ final class JourneeDeLEnseignant
             ->whereDoesntHave('notes')
             ->with(['matiere:id,name', 'classe:id,name'])
             ->orderBy('date_evaluation')
-            ->limit($limite)
+            ->limit($limite + 1)
             ->get();
     }
 
@@ -194,7 +204,7 @@ final class JourneeDeLEnseignant
             ->values();
     }
 
-    private function decrire(ESBTPSeanceCours $s, Collection $emargements, bool $appelFait, Carbon $maintenant): ?CoursDuJour
+    private function decrire(ESBTPSeanceCours $s, Collection $emargements, bool $appelFait, bool $finAutorisee, Carbon $maintenant): ?CoursDuJour
     {
         $hDebut = HeureDeSeance::hi($s->getAttributes()['heure_debut'] ?? null);
         $hFin = HeureDeSeance::hi($s->getAttributes()['heure_fin'] ?? null);
@@ -219,6 +229,7 @@ final class JourneeDeLEnseignant
             emargementDebut: $emDebut,
             emargementFin: $emFin,
             appelFait: $appelFait,
+            finAutorisee: $finAutorisee,
             etat: $this->etat($debut, $finOuverture, $finFermeture, $emDebut, $emFin, $maintenant),
         );
     }

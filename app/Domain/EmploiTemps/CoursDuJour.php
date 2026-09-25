@@ -39,6 +39,7 @@ final class CoursDuJour
         public readonly ?ESBTPTeacherAttendance $emargementDebut,
         public readonly ?ESBTPTeacherAttendance $emargementFin,
         public readonly bool $appelFait,
+        public readonly bool $finAutorisee,
         public readonly string $etat,
     ) {
     }
@@ -69,18 +70,30 @@ final class CoursDuJour
         return preg_match('/^(salle|amphi|labo|atelier)\b/iu', $salle) ? $salle : 'Salle '.$salle;
     }
 
-    /** Le cours attend-il un geste de l'enseignant maintenant ? */
+    /**
+     * Le cours attend-il un émargement maintenant ?
+     *
+     * La fin ne compte que si `sign()` l'accepterait : il exige l'appel de
+     * début (`ESBTPSessionWorkflow::call_start_done`). Sans lui, proposer
+     * « Émarger la fin » mènerait à un refus — c'est l'appel qui est dû.
+     */
     public function demandeUnEmargement(): bool
     {
-        return in_array($this->etat, [self::OUVERT, self::RETARD, self::MOTIF_REQUIS, self::FIN_OUVERTE], true);
+        if ($this->etat === self::FIN_OUVERTE) {
+            return $this->finAutorisee;
+        }
+
+        return in_array($this->etat, [self::OUVERT, self::RETARD, self::MOTIF_REQUIS], true);
     }
 
+    /** L'appel est dû : cours émargé, pas d'appel aujourd'hui, ou fin bloquée faute d'appel. */
     public function appelAFaire(): bool
     {
-        return $this->emargementDebut
-            && $this->emargementDebut->status !== 'absent'
-            && ! $this->appelFait
-            && in_array($this->etat, [self::EN_COURS, self::FIN_OUVERTE], true);
+        if (! $this->estEmarge() || ! in_array($this->etat, [self::EN_COURS, self::FIN_OUVERTE], true)) {
+            return false;
+        }
+
+        return ! $this->appelFait || ($this->etat === self::FIN_OUVERTE && ! $this->finAutorisee);
     }
 
     public function estEmarge(): bool
@@ -99,7 +112,9 @@ final class CoursDuJour
             self::DEPASSE => 'Délai dépassé',
             self::ABSENT => 'Absence enregistrée',
             self::EN_COURS => 'Émargé à '.($this->emargementDebut?->validated_at?->format('H:i') ?? '--:--').' — fin à '.$this->finOuverture->format('H:i'),
-            self::FIN_OUVERTE => 'Fin ouverte jusqu’à '.$this->finFermeture->format('H:i'),
+            self::FIN_OUVERTE => $this->finAutorisee
+                ? 'Fin ouverte jusqu’à '.$this->finFermeture->format('H:i')
+                : 'Appel à faire avant la fin',
             self::FIN_MANQUEE => 'Fin non émargée',
             self::TERMINE => 'Séance complète',
         };
@@ -109,7 +124,8 @@ final class CoursDuJour
     public function ton(): string
     {
         return match ($this->etat) {
-            self::OUVERT, self::FIN_OUVERTE, self::TERMINE => 'success',
+            self::FIN_OUVERTE => $this->finAutorisee ? 'success' : 'warning',
+            self::OUVERT, self::TERMINE => 'success',
             self::RETARD, self::MOTIF_REQUIS => 'warning',
             self::DEPASSE, self::ABSENT, self::FIN_MANQUEE => 'danger',
             self::EN_COURS => 'primary',

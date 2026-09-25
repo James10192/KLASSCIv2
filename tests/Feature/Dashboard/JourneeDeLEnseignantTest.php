@@ -12,6 +12,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPSeanceCours;
+use App\Models\ESBTPSessionWorkflow;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPTeacherAttendance;
 use App\Models\User;
@@ -98,17 +99,26 @@ class JourneeDeLEnseignantTest extends TestCase
         ], $etats);
     }
 
-    public function test_un_cours_emarge_propose_la_fin_et_l_appel_dans_la_file_de_travail(): void
+    public function test_la_fin_n_est_proposee_qu_une_fois_l_appel_de_debut_fait(): void
     {
         $this->emarger('2026-02-04', 'present', '10:05');
         Carbon::setTestNow('2026-02-04 11:50:00');
-
         $journee = app(JourneeDeLEnseignant::class);
-        $cours = $journee->coursDuJour($this->enseignant->fresh());
-        $file = $journee->fileDeTravail($cours, collect());
 
+        // Sans appel de début, sign() refuserait la fin : seul l'appel est proposé.
+        $cours = $journee->coursDuJour($this->enseignant->fresh());
         $this->assertSame(CoursDuJour::FIN_OUVERTE, $cours->first()->etat);
-        $this->assertSame(['Émarger la fin', 'Faire l’appel'], array_column($file, 'action'));
+        $this->assertSame('Appel à faire avant la fin', $cours->first()->libelle());
+        $this->assertSame(['Faire l’appel'], array_column($journee->fileDeTravail($cours, collect()), 'action'));
+
+        ESBTPSessionWorkflow::getOrCreateForSession($this->seance->id, $this->enseignant->id)->update(['call_start_done' => true]);
+
+        $cours = $journee->coursDuJour($this->enseignant->fresh());
+        $this->assertSame('Émarger la fin', array_column($journee->fileDeTravail($cours, collect()), 'action')[0]);
+
+        $this->actingAs($this->enseignant)->get(route('esbtp.teacher-attendance.index'))
+            ->assertOk()
+            ->assertSee('Émarger la fin');
     }
 
     public function test_le_bilan_du_mois_compare_au_mois_precedent_sans_inventer_de_taux(): void

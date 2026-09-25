@@ -136,7 +136,9 @@
 @php
     $tedEmarges = $coursDuJour->filter->estEmarge()->count();
     $tedAVenir = $coursDuJour->where('etat', \App\Domain\EmploiTemps\CoursDuJour::A_VENIR)->count();
-    $tedPresses = collect($fileDeTravail)->filter(fn ($t) => $t['icone'] === 'fa-signature')->count();
+    $tedPresse = $coursDuJour->first->demandeUnEmargement();
+    $tedNotes = $evaluationsANoter->take(5);
+    $tedNotesPlus = $evaluationsANoter->count() > 5;
     $tedPonct = $bilan['ponctualite'];
     $tedPonctPrec = $bilan['precedent']['ponctualite'];
     $tedPonctDelta = ($tedPonct !== null && $tedPonctPrec !== null) ? $tedPonct - $tedPonctPrec : null;
@@ -160,8 +162,8 @@
                 </div>
             </div>
             <div class="ted-hero-actions">
-                @if($tedPresses > 0)
-                    <a href="{{ $tedEmargement }}" class="ted-btn ted-btn--white"><i class="fas fa-signature"></i>Émarger maintenant</a>
+                @if($tedPresse)
+                    <a href="{{ $tedEmargement }}#cours-{{ $tedPresse->seance->id }}" class="ted-btn ted-btn--white"><i class="fas fa-signature"></i>Émarger maintenant</a>
                 @endif
                 <a href="{{ route('teacher.timetable') }}" class="ted-btn ted-btn--glass"><i class="fas fa-calendar-week"></i>Mon emploi du temps</a>
             </div>
@@ -194,7 +196,7 @@
                 </div>
             </a>
             <a href="{{ $tedHistorique }}" class="ted-kpi">
-                <div class="ted-kpi-label">Heures faites ce mois</div>
+                <div class="ted-kpi-label">Heures émargées ce mois</div>
                 <div class="ted-kpi-value">{{ $tedHeure($bilan['heures']) }}<small>h</small></div>
                 <div class="ted-kpi-rep">
                     @if($bilan['precedent']['total'] === 0 && $bilan['total'] === 0)
@@ -205,11 +207,11 @@
                     @endif
                 </div>
             </a>
-            <a href="{{ route('teacher.grades') }}" class="ted-kpi">
+            <a href="{{ $tedNotes->isEmpty() ? route('teacher.grades') : route('teacher.grades', ['evaluation' => $tedNotes->first()->id]) }}" class="ted-kpi">
                 <div class="ted-kpi-label">Notes à saisir</div>
-                <div class="ted-kpi-value">{{ $evaluationsANoter->count() }}{{ $evaluationsANoter->count() >= 5 ? '+' : '' }}</div>
+                <div class="ted-kpi-value">{{ $tedNotes->count() }}{{ $tedNotesPlus ? '+' : '' }}</div>
                 <div class="ted-kpi-rep">
-                    {{ $evaluationsANoter->isEmpty() ? 'Toutes vos évaluations passées ont des notes' : 'évaluation(s) passée(s) sans note' }}
+                    {{ $tedNotes->isEmpty() ? 'Toutes vos évaluations passées ont des notes' : 'évaluation(s) passée(s) sans note' }}
                 </div>
             </a>
         </div>

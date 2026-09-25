@@ -72,6 +72,8 @@
     .tae-btn:hover { background:#033a8e; }
     .tae-btn--ghost { background:#fff; color:#0453cb; border:1px solid #bfd3f2; text-decoration:none; display:inline-flex; align-items:center; gap:.4rem; }
     .tae-btn--ghost:hover { background:#eef4fd; color:#033a8e; }
+    .tae-avertir { flex-basis:100%; font-size:.78rem; color:#b91c1c; }
+    .tae-compte--passe { opacity:.55; }
     .tae-ok { display:flex; flex-direction:column; gap:.2rem; font-size:.85rem; color:#047857; font-weight:600; }
     .tae-ok small { color:#64748b; font-weight:500; }
     .tae-badge-absent { color:#b91c1c; }
@@ -204,11 +206,14 @@
                             $taePresentPct = $taePct($cours->limitePresent);
                             $taeRetardPct = $taePct($cours->limiteRetard);
                             $taeFrise = ! $taeEmarge;
+                            $taeFinSaisissable = $cours->etat === \App\Domain\EmploiTemps\CoursDuJour::FIN_OUVERTE && $cours->finAutorisee;
+                            $taeHorsDelai = $cours->etat === \App\Domain\EmploiTemps\CoursDuJour::DEPASSE;
+                            $taeMotif = $taeJustification && ($taeJustifPour === (int) $course->id || $cours->etat === \App\Domain\EmploiTemps\CoursDuJour::MOTIF_REQUIS);
                             $taeEcheance = match ($cours->etat) {
                                 \App\Domain\EmploiTemps\CoursDuJour::A_VENIR => [$cours->ouverture, 'ouvre', 'L’émargement ouvre à'],
                                 \App\Domain\EmploiTemps\CoursDuJour::OUVERT => [$cours->limitePresent, 'present', 'Présent si vous émargez avant'],
                                 \App\Domain\EmploiTemps\CoursDuJour::RETARD => [$cours->limiteRetard, 'retard', 'Retard enregistré — encore possible jusqu’à'],
-                                \App\Domain\EmploiTemps\CoursDuJour::FIN_OUVERTE => [$cours->finFermeture, 'fin', 'Émargez la fin avant'],
+                                \App\Domain\EmploiTemps\CoursDuJour::FIN_OUVERTE => [$cours->finFermeture, 'fin', $cours->finAutorisee ? 'Émargez la fin avant' : 'Faites l’appel, puis émargez la fin avant'],
                                 \App\Domain\EmploiTemps\CoursDuJour::EN_COURS => [$cours->finOuverture, 'finouvre', 'Émargement de fin à partir de'],
                                 default => null,
                             };
@@ -238,7 +243,9 @@
                                         @endif
                                     </div>
                                     <div class="tae-frise-legende">
-                                        <span style="left:0">{{ $cours->ouverture->format('H:i') }}</span>
+                                        @if($cours->ouverture->lt($cours->debut))
+                                            <span style="left:0">{{ $cours->ouverture->format('H:i') }}</span>
+                                        @endif
                                         <span style="left:{{ $taeDebutPct }}%">{{ $cours->debut->format('H:i') }}</span>
                                         <span style="left:{{ $taePresentPct }}%">{{ $cours->limitePresent->format('H:i') }}</span>
                                         <span style="left:{{ $taeRetardPct }}%">{{ $cours->limiteRetard->format('H:i') }}</span>
@@ -254,7 +261,7 @@
                             @endif
 
                             <div class="tae-action">
-                                @if($taeEmarge && $cours->etat !== \App\Domain\EmploiTemps\CoursDuJour::FIN_OUVERTE)
+                                @if($taeEmarge && ! $taeFinSaisissable)
                                     <div class="tae-ok">
                                         @if($taeEmarge->status === 'absent')
                                             <span class="tae-badge-absent"><i class="fas fa-circle-xmark me-1"></i>Absence enregistrée à {{ $taeEmarge->validated_at?->format('H:i') }}</span>
@@ -275,11 +282,14 @@
                                         <input type="text" class="tae-code" name="code" required minlength="6" maxlength="6" autocomplete="off"
                                                aria-label="Code d’émargement pour {{ $cours->matiere() }}"
                                                placeholder="CODE" value="{{ $taeJustifPour === (int) $course->id ? old('code') : '' }}">
-                                        @if($taeJustification && $taeJustifPour === (int) $course->id)
+                                        @if($taeMotif)
                                             <textarea name="justification" class="tae-just" rows="2" required minlength="5" maxlength="1000"
                                                       placeholder="Motif du retard (visible par la coordination)">{{ old('justification') }}</textarea>
                                         @endif
-                                        <button type="submit" class="tae-btn"><i class="fas fa-signature me-1"></i>{{ $cours->etat === \App\Domain\EmploiTemps\CoursDuJour::FIN_OUVERTE ? 'Émarger la fin' : 'Émarger' }}</button>
+                                        <button type="submit" class="tae-btn"><i class="fas fa-signature me-1"></i>{{ $taeFinSaisissable ? 'Émarger la fin' : ($taeHorsDelai ? 'Émarger hors délai' : 'Émarger') }}</button>
+                                        @if($taeHorsDelai)
+                                            <div class="tae-avertir">Le délai est dépassé : l’envoi du code enregistre une absence pour ce cours.</div>
+                                        @endif
                                     </form>
                                     @if(! $taeEmarge)
                                         <form action="{{ route('esbtp.teacher-attendance.demander-code') }}" method="POST" class="tae-demande"
@@ -364,7 +374,8 @@
             var cible = el.querySelector('.tae-reste');
             if (!cible) return;
             var txt = libelle(reste);
-            cible.textContent = txt ? '(dans ' + txt + ')' : '';
+            el.classList.toggle('tae-compte--passe', reste <= 0);
+            cible.textContent = txt ? '(dans ' + txt + ')' : '(échéance passée)';
         });
     }
     majComptes();
