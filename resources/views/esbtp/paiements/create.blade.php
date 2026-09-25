@@ -571,6 +571,79 @@
             margin: 0.35rem 0 !important;
         }
     }
+
+    /* ===== Refonte septembre 2026 : deux colonnes, libellés au-dessus ===== */
+    .pc-page .dashboard-header { background: #fff; }
+    .pc-page .header-left h1 { color: var(--pc-dark); font-size: 1.4rem; }
+    .pc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1.25rem; align-items: start; }
+    .pc-main { display: grid; gap: 1rem; min-width: 0; }
+    .pc-main .pc-step + .pc-step { margin-top: 1rem; }
+    .pc-insc-row { grid-template-columns: 40px minmax(0, 1fr) auto 20px; }
+    .pc-step { background: #fff; border: 1px solid var(--pc-border); border-radius: 14px; padding: 1.25rem 1.5rem 1.5rem; box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06); }
+    .pc-step-head { display: flex; align-items: flex-start; gap: .85rem; margin-bottom: 1.1rem; }
+    .pc-step-head h2 { margin: 0; font-size: 1.02rem; font-weight: 700; color: var(--pc-dark); }
+    .pc-step-head p { margin: .15rem 0 0; font-size: .84rem; color: var(--pc-muted); }
+    .pc-step-num { width: 30px; height: 30px; border-radius: 9px; background: rgba(4,83,203,.1); color: var(--pc-primary); display: grid; place-items: center; font-weight: 800; font-size: .88rem; flex-shrink: 0; }
+    .pc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem 1.25rem; }
+    .pc-row + .pc-row { margin-top: 1rem; }
+    .pc-field { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+    .pc-field > .au-select { display: flex; width: 100%; }
+    .pc-field > .au-select .au-select-trigger { width: 100%; }
+    .pc-label { font-size: .8rem; font-weight: 700; color: #334155; margin: 0; }
+    .pc-req { color: #dc2626; }
+    .pc-opt { font-weight: 500; color: #94a3b8; margin-left: .25rem; }
+    .pc-page .pc-field .form-control { height: 46px; border: 1.5px solid var(--pc-border); border-radius: 10px; padding: 0 .9rem; font-size: .95rem; color: var(--pc-text); background: #fff; box-shadow: none; }
+    .pc-page .pc-field textarea.form-control { height: auto; min-height: 46px; padding: .65rem .9rem; resize: vertical; }
+    .pc-page .pc-field .form-control:focus { border-color: var(--pc-primary); box-shadow: 0 0 0 3px rgba(4,83,203,.12); outline: none; }
+    .pc-page .amount-input-group { position: relative; }
+    .pc-page .amount-input-group .pc-amount { height: 56px; font-size: 1.45rem; font-weight: 800; padding-right: 4.5rem; font-variant-numeric: tabular-nums; }
+    .pc-page .amount-input-group .pc-amount.is-unusual { border-color: #f59e0b; background: #fffbeb; }
+    .pc-page .amount-input-group .fcfa-suffix { position: absolute; right: .9rem; top: 50%; transform: translateY(-50%); font-size: .8rem; font-weight: 700; color: var(--pc-muted); }
+    .pc-page .amount-suggestions { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; }
+    .pc-page .amount-suggestion { display: inline-flex; gap: .45rem; align-items: baseline; border: 1px solid var(--pc-border); background: var(--pc-surface); border-radius: 999px; padding: .35rem .8rem; font-size: .8rem; color: var(--pc-muted); cursor: pointer; }
+    .pc-page .amount-suggestion b { color: var(--pc-primary); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .pc-page .amount-suggestion:hover { border-color: var(--pc-primary); background: #eef4ff; }
+    .pc-unusual { display: flex; gap: .7rem; padding: .8rem .95rem; background: #fffbeb; border: 1.5px solid #f59e0b; border-radius: 10px; }
+    .pc-unusual > i { color: #d97706; margin-top: .15rem; }
+    .pc-unusual b { color: #92400e; font-size: .86rem; }
+    .pc-unusual p { margin: .25rem 0 .5rem; font-size: .8rem; color: #7c2d12; line-height: 1.5; }
+    .pc-unusual-ok { display: flex; gap: .5rem; align-items: center; cursor: pointer; font-size: .83rem; font-weight: 600; color: #92400e; }
+    .pc-unusual-ok .form-check-input { margin: 0; }
+    .pc-page .pc-rep { margin-top: 1.25rem; }
+    .pc-picked { display: flex; align-items: center; gap: .9rem; padding: .85rem 1rem; border: 1px solid rgba(4,83,203,.25); background: #f5f8ff; border-radius: 12px; }
+    .pc-picked-txt { display: grid; gap: .15rem; min-width: 0; }
+    .pc-picked-txt b { color: var(--pc-dark); font-size: 1rem; }
+    .pc-picked-txt span { color: var(--pc-muted); font-size: .84rem; }
+    .pc-avatar--lg { width: 48px; height: 48px; font-size: 1rem; }
+    .pc-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+    .pc-facts > div { background: var(--pc-surface); border: 1px solid #eef2f7; border-radius: 10px; padding: .7rem .85rem; display: grid; gap: .2rem; }
+    .pc-facts span { font-size: .75rem; color: var(--pc-muted); font-weight: 600; }
+    .pc-facts b { font-size: .9rem; color: var(--pc-dark); }
+    .pc-insc-txt { display: grid; gap: .1rem; min-width: 0; text-align: left; }
+    .pc-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; }
+    .pc-insc-check { color: var(--pc-primary); opacity: 0; font-size: 1.05rem; }
+    .pc-insc-row.is-on .pc-insc-check { opacity: 1; }
+    .pc-aside { position: sticky; top: 96px; display: grid; gap: 1rem; }
+    .pc-aside .student-progress-card { margin: 0; border-radius: 14px; }
+    .pc-aside-vide { display: grid; justify-items: center; text-align: center; gap: .35rem; padding: 2rem 1.25rem; background: #fff; border: 1px dashed #cbd5e1; border-radius: 14px; color: var(--pc-muted); font-size: .85rem; }
+    .pc-aside-vide i { font-size: 1.5rem; color: #94a3b8; margin-bottom: .25rem; }
+    .pc-aside-vide b { color: var(--pc-dark); font-size: .95rem; }
+    /* Le bloc « reste dû » suit l'étape 2 : caché tant qu'aucune inscription n'est chargée. */
+    .pc-grid:has(#student-progress-section[style*="display: none"]) .pc-ledger { display: none; }
+    .pc-grid:not(:has(#student-progress-section[style*="display: none"])) .pc-aside-vide { display: none; }
+    .pc-submit { display: grid; gap: .5rem; }
+    .pc-submit .btn-acasi { width: 100%; justify-content: center; margin: 0 !important; }
+    @media (max-width: 1199.98px) {
+        .pc-grid { grid-template-columns: 1fr; }
+        .pc-aside { position: static; }
+    }
+    @media (max-width: 767.98px) {
+        .pc-row, .pc-facts { grid-template-columns: 1fr; }
+        .pc-insc-row { grid-template-columns: 40px minmax(0, 1fr) 20px; }
+        .pc-insc-track { grid-column: 2; grid-row: 2; justify-self: start; }
+        .pc-insc-check { grid-column: 3; grid-row: 1; }
+        .pc-step { padding: 1rem; }
+    }
 </style>
 @endpush
 
@@ -617,12 +690,8 @@
                 <div class="pc-header-shell">
                     <div class="pc-header-icon"><i class="fas fa-money-check-dollar"></i></div>
                     <div>
-                        <h1>Nouveau paiement</h1>
-                        <p class="header-subtitle">Encaissement guidé et sécurisé avec suivi en temps réel</p>
-                        <div class="pc-header-meta">
-                            <span class="pc-header-pill"><i class="fas fa-shield-check"></i> Anti-erreur actif</span>
-                            <span class="pc-header-pill"><i class="fas fa-bolt"></i> Flux rapide caissier</span>
-                        </div>
+                        <h1>Encaisser un paiement</h1>
+                        <p class="header-subtitle">Étudiant, montant, mode : le reste dû et la répartition se calculent au fur et à mesure.</p>
                     </div>
                 </div>
             </div>
@@ -650,24 +719,25 @@
 
         <form action="{{ route('esbtp.paiements.store') }}" method="POST" id="payment-form">
             @csrf
-            
-            <!-- Sélection de l'étudiant -->
-            <div class="card-moderne payment-form-card mb-lg">
-                <div class="p-lg">
-                    <div class="section-title mb-md">
-                        <i class="fas fa-user-graduate me-2"></i>
-                        Sélection de l'Étudiant
+        <div class="pc-grid">
+        <div class="pc-main">
+
+            {{-- 1. L'étudiant --}}
+            <section class="pc-step">
+                <header class="pc-step-head">
+                    <span class="pc-step-num">1</span>
+                    <div>
+                        <h2>Étudiant</h2>
+                        <p>Recherchez par nom, prénom ou matricule.</p>
                     </div>
-                    
+                </header>
+
                     @if($etudiant)
-                        <div class="d-flex align-items-center p-3 bg-light rounded-3">
-                            <div class="avatar-circle bg-primary me-3" style="width: 60px; height: 60px; font-size: 24px;">
-                                {{ substr($etudiant->user->name ?? $etudiant->nom_complet ?? 'NN', 0, 2) }}
-                            </div>
-                            <div class="flex-grow-1">
-                                <h5 class="mb-1">{{ $etudiant->user->name ?? $etudiant->nom_complet ?? 'N/A' }}</h5>
-                                <p class="mb-1 text-muted">{{ $etudiant->matricule }}</p>
-                                <small class="text-muted">{{ $etudiant->user->email ?? 'N/A' }}</small>
+                        <div class="pc-picked">
+                            <span class="pc-avatar pc-avatar--lg">{{ mb_strtoupper(mb_substr($etudiant->user->name ?? $etudiant->nom_complet ?? 'NN', 0, 2, 'UTF-8'), 'UTF-8') }}</span>
+                            <div class="pc-picked-txt">
+                                <b>{{ $etudiant->user->name ?? $etudiant->nom_complet ?? 'N/A' }}</b>
+                                <span>{{ $etudiant->matricule }}@if($etudiant->user?->email) · {{ $etudiant->user->email }}@endif</span>
                             </div>
                             <input type="hidden" name="etudiant_id" value="{{ $etudiant->id }}">
                         </div>
@@ -676,7 +746,7 @@
                             <div class="pc-toolbar">
                                 <label class="pc-search">
                                     <i class="fas fa-search"></i>
-                                    <input type="search" x-model="q" @input.debounce.250ms="charger()" placeholder="Rechercher un étudiant" autocomplete="off">
+                                    <input type="search" x-model="q" @input.debounce.250ms="charger()" placeholder="Nom, prénom ou matricule" autocomplete="off">
                                 </label>
                                 <label class="pc-filter">
                                     <i class="fas fa-sitemap"></i>
@@ -701,11 +771,12 @@
                                 <template x-for="row in rows" :key="row.id">
                                     <button type="button" class="pc-insc-row" :class="{ 'is-on': selectedId === row.id }" @click="choisir(row)">
                                         <span class="pc-avatar" x-text="initiales(row.nom)"></span>
-                                        <span>
+                                        <span class="pc-insc-txt">
                                             <span class="pc-insc-nom" x-text="row.nom"></span>
-                                            <span class="pc-insc-sub" x-text="row.matricule + ' · ' + row.classe"></span>
+                                            <span class="pc-insc-sub"><span x-text="row.classe"></span> · <span class="pc-mono" x-text="row.matricule"></span></span>
                                         </span>
-                                        <span class="pc-insc-track" x-text="row.filiere + ' · ' + row.niveau"></span>
+                                        <span class="pc-insc-track" x-text="[row.filiere, row.niveau].filter(Boolean).join(' · ')"></span>
+                                        <i class="fas fa-check-circle pc-insc-check" aria-hidden="true"></i>
                                     </button>
                                 </template>
                                 <div class="pc-insc-empty" x-show="rows.length === 0" x-cloak>Aucun dossier pour ces filtres.</div>
@@ -713,59 +784,29 @@
                             <input type="hidden" name="etudiant_id" id="etudiant_id" x-model="etudiantId" required>
                         </div>
                     @endif
-                </div>
-            </div>
-            
-            <!-- Barre de progression et inscription -->
+            </section>
+
+            {{-- 2. L'inscription (le bloc « reste dû » vit dans la colonne de droite) --}}
             <div id="student-progress-section" style="display: none;">
-                <!-- Barre de progression des frais -->
-                <div class="student-progress-card">
-                    <div class="pc-ledger-head">
+                <section class="pc-step">
+                    <header class="pc-step-head">
+                        <span class="pc-step-num">2</span>
                         <div>
-                            <p class="pc-ledger-label">Reste à encaisser</p>
-                            <p class="pc-ledger-amount" id="total-remaining">0 F</p>
+                            <h2>Inscription</h2>
+                            <p>Celle de l'année en cours est choisie d'office.</p>
                         </div>
-                        <div class="pc-ledger-meta">
-                            <span id="total-progress">0 % payé</span>
-                            <span id="total-paid">0 F payé</span>
-                        </div>
-                    </div>
-                    <div id="categories-progress"></div>
-                </div>
-                
-                <!-- Informations de l'inscription -->
-                <div class="card-moderne payment-form-card mb-lg">
-                    <div class="p-lg">
-                        <div class="section-title mb-md">
-                            <i class="fas fa-graduation-cap me-2"></i>
-                            Informations de l'Inscription
-                        </div>
-                        
+                    </header>
+
                         @if($inscription)
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="form-floating-modern">
-                                        <input type="text" class="form-control" value="{{ $inscription->filiere->name ?? 'N/A' }}" readonly>
-                                        <label>Filière</label>
-                                        <input type="hidden" name="inscription_id" value="{{ $inscription->id }}">
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-floating-modern">
-                                        <input type="text" class="form-control" value="{{ $inscription->niveauEtude->name }}" readonly>
-                                        <label>Niveau d'études</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-floating-modern">
-                                        <input type="text" class="form-control" value="{{ $inscription->anneeUniversitaire->libelle }}" readonly>
-                                        <label>Année universitaire</label>
-                                    </div>
-                                </div>
+                            <div class="pc-facts">
+                                <div><span>Filière</span><b>{{ $inscription->filiere->name ?? 'N/A' }}</b></div>
+                                <div><span>Niveau d'études</span><b>{{ $inscription->niveauEtude->name ?? 'N/A' }}</b></div>
+                                <div><span>Année universitaire</span><b>{{ $inscription->anneeUniversitaire->libelle ?? $inscription->anneeUniversitaire->name ?? 'N/A' }}</b></div>
+                                <input type="hidden" name="inscription_id" value="{{ $inscription->id }}">
                             </div>
                         @else
-                            <div class="form-floating-modern pc-field">
-                                <label for="inscription_id" class="pc-field-label">Inscription <span class="text-danger">*</span></label>
+                            <div class="pc-field">
+                                <label for="inscription_id" class="pc-label">Inscription <span class="pc-req">*</span></label>
                                 <x-au-select
                                     id="inscription_id"
                                     name="inscription_id"
@@ -779,24 +820,25 @@
                                 <div id="inscription-auto-notice" class="alert alert-info mt-2 mb-0 py-2 px-3" style="display: none; font-size: 0.82rem;"></div>
                             </div>
                         @endif
-                    </div>
-                </div>
+                </section>
             </div>
-            
+
             <div id="category-selection-section" style="display: none;">
                 <input type="hidden" name="frais_category_id" id="selected_category_id" value="{{ old('frais_category_id') }}">
             </div>
-            
-            <!-- Informations du paiement -->
+
+            {{-- 3. Le versement --}}
             <div id="payment-details-section" style="display: none;">
-                <div class="card-moderne payment-form-card mb-lg">
-                    <div class="p-lg">
-                        <div class="section-title mb-md">
-                            <i class="fas fa-money-check-alt me-2"></i>
-                            Détails du Paiement
+                <section class="pc-step">
+                    <header class="pc-step-head">
+                        <span class="pc-step-num">3</span>
+                        <div>
+                            <h2>Versement</h2>
+                            <p>Le montant se répartit tout seul sur les frais encore dus.</p>
                         </div>
-                        
-                        <div class="row" x-data="{
+                    </header>
+
+                        <div class="pc-row" x-data="{
                                 montant: {{ (int) old('montant', 0) }},
                                 threshold: {{ (int) ($unusualAmountThreshold ?? 500000) }},
                                 confirmed: false,
@@ -804,50 +846,33 @@
                                 get formattedThreshold() { return new Intl.NumberFormat('fr-FR').format(this.threshold); },
                                 get formattedMontant() { return new Intl.NumberFormat('fr-FR').format(this.montant); },
                             }">
-                            <div class="col-md-6">
-                                <div class="form-floating-modern">
-                                    <div class="amount-input-group">
-                                        <input type="number" name="montant" id="montant" class="form-control" min="0" step="1"
-                                               value="{{ old('montant') }}" required
-                                               x-on:input="montant = parseInt($event.target.value || 0); confirmed = false"
-                                               :style="isUnusual ? 'border-color:#f59e0b;background:#fffbeb;' : ''">
-                                        <span class="fcfa-suffix position-absolute end-0 top-50 translate-middle-y me-3 text-muted">FCFA</span>
-                                    </div>
-                                    <label>Montant <span class="text-danger">*</span></label>
-                                    <div class="amount-suggestions" id="amount-suggestions">
-                                        <!-- Les suggestions de montant seront générées dynamiquement -->
-                                    </div>
+                            <div class="pc-field pc-field--amount">
+                                <label for="montant" class="pc-label">Montant <span class="pc-req">*</span></label>
+                                <div class="amount-input-group">
+                                    <input type="number" name="montant" id="montant" class="form-control pc-amount" min="0" step="1"
+                                           value="{{ old('montant') }}" required placeholder="0"
+                                           x-on:input="montant = parseInt($event.target.value || 0); confirmed = false"
+                                           :class="isUnusual ? 'is-unusual' : ''">
+                                    <span class="fcfa-suffix">FCFA</span>
+                                </div>
+                                <div class="amount-suggestions" id="amount-suggestions"></div>
 
-                                    {{-- Garde-fou montant inhabituel (QW3) --}}
-                                    <div x-show="isUnusual" x-cloak x-transition.opacity
-                                         class="qw3-unusual-alert" style="margin-top:12px;padding:12px 14px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;">
-                                        <div style="display:flex;gap:10px;align-items:flex-start;">
-                                            <i class="fas fa-triangle-exclamation" style="color:#d97706;font-size:1.1rem;margin-top:2px;flex-shrink:0;"></i>
-                                            <div style="flex:1;min-width:0;">
-                                                <div style="font-weight:700;color:#92400e;font-size:.88rem;margin-bottom:4px;">
-                                                    Montant inhabituel — vérifiez avant de valider
-                                                </div>
-                                                <div style="font-size:.82rem;color:#7c2d12;line-height:1.5;">
-                                                    Le montant saisi (<strong x-text="formattedMontant + ' FCFA'"></strong>) dépasse le seuil habituel de <strong x-text="formattedThreshold + ' FCFA'"></strong> configuré pour cette école.
-                                                    Vérifiez qu'il ne s'agit pas d'une erreur de frappe (ex: 50&nbsp;000 au lieu de 5&nbsp;000).
-                                                </div>
-                                                <label class="form-check" style="margin-top:8px;display:flex;gap:8px;align-items:center;cursor:pointer;">
-                                                    <input type="checkbox" name="confirmed_unusual_amount" value="1"
-                                                           x-model="confirmed" class="form-check-input" style="margin-top:0;">
-                                                    <span style="font-size:.84rem;color:#92400e;font-weight:600;">
-                                                        Je confirme que ce montant est correct
-                                                    </span>
-                                                </label>
-                                            </div>
-                                        </div>
+                                {{-- Garde-fou montant inhabituel (QW3) --}}
+                                <div x-show="isUnusual" x-cloak x-transition.opacity class="qw3-unusual-alert pc-unusual">
+                                    <i class="fas fa-triangle-exclamation"></i>
+                                    <div>
+                                        <b>Montant inhabituel : vérifiez avant d'enregistrer</b>
+                                        <p>Le montant saisi (<strong x-text="formattedMontant + ' FCFA'"></strong>) dépasse le seuil habituel de <strong x-text="formattedThreshold + ' FCFA'"></strong> configuré pour cette école. Vérifiez qu'il ne s'agit pas d'une erreur de frappe (50&nbsp;000 au lieu de 5&nbsp;000).</p>
+                                        <label class="pc-unusual-ok">
+                                            <input type="checkbox" name="confirmed_unusual_amount" value="1" x-model="confirmed" class="form-check-input">
+                                            <span>Je confirme que ce montant est correct</span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-floating-modern">
-                                    <input type="date" name="date_paiement" id="date_paiement" class="form-control" value="{{ old('date_paiement', date('Y-m-d')) }}" required>
-                                    <label>Date de paiement <span class="text-danger">*</span></label>
-                                </div>
+                            <div class="pc-field">
+                                <label for="date_paiement" class="pc-label">Date de paiement <span class="pc-req">*</span></label>
+                                <input type="date" name="date_paiement" id="date_paiement" class="form-control" value="{{ old('date_paiement', date('Y-m-d')) }}" required>
                             </div>
                         </div>
 
@@ -870,64 +895,89 @@
 
                             <div class="pc-rep-alert" id="repartition-erreur" style="display:none;"></div>
                         </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-floating-modern pc-field">
-                                    <label for="mode_paiement" class="pc-field-label">Mode de paiement <span class="text-danger">*</span></label>
-                                    <x-au-select
-                                        id="mode_paiement"
-                                        name="mode_paiement"
-                                        :value="(string) old('mode_paiement', '')"
-                                        :options="$modeOptions"
-                                        placeholder="Sélectionner un mode"
-                                        icon="fa-wallet"
-                                        required
-                                        searchable />
-                                </div>
+                </section>
+
+                {{-- 4. Le mode --}}
+                <section class="pc-step">
+                    <header class="pc-step-head">
+                        <span class="pc-step-num">4</span>
+                        <div>
+                            <h2>Mode de paiement</h2>
+                            <p>Pour un chèque, un virement ou un mobile money, notez la référence.</p>
+                        </div>
+                    </header>
+
+                        <div class="pc-row">
+                            <div class="pc-field">
+                                <label for="mode_paiement" class="pc-label">Mode de paiement <span class="pc-req">*</span></label>
+                                <x-au-select
+                                    id="mode_paiement"
+                                    name="mode_paiement"
+                                    :value="(string) old('mode_paiement', '')"
+                                    :options="$modeOptions"
+                                    placeholder="Sélectionner un mode"
+                                    icon="fa-wallet"
+                                    required
+                                    searchable />
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-floating-modern">
-                                    <input type="text" name="reference_paiement" id="reference_paiement" class="form-control" value="{{ old('reference_paiement') }}" placeholder="N° de chèque, transaction, etc.">
-                                    <label>Référence du paiement</label>
-                                    <small class="form-text text-muted">Numéro de chèque, référence de transaction, etc.</small>
-                                </div>
+                            <div class="pc-field">
+                                <label for="reference_paiement" class="pc-label">Référence <span class="pc-opt">facultatif</span></label>
+                                <input type="text" name="reference_paiement" id="reference_paiement" class="form-control" value="{{ old('reference_paiement') }}" placeholder="N° de chèque, de transaction…">
                             </div>
                         </div>
-                        
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-floating-modern pc-field">
-                                    <label for="tranche" class="pc-field-label">Tranche de paiement</label>
-                                    <x-au-select
-                                        id="tranche"
-                                        name="tranche"
-                                        :value="(string) old('tranche', '')"
-                                        :options="$trancheOptions"
-                                        placeholder="Sélectionner une tranche"
-                                        icon="fa-list-check" />
-                                </div>
+
+                        <div class="pc-row">
+                            <div class="pc-field">
+                                <label for="tranche" class="pc-label">Tranche <span class="pc-opt">facultatif</span></label>
+                                <x-au-select
+                                    id="tranche"
+                                    name="tranche"
+                                    :value="(string) old('tranche', '')"
+                                    :options="$trancheOptions"
+                                    placeholder="Sélectionner une tranche"
+                                    icon="fa-list-check" />
                             </div>
-                            <div class="col-md-6">
-                                <div class="form-floating-modern">
-                                    <textarea name="commentaire" id="commentaire" class="form-control" rows="3" style="height: auto; min-height: 60px;">{{ old('commentaire') }}</textarea>
-                                    <label>Commentaire</label>
-                                </div>
+                            <div class="pc-field">
+                                <label for="commentaire" class="pc-label">Commentaire <span class="pc-opt">facultatif</span></label>
+                                <textarea name="commentaire" id="commentaire" class="form-control" rows="2" placeholder="Visible sur la fiche du paiement">{{ old('commentaire') }}</textarea>
                             </div>
                         </div>
+                </section>
+            </div>
+        </div>
+
+        {{-- Colonne de droite : ce qu'il reste dû, et l'enregistrement. --}}
+        <aside class="pc-aside">
+            <div class="pc-aside-vide">
+                <i class="fas fa-user-graduate"></i>
+                <b>Choisissez un étudiant</b>
+                <span>Ce qu'il reste à payer, frais par frais, s'affichera ici.</span>
+            </div>
+
+            <div class="student-progress-card pc-ledger">
+                <div class="pc-ledger-head">
+                    <div>
+                        <p class="pc-ledger-label">Reste à encaisser</p>
+                        <p class="pc-ledger-amount" id="total-remaining">0 F</p>
+                    </div>
+                    <div class="pc-ledger-meta">
+                        <span id="total-progress">0 % payé</span>
+                        <span id="total-paid">0 F payé</span>
                     </div>
                 </div>
+                <div id="categories-progress"></div>
             </div>
-            
-            <!-- Actions -->
-            <div class="text-center mb-lg" id="submit-section" style="display: none;">
+
+            <div class="pc-submit" id="submit-section" style="display: none;">
                 <button type="submit" class="btn-acasi primary large">
-                    <i class="fas fa-save me-2"></i>Enregistrer le Paiement
+                    <i class="fas fa-check me-2"></i>Enregistrer le paiement
                 </button>
-                <button type="button" class="btn-acasi secondary large ms-3" onclick="window.history.back()">
-                    <i class="fas fa-times me-2"></i>Annuler
+                <button type="button" class="btn-acasi secondary" onclick="window.history.back()">
+                    Annuler
                 </button>
             </div>
+        </aside>
+        </div>
         </form>
     </div>
 </div>
@@ -1085,7 +1135,7 @@ $(function() {
 
                 if (inscriptions.length === 0) {
                     noticeType = 'warning';
-                    noticeMessage = 'Aucune inscription disponible pour cet etudiant.';
+                    noticeMessage = 'Aucune inscription disponible pour cet étudiant.';
                 } else {
                     inscriptions.forEach(function(inscription) {
                         if (!inscription || !inscription.id) {
@@ -1117,11 +1167,11 @@ $(function() {
                         if (currentYearInscription && currentYearInscription.id) {
                             selectedInscriptionId = String(currentYearInscription.id);
                             noticeType = 'info';
-                            noticeMessage = 'Inscription de l annee courante selectionnee automatiquement.';
+                            noticeMessage = "Inscription de l'année en cours sélectionnée automatiquement.";
                         } else if (inscriptions[0] && inscriptions[0].id) {
                             selectedInscriptionId = String(inscriptions[0].id);
                             noticeType = 'warning';
-                            noticeMessage = 'Aucune inscription de l annee courante trouvee. La plus recente a ete selectionnee automatiquement.';
+                            noticeMessage = "Aucune inscription pour l'année en cours : la plus récente a été sélectionnée.";
                         }
                     }
                 }
@@ -1501,27 +1551,17 @@ $(function() {
         // Suggestions intelligentes
         if (remaining > 0) {
             suggestions.push({
-                label: "Solde restant",
+                label: "Tout le reste",
                 amount: remaining
             });
             
-            if (remaining >= 50000) {
+            if (remaining >= 2) {
                 suggestions.push({
-                    label: "50% du solde",
+                    label: "La moitié",
                     amount: Math.floor(remaining * 0.5)
                 });
-                suggestions.push({
-                    label: "Tranche 25,000",
-                    amount: 25000
-                });
             }
-            
-            if (remaining >= 100000) {
-                suggestions.push({
-                    label: "Tranche 50,000",
-                    amount: 50000
-                });
-            }
+
         }
         
         return suggestions;
@@ -1533,7 +1573,7 @@ $(function() {
         suggestions.forEach(function(suggestion) {
             html += `
                 <button type="button" class="amount-suggestion" data-amount="${suggestion.amount}">
-                    ${suggestion.label}: ${formatAmount(suggestion.amount)} FCFA
+                    <span>${suggestion.label}</span><b>${formatAmount(suggestion.amount)} F</b>
                 </button>
             `;
         });
