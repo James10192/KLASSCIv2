@@ -578,6 +578,10 @@
     .pc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1.25rem; align-items: start; }
     .pc-main { display: grid; gap: 1rem; min-width: 0; }
     .pc-main .pc-step + .pc-step { margin-top: 1rem; }
+    /* Colonne étroite : la recherche sur sa ligne, les deux filtres dessous, en entier. */
+    .pc-grid .pc-toolbar { grid-template-columns: 1fr 1fr; }
+    .pc-grid .pc-toolbar .pc-search { grid-column: 1 / -1; }
+    .pc-grid .pc-filter select { text-overflow: ellipsis; padding-right: 1.5rem; }
     .pc-insc-row { grid-template-columns: 40px minmax(0, 1fr) auto 20px; }
     .pc-step { background: #fff; border: 1px solid var(--pc-border); border-radius: 14px; padding: 1.25rem 1.5rem 1.5rem; box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06); }
     .pc-step-head { display: flex; align-items: flex-start; gap: .85rem; margin-bottom: 1.1rem; }

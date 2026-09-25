@@ -114,7 +114,8 @@
     /* Plein écran : le pas-à-pas remplace les onglets, la barre d'action se pose en bas. */
     @media (max-width: 767.98px) {
         body.has-m-shell:has(.mab-screen) .m-bottomnav { display: none; }
-        body.has-m-shell:has(.mab-screen) .mab-screen .m-actionbar { bottom: 0; padding-bottom: calc(12px + var(--m-safe-b)); }
+        body.has-m-shell:has(.mab-screen) .mab-screen .m-actionbar { left: 16px; right: 16px; bottom: calc(12px + var(--m-safe-b)); }
+        body.has-m-shell:has(.mab-screen) .mab-screen .m-actionbar .m-btn { flex: 1; }
         body.has-m-shell:has(.mab-screen) { padding-bottom: calc(96px + var(--m-safe-b)); }
     }
 </style>
@@ -359,6 +360,9 @@ if (typeof window.mabEncaisser !== 'function') {
             chargement: { liste: false, frais: false, apercu: false },
 
             init() {
+                // Chaque étape repart du haut : sinon l'étape 4 s'ouvre à la
+                // hauteur du clavier de l'étape 3, son récapitulatif sous l'en-tête.
+                this.$watch('etape', () => window.scrollTo({ top: 0 }));
                 try {
                     this.cfg = JSON.parse(this.$root.dataset.mabCfg || '{}');
                 } catch (e) {
