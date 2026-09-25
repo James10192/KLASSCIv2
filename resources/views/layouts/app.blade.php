@@ -1028,7 +1028,6 @@
             border-radius: 18px;
             backdrop-filter: blur(25px);
             background: rgba(255, 255, 255, 0.97);
-            animation: dropdownSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
             min-width: 320px;
             max-width: 380px;
             border: 1px solid rgba(99, 102, 241, 0.08);
@@ -1036,16 +1035,8 @@
             padding: 8px 0;
         }
 
-        @keyframes dropdownSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-15px) scale(0.92);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
+        /* Pas d'animation de transform sur les panneaux : Popper les place par
+           leur transform (fondu en opacité seule dans sidebar-fixes.css). */
 
         .custom-dropdown .dropdown-item {
             border-radius: 12px;
@@ -1638,6 +1629,8 @@
             }
         }
     </style>
+    {{-- Barre du haut : après les styles en ligne ci-dessus, avant ceux des pages. --}}
+    <link href="{{ asset('css/barre-du-haut.css') }}?v={{ @filemtime(public_path('css/barre-du-haut.css')) ?: '1' }}" rel="stylesheet">
     @yield('styles')
     @stack('styles')
 </head>
@@ -2576,7 +2569,8 @@
 
                     <div class="navbar-center d-none d-lg-block">
                         <div class="header-actions">
-                            <input type="search" class="search-bar" id="global-search" placeholder="Rechercher dans l'application..." autocomplete="off">
+                            <input type="search" class="search-bar" id="global-search" placeholder="Rechercher dans l'application…" autocomplete="off" aria-label="Rechercher dans l'application" aria-keyshortcuts="Control+K Meta+K">
+                            <kbd class="kbh-raccourci" aria-hidden="true">Ctrl K</kbd>
                             <div id="search-results" class="search-results" style="display: none;"></div>
                         </div>
                     </div>
@@ -2584,7 +2578,7 @@
                     <div class="navbar-right">
                         <!-- Notifications -->
                         <div class="dropdown">
-                            <button class="btn-acasi icon-only" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn-acasi icon-only" type="button" id="notificationsDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Notifications" title="Notifications">
                                 <i class="fas fa-bell"></i>
                                 <span class="navbar-badge" id="notifications-count" style="display: none;">0</span>
                             </button>
@@ -2617,7 +2611,7 @@
 
                         <!-- Messages (sous 768px avec le shell mobile : dans la feuille m-navbar-plus) -->
                         <div class="dropdown" data-mnb="desktop">
-                            <button class="btn-acasi icon-only" type="button" id="messagesDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn-acasi icon-only" type="button" id="messagesDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Messages" title="Messages">
                                 <i class="fas fa-envelope"></i>
                                 <span class="navbar-badge" id="messages-count" style="display: none;">0</span>
                             </button>
@@ -2658,7 +2652,7 @@
 
                     <!-- Quick Actions (sous 768px avec le shell mobile : la grille est adoptée par la feuille m-navbar-plus) -->
                     <div class="dropdown" data-mnb="desktop">
-                            <button class="btn-acasi icon-only" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <button class="btn-acasi icon-only" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Actions rapides" title="Actions rapides">
                                 <i class="fas fa-th-large"></i>
                         </button>
                             <ul class="dropdown-menu dropdown-menu-end custom-dropdown quick-actions-dropdown" aria-labelledby="quickActionsDropdown">
@@ -2671,7 +2665,7 @@
                                         @if(auth()->check() && auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
                                             @can('students.create')
                                             <a href="{{ route('esbtp.etudiants.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-user-plus"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvel étudiant</span>
@@ -2679,7 +2673,7 @@
                                             @endcan
                                             @can('inscriptions.create')
                                             <a href="{{ route('esbtp.inscriptions.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-clipboard-check"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle inscription</span>
@@ -2687,7 +2681,7 @@
                                             @endcan
                                             @can('evaluations.create')
                                             <a href="{{ route('esbtp.evaluations.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-plus-circle"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle évaluation</span>
@@ -2695,7 +2689,7 @@
                                             @endcan
                                             @can('classes.create')
                                             <a href="{{ route('esbtp.classes.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-school"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle classe</span>
@@ -2703,44 +2697,44 @@
                                             @endcan
                                         @elseif(auth()->check() && auth()->user()->can('identity.coordinate'))
                                             <a href="{{ route('esbtp.emploi-temps.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-calendar-plus"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvel emploi du temps</span>
                                             </a>
                                             <a href="{{ route('esbtp.evaluations.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-plus-circle"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle évaluation</span>
                                             </a>
                                             <a href="{{ route('esbtp.annonces.create') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-bullhorn"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle annonce</span>
                                             </a>
                                         @elseif(auth()->check() && auth()->user()->can('identity.student'))
                                             <a href="{{ route('esbtp.mes-evaluations.index') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-clipboard-list"></i>
                                                 </div>
                                                 <span class="quick-action-text">Mes évaluations</span>
                                             </a>
                                             <a href="{{ route('esbtp.mes-notes.index') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-star"></i>
                                                 </div>
                                                 <span class="quick-action-text">Mes notes</span>
                                             </a>
                                             <a href="{{ route('esbtp.mon-emploi-temps.index') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-calendar-alt"></i>
                                                 </div>
                                                 <span class="quick-action-text">Mon emploi du temps</span>
                                             </a>
                                             <a href="{{ route('esbtp.mes-annonces.index') }}" class="quick-action-item">
-                                                <div class="quick-action-icon" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white;">
+                                                <div class="quick-action-icon">
                                                     <i class="fas fa-bullhorn"></i>
                                                 </div>
                                                 <span class="quick-action-text">Mes annonces</span>
@@ -2759,7 +2753,7 @@
 
                 <!-- User Profile (sous 768px avec le shell mobile : remplacé par le bouton .mnb-avatar qui ouvre la feuille m-navbar-plus) -->
                 <div class="dropdown ms-2" data-mnb="desktop">
-                    <button class="btn-acasi profile-btn" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn-acasi profile-btn" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Mon compte">
                         <div class="navbar-avatar">
                             @if(auth()->check() && auth()->user()->profile_photo_path)
                                 <img src="{{ asset('storage/' . auth()->user()->profile_photo_path) }}" alt="{{ auth()->user()->name }}">
@@ -2771,7 +2765,8 @@
                         </div>
                         <div class="navbar-user-info d-none d-md-block">
                             <div class="navbar-user-name">{{ auth()->check() ? auth()->user()->name : 'Invité' }}</div>
-                    </div>
+                        </div>
+                        <i class="fas fa-chevron-down kbh-chevron d-none d-md-inline" aria-hidden="true"></i>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end custom-dropdown" aria-labelledby="profileDropdown">
                         <li>
@@ -2794,46 +2789,41 @@
                         <li><hr class="dropdown-divider"></li>
                         @if(auth()->check())
                             <li>
-                                        @role('etudiant')
-                                            <a class="dropdown-item" href="{{ route('esbtp.mon-profil.index') }}">
-                                    <i class="fas fa-user-circle me-2"></i> Mon profil
-                                </a>
-                                        @elserole('coordinateur')
-                                            <a class="dropdown-item" href="{{ route('coordinateur.profile') }}">
-                                                <i class="fas fa-user-tie me-2"></i> Mon profil
-                                            </a>
-                                        @elserole('teacher')
-                                            <a class="dropdown-item" href="{{ route('teacher.profile') }}">
-                                                <i class="fas fa-chalkboard-teacher me-2"></i> Mon profil
-                                            </a>
-                                        @elserole('enseignant')
-                                            <a class="dropdown-item" href="{{ route('teacher.profile') }}">
-                                                <i class="fas fa-chalkboard-teacher me-2"></i> Mon profil
-                                            </a>
-                                        @else
-                                            <a class="dropdown-item" href="{{ route('admin.profile') }}">
-                                                <i class="fas fa-user-circle me-2"></i> Mon profil
-                                            </a>
-                                        @endrole
+                                {{-- Trois pages de profil, gardées par leur route : l'étudiant et l'enseignant
+                                     ont la leur, toute autre fonction (rôles personnalisés compris) ouvre
+                                     admin.profile, protégée par permission et non par rôle. --}}
+                                @role('etudiant')
+                                    <a class="dropdown-item" href="{{ route('esbtp.mon-profil.index') }}">
+                                        <i class="fas fa-user-circle"></i> Mon profil
+                                    </a>
+                                @elserole('enseignant|teacher')
+                                    <a class="dropdown-item" href="{{ route('teacher.profile') }}">
+                                        <i class="fas fa-user-circle"></i> Mon profil
+                                    </a>
+                                @else
+                                    <a class="dropdown-item" href="{{ route('admin.profile') }}">
+                                        <i class="fas fa-user-circle"></i> Mon profil
+                                    </a>
+                                @endrole
                             </li>
                             <x-support.entrees-menu variante="bureau" />
                             <li>
                                 {{-- Une securite qu'on ne trouve pas n'est activee par personne. --}}
                                 <a class="dropdown-item" href="{{ route('securite.double-auth.reglages') }}">
-                                    <i class="fas fa-shield-halved me-2"></i> Double authentification
+                                    <i class="fas fa-shield-halved"></i> Double authentification
                                 </a>
                             </li>
                             @role('etudiant')
                             <li>
-                                    <a class="dropdown-item" href="{{ \Illuminate\Support\Facades\Route::has('esbtp.preferences.index') ? route('esbtp.preferences.index') : url('/esbtp/preferences') }}">
-                                        <i class="fas fa-cog me-2"></i> Paramètres
+                                    <a class="dropdown-item" href="{{ route('esbtp.preferences.index') }}">
+                                        <i class="fas fa-sliders"></i> Préférences
                                     </a>
                             </li>
                             @else
                             @can('system.manage')
                             <li>
-                                    <a class="dropdown-item" href="{{ route('settings.index') }}">
-                                        <i class="fas fa-cog me-2"></i> Paramètres
+                                    <a class="dropdown-item" href="{{ route('esbtp.settings.index') }}">
+                                        <i class="fas fa-gear"></i> Paramètres de l'établissement
                                     </a>
                             </li>
                             @endcan
@@ -2842,8 +2832,8 @@
                             <li>
                                 <form method="POST" action="{{ route('logout') }}" id="logout-form">
                                 @csrf
-                                    <a class="dropdown-item" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                        <i class="fas fa-sign-out-alt me-2"></i> Déconnexion
+                                    <a class="dropdown-item kbh-deconnexion" href="#" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                                        <i class="fas fa-arrow-right-from-bracket"></i> Déconnexion
                                     </a>
                             </form>
                         </li>
@@ -3708,9 +3698,12 @@
             } else {
                 notificationsCount.style.display = 'none';
             }
+            document.getElementById('notificationsDropdown')?.setAttribute('aria-label',
+                unreadCount > 0 ? 'Notifications, ' + unreadCount + ' non lue' + (unreadCount > 1 ? 's' : '') : 'Notifications');
 
             // Mettre à jour le bouton header selon l'état
             if (markAllBtn) {
+                markAllBtn.style.display = '';
                 if (unreadCount > 0) {
                     markAllBtn.innerHTML = 'Tout marquer comme lu';
                     markAllBtn.onclick = function() { markAllNotificationsAsRead(); };
@@ -3788,6 +3781,7 @@
 
             // Mettre à jour le bouton header selon l'état
             if (markAllMessagesBtn) {
+                markAllMessagesBtn.style.display = '';
                 if (unreadCount > 0) {
                     markAllMessagesBtn.innerHTML = 'Tout marquer comme lu';
                     markAllMessagesBtn.onclick = function() { markAllMessagesAsRead(); };
@@ -3855,20 +3849,10 @@
 
             let html = '';
             actions.forEach(action => {
-                // Mapping des couleurs vers les backgrounds appropriés
-                const colorMap = {
-                    'primary': 'background: #3b82f6; color: white; border-color: #2563eb;',
-                    'success': 'background: #10b981; color: white; border-color: #059669;',
-                    'warning': 'background: #f59e0b; color: white; border-color: #d97706;',
-                    'danger': 'background: #ef4444; color: white; border-color: #dc2626;',
-                    'info': 'background: #06b6d4; color: white; border-color: #0891b2;',
-                    'secondary': 'background: #6b7280; color: white; border-color: #4b5563;'
-                };
-                const iconStyle = colorMap[action.color] || colorMap['primary'];
                 
                 html += `
                     <a href="${action.url}" class="quick-action-item">
-                        <div class="quick-action-icon" style="${iconStyle}">
+                        <div class="quick-action-icon">
                             <i class="${action.icon}"></i>
                         </div>
                         <div class="quick-action-text">${escapeHtml(action.title)}</div>
@@ -3900,6 +3884,23 @@
 
             if (searchInput) {
                 debugLog('✅ Search input trouvé, ajout des event listeners');
+
+                // Ctrl K (⌘ K sur Mac) place le curseur dans la recherche, depuis n'importe où.
+                // Le champ n'existe qu'à partir de 992 px : en dessous, il est masqué et on
+                // laisse le raccourci au navigateur.
+                const estMac = /Mac|iPhone|iPad/.test(navigator.platform || '');
+                const raccourci = searchInput.parentElement.querySelector('.kbh-raccourci');
+                if (raccourci && estMac) raccourci.textContent = '⌘ K';
+                document.addEventListener('keydown', function (ev) {
+                    // Un éditeur de texte (Summernote : Ctrl K = insérer un lien) garde son raccourci.
+                    if (ev.defaultPrevented || (ev.target.closest && ev.target.closest('[contenteditable="true"], .note-editor'))) return;
+                    if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (ev.key === 'k' || ev.key === 'K')
+                        && searchInput.offsetParent !== null) {
+                        ev.preventDefault();
+                        searchInput.focus();
+                        searchInput.select();
+                    }
+                });
 
                 searchInput.addEventListener('input', function() {
                     const query = this.value.trim();
@@ -4033,37 +4034,10 @@
             });
         }
 
-        // Mark all notifications as read
+        // « Tout marquer comme lu » : un seul gestionnaire, l'onclick posé par
+        // updateNotifications() selon l'état (marquer ou supprimer). Un second
+        // écouteur ici déclenchait les deux appels à la fois.
         document.addEventListener('DOMContentLoaded', function() {
-            const markAllBtn = document.getElementById('mark-all-notifications-read');
-            if (markAllBtn) {
-                markAllBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    debugLog('🔔 Marquage toutes notifications comme lues');
-
-                    const markAllUrl = document.querySelector('meta[name="navbar-mark-all-read-url"]')?.content;
-                    if (!markAllUrl) {
-                        return;
-                    }
-
-                    fetch(markAllUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        }
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            loadNavbarData();
-                        }
-                    })
-                    .catch(error => {
-                        debugError('❌ Erreur marquage toutes notifications:', error);
-                    });
-                });
-            }
 
             // Nouvelles fonctions pour notifications améliorées
             window.markNotificationAsRead = function(notificationId) {
@@ -4261,8 +4235,12 @@
 
             // Fonctions pour marquer tout comme lu
             window.markAllNotificationsAsRead = function() {
+                // Le clic ferme aussi le panneau : l'écouteur de fermeture ne doit
+                // pas relancer le même marquage pendant que celui-ci est en route.
+                window.__kbhMarquageEnCours = true;
                 fetch('{{ route("navbar.notifications.mark-all-read") }}', {
                     method: 'POST',
+                    keepalive: true,
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'Accept': 'application/json'
@@ -4280,7 +4258,8 @@
                 .catch(error => {
                     debugError('❌ Erreur marquage toutes notifications:', error);
                     alert('Erreur lors du marquage');
-                });
+                })
+                .finally(() => { window.__kbhMarquageEnCours = false; });
             };
 
             window.markAllMessagesAsRead = function() {
@@ -4306,9 +4285,12 @@
                 });
             };
 
-            // Marquer les notifications comme vues quand on ouvre le dropdown
-            document.getElementById('notificationsDropdown').addEventListener('shown.bs.dropdown', function () {
-                debugLog('🔔 Dropdown notifications ouvert - marquage comme vu');
+            // Marquer les notifications comme vues à la FERMETURE du panneau, pas à l'ouverture :
+            // à l'ouverture, le re-rendu de la liste déplaçait le contenu sous la souris et
+            // changeait « Tout marquer comme lu » en « Tout supprimer » pendant la lecture.
+            document.getElementById('notificationsDropdown').addEventListener('hidden.bs.dropdown', function () {
+                debugLog('🔔 Panneau des notifications fermé - marquage comme vu');
+                if (window.__kbhMarquageEnCours) return;
 
                 const unreadNotifications = document.querySelectorAll('.notification-item.unread');
                 const badge = document.getElementById('notifications-count');
@@ -4318,6 +4300,7 @@
                 if (unreadNotifications.length > 0 || badgeCount > 0) {
                     fetch('{{ route("navbar.notifications.mark-all-read") }}', {
                         method: 'POST',
+                        keepalive: true,
                         headers: {
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                             'Accept': 'application/json'
@@ -4537,9 +4520,7 @@
                     @endif
                 @else
                     @can('system.manage')
-                        @if(Route::has('settings.index'))
-                            <a href="{{ route('settings.index') }}"><x-m.icon name="settings" />Paramètres<span class="ch"><x-m.icon name="chr" /></span></a>
-                        @endif
+                        <a href="{{ route('esbtp.settings.index') }}"><x-m.icon name="settings" />Paramètres<span class="ch"><x-m.icon name="chr" /></span></a>
                     @endcan
                 @endif
                 @if(Route::has('logout'))
