@@ -6,7 +6,8 @@
  * Aucun modèle n'est écrit dans le code : on déclare ici ce qui existe, et
  * chaque école choisit par son .env ou ses réglages d'instance
  * (`assistant.modele_defaut`, `assistant.modeles_autorises`, qui priment sur
- * les valeurs ci-dessous). Les clés d'API restent dans le .env.
+ * les valeurs ci-dessous). Les clés d'API viennent du .env, ou de l'école
+ * (écran des réglages, klassci-cli), chiffrées en base par CoffreDesCles.
  *
  * Un modèle sans clé n'est jamais proposé ni essayé.
  */
@@ -16,13 +17,13 @@ $liste = static fn (?string $valeur): array => array_values(array_filter(array_m
 return [
 
     // Modèle utilisé quand l'utilisateur n'en choisit pas.
-    'modele_defaut' => env('ASSISTANT_MODELE', 'claude-haiku'),
+    'modele_defaut' => env('ASSISTANT_MODELE', 'or-gpt-4o-mini'),
 
     // Modèles proposés à l'école (clés de « modeles », séparées par des virgules). Vide = tous.
     'modeles_autorises' => $liste(env('ASSISTANT_MODELES_AUTORISES', '')),
 
     // Essayés dans cet ordre quand le modèle choisi tombe ou n'a pas de clé.
-    'repli' => $liste(env('ASSISTANT_REPLI', 'claude-haiku,gpt-4o-mini,gemini-flash,mistral-small')),
+    'repli' => $liste(env('ASSISTANT_REPLI', 'or-gpt-4o-mini,or-deepseek,claude-haiku,gpt-4o-mini,gemini-flash,mistral-small')),
 
     'limites' => [
         'tours' => (int) env('ASSISTANT_MAX_TOURS', 4),
@@ -78,6 +79,29 @@ return [
 
     // Registre : clé interne => fournisseur, identifiant chez le fournisseur, libellé, capacités.
     'modeles' => [
+        // Via OpenRouter : une seule clé, des modèles économiques choisis pour
+        // l'appel d'outils en français. Identifiants surchargeables par le .env.
+        'or-gpt-4o-mini' => [
+            'fournisseur' => 'openrouter',
+            'modele' => env('OPENROUTER_MODEL', 'openai/gpt-4o-mini'),
+            'libelle' => 'GPT-4o mini (OpenRouter)',
+            'outils' => true,
+            'diffusion' => true,
+        ],
+        'or-gemini-flash-lite' => [
+            'fournisseur' => 'openrouter',
+            'modele' => env('OPENROUTER_MODEL_GEMINI', 'google/gemini-3.1-flash-lite'),
+            'libelle' => 'Gemini Flash Lite (OpenRouter)',
+            'outils' => true,
+            'diffusion' => true,
+        ],
+        'or-deepseek' => [
+            'fournisseur' => 'openrouter',
+            'modele' => env('OPENROUTER_MODEL_DEEPSEEK', 'deepseek/deepseek-v3.2'),
+            'libelle' => 'DeepSeek V3.2 (OpenRouter)',
+            'outils' => true,
+            'diffusion' => true,
+        ],
         'claude-haiku' => [
             'fournisseur' => 'anthropic',
             'modele' => env('ANTHROPIC_MODEL', 'claude-haiku-4-5'),

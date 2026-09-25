@@ -633,6 +633,12 @@ class ESBTPSettingsController extends Controller
                         continue;
                     }
 
+                    // Clés d'IA : chiffrées par CoffreDesCles, jamais par ce formulaire générique
+                    // (il les écrirait en clair). Elles ont leur propre route.
+                    if (str_starts_with($settingKey, 'assistant_cle_')) {
+                        continue;
+                    }
+
                     // Barème assiduité JSON : déjà validé + sauvegardé plus haut.
                     if (in_array($settingKey, ['attendance_note_rules', BulletinMentionResolver::SETTING_KEY], true)) {
                         continue;

@@ -1089,6 +1089,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="assistant-tab" data-bs-toggle="tab" data-bs-target="#assistant" type="button" role="tab">
+                    <i class="fas fa-wand-magic-sparkles"></i> Assistant IA
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="lmd-tab" data-bs-toggle="tab" data-bs-target="#lmd" type="button" role="tab">
                     <i class="fas fa-graduation-cap"></i> Système LMD
                 </button>
@@ -3446,6 +3451,10 @@
                         .ls-mentions-grid { grid-template-columns: 1fr 1fr; }
                     }
                 </style>
+
+                <div class="tab-pane fade" id="assistant" role="tabpanel">
+                    @include('esbtp.settings.partials.assistant')
+                </div>
 
                 <div class="tab-pane fade" id="lmd" role="tabpanel">
                     @php

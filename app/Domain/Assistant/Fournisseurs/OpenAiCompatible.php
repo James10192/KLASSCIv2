@@ -18,11 +18,18 @@ class OpenAiCompatible extends AdaptateurHttp
 {
     public function diffuser(RequeteModele $requete, ModeleIa $modele, callable $arreter): iterable
     {
-        [$corps, $erreur] = $this->ouvrir($modele, $modele->url . 'chat/completions', [
+        $entetes = [
             'Content-Type' => 'application/json',
             'Accept' => 'text/event-stream',
             'Authorization' => 'Bearer ' . $modele->cleApi(),
-        ], $this->corps($requete, $modele));
+        ];
+        if ($modele->fournisseur === 'openrouter') {
+            // Identification de l'application, recommandée par OpenRouter.
+            $entetes['HTTP-Referer'] = (string) config('app.url');
+            $entetes['X-Title'] = 'KLASSCI';
+        }
+
+        [$corps, $erreur] = $this->ouvrir($modele, $modele->url . 'chat/completions', $entetes, $this->corps($requete, $modele));
 
         if ($erreur) {
             yield EvenementModele::erreur($erreur);
