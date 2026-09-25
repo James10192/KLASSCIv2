@@ -92,6 +92,40 @@ class RenvoiConvocationsCibleesTest extends TestCase
         $this->assertSame('adresse_corrigee', $audit->new_values['motif']);
     }
 
+    public function test_l_audit_garde_tout_ce_que_la_remise_a_zero_efface(): void
+    {
+        // Famille deja appelee par un agent : c'est la seule trace de qui l'a prevenue.
+        $agent = User::factory()->create();
+        $cible = $this->reservation('kone@gmail.com', StatutConvocationRdv::Telephone, 'confirmee', 3, [
+            'prevenue_par' => $agent->id, 'convocation_tentatives' => 2, 'convocation_erreur' => 'Rebond (email_bounced)',
+        ]);
+
+        $this->renvoyer(true, [$cible->id])->assertOk()->assertJsonPath('data.remises', 1);
+
+        $this->assertNull($cible->fresh()->prevenue_par);
+        $avant = Audit::query()->where('event', 'renvoi_convocation')->sole()->old_values;
+        $this->assertSame('telephone', $avant['convocation_statut']);
+        $this->assertSame($agent->id, (int) $avant['prevenue_par']);
+        $this->assertSame(2, (int) $avant['convocation_tentatives']);
+        $this->assertSame('Rebond (email_bounced)', $avant['convocation_erreur']);
+        $this->assertSame('confirme', $avant['convocation_action']);
+    }
+
+    public function test_un_dossier_clos_ou_un_avis_d_annulation_ne_sont_pas_renvoyes(): void
+    {
+        $inscrit = $this->reservation('kone@gmail.com', StatutConvocationRdv::Envoyee);
+        $inscrit->candidature->forceFill(['statut' => ESBTPCandidature::statutsDossierClos()[0]])->saveQuietly();
+        $annulation = $this->reservation('awa@gmail.com', StatutConvocationRdv::Envoyee, 'confirmee', 3, ['convocation_action' => 'annule']);
+
+        $this->renvoyer(true, [$inscrit->id, $annulation->id])->assertOk()
+            ->assertJsonPath('data.remises', 0)
+            ->assertJsonPath('data.non_eligibles.0.raison', 'dossier_clos')
+            ->assertJsonPath('data.non_eligibles.1.raison', 'avis_d_annulation');
+
+        $this->assertSame(StatutConvocationRdv::Envoyee, $inscrit->fresh()->convocation_statut);
+        $this->assertSame(StatutConvocationRdv::Envoyee, $annulation->fresh()->convocation_statut);
+    }
+
     public function test_un_second_appel_ne_change_rien(): void
     {
         $cible = $this->reservation('kone@gmail.com', StatutConvocationRdv::Envoyee);

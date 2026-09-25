@@ -165,18 +165,20 @@ ou `domaine_piege` (l'adresse porte encore une faute de la liste `corrections_co
 distincts ; `motif` parmi `adresse_corrigee`, `domaine_piege`, `demande_famille` ; `execute` vrai
 booléen JSON.
 
-**Éligible** : réservation `confirmee`, créneau pas encore commencé, adresse joignable, contact
-du dossier qui n'attend pas de confirmation, convocation pas déjà en file (`en_attente`, donc
-aussi pendant qu'un lot l'envoie). Sinon `raison` : `introuvable`, `reservation_non_active`,
-`creneau_passe`, `adresse_non_joignable`, `contact_a_confirmer`, `deja_en_file`
-(`echec_ecriture` en exécution).
+**Éligible** : réservation `confirmee`, dossier encore ouvert (un candidat déjà inscrit n'est
+pas reconvoqué), créneau pas encore commencé, convocation qui n'est pas un avis d'annulation,
+adresse joignable, contact du dossier qui n'attend pas de confirmation, convocation pas déjà en
+file (`en_attente`, donc aussi pendant qu'un lot l'envoie). Sinon `raison` : `introuvable`,
+`reservation_non_active`, `dossier_clos`, `sans_creneau`, `creneau_passe`, `avis_d_annulation`,
+`adresse_non_joignable`, `contact_a_confirmer`, `deja_en_file` (`echec_ecriture` en exécution).
 
 Simulation : `{"execute":false,"reservations":[{"id","eligible","raison","email_masque","statut_convocation","dossier_reference_masquee"}]}`.
 
 Exécution : chaque réservation est relue sous verrou puis remise en file par le chemin canonique
 (`FileConvocationsRdv::poser` : champs de la convocation remis à zéro, statut `en_attente`) ;
-l'état précédent (statut, date d'envoi, identifiant MailPulse, remise) est gardé dans l'audit
-`renvoi_convocation` avec le motif. **Rien n'est envoyé pendant l'appel** : la tâche planifiée
+tout ce que cette remise à zéro efface (statut, action, tentatives, dates d'envoi, de remise et
+de synchronisation, erreur, identifiant et code MailPulse, agent qui avait prévenu la famille
+par téléphone) est gardé dans l'audit `renvoi_convocation` avec le motif. **Rien n'est envoyé pendant l'appel** : la tâche planifiée
 (toutes les 5 minutes) envoie la file.
 `{"execute":true,"remises":1,"non_eligibles":[{"id":34,"raison":"deja_en_file"}],"a_envoyer":1}`
 (`a_envoyer` : toute la file en attente de l'école). Relancer ne change rien.

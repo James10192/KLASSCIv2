@@ -101,15 +101,26 @@ class RenvoiConvocationsCiblees
         }
     }
 
-    /** @return array<string, mixed> */
+    /**
+     * Tout ce que la remise a zero canonique (MessagerieRdv::planifier) efface :
+     * la reservation n'est pas auditee d'elle-meme, c'est la seule trace, y
+     * compris de l'agent qui avait prevenu la famille par telephone.
+     *
+     * @return array<string, mixed>
+     */
     private function etatConvocation(ESBTPRdvReservation $r): array
     {
         return [
             'convocation_statut' => $r->convocation_statut?->value,
+            'convocation_action' => $r->convocation_action,
+            'convocation_tentatives' => $r->convocation_tentatives,
             'convocation_envoyee_at' => $r->convocation_envoyee_at?->toIso8601String(),
+            'convocation_erreur' => $r->convocation_erreur,
             'convocation_message_id' => $r->convocation_message_id,
             'convocation_delivree_at' => $r->convocation_delivree_at?->toIso8601String(),
+            'convocation_synchro_at' => $r->convocation_synchro_at?->toIso8601String(),
             'convocation_code_distant' => $r->convocation_code_distant,
+            'prevenue_par' => $r->prevenue_par,
         ];
     }
 
