@@ -97,7 +97,7 @@
                         <div class="active tab-pane" id="description">
                             <div class="post">
                                 <div>
-                                    {!! nl2br(e($partnership->description ?? 'Aucune description disponible.')) !!}
+                                    {{ \App\Support\TexteRiche::afficher($partnership->description) ?? 'Aucune description disponible.' }}
                                 </div>
                             </div>
                         </div>
