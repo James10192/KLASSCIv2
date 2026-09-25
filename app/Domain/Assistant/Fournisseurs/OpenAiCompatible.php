@@ -18,11 +18,19 @@ class OpenAiCompatible extends AdaptateurHttp
 {
     public function diffuser(RequeteModele $requete, ModeleIa $modele, callable $arreter): iterable
     {
-        [$corps, $erreur] = $this->ouvrir($modele, $modele->url . 'chat/completions', [
+        $entetes = [
             'Content-Type' => 'application/json',
             'Accept' => 'text/event-stream',
             'Authorization' => 'Bearer ' . $modele->cleApi(),
-        ], $this->corps($requete, $modele));
+        ];
+        // En-têtes propres au fournisseur (config/assistant.php, clé « entetes »).
+        foreach ((array) config('assistant.fournisseurs.' . $modele->fournisseur . '.entetes', []) as $nom => $valeur) {
+            if (is_string($valeur) && $valeur !== '') {
+                $entetes[$nom] = $valeur;
+            }
+        }
+
+        [$corps, $erreur] = $this->ouvrir($modele, $modele->url . 'chat/completions', $entetes, $this->corps($requete, $modele));
 
         if ($erreur) {
             yield EvenementModele::erreur($erreur);

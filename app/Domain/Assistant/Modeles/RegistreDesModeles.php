@@ -2,6 +2,7 @@
 
 namespace App\Domain\Assistant\Modeles;
 
+use App\Domain\Assistant\Cles\CoffreDesCles;
 use App\Helpers\SettingsHelper;
 use Illuminate\Support\Facades\Log;
 
@@ -20,6 +21,8 @@ class RegistreDesModeles
     public function tous(): array
     {
         $fournisseurs = (array) config('assistant.fournisseurs', []);
+        $coffre = app(CoffreDesCles::class);
+        $clesPosees = [];
         $modeles = [];
 
         foreach ((array) config('assistant.modeles', []) as $cle => $def) {
@@ -37,7 +40,8 @@ class RegistreDesModeles
                 libelle: (string) ($def['libelle'] ?? $cle),
                 outils: (bool) ($def['outils'] ?? true),
                 diffusion: (bool) ($def['diffusion'] ?? true),
-                cleApi: $conf['cle'] ?? null,
+                // Une clé posée par l'école (réglages, CLI) prime sur celle du .env.
+                cleApi: ($clesPosees[$fournisseur] ??= ($coffre->lire($fournisseur) ?? '')) ?: ($conf['cle'] ?? null),
                 url: rtrim((string) ($conf['url'] ?? ''), '/') . '/',
             );
         }
