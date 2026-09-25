@@ -55,37 +55,27 @@
         return Number(n) <= 1 && /s$/.test(libelle) ? libelle.slice(0, -1) : libelle;
     }
 
+    // Le texte du bas de liste, le meme pour les listes rendues par le serveur
+    // et pour celles qu'Alpine dessine (ListeInfinie.alpine).
+    function texteCompteur(etat, affiches, total, libelle) {
+        var n = total !== null ? total : affiches;
+        if (etat === 'erreur') return 'La suite n’a pas pu être chargée.';
+        if (etat === 'chargement') return 'Chargement…';
+        if (etat === 'fin') return affiches === 0 ? '' : 'Fin de la liste · ' + nombre(n) + ' ' + accorder(libelle, n);
+        return nombre(affiches) + (total !== null ? ' sur ' + nombre(total) : '') + ' ' + accorder(libelle, n);
+    }
+
     function afficherEtat(bas, etat) {
         var d = bas.dataset;
-        var affiches = Number(d.affiches || 0);
-        var total = d.total === '' ? null : Number(d.total);
-        var libelle = d.libelle || 'éléments';
-        var compteur = bas.querySelector('.li-compteur');
         var bouton = bas.querySelector('[data-li-plus]');
 
         bas.dataset.etat = etat;
         bouton.disabled = etat === 'chargement';
-
-        if (etat === 'erreur') {
-            compteur.textContent = 'La suite n’a pas pu être chargée.';
-            bouton.textContent = 'Réessayer';
-            bouton.hidden = false;
-            return;
-        }
-
-        if (etat === 'fin') {
-            compteur.textContent = affiches === 0
-                ? ''
-                : 'Fin de la liste · ' + nombre(total !== null ? total : affiches) + ' ' + accorder(libelle, total !== null ? total : affiches);
-            bouton.hidden = true;
-            return;
-        }
-
-        compteur.textContent = etat === 'chargement'
-            ? 'Chargement…'
-            : nombre(affiches) + (total !== null ? ' sur ' + nombre(total) : '') + ' ' + accorder(libelle, total !== null ? total : affiches);
-        bouton.textContent = 'Charger la suite';
-        bouton.hidden = false;
+        bas.querySelector('.li-compteur').textContent = texteCompteur(
+            etat, Number(d.affiches || 0), d.total === '' ? null : Number(d.total), d.libelle || 'éléments'
+        );
+        bouton.textContent = etat === 'erreur' ? 'Réessayer' : 'Charger la suite';
+        bouton.hidden = etat === 'fin';
     }
 
     function adresse(bas) {
@@ -199,7 +189,125 @@
         (racine || document).querySelectorAll('[data-liste-infinie]').forEach(brancher);
     }
 
-    window.ListeInfinie = { init: init, charger: charger };
+    /*
+     * Pour une liste qu'Alpine dessine a partir de JSON (journal d'audit,
+     * corbeille) : le meme contrat, sans HTML de ligne cote serveur.
+     *
+     *   return Object.assign({ ...le composant, getters compris... }, ListeInfinie.alpine({
+     *       champ: 'items',                       // le tableau que la vue parcourt
+     *       libelle: 'entrées',                   // ou function () { return ... }
+     *       tranche: (page) => fetch(...).then(r => ({ lignes, pagination })),
+     *   }));
+     *
+     * Dans ce sens-la : Object.assign evalue les getters de ce qu'il copie ; le
+     * melange n'en a pas, un composant peut en avoir.
+     *
+     * `pagination` suit App\Support\ListeInfinie::pagination() (has_more,
+     * total, current_page). Le composant appelle liInit() dans son init() et
+     * liDetruire() dans son destroy() ; recharger() repart de la premiere
+     * tranche, retirer(cle) enleve une ligne sans rien recharger. Le bas de
+     * liste est le composant Blade x-liste-infinie-alpine.
+     */
+    function alpine(options) {
+        var champ = options.champ || 'items';
+        var cle = options.cle || function (x) { return x.id; };
+        var etat = {
+            loading: true,
+            liPage: 1,
+            liSuite: false,
+            liErreur: false,
+            liAPlus: false,
+            liTotal: null,
+            liNumero: 0,
+
+            liInit: function () {
+                injecterStyles();
+                var self = this;
+                if ('IntersectionObserver' in window && this.$refs.basDeListe) {
+                    this._liObservateur = new IntersectionObserver(function (entrees) {
+                        if (entrees.some(function (e) { return e.isIntersecting; })) self.chargerSuite();
+                    }, { rootMargin: MARGE });
+                    this._liObservateur.observe(this.$refs.basDeListe);
+                }
+                return this.recharger();
+            },
+            liDetruire: function () {
+                if (this._liObservateur) this._liObservateur.disconnect();
+            },
+            recharger: function () { return this._liCharger(false); },
+            chargerSuite: function () {
+                if (this.loading || this.liSuite || !this.liAPlus) return;
+                return this._liCharger(true);
+            },
+            retirer: function (valeur) {
+                var avant = this[champ].length;
+                this[champ] = this[champ].filter(function (x) { return cle(x) !== valeur; });
+                if (this.liTotal !== null && this[champ].length < avant) this.liTotal--;
+            },
+            liVide: function () { return this[champ].length === 0; },
+            liEtat: function () {
+                return this.liErreur ? 'erreur' : (this.liSuite ? 'chargement' : (this.liAPlus ? 'pret' : 'fin'));
+            },
+            compteurBas: function () {
+                var lib = typeof options.libelle === 'function' ? options.libelle.call(this) : (options.libelle || 'éléments');
+                return texteCompteur(this.liEtat(), this[champ].length, this.liTotal, lib);
+            },
+            _liCharger: function (ajouter) {
+                var self = this;
+                var numero = ++this.liNumero;
+                if (ajouter) { this.liSuite = true; } else { this.loading = true; this.liSuite = false; }
+                this.liErreur = false;
+                return Promise.resolve(options.tranche.call(this, ajouter ? this.liPage + 1 : 1))
+                    .then(function (res) {
+                        // Un filtre ou un onglet change entre-temps : reponse perimee.
+                        if (numero !== self.liNumero) return;
+                        var lignes = res.lignes || [];
+                        var p = res.pagination || {};
+                        if (ajouter) {
+                            // Une ligne ecrite pendant qu'on defile decale la suite :
+                            // on n'affiche pas deux fois la meme.
+                            var vus = new Set(self[champ].map(cle));
+                            self[champ] = self[champ].concat(lignes.filter(function (x) { return !vus.has(cle(x)); }));
+                        } else {
+                            self[champ] = lignes;
+                        }
+                        self.liPage = p.current_page || (ajouter ? self.liPage + 1 : 1);
+                        self.liAPlus = !!p.has_more;
+                        self.liTotal = p.total === undefined ? null : p.total;
+                        self.$nextTick(function () {
+                            // Une tranche courte laisse le bas a l'ecran : l'observateur
+                            // ne se redeclenche pas, on relance.
+                            var bas = self.$refs.basDeListe;
+                            if (self.liAPlus && bas && bas.getBoundingClientRect().top < window.innerHeight + 600) self.chargerSuite();
+                        });
+                    })
+                    .catch(function (e) {
+                        if (numero !== self.liNumero) return;
+                        if (ajouter) { self.liErreur = true; }
+                        else if (typeof options.echec === 'function') { options.echec.call(self, e); }
+                    })
+                    .finally(function () {
+                        if (numero !== self.liNumero) return;
+                        self.loading = false;
+                        self.liSuite = false;
+                    });
+            }
+        };
+        etat[champ] = [];
+        return etat;
+    }
+
+    // Des lignes ont quitte la liste sans rechargement (suppression, action
+    // groupee) : le compteur du bas en tient compte.
+    function ajuster(bas, retirees) {
+        if (!bas || !retirees) return;
+        var d = bas.dataset;
+        d.affiches = String(Math.max(0, Number(d.affiches || 0) - retirees));
+        if (d.total !== '') d.total = String(Math.max(0, Number(d.total) - retirees));
+        afficherEtat(bas, d.pageSuivante ? 'pret' : 'fin');
+    }
+
+    window.ListeInfinie = { init: init, charger: charger, alpine: alpine, ajuster: ajuster };
 
     function demarrer() {
         init(document);

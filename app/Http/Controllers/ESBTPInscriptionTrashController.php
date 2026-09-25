@@ -87,12 +87,7 @@ class ESBTPInscriptionTrashController extends Controller
         return response()->json([
             'success' => true,
             'kpis' => $kpis,
-            // Contrat du defilement (has_more, next_page, affiches), plus les
-            // champs d'avant pour qui les lisait deja.
-            'pagination' => ListeInfinie::pagination($inscriptions) + [
-                'last_page' => $inscriptions->lastPage(),
-                'per_page' => $inscriptions->perPage(),
-            ],
+            'pagination' => ListeInfinie::pagination($inscriptions),
             'items' => $inscriptions->getCollection()->map(function ($i) use ($deleters) {
                 $etudiantSoftDeleted = $i->etudiant && $i->etudiant->trashed();
                 // Sécurité : si etudiant chargé via withTrashed (relation might exclude trashed by default)

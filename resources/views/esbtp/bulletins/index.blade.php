@@ -903,6 +903,44 @@ function bulIndex() {
             this.bulkDelete();
         },
 
+        // Apres une action groupee : seules les lignes touchees sont relues, et
+        // les compteurs. Une ligne que le serveur ne rend plus (supprimee, ou
+        // sortie du filtre en changeant de statut) quitte la liste sur place ;
+        // recharger renverrait en haut quelqu'un qui travaillait plus bas.
+        async rafraichirLignes(ids) {
+            const tbody = document.getElementById('bul-tbody');
+            if (!tbody || ids.length === 0) return;
+            const form = document.getElementById('bul-filter-form');
+            const params = new URLSearchParams(new FormData(form));
+            params.set('mode', 'rows');
+            ids.forEach(id => params.append('lignes[]', id));
+            try {
+                const res = await fetch(this.baseUrl + '?' + params.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                });
+                if (!res.ok) throw new Error(`Erreur HTTP ${res.status}`);
+                const data = await res.json();
+                const tmp = document.createElement('tbody');
+                tmp.innerHTML = data.rows_html || '';
+                let retirees = 0;
+                ids.forEach(id => {
+                    const ancienne = tbody.querySelector('[data-li-cle="' + id + '"]');
+                    const neuve = tmp.querySelector('[data-li-cle="' + id + '"]');
+                    if (ancienne && neuve) ancienne.replaceWith(neuve);
+                    else if (ancienne) { ancienne.remove(); retirees++; }
+                });
+                if (retirees > 0) {
+                    this.allIds = this.allIds.filter(id => tbody.querySelector('[data-li-cle="' + id + '"]'));
+                    window.ListeInfinie?.ajuster(document.querySelector('#bul-table-wrap [data-liste-infinie]'), retirees);
+                }
+                this.selected = [];
+                this.updateKpis(data.stats);
+            } catch (err) {
+                // Filet : la liste repart de sa premiere tranche plutot que de mentir.
+                await this.fetchPage(1, false);
+            }
+        },
+
         async callBulk(url, method) {
             this.busy = true;
             try {
@@ -918,8 +956,7 @@ function bulIndex() {
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(data.message || `Erreur HTTP ${res.status}`);
                 this.pushToast({ type: 'success', message: data.message || 'Action effectuée.' });
-                // Refresh table sans reload page : la liste repart de sa premiere tranche.
-                await this.fetchPage(1, false);
+                await this.rafraichirLignes([...this.selected]);
             } catch (err) {
                 this.pushToast({ type: 'error', message: err.message || 'Erreur inattendue.' });
             } finally {

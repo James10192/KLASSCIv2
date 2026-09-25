@@ -89,12 +89,7 @@ class ESBTPEtudiantTrashController extends Controller
         return response()->json([
             'success' => true,
             'kpis' => $kpis,
-            // Contrat du defilement (has_more, next_page, affiches), plus les
-            // champs d'avant pour qui les lisait deja.
-            'pagination' => ListeInfinie::pagination($etudiants) + [
-                'last_page' => $etudiants->lastPage(),
-                'per_page' => $etudiants->perPage(),
-            ],
+            'pagination' => ListeInfinie::pagination($etudiants),
             'items' => $etudiants->getCollection()->map(fn ($e) => [
                 'id' => $e->id,
                 'matricule' => $e->matricule,

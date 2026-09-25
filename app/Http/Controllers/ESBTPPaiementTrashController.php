@@ -88,12 +88,7 @@ class ESBTPPaiementTrashController extends Controller
         return response()->json([
             'success' => true,
             'kpis' => $kpis,
-            // Contrat du defilement (has_more, next_page, affiches), plus les
-            // champs d'avant pour qui les lisait deja.
-            'pagination' => ListeInfinie::pagination($paiements) + [
-                'last_page' => $paiements->lastPage(),
-                'per_page' => $paiements->perPage(),
-            ],
+            'pagination' => ListeInfinie::pagination($paiements),
             'items' => $paiements->getCollection()->map(function ($p) use ($deleters) {
                 $etudiant = $p->inscription?->etudiant;
                 $etudiantSoftDeleted = $etudiant?->id

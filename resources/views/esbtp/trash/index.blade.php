@@ -625,14 +625,8 @@
                 </template>
             </div>
 
-            {{-- Bas de liste : la suite de l'onglet se charge en approchant
-                 (memes classes li-* que le composant x-liste-infinie). --}}
-            <div class="li-bas" x-ref="basDeListe" x-show="!loading && items.length > 0" x-cloak
-                 :data-etat="erreurSuite ? 'erreur' : (loadingMore ? 'chargement' : (hasMore ? 'pret' : 'fin'))">
-                <span class="li-compteur" aria-live="polite" x-text="compteurBas()"></span>
-                <button type="button" class="li-plus" x-show="hasMore || erreurSuite" :disabled="loadingMore"
-                        @click="chargerSuite()" x-text="erreurSuite ? 'Réessayer' : 'Charger la suite'"></button>
-            </div>
+            {{-- La corbeille est dessinee par Alpine : son bas de liste vient de ListeInfinie.alpine(). --}}
+            <x-liste-infinie-alpine />
         </div>
 
         {{-- Dialog dépendances unifié (Restore + Force delete) --}}
@@ -899,21 +893,14 @@
 
 <script>
 function trashIndex() {
-    return {
+    // Chargement par tranches : ListeInfinie.alpine() (public/js/liste-infinie.js)
+    // porte l'observateur, les etats et le dedoublonnage ; la page ne fournit
+    // que sa requete. Object.assign dans ce sens : ce composant a un getter.
+    return Object.assign({
         tab: 'etudiants',
         search: '',
         range: '',
-        loading: false,
-        items: [],
         kpis: { total: '—', this_week: '—', older_than_30: '—' },
-        page: 1,
-        hasMore: false,
-        total: null,
-        loadingMore: false,
-        erreurSuite: false,
-        // Numero du dernier chargement : une reponse d'un onglet ou d'un filtre
-        // quitte entre-temps est jetee.
-        requete: 0,
 
         // Dialog unifié (restore + force delete)
         depModalOpen: false,
@@ -933,35 +920,10 @@ function trashIndex() {
             return this.tab === 'etudiants' ? 'étudiants' : this.tab === 'inscriptions' ? 'inscriptions' : 'paiements';
         },
 
-        // Alpine appelle init() de lui-meme : le x-init="init()" retire lancait
-        // deux fois le premier chargement.
-        init() {
-            this.reload();
-            if ('IntersectionObserver' in window) {
-                this._observateur = new IntersectionObserver((entrees) => {
-                    if (entrees.some(e => e.isIntersecting)) this.chargerSuite();
-                }, { rootMargin: '600px 0px' });
-                this._observateur.observe(this.$refs.basDeListe);
-            }
-        },
-
-        destroy() {
-            if (this._observateur) this._observateur.disconnect();
-        },
-
-        chargerSuite() {
-            if (this.loading || this.loadingMore || !this.hasMore) return;
-            this.charger(true);
-        },
-
-        compteurBas() {
-            if (this.erreurSuite) return 'La suite n’a pas pu être chargée.';
-            if (this.loadingMore) return 'Chargement…';
-            const n = this.items.length.toLocaleString('fr-FR');
-            const libelle = this.activeTabLabel;
-            if (!this.hasMore) return 'Fin de la corbeille · ' + n + ' ' + libelle;
-            return n + (this.total !== null ? ' sur ' + this.total.toLocaleString('fr-FR') : '') + ' ' + libelle;
-        },
+        // Alpine appelle init() de lui-meme : pas de x-init="init()" en plus,
+        // qui lancait deux fois le premier chargement.
+        init() { this.liInit(); },
+        destroy() { this.liDetruire(); },
 
         switchTab(t) {
             if (t === this.tab) return;
@@ -977,62 +939,34 @@ function trashIndex() {
             this.toast.timer = setTimeout(() => { this.toast.show = false; }, durationMs);
         },
 
-        reload() {
-            return this.charger(false);
+        reload() { return this.recharger(); },
+
+        url(page, parPage = null) {
+            const url = new URL(`{{ url('/esbtp/trash') }}/${this.tab}`, window.location.origin);
+            if (this.search) url.searchParams.append('search', this.search);
+            if (this.range) url.searchParams.append('range', this.range);
+            url.searchParams.append('page', page);
+            if (parPage) url.searchParams.append('per_page', parPage);
+            return url.toString();
         },
 
-        async charger(ajouter) {
-            const numero = ++this.requete;
-            if (ajouter) {
-                this.loadingMore = true;
-            } else {
-                this.loading = true;
-                this.loadingMore = false;
-            }
-            this.erreurSuite = false;
-            try {
-                const url = new URL(`{{ url('/esbtp/trash') }}/${this.tab}`, window.location.origin);
-                if (this.search) url.searchParams.append('search', this.search);
-                if (this.range) url.searchParams.append('range', this.range);
-                url.searchParams.append('page', ajouter ? this.page + 1 : 1);
-                const res = await fetch(url.toString(), {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                    credentials: 'same-origin',
-                });
-                const data = await res.json();
-                if (numero !== this.requete) return;
-                if (!data.success) throw new Error(data.message || 'Erreur de chargement');
-                const lignes = data.items || [];
-                if (ajouter) {
-                    // Une suppression faite pendant qu'on defile decale la suite :
-                    // on n'affiche pas deux fois la meme ligne.
-                    const vus = new Set(this.items.map(i => i.id));
-                    this.items.push(...lignes.filter(i => !vus.has(i.id)));
-                } else {
-                    this.items = lignes;
-                }
-                const p = data.pagination || {};
-                this.page = p.current_page || 1;
-                this.hasMore = !!p.has_more;
-                this.total = p.total ?? null;
-                this.kpis = data.kpis || { total: 0, this_week: 0, older_than_30: 0 };
-                this.$nextTick(() => {
-                    const bas = this.$refs.basDeListe;
-                    if (this.hasMore && bas && bas.getBoundingClientRect().top < window.innerHeight + 600) this.chargerSuite();
-                });
-            } catch (e) {
-                if (numero !== this.requete) return;
-                if (ajouter) {
-                    this.erreurSuite = true;
-                } else {
-                    this.showToast('error', 'Erreur de chargement : ' + e.message);
-                }
-            } finally {
-                if (numero === this.requete) {
-                    this.loading = false;
-                    this.loadingMore = false;
-                }
-            }
+        async lire(url) {
+            const res = await fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                credentials: 'same-origin',
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'Erreur de chargement');
+            this.kpis = data.kpis || { total: 0, this_week: 0, older_than_30: 0 };
+            return data;
+        },
+
+        // Apres une restauration ou une suppression : la ligne part sur place et
+        // seuls les compteurs se relisent. Recharger renverrait en haut de la
+        // liste quelqu'un qui travaillait a sa 150e ligne.
+        async apresAction(id) {
+            this.retirer(id);
+            try { await this.lire(this.url(1, 1)); } catch (e) { /* compteurs au prochain filtrage */ }
         },
 
         formatMoney(v) {
@@ -1133,7 +1067,7 @@ function trashIndex() {
                 this.depTarget = null;
                 this.cascadeMotif = '';
                 this.bypassBlocking = false;
-                await this.reload();
+                await this.apresAction(id);
             } catch (e) {
                 this.showToast('error', 'Erreur : ' + e.message, 8000);
             } finally {
@@ -1168,14 +1102,21 @@ function trashIndex() {
                 this.depModalOpen = false;
                 this.depData = null;
                 this.depTarget = null;
-                await this.reload();
+                await this.apresAction(id);
             } catch (e) {
                 this.showToast('error', 'Erreur : ' + e.message, 6000);
             } finally {
                 this.actionSaving = false;
             }
         },
-    };
+    }, ListeInfinie.alpine({
+        champ: 'items',
+        libelle() { return this.activeTabLabel; },
+        tranche(page) {
+            return this.lire(this.url(page)).then(data => ({ lignes: data.items || [], pagination: data.pagination }));
+        },
+        echec(e) { this.showToast('error', 'Erreur de chargement : ' + e.message); },
+    }));
 }
 </script>
 @endsection

@@ -212,16 +212,8 @@
             </table>
         </div>
 
-        {{-- Bas de liste : la suite se charge en approchant, comme les autres
-             listes (memes classes li-* que le composant x-liste-infinie). Le
-             journal est rendu par Alpine a partir du JSON, donc c'est Alpine qui
-             ajoute les lignes ; le bouton reste pour le clavier et apres une erreur. --}}
-        <div class="li-bas" x-ref="basDeListe" x-show="!loading && audits.length > 0" x-cloak
-             :data-etat="erreurSuite ? 'erreur' : (loadingMore ? 'chargement' : (hasMore ? 'pret' : 'fin'))">
-            <span class="li-compteur" aria-live="polite" x-text="compteurBas()"></span>
-            <button type="button" class="li-plus" x-show="hasMore || erreurSuite" :disabled="loadingMore"
-                    @click="chargerSuite()" x-text="erreurSuite ? 'Réessayer' : 'Charger la suite'"></button>
-        </div>
+        {{-- Le journal est dessine par Alpine : son bas de liste vient de ListeInfinie.alpine(). --}}
+        <x-liste-infinie-alpine />
     </div>
 
     {{-- ═══════════════════════════════ MODAL DIFF RAPIDE ═══════════════════════════════ --}}
@@ -367,18 +359,10 @@
 @push('scripts')
 <script>
 function auditPage() {
-    return {
-        loading: true,
-        audits: [],
-        currentPage: 1,
-        // Pagination sans comptage : on ne connait pas le nombre total de pages,
-        // seulement s'il reste quelque chose apres celle-ci.
-        hasMore: false,
-        loadingMore: false,
-        erreurSuite: false,
-        // Chaque chargement porte un numero : une reponse arrivee apres un
-        // changement de filtre est jetee au lieu de melanger deux listes.
-        requete: 0,
+    // Chargement par tranches : ListeInfinie.alpine() (public/js/liste-infinie.js)
+    // porte l'observateur, les etats et le dedoublonnage ; la page ne fournit
+    // que sa requete.
+    return Object.assign({
         filters: {
             search: '',
             event: '',
@@ -394,99 +378,11 @@ function auditPage() {
         quickLinks: [],
         quickLinksLoading: false,
 
-        // Alpine appelle init() de lui-meme : un x-init="init()" en plus lancait
-        // deux fois le premier chargement.
-        init() {
-            this.reload();
-            if ('IntersectionObserver' in window) {
-                this._observateur = new IntersectionObserver((entrees) => {
-                    if (entrees.some(e => e.isIntersecting)) this.chargerSuite();
-                }, { rootMargin: '600px 0px' });
-                this._observateur.observe(this.$refs.basDeListe);
-            }
-        },
-
-        destroy() {
-            if (this._observateur) this._observateur.disconnect();
-        },
-
-        reload() {
-            this.currentPage = 1;
-            this.fetchData(false);
-        },
-
-        chargerSuite() {
-            if (this.loading || this.loadingMore || !this.hasMore) return;
-            this.fetchData(true);
-        },
-
-        compteurBas() {
-            if (this.erreurSuite) return 'La suite n’a pas pu être chargée.';
-            if (this.loadingMore) return 'Chargement…';
-            const n = this.audits.length.toLocaleString('fr-FR');
-            const libelle = this.audits.length > 1 ? 'entrées' : 'entrée';
-            return this.hasMore ? n + ' ' + libelle + ' chargées' : 'Fin du journal · ' + n + ' ' + libelle;
-        },
-
-        fetchData(ajouter = false) {
-            const numero = ++this.requete;
-            if (ajouter) {
-                this.loadingMore = true;
-                this.erreurSuite = false;
-            } else {
-                this.loading = true;
-                this.loadingMore = false;
-                this.erreurSuite = false;
-            }
-            const params = { page: ajouter ? this.currentPage + 1 : 1 };
-            Object.keys(this.filters).forEach(k => {
-                if (this.filters[k]) params[k] = this.filters[k];
-            });
-
-            fetch('{{ route("esbtp.audit.data") }}?' + new URLSearchParams(params), {
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-            })
-                .then(r => {
-                    if (!r.ok) throw new Error('HTTP ' + r.status);
-                    return r.json();
-                })
-                .then(data => {
-                    if (numero !== this.requete) return;
-                    // event_raw est servi directement par le backend (slug
-                    // Eloquent : created/updated/deleted/...) — pas de
-                    // reverse-map fragile depuis le label FR.
-                    const lignes = data.data || [];
-                    if (ajouter) {
-                        // Une entree ecrite en tete pendant qu'on defile decale
-                        // la suite d'un cran : on n'affiche pas deux fois la meme.
-                        const vus = new Set(this.audits.map(a => a.id));
-                        this.audits.push(...lignes.filter(a => !vus.has(a.id)));
-                    } else {
-                        this.audits = lignes;
-                    }
-                    this.currentPage = data.current_page || 1;
-                    this.hasMore = !!data.next_page_url;
-                    this.loading = false;
-                    this.loadingMore = false;
-                    // Une tranche courte peut laisser le bas de liste a l'ecran :
-                    // l'observateur ne se redeclenche pas, on relance.
-                    this.$nextTick(() => {
-                        const bas = this.$refs.basDeListe;
-                        if (this.hasMore && bas && bas.getBoundingClientRect().top < window.innerHeight + 600) this.chargerSuite();
-                    });
-                })
-                .catch(err => {
-                    if (numero !== this.requete) return;
-                    console.error('Audit fetch error:', err);
-                    this.loading = false;
-                    this.loadingMore = false;
-                    if (ajouter) {
-                        this.erreurSuite = true;
-                    } else if (window.toastr) {
-                        toastr.error('Erreur lors du chargement des audits');
-                    }
-                });
-        },
+        // Alpine appelle init() de lui-meme : pas de x-init="init()" en plus,
+        // qui lancait deux fois le premier chargement.
+        init() { this.liInit(); },
+        destroy() { this.liDetruire(); },
+        reload() { return this.recharger(); },
 
         riskClass(level) {
             const map = { 'Critique': 'critique', 'Élevé': 'eleve', 'Moyen': 'moyen', 'Faible': 'faible' };
@@ -536,7 +432,27 @@ function auditPage() {
                 : '{{ route("esbtp.audit.export.excel") }}';
             window.open(url + '?' + params.toString(), '_blank');
         },
-    };
+    }, ListeInfinie.alpine({
+        champ: 'audits',
+        libelle: 'entrées',
+        // event_raw arrive tel qu'Eloquent l'ecrit (created, updated...) : la vue
+        // choisit sa classe sans traduire le libelle a l'envers.
+        tranche(page) {
+            const params = { page };
+            Object.keys(this.filters).forEach(k => {
+                if (this.filters[k]) params[k] = this.filters[k];
+            });
+            return fetch('{{ route("esbtp.audit.data") }}?' + new URLSearchParams(params), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                // simplePaginate : pas de total, seulement « il en reste ».
+                .then(data => ({ lignes: data.data || [], pagination: { current_page: data.current_page, has_more: !!data.next_page_url, total: null } }));
+        },
+        echec() {
+            if (window.toastr) toastr.error('Erreur lors du chargement des audits');
+        },
+    }));
 }
 </script>
 @endpush

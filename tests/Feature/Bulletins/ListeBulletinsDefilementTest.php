@@ -64,4 +64,42 @@ class ListeBulletinsDefilementTest extends TestCase
         $this->assertCount(4, $b[1]);
         $this->assertCount(24, array_unique(array_merge($a[1], $b[1])));
     }
+
+    public function test_apres_une_action_seules_les_lignes_touchees_reviennent_avec_les_compteurs(): void
+    {
+        $this->withoutMiddleware([
+            \App\Http\Middleware\CheckInstalled::class,
+            \App\Http\Middleware\EnsureInstalled::class,
+            \App\Http\Middleware\PaywallMiddleware::class,
+        ]);
+        Cache::flush();
+        foreach (['admin.access', 'bulletins.view'] as $p) {
+            Permission::findOrCreate($p, 'web');
+        }
+        $agent = User::factory()->create();
+        $agent->givePermissionTo(['admin.access', 'bulletins.view']);
+        $this->actingAs($agent);
+
+        $annee = ESBTPAnneeUniversitaire::factory()->create();
+        $classe = ESBTPClasse::factory()->create();
+        [$a, $b, $c] = ESBTPBulletin::factory()->count(3)->create([
+            'annee_universitaire_id' => $annee->id, 'classe_id' => $classe->id, 'is_published' => false,
+        ])->all();
+        $a->update(['is_published' => true]);
+
+        $filtre = ['annee_universitaire_id' => $annee->id, 'page' => 1, 'mode' => 'rows', 'lignes' => [$a->id, $b->id]];
+        $ajax = $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest']);
+
+        $r = $ajax->getJson(route('esbtp.bulletins.index', $filtre))->assertOk()
+            ->assertJsonPath('stats.published', 1)
+            ->assertJsonPath('stats.total', 3);
+        preg_match_all('/<tr data-li-cle="(\d+)"/', $r->json('rows_html'), $m);
+        $this->assertEqualsCanonicalizing([$a->id, $b->id], array_map('intval', $m[1]), 'Seulement les deux lignes touchées, pas la troisième.');
+
+        // Sous le filtre « non publiés », la ligne publiée n'est plus rendue :
+        // l'écran la retire sur place.
+        $r = $ajax->getJson(route('esbtp.bulletins.index', $filtre + ['published' => '0']))->assertOk();
+        preg_match_all('/<tr data-li-cle="(\d+)"/', $r->json('rows_html'), $m);
+        $this->assertSame([$b->id], array_map('intval', $m[1]));
+    }
 }
