@@ -144,9 +144,12 @@ class FuzzyNameMatcher
     }
 
     /**
-     * Normalise une chaîne de caractères pour comparaison.
+     * Normalise une chaîne de caractères pour comparaison : sans accent, en
+     * minuscules, toute ponctuation (apostrophe, tiret) devenue une espace.
+     * Public pour que les recherches qui preparent leurs candidats en SQL
+     * comparent avec la meme regle que le score.
      */
-    protected function normalizeString(string $value): string
+    public function normalizeString(string $value): string
     {
         $value = Str::ascii($value);
         $value = strtolower($value);
