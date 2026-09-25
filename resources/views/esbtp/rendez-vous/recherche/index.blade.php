@@ -48,6 +48,16 @@
 .rdr-vide i { font-size: 1.6rem; color: #94a3b8; display: block; margin-bottom: .6rem; }
 .rdr-vide h3 { font-size: 1rem; color: var(--rdv-dark); margin: 0 0 .35rem; }
 .rdr-vide p { font-size: .85rem; margin: 0 auto; max-width: 420px; }
+.rdr-avis { display: flex; align-items: flex-start; gap: .6rem; padding: .75rem 1.25rem; border-bottom: 1px solid var(--rdv-line); background: rgba(4,83,203,.04); font-size: .82rem; color: var(--rdv-text); }
+.rdr-avis i { color: var(--rdv-primary); margin-top: .15rem; }
+.rdr-sans { margin-top: 1rem; }
+.rdr-sans .rdr-carte-tete { justify-content: flex-start; gap: .6rem; }
+.rdr-sans .rdr-carte-tete i { color: var(--rdv-primary); }
+.rdr-eleve { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: .75rem 1.25rem; border-bottom: 1px solid #f1f5f9; }
+.rdr-eleve:last-child { border-bottom: none; }
+.rdr-eleve-qui { min-width: 0; }
+.rdr-eleve-qui strong { font-size: .9rem; color: var(--rdv-dark); }
+.rdr-eleve-qui small { display: block; font-size: .76rem; color: var(--rdv-muted); margin-top: .15rem; }
 #rdr-resultats.is-chargement { opacity: .55; pointer-events: none; transition: opacity .2s ease; }
 
 @media (max-width: 768px) {
@@ -126,6 +136,12 @@
                 <div class="rdr-carte-tete">
                     <span><strong>{{ number_format($reservations->total(), 0, ',', ' ') }}</strong> rendez-vous{{ $filtres['q'] !== '' ? ' pour « '.$filtres['q'].' »' : '' }}</span>
                 </div>
+                @if($approchant)
+                    <div class="rdr-avis">
+                        <i class="fas fa-circle-info"></i>
+                        <span>Aucun nom ne correspond exactement : voici les orthographes voisines. Vérifiez la date de naissance ou le téléphone avant de confondre deux familles.</span>
+                    </div>
+                @endif
                 <ul class="rdr-lignes" id="rdr-lignes">
                     @foreach($reservations as $resa)
                         @include('esbtp.rendez-vous.recherche._ligne')
@@ -135,6 +151,45 @@
                                  :url="route('esbtp.rendez-vous.recherche')" />
             @endif
         </section>
+
+        @if($elevesSansRdv->isNotEmpty())
+            @php
+                $_voitEleve = auth()->user()?->can('students.view') ?? false;
+                $_voitDemandes = auth()->user()?->can('reinscriptions.demandes.view') ?? false;
+            @endphp
+            <section class="rdr-carte rdr-sans">
+                <div class="rdr-carte-tete">
+                    <i class="fas fa-user-clock"></i>
+                    <span><strong>{{ $elevesSansRdv->count() === 1 ? 'Élève connu, sans rendez-vous' : 'Élèves connus, sans rendez-vous' }}</strong> — la famille n'a pas encore réservé de créneau.</span>
+                </div>
+                <ul class="rdr-lignes">
+                    @foreach($elevesSansRdv as $_eleve)
+                        @php $_demande = $_eleve->derniereDemandeRdv; @endphp
+                        <li class="rdr-eleve">
+                            <div class="rdr-eleve-qui">
+                                <strong>{{ trim($_eleve->nom.' '.$_eleve->prenoms) }}</strong>
+                                <small>
+                                    {{ $_eleve->matricule ?: 'Sans matricule' }} ·
+                                    @if($_demande)
+                                        Demande de réinscription {{ mb_strtolower($_demande->libelleStatut(), 'UTF-8') }}, sans créneau réservé
+                                    @else
+                                        Aucune demande de réinscription déposée
+                                    @endif
+                                </small>
+                            </div>
+                            <div class="rdr-actions">
+                                @if($_demande && $_demande->reference_publique && $_voitDemandes)
+                                    <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.reinscription-demandes.index', ['reference' => $_demande->referencePubliqueAffichee()]) }}"><i class="fas fa-folder-open"></i>Demande</a>
+                                @endif
+                                @if($_voitEleve)
+                                    <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.etudiants.show', $_eleve->id) }}"><i class="fas fa-user"></i>Fiche</a>
+                                @endif
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
     </div>
 </div>
 @endsection

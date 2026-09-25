@@ -29,6 +29,9 @@ class ESBTPRendezVousRechercheController extends Controller
             );
         }
 
-        return view('esbtp.rendez-vous.recherche.index', compact('reservations', 'filtres', 'accueil'));
+        $approchant = $recherche->approchant($filtres);
+        $elevesSansRdv = $recherche->elevesSansRendezVous($filtres);
+
+        return view('esbtp.rendez-vous.recherche.index', compact('reservations', 'filtres', 'accueil', 'approchant', 'elevesSansRdv'));
     }
 }

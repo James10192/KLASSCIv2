@@ -85,6 +85,9 @@ class CLIRendezVousController extends BaseApiController
 
         return $this->successResponse([
             'filtres' => $filtres,
+            // Vrai quand aucun nom ne correspond exactement et que la liste
+            // propose des orthographes voisines.
+            'approchant' => $recherche->approchant($filtres),
             'total' => $page->total(),
             'page' => $page->currentPage(),
             'derniere_page' => $page->lastPage(),
@@ -104,6 +107,13 @@ class CLIRendezVousController extends BaseApiController
                 'etat_accueil' => ($r->statut?->occupeLeCreneau() && $r->creneau) ? $accueil->etat($r) : null,
                 'absences' => (int) $r->absences,
                 'recue_le' => $r->accueilli_at?->toIso8601String(),
+            ])->values(),
+            // Les eleves que la saisie designe et qui n'ont jamais reserve.
+            'eleves_sans_rendez_vous' => $recherche->elevesSansRendezVous($filtres)->map(fn ($e) => [
+                'id' => $e->id,
+                'matricule' => $e->matricule,
+                'nom' => trim($e->nom.' '.$e->prenoms),
+                'demande_reinscription' => $e->derniereDemandeRdv?->statut,
             ])->values(),
         ]);
     }
