@@ -1030,11 +1030,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Lire une annonce ne donne pas le droit d'en publier : `annonces.view`
             // (caissier, comptable) ouvrait aussi création, modification et
             // suppression. « create » est déclarée avant « show », sinon
-            // `annonces/create` serait lu comme `annonces/{annonce}`.
+            // `annonces/create` serait lu comme `annonces/{annonce}`. Les anciens
+            // noms (create_annonces…) restent acceptés pour les rôles d'avant.
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['create', 'store'])
-                ->middleware(['permission:annonces.create']);
+                ->middleware(['permission:annonces.create|create_annonces']);
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['edit', 'update', 'destroy'])
-                ->middleware(['permission:annonces.edit']);
+                ->middleware(['permission:annonces.edit|edit_annonces']);
             Route::resource('annonces', ESBTPAnnonceController::class)->only(['index', 'show'])
                 ->middleware(['permission:annonces.view|annonces.create|annonces.edit']);
 
@@ -2086,8 +2087,9 @@ Route::post('esbtp/emploi-temps/{id}/set-current', [App\Http\Controllers\ESBTPEm
 // Routes pour les Ã©valuations
 // La seconde clause ferme le groupe à qui ne porte AUCUN droit sur les
 // évaluations : `admin.access` seul (caissier, comptable) suffisait à créer,
-// modifier ou supprimer une évaluation et ses coefficients.
-Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:evaluations.view|evaluations.create|evaluations.edit'])->group(function () {
+// modifier ou supprimer une évaluation et ses coefficients. Les anciens noms
+// (view_evaluations…) restent acceptés pour les rôles créés avant le registre.
+Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:evaluations.view|evaluations.create|evaluations.edit|view_evaluations|create_evaluations|edit_evaluations'])->group(function () {
     Route::get('/', [ESBTPEvaluationController::class, 'index'])->name('index');
     Route::get('/create', [ESBTPEvaluationController::class, 'create'])->name('create');
     Route::post('/', [ESBTPEvaluationController::class, 'store'])->name('store');

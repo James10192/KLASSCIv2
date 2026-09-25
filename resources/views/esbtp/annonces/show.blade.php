@@ -575,7 +575,7 @@
                     <a href="{{ route('esbtp.annonces.index') }}" class="aps-btn aps-btn--glass">
                         <i class="fas fa-arrow-left"></i>Retour
                     </a>
-                    @can('annonces.edit')
+                    @canany(['annonces.edit', 'edit_annonces'])
                     @if($canEdit)
                         <a href="{{ route('esbtp.annonces.edit', $annonce) }}" class="aps-btn aps-btn--white">
                             <i class="fas fa-pen-to-square"></i>Modifier
@@ -589,7 +589,7 @@
                     <button type="button" class="aps-btn aps-btn--danger-glass" id="aps-open-delete">
                         <i class="fas fa-trash"></i>Supprimer
                     </button>
-                    @endcan
+                    @endcanany
                 </div>
             </div>
         </div>
