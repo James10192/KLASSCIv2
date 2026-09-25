@@ -524,6 +524,19 @@
     .es-info-row { flex-direction: column; align-items: flex-start; gap: 4px; }
     .es-class-header { flex-direction: column; align-items: flex-start; gap: 10px; }
     .es-teaching-kpis { grid-template-columns: repeat(2, 1fr); }
+    /* Le rafraîchissement d'en-tête plus haut pose une grille à trois colonnes
+       que le passage en colonne ci-dessus ne défait pas : sur téléphone, avatar,
+       nom et boutons se chevauchaient. On empile explicitement. */
+    .es-hero-inner { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 22px 16px 14px; }
+    .es-hero-text { min-width: 0; width: 100%; }
+    .es-hero-name { font-size: 1.25rem; overflow-wrap: anywhere; }
+    .es-hero-actions { width: 100%; align-self: stretch; }
+    .es-hero-btns { justify-content: center; }
+    .es-hero-btn { white-space: normal; flex: 1 1 auto; justify-content: center; }
+    .es-hero-pill { white-space: normal; }
+    .es-kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0 16px 18px; gap: 8px; }
+    .es-kpi { min-height: 0; padding: 10px 12px; border-right: 1px solid rgba(255,255,255,.16); }
+    .es-avail-grid { grid-template-columns: 50px repeat(7, minmax(28px, 1fr)); font-size: .7rem; }
 }
 </style>
 @endsection
