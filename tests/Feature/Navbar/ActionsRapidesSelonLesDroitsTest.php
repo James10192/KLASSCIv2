@@ -28,7 +28,7 @@ class ActionsRapidesSelonLesDroitsTest extends TestCase
             \App\Http\Middleware\PaywallMiddleware::class,
         ]);
 
-        foreach (['admin.access', 'paiements.create', 'module.caisse.access', 'cash_session.manage', 'classes.create', 'evaluations.create'] as $nom) {
+        foreach (['admin.access', 'paiements.create', 'module.caisse.access', 'cash_session.manage', 'classes.create', 'evaluations.create', 'annonces.view', 'annonces.create', 'annonces.edit'] as $nom) {
             Permission::findOrCreate($nom, 'web');
         }
         Cache::flush();
@@ -43,7 +43,7 @@ class ActionsRapidesSelonLesDroitsTest extends TestCase
     public function test_le_caissier_ne_voit_que_ce_qu_il_peut_ouvrir(): void
     {
         $caissier = User::factory()->create();
-        $caissier->givePermissionTo(['admin.access', 'paiements.create', 'module.caisse.access', 'cash_session.manage']);
+        $caissier->givePermissionTo(['admin.access', 'paiements.create', 'module.caisse.access', 'cash_session.manage', 'annonces.view']);
 
         $titres = $this->titres($caissier);
 
@@ -52,6 +52,8 @@ class ActionsRapidesSelonLesDroitsTest extends TestCase
         $this->assertNotContains('Nouvelle classe', $titres);
         $this->assertNotContains('Créer examen', $titres);
         $this->assertNotContains('Saisie notes', $titres);
+        // Lire les annonces ne donne pas le droit d'en publier.
+        $this->assertNotContains('Nouvelle annonce', $titres);
     }
 
     public function test_qui_porte_la_permission_retrouve_l_action(): void
@@ -64,5 +66,23 @@ class ActionsRapidesSelonLesDroitsTest extends TestCase
         $this->assertContains('Nouvelle classe', $titres);
         $this->assertContains('Créer examen', $titres);
         $this->assertNotContains('Encaisser', $titres);
+    }
+
+    public function test_lire_les_annonces_ne_permet_pas_d_en_publier(): void
+    {
+        $lecteur = User::factory()->create();
+        $lecteur->givePermissionTo(['admin.access', 'annonces.view']);
+
+        $this->actingAs($lecteur)->get(route('esbtp.annonces.create'))->assertForbidden();
+        $this->actingAs($lecteur)->post(route('esbtp.annonces.store'), ['titre' => 'x'])->assertForbidden();
+    }
+
+    public function test_sans_droit_sur_les_evaluations_le_formulaire_est_refuse(): void
+    {
+        $caissier = User::factory()->create();
+        $caissier->givePermissionTo(['admin.access', 'paiements.create']);
+
+        $this->actingAs($caissier)->get(route('esbtp.evaluations.create'))->assertForbidden();
+        $this->actingAs($caissier)->post(route('esbtp.evaluations.store'), [])->assertForbidden();
     }
 }

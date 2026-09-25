@@ -1027,7 +1027,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:bulletins.view_own|bulletins.view']);
 
             // Routes pour les annonces
-            Route::resource('annonces', ESBTPAnnonceController::class)
+            // Lire une annonce ne donne pas le droit d'en publier : `annonces.view`
+            // (caissier, comptable) ouvrait aussi création, modification et
+            // suppression. « create » est déclarée avant « show », sinon
+            // `annonces/create` serait lu comme `annonces/{annonce}`.
+            Route::resource('annonces', ESBTPAnnonceController::class)->only(['create', 'store'])
+                ->middleware(['permission:annonces.create']);
+            Route::resource('annonces', ESBTPAnnonceController::class)->only(['edit', 'update', 'destroy'])
+                ->middleware(['permission:annonces.edit']);
+            Route::resource('annonces', ESBTPAnnonceController::class)->only(['index', 'show'])
                 ->middleware(['permission:annonces.view|annonces.create|annonces.edit']);
 
             // Routes pour les prÃ©sences/absences (esbtp namespace)
