@@ -32,6 +32,9 @@ class AcademicActorAssignment extends Model implements AuditableContract
         'metadata' => 'array',
     ];
 
+    /** Jamais 'retrieved' : chaque lecture ecrirait une ligne vide dans le journal. */
+    protected $auditEvents = ['created', 'updated', 'deleted', 'restored'];
+
     protected $auditInclude = [
         'user_id',
         'classe_id',

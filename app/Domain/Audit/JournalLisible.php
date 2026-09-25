@@ -56,7 +56,8 @@ class JournalLisible
 
             return new LigneDuJournal(
                 id: (int) $a->id,
-                acteur: $a->user?->name ?? 'Système',
+                // Une personne dont le compte a disparu n'est pas le systeme.
+                acteur: $a->user?->name ?? ($a->user_id !== null ? 'Compte supprimé' : 'Système'),
                 role: $this->role($a->user),
                 automatique: $a->user_id === null,
                 verbe: self::verbe($a),

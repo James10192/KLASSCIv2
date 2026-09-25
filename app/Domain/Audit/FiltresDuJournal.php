@@ -82,10 +82,19 @@ final class FiltresDuJournal
         return $this->base()->when(! $this->automatiques && $this->idObjet === null, fn (Builder $q) => $q->whereNotNull('user_id'));
     }
 
+    /**
+     * Les lignes de consultation ecrites avant que 'retrieved' ne soit retire
+     * de config/audit.php : vides, sans auteur utile, elles ne se montrent nulle part.
+     */
+    public static function sansConsultationsHeritees(Builder $q): Builder
+    {
+        return $q->where('event', '!=', 'retrieved');
+    }
+
     /** La meme vue, sans le choix sur les taches automatiques : pour les compter. */
     public function base(): Builder
     {
-        $requete = ThemesDuJournal::appliquer(Audit::query(), $this->theme)
+        $requete = ThemesDuJournal::appliquer(self::sansConsultationsHeritees(Audit::query()), $this->theme)
             ->when($this->aucunOnglet, fn (Builder $q) => $q->whereRaw('0 = 1'))
             ->when($this->depuisLe(), fn (Builder $q, Carbon $d) => $q->where('created_at', '>=', $d))
             ->when($this->au, fn (Builder $q, Carbon $d) => $q->where('created_at', '<=', $d))

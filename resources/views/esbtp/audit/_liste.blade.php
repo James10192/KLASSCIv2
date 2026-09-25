@@ -16,8 +16,9 @@
 
 @if($automatiques && $automatiques['nombre'] > 0)
     <div class="jda-auto">
-        <span><strong>{{ number_format($automatiques['nombre'], 0, ',', ' ') }} action{{ $automatiques['nombre'] > 1 ? 's' : '' }} automatique{{ $automatiques['nombre'] > 1 ? 's' : '' }}</strong>
-            masquée{{ $automatiques['nombre'] > 1 ? 's' : '' }} sur cette vue{{ $automatiques['surtout'] ? ", surtout sur les ".$automatiques['surtout'] : "" }}.</span>
+        @php $_n = $automatiques['nombre']; @endphp
+        <span><strong>{{ number_format($_n, 0, ',', ' ') }} tâche{{ $_n > 1 ? 's' : '' }} automatique{{ $_n > 1 ? 's' : '' }}</strong>
+            masquée{{ $_n > 1 ? 's' : '' }} sur cette vue{{ $automatiques['surtout'] ? ", surtout sur les ".$automatiques['surtout'] : "" }}.</span>
         <button type="button" class="jda-lien" data-jda-filtre='@json(['auto' => true])'>Les afficher</button>
     </div>
 @endif
