@@ -21,6 +21,8 @@ final class ResultatBoucle
         public readonly int $tokensSortie,
         public readonly int $tours,
         public readonly int $latenceMs,
+        /** Messages neutres produits pendant l'échange (appels d'outil et leurs résultats compacts), rejoués dans l'historique. */
+        public readonly array $trace = [],
     ) {
     }
 

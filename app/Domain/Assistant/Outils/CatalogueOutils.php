@@ -2,7 +2,12 @@
 
 namespace App\Domain\Assistant\Outils;
 
+use App\Domain\Assistant\Outils\Presentation\AfficherDiagramme;
+use App\Domain\Assistant\Outils\Presentation\AfficherGraphique;
+use App\Domain\Assistant\Outils\Presentation\AfficherTableau;
 use App\Services\Chatbot\ChatbotSetupGuideService;
+use App\Services\Chatbot\Tools\EvolutionEncaissementsTool;
+use App\Services\Chatbot\Tools\RepartitionEffectifsTool;
 use App\Services\Chatbot\Tools\ChatbotTool;
 use App\Services\Chatbot\Tools\GetDashboardKpisTool;
 use App\Services\Chatbot\Tools\GetFinancialSummaryTool;
@@ -61,8 +66,13 @@ class CatalogueOutils
             new SearchDebtorsTool(),
             new SearchBulletinsTool(),
             new SearchAbsencesSummaryTool(),
+            new EvolutionEncaissementsTool(),
+            new RepartitionEffectifsTool(),
             new GetSetupGuideTool($guide),
             new NavigateToPageTool(),
+            new AfficherGraphique(),
+            new AfficherTableau(),
+            new AfficherDiagramme(),
         ];
     }
 
