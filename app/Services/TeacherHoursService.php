@@ -161,9 +161,8 @@ class TeacherHoursService
 
             if ($realisee) {
                 $parType[$key]['nb_realisees']++;
-                // Meilleure estimation actuelle : durée planifiée de la séance réalisée.
-                // (PR2+ remplacera par la durée réelle émargée / saisie coordinateur.)
-                $parType[$key]['heures_realisees'] += $dureeH;
+                // Planifié ou émargé : c'est l'école qui choisit (paie_base_heures).
+                $parType[$key]['heures_realisees'] += $this->heuresPayees($seance, $rowsEmargement, $dureeH);
             }
 
             foreach ($this->warningsSeance($seance, $rowsEmargement, $realisee) as $w) {
@@ -301,6 +300,69 @@ class TeacherHoursService
         $minutes = abs($seance->heure_fin->diffInMinutes($seance->heure_debut));
 
         return round($minutes / 60, 2);
+    }
+
+    public const BASE_PLANIFIEE = 'planifiees';
+    public const BASE_EMARGEE = 'emargees';
+
+    /** @var array<int, array<string, int>>|null minutes de prolongation accordées, par séance puis date */
+    private ?array $prolongations = null;
+
+    /**
+     * Les heures payées d'une séance réalisée.
+     *
+     * - `planifiees` (défaut, comportement d'avant) : la durée prévue ;
+     * - `emargees` : de l'émargement de début (jamais avant l'heure prévue) à la
+     *   fin prévue, prolongations accordées comprises. 40 minutes de retard ne
+     *   sont plus payées comme une heure faite, et une prolongation accordée l'est.
+     *
+     * L'émargement de fin ne raccourcit pas la séance : il s'ouvre avant la fin
+     * prévue, et le payer à l'heure où il est signé pénaliserait l'enseignant
+     * ponctuel.
+     */
+    private function heuresPayees(ESBTPSeanceCours $seance, Collection $rowsEmargement, float $dureePlanifiee): float
+    {
+        if (\App\Helpers\SettingsHelper::get('paie_base_heures', self::BASE_PLANIFIEE) !== self::BASE_EMARGEE) {
+            return $dureePlanifiee;
+        }
+
+        $debut = $rowsEmargement
+            ->filter(fn ($r) => ($r->type ?? 'start') === 'start' && in_array(strtolower((string) $r->status), self::STATUTS_REALISES, true))
+            ->sortBy('validated_at')
+            ->first();
+
+        $brutDebut = $seance->getAttributes()['heure_debut'] ?? null;
+        $brutFin = $seance->getAttributes()['heure_fin'] ?? null;
+        if (! $debut || ! $debut->validated_at || ! $brutDebut || ! $brutFin) {
+            return $dureePlanifiee;
+        }
+
+        $jour = Carbon::parse($debut->date ?? $debut->validated_at)->startOfDay();
+        $debutPrevu = $jour->copy()->setTimeFromTimeString(substr((string) $brutDebut, 0, 8));
+        $finPrevue = $jour->copy()->setTimeFromTimeString(substr((string) $brutFin, 0, 8))
+            ->addMinutes($this->minutesProlongees((int) $seance->id, $jour->toDateString()));
+
+        $depart = Carbon::parse($debut->validated_at)->max($debutPrevu);
+        if ($depart->gte($finPrevue)) {
+            return 0.0;
+        }
+
+        return round($depart->diffInMinutes($finPrevue) / 60, 2);
+    }
+
+    private function minutesProlongees(int $seanceId, string $date): int
+    {
+        if ($this->prolongations === null) {
+            $this->prolongations = [];
+            if (\Illuminate\Support\Facades\Schema::hasTable('esbtp_prolongations_seance')) {
+                foreach (\App\Models\ESBTPProlongationSeance::where('statut', \App\Models\ESBTPProlongationSeance::ACCORDEE)->get(['seance_cours_id', 'date', 'minutes']) as $p) {
+                    $cle = $p->date->toDateString();
+                    $this->prolongations[$p->seance_cours_id][$cle] = ($this->prolongations[$p->seance_cours_id][$cle] ?? 0) + (int) $p->minutes;
+                }
+            }
+        }
+
+        return $this->prolongations[$seanceId][$date] ?? 0;
     }
 
     /** Une séance est réalisée si au moins un émargement n'est pas une absence. */

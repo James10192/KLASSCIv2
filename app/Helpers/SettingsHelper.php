@@ -258,6 +258,18 @@ class SettingsHelper
         ];
     }
 
+    /** Une marge PDF en millimètres, jamais nulle (voir getPdfSettings). */
+    private static function margePdf(string $cle, int $defaut): int
+    {
+        $valeur = self::get($cle, (string) $defaut);
+
+        if ($valeur === null || $valeur === '' || ! is_numeric($valeur)) {
+            return $defaut;
+        }
+
+        return max(5, min(50, (int) $valeur));
+    }
+
     /**
      * Récupère les paramètres PDF
      *
@@ -282,10 +294,14 @@ class SettingsHelper
             'watermark_opacity' => (float) self::get('pdf_watermark_opacity', '0.05'),
             'watermark_rotation' => (int) self::get('pdf_watermark_rotation', '-30'),
             'font_size' => (int) self::get('pdf_font_size', '12'),
-            'margin_top' => (int) self::get('pdf_margin_top', '20'),
-            'margin_bottom' => (int) self::get('pdf_margin_bottom', '20'),
-            'margin_left' => (int) self::get('pdf_margin_left', '15'),
-            'margin_right' => (int) self::get('pdf_margin_right', '15'),
+            // Une marge vide se lisait 0 (cast entier de '') : fiches de paie
+            // et relevés sortaient collés au bord de la feuille. Vide ou
+            // illisible → valeur livrée ; en dessous de 5 mm, l'imprimante
+            // coupe le texte, donc 5 mm au minimum.
+            'margin_top' => self::margePdf('pdf_margin_top', 20),
+            'margin_bottom' => self::margePdf('pdf_margin_bottom', 20),
+            'margin_left' => self::margePdf('pdf_margin_left', 15),
+            'margin_right' => self::margePdf('pdf_margin_right', 15),
             'primary_color' => self::get('pdf_primary_color', '#0453cb'),
             'secondary_color' => self::get('pdf_secondary_color', '#64748b'),
             'accent_color' => $accent = self::get('pdf_accent_color', '#f59e0b'),

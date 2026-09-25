@@ -68,6 +68,8 @@
     .pay-rrow-avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #0453cb, #5e91de); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
     .pay-rrow-id { flex: 1; min-width: 0; }
     .pay-rrow-name { font-size: .9rem; font-weight: 700; color: #1e293b; }
+    .pay-taux-manquant { display: inline-flex; align-items: center; gap: .3rem; margin: .2rem 0; font-size: .74rem; font-weight: 700; color: #92400e; background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.3); border-radius: 999px; padding: .15rem .6rem; text-decoration: none; }
+    .pay-taux-manquant:hover { background: rgba(245,158,11,.2); color: #78350f; }
     .pay-rrow-types { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .3rem; align-items: center; }
     .pay-rrow-h { font-size: .72rem; font-weight: 700; color: #334155; }
     .pay-rrow-h i { color: #94a3b8; margin-right: .15rem; }
@@ -160,7 +162,10 @@
     .pay-line-amt--neg { color: #b91c1c; }
     .pay-net { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1rem; background: linear-gradient(135deg, rgba(4,83,203,.06), rgba(59,125,219,.08)); }
     .pay-net-lbl { font-size: .8rem; font-weight: 700; color: #0453cb; }
-    .pay-net-val { font-size: 1.35rem; font-weight: 800; color: #0453cb; }
+    .pay-net-val { font-size: 1.35rem; font-weight: 800; color: #0453cb; white-space: nowrap; }
+    .pay-net--ko { background: rgba(220,38,38,.06); }
+    .pay-net--ko .pay-net-lbl, .pay-net--ko .pay-net-val { color: #b91c1c; }
+    .pay-avert { margin-top: .6rem; padding: .6rem .8rem; border-radius: 10px; font-size: .82rem; color: #92400e; background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); display: flex; gap: .5rem; align-items: flex-start; }
 
     .pay-mini-add { border: 1px dashed #cbd5e1; background: #fff; color: #0453cb; border-radius: 8px; padding: .4rem .7rem; font-size: .76rem; font-weight: 600; cursor: pointer; }
     .pay-mini-row { display: flex; gap: .5rem; align-items: center; margin-top: .4rem; }
@@ -389,18 +394,21 @@
                                     <button type="button" class="pay-mini-add" style="margin-top:.4rem;" @click="prep.retenues.push({type:'avance',libelle:'',montant:''})"><i class="fas fa-plus"></i> Ajouter une retenue</button>
                                 </div>
                             </div>
-                            <div class="pay-net">
+                            <div class="pay-net" :class="preview.net_negatif ? 'pay-net--ko' : ''">
                                 <span class="pay-net-lbl">Net à payer</span>
                                 <span class="pay-net-val" x-text="fmt(preview.net) + ' FCFA'"></span>
                             </div>
                         </div>
+                        <template x-for="(avert, i) in (preview.avertissements || [])" :key="i">
+                            <div class="pay-avert"><i class="fas fa-triangle-exclamation"></i> <span x-text="avert"></span></div>
+                        </template>
                         <div class="pay-help" x-show="exists" x-cloak><i class="fas fa-circle-info"></i> Un bulletin existe déjà pour cette période — il sera mis à jour (remis en brouillon).</div>
                     </div>
                 </template>
             </div>
             <div class="pay-modal-foot">
                 <button type="button" class="pay-btn pay-btn--ghost" @click="showPrepare=false">Annuler</button>
-                <button type="button" class="pay-btn pay-btn--primary" :disabled="!preview || saving || locked" @click="save()">
+                <button type="button" class="pay-btn pay-btn--primary" :disabled="!preview || saving || locked || preview.net_negatif" @click="save()">
                     <span x-show="!saving"><i class="fas fa-floppy-disk"></i> Enregistrer le bulletin</span>
                     <span x-show="saving" x-cloak><i class="fas fa-circle-notch fa-spin"></i> Enregistrement…</span>
                 </button>
@@ -421,6 +429,11 @@
                 <button type="button" class="pay-modal-close" @click="showConfig=false"><i class="fas fa-xmark"></i></button>
             </div>
             <div class="pay-modal-body">
+                <span class="pay-field-lbl">Heures payées</span>
+                <x-au-select name="base_heures" x-model="config.base_heures" :placeholder-is-first-option="false" :value="$baseHeures ?? 'planifiees'"
+                    :options="['planifiees' => 'Durée prévue de chaque séance faite', 'emargees' => 'Depuis l’émargement de début, prolongations comprises']" />
+                <p class="pay-help" style="margin:.35rem 0 1rem;"><i class="fas fa-circle-info"></i> « Depuis l’émargement » : un retard n’est pas payé, une prolongation accordée l’est.</p>
+
                 <span class="pay-field-lbl">Taux CNPS (part salariale, %)</span>
                 <input type="number" min="0" max="100" step="0.1" class="pay-input" x-model="config.cnps_taux">
 
@@ -463,7 +476,7 @@ function salairesPage() {
         calculating: false, saving: false, savingConfig: false,
         preview: null, exists: false, locked: false,
         prep: { teacher_id: '', mois: @json((string) $filtres['mois']), annee: @json((string) $filtres['annee']), impot_its: '', cnps: '', primes: [], retenues: [] },
-        config: { cnps_taux: @json((string) $cnpsTaux), bareme: @json(collect($bareme)->map(fn($t) => ['from' => (string) $t['from'], 'to' => $t['to'] === null ? '' : (string) $t['to'], 'taux' => (string) $t['taux']])->values()) },
+        config: { base_heures: @json($baseHeures ?? 'planifiees'), cnps_taux: @json((string) $cnpsTaux), bareme: @json(collect($bareme)->map(fn($t) => ['from' => (string) $t['from'], 'to' => $t['to'] === null ? '' : (string) $t['to'], 'taux' => (string) $t['taux']])->values()) },
 
         init() {
             const d = this.$root.dataset;
@@ -585,7 +598,7 @@ function salairesPage() {
                 const res = await fetch(this.urls.config, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': this.csrf() },
-                    body: JSON.stringify({ cnps_taux: Number(this.config.cnps_taux), bareme }),
+                    body: JSON.stringify({ base_heures: this.config.base_heures, cnps_taux: Number(this.config.cnps_taux), bareme }),
                 });
                 if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.message || ('Erreur ' + res.status)); }
                 const d = await res.json();

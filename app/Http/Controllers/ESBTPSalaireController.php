@@ -78,6 +78,7 @@ class ESBTPSalaireController extends Controller
             'canConfigure'=> auth()->user()->can('comptabilite.salaires.configure'),
             'canExport'   => auth()->user()->can('comptabilite.salaires.export'),
             'cnpsTaux'    => $this->payroll->tauxCnps(),
+            'baseHeures'  => (string) SettingsHelper::get('paie_base_heures', \App\Services\TeacherHoursService::BASE_PLANIFIEE),
             'bareme'      => $this->payroll->baremeIts(),
         ]);
     }
@@ -252,11 +253,13 @@ class ESBTPSalaireController extends Controller
                 $base = 0.0;
                 $heures = 0.0;
                 $byType = [];
+                $tauxManquant = false;
                 foreach ($ens['par_type'] as $pt) {
                     if (!$pt['facturable'] || $pt['heures_realisees'] <= 0) {
                         continue;
                     }
                     $taux = $teacher->tauxPour($pt['type']);
+                    $tauxManquant = $tauxManquant || $taux <= 0;
                     $base += $pt['heures_realisees'] * $taux;
                     $heures += $pt['heures_realisees'];
                     $byType[$pt['type']] = [
@@ -266,12 +269,18 @@ class ESBTPSalaireController extends Controller
                 }
                 $base = round($base, 2);
                 $bulletin = $bulletins->get($ens['teacher_id'] . '-' . $m['mois'] . '-' . $m['annee']);
-                if ($base <= 0 && !$bulletin) {
+                // Des heures sans taux : la ligne restait invisible, et
+                // l'enseignant absent de la paie sans explication. Elle apparaît
+                // désormais, marquée « taux horaire manquant ».
+                if ($base <= 0 && !$bulletin && !($heures > 0 && $tauxManquant)) {
                     continue;
                 }
                 $its = $this->payroll->computeIts($base);
                 $cnps = round($base * $cnpsTaux / 100, 2);
                 $this->accumulateMonth($agg, $teacher, $ens['name'], $m, $heures, $byType, $base, $its, $cnps, $bulletin);
+                if ($tauxManquant && isset($agg[$teacher->id])) {
+                    $agg[$teacher->id]['taux_manquant'] = true;
+                }
             }
 
             // Bulletins du mois sans heures dans le report (ex: saisie manuelle).
@@ -363,6 +372,8 @@ class ESBTPSalaireController extends Controller
         $a['statut'] = $overall;
         $a['nb_mois'] = count($a['months']);
         $a['nb_a_preparer'] = count(array_filter($a['months'], fn ($mm) => $mm['statut'] === 'a_preparer'));
+        $a['taux_manquant'] = (bool) ($a['taux_manquant'] ?? false);
+        $a['fiche_url'] = route('esbtp.enseignants.edit', $a['teacher_id']);
         return $a;
     }
 
@@ -497,6 +508,12 @@ class ESBTPSalaireController extends Controller
 
         if ($salaire && $salaire->isLocked()) {
             return response()->json(['message' => 'Ce bulletin est verrouillé (payé/annulé) et ne peut être modifié.'], 422);
+        }
+
+        // Un net négatif n'est pas un bulletin : c'est une dette de l'enseignant,
+        // qui ne se règle pas par une fiche de paie.
+        if ($preview['net_negatif']) {
+            return response()->json(['message' => 'Net négatif : '.collect($preview['avertissements'])->first(fn ($a) => str_contains($a, 'négatif'))], 422);
         }
 
         $salaire = DB::transaction(function () use ($salaire, $teacher, $annee, $data, $preview, $from, $to) {
@@ -641,6 +658,11 @@ class ESBTPSalaireController extends Controller
             return $this->refusWorkflow($request, 'Seul un bulletin en brouillon peut être validé.');
         }
 
+        // Garde aussi les bulletins enregistrés avant l'interdiction du net négatif.
+        if ((float) $salaire->net_a_payer < 0) {
+            return $this->refusWorkflow($request, 'Ce bulletin a un net négatif : il ne peut pas être validé. Préparez-le de nouveau avec des retenues plus faibles.');
+        }
+
         $estPreparateur = in_array($user->id, [$salaire->prepared_by, $salaire->createur_id], true);
         if ($estPreparateur && !$user->can('comptabilite.salaires.validate_own')) {
             return $this->refusWorkflow($request, 'Séparation des devoirs : la validation doit être faite par une autre personne.');
@@ -735,9 +757,13 @@ class ESBTPSalaireController extends Controller
             'bareme.*.from'     => 'required|numeric|min:0',
             'bareme.*.to'       => 'nullable|numeric|min:0',
             'bareme.*.taux'     => 'required|numeric|min:0|max:100',
+            'base_heures'       => ['nullable', Rule::in([\App\Services\TeacherHoursService::BASE_PLANIFIEE, \App\Services\TeacherHoursService::BASE_EMARGEE])],
         ]);
 
         SettingsHelper::setOrCreate('paie.cnps_taux', (string) $data['cnps_taux'], 'paie', 'string');
+        if (! empty($data['base_heures'])) {
+            SettingsHelper::setOrCreate('paie_base_heures', $data['base_heures'], 'paie', 'string');
+        }
         SettingsHelper::setOrCreate('paie.its_bareme', json_encode(array_values($data['bareme'])), 'paie', 'string');
 
         return response()->json(['success' => true, 'message' => 'Paramètres de paie enregistrés.']);

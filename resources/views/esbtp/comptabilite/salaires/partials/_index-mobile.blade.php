@@ -270,8 +270,11 @@
 
                     <div class="pym-net">
                         <span>Net à payer</span>
-                        <b x-text="format(preview.net) + ' ' + devise"></b>
+                        <b x-text="format(preview.net) + ' ' + devise" :style="preview.net_negatif ? 'color:#b91c1c' : ''"></b>
                     </div>
+                    <template x-for="(avert, i) in (preview.avertissements || [])" :key="i">
+                        <div class="pym-note bad"><x-m.icon name="alert" /><span x-text="avert"></span></div>
+                    </template>
 
                     <div class="pym-note" x-show="existe && !verrouille" x-cloak>
                         <x-m.icon name="alert" />
@@ -284,7 +287,7 @@
                 </div>
             </template>
 
-            <button type="button" class="m-btn p" x-on:click="enregistrer()" x-bind:disabled="!preview || enregistrement || verrouille || calcul">
+            <button type="button" class="m-btn p" x-on:click="enregistrer()" x-bind:disabled="!preview || enregistrement || verrouille || calcul || preview.net_negatif">
                 <span x-show="!enregistrement">Enregistrer le bulletin</span>
                 <span x-show="enregistrement" x-cloak>Enregistrement…</span>
             </button>
