@@ -126,7 +126,11 @@
                     <i class="fas fa-magnifying-glass"></i>
                     @if($filtres['q'] !== '')
                         <h3>Aucun rendez-vous pour « {{ $filtres['q'] }} »</h3>
-                        <p>Vérifiez l'orthographe, cherchez par téléphone ou par référence, ou élargissez la période à « Tous ». Une famille qui n'a jamais réservé n'apparaît pas ici.</p>
+                        @if($elevesSansRdv->isNotEmpty())
+                            <p>La recherche fonctionne : {{ $elevesSansRdv->count() === 1 ? 'cet élève est connu de l\'école mais sa famille n\'a jamais réservé' : 'ces élèves sont connus de l\'école mais leurs familles n\'ont jamais réservé' }}. Voir ci-dessous.</p>
+                        @else
+                            <p>Vérifiez l'orthographe, cherchez par téléphone ou par référence, ou élargissez la période à « Tous ». Une famille qui n'a jamais réservé n'apparaît pas ici.</p>
+                        @endif
                     @else
                         <h3>Aucun rendez-vous pour ces filtres</h3>
                         <p>Changez la période ou le statut pour voir d'autres rendez-vous.</p>
