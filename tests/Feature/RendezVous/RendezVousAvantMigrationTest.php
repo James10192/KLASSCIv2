@@ -33,6 +33,7 @@ class RendezVousAvantMigrationTest extends TestCase
     private const MIGRATIONS = [
         '2026_09_23_182356_add_verification_contact_to_portail_demandes.php',
         '2026_09_23_182338_add_suivi_distant_to_esbtp_rdv_reservations.php',
+        '2026_09_25_165004_add_whatsapp_suivi_to_esbtp_rdv_reservations.php',
     ];
 
     public function test_les_ecrans_et_la_pose_d_une_convocation_tiennent_sans_les_nouvelles_colonnes(): void
