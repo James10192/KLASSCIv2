@@ -393,6 +393,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:inscriptions.rdv.manage', 'throttle:5,1'])
                 ->name('placer');
             // Accueil du jour au guichet : liste a cocher, absences deduites, reprogrammation, appels notes.
+            // Retrouver le rendez-vous d'une famille sans connaitre le jour.
+            Route::get('/rendez-vous/recherche', [\App\Http\Controllers\ESBTP\ESBTPRendezVousRechercheController::class, 'index'])
+                ->middleware(['permission:inscriptions.rdv.view|inscriptions.rdv.accueil', 'throttle:120,1'])
+                ->name('recherche');
             Route::prefix('/rendez-vous/accueil')->middleware('permission:inscriptions.rdv.accueil')->name('accueil.')->group(function () {
                 $c = \App\Http\Controllers\ESBTP\ESBTPRendezVousAccueilController::class;
                 Route::get('/', [$c, 'index'])->name('index');

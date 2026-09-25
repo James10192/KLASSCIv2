@@ -8,6 +8,9 @@ use App\Services\RendezVous\AffecteurDossiersRdv;
 use App\Services\RendezVous\EtatChaineRdv;
 use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\RendezVous\GenerateurCreneaux;
+use App\Services\RendezVous\AccueilRdv;
+use App\Services\RendezVous\RechercheRdv;
+use App\Models\ESBTPRdvReservation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -62,6 +65,42 @@ class CLIRendezVousController extends BaseApiController
             'tout_en_ordre' => $etat->toutEstEnOrdre(),
             'maillons' => $etat->maillons(),
             'convocations' => $etat->convocations(),
+        ]);
+    }
+
+    /**
+     * Le rendez-vous d'une famille, quel que soit le jour : memes filtres et
+     * meme ordre que l'ecran « Retrouver un rendez-vous » (RechercheRdv).
+     */
+    public function recherche(Request $request, RechercheRdv $recherche, AccueilRdv $accueil): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $filtres = $recherche->filtres($request);
+        $parPage = min(100, max(1, (int) $request->input('per_page', 25)));
+        $page = $recherche->requete($filtres)->paginate($parPage);
+
+        return $this->successResponse([
+            'filtres' => $filtres,
+            'total' => $page->total(),
+            'page' => $page->currentPage(),
+            'derniere_page' => $page->lastPage(),
+            'rendez_vous' => $page->getCollection()->map(fn (ESBTPRdvReservation $r) => [
+                'id' => $r->id,
+                'nom' => $r->nomComplet(),
+                'dossier' => $r->candidature_id !== null ? 'candidature' : 'reinscription',
+                'reference' => $r->porteur()?->referencePubliqueAffichee(),
+                'matricule' => $r->demande?->etudiant?->matricule,
+                'telephone' => $r->telephone,
+                'date' => $r->creneau?->date?->toDateString(),
+                'heure' => $r->creneau ? $r->creneau->heureDebutHi().'-'.$r->creneau->heureFinHi() : null,
+                'statut' => $r->statut?->value,
+                'etat_accueil' => ($r->statut?->occupeLeCreneau() && $r->creneau) ? $accueil->etat($r) : null,
+                'absences' => (int) $r->absences,
+                'recue_le' => $r->accueilli_at?->toIso8601String(),
+            ])->values(),
         ]);
     }
 

@@ -35,6 +35,30 @@ automatiquement : l'écran propose de le faire.
 
 Même mesure en local sur le serveur : `php artisan inscriptions:diagnostiquer-rdv [--json]`.
 
+## `GET /rendez-vous/recherche`
+
+Retrouver le rendez-vous d'une famille sans connaître le jour. Ability `cli:read`.
+Mêmes règles que l'écran « Retrouver un rendez-vous » (`App\Services\RendezVous\RechercheRdv`).
+
+| Paramètre | Valeurs | Défaut |
+|---|---|---|
+| `q` | nom, prénoms, courriel, référence du dossier, matricule ; une saisie de chiffres est lue comme un téléphone | — |
+| `quand` | `a_venir`, `passes`, `tous` | `a_venir` sans `q`, `tous` avec |
+| `statut` | `confirmee`, `honoree`, `manquee`, `liberee`, `annulee` | tous |
+| `type` | `candidature`, `reinscription` | tous |
+| `per_page` / `page` | 1 à 100 | 25 / 1 |
+
+```json
+{ "total": 1, "page": 1, "derniere_page": 1,
+  "rendez_vous": [{ "id": 12, "nom": "KOUASSI Ama", "dossier": "candidature",
+    "reference": "AB12-CD34", "matricule": null, "telephone": "+2250707123456",
+    "date": "2026-10-05", "heure": "10:00-10:30", "statut": "confirmee",
+    "etat_accueil": "attendu", "absences": 0, "recue_le": null }] }
+```
+
+`etat_accueil` (`attendu`, `recu`, `non_venue`, `traite`) n'est renseigné que pour une
+réservation qui tient son créneau ; `null` pour une réservation libérée ou annulée.
+
 ## `POST /rendez-vous/placer`
 
 - 422 avec `message` si rien n'a été tenté : canal fermé, ou aucune place libre.
@@ -69,6 +93,8 @@ un premier courriel, c'est donc **ici** qu'on borne :
 3. `remettre { "quoi": "inconnues" }` pour le reste, puis `envoyer` jusqu'à `restantes: 0`
 
 ## Historique
+
+- 2026-09-25 — ajout de `recherche`. Non cassant.
 
 - 2026-09-23 — **Breaking** : `placer` place aussi les dossiers sans e-mail. La clé
   `sans_email` (dossiers NON placés) disparaît, remplacée par `a_prevenir`

@@ -181,5 +181,8 @@
             </ul>
         </section>
     @endif
-    <p class="rac-aucun" hidden><i class="fas fa-magnifying-glass"></i>Aucune famille ne correspond à la recherche.</p>
+    <p class="rac-aucun" hidden><i class="fas fa-magnifying-glass"></i>Aucune famille ne correspond à la recherche ce jour.
+        {{-- La famille a peut-etre rendez-vous un autre jour : le lien reprend le texte tape. --}}
+        <a class="rdv-lien" href="{{ route('esbtp.rendez-vous.recherche') }}" data-rac-chercher-partout>Chercher tous les jours</a>
+    </p>
 @endif

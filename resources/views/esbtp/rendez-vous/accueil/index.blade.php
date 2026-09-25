@@ -153,6 +153,7 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
                 </div>
                 <button type="button" class="rdv-btn rdv-btn--glass" data-page-tour-open><i class="fas fa-route"></i>Guide</button>
                 <button type="button" class="rdv-btn rdv-btn--glass" data-page-help-open><i class="fas fa-circle-question"></i>Aide</button>
+                <a class="rdv-btn rdv-btn--glass" href="{{ route('esbtp.rendez-vous.recherche') }}"><i class="fas fa-magnifying-glass"></i>Retrouver une famille</a>
                 @can('inscriptions.rdv.view')
                     <a class="rdv-btn rdv-btn--white" href="{{ route('esbtp.rendez-vous.index', ['debut' => $jour->toDateString()]) }}" data-rac-planning><i class="fas fa-calendar-week"></i>Planning</a>
                 @endcan
@@ -282,6 +283,12 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
         });
         const aucun = liste.querySelector('.rac-aucun');
         if (aucun) aucun.hidden = visibles.length > 0;
+        const partout = liste.querySelector('[data-rac-chercher-partout]');
+        if (partout) {
+            const url = new URL(partout.href, window.location.origin);
+            url.searchParams.set('q', (champ.value || '').trim());
+            partout.href = url.toString();
+        }
         if (q !== '' && visibles.length === 1) visibles[0].classList.add('is-surlignee');
         return visibles;
     }
