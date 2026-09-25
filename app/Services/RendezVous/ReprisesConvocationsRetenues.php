@@ -46,6 +46,12 @@ class ReprisesConvocationsRetenues
             $this->convocations->poser($reservation, $reservation->convocation_action ?: 'confirme');
         }
 
+        // La famille vient de saisir son code : elle attend sa convocation
+        // maintenant, pas au prochain passage de la tache planifiee.
+        if ($reservations->isNotEmpty()) {
+            $this->convocations->envoyerUnPaquetApres();
+        }
+
         return $reservations->count();
     }
 }

@@ -18,3 +18,22 @@ Route::prefix('portail/email')
         Route::post('/renvoyer', [\App\Http\Controllers\API\Public\VerificationContactPortalController::class, 'renvoyer'])
             ->name('api.portail.email.renvoyer');
     });
+
+/*
+ * Suivi d'un dossier deja depose : situation, adresse e-mail a verifier ou
+ * corriger, convocation a recevoir, reference oubliee (envoyee par e-mail).
+ * Canal `verification`, toujours ouvert : une saison qui se ferme ne doit pas
+ * laisser une famille sans acces a son rendez-vous. Le plancher de duree rend
+ * « trouve » et « introuvable » indiscernables.
+ */
+Route::prefix('public/suivi')
+    ->withoutMiddleware(['throttle:api'])
+    ->middleware(['portail.public:verification', 'reinscription.plancher'])
+    ->group(function () {
+        $c = \App\Http\Controllers\API\Public\SuiviDossierPortalController::class;
+        Route::post('/consulter', [$c, 'consulter'])->name('api.public.suivi.consulter');
+        Route::post('/email', [$c, 'email'])->name('api.public.suivi.email');
+        Route::post('/verifier', [$c, 'verifier'])->name('api.public.suivi.verifier');
+        Route::post('/convocation', [$c, 'convocation'])->name('api.public.suivi.convocation');
+        Route::post('/reference-oubliee', [$c, 'referenceOubliee'])->name('api.public.suivi.reference-oubliee');
+    });

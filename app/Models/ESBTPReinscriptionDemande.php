@@ -81,6 +81,7 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
         'inscription_id',
         'reference_publique',
         'rdv_invite_at',
+        // email_contact : ecrit par SuiviDossierPortail, jamais par affectation de masse.
         // verification_contact, email_verifie_at, telephone_verifie_at : jamais
         // par affectation de masse, seulement par la verification (forceFill).
     ];
@@ -187,14 +188,29 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
             'prenoms' => (string) ($etudiant?->prenoms ?? ''),
             'telephone' => (string) ($etudiant?->telephone ?? ''),
             'date_naissance' => \App\Support\IdentitePersonne::jour($etudiant?->date_naissance),
-            'email' => $etudiant?->email,
+            'email' => $this->emailRdv(),
         ];
     }
 
     public function emailRdv(): ?string
     {
-        // Meme ordre que ContactDeVerification : l'adresse personnelle d'abord.
-        return $this->etudiant?->email_personnel ?: $this->etudiant?->email;
+        // Meme ordre que ContactDeVerification : l'adresse donnee par la famille
+        // sur le portail, puis l'adresse personnelle, puis celle du dossier.
+        return $this->emailContactPortail() ?: ($this->etudiant?->email_personnel ?: $this->etudiant?->email);
+    }
+
+    /**
+     * L'adresse saisie par la famille sur le portail. Lue seulement une fois la
+     * colonne deployee : entre le pull et le migrate, la demande reste lisible.
+     */
+    public function emailContactPortail(): ?string
+    {
+        if (! \App\Support\ColonnesDeployees::existe($this->getTable(), 'email_contact')) {
+            return null;
+        }
+        $email = trim((string) $this->getAttribute('email_contact'));
+
+        return $email === '' ? null : $email;
     }
 
     public function typeDemandePublique(): string
