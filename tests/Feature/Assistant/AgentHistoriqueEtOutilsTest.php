@@ -139,6 +139,26 @@ class AgentHistoriqueEtOutilsTest extends TestCase
         $this->assertNull($inscrits['url'], 'pas de lien vers une liste que la personne ne peut pas ouvrir');
     }
 
+    public function test_la_repartition_compte_comme_le_tableau_de_bord(): void
+    {
+        ESBTPAnneeUniversitaire::query()->update(['is_current' => false]);
+        $annee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2034-2035', 'start_date' => '2034-09-01', 'end_date' => '2035-07-31', 'is_current' => true]);
+        $classeA = \App\Models\ESBTPClasse::factory()->create();
+        $classeB = \App\Models\ESBTPClasse::factory()->create();
+        ESBTPInscription::factory()->count(3)->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classeA->id]);
+        ESBTPInscription::factory()->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classeB->id]);
+        // Pas encore validée : ne compte pas, comme au tableau de bord.
+        ESBTPInscription::factory()->create(['annee_universitaire_id' => $annee->id, 'classe_id' => $classeB->id, 'workflow_step' => 'prospect']);
+
+        $r = (new \App\Services\Chatbot\Tools\RepartitionEffectifsTool())->execute(['par' => 'classe'], User::factory()->create());
+
+        $this->assertSame([3, 1], array_column($r['results'], 'inscrits'));
+        $this->assertSame(4, $r['totaux']['inscrits']);
+        $this->assertSame(app(\App\Domain\Students\StudentCountService::class)->inscritsDe($annee->id), $r['totaux']['inscrits']);
+        $this->assertSame('graphique', $r['widget']['kind']);
+        $this->assertSame([3, 1], $r['widget']['series'][0]['valeurs']);
+    }
+
     public function test_les_encaissements_par_mois_ne_comptent_que_le_valide_et_comparent(): void
     {
         Carbon::setTestNow('2035-06-15 10:00:00');

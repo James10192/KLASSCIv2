@@ -110,6 +110,12 @@ return [
             'libelle' => 'Calcul du résumé financier…',
             'suggestion' => 'Fais-moi le point sur les encaissements',
         ],
+        'repartition_effectifs' => [
+            'enabled' => true,
+            'any_permissions' => ['inscriptions.view', 'students.view'],
+            'libelle' => 'Répartition des inscrits…',
+            'suggestion' => 'Combien d\'inscrits par filière cette année ?',
+        ],
         'evolution_encaissements' => [
             'enabled' => true,
             'any_permissions' => ['comptabilite.dashboard.view', 'paiements.view'],

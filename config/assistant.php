@@ -17,13 +17,13 @@ $liste = static fn (?string $valeur): array => array_values(array_filter(array_m
 return [
 
     // Modèle utilisé quand l'utilisateur n'en choisit pas.
-    'modele_defaut' => env('ASSISTANT_MODELE', 'or-gpt-4o-mini'),
+    'modele_defaut' => env('ASSISTANT_MODELE', 'or-gemini-flash'),
 
     // Modèles proposés à l'école (clés de « modeles », séparées par des virgules). Vide = tous.
     'modeles_autorises' => $liste(env('ASSISTANT_MODELES_AUTORISES', '')),
 
     // Essayés dans cet ordre quand le modèle choisi tombe ou n'a pas de clé.
-    'repli' => $liste(env('ASSISTANT_REPLI', 'or-gpt-4o-mini,or-deepseek,claude-haiku,gpt-4o-mini,gemini-flash,mistral-small')),
+    'repli' => $liste(env('ASSISTANT_REPLI', 'or-gemini-flash,or-gpt-4.1-mini,or-gpt-4o-mini,or-claude-haiku,claude-haiku,gpt-4o-mini,gemini-flash,mistral-small')),
 
     'limites' => [
         'tours' => (int) env('ASSISTANT_MAX_TOURS', 8),
@@ -110,8 +110,10 @@ return [
             'outils' => true,
             'diffusion' => true,
         ],
-        // Candidats plus solides en appel d'outils, NON ENCORE ÉVALUÉS : ne pas en
-        // faire le modèle par défaut avant de les avoir comparés sur de vraies questions.
+        // Comparés le 25 septembre 2026 sur presentation (6 questions réelles, 30 réponses,
+        // aucune erreur) : Gemini Flash donne les analyses les plus justes et exploitables,
+        // d'où le défaut ; GPT-4.1 mini est le repli le plus sûr ; DeepSeek recopiait
+        // les exemples du prompt, Claude Haiku annonçait ses recherches avant d'agir.
         'or-gemini-flash' => [
             'fournisseur' => 'openrouter',
             'modele' => env('OPENROUTER_MODEL_GEMINI_FLASH', 'google/gemini-3.8-flash'),
