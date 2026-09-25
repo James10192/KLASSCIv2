@@ -153,8 +153,8 @@ require __DIR__.'/auth.php';
 // Routes pour la navbar (recherche, notifications, messages, actions rapides)
 Route::middleware(['auth'])->group(function () {
     // Routes de recherche
-    Route::get('/search', [SearchController::class, 'globalSearch'])->name('search.global');
-    Route::get('/search/results', [SearchController::class, 'searchResults'])->name('search.results');
+    Route::get('/search', [SearchController::class, 'globalSearch'])->middleware('throttle:120,1')->name('search.global');
+    Route::get('/search/results', [SearchController::class, 'searchResults'])->middleware('throttle:60,1')->name('search.results');
 
     // Routes pour les fonctionnalitÃ©s de la navbar
     Route::prefix('navbar')->name('navbar.')->group(function () {

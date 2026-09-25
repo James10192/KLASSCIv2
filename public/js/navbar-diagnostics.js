@@ -166,24 +166,6 @@ document.addEventListener("DOMContentLoaded", function () {
         debugError("❌ Bouton notifications non trouvé !");
     }
 
-    // 8. Diagnostic du search input
-    debugLog("🔍 Diagnostic du search input...");
-    const searchInput = document.getElementById("global-search");
-    if (searchInput) {
-        debugLog("✅ Search input trouvé");
-        searchInput.addEventListener("input", function () {
-            debugLog("🔍 Search input utilisé, valeur:", this.value);
-        });
-        searchInput.addEventListener("focus", function () {
-            debugLog("🔍 Search input focus");
-        });
-        searchInput.addEventListener("blur", function () {
-            debugLog("🔍 Search input blur");
-        });
-    } else {
-        debugError("❌ Search input non trouvé !");
-    }
-
     // 9. Diagnostic des actions rapides
     debugLog("⚡ Diagnostic des actions rapides...");
     const quickActionsBtn = document.getElementById("quickActionsDropdown");
