@@ -174,7 +174,9 @@
     .eim-row .tt { min-width: 0; gap: 3px; }
     .eim-row .tt b > span { color: inherit; font-size: inherit; }
     .eim-row .tt .eim-sous { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; color: #475569; }
-    .eim-row .tt .eim-classe { color: inherit; font-size: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .eim-row .tt .eim-classe { color: inherit; font-size: inherit; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .eim-row .tt .eim-sous { align-items: flex-start; }
+    .eim-row .tt .eim-lmd { margin-top: 1px; }
     .eim-row .tt .eim-lmd { flex-shrink: 0; font-size: 10px; font-weight: 700; color: #0453cb; background: rgba(4,83,203,.1); border-radius: 4px; padding: 0 4px; line-height: 16px; }
     .eim-row .tt .eim-mat { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; color: #94a3b8; }
     .eim-row .tr { align-self: start; }

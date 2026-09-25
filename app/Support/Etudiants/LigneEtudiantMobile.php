@@ -30,7 +30,7 @@ final class LigneEtudiantMobile
         [$etat, $libelle] = match (true) {
             $courante && $courante->workflow_step === 'etudiant_cree' => ['inscrit', 'Inscrit'],
             (bool) $courante => ['en_cours', 'En cours'],
-            default => ['aucune', 'Sans inscription'],
+            default => ['aucune', 'Non inscrit'],
         };
 
         return [
