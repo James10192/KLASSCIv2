@@ -119,7 +119,7 @@
             <form x-ref="form" x-on:submit.prevent="accorder()">
                 <div class="atp-field">
                     <label>Personne</label>
-                    <x-au-user-picker name="user_id" :users="$personnel" :value="$personneChoisie" placeholder="— Choisir une personne —" />
+                    <x-au-user-picker name="user_id" :users="$personnel" :value="$personneChoisie" placeholder="— Choisir une personne —" :empty-option="false" />
                 </div>
 
                 <div class="atp-field">
