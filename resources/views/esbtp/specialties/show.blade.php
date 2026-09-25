@@ -119,7 +119,8 @@
     $(document).ready(function() {
         // Initialiser DataTables
         $('.table').DataTable({
-            "paging": true,
+            // Toutes les lignes sont deja chargees : pas de pages, on fait defiler.
+            "paging": false,
             "lengthChange": true,
             "searching": true,
             "ordering": true,

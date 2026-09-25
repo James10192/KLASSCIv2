@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ListeInfinie;
 use App\Domain\Comptabilite\Paiements\Actions\RestaurerPaiement;
 use App\Domain\Trash\ErreurDeSuppression;
 use App\Models\ESBTPEtudiant;
@@ -53,7 +54,8 @@ class ESBTPPaiementTrashController extends Controller
     {
         abort_unless(Auth::user()?->can('trash.view'), 403, 'Accès à la corbeille refusé.');
 
-        $perPage = (int) $request->input('per_page', 20);
+        // Taille d'une tranche du defilement, bornee : la valeur vient de l'URL.
+        $perPage = min(100, max(1, (int) $request->input('per_page', 20)));
         $search = trim((string) $request->input('search', ''));
         $range = $request->input('range');
 
@@ -77,13 +79,16 @@ class ESBTPPaiementTrashController extends Controller
             $query->where('deleted_at', '<', $now->copy()->subDays(30));
         }
 
-        $paiements = $query->orderByDesc('deleted_at')->paginate($perPage);
+        // Departage par id : une suppression en masse tombe dans la meme seconde,
+        // et la liste se charge par tranches.
+        $paiements = $query->orderByDesc('deleted_at')->orderByDesc('id')->paginate($perPage);
         $deleters = $this->trashAudit->batchDeleters(ESBTPPaiement::class, $paiements->getCollection());
         $kpis = $this->trashAudit->bucketsByAge(ESBTPPaiement::class);
 
         return response()->json([
             'success' => true,
             'kpis' => $kpis,
+            'pagination' => ListeInfinie::pagination($paiements),
             'items' => $paiements->getCollection()->map(function ($p) use ($deleters) {
                 $etudiant = $p->inscription?->etudiant;
                 $etudiantSoftDeleted = $etudiant?->id
@@ -111,12 +116,6 @@ class ESBTPPaiementTrashController extends Controller
                     'deleter' => $deleters[$p->id] ?? null,
                 ];
             })->all(),
-            'pagination' => [
-                'current_page' => $paiements->currentPage(),
-                'last_page' => $paiements->lastPage(),
-                'per_page' => $paiements->perPage(),
-                'total' => $paiements->total(),
-            ],
         ]);
     }
 

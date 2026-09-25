@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ListeInfinie;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
@@ -31,7 +32,7 @@ class ESBTPJournalCaisseController extends Controller
     /**
      * Ecran mobile : la liste se lit par journee, pas par ligne. Une page =
      * ce nombre de jours ayant au moins un mouvement (constante technique,
-     * comme le paginate(50) du bureau).
+     * comme la tranche de 50 du bureau).
      */
     private const JOURS_PAR_PAGE = 5;
 
@@ -83,6 +84,14 @@ class ESBTPJournalCaisseController extends Controller
         }
 
         $paiements = $this->buildQuery($filters)->orderBy('date_paiement')->orderBy('id')->paginate(50)->withQueryString();
+
+        // Tranche suivante du defilement : les lignes seules, avant les totaux.
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $paiements,
+                fn ($p) => view('esbtp.comptabilite.journal-caisse._ligne', compact('p'))->render(),
+            );
+        }
 
         $totals = $this->buildTotals($filters);
 
