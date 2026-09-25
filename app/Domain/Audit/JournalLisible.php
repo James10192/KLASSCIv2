@@ -31,14 +31,14 @@ class JournalLisible
 
     /**
      * @param  iterable<Audit>  $audits  avec `user.roles` charge, idealement
+     * @param  ?User  $lecteur  celui pour qui on ecrit : ses droits decident des liens et des montants
      * @return list<LigneDuJournal>
      */
-    public function lignes(iterable $audits): array
+    public function lignes(iterable $audits, ?User $lecteur): array
     {
         $audits = collect($audits);
         $objets = $this->nommage->pour($audits);
         $champs = new ChampsLisibles($audits);
-        $lecteur = auth()->user();
         $ouvrable = [];
 
         return $audits->map(function (Audit $a) use ($objets, $champs, $lecteur, &$ouvrable) {
@@ -73,9 +73,9 @@ class JournalLisible
         })->values()->all();
     }
 
-    public function ligne(Audit $audit): LigneDuJournal
+    public function ligne(Audit $audit, ?User $lecteur): LigneDuJournal
     {
-        return $this->lignes([$audit])[0];
+        return $this->lignes([$audit], $lecteur)[0];
     }
 
     /**

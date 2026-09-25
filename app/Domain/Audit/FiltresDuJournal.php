@@ -33,6 +33,7 @@ final class FiltresDuJournal
         public readonly ?Carbon $du = null,
         public readonly ?Carbon $au = null,
         public readonly bool $aucunOnglet = false,
+        public readonly bool $argentVisible = true,
     ) {
     }
 
@@ -56,6 +57,9 @@ final class FiltresDuJournal
             au: self::date($request->query('date_to'))?->endOfDay(),
             // Aucun onglet ouvert : aucune ligne, jamais tout le journal par defaut.
             aucunOnglet: $themes === [],
+            // Sans l'acces sensible, la recherche ne fouille pas les montants :
+            // taper « 150000 » ne doit pas retrouver les paiements de ce montant.
+            argentVisible: (bool) $request->user()?->can('comptabilite.sensitive.access'),
         );
     }
 
@@ -142,7 +146,8 @@ final class FiltresDuJournal
             ->limit(20)->pluck('id');
         $inscriptions = $etudiants->isEmpty() ? collect() : ESBTPInscription::whereIn('etudiant_id', $etudiants)->limit(100)->pluck('id');
 
-        $q->where('old_values', 'like', $like)->orWhere('new_values', 'like', $like)
+        $q->where(fn (Builder $v) => $v->where(fn (Builder $w) => $w->where('old_values', 'like', $like)->orWhere('new_values', 'like', $like))
+                ->when(! $this->argentVisible, fn (Builder $w) => $w->whereNotIn('auditable_type', ThemesDuJournal::ARGENT)))
             ->when($auteurs->isNotEmpty(), fn ($w) => $w->orWhereIn('user_id', $auteurs))
             ->when($etudiants->isNotEmpty(), fn ($w) => $w
                 ->orWhere(fn ($o) => $o->where('auditable_type', ESBTPEtudiant::class)->whereIn('auditable_id', $etudiants))

@@ -45,6 +45,12 @@ window.journalAudit = function () {
                 date_from: p.get('date_from') || '', date_to: p.get('date_to') || '',
             };
         },
+        /* « Du 01/08/2026 au 15/08/2026 », comme le serveur l'ecrit. */
+        plage() {
+            const jour = (d) => d ? d.split('-').reverse().join('/') : '';
+            const f = this.filtres;
+            return ((f.date_from ? 'Du ' + jour(f.date_from) : '') + (f.date_to ? (f.date_from ? ' au ' : 'Au ') + jour(f.date_to) : '')).trim();
+        },
         filtrer(changements) {
             Object.assign(this.filtres, changements);
             this.recharger(true);

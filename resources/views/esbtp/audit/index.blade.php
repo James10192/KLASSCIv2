@@ -75,11 +75,10 @@
         <div class="jda-filtre" x-on:change="choisir($event)">
             <x-au-select name="periode" :value="$filtres->periode" icon="fa-calendar" :options="\App\Domain\Audit\FiltresDuJournal::PERIODES" :placeholder-is-first-option="false" />
         </div>
-        @if($filtres->plage())
-            <button type="button" class="jda-bascule is-actif" x-show="filtres.date_from || filtres.date_to" data-jda-filtre='@json(['date_from' => '', 'date_to' => ''])' title="Revenir aux périodes proposées">
-                <i class="fas fa-calendar-days" aria-hidden="true"></i>{{ \Illuminate\Support\Str::ucfirst($filtres->plage()) }} <i class="fas fa-xmark" aria-hidden="true"></i>
-            </button>
-        @endif
+        {{-- Toujours dans la page : une plage revenue par le bouton retour doit pouvoir se retirer. --}}
+        <button type="button" class="jda-bascule is-actif" x-show="filtres.date_from || filtres.date_to" @if(! $filtres->plage()) x-cloak @endif data-jda-filtre='@json(['date_from' => '', 'date_to' => ''])' title="Revenir aux périodes proposées">
+            <i class="fas fa-calendar-days" aria-hidden="true"></i><span x-text="plage()">{{ \Illuminate\Support\Str::ucfirst((string) $filtres->plage()) }}</span> <i class="fas fa-xmark" aria-hidden="true"></i>
+        </button>
         <button type="button" class="jda-bascule" :class="!filtres.auto ? 'is-actif' : ''" :aria-pressed="(!filtres.auto).toString()" x-on:click="filtrer({auto: !filtres.auto})">
             <i class="fas fa-gear" aria-hidden="true"></i>Masquer les tâches automatiques
         </button>

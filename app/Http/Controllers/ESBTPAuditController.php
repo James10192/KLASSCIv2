@@ -58,7 +58,7 @@ class ESBTPAuditController extends Controller
             ->simplePaginate(self::PAR_TRANCHE)->withQueryString();
 
         if (ListeInfinie::demandee($request)) {
-            return $this->suite($tranche);
+            return $this->suite($tranche, $request->user());
         }
 
         // Les deux comptes balaient toute la periode. Pendant une recherche
@@ -67,7 +67,7 @@ class ESBTPAuditController extends Controller
         // se tait. Avec une personne choisie, il n'y a pas de tache automatique.
         $compter = $filtres->recherche === '';
         $donnees = [
-            'lignes' => $this->journal->lignes($tranche->items()),
+            'lignes' => $this->journal->lignes($tranche->items(), $request->user()),
             'tranche' => $tranche,
             'filtres' => $filtres,
             'automatiques' => $filtres->automatiques || $filtres->personne || $filtres->idObjet || ! $compter ? null
@@ -108,9 +108,9 @@ class ESBTPAuditController extends Controller
 
         return view('esbtp.audit.show', [
             'audit' => $audit,
-            'ligne' => $this->journal->ligne($audit),
+            'ligne' => $this->journal->ligne($audit, $request->user()),
             'changements' => (new ChampsLisibles([$audit]))->changements($audit),
-            'vie' => $this->journal->lignes($vie),
+            'vie' => $this->journal->lignes($vie, $request->user()),
             'vieTronquee' => $avant->count() === self::VIE_DE_CHAQUE_COTE || $apres->count() === self::VIE_DE_CHAQUE_COTE,
             'touches' => $this->liens->resolve($audit),
         ]);
@@ -133,7 +133,7 @@ class ESBTPAuditController extends Controller
             ->paginate(self::PAR_TRANCHE)->withQueryString();
 
         if (ListeInfinie::demandee($request)) {
-            return $this->suite($tranche);
+            return $this->suite($tranche, $request->user());
         }
 
         $parHeure = $portee()->selectRaw('HOUR(created_at) as heure, COUNT(*) as total')->groupBy(DB::raw('HOUR(created_at)'))->pluck('total', 'heure');
@@ -141,7 +141,7 @@ class ESBTPAuditController extends Controller
         $pointe = max($repartition) > 0 ? array_search(max($repartition), $repartition, true) : null;
 
         return view('esbtp.audit.user-activity', [
-            'lignes' => $this->journal->lignes($tranche->items()),
+            'lignes' => $this->journal->lignes($tranche->items(), $request->user()),
             'tranche' => $tranche,
             'stats' => [
                 'total_actions' => $tranche->total(),
@@ -190,9 +190,9 @@ class ESBTPAuditController extends Controller
     }
 
     /** La suite de la liste : chaque ligne, precedee de son jour quand il change. */
-    private function suite($tranche): JsonResponse
+    private function suite($tranche, ?User $lecteur): JsonResponse
     {
-        $lignes = collect($this->journal->lignes($tranche->items()))->keyBy('id');
+        $lignes = collect($this->journal->lignes($tranche->items(), $lecteur))->keyBy('id');
         $jour = null;
 
         return ListeInfinie::reponse($tranche, function (Audit $a) use ($lignes, &$jour) {
@@ -244,7 +244,7 @@ class ESBTPAuditController extends Controller
         $filtres->requete()->with('user.roles:id,name')->orderByDesc('created_at')->orderByDesc('id')
             ->limit($maximum)->get()->chunk(500)
             ->each(function ($lot) use (&$lignes) {
-                array_push($lignes, ...$this->journal->lignes($lot));
+                array_push($lignes, ...$this->journal->lignes($lot, $request->user()));
             });
 
         return $lignes;

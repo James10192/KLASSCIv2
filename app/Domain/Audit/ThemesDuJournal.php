@@ -85,7 +85,7 @@ final class ThemesDuJournal
     }
 
     /** L'argent lui-meme : son detail demande en plus l'acces aux donnees sensibles. */
-    public const ARGENT = ['App\Models\ESBTPPaiement', 'App\Models\ESBTPDepense', 'App\Models\ESBTPFacture', 'App\Models\ESBTPSalaire'];
+    public const ARGENT = ['App\Models\ESBTPPaiement', 'App\Models\ESBTPDepense', 'App\Models\ESBTPFacture', 'App\Models\ESBTPFactureDetail', 'App\Models\ESBTPSalaire'];
 
     /**
      * Ce lecteur peut-il ouvrir le detail d'une action sur ce type d'objet ?

@@ -163,6 +163,20 @@ class JournalAuditDefilementTest extends TestCase
         $this->assertStringContainsString(route('esbtp.audit.show', $frais).'"', $html);
     }
 
+    public function test_sans_acces_sensible_la_recherche_ne_retrouve_pas_un_montant(): void
+    {
+        $comptable = User::factory()->create();
+        $comptable->givePermissionTo(['admin.access', 'comptabilite.audit.view']);
+        $paiement = $this->audit(['auditable_type' => 'App\\Models\\ESBTPPaiement', 'auditable_id' => 4244,
+            'new_values' => json_encode(['montant' => 153250])]);
+
+        $this->actingAs($comptable);
+        $this->assertStringNotContainsString('data-li-cle="'.$paiement.'"', (string) $this->tranche(['q' => '153250'])->json('rows_html'));
+
+        $comptable->givePermissionTo('comptabilite.sensitive.access');
+        $this->assertStringContainsString('data-li-cle="'.$paiement.'"', (string) $this->tranche(['q' => '153250'])->json('rows_html'));
+    }
+
     public function test_la_regle_a_regarder_est_la_meme_en_sql_et_en_php(): void
     {
         DB::table('audits')->delete();
