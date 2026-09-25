@@ -448,6 +448,25 @@ class ESBTPSettingsController extends Controller
                 ]
             );
 
+            // Telephone de l'etudiant sur l'en-tete du bulletin. La ligne doit
+            // exister avant la boucle des bascules plus bas, qui ne met a jour
+            // que les reglages deja en base : sans elle, decocher la case
+            // n'aurait rien enregistre sur une instance qui ne l'a jamais eue.
+            Setting::firstOrCreate(
+                ['key' => 'bulletin_show_student_phone'],
+                [
+                    'value' => '1',
+                    'type' => 'string',
+                    'group' => 'bulletin',
+                    'category' => 'bulletin',
+                    'description' => "Afficher le téléphone de l'étudiant sur le bulletin",
+                    'is_required' => false,
+                    'default_value' => '1',
+                    'validation_rules' => null,
+                    'sort_order' => 11,
+                ]
+            );
+
             // Créer les settings tronc commun si inexistants
             $troncCommunDefaults = [
                 'tronc_commun_enabled' => ['value' => '0', 'description' => 'Activer le tronc commun'],
@@ -480,7 +499,8 @@ class ESBTPSettingsController extends Controller
                 'bulletin_show_logo', 'bulletin_show_header', 'bulletin_show_republic_info',
                 'bulletin_show_ministry_info', 'bulletin_show_school_info', 'bulletin_show_cycle_info',
                 'bulletin_show_edition_date', 'bulletin_show_student_info', 'bulletin_show_matricule',
-                'bulletin_show_birth_date', 'bulletin_show_redoublant', 'bulletin_show_subjects_table',
+                'bulletin_show_birth_date', 'bulletin_show_redoublant', 'bulletin_show_student_phone',
+                'bulletin_show_subjects_table',
                 'bulletin_show_teachers', 'bulletin_show_absences', 'bulletin_show_statistics',
                 'bulletin_show_signature', 'bulletin_show_attendance_note', 'bulletin_show_council_decision',
                 'bulletin_show_highest_average', 'bulletin_show_lowest_average', 'bulletin_show_class_average',

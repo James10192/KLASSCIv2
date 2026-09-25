@@ -18,10 +18,10 @@ use Tests\TestCase;
 class AnalyseurEmailTest extends TestCase
 {
     /**
-     * Empreinte du fichier partage avec klassci-landing (scripts/verifier-email.mjs),
-     * apres ajout des domaines fabriques par KLASSCI et des extensions reservees.
+     * Empreinte du JSON compact partage avec klassci-landing (scripts/verifier-email.mjs) :
+     * a recalculer des deux cotes a chaque modification du fichier.
      */
-    private const EMPREINTE_LANDING = '021ecd8807b450edfa1ab7aa5ce331b79d30157e17c6a2d06a790770ea110439';
+    private const EMPREINTE_LANDING = 'eef55ca82163b43e1245db191cc4322894a0ec5c3feaaf215c987eff1517ee22';
 
     private function analyser(string $email)
     {
@@ -39,6 +39,16 @@ class AnalyseurEmailTest extends TestCase
     public function test_une_faute_connue_est_certaine_et_suggere_l_adresse_complete(): void
     {
         $analyse = $this->analyser('Kouassi.Ama@gmail.con');
+
+        $this->assertSame(EtatEmail::FauteDeFrappe, $analyse->etat);
+        $this->assertSame('Kouassi.Ama@gmail.com', $analyse->suggestion);
+    }
+
+    public function test_glail_est_une_faute_certaine_de_gmail(): void
+    {
+        // Relevee sur des reservations reelles : le L est voisin du M sur le clavier.
+        // Sans l'entree de la table, elle ne serait qu'une faute probable (distance 1).
+        $analyse = $this->analyser('Kouassi.Ama@glail.com');
 
         $this->assertSame(EtatEmail::FauteDeFrappe, $analyse->etat);
         $this->assertSame('Kouassi.Ama@gmail.com', $analyse->suggestion);

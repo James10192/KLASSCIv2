@@ -132,7 +132,7 @@
                             <p>Blocs affichés en haut du bulletin, autour de la photo.</p>
                         </div>
                     </div>
-                    <span class="bcfg-card-badge">9 toggles</span>
+                    <span class="bcfg-card-badge">10 toggles</span>
                 </div>
                 <div class="bcfg-card-body">
                     <div class="bcfg-toggles">
@@ -143,6 +143,7 @@
                             'bulletin_show_matricule'     => 'Matricule',
                             'bulletin_show_birth_date'    => 'Date de naissance',
                             'bulletin_show_redoublant'    => 'Redoublant',
+                            'bulletin_show_student_phone' => "Téléphone de l'étudiant",
                             'bulletin_show_class_info'    => 'Classe et filière',
                             'bulletin_show_effectif'      => 'Effectif de la classe',
                             'bulletin_show_global_average' => 'Moyenne globale',

@@ -137,6 +137,25 @@ class AdaptateursTest extends TestCase
         });
     }
 
+    public function test_le_dernier_tour_interdit_les_appels_sans_retirer_les_outils(): void
+    {
+        $requete = $this->requete()->pourConclure();
+
+        $openai = app(\App\Domain\Assistant\Fournisseurs\OpenAiCompatible::class)->corps($requete, $this->modele('openai', 'https://x.test/'));
+        $this->assertSame('none', $openai['tool_choice']);
+        $this->assertNotEmpty($openai['tools']);
+
+        $anthropic = app(\App\Domain\Assistant\Fournisseurs\Anthropic::class)->corps($requete, $this->modele('anthropic', 'https://x.test/'));
+        $this->assertSame(['type' => 'none'], $anthropic['tool_choice']);
+        $this->assertNotEmpty($anthropic['tools']);
+
+        $gemini = app(\App\Domain\Assistant\Fournisseurs\Gemini::class)->corps($requete, $this->modele('gemini', 'https://x.test/'));
+        $this->assertSame('NONE', $gemini['toolConfig']['functionCallingConfig']['mode']);
+
+        $normal = app(\App\Domain\Assistant\Fournisseurs\OpenAiCompatible::class)->corps($this->requete(), $this->modele('openai', 'https://x.test/'));
+        $this->assertSame('auto', $normal['tool_choice']);
+    }
+
     public function test_une_panne_http_devient_un_evenement_erreur_sans_exception(): void
     {
         config(['assistant.limites.pause_ms' => 0]);

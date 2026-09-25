@@ -17,17 +17,17 @@ $liste = static fn (?string $valeur): array => array_values(array_filter(array_m
 return [
 
     // Modèle utilisé quand l'utilisateur n'en choisit pas.
-    'modele_defaut' => env('ASSISTANT_MODELE', 'or-gpt-4o-mini'),
+    'modele_defaut' => env('ASSISTANT_MODELE', 'or-gemini-flash'),
 
     // Modèles proposés à l'école (clés de « modeles », séparées par des virgules). Vide = tous.
     'modeles_autorises' => $liste(env('ASSISTANT_MODELES_AUTORISES', '')),
 
     // Essayés dans cet ordre quand le modèle choisi tombe ou n'a pas de clé.
-    'repli' => $liste(env('ASSISTANT_REPLI', 'or-gpt-4o-mini,or-deepseek,claude-haiku,gpt-4o-mini,gemini-flash,mistral-small')),
+    'repli' => $liste(env('ASSISTANT_REPLI', 'or-gemini-flash,or-gpt-4.1-mini,or-gpt-4o-mini,or-claude-haiku,claude-haiku,gpt-4o-mini,gemini-flash,mistral-small')),
 
     'limites' => [
-        'tours' => (int) env('ASSISTANT_MAX_TOURS', 4),
-        'budget_tokens' => (int) env('ASSISTANT_BUDGET_TOKENS', 60000),
+        'tours' => (int) env('ASSISTANT_MAX_TOURS', 8),
+        'budget_tokens' => (int) env('ASSISTANT_BUDGET_TOKENS', 150000),
         'delai_secondes' => (int) env('ASSISTANT_DELAI', 90),
         'delai_connexion' => (int) env('ASSISTANT_DELAI_CONNEXION', 15),
         // Nouvelles tentatives sur le même modèle après 429, 5xx ou coupure réseau.
@@ -107,6 +107,31 @@ return [
             'fournisseur' => 'openrouter',
             'modele' => env('OPENROUTER_MODEL_DEEPSEEK', 'deepseek/deepseek-v3.2'),
             'libelle' => 'DeepSeek V3.2 (OpenRouter)',
+            'outils' => true,
+            'diffusion' => true,
+        ],
+        // Comparés le 25 septembre 2026 sur presentation (6 questions réelles, 30 réponses,
+        // aucune erreur) : Gemini Flash donne les analyses les plus justes et exploitables,
+        // d'où le défaut ; GPT-4.1 mini est le repli le plus sûr ; DeepSeek recopiait
+        // les exemples du prompt, Claude Haiku annonçait ses recherches avant d'agir.
+        'or-gemini-flash' => [
+            'fournisseur' => 'openrouter',
+            'modele' => env('OPENROUTER_MODEL_GEMINI_FLASH', 'google/gemini-3.8-flash'),
+            'libelle' => 'Gemini Flash (OpenRouter)',
+            'outils' => true,
+            'diffusion' => true,
+        ],
+        'or-gpt-4.1-mini' => [
+            'fournisseur' => 'openrouter',
+            'modele' => env('OPENROUTER_MODEL_GPT41', 'openai/gpt-4.1-mini'),
+            'libelle' => 'GPT-4.1 mini (OpenRouter)',
+            'outils' => true,
+            'diffusion' => true,
+        ],
+        'or-claude-haiku' => [
+            'fournisseur' => 'openrouter',
+            'modele' => env('OPENROUTER_MODEL_HAIKU', 'anthropic/claude-haiku-4.5'),
+            'libelle' => 'Claude Haiku 4.5 (OpenRouter)',
             'outils' => true,
             'diffusion' => true,
         ],

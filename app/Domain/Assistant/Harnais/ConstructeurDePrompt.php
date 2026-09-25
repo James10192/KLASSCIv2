@@ -2,18 +2,37 @@
 
 namespace App\Domain\Assistant\Harnais;
 
+use App\Helpers\SettingsHelper;
 use App\Models\ChatbotConversation;
 use App\Models\ChatbotSystemPrompt;
 use App\Models\ChatbotUserPreference;
 use App\Services\Chatbot\ConversationContextProvider;
+use Carbon\Carbon;
 
 /**
  * Prompt système et historique au format neutre, identiques pour tous les
- * fournisseurs (repris de l'ancien ClaudeAgentService, sans changement de fond).
+ * fournisseurs.
+ *
+ * Le prompt suit la structure des agents qui marchent : un rôle, un bloc
+ * d'environnement recalculé à chaque question (date, école, année, utilisateur,
+ * page ouverte), une méthode de travail avec les outils, des règles de
+ * présentation, et quelques exemples. Les règles d'avant interdisaient tableaux,
+ * listes et diagrammes ; l'agent sait maintenant mettre en forme, avec des
+ * widgets pour les données et du Markdown pour le reste.
  */
 class ConstructeurDePrompt
 {
-    protected int $fenetreHistorique = 10;
+    /** Messages récents rejoués. */
+    protected int $fenetreHistorique = 12;
+
+    /** Réponses récentes dont on rejoue aussi les appels d'outil (les autres : texte seul). */
+    protected int $reponsesAvecOutils = 3;
+
+    /**
+     * Plafond des traces rejouées : elles repartent à chaque tour de la boucle,
+     * donc pèsent huit fois sur le budget de jetons.
+     */
+    private const OCTETS_REJOUES = 12000;
 
     public function __construct(protected ConversationContextProvider $contextProvider)
     {
@@ -21,8 +40,11 @@ class ConstructeurDePrompt
 
     /**
      * Messages neutres : l'historique récent puis la question courante.
-     * Le message utilisateur vient d'être enregistré : il est retiré de
-     * l'historique pour ne pas partir deux fois.
+     *
+     * Une réponse passée qui avait consulté des outils est rejouée avec ses
+     * appels et leurs résultats compacts : le modèle sait ce qu'il a déjà lu et
+     * avec quels identifiants, sans qu'on remplace sa réponse par un repère
+     * (l'ancien repère finissait recopié tel quel à l'écran).
      */
     public function messages(ChatbotConversation $conversation, string $question): array
     {
@@ -34,22 +56,57 @@ class ConstructeurDePrompt
             ->reverse()
             ->values();
 
+        // Les traces rejouées, de la plus récente à la plus ancienne, dans la limite du plafond.
+        $avecOutils = [];
+        $rejoue = 0;
+        foreach ($messages->where('role', 'assistant')->reverse()->take($this->reponsesAvecOutils) as $msg) {
+            $trace = $msg->metadata['trace'] ?? null;
+            if (!is_array($trace) || !$this->traceValide($trace)) {
+                continue;
+            }
+            $taille = strlen((string) json_encode($trace));
+            if ($rejoue + $taille > self::OCTETS_REJOUES) {
+                break;
+            }
+            $rejoue += $taille;
+            $avecOutils[] = $msg->id;
+        }
+
         $neutres = [];
+        $numero = 0;
         foreach ($messages as $msg) {
             $role = $msg->role === 'assistant' ? 'assistant' : 'user';
             $texte = (string) ($msg->content ?? '');
 
-            // Les réponses qui portaient des données sont remplacées par un repère :
-            // le modèle doit rappeler l'outil plutôt que répondre de mémoire.
-            if ($role === 'assistant' && $msg->display_type !== 'text') {
-                $texte = '[Résultats affichés via widget - appeler l\'outil pour des données fraîches]';
+            if ($role === 'assistant') {
+                $final = in_array($msg->id, $avecOutils, true) ? $this->texteFinal($msg) : null;
+                // Une trace ne se rejoue que suivie de sa réponse : une réponse coupée
+                // après ses outils (limite, erreur) n'en a pas, et un repère inventé
+                // à sa place finirait recopié à l'écran, comme l'ancien.
+                if ($final !== null && trim($final) !== '') {
+                    foreach ($this->renumeroter($msg->metadata['trace'], $numero) as $etape) {
+                        $neutres[] = $etape;
+                    }
+                    $texte = $final;
+                }
+                if (trim($texte) === '') {
+                    continue;
+                }
+            }
+
+            $precedent = array_key_last($neutres);
+            if ($role === 'user' && $precedent !== null && $neutres[$precedent]['role'] === 'user') {
+                // Deux questions sans réponse entre elles : un seul tour utilisateur,
+                // que toutes les API acceptent.
+                $neutres[$precedent]['texte'] .= "\n\n" . $texte;
+                continue;
             }
 
             $neutres[] = ['role' => $role, 'texte' => $texte];
         }
 
         $dernier = end($neutres);
-        if ($dernier && $dernier['role'] === 'user' && $dernier['texte'] === $question) {
+        if ($dernier && $dernier['role'] === 'user' && ($dernier['texte'] ?? null) === $question) {
             array_pop($neutres);
         }
 
@@ -58,7 +115,12 @@ class ConstructeurDePrompt
             array_shift($neutres);
         }
 
-        $neutres[] = ['role' => 'user', 'texte' => $question];
+        $precedent = array_key_last($neutres);
+        if ($precedent !== null && $neutres[$precedent]['role'] === 'user') {
+            $neutres[$precedent]['texte'] .= "\n\n" . $question;
+        } else {
+            $neutres[] = ['role' => 'user', 'texte' => $question];
+        }
 
         return $neutres;
     }
@@ -72,84 +134,216 @@ class ConstructeurDePrompt
         ?array $clientContext,
         ?ChatbotConversation $conversation = null,
     ): string {
-        $domainContext = $this->getDomainContext();
-        $userName = $preferences?->preferred_name ?? $user->name ?? 'utilisateur';
-        $roleName = $user->roles?->first()?->name ?? 'utilisateur';
+        $environnement = $this->environnement($user, $preferences, $clientContext);
+        $domaine = $this->getDomainContext();
+        $style = $this->style($preferences);
 
-        $styleInstructions = '';
-        if ($preferences) {
-            $style = $preferences->response_style ?? 'standard';
-            $tone = $preferences->response_tone ?? 'pedagogique';
-            $styleInstructions = match ($style) {
-                'court' => 'Réponses très concises (1-2 phrases max).',
-                'detaille' => 'Réponses détaillées avec explications.',
-                default => 'Réponses de longueur standard.',
-            };
-            $styleInstructions .= ' ' . match ($tone) {
-                'direct' => 'Ton direct et professionnel.',
-                'chaleureux' => 'Ton chaleureux et encourageant.',
-                default => 'Ton pédagogique et bienveillant.',
-            };
-        }
-
-        $pageContext = '';
-        if ($clientContext) {
-            $pageName = $clientContext['page_title'] ?? $clientContext['current_path'] ?? null;
-            if ($pageName) {
-                $pageContext = "\nL'utilisateur est actuellement sur la page : {$pageName}.";
-            }
-        }
-
-        $notesUtilisateur = '';
-        if ($preferences?->notes) {
-            $notesUtilisateur = "\nNotes personnelles de l'utilisateur : {$preferences->notes}";
-        }
-
-        // Contexte conversationnel : résumé minimal du dernier tool result, pour les questions de suivi.
-        // Le modèle doit UTILISER les IDs exacts listés ici (cf. règle 3b) si l'utilisateur fait référence à un élément précédent.
-        $previousContext = '';
+        $suivi = '';
         if ($conversation) {
-            $summary = $this->contextProvider->summaryBlock($conversation);
-            if ($summary) {
-                $previousContext = "\nContexte du dernier résultat d'outil (pour les questions de suivi) : {$summary}\n"
-                    . "→ Si l'utilisateur fait référence implicitement à ces résultats (\"et pour l'autre classe ?\", \"et dans la 2e année ?\"), utilise ces IDs/noms exacts. Sinon, fais un nouvel appel d'outil.";
+            $resume = $this->contextProvider->summaryBlock($conversation);
+            if ($resume) {
+                $suivi = "\n<dernier_resultat>\n{$resume}\nSi l'utilisateur y fait référence (« et pour l'autre classe ? »), réutilise ces identifiants exacts.\n</dernier_resultat>\n";
             }
         }
 
-        // Le pays et le nom viennent des réglages de l'école : une instance au Bénin
-        // ne doit pas se présenter comme ivoirienne.
-        $ecole = trim((string) \App\Helpers\SettingsHelper::get('school_name', ''));
-        $pays = trim((string) \App\Helpers\SettingsHelper::get('school_country', ''));
-        $cadre = ($ecole !== '' ? " pour l'établissement « {$ecole} »" : '') . ($pays !== '' ? " ({$pays})" : '');
+        $domaineBloc = $domaine !== '' ? "\n<connaissances_ecole>\n{$domaine}\n</connaissances_ecole>\n" : '';
 
         return <<<PROMPT
-Tu es l'assistant IA de KLASSCI, un système de gestion d'établissement scolaire professionnel (BTS, Licence, Master){$cadre}.
+<role>
+Tu es l'agent IA de KLASSCI, le logiciel de gestion de l'établissement. Tu travailles pour la personne connectée : tu vas chercher les vraies données avec tes outils, tu les analyses, tu les présentes clairement et tu proposes l'action utile suivante. Tu n'inventes jamais un chiffre, un nom, une date ou une page.
+</role>
 
-{$domainContext}
+<environnement>
+{$environnement}
+</environnement>
+{$domaineBloc}{$suivi}
+<connaissances_klassci>
+- Une « inscription » = un étudiant inscrit dans une classe pour une année universitaire. Une classe n'appartient pas à une année : c'est l'inscription qui porte l'année.
+- Emploi du temps : on crée d'abord le socle (classe, dates, semestre), puis on y ajoute les séances (matière, enseignant, jour, horaire, salle) depuis sa page. « Modifier rapidement » ouvre plusieurs emplois du temps à la fois.
+- Deux systèmes cohabitent : BTS (matières, coefficients) et LMD (UE, ECUE, crédits). Ne mélange pas leurs vocabulaires.
+- Quand navigate_to_page renvoie un « page_guide », c'est la base fiable de ton explication pas à pas.
+</connaissances_klassci>
 
-L'utilisateur s'appelle {$userName} et a le rôle "{$roleName}".
-{$styleInstructions}{$pageContext}{$notesUtilisateur}{$previousContext}
+<methode>
+1. Comprends ce que la personne veut vraiment savoir ou faire. Une question vague sur des données (« comment ça va côté paiements ? ») se traite en allant chercher les données, pas en demandant de préciser.
+2. Tout chiffre ou nom que tu donnes vient d'un outil appelé dans CET échange ou dans l'historique ci-dessus. Si l'information a déjà été lue plus haut avec les mêmes paramètres, réutilise-la au lieu de rappeler l'outil.
+3. Choisis l'outil le plus précis. Quand plusieurs lectures sont indépendantes (ex. indicateurs + encaissements), demande-les ensemble dans le même tour. Enchaîne quand une lecture dépend d'une autre (trouver l'étudiant, puis ses paiements avec son identifiant).
+4. N'appelle jamais deux fois le même outil avec les mêmes arguments. Si un résultat est vide, change un paramètre (orthographe, année, filtre) une fois, puis explique ce que tu as cherché.
+5. Si un outil ne couvre pas la demande, dis-le franchement, en une phrase, et oriente vers la bonne page avec navigate_to_page. Ne prétends pas avoir fait une action que tes outils ne font pas.
+6. Tu ne vois que ce que les droits de la personne permettent : un outil refusé ou absent se signale simplement, sans insister.
+</methode>
 
-WORKFLOW EMPLOI DU TEMPS :
-- La page "Emplois du temps" (index) liste tous les emplois du temps + raccourci pour créer rapidement + bouton "Modifier rapidement" (multi-sélection)
-- Créer un emploi du temps = créer le socle (classe, dates, semestre). C'est un conteneur vide.
-- Ensuite, on ajoute des séances de cours dessus depuis la vue détaillée (show) : matière, enseignant, jour, horaire, salle
-- "Modifier rapidement" = sélectionner plusieurs emplois du temps et les voir/éditer en même temps (vue accordéon)
-- Quand l'outil navigate_to_page retourne un champ "page_guide", utilise-le comme base pour ton guide détaillé.
+<presentation>
+- Chaque résultat d'outil s'affiche AUTOMATIQUEMENT à l'écran, juste sous l'étape, dans un widget (tableau, cartes, chiffres clés, graphique). Ne recopie JAMAIS ces données en liste ou en tableau. Ton texte vient après : réponds à la question, relève ce qui compte (total, tendance, extrême, anomalie, comparaison) et cite au plus deux ou trois éléments, avec leur lien.
+- Commence par la réponse, en une ou deux phrases. Pas de formule d'introduction (« Bien sûr ! », « Voici… »), pas de résumé final qui répète, pas de « n'hésitez pas ».
+- N'annonce pas ce que tu vas faire (« Je vais chercher… ») : appelle directement l'outil, l'écran montre déjà l'étape en cours.
+- Écris en français, en Markdown : **gras** pour le chiffre clé, listes courtes, titres ### seulement si la réponse a plusieurs parties.
+- Liens vers KLASSCI en Markdown, avec l'URL RELATIVE telle que l'outil la fournit : [Nom](/esbtp/etudiants/…). Jamais d'adresse complète (https://…), jamais d'URL inventée : un lien non fourni par un outil n'est pas affiché.
+- Pour montrer une évolution ou une comparaison que tu as calculée, appelle afficher_graphique ; pour un tableau que tu as construit en croisant plusieurs résultats, afficher_tableau ; pour expliquer un processus ou un circuit, afficher_diagramme (Mermaid). Ne montre pas deux fois la même chose.
+- Pour un « comment faire », donne les étapes numérotées réelles (tirées de navigate_to_page ou get_setup_guide), et un diagramme si le circuit a des embranchements.
+- Montants : « 1 530 000 FCFA ». Dates : « 12 septembre 2026 ».
+- Ne termine pas par une liste de questions de suivi : des suggestions cliquables s'affichent seules.
+{$style}
+</presentation>
 
-RÈGLES IMPORTANTES :
-1. Réponds toujours en français.
-2. Utilise les outils (tools) pour récupérer des données réelles. NE JAMAIS inventer de données. NE JAMAIS répondre de mémoire ou à partir de l'historique de conversation — appelle TOUJOURS l'outil même si tu penses déjà connaître la réponse.
-3. Si l'utilisateur pose une question sur des données (étudiants, paiements, inscriptions, frais, classes), appelle OBLIGATOIREMENT l'outil approprié, même si une recherche similaire a déjà été faite dans la conversation.
-3b. PARAMÈTRES DES OUTILS : utilise TOUJOURS les IDs exacts retournés par les résultats d'un outil précédent (ex: inscription_id=47). Ne confonds JAMAIS la position dans une liste (1er, 2ème...) avec l'ID réel de l'objet. Si tu ne connais pas l'ID exact, fais d'abord une recherche pour le trouver.
-4. Pour les salutations ou questions générales, réponds directement sans outil.
-5. INTERDIT ABSOLU : après un outil, ne reproduis JAMAIS les données (noms, montants, listes, formules) dans ton texte. Le frontend affiche un widget visuel EN DESSOUS. Écris SEULEMENT 1-2 phrases d'introduction. Exemple CORRECT : "Voici les frais optionnels configurés. Les détails s'affichent ci-dessous." Exemple INTERDIT : "Cantine : - Repas complet : 455 000 FCFA..." ← NE FAIS JAMAIS ÇA.
-6. Si un outil retourne 0 résultat, dis-le clairement et suggère des alternatives.
-7. Ne génère JAMAIS de tableaux markdown, de listes de données, de code, ou de JSON. Réponds en langage naturel concis.
-8. Si l'utilisateur demande comment faire quelque chose (créer une inscription, saisir des notes...), utilise navigate_to_page pour lui donner un lien direct. Pour ces réponses de navigation, fournis un guide détaillé avec les étapes numérotées que l'utilisateur devra suivre sur la page (champs à remplir, options à sélectionner, etc.). Le bouton "Ouvrir la page" s'affiche automatiquement en dessous.
-9. NE METS PAS de suggestions de suivi dans ta réponse texte (ex: "Tu veux aussi voir les paiements ?"). Le système les génère automatiquement sous forme de boutons cliquables. Par contre, pour les données (règle 5), ta réponse doit contenir UNIQUEMENT le résumé introductif (1-3 phrases max).
+<exemples>
+(Forme attendue seulement. Les crochets marquent ce que TES outils te donneront : n'en reprends jamais le contenu, ni les formulations.)
+
+Question : « Combien d'inscrits cette année par rapport à l'an dernier ? »
+→ get_dashboard_kpis, puis : « **[inscrits cette année] inscrits** en [année], contre [inscrits l'an dernier] l'an dernier : **[écart en %]**. [Une observation tirée des chiffres, s'il y en a une.] »
+
+Question : « Qui doit le plus d'argent ? »
+→ search_debtors, puis : une phrase sur le plus gros retard avec son lien, une phrase sur ce que la liste révèle (classe où se concentrent les retards, étudiants qui n'ont rien versé), et l'action la plus utile.
+
+Question : « Combien d'étudiants par filière ? »
+→ repartition_effectifs, puis : la filière en tête, l'écart avec les suivantes, ce qui ressort.
+
+Question : « Explique-moi le circuit d'une inscription »
+→ navigate_to_page ou get_setup_guide pour les vraies étapes, puis afficher_diagramme (flowchart TD), puis deux ou trois phrases sur les points de blocage.
+</exemples>
 PROMPT;
     }
+
+    /** Le bloc d'environnement : ce qu'un collègue saurait en arrivant dans le bureau. */
+    private function environnement($user, ?ChatbotUserPreference $preferences, ?array $clientContext): string
+    {
+        $maintenant = Carbon::now()->locale('fr');
+        $ecole = trim((string) SettingsHelper::get('school_name', ''));
+        $pays = trim((string) SettingsHelper::get('school_country', ''));
+        try {
+            $annee = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('name') ?? 'non définie';
+        } catch (\Throwable $e) {
+            // Ne pas écrire « non définie » : le modèle l'affirmerait à l'utilisateur.
+            \Illuminate\Support\Facades\Log::warning('assistant.environnement_annee', ['exception' => get_class($e), 'message' => $e->getMessage()]);
+            $annee = 'indisponible pour le moment';
+        }
+
+        $nom = $preferences?->preferred_name ?: ($user->name ?? 'utilisateur');
+        $role = $user?->roles?->first()?->name ?? 'utilisateur';
+
+        $lignes = [
+            '- Date et heure : ' . $maintenant->isoFormat('dddd D MMMM YYYY, HH:mm') . ' (fuseau ' . config('app.timezone') . ')',
+            '- Établissement : ' . ($ecole !== '' ? $ecole : 'non renseigné') . ($pays !== '' ? " ({$pays})" : ''),
+            '- Année universitaire en cours : ' . $annee,
+            "- Personne connectée : {$nom}, rôle « {$role} »",
+            '- Monnaie : FCFA',
+        ];
+
+        $page = $clientContext['page_title'] ?? null;
+        $chemin = $clientContext['current_path'] ?? null;
+        if ($page || $chemin) {
+            $lignes[] = '- Page ouverte : ' . trim(($page ?? '') . ($chemin ? " ({$chemin})" : ''));
+            $entite = $this->entiteDeLaPage((string) $chemin);
+            if ($entite) {
+                $lignes[] = "- Elle consulte {$entite}. « cet étudiant », « cette classe »… désignent cet élément.";
+            }
+        }
+
+        if ($preferences?->notes) {
+            $lignes[] = '- Notes de la personne pour toi : ' . mb_substr((string) $preferences->notes, 0, 500);
+        }
+
+        return implode("\n", $lignes);
+    }
+
+    /** « /esbtp/etudiants/2743 » → « la fiche de l'étudiant n° 2743 ». */
+    private function entiteDeLaPage(string $chemin): ?string
+    {
+        $types = [
+            'etudiants' => "la fiche de l'étudiant",
+            'inscriptions' => "l'inscription",
+            'classes' => 'la classe',
+            'paiements' => 'le paiement',
+            'enseignants' => "l'enseignant",
+            'filieres' => 'la filière',
+            'evaluations' => "l'évaluation",
+        ];
+
+        if (preg_match('#^/esbtp/(' . implode('|', array_keys($types)) . ')/(\d+)(?:/|$)#', $chemin, $m)) {
+            return $types[$m[1]] . ' n° ' . $m[2] . ' (identifiant ' . $m[2] . ')';
+        }
+
+        return null;
+    }
+
+    private function style(?ChatbotUserPreference $preferences): string
+    {
+        if (!$preferences) {
+            return '';
+        }
+
+        $longueur = match ($preferences->response_style ?? 'standard') {
+            'court' => '- La personne préfère des réponses très courtes : deux phrases au plus.',
+            'detaille' => '- La personne préfère des réponses détaillées, avec l\'explication des chiffres.',
+            default => '',
+        };
+        $ton = match ($preferences->response_tone ?? 'pedagogique') {
+            'direct' => '- Ton direct et professionnel.',
+            'chaleureux' => '- Ton chaleureux et encourageant.',
+            default => '',
+        };
+
+        return trim($longueur . "\n" . $ton);
+    }
+
+    /**
+     * Identifiants neufs pour les appels rejoués : ceux d'origine viennent du
+     * modèle de l'époque (format propre à chaque API, parfois répétés d'une
+     * réponse à l'autre), et le modèle d'aujourd'hui peut être un autre.
+     */
+    private function renumeroter(array $trace, int &$numero): array
+    {
+        $ids = [];
+        foreach ($trace as $i => $message) {
+            if ($message['role'] === 'assistant') {
+                foreach ($message['appels'] ?? [] as $j => $appel) {
+                    $ids[$appel['id']] = $nouveau = 'h' . str_pad((string) ++$numero, 8, '0', STR_PAD_LEFT);
+                    $trace[$i]['appels'][$j]['id'] = $nouveau;
+                }
+            } else {
+                $trace[$i]['id'] = $ids[$message['id']] ?? ('h' . str_pad((string) ++$numero, 8, '0', STR_PAD_LEFT));
+            }
+        }
+
+        return $trace;
+    }
+
+    /** Une trace rejouable : des appels d'outil suivis de leurs résultats. */
+    private function traceValide(array $trace): bool
+    {
+        if ($trace === []) {
+            return false;
+        }
+        foreach ($trace as $message) {
+            if (!is_array($message) || !in_array($message['role'] ?? null, ['assistant', 'outil'], true)) {
+                return false;
+            }
+        }
+
+        return ($trace[0]['role'] ?? null) === 'assistant' && end($trace)['role'] === 'outil';
+    }
+
+    /** Le texte écrit après le dernier outil, tel qu'enregistré dans le fil de la réponse. */
+    private function texteFinal($message): ?string
+    {
+        $parties = $message->metadata['parties'] ?? null;
+        if (!is_array($parties)) {
+            return null;
+        }
+
+        $texte = [];
+        foreach ($parties as $partie) {
+            $type = $partie['type'] ?? '';
+            if ($type === 'etape' || $type === 'widget') {
+                $texte = [];
+            } elseif ($type === 'texte') {
+                $texte[] = (string) ($partie['texte'] ?? '');
+            }
+        }
+
+        return $texte === [] ? null : implode("\n\n", $texte);
+    }
+
     protected function getDomainContext(): string
     {
         try {
