@@ -99,13 +99,13 @@
                     <div class="tt">
                         <b><span x-text="e.nom"></span><i class="fas fa-universal-access eim-a11y" x-show="e.a11y" x-bind:title="e.a11y" aria-label="Aménagements"></i></b>
                         <span class="eim-sous">
-                            <span x-text="classeLigne(e)"></span>
+                            <span class="eim-classe" x-text="classeLigne(e)"></span>
                             <span class="eim-lmd" x-show="e.lmd">LMD</span>
                         </span>
+                        <span class="eim-mat" x-text="e.matricule"></span>
                     </div>
                     <div class="tr">
                         <span class="m-chip" x-bind:class="ton(e)" x-text="e.actif ? e.etat_libelle : 'Inactif'"></span>
-                        <span class="eim-mat" x-text="e.matricule"></span>
                     </div>
                 </a>
                 <a class="eim-valider" x-show="e.a_valider_url" x-bind:href="e.a_valider_url">
@@ -169,11 +169,15 @@
     .eim-seg button { font-size: 12.5px; padding-left: 4px; padding-right: 4px; white-space: nowrap; }
     .eim-av { overflow: hidden; }
     .eim-av img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
-    .eim-row .tt { min-width: 0; }
-    .eim-sous { display: flex; align-items: center; gap: 6px; min-width: 0; }
-    .eim-sous > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .eim-lmd { flex-shrink: 0; font-size: 10px; font-weight: 700; color: #0453cb; background: rgba(4,83,203,.1); border-radius: 4px; padding: 0 4px; line-height: 16px; }
-    .eim-mat { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; color: #94a3b8; white-space: nowrap; }
+    /* Le shell grise et reduit tout .m-row .tt span : les lignes de cet ecran
+       ont besoin de selecteurs plus precis pour garder leur propre style. */
+    .eim-row .tt { min-width: 0; gap: 3px; }
+    .eim-row .tt b > span { color: inherit; font-size: inherit; }
+    .eim-row .tt .eim-sous { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12.5px; color: #475569; }
+    .eim-row .tt .eim-classe { color: inherit; font-size: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .eim-row .tt .eim-lmd { flex-shrink: 0; font-size: 10px; font-weight: 700; color: #0453cb; background: rgba(4,83,203,.1); border-radius: 4px; padding: 0 4px; line-height: 16px; }
+    .eim-row .tt .eim-mat { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; color: #94a3b8; }
+    .eim-row .tr { align-self: start; }
     .eim-err { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; background: #fdecea; color: #a12016; border: 1px solid #f5c6c0; border-radius: 14px; padding: 12px 14px; font-size: 13px; font-weight: 600; }
     .eim-err svg { width: 20px; height: 20px; }
     .eim-err-retry { border: 0; background: transparent; color: #a12016; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 6px 0; }
