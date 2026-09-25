@@ -126,25 +126,9 @@ class ParcoursUeSyncService
                 DB::table('esbtp_lmd_parcours_ue')->where('parcours_id', $parcoursId)->lockForUpdate()->get(['id']);
             }
 
-            $actuels = [];
-            $lignes = DB::table('esbtp_lmd_parcours_ue')
-                ->where('unite_enseignement_id', $ue->id)
-                ->get(['parcours_id', 'semestre', 'is_optional', 'ordre']);
-
-            foreach ($lignes as $ligne) {
-                $actuels[((int) $ligne->parcours_id).'_'.((int) $ligne->semestre)] = [
-                    'parcours_id' => (int) $ligne->parcours_id,
-                    'ue_id' => (int) $ue->id,
-                    'semestre' => (int) $ligne->semestre,
-                    'is_optional' => (bool) $ligne->is_optional,
-                    'ordre' => (int) $ligne->ordre,
-                ];
-            }
-
-            $diff = $this->computeDiff($actuels, $voulus, detachMissing: true);
-            foreach (collect($diff['attach'])->pluck('parcours_id')->unique() as $parcoursId) {
-                $this->refuserCodeImprimeEnDouble((int) $parcoursId, collect([(int) $ue->id]));
-            }
+            $diff = $this->computeDiff($this->liensActuelsDeLUnite($ue), $voulus, detachMissing: true);
+            collect($diff['attach'])->pluck('parcours_id')->unique()
+                ->each(fn ($parcoursId) => $this->refuserCodeImprimeEnDouble((int) $parcoursId, collect([(int) $ue->id])));
 
             foreach ($diff['attach'] as $row) {
                 // `credit` n'est PAS ecrit : il reste nul, ce qui veut dire
@@ -190,6 +174,32 @@ class ParcoursUeSyncService
                 'unchanged' => count($diff['unchanged']),
             ];
         });
+    }
+
+    /**
+     * Les rattachements actuels d'une unite, indexes comme computeDiff les
+     * attend : « parcours_semestre ».
+     *
+     * @return array<string, array{parcours_id: int, ue_id: int, semestre: int, is_optional: bool, ordre: int}>
+     */
+    private function liensActuelsDeLUnite(ESBTPUniteEnseignement $ue): array
+    {
+        $actuels = [];
+        $lignes = DB::table('esbtp_lmd_parcours_ue')
+            ->where('unite_enseignement_id', $ue->id)
+            ->get(['parcours_id', 'semestre', 'is_optional', 'ordre']);
+
+        foreach ($lignes as $ligne) {
+            $actuels[((int) $ligne->parcours_id).'_'.((int) $ligne->semestre)] = [
+                'parcours_id' => (int) $ligne->parcours_id,
+                'ue_id' => (int) $ue->id,
+                'semestre' => (int) $ligne->semestre,
+                'is_optional' => (bool) $ligne->is_optional,
+                'ordre' => (int) $ligne->ordre,
+            ];
+        }
+
+        return $actuels;
     }
 
     /**

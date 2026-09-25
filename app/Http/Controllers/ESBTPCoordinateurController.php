@@ -132,7 +132,7 @@ class ESBTPCoordinateurController extends Controller
         // Statistiques du coordinateur
         $statistiques = $this->getCoordinateurStatistiques($coordinateur->id);
 
-        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($coordinateur);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resumePour($coordinateur, auth()->user());
 
         return view('esbtp.coordinateurs.show', compact('coordinateur', 'statistiques', 'activite'));
     }

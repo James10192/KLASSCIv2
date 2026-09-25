@@ -83,7 +83,7 @@ class ESBTPComptableController extends Controller
     public function show(User $user)
     {
         abort_unless($user->can('comptabilite.access'), 403);
-        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($user);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resumePour($user, auth()->user());
 
         return view('esbtp.comptables.show', compact('user', 'activite'));
     }

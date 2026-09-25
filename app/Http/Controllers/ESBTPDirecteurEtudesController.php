@@ -81,7 +81,7 @@ class ESBTPDirecteurEtudesController extends Controller
         $this->authorize('directeurs_etudes.view');
         $this->assertDirecteurEtudes($directeurEtude);
 
-        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($directeurEtude);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resumePour($directeurEtude, auth()->user());
 
         return view('esbtp.directeurs-etudes.show', [
             'directeur' => $directeurEtude,

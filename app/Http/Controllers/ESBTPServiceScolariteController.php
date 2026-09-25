@@ -81,7 +81,7 @@ class ESBTPServiceScolariteController extends Controller
         $this->authorize('services_scolarite.view');
         $this->assertServiceScolarite($serviceScolarite);
 
-        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($serviceScolarite);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resumePour($serviceScolarite, auth()->user());
 
         return view('esbtp.services-scolarite.show', [
             'service' => $serviceScolarite,

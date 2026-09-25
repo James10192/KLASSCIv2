@@ -471,9 +471,11 @@
             <button class="cs-tab active" data-tab="info" type="button">
                 <i class="fas fa-user"></i> Informations
             </button>
+            @if(\App\Services\Personnel\ActiviteDuPersonnel::peutLire(auth()->user(), (int) $caissier->id))
             <button class="cs-tab" data-tab="performance" type="button">
                 <i class="fas fa-chart-line"></i> Activité
             </button>
+            @endif
             <button class="cs-tab" data-tab="account" type="button">
                 <i class="fas fa-user-cog"></i> Compte
             </button>
@@ -622,9 +624,11 @@
         </div>
 
         {{-- ---- TAB: Compte --------------------------------------- --}}
+        @if(\App\Services\Personnel\ActiviteDuPersonnel::peutLire(auth()->user(), (int) $caissier->id))
         <div class="cs-panel" id="cs-tab-performance">
             @include('esbtp.personnel.partials.activite-resume', ['activite' => $activite ?? null, 'userId' => $caissier->id])
         </div>
+        @endif
 
         <div class="cs-panel" id="cs-tab-account">
             <div class="cs-grid-2">

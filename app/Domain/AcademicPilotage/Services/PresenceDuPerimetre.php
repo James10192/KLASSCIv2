@@ -16,15 +16,18 @@ use Illuminate\Support\Facades\DB;
  * présence ni une absence, c'est une mesure manquante. Un retard compte comme
  * présent, une absence justifiée reste une absence — l'étudiant n'était pas là.
  *
- * Un appel de début et un appel de fin portent deux lignes pour le même
- * étudiant et la même séance. Seul l'appel de début (ou l'appel fusionné)
- * compte, sinon chaque séance doublerait le dénominateur.
+ * Une séance close porte deux lignes par étudiant : l'appel de début, gardé,
+ * et le relevé fusionné écrit à la clôture. Seule la ligne FINALE compte — le
+ * relevé fusionné, ou l'appel de début tant qu'il n'y en a pas — sinon chaque
+ * séance comptait double, et un absent au début présent au relevé faisait
+ * 50 %. C'est la règle de ESBTPAttendance::finalOnly(), écrite ici en SQL
+ * agrégé. Les lignes anciennes sans type d'appel (saisies manuelles d'avant
+ * le double appel) comptent comme un appel de début : les écarter aurait
+ * effacé leur présence sans le dire.
  */
 final class PresenceDuPerimetre
 {
     private const PRESENTS = ['present', 'présent', 'retard', 'late', 'delayed'];
-
-    private const APPELS_COMPTES = ['start', 'merged'];
 
     /** Au-dessous de ce nombre d'appels, un taux individuel ne veut rien dire. */
     private const APPELS_MINIMUM_ETUDIANT = 5;
@@ -134,8 +137,8 @@ final class PresenceDuPerimetre
         $presence = $classeIds->isEmpty() ? collect() : DB::table('esbtp_attendances as a')
             ->where('a.annee_universitaire_id', $anneeId)
             ->whereIn('a.classe_id', $classeIds)
-            ->whereIn('a.call_type', self::APPELS_COMPTES)
             ->whereNull('a.deleted_at')
+            ->where(fn (Builder $q) => $this->lignesFinales($q))
             ->groupByRaw("DATE_FORMAT(a.date, '%Y-%m')")
             ->selectRaw("DATE_FORMAT(a.date, '%Y-%m') as mois, COUNT(*) as appels, ".$this->sommeDesPresents().' as presents')
             ->get()->keyBy('mois');
@@ -169,9 +172,22 @@ final class PresenceDuPerimetre
         return DB::table('esbtp_attendances as a')
             ->where('a.annee_universitaire_id', $anneeId)
             ->whereIn('a.classe_id', $classeIds)
-            ->whereIn('a.call_type', self::APPELS_COMPTES)
             ->whereNull('a.deleted_at')
+            ->where(fn (Builder $q) => $this->lignesFinales($q))
             ->whereBetween('a.date', [$fenetre['debut'], $fenetre['fin']]);
+    }
+
+    private function lignesFinales(Builder $q): void
+    {
+        $q->where('a.call_type', 'merged')
+            ->orWhere(fn (Builder $debut) => $debut
+                ->where(fn (Builder $type) => $type->where('a.call_type', 'start')->orWhereNull('a.call_type'))
+                ->whereNotExists(fn (Builder $fusion) => $fusion->selectRaw('1')
+                    ->from('esbtp_attendances as f')
+                    ->whereColumn('f.seance_cours_id', 'a.seance_cours_id')
+                    ->whereColumn('f.etudiant_id', 'a.etudiant_id')
+                    ->where('f.call_type', 'merged')
+                    ->whereNull('f.deleted_at')));
     }
 
     private function sommeDesPresents(): string

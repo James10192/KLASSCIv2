@@ -55,6 +55,26 @@ final class ActiviteDuPersonnel
      *
      * @return array<string, mixed>|null
      */
+    /**
+     * Qui peut lire l'activité de qui : tout le personnel avec
+     * `performance.view_all`, soi-même avec `performance.view`. La même règle
+     * garde la page de détail et le résumé posé sur les fiches de profil.
+     */
+    public static function peutLire(?\App\Models\User $lecteur, ?int $cibleId): bool
+    {
+        return $lecteur !== null && $cibleId !== null
+            && ($lecteur->can('performance.view_all') || ((int) $lecteur->id === $cibleId && $lecteur->can('performance.view')));
+    }
+
+    /**
+     * Le résumé d'une personne, seulement si le lecteur a le droit de le voir :
+     * sinon null, et la fiche de profil n'affiche pas l'onglet.
+     */
+    public function resumePour(?\App\Models\User $user, ?\App\Models\User $lecteur): ?array
+    {
+        return self::peutLire($lecteur, $user?->id === null ? null : (int) $user->id) ? $this->resume($user) : null;
+    }
+
     public function resume(?\App\Models\User $user): ?array
     {
         if ($user === null) {

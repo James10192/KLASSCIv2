@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Domain\AcademicPilotage\Services;
 
-use App\Http\Controllers\AcademicPilotage\AcademicCoverageController;
 use App\Models\ESBTPClasse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -115,7 +114,7 @@ final class ApercuDuPilotage
     private function ligneDeClasse(ESBTPClasse $classe, int $anneeId, string $periode, array $presences): array
     {
         $constat = Cache::remember(
-            AcademicCoverageController::cle((int) $classe->id, $anneeId, $periode),
+            AcademicNoteCoverageService::cleDeCache((int) $classe->id, $anneeId, $periode),
             self::TTL_COUVERTURE,
             fn () => $this->couverture->summarize($anneeId, $periode, null, (int) $classe->id),
         );

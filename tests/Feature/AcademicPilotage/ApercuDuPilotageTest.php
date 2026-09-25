@@ -151,6 +151,40 @@ class ApercuDuPilotageTest extends TestCase
         self::assertSame('2026-01-05', substr($fenetre['debut'], 0, 10));
     }
 
+    public function test_une_seance_close_ne_compte_que_son_releve_final(): void
+    {
+        // La clôture garde l'appel de début et écrit le relevé fusionné : deux
+        // lignes pour un même étudiant. Absent au début, présent au relevé,
+        // il était là — et la séance ne compte qu'une fois.
+        $this->annee->forceFill(['start_date' => now()->subMonths(2)->toDateString(), 'end_date' => now()->addMonths(6)->toDateString()])->save();
+        $etudiant = $this->etudiantInscrit();
+        $edt = \Illuminate\Support\Facades\DB::table('esbtp_emploi_temps')->insertGetId([
+            'titre' => 'EDT', 'classe_id' => $this->classe->id, 'semestre' => 'semestre1',
+            'date_debut' => now()->subMonth()->toDateString(), 'date_fin' => now()->addMonth()->toDateString(),
+            'annee_universitaire_id' => $this->annee->id, 'is_active' => 1, 'is_current' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $seance = \Illuminate\Support\Facades\DB::table('esbtp_seance_cours')->insertGetId([
+            'emploi_temps_id' => $edt, 'classe_id' => $this->classe->id, 'jour' => 'lundi',
+            'date_seance' => now()->toDateString(), 'heure_debut' => '08:00:00', 'heure_fin' => '10:00:00',
+            'annee_universitaire_id' => $this->annee->id, 'type' => 'course', 'is_recurring' => 0,
+            'priority' => 0, 'is_active' => 1, 'type_seance' => 'CM', 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        foreach ([['start', 'absent'], ['merged', 'present']] as [$type, $statut]) {
+            \Illuminate\Support\Facades\DB::table('esbtp_attendances')->insert([
+                'etudiant_id' => $etudiant->id, 'classe_id' => $this->classe->id, 'seance_cours_id' => $seance,
+                'annee_universitaire_id' => $this->annee->id, 'date' => now()->toDateString(),
+                'statut' => $statut, 'call_type' => $type, 'heure_debut' => '08:00:00', 'heure_fin' => '10:00:00', 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        $taux = app(\App\Domain\AcademicPilotage\Services\PresenceDuPerimetre::class)
+            ->parClasse((int) $this->annee->id, 'annuel', collect([$this->classe->id]));
+
+        self::assertSame(1, $taux[$this->classe->id]['appels']);
+        self::assertSame(100.0, $taux[$this->classe->id]['taux']);
+    }
+
     public function test_une_classe_hors_perimetre_est_refusee(): void
     {
         $enseignantSeul = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);

@@ -10,8 +10,7 @@
 @php
     $_ar = $activite ?? null;
     $_arUser = $userId ?? ($_ar['id'] ?? null);
-    $_arPeutVoir = $_arUser && auth()->check()
-        && (auth()->user()->can('performance.view_all') || ((int) auth()->id() === (int) $_arUser && auth()->user()->can('performance.view')));
+    $_arPeutVoir = \App\Services\Personnel\ActiviteDuPersonnel::peutLire(auth()->user(), $_arUser ? (int) $_arUser : null);
     $_arFaits = [];
     if ($_ar) {
         if ($_ar['seances_prevues'] > 0) {

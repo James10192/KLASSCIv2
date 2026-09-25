@@ -9,8 +9,7 @@
         $_rsActivite['paiements_saisis'] > 0 => [$_rsActivite['paiements_saisis'], 'Paiements saisis'],
         default => ['—', 'Activité'],
     };
-    $_rsPeutVoir = auth()->user()->can('performance.view_all')
-        || ((int) auth()->id() === (int) $model->id && auth()->user()->can('performance.view'));
+    $_rsPeutVoir = \App\Services\Personnel\ActiviteDuPersonnel::peutLire(auth()->user(), (int) $model->id);
     $initiales = collect(preg_split('/\s+/', trim((string) $model->name)))
         ->filter()
         ->take(2)
@@ -84,15 +83,17 @@
                     <div class="cs-kpi-lbl">Identifiant</div>
                 </div>
             </div>
+            @if($_rsPeutVoir)
             <div class="cs-kpi">
                 <i class="fas fa-chart-line cs-kpi-icon"></i>
                 <div>
                     <div class="cs-kpi-val">{{ $_rsFait[0] }}</div>
                     <div class="cs-kpi-lbl">
-                        @if($_rsPeutVoir)<a href="{{ route('esbtp.personnel.performance.show', ['user' => $model->id]) }}">{{ $_rsFait[1] }}</a>@else{{ $_rsFait[1] }}@endif
+                        <a href="{{ route('esbtp.personnel.performance.show', ['user' => $model->id]) }}">{{ $_rsFait[1] }}</a>
                     </div>
                 </div>
             </div>
+            @endif
         </div>
     </div>
 

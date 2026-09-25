@@ -395,7 +395,7 @@ class ESBTPEnseignantController extends Controller
         );
 
         $realAvailability = $this->planningService->getAvailabilityMatrix($enseignant)['availability'];
-        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($enseignant->user);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resumePour($enseignant->user, auth()->user());
 
         // Passer $enseignant en tant que $teacher pour la compatibilité avec la vue
         $teacher = $enseignant;

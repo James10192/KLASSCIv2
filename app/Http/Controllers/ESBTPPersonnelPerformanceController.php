@@ -52,8 +52,8 @@ class ESBTPPersonnelPerformanceController extends Controller
 
     public function show(Request $request, User $user): View
     {
+        abort_unless(ActiviteDuPersonnel::peutLire($request->user(), (int) $user->id), 403);
         $estSoi = (int) $user->id === (int) $request->user()->id;
-        abort_unless($request->user()->can('performance.view_all') || ($estSoi && $request->user()->can('performance.view')), 403);
 
         $fenetre = FenetreDActivite::pour($request->get('periode'));
 

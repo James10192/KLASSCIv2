@@ -81,7 +81,7 @@ class ESBTPResponsableScolariteController extends Controller
         $this->authorize('responsables_scolarite.view');
         $this->assertResponsableScolarite($responsableScolarite);
 
-        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($responsableScolarite);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resumePour($responsableScolarite, auth()->user());
 
         return view('esbtp.responsables-scolarite.show', [
             'responsable' => $responsableScolarite,

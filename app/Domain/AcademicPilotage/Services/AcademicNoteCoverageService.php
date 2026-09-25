@@ -22,6 +22,24 @@ final class AcademicNoteCoverageService
         private readonly CoverageTeacherContactResolver $contacts,
     ) {}
 
+    /**
+     * La clé du cache de la couverture d'une classe, partagée par la page de
+     * la classe, le tableau de bord et les invalidations : le même constat doit
+     * donner le même chiffre partout. La période est normalisée (S1, « Semestre
+     * 1 », semestre1 désignent la même entrée) ; une période refusée garde sa
+     * forme brute, le service rendra de toute façon un refus.
+     */
+    public static function cleDeCache(int $classeId, int $anneeId, string $periode): string
+    {
+        try {
+            $periode = (new AcademicPeriodNormalizer())->normalize($periode);
+        } catch (\InvalidArgumentException) {
+            // Volontairement laissee telle quelle.
+        }
+
+        return 'pilotage.couverture.'.$classeId.'.'.$anneeId.'.'.mb_strtolower($periode, 'UTF-8');
+    }
+
     public function summarize(
         ?int $yearId,
         string $period,

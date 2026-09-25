@@ -472,9 +472,11 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
             <button class="cs-comptable-tab active" data-tab="info" type="button">
                 <i class="fas fa-user"></i> Informations
             </button>
+            @if(\App\Services\Personnel\ActiviteDuPersonnel::peutLire(auth()->user(), (int) $user->id))
             <button class="cs-comptable-tab" data-tab="performance" type="button">
                 <i class="fas fa-chart-line"></i> Activité
             </button>
+            @endif
             <button class="cs-comptable-tab" data-tab="account" type="button">
                 <i class="fas fa-user-cog"></i> Compte
             </button>
@@ -601,9 +603,11 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
         </div>
 
         {{-- ---- TAB: Compte --------------------------------------- --}}
+        @if(\App\Services\Personnel\ActiviteDuPersonnel::peutLire(auth()->user(), (int) $user->id))
         <div class="cs-comptable-panel" id="cs-comptable-tab-performance">
             @include('esbtp.personnel.partials.activite-resume', ['activite' => $activite ?? null, 'userId' => $user->id])
         </div>
+        @endif
 
         <div class="cs-comptable-panel" id="cs-comptable-tab-account">
             <div class="cs-comptable-grid-2">

@@ -81,7 +81,7 @@ class ESBTPAgentInscriptionController extends Controller
         $this->authorize('agents_inscription.view');
         $this->assertAgentInscription($agentInscription);
 
-        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($agentInscription);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resumePour($agentInscription, auth()->user());
 
         return view('esbtp.agents-inscription.show', [
             'agent' => $agentInscription,

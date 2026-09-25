@@ -36,7 +36,7 @@ class ESBTPCaissierController extends Controller
         $this->ensureCanManage();
         $this->ensureIsCaissier($caissier);
 
-        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resume($caissier);
+        $activite = app(\App\Services\Personnel\ActiviteDuPersonnel::class)->resumePour($caissier, auth()->user());
 
         return view('esbtp.caissiers.show', compact('caissier', 'activite'));
     }

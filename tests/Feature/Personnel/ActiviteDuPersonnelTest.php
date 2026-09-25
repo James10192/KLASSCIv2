@@ -144,6 +144,23 @@ class ActiviteDuPersonnelTest extends TestCase
         self::assertSame(1, $this->ligne($caissier)['paiements_saisis'] ?? null);
     }
 
+    public function test_la_fiche_de_profil_ne_montre_l_activite_qu_a_qui_peut_la_lire(): void
+    {
+        // Une secrétaire qui gère les fiches du personnel sans voir l'activité
+        // de tous ne doit pas la lire sur la fiche de profil non plus.
+        $secretaire = User::factory()->create();
+        $secretaire->givePermissionTo('performance.view');
+        $direction = User::factory()->create();
+        $direction->givePermissionTo('performance.view_all');
+        $service = app(ActiviteDuPersonnel::class);
+        $this->seance($this->ficheEnseignante, 3);
+
+        self::assertNull($service->resumePour($this->enseignante, $secretaire));
+        self::assertNotNull($service->resumePour($this->enseignante, $direction));
+        self::assertTrue(ActiviteDuPersonnel::peutLire($secretaire, (int) $secretaire->id));
+        self::assertFalse(ActiviteDuPersonnel::peutLire(null, (int) $secretaire->id));
+    }
+
     public function test_la_liste_exige_de_voir_tout_le_personnel(): void
     {
         $secretaire = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
