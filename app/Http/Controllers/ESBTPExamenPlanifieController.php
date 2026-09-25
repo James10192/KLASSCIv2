@@ -13,6 +13,7 @@ use App\Models\ESBTPLMDSession;
 use App\Models\ESBTPMatiere;
 use App\Models\User;
 use App\Services\ExamenSchedulingService;
+use App\Support\ListeInfinie;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -27,7 +28,7 @@ class ESBTPExamenPlanifieController extends Controller
         $this->middleware('auth');
     }
 
-    public function index(Request $request): View
+    public function index(Request $request): View|JsonResponse
     {
         abort_unless(auth()->user()?->can('lmd.examens.view'), 403);
 
@@ -36,7 +37,9 @@ class ESBTPExamenPlanifieController extends Controller
         $query = ESBTPExamenPlanifie::query()
             ->with(['classe', 'classes', 'matiere', 'uniteEnseignement', 'parcours', 'createdBy'])
             ->where('annee_universitaire_id', $annee->id)
-            ->orderBy('date_debut');
+            ->orderBy('date_debut')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('id');
 
         if ($classeId = $request->integer('classe_id')) {
             $query->where('classe_id', $classeId);
@@ -74,11 +77,6 @@ class ESBTPExamenPlanifieController extends Controller
 
         $examens = $query->paginate(25)->withQueryString();
 
-        $kpis = $this->buildKpis($annee);
-
-        $classes = ESBTPClasse::orderBy('name')->get(['id', 'name']);
-        $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'name', 'is_current']);
-
         // Auto-hide filtre Système si tenant mono-système (0 ou 1 valeur distincte)
         $systemesPresents = ESBTPClasse::query()
             ->whereNotNull('systeme_academique')
@@ -89,6 +87,15 @@ class ESBTPExamenPlanifieController extends Controller
             ->unique()
             ->values();
         $hasMixedSystemes = $systemesPresents->count() >= 2;
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($examens, fn ($e) => view('esbtp.examens._ligne', ['e' => $e, 'hasMixedSystemes' => $hasMixedSystemes])->render());
+        }
+
+        $kpis = $this->buildKpis($annee);
+
+        $classes = ESBTPClasse::orderBy('name')->get(['id', 'name']);
+        $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'name', 'is_current']);
 
         // Données pour le modal de création (chargées server-side pour que les
         // pickers premium au-select soient rendus directement — pas d'AJAX

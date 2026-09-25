@@ -7,6 +7,7 @@ use App\Rules\MotDePasseChoisi;
 use App\Services\Scoring\PersonnelScoringService;
 use App\Services\UserService;
 use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
+use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -24,17 +25,30 @@ class ESBTPCoordinateurController extends Controller
     /**
      * Display a listing of the coordinators.
      */
-    public function index()
+    public function index(Request $request)
     {
         // Vérifier les permissions
         $this->authorize('coordinateurs.view');
-        
+
         $coordinateurs = User::role('coordinateur')
             ->with(['roles'])
             ->orderBy('name')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('users.id')
             ->paginate(10);
 
-        return view('esbtp.coordinateurs.index', compact('coordinateurs'));
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($coordinateurs, fn ($coordinateur) => view('esbtp.coordinateurs._carte', compact('coordinateur'))->render());
+        }
+
+        // Sur tous les coordinateurs, pas sur la premiere tranche affichee.
+        $compteurs = [
+            'actifs' => User::role('coordinateur')->where('is_active', true)->count(),
+            'inactifs' => User::role('coordinateur')->where('is_active', false)->count(),
+            'du_mois' => User::role('coordinateur')->where('created_at', '>=', now()->startOfMonth())->count(),
+        ];
+
+        return view('esbtp.coordinateurs.index', compact('coordinateurs', 'compteurs'));
     }
 
     /**

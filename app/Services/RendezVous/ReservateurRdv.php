@@ -3,6 +3,7 @@
 namespace App\Services\RendezVous;
 
 use App\Contracts\PorteurDeRendezVous;
+use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutReservationRdv;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPReinscriptionDemande;
@@ -78,6 +79,14 @@ class ReservateurRdv
         return $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur) use ($creneauId, $delaiPublic) {
             if ($this->reservationActive($porteur, true) !== null) {
                 return ['ok' => false, 'code' => 'deja_reserve'];
+            }
+
+            // Un dossier rejete ou inscrit ne prend plus de place. Sans ce refus, la
+            // famille refusee dont le rejet vient de liberer le creneau le reprenait
+            // depuis le portail. Code `introuvable` : le portail le traite deja, avec
+            // le meme compteur anti-abus qu'une reference inconnue.
+            if ($porteur->dossierClos()) {
+                return ['ok' => false, 'code' => 'introuvable'];
             }
 
             $creneau = $this->verrouillerCreneau($creneauId, null, $delaiPublic);
@@ -206,6 +215,61 @@ class ReservateurRdv
 
             return ['ok' => true, 'reservation' => $actuelle->load('creneau')];
         });
+    }
+
+    /**
+     * Rend a la campagne le creneau d'un dossier que l'ecole vient de rejeter.
+     *
+     * Seul un creneau pas encore commence se libere : un creneau commence ne se
+     * reserve plus (verrouillerCreneau), la place ne reviendrait a personne, et
+     * la famille est peut-etre deja dans la salle d'attente. Une famille reçue
+     * ou absente n'est pas touchee : ce sont des faits, pas des places.
+     *
+     * Une convocation encore en file ne part plus : elle annoncerait un
+     * rendez-vous confirme sur une place qu'une autre famille peut prendre.
+     *
+     * A appeler dans la transaction qui rejette le dossier : le verrou porteur
+     * est celui de occuper() et deplacer(), la place ne peut pas changer de main
+     * entre le rejet et la liberation.
+     */
+    public function liberer(PorteurDeRendezVous $porteur): ?ESBTPRdvReservation
+    {
+        // sousVerrou() rend un tableau de refus si le dossier a disparu entre-temps.
+        $liberee = $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur): ?ESBTPRdvReservation {
+            $actuelle = $this->reservationActive($porteur, true)?->load('creneau');
+            if (
+                $actuelle === null
+                || $actuelle->statut !== StatutReservationRdv::Confirmee
+                || $actuelle->creneau === null
+                || $actuelle->creneau->aCommence()
+            ) {
+                return null;
+            }
+
+            $valeurs = ['statut' => StatutReservationRdv::Liberee, 'libere_at' => Carbon::now()];
+            if ($actuelle->convocation_statut === StatutConvocationRdv::EnAttente) {
+                $valeurs += [
+                    'convocation_statut' => StatutConvocationRdv::SansObjet,
+                    'convocation_erreur' => 'Dossier rejeté : le créneau a été libéré avant l\'envoi.',
+                ];
+            }
+            $actuelle->update($valeurs);
+
+            return $actuelle;
+        });
+
+        return $liberee instanceof ESBTPRdvReservation ? $liberee : null;
+    }
+
+    /** La phrase ajoutee au message de rejet, vide si rien n'a ete libere. */
+    public static function phraseLiberation(?ESBTPRdvReservation $liberee): string
+    {
+        if ($liberee?->creneau === null) {
+            return '';
+        }
+
+        return ' Son rendez-vous du '.$liberee->creneau->date->translatedFormat('l j F')
+            .' à '.$liberee->creneau->heureDebutHi().' est libéré.';
     }
 
     /**

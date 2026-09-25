@@ -357,7 +357,7 @@
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content" x-data="trashIndex()" x-init="init()">
+    <div class="main-content" x-data="trashIndex()">
 
         {{-- Hero --}}
         <div class="tr-hero">
@@ -624,6 +624,9 @@
                     </table>
                 </template>
             </div>
+
+            {{-- La corbeille est dessinee par Alpine : son bas de liste vient de ListeInfinie.alpine(). --}}
+            <x-liste-infinie-alpine />
         </div>
 
         {{-- Dialog dépendances unifié (Restore + Force delete) --}}
@@ -890,12 +893,13 @@
 
 <script>
 function trashIndex() {
-    return {
+    // Chargement par tranches : ListeInfinie.alpine() (public/js/liste-infinie.js)
+    // porte l'observateur, les etats et le dedoublonnage ; la page ne fournit
+    // que sa requete. Object.assign dans ce sens : ce composant a un getter.
+    return Object.assign({
         tab: 'etudiants',
         search: '',
         range: '',
-        loading: false,
-        items: [],
         kpis: { total: '—', this_week: '—', older_than_30: '—' },
 
         // Dialog unifié (restore + force delete)
@@ -916,7 +920,10 @@ function trashIndex() {
             return this.tab === 'etudiants' ? 'étudiants' : this.tab === 'inscriptions' ? 'inscriptions' : 'paiements';
         },
 
-        init() { this.reload(); },
+        // Alpine appelle init() de lui-meme : pas de x-init="init()" en plus,
+        // qui lancait deux fois le premier chargement.
+        init() { this.liInit(); },
+        destroy() { this.liDetruire(); },
 
         switchTab(t) {
             if (t === this.tab) return;
@@ -932,25 +939,34 @@ function trashIndex() {
             this.toast.timer = setTimeout(() => { this.toast.show = false; }, durationMs);
         },
 
-        async reload() {
-            this.loading = true;
-            try {
-                const url = new URL(`{{ url('/esbtp/trash') }}/${this.tab}`, window.location.origin);
-                if (this.search) url.searchParams.append('search', this.search);
-                if (this.range) url.searchParams.append('range', this.range);
-                const res = await fetch(url.toString(), {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                    credentials: 'same-origin',
-                });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.message || 'Erreur de chargement');
-                this.items = data.items || [];
-                this.kpis = data.kpis || { total: 0, this_week: 0, older_than_30: 0 };
-            } catch (e) {
-                this.showToast('error', 'Erreur de chargement : ' + e.message);
-            } finally {
-                this.loading = false;
-            }
+        reload() { return this.recharger(); },
+
+        url(page, parPage = null) {
+            const url = new URL(`{{ url('/esbtp/trash') }}/${this.tab}`, window.location.origin);
+            if (this.search) url.searchParams.append('search', this.search);
+            if (this.range) url.searchParams.append('range', this.range);
+            url.searchParams.append('page', page);
+            if (parPage) url.searchParams.append('per_page', parPage);
+            return url.toString();
+        },
+
+        async lire(url) {
+            const res = await fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                credentials: 'same-origin',
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'Erreur de chargement');
+            this.kpis = data.kpis || { total: 0, this_week: 0, older_than_30: 0 };
+            return data;
+        },
+
+        // Apres une restauration ou une suppression : la ligne part sur place et
+        // seuls les compteurs se relisent. Recharger renverrait en haut de la
+        // liste quelqu'un qui travaillait a sa 150e ligne.
+        async apresAction(id) {
+            this.retirer(id);
+            try { await this.lire(this.url(1, 1)); } catch (e) { /* compteurs au prochain filtrage */ }
         },
 
         formatMoney(v) {
@@ -1051,7 +1067,7 @@ function trashIndex() {
                 this.depTarget = null;
                 this.cascadeMotif = '';
                 this.bypassBlocking = false;
-                await this.reload();
+                await this.apresAction(id);
             } catch (e) {
                 this.showToast('error', 'Erreur : ' + e.message, 8000);
             } finally {
@@ -1086,14 +1102,21 @@ function trashIndex() {
                 this.depModalOpen = false;
                 this.depData = null;
                 this.depTarget = null;
-                await this.reload();
+                await this.apresAction(id);
             } catch (e) {
                 this.showToast('error', 'Erreur : ' + e.message, 6000);
             } finally {
                 this.actionSaving = false;
             }
         },
-    };
+    }, ListeInfinie.alpine({
+        champ: 'items',
+        libelle() { return this.activeTabLabel; },
+        tranche(page) {
+            return this.lire(this.url(page)).then(data => ({ lignes: data.items || [], pagination: data.pagination }));
+        },
+        echec(e) { this.showToast('error', 'Erreur de chargement : ' + e.message); },
+    }));
 }
 </script>
 @endsection

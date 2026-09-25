@@ -1586,7 +1586,8 @@ $(document).ready(function() {
             $('#studentsDataTable').DataTable({
                 "responsive": true,
                 "autoWidth": false,
-                "pageLength": 25,
+                // Toutes les lignes sont deja chargees : pas de pages, on fait defiler.
+                "paging": false,
                 "language": { "url": "//cdn.datatables.net/plug-ins/1.10.22/i18n/French.json" }
             });
         }

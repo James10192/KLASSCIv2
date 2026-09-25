@@ -49,7 +49,7 @@
                     <th style="width:130px; text-align:right;">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="ia-tbody">
                 @foreach($inscriptions as $inscription)
                     @include('esbtp.inscriptions.partials.administration-ligne', ['inscription' => $inscription])
                 @endforeach
@@ -57,9 +57,6 @@
         </table>
     </div>
 
-    @if($inscriptions->hasPages())
-        <div class="ii-pagination">
-            {{ $inscriptions->links() }}
-        </div>
-    @endif
+    <x-liste-infinie :paginateur="$inscriptions" cible="#ia-tbody" libelle="inscriptions"
+                     :url="route('esbtp.inscriptions.administration')" />
 @endif

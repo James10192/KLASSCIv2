@@ -16,6 +16,7 @@ use App\Services\NotificationService;
 use App\Services\Scoring\PersonnelScoringService;
 use App\Services\TeacherHoursService;
 use App\Enums\TypeSeance;
+use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
@@ -98,8 +99,14 @@ class TeacherAttendanceController extends Controller
             ->with(['course.matiere', 'course.classe', 'dailyCode'])
             ->orderBy('date', 'desc')
             ->orderBy('validated_at', 'desc')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('id', 'desc')
             ->paginate(15)
             ->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($attendances, fn ($attendance) => view('esbtp.teacher.attendance._ligne', compact('attendance'))->render());
+        }
 
         // Les compteurs portent sur l'ensemble de la période, pas sur la page courante.
         $countsByStatus = (clone $baseQuery)

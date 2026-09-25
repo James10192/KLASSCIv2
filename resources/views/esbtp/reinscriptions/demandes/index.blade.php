@@ -172,58 +172,14 @@
                                 <th style="text-align:right;">Action</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="rd-tbody">
                         @foreach($demandes as $demande)
-                            <tr>
-                                <td>
-                                    <div class="rd-eleve">{{ $demande->etudiant?->nom }} {{ $demande->etudiant?->prenoms }}</div>
-                                    <div class="rd-matricule">{{ $demande->etudiant?->matricule }}</div>
-                                </td>
-                                <td>{{ $demande->classeSouhaitee?->name ?? '—' }}</td>
-                                <td>{{ $demande->anneeUniversitaire?->name ?? '—' }}</td>
-                                <td>{{ $demande->created_at?->format('d/m/Y H:i') }}</td>
-                                <td>
-                                    @php
-                                        $ton = match($demande->statut) {
-                                            'convertie' => 'convertie',
-                                            'rejetee' => 'rejetee',
-                                            default => 'attente',
-                                        };
-                                    @endphp
-                                    <span class="rd-badge rd-badge--{{ $ton }}">{{ $demande->libelleStatut() }}</span>
-                                    <x-demande-contact-badge :demande="$demande" route="esbtp.reinscription-demandes.confirmer-contact" permission="reinscriptions.demandes.process" />
-                                    @if($demande->traitePar)
-                                        <div style="font-size:.72rem;color:#64748b;margin-top:.2rem;">
-                                            par {{ $demande->traitePar->name }}
-                                        </div>
-                                    @endif
-                                </td>
-                                <td style="text-align:right;">
-                                    @if($demande->estTraitable())
-                                        @can('reinscriptions.demandes.process')
-                                            <button type="button" class="rd-btn rd-btn--convertir"
-                                                    @click="ouvrirConversion(@js(route('esbtp.reinscription-demandes.convertir', $demande)), @js(trim($demande->etudiant?->nom.' '.$demande->etudiant?->prenoms)), {{ $demande->classe_souhaitee_id ?? 'null' }})">
-                                                <i class="fas fa-user-check"></i>Convertir
-                                            </button>
-                                            <button type="button" class="rd-btn rd-btn--rejeter"
-                                                    @click="ouvrirRejet(@js(route('esbtp.reinscription-demandes.rejeter', $demande)))">
-                                                Rejeter
-                                            </button>
-                                        @endcan
-                                    @elseif($demande->motif_rejet)
-                                        <span style="font-size:.78rem;color:#64748b;" title="{{ $demande->motif_rejet }}">
-                                            {{ \Illuminate\Support\Str::limit($demande->motif_rejet, 40) }}
-                                        </span>
-                                    @else
-                                        <span style="font-size:.78rem;color:#94a3b8;">Traitée</span>
-                                    @endif
-                                </td>
-                            </tr>
+                            @include('esbtp.reinscriptions.demandes._ligne', ['demande' => $demande])
                         @endforeach
                         </tbody>
                     </table>
                 </div>
-                <div style="padding:1rem;">{{ $demandes->links() }}</div>
+                <x-liste-infinie :paginateur="$demandes" cible="#rd-tbody" libelle="demandes" />
             @endif
         </div>
 
@@ -278,7 +234,7 @@
                         <label class="rd-label" for="rd-motif">Motif du rejet</label>
                         <textarea class="rd-textarea" id="rd-motif" name="motif_rejet"
                                   minlength="10" maxlength="1000" required x-model="motif"></textarea>
-                        <div class="rd-hint">Ce motif reste interne. Il vous servira si la famille appelle.</div>
+                        <div class="rd-hint">Ce motif reste interne. Il vous servira si la famille appelle. Si la famille a un rendez-vous à venir, son créneau est libéré pour une autre.</div>
                     </div>
                     <div class="rd-modal-foot">
                         <button type="button" class="rd-btn" @click="rejetOuvert = false">Annuler</button>
