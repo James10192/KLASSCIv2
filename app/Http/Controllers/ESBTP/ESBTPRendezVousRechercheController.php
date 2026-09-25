@@ -29,6 +29,13 @@ class ESBTPRendezVousRechercheController extends Controller
             );
         }
 
-        return view('esbtp.rendez-vous.recherche.index', compact('reservations', 'filtres', 'accueil'));
+        $approchant = $recherche->approchant($filtres);
+        $elevesSansRdv = $recherche->elevesSansRendezVous($filtres);
+        // Ne sert qu'a la liste vide : dire « aucun eleve » seulement si on l'a verifie.
+        $eleveDesigne = $reservations->total() === 0 && $elevesSansRdv->isEmpty()
+            ? $recherche->eleveDesigne($filtres)
+            : null;
+
+        return view('esbtp.rendez-vous.recherche.index', compact('reservations', 'filtres', 'accueil', 'approchant', 'elevesSansRdv', 'eleveDesigne'));
     }
 }
