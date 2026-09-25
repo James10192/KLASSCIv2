@@ -33,10 +33,10 @@ class TeacherHoursService
      * Statuts d'émargement enseignant qui valent « séance réalisée ».
      * (les présences enseignants utilisent un vocabulaire mixte selon les écrans).
      */
-    private const STATUTS_REALISES = ['present', 'présent', 'presente', 'late', 'retard', 'en_retard', 'fait'];
+    public const STATUTS_REALISES = ['present', 'présent', 'presente', 'late', 'retard', 'en_retard', 'fait'];
 
     /** Statuts d'émargement qui signalent un retard (warning ponctualité). */
-    private const STATUTS_RETARD = ['late', 'retard', 'en_retard'];
+    public const STATUTS_RETARD = ['late', 'retard', 'en_retard'];
 
     /**
      * Résumé des heures d'un enseignant sur une période, ventilé par type de séance.

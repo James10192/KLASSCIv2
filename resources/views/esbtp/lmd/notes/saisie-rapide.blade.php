@@ -35,7 +35,7 @@
         </div>
         <div class="lmd-hero-subtitle">
             @if($evaluation->matiere->uniteEnseignement)
-                UE : {{ $evaluation->matiere->uniteEnseignement->code }} — {{ $evaluation->matiere->uniteEnseignement->name }}
+                UE : {{ $evaluation->matiere->uniteEnseignement->code_affiche }} — {{ $evaluation->matiere->uniteEnseignement->name }}
             @endif
         </div>
         <div class="lmd-hero-meta">
