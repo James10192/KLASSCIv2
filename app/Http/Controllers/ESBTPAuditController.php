@@ -73,7 +73,10 @@ class ESBTPAuditController extends Controller
      */
     public function getAuditData(Request $request)
     {
-        $query = Audit::with(['user'])->orderBy('created_at', 'desc');
+        // L'identifiant departage les ecritures d'une meme seconde : le journal se
+        // charge par tranches au defilement, et sans departage une tranche en
+        // repeterait certaines et en sauterait d'autres.
+        $query = Audit::with(['user'])->orderBy('created_at', 'desc')->orderBy('id', 'desc');
         $this->applyCommonFilters($query, $request);
 
         if ($request->filled('search')) {
@@ -89,8 +92,8 @@ class ESBTPAuditController extends Controller
         // Pagination sans comptage : `paginate()` lancait un COUNT(*) sur toute
         // la table `audits` a chaque chargement, meme sans aucun filtre, pour ne
         // servir qu'un total et un nombre de pages. `simplePaginate()` supprime
-        // ce comptage ; la vue affiche desormais la page courante et un bouton
-        // « Suivant » qui sait seulement s'il reste quelque chose apres.
+        // ce comptage ; la vue charge la suite au defilement et sait seulement
+        // s'il reste quelque chose apres.
         $audits = $query->simplePaginate(50);
 
         // Formatage des données pour l'affichage. On envoie `event_raw` (slug
@@ -761,7 +764,7 @@ class ESBTPAuditController extends Controller
      */
     private function getFilteredAudits($request)
     {
-        $query = Audit::with(['user'])->orderBy('created_at', 'desc');
+        $query = Audit::with(['user'])->orderBy('created_at', 'desc')->orderBy('id', 'desc');
         $this->applyCommonFilters($query, $request);
         return $query->get();
     }

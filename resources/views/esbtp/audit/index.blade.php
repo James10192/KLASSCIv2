@@ -3,7 +3,7 @@
 @section('title', "Journal d'audit & sécurité")
 
 @section('content')
-<div class="container-fluid au-page" x-data="auditPage()" x-init="init()">
+<div class="container-fluid au-page" x-data="auditPage()">
 
     {{-- ═══════════════════════════════ HERO ═══════════════════════════════ --}}
     <div class="au-hero">
@@ -142,7 +142,7 @@
                 <i class="fas fa-list-ul"></i> Logs d'audit
                 {{-- Plus de total : le comptage global sur `audits` a ete supprime (voir
                      le controleur). On annonce donc ce qui est reellement affiche. --}}
-                <span class="au-badge-count" x-show="audits.length > 0" x-cloak x-text="audits.length + ' sur cette page'"></span>
+                <span class="au-badge-count" x-show="audits.length > 0" x-cloak x-text="audits.length + (audits.length > 1 ? ' affichées' : ' affichée')"></span>
             </div>
             <button type="button" class="au-icon-btn" @click="reload()" title="Actualiser">
                 <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i>
@@ -212,17 +212,15 @@
             </table>
         </div>
 
-        {{-- Pagination --}}
-        <div class="au-pagination" x-show="!loading && (hasMore || currentPage > 1)" x-cloak>
-            <button class="au-page-btn" :disabled="currentPage <= 1" @click="changePage(currentPage - 1)">
-                <i class="fas fa-chevron-left"></i> Précédent
-            </button>
-            <div class="au-page-info">
-                Page <strong x-text="currentPage"></strong>
-            </div>
-            <button class="au-page-btn" :disabled="!hasMore" @click="changePage(currentPage + 1)">
-                Suivant <i class="fas fa-chevron-right"></i>
-            </button>
+        {{-- Bas de liste : la suite se charge en approchant, comme les autres
+             listes (memes classes li-* que le composant x-liste-infinie). Le
+             journal est rendu par Alpine a partir du JSON, donc c'est Alpine qui
+             ajoute les lignes ; le bouton reste pour le clavier et apres une erreur. --}}
+        <div class="li-bas" x-ref="basDeListe" x-show="!loading && audits.length > 0" x-cloak
+             :data-etat="erreurSuite ? 'erreur' : (loadingMore ? 'chargement' : (hasMore ? 'pret' : 'fin'))">
+            <span class="li-compteur" aria-live="polite" x-text="compteurBas()"></span>
+            <button type="button" class="li-plus" x-show="hasMore || erreurSuite" :disabled="loadingMore"
+                    @click="chargerSuite()" x-text="erreurSuite ? 'Réessayer' : 'Charger la suite'"></button>
         </div>
     </div>
 
@@ -254,7 +252,7 @@
                             <tr><th>Champ</th><th>Avant</th><th>Après</th></tr>
                         </thead>
                         <tbody>
-                            <template x-for="(c, i) in quickModalAudit.changes" :key="i">
+                            <template x-for="(c, i) in (quickModalAudit?.changes || [])" :key="i">
                                 <tr>
                                     <td><strong x-text="c.field"></strong></td>
                                     <td><span class="au-diff-old" x-text="c.old"></span></td>
@@ -376,6 +374,11 @@ function auditPage() {
         // Pagination sans comptage : on ne connait pas le nombre total de pages,
         // seulement s'il reste quelque chose apres celle-ci.
         hasMore: false,
+        loadingMore: false,
+        erreurSuite: false,
+        // Chaque chargement porte un numero : une reponse arrivee apres un
+        // changement de filtre est jetee au lieu de melanger deux listes.
+        requete: 0,
         filters: {
             search: '',
             event: '',
@@ -391,25 +394,51 @@ function auditPage() {
         quickLinks: [],
         quickLinksLoading: false,
 
+        // Alpine appelle init() de lui-meme : un x-init="init()" en plus lancait
+        // deux fois le premier chargement.
         init() {
             this.reload();
+            if ('IntersectionObserver' in window) {
+                this._observateur = new IntersectionObserver((entrees) => {
+                    if (entrees.some(e => e.isIntersecting)) this.chargerSuite();
+                }, { rootMargin: '600px 0px' });
+                this._observateur.observe(this.$refs.basDeListe);
+            }
+        },
+
+        destroy() {
+            if (this._observateur) this._observateur.disconnect();
         },
 
         reload() {
             this.currentPage = 1;
-            this.fetchData();
+            this.fetchData(false);
         },
 
-        changePage(page) {
-            if (page < 1) return;
-            if (page > this.currentPage && !this.hasMore) return;
-            this.currentPage = page;
-            this.fetchData();
+        chargerSuite() {
+            if (this.loading || this.loadingMore || !this.hasMore) return;
+            this.fetchData(true);
         },
 
-        fetchData() {
-            this.loading = true;
-            const params = { page: this.currentPage };
+        compteurBas() {
+            if (this.erreurSuite) return 'La suite n’a pas pu être chargée.';
+            if (this.loadingMore) return 'Chargement…';
+            const n = this.audits.length.toLocaleString('fr-FR');
+            const libelle = this.audits.length > 1 ? 'entrées' : 'entrée';
+            return this.hasMore ? n + ' ' + libelle + ' chargées' : 'Fin du journal · ' + n + ' ' + libelle;
+        },
+
+        fetchData(ajouter = false) {
+            const numero = ++this.requete;
+            if (ajouter) {
+                this.loadingMore = true;
+                this.erreurSuite = false;
+            } else {
+                this.loading = true;
+                this.loadingMore = false;
+                this.erreurSuite = false;
+            }
+            const params = { page: ajouter ? this.currentPage + 1 : 1 };
             Object.keys(this.filters).forEach(k => {
                 if (this.filters[k]) params[k] = this.filters[k];
             });
@@ -417,20 +446,45 @@ function auditPage() {
             fetch('{{ route("esbtp.audit.data") }}?' + new URLSearchParams(params), {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
             })
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
                 .then(data => {
+                    if (numero !== this.requete) return;
                     // event_raw est servi directement par le backend (slug
                     // Eloquent : created/updated/deleted/...) — pas de
                     // reverse-map fragile depuis le label FR.
-                    this.audits = data.data || [];
+                    const lignes = data.data || [];
+                    if (ajouter) {
+                        // Une entree ecrite en tete pendant qu'on defile decale
+                        // la suite d'un cran : on n'affiche pas deux fois la meme.
+                        const vus = new Set(this.audits.map(a => a.id));
+                        this.audits.push(...lignes.filter(a => !vus.has(a.id)));
+                    } else {
+                        this.audits = lignes;
+                    }
                     this.currentPage = data.current_page || 1;
                     this.hasMore = !!data.next_page_url;
                     this.loading = false;
+                    this.loadingMore = false;
+                    // Une tranche courte peut laisser le bas de liste a l'ecran :
+                    // l'observateur ne se redeclenche pas, on relance.
+                    this.$nextTick(() => {
+                        const bas = this.$refs.basDeListe;
+                        if (this.hasMore && bas && bas.getBoundingClientRect().top < window.innerHeight + 600) this.chargerSuite();
+                    });
                 })
                 .catch(err => {
+                    if (numero !== this.requete) return;
                     console.error('Audit fetch error:', err);
                     this.loading = false;
-                    if (window.toastr) toastr.error('Erreur lors du chargement des audits');
+                    this.loadingMore = false;
+                    if (ajouter) {
+                        this.erreurSuite = true;
+                    } else if (window.toastr) {
+                        toastr.error('Erreur lors du chargement des audits');
+                    }
                 });
         },
 
