@@ -200,11 +200,13 @@ class ListesLot2DefilementTest extends TestCase
         // milieu de ce jour. Elle repete l'en-tete, avec la cle du jour, pour que
         // le defilement l'ecarte au lieu de l'afficher deux fois.
         for ($i = 0; $i < 51; $i++) {
-            $this->ligneMinimale('audits', ['auditable_type' => 'App\\Models\\ESBTPPaiement', 'event' => 'updated', 'created_at' => now()->startOfSecond(), 'updated_at' => now()]);
+            $this->ligneMinimale('audits', ['auditable_type' => 'App\\Models\\ESBTPPaiement', 'event' => 'updated', 'created_at' => now()->startOfSecond(), 'updated_at' => now(),
+                'user_id' => auth()->id(), 'user_type' => \App\Models\User::class]);
         }
 
-        // La mise en place du test ecrit elle aussi des actions, toutes du jour.
-        $total = DB::table('audits')->count();
+        // La mise en place du test ecrit elle aussi des actions, toutes du jour ;
+        // la page ne compte ni les consultations ni les taches automatiques.
+        $total = DB::table('audits')->whereNotNull('user_id')->where('event', '!=', 'retrieved')->count();
 
         $html = $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
             ->getJson(route('esbtp.audit.user-activity', ['page' => 2, 'mode' => 'rows']))

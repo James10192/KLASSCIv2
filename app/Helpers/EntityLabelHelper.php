@@ -50,6 +50,10 @@ class EntityLabelHelper
         'App\Models\ESBTPEmploiTemps' => 'Emploi du temps',
         'App\Models\ESBTPAttendance' => 'Présence',
         'App\Models\User' => 'Utilisateur',
+        'App\Models\ESBTPUniteEnseignement' => 'Unité d\'enseignement',
+        'App\Models\UniteEnseignement' => 'Unité d\'enseignement',
+        'App\Domain\AcademicPilotage\Models\AcademicAlert' => 'Alerte de pilotage',
+        'App\Domain\AcademicPilotage\Models\GradeSheet' => 'Feuille de notes',
         'App\Models\Role' => 'Rôle',
         'App\Models\Permission' => 'Permission',
     ];

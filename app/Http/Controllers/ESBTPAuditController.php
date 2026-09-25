@@ -64,13 +64,13 @@ class ESBTPAuditController extends Controller
         // Les deux comptes balaient toute la periode. Pendant une recherche
         // (une requete par frappe) on ne les refait pas : la page garde le
         // dernier compte de l'onglet, et la banniere des taches automatiques
-        // se tait. Avec une personne choisie, il n'y a pas de tache automatique.
+        // se tait.
         $compter = $filtres->recherche === '';
         $donnees = [
             'lignes' => $this->journal->lignes($tranche->items(), $request->user()),
             'tranche' => $tranche,
             'filtres' => $filtres,
-            'automatiques' => $filtres->automatiques || $filtres->personne || $filtres->idObjet || ! $compter ? null
+            'automatiques' => $filtres->automatiques || $filtres->idObjet || ! $compter ? null
                 : $this->compte($filtres, 'auto', fn () => $this->automatiques($filtres)),
         ];
         $aRegarder = ! in_array(ThemesDuJournal::A_REGARDER, $themes, true) ? 0
@@ -128,7 +128,10 @@ class ESBTPAuditController extends Controller
         $du = FiltresDuJournal::date($request->query('date_from'))?->startOfDay() ?? now()->subDays(30)->startOfDay();
         $au = FiltresDuJournal::date($request->query('date_to'))?->endOfDay() ?? now();
 
-        $portee = fn () => Audit::whereBetween('created_at', [$du, $au])->when($userId, fn ($q) => $q->where('user_id', $userId));
+        // Ce que les personnes ont fait : ni les consultations (chaque visite
+        // de page en ecrit une) ni les taches automatiques.
+        $portee = fn () => FiltresDuJournal::sansBruit(Audit::whereBetween('created_at', [$du, $au]))
+            ->when($userId, fn ($q) => $q->where('user_id', $userId));
         $tranche = $portee()->with('user.roles:id,name')->orderByDesc('created_at')->orderByDesc('id')
             ->paginate(self::PAR_TRANCHE)->withQueryString();
 
@@ -145,7 +148,7 @@ class ESBTPAuditController extends Controller
             'tranche' => $tranche,
             'stats' => [
                 'total_actions' => $tranche->total(),
-                'unique_users' => Audit::whereBetween('created_at', [$du, $au])->distinct('user_id')->count('user_id'),
+                'unique_users' => FiltresDuJournal::sansBruit(Audit::whereBetween('created_at', [$du, $au]))->distinct('user_id')->count('user_id'),
                 'unique_ips' => $portee()->whereNotNull('ip_address')->distinct('ip_address')->count('ip_address'),
                 'peak_hour' => $pointe !== null ? sprintf('%02dh', $pointe) : '—',
                 'a_regarder' => ThemesDuJournal::aRegarder($portee())->count(),
@@ -211,7 +214,7 @@ class ESBTPAuditController extends Controller
      */
     private function automatiques(FiltresDuJournal $filtres): array
     {
-        return JournalLisible::resumeAutomatique($filtres->base()->whereNull('user_id')
+        return JournalLisible::resumeAutomatique(FiltresDuJournal::bruit($filtres->base())
             ->selectRaw('auditable_type, COUNT(*) as total')->groupBy('auditable_type')->pluck('total', 'auditable_type'));
     }
 

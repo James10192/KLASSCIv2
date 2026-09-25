@@ -76,10 +76,24 @@ final class FiltresDuJournal
         }
     }
 
-    /** La requete de l'ecran, hors taches automatiques si elles sont masquees. */
+    /** La requete de l'ecran, sans taches automatiques ni consultations si elles sont masquees. */
     public function requete(): Builder
     {
-        return $this->base()->when(! $this->automatiques && $this->idObjet === null, fn (Builder $q) => $q->whereNotNull('user_id'));
+        return $this->base()->when(! $this->automatiques && $this->idObjet === null, fn (Builder $q) => self::sansBruit($q));
+    }
+
+    /**
+     * Ce que le masquage retire : les taches automatiques, et les consultations
+     * (chaque visite d'une page en ecrit une, sans rien changer).
+     */
+    public static function sansBruit(Builder $q): Builder
+    {
+        return $q->whereNotNull('user_id')->where('event', '!=', 'retrieved');
+    }
+
+    public static function bruit(Builder $q): Builder
+    {
+        return $q->where(fn (Builder $b) => $b->whereNull('user_id')->orWhere('event', 'retrieved'));
     }
 
     /** La meme vue, sans le choix sur les taches automatiques : pour les compter. */

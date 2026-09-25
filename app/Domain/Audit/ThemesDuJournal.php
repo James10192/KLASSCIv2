@@ -54,6 +54,7 @@ final class ThemesDuJournal
         ],
         self::NOTES => [
             'App\Models\ESBTPNote', 'App\Models\ESBTPEvaluation', 'App\Models\ESBTPResultat', 'App\Models\ESBTPBulletin',
+            'App\Domain\AcademicPilotage\Models\GradeSheet',
             'App\Models\ESBTPLMDBulletin', 'App\Models\ESBTPLMDJury', 'App\Models\ESBTPLMDJuryDecision',
             'App\Models\ESBTPLMDResultatECUE', 'App\Models\ESBTPTpeDeclaration',
         ],
@@ -117,14 +118,15 @@ final class ThemesDuJournal
     {
         $plage = app(PlageHoraireJournee::class);
 
-        return $requete->whereNotNull('user_id')->where(fn (Builder $w) => $w
+        return $requete->whereNotNull('user_id')->where('event', '!=', 'retrieved')->where(fn (Builder $w) => $w
             ->where(fn (Builder $s) => $s->whereIn('event', ['deleted', 'restored'])->whereIn('auditable_type', self::sensibles()))
             ->orWhere(fn (Builder $p) => $p->where('auditable_type', 'App\Models\ESBTPPaiement')->where('event', 'updated')
                 ->where('old_values', 'like', '%"status":"valid%')->where('new_values', 'like', '%"status":%')
                 ->where('new_values', 'not like', '%"status":"valid%')->where('new_values', 'not like', '%"status":null%'))
             ->orWhereIn('auditable_type', self::DROITS)
-            ->orWhereRaw('HOUR(created_at) < ?', [$plage->debut()])
-            ->orWhereRaw('HOUR(created_at) >= ?', [$plage->fin()]));
+            ->orWhere(fn (Builder $h) => $h->whereIn('auditable_type', self::sensibles())
+                ->where(fn (Builder $x) => $x->whereRaw('HOUR(created_at) < ?', [$plage->debut()])
+                    ->orWhereRaw('HOUR(created_at) >= ?', [$plage->fin()]))));
     }
 
     /**
@@ -135,7 +137,8 @@ final class ThemesDuJournal
      */
     public static function motifs(Audit $audit): array
     {
-        if ($audit->user_id === null) {
+        // Une consultation ne se signale jamais : chaque visite de page en ecrit.
+        if ($audit->user_id === null || $audit->event === 'retrieved') {
             return [];
         }
         $plage = app(PlageHoraireJournee::class);
@@ -150,7 +153,11 @@ final class ThemesDuJournal
             $type === 'App\Models\ESBTPPaiement' && $audit->event === 'updated' && str_starts_with($avant, 'valid')
                 && $apres !== null && ! str_starts_with((string) $apres, 'valid') ? 'Annulation après validation' : null,
             in_array($type, self::DROITS, true) ? 'Droits modifiés' : null,
-            $heure !== null && ($heure < $plage->debut() || $heure >= $plage->fin()) ? 'Hors horaires' : null,
+            // Hors horaires : seulement sur ce qui compte (argent, notes, comptes).
+            // Sur tout le reste, une ecole qui travaille le soir en aurait des
+            // centaines par semaine, et l'onglet ne servirait plus a rien.
+            $heure !== null && in_array($type, self::sensibles(), true)
+                && ($heure < $plage->debut() || $heure >= $plage->fin()) ? 'Hors horaires' : null,
         ]));
     }
 

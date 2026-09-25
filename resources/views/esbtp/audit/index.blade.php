@@ -80,7 +80,7 @@
             <i class="fas fa-calendar-days" aria-hidden="true"></i><span x-text="plage()">{{ \Illuminate\Support\Str::ucfirst((string) $filtres->plage()) }}</span> <i class="fas fa-xmark" aria-hidden="true"></i>
         </button>
         <button type="button" class="jda-bascule" :class="!filtres.auto ? 'is-actif' : ''" :aria-pressed="(!filtres.auto).toString()" x-on:click="filtrer({auto: !filtres.auto})">
-            <i class="fas fa-gear" aria-hidden="true"></i>Masquer les tâches automatiques
+            <i class="fas fa-gear" aria-hidden="true"></i>Masquer consultations et tâches auto
         </button>
     </div>
 
