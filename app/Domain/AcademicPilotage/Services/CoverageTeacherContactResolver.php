@@ -8,6 +8,8 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Services\BulletinInlineConfigurationService;
 use Illuminate\Support\Collection;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -67,7 +69,60 @@ final class CoverageTeacherContactResolver
         // sert le plus.
         $carte = $this->planning($classe, $anneeId, $semestre, $matieres);
 
-        return $this->completerParLaConfiguration($carte, $classe, $anneeId, $semestre, $matieres);
+        $carte = $this->completerParLaConfiguration($carte, $classe, $anneeId, $semestre, $matieres);
+
+        return $this->completerParLesEvaluations($carte, $classe, $anneeId, $semestre, $matieres);
+    }
+
+    /**
+     * Dernier recours : l'enseignant désigné sur les évaluations elles-mêmes.
+     *
+     * Une école qui ne tient ni le planning général ni la page « Éditer les
+     * professeurs » renseigne pourtant souvent l'enseignant en créant le
+     * devoir. Sans cette source, le bandeau annonçait « aucun enseignant »
+     * pendant que le tableau de bord pédagogique, lui, savait qui relancer.
+     *
+     * Même règle que le planning : un seul enseignant pour la matière, sinon
+     * personne. On ne désigne pas au hasard entre deux correcteurs.
+     *
+     * @param  array<int, array<string, mixed>|null>  $carte
+     * @return array<int, array<string, mixed>|null>
+     */
+    private function completerParLesEvaluations(array $carte, ESBTPClasse $classe, int $anneeId, ?int $semestre, Collection $matieres): array
+    {
+        $aCombler = $matieres->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->reject(fn (int $id): bool => ($carte[$id] ?? null) !== null)
+            ->values();
+
+        if ($aCombler->isEmpty() || ! Schema::hasColumn('esbtp_evaluations', 'enseignant_id')) {
+            return $carte;
+        }
+
+        $requete = DB::table('esbtp_evaluations')
+            ->where('classe_id', $classe->id)
+            ->where('annee_universitaire_id', $anneeId)
+            ->whereIn('matiere_id', $aCombler)
+            ->whereNotNull('enseignant_id')
+            ->whereNull('deleted_at');
+
+        if ($semestre !== null) {
+            $requete->whereIn('periode', (new AcademicPeriodNormalizer())->databaseVariants('semestre'.$semestre));
+        }
+
+        $parMatiere = $requete->distinct()->get(['matiere_id', 'enseignant_id'])->groupBy('matiere_id')
+            ->filter(fn (Collection $lignes) => $lignes->pluck('enseignant_id')->unique()->count() === 1)
+            ->map(fn (Collection $lignes) => (int) $lignes->first()->enseignant_id);
+
+        $enseignants = User::query()->whereIn('id', $parMatiere->unique())->get(['id', 'name', 'phone'])->keyBy('id');
+
+        foreach ($parMatiere as $matiereId => $userId) {
+            if ($u = $enseignants->get($userId)) {
+                $carte[(int) $matiereId] = ['id' => (int) $u->id, 'name' => $u->name, 'phone' => $u->phone, 'source' => 'evaluation'];
+            }
+        }
+
+        return $carte;
     }
 
     /**

@@ -2,7 +2,7 @@
 <script>
 document.addEventListener('alpine:init', () => {
     Alpine.data('cpaDashboard', (config) => ({
-        tab: 'direction',
+        tab: 'sheets',
         loading: false,
         syncing: false,
         error: null,
@@ -35,7 +35,7 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('popstate', () => this.loadFromUrl());
         },
         selectTabFromUrl() {
-            const tabs = ['direction', 'activity', 'sheets', 'alerts', 'classes', 'students', 'mine'];
+            const tabs = ['sheets', 'alerts', 'mine'];
             if (config.canManageAssignments) tabs.push('assignments');
             const requested = location.hash.replace('#', '');
             if (tabs.includes(requested)) this.tab = requested;

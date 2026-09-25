@@ -172,6 +172,7 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | planning-header | `ph-*` | `ph-hero`, `ph-kpi`, `ph-tab` (composant réutilisable) |
 | custom-roles (Lot 8) | `cr-*` | `cr-modal`, `cr-picker`, `cr-perm`, `cr-role-card`, `cr-section-bar` |
 | rendez-vous accueil du jour | `rac-*` (sur la base `rdv-*` du planning) | `rac-ligne`, `rac-coche`, `rac-creneau`, `rac-filtre`, `rac-choix` |
+| pilotage académique (tableau de bord) | `pa-*` | `pa-hero`, `pa-kpi`, `pa-relance`, `pa-table`, `pa-panneau` |
 | rendez-vous d'inscription | `rdv-*` | `rdv-hero`, `rdv-kpi`, `rdv-slot`, `rdv-jauge`, `rdv-resas`, `rdv-switch`, `rdv-reglages` |
 
 Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.

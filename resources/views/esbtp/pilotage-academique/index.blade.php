@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Pilotage académique')
+@section('title', 'Fiches de notes et alertes')
 @php
     $anneeOptions = $annees->mapWithKeys(fn ($annee) => [$annee->id => $annee->display_name])->all();
     $classeOptions = $classes->mapWithKeys(fn ($classe) => [$classe->id => trim(($classe->code ? $classe->code.' · ' : '').$classe->name)])->all();
@@ -25,41 +25,27 @@
             <div class="cpa-hero-title">
                 <div class="cpa-hero-icon"><i class="fas fa-chart-line"></i></div>
                 <div>
-                    <h1>Centre de pilotage académique</h1>
-                    <p>Suivi des fiches, alertes, scores et blocages académiques BTS et LMD</p>
+                    <h1>Fiches de notes, alertes et affectations</h1>
+                    <p>Le circuit des fiches de notes, les alertes à traiter et qui répond de quelle classe.</p>
                 </div>
             </div>
-            <div class="cpa-hero-scope"><i class="fas fa-shield-halved"></i>Données académiques réelles</div>
+            <a href="{{ route('esbtp.pilotage-academique.index') }}" class="cpa-hero-scope"><i class="fas fa-arrow-left"></i>Tableau de bord pédagogique</a>
         </div>
-        <div class="cpa-hero-kpis">
-            <div class="cpa-hero-kpi">
-                <div class="cpa-hero-kpi-icon"><i class="fas fa-chart-simple"></i></div>
-                <div>
-                    <div class="cpa-hero-kpi-value" x-text="percent(data.summary?.academic_score)"></div>
-                    <div class="cpa-hero-kpi-label">Santé académique</div>
-                </div>
-            </div>
-            <div class="cpa-hero-kpi">
-                <div class="cpa-hero-kpi-icon"><i class="fas fa-clipboard-check"></i></div>
-                <div>
-                    <div class="cpa-hero-kpi-value" x-text="percent(data.summary?.operational_score)"></div>
-                    <div class="cpa-hero-kpi-label">Préparation opérationnelle</div>
-                </div>
-            </div>
-            <div class="cpa-hero-kpi">
+        <div class="cpa-hero-kpis cpa-hero-kpis--deux">
+            <button type="button" class="cpa-hero-kpi" @click="setTab('alerts')">
                 <div class="cpa-hero-kpi-icon"><i class="fas fa-triangle-exclamation"></i></div>
                 <div>
                     <div class="cpa-hero-kpi-value" x-text="data.summary?.open_alerts ?? 0"></div>
-                    <div class="cpa-hero-kpi-label">Alertes ouvertes</div>
+                    <div class="cpa-hero-kpi-label">Alertes à traiter</div>
                 </div>
-            </div>
-            <div class="cpa-hero-kpi">
+            </button>
+            <button type="button" class="cpa-hero-kpi" @click="setTab('sheets')">
                 <div class="cpa-hero-kpi-icon"><i class="fas fa-list-check"></i></div>
                 <div>
                     <div class="cpa-hero-kpi-value" x-text="data.summary?.sheets_pending ?? 0"></div>
-                    <div class="cpa-hero-kpi-label">Fiches à suivre</div>
+                    <div class="cpa-hero-kpi-label">Fiches en cours</div>
                 </div>
-            </div>
+            </button>
         </div>
     </header>
     <section class="cpa-panel cpa-filter-panel">
@@ -70,27 +56,10 @@
                 <x-au-select name="system" :options="$systems" :value="$initialFilters['system']" placeholder="Système" icon="fa-graduation-cap" />
                 <x-au-select name="class_id" class="cpa-filter-class" :options="$classeOptions" :value="$initialFilters['class_id']" placeholder="Toutes les classes" icon="fa-school" searchable />
             </form>
-            <button type="button" class="cpa-btn cpa-btn--primary" @click="synchronize()" :disabled="loading || syncing">
-                <i class="fas" :class="syncing ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>
-                <span x-text="syncing ? 'Synchronisation...' : 'Synchroniser la vue'"></span>
-            </button>
         </div>
-        <template x-if="syncResult">
-            <div class="cpa-state mt-3" :class="{ 'cpa-error': syncResult.ok === false }">
-                <i class="fas" :class="syncResult.ok === false ? 'fa-circle-exclamation' : 'fa-circle-check'"></i>
-                <div>
-                    <strong x-text="syncResult.message"></strong>
-                    <p class="cpa-muted mt-1" x-text="syncSummary()"></p>
-                </div>
-            </div>
-        </template>
         <div class="cpa-tabs" role="tablist">
-            <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'direction' }" @click="setTab('direction')"><i class="fas fa-gauge-high"></i>Direction</button>
-            <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'activity' }" @click="setTab('activity')"><i class="fas fa-users-gear"></i>Acteurs</button>
             <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'sheets' }" @click="setTab('sheets')"><i class="fas fa-clipboard-check"></i>Notes et fiches</button>
             <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'alerts' }" @click="setTab('alerts')"><i class="fas fa-triangle-exclamation"></i>Alertes</button>
-            <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'classes' }" @click="setTab('classes')"><i class="fas fa-school"></i>Santé classe</button>
-            <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'students' }" @click="setTab('students')"><i class="fas fa-user-graduate"></i>Santé étudiant</button>
             <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'mine' }" @click="setTab('mine')"><i class="fas fa-user-check"></i>Mon suivi</button>
             @can('academic_sheets.assign')
                 <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'assignments' }" @click="setTab('assignments')"><i class="fas fa-user-tag"></i>Affectations</button>
@@ -103,118 +72,6 @@
     <template x-if="data.prerequisites && !data.prerequisites.year_configured">
         <div class="cpa-state cpa-error"><i class="fas fa-calendar-xmark"></i><span x-text="data.prerequisites.message"></span></div>
     </template>
-    {{-- Vue direction. Les quatre chiffres de synthese sont deja dans le hero :
-         les repeter ici ne dirait rien de plus. Cet onglet repond a trois
-         questions d'affilee : quelles classes decrochent, ou en sont les
-         alertes, et ou bloque le circuit des fiches. --}}
-    <section class="cpa-direction" :class="{ 'cpa-loading': loading }" x-show="tab === 'direction'">
-
-        <div class="cpa-panel cpa-direction-focal">
-            <div class="cpa-panel-head">
-                <div>
-                    <h2 class="cpa-panel-title"><i class="fas fa-school"></i>Quelles classes décrochent</h2>
-                    <p class="cpa-muted mt-1">Score académique par classe, du plus faible au plus élevé. Cliquez une barre pour filtrer toute la page sur cette classe.</p>
-                </div>
-                <p class="cpa-muted" x-text="freshnessLabel()"></p>
-            </div>
-
-            <div class="cpa-chart-wrap" x-show="classesTriees().length > 0">
-                <canvas x-ref="chartClasses" height="280"></canvas>
-            </div>
-
-            <div class="cpa-state" x-show="classesTriees().length === 0 && !loading">
-                <i class="fas fa-hourglass-half"></i>
-                <span>Aucun score calculé pour ce périmètre. Lancez « Synchroniser la vue » pour produire les premiers snapshots.</span>
-            </div>
-
-            <div class="cpa-chart-legende" x-show="classesTriees().length > 0">
-                <span class="cpa-legende-item"><span class="cpa-legende-pastille" style="background:#dc2626"></span>Critique, sous 50 %</span>
-                <span class="cpa-legende-item"><span class="cpa-legende-pastille" style="background:#f59e0b"></span>À surveiller, sous 70 %</span>
-                <span class="cpa-legende-item"><span class="cpa-legende-pastille" style="background:#0453cb"></span>Satisfaisant</span>
-                <span class="cpa-legende-item cpa-muted" x-show="classesSansScore() > 0">
-                    <span x-text="classesSansScore()"></span>&nbsp;classe(s) sans score calculé, non représentée(s)
-                </span>
-                <span class="cpa-legende-item cpa-muted" x-show="data.classes && data.classes.length >= 12">
-                    Les 12 classes calculées le plus récemment
-                </span>
-            </div>
-        </div>
-
-        <div class="cpa-direction-rail">
-            <div class="cpa-panel">
-                <div class="cpa-panel-head">
-                    <h3 class="cpa-panel-title"><i class="fas fa-triangle-exclamation"></i>Alertes par gravité</h3>
-                </div>
-                <div class="cpa-chart-wrap cpa-chart-wrap--court" x-show="totalAlertes() > 0">
-                    <canvas x-ref="chartAlertes" height="210"></canvas>
-                </div>
-                <div class="cpa-state" x-show="totalAlertes() === 0 && !loading">
-                    <i class="fas fa-circle-check"></i><span>Aucune alerte active sur ce périmètre.</span>
-                </div>
-                <button type="button" class="cpa-lien-bloc" x-show="totalAlertes() > 0" @click="tab = 'alerts'">
-                    Ouvrir la liste des alertes<i class="fas fa-arrow-right"></i>
-                </button>
-            </div>
-
-            <div class="cpa-panel">
-                <div class="cpa-panel-head">
-                    <h3 class="cpa-panel-title"><i class="fas fa-clipboard-check"></i>Où bloque le circuit</h3>
-                </div>
-                <div class="cpa-chart-wrap cpa-chart-wrap--court" x-show="totalFiches() > 0">
-                    <canvas x-ref="chartFiches" height="210"></canvas>
-                </div>
-                <div class="cpa-state" x-show="totalFiches() === 0 && !loading">
-                    <i class="fas fa-circle-check"></i><span>Aucune fiche en cours : tout est validé ou annulé.</span>
-                </div>
-                <button type="button" class="cpa-lien-bloc" x-show="totalFiches() > 0" @click="tab = 'sheets'">
-                    Ouvrir le suivi des fiches<i class="fas fa-arrow-right"></i>
-                </button>
-            </div>
-        </div>
-
-        {{-- Tendances de l'annee. Charge a la demande : quatre agregations sur
-             toute l'annee n'ont pas a retarder l'ouverture de la page, qui
-             doit d'abord repondre sur l'etat du jour. --}}
-        <div class="cpa-panel cpa-tendances">
-            <div class="cpa-panel-head">
-                <div>
-                    <h2 class="cpa-panel-title"><i class="fas fa-chart-line"></i>Comment l'année avance</h2>
-                    <p class="cpa-muted mt-1">Mois par mois, sur l'année universitaire sélectionnée. Un mois sans donnée reste vide plutôt que d'être compté à zéro.</p>
-                </div>
-                <button type="button" class="cpa-btn cpa-btn--ghost" @click="chargerTendances(true)" :disabled="tendances.chargement">
-                    <i class="fas" :class="tendances.chargement ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>
-                    <span x-text="tendances.chargement ? 'Calcul...' : 'Recalculer'"></span>
-                </button>
-            </div>
-
-            <div class="cpa-state" x-show="tendances.chargement">
-                <i class="fas fa-spinner fa-spin"></i><span>Calcul des tendances de l'année en cours...</span>
-            </div>
-
-            <div class="cpa-state cpa-error" x-show="!tendances.chargement && tendances.erreur">
-                <i class="fas fa-circle-exclamation"></i><span x-text="tendances.erreur"></span>
-            </div>
-
-            <div class="cpa-tendances-grille" x-show="!tendances.chargement && !tendances.erreur && tendances.series.length > 0">
-                <template x-for="serie in tendances.series" :key="serie.key">
-                    <div class="cpa-tendance">
-                        <div class="cpa-tendance-tete">
-                            <span class="cpa-tendance-titre" x-text="serie.label"></span>
-                            <span class="cpa-tendance-dernier" x-text="dernierPoint(serie)"></span>
-                        </div>
-                        <p class="cpa-tendance-aide" x-text="serie.hint"></p>
-                        <div class="cpa-tendance-toile" x-show="!serieVide(serie)">
-                            <canvas :id="'cpa-tendance-' + serie.key"></canvas>
-                        </div>
-                        <div class="cpa-tendance-vide" x-show="serieVide(serie)">
-                            <i class="fas fa-wave-square"></i>
-                            <span>Aucune mesure sur l'année : rien n'a encore été enregistré pour cet indicateur.</span>
-                        </div>
-                    </div>
-                </template>
-            </div>
-        </div>
-    </section>
     <section class="cpa-split" x-show="tab === 'sheets'">
         <div class="cpa-panel">
             <div class="cpa-panel-head">
@@ -543,34 +400,6 @@
             </template>
         </div>
     </section>
-    <section class="cpa-panel" x-show="tab === 'activity'">
-        <div class="cpa-panel-head">
-            <div>
-                <h2 class="cpa-panel-title"><i class="fas fa-users-gear"></i>Acteurs des notes</h2>
-                <p class="cpa-muted">Saisies et corrections réellement enregistrées, regroupées par personne, matière et classe.</p>
-            </div>
-        </div>
-        <div class="cpa-list" x-show="data.actor_activity?.actors?.length">
-            <template x-for="actor in data.actor_activity.actors" :key="actor.id">
-                <article class="cpa-row">
-                    <div class="cpa-row-main">
-                        <div class="cpa-row-title" x-text="actor.name"></div>
-                        <div class="cpa-row-meta">
-                            <span x-text="`${actor.notes_entered} note(s) saisie(s)`"></span>
-                            <span x-show="actor.notes_updated" x-text="`${actor.notes_updated} note(s) corrigée(s)`"></span>
-                            <span x-text="`${actor.subjects_count} matière(s)`"></span>
-                            <span x-text="`${actor.classes_count} classe(s)`"></span>
-                            <span x-text="`${actor.sheets_completed} fiche(s) finalisée(s)`"></span>
-                        </div>
-                    </div>
-                    <span class="cpa-badge" x-text="activityDate(actor.last_activity_at)"></span>
-                </article>
-            </template>
-        </div>
-        <div class="cpa-state" x-show="!data.actor_activity?.actors?.length">
-            <i class="fas fa-users-gear"></i>Aucun acteur de saisie tracé sur ce périmètre.
-        </div>
-    </section>
     <section class="cpa-panel" x-show="tab === 'alerts'">
         <div class="cpa-panel-head"><h2 class="cpa-panel-title"><i class="fas fa-triangle-exclamation"></i>Alertes et blocages</h2></div>
         <div class="cpa-list" x-show="data.alerts?.length">
@@ -597,81 +426,6 @@
             </template>
         </div>
         <div class="cpa-state" x-show="!data.alerts?.length"><i class="fas fa-shield-check"></i>Aucune alerte sur ce périmètre.</div>
-    </section>
-    <section class="cpa-split" x-show="tab === 'classes'">
-        <div class="cpa-panel">
-            <div class="cpa-panel-head"><h2 class="cpa-panel-title"><i class="fas fa-school"></i>Santé des classes</h2></div>
-            <div class="cpa-list" x-show="data.classes?.length">
-                <template x-for="classe in data.classes" :key="classe.id">
-                    <article class="cpa-row">
-                        <div class="cpa-row-main">
-                            <div class="cpa-row-title" x-text="classe.name"></div>
-                            <div class="cpa-row-meta">
-                                <span x-text="classe.system"></span>
-                                <span x-text="scoreLabel(classe.academic_score, 'score académique')"></span>
-                                <span x-text="scoreLabel(classe.operational_score, 'préparation')"></span>
-                                <span x-text="`${classe.coverage_pct}% couverture`"></span>
-                            </div>
-                        </div>
-                        @can('academic_health.view')
-                        <button type="button" class="cpa-btn" @click="openClass(classe.id)"><i class="fas fa-eye"></i>Voir</button>
-                        @endcan
-                    </article>
-                </template>
-            </div>
-            <div class="cpa-state" x-show="!data.classes?.length"><i class="fas fa-school"></i>Aucune classe calculée sur ce périmètre.</div>
-        </div>
-        <div class="cpa-drawer">
-            <template x-if="drawer.class">
-                <div>
-                    <h3 class="cpa-panel-title" x-text="drawer.class.classe"></h3>
-                    <p class="cpa-muted" x-text="drawer.class.health ? scoreLabel(drawer.class.health.academic_score, 'score académique') : 'Données insuffisantes'"></p>
-                    <div class="cpa-list mt-3">
-                        <template x-for="alert in drawer.class.alerts" :key="alert.id">
-                            <div class="cpa-row"><div class="cpa-row-main"><div class="cpa-row-title" x-text="alert.message"></div></div></div>
-                        </template>
-                    </div>
-                </div>
-            </template>
-            <div class="cpa-state" x-show="!drawer.class"><i class="fas fa-arrow-left"></i>Sélectionnez une classe.</div>
-        </div>
-    </section>
-    <section class="cpa-split" x-show="tab === 'students'">
-        <div class="cpa-panel">
-            <div class="cpa-panel-head"><h2 class="cpa-panel-title"><i class="fas fa-user-graduate"></i>Étudiants à suivre</h2></div>
-            <div class="cpa-list" x-show="data.students?.length">
-                <template x-for="student in data.students" :key="student.id">
-                    <article class="cpa-row">
-                        <div class="cpa-row-main">
-                            <div class="cpa-row-title" x-text="student.name"></div>
-                            <div class="cpa-row-meta">
-                                <span x-text="student.matricule || 'Sans matricule'"></span>
-                                <span x-text="scoreLabel(student.score, 'score')"></span>
-                                <span x-text="`${student.coverage_pct}% couverture`"></span>
-                            </div>
-                        </div>
-                        @can('academic_health.view')
-                        <button type="button" class="cpa-btn" @click="openStudent(student.id)"><i class="fas fa-eye"></i>Voir</button>
-                        @endcan
-                    </article>
-                </template>
-            </div>
-            <div class="cpa-state" x-show="!data.students?.length"><i class="fas fa-user-graduate"></i>Aucun étudiant calculé sur ce périmètre.</div>
-        </div>
-        <div class="cpa-drawer">
-            <template x-if="drawer.student">
-                <div>
-                    <h3 class="cpa-panel-title" x-text="drawer.student.student.name"></h3>
-                    <p class="cpa-muted" x-text="drawer.student.health ? scoreLabel(drawer.student.health.academic_score, 'score académique') : 'Données insuffisantes'"></p>
-                    <div class="cpa-list mt-3">
-                        <template x-for="alert in drawer.student.alerts" :key="alert.id">
-                            <div class="cpa-row"><div class="cpa-row-main"><div class="cpa-row-title" x-text="alert.message"></div></div></div>
-                        </template>
-                    </div>
-                </div>
-            </template>
-            <div class="cpa-state" x-show="!drawer.student"><i class="fas fa-arrow-left"></i>Sélectionnez un étudiant.</div>
-        </div>
     </section>
     <section class="cpa-panel" x-show="tab === 'mine'">
         <div class="cpa-panel-head">

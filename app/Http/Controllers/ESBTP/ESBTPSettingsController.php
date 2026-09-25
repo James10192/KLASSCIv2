@@ -527,6 +527,10 @@ class ESBTPSettingsController extends Controller
                 CataloguePiecesDossier::REGLAGE_FORME_DEFAUT,
                 CataloguePiecesDossier::REGLAGE_ECHEANCE_DEFAUT,
                 CataloguePiecesDossier::REGLAGE_EPUISEMENT,
+                // Les seuils des tableaux de pilotage (pedagogique et personnel).
+                \App\Domain\AcademicPilotage\Services\SeuilsDePilotage::REGLAGE_RELANCE_JOURS,
+                \App\Domain\AcademicPilotage\Services\SeuilsDePilotage::REGLAGE_PRESENCE_MIN,
+                \App\Services\Personnel\ActiviteDuPersonnel::REGLAGE_ATTENTE_JOURS,
             ];
 
             // Les trois regles de separation des devoirs : un mode a trois

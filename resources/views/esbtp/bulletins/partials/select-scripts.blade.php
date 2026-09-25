@@ -479,7 +479,7 @@ window.busCard = function (cfg) {
                 year_id: this.form.annee_universitaire_id,
                 period: this.form.periode,
             });
-            return `{{ route('esbtp.pilotage-academique.index') }}?${params.toString()}#alerts`;
+            return `{{ route('esbtp.pilotage-academique.fiches') }}?${params.toString()}#alerts`;
         },
 
         bulletinParams(action = null) {

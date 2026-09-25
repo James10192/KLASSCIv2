@@ -262,6 +262,10 @@ class AcademicPilotageController extends Controller
     {
         return $this->scopeClasses($this->alertQuery($yearId, $period, $classId), $classIds)
             ->when($studentId, fn ($query) => $query->where('etudiant_id', $studentId))
+            // Le compteur « Alertes à traiter » ne compte que les alertes
+            // actives ; la liste affichait aussi les résolues et les classées,
+            // si bien que les deux chiffres ne se recoupaient jamais.
+            ->whereIn('status', \App\Domain\AcademicPilotage\Enums\AcademicAlertStatus::activeValues())
             ->with(['classe:id,name,code', 'etudiant:id,nom,prenoms,matricule'])
             ->latest('last_seen_at')
             ->limit($limit)

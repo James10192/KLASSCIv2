@@ -2617,6 +2617,7 @@
                     @include('esbtp.settings.partials.verification-contact-reglage')
                     @include('esbtp.settings.partials.rendez-vous-reglages')
                     @include('esbtp.settings.partials.pieces-dossier-reglages')
+                    @include('esbtp.settings.partials.pilotage-reglages')
                 </div>
             </div>
 

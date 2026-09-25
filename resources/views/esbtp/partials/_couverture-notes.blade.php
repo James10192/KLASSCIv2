@@ -22,6 +22,7 @@
     @param string      $periode    semestre1 | semestre2 | annuel
     @param bool        $replie     détail plié par défaut (true)
     @param string|null $titre      surcharge du libellé
+    @param bool        $lienPilotage  lien « Ouvrir le pilotage académique » (true)
 --}}
 @canany(['academic_health.view', 'academic_health.view_own'])
 @php
@@ -31,7 +32,8 @@
     // Gabarit d'adresse : la classe y est un marqueur, pour que le bandeau
     // puisse suivre un sélecteur sans recharger la page.
     $_cvnModele = route('esbtp.pilotage-academique.classes.couverture', ['classe' => '__CLASSE__']);
-    $_cvnPilotage = \Illuminate\Support\Facades\Route::has('esbtp.pilotage-academique.index')
+    // Le lien vers le pilotage n'a pas de sens posé sur le pilotage lui-même.
+    $_cvnPilotage = ($lienPilotage ?? true) && \Illuminate\Support\Facades\Route::has('esbtp.pilotage-academique.index')
         ? route('esbtp.pilotage-academique.index')
         : null;
     $_cvnConfig = [
@@ -147,7 +149,9 @@
                                      reste conditionnel, et la source se lit au survol. --}}
                                 <span :title="contact(m).source === 'bulletin'
                                         ? 'Nom saisi dans « Éditer les professeurs » du bulletin'
-                                        : 'Enseignant principal au planning général'">
+                                        : (contact(m).source === 'evaluation'
+                                            ? 'Enseignant désigné sur les évaluations de la matière'
+                                            : 'Enseignant principal au planning général')">
                                     <i class="fas fa-user"></i>
                                     <span x-text="contact(m).name"></span>
                                     <template x-if="contact(m).phone">
