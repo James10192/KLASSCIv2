@@ -167,9 +167,11 @@ class RenvoiConvocationsCibleesTest extends TestCase
             'email' => $email, 'annee_universitaire_id' => $this->annee->id,
             'consentement_at' => now(), 'statut' => ESBTPCandidature::STATUT_EN_ATTENTE,
         ]);
+        // Un creneau par reservation : (annee, date, heure de debut) est unique.
+        $debut = sprintf('%02d:%02d:00', 8 + intdiv($n, 2), ($n % 2) * 30);
         $creneau = ESBTPRdvCreneau::create([
             'annee_universitaire_id' => $this->annee->id, 'date' => now()->addDays($dansJours)->toDateString(),
-            'heure_debut' => '09:00:00', 'heure_fin' => '09:40:00', 'capacite' => 10, 'ouvert' => true,
+            'heure_debut' => $debut, 'heure_fin' => sprintf('%02d:%02d:00', 8 + intdiv($n, 2), ($n % 2) * 30 + 20), 'capacite' => 10, 'ouvert' => true,
         ]);
 
         return ESBTPRdvReservation::create($autres + [
