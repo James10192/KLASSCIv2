@@ -62,6 +62,20 @@ class ESBTPLMDJury extends Model implements Auditable
 
     public const STATUSES = ['preparation', 'en_cours', 'clos', 'publie', 'archive'];
 
+    /** Libellés affichés : les codes bruts (« PREPARATION », « publie ») ne sont pas des mots. */
+    public const LIBELLES_STATUT = [
+        'preparation' => 'En préparation',
+        'en_cours' => 'Délibération en cours',
+        'clos' => 'Clos',
+        'publie' => 'Publié',
+        'archive' => 'Archivé',
+    ];
+
+    public function libelleStatut(): string
+    {
+        return self::LIBELLES_STATUT[$this->status] ?? ucfirst(str_replace('_', ' ', (string) $this->status));
+    }
+
     public function anneeUniversitaire(): BelongsTo
     {
         return $this->belongsTo(ESBTPAnneeUniversitaire::class, 'annee_universitaire_id');

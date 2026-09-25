@@ -223,6 +223,13 @@
             Rapport d'Émargement des Enseignants
         </h1>
         <p class="page-subtitle">Analyse détaillée des présences et statistiques d'émargement</p>
+        @can('comptabilite.salaires.view')
+        @php $raPeriode = isset($endDate) ? \Carbon\Carbon::parse($endDate) : now(); @endphp
+        <a href="{{ route('esbtp.comptabilite.salaires.index', ['preset' => 'month', 'mois' => $raPeriode->month, 'annee' => $raPeriode->year]) }}"
+           style="display:inline-flex;align-items:center;gap:.4rem;margin-top:.9rem;padding:.5rem 1rem;border-radius:10px;background:#fff;color:#0453cb;font-weight:600;font-size:.84rem;text-decoration:none;">
+            <i class="fas fa-file-invoice-dollar"></i>Paie du mois correspondant
+        </a>
+        @endcan
     </div>
 
     <!-- Statistiques principales -->

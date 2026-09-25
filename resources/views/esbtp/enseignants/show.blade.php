@@ -586,6 +586,11 @@
                     <a href="{{ route('esbtp.enseignants.edit', ['enseignant' => $teacher->id]) }}" class="es-hero-btn primary">
                         <i class="fas fa-edit"></i> Modifier
                     </a>
+                    @can('comptabilite.salaires.view')
+                    <a href="{{ route('esbtp.comptabilite.salaires.index', ['preset' => 'year', 'q' => $teacher->user->name ?? '']) }}" class="es-hero-btn ghost">
+                        <i class="fas fa-file-invoice-dollar"></i> Fiches de paie
+                    </a>
+                    @endcan
                     <a href="{{ route('esbtp.personnel.unified.index') }}" class="es-hero-btn ghost">
                         <i class="fas fa-arrow-left"></i> Retour
                     </a>
