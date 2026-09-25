@@ -148,3 +148,52 @@ Chaque ligne : un moment où le test a dû sortir du chemin normal (fonction JS 
 | Saisir les notes de la session de rattrapage | Tomber sur « session sans session parent », sans action pour corriger | Bouton « Rattacher à la session normale » sur ce message |
 | Payer le professeur de test | Constater qu'il n'est pas dans la liste de paie, sans explication | Ligne « Taux horaire manquant — Renseigner » dans la liste de paie |
 | Suivre les émargements | Passer entre trois écrans qui se contredisent (Planning → Émargement, Administration, Rapport) | Un seul écran, avec onglets Aujourd'hui / Historique / Rapport |
+
+---
+
+# État des corrections (25 septembre 2026, branche `claude/klassci-e2e-tests-screenshots-4txsmt`)
+
+Vérifié en local, de bout en bout, avec les comptes administrateur et enseignant. Les captures de contrôle
+sur presentation restent à prendre après déploiement, avant toute propagation vers une école.
+
+## Priorités
+
+| # | Priorité | État | Commit |
+|---|---|---|---|
+| 1 | Bulletin sans note non publiable | Corrigé | 7914cea |
+| 2 | Paie : net négatif refusé, net imprimé, base heures planifiées ou émargées au choix de l'école, taux manquant signalé | Corrigé | b58d8b8 |
+| 3 | Rattrapage : session d'origine obligatoire, rattacher une session orpheline, publication refusée sans examen, raccourci depuis les ajournés | Corrigé | 7914cea |
+| 4 | Examen → feuille de notes créée et liée, verrou lu à la saisie | Corrigé | 7914cea |
+| 5 | Anonymat réel : numéros tirés au sort, levée datée et nominative sous droit dédié | Corrigé | 7914cea |
+| 6 | Émargement : délais en réglages, absence ou motif au choix, prolongation demandée par l'enseignant et accordée sans conflit | Corrigé | 51cf83d |
+| 7 | Documents enseignants (agrément, attestations, contrat) | **Non fait** — module neuf, décisions de conception à prendre | — |
+| 8 | Soutenances | **Non fait** — module neuf, décisions de conception à prendre | — |
+| 9 | Finitions : libellés, « Année — », sélecteurs, une fenêtre à la fois | Corrigé | 2f0e105, 95697e1, 7a21715, 294cadc |
+
+## Défauts de la seconde passe
+
+| # | Défaut | État |
+|---|---|---|
+| 1 | « 1,5 » enregistré 15 | Corrigé (f9238e9) |
+| 2 | Notes refusées comptées dans la moyenne | Corrigé (f9238e9) |
+| 3 | Pas de validation des notes, Pilotage limité à S1/S2 | Corrigé : « Valider mes notes », Pilotage S3 à S10, lien vers les fiches filtrées (f9238e9) |
+| 4 | Bulletin officiel sur note brouillon | Corrigé par le contrôle avant génération (f9238e9) |
+| 5 | Jury sans quorum, `DEFERE` sur dossiers vides | Corrigé (2f0e105) ; date du jury désormais enregistrée (ac2d611) |
+| 6 | Fenêtre du code sous le fond grisé | Corrigé : code saisi dans la ligne du cours (51cf83d) |
+| 7 | Nouvel enseignant indisponible, alerte native | Corrigé : « Le rendre disponible », « Programmer quand même », « Ouvrir la semaine » (8c52ad6, 3ac726a) |
+| 8 | Absent affiché « En retard » | Corrigé (51cf83d) |
+| 9 | Rappels empilés, fenêtres sur le mot de passe | Corrigé (7a21715, 294cadc) |
+| 10 | Même mot de passe de départ | **Laissé** : réglable (`securite.mot_de_passe_par_defaut`) et changement forcé à la première connexion |
+| 11 | Classes LMD de démo inutilisables | Donnée, pas code ; l'écran propose désormais « Rattacher la classe à son parcours » |
+| 12 | Jury : classes BTS, S8 max, heures inversées | Corrigé (2f0e105, f9238e9) |
+
+## Journal des contournements
+
+Les 21 raccourcis demandés sont livrés, sauf « un seul écran d'émargement » : les trois écrans sont désormais
+cohérents (compteurs de Planning corrigés, absent affiché juste, lien rapport → paie), mais pas fusionnés.
+
+## Reste à faire hors code
+
+- `APP_DEBUG=false` sur esbtp-abidjan, ephrata et presentation.
+- Décider du sort des données de test E2E-0925 sur presentation.
+- Modules documents enseignants et soutenances : cadrage à faire.
