@@ -85,7 +85,7 @@ class ESBTPDemandesInscriptionController extends Controller
             'type' => $type,
             // « Inscrites » et « Rejetees » de la file ne couvrent que la semaine ;
             // l'ancienne corbeille montrait tout l'historique d'un statut.
-            'etat' => $reference !== '' || in_array($statut, ['convertie', 'rejetee'], true) ? 'toutes' : null,
+            'etat' => $reference !== '' || in_array($statut, [ESBTPCandidature::STATUT_CONVERTIE, ESBTPCandidature::STATUT_REJETEE], true) ? 'toutes' : null,
             'q' => $reference !== '' ? $reference : null,
             'contact' => $request->query('contact') === 'non_verifie' ? 1 : null,
         ]), 301);

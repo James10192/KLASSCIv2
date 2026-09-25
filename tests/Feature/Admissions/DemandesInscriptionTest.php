@@ -268,6 +268,17 @@ class DemandesInscriptionTest extends TestCase
         $this->assertSame(1, \App\Domain\Admissions\FileDesDemandes::aTraiter($this->agent));
     }
 
+    public function test_rejeter_une_reinscription_remet_le_compte_du_menu_a_jour(): void
+    {
+        $demande = $this->demande('YAO');
+        $this->assertSame(1, \App\Domain\Admissions\FileDesDemandes::aTraiter($this->agent));
+
+        $this->actingAs($this->agent)->postJson(route('esbtp.reinscription-demandes.rejeter', $demande), ['motif_rejet' => 'Demande déposée en double'])
+            ->assertOk();
+
+        $this->assertSame(0, \App\Domain\Admissions\FileDesDemandes::aTraiter($this->agent));
+    }
+
     public function test_reinscrire_depuis_la_file_repond_en_json_et_honore_le_rendez_vous(): void
     {
         $passee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false]);
@@ -283,11 +294,15 @@ class DemandesInscriptionTest extends TestCase
             'nom' => 'YAO', 'prenoms' => 'Serge', 'telephone' => '+2250700000000', 'date_naissance' => '2006-01-01',
         ]);
 
+        $this->assertSame(1, \App\Domain\Admissions\FileDesDemandes::aTraiter($this->agent));
+
         $this->actingAs($this->agent)->postJson(route('esbtp.reinscription-demandes.convertir', $demande), [
             'classe_id' => $cible->id, 'decision' => 'passage',
         ])->assertOk()->assertJsonPath('ok', true);
 
         $this->assertSame('convertie', $demande->fresh()->statut);
+        // Le statut change par requete directe : le compte du menu suit quand meme.
+        $this->assertSame(0, \App\Domain\Admissions\FileDesDemandes::aTraiter($this->agent));
         $this->assertSame(StatutReservationRdv::Honoree, $rdv->fresh()->statut);
     }
 

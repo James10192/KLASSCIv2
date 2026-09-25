@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ESBTP;
 
 use App\Exceptions\ReinscriptionRefuseeException;
+use App\Domain\Admissions\FileDesDemandes;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPReinscriptionDemande;
@@ -137,6 +138,11 @@ class ESBTPReinscriptionDemandeController extends Controller
             'traite_par' => auth()->id(),
         ]);
 
+        // Le statut change par une requete directe (garde contre le double
+        // clic), qui ne declenche pas les evenements du modele : le compteur
+        // de la file s'oublie donc ici.
+        FileDesDemandes::oublierLesCompteurs();
+
         return $this->repondre($request, true, 'Réinscription effectuée. La demande est clôturée.');
     }
 
@@ -168,6 +174,8 @@ class ESBTPReinscriptionDemandeController extends Controller
         if ($traite === 0) {
             return $this->repondre($request, false, 'Cette demande a déjà été traitée.');
         }
+        // Requete directe, sans evenement de modele : voir convertir().
+        FileDesDemandes::oublierLesCompteurs();
 
 
         return $this->repondre($request, true, 'Demande rejetée.'.ReservateurRdv::phraseLiberation($liberee));
