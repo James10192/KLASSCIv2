@@ -113,65 +113,17 @@ class ESBTPComptabiliteRelanceController extends Controller
         $filiereId    = $request->input('filiere_id', '');
         $classeId     = $request->input('classe_id', '');
         $anneeId      = $request->input('annee_id', '');
-        // Taille d'une tranche du defilement. Le selecteur « Par page » a disparu,
-        // mais une adresse enregistree peut encore porter per_page.
-        $perPage      = in_array((int) $request->input('per_page'), [10, 25, 50, 100], true)
-            ? (int) $request->input('per_page')
-            : 25;
-
         // Année universitaire : paramètre ou active
         $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeId     = $anneeId ?: optional($anneeActive)->id;
 
-        // Query de base : inscriptions actives avec workflow complet
-        $query = \App\Models\ESBTPInscription::with([
-            'etudiant',
-            'classe.filiere',
-            'anneeUniversitaire',
-            'fraisSubscriptions',
-            'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
-        ])
-        ->where('workflow_step', 'etudiant_cree')
-        ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
-        ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
-        ->when($filiereId, fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filiereId)))
-        ->when($search, fn ($q) => $q->whereHas('etudiant', fn ($e) => $e->where('nom', 'like', "%$search%")->orWhere('prenoms', 'like', "%$search%")->orWhere('matricule', 'like', "%$search%")))
-        ->latest('created_at')
-        // Departage stable : la liste se charge par tranches, chacune relisant
-        // cette requete ; deux inscriptions de la meme seconde changeraient
-        // sinon d'ordre d'une tranche a l'autre.
-        ->orderByDesc('id');
-
-        // Calculer risk levels via le service partagé
-        $allInscriptions = $query->get();
-
-        $calcService = app(RelanceCalculationService::class)->preloadForInscriptions($allInscriptions);
-        $batch = $calcService->buildBatch($allInscriptions);
-        $rows  = $batch['rows'];
-        $kpis  = $batch['kpis'];
-
-        // Filtrer par risque pour l'affichage du tableau uniquement
-        if ($riskFilter) {
-            $rows = $rows->filter(fn ($r) => $r->risk === $riskFilter);
-        }
-
-        // Exclure les étudiants à jour pour la liste paginée
-        $rowsWithDebt = $rows->filter(fn ($r) => $r->soldeRestant > 0);
-
-        // Pagination manuelle
-        $page       = (int) $request->input('page', 1);
-        $offset     = ($page - 1) * $perPage;
-        $paginated  = new \Illuminate\Pagination\LengthAwarePaginator(
-            $rowsWithDebt->slice($offset, $perPage)->values(),
-            $rowsWithDebt->count(),
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
+        ['paginated' => $paginated, 'kpis' => $kpis] = app(\App\Domain\Comptabilite\Relances\ListeDesRelances::class)->tranche(
+            ['search' => (string) $search, 'risk' => (string) $riskFilter, 'filiere_id' => (string) $filiereId, 'classe_id' => (string) $classeId, 'annee_id' => $anneeId],
+            (int) $request->input('page', 1),
+            $request->url(),
+            $request->query(),
         );
 
-        // Tranche suivante du defilement. Le solde se calcule en memoire sur
-        // toute l'annee : chaque tranche refait ce calcul, comme le faisait
-        // chaque page avant, mais pas les listes de filtres ni l'ecran mobile.
         if (ListeInfinie::demandee($request)) {
             return ListeInfinie::reponse(
                 $paginated,
@@ -200,7 +152,7 @@ class ESBTPComptabiliteRelanceController extends Controller
 
         $viewData = compact(
             'paginated', 'kpis', 'filieres', 'classes', 'annees',
-            'search', 'riskFilter', 'filiereId', 'classeId', 'anneeId', 'perPage', 'anneeActive',
+            'search', 'riskFilter', 'filiereId', 'classeId', 'anneeId', 'anneeActive',
             'configManquante', 'mobileRelances'
         );
 

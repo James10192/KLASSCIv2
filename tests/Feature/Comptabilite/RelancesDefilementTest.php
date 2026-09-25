@@ -23,6 +23,9 @@ class RelancesDefilementTest extends TestCase
 {
     use DatabaseTransactions;
 
+    /** Nombre de lignes calculees : le calcul d'echeancier est ce qui coute. */
+    public static int $calculs = 0;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -50,6 +53,8 @@ class RelancesDefilementTest extends TestCase
 
             public function buildRow(ESBTPInscription $inscription): object
             {
+                RelancesDefilementTest::$calculs++;
+
                 return (object) [
                     'inscription' => $inscription, 'totalDu' => 100000, 'totalPaye' => 0,
                     'totalPayeEnAttente' => 0, 'soldeRestant' => 100000, 'pourcentage' => 0,
@@ -93,5 +98,23 @@ class RelancesDefilementTest extends TestCase
         $this->assertCount(25, $a[1]);
         $this->assertCount(5, $b[1]);
         $this->assertCount(30, array_unique(array_merge($a[1], $b[1])));
+    }
+
+    public function test_une_tranche_ne_recalcule_que_ses_propres_lignes(): void
+    {
+        $annee = ESBTPAnneeUniversitaire::factory()->create();
+        ESBTPInscription::factory()->count(30)->create([
+            'annee_universitaire_id' => $annee->id,
+            'workflow_step' => 'etudiant_cree',
+        ]);
+
+        $this->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->assertOk();
+        self::$calculs = 0;
+
+        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id, 'page' => 2, 'mode' => 'rows']))
+            ->assertOk();
+
+        $this->assertSame(5, self::$calculs, 'La tranche 2 relit l\'index en cache et ne calcule que ses 5 lignes.');
     }
 }
