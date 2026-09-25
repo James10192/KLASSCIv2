@@ -186,6 +186,9 @@
 
     function estVisible(el) {
         var r = el.getBoundingClientRect();
+        // Un bas de liste masque (tableau sur telephone, grille sur ordinateur)
+        // n'a pas de boite : il ne charge rien.
+        if (r.width === 0 && r.height === 0) return false;
         return r.top < (window.innerHeight || document.documentElement.clientHeight) + 600 && r.bottom > -600;
     }
 

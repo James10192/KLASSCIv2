@@ -560,10 +560,18 @@
     .annonces-grid {
         display: grid !important;
     }
+
+    .ann-bas-tableau {
+        display: none !important;
+    }
 }
 
 @media (min-width: 769px) {
     .annonces-grid {
+        display: none !important;
+    }
+
+    .ann-bas-grille {
         display: none !important;
     }
 
@@ -695,78 +703,9 @@
                                 <th class="actions-col">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="ann-tbody">
                             @forelse($annonces as $annonce)
-                                <tr class="{{ $annonce->isExpired() ? 'expired-row' : '' }}">
-                                    <td>
-                                        <div class="table-title">
-                                            @if($annonce->priorite == 2)
-                                                <i class="fas fa-exclamation-triangle text-danger me-2"></i>
-                                            @endif
-                                            {{ $annonce->titre }}
-                                            @if($annonce->isExpired())
-                                                <i class="fas fa-clock text-danger ms-2" title="Annonce expirée"></i>
-                                            @endif
-                                        </div>
-                                    </td>
-                                    <td>
-                                        @if($annonce->isExpired())
-                                            <span class="status-badge danger">
-                                                <i class="fas fa-clock me-1"></i>Expirée
-                                            </span>
-                                        @else
-                                            <span class="status-badge {{ $annonce->is_published ? 'success' : 'warning' }}">
-                                                {{ $annonce->is_published ? 'Publiée' : 'Brouillon' }}
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <span class="priority-badge priority-{{ $annonce->priorite }}">
-                                            {{ $annonce->priorite == 2 ? 'Urgente' : ($annonce->priorite == 1 ? 'Importante' : 'Normale') }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="type-badge">
-                                            {{ $annonce->type == 'general' ? 'Générale' : ucfirst($annonce->type) }}
-                                        </span>
-                                    </td>
-                                    <td>{{ $annonce->created_at->format('d/m/Y H:i') }}</td>
-                                    <td>{{ $annonce->date_expiration ? \Carbon\Carbon::parse($annonce->date_expiration)->format('d/m/Y H:i') : '-' }}</td>
-                                    <td class="actions">
-                                        <div class="action-buttons">
-                                            <a href="{{ route('esbtp.annonces.show', $annonce) }}" class="btn-action primary" title="Voir">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            @php
-                                                $canEdit = true;
-
-                                                // Bloquer l'édition si l'annonce est expirée
-                                                if ($annonce->isExpired()) {
-                                                    $canEdit = false;
-                                                } elseif ($annonce->is_published) {
-                                                    // Règle des 15 minutes pour les annonces publiées
-                                                    $publishedAt = $annonce->date_publication && $annonce->date_publication > $annonce->created_at
-                                                        ? $annonce->date_publication
-                                                        : $annonce->created_at;
-                                                    $canEdit = $publishedAt->diffInMinutes(now()) <= 15;
-                                                }
-                                            @endphp
-
-                                            @if($canEdit)
-                                                <a href="{{ route('esbtp.annonces.edit', $annonce) }}" class="btn-action secondary" title="Modifier">
-                                                    <i class="fas fa-edit"></i>
-                                                </a>
-                                            @else
-                                                <button class="btn-action secondary disabled" disabled title="{{ $annonce->isExpired() ? 'Modification impossible (annonce expirée)' : 'Modification impossible (plus de 15 minutes)' }}">
-                                                    <i class="fas fa-edit text-muted"></i>
-                                                </button>
-                                            @endif
-                                            <button type="button" class="btn-action danger" onclick="deleteAnnonce({{ $annonce->id }})" title="Supprimer">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
+                                @include('esbtp.annonces._ligne')
                             @empty
                                 <tr>
                                     <td colspan="7" class="text-center py-4">
@@ -785,86 +724,7 @@
             <!-- Vue grille (mobile) -->
             <div class="annonces-grid" id="annoncesGrid">
                 @forelse($annonces as $annonce)
-                    @php
-                        $canEdit = true;
-                        if ($annonce->isExpired()) {
-                            $canEdit = false;
-                        } elseif ($annonce->is_published) {
-                            $publishedAt = $annonce->date_publication && $annonce->date_publication > $annonce->created_at
-                                ? $annonce->date_publication
-                                : $annonce->created_at;
-                            $canEdit = $publishedAt->diffInMinutes(now()) <= 15;
-                        }
-                    @endphp
-
-                    <div class="annonce-card {{ $annonce->isExpired() ? 'expired' : '' }}" data-title="{{ strtolower($annonce->titre) }}">
-                        <div class="annonce-card-header">
-                            <h3 class="annonce-card-title {{ $annonce->isExpired() ? 'expired' : '' }}">
-                                @if($annonce->priorite == 2)
-                                    <i class="fas fa-exclamation-triangle text-danger"></i>
-                                @endif
-                                {{ $annonce->titre }}
-                                @if($annonce->isExpired())
-                                    <i class="fas fa-clock text-danger" title="Annonce expirée"></i>
-                                @endif
-                            </h3>
-                        </div>
-
-                        <div class="annonce-card-badges">
-                            @if($annonce->isExpired())
-                                <span class="status-badge danger">
-                                    <i class="fas fa-clock"></i> Expirée
-                                </span>
-                            @else
-                                <span class="status-badge {{ $annonce->is_published ? 'success' : 'warning' }}">
-                                    {{ $annonce->is_published ? 'Publiée' : 'Brouillon' }}
-                                </span>
-                            @endif
-                            <span class="priority-badge priority-{{ $annonce->priorite }}">
-                                {{ $annonce->priorite == 2 ? 'Urgente' : ($annonce->priorite == 1 ? 'Importante' : 'Normale') }}
-                            </span>
-                            <span class="type-badge">
-                                {{ $annonce->type == 'general' ? 'Générale' : ucfirst($annonce->type) }}
-                            </span>
-                        </div>
-
-                        <div class="annonce-card-info">
-                            <div class="annonce-card-info-item">
-                                <div class="annonce-card-info-label">
-                                    <i class="fas fa-calendar-plus"></i> Créée le
-                                </div>
-                                <div class="annonce-card-info-value">
-                                    {{ $annonce->created_at->format('d/m/Y H:i') }}
-                                </div>
-                            </div>
-                            <div class="annonce-card-info-item">
-                                <div class="annonce-card-info-label">
-                                    <i class="fas fa-calendar-times"></i> Expire le
-                                </div>
-                                <div class="annonce-card-info-value">
-                                    {{ $annonce->date_expiration ? \Carbon\Carbon::parse($annonce->date_expiration)->format('d/m/Y H:i') : '-' }}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="annonce-card-actions">
-                            <a href="{{ route('esbtp.annonces.show', $annonce) }}" class="btn-action primary" title="Voir">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            @if($canEdit)
-                                <a href="{{ route('esbtp.annonces.edit', $annonce) }}" class="btn-action secondary" title="Modifier">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                            @else
-                                <button class="btn-action secondary disabled" disabled title="{{ $annonce->isExpired() ? 'Modification impossible (annonce expirée)' : 'Modification impossible (plus de 15 minutes)' }}">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                            @endif
-                            <button type="button" class="btn-action danger" onclick="deleteAnnonce({{ $annonce->id }})" title="Supprimer">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
+                    @include('esbtp.annonces._carte')
                 @empty
                     <div class="empty-state" style="grid-column: 1; padding: 3rem 1rem;">
                         <i class="fas fa-bullhorn fa-3x mb-3"></i>
@@ -875,11 +735,11 @@
             </div>
         </div>
         
-        @if($annonces->hasPages())
-            <div class="d-flex justify-content-center mt-4">
-                {{ $annonces->links() }}
-            </div>
-        @endif
+        {{-- Deux bas de liste : le tableau sur ordinateur, la grille sur telephone.
+             Seul celui qui est affiche charge la suite. --}}
+        <x-liste-infinie class="ann-bas-tableau" :paginateur="$annonces" cible="#ann-tbody" libelle="annonces" />
+        <x-liste-infinie class="ann-bas-grille" :paginateur="$annonces" cible="#annoncesGrid" libelle="annonces"
+                         :url="route('esbtp.annonces.index', ['vue' => 'grille'])" />
     </div>
     
     {{-- Modal de confirmation de suppression --}}

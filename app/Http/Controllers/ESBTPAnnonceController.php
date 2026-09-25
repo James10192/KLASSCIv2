@@ -14,6 +14,7 @@ use App\Models\ESBTPNiveauEtude;
 use Carbon\Carbon;
 use App\Notifications\ESBTPNotification;
 use App\Services\NotificationService;
+use App\Support\ListeInfinie;
 
 class ESBTPAnnonceController extends Controller
 {
@@ -98,11 +99,20 @@ class ESBTPAnnonceController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         $annonces = ESBTPAnnonce::with(['classes', 'etudiants', 'user'])
             ->orderBy('created_at', 'desc')
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('id', 'desc')
             ->paginate(10);
+
+        // La suite : en lignes de tableau sur ordinateur, en cartes sur telephone.
+        if (ListeInfinie::demandee($request)) {
+            $vue = $request->input('vue') === 'grille' ? 'esbtp.annonces._carte' : 'esbtp.annonces._ligne';
+
+            return ListeInfinie::reponse($annonces, fn ($annonce) => view($vue, compact('annonce'))->render());
+        }
 
         // Préparation des statistiques
         $stats = [
