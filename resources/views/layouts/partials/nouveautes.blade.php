@@ -22,7 +22,15 @@
     .nvx-surtitre { font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.72); }
     .nvx-titre { font-size: 1.3rem; font-weight: 700; margin: .05rem 0 0; color: #fff; }
     .nvx-fermer { margin-left: auto; }
-    .nvx-puces { display: flex; gap: .4rem; overflow-x: auto; margin-top: 1rem; padding-bottom: .15rem; scrollbar-width: none; }
+    .nvx-rail { position: relative; margin-top: 1rem; }
+    .nvx-puces { position: relative; display: flex; gap: .4rem; overflow-x: auto; padding-bottom: .15rem; scrollbar-width: none; }
+    .nvx-rail--gauche .nvx-puces { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 56px); mask-image: linear-gradient(to right, transparent 0, #000 56px); }
+    .nvx-rail--droite .nvx-puces { -webkit-mask-image: linear-gradient(to left, transparent 0, #000 56px); mask-image: linear-gradient(to left, transparent 0, #000 56px); }
+    .nvx-rail--gauche.nvx-rail--droite .nvx-puces { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%); }
+    .nvx-fleche { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1; width: 30px; height: 30px; border-radius: 999px; border: none; background: #fff; color: #0453cb; font-size: .72rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(15,23,42,.22); transition: background .2s ease; }
+    .nvx-fleche:hover { background: #eef4ff; }
+    .nvx-fleche--gauche { left: -4px; }
+    .nvx-fleche--droite { right: -4px; }
     .nvx-puces::-webkit-scrollbar { display: none; }
     .nvx-puce { flex-shrink: 0; border: 1px solid rgba(255,255,255,.22); background: rgba(255,255,255,.08); color: rgba(255,255,255,.85); border-radius: 999px; padding: .32rem .75rem; font-size: .76rem; font-weight: 600; white-space: nowrap; transition: background .2s ease, color .2s ease; }
     .nvx-puce:hover { background: rgba(255,255,255,.16); }
@@ -84,13 +92,18 @@
                     <button type="button" class="btn-close btn-close-white nvx-fermer" data-bs-dismiss="modal" aria-label="Fermer" id="whatsNewCloseBtn"></button>
                 </div>
                 @if($nvxTotal > 1)
-                    <div class="nvx-puces" role="tablist" aria-label="Nouveautés">
-                        @foreach($nvx['entrees'] as $k => $entree)
-                            <button type="button" class="nvx-puce" role="tab"
-                                    :class="i === {{ $k }} ? 'nvx-puce--active' : ''"
-                                    :aria-selected="i === {{ $k }} ? 'true' : 'false'"
-                                    x-on:click="aller({{ $k }})">{{ $entree['titre'] }}</button>
-                        @endforeach
+                    <div class="nvx-rail" x-data="nvxRail()" :class="{ 'nvx-rail--gauche': gauche, 'nvx-rail--droite': droite }">
+                        <button type="button" class="nvx-fleche nvx-fleche--gauche" x-show="gauche" x-cloak x-on:click="defiler(-1)" tabindex="-1" aria-label="Voir les nouveautés précédentes"><i class="fas fa-chevron-left"></i></button>
+                        <div class="nvx-puces" role="tablist" aria-label="Nouveautés" x-ref="puces"
+                             x-on:scroll.passive="mesurer()" x-on:wheel="roulette($event)">
+                            @foreach($nvx['entrees'] as $k => $entree)
+                                <button type="button" class="nvx-puce" role="tab"
+                                        :class="i === {{ $k }} ? 'nvx-puce--active' : ''"
+                                        :aria-selected="i === {{ $k }} ? 'true' : 'false'"
+                                        x-on:click="aller({{ $k }})">{{ $entree['titre'] }}</button>
+                            @endforeach
+                        </div>
+                        <button type="button" class="nvx-fleche nvx-fleche--droite" x-show="droite" x-cloak x-on:click="defiler(1)" tabindex="-1" aria-label="Voir les nouveautés suivantes"><i class="fas fa-chevron-right"></i></button>
                     </div>
                 @endif
             </div>
@@ -144,4 +157,57 @@
         </div>
     </div>
 </div>
+<script>
+    /*
+     * Rangée de puces de la fenêtre Nouveautés. Sans écran tactile, une rangée
+     * qui déborde ne se fait pas glisser : on ajoute des flèches aux bords (seulement
+     * quand il reste quelque chose à voir de ce côté), la molette verticale fait
+     * défiler la rangée, et la puce active revient toujours dans le champ.
+     */
+    if (typeof window.nvxRail !== 'function') {
+        window.nvxRail = function () {
+            return {
+                gauche: false,
+                droite: false,
+                init() {
+                    const modale = this.$el.closest('.modal');
+                    this._auAffichage = () => { this.mesurer(); this.centrer(false); };
+                    if (modale) modale.addEventListener('shown.bs.modal', this._auAffichage);
+                    this._auRedimensionnement = () => this.mesurer();
+                    window.addEventListener('resize', this._auRedimensionnement);
+                    this.$watch('i', () => this.$nextTick(() => this.centrer(true)));
+                    this.$nextTick(() => this.mesurer());
+                },
+                destroy() {
+                    const modale = this.$el.closest('.modal');
+                    if (modale) modale.removeEventListener('shown.bs.modal', this._auAffichage);
+                    window.removeEventListener('resize', this._auRedimensionnement);
+                },
+                mesurer() {
+                    const r = this.$refs.puces;
+                    if (!r) return;
+                    this.gauche = r.scrollLeft > 4;
+                    this.droite = r.scrollLeft + r.clientWidth < r.scrollWidth - 4;
+                },
+                defiler(sens) {
+                    const r = this.$refs.puces;
+                    r.scrollBy({ left: sens * Math.max(120, r.clientWidth * 0.7), behavior: 'smooth' });
+                },
+                roulette(ev) {
+                    const r = this.$refs.puces;
+                    if (r.scrollWidth <= r.clientWidth) return;
+                    if (Math.abs(ev.deltaY) <= Math.abs(ev.deltaX)) return;
+                    ev.preventDefault();
+                    r.scrollLeft += ev.deltaY;
+                },
+                centrer(doux) {
+                    const r = this.$refs.puces;
+                    const b = r && r.children[this.i];
+                    if (!b) return;
+                    r.scrollTo({ left: b.offsetLeft - (r.clientWidth - b.offsetWidth) / 2, behavior: doux ? 'smooth' : 'auto' });
+                },
+            };
+        };
+    }
+</script>
 @endif
