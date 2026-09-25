@@ -6,12 +6,15 @@
     'submitOnChange' => false,
     // L'option vide n'a pas le meme sens partout : « tout le monde » dans un
     // filtre, « personne » quand vide veut dire desassigner. Elle ne se devine
-    // pas : chaque ecran la nomme. Sans libelle, elle reprend l'invite.
-    // `false` la retire, pour un choix obligatoire.
+    // pas : chaque ecran qui assigne la nomme (empty-label, empty-hint,
+    // empty-icon="fa-user-slash"). Sans libelle, elle reprend l'invite sans
+    // ses tirets, ce qui ne vaut que pour une invite de filtre (« Tous les… ») :
+    // d'ou l'icone par defaut, `fa-globe`. `false` la retire, pour un choix
+    // obligatoire — c'est le `placeholderIsFirstOption` de x-au-select.
     'emptyOption' => true,
     'emptyLabel' => null,
     'emptyHint' => null,
-    'emptyIcon' => 'fa-user-slash',
+    'emptyIcon' => 'fa-globe',
 ])
 
 @php
@@ -79,7 +82,10 @@
 
     $totalUsers = $usersCollection->count();
     // L'invite sans ses tirets decoratifs (« — Tous les enseignants — »).
-    $libelleOptionVide = $emptyLabel ?? preg_replace('/^[\s\x{2014}-]+|[\s\x{2014}-]+$/u', '', (string) $placeholder);
+    $libelleOptionVide = $emptyLabel ?? preg_replace('/^[\s\x{00A0}\x{2013}\x{2014}-]+|[\s\x{00A0}\x{2013}\x{2014}-]+$/u', '', (string) $placeholder);
+    if ($libelleOptionVide === '') {
+        $libelleOptionVide = 'Aucun';
+    }
 @endphp
 
 <div class="au-up {{ $attributes->get('class') ?? '' }}"
@@ -143,7 +149,8 @@
             <button type="button"
                     class="au-up-option au-up-option--all"
                     :class="{ 'au-up-option--active': currentValue === '' }"
-                    @click="select(null)">
+                    @click="select(null)" role="option"
+                    :aria-selected="(currentValue === '').toString()">
                 <span class="au-up-avatar au-up-avatar--all"><i class="fas {{ $emptyIcon }}"></i></span>
                 <span class="au-up-option-info">
                     <span class="au-up-option-name">{{ $libelleOptionVide }}</span>
