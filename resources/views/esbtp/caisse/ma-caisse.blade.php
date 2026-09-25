@@ -235,6 +235,7 @@
     /* Les coupures sont des lignes de la carte, pas des cartes dans la carte. */
     .mcm-screen .m-list.one > .m-bill { border: 0; border-top: 1px solid #eef2f7; border-radius: 0; padding: 10px 16px; background: none; }
     .mcm-screen .m-list.one > .m-sec { padding: 14px 16px 6px; }
+    .mcm-screen .m-bill input.mcm-bill-in:not(.is-set) { color: #94a3b8; }
     .mcm-screen .m-bill input.mcm-bill-in { width: 72px; height: 44px; padding: 0 8px; text-align: center; font-size: 16px; line-height: 44px; }
     .mcm-ecart-lbl { font-weight: 700; color: #0f172a; }
     .mcm-ok { color: #0f6b4c !important; }
@@ -366,8 +367,9 @@
                     <label class="m-bill">
                         <b x-text="format(valeur)"></b>
                         <span class="mcm-bill-unit">FCFA</span>
-                        {{-- Texte à clavier numérique : Chrome ne centre pas le
-                             placeholder d'un type="number". saisir() ne garde que les chiffres. --}}
+                        {{-- Un vrai « 0 », sélectionné au toucher : Chrome ne centre pas
+                             un placeholder dans ce champ, la valeur si. saisir() ne garde
+                             que les chiffres, et 0 vaut « aucune coupure ». --}}
                         <input type="text"
                                pattern="[0-9]*"
                                class="cnt mcm-bill-in"
@@ -375,9 +377,9 @@
                                inputmode="numeric"
                                maxlength="5"
                                autocomplete="off"
-                               placeholder="0"
+                               x-on:focus="$event.target.select()"
                                x-bind:aria-label="'Nombre de ' + format(valeur) + ' FCFA'"
-                               x-bind:value="quantites[valeur] === 0 || quantites[valeur] === undefined ? '' : quantites[valeur]"
+                               x-bind:value="quantites[valeur] === undefined ? 0 : quantites[valeur]"
                                x-on:input="saisir(valeur, $event.target.value)">
                         <span class="sum" x-text="format(sousTotal(valeur))"></span>
                     </label>
