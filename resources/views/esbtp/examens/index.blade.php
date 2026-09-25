@@ -35,16 +35,25 @@
 @push('styles')
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
 <style>
-    /* UE et ECUE se remplissent selon le parcours choisi : listes du navigateur
-       gardées pour la cascade, habillées comme les sélecteurs de la charte. */
-    .exp-cascade {
-        width: 100%; -webkit-appearance: none; appearance: none; cursor: pointer;
-        border: 1.5px solid #e2e8f0; border-radius: 10px; padding: .55rem 2.1rem .55rem .8rem;
-        font-size: .88rem; font-weight: 600; color: #1e293b; transition: border-color .2s, box-shadow .2s;
-        background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230453cb' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right .75rem center;
+    /* UE et ECUE se remplissent selon le parcours choisi : sélecteur Alpine au
+       dessin de la charte (le composant au-select ne prend que des options fixes). */
+    .exp-pick { position: relative; }
+    .exp-pick-btn {
+        width: 100%; display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+        border: 1.5px solid #e2e8f0; border-radius: 10px; padding: .55rem .8rem; background: #fff;
+        font-size: .88rem; font-weight: 600; color: #1e293b; text-align: left; cursor: pointer; transition: border-color .2s, box-shadow .2s;
     }
-    .exp-cascade:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
-    .exp-cascade:disabled { color: #94a3b8; background-color: #f8fafc; cursor: not-allowed; }
+    .exp-pick-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .exp-pick-btn i { color: #0453cb; font-size: .72rem; }
+    .exp-pick-btn:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
+    .exp-pick-btn:disabled { color: #94a3b8; background: #f8fafc; cursor: not-allowed; }
+    .exp-pick-menu {
+        position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 1060; max-height: 240px; overflow-y: auto;
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 8px 30px rgba(4,83,203,.12); padding: .3rem;
+    }
+    .exp-pick-opt { display: block; width: 100%; text-align: left; border: 0; background: none; padding: .5rem .65rem; border-radius: 7px; font-size: .85rem; color: #1e293b; cursor: pointer; }
+    .exp-pick-opt:hover { background: rgba(4,83,203,.06); }
+    .exp-pick-opt--actif { background: rgba(4,83,203,.1); color: #0453cb; font-weight: 600; }
 
 [x-cloak] { display: none !important; }
 
@@ -806,28 +815,37 @@
                             </div>
                             <div class="field">
                                 <label>UE *</label>
-                                <select x-ref="ueSelect" name="unite_enseignement_id"
-                                        @change="onUeChange($event.target.value)"
-                                        :disabled="!parcoursId || ues.length === 0"
-                                        class="exp-cascade">
-                                    <option value="">— UE —</option>
-                                    <template x-for="ue in ues" :key="ue.id">
-                                        <option :value="ue.id" x-text="ue.name + (ue.code ? ' · ' + ue.code : '')"></option>
-                                    </template>
-                                </select>
+                                <input type="hidden" name="unite_enseignement_id" :value="ueId">
+                                <div class="exp-pick" x-data="{ ouvert: false }" @click.outside="ouvert = false" @keydown.escape="ouvert = false">
+                                    <button type="button" class="exp-pick-btn" :disabled="!parcoursId || ues.length === 0" @click="ouvert = !ouvert" :aria-expanded="ouvert">
+                                        <span x-text="(ues.find(u => String(u.id) === String(ueId)) || {}).name || '— UE —'"></span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="exp-pick-menu" x-show="ouvert" x-cloak role="listbox">
+                                        <template x-for="ue in ues" :key="ue.id">
+                                            <button type="button" class="exp-pick-opt" :class="String(ue.id) === String(ueId) ? 'exp-pick-opt--actif' : ''"
+                                                    @click="onUeChange(String(ue.id)); ouvert = false" x-text="ue.name + (ue.code ? ' · ' + ue.code : '')"></button>
+                                        </template>
+                                    </div>
+                                </div>
                                 <small x-show="parcoursId && ues.length === 0 && !loadingUes" x-cloak style="color:#b91c1c;font-size:.7rem;">Aucune UE pour ce parcours.</small>
                                 <small x-show="loadingUes" x-cloak style="color:#64748b;font-size:.7rem;"><i class="fas fa-spinner fa-spin"></i> Chargement…</small>
                             </div>
                             <div class="field full">
                                 <label>ECUE * <span style="font-weight:400;color:#64748b;font-size:.72rem;text-transform:none;">(Élément Constitutif d'UE)</span></label>
-                                <select name="matiere_id" x-model="ecueId"
-                                        :disabled="!ueId || ecues.length === 0"
-                                        class="exp-cascade">
-                                    <option value="">— ECUE —</option>
-                                    <template x-for="ecue in ecues" :key="ecue.id">
-                                        <option :value="ecue.id" x-text="ecue.name + (ecue.code ? ' · ' + ecue.code : '')"></option>
-                                    </template>
-                                </select>
+                                <input type="hidden" name="matiere_id" :value="ecueId">
+                                <div class="exp-pick" x-data="{ ouvert: false }" @click.outside="ouvert = false" @keydown.escape="ouvert = false">
+                                    <button type="button" class="exp-pick-btn" :disabled="!ueId || ecues.length === 0" @click="ouvert = !ouvert" :aria-expanded="ouvert">
+                                        <span x-text="(ecues.find(e => String(e.id) === String(ecueId)) || {}).name || '— ECUE —'"></span>
+                                        <i class="fas fa-chevron-down"></i>
+                                    </button>
+                                    <div class="exp-pick-menu" x-show="ouvert" x-cloak role="listbox">
+                                        <template x-for="ecue in ecues" :key="ecue.id">
+                                            <button type="button" class="exp-pick-opt" :class="String(ecue.id) === String(ecueId) ? 'exp-pick-opt--actif' : ''"
+                                                    @click="ecueId = String(ecue.id); ouvert = false" x-text="ecue.name + (ecue.code ? ' · ' + ecue.code : '')"></button>
+                                        </template>
+                                    </div>
+                                </div>
                                 <small x-show="ueId && ecues.length === 0" x-cloak style="color:#b91c1c;font-size:.7rem;">Aucun ECUE configuré pour cette UE.</small>
                             </div>
                             <div class="field">

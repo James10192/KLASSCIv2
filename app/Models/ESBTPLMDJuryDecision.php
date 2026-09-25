@@ -103,12 +103,12 @@ class ESBTPLMDJuryDecision extends Model implements Auditable
 
     public static function libelleDecision(?string $code): ?string
     {
-        return $code === null ? null : (self::LIBELLES_DECISIONS[$code] ?? ucfirst(str_replace('_', ' ', $code)));
+        return $code === null ? null : (self::LIBELLES_DECISIONS[strtolower($code)] ?? ucfirst(str_replace('_', ' ', strtolower($code))));
     }
 
     public static function libelleMention(?string $code): ?string
     {
-        return $code === null ? null : (self::LIBELLES_MENTIONS[$code] ?? ucfirst(str_replace('_', ' ', $code)));
+        return $code === null ? null : (self::LIBELLES_MENTIONS[strtolower($code)] ?? ucfirst(str_replace('_', ' ', strtolower($code))));
     }
 
     public function jury(): BelongsTo

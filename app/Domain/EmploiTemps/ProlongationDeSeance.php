@@ -21,8 +21,11 @@ use Illuminate\Validation\ValidationException;
  * et un autre cours de l'enseignant ailleurs, sur tout emploi du temps actif.
  *
  * Une prolongation accordée déplace l'heure de fin effective de cette
- * occurrence : la fenêtre d'émargement de fin et le décompte des heures payées
- * la lisent via `heureFinEffective()`.
+ * occurrence. La fenêtre d'émargement de fin la lit via `heureFinEffective()`
+ * (par `FenetresDEmargement::fenetreDeFin()`). Le décompte des heures payées,
+ * lui, calcule sur toute une période et additionne les minutes accordées dans
+ * `TeacherHoursService::minutesProlongees()` : même donnée, lecture groupée
+ * pour ne pas interroger la base séance par séance.
  */
 final class ProlongationDeSeance
 {

@@ -513,7 +513,7 @@ class ESBTPSalaireController extends Controller
         // Un net négatif n'est pas un bulletin : c'est une dette de l'enseignant,
         // qui ne se règle pas par une fiche de paie.
         if ($preview['net_negatif']) {
-            return response()->json(['message' => 'Net négatif : '.collect($preview['avertissements'])->first(fn ($a) => str_contains($a, 'négatif'))], 422);
+            return response()->json(['message' => $preview['net_negatif_message']], 422);
         }
 
         $salaire = DB::transaction(function () use ($salaire, $teacher, $annee, $data, $preview, $from, $to) {

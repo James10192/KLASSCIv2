@@ -181,9 +181,11 @@ class PayrollComputationService
         $totalRetenues = round(array_sum(array_column($retenues, 'montant')), 2);
         $net = round($brut - $totalRetenues, 2);
 
+        $netNegatifMessage = null;
         if ($net < 0) {
-            $avertissements[] = 'Les retenues ('.number_format($totalRetenues, 0, ',', ' ').' FCFA) dépassent le brut ('
+            $netNegatifMessage = 'Les retenues ('.number_format($totalRetenues, 0, ',', ' ').' FCFA) dépassent le brut ('
                 .number_format($brut, 0, ',', ' ').' FCFA) : le net serait négatif. Réduisez les retenues ou reportez-les sur un autre mois.';
+            $avertissements[] = $netNegatifMessage;
         }
         if ($heuresTotal <= 0 && $primesTotal <= 0) {
             $avertissements[] = 'Aucune heure réalisée sur la période : vérifiez les émargements avant de préparer ce bulletin.';
@@ -203,6 +205,7 @@ class PayrollComputationService
             'total_retenues'   => $totalRetenues,
             'net'              => $net,
             'net_negatif'      => $net < 0,
+            'net_negatif_message' => $netNegatifMessage,
             'avertissements'   => $avertissements,
             'lignes'           => array_merge($gains, $retenues),
         ];

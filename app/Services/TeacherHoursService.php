@@ -52,6 +52,7 @@ class TeacherHoursService
      */
     public function summary(ESBTPTeacher $teacher, Carbon $from, Carbon $to, array $filtres = []): array
     {
+        $this->bornerProlongations($from, $to);
         $seances = $this->seancesDeLaPeriode($teacher, $from, $to, $filtres);
         $emargements = $this->emargementsParSeance($seances->pluck('id')->all());
 
@@ -84,6 +85,7 @@ class TeacherHoursService
      */
     public function report(Carbon $from, Carbon $to, array $filtres = []): array
     {
+        $this->bornerProlongations($from, $to);
         $seances = $this->seancesGlobalesDeLaPeriode($from, $to, $filtres);
         $emargements = $this->emargementsParSeance($seances->pluck('id')->all());
 
@@ -308,6 +310,16 @@ class TeacherHoursService
     /** @var array<int, array<string, int>>|null minutes de prolongation accordées, par séance puis date */
     private ?array $prolongations = null;
 
+    /** @var array{0: string, 1: string}|null période dont on lit les prolongations */
+    private ?array $bornesProlongations = null;
+
+    /** Ne lire que les prolongations de la période calculée, pas tout l'historique. */
+    private function bornerProlongations(Carbon $from, Carbon $to): void
+    {
+        $this->bornesProlongations = [$from->toDateString(), $to->toDateString()];
+        $this->prolongations = null;
+    }
+
     /**
      * Les heures payées d'une séance réalisée.
      *
@@ -355,7 +367,11 @@ class TeacherHoursService
         if ($this->prolongations === null) {
             $this->prolongations = [];
             if (\Illuminate\Support\Facades\Schema::hasTable('esbtp_prolongations_seance')) {
-                foreach (\App\Models\ESBTPProlongationSeance::where('statut', \App\Models\ESBTPProlongationSeance::ACCORDEE)->get(['seance_cours_id', 'date', 'minutes']) as $p) {
+                $requete = \App\Models\ESBTPProlongationSeance::where('statut', \App\Models\ESBTPProlongationSeance::ACCORDEE);
+                if ($this->bornesProlongations) {
+                    $requete->whereBetween('date', $this->bornesProlongations);
+                }
+                foreach ($requete->get(['seance_cours_id', 'date', 'minutes']) as $p) {
                     $cle = $p->date->toDateString();
                     $this->prolongations[$p->seance_cours_id][$cle] = ($this->prolongations[$p->seance_cours_id][$cle] ?? 0) + (int) $p->minutes;
                 }
