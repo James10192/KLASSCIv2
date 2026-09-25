@@ -77,8 +77,8 @@
      data-groups='@json($groupedJson)'
      data-submit-on-change="{{ $submitOnChange ? '1' : '0' }}"
      data-current="{{ $value ?? '' }}"
-     @click.outside="open = false"
-     @keydown.escape="open = false">
+     @click.outside="fermer()"
+     @keydown.escape="fermer()">
 
     <button type="button"
             class="au-up-trigger"
@@ -104,7 +104,7 @@
         <i class="fas fa-chevron-down au-up-caret" :class="{ 'au-up-caret--open': open }"></i>
     </button>
 
-    <div class="au-up-menu" x-show="open" x-cloak :style="menuStyle"
+    <div class="au-up-menu" x-ref="menu" x-show="open" x-cloak
          x-transition:enter="au-up-menu--entering"
          x-transition:enter-start="au-up-menu--enter-start"
          x-transition:enter-end="au-up-menu--enter-end">
@@ -112,7 +112,7 @@
         <div class="au-up-search">
             <i class="fas fa-search"></i>
             <input type="text" x-model="search" x-ref="searchInput" @click.stop
-                   @keydown.escape.stop="open = false"
+                   @keydown.escape.stop="fermer()"
                    placeholder="Rechercher par nom, email ou rôle…">
             <button type="button" x-show="search.length > 0"
                     @click="search = ''; $refs.searchInput.focus()"
@@ -231,7 +231,9 @@
     background: #f8fafc;
 }
 .au-up-search > i:first-child { color: #94a3b8; }
-.au-up-search input { flex: 1; border: none; background: transparent; outline: none; font-size: .88rem; color: #0f172a; }
+/* min-width:0 : sans lui, le champ garde sa largeur native et deborde d'un
+   menu etroit ; le focus fait alors defiler le menu, affiche coupe a gauche. */
+.au-up-search input { flex: 1; min-width: 0; width: 100%; border: none; background: transparent; outline: none; font-size: .88rem; color: #0f172a; }
 .au-up-search input::placeholder { color: #94a3b8; }
 .au-up-search-clear {
     background: #e2e8f0; border: none; width: 24px; height: 24px;
@@ -313,9 +315,22 @@ if (typeof window.auUserPicker !== 'function') {
             groups: [],
             currentValue: '',
             submitOnChange: false,
-            menuStyle: '',
             _repositionMenu: null,
+            _racine: null,
+            _declencheur: null,
+            _menu: null,
             init() {
+                // Dans une methode appelee depuis un gestionnaire
+                // (`@click="toggle()"` sur le bouton), `$el` designe le BOUTON,
+                // pas la racine : `$el.querySelector('.au-up-trigger')` y rendait
+                // null et positionMenu sortait sans rien poser. Le menu restait
+                // sur sa position CSS, coupe par tout parent `overflow:hidden`
+                // (modales), jusqu'au premier scroll. On garde donc les
+                // elements utiles une fois pour toutes, ici, ou `$el` est bien
+                // la racine. Meme correctif que le composant x-au-select (PR #1199).
+                this._racine = this.$el;
+                this._declencheur = this.$el.querySelector('.au-up-trigger');
+                this._menu = this.$refs.menu || this.$el.querySelector('.au-up-menu');
                 try { this.groups = JSON.parse(this.$el.dataset.groups || '[]'); }
                 catch (e) { this.groups = []; }
                 this.currentValue = this.$el.dataset.current || '';
@@ -323,7 +338,7 @@ if (typeof window.auUserPicker !== 'function') {
                 this.$nextTick(() => { if (this.$refs.native) this.$refs.native.value = this.currentValue; });
                 this._repositionMenu = (e) => {
                     if (!this.open) return;
-                    if (e?.target && this.$el.querySelector('.au-up-menu')?.contains(e.target)) return;
+                    if (e?.target && this._menu?.contains(e.target)) return;
                     this.positionMenu();
                 };
                 window.addEventListener('resize', this._repositionMenu, { passive: true });
@@ -338,23 +353,29 @@ if (typeof window.auUserPicker !== 'function') {
                 window.visualViewport?.removeEventListener('scroll', this._repositionMenu);
             },
             toggle() {
-                this.open = !this.open;
                 if (this.open) {
-                    // Position before Alpine reveals the menu, then refine with its rendered size.
-                    this.positionMenu();
-                    this.$nextTick(() => {
-                        window.requestAnimationFrame(() => {
-                            this.positionMenu();
-                            this.$refs.searchInput?.focus();
-                        });
-                    });
-                } else {
-                    this.menuStyle = '';
+                    this.fermer();
+                    return;
                 }
+                this.open = true;
+                // Position before Alpine reveals the menu, then refine with its rendered size.
+                this.positionMenu();
+                this.$nextTick(() => {
+                    window.requestAnimationFrame(() => {
+                        this.positionMenu();
+                        this.$refs.searchInput?.focus();
+                    });
+                });
+            },
+            /** Unique chemin de fermeture : clic dehors, echappement, choix, bouton. */
+            fermer() {
+                this.open = false;
+                this.search = '';
+                this.effacerPositionMenu();
             },
             positionMenu() {
-                const trigger = this.$el.querySelector('.au-up-trigger');
-                const menu = this.$el.querySelector('.au-up-menu');
+                const trigger = this._declencheur;
+                const menu = this._menu;
                 if (!trigger || !menu) return;
 
                 const margin = 12;
@@ -371,9 +392,33 @@ if (typeof window.auUserPicker !== 'function') {
                 const openUp = spaceBelow < 220 && spaceAbove > spaceBelow;
                 const availableHeight = Math.max(0, Math.min(500, openUp ? spaceAbove : spaceBelow));
 
-                this.menuStyle = openUp
-                    ? `position:fixed;left:${left}px;right:auto;top:auto;bottom:${visibleHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
-                    : `position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
+                this.appliquerPositionMenu({
+                    position: 'fixed',
+                    left: `${left}px`,
+                    right: 'auto',
+                    top: openUp ? 'auto' : `${triggerRect.bottom + gap}px`,
+                    bottom: openUp ? `${visibleHeight - triggerRect.top + gap}px` : 'auto',
+                    width: `${menuWidth}px`,
+                    'min-width': `${minimumWidth}px`,
+                    'max-width': `${viewportWidth}px`,
+                    'max-height': `${availableHeight}px`,
+                    'transform-origin': openUp ? 'bottom center' : 'top center',
+                });
+            },
+            /**
+             * Propriete par propriete, jamais un `:style` en chaine : celui-ci
+             * reecrit l'attribut style entier, sur lequel x-show pose et
+             * retire `display`. `display` n'appartient qu'a x-show.
+             */
+            appliquerPositionMenu(proprietes) {
+                if (! this._menu) return;
+                Object.entries(proprietes).forEach(([nom, valeur]) => this._menu.style.setProperty(nom, valeur));
+            },
+            effacerPositionMenu() {
+                if (! this._menu) return;
+                ['position', 'left', 'right', 'top', 'bottom', 'width', 'min-width',
+                    'max-width', 'max-height', 'transform-origin']
+                    .forEach((nom) => this._menu.style.removeProperty(nom));
             },
             get filteredGroups() {
                 const s = this.search.trim().toLowerCase();
@@ -401,14 +446,14 @@ if (typeof window.auUserPicker !== 'function') {
             },
             select(u, group) {
                 this.currentValue = u ? String(u.id) : '';
-                this.open = false; this.search = ''; this.menuStyle = '';
+                this.fermer();
                 this.$nextTick(() => {
                     if (this.$refs.native) {
                         this.$refs.native.value = this.currentValue;
                         this.$refs.native.dispatchEvent(new Event('change', { bubbles: true }));
                     }
                     if (this.submitOnChange) {
-                        const form = this.$el.closest('form');
+                        const form = this._racine.closest('form');
                         if (form) form.submit();
                     }
                 });
