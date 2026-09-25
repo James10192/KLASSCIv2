@@ -12,6 +12,8 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
+use App\Services\Inscriptions\SelectionDInscriptions;
+use App\Support\ListeInfinie;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
@@ -119,19 +121,12 @@ class ESBTPInscriptionController extends Controller
         $mentionFilter = $request->input("mention");
         $parcoursFilter = $request->input("parcours");
 
-        // Tri (whitelist pour éviter SQL injection)
-        $allowedSorts = ["created_at", "date_inscription", "status", "filiere_id", "niveau_id", "nom"];
-        $sortInput = (string) $request->input("sort", "");
-        $sort = in_array($sortInput, $allowedSorts, true) ? $sortInput : "created_at";
-
-        $dirInput = strtolower((string) $request->input("dir", "desc"));
-        $dir = in_array($dirInput, ["asc", "desc"], true) ? $dirInput : "desc";
-
         // Pagination (whitelist pour éviter DoS)
         $allowedPerPage = [15, 25, 50, 100];
+        // Taille d'une TRANCHE : la liste se charge au defilement.
         $perPage = in_array((int) $request->input("per_page"), $allowedPerPage, true)
             ? (int) $request->input("per_page")
-            : 15;
+            : 25;
 
         // Construire la requête avec les filtres.
         // classe.parcours.mention.domaine eager-loaded pour la cellule LMD-aware
@@ -150,19 +145,7 @@ class ESBTPInscriptionController extends Controller
         ]);
 
         $filtres->appliquer($baseQuery, $request);
-
-        // Appliquer le tri (sauf pour "nom" qui nécessite un join, et si recherche active)
-        if (!$search) {
-            if ($sort === "nom") {
-                $baseQuery
-                    ->leftJoin("esbtp_etudiants", "esbtp_inscriptions.etudiant_id", "=", "esbtp_etudiants.id")
-                    ->orderBy("esbtp_etudiants.nom", $dir)
-                    ->orderBy("esbtp_etudiants.prenoms", $dir)
-                    ->select("esbtp_inscriptions.*");
-            } else {
-                $baseQuery->orderBy($sort, $dir);
-            }
-        }
+        [$sort, $dir] = $filtres->trier($baseQuery, $request);
 
         if ($search) {
             $inscriptions = $this->searchService->search(
@@ -185,6 +168,15 @@ class ESBTPInscriptionController extends Controller
                 return $inscription;
             })
         );
+
+        // Tranche suivante du defilement : les lignes seules, avant tout ce que
+        // seule la page complete affiche (filtres, compteurs).
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $inscriptions,
+                fn (ESBTPInscription $inscription) => view('esbtp.inscriptions.partials.ligne-inscription', compact('inscription'))->render(),
+            );
+        }
 
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where("is_active", true)->get();
@@ -1695,7 +1687,9 @@ class ESBTPInscriptionController extends Controller
         if (!in_array($dir, ["asc", "desc"], true)) {
             $dir = "desc";
         }
-        $query->orderBy($sort, $dir);
+        $query->orderBy($sort, $dir)
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy("esbtp_inscriptions.id", $dir);
 
         // Pagination (whitelist per_page)
         $perPage = (int) $request->input("per_page", 25);
@@ -1714,6 +1708,14 @@ class ESBTPInscriptionController extends Controller
 
             return $inscription;
         });
+
+        // La suite de la liste : ses lignes seules, avant filtres et compteurs.
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $inscriptions,
+                fn ($inscription) => view("esbtp.inscriptions.partials.administration-ligne", compact("inscription"))->render(),
+            );
+        }
 
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where("is_active", true)->get();
@@ -1853,7 +1855,7 @@ class ESBTPInscriptionController extends Controller
      */
     public function bulkValider(BulkValiderRequest $request)
     {
-        $inscriptionIds = $request->input("inscription_ids", []);
+        $inscriptionIds = app(SelectionDInscriptions::class)->identifiants($request);
         $forceValidation = $request->input("force", false);
 
         try {
@@ -1975,12 +1977,12 @@ class ESBTPInscriptionController extends Controller
     public function bulkAnnuler(Request $request)
     {
         $request->validate([
-            "inscription_ids" => "required|array|min:1",
+            "inscription_ids" => "required_unless:scope,filtre|array|min:1",
             "inscription_ids.*" => "integer|exists:esbtp_inscriptions,id",
             "motif" => "required|string|min:3|max:500",
         ]);
 
-        $ids = $request->input("inscription_ids");
+        $ids = app(SelectionDInscriptions::class)->identifiants($request);
         $motif = $request->input("motif");
         $userId = Auth::id();
         $successCount = 0;
@@ -2015,11 +2017,11 @@ class ESBTPInscriptionController extends Controller
     public function bulkExport(Request $request)
     {
         $request->validate([
-            "inscription_ids" => "required|array|min:1",
+            "inscription_ids" => "required_unless:scope,filtre|array|min:1",
             "inscription_ids.*" => "integer|exists:esbtp_inscriptions,id",
         ]);
 
-        $inscriptions = ESBTPInscription::whereIn("id", $request->input("inscription_ids"))
+        $inscriptions = ESBTPInscription::whereIn("id", app(SelectionDInscriptions::class)->identifiants($request, ecriture: false))
             ->with(["etudiant", "filiere", "niveau", "classe", "anneeUniversitaire"])
             ->get();
 
@@ -2684,9 +2686,18 @@ class ESBTPInscriptionController extends Controller
             ->when($condition !== '', fn($q) => $q->where('condition_reserve', $condition))
             ->when($hasPayment === 'yes', fn($q) => $q->whereHas('paiements', fn($pq) => $pq->where('status', 'validé')))
             ->when($hasPayment === 'no', fn($q) => $q->whereDoesntHave('paiements', fn($pq) => $pq->where('status', 'validé')))
-            ->orderBy($sort, $dir);
+            ->orderBy($sort, $dir)
+            // Departage stable : la liste se charge par tranches.
+            ->orderBy('esbtp_inscriptions.id', $dir);
 
         $inscriptions = $query->paginate($perPage)->appends($request->query());
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse(
+                $inscriptions,
+                fn ($inscription) => view('esbtp.inscriptions.partials.sous-reserve-ligne', compact('inscription', 'anneeEnCours'))->render(),
+            );
+        }
 
         // Stats globales (non filtrees par filtres, juste is_sous_reserve)
         $statsBase = ESBTPInscription::where('is_sous_reserve', true)

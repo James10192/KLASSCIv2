@@ -31,6 +31,7 @@ use App\Http\Requests\Attendance\JustifyAbsenceRequest;
 use App\Http\Requests\Attendance\ProcessJustificationRequest;
 use App\Services\AbsenceJustificationService;
 use App\Services\Attendance\AttendanceStudentCohortService;
+use App\Support\ListeInfinie;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
@@ -65,12 +66,6 @@ class ESBTPAttendanceController extends Controller
     {
         // Get current academic year
         $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-
-        // Get active classes for the filter dropdown
-        $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
-
-        // Get all subjects for the filter dropdown
-        $matieres = ESBTPMatiere::orderBy('name')->get();
 
         // Build the base query with necessary relationships
         $query = ESBTPAttendance::with([
@@ -123,8 +118,18 @@ class ESBTPAttendanceController extends Controller
         // Create a copy of the query for statistics BEFORE pagination
         $statsQuery = clone $query;
 
-        // Get paginated results
-        $attendances = $query->latest('date')->paginate(15);
+        // Departage stable : la liste se charge par tranches.
+        $attendances = $query->latest('date')->orderByDesc('esbtp_attendances.id')->paginate(15)->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($attendances, fn ($attendance) => view('esbtp.attendances._ligne', compact('attendance'))->render());
+        }
+
+        // Get active classes for the filter dropdown
+        $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
+
+        // Get all subjects for the filter dropdown
+        $matieres = ESBTPMatiere::orderBy('name')->get();
 
         // Calculate statistics for each status using the unpaginated query ($statsQuery déjà cloné ligne 113)
         $stats = [
@@ -1517,7 +1522,12 @@ class ESBTPAttendanceController extends Controller
             $query->whereDate('date', '<=', $request->date_fin);
         }
 
-        $absences = $query->orderByDesc('justified_at')->paginate(20)->withQueryString();
+        // Departage stable : la liste se charge par tranches.
+        $absences = $query->orderByDesc('justified_at')->orderByDesc('esbtp_attendances.id')->paginate(20)->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($absences, fn ($abs) => view('esbtp.attendances._justification', compact('abs', 'statusFilter'))->render());
+        }
 
         // KPIs (counts par statut)
         $kpis = [

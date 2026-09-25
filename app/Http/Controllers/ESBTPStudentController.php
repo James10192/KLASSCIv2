@@ -198,7 +198,8 @@ class ESBTPStudentController extends Controller
         }
 
         // Infinite scroll : 30 items par "page" (sentinel charge la suivante).
-        $perPage = (int) $request->input('per_page', 30);
+        // Taille d'une tranche du defilement, bornee : la valeur vient de l'URL.
+        $perPage = min(100, max(1, (int) $request->input('per_page', 30)));
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
 
         \Log::info('ESBTPStudentController@index processing', array_merge($baseLogContext, [
@@ -329,7 +330,11 @@ class ESBTPStudentController extends Controller
             $sortOrder = in_array(strtolower($sortOrder), ['asc', 'desc']) ? strtolower($sortOrder) : 'desc';
 
             // Appliquer le tri
-            $baseQuery->orderBy($sortColumn, $sortOrder);
+            $baseQuery->orderBy($sortColumn, $sortOrder)
+                // Departage unique : la liste se charge par tranches ; sur une
+                // egalite (meme statut, import de la meme seconde) une tranche
+                // repeterait des etudiants et en sauterait d'autres.
+                ->orderBy('esbtp_etudiants.id', $sortOrder);
 
             $etudiants = $baseQuery->paginate($perPage)->appends($request->query());
         }

@@ -42,6 +42,7 @@
 @endphp
 <tr class="ii-row {{ $problemeClass }}"
     data-inscription-id="{{ $inscription->id }}"
+    data-li-cle="{{ $inscription->id }}"
     data-matricule="{{ $etudiant->matricule ?? '' }}"
     data-nom="{{ $nomComplet }}"
     @if($showHref) data-row-href="{{ $showHref }}" @endif>

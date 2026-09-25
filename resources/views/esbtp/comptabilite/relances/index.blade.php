@@ -607,22 +607,6 @@
 .empty-state h5 { font-weight: 600; color: var(--rl-text); margin-bottom: .4rem; }
 .empty-state p { font-size: .83rem; max-width: 320px; margin: 0 auto; line-height: 1.5; }
 
-/* ── PAGINATION ── */
-.rel-pagination {
-    padding: 1rem 1.25rem;
-    border-top: 1px solid var(--rl-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: .75rem;
-}
-.rel-pagination .page-info {
-    font-size: .78rem;
-    color: var(--rl-muted);
-    font-weight: 500;
-}
-
 /* ── LOADING OVERLAY ── */
 .rel-loading {
     position: absolute;
@@ -1067,15 +1051,6 @@
                 </select>
             </div>
 
-            <div class="rl-filter-group" style="min-width:90px;max-width:110px;">
-                <label class="rl-filter-label">Par page</label>
-                <select name="per_page" class="rl-filter-input">
-                    @foreach ([10, 25, 50, 100] as $pp)
-                        <option value="{{ $pp }}" {{ $perPage == $pp ? 'selected' : '' }}>{{ $pp }}</option>
-                    @endforeach
-                </select>
-            </div>
-
             <input type="hidden" name="risk" id="risk-hidden" value="{{ $riskFilter }}">
 
             <div style="display:flex;gap:.5rem;align-items:flex-end;">
@@ -1201,7 +1176,6 @@
                 set('tab-count-medium',     kpis.count_medium);
             }
 
-            wirePaginationLinks();
             hideLoader();
         })
         .catch(() => hideLoader());
@@ -1255,28 +1229,8 @@
         fetchTable({ page: 1 });
     });
 
-    /* Per-page auto submit */
-    form.querySelector('select[name="per_page"]').addEventListener('change', function () {
-        const params = collectFormParams();
-        params.page = 1;
-        fetchTable(params);
-    });
-
-    /* Pagination links */
-    function wirePaginationLinks() {
-        tableWrap.querySelectorAll('.pagination a[href]').forEach(link => {
-            link.addEventListener('click', function (e) {
-                e.preventDefault();
-                const href = new URL(this.href);
-                const page = href.searchParams.get('page') || 1;
-                const params = collectFormParams();
-                params.page = page;
-                fetchTable(params);
-            });
-        });
-    }
-
-    wirePaginationLinks();
+    /* La suite de la liste se charge au defilement (x-liste-infinie) : plus de
+       pagination a intercepter. */
     syncExportLinks();
 })();
 </script>

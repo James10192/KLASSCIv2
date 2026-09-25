@@ -13,6 +13,7 @@ use App\Services\DocumentPrintGuard;
 use App\Services\LMD\Exceptions\MaquetteSansCompositionException;
 use App\Services\LMD\LmdCreditWalletService;
 use App\Services\LMDBulletinService;
+use App\Support\ListeInfinie;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
@@ -58,7 +59,17 @@ class ESBTPLMDBulletinController extends Controller
             });
         }
 
-        $bulletins = $query->orderByDesc('created_at')->paginate(20)->withQueryString();
+        // Base des indicateurs, prise AVANT la pagination : paginate() pose sa
+        // limite et son decalage sur la requete elle-meme, et une page 2 aurait
+        // compte les publies de zero ligne.
+        $base = clone $query;
+
+        // Departage stable : la liste se charge par tranches.
+        $bulletins = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(20)->withQueryString();
+
+        if (ListeInfinie::demandee($request)) {
+            return ListeInfinie::reponse($bulletins, fn ($b) => view('esbtp.lmd.bulletins._ligne', compact('b'))->render());
+        }
 
         $classes = ESBTPClasse::where('systeme_academique', 'LMD')
             ->orderBy('name')
@@ -66,7 +77,14 @@ class ESBTPLMDBulletinController extends Controller
 
         $annees = ESBTPAnneeUniversitaire::orderByDesc('annee_debut')->get();
 
-        return view('esbtp.lmd.bulletins.index', compact('bulletins', 'classes', 'annees'));
+        // Sur tous les bulletins filtres, pas sur la premiere tranche : la
+        // liste se lit d'un seul tenant au defilement.
+        $kpis = [
+            'publies' => (clone $base)->where('is_published', true)->count(),
+            'moyenne' => (clone $base)->avg('moyenne_generale'),
+        ];
+
+        return view('esbtp.lmd.bulletins.index', compact('bulletins', 'classes', 'annees', 'kpis'));
     }
 
     /**

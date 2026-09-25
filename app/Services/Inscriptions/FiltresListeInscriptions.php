@@ -214,4 +214,39 @@ class FiltresListeInscriptions
 
         return $request->input('status', 'active') !== 'active';
     }
+
+    public const TRIS = ['created_at', 'date_inscription', 'status', 'filiere_id', 'niveau_id', 'nom'];
+
+    /**
+     * Le tri de la liste, lu dans une liste blanche, applique a la requete.
+     *
+     * Il finit toujours par l'identifiant : sans ce departage, les lignes a
+     * egalite (statut, filiere, meme seconde de creation) changent d'ordre d'une
+     * tranche a l'autre, et la liste infinie en repete certaines et en saute
+     * d'autres. Une recherche libre n'est pas triee ici : elle classe par score.
+     *
+     * @return array{0: string, 1: string} le tri et le sens retenus, pour l'ecran
+     */
+    public function trier(Builder $requete, Request $request): array
+    {
+        $tri = in_array((string) $request->input('sort'), self::TRIS, true) ? (string) $request->input('sort') : 'created_at';
+        $sens = strtolower((string) $request->input('dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        if (filled($request->input('search'))) {
+            return [$tri, $sens];
+        }
+
+        if ($tri === 'nom') {
+            $requete
+                ->leftJoin('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
+                ->orderBy('esbtp_etudiants.nom', $sens)
+                ->orderBy('esbtp_etudiants.prenoms', $sens)
+                ->select('esbtp_inscriptions.*');
+        } else {
+            $requete->orderBy($tri, $sens);
+        }
+        $requete->orderBy('esbtp_inscriptions.id', $sens);
+
+        return [$tri, $sens];
+    }
 }
