@@ -139,6 +139,48 @@ ou sans e-mail. **Rien n'est envoyé** : le renvoi se décide ensuite. Une erreu
 fixe en français (ni requête ni chemin) ; le détail va au journal de l'application, et l'appel
 est tracé dans le journal CLI dans tous les cas.
 
+## Renvoi CIBLÉ de convocations
+
+Pour des réservations précises, par exemple après la correction de leur adresse. `gmai.com`
+accepte le courrier : une convocation partie vers ce domaine est notée « délivrée » alors
+qu'elle est arrivée chez un tiers. `POST /api/cli/rendez-vous/convocations/remettre` agit sur
+toute l'école ; ces routes-ci, jamais.
+
+### `GET /api/cli/rendez-vous/convocations/adresses-corrigees` (`cli:read`, lecture seule)
+
+Les réservations actives touchées par une mauvaise adresse, masquées :
+
+```json
+{"total":1,"reservations":[{"id":12,"raison":"adresse_corrigee","email_masque":"k***@gmail.com",
+ "ancien_email_masque":"k***@gmai.com","corrigee_le":"2026-09-25T10:15:00+00:00",
+ "statut_convocation":"envoyee","delivree":true,"dossier_reference_masquee":"AB**-****-**KL"}]}
+```
+
+`raison` : `adresse_corrigee` (audit `correction_faute_email` de `POST /api/cli/emails/corriger-fautes`)
+ou `domaine_piege` (l'adresse porte encore une faute de la liste `corrections_connues`).
+
+### `POST /api/cli/rendez-vous/convocations/renvoyer` (`cli:admin`, 10 appels/min)
+
+`{"execute": false, "reservations": [12, 34], "motif": "adresse_corrigee"}` : 1 à 50 identifiants
+distincts ; `motif` parmi `adresse_corrigee`, `domaine_piege`, `demande_famille` ; `execute` vrai
+booléen JSON.
+
+**Éligible** : réservation `confirmee`, créneau pas encore commencé, adresse joignable, contact
+du dossier qui n'attend pas de confirmation, convocation pas déjà en file (`en_attente`, donc
+aussi pendant qu'un lot l'envoie). Sinon `raison` : `introuvable`, `reservation_non_active`,
+`creneau_passe`, `adresse_non_joignable`, `contact_a_confirmer`, `deja_en_file`
+(`echec_ecriture` en exécution).
+
+Simulation : `{"execute":false,"reservations":[{"id","eligible","raison","email_masque","statut_convocation","dossier_reference_masquee"}]}`.
+
+Exécution : chaque réservation est relue sous verrou puis remise en file par le chemin canonique
+(`FileConvocationsRdv::poser` : champs de la convocation remis à zéro, statut `en_attente`) ;
+l'état précédent (statut, date d'envoi, identifiant MailPulse, remise) est gardé dans l'audit
+`renvoi_convocation` avec le motif. **Rien n'est envoyé pendant l'appel** : la tâche planifiée
+(toutes les 5 minutes) envoie la file.
+`{"execute":true,"remises":1,"non_eligibles":[{"id":34,"raison":"deja_en_file"}],"a_envoyer":1}`
+(`a_envoyer` : toute la file en attente de l'école). Relancer ne change rien.
+
 ## `POST /api/cli/rendez-vous/synchroniser-convocations` (`cli:admin`)
 
 Un passage de la synchronisation planifiée (`?max=` 1 à 200, 100 par défaut, 20 s au plus) :
