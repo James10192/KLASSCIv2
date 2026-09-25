@@ -22,6 +22,8 @@
     .tae-fenetre { font-size:.78rem; color:#64748b; margin-top:.35rem; }
     .tae-form { display:flex; gap:.5rem; align-items:flex-start; flex-wrap:wrap; justify-content:flex-end; }
     .tae-code { width:9.5rem; border:1px solid #cbd5e1; border-radius:10px; padding:.55rem .75rem; font-family:'Courier New',monospace; font-size:1rem; letter-spacing:.2em; text-transform:uppercase; text-align:center; }
+    .tae-demande { grid-column:1 / -1; display:flex; justify-content:flex-end; margin-top:-.4rem; }
+    .tae-lien { border:0; background:none; color:#0453cb; font-size:.8rem; font-weight:600; padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
     .tae-code:focus, .tae-just:focus { outline:none; border-color:#0453cb; box-shadow:0 0 0 3px rgba(4,83,203,.15); }
     .tae-just { width:100%; min-width:16rem; border:1px solid #cbd5e1; border-radius:10px; padding:.5rem .75rem; font-size:.85rem; }
     .tae-btn { background:#0453cb; color:#fff; border:none; border-radius:10px; padding:.6rem 1.1rem; font-weight:600; font-size:.85rem; white-space:nowrap; }
@@ -116,6 +118,11 @@
                                           placeholder="Motif du retard (visible par la coordination)">{{ old('justification') }}</textarea>
                             @endif
                             <button type="submit" class="tae-btn"><i class="fas fa-signature me-1"></i>Émarger</button>
+                        </form>
+                        <form action="{{ route('esbtp.teacher-attendance.demander-code') }}" method="POST" class="tae-demande">
+                            @csrf
+                            <input type="hidden" name="course_id" value="{{ $course->id }}">
+                            <button type="submit" class="tae-lien"><i class="fas fa-bell me-1"></i>Je n’ai pas le code — le demander à la coordination</button>
                         </form>
                     @endif
                 </div>

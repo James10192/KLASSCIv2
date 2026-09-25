@@ -142,6 +142,14 @@
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Date du jury</label>
                     <input type="date" name="date_jury" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
                 </div>
+                <label style="grid-column:1/-1;display:flex;align-items:flex-start;gap:.55rem;padding:.65rem .75rem;border:1px solid rgba(4,83,203,.2);background:rgba(4,83,203,.05);border-radius:10px;cursor:pointer;">
+                    <input type="hidden" name="reprendre_composition" value="0">
+                    <input type="checkbox" name="reprendre_composition" value="1" checked style="margin-top:.2rem;accent-color:#0453cb;">
+                    <span style="font-size:.84rem;color:#1e293b;">
+                        <strong>Reprendre la composition du dernier jury</strong>
+                        <span style="display:block;font-size:.76rem;color:#64748b;">Président, assesseurs et secrétaire du dernier jury de ce parcours ou de cette classe. Chaque membre reste modifiable.</span>
+                    </span>
+                </label>
             </div>
             <div style="margin-top:1.25rem;display:flex;gap:.5rem;justify-content:flex-end;">
                 <button type="button" @click="modalCreate=false" style="padding:.5rem 1rem;border-radius:8px;border:1px solid #e2e8f0;background:#f1f5f9;color:#475569;font-weight:600;cursor:pointer;">Annuler</button>

@@ -2501,6 +2501,8 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
         Route::get('/', [TeacherAttendanceController::class, 'index'])->name('index');
         Route::get('/history', [TeacherAttendanceController::class, 'history'])->name('history');
         Route::post('/sign', [TeacherAttendanceController::class, 'sign'])->name('sign');
+        Route::post('/demander-code', \App\Http\Controllers\ESBTP\DemandeDeCodeDEmargementController::class)
+            ->middleware('throttle:6,1')->name('demander-code');
     });
 
     // Route rapport accessible aux enseignants et superadmins

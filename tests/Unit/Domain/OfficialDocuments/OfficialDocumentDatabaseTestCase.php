@@ -149,7 +149,7 @@ abstract class OfficialDocumentDatabaseTestCase extends TestCase
 
     private function userColumns(Blueprint $t): void
     {
-        $t->id(); $t->string('name'); $t->string('email')->nullable(); $t->string('password')->nullable(); $t->timestamps(); $t->softDeletes();
+        $t->id(); $t->string('name'); $t->string('email')->nullable(); $t->string('password')->nullable(); $t->boolean('is_active')->default(true); $t->timestamps(); $t->softDeletes();
     }
 
     private function createJuryTables(): void

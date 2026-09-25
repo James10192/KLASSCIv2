@@ -2047,12 +2047,12 @@
 
                         <!-- Gestion des présences/absences -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') || Request::routeIs('esbtp.rapports-cours.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') || Request::routeIs('esbtp.rapports-cours.*') || Request::routeIs('esbtp.prolongations.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
                                 <div class="menu-text">Gestion des présences</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') || Request::routeIs('esbtp.rapports-cours.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') || Request::routeIs('esbtp.rapports-cours.*') || Request::routeIs('esbtp.prolongations.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.attendances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Présences étudiants</span>
@@ -2079,6 +2079,12 @@
                                 <a href="{{ route('esbtp.attendances.justifications.admin') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.justifications.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Justifications à traiter</span>
+                                </a>
+                                @endcan
+                                @can('emargement.prolongation.decide')
+                                <a href="{{ route('esbtp.prolongations.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.prolongations.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Prolongations de cours</span>
                                 </a>
                                 @endcan
                                 @can('session_reports.view')
@@ -2132,6 +2138,23 @@
                             </a>
                         </div>
                         @endcan
+
+                        {{-- Ces deux écrans n'étaient atteignables que par les tuiles de
+                             l'accueil : l'enseignant devait deviner leur adresse ailleurs. --}}
+                        @role('enseignant')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.teacher-attendance.index') }}" class="menu-link {{ Request::routeIs('esbtp.teacher-attendance.index') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-calendar-day"></i></div>
+                                <div class="menu-text">Mes cours du jour</div>
+                            </a>
+                        </div>
+                        <div class="menu-item">
+                            <a href="{{ route('teacher.availability') }}" class="menu-link {{ Request::routeIs('teacher.availability*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
+                                <div class="menu-text">Mes disponibilités</div>
+                            </a>
+                        </div>
+                        @endrole
                     @endif
                     @endcan
 

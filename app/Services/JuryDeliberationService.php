@@ -628,6 +628,41 @@ class JuryDeliberationService
         });
     }
 
+    /**
+     * Un jury se compose presque toujours des mêmes personnes d'une session à
+     * l'autre : on reprend celles du dernier jury du même parcours (ou de la
+     * même classe), à défaut du dernier jury de l'établissement. Les membres
+     * repris restent modifiables et retirables tant que le PV n'est pas généré.
+     */
+    public function reprendreLaDerniereComposition(ESBTPLMDJury $jury): int
+    {
+        $precedents = ESBTPLMDJury::query()
+            ->where('id', '!=', $jury->id)
+            ->whereHas('membres');
+
+        $source = null;
+        if ($jury->parcours_id || $jury->classe_id) {
+            $source = (clone $precedents)
+                ->where(fn ($q) => $q
+                    ->when($jury->parcours_id, fn ($w) => $w->orWhere('parcours_id', $jury->parcours_id))
+                    ->when($jury->classe_id, fn ($w) => $w->orWhere('classe_id', $jury->classe_id)))
+                ->latest('id')
+                ->first();
+        }
+        $source ??= $precedents->latest('id')->first();
+        if (! $source) {
+            return 0;
+        }
+
+        $repris = 0;
+        foreach ($source->membres()->whereHas('user', fn ($u) => $u->where('is_active', true))->get() as $membre) {
+            $this->addOrUpdateMembre($jury, ['user_id' => $membre->user_id, 'role' => $membre->role]);
+            $repris++;
+        }
+
+        return $repris;
+    }
+
     public function addOrUpdateMembre(ESBTPLMDJury $jury, array $attributes): ESBTPLMDJuryMembre
     {
         return DB::transaction(function () use ($jury, $attributes): ESBTPLMDJuryMembre {

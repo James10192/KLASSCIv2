@@ -180,8 +180,19 @@ class AcademicPilotageController extends Controller
         ], $stats['failed'] === 0 ? 200 : 207);
     }
 
-    public function classHealth(Request $request, ESBTPClasse $classe): JsonResponse
+    public function classHealth(Request $request, ESBTPClasse $classe): JsonResponse|\Illuminate\Http\RedirectResponse
     {
+        // Ouverte dans le navigateur (lien partagé, adresse tapée), cette adresse
+        // rendait du JSON brut. Le groupe force `Accept: application/json`, donc
+        // seul l'en-tête de navigation distingue une page d'un appel du script.
+        if ($request->header('Sec-Fetch-Dest') === 'document') {
+            return redirect()->route('esbtp.pilotage-academique.index', array_filter([
+                'class_id' => $classe->id,
+                'year_id' => $request->query('year_id'),
+                'period' => $request->query('period'),
+            ]));
+        }
+
         $year = $this->selectedYear($request);
         $period = $this->period($request);
         $classIds = $this->actorScope->dashboardClassIds($request->user(), $year?->id);

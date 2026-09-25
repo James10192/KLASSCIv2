@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPClasse;
-use App\Models\ESBTPMatiere;
 use App\Models\ESBTPDailyCode;
 use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPTeacher;
@@ -46,35 +45,12 @@ class PlanningStatisticsService
                     );
                 }
             })->count(),
-            "total_matieres" => ESBTPMatiere::whereHas(
-                "seancesCours",
-                function ($q) use ($anneeId) {
-                    if ($anneeId) {
-                        $q->whereHas("emploiTemps", function ($q2) use (
-                            $anneeId,
-                        ) {
-                            $q2->where(
-                                "esbtp_emploi_temps.annee_universitaire_id",
-                                $anneeId,
-                            );
-                        });
-                    }
-                },
-            )->count(),
-            "total_enseignants" => User::role("enseignant")
-                ->whereHas("seancesCours", function ($q) use ($anneeId) {
-                    if ($anneeId) {
-                        $q->whereHas("emploiTemps", function ($q2) use (
-                            $anneeId,
-                        ) {
-                            $q2->where(
-                                "esbtp_emploi_temps.annee_universitaire_id",
-                                $anneeId,
-                            );
-                        });
-                    }
-                })
-                ->count(),
+            // Comptés sur les séances elles-mêmes. `ESBTPMatiere::seancesCours()`
+            // lit l'ancienne table des cours (0 partout), et `User::seancesCours()`
+            // joint sur users.id alors qu'une séance porte l'id du profil
+            // enseignant : les deux compteurs du bandeau étaient faux.
+            "total_matieres" => (clone $query)->whereNotNull("matiere_id")->distinct()->count("matiere_id"),
+            "total_enseignants" => (clone $query)->whereNotNull("teacher_id")->distinct()->count("teacher_id"),
         ];
     }
 

@@ -93,6 +93,39 @@ final class JuryDecisionBulletinPersistenceTest extends OfficialDocumentDatabase
         $this->assertSame(101, DB::table('esbtp_lmd_jury_decisions')->where('id', 2)->value('bulletin_id'));
     }
 
+    public function test_un_nouveau_jury_reprend_la_composition_du_dernier_jury_du_parcours(): void
+    {
+        $precedent = $this->seedScopedJury();
+        $nouveau = ESBTPLMDJury::query()->create([
+            'annee_universitaire_id' => 1,
+            'parcours_id' => $precedent->parcours_id,
+            'semestre' => 2,
+            'libelle' => 'Jury S2',
+            'status' => 'preparation',
+        ]);
+
+        $repris = $this->service->reprendreLaDerniereComposition($nouveau);
+
+        $this->assertSame(2, $repris);
+        $membres = DB::table('esbtp_lmd_jury_membres')->where('jury_id', $nouveau->id)->orderBy('user_id')->get();
+        $this->assertSame([1, 2], $membres->pluck('user_id')->map(fn ($id) => (int) $id)->all());
+        $this->assertSame(['president', 'assesseur'], $membres->pluck('role')->all());
+        // Rien de la délibération précédente ne suit : ni signature, ni décision.
+        $this->assertSame(0, $membres->whereNotNull('signature_at')->count());
+        $this->assertSame(0, DB::table('esbtp_lmd_jury_decisions')->where('jury_id', $nouveau->id)->count());
+    }
+
+    public function test_un_compte_desactive_n_est_pas_repris(): void
+    {
+        $precedent = $this->seedScopedJury();
+        DB::table('users')->where('id', 2)->update(['is_active' => false]);
+        $nouveau = ESBTPLMDJury::query()->create([
+            'annee_universitaire_id' => 1, 'parcours_id' => $precedent->parcours_id, 'libelle' => 'Jury S2', 'status' => 'preparation',
+        ]);
+
+        $this->assertSame(1, $this->service->reprendreLaDerniereComposition($nouveau));
+    }
+
     private function seedScopedJury(): ESBTPLMDJury
     {
         $jury = $this->seedIssuableJury();

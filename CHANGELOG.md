@@ -13,6 +13,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Ajouts
+- **Émargement enseignant : « Je n'ai pas le code — le demander à la coordination »** sous chaque cours du jour. La demande arrive dans la cloche de toutes les personnes qui génèrent les codes, avec la matière, la classe et l'heure ; une seule demande par cours toutes les dix minutes.
+- **Menu enseignant : « Mes cours du jour » et « Mes disponibilités »**, jusqu'ici accessibles seulement par les tuiles de l'accueil. Le menu « Gestion des présences » gagne « Prolongations de cours » pour qui décide des prolongations.
+- **Jury LMD : « Reprendre la composition du dernier jury »**, coché par défaut à la création. Les membres du dernier jury du même parcours ou de la même classe (à défaut, du dernier jury) sont repris avec leur rôle, sans signature ni décision ; un compte désactivé n'est pas repris.
 - **Séances : « Le rendre disponible sur ce créneau » et « Programmer quand même »** sous le message d'indisponibilité d'un enseignant (`/esbtp/seances-cours/create`). Il n'est plus nécessaire de se connecter avec le compte de l'enseignant pour ouvrir son créneau ; la première action exige la permission de modifier les enseignants.
 - **Choix de l'emploi du temps pour ajouter une séance : recherche et période.** Une carte par classe (la semaine en cours d'office, le nombre d'autres semaines indiqué), recherche par classe, filière ou niveau, et filtre « Cette semaine / En cours et à venir / Tout ». Les emplois du temps expirés sont masqués par défaut.
 - **Après la création d'un enseignant, quatre raccourcis** dans la fenêtre des identifiants : associer des matières, disponibilités, taux horaire, programmer une séance.
@@ -328,6 +331,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **L'enseignant posé sur le planning LMD apparaît enfin à la création d'une séance** — le formulaire d'ajout de séance vidait la liste des enseignants des ECUE, alors que la page Planning LMD les affichait. On reprend l'enseignant principal (et les assignations) de la planification.
 
 ### Améliorations
+- **Pilotage académique : l'adresse d'une classe s'ouvre dans l'écran**, filtrée sur cette classe, au lieu d'afficher des données brutes.
 - **Rappels automatiques : un seul à la fois**, et aucun sur les pages de mot de passe (changement imposé au premier accès compris). Les rappels suivants attendent le prochain chargement de page au lieu de s'empiler. La fenêtre « Nouveautés » de septembre n'est plus montrée qu'aux personnes de la caisse, de la comptabilité et de la scolarité, qu'elle concerne. Sur téléphone, le rappel d'expiration du mot de passe tient sur une ligne.
 - **Séances : l'enseignant tout juste associé à une matière est sélectionné d'office**, et les erreurs de la gestion des enseignants s'affichent dans la page au lieu d'une alerte bloquante.
 - **Fiche matière : les liens vers le Planning Général ouvrent la planification de cette matière**, et de la bonne filière et du bon niveau depuis chaque combinaison, au lieu de la page générale.
@@ -414,6 +418,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Plus aucun mot de passe du Service Technique dans le code** — les deux comptes de support d'African Digit Consulting étaient créés avec des mots de passe écrits en clair dans le dépôt, identiques sur chaque instance, et réaffichés par la commande d'installation. Ils se lisent désormais dans l'environnement de l'instance (`SERVICE_TECHNIQUE_PASSWORD`, `SERVICE_TECHNIQUE_BACKUP_PASSWORD`) ou se génèrent au hasard, affichés une seule fois à la création. Un compte existant garde son mot de passe : ceux créés avant ce changement doivent être renouvelés, les anciens restant lisibles dans l'historique.
 
 ### Corrections
+- **Planning général : les compteurs « matières » et « enseignants » du bandeau restaient à 0** ou faux. Ils sont désormais comptés sur les séances programmées de l'année.
+- **Jury LMD : la date du jury et les observations saisies à la création n'étaient pas enregistrées.**
 - **Séances : les heures s'affichent en « 7h46 »** et non plus « 7.7666666666667h » dans l'en-tête de l'ajout de séance.
 
 - **Composition du jury LMD : le bouton « Ajouter » ne s'activait jamais** — choisir un membre dans la liste n'était pas transmis à l'écran, si bien qu'on ne pouvait ajouter aucun membre au jury. Même cause sur le journal d'audit : le filtre « Utilisateur » des filtres avancés n'avait aucun effet, et « Réinitialiser » laissait l'ancien nom affiché. Les deux fonctionnent.

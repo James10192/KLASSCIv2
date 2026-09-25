@@ -155,19 +155,23 @@ class ESBTPLMDJuryController extends Controller
             'classe_id' => ['nullable', \Illuminate\Validation\Rule::exists('esbtp_classes', 'id')->where('systeme_academique', 'LMD')],
             'semestre' => ['nullable', 'integer', 'between:1,'.\App\Models\ESBTPNiveauEtude::SEMESTRE_LMD_MAX],
             'libelle' => ['required', 'string', 'max:255'],
-        ], [
-            'classe_id.exists' => 'Un jury LMD ne peut être rattaché qu’à une classe LMD.',
             'date_jury' => ['nullable', 'date'],
             'observations' => ['nullable', 'string', 'max:2000'],
+            'reprendre_composition' => ['nullable', 'boolean'],
+        ], [
+            'classe_id.exists' => 'Un jury LMD ne peut être rattaché qu’à une classe LMD.',
         ]);
+        $reprendre = (bool) ($data['reprendre_composition'] ?? false);
+        unset($data['reprendre_composition']);
         $data['status'] = 'preparation';
         $data['created_by'] = auth()->id();
 
         $jury = ESBTPLMDJury::create($data);
+        $repris = $reprendre ? $this->delib->reprendreLaDerniereComposition($jury) : 0;
 
         return redirect()
             ->route('esbtp.lmd.jurys.show', $jury)
-            ->with('success', "Jury créé : {$jury->libelle}");
+            ->with('success', "Jury créé : {$jury->libelle}".($repris ? " — {$repris} membre(s) repris du dernier jury, à confirmer." : ''));
     }
 
     public function destroy(ESBTPLMDJury $jury): RedirectResponse
