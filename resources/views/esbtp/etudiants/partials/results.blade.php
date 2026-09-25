@@ -118,7 +118,7 @@
                         ->where('workflow_step', 'etudiant_cree')
                         ->first() : null;
                 @endphp
-                <tr class="eu-row {{ $pendingInscription ? 'eu-row-pending' : '' }}"
+                <tr data-li-cle="{{ $etudiant->id }}" class="eu-row {{ $pendingInscription ? 'eu-row-pending' : '' }}"
                     data-etudiant-id="{{ $etudiant->id }}"
                     data-show-url="{{ route('esbtp.etudiants.show', $etudiant) }}"
                     data-sort-matricule="{{ strtoupper($etudiant->matricule) }}"
@@ -372,7 +372,7 @@
                     ->first() : null;
             @endphp
 
-            <div class="student-card {{ $pendingInscription ? 'pending-inscription' : '' }}">
+            <div data-li-cle="{{ $etudiant->id }}" class="student-card {{ $pendingInscription ? 'pending-inscription' : '' }}">
                 <!-- Header de la card avec photo et nom -->
                 <div class="student-card-header">
                     <div class="student-photo">

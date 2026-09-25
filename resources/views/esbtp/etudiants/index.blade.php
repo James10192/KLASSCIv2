@@ -3869,7 +3869,10 @@
                         tmp.innerHTML = data.html || '';
                         const newTbody = tmp.querySelector('#etudiants-tbody');
                         if (newTbody) {
-                            Array.from(newTbody.children).forEach((row) => tbody.appendChild(row));
+                            // Une fiche deja affichee (creee pendant qu'on defile) n'est pas repetee.
+                            Array.from(newTbody.children)
+                                .filter((row) => !row.dataset.liCle || !tbody.querySelector('[data-li-cle="' + row.dataset.liCle + '"]'))
+                                .forEach((row) => tbody.appendChild(row));
                             tbody.dataset.hasMore = newTbody.dataset.hasMore || '0';
                             tbody.dataset.nextPage = newTbody.dataset.nextPage || String(nextPage + 1);
                             tbody.dataset.currentPage = newTbody.dataset.currentPage || String(nextPage);
@@ -3877,7 +3880,8 @@
                         const newGrille = tmp.querySelector('#etudiants-grid-mobile');
                         if (newGrille && grilleMobile) {
                             Array.from(newGrille.children)
-                                .filter((carte) => carte.classList.contains('student-card'))
+                                .filter((carte) => carte.classList.contains('student-card')
+                                    && !grilleMobile.querySelector('[data-li-cle="' + carte.dataset.liCle + '"]'))
                                 .forEach((carte) => grilleMobile.appendChild(carte));
                         }
                         const newSentinel = tmp.querySelector('#etudiants-sentinel');

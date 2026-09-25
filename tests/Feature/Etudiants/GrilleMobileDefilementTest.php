@@ -6,6 +6,7 @@ use App\Models\ESBTPEtudiant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -57,5 +58,21 @@ class GrilleMobileDefilementTest extends TestCase
 
         $this->assertStringContainsString('id="etudiants-grid-mobile"', $tranche);
         $this->assertGreaterThan(0, substr_count($tranche, 'class="student-card'));
+    }
+
+    public function test_le_tri_finit_par_l_identifiant(): void
+    {
+        ESBTPEtudiant::factory()->count(3)->create();
+        $requetes = [];
+        DB::listen(function ($q) use (&$requetes) {
+            $requetes[] = $q->sql;
+        });
+
+        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('esbtp.etudiants.index', ['page' => 2, 'sort' => 'statut']))
+            ->assertOk();
+
+        $liste = collect($requetes)->first(fn ($sql) => str_contains($sql, 'from `esbtp_etudiants`') && str_contains($sql, 'limit'));
+        $this->assertMatchesRegularExpression('/order by .*`esbtp_etudiants`\.`id` (asc|desc) limit/', (string) $liste);
     }
 }
