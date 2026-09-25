@@ -69,13 +69,13 @@
         }
     }
 
-    // Une imprimante n'imprime pas au ras du bord : sous ce plancher, le
+    // Une imprimante n'imprime pas au ras du bord : sous ces planchers, le
     // texte est rogne a l'impression. Une marge a 0 (esbtp-abidjan, 2026-09)
-    // collait tableaux et bandeau aux bords de la feuille.
-    $margeMin = 10;
+    // collait tableaux et bandeau aux bords de la feuille. En bas, 10 mm de
+    // plus : le pied de page (.pdf-footer) est pose 10 mm sous le contenu.
     $marges = [];
-    foreach (['top' => 20, 'right' => 15, 'bottom' => 20, 'left' => 15] as $cote => $defaut) {
-        $marges[$cote] = max($margeMin, (int) ($pdf['margin_'.$cote] ?? $defaut));
+    foreach (['top' => [20, 10], 'right' => [15, 10], 'bottom' => [20, 20], 'left' => [15, 10]] as $cote => [$defaut, $plancher]) {
+        $marges[$cote] = max($plancher, (int) ($pdf['margin_'.$cote] ?? $defaut));
     }
 
     $logoMaxHeight = max(20, min(120, (int) ($pdf['logo_size'] ?? 60)));

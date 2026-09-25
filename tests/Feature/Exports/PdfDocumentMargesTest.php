@@ -20,14 +20,14 @@ class PdfDocumentMargesTest extends TestCase
     {
         $this->marges(0, 0, 0, 0);
 
-        $this->assertStringContainsString('margin: 10mm 10mm 10mm 10mm;', $this->rendu());
+        $this->assertStringContainsString('margin: 10mm 10mm 20mm 10mm;', $this->rendu());
     }
 
     public function test_les_marges_de_l_ecole_au_dessus_du_plancher_restent_les_siennes(): void
     {
-        $this->marges(25, 12, 18, 30);
+        $this->marges(25, 12, 24, 30);
 
-        $this->assertStringContainsString('margin: 25mm 12mm 18mm 30mm;', $this->rendu());
+        $this->assertStringContainsString('margin: 25mm 12mm 24mm 30mm;', $this->rendu());
     }
 
     private function marges(int $haut, int $droite, int $bas, int $gauche): void
