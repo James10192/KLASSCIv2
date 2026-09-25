@@ -239,6 +239,11 @@
             liTotal: null,
             liNumero: 0,
             liParPage: 0,
+            // Position atteinte dans la liste du serveur (son `affiches`), moins
+            // les lignes retirees sur place. Pas le nombre de lignes distinctes
+            // a l'ecran : une ligne ecrite en tete pendant le defilement ferait
+            // redemander la meme tranche indefiniment.
+            liAffiches: 0,
             liRetraits: 0,
 
             liInit: function () {
@@ -265,6 +270,7 @@
                 this[champ] = this[champ].filter(function (x) { return cle(x) !== valeur; });
                 if (this[champ].length < avant) {
                     this.liRetraits++;
+                    this.liAffiches = Math.max(0, this.liAffiches - 1);
                     if (this.liTotal !== null) this.liTotal--;
                 }
             },
@@ -283,7 +289,7 @@
                 this.liErreur = false;
                 // Depuis ce qui est affiche (pageAPrendre) : des lignes retirees
                 // sur place ne font rien sauter.
-                var page = ajouter ? pageAPrendre(this[champ].length, this.liParPage, this.liPage + 1) : 1;
+                var page = ajouter ? pageAPrendre(this.liAffiches, this.liParPage, this.liPage + 1) : 1;
                 var retraitsAuDepart = this.liRetraits;
                 var rejouer = false;
                 return Promise.resolve(options.tranche.call(this, page))
@@ -305,6 +311,9 @@
                         }
                         self.liPage = p.current_page || page;
                         self.liParPage = Number(p.par_page || 0);
+                        self.liAffiches = p.affiches !== undefined
+                            ? Number(p.affiches)
+                            : (self.liPage - 1) * self.liParPage + lignes.length;
                         self.liAPlus = !!p.has_more;
                         self.liTotal = p.total === undefined ? null : p.total;
                         self.$nextTick(function () {

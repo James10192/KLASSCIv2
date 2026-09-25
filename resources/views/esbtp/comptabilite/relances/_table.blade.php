@@ -29,6 +29,5 @@
     </div>
 
     <x-liste-infinie :paginateur="$paginated" cible="#rel-tbody" libelle="étudiants"
-                     :url="route('esbtp.comptabilite.relances.index')"
-                     :parametres="['v' => $versionListe]" />
+                     :url="route('esbtp.comptabilite.relances.index')" />
 @endif

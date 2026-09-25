@@ -15,6 +15,11 @@ use PHPUnit\Framework\TestCase;
  * sur 100 bulletins en perdait 80. Le client demande desormais la tranche a
  * partir de ce qu'il affiche (ListeInfinie.pageAPrendre).
  *
+ * Une ligne ecrite en tete pendant le defilement pose le probleme inverse :
+ * la liste Alpine comptait ses lignes, qui ne disaient plus la position
+ * serveur, et redemandait la meme tranche sans fin. Elle suit desormais la
+ * position que le serveur annonce (`affiches`).
+ *
  * Le test execute public/js/liste-infinie.js REELLEMENT livre, sous Node,
  * contre un serveur simule (tests/Unit/Support/scripts/liste-infinie-retraits.js).
  */
@@ -61,6 +66,10 @@ class ListeInfinieRetraitsTest extends TestCase
             'plus qu\'une tranche' => ['plus_qu_une_tranche', '« Tout cocher » sur 100 lignes puis suppression groupee.'],
             'retraits cumules' => ['retraits_cumules', 'Plusieurs retraits d\'affilee avant le chargement suivant.'],
             'retrait pendant un chargement' => ['retrait_pendant_un_chargement', 'La tranche, choisie avant le retrait, est servie apres.'],
+            'insertion en tete' => ['insertion_en_tete', 'Une ligne ecrite en tete pendant le defilement ne fait pas boucler la liste Alpine.'],
+            'serveur sans retrait' => ['serveur_sans_retrait', 'Liste rendue par le serveur : defilement ordinaire.'],
+            'serveur plus qu\'une tranche' => ['serveur_plus_qu_une_tranche', 'Liste rendue par le serveur : retrait de plus d\'une tranche.'],
+            'serveur retrait pendant un chargement' => ['serveur_retrait_pendant_un_chargement', 'Liste rendue par le serveur : retrait pendant un chargement.'],
         ];
     }
 }

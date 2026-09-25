@@ -117,12 +117,13 @@ class ESBTPComptabiliteRelanceController extends Controller
         $anneeActive = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $anneeId     = $anneeId ?: optional($anneeActive)->id;
 
-        ['paginated' => $paginated, 'kpis' => $kpis, 'version' => $versionListe] = app(\App\Domain\Comptabilite\Relances\ListeDesRelances::class)->tranche(
+        ['paginated' => $paginated, 'kpis' => $kpis] = app(\App\Domain\Comptabilite\Relances\ListeDesRelances::class)->tranche(
             ['search' => (string) $search, 'risk' => (string) $riskFilter, 'filiere_id' => (string) $filiereId, 'classe_id' => (string) $classeId, 'annee_id' => $anneeId],
             (int) $request->input('page', 1),
             $request->url(),
             $request->query(),
-            ListeInfinie::demandee($request) ? (string) $request->input('v') : null,
+            (int) $request->user()->id,
+            ! ListeInfinie::demandee($request),
         );
 
         if (ListeInfinie::demandee($request)) {
@@ -154,7 +155,7 @@ class ESBTPComptabiliteRelanceController extends Controller
         $viewData = compact(
             'paginated', 'kpis', 'filieres', 'classes', 'annees',
             'search', 'riskFilter', 'filiereId', 'classeId', 'anneeId', 'anneeActive',
-            'configManquante', 'mobileRelances', 'versionListe'
+            'configManquante', 'mobileRelances'
         );
 
         // AJAX request → return JSON avec table HTML + kpis mis à jour

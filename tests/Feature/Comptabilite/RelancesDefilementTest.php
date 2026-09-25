@@ -108,21 +108,14 @@ class RelancesDefilementTest extends TestCase
             'workflow_step' => 'etudiant_cree',
         ]);
 
-        $page = $this->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->assertOk()->getContent();
+        $this->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->assertOk();
         self::$calculs = 0;
 
         $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
-            ->getJson(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id, 'page' => 2, 'mode' => 'rows', 'v' => $this->version($page)]))
+            ->getJson(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id, 'page' => 2, 'mode' => 'rows']))
             ->assertOk();
 
         $this->assertSame(5, self::$calculs, 'La tranche 2 relit l\'index en cache et ne calcule que ses 5 lignes.');
-    }
-
-    private function version(string $html): string
-    {
-        $this->assertSame(1, preg_match('/data-query="[^"]*\bv=([A-Za-z0-9]+)/', $html, $m), 'La page transmet la version de son index à ses tranches.');
-
-        return $m[1];
     }
 
     public function test_la_visite_d_un_autre_agent_ne_reordonne_pas_ma_liste(): void
@@ -131,18 +124,40 @@ class RelancesDefilementTest extends TestCase
         ESBTPInscription::factory()->count(30)->create([
             'annee_universitaire_id' => $annee->id,
             'workflow_step' => 'etudiant_cree',
+            'created_at' => now()->subHour()->startOfSecond(),
         ]);
+        $moi = auth()->user();
 
-        $moi = $this->version($this->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->getContent());
-        $autre = $this->version($this->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->getContent());
-        $this->assertNotSame($moi, $autre);
+        // Je charge la premiere tranche : les 25 premieres de MON index.
+        $page = $this->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->assertOk()->getContent();
+        preg_match_all('/<tr data-li-cle="(\d+)"/', $page, $a);
+        $this->assertCount(25, $a[1]);
 
-        // Ma tranche relit MON index : aucun recalcul complet.
-        self::$calculs = 0;
-        $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
-            ->getJson(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id, 'page' => 2, 'mode' => 'rows', 'v' => $moi]))
-            ->assertOk();
-        $this->assertSame(5, self::$calculs);
+        // Une inscription arrive, puis un collegue ouvre la meme liste : son
+        // index, recalcule, la place en tete et decale toutes les autres.
+        ESBTPInscription::factory()->create([
+            'annee_universitaire_id' => $annee->id,
+            'workflow_step' => 'etudiant_cree',
+            'created_at' => now(),
+        ]);
+        $collegue = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
+        $collegue->givePermissionTo(['comptabilite.access', 'comptabilite.dashboard.view']);
+        $this->actingAs($collegue)->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->assertOk();
+
+        // Ma tranche 2 suit toujours MON index : les 5 lignes que je n'ai pas
+        // encore vues, aucune repetee, aucune sautee.
+        $suite = $this->actingAs($moi)->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id, 'page' => 2, 'mode' => 'rows']))
+            ->assertOk()
+            ->json('rows_html');
+        preg_match_all('/<tr data-li-cle="(\d+)"/', $suite, $b);
+
+        $attendues = ESBTPInscription::where('annee_universitaire_id', $annee->id)
+            ->where('created_at', '<', now()->subMinutes(30))
+            ->pluck('id')->map(fn ($id) => (string) $id)
+            ->diff($a[1])->sort()->values()->all();
+        $recues = collect($b[1])->sort()->values()->all();
+        $this->assertSame($attendues, $recues);
     }
 
     public function test_l_arrivee_sur_la_page_recalcule_toujours_la_liste(): void

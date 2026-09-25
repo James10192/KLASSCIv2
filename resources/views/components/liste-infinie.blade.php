@@ -11,8 +11,6 @@
       - cible      : selecteur CSS du conteneur ou ajouter les lignes (un <tbody>)
       - libelle    : le nom des lignes au pluriel, pour le compteur (« inscriptions »)
       - url        : l'adresse a rappeler, par defaut celle de la page
-      - parametres : a ajouter aux filtres de la requete, et qui les remplacent
-                     (la version d'un index en cache, par exemple)
 
     Les filtres transportes sont ceux de la requete qui a rendu cette tranche,
     pas ceux du formulaire : un filtre modifie sans etre applique ne doit pas
@@ -23,12 +21,11 @@
     'cible',
     'libelle' => 'éléments',
     'url' => null,
-    'parametres' => [],
 ])
 
 @php
     $_pagination = \App\Support\ListeInfinie::pagination($paginateur);
-    $_query = http_build_query(array_merge(request()->except(['page', 'mode']), $parametres));
+    $_query = http_build_query(request()->except(['page', 'mode']));
 @endphp
 
 <div {{ $attributes->merge(['class' => 'li-bas']) }}

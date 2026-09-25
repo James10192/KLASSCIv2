@@ -7,7 +7,6 @@ use App\Services\RelanceCalculationService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Str;
 
 /**
  * La liste des etudiants a relancer, chargee par tranches au defilement.
@@ -17,16 +16,17 @@ use Illuminate\Support\Str;
  * la liste et a quelle place. Le refaire a chaque tranche coutait plusieurs
  * dizaines de calculs complets pour parcourir une instance de 2000 inscrits.
  *
- * On garde donc, une minute, l'INDEX de la liste (identifiant et situation de
- * chaque debiteur, dans l'ordre) et les compteurs ; une tranche ne recalcule
- * que ses propres lignes. Le cache ne porte que des entiers et des chaines :
- * driver `file`, pas de `tags`.
+ * On garde donc l'INDEX de la liste (identifiant et situation de chaque
+ * debiteur, dans l'ordre) et les compteurs ; une tranche ne recalcule que ses
+ * propres lignes. Le cache ne porte que des entiers et des chaines : driver
+ * `file`, pas de `tags`.
  *
  * L'arrivee sur la page, elle, recalcule toujours : un encaissement fait a
  * l'instant doit sortir l'etudiant de la liste et changer les compteurs tout
- * de suite. Chaque visite range son index sous sa propre VERSION, que ses
- * tranches rappellent (`v`) : la visite d'un autre agent ne reordonne pas la
- * liste qu'on est en train de faire defiler.
+ * de suite. L'index est range PAR UTILISATEUR et par filtres, et chaque visite
+ * ecrase le sien : la visite d'un autre agent ne reordonne pas la liste qu'on
+ * est en train de faire defiler, et il n'y a jamais qu'une entree par agent et
+ * par jeu de filtres, quel que soit le nombre de visites.
  */
 class ListeDesRelances
 {
@@ -42,18 +42,18 @@ class ListeDesRelances
     /**
      * @param  array{search: string, risk: string, filiere_id: string, classe_id: string, annee_id: mixed}  $filtres
      * @param  array<string, mixed>  $query
-     * @param  string|null  $version  celle de la visite pour une tranche suivante ; null a l'arrivee sur la page
-     * @return array{paginated: LengthAwarePaginator, kpis: array<string, mixed>, version: string}
+     * @param  bool  $arrivee  true a l'arrivee sur la page, false pour une tranche suivante
+     * @return array{paginated: LengthAwarePaginator, kpis: array<string, mixed>}
      */
-    public function tranche(array $filtres, int $page, string $path, array $query, ?string $version = null): array
+    public function tranche(array $filtres, int $page, string $path, array $query, int $utilisateurId, bool $arrivee): array
     {
-        if ($version === null || preg_match('/^[A-Za-z0-9]{1,40}$/', $version) !== 1) {
-            $version = Str::random(12);
+        $cle = $this->cle($filtres, $utilisateurId);
+        if ($arrivee) {
             $index = $this->indexer($filtres);
-            Cache::put($this->cle($filtres, $version), $index, self::DUREE_CACHE_SECONDES);
+            Cache::put($cle, $index, self::DUREE_CACHE_SECONDES);
         } else {
-            // Index expire (visite trop longue) : on le refait, sous la meme version.
-            $index = Cache::remember($this->cle($filtres, $version), self::DUREE_CACHE_SECONDES, fn () => $this->indexer($filtres));
+            // Index expire (visite trop longue) : on le refait.
+            $index = Cache::remember($cle, self::DUREE_CACHE_SECONDES, fn () => $this->indexer($filtres));
         }
 
         $lignes = collect($index['lignes']);
@@ -77,7 +77,6 @@ class ListeDesRelances
         return [
             'paginated' => new LengthAwarePaginator($rows->values(), $lignes->count(), self::TRANCHE, $page, ['path' => $path, 'query' => $query]),
             'kpis' => $index['kpis'],
-            'version' => $version,
         ];
     }
 
@@ -121,12 +120,12 @@ class ListeDesRelances
             ->orderByDesc('id');
     }
 
-    private function cle(array $filtres, string $version): string
+    private function cle(array $filtres, int $utilisateurId): string
     {
         // Le risque filtre l'index, il ne le change pas : un seul calcul pour
         // les quatre onglets de situation.
         unset($filtres['risk']);
 
-        return 'relances:liste:'.md5(json_encode($filtres)).':'.$version;
+        return 'relances:liste:'.$utilisateurId.':'.md5(json_encode($filtres));
     }
 }
