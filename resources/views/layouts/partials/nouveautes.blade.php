@@ -27,7 +27,7 @@
     .nvx-rail--gauche .nvx-puces { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 56px); mask-image: linear-gradient(to right, transparent 0, #000 56px); }
     .nvx-rail--droite .nvx-puces { -webkit-mask-image: linear-gradient(to left, transparent 0, #000 56px); mask-image: linear-gradient(to left, transparent 0, #000 56px); }
     .nvx-rail--gauche.nvx-rail--droite .nvx-puces { -webkit-mask-image: linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 56px, #000 calc(100% - 56px), transparent 100%); }
-    .nvx-fleche { position: absolute; top: 50%; transform: translateY(-50%); z-index: 1; width: 30px; height: 30px; border-radius: 999px; border: none; background: #fff; color: #0453cb; font-size: .72rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(15,23,42,.22); transition: background .2s ease; }
+    .nvx-fleche { position: absolute; top: 0; bottom: .15rem; margin: auto 0; transform: none; z-index: 1; width: 30px; height: 30px; border-radius: 999px; border: none; background: #fff; color: #0453cb; font-size: .72rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(15,23,42,.22); transition: background .2s ease; }
     .nvx-fleche:hover { background: #eef4ff; }
     .nvx-fleche--gauche { left: -4px; }
     .nvx-fleche--droite { right: -4px; }
