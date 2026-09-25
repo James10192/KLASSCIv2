@@ -244,7 +244,7 @@ class ESBTPAuditController extends Controller
         if (ListeInfinie::demandee($request)) {
             return ListeInfinie::reponse(
                 $audits,
-                fn ($a) => view('esbtp.audit._ligne-comptabilite', compact('a', 'financialModelsLabels', 'entityLinksMap'))->render(),
+                fn ($a) => view('esbtp.audit._ligne-comptabilite', ['a' => $a, 'financialModelsLabels' => $financialModelsLabels, 'entityLinksMap' => $entityLinksMap])->render(),
             );
         }
 

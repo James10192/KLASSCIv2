@@ -1526,7 +1526,7 @@ class ESBTPAttendanceController extends Controller
         $absences = $query->orderByDesc('justified_at')->orderByDesc('esbtp_attendances.id')->paginate(20)->withQueryString();
 
         if (ListeInfinie::demandee($request)) {
-            return ListeInfinie::reponse($absences, fn ($abs) => view('esbtp.attendances._justification', compact('abs', 'statusFilter'))->render());
+            return ListeInfinie::reponse($absences, fn ($abs) => view('esbtp.attendances._justification', ['abs' => $abs, 'statusFilter' => $statusFilter])->render());
         }
 
         // KPIs (counts par statut)

@@ -2695,7 +2695,7 @@ class ESBTPInscriptionController extends Controller
         if (ListeInfinie::demandee($request)) {
             return ListeInfinie::reponse(
                 $inscriptions,
-                fn ($inscription) => view('esbtp.inscriptions.partials.sous-reserve-ligne', compact('inscription', 'anneeEnCours'))->render(),
+                fn ($inscription) => view('esbtp.inscriptions.partials.sous-reserve-ligne', ['inscription' => $inscription, 'anneeEnCours' => $anneeEnCours])->render(),
             );
         }
 
