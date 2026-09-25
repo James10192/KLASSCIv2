@@ -76,8 +76,10 @@ class GetDashboardKpisTool extends ChatbotTool
 
         if ($focus === 'general' || $focus === 'attendance') {
             $totalAtt = DB::table('esbtp_attendances')->whereNull('deleted_at')->count();
+            // Un retard est une présence, comme à l'écran des présences
+            // (total_present_with_retards) ; 'retard' subsiste sur d'anciennes lignes.
             $presences = DB::table('esbtp_attendances')
-                ->where('statut', 'present')
+                ->whereIn('statut', ['present', 'late', 'retard'])
                 ->whereNull('deleted_at')
                 ->count();
             $kpis['taux_presence'] = $totalAtt > 0
@@ -139,10 +141,10 @@ class GetDashboardKpisTool extends ChatbotTool
         $elements[] = ['libelle' => 'Classes', 'valeur' => (int) $kpis['classes'], 'unite' => null, 'repere' => null, 'ton' => null, 'url' => $lien('esbtp.classes.index')];
         $elements[] = ['libelle' => 'Enseignants actifs', 'valeur' => (int) $kpis['enseignants'], 'unite' => null, 'repere' => null, 'ton' => null, 'url' => null];
         if (isset($kpis['total_paiements'])) {
-            $elements[] = ['libelle' => 'Encaissé (validé)', 'valeur' => $kpis['total_paiements'], 'unite' => null, 'repere' => $kpis['paiements_en_attente'] . ' paiement(s) en attente', 'ton' => $kpis['paiements_en_attente'] > 0 ? 'alerte' : null, 'url' => $lien('esbtp.paiements.index')];
+            $elements[] = ['libelle' => 'Encaissé (validé)', 'valeur' => (int) preg_replace('/\D/', '', $kpis['total_paiements']), 'unite' => 'FCFA', 'repere' => $kpis['paiements_en_attente'] . ' paiement(s) en attente', 'ton' => $kpis['paiements_en_attente'] > 0 ? 'alerte' : null, 'url' => $lien('esbtp.paiements.index')];
         }
         if (isset($kpis['taux_presence'])) {
-            $elements[] = ['libelle' => 'Taux de présence', 'valeur' => $kpis['taux_presence'], 'unite' => null, 'repere' => $kpis['absences_non_justifiees'] . ' absence(s) non justifiée(s)', 'ton' => null, 'url' => null];
+            $elements[] = ['libelle' => 'Taux de présence', 'valeur' => $kpis['taux_presence'] === 'N/A' ? null : $kpis['taux_presence'], 'unite' => null, 'repere' => $kpis['absences_non_justifiees'] . ' absence(s) non justifiée(s)', 'ton' => null, 'url' => null];
         }
 
         return ['kind' => 'kpis', 'titre' => 'Chiffres clés', 'elements' => $elements];

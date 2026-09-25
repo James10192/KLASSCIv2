@@ -137,6 +137,10 @@ class AgentHistoriqueEtOutilsTest extends TestCase
         $this->assertStringContainsString('+50', $inscrits['repere']);
         $this->assertSame('succes', $inscrits['ton']);
         $this->assertNull($inscrits['url'], 'pas de lien vers une liste que la personne ne peut pas ouvrir');
+
+        // Sans appel enregistré, le taux de présence est inconnu, pas nul.
+        $presence = collect($resultat['widget']['elements'])->firstWhere('libelle', 'Taux de présence');
+        $this->assertNull($presence['valeur']);
     }
 
     public function test_la_repartition_compte_comme_le_tableau_de_bord(): void
