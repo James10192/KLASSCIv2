@@ -59,7 +59,7 @@ Les notes de version pour klassci-landing se produisent, elles ne se recopient p
 
 Chaque instance a sa propre branche Git du même nom (snapshot de `presentation` synchronisé périodiquement). Voir [.claude/rules/tenant-branches.md](.claude/rules/tenant-branches.md).
 
-**Stack** : Laravel 9.52 · MySQL 8.x · Blade + Alpine.js + Chart.js + DataTables · DomPDF · Sanctum · Gemini 2.0 Flash
+**Stack** : Laravel 9.52 · MySQL 8.x · Blade + Alpine.js + Chart.js + DataTables · DomPDF · Sanctum · Assistant IA multi-modèle (Claude, OpenAI-compatible, Gemini — `App\Domain\Assistant`, `config/assistant.php`)
 
 ---
 
@@ -153,7 +153,7 @@ php artisan tenant:health-check --all
 MAIL_MAILER=smtp  MAIL_HOST=mail.klassci.com  MAIL_PORT=465  MAIL_ENCRYPTION=ssl
 
 # IA
-GEMINI_API_KEY=...  GEMINI_MODEL=gemini-2.0-flash-exp
+ASSISTANT_MODELE=claude-haiku  ANTHROPIC_API_KEY=...  (optionnels : OPENAI_API_KEY, MISTRAL_API_KEY, GEMINI_API_KEY, ASSISTANT_REPLI)
 
 # Master API
 MASTER_API_URL=http://localhost:8001/api  TENANT_CODE=presentation
