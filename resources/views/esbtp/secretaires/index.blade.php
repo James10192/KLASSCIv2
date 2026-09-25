@@ -67,6 +67,9 @@
 @section('scripts')
 <script>
     $(document).ready(function() {
+        // DataTables n'est pas charge par le gabarit de cette page : sans cette
+        // garde, l'appel levait une erreur a chaque ouverture.
+        if (!$.fn.DataTable) return;
         const table = $('#secretairesTable').DataTable({
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.10.24/i18n/French.json'
