@@ -5,6 +5,7 @@ namespace App\Domain\Students;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Service centralisé pour les comptages d'étudiants.
@@ -47,12 +48,22 @@ class StudentCountService
     /** Inscrits d'une année : inscription active, dossier étudiant créé, un étudiant compté une fois. */
     public function inscritsDe(int $anneeId): int
     {
+        return $this->requeteInscrits($anneeId)
+            ->distinct('esbtp_inscriptions.etudiant_id')
+            ->count('esbtp_inscriptions.etudiant_id');
+    }
+
+    /**
+     * La règle d'un « inscrit » en un seul endroit : inscription active, dossier
+     * étudiant créé, non supprimée. Colonnes qualifiées, pour rester juste quand
+     * l'appelant joint les classes (qui portent aussi annee_universitaire_id).
+     */
+    public function requeteInscrits(int $anneeId): Builder
+    {
         return ESBTPInscription::query()
-            ->where('annee_universitaire_id', $anneeId)
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
-            ->distinct('etudiant_id')
-            ->count('etudiant_id');
+            ->where('esbtp_inscriptions.annee_universitaire_id', $anneeId)
+            ->where('esbtp_inscriptions.status', 'active')
+            ->where('esbtp_inscriptions.workflow_step', 'etudiant_cree');
     }
 
     /**

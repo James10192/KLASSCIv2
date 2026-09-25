@@ -3,12 +3,13 @@
 namespace App\Services\Chatbot\Tools;
 
 use App\Models\ESBTPAnneeUniversitaire;
-use Illuminate\Support\Facades\DB;
+use App\Domain\Students\StudentCountService;
 
 /**
- * Inscrits de l'année répartis par filière, niveau ou classe, avec la même règle
- * de comptage que le tableau de bord (StudentCountService) : inscription active,
- * dossier étudiant créé, un étudiant compté une fois par groupe.
+ * Inscrits de l'année répartis par filière, niveau ou classe. La règle d'un
+ * inscrit vient de StudentCountService::requeteInscrits() et le total de
+ * inscritsDe() : c'est le chiffre du tableau de bord. Les groupes se font par
+ * identifiant (deux filières peuvent porter le même nom, seul le code est unique).
  *
  * Sans cet outil, l'agent reconstituait la répartition à partir de listes
  * paginées et chaque modèle donnait un chiffre différent.
@@ -25,7 +26,7 @@ class RepartitionEffectifsTool extends ChatbotTool
     public function description(): string
     {
         return "Nombre d'inscrits de l'année universitaire en cours (ou d'une année donnée), répartis par filière, niveau ou classe, "
-            . "mêmes chiffres que le tableau de bord. Affiche un graphique. À utiliser pour « combien d'étudiants par filière », "
+            . "total identique au tableau de bord. Affiche un graphique. À utiliser pour « combien d'étudiants par filière », "
             . "« quelle classe est la plus chargée », « compare les effectifs ». Ne pas reconstituer ces chiffres avec search_inscriptions.";
     }
 
@@ -51,34 +52,18 @@ class RepartitionEffectifsTool extends ChatbotTool
             return ['results' => [], 'count' => 0, 'message' => "Année universitaire introuvable : précise-la au format 2024-2025."];
         }
 
-        [$jointure, $libelle] = match ($par) {
-            'niveau' => ['esbtp_niveau_etudes', 'n.name'],
-            'classe' => [null, 'c.name'],
-            default => ['esbtp_filieres', 'n.name'],
-        };
+        $lignes = $this->groupes($par, $annee->id);
 
-        $requete = DB::table('esbtp_inscriptions as i')
-            ->join('esbtp_classes as c', 'c.id', '=', 'i.classe_id')
-            ->where('i.annee_universitaire_id', $annee->id)
-            ->where('i.status', 'active')
-            ->where('i.workflow_step', 'etudiant_cree')
-            ->whereNull('i.deleted_at');
+        // Le total est celui du tableau de bord, pas la somme des groupes : un
+        // étudiant inscrit dans deux classes la même année compte une fois.
+        $total = app(StudentCountService::class)->inscritsDe($annee->id);
+        $somme = (int) $lignes->sum('inscrits');
 
-        if ($jointure) {
-            $requete->leftJoin("{$jointure} as n", 'n.id', '=', $par === 'niveau' ? 'c.niveau_etude_id' : 'c.filiere_id');
-        }
-
-        $lignes = $requete
-            ->selectRaw("COALESCE({$libelle}, 'Non renseigné') as groupe, COUNT(DISTINCT i.etudiant_id) as inscrits")
-            ->groupBy('groupe')
-            ->orderByDesc('inscrits')
-            ->get();
-
-        $total = (int) $lignes->sum('inscrits');
+        $nomsEnDouble = $lignes->countBy('nom')->filter(fn ($n) => $n > 1)->keys()->all();
         $resultats = $lignes->map(fn ($l) => [
-            $par => $l->groupe,
+            $par => in_array($l->nom, $nomsEnDouble, true) && $l->code ? "{$l->nom} ({$l->code})" : $l->nom,
             'inscrits' => (int) $l->inscrits,
-            'part' => $total > 0 ? round($l->inscrits / $total * 100, 1) . ' %' : '0 %',
+            'part' => $somme > 0 ? round($l->inscrits / $somme * 100, 1) . ' %' : '0 %',
         ])->values()->all();
 
         $noms = ['filiere' => 'filière', 'niveau' => 'niveau', 'classe' => 'classe'];
@@ -88,6 +73,9 @@ class RepartitionEffectifsTool extends ChatbotTool
             'count' => count($resultats),
             'annee' => $annee->name,
             'totaux' => ['inscrits' => $total],
+            'remarque' => $somme > $total
+                ? "La somme des groupes ({$somme}) dépasse le total ({$total}) : des étudiants sont inscrits dans plusieurs groupes."
+                : null,
             'widget' => $resultats === [] ? null : [
                 'kind' => 'graphique',
                 'type' => 'barres',
@@ -97,5 +85,26 @@ class RepartitionEffectifsTool extends ChatbotTool
                 'unite' => 'étudiants',
             ],
         ];
+    }
+
+    /** Une ligne par groupe réel (identifiant), les inscriptions sans classe sous « Non renseigné ». */
+    private function groupes(string $par, int $anneeId)
+    {
+        $requete = app(StudentCountService::class)->requeteInscrits($anneeId)
+            ->leftJoin('esbtp_classes as c', 'c.id', '=', 'esbtp_inscriptions.classe_id');
+
+        $groupe = 'c';
+        if ($par !== 'classe') {
+            $table = $par === 'niveau' ? 'esbtp_niveau_etudes' : 'esbtp_filieres';
+            $cle = $par === 'niveau' ? 'c.niveau_etude_id' : 'c.filiere_id';
+            $requete->leftJoin("{$table} as g", 'g.id', '=', $cle);
+            $groupe = 'g';
+        }
+
+        return $requete->toBase()
+            ->selectRaw("{$groupe}.id as gid, COALESCE(MAX({$groupe}.name), 'Non renseigné') as nom, MAX({$groupe}.code) as code, COUNT(DISTINCT esbtp_inscriptions.etudiant_id) as inscrits")
+            ->groupBy("{$groupe}.id")
+            ->orderByDesc('inscrits')
+            ->get();
     }
 }
