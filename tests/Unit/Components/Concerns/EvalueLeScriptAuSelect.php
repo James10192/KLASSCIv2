@@ -59,6 +59,20 @@ trait EvalueLeScriptAuSelect
 
         $js = substr($source, (int) $ouverture + 8, (int) $fermeture - (int) $ouverture - 8);
 
+        // La detection d'ancetre et le deplacement du menu vivent dans un
+        // partiel partage avec x-au-user-picker : on l'inline comme Blade.
+        $js = preg_replace_callback(
+            "/@include\\('([^']+)'\\)/",
+            function (array $m): string {
+                $chemin = __DIR__ . '/../../../../resources/views/' . str_replace('.', '/', $m[1]) . '.blade.php';
+                $contenu = file_get_contents($chemin);
+                $this->assertNotFalse($contenu, 'Partiel inclus introuvable : ' . $m[1]);
+
+                return (string) $contenu;
+            },
+            $js
+        );
+
         return self::$scriptAuSelectCache = "var window = globalThis;\n" . $js;
     }
 
