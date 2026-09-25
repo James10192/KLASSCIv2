@@ -34,15 +34,7 @@ class StudentCountService
     {
         $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        $inscritsAnneeCourante = 0;
-        if ($annee) {
-            $inscritsAnneeCourante = ESBTPInscription::query()
-                ->where('annee_universitaire_id', $annee->id)
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree')
-                ->distinct('etudiant_id')
-                ->count('etudiant_id');
-        }
+        $inscritsAnneeCourante = $annee ? $this->inscritsDe($annee->id) : 0;
 
         return [
             'inscrits_annee_courante' => $inscritsAnneeCourante,
@@ -50,6 +42,17 @@ class StudentCountService
             'annee_courante_id' => $annee?->id,
             'annee_courante_label' => $annee?->name,
         ];
+    }
+
+    /** Inscrits d'une année : inscription active, dossier étudiant créé, un étudiant compté une fois. */
+    public function inscritsDe(int $anneeId): int
+    {
+        return ESBTPInscription::query()
+            ->where('annee_universitaire_id', $anneeId)
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->distinct('etudiant_id')
+            ->count('etudiant_id');
     }
 
     /**

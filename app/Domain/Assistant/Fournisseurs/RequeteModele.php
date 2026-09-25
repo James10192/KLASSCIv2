@@ -21,7 +21,18 @@ final class RequeteModele
         public readonly array $outils = [],
         public readonly int $maxTokens = 2048,
         public readonly float $temperature = 0.2,
+        /**
+         * Le modèle doit répondre sans appeler d'outil (dernier tour permis). Les
+         * outils restent DÉCLARÉS : Anthropic refuse un historique de tool_use sans
+         * déclaration. Chaque adaptateur interdit l'appel à sa façon.
+         */
+        public readonly bool $conclure = false,
     ) {
+    }
+
+    public function pourConclure(): self
+    {
+        return new self($this->systeme, $this->messages, $this->outils, $this->maxTokens, $this->temperature, true);
     }
 
     public function avecMessages(array $messages): self
