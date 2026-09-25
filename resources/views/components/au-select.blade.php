@@ -59,7 +59,6 @@
          x-ref="menu"
          :id="$id('{{ $componentId }}')"
          x-show="open"
-         :style="menuStyle"
          x-cloak
          x-transition:enter="au-select-menu--entering"
          x-transition:enter-start="au-select-menu--enter-start"
@@ -166,7 +165,10 @@
     display: flex; align-items: center; gap: .5rem;
 }
 .au-select-search > i:first-child { color: #94a3b8; font-size: .8rem; }
-.au-select-search input { flex: 1; border: none; background: transparent; outline: none; font-size: .85rem; color: #1e293b; }
+/* min-width:0 : sans lui, le champ garde sa largeur native (~170px) et deborde
+   d'un menu etroit ; le focus fait alors defiler le menu, qui s'affiche
+   coupe a gauche. */
+.au-select-search input { flex: 1; min-width: 0; width: 100%; border: none; background: transparent; outline: none; font-size: .85rem; color: #1e293b; }
 .au-select-search-clear {
     background: #f1f5f9; border: none; width: 22px; height: 22px;
     border-radius: 50%; cursor: pointer;
@@ -355,7 +357,6 @@ if (typeof window.auSelect !== 'function') {
             _value: '',
             focusedIndex: -1,
             optionsVersion: 0,
-            menuStyle: '',
             _optionsObserver: null,
             _repositionMenu: null,
             _remeasureMenu: null,
@@ -364,6 +365,8 @@ if (typeof window.auSelect !== 'function') {
             _menuOpenUp: null,
             _repositionFrame: null,
             _menu: null,
+            _racine: null,
+            _declencheur: null,
             _menuDeplace: false,
             _marqueur: null,
             _veilleAncrage: null,
@@ -378,6 +381,16 @@ if (typeof window.auSelect !== 'function') {
                 // cette racine (cf. verifierAncrage), un querySelector sur
                 // $el ne le retrouverait alors plus.
                 this._menu = this.$refs.menu || this.$el.querySelector('.au-select-menu');
+                // Meme precaution pour la racine et le declencheur. Dans une
+                // methode appelee depuis un gestionnaire (`@click="toggle()"`
+                // sur le bouton), `$el` designe l'element du gestionnaire — le
+                // BOUTON —, pas la racine. `$el.querySelector('.au-select-trigger')`
+                // y rendait null : positionMenu sortait sans rien poser, et le
+                // menu s'ouvrait sur sa seule position CSS. Passe sous <body>,
+                // il s'etirait alors sur toute la largeur de la page, jusqu'au
+                // premier scroll — dont l'ecouteur, lui, voyait la bonne racine.
+                this._racine = this.$el;
+                this._declencheur = this.$el.querySelector('.au-select-trigger');
 
                 this.observeNativeOptions();
                 // Le scroll DEPLACE le menu, il ne le redimensionne pas. Un
@@ -492,17 +505,13 @@ if (typeof window.auSelect !== 'function') {
              */
             fermer() {
                 if (! this.open) {
-                    // Appel defensif — echappement sur un menu deja ferme. On
-                    // nettoie, mais on NE retouche PAS `menuStyle` : le liant
-                    // `:style` reecrit l'attribut style entier, et effacerait
-                    // le `display:none` pose par x-show alors que rien ne le
-                    // reposerait (x-show ne reagit qu'a un changement d'etat).
+                    // Appel defensif — echappement sur un menu deja ferme.
                     this.cesserSurveillanceAncrage();
                     this.rapatrierLeMenu();
                     return;
                 }
                 this.open = false;
-                this.menuStyle = '';
+                this.effacerPositionMenu();
                 this.focusedIndex = -1;
                 // La prochaine ouverture remesure : le contenu a pu changer.
                 this._menuWidth = null;
@@ -545,7 +554,7 @@ if (typeof window.auSelect !== 'function') {
                 if (typeof window.auSelectAncetreBloquant !== 'function') {
                     return false;
                 }
-                if (! window.auSelectAncetreBloquant(this.$el)) {
+                if (! window.auSelectAncetreBloquant(this._racine)) {
                     return false;
                 }
 
@@ -664,7 +673,7 @@ if (typeof window.auSelect !== 'function') {
              * Une taille se decide une fois, quand le menu s'ouvre.
              */
             positionMenu(remeasure = false) {
-                const trigger = this.$el.querySelector('.au-select-trigger');
+                const trigger = this._declencheur;
                 const menu = this._menu;
                 if (!trigger || !menu) return;
 
@@ -712,13 +721,49 @@ if (typeof window.auSelect !== 'function') {
 
                 // Sous <body>, le menu perd les regles CSS ecrites en
                 // descendance de son parent d'origine — dont, sur certaines
-                // pages, un z-index releve. On le repose ici, au meme niveau
-                // que les menus Bootstrap deplaces (cf. universal-dropdowns).
-                const plan = this._menuDeplace ? 'z-index:99999;' : '';
-
-                this.menuStyle = this._menuOpenUp
-                    ? `${plan}position:fixed;left:${left}px;right:auto;top:auto;bottom:${layoutHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${menuWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
-                    : `${plan}position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${menuWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
+                // pages, un z-index releve. On le repose ici (z-index 99999),
+                // au meme niveau que les menus Bootstrap deplaces
+                // (cf. universal-dropdowns).
+                this.appliquerPositionMenu({
+                    'z-index': this._menuDeplace ? '99999' : '',
+                    position: 'fixed',
+                    left: `${left}px`,
+                    right: 'auto',
+                    top: this._menuOpenUp ? 'auto' : `${triggerRect.bottom + gap}px`,
+                    bottom: this._menuOpenUp ? `${layoutHeight - triggerRect.top + gap}px` : 'auto',
+                    width: `${menuWidth}px`,
+                    'min-width': `${minimumWidth}px`,
+                    'max-width': `${menuWidth}px`,
+                    'max-height': `${availableHeight}px`,
+                    'transform-origin': this._menuOpenUp ? 'bottom center' : 'top center',
+                });
+            },
+            /**
+             * La position s'ecrit propriete par propriete, jamais par un liant
+             * `:style` en chaine. Ce liant reecrit l'attribut style ENTIER, sur
+             * lequel x-show pose et retire `display` au rythme de sa
+             * transition : les deux se disputaient le meme attribut, et il
+             * fallait deja une garde dans fermer() pour que l'un n'efface pas
+             * l'autre. `display` n'appartient qu'a x-show ; on n'y touche
+             * jamais ici.
+             */
+            appliquerPositionMenu(proprietes) {
+                const menu = this._menu;
+                if (! menu) return;
+                Object.entries(proprietes).forEach(([nom, valeur]) => {
+                    if (valeur === '') {
+                        menu.style.removeProperty(nom);
+                    } else {
+                        menu.style.setProperty(nom, valeur);
+                    }
+                });
+            },
+            effacerPositionMenu() {
+                const menu = this._menu;
+                if (! menu) return;
+                ['z-index', 'position', 'left', 'right', 'top', 'bottom', 'width',
+                    'min-width', 'max-width', 'max-height', 'transform-origin']
+                    .forEach((nom) => menu.style.removeProperty(nom));
             },
             get currentValue() { return this._value; },
             get isDisabled() { return !!this.$refs.native?.disabled; },
@@ -756,35 +801,29 @@ if (typeof window.auSelect !== 'function') {
                 const idx = this.filteredOptions.findIndex(o => !o.placeholder);
                 return idx >= 0 ? idx : -1;
             },
+            // Les fleches parcourent aussi l'invite : c'est la seule facon,
+            // au clavier, de revenir a « Toutes les … » apres un choix.
             focusNextOption() {
-                const options = this.filteredOptions;
-                if (!options.length) return;
-                let idx = this.focusedIndex;
-                for (let i = 0; i < options.length; i++) {
-                    idx = (idx + 1 + options.length) % options.length;
-                    if (!options[idx].placeholder) {
-                        this.focusedIndex = idx;
-                        return;
-                    }
-                }
+                const total = this.filteredOptions.length;
+                if (!total) return;
+                this.focusedIndex = (this.focusedIndex + 1 + total) % total;
             },
             focusPreviousOption() {
-                const options = this.filteredOptions;
-                if (!options.length) return;
-                let idx = this.focusedIndex < 0 ? options.length : this.focusedIndex;
-                for (let i = 0; i < options.length; i++) {
-                    idx = (idx - 1 + options.length) % options.length;
-                    if (!options[idx].placeholder) {
-                        this.focusedIndex = idx;
-                        return;
-                    }
-                }
+                const total = this.filteredOptions.length;
+                if (!total) return;
+                const depart = this.focusedIndex < 0 ? total : this.focusedIndex;
+                this.focusedIndex = (depart - 1 + total) % total;
             },
+            /**
+             * L'invite (« Toutes les classes ») est une option comme une autre
+             * au clic : elle ramene la valeur vide. La refuser laissait le menu
+             * ouvert et la valeur figee — impossible de revenir a « toutes »
+             * apres avoir choisi une classe, et le clic suivant sur le champ
+             * refermait le menu au lieu de l'ouvrir. Meme regle au clavier :
+             * les fleches l'atteignent et Entree la choisit.
+             */
             select(opt) {
-                if (opt.placeholder) {
-                    return;
-                }
-                this._value = opt.value;
+                this._value = opt.placeholder ? '' : opt.value;
                 this.fermer();
                 this.search = '';
             },
