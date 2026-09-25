@@ -42,7 +42,7 @@ Mêmes règles que l'écran « Retrouver un rendez-vous » (`App\Services\Rendez
 
 | Paramètre | Valeurs | Défaut |
 |---|---|---|
-| `q` | nom, prénoms (de la réservation et, pour une réinscription, de l'élève), courriel, référence du dossier, matricule ; une saisie faite de chiffres cherche le téléphone (de la réservation ou de l'élève, avec ou sans `+225`), le matricule et la référence | — |
+| `q` | nom, prénoms (de la réservation et, pour une réinscription, de l'élève), courriel, référence du dossier, matricule ; une saisie faite de chiffres cherche le téléphone (de la réservation ou de l'élève, avec ou sans l'indicatif réglé pour l'instance, `telephone_indicatif_pays`), le matricule et la référence | — |
 | `quand` | `a_venir`, `passes`, `tous` | `a_venir` sans `q`, `tous` avec |
 | `statut` | une valeur de `App\Enums\StatutReservationRdv` | tous |
 | `type` | `candidature`, `reinscription` | tous |
@@ -58,17 +58,21 @@ Mêmes règles que l'écran « Retrouver un rendez-vous » (`App\Services\Rendez
       "reference": "AB12-CD34", "matricule": null, "telephone_masque": "+225 07 ** ** ** 56",
       "date": "2026-10-05", "heure": "10:00-10:30", "statut": "confirmee",
       "etat_accueil": "attendu", "absences": 0, "recue_le": null }],
-    "eleves_sans_rendez_vous": [] } }
+    "eleves_sans_rendez_vous": [],
+    "autres_eleves_sans_rendez_vous": false } }
 ```
 
 Le texte se compare comme la liste des étudiants (`FuzzyNameMatcher`) : accents,
 apostrophes, tirets et ordre des noms n'y font rien. Si aucun rendez-vous ne répond
-exactement, la liste propose les orthographes voisines (score ≥ 80) et `approchant`
+exactement, la liste propose les orthographes voisines (score ≥ 70 : une lettre de
+distance sur un nom tapé seul passe, deux non) et `approchant`
 vaut `true`.
 
 `eleves_sans_rendez_vous` (5 au plus) nomme les élèves que `q` désigne et qui n'ont
 aucune réservation : `id`, `matricule`, `nom`, `demande_reinscription` (statut de
 leur dernière demande, `null` s'ils n'en ont déposé aucune). Vide pour `type=candidature`.
+`autres_eleves_sans_rendez_vous` vaut `true` quand d'autres élèves répondent au-delà
+des cinq : préciser la saisie.
 
 `filtres` rend les filtres **réellement appliqués**. Une valeur inconnue de `quand`,
 `statut` ou `type` y revient remplacée par sa valeur par défaut, sans erreur : un
@@ -113,7 +117,8 @@ un premier courriel, c'est donc **ici** qu'on borne :
 
 ## Historique
 
-- 2026-09-25 — `recherche` : champs `approchant` et `eleves_sans_rendez_vous` ajoutés ;
+- 2026-09-25 — `recherche` : champs `approchant`, `eleves_sans_rendez_vous` et
+  `autres_eleves_sans_rendez_vous` ajoutés ;
   le texte cherche aussi le nom et le téléphone de l'élève, tolère apostrophes,
   tirets, ordre des noms et fautes de frappe. Non cassant.
 

@@ -53,6 +53,7 @@
 .rdr-sous-tete { display: flex; align-items: center; gap: .6rem; padding: .75rem 1.25rem; border-top: 1px solid var(--rdv-line); border-bottom: 1px solid var(--rdv-line); background: #f8fafc; font-size: .82rem; color: var(--rdv-muted); }
 .rdr-sous-tete i { color: var(--rdv-primary); }
 .rdr-sous-tete strong { color: var(--rdv-dark); }
+.rdr-plus { margin: 0; padding: .7rem 1.25rem; border-top: 1px solid #f1f5f9; font-size: .8rem; color: var(--rdv-muted); }
 .rdr-eleve-meta { display: flex; gap: .85rem; flex-wrap: wrap; margin-top: .25rem; font-size: .78rem; color: var(--rdv-muted); }
 .rdr-eleve-meta span { display: inline-flex; align-items: center; gap: .3rem; }
 /* Le libelle du champ reste lu par les lecteurs d'ecran sans dependre de Bootstrap. */
@@ -146,7 +147,14 @@
                     <i class="fas fa-magnifying-glass"></i>
                     @if($filtres['q'] !== '')
                         <h3>Aucun rendez-vous pour « {{ $filtres['q'] }} »</h3>
-                        <p>Aucun élève ne porte ce nom ou ce numéro non plus. Vérifiez l'orthographe, cherchez par téléphone ou par référence, ou élargissez la période à « Tous ».</p>
+                        @if($eleveDesigne === true)
+                            {{-- L'eleve existe et a deja reserve : ce sont les filtres qui le cachent. --}}
+                            <p>Un élève répond à cette recherche et a déjà un rendez-vous, mais pas dans les filtres choisis. Remettez la période, le dossier et le statut sur « Tous ».</p>
+                        @elseif($eleveDesigne === false)
+                            <p>Aucun élève de l'école ne répond non plus à ce nom ou à ce numéro. Vérifiez l'orthographe, ou cherchez par téléphone ou par référence du dossier.</p>
+                        @else
+                            <p>Vérifiez l'orthographe, cherchez par téléphone ou par référence, ou élargissez les filtres à « Tous ». Une famille qui n'a jamais réservé n'apparaît pas ici.</p>
+                        @endif
                     @else
                         <h3>Aucun rendez-vous pour ces filtres</h3>
                         <p>Changez la période ou le statut pour voir d'autres rendez-vous.</p>

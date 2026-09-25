@@ -297,4 +297,76 @@ class RechercheRdvTest extends TestCase
             ->assertJsonPath('data.eleves_sans_rendez_vous.0.matricule', 'MESBTP25-0368')
             ->assertJsonPath('data.eleves_sans_rendez_vous.0.demande_reinscription', null);
     }
+
+    public function test_une_faute_sur_un_nom_tape_seul_est_rattrapee(): void
+    {
+        $fabrice = $this->rdv('KOUADIO', 'Yao Fabrice', 3);
+        $this->rdv('TRAORE', 'Issa', 2);
+
+        $html = $this->chercher('KOUADO');
+
+        $this->assertSame([$fabrice->id], $this->cles($html));
+        $this->assertStringContainsString('orthographes voisines', $html);
+    }
+
+    public function test_le_message_vide_n_affirme_que_ce_qui_a_ete_verifie(): void
+    {
+        // Personne ne porte ce nom : on peut le dire.
+        $this->assertStringContainsString("Aucun élève de l'école ne répond", $this->chercher('ZZYZX'));
+
+        // Recherche limitee aux nouvelles inscriptions : les eleves ne sont pas
+        // cherches, donc rien n'est affirme a leur sujet.
+        \App\Models\ESBTPEtudiant::factory()->create(['matricule' => 'MX-1', 'nom' => 'SORO', 'prenoms' => 'Ali']);
+        $html = $this->actingAs($this->agent(['admin.access', 'inscriptions.rdv.accueil']))
+            ->get(route('esbtp.rendez-vous.recherche', ['q' => 'soro ali', 'type' => 'candidature']))->assertOk()->getContent();
+        $this->assertStringNotContainsString('Aucun élève', $html);
+        $this->assertStringNotContainsString('connu de l', $html);
+
+        // L'eleve a un rendez-vous, mais le filtre de statut le cache.
+        $eleve = \App\Models\ESBTPEtudiant::factory()->create(['matricule' => 'MX-2', 'nom' => 'KONE', 'prenoms' => 'Awa']);
+        $this->reinscription($eleve, 'KONE', 'Awa', '+2250101010101');
+        $html = $this->actingAs($this->agent(['admin.access', 'inscriptions.rdv.accueil']))
+            ->get(route('esbtp.rendez-vous.recherche', ['q' => 'kone awa', 'statut' => 'annulee']))->assertOk()->getContent();
+        $this->assertStringContainsString('a déjà un rendez-vous, mais pas dans les filtres choisis', $html);
+        $this->assertStringNotContainsString('Aucun élève', $html);
+    }
+
+    public function test_un_eleve_sans_rendez_vous_se_retrouve_sans_son_apostrophe(): void
+    {
+        $eleve = \App\Models\ESBTPEtudiant::factory()->create(['matricule' => 'MX-3', 'nom' => "N'GUESSAN", 'prenoms' => 'Koffi']);
+
+        $html = $this->chercher('NGUESSAN');
+
+        $this->assertStringContainsString(route('esbtp.etudiants.show', $eleve->id), $html);
+        $this->assertStringContainsString('jamais réservé', $html);
+    }
+
+    public function test_l_indicatif_est_celui_de_l_instance_pas_celui_de_la_cote_d_ivoire(): void
+    {
+        \App\Domain\Notifications\PhoneNormalizer::definirResolveurReglages(static fn (string $cle): ?string => match ($cle) {
+            \App\Domain\Notifications\PhoneNormalizer::CLE_INDICATIF => '229',
+            \App\Domain\Notifications\PhoneNormalizer::CLE_PREFIXES => '01',
+            default => null,
+        });
+        try {
+            $eleve = \App\Models\ESBTPEtudiant::factory()->create(['matricule' => 'BJ-1', 'nom' => 'HOUNSOU', 'prenoms' => 'Eli', 'telephone' => '0142345678']);
+            $resa = $this->reinscription($eleve, 'HOUNSOU', 'Marc', '+22961000000');
+
+            $this->assertSame([$resa->id], $this->cles($this->chercher('+229 01 42 34 56 78')));
+        } finally {
+            \App\Domain\Notifications\PhoneNormalizer::definirResolveurReglages(null);
+        }
+    }
+
+    public function test_au_dela_de_cinq_eleves_l_encart_dit_qu_il_y_en_a_d_autres(): void
+    {
+        for ($i = 1; $i <= 6; $i++) {
+            \App\Models\ESBTPEtudiant::factory()->create(['matricule' => 'MZ-'.$i, 'nom' => 'YAO', 'prenoms' => 'Enfant '.$i]);
+        }
+
+        $html = $this->chercher('yao');
+
+        $this->assertSame(5, substr_count($html, 'class="rdr-eleve"'));
+        $this->assertStringContainsString("D'autres élèves répondent aussi", $html);
+    }
 }

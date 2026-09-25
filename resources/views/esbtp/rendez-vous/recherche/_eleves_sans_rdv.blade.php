@@ -5,7 +5,7 @@
     $_voitDemandes = auth()->user()?->can('reinscriptions.demandes.view') ?? false;
 @endphp
 <ul class="rdr-lignes">
-    @foreach($elevesSansRdv as $_eleve)
+    @foreach($elevesSansRdv->take(\App\Services\RendezVous\RechercheRdv::ELEVES_MAX) as $_eleve)
         @php $_demande = $_eleve->derniereDemandeRdv; @endphp
         <li class="rdr-eleve">
             <div class="rdr-eleve-qui">
@@ -32,3 +32,7 @@
         </li>
     @endforeach
 </ul>
+@if($elevesSansRdv->count() > \App\Services\RendezVous\RechercheRdv::ELEVES_MAX)
+    {{-- On n'en montre que quelques-uns : l'eleve cherche peut etre plus loin. --}}
+    <p class="rdr-plus">D'autres élèves répondent aussi à cette recherche sans avoir de rendez-vous : précisez avec le prénom ou le matricule.</p>
+@endif

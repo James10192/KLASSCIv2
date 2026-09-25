@@ -2,6 +2,7 @@
 
 namespace App\Services\RendezVous;
 
+use App\Domain\Notifications\PhoneNormalizer;
 use App\Enums\StatutReservationRdv;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPRdvReservation;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Retrouver le rendez-vous d'une famille, quel que soit le jour.
@@ -23,10 +25,12 @@ use Illuminate\Support\Facades\DB;
  *
  * Le texte libre se decoupe en mots, et chaque mot doit se retrouver quelque
  * part : nom, prenoms, courriel, reference du dossier, et pour une
- * reinscription le nom et le matricule de l'eleve. Sans correspondance
- * exacte, une orthographe voisine est proposee et signalee. Une saisie faite
- * de chiffres est lue comme un numero de telephone (celui de la reservation
- * ou celui de l'eleve), espaces et indicatif compris.
+ * reinscription le nom et le matricule de l'eleve. La collation de la base
+ * ignore deja accents et casse ; apostrophes et tirets sont retires des deux
+ * cotes. Sans correspondance exacte, une orthographe voisine est proposee et
+ * signalee. Une saisie faite de chiffres est lue comme un numero de telephone
+ * (celui de la reservation ou celui de l'eleve), avec ou sans l'indicatif de
+ * l'instance.
  */
 class RechercheRdv
 {
@@ -40,11 +44,27 @@ class RechercheRdv
 
     public const TYPE_REINSCRIPTION = 'reinscription';
 
-    /** Au-dela, la saisie est trop vague pour chercher une orthographe voisine. */
+    /**
+     * Le repli approchant juge en PHP : au-dela, la saisie est trop vague pour
+     * qu'une orthographe voisine ait un sens. La recherche exacte, elle, reste
+     * en SQL et n'a pas de plafond.
+     */
     private const CANDIDATS_MAX = 2000;
 
-    /** Le seuil de la liste des etudiants : en dessous, ce n'est plus la meme personne. */
-    private const SEUIL_APPROCHANT = 80;
+    /**
+     * 70 : une faute de frappe sur un mot tape seul (« KOUADO » pour
+     * « KOUADIO », une lettre de distance) passe tout juste — le score de
+     * FuzzyNameMatcher plafonne un tel mot a 72. Deux lettres de distance sur
+     * un mot seul (« KOUAKOU » pour « KOUADIO ») restent dehors. Le repli ne
+     * joue que sans resultat exact, et l'ecran le signale.
+     */
+    private const SEUIL_APPROCHANT = 70;
+
+    /** L'encart n'en montre pas davantage ; au-dela, on dit qu'il y en a d'autres. */
+    public const ELEVES_MAX = 5;
+
+    /** Apostrophes (droite et typographique) et tirets, retires avant de comparer. */
+    private const PONCTUATION_NOM = ["\u{2019}", "'", '-'];
 
     /** @var array<string, array{ids: list<int>, approchant: bool}> */
     private array $memo = [];
@@ -125,9 +145,18 @@ class RechercheRdv
         $q = $filtres['q'];
         $chiffres = $this->chiffresSaisis($q);
 
-        return $this->memo[$cle] = $chiffres !== null
-            ? ['ids' => $this->parChiffres($this->base($filtres), $q, $chiffres), 'approchant' => false]
-            : $this->parTexte($this->base($filtres), $q);
+        if ($chiffres !== null) {
+            return $this->memo[$cle] = ['ids' => $this->ids($this->parChiffres($this->base($filtres), $q, $chiffres)), 'approchant' => false];
+        }
+
+        $exacts = $this->ids($this->parTexteExact($this->base($filtres), $q));
+        if ($exacts !== []) {
+            return $this->memo[$cle] = ['ids' => $exacts, 'approchant' => false];
+        }
+
+        $voisins = $this->orthographesVoisines($this->base($filtres), $q);
+
+        return $this->memo[$cle] = ['ids' => $voisins, 'approchant' => $voisins !== []];
     }
 
     /**
@@ -148,15 +177,16 @@ class RechercheRdv
      * « Je ne le trouve pas » voulait souvent dire « la famille n'a jamais
      * reserve » : la liste vide ne permettait pas de trancher entre une panne
      * de la recherche et une famille a relancer. On le dit, avec l'etat de sa
-     * demande de reinscription.
+     * demande de reinscription. Rend un eleve de plus que ELEVES_MAX : l'ecran
+     * sait ainsi qu'il y en a d'autres.
      *
      * @param  array{q: string, quand: string, statut: string, type: string}  $filtres
      * @return Collection<int, ESBTPEtudiant>
      */
-    public function elevesSansRendezVous(array $filtres, int $limite = 5): Collection
+    public function elevesSansRendezVous(array $filtres): Collection
     {
-        $q = $filtres['q'];
-        if ($q === '' || $filtres['type'] === self::TYPE_CANDIDATURE) {
+        $requete = $this->elevesDesignes($filtres);
+        if ($requete === null) {
             return collect();
         }
 
@@ -166,35 +196,12 @@ class RechercheRdv
             // NOT IN sur une sous-requete qui rendrait un NULL ne rendrait plus rien.
             ->select('esbtp_reinscription_demandes.etudiant_id');
 
-        $requete = ESBTPEtudiant::query()
+        $eleves = $requete
             ->select('id', 'matricule', 'nom', 'prenoms')
-            ->whereNotIn('id', $avecRendezVous);
-
-        $chiffres = $this->chiffresSaisis($q);
-        if ($chiffres !== null) {
-            $likeSaisie = '%'.$this->echapper($q).'%';
-            $requete->where(function (Builder $w) use ($likeSaisie, $chiffres) {
-                $w->where('matricule', 'like', $likeSaisie);
-                foreach ($this->variantesTelephone($chiffres) as $variante) {
-                    $like = '%'.$this->echapper($variante).'%';
-                    $w->orWhere('matricule', 'like', $like)->orWhere('telephone', 'like', $like);
-                }
-            });
-        } else {
-            $mots = $this->mots($q);
-            if ($mots === []) {
-                return collect();
-            }
-            // Meme exigence que la recherche exacte : chaque mot se retrouve.
-            foreach ($mots as $mot) {
-                $like = '%'.$this->echapper($mot).'%';
-                $requete->where(fn (Builder $w) => $w->where('nom', 'like', $like)
-                    ->orWhere('prenoms', 'like', $like)
-                    ->orWhere('matricule', 'like', $like));
-            }
-        }
-
-        $eleves = $requete->orderBy('nom')->orderBy('prenoms')->limit($limite)->get();
+            ->whereNotIn('id', $avecRendezVous)
+            ->orderBy('nom')->orderBy('prenoms')
+            ->limit(self::ELEVES_MAX + 1)
+            ->get();
         if ($eleves->isEmpty()) {
             return $eleves;
         }
@@ -209,6 +216,67 @@ class RechercheRdv
             ->keyBy('etudiant_id');
 
         return $eleves->each(fn (ESBTPEtudiant $e) => $e->setRelation('derniereDemandeRdv', $demandes->get($e->id)));
+    }
+
+    /**
+     * Un eleve de l'ecole repond-il a la saisie, rendez-vous ou non ?
+     *
+     * Null quand la question ne se pose pas (aucun texte, ou recherche limitee
+     * aux nouvelles inscriptions) : l'ecran ne doit alors rien affirmer. Sert a
+     * ne dire « aucun eleve ne porte ce nom » que quand on l'a verifie.
+     *
+     * @param  array{q: string, quand: string, statut: string, type: string}  $filtres
+     */
+    public function eleveDesigne(array $filtres): ?bool
+    {
+        $requete = $this->elevesDesignes($filtres);
+
+        return $requete?->exists();
+    }
+
+    /**
+     * Les eleves que la saisie designe, avec la meme tolerance que la
+     * recherche exacte des rendez-vous. Aucun filtre de periode ni de statut :
+     * ils portent sur les rendez-vous, pas sur l'eleve.
+     *
+     * @param  array{q: string, quand: string, statut: string, type: string}  $filtres
+     */
+    private function elevesDesignes(array $filtres): ?Builder
+    {
+        $q = $filtres['q'];
+        if ($q === '' || $filtres['type'] === self::TYPE_CANDIDATURE) {
+            return null;
+        }
+
+        $requete = ESBTPEtudiant::query();
+        $chiffres = $this->chiffresSaisis($q);
+
+        if ($chiffres !== null) {
+            $likeSaisie = '%'.$this->echapper($q).'%';
+            $requete->where(function (Builder $w) use ($likeSaisie, $q, $chiffres) {
+                $w->where('matricule', 'like', $likeSaisie);
+                foreach ($this->variantesTelephone($q, $chiffres) as $variante) {
+                    $like = '%'.$this->echapper($variante).'%';
+                    $w->orWhere('matricule', 'like', $like)->orWhere('telephone', 'like', $like);
+                }
+            });
+
+            return $requete;
+        }
+
+        $mots = $this->mots($q);
+        if ($mots === []) {
+            return null;
+        }
+        foreach ($mots as $mot) {
+            $like = '%'.$this->echapper($mot).'%';
+            $requete->where(fn (Builder $w) => $w->where('nom', 'like', $like)
+                ->orWhere('prenoms', 'like', $like)
+                ->orWhere('matricule', 'like', $like)
+                ->orWhereRaw($this->nomColle('nom', 'prenoms').' LIKE ?', [$like]));
+        }
+
+        return $requete;
     }
 
     /**
@@ -265,33 +333,30 @@ class RechercheRdv
     }
 
     /**
-     * Le numero tel qu'il a ete tape, et sans indicatif : la famille dit
-     * « +225 05 00… » quand la fiche de l'eleve porte « 0500… ».
+     * Le numero tel qu'il a ete tape, et sa partie nationale quand la saisie
+     * porte l'indicatif de l'instance : la famille dit « +225 05 00… » quand
+     * la fiche de l'eleve porte « 0500… ». L'indicatif vient des reglages de
+     * l'instance (PhoneNormalizer), jamais du code : ucao-benin est en +229.
      *
      * @return list<string>
      */
-    private function variantesTelephone(string $chiffres): array
+    private function variantesTelephone(string $q, string $chiffres): array
     {
         $variantes = [$chiffres];
-        foreach (['00225', '225'] as $indicatif) {
-            if (str_starts_with($chiffres, $indicatif) && strlen($chiffres) - strlen($indicatif) >= 8) {
-                $variantes[] = substr($chiffres, strlen($indicatif));
-                break;
-            }
+        $parties = PhoneNormalizer::decomposer($q);
+        if ($parties !== null && $parties['indicatif'] !== null && strlen($parties['national']) >= 4) {
+            $variantes[] = $parties['national'];
         }
 
-        return $variantes;
+        return array_values(array_unique($variantes));
     }
 
-    /**
-     * @return list<int>
-     */
-    private function parChiffres(Builder $requete, string $q, string $chiffres): array
+    private function parChiffres(Builder $requete, string $q, string $chiffres): Builder
     {
         $likeSaisie = '%'.$this->echapper($q).'%';
-        $variantes = $this->variantesTelephone($chiffres);
+        $variantes = $this->variantesTelephone($q, $chiffres);
 
-        $requete->where(function (Builder $w) use ($likeSaisie, $variantes, $chiffres) {
+        return $requete->where(function (Builder $w) use ($likeSaisie, $variantes, $chiffres) {
             foreach ($variantes as $variante) {
                 $w->orWhere('esbtp_rdv_reservations.telephone', 'like', '%'.$this->echapper($variante).'%');
             }
@@ -306,92 +371,98 @@ class RechercheRdv
             });
             $this->references($w, $chiffres);
         });
-
-        return $requete->pluck('esbtp_rdv_reservations.id')->map(fn ($id) => (int) $id)->all();
     }
 
     /**
-     * Le texte libre, comme la liste des etudiants : on reunit en SQL les
-     * candidats plausibles, puis on juge en PHP avec la meme normalisation que
-     * FuzzyNameMatcher — accents, apostrophes (’ ou '), tirets et ordre des
-     * noms n'ont plus d'importance.
-     *
-     * D'abord l'exact : chaque mot se retrouve quelque part. A defaut
-     * seulement, une orthographe voisine (« KOUADO » pour « KOUADIO »), que
-     * l'ecran signale : un homonyme ne doit pas passer pour la famille.
-     *
-     * @return array{ids: list<int>, approchant: bool}
+     * L'exact, en SQL et sans plafond : chaque mot se retrouve dans l'un des
+     * champs de la reservation ou de l'eleve — ou la saisie entiere est une
+     * reference de dossier (« LMXB-EWX9 »).
      */
-    private function parTexte(Builder $requete, string $q): array
+    private function parTexteExact(Builder $requete, string $q): Builder
     {
         $mots = $this->mots($q);
         if ($mots === []) {
-            return ['ids' => [], 'approchant' => false];
+            return $requete->whereRaw('1 = 0');
         }
 
         $compacte = $this->references->normaliser($q);
-        $requete->where(function (Builder $w) use ($mots, $compacte) {
-            // Le nom sans apostrophe ni tiret : « NGUESSAN » attrape « N'GUESSAN ».
-            $colle = "REPLACE(REPLACE(REPLACE(CONCAT_WS('', esbtp_rdv_reservations.nom, esbtp_rdv_reservations.prenoms), '\u{2019}', ''), '''', ''), '-', '')";
+
+        return $requete->where(function (Builder $w) use ($mots, $compacte) {
+            $w->where(function (Builder $tous) use ($mots) {
+                foreach ($mots as $mot) {
+                    $like = '%'.$this->echapper($mot).'%';
+                    $tous->where(fn (Builder $champ) => $champ
+                        ->where('esbtp_rdv_reservations.nom', 'like', $like)
+                        ->orWhere('esbtp_rdv_reservations.prenoms', 'like', $like)
+                        ->orWhere('esbtp_rdv_reservations.email', 'like', $like)
+                        // « NGUESSAN » tape d'un bloc retrouve « N'GUESSAN ».
+                        ->orWhereRaw($this->nomColle('esbtp_rdv_reservations.nom', 'esbtp_rdv_reservations.prenoms').' LIKE ?', [$like])
+                        // Pour une reinscription, l'eleve : le parent qui a
+                        // reserve a parfois donne son propre nom.
+                        ->orWhereHas('demande.etudiant', fn (Builder $e) => $e
+                            ->where('matricule', 'like', $like)
+                            ->orWhere('nom', 'like', $like)
+                            ->orWhere('prenoms', 'like', $like)
+                            ->orWhereRaw($this->nomColle('nom', 'prenoms').' LIKE ?', [$like])));
+                }
+            });
+            $this->references($w, $compacte);
+        });
+    }
+
+    /**
+     * Le repli, seulement quand l'exact ne rend rien : SQL reunit les
+     * candidats plausibles (un mot, ou le debut d'un mot long, suffit), puis
+     * FuzzyNameMatcher les juge avec la regle de la liste des etudiants.
+     *
+     * @return list<int>
+     */
+    private function orthographesVoisines(Builder $requete, string $q): array
+    {
+        $mots = $this->mots($q);
+        if ($mots === []) {
+            return [];
+        }
+
+        $requete->where(function (Builder $w) use ($mots) {
             foreach ($mots as $mot) {
-                $w->orWhereRaw($colle.' LIKE ?', ['%'.$this->echapper($mot).'%']);
                 foreach (array_unique([$mot, $this->racine($mot)]) as $morceau) {
                     $like = '%'.$this->echapper($morceau).'%';
                     $w->orWhere('esbtp_rdv_reservations.nom', 'like', $like)
                         ->orWhere('esbtp_rdv_reservations.prenoms', 'like', $like)
-                        ->orWhere('esbtp_rdv_reservations.email', 'like', $like)
                         ->orWhereHas('demande.etudiant', fn (Builder $e) => $e
-                            ->where('matricule', 'like', $like)
-                            ->orWhere('nom', 'like', $like)
+                            ->where('nom', 'like', $like)
                             ->orWhere('prenoms', 'like', $like));
                 }
             }
-            $this->references($w, $compacte);
         });
 
         $candidats = $requete
             ->select('esbtp_rdv_reservations.id', 'esbtp_rdv_reservations.nom', 'esbtp_rdv_reservations.prenoms',
-                'esbtp_rdv_reservations.email', 'esbtp_rdv_reservations.candidature_id', 'esbtp_rdv_reservations.reinscription_demande_id')
-            ->with(['candidature:id,reference_publique', 'demande:id,etudiant_id,reference_publique', 'demande.etudiant:id,matricule,nom,prenoms'])
-            ->limit(self::CANDIDATS_MAX)
+                'esbtp_rdv_reservations.email', 'esbtp_rdv_reservations.reinscription_demande_id')
+            ->with(['demande:id,etudiant_id', 'demande.etudiant:id,matricule,nom,prenoms'])
+            // Les plus recents d'abord : si la saisie est trop vague, on garde
+            // les dossiers de l'annee en cours plutot qu'un tirage arbitraire.
+            ->orderByDesc('esbtp_rdv_reservations.id')
+            ->limit(self::CANDIDATS_MAX + 1)
             ->get();
 
-        $exacts = $candidats->filter(function (ESBTPRdvReservation $r) use ($mots, $compacte) {
-            $botte = ' '.$this->matcher->normalizeString(implode(' ', $this->champs($r))).' ';
-            $references = $this->references->normaliser(implode(' ', [
-                $r->candidature?->reference_publique, $r->demande?->reference_publique,
-            ]));
-            if (strlen($compacte) >= 4 && str_contains($references, $compacte)) {
-                return true;
-            }
-            // « NGUESSAN » tape d'un bloc retrouve « N'GUESSAN » : on compare
-            // aussi au texte sans espaces.
-            $colle = str_replace(' ', '', $botte);
-            foreach ($mots as $mot) {
-                if (! str_contains($botte, $mot) && ! str_contains($colle, $mot)) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
-
-        if ($exacts->isNotEmpty()) {
-            return ['ids' => $exacts->pluck('id')->map(fn ($id) => (int) $id)->values()->all(), 'approchant' => false];
+        if ($candidats->count() > self::CANDIDATS_MAX) {
+            Log::info('RechercheRdv : saisie trop vague, orthographes voisines jugees sur les plus recents seulement', [
+                'q' => $q, 'plafond' => self::CANDIDATS_MAX,
+            ]);
+            $candidats = $candidats->take(self::CANDIDATS_MAX);
         }
 
-        $voisins = $this->matcher->match($q, $candidats, fn (ESBTPRdvReservation $r) => $this->champs($r), [
+        return $this->matcher->match($q, $candidats, fn (ESBTPRdvReservation $r) => $this->champs($r), [
             'threshold' => self::SEUIL_APPROCHANT,
             'boosts' => ['matricule' => 20],
-        ]);
-
-        return ['ids' => $voisins->pluck('id')->map(fn ($id) => (int) $id)->values()->all(), 'approchant' => $voisins->isNotEmpty()];
+        ])->pluck('id')->map(fn ($id) => (int) $id)->values()->all();
     }
 
     /**
      * Ce qu'on compare au texte : le nom laisse a la reservation, dans les deux
-     * ordres, et pour une reinscription celui de l'eleve — le parent qui a
-     * reserve a parfois donne le sien.
+     * ordres, et pour une reinscription celui de l'eleve.
      *
      * @return array<string, string|null>
      */
@@ -430,6 +501,27 @@ class RechercheRdv
     private function racine(string $mot): string
     {
         return strlen($mot) >= 5 ? substr($mot, 0, 4) : $mot;
+    }
+
+    /**
+     * Nom et prenoms colles, sans apostrophe ni tiret, pour un LIKE.
+     */
+    private function nomColle(string $nom, string $prenoms): string
+    {
+        $sql = "CONCAT_WS('', {$nom}, {$prenoms})";
+        foreach (self::PONCTUATION_NOM as $signe) {
+            $sql = 'REPLACE('.$sql.', '.DB::getPdo()->quote($signe).", '')";
+        }
+
+        return $sql;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function ids(Builder $requete): array
+    {
+        return $requete->pluck('esbtp_rdv_reservations.id')->map(fn ($id) => (int) $id)->all();
     }
 
     /**

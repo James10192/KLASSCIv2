@@ -82,6 +82,7 @@ class CLIRendezVousController extends BaseApiController
         $filtres = $recherche->filtres($request);
         $parPage = min(100, max(1, (int) $request->input('per_page', 25)));
         $page = $recherche->requete($filtres)->paginate($parPage);
+        $sansRdv = $recherche->elevesSansRendezVous($filtres);
 
         return $this->successResponse([
             'filtres' => $filtres,
@@ -109,12 +110,13 @@ class CLIRendezVousController extends BaseApiController
                 'recue_le' => $r->accueilli_at?->toIso8601String(),
             ])->values(),
             // Les eleves que la saisie designe et qui n'ont jamais reserve.
-            'eleves_sans_rendez_vous' => $recherche->elevesSansRendezVous($filtres)->map(fn ($e) => [
+            'eleves_sans_rendez_vous' => $sansRdv->take(RechercheRdv::ELEVES_MAX)->map(fn ($e) => [
                 'id' => $e->id,
                 'matricule' => $e->matricule,
                 'nom' => trim($e->nom.' '.$e->prenoms),
                 'demande_reinscription' => $e->derniereDemandeRdv?->statut,
             ])->values(),
+            'autres_eleves_sans_rendez_vous' => $sansRdv->count() > RechercheRdv::ELEVES_MAX,
         ]);
     }
 
