@@ -172,6 +172,7 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | planning-header | `ph-*` | `ph-hero`, `ph-kpi`, `ph-tab` (composant réutilisable) |
 | custom-roles (Lot 8) | `cr-*` | `cr-modal`, `cr-picker`, `cr-perm`, `cr-role-card`, `cr-section-bar` |
 | rendez-vous accueil du jour | `rac-*` (sur la base `rdv-*` du planning) | `rac-ligne`, `rac-coche`, `rac-creneau`, `rac-filtre`, `rac-choix` |
+| pilotage académique (tableau de bord) | `pa-*` | `pa-hero`, `pa-kpi`, `pa-relance`, `pa-table`, `pa-panneau` |
 | rendez-vous d'inscription | `rdv-*` | `rdv-hero`, `rdv-kpi`, `rdv-slot`, `rdv-jauge`, `rdv-resas`, `rdv-switch`, `rdv-reglages` |
 | retrouver un rendez-vous | `rdr-*` (sur la base `rdv-*`) | `rdr-ligne`, `rdr-quand`, `rdr-groupe`, `rdr-recherche` |
 | étudiants sur téléphone (shell m-*) | `eim-*` (liste), `etm-*` (carte hors shell) | `eim-row`, `eim-av`, `eim-seg`, `etm-card` |

@@ -12,6 +12,6 @@
     'icon' => 'fa-print',
     'roleLabel' => 'Service scolarité',
     'model' => $service,
-    'performanceScore' => $performanceScore ?? null,
+    'activite' => $activite ?? null,
 ])
 @endsection

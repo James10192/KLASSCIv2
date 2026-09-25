@@ -44,6 +44,11 @@
 }
 .cpa-hero-kpi-value { color: #fff; font-size: 1.35rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
 .cpa-hero-kpi-label { margin-top: .2rem; color: rgba(255,255,255,.68); font-size: .72rem; font-weight: 700; }
+.cpa-hero-kpis--deux { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+button.cpa-hero-kpi { color: #fff; text-align: left; cursor: pointer; transition: background .2s ease; }
+button.cpa-hero-kpi:hover { background: rgba(255,255,255,.18); }
+a.cpa-hero-scope { text-decoration: none; }
+a.cpa-hero-scope:hover { color: #fff; background: rgba(255,255,255,.2); }
 .cpa-filter-panel { overflow: visible; position: relative; z-index: 30; }
 .cpa-filter-panel:has(.au-select-trigger--open) { z-index: 1400; }
 .cpa-filter-panel .cpa-toolbar { overflow: visible; }

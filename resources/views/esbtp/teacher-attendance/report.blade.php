@@ -118,47 +118,7 @@
     }
     .tar-type-code { font-size: .65rem; opacity: .85; }
     .tar-type-nf { opacity: .5; }
-    .tar-score-badge {
-        display: inline-flex; align-items: center; gap: .3rem; flex-shrink: 0;
-        border-radius: 999px; padding: .24rem .55rem; font-size: .68rem; font-weight: 800;
-        border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b;
-    }
-    .tar-score-badge.success { background: rgba(16,185,129,.12); color: #047857; border-color: rgba(16,185,129,.22); }
-    .tar-score-badge.primary { background: rgba(4,83,203,.10); color: #0453cb; border-color: rgba(4,83,203,.18); }
-    .tar-score-badge.warning { background: rgba(217,119,6,.12); color: #92400e; border-color: rgba(217,119,6,.22); }
-    .tar-score-badge.danger { background: rgba(220,38,38,.10); color: #b91c1c; border-color: rgba(220,38,38,.18); }
-    .tar-score-badge.muted { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
 
-    .tar-score-panel {
-        background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 1.25rem;
-        padding: 1rem 1.1rem; box-shadow: 0 1px 3px rgba(15,23,42,.04);
-    }
-    .tar-score-head { display: flex; align-items: center; gap: .75rem; margin-bottom: .9rem; }
-    .tar-score-icon {
-        width: 38px; height: 38px; border-radius: 10px;
-        background: linear-gradient(135deg, #0453cb, #5e91de); color: #fff;
-        display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .tar-score-title { color: #1e293b; font-size: .96rem; font-weight: 800; }
-    .tar-score-sub { color: #64748b; font-size: .76rem; margin-top: .1rem; }
-    .tar-score-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
-    .tar-score-metric {
-        border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; padding: .85rem .95rem;
-    }
-    .tar-score-metric span { display: block; color: #0453cb; font-size: 1.25rem; font-weight: 900; line-height: 1; }
-    .tar-score-metric small { display: block; color: #64748b; font-size: .7rem; font-weight: 800; margin-top: .35rem; text-transform: uppercase; }
-    .tar-score-top {
-        margin-top: .75rem; border: 1px solid rgba(4,83,203,.16); border-radius: 12px;
-        background: #f8fbff; padding: .8rem .95rem; display: flex; align-items: center; justify-content: space-between; gap: .75rem;
-    }
-    .tar-score-top strong { display: block; color: #1e293b; font-size: .86rem; }
-    .tar-score-top span { display: block; color: #64748b; font-size: .73rem; margin-top: .1rem; }
-    .tar-score-top b { color: #0453cb; font-size: 1.2rem; }
-    .tar-score-empty {
-        border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #64748b;
-        padding: .9rem 1rem; display: flex; align-items: center; gap: .65rem; font-size: .82rem; font-weight: 700;
-    }
-    .tar-score-empty i { color: #0453cb; }
 
     /* ── Liste séances ────────────────────────────────────── */
     .tar-seances { max-height: 70vh; overflow-y: auto; }
@@ -214,7 +174,6 @@
     @media (max-width: 768px) {
         .tar-hero { padding: 1.4rem 1.25rem; }
         .tar-filters-row { flex-direction: column; align-items: stretch; }
-        .tar-score-grid { grid-template-columns: 1fr; }
     }
 </style>
 @endpush
@@ -300,15 +259,6 @@
         </div>
     </form>
 
-    @can('performance.view_all')
-        <div id="tarPerformance">
-            @include('esbtp.teacher-attendance.partials._report_performance', [
-                'performanceScores' => $performanceScores,
-                'performanceSummary' => $performanceSummary,
-            ])
-        </div>
-    @endcan
-
     {{-- Contenu --}}
     <div class="tar-grid">
         {{-- Cartes enseignants (baromètre heures) --}}
@@ -324,7 +274,6 @@
                 <div class="tar-tcards" id="tarTeachers">
                     @include('esbtp.teacher-attendance.partials._report_teachers', [
                         'report' => $report,
-                        'performanceScores' => $performanceScores,
                     ])
                 </div>
             </div>
@@ -396,9 +345,6 @@ function reportPage() {
                 const data = await res.json();
                 document.getElementById('tarKpis').innerHTML = data.kpis_html;
                 document.getElementById('tarTeachers').innerHTML = data.teachers_html;
-                if (data.performance_html && document.getElementById('tarPerformance')) {
-                    document.getElementById('tarPerformance').innerHTML = data.performance_html;
-                }
                 // NE PAS toucher #tarSeances : la ligne animée reste intacte.
             } catch (e) { /* silencieux */ }
         },
@@ -439,9 +385,6 @@ function reportPage() {
                 const data = await res.json();
                 document.getElementById('tarKpis').innerHTML = data.kpis_html;
                 document.getElementById('tarTeachers').innerHTML = data.teachers_html;
-                if (data.performance_html && document.getElementById('tarPerformance')) {
-                    document.getElementById('tarPerformance').innerHTML = data.performance_html;
-                }
                 document.getElementById('tarSeances').innerHTML = data.seances_html
                     || '<div class="tar-empty"><i class="fas fa-calendar-times"></i><p>Aucune séance.</p></div>';
                 this.hasMore = data.has_more;
