@@ -170,7 +170,7 @@
                         <td>
                             <span class="rtn-matiere">{{ optional($ligne->matiere)->name ?? 'Enseignement' }}</span>
                             @if(optional($ligne->matiere)->code)
-                                <span class="rtn-code">{{ $ligne->matiere->code }}</span>
+                                <span class="rtn-code">{{ $ligne->matiere->code_affiche }}</span>
                             @endif
                         </td>
                         <td>

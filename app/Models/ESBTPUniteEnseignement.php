@@ -55,6 +55,15 @@ class ESBTPUniteEnseignement extends Model implements Auditable
     public ?int $creditDeLaMaquette = null;
 
     /**
+     * Le code que la maquette imprime : sans le suffixe de parcours
+     * (`AGR21031~LPA` imprime `AGR21031`). Voir CodeDeMaquette.
+     */
+    public function getCodeAfficheAttribute(): ?string
+    {
+        return \App\Services\LMD\CodeDeMaquette::affiche($this->code);
+    }
+
+    /**
      * Le crédit à utiliser pour CETTE lecture : celui de la maquette s'il est
      * gravé, celui de la fiche sinon.
      *
