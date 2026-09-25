@@ -151,7 +151,7 @@ class Anthropic extends AdaptateurHttp
                 'description' => $o['description'],
                 'input_schema' => $this->schemaPortable($o['parametres']) + ['type' => 'object'],
             ], $requete->outils);
-            $corps['tool_choice'] = ['type' => 'auto'];
+            $corps['tool_choice'] = ['type' => $requete->conclure ? 'none' : 'auto'];
         }
 
         return $corps;
