@@ -185,6 +185,33 @@ class ChatbotStreamTest extends TestCase
         $this->assertSame("data: [DONE]\n\n", end($this->frames));
     }
 
+    public function test_reessayer_apres_une_erreur_remplace_la_reponse_sans_doubler_la_question(): void
+    {
+        Http::fake([
+            'api.anthropic.test/*' => Http::response(['error' => ['type' => 'overloaded_error', 'message' => 'x']], 529),
+        ]);
+        $user = $this->user();
+
+        $this->actingAs($user)->post(route('chatbot.message.stream'), ['message' => 'Bonjour'])->streamedContent();
+        $conversation = \App\Models\ChatbotConversation::where('user_id', $user->id)->latest('id')->first();
+        $this->assertSame(['user', 'assistant'], $conversation->messages()->orderBy('id')->pluck('role')->all());
+
+        $this->actingAs($user)->post(route('chatbot.message.stream'), [
+            'message' => 'Bonjour', 'conversation_id' => $conversation->session_id, 'relance' => true,
+        ])->streamedContent();
+
+        // La réponse ratée est remplacée ; la question n'est pas enregistrée deux fois.
+        $messages = $conversation->messages()->orderBy('id')->get();
+        $this->assertSame(['user', 'assistant'], $messages->pluck('role')->all());
+        $this->assertSame(1, $messages->where('content', 'Bonjour')->count());
+
+        // Sans le drapeau, c'est une nouvelle question.
+        $this->actingAs($user)->post(route('chatbot.message.stream'), [
+            'message' => 'Bonjour', 'conversation_id' => $conversation->session_id,
+        ])->streamedContent();
+        $this->assertSame(4, $conversation->messages()->count());
+    }
+
     public function test_choisir_son_modele_demande_la_permission(): void
     {
         Http::fake();

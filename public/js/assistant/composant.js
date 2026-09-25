@@ -41,6 +41,7 @@
             messages: [],
             saisie: '',
             envoiEnCours: false,
+            relanceEnCours: false,
             controleur: null,
             conversationId: null,
             conversations: [],
@@ -248,6 +249,7 @@
                 this.vue = 'chat';
                 this.menuModele = false;
 
+                this.relanceEnCours = !!opts.relance;
                 var cleQuestion = null;
                 if (!opts.relance) {
                     cleQuestion = uid('m');
@@ -325,7 +327,9 @@
                     conversation_id: this.conversationId,
                     current_url: window.location.href.slice(0, 2048),
                     current_path: window.location.pathname.slice(0, 1024),
-                    page_title: document.title.slice(0, 255)
+                    page_title: document.title.slice(0, 255),
+                    // Réessai : le serveur remplace la réponse ratée au lieu d'ajouter un tour.
+                    relance: this.relanceEnCours || undefined
                 });
             },
 
@@ -482,9 +486,9 @@
             },
 
             /**
-             * Le serveur n'a pas de notion de régénération : il enregistre la
-             * question une seconde fois, et le modèle voit la réponse d'avant.
-             * On ne relance donc qu'une réponse en erreur ou arrêtée.
+             * Réessayer une réponse en erreur ou arrêtée. Le serveur (drapeau
+             * relance) retire la réponse ratée et réutilise la question déjà
+             * enregistrée. Une réponse aboutie ne se régénère pas.
              */
             relancer: function (msg) {
                 if (this.envoiEnCours || !(msg.erreur || msg.status === 'stopped')) { return; }

@@ -5,7 +5,7 @@ en-tête `x-vercel-ai-ui-message-stream: v1` : protocole *UI message stream* du 
 Chaque partie est une ligne `data: {json}` suivie d'une ligne vide ; le flux se termine par `data: [DONE]`.
 
 Corps : `message` (≤ 1000 caractères), `session_id` (facultatif), `modele` (clé de `config/assistant.php`, facultatif),
-`client_context` (facultatif : `current_path`, `current_url`, `page_title`).
+`current_path`, `current_url`, `page_title` (facultatifs), `relance` (booléen, facultatif : « Réessayer » d'une réponse en erreur ou arrêtée ; le serveur retire cette réponse et réutilise la question déjà enregistrée au lieu d'en créer une seconde. Sans effet après une réponse aboutie).
 
 ## Parties standard
 
@@ -101,7 +101,7 @@ pas rejoué. La trace compacte des appels est enregistrée dans `metadata.trace`
 
 ## Historique des versions
 
-- **v2 (septembre 2026)** — ⚠️ changement cassant : `data-outil` est remplacé par `data-etape` ; les résultats ne partent
+- **v2 (septembre 2026)** — paramètre `relance`. ⚠️ changement cassant : `data-outil` est remplacé par `data-etape` ; les résultats ne partent
   plus en `data-table` / `data-cards` / … en fin de réponse mais en `data-widget` sous chaque étape. Nouveaux kinds
   `graphique`, `tableau`, `diagramme`, `kpis`. Champ `parties` dans l'historique.
 - **v1 (septembre 2026)** — protocole UI message stream, puces `data-outil`, résultats en fin de réponse.

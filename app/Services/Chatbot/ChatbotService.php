@@ -39,7 +39,7 @@ class ChatbotService
     /**
      * Envoyer un message et obtenir une réponse.
      */
-    public function sendMessage(string $message, ?string $sessionId = null, ?array $clientContext = null, ?string $modele = null): array
+    public function sendMessage(string $message, ?string $sessionId = null, ?array $clientContext = null, ?string $modele = null, bool $relance = false): array
     {
         $user = Auth::user();
         if (!$user) {
@@ -63,12 +63,14 @@ class ChatbotService
             $memoryAction = $this->buildMemoryAction($preferredNameCandidate, $preferences);
 
             // 3. Sauvegarder le message utilisateur
-            ChatbotMessage::create([
-                'conversation_id' => $conversation->id,
-                'role' => 'user',
-                'content' => $message,
-                'display_type' => 'text',
-            ]);
+            if (!($relance && $this->preparerRelance($conversation, $message))) {
+                ChatbotMessage::create([
+                    'conversation_id' => $conversation->id,
+                    'role' => 'user',
+                    'content' => $message,
+                    'display_type' => 'text',
+                ]);
+            }
 
             // 4. Mettre à jour le contexte de page
             if ($clientContext) {
@@ -112,6 +114,7 @@ class ChatbotService
                 'metadata' => [
                     'tool_calls' => $agentResponse['tool_calls'],
                     'engine' => $agentResponse['modele'] ?? null,
+                    'erreur' => !empty($agentResponse['erreur']),
                     'parties' => $this->partiesAEnregistrer($agentResponse, $memoryAction),
                     'trace' => $agentResponse['trace'] ?? [],
                 ],
@@ -169,7 +172,7 @@ class ChatbotService
      * navigateur a coupé en route (bouton Arrêter) : l'historique garde ce qui a
      * été montré.
      */
-    public function sendMessageStream(string $message, ?string $sessionId, ?array $clientContext, UiMessageStream $ui, ?string $modele = null): array
+    public function sendMessageStream(string $message, ?string $sessionId, ?array $clientContext, UiMessageStream $ui, ?string $modele = null, bool $relance = false): array
     {
         $user = Auth::user();
         if (!$user) {
@@ -188,12 +191,14 @@ class ChatbotService
             $preferredNameCandidate = $this->detectPreferredName($message);
             $memoryAction = $this->buildMemoryAction($preferredNameCandidate, $preferences);
 
-            ChatbotMessage::create([
-                'conversation_id' => $conversation->id,
-                'role' => 'user',
-                'content' => $message,
-                'display_type' => 'text',
-            ]);
+            if (!($relance && $this->preparerRelance($conversation, $message))) {
+                ChatbotMessage::create([
+                    'conversation_id' => $conversation->id,
+                    'role' => 'user',
+                    'content' => $message,
+                    'display_type' => 'text',
+                ]);
+            }
 
             if ($clientContext) {
                 $conversation->update([
@@ -228,6 +233,7 @@ class ChatbotService
                     'tool_calls' => $agentResponse['tool_calls'],
                     'engine' => $agentResponse['modele'] ?? null,
                     'interrompu' => !empty($agentResponse['interrompu']),
+                    'erreur' => !empty($agentResponse['erreur']),
                     'parties' => $this->partiesAEnregistrer($agentResponse, $memoryAction),
                     'trace' => $agentResponse['trace'] ?? [],
                 ],
@@ -287,6 +293,37 @@ class ChatbotService
             $ui->done();
             return ['success' => false];
         }
+    }
+
+    /**
+     * « Réessayer » après une réponse en erreur ou arrêtée : cette réponse est
+     * retirée et la question, déjà enregistrée, n'est pas ajoutée une seconde
+     * fois. Sinon la base garderait Q, réponse ratée, Q, et le modèle relirait
+     * sa réponse ratée entre les deux questions.
+     *
+     * @return bool vrai si la question est déjà en base (ne pas la recréer)
+     */
+    private function preparerRelance(ChatbotConversation $conversation, string $message): bool
+    {
+        $derniers = $conversation->messages()->orderByDesc('id')->limit(2)->get();
+        $reponse = $derniers->first();
+
+        if ($reponse && $reponse->role === 'assistant') {
+            $ratee = !empty($reponse->metadata['interrompu']) || !empty($reponse->metadata['erreur']);
+            if (!$ratee) {
+                // Une réponse aboutie ne se remplace pas : c'est une nouvelle question.
+                return false;
+            }
+            $question = $derniers->get(1);
+            if (!$question || $question->role !== 'user' || $question->content !== $message) {
+                return false;
+            }
+            $reponse->delete();
+
+            return true;
+        }
+
+        return $reponse && $reponse->role === 'user' && $reponse->content === $message;
     }
 
     /**
