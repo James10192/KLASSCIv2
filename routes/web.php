@@ -2076,7 +2076,10 @@ Route::post('esbtp/emploi-temps/{id}/set-current', [App\Http\Controllers\ESBTPEm
     ->middleware(['auth', 'permission:timetables.edit']);
 
 // Routes pour les Ã©valuations
-Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk'])->group(function () {
+// La seconde clause ferme le groupe à qui ne porte AUCUN droit sur les
+// évaluations : `admin.access` seul (caissier, comptable) suffisait à créer,
+// modifier ou supprimer une évaluation et ses coefficients.
+Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:evaluations.view|evaluations.create|evaluations.edit'])->group(function () {
     Route::get('/', [ESBTPEvaluationController::class, 'index'])->name('index');
     Route::get('/create', [ESBTPEvaluationController::class, 'create'])->name('create');
     Route::post('/', [ESBTPEvaluationController::class, 'store'])->name('store');
