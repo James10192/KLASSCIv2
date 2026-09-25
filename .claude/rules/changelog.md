@@ -138,6 +138,62 @@ Si la session a livré du user-visible non encore changelogué dans `klassci-lan
 - Paramètres concrets : « 60 requêtes par minute », « trois champs requis », « gradient bleu »
 - Mentionner les routes user-facing : `(/esbtp/enseignants)` OK car c'est un repère
 
+## Captures avant / après — OBLIGATOIRES pour tout changement visible
+
+Demande Marcel (septembre 2026) : « il faudrait des screenshots avant et après
+dans le changelog, pour le rendre plus stylé et dynamique, et pas seulement du
+texte à n'en point finir ». Une entrée qui change ce que l'utilisateur **voit**
+(refonte, nouvel écran, bouton déplacé, correctif d'affichage) porte une paire
+de captures. Une entrée sans effet visible (sécurité, calcul, performance) n'en
+porte pas.
+
+### Le moment qui compte : l'« avant » se prend AVANT le déploiement
+
+Une fois la fusion déployée sur presentation, l'ancien écran n'existe plus
+nulle part (les écoles le suivent en quelques minutes). L'ordre est donc :
+
+1. **Avant la fusion** : capturer l'écran concerné sur presentation, tel qu'il
+   est encore, avec le même compte, la même taille d'écran et les mêmes données
+   que celles qu'on utilisera pour l'« après ».
+2. Fusionner, déployer sur presentation.
+3. **Après le déploiement** : capturer exactement le même cadrage.
+
+Une capture d'une instance d'école (ISLG, esbtp-abidjan…) est permise si elle ne
+montre **aucune donnée personnelle lisible** (nom, matricule, téléphone, montant
+nominatif) ; sinon, presentation uniquement.
+
+### Format
+
+| | Téléphone | Ordinateur |
+|---|---|---|
+| Fenêtre de capture | 390 × 844, échelle 2 | 1440 × 900, échelle 1 |
+| Fichier | WebP, qualité ~80, **≤ 200 Ko** | idem |
+| Cadrage | l'écran visible, pas la page entière | idem, recadré sur la zone qui change |
+
+Nom : `<slug>-avant.webp` et `<slug>-apres.webp`, un slug court en français
+(`encaissement-bureau`, `etudiants-telephone`). **Un fichier modifié change de
+nom** : `/img/*` est servi avec un cache d'un an immuable sur le site.
+
+### Où les ranger, et comment les afficher
+
+| Surface | Dossier | Affichage |
+|---|---|---|
+| Site (`klassci-landing`, FR et EN) | `public/img/changelog/AAAA-MM/` | composant MDX `<AvantApres avant="…" apres="…" legende="…" />` |
+| Modale « Nouveautés » de l'application | `public/images/nouveautes/AAAA-MM/` | champ `captures` de l'entrée dans `resources/data/nouveautes.php` |
+| `CHANGELOG.md` interne | aucun | le chemin des deux fichiers entre parenthèses |
+
+Les mêmes deux fichiers servent aux trois surfaces : on les produit une fois.
+La légende dit **ce qui a changé**, pas ce que montre l'image (« Le montant
+tapé remplace le montant proposé », pas « Écran d'encaissement »).
+
+### Anti-patterns à BLOQUER
+
+1. ❌ Entrée « refonte » ou « redesign » sans captures
+2. ❌ « Avant » reconstitué ou imaginé : il se capture, sinon l'entrée n'en a pas
+3. ❌ Deux captures de cadrages différents (on ne compare rien)
+4. ❌ PNG de 2 Mo ; image écrasée sous le même nom
+5. ❌ Donnée personnelle lisible d'une école sur le site public
+
 ## Règles absolues
 
 1. **Sections cohérentes** entre les 3 fichiers : Ajouts/Améliorations/Suppressions/Corrections/Sécurité (FR) / Added/Improved/Removed/Fixed/Security (EN)

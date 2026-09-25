@@ -26,5 +26,6 @@ class Partnership extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
+        'description' => \App\Casts\TexteRicheCast::class,
     ];
 }
