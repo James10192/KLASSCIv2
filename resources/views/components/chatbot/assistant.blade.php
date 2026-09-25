@@ -2,7 +2,8 @@
     Assistant IA KLASSCI (namespace CSS ast-*).
     Panneau latéral de 440 px sur ordinateur (colonne de 48rem en mode large),
     feuille plein écran sous 768 px.
-    Logique : public/js/assistant.js (fabrique Alpine klassciAssistant). Le corps
+    Logique : public/js/assistant/*.js, cinq scripts chargés dans l'ordre (noyau,
+    markdown, rendus, vue, composant ; fabrique Alpine klassciAssistant). Le corps
     d'une réponse (étapes, résultats, texte diffusé) est dessiné par le script
     dans .ast-stream ; Alpine tient l'enveloppe.
     Styles  : public/css/assistant.css (chargé dans le head du layout).
@@ -108,6 +109,7 @@
 
                                     <p class="ast-stopped" x-show="msg.status === 'stopped'" x-cloak>
                                         <i class="fas fa-circle-stop" aria-hidden="true"></i> Réponse arrêtée.
+                                        <button type="button" class="ast-btn ast-btn--ghost ast-btn--sm" x-show="estDernierAssistant(msg) && !envoiEnCours" x-on:click="relancer(msg)">Réessayer</button>
                                     </p>
 
                                     <template x-if="lienMessage(msg)">
@@ -136,10 +138,6 @@
                                         <button type="button" class="ast-icon-btn ast-icon-btn--sm" x-on:click="copier(msg)"
                                                 x-bind:aria-label="msg.copie ? 'Copié' : 'Copier la réponse'" x-bind:title="msg.copie ? 'Copié' : 'Copier'">
                                             <i class="fas" x-bind:class="msg.copie ? 'fa-check' : 'fa-copy'" aria-hidden="true"></i>
-                                        </button>
-                                        <button type="button" class="ast-icon-btn ast-icon-btn--sm" x-show="estDernierAssistant(msg) && !envoiEnCours"
-                                                x-on:click="relancer(msg)" aria-label="Régénérer la réponse" title="Régénérer">
-                                            <i class="fas fa-rotate-right" aria-hidden="true"></i>
                                         </button>
                                     </div>
                                 </div>
@@ -269,6 +267,10 @@
 </div>
 
 @push('scripts')
-    <script src="{{ asset('js/assistant.js') }}?v={{ @filemtime(public_path('js/assistant.js')) ?: '1' }}"></script>
+    <script src="{{ asset('js/assistant/noyau.js') }}?v={{ @filemtime(public_path('js/assistant/noyau.js')) ?: '1' }}"></script>
+    <script src="{{ asset('js/assistant/markdown.js') }}?v={{ @filemtime(public_path('js/assistant/markdown.js')) ?: '1' }}"></script>
+    <script src="{{ asset('js/assistant/rendus.js') }}?v={{ @filemtime(public_path('js/assistant/rendus.js')) ?: '1' }}"></script>
+    <script src="{{ asset('js/assistant/vue.js') }}?v={{ @filemtime(public_path('js/assistant/vue.js')) ?: '1' }}"></script>
+    <script src="{{ asset('js/assistant/composant.js') }}?v={{ @filemtime(public_path('js/assistant/composant.js')) ?: '1' }}"></script>
 @endpush
 @endonce

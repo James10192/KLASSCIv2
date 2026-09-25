@@ -5,32 +5,43 @@ namespace Tests\Feature;
 use Tests\TestCase;
 
 /**
- * Le texte du modèle n'est pas fiable : une injection peut arriver par une
- * donnée qu'un outil a lue. Le client du panneau doit donc rendre en texte tout
- * lien qui sort de l'application, et désarmer les blocs mermaid du texte libre.
- * Même règle que AfficherTableau::estLienInterne côté serveur.
+ * Garde-fous statiques du rendu de l'assistant. La preuve de comportement est
+ * le harnais navigateur tests/js/assistant-securite.spec.mjs (voir
+ * tests/js/README.md), qui charge les vrais scripts et rejoue les charges
+ * malveillantes. Ce test-ci vérifie seulement que le montage n'a pas bougé :
+ * les cinq scripts, dans l'ordre, et la règle des liens partagée avec le serveur.
  */
 class AssistantRenduSecuriteTest extends TestCase
 {
-    private function script(): string
+    private const SCRIPTS = ['noyau', 'markdown', 'rendus', 'vue', 'composant'];
+
+    public function test_le_composant_charge_les_cinq_scripts_dans_l_ordre(): void
     {
-        return file_get_contents(public_path('js/assistant.js'));
+        $vue = file_get_contents(resource_path('views/components/chatbot/assistant.blade.php'));
+
+        $positions = array_map(fn ($nom) => strpos($vue, "js/assistant/{$nom}.js"), self::SCRIPTS);
+        $this->assertNotContains(false, $positions);
+        $trie = $positions;
+        sort($trie);
+        $this->assertSame($trie, $positions);
+        $this->assertFileDoesNotExist(public_path('js/assistant.js'));
+
+        foreach (self::SCRIPTS as $nom) {
+            $this->assertLessThan(1000, count(file(public_path("js/assistant/{$nom}.js"))), $nom);
+        }
     }
 
-    public function test_seuls_les_chemins_internes_deviennent_des_liens(): void
+    public function test_la_regle_des_liens_est_celle_du_serveur(): void
     {
-        $js = $this->script();
+        $noyau = file_get_contents(public_path('js/assistant/noyau.js'));
 
         $this->assertStringContainsString(
             'var LIEN_INTERNE = /^\/(esbtp|dashboard|chatbot)([\/?#][A-Za-z0-9\/_\-?=&%.#]*)?$/;',
-            $js
+            $noyau
         );
-        // Le crochet DOMPurify retire le href d'un lien refusé, versNoeuds le réduit à son texte.
-        $this->assertStringContainsString("node.removeAttribute('href');", $js);
-        $this->assertStringContainsString("querySelectorAll('a:not([href])')", $js);
-        // Aucun lien ne s'ouvre vers l'extérieur.
-        $this->assertStringNotContainsString("target = '_blank'", $js);
-        $this->assertStringNotContainsString("setAttribute('target', '_blank')", $js);
+        $this->assertStringContainsString("FORBID_ATTR: ['style', 'id']", $noyau);
+        $this->assertStringContainsString('ALLOW_DATA_ATTR: false', $noyau);
+        $this->assertStringContainsString("securityLevel: 'strict'", $noyau);
     }
 
     public function test_la_regle_des_liens_refuse_les_detournements_connus(): void
@@ -46,16 +57,5 @@ class AssistantRenduSecuriteTest extends TestCase
         foreach (['https://evil.example', '//evil.example', '/\\evil.com', "/esbtp\t/x", "/esbtp/x\n", 'javascript:alert(1)', '/esbtpx', '/autre'] as $mauvais) {
             $this->assertSame(0, preg_match($motif, $mauvais), $mauvais);
         }
-    }
-
-    public function test_mermaid_reste_strict_et_perd_ses_directives_et_ses_clics(): void
-    {
-        $js = $this->script();
-
-        $this->assertStringContainsString("securityLevel: 'strict'", $js);
-        $this->assertStringContainsString('function sourceMermaidSure(source)', $js);
-        $this->assertStringContainsString("ligne.indexOf('%%{') === -1", $js);
-        $this->assertStringContainsString('/^\s*click\b/i.test(ligne)', $js);
-        $this->assertStringContainsString('var sure = sourceMermaidSure(source);', $js);
     }
 }
