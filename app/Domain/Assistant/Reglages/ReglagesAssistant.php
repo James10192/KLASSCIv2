@@ -32,7 +32,9 @@ class ReglagesAssistant
     /** @return array<string, mixed> état complet, sans aucune clé en clair */
     public function etat(): array
     {
-        $candidats = $this->registre->candidats();
+        // Le routeur choisit le modèle de chaque échange : l'état annonce celui
+        // d'une question simple, pas le « défaut » historique qu'il n'emploie plus.
+        $effectif = app(Routeur::class)->modelePourQuestionSimple() ?? ($this->registre->candidats()[0] ?? null);
 
         return [
             'fournisseurs' => $this->coffre->etat(),
@@ -44,7 +46,7 @@ class ReglagesAssistant
                 'configure' => $m->estConfigure(),
             ], $this->registre->tous())),
             'modele_defaut' => $this->registre->defaut(),
-            'modele_effectif' => $candidats[0]->cle ?? null,
+            'modele_effectif' => $effectif?->cle,
             // Routage automatique : chaque palier avec ses modèles réellement joignables.
             'paliers' => array_map(
                 fn (array $cles) => array_values(array_filter($cles, fn ($c) => isset($this->registre->disponibles()[$c]))),

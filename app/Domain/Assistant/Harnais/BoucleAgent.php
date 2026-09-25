@@ -105,13 +105,16 @@ class BoucleAgent
             $tour = $this->unTour($this->fournisseur($modele), $requeteTour, $modele, $ui, $arreter, $fil);
             $entree += $tour['entree'];
             $sortie += $tour['sortie'];
-            // Chaque appel au modèle est facturé, réussi ou non : il est compté.
-            $compteur?->ajouter($modele, $tour['entree'], $tour['sortie'], $tour['cache'], $tour['cout'],
-                (int) round((microtime(true) - $debutTour) * 1000), $tour['erreur'] !== null && !$montre && $candidats !== []);
 
             if ($tour['texte'] !== '' || $tour['appels'] !== []) {
                 $montre = true;
             }
+
+            // Chaque appel au modèle est facturé, réussi ou non : il est compté. Il est
+            // marqué en échec exactement quand la boucle l'abandonne pour le suivant.
+            $abandonne = $tour['erreur'] !== null && !$montre && !$delaiDepasse && $candidats !== [];
+            $compteur?->ajouter($modele, $tour['entree'], $tour['sortie'], $tour['cache'], $tour['cout'],
+                (int) round((microtime(true) - $debutTour) * 1000), $abandonne);
 
             if ($ui->aborted()) {
                 $ui->finishStep();
@@ -126,7 +129,7 @@ class BoucleAgent
                 Log::error('assistant.tour_en_echec', ['fournisseur' => $modele->fournisseur, 'modele' => $modele->cle, 'code' => $code, 'tour' => $tours]);
                 $ui->finishStep();
 
-                if (!$montre && !$delaiDepasse && $candidats !== []) {
+                if ($abandonne) {
                     // Les puces d'outil annoncées par le modèle abandonné ne décrivent
                     // plus rien : le suivant repart de zéro. On les retire.
                     foreach ($tour['puces'] as $puce) {

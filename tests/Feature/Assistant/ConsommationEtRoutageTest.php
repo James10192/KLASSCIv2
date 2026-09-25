@@ -109,18 +109,62 @@ class ConsommationEtRoutageTest extends TestCase
         $this->assertSame('avance', $routeur->decider('Combien d\'inscrits ?', $conversation)->palier);
     }
 
-    public function test_un_echec_fait_monter_la_conversation_d_un_palier(): void
+    public function test_un_echec_fait_monter_la_conversation_une_limite_non(): void
     {
         $routeur = app(Routeur::class);
         $decision = $routeur->decider('Combien d\'inscrits ?', null);
 
         $echec = new ResultatBoucle('erreur', '', '', [], 'or-gemini-flash-lite', 'openrouter', [], 0, 0, 1, 10);
         $bute = new ResultatBoucle('ok', '', '', [], 'or-gemini-flash-lite', 'openrouter', [], 0, 0, 2, 10, [], echecsOutils: 1);
+        $limite = new ResultatBoucle('limite', 'Partiel', '', [], 'or-gemini-flash-lite', 'openrouter', [], 0, 0, 8, 10);
         $reussi = new ResultatBoucle('ok', 'Il y a 214 inscrits.', 'Il y a 214 inscrits.', [], 'or-gemini-flash-lite', 'openrouter', [], 0, 0, 2, 10);
 
-        $this->assertSame('standard', $routeur->palierApres($decision, $echec));
-        $this->assertSame('standard', $routeur->palierApres($decision, $bute));
+        $this->assertSame(['palier' => 'standard', 'succes_au_palier' => 0], $routeur->palierApres($decision, $echec));
+        $this->assertSame(['palier' => 'standard', 'succes_au_palier' => 0], $routeur->palierApres($decision, $bute));
+        // Un modèle plus cher atteindrait le même plafond de tours, en coûtant plus.
+        $this->assertNull($routeur->palierApres($decision, $limite));
         $this->assertNull($routeur->palierApres($decision, $reussi));
+    }
+
+    public function test_trois_reussites_redescendent_le_palier_monte(): void
+    {
+        $routeur = app(Routeur::class);
+        $reussi = new ResultatBoucle('ok', 'Réponse', 'Réponse', [], 'or-gemini-flash', 'openrouter', [], 0, 0, 1, 10);
+        $conversation = new ChatbotConversation(['context' => ['palier' => 'avance', 'succes_au_palier' => 0]]);
+
+        foreach ([1, 2] as $n) {
+            $apres = $routeur->palierApres($routeur->decider('Combien ?', $conversation), $reussi, $conversation);
+            $this->assertSame(['palier' => 'avance', 'succes_au_palier' => $n], $apres);
+            $conversation->context = $apres;
+        }
+        $apres = $routeur->palierApres($routeur->decider('Combien ?', $conversation), $reussi, $conversation);
+        $this->assertSame(['palier' => 'standard', 'succes_au_palier' => 0], $apres);
+
+        // Du standard, la descente suivante ramène au premier palier : plus rien à retenir.
+        $conversation->context = ['palier' => 'standard', 'succes_au_palier' => 2];
+        $this->assertSame(['palier' => null, 'succes_au_palier' => 0], $routeur->palierApres($routeur->decider('Combien ?', $conversation), $reussi, $conversation));
+    }
+
+    public function test_sans_openrouter_une_ecole_anthropic_part_sur_haiku_pas_sur_sonnet(): void
+    {
+        config([
+            'assistant.fournisseurs.openrouter.cle' => null,
+            'assistant.paliers' => [
+                'economique' => ['or-gemini-flash-lite', 'gpt-4o-mini'],
+                'standard' => ['or-gemini-flash', 'claude-haiku'],
+                'avance' => ['claude-sonnet'],
+            ],
+        ]);
+
+        $this->assertSame(['claude-haiku', 'claude-sonnet'], $this->cles(app(Routeur::class)->decider('Combien d\'inscrits ?', null)->candidats));
+    }
+
+    public function test_le_modele_par_defaut_de_l_ecole_prend_la_tete_de_son_palier_et_l_etat_le_dit(): void
+    {
+        app(\App\Domain\Assistant\Reglages\ReglagesAssistant::class)->choisirModele('or-gpt-4o-mini');
+
+        $this->assertSame(['or-gpt-4o-mini', 'or-gemini-flash-lite'], app(Routeur::class)->paliers()['economique']);
+        $this->assertSame('or-gpt-4o-mini', app(\App\Domain\Assistant\Reglages\ReglagesAssistant::class)->etat()['modele_effectif']);
     }
 
     public function test_budget_atteint_palier_economique_seulement_puis_pause(): void
@@ -132,6 +176,8 @@ class ConsommationEtRoutageTest extends TestCase
         $decision = app(Routeur::class)->decider('Compare les deux classes', null);
         $this->assertSame('budget_atteint', $decision->raison);
         $this->assertSame(['or-gemini-flash-lite', 'or-gpt-4o-mini'], $this->cles($decision->candidats));
+        // Un modèle choisi à la main n'échappe pas au palier économique.
+        $this->assertSame(['or-gemini-flash-lite', 'or-gpt-4o-mini'], $this->cles(app(Routeur::class)->decider('Bonjour', null, false, 'claude-sonnet')->candidats));
         // Sans montée : un échec ne fait pas changer de palier quand le budget est atteint.
         $this->assertNull(app(Routeur::class)->palierApres($decision, new ResultatBoucle('erreur', '', '', [], null, null, [], 0, 0, 1, 1)));
 
@@ -199,5 +245,52 @@ class ConsommationEtRoutageTest extends TestCase
         $this->assertSame(15.0, $r['par_modele'][1]['cout_fcfa']);
         $this->assertSame($user->name, $r['par_personne'][0]['nom']);
         $this->assertSame('normal', $r['budget']['etat']);
+    }
+
+    public function test_le_budget_fixe_dans_adminklassci_prime(): void
+    {
+        config(['app.tenant_code' => 'presentation', 'assistant.budget.mensuel_fcfa' => 50000]);
+        \Illuminate\Support\Facades\Cache::put('paywall_limits_presentation', ['assistant' => ['budget_mensuel_fcfa' => 12000]], 300);
+        $this->assertSame(12000.0, app(BudgetAssistant::class)->budgetMensuelFcfa());
+
+        // Le master dit « sans limite » (0) : c'est lui qui décide.
+        \Illuminate\Support\Facades\Cache::put('paywall_limits_presentation', ['assistant' => ['budget_mensuel_fcfa' => 0]], 300);
+        $this->assertNull(app(BudgetAssistant::class)->budgetMensuelFcfa());
+
+        // Le master n'a rien fixé : le budget de l'école s'applique.
+        \Illuminate\Support\Facades\Cache::put('paywall_limits_presentation', ['plan' => 'elite'], 300);
+        $this->assertSame(50000.0, app(BudgetAssistant::class)->budgetMensuelFcfa());
+    }
+
+    public function test_un_modele_abandonne_pour_le_suivant_est_compte_en_echec(): void
+    {
+        // Le premier candidat (OpenRouter) tombe avant d'avoir rien montré ; Claude Sonnet reprend.
+        Http::fake([
+            'openrouter.test/*' => Http::response(['error' => ['message' => 'x']], 500),
+            'api.anthropic.test/*' => Http::sequence()
+                ->push(FluxEnregistres::anthropicTexte(), 200, ['Content-Type' => 'text/event-stream'])
+                ->push(FluxEnregistres::anthropicTexte('Titre'), 200, ['Content-Type' => 'text/event-stream']),
+        ]);
+        config(['assistant.paliers' => ['economique' => ['or-gemini-flash-lite'], 'avance' => ['claude-sonnet']], 'assistant.limites.tentatives' => 1]);
+        $this->app->instance(UiMessageStream::class, new UiMessageStream(fn () => null));
+
+        $this->actingAs($this->user())->post(route('chatbot.message.stream'), ['message' => 'Bonjour'])->assertOk()->streamedContent();
+
+        $lignes = LigneDeConsommation::where('fonction', 'question')->orderBy('id')->get();
+        $this->assertSame(['or-gemini-flash-lite', 'claude-sonnet'], $lignes->pluck('modele')->all());
+        $this->assertSame(['echec_fournisseur', 'ok'], $lignes->pluck('statut')->all());
+    }
+
+    public function test_reessayer_sans_diffusion_monte_aussi_le_palier(): void
+    {
+        $spy = \Mockery::spy(\App\Domain\Assistant\Assistant::class);
+        $spy->shouldReceive('repondre')->andReturn(['text' => 'ok', 'tool_calls' => [], 'display_type' => 'text', 'display_data' => null, 'deep_link' => null, 'erreur' => false, 'interrompu' => false, 'modele' => null, 'parties' => [], 'trace' => [], 'suites' => [], 'consommation' => [], 'palier' => null]);
+        $spy->shouldReceive('genererTitre')->andReturn('Titre');
+        $this->app->instance(\App\Domain\Assistant\Assistant::class, $spy);
+
+        $this->actingAs($this->user());
+        app(\App\Services\Chatbot\ChatbotService::class)->sendMessage('Bonjour', null, null, null, true);
+
+        $spy->shouldHaveReceived('repondre')->withArgs(fn (...$a) => ($a[7] ?? null) === true);
     }
 }

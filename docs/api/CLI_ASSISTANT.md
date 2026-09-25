@@ -45,7 +45,9 @@ Réponse d'état (`data`) :
 `paliers` : modèles réellement joignables de chaque palier du routage automatique,
 dans l'ordre d'essai. `budget.etat` : `normal`, `economique` (budget atteint :
 palier économique seulement), `pause` (seuil de pause atteint : aucun appel).
-`modele_defaut` ne sert plus que si aucun palier n'est déclaré.
+`modele_defaut` : modèle préféré posé par l'école (`assistant:modele`) ; il passe
+en tête de son palier. `modele_effectif` : modèle que le routeur prendrait pour une
+question simple, en ce moment.
 
 Consommation (`data`) :
 

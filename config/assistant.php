@@ -33,9 +33,11 @@ return [
      * Ils se revoient à chaque sortie de modèle, par le banc d'essai.
      */
     'paliers' => [
-        'economique' => $liste(env('ASSISTANT_PALIER_ECONOMIQUE', 'or-gemini-flash-lite,or-gpt-4o-mini,or-gpt-4.1-nano')),
-        'standard' => $liste(env('ASSISTANT_PALIER_STANDARD', 'or-gemini-flash,or-gpt-4.1-mini')),
-        'avance' => $liste(env('ASSISTANT_PALIER_AVANCE', 'or-claude-sonnet,or-claude-haiku,claude-sonnet')),
+        // Les modèles en accès direct (clé Anthropic, OpenAI, Gemini, Mistral) figurent aussi,
+        // à leur prix : une école sans OpenRouter ne doit pas sauter droit au palier avancé.
+        'economique' => $liste(env('ASSISTANT_PALIER_ECONOMIQUE', 'or-gemini-flash-lite,or-gpt-4o-mini,or-gpt-4.1-nano,gpt-4o-mini,gemini-flash,mistral-small')),
+        'standard' => $liste(env('ASSISTANT_PALIER_STANDARD', 'or-gemini-flash,or-gpt-4.1-mini,or-claude-haiku,claude-haiku,deepseek-chat')),
+        'avance' => $liste(env('ASSISTANT_PALIER_AVANCE', 'or-claude-sonnet,claude-sonnet')),
     ],
 
     /*

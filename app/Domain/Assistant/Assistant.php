@@ -63,6 +63,8 @@ class Assistant
     ): array {
         $decision = $this->routeur->decider($question, $conversation, $relance, $modeleDemande);
         if ($decision->pause) {
+            Log::info('assistant.pause_budget', ['conversation_id' => $conversation->id, 'user_id' => $user?->id]);
+
             return $this->reponseEnPause($ui);
         }
 
@@ -93,7 +95,7 @@ class Assistant
 
         $this->journaliser($resultat, $conversation, $user, $decision);
         $consommation = $this->journal->enregistrer($compteur, $user?->id, $conversation->id, 'question', $decision->palier, $resultat->statut);
-        $palier = $this->routeur->palierApres($decision, $resultat);
+        $palier = $this->routeur->palierApres($decision, $resultat, $conversation);
 
         if ($resultat->estErreur() || $resultat->estInterrompu()) {
             return [
@@ -195,17 +197,20 @@ class Assistant
 
             $texte = '';
             $erreur = false;
+            $usage = [];
             $fournisseur = app(config('assistant.adaptateurs.' . $modele->adaptateur));
             foreach ($fournisseur->diffuser($requete, $modele, fn () => false) as $evenement) {
                 if ($evenement->type === EvenementModele::TEXTE) {
                     $texte .= $evenement->donnees['delta'];
                 } elseif ($evenement->type === EvenementModele::USAGE) {
-                    $compteur->ajouter($modele, $evenement->donnees['entree'], $evenement->donnees['sortie'], (int) ($evenement->donnees['cache'] ?? 0), $evenement->donnees['cout'] ?? null);
+                    $usage = $evenement->donnees;
                 } elseif ($evenement->type === EvenementModele::ERREUR) {
                     $erreur = true;
                     break;
                 }
             }
+            // Un appel est facturé même raté ; il est compté, marqué en échec s'il a échoué.
+            $compteur->ajouter($modele, (int) ($usage['entree'] ?? 0), (int) ($usage['sortie'] ?? 0), (int) ($usage['cache'] ?? 0), $usage['cout'] ?? null, 0, $erreur || trim($texte) === '');
 
             if (!$erreur && trim($texte) !== '') {
                 $titre = mb_substr(trim($texte, " \t\n\r\"'"), 0, 40, 'UTF-8');

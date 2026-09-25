@@ -13,8 +13,12 @@ use Illuminate\Support\Facades\Log;
  *   economique  budget atteint : l'assistant ne prend plus que le palier le moins cher
  *   pause       seuil de pause atteint : l'assistant se repose jusqu'au mois suivant
  *
- * Pas de budget déclaré (vide ou 0) = pas de limite. Le budget vient du réglage
- * d'instance `assistant.budget_mensuel_fcfa`, sinon du .env.
+ * Pas de budget déclaré (vide ou 0) = pas de limite. D'où vient le budget, dans l'ordre :
+ *   1. adminKlassci, qui pilote les coûts de toutes les écoles : champ
+ *      `assistant.budget_mensuel_fcfa` de la réponse /tenants/{code}/limits, lue dans
+ *      le cache que PaywallMiddleware remplit (5 min) ; aucun appel réseau ici ;
+ *   2. le réglage d'instance `assistant.budget_mensuel_fcfa` (klassci-cli) ;
+ *   3. le .env.
  */
 class BudgetAssistant
 {
@@ -26,6 +30,11 @@ class BudgetAssistant
 
     public function budgetMensuelFcfa(): ?float
     {
+        $master = $this->budgetDuMaster();
+        if ($master !== null) {
+            return $master > 0 ? $master : null;
+        }
+
         try {
             $reglage = SettingsHelper::get('assistant.budget_mensuel_fcfa');
         } catch (\Throwable $e) {
@@ -35,6 +44,16 @@ class BudgetAssistant
         $valeur = (float) (($reglage !== null && $reglage !== '') ? $reglage : config('assistant.budget.mensuel_fcfa', 0));
 
         return $valeur > 0 ? $valeur : null;
+    }
+
+    /** Budget posé dans adminKlassci, s'il a déjà été lu ; null si le master ne l'a pas fixé. */
+    private function budgetDuMaster(): ?float
+    {
+        $code = config('app.tenant_code');
+        $limites = $code ? Cache::get('paywall_limits_' . $code) : null;
+        $valeur = is_array($limites) ? ($limites['assistant']['budget_mensuel_fcfa'] ?? null) : null;
+
+        return is_numeric($valeur) ? (float) $valeur : null;
     }
 
     public function depenseDuMois(): float

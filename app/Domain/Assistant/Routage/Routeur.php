@@ -29,6 +29,8 @@ use App\Models\ChatbotConversation;
  */
 class Routeur
 {
+    private const REUSSITES_AVANT_DESCENTE = 3;
+
     public function __construct(
         private RegistreDesModeles $registre,
         private BudgetAssistant $budget,
@@ -42,20 +44,23 @@ class Routeur
             return new Decision([], null, 'budget_pause', true);
         }
 
+        $paliers = $this->paliers();
+
+        // Budget atteint : palier économique seulement, même pour qui choisit son
+        // modèle — sinon un choix manuel consommerait sans frein jusqu'à la pause.
+        if ($etat === BudgetAssistant::ECONOMIQUE) {
+            $premier = $paliers === [] ? null : array_key_first($paliers);
+            $candidats = $premier ? $this->modelesDu($paliers, [$premier]) : [];
+
+            return new Decision($candidats ?: $this->leMoinsCher(), $premier, 'budget_atteint');
+        }
+
         if ($modeleDemande) {
             return new Decision($this->registre->candidats($modeleDemande), null, 'choix_manuel');
         }
 
-        $paliers = $this->paliers();
         if ($paliers === []) {
             return new Decision($this->registre->candidats(), null, 'sans_paliers');
-        }
-
-        if ($etat === BudgetAssistant::ECONOMIQUE) {
-            $premier = array_key_first($paliers);
-            $candidats = $this->modelesDu($paliers, [$premier]);
-
-            return new Decision($candidats ?: $this->registre->candidats(), $premier, 'budget_atteint');
         }
 
         [$palier, $raison] = $this->palierDeDepart($question, $conversation, $relance, array_keys($paliers));
@@ -66,20 +71,57 @@ class Routeur
     }
 
     /**
-     * Après l'échange : le palier que la conversation doit garder, ou null si
-     * rien ne change. Monte d'un cran quand le résultat trahit un modèle trop faible.
+     * Après l'échange : ce que la conversation doit retenir de son palier, ou null
+     * si rien ne change.
+     *
+     *  - échec (erreur, ou outils en échec sans conclusion) : un palier au-dessus ;
+     *  - trois réussites de suite sur un palier monté : on redescend d'un cran.
+     *    Un palier monté pour une question difficile ne doit pas rester acquis :
+     *    la suite de la conversation paierait le prix fort pour des questions simples.
+     *
+     * Une limite de tours ou de jetons ne fait pas monter : un modèle plus cher
+     * atteindrait le même plafond, en coûtant plus.
+     *
+     * @return array{palier:?string,succes_au_palier:int}|null
      */
-    public function palierApres(Decision $decision, ResultatBoucle $resultat): ?string
+    public function palierApres(Decision $decision, ResultatBoucle $resultat, ?ChatbotConversation $conversation = null): ?array
     {
         if ($decision->palier === null || $decision->raison === 'budget_atteint') {
             return null;
         }
 
         $echec = $resultat->estErreur()
-            || $resultat->statut === 'limite'
             || ($resultat->echecsOutils > 0 && trim($resultat->texteDernierTour) === '');
+        if ($echec) {
+            $au = $this->palierAuDessus($decision->palier);
 
-        return $echec ? $this->palierAuDessus($decision->palier) : null;
+            return $au ? ['palier' => $au, 'succes_au_palier' => 0] : null;
+        }
+
+        $garde = $conversation?->context['palier'] ?? null;
+        if (! $garde || $resultat->statut !== 'ok') {
+            return null;
+        }
+
+        $succes = (int) ($conversation->context['succes_au_palier'] ?? 0) + 1;
+        if ($succes < self::REUSSITES_AVANT_DESCENTE) {
+            return ['palier' => $garde, 'succes_au_palier' => $succes];
+        }
+
+        $ordre = array_keys($this->paliers());
+        $i = array_search($garde, $ordre, true);
+
+        // Redescendu au premier palier, la conversation n'a plus rien à retenir.
+        return ['palier' => ($i !== false && $i > 1) ? $ordre[$i - 1] : null, 'succes_au_palier' => 0];
+    }
+
+    /**
+     * Modèle effectif d'une question simple : ce que l'état des réglages doit
+     * annoncer, puisque c'est le routeur qui choisit.
+     */
+    public function modelePourQuestionSimple(): ?ModeleIa
+    {
+        return $this->decider('', null)->candidats[0] ?? null;
     }
 
     /** @return array{0:string,1:string} */
@@ -124,13 +166,53 @@ class Routeur
         return ($i !== false && isset($ordre[$i + 1])) ? $ordre[$i + 1] : null;
     }
 
-    /** @return array<string, string[]> paliers déclarés, dans l'ordre, du moins cher au plus fort */
+    /**
+     * Paliers déclarés, dans l'ordre, du moins cher au plus fort.
+     *
+     * Le modèle par défaut choisi par l'école (réglage `assistant.modele_defaut`,
+     * klassci-cli `assistant:modele`) passe en tête de son palier : c'est ainsi
+     * qu'il garde un sens avec le routage. Hors de tout palier, il prend la tête
+     * du premier.
+     *
+     * @return array<string, string[]>
+     */
     public function paliers(): array
     {
-        return array_filter(array_map(
+        $paliers = array_filter(array_map(
             fn ($cles) => array_values(array_filter((array) $cles)),
             (array) config('assistant.paliers', [])
         ));
+
+        $prefere = $this->registre->defautChoisiParLEcole();
+        if ($prefere && $paliers !== []) {
+            $cible = array_key_first($paliers);
+            foreach ($paliers as $nom => $cles) {
+                if (in_array($prefere, $cles, true)) {
+                    $cible = $nom;
+                    break;
+                }
+            }
+            $paliers[$cible] = array_values(array_unique(array_merge([$prefere], $paliers[$cible])));
+        }
+
+        return $paliers;
+    }
+
+    /** Budget atteint et palier économique vide : le seul modèle disponible au tarif le plus bas. */
+    private function leMoinsCher(): array
+    {
+        $disponibles = array_values($this->registre->disponibles());
+        usort($disponibles, fn (ModeleIa $a, ModeleIa $b) => $this->prix($a) <=> $this->prix($b));
+
+        return array_slice($disponibles, 0, 1);
+    }
+
+    private function prix(ModeleIa $modele): float
+    {
+        $tarif = (array) config("assistant.modeles.{$modele->cle}.tarif", []);
+
+        // Sans tarif déclaré, le modèle est tenu pour le plus cher : on ne le choisit pas à l'aveugle.
+        return $tarif === [] ? PHP_FLOAT_MAX : (float) ($tarif['entree'] ?? 0) + (float) ($tarif['sortie'] ?? 0);
     }
 
     /** @return ModeleIa[] modèles disponibles des paliers donnés, dans l'ordre, sans doublon */

@@ -33,7 +33,7 @@ return new class extends Migration
             $table->decimal('taux_usd_fcfa', 8, 2);
             // Coût renvoyé par le fournisseur (true) ou calculé sur le tarif déclaré.
             $table->boolean('cout_exact')->default(false);
-            // ok | erreur | interrompu | limite | echec_fournisseur | pause_budget
+            // ok | erreur | interrompu | limite | echec_fournisseur (modèle abandonné pour le suivant)
             $table->string('statut', 20)->default('ok');
             $table->unsignedInteger('latence_ms')->default(0);
             $table->timestamp('synchronise_at')->nullable()->index();

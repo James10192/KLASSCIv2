@@ -91,7 +91,8 @@ class ChatbotService
                 $preferences,
                 $clientContext,
                 UiMessageStream::silencieux(),
-                $modele
+                $modele,
+                $relance
             );
 
             // 6. Construire les display_data finales
@@ -647,8 +648,14 @@ class ChatbotService
         app(\App\Domain\Assistant\Consommation\JournalDeConsommation::class)
             ->rattacherAuMessage($reponse['consommation'] ?? [], $message->id);
 
-        if (!empty($reponse['palier'])) {
-            $conversation->update(['context' => array_merge($conversation->context ?? [], ['palier' => $reponse['palier']])]);
+        // Palier retenu par la conversation : monté après un échec, redescendu
+        // après des réussites ; null = plus rien à retenir.
+        if (is_array($reponse['palier'] ?? null)) {
+            $contexte = array_merge($conversation->context ?? [], $reponse['palier']);
+            if ($contexte['palier'] === null) {
+                unset($contexte['palier'], $contexte['succes_au_palier']);
+            }
+            $conversation->update(['context' => $contexte]);
         }
     }
 
