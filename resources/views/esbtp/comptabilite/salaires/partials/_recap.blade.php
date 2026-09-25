@@ -24,6 +24,11 @@
         <div class="pay-rrow-avatar">{{ \Illuminate\Support\Str::substr($row['name'], 0, 1) }}</div>
         <div class="pay-rrow-id">
             <div class="pay-rrow-name">{{ $row['name'] }}</div>
+            @if(!empty($row['taux_manquant']))
+                <a href="{{ $row['fiche_url'] }}" class="pay-taux-manquant" title="Des heures ont été faites mais aucun taux n'est renseigné">
+                    <i class="fas fa-triangle-exclamation"></i> Taux horaire manquant — Renseigner
+                </a>
+            @endif
             <div class="pay-rrow-types">
                 <span class="pay-rrow-h"><i class="fas fa-hourglass-half"></i> {{ $fmtH($row['heures']) }}</span>
                 @foreach($row['types'] as $t)

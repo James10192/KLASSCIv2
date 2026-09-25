@@ -53,7 +53,7 @@
             <div class="rtp-hero-icon"><i class="fas fa-rotate-right"></i></div>
             <div>
                 <h1>Sessions & Rattrapage LMD</h1>
-                <p>Année universitaire <strong>{{ $annee->libelle ?? '—' }}</strong> · workflow UEMOA 2 sessions</p>
+                <p>Année universitaire <strong>{{ $annee->display_name ?? '—' }}</strong> · workflow UEMOA 2 sessions</p>
             </div>
         </div>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
@@ -117,28 +117,31 @@
             @csrf
             <input type="hidden" name="annee_universitaire_id" value="{{ $annee->id }}">
 
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
-                <div>
+            @php
+                $rtpSemestres = collect(\App\Models\ESBTPNiveauEtude::semestresLmd())->mapWithKeys(fn ($sem) => [$sem => 'Semestre '.$sem])->all();
+                $rtpParcours = $parcours->pluck('name', 'id')->all();
+            @endphp
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;" x-data="{ typeSession: 'normale' }">
+                <div style="display:flex;flex-direction:column;">
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Type *</label>
-                    <select name="type" required style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
-                        <option value="normale">Normale</option>
-                        <option value="rattrapage">Rattrapage</option>
-                        <option value="extra">Extra</option>
-                    </select>
+                    <x-au-select name="type" x-model="typeSession" value="normale" :placeholder-is-first-option="false"
+                        :options="['normale' => 'Normale', 'rattrapage' => 'Rattrapage', 'extra' => 'Extra']" />
                 </div>
-                <div>
+                <div style="display:flex;flex-direction:column;">
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Semestre</label>
-                    <select name="semestre" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
-                        <option value="">—</option>
-                        @foreach(\App\Models\ESBTPNiveauEtude::semestresLmd() as $sem)<option value="{{ $sem }}">S{{ $sem }}</option>@endforeach
-                    </select>
+                    <x-au-select name="semestre" placeholder="—" :options="$rtpSemestres" />
                 </div>
-                <div style="grid-column:1/-1;">
+                <div style="grid-column:1/-1;display:flex;flex-direction:column;" x-show="typeSession === 'rattrapage'" x-cloak>
+                    <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Session normale d’origine *</label>
+                    @if($sessionsNormales->isNotEmpty())
+                        <x-au-select name="parent_session_id" placeholder="Choisir la session que ce rattrapage complète" icon="fa-link" :options="$sessionsNormales" />
+                    @else
+                        <p style="font-size:.8rem;color:#b45309;margin:.25rem 0 0;">Aucune session normale cette année : créez-la d’abord.</p>
+                    @endif
+                </div>
+                <div style="grid-column:1/-1;display:flex;flex-direction:column;">
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">@rang('parcours')</label>
-                    <select name="parcours_id" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
-                        <option value="">— Tous parcours —</option>
-                        @foreach($parcours as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
-                    </select>
+                    <x-au-select name="parcours_id" placeholder="— Tous parcours —" :searchable="count($rtpParcours) > 8" :options="$rtpParcours" />
                 </div>
                 <div style="grid-column:1/-1;">
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Libellé *</label>

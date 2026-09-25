@@ -177,7 +177,7 @@
                 @endif
                 @if($mInscription?->anneeUniversitaire)
                     <dt>Année</dt>
-                    <dd>{{ $mInscription->anneeUniversitaire->libelle ?: ($mInscription->anneeUniversitaire->annee_debut . '-' . $mInscription->anneeUniversitaire->annee_fin) }}</dd>
+                    <dd>{{ $mInscription->anneeUniversitaire->display_name ?: ($mInscription->anneeUniversitaire->annee_debut . '-' . $mInscription->anneeUniversitaire->annee_fin) }}</dd>
                 @endif
                 <dt>{{ $mFrais->count() > 1 ? 'Frais couverts' : 'Frais' }}</dt>
                 <dd>

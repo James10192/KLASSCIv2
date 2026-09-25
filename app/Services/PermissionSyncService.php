@@ -223,6 +223,11 @@ class PermissionSyncService
             'agents_inscription.edit',
             'agents_inscription.delete',
 
+            // Audit E2E du 25 septembre 2026 : décision des prolongations de
+            // cours, et levée de l'anonymat des copies d'examen.
+            'emargement.prolongation.decide',
+            'lmd.examens.anonymat.lever',
+
             // Module universitaire : ces droits sont nés avec le découpage du
             // tout-ou-rien `module.lmd.access` en droits métier par route. Les
             // gardes de route voyagent avec le code et se sont donc refermées au

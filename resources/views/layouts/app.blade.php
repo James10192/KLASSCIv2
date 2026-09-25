@@ -1478,16 +1478,16 @@
             flex-shrink: 0;
         }
         @media (max-width: 768px) {
+            /* Sur téléphone, une seule ligne : le rappel ne doit pas pousser
+               la page d'un tiers d'écran vers le bas. */
             .pwd-expiry-banner {
-                flex-direction: column;
-                align-items: stretch;
-                padding: .85rem 1rem;
+                padding: .55rem .75rem;
+                gap: .6rem;
+                font-size: .82rem;
             }
-            .pwd-expiry-banner-btn {
-                white-space: normal;
-                text-align: center;
-                width: 100%;
-            }
+            .pwd-expiry-banner-sub { display: none; }
+            .pwd-expiry-banner-copy i { font-size: 1rem; margin-top: .05rem; }
+            .pwd-expiry-banner-btn { padding: .4rem .7rem; font-size: .78rem; }
         }
     </style>
     {{-- Barre du haut : après les styles en ligne ci-dessus, avant ceux des pages. --}}
@@ -1914,12 +1914,12 @@
 
                         <!-- Gestion des présences/absences -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') || Request::routeIs('esbtp.rapports-cours.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') || Request::routeIs('esbtp.rapports-cours.*') || Request::routeIs('esbtp.prolongations.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
                                 <div class="menu-text">Gestion des présences</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') || Request::routeIs('esbtp.rapports-cours.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') || Request::routeIs('esbtp.rapports-cours.*') || Request::routeIs('esbtp.prolongations.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.attendances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Présences étudiants</span>
@@ -1946,6 +1946,12 @@
                                 <a href="{{ route('esbtp.attendances.justifications.admin') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.justifications.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Justifications à traiter</span>
+                                </a>
+                                @endcan
+                                @can('emargement.prolongation.decide')
+                                <a href="{{ route('esbtp.prolongations.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.prolongations.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Prolongations de cours</span>
                                 </a>
                                 @endcan
                                 @can('session_reports.view')
@@ -1993,12 +1999,13 @@
 
                         @can('attendances.view')
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.attendance.mark') }}" class="menu-link {{ Request::routeIs('esbtp.attendance.*') ? 'active' : '' }}">
+                            <a href="{{ route('esbtp.teacher-attendance.index') }}" class="menu-link {{ Request::routeIs('esbtp.attendance.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
                                 <div class="menu-text">Faire les émargements</div>
                             </a>
                         </div>
                         @endcan
+
                     @endif
                     @endcan
 
@@ -2379,6 +2386,25 @@
                     @endrole
 
                     <!-- Section profil utilisateur -->
+                {{-- Mes cours du jour et mes disponibilités n'étaient atteignables que par
+                     les tuiles de l'accueil. Section à part : un enseignant qui a aussi
+                     `admin.access` ne voit pas la section « Enseignement » plus haut. --}}
+                @role('enseignant')
+                <div class="menu-category">Mon enseignement</div>
+                <div class="menu-item">
+                    <a href="{{ route('esbtp.teacher-attendance.index') }}" class="menu-link {{ Request::routeIs('esbtp.teacher-attendance.index') ? 'active' : '' }}">
+                        <div class="menu-icon"><i class="fas fa-calendar-day"></i></div>
+                        <div class="menu-text">Mes cours du jour</div>
+                    </a>
+                </div>
+                <div class="menu-item">
+                    <a href="{{ route('teacher.availability') }}" class="menu-link {{ Request::routeIs('teacher.availability*') ? 'active' : '' }}">
+                        <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
+                        <div class="menu-text">Mes disponibilités</div>
+                    </a>
+                </div>
+                @endrole
+
                 <div class="menu-category">Mon compte</div>
 
                     @role('etudiant')
@@ -3041,7 +3067,7 @@
 
             {{-- Alerte expiration mot de passe --}}
             @auth
-                @if(\App\Services\UserService::isPasswordExpiringSoon(auth()->user()))
+                @if(! request()->routeIs('password.*') && \App\Services\UserService::isPasswordExpiringSoon(auth()->user()))
                     @php
                         $refDate = auth()->user()->password_changed_at ?? auth()->user()->created_at;
                         $expiryMonths = (int) \App\Models\Setting::get('password_expiry_months', 6);
@@ -3066,7 +3092,7 @@
             {{-- Modal "next step" anti-self-notif (issue #298) --}}
             @if(session('workflow_next_step') && session('workflow_next_step.url'))
                 @php $wns = session('workflow_next_step'); @endphp
-                <div class="modal fade" id="workflowNextStepModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+                <div class="modal fade" id="workflowNextStepModal" data-fenetre-prioritaire tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
                             <div class="modal-header" style="background:linear-gradient(135deg,#0453cb,#3b7ddb); color:#fff; border-bottom:none;">
@@ -3156,8 +3182,19 @@
                 // (chaque auto-open ci-dessous est garde par cette valeur).
                 // Differees aussi quand la page s'ouvre pour signaler un probleme (?signaler=1) :
                 // la fenetre du support ne doit pas se retrouver sous une annonce.
+                // Aucun rappel non plus sur les pages de mot de passe (changement
+                // imposé compris) : l'utilisateur doit d'abord pouvoir finir ce geste.
                 const mAutoModalDeferred = window.matchMedia('(max-width:991.98px)').matches
-                    || new URLSearchParams(window.location.search).get('signaler') === '1';
+                    || new URLSearchParams(window.location.search).get('signaler') === '1'
+                    || @json(request()->routeIs('password.*', 'login', 'register') || (bool) (auth()->user()?->must_change_password));
+
+                // Un seul rappel par chargement de page, dans l'ordre ci-dessous.
+                // Les suivants ne sont pas marqués « vus » : ils passeront à leur tour.
+                // Une fenêtre de résultat (identifiants d'un compte créé, étape suivante) passe
+                // avant tout rappel : elle porte ce que l'agent doit lire maintenant.
+                let rappelDejaOuvert = document.body.classList.contains('modal-open') || !!document.querySelector('.modal.show, [data-fenetre-prioritaire]');
+                const peutOuvrirRappel = () => !mAutoModalDeferred && !rappelDejaOuvert;
+                const rappelOuvert = () => { rappelDejaOuvert = true; };
 
                 const anneeModal = document.getElementById('anneeCouranteExpiredModal');
                 if (anneeModal) {
@@ -3166,7 +3203,8 @@
                 const now = Date.now();
                 const oneHourMs = 60 * 60 * 1000;
 
-                if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
+                if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
+                    rappelOuvert();
                     const modal = new bootstrap.Modal(anneeModal);
                     modal.show();
                     localStorage.setItem(storageKey, String(now));
@@ -3184,7 +3222,8 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
+                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
+                        rappelOuvert();
                         const pendingModal = new bootstrap.Modal(pendingModalElement);
                         pendingModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3202,7 +3241,8 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
+                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
+                        rappelOuvert();
                         const timetableModal = new bootstrap.Modal(timetableModalElement);
                         timetableModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3220,7 +3260,8 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
+                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
+                        rappelOuvert();
                         const gradingModal = new bootstrap.Modal(gradingModalElement);
                         gradingModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3238,7 +3279,8 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
+                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
+                        rappelOuvert();
                         const publishModal = new bootstrap.Modal(evaluationPublishModalElement);
                         publishModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3265,7 +3307,8 @@
                     const dismissed = !!state.dismissed;
                     const remindAt = Number(state.remindAt || 0);
 
-                    if (!mAutoModalDeferred && !dismissed && now >= remindAt) {
+                    if (peutOuvrirRappel() && !dismissed && now >= remindAt) {
+                        rappelOuvert();
                         const whatsNewModal = new bootstrap.Modal(whatsNewModalElement);
                         whatsNewModal.show();
                     }

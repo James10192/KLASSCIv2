@@ -13,14 +13,7 @@
                 name="override_decision"
                 placeholder="Nouvelle décision"
                 icon="fa-scale-balanced"
-                :options="[
-                    'admis' => 'Admis',
-                    'admission_rattrapage' => 'Admission rattrapage',
-                    'ajourne' => 'Ajourné',
-                    'exclu' => 'Exclu',
-                    'admis_sous_condition' => 'Admis sous condition',
-                    'defere' => 'Différé',
-                ]"
+                :options="\App\Models\ESBTPLMDJuryDecision::LIBELLES_DECISIONS"
                 x-model="form.decision" />
         </div>
         <div style="margin-top:.75rem;">

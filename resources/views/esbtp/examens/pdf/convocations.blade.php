@@ -29,7 +29,7 @@
 
 <div class="pdf-header">
     <h1>CONVOCATIONS D'EXAMEN</h1>
-    <p>Année universitaire {{ $annee->libelle ?? '—' }} · Généré le {{ $generated_at->format('d/m/Y à H:i') }}</p>
+    <p>Année universitaire {{ $annee->display_name ?? '—' }} · Généré le {{ $generated_at->format('d/m/Y à H:i') }}</p>
 </div>
 
 @forelse($examens as $e)

@@ -133,6 +133,10 @@ function jurySalle(juryId) {
         },
 
         requestAutoDecisions() {
+            if (this.quorum && this.quorum.ok === false) {
+                this.toast('error', 'Quorum non atteint : ' + (this.quorum.reasons || []).join(', ') + '. Complétez la composition du jury d’abord.');
+                return;
+            }
             this.review = {
                 kind: 'auto',
                 title: 'Revue des décisions automatiques',
@@ -149,7 +153,7 @@ function jurySalle(juryId) {
                 const data = await this.post('{{ route('esbtp.lmd.jurys.decisions.auto', $jury) }}', { confirmed: true });
                 this.stats = data.stats;
                 this.readiness = data.readiness;
-                this.toast('success', `${data.created_count} décisions créées.`);
+                this.toast((data.incompletes || []).length ? 'warning' : 'success', data.message || `${data.created_count} décision(s) calculée(s).`);
                 setTimeout(() => window.location.reload(), 600);
             } catch (e) {
                 this.toast('error', e.message);

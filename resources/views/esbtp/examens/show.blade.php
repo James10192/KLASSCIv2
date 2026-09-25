@@ -432,6 +432,14 @@
                 </div>
             </div>
             <div class="exs-hero-actions">
+                @if($examen->matiere_id && $examen->classe_id && (auth()->user()->can('lmd.examens.manage') || auth()->user()->can('lmd.notes.manage')))
+                    <form method="POST" action="{{ route('esbtp.examens.feuille-de-notes', $examen) }}" style="display:inline;">
+                        @csrf
+                        <button type="submit" class="exs-btn exs-btn--white">
+                            <i class="fas fa-pen-to-square"></i> {{ $examen->evaluation_id ? 'Saisir les notes' : 'Ouvrir la feuille de notes' }}
+                        </button>
+                    </form>
+                @endif
                 @can('lmd.examens.manage')
                     @if(! $examen->notes_locked)
                         <a href="{{ route('esbtp.examens.edit', $examen) }}" class="exs-btn exs-btn--glass">
@@ -605,9 +613,37 @@
                         <div class="exs-kv-row">
                             <div class="exs-kv-label">Anonymisation copies</div>
                             <div class="exs-kv-value">
-                                @if($examen->is_anonymous)
-                                    <i class="fas fa-mask" style="color:#0453cb;"></i> Mentionnée sur les convocations
-                                    <small class="exs-kv-empty" style="display:block;">Sans numéro d'anonymat : la saisie des notes affiche les noms.</small>
+                                @if($examen->is_anonymous && $examen->anonymat_leve_at)
+                                    <i class="fas fa-eye" style="color:#0453cb;"></i> Levée le {{ $examen->anonymat_leve_at->format('d/m/Y à H:i') }}
+                                    <small class="exs-kv-empty" style="display:block;">La saisie affiche désormais les noms.</small>
+                                @elseif($examen->is_anonymous)
+                                    <div x-data="{ envoi: false, message: '', leve: null }">
+                                        <template x-if="leve">
+                                            <div><i class="fas fa-eye" style="color:#0453cb;"></i> Levée le <span x-text="leve.le"></span> par <span x-text="leve.par"></span>
+                                            <small class="exs-kv-empty" style="display:block;">La saisie affiche désormais les noms.</small></div>
+                                        </template>
+                                        <div x-show="!leve">
+                                        <i class="fas fa-mask" style="color:#0453cb;"></i>
+                                        @if(($anonymats ?? 0) > 0)
+                                            {{ $anonymats }} copie(s) numérotée(s) : la saisie affiche les numéros, pas les noms.
+                                        @else
+                                            Les numéros seront attribués à l’ouverture de la feuille de notes.
+                                        @endif
+                                        @can('lmd.examens.anonymat.lever')
+                                            @if(($anonymats ?? 0) > 0)
+                                                <div style="margin-top:.4rem;">
+                                                    <button type="button" class="exs-btn exs-btn--primary" style="padding:.3rem .7rem;font-size:.78rem;" :disabled="envoi" @click="
+                                                        envoi = true;
+                                                        fetch('{{ route('esbtp.examens.lever-anonymat', $examen) }}', { method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content } })
+                                                            .then(async r => { const d = await r.json().catch(() => ({})); if (r.ok) { leve = { le: d.leve_le, par: d.leve_par }; window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: d.message } })); } else { message = d.message || ('Erreur ' + r.status); } })
+                                                            .finally(() => envoi = false);
+                                                    "><i class="fas fa-eye"></i> Lever l’anonymat</button>
+                                                    <small class="exs-kv-empty" x-show="message" x-text="message" style="display:block;"></small>
+                                                </div>
+                                            @endif
+                                        @endcan
+                                        </div>
+                                    </div>
                                 @else
                                     <span class="exs-kv-empty">Désactivée</span>
                                 @endif
@@ -705,7 +741,7 @@
                                 :placeholderIsFirstOption="false" />
                             <button type="submit" class="exs-btn exs-btn--primary" :disabled="assigning" style="justify-content:center;">
                                 <i class="fas" :class="assigning ? 'fa-spinner fa-spin' : 'fa-plus'"></i>
-                                <span x-text="assigning ? 'Ajout en cours…' : 'Ajouter au jury'"></span>
+                                <span x-text="assigning ? 'Ajout en cours…' : 'Ajouter un surveillant'"></span>
                             </button>
                         </form>
                     </div>
