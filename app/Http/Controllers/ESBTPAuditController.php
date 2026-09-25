@@ -289,28 +289,19 @@ class ESBTPAuditController extends Controller
             : now();
 
         $baseQuery = fn () => Audit::whereBetween('created_at', [$dateFrom, $dateTo]);
-
-        $query = Audit::with(['user'])
-            ->whereBetween('created_at', [$dateFrom, $dateTo])
-            ->orderBy('created_at', 'desc');
-
-        if ($userId) {
-            $query->where('user_id', $userId);
-        }
+        // La fenetre, restreinte a l'utilisateur choisi s'il y en a un.
+        $portee = fn () => $baseQuery()->when($userId, fn ($q) => $q->where('user_id', $userId));
 
         // Departage stable : la chronologie se charge par tranches.
-        $activities = $query->orderByDesc('id')->paginate(50)->withQueryString();
+        $activities = $portee()->with(['user'])->orderByDesc('created_at')->orderByDesc('id')
+            ->paginate(50)->withQueryString();
 
         if (ListeInfinie::demandee($request)) {
             return $this->suiteDeLaChronologie($activities, $userId ? User::find($userId) : null);
         }
 
         // Top modèles touchés (sur la fenêtre, scoped par user si filtré)
-        $topModelsQuery = $baseQuery();
-        if ($userId) {
-            $topModelsQuery->where('user_id', $userId);
-        }
-        $topModels = $topModelsQuery
+        $topModels = $portee()
             ->select('auditable_type', DB::raw('COUNT(*) as total'))
             ->groupBy('auditable_type')
             ->orderByDesc('total')
@@ -322,11 +313,7 @@ class ESBTPAuditController extends Controller
             ]);
 
         // Top IPs
-        $topIpsQuery = $baseQuery();
-        if ($userId) {
-            $topIpsQuery->where('user_id', $userId);
-        }
-        $topIps = $topIpsQuery
+        $topIps = $portee()
             ->select('ip_address', DB::raw('COUNT(*) as total'))
             ->whereNotNull('ip_address')
             ->groupBy('ip_address')
@@ -335,28 +322,12 @@ class ESBTPAuditController extends Controller
             ->get();
 
         // Heures de pointe (24 buckets)
-        $peakHoursQuery = $baseQuery();
-        if ($userId) {
-            $peakHoursQuery->where('user_id', $userId);
-        }
-        $hoursRaw = $peakHoursQuery
-            ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as total'))
-            ->groupBy(DB::raw('HOUR(created_at)'))
-            ->pluck('total', 'hour')
-            ->toArray();
-        $hourlyDistribution = [];
-        for ($h = 0; $h < 24; $h++) {
-            $hourlyDistribution[$h] = (int) ($hoursRaw[$h] ?? 0);
-        }
+        $hourlyDistribution = $this->repartitionParHeure($portee());
         $peakHour = array_search(max($hourlyDistribution), $hourlyDistribution);
 
         // Statistiques d'activité (recompute totals after applying user filter if any)
-        $totalActionsQuery = $baseQuery();
-        if ($userId) {
-            $totalActionsQuery->where('user_id', $userId);
-        }
         $stats = [
-            'total_actions' => $totalActionsQuery->count(),
+            'total_actions' => $portee()->count(),
             'unique_users' => $baseQuery()->distinct('user_id')->count('user_id'),
             'unique_ips' => $baseQuery()->whereNotNull('ip_address')->distinct('ip_address')->count('ip_address'),
             'peak_hour' => $peakHour !== false ? sprintf('%02dh', $peakHour) : '—',
@@ -373,17 +344,30 @@ class ESBTPAuditController extends Controller
         }
 
         return view('esbtp.audit.user-activity', compact(
-            'activities',
-            'stats',
-            'users',
-            'selectedUser',
-            'topModels',
-            'topIps',
-            'hourlyDistribution',
-            'dateFrom',
-            'dateTo',
-            'entityLinksMap'
+            'activities', 'stats', 'users', 'selectedUser', 'topModels', 'topIps',
+            'hourlyDistribution', 'dateFrom', 'dateTo', 'entityLinksMap'
         ));
+    }
+
+    /**
+     * Nombre d'actions par heure de la journee, de 0 h a 23 h, heures vides comprises.
+     *
+     * @return array<int, int>
+     */
+    private function repartitionParHeure($requete): array
+    {
+        $parHeure = $requete
+            ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as total'))
+            ->groupBy(DB::raw('HOUR(created_at)'))
+            ->pluck('total', 'hour')
+            ->toArray();
+
+        $repartition = [];
+        for ($h = 0; $h < 24; $h++) {
+            $repartition[$h] = (int) ($parHeure[$h] ?? 0);
+        }
+
+        return $repartition;
     }
 
     /**

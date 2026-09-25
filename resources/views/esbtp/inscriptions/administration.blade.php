@@ -934,7 +934,7 @@
                 <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
                     <strong>Actuellement :</strong><br>
                     • Année courante = {{ $anneeEnCours->name ?? 'Non définie' }}<br>
-                    • Inscriptions visibles = {{ $inscriptions->count() }} sur {{ \App\Models\ESBTPInscription::count() }} au total
+                    • Inscriptions à valider = {{ $inscriptions->total() }} sur {{ \App\Models\ESBTPInscription::count() }} au total
                 </div>
             </div>
             <div class="modal-footer">
@@ -1067,7 +1067,9 @@
             }
 
             triggerInscriptionRowHighlight(newRow, actionType);
-            bindInscriptionActions();
+            // La seule ligne neuve : relier tout le document ajoutait un
+            // gestionnaire de plus a chaque bouton deja present.
+            bindInscriptionActions(newRow);
             bindBulkSelectionHandlers();
             updateInscriptionSelectionCount();
         })
@@ -1646,6 +1648,12 @@
             (event.detail.lignes || []).forEach(ligne => bindInscriptionActions(ligne));
             bindBulkSelectionHandlers();
             updateInscriptionSelectionCount();
+            // Des lignes non cochees arrivent : « tout cocher » ne l'est plus.
+            const selectAll = document.getElementById('select-all-inscriptions');
+            if (selectAll) {
+                const toutes = document.querySelectorAll('.inscription-checkbox');
+                selectAll.checked = toutes.length > 0 && toutes.length === document.querySelectorAll('.inscription-checkbox:checked').length;
+            }
         });
 
         if (headerSearch && formSearchInput) {

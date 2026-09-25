@@ -33,7 +33,6 @@
             sort: params.get('sort') || 'created_at',
             dir: params.get('dir') || 'desc',
             per_page: params.get('per_page') || '25',
-            page: params.get('page') || '1',
         };
     }
 
@@ -50,9 +49,11 @@
         window.history.pushState({}, '', url);
     }
 
-    function fetchResults(opts) {
-        opts = opts || {};
-        if (!opts.keepPage) currentFilters.page = '1';
+    // La liste se charge au defilement : pas de numero de page dans les filtres.
+    // Une ancienne adresse en `?page=3` rendait la tranche 3 seule.
+    delete currentFilters.page;
+
+    function fetchResults() {
         updateUrl();
 
         if (cardEl) cardEl.style.opacity = '0.6';
@@ -110,7 +111,7 @@
 
     if (resetBtn) {
         resetBtn.addEventListener('click', () => {
-            currentFilters = { sort: 'created_at', dir: 'desc', per_page: '25', page: '1' };
+            currentFilters = { sort: 'created_at', dir: 'desc', per_page: '25' };
             if (searchInput) searchInput.value = '';
             if (anneeSelect) anneeSelect.value = '';
             if (conditionSelect) conditionSelect.value = '';
@@ -183,6 +184,37 @@
         }
     });
 
+    // Des lignes non cochees arrivent au defilement : « tout cocher » ne l'est plus.
+    document.addEventListener('liste-infinie:ajout', () => {
+        const all = document.querySelectorAll('.isr-row-checkbox');
+        const checked = document.querySelectorAll('.isr-row-checkbox:checked');
+        const selectAll = document.getElementById('isr-select-all');
+        if (selectAll) selectAll.checked = all.length > 0 && checked.length === all.length;
+    });
+
+    // Une reserve levee quitte la liste sur place : l'agent garde sa position
+    // dans le defilement. Seuls les compteurs sont relus.
+    function retirerLignes(ids) {
+        let retirees = 0;
+        ids.forEach((id) => {
+            const ligne = document.querySelector('#isr-tbody [data-li-cle="' + CSS.escape(String(id)) + '"]');
+            if (ligne) { ligne.remove(); retirees++; }
+        });
+        const bas = document.querySelector('#isr-results [data-liste-infinie]');
+        if (bas && window.ListeInfinie && retirees > 0) window.ListeInfinie.ajuster(bas, retirees);
+        clearSelection();
+        fetch(buildUrl(currentFilters), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        })
+            .then((r) => r.json())
+            .then((data) => {
+                if (!data.stats) return;
+                window.updateKpisFromStats(data.stats);
+                if (totalEl && typeof data.stats.total !== 'undefined') totalEl.textContent = data.stats.total;
+            })
+            .catch(() => {});
+    }
+
     function updateBulkBar() {
         const count = document.querySelectorAll('.isr-row-checkbox:checked').length;
         if (count > 0) {
@@ -229,7 +261,7 @@
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.success) {
             window.showToast(data.message || 'Réserve levée avec succès', 'success');
-            fetchResults({ keepPage: true });
+            retirerLignes([id]);
         } else {
             window.showToast(data.message || 'Erreur lors de la levée de réserve', 'error');
         }
@@ -282,7 +314,7 @@
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.success) {
             window.showToast(data.message || `${data.count} réserve(s) levée(s)`, 'success');
-            fetchResults({ keepPage: true });
+            retirerLignes(ids);
         } else {
             window.showToast(data.message || 'Erreur lors du bulk', 'error');
         }
@@ -313,6 +345,6 @@
     // =========================================================================
     window.addEventListener('popstate', () => {
         currentFilters = readFiltersFromUrl();
-        fetchResults({ keepPage: true });
+        fetchResults();
     });
 })();

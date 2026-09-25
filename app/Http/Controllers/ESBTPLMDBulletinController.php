@@ -72,7 +72,14 @@ class ESBTPLMDBulletinController extends Controller
 
         $annees = ESBTPAnneeUniversitaire::orderByDesc('annee_debut')->get();
 
-        return view('esbtp.lmd.bulletins.index', compact('bulletins', 'classes', 'annees'));
+        // Sur tous les bulletins filtres, pas sur la premiere tranche : la
+        // liste se lit d'un seul tenant au defilement.
+        $kpis = [
+            'publies' => (clone $query)->reorder()->where('is_published', true)->count(),
+            'moyenne' => (clone $query)->reorder()->avg('moyenne_generale'),
+        ];
+
+        return view('esbtp.lmd.bulletins.index', compact('bulletins', 'classes', 'annees', 'kpis'));
     }
 
     /**

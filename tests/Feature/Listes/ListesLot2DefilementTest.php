@@ -200,4 +200,24 @@ class ListesLot2DefilementTest extends TestCase
             ->assertJsonStructure(['success', 'rows_html', 'pagination' => ['next_page', 'has_more', 'affiches']])
             ->assertJsonMissingPath('kpis');
     }
+
+    public function test_bulletins_lmd_les_indicateurs_portent_sur_tous_les_bulletins(): void
+    {
+        // 25 bulletins : les 20 plus anciens publies, les 5 plus recents non.
+        // La premiere tranche (20) n'en montre que 15 publies ; l'indicateur,
+        // lui, doit en compter 20.
+        for ($i = 0; $i < 25; $i++) {
+            $this->ligneMinimale('esbtp_lmd_bulletins', [
+                'etudiant_id' => 900000 + $i,
+                'is_published' => $i < 20 ? 1 : 0,
+                'moyenne_generale' => 10,
+                'created_at' => now()->subMinutes(100 - $i),
+            ]);
+        }
+
+        $kpis = $this->get(route('esbtp.lmd.bulletins.index'))->assertOk()->viewData('kpis');
+
+        $this->assertSame(20, $kpis['publies']);
+        $this->assertEquals(10, $kpis['moyenne']);
+    }
 }

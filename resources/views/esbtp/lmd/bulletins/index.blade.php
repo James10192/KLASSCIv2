@@ -521,9 +521,9 @@
         {{-- ══ Hero ══ --}}
         @php
             $totalBulletins = $bulletins->total();
-            $publies = $bulletins->getCollection()->where('is_published', true)->count();
+            $publies = $kpis['publies'];
             $nonPublies = $totalBulletins - $publies;
-            $avgMoyenne = $bulletins->getCollection()->avg('moyenne_generale');
+            $avgMoyenne = $kpis['moyenne'];
         @endphp
 
         <div class="lb-hero">
