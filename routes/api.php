@@ -316,6 +316,14 @@ Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(func
     // Statut des cours
     Route::put('/cours/{coursId}/statut', [App\Http\Controllers\API\LMSWriteController::class, 'updateCourseStatus'])
         ->name('cours.statut.update');
+
+    // ================================
+    // SYNCHRONISATION v2 (jeton serveur)
+    // ================================
+
+    // « Ce qui a change depuis », tous types confondus (docs/api/LMS_SYNCHRONISATION.md)
+    Route::get('/v2/sync', [App\Http\Controllers\API\LMSSyncController::class, 'sync'])
+        ->name('v2.sync');
 });
 
 // ================================
