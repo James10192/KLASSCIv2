@@ -3028,61 +3028,7 @@
                         </div>
                     @endif
 
-                    <div class="modal fade" id="whatsNewModal" tabindex="-1" aria-labelledby="whatsNewModalLabel" aria-hidden="true" data-bs-backdrop="static" data-pref-key="whatsNew.v2026_09_24.user.{{ auth()->id() }}">
-                        <div class="modal-dialog modal-dialog-centered modal-lg">
-                            <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 48px rgba(15,23,42,.2);">
-                                <div class="modal-header" style="background:linear-gradient(135deg,#0453cb,#5e91de);color:#fff;border-bottom:none;">
-                                    <h5 class="modal-title" id="whatsNewModalLabel" style="font-weight:700;">
-                                        <i class="fas fa-sparkles me-2"></i>Nouveautés — Septembre 2026
-                                    </h5>
-                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer" id="whatsNewCloseBtn"></button>
-                                </div>
-                                <div class="modal-body" style="padding:1.25rem 1.35rem;">
-                                    <div style="display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.9rem;padding:.7rem .8rem;border-radius:10px;background:rgba(4,83,203,.06);border:1px solid rgba(4,83,203,.15);">
-                                        <i class="fas fa-info-circle" style="margin-top:2px;color:#0453cb;"></i>
-                                        <div style="font-size:.86rem;color:#334155;line-height:1.45;">
-                                            Ce qui change pour la <strong>caisse</strong>, la <strong>comptabilité</strong> et la <strong>scolarité</strong> : vous pouvez désormais corriger et annuler vous-même, là où vous voyez l&rsquo;information.
-                                        </div>
-                                    </div>
-
-                                    <div style="display:grid;gap:.55rem;">
-                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Un accueil qui dit quoi faire</div>
-                                            <div style="font-size:.78rem;color:#475569;">L&rsquo;accueil de la caisse et celui de la comptabilité montrent ce qui vous attend (paiements à valider, saisies encore annulables, reste à percevoir), la tendance des derniers jours, et chaque chiffre ouvre la liste correspondante.</div>
-                                        </div>
-                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Annuler un versement, sans le faire disparaître</div>
-                                            <div style="font-size:.78rem;color:#475569;">Le bouton <strong>Annuler le versement</strong> (flèche arrière) émet un avoir : le versement reste visible, compensé, avec votre motif. Il est sur la liste des paiements, la fiche du paiement, la fiche d&rsquo;inscription et l&rsquo;accueil.</div>
-                                        </div>
-                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">« Annuler ma saisie » juste après une erreur</div>
-                                            <div style="font-size:.78rem;color:#475569;">Dans les minutes qui suivent l&rsquo;encaissement, l&rsquo;agent qui s&rsquo;est trompé annule lui-même sa saisie, même si le versement est déjà validé (selon les droits donnés par l&rsquo;école).</div>
-                                        </div>
-                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Les versements de la fiche d&rsquo;inscription</div>
-                                            <div style="font-size:.78rem;color:#475569;">Chaque versement a maintenant ses boutons : voir, reçu, annuler, supprimer avec motif. Plus besoin de passer par la liste des paiements.</div>
-                                        </div>
-                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
-                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Corriger une inscription déjà validée</div>
-                                            <div style="font-size:.78rem;color:#475569;">Filière, niveau et classe se modifient encore après validation pour qui a le droit « Modifier une inscription déjà validée » (agent d&rsquo;inscription, scolarité). Les frais sont recalculés.</div>
-                                        </div>
-                                    </div>
-
-                                    <div style="margin-top:.9rem;font-size:.75rem;color:#64748b;text-align:center;">
-                                        Le détail complet est dans le journal des versions, sur klassci.com.
-                                    </div>
-                                </div>
-                                <div class="modal-footer" style="border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:.5rem;padding:.9rem 1rem;">
-                                    <button type="button" class="btn btn-outline-secondary" id="whatsNewRemindLaterBtn" data-bs-dismiss="modal">
-                                        <i class="fas fa-clock me-1"></i>Me le rappeler plus tard
-                                    </button>
-                                    <button type="button" class="btn" id="whatsNewDismissBtn" data-bs-dismiss="modal" style="background:#0453cb;color:#fff;">
-                                        <i class="fas fa-check me-1"></i>J'ai compris
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    @include('layouts.partials.nouveautes', ['cleVersion' => 'whatsNew.v2026_09_25'])
                 @endauth
 
             {{-- Alerte expiration mot de passe --}}
