@@ -76,6 +76,8 @@
     @unless($semaineVide)
         <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.feuille.apercu', ['debut' => $debut->toDateString()]) }}" target="_blank" rel="noopener"
            title="Feuille à imprimer : une page par jour, case « Reçue » et colonne d'observations"><i class="fas fa-print"></i>Imprimer la semaine</a>
+        <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.feuille.excel', ['debut' => $debut->toDateString()]) }}"
+           title="Les familles attendues de la semaine, dans un tableur"><i class="fas fa-file-excel"></i>Excel</a>
     @endunless
 </nav>
 
@@ -119,6 +121,8 @@
                     @if($jour['prises'] > 0)
                         <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.feuille.apercu', ['jour' => $jour['date']]) }}" target="_blank" rel="noopener"
                            aria-label="Imprimer la feuille du {{ $jour['libelle'] }}"><i class="fas fa-print"></i>Imprimer</a>
+                        <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.feuille.excel', ['jour' => $jour['date']]) }}"
+                           aria-label="Télécharger en Excel les familles du {{ $jour['libelle'] }}"><i class="fas fa-file-excel"></i>Excel</a>
                     @endif
                 </header>
                 <div class="rdv-slots">
