@@ -352,7 +352,7 @@
                             @if($semaine['heures'] > 0)
                                 <text x="{{ $tedX + $tedBw / 2 }}" y="{{ $tedH - $tedB - $tedBarH - 5 }}" text-anchor="middle" font-size="11" font-weight="700" fill="#1e293b">{{ $tedHeure($semaine['heures']) }}</text>
                             @endif
-                            <text x="{{ $tedDerniere ? $tedX + $tedBw : $tedX + $tedBw / 2 }}" y="{{ $tedH - 8 }}" text-anchor="{{ $tedDerniere ? 'end' : 'middle' }}" font-size="10.5" fill="{{ $tedDerniere ? '#0453cb' : '#64748b' }}" font-weight="{{ $tedDerniere ? '700' : '400' }}">{{ $tedDerniere ? 'Cette sem.' : $semaine['libelle'] }}</text>
+                            <text x="{{ $tedX + $tedBw / 2 }}" y="{{ $tedH - 8 }}" text-anchor="middle" font-size="10.5" fill="{{ $tedDerniere ? '#0453cb' : '#64748b' }}" font-weight="{{ $tedDerniere ? '700' : '400' }}">{{ $semaine['libelle'] }}</text>
                         </g>
                     @endforeach
                 </svg>
