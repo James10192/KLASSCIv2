@@ -1626,16 +1626,16 @@
             flex-shrink: 0;
         }
         @media (max-width: 768px) {
+            /* Sur téléphone, une seule ligne : le rappel ne doit pas pousser
+               la page d'un tiers d'écran vers le bas. */
             .pwd-expiry-banner {
-                flex-direction: column;
-                align-items: stretch;
-                padding: .85rem 1rem;
+                padding: .55rem .75rem;
+                gap: .6rem;
+                font-size: .82rem;
             }
-            .pwd-expiry-banner-btn {
-                white-space: normal;
-                text-align: center;
-                width: 100%;
-            }
+            .pwd-expiry-banner-sub { display: none; }
+            .pwd-expiry-banner-copy i { font-size: 1rem; margin-top: .05rem; }
+            .pwd-expiry-banner-btn { padding: .4rem .7rem; font-size: .78rem; }
         }
     </style>
     @yield('styles')
@@ -3174,6 +3174,9 @@
                         </div>
                     @endif
 
+                    {{-- Ces nouveautés ne concernent que la caisse, la comptabilité et la
+                         scolarité : un enseignant ou un étudiant ne doit pas les recevoir. --}}
+                    @canany(['paiements.view', 'paiements.view_own', 'paiements.create', 'inscriptions.edit', 'comptabilite.dashboard.view'])
                     <div class="modal fade" id="whatsNewModal" tabindex="-1" aria-labelledby="whatsNewModalLabel" aria-hidden="true" data-bs-backdrop="static" data-pref-key="whatsNew.v2026_09_24.user.{{ auth()->id() }}">
                         <div class="modal-dialog modal-dialog-centered modal-lg">
                             <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 48px rgba(15,23,42,.2);">
@@ -3229,11 +3232,12 @@
                             </div>
                         </div>
                     </div>
+                    @endcanany
                 @endauth
 
             {{-- Alerte expiration mot de passe --}}
             @auth
-                @if(\App\Services\UserService::isPasswordExpiringSoon(auth()->user()))
+                @if(! request()->routeIs('password.*') && \App\Services\UserService::isPasswordExpiringSoon(auth()->user()))
                     @php
                         $refDate = auth()->user()->password_changed_at ?? auth()->user()->created_at;
                         $expiryMonths = (int) \App\Models\Setting::get('password_expiry_months', 6);
@@ -3365,8 +3369,17 @@
                 // (chaque auto-open ci-dessous est garde par cette valeur).
                 // Differees aussi quand la page s'ouvre pour signaler un probleme (?signaler=1) :
                 // la fenetre du support ne doit pas se retrouver sous une annonce.
+                // Aucun rappel non plus sur les pages de mot de passe (changement
+                // imposé compris) : l'utilisateur doit d'abord pouvoir finir ce geste.
                 const mAutoModalDeferred = window.matchMedia('(max-width:991.98px)').matches
-                    || new URLSearchParams(window.location.search).get('signaler') === '1';
+                    || new URLSearchParams(window.location.search).get('signaler') === '1'
+                    || @json(request()->routeIs('password.*', 'login', 'register') || (bool) (auth()->user()?->must_change_password));
+
+                // Un seul rappel par chargement de page, dans l'ordre ci-dessous.
+                // Les suivants ne sont pas marqués « vus » : ils passeront à leur tour.
+                let rappelDejaOuvert = document.body.classList.contains('modal-open') || !!document.querySelector('.modal.show');
+                const peutOuvrirRappel = () => !mAutoModalDeferred && !rappelDejaOuvert;
+                const rappelOuvert = () => { rappelDejaOuvert = true; };
 
                 const anneeModal = document.getElementById('anneeCouranteExpiredModal');
                 if (anneeModal) {
@@ -3375,7 +3388,8 @@
                 const now = Date.now();
                 const oneHourMs = 60 * 60 * 1000;
 
-                if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
+                if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
+                    rappelOuvert();
                     const modal = new bootstrap.Modal(anneeModal);
                     modal.show();
                     localStorage.setItem(storageKey, String(now));
@@ -3393,7 +3407,8 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
+                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
+                        rappelOuvert();
                         const pendingModal = new bootstrap.Modal(pendingModalElement);
                         pendingModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3411,7 +3426,8 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
+                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
+                        rappelOuvert();
                         const timetableModal = new bootstrap.Modal(timetableModalElement);
                         timetableModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3429,7 +3445,8 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
+                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
+                        rappelOuvert();
                         const gradingModal = new bootstrap.Modal(gradingModalElement);
                         gradingModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3447,7 +3464,8 @@
                     const now = Date.now();
                     const oneHourMs = 60 * 60 * 1000;
 
-                    if (!mAutoModalDeferred && now - lastSeen >= oneHourMs) {
+                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
+                        rappelOuvert();
                         const publishModal = new bootstrap.Modal(evaluationPublishModalElement);
                         publishModal.show();
                         localStorage.setItem(reminderKey, String(now));
@@ -3474,7 +3492,8 @@
                     const dismissed = !!state.dismissed;
                     const remindAt = Number(state.remindAt || 0);
 
-                    if (!mAutoModalDeferred && !dismissed && now >= remindAt) {
+                    if (peutOuvrirRappel() && !dismissed && now >= remindAt) {
+                        rappelOuvert();
                         const whatsNewModal = new bootstrap.Modal(whatsNewModalElement);
                         whatsNewModal.show();
                     }
