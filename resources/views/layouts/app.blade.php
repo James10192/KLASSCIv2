@@ -3288,7 +3288,7 @@
             {{-- Modal "next step" anti-self-notif (issue #298) --}}
             @if(session('workflow_next_step') && session('workflow_next_step.url'))
                 @php $wns = session('workflow_next_step'); @endphp
-                <div class="modal fade" id="workflowNextStepModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+                <div class="modal fade" id="workflowNextStepModal" data-fenetre-prioritaire tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
                     <div class="modal-dialog modal-dialog-centered">
                         <div class="modal-content">
                             <div class="modal-header" style="background:linear-gradient(135deg,#0453cb,#3b7ddb); color:#fff; border-bottom:none;">
@@ -3403,7 +3403,9 @@
 
                 // Un seul rappel par chargement de page, dans l'ordre ci-dessous.
                 // Les suivants ne sont pas marqués « vus » : ils passeront à leur tour.
-                let rappelDejaOuvert = document.body.classList.contains('modal-open') || !!document.querySelector('.modal.show');
+                // Une fenêtre de résultat (identifiants d'un compte créé, étape suivante) passe
+                // avant tout rappel : elle porte ce que l'agent doit lire maintenant.
+                let rappelDejaOuvert = document.body.classList.contains('modal-open') || !!document.querySelector('.modal.show, [data-fenetre-prioritaire]');
                 const peutOuvrirRappel = () => !mAutoModalDeferred && !rappelDejaOuvert;
                 const rappelOuvert = () => { rappelDejaOuvert = true; };
 

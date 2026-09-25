@@ -1,6 +1,6 @@
 {{-- Modal d'affichage des credentials --}}
 @if(session('credentials'))
-<div id="credentialsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+<div id="credentialsModal" data-fenetre-prioritaire class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 1090; overflow-y: auto; padding: 16px 0;">
     <div class="card-moderne" style="max-width: 500px; width: 90%; padding: var(--space-xl); margin: auto; background-color: var(--surface); border-radius: var(--radius-medium); box-shadow: var(--shadow-elevated);">
         <div style="text-align: center; margin-bottom: var(--space-lg);">
             <div style="width: 80px; height: 80px; background-color: var(--success); border-radius: var(--radius-circle); margin: 0 auto var(--space-md); display: flex; align-items: center; justify-content: center;">
