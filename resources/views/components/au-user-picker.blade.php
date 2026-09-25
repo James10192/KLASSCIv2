@@ -4,6 +4,17 @@
     'users' => collect(),
     'placeholder' => '— Tous les utilisateurs —',
     'submitOnChange' => false,
+    // L'option vide n'a pas le meme sens partout : « tout le monde » dans un
+    // filtre, « personne » quand vide veut dire desassigner. Elle ne se devine
+    // pas : chaque ecran qui assigne la nomme (empty-label, empty-hint,
+    // empty-icon="fa-user-slash"). Sans libelle, elle reprend l'invite sans
+    // ses tirets, ce qui ne vaut que pour une invite de filtre (« Tous les… ») :
+    // d'ou l'icone par defaut, `fa-globe`. `false` la retire, pour un choix
+    // obligatoire — c'est le `placeholderIsFirstOption` de x-au-select.
+    'emptyOption' => true,
+    'emptyLabel' => null,
+    'emptyHint' => null,
+    'emptyIcon' => 'fa-globe',
 ])
 
 @php
@@ -70,6 +81,11 @@
     }
 
     $totalUsers = $usersCollection->count();
+    // L'invite sans ses tirets decoratifs (« — Tous les enseignants — »).
+    $libelleOptionVide = $emptyLabel ?? preg_replace('/^[\s\x{00A0}\x{2013}\x{2014}-]+|[\s\x{00A0}\x{2013}\x{2014}-]+$/u', '', (string) $placeholder);
+    if ($libelleOptionVide === '') {
+        $libelleOptionVide = 'Aucun';
+    }
 @endphp
 
 <div class="au-up {{ $attributes->get('class') ?? '' }}"
@@ -129,17 +145,22 @@
         </div>
 
         <div class="au-up-options" role="listbox">
+            @if($emptyOption)
             <button type="button"
                     class="au-up-option au-up-option--all"
                     :class="{ 'au-up-option--active': currentValue === '' }"
-                    @click="select(null)">
-                <span class="au-up-avatar au-up-avatar--all"><i class="fas fa-globe"></i></span>
+                    @click="select(null)" role="option"
+                    :aria-selected="(currentValue === '').toString()">
+                <span class="au-up-avatar au-up-avatar--all"><i class="fas {{ $emptyIcon }}"></i></span>
                 <span class="au-up-option-info">
-                    <span class="au-up-option-name">Tous les utilisateurs</span>
-                    <span class="au-up-option-meta">Vue d'ensemble — toutes les actions tracées</span>
+                    <span class="au-up-option-name">{{ $libelleOptionVide }}</span>
+                    @if($emptyHint)
+                    <span class="au-up-option-meta">{{ $emptyHint }}</span>
+                    @endif
                 </span>
                 <i class="fas fa-check au-up-option-check" x-show="currentValue === ''"></i>
             </button>
+            @endif
 
             <template x-for="group in filteredGroups" :key="group.key">
                 <div class="au-up-group">
@@ -174,7 +195,11 @@
         </div>
     </div>
 
-    <input type="hidden" name="{{ $name }}" :value="currentValue" x-ref="native">
+    {{-- Les attributs poses par l'appelant (x-model, x-on:change…) vont sur le
+         champ cache, comme x-au-select le fait sur son select natif. Les laisser
+         sur la racine les faisait disparaitre sans bruit : l'ajout d'un membre
+         de jury et le filtre Utilisateur de l'audit n'ont jamais rien recu. --}}
+    <input type="hidden" name="{{ $name }}" {{ $attributes->except(['class']) }} :value="currentValue" x-ref="native">
 </div>
 
 @once
@@ -321,6 +346,7 @@ if (typeof window.auUserPicker !== 'function') {
             _racine: null,
             _declencheur: null,
             _menu: null,
+            _suiviModele: null,
             _marqueur: null,
             _arreterVeille: null,
             init() {
@@ -339,7 +365,10 @@ if (typeof window.auUserPicker !== 'function') {
                 catch (e) { this.groups = []; }
                 this.currentValue = this.$el.dataset.current || '';
                 this.submitOnChange = this.$el.dataset.submitOnChange === '1';
-                this.$nextTick(() => { if (this.$refs.native) this.$refs.native.value = this.currentValue; });
+                this.$nextTick(() => {
+                    if (this.$refs.native) this.$refs.native.value = this.currentValue;
+                    this.suivreLeModeleParent();
+                });
                 this._repositionMenu = (e) => {
                     if (!this.open) return;
                     if (e?.target && this._menu?.contains(e.target)) return;
@@ -351,6 +380,7 @@ if (typeof window.auUserPicker !== 'function') {
                 window.visualViewport?.addEventListener('scroll', this._repositionMenu, { passive: true });
             },
             destroy() {
+                if (this._suiviModele && window.Alpine?.release) window.Alpine.release(this._suiviModele);
                 this.lacherLeMenu();
                 window.removeEventListener('resize', this._repositionMenu);
                 window.removeEventListener('scroll', this._repositionMenu, { capture: true });
@@ -373,6 +403,27 @@ if (typeof window.auUserPicker !== 'function') {
                         this.positionMenu();
                         this.$refs.searchInput?.focus();
                     });
+                });
+            },
+            /**
+             * Avec `x-model` sur le composant, la valeur vit aussi chez le
+             * parent : « Réinitialiser » la remet a vide la-bas sans rien dire
+             * ici, et le champ affichait encore l'ancien choix. On suit donc
+             * le modele parent quand il existe.
+             */
+            suivreLeModeleParent() {
+                const native = this.$refs.native;
+                if (! native || ! native._x_model || ! window.Alpine?.effect) return;
+                // On ne reagit qu'a un changement DU PARENT : l'effet lit aussi
+                // currentValue, donc il se relance a chaque choix ici — et sans
+                // ce garde il remettait aussitot l'ancienne valeur du parent.
+                let precedente = null;
+                this._suiviModele = window.Alpine.effect(() => {
+                    const v = native._x_model.get();
+                    const valeur = v === null || v === undefined ? '' : String(v);
+                    if (valeur === precedente) return;
+                    precedente = valeur;
+                    if (valeur !== this.currentValue) this.currentValue = valeur;
                 });
             },
             /** Unique chemin de fermeture : clic dehors, echappement, choix, bouton. */
@@ -497,6 +548,8 @@ if (typeof window.auUserPicker !== 'function') {
                     if (this.$refs.native) {
                         this.$refs.native.value = this.currentValue;
                         this.$refs.native.dispatchEvent(new Event('change', { bubbles: true }));
+                        // x-model sur un champ cache ecoute `input`, pas `change`.
+                        this.$refs.native.dispatchEvent(new Event('input', { bubbles: true }));
                     }
                     if (this.submitOnChange) {
                         const form = this._racine.closest('form');
