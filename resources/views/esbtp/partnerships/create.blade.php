@@ -144,23 +144,9 @@
                             @enderror
                         </div>
                         
-                        <!-- Départements associés -->
-                        <div class="form-group">
-                            <label>Départements associés</label>
-                            <select class="form-control select2 @error('departments') is-invalid @enderror" id="departments" name="departments[]" multiple="multiple" data-placeholder="Sélectionnez les départements">
-                                @foreach($departments as $department)
-                                    <option value="{{ $department->id }}" {{ (collect(old('departments'))->contains($department->id)) ? 'selected' : '' }}>
-                                        {{ $department->name }} ({{ $department->code }})
-                                    </option>
-                                @endforeach
-                            </select>
-                            <small class="form-text text-muted">Vous pourrez ajouter des détails spécifiques pour chaque département après la création du partenariat.</small>
-                            @error('departments')
-                                <span class="invalid-feedback" role="alert">
-                                    <strong>{{ $message }}</strong>
-                                </span>
-                            @enderror
-                        </div>
+                        {{-- Pas de choix des départements ici : le rattachement n'existe pas encore
+                             (store() ne l'enregistre pas, la fiche l'annonce « à venir »), et la liste
+                             attendait une variable que le contrôleur ne transmet pas — la page tombait en 500. --}}
                     </div>
                     <!-- /.card-body -->
                     
