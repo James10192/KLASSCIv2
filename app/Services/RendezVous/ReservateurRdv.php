@@ -234,7 +234,8 @@ class ReservateurRdv
      */
     public function liberer(PorteurDeRendezVous $porteur): ?ESBTPRdvReservation
     {
-        return $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur): ?ESBTPRdvReservation {
+        // sousVerrou() rend un tableau de refus si le dossier a disparu entre-temps.
+        $liberee = $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur): ?ESBTPRdvReservation {
             $actuelle = $this->reservationActive($porteur, true)?->load('creneau');
             if (
                 $actuelle === null
@@ -256,6 +257,8 @@ class ReservateurRdv
 
             return $actuelle;
         });
+
+        return $liberee instanceof ESBTPRdvReservation ? $liberee : null;
     }
 
     /** La phrase ajoutee au message de rejet, vide si rien n'a ete libere. */
