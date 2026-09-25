@@ -524,15 +524,19 @@ class SearchController extends Controller
                     'route' => 'esbtp.enseignants.index',
                     'url' => route('esbtp.enseignants.index'),
                     'icon' => 'fas fa-chalkboard-teacher'
-                ],
-                [
-                    'title' => 'Paramètres système',
-                    'description' => 'Configuration générale de l\'application',
-                    'route' => 'settings.index',
-                    'url' => route('settings.index'),
-                    'icon' => 'fas fa-cogs'
                 ]
             ]);
+
+            // Le lien n'est proposé qu'à qui peut ouvrir la page : sinon il mène à une 403.
+            if ($user->can('system.manage')) {
+                $items[] = [
+                    'title' => 'Paramètres système',
+                    'description' => 'Configuration générale de l\'application',
+                    'route' => 'esbtp.settings.index',
+                    'url' => route('esbtp.settings.index'),
+                    'icon' => 'fas fa-cogs'
+                ];
+            }
         }
 
         if ($user->can('identity.teach')) {
