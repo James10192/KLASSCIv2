@@ -2588,10 +2588,17 @@
 @endsection
 
 @section('content')
+@php
+    // Shell mobile actif : en-tete, filtres et liste de bureau se cachent sous 992px
+    // au profit du partial _index-mobile (m-*). Les modales restent hors de ce
+    // masquage, pour que l'ecran du telephone puisse les ouvrir.
+    $eimShell = ($mobileShellEnabled ?? false) && ($mobileProfile ?? null);
+    $eimDesk = $eimShell ? 'm-only-desktop' : '';
+@endphp
 <div class="dashboard-acasi">
     <div class="main-content">
         <!-- Header moderne -->
-        <div class="dashboard-header">
+        <div class="dashboard-header {{ $eimDesk }}">
             <div class="header-left">
                 <h1>Étudiants</h1>
                 <p class="header-subtitle">Gestion des étudiants de l'établissement</p>
@@ -2804,7 +2811,7 @@
             </div>
         </div>
 
-        <div class="card-moderne etu-carte-filtres">
+        <div class="card-moderne etu-carte-filtres {{ $eimDesk }}">
             <div class="p-lg">
                     @if(session('success'))
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -3018,15 +3025,15 @@
              ======================================== -->
 
         <!-- Bouton FAB flottant (visible sur mobile uniquement) -->
-        <button type="button" class="mobile-filter-fab" id="mobile-filter-fab">
+        <button type="button" class="mobile-filter-fab {{ $eimDesk }}" id="mobile-filter-fab">
             <i class="fas fa-filter"></i>
         </button>
 
         <!-- Drawer overlay -->
-        <div class="filter-drawer-overlay" id="filter-drawer-overlay"></div>
+        <div class="filter-drawer-overlay {{ $eimDesk }}" id="filter-drawer-overlay"></div>
 
         <!-- Drawer panel -->
-        <div class="filter-drawer" id="filter-drawer">
+        <div class="filter-drawer {{ $eimDesk }}" id="filter-drawer">
             <!-- Header -->
             <div class="filter-drawer-header">
                 <h3>
@@ -3241,7 +3248,7 @@
         </div>
 
         <!-- Tableau des étudiants -->
-        <div class="card-moderne">
+        <div class="card-moderne {{ $eimDesk }}">
             <div class="p-lg">
                 <div class="section-title mb-md" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
                     <span><i class="fas fa-list me-2"></i>Liste des étudiants</span>
@@ -3330,6 +3337,10 @@
 </div>
 
 <x-reinscription-bulk-modal :students="$etudiantsForBulk ?? collect()" modal-id="bulkReinscriptionModal" />
+
+@if($eimShell)
+    @include('esbtp.etudiants.partials._index-mobile', ['listeMobile' => $listeMobile ?? null])
+@endif
 
 @if(request()->boolean('open_bulk'))
 <script>
