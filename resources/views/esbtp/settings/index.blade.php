@@ -1982,6 +1982,7 @@
                         ['name' => 'bulletin_show_matricule', 'label' => 'Matricule', 'icon' => 'fa-id-badge', 'color' => 'slate'],
                         ['name' => 'bulletin_show_birth_date', 'label' => 'Date Naissance', 'icon' => 'fa-calendar-day', 'color' => 'cyan'],
                         ['name' => 'bulletin_show_redoublant', 'label' => 'Redoublant', 'icon' => 'fa-redo-alt', 'color' => 'amber'],
+                        ['name' => 'bulletin_show_student_phone', 'label' => 'Téléphone de l\'étudiant', 'icon' => 'fa-phone', 'color' => 'blue'],
                         ['name' => 'bulletin_show_subjects_table', 'label' => 'Tableau Matieres', 'icon' => 'fa-table', 'color' => 'blue'],
                         ['name' => 'bulletin_show_teachers', 'label' => 'Professeurs', 'icon' => 'fa-chalkboard-teacher', 'color' => 'green'],
                         ['name' => 'bulletin_show_absences', 'label' => 'Absences', 'icon' => 'fa-user-clock', 'color' => 'red'],
