@@ -439,7 +439,7 @@
                                 @endif
                             @endif
                         </div>
-                        @if($etmClasse['sub'] !== '' || ! $inscriptionCouranteClasse)
+                        @if($etmClasse['sub'] !== '' || (! $inscriptionCouranteClasse && $etmInsc->anneeUniversitaire))
                             <div class="etm-classe-sous">
                                 {{ $etmClasse['sub'] }}
                                 @if(! $inscriptionCouranteClasse && $etmInsc->anneeUniversitaire)
@@ -451,9 +451,12 @@
                         <div class="etm-classe-ligne etm-vide"><i class="fas fa-graduation-cap"></i> Non inscrit</div>
                     @endif
 
+                    @if($etmAffectation || $pendingInscription || !empty($etudiant->bts_journey_ui))
                     <div class="etm-pastilles">
                         @if($etmAffectation)
-                            <span class="etm-pastille etm-pastille--{{ $etmAffectation[1] }}">{{ $etmAffectation[0] }}</span>
+                            {{-- L'annee dit a quelle inscription l'affectation se rapporte :
+                                 la classe affichee au-dessus peut etre celle d'une annee passee. --}}
+                            <span class="etm-pastille etm-pastille--{{ $etmAffectation[1] }}">{{ $etmAffectation[0] }}@if($currentYear?->name) · {{ $currentYear->name }}@endif</span>
                         @endif
                         @if($pendingInscription)
                             <span class="etm-pastille etm-pastille--attente">Inscription en attente</span>
@@ -462,6 +465,7 @@
                             @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $etudiant->bts_journey_ui])
                         @endif
                     </div>
+                    @endif
                 </div>
 
                 <dl class="etm-infos">

@@ -725,7 +725,6 @@
     .etm-ok { color: #10b981; flex-shrink: 0; }
     .etm-attente { color: #f59e0b; flex-shrink: 0; }
     .etm-pastilles { display: flex; flex-wrap: wrap; gap: 6px; }
-    .etm-pastilles:empty { display: none; }
     .etm-pastille {
         font-size: .68rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px;
     }
@@ -755,10 +754,13 @@
     .etm-btn--contour:hover { background: rgba(4,83,203,.06); }
     .etm-btn--valider { background: #10b981; color: #fff; }
 
-    /* Le bouton des filtres passait sous la barre de navigation du telephone. */
-    body.has-m-shell .mobile-filter-fab {
-        bottom: calc(var(--m-nav-h, 78px) + 16px + var(--m-safe-b, 0px));
-        left: 16px; width: 52px; height: 52px; font-size: 20px;
+    /* Le bouton des filtres passait sous la barre de navigation du telephone.
+       Au-dela de 768px la barre cede la place a un rail lateral : rien a eviter. */
+    @media (max-width: 767.98px) {
+        body.has-m-shell .mobile-filter-fab {
+            bottom: calc(var(--m-nav-h, 78px) + 16px + var(--m-safe-b, 0px));
+            left: 16px; width: 52px; height: 52px; font-size: 20px;
+        }
     }
 
     /* Règles ULTRA strictes pour petits écrans iPhone (390px) */
