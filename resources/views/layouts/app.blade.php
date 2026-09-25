@@ -643,131 +643,6 @@
             box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
         }
 
-        /* Résultats de recherche */
-        .search-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            width: 100%;
-            max-width: 400px;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            z-index: 1000;
-            max-height: 350px;
-            overflow-y: auto;
-            overflow-x: hidden;
-            margin-top: 5px;
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(99, 102, 241, 0.1);
-        }
-
-        .search-results.show {
-            animation: searchSlideIn 0.3s ease-out;
-        }
-
-        @keyframes searchSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .search-item {
-            display: flex;
-            align-items: center;
-            padding: 12px 16px;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.2s ease;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .search-item:hover {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(139, 92, 246, 0.08));
-        }
-
-        .search-item-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 12px;
-            color: white;
-            flex-shrink: 0;
-        }
-
-        .search-category {
-            padding: 8px 16px;
-            font-weight: 600;
-            color: #0453cb;
-            background: rgba(4, 83, 203, 0.05);
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        .search-item-content {
-            flex: 1;
-            min-width: 0;
-            overflow: hidden;
-        }
-        
-        .search-item-title {
-            font-weight: 500;
-            color: #1f2937;
-            font-size: 14px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 2px;
-        }
-        
-        .search-item-description {
-            font-size: 12px;
-            color: #6b7280;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        
-        /* Scrollbar personnalisée pour les résultats de recherche */
-        .search-results::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .search-results::-webkit-scrollbar-track {
-            background: rgba(0, 0, 0, 0.05);
-            border-radius: 10px;
-        }
-        
-        .search-results::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #0453cb, #5e91de);
-            border-radius: 10px;
-            transition: all 0.3s ease;
-        }
-        
-        .search-results::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-        }
-        
-        /* Firefox scrollbar */
-        .search-results {
-            scrollbar-width: thin;
-            scrollbar-color: #0453cb rgba(0, 0, 0, 0.05);
-        }
 
         /* ===== AMÉLIORATION DES ACTIONS RAPIDES ===== */
         /* Dropdown spécifique pour les actions rapides */
@@ -936,15 +811,6 @@
                 margin-left: 0;
             }
 
-            /* Ajustement de la navbar search sur mobile */
-            .navbar-search {
-                max-width: 200px;
-            }
-
-            .navbar-search input {
-                padding: 10px 15px 10px 35px;
-                font-size: 13px;
-            }
         }
 
         @media (max-width: 767.98px) {
@@ -1512,7 +1378,7 @@
             .header-actions,
             .dashboard-header .header-actions,
             .btn-acasi,
-            .navbar-search,
+            .spl-root,
             .floating-chatbot-btn,
             #floating-chatbot,
             .modal,
@@ -2569,9 +2435,7 @@
 
                     <div class="navbar-center d-none d-lg-block">
                         <div class="header-actions">
-                            <input type="search" class="search-bar" id="global-search" placeholder="Rechercher dans l'application…" autocomplete="off" aria-label="Rechercher dans l'application" aria-keyshortcuts="Control+K Meta+K">
-                            <kbd class="kbh-raccourci" aria-hidden="true">Ctrl K</kbd>
-                            <div id="search-results" class="search-results" style="display: none;"></div>
+                            @include('layouts.partials.spotlight-declencheur')
                         </div>
                     </div>
 
@@ -3555,10 +3419,6 @@
             debugLog('📡 Chargement des données navbar...');
             loadNavbarData();
 
-            // 6. Configurer la recherche
-            debugLog('🔍 Configuration de la recherche...');
-            setupSearchFunctionality();
-
             debugLog('🎉 Initialisation terminée !');
         });
 
@@ -3819,139 +3679,6 @@
                 "'": '&#039;'
             };
             return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-        }
-
-        // Setup search functionality
-        function setupSearchFunctionality() {
-            debugLog('🔍 Configuration de la recherche...');
-            const searchInput = document.getElementById('global-search');
-            const searchResults = document.getElementById('search-results');
-            let searchTimeout;
-
-            if (searchInput) {
-                debugLog('✅ Search input trouvé, ajout des event listeners');
-
-                // Ctrl K (⌘ K sur Mac) place le curseur dans la recherche, depuis n'importe où.
-                // Le champ n'existe qu'à partir de 992 px : en dessous, il est masqué et on
-                // laisse le raccourci au navigateur.
-                const estMac = /Mac|iPhone|iPad/.test(navigator.platform || '');
-                const raccourci = searchInput.parentElement.querySelector('.kbh-raccourci');
-                if (raccourci && estMac) raccourci.textContent = '⌘ K';
-                document.addEventListener('keydown', function (ev) {
-                    // Un éditeur de texte (Summernote : Ctrl K = insérer un lien) garde son raccourci.
-                    if (ev.defaultPrevented || (ev.target.closest && ev.target.closest('[contenteditable="true"], .note-editor'))) return;
-                    if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && (ev.key === 'k' || ev.key === 'K')
-                        && searchInput.offsetParent !== null) {
-                        ev.preventDefault();
-                        searchInput.focus();
-                        searchInput.select();
-                    }
-                });
-
-                searchInput.addEventListener('input', function() {
-                    const query = this.value.trim();
-                    debugLog('🔍 Search input - nouvelle valeur:', query);
-
-                    clearTimeout(searchTimeout);
-
-                    if (query.length < 2) {
-                        searchResults.style.display = 'none';
-                        searchResults.classList.remove('show');
-                        return;
-                    }
-
-                    searchTimeout = setTimeout(() => {
-                        performSearch(query);
-                    }, 300);
-                });
-
-                // Hide search results when clicking outside
-                document.addEventListener('click', function(e) {
-                    if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
-                        searchResults.style.display = 'none';
-                        searchResults.classList.remove('show');
-                    }
-                });
-
-                // Show search results when focusing on input if there's content
-                searchInput.addEventListener('focus', function() {
-                    debugLog('🔍 Search input focus');
-                    if (this.value.trim().length >= 2 && searchResults.innerHTML.trim() !== '') {
-                        searchResults.style.display = 'block';
-                        searchResults.classList.add('show');
-                    }
-                });
-
-                debugLog('✅ Search functionality configurée');
-            } else {
-                debugError('❌ Search input non trouvé');
-            }
-        }
-
-        // Perform search
-        function performSearch(query) {
-            debugLog('🔍 Exécution recherche pour:', query);
-            const searchResults = document.getElementById('search-results');
-
-            searchResults.innerHTML = '<div class="loading-text"><div class="loading-spinner"></div> Recherche...</div>';
-            searchResults.style.display = 'block';
-            searchResults.classList.add('show');
-
-            fetch(`{{ route("search.global") }}?q=${encodeURIComponent(query)}`)
-                .then(response => {
-                    debugLog('🔍 Réponse recherche:', response.status);
-                    return response.json();
-                })
-                .then(data => {
-                    debugLog('🔍 Résultats recherche:', data);
-                    displaySearchResults(data);
-                })
-                .catch(error => {
-                    debugError('❌ Erreur recherche:', error);
-                    searchResults.innerHTML = '<div class="search-no-results">Erreur de recherche</div>';
-                });
-        }
-
-        // Display search results
-        function displaySearchResults(data) {
-            debugLog('🔍 Affichage résultats recherche:', data);
-            const searchResults = document.getElementById('search-results');
-
-            if (!data.results || data.results.length === 0) {
-                searchResults.innerHTML = '<div class="search-no-results">Aucun résultat trouvé</div>';
-                return;
-            }
-
-            let html = '';
-
-            // Group results by category
-            const groupedResults = {};
-            data.results.forEach(result => {
-                if (!groupedResults[result.category]) {
-                    groupedResults[result.category] = [];
-                }
-                groupedResults[result.category].push(result);
-            });
-
-            // Display results by category
-            Object.keys(groupedResults).forEach(category => {
-                html += `<div class="search-category">${category}</div>`;
-                groupedResults[category].forEach(result => {
-                    html += `
-                        <a href="${result.url}" class="search-item">
-                            <div class="search-item-icon bg-${result.color || 'primary'}">
-                                <i class="${result.icon}"></i>
-                            </div>
-                            <div class="search-item-content">
-                                <div class="search-item-title">${result.title}</div>
-                                <div class="search-item-subtitle">${result.description}</div>
-                            </div>
-                        </a>
-                    `;
-                });
-            });
-
-            searchResults.innerHTML = html;
         }
 
         // Mark notification as read
@@ -4437,7 +4164,8 @@
         @endphp
         <x-m.sheet id="m-navbar-plus" :title="$mnbUser->name" :sub="$mnbUser->email">
             @if(Route::has('search.results'))
-                <form class="m-search" method="GET" action="{{ route('search.results') }}" role="search">
+                {{-- Ouvre la palette de recherche ; le formulaire reste le repli sans JavaScript. --}}
+                <form class="m-search" method="GET" action="{{ route('search.results') }}" role="search" data-spl-ouvrir>
                     <x-m.icon name="search" />
                     <input type="search" name="q" minlength="2" required placeholder="Rechercher dans l'application" autocomplete="off" aria-label="Rechercher dans l'application">
                 </form>
@@ -4508,5 +4236,9 @@
         </script>
         @endauth
     @endif
+
+    @auth
+        @include('layouts.partials.spotlight')
+    @endauth
 </body>
 </html>
