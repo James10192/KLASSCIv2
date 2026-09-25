@@ -103,6 +103,21 @@ class FeuilleSuiviRendezVousTest extends TestCase
         $this->actingAs($this->agent)->get(route('esbtp.rendez-vous.feuille.excel'))->assertOk();
     }
 
+    public function test_l_accueil_imprime_la_liste_du_jour_sans_voir_le_planning(): void
+    {
+        Permission::findOrCreate('inscriptions.rdv.accueil', 'web');
+        $guichet = User::factory()->create();
+        $guichet->givePermissionTo(['admin.access', 'inscriptions.rdv.accueil']);
+        $jour = Carbon::today()->toDateString();
+        $this->reservation($this->creneau('08:00', '08:30', 0));
+
+        $this->actingAs($guichet)->get(route('esbtp.rendez-vous.accueil.index', ['jour' => $jour]))
+            ->assertOk()
+            ->assertSee(route('esbtp.rendez-vous.feuille.apercu', ['jour' => $jour]), false);
+        $this->actingAs($guichet)->get(route('esbtp.rendez-vous.feuille.apercu', ['jour' => $jour]))
+            ->assertOk()->assertHeader('Content-Type', 'application/pdf');
+    }
+
     public function test_sans_permission_la_feuille_est_fermee(): void
     {
         $lecteur = User::factory()->create();
