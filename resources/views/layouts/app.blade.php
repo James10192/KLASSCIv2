@@ -1999,7 +1999,7 @@
 
                         @can('attendances.view')
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.attendance.mark') }}" class="menu-link {{ Request::routeIs('esbtp.attendance.*') ? 'active' : '' }}">
+                            <a href="{{ route('esbtp.teacher-attendance.index') }}" class="menu-link {{ Request::routeIs('esbtp.attendance.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
                                 <div class="menu-text">Faire les émargements</div>
                             </a>

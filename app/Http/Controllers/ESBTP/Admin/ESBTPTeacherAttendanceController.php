@@ -20,7 +20,10 @@ class ESBTPTeacherAttendanceController extends Controller
         // L'enseignant émarge sur « Mes cours du jour ». Cette page en portait une
         // seconde copie, avec ses propres délais écrits en dur : elle renvoie
         // désormais vers l'unique écran d'émargement.
-        if (auth()->user()->can('identity.teach')) {
+        // Test d'identité sans passe-droit : `can()` est vrai pour superAdmin
+        // (Gate::before), qui serait renvoyé vers un écran réservé aux enseignants.
+        $user = auth()->user();
+        if ($user->hasRole('enseignant') && ! $user->can('attendances.generate_codes')) {
             return redirect()->route('esbtp.teacher-attendance.index');
         }
 

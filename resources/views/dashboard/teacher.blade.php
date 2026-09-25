@@ -578,19 +578,19 @@
                     </div>
                     @if($availableCourses->count() > 0)
                         <div class="mt-3 text-center">
-                            <a href="{{ route('esbtp.attendance.mark') }}" class="btn btn-success btn-sm">
+                            <a href="{{ route('esbtp.teacher-attendance.index') }}" class="btn btn-success btn-sm">
                                 <i class="fas fa-signature me-1"></i> Émarger maintenant
                             </a>
                         </div>
                     @elseif($hasOnlyDebut || $hasPartialFin)
                         <div class="mt-3 text-center">
-                            <a href="{{ route('esbtp.attendance.mark') }}" class="btn btn-warning btn-sm">
+                            <a href="{{ route('esbtp.teacher-attendance.index') }}" class="btn btn-warning btn-sm">
                                 <i class="fas fa-signature me-1"></i> Émarger FIN
                             </a>
                         </div>
                     @elseif(!$hasAllEmargements && !$hasOnlyDebut && isset($dailyCode) && $dailyCode && !$expiredCourses->count())
                         <div class="mt-3 text-center">
-                            <a href="{{ route('esbtp.attendance.mark') }}" class="btn btn-primary btn-sm">
+                            <a href="{{ route('esbtp.teacher-attendance.index') }}" class="btn btn-primary btn-sm">
                                 <i class="fas fa-edit me-1"></i> Émarger
                             </a>
                         </div>
@@ -656,13 +656,13 @@
                     $now = \Carbon\Carbon::now();
                     $validPendingRollCalls = $pendingRollCalls->filter(function($cours) use ($now) {
                         $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
-                        $expiredWindow = app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fermetureFin($courseEnd); // fenêtre de fin réglée par l'école
+                        $expiredWindow = app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fenetreDeFin($cours)[1]; // fenêtre de fin réglée par l'école, prolongation comprise
                         return $now->lte($expiredWindow);
                     });
                     
                     $expiredRollCalls = $pendingRollCalls->filter(function($cours) use ($now) {
                         $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
-                        $expiredWindow = app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fermetureFin($courseEnd);
+                        $expiredWindow = app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fenetreDeFin($cours)[1];
                         return $now->gt($expiredWindow);
                     });
                 @endphp
@@ -787,7 +787,7 @@
                                         $bothEmargementsDone = $emargementDebut && $emargementFin;
                                         $hasTeacherAttendance = $emargementDebut !== null; // Pour compatibilité
 
-                                        $isAppelExpired = $now->gt(app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fermetureFin($courseEnd)) && !$hasStudentCall;
+                                        $isAppelExpired = $now->gt($fenetreClotureFin) && !$hasStudentCall;
                                         $isCourseActive = $now->between($courseStart, $courseEnd);
                                     @endphp
                                     
@@ -841,7 +841,7 @@
                                             <i class="fas fa-check-double"></i> Séance complète
                                         </span>
                                     @elseif($canMarkEnd)
-                                        <a href="{{ route('esbtp.attendance.mark') }}" class="quick-action-btn" style="background-color: var(--primary); color: white;">
+                                        <a href="{{ route('esbtp.teacher-attendance.index') }}" class="quick-action-btn" style="background-color: var(--primary); color: white;">
                                             <i class="fas fa-signature"></i> Émarger FIN
                                         </a>
                                     @elseif($isEndNotYet)
@@ -857,11 +857,11 @@
                                             <i class="fas fa-list-check"></i> Faire l'appel
                                         </a>
                                     @elseif($canMarkStart && $isStartPresent)
-                                        <a href="{{ route('esbtp.attendance.mark') }}" class="quick-action-btn" style="background-color: var(--success); color: white;">
+                                        <a href="{{ route('esbtp.teacher-attendance.index') }}" class="quick-action-btn" style="background-color: var(--success); color: white;">
                                             <i class="fas fa-signature"></i> Émarger DÉBUT
                                         </a>
                                     @elseif($canMarkStart && $isStartLate)
-                                        <a href="{{ route('esbtp.attendance.mark') }}" class="quick-action-btn" style="background-color: var(--warning); color: white;">
+                                        <a href="{{ route('esbtp.teacher-attendance.index') }}" class="quick-action-btn" style="background-color: var(--warning); color: white;">
                                             <i class="fas fa-signature"></i> Émarger (Retard)
                                         </a>
                                     @elseif($isStartExpired)
@@ -906,7 +906,7 @@
                             @php
                                 $now = \Carbon\Carbon::now();
                                 $courseEnd = \Carbon\Carbon::parse($cours->heure_fin);
-                                $expiredWindow = app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fermetureFin($courseEnd);
+                                $expiredWindow = app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fenetreDeFin($cours)[1];
                                 $isStillValid = $now->lte($expiredWindow);
                             @endphp
                             
@@ -953,7 +953,7 @@
                 <i class="fas fa-calendar-alt"></i>
                 <span>Mon emploi du temps</span>
             </a>
-            <a href="{{ route('esbtp.attendance.mark') }}" class="quick-action-card">
+            <a href="{{ route('esbtp.teacher-attendance.index') }}" class="quick-action-card">
                 <i class="fas fa-user-check"></i>
                 <span>Émargement</span>
             </a>

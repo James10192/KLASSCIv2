@@ -125,7 +125,7 @@ class TeacherDashboardController extends Controller
             $notifications[] = [
                 'type' => 'warning',
                 'message' => 'Vous n\'avez pas encore fait votre émargement aujourd\'hui.',
-                'action' => route('esbtp.attendance.mark'),
+                'action' => route('esbtp.teacher-attendance.index'),
                 'action_text' => 'Émarger maintenant',
             ];
         }
