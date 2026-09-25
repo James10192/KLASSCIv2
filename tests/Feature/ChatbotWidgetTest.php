@@ -54,7 +54,7 @@ class ChatbotWidgetTest extends TestCase
         $chatbot = Mockery::mock(ChatbotService::class);
         $chatbot->shouldReceive('sendMessage')
             ->once()
-            ->with('Bonjour', null)
+            ->with('Bonjour', null, Mockery::type('array'), null)
             ->andReturn($responsePayload);
 
         $this->instance(ChatbotService::class, $chatbot);
@@ -66,6 +66,40 @@ class ChatbotWidgetTest extends TestCase
         $response
             ->assertOk()
             ->assertJson($responsePayload);
+    }
+
+    public function test_assistant_component_greets_user_and_suggests_only_usable_tools(): void
+    {
+        \Spatie\Permission\Models\Permission::findOrCreate('dashboard.view', 'web');
+        $user = $this->createUser();
+        $user->forceFill(['first_name' => 'Awa'])->save();
+        $user->givePermissionTo('dashboard.view');
+
+        $this->actingAs($user);
+        $html = \Illuminate\Support\Facades\Blade::render('<x-chatbot.assistant />');
+
+        $this->assertStringContainsString('x-data="klassciAssistant()"', $html);
+        $this->assertStringContainsString('data-ast-config', $html);
+
+        preg_match('/<script type="application\/json" data-ast-config>(.*?)<\/script>/s', $html, $m);
+        $config = json_decode($m[1] ?? '{}', true);
+
+        $this->assertSame('Awa', $config['prenom']);
+        $this->assertSame(route('chatbot.message.stream'), $config['routes']['messageStream']);
+        // dashboard.view ouvre les indicateurs, la configuration et la navigation…
+        $this->assertContains(config('chatbot.tools.get_dashboard_kpis.suggestion'), $config['suggestions']);
+        // …mais pas les inscriptions, que ce compte ne peut pas lire.
+        $this->assertNotContains(config('chatbot.tools.search_inscriptions.suggestion'), $config['suggestions']);
+        $this->assertLessThanOrEqual(6, count($config['suggestions']));
+    }
+
+    public function test_assistant_component_has_no_suggestion_without_permission(): void
+    {
+        $this->actingAs($this->createUser());
+        $html = \Illuminate\Support\Facades\Blade::render('<x-chatbot.assistant />');
+
+        preg_match('/<script type="application\/json" data-ast-config>(.*?)<\/script>/s', $html, $m);
+        $this->assertSame([], json_decode($m[1], true)['suggestions']);
     }
 
     public function test_guest_cannot_send_message(): void

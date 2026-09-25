@@ -80,11 +80,11 @@
     }
 
     /* FAB chatbot remonte au-dessus de la bottom-nav, ne chevauche plus les tableaux. */
-    body.has-stu-bottomnav .chatbot-widget {
+    body.has-stu-bottomnav .ast-launcher {
         bottom: calc(var(--stu-bottomnav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
     }
     /* Si le FAB encaisser existe aussi, on l'empile au-dessus de la nav. */
-    body.has-stu-bottomnav:has(#fab-encaisser) .chatbot-widget {
+    body.has-stu-bottomnav:has(#fab-encaisser) .ast-launcher {
         bottom: calc(var(--stu-bottomnav-h) + env(safe-area-inset-bottom, 0px) + 96px) !important;
     }
 }
