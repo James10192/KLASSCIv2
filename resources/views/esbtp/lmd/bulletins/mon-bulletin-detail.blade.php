@@ -237,7 +237,7 @@
                                 $ueMoy = $resUE->moyenne === null ? null : (float) $resUE->moyenne;
                             @endphp
                             <tr class="mbd-row-ue">
-                                <td><span class="mbd-code">{{ $ue->code ?? '' }}</span></td>
+                                <td><span class="mbd-code">{{ $ue->code_affiche ?? '' }}</span></td>
                                 <td>{{ $ue->name ?? '' }}</td>
                                 <td class="mbd-num">
                                     <span class="{{ $ueMoy !== null && $ueMoy >= 10 ? 'mbd-moy--ok' : 'mbd-moy--ko' }}">
@@ -253,7 +253,7 @@
                                     $ecueMoy = $resECUE->moyenne === null ? null : (float) $resECUE->moyenne;
                                 @endphp
                                 <tr class="mbd-row-ecue">
-                                    <td><span class="mbd-code">{{ $resECUE->matiere->code ?? '' }}</span></td>
+                                    <td><span class="mbd-code">{{ $resECUE->matiere->code_affiche ?? '' }}</span></td>
                                     <td>{{ $resECUE->matiere->name ?? '' }}</td>
                                     <td class="mbd-num">{{ $ecueMoy !== null ? number_format($ecueMoy, 2) : '—' }}</td>
                                     <td class="mbd-num">—</td>

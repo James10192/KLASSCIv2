@@ -152,8 +152,10 @@ class LMDEnseignantsImporter
             return;
         }
 
-        // 1. Trouver l'UE par code
-        $ue = ESBTPUniteEnseignement::where('code', $ueCode)->first();
+        // 1. Trouver l'UE par code — sauf si plusieurs parcours impriment ce code.
+        $ue = $this->codeImprimeAmbigu(ESBTPUniteEnseignement::class, $ueCode)
+            ? null
+            : ESBTPUniteEnseignement::where('code', $ueCode)->first();
 
         // Fallback UE-via-ECUE-prefix : si l'UE du JSON enseignants n'existe pas
         // en DB, le code UE est probablement un pseudo-code généré par le parser
@@ -203,11 +205,29 @@ class LMDEnseignantsImporter
         }
     }
 
+    /** Plusieurs lignes impriment-elles ce code (cle suffixee d'un parcours) ? */
+    private function codeImprimeAmbigu(string $modele, string $code): bool
+    {
+        return $modele::where('code', 'like', $code . \App\Services\LMD\CodeDeMaquette::SEPARATEUR . '%')
+            ->where('code', 'not like', '%' . \App\Services\LMD\CodeDeMatiere::SUFFIXE_ARCHIVE . '%')
+            ->exists();
+    }
+
     private function processEcue(array $ecueData, string $ueCodeForContext): void
     {
         $ecueCode = $ecueData['code'] ?? null;
         if (empty($ecueCode) || !is_string($ecueCode)) {
             $this->stats['warnings'][] = "ECUE sans code dans UE={$ueCodeForContext}";
+            return;
+        }
+
+        // Deux elements de deux parcours peuvent imprimer le meme code
+        // (CodeDeMaquette : AGR21031 et AGR21031~LPA). Le PDF des enseignants ne
+        // dit pas lequel : affecter au hasard mettrait l'enseignant de genetique
+        // animale sur la vegetale. On s'abstient et on le dit.
+        if ($this->codeImprimeAmbigu(ESBTPMatiere::class, $ecueCode)) {
+            $this->stats['warnings'][] = "ECUE ambigu: code={$ecueCode} désigne plusieurs éléments (un par parcours). Affectez l'enseignant depuis l'écran de l'ECUE.";
+
             return;
         }
 

@@ -119,6 +119,16 @@
     .lu-field-group { background: #f8fafc; border-radius: 12px; border: 1px solid #e8ecf1; padding: 1.25rem; margin-bottom: 1rem; }
     .lu-field-group:last-child { margin-bottom: 0; }
     .lu-field-group-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #0453cb; margin-bottom: .85rem; display: flex; align-items: center; gap: .4rem; }
+    .lu-propre-check { display: flex; align-items: flex-start; gap: .65rem; padding: .75rem .9rem; border: 1.5px solid #e2e8f0; border-radius: 10px; cursor: pointer; background: #fff; margin: 0; transition: border-color .2s ease, background .2s ease; }
+    .lu-propre-check:has(input:checked) { border-color: #0453cb; background: rgba(4,83,203,.04); }
+    .lu-propre-check input { margin-top: .2rem; accent-color: #0453cb; width: 16px; height: 16px; flex-shrink: 0; }
+    .lu-propre-check strong { display: block; font-size: .88rem; color: #1e293b; }
+    .lu-propre-check small { display: block; font-size: .76rem; color: #64748b; line-height: 1.45; margin-top: .15rem; }
+    .lu-propre-champs { margin-top: .75rem; }
+    .lu-propre-field { display: flex; flex-direction: column; }
+    .lu-propre-info { display: flex; align-items: center; gap: .6rem; padding: .7rem .9rem; border-radius: 10px; background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.18); color: #1e293b; font-size: .82rem; margin-top: .75rem; }
+    .lu-propre-info i { color: #0453cb; }
+    .lu-propre-badge { display: inline-flex; align-items: center; gap: .25rem; margin-left: .35rem; padding: .08rem .4rem; border-radius: 5px; font-size: .62rem; font-weight: 700; background: rgba(4,83,203,.08); color: #0453cb; border: 1px solid rgba(4,83,203,.2); vertical-align: middle; }
     .lu-field-group-title i { font-size: .65rem; }
     .lu-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem 1.25rem; }
     .lu-field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .75rem 1.25rem; }
@@ -287,7 +297,12 @@
                             <td>
                                 <span class="lu-arrow" :class="{ 'lu-open': openRow === ue.id }">&#9654;</span>
                             </td>
-                            <td><span class="lu-code" x-text="ue.code"></span></td>
+                            <td>
+                                <span class="lu-code" x-text="ue.code"></span>
+                                <span class="lu-propre-badge" x-show="ue.propre_a" x-cloak :title="'UE propre au parcours ' + ue.propre_a">
+                                    <i class="fas fa-lock" style="font-size:.55rem;"></i><span x-text="ue.propre_a"></span>
+                                </span>
+                            </td>
                             <td>
                                 <span class="lu-name" x-text="ue.name"></span>
                                 <span class="lu-double-alerte" x-show="(ue.communs_et_reserves || []).length" x-cloak
@@ -435,6 +450,39 @@
                                 <small class="text-muted" style="font-size:.72rem;">Optionnel — laisser vide pour une UE virtuelle UEMOA (ex: <em>UE de Méthodologie</em>).</small>
                             </div>
                         </div>
+                    </div>
+                    {{-- UE propre à un parcours : même code qu'une UE d'un autre parcours,
+                         mais un autre enseignement (USAT : AGR2103 animale / végétale).
+                         Un relevé ne montre qu'un parcours : le code n'y est jamais ambigu. --}}
+                    <div class="lu-field-group" id="ue_propre_group">
+                        <div class="lu-field-group-title"><i class="fas fa-circle"></i> Même code qu'une UE d'un autre parcours ?</div>
+                        <label class="lu-propre-check" for="ue_propre">
+                            <input type="checkbox" id="ue_propre" name="propre_au_parcours" value="1">
+                            <span>
+                                <strong>Cette UE est propre à un parcours</strong>
+                                <small>Cochez-la si un autre parcours utilise déjà ce code pour une UE différente. Chaque parcours garde son intitulé et ses ECUE ; le relevé imprime le code tel que vous le saisissez.</small>
+                            </span>
+                        </label>
+                        @php
+                            $_optionsSemestres = collect(range(1, 10))->mapWithKeys(fn ($n) => [$n => 'Semestre ' . $n])->all();
+                        @endphp
+                        <div class="lu-field-row lu-propre-champs" id="ue_propre_champs" style="display:none;">
+                            <div class="lu-propre-field">
+                                <label><i class="fas fa-route"></i> Parcours <span class="text-danger">*</span></label>
+                                <x-au-select class="lu-au-full" id="ue_propre_parcours" name="parcours_id"
+                                    placeholder="Choisir le parcours" icon="fa-route"
+                                    :searchable="count($_optionsParcours) > 8" :options="$_optionsParcours" />
+                            </div>
+                            <div class="lu-propre-field">
+                                <label><i class="fas fa-calendar-alt"></i> Semestre <span class="text-danger">*</span></label>
+                                <x-au-select class="lu-au-full" id="ue_propre_semestre" name="semestre"
+                                    placeholder="Choisir le semestre" :options="$_optionsSemestres" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="lu-propre-info" id="ue_propre_info" style="display:none;">
+                        <i class="fas fa-lock"></i>
+                        <span>UE propre au parcours <strong id="ue_propre_info_code"></strong> : son code est imprimé tel quel, sans conflit avec l'UE de même code d'un autre parcours.</span>
                     </div>
                     <div class="lu-field-group">
                         <div class="lu-field-group-title"><i class="fas fa-circle"></i> Paramètres académiques</div>
@@ -734,6 +782,7 @@ function ueManager() {
             document.getElementById('formUE').reset();
             document.getElementById('ue_method').value = 'POST';
             document.getElementById('formUE').action = `${BASE}`;
+            ueProprePreparer(true, this.filters.parcours_id || '');
             document.getElementById('modalUETitleText').textContent = 'Nouvelle Unité d\'Enseignement';
             document.getElementById('ue_submit_text').textContent = 'Enregistrer';
             document.getElementById('ue_credit').value = '3';
@@ -746,6 +795,7 @@ function ueManager() {
             document.getElementById('formUE').reset();
             document.getElementById('ue_method').value = 'PUT';
             document.getElementById('formUE').action = `${BASE}/${ue.id}`;
+            ueProprePreparer(false, '');
             document.getElementById('modalUETitleText').textContent = 'Modifier l\'UE';
             document.getElementById('ue_submit_text').textContent = 'Mettre à jour';
             document.getElementById('ue_errors').classList.add('d-none');
@@ -758,6 +808,10 @@ function ueManager() {
                 document.getElementById('ue_credit').value = data.credit || '';
                 document.getElementById('ue_type_ue').value = data.type_ue || '';
                 document.getElementById('ue_description').value = data.description || '';
+                if (data.propre_a) {
+                    document.getElementById('ue_propre_info_code').textContent = data.propre_a;
+                    document.getElementById('ue_propre_info').style.display = 'flex';
+                }
             } catch (e) { console.error(e); }
 
             new bootstrap.Modal(document.getElementById('modalUE')).show();
@@ -919,6 +973,34 @@ document.getElementById('lp_submit').addEventListener('click', async function() 
     document.getElementById('lp_submit_text').textContent = 'Enregistrer';
 });
 
+// ── UE propre à un parcours ──
+// La case n'existe qu'à la création : une UE garde ensuite sa maquette.
+function ueProprePreparer(creation, parcoursFiltre) {
+    const groupe = document.getElementById('ue_propre_group');
+    const coche = document.getElementById('ue_propre');
+    groupe.style.display = creation ? '' : 'none';
+    document.getElementById('ue_propre_info').style.display = 'none';
+    coche.checked = false;
+    ueProprePoserValeur('ue_propre_parcours', parcoursFiltre);
+    ueProprePoserValeur('ue_propre_semestre', '');
+    ueProprebasculer();
+}
+function ueProprePoserValeur(id, valeur) {
+    const natif = document.getElementById(id);
+    if (!natif) return;
+    natif.value = valeur;
+    natif.dispatchEvent(new Event('change', { bubbles: true }));
+}
+function ueProprebasculer() {
+    const actif = document.getElementById('ue_propre').checked;
+    const champs = document.getElementById('ue_propre_champs');
+    champs.style.display = actif ? '' : 'none';
+    // Désactivés, parcours et semestre ne partent pas : une UE ordinaire se
+    // rattache par le bouton « Lier à des parcours », comme avant.
+    champs.querySelectorAll('select').forEach(el => { el.disabled = !actif; });
+}
+document.getElementById('ue_propre').addEventListener('change', ueProprebasculer);
+
 // ── UE Form submit (create/edit) ──
 document.getElementById('formUE').addEventListener('submit', async function(e) {
     e.preventDefault();
@@ -1054,7 +1136,7 @@ async function loadMatieresDisponibles() {
         matieres.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.id;
-            opt.textContent = (m.code ? m.code + ' — ' : '') + m.name;
+            opt.textContent = (m.code ? m.code + ' — ' : '') + m.name + (m.propre_a ? ' (' + m.propre_a + ')' : '');
             opt.dataset.name = m.name; opt.dataset.code = m.code || '';
             opt.dataset.coeff = m.coefficient_ecue || ''; opt.dataset.credit = m.credit_ecue || '';
             sel.appendChild(opt);

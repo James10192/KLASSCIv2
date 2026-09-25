@@ -19,6 +19,7 @@ class EcritureEcue
     public function __construct(
         private CodeDeMatiere $codes,
         private CompositionUe $composition,
+        private CodeDeMaquette $maquette,
     ) {}
 
     /**
@@ -30,6 +31,7 @@ class EcritureEcue
     public function ajouter(ESBTPUniteEnseignement $ue, int $portee, array $donnees): ?string
     {
         $pivot = $this->pivot($donnees);
+        $donnees = $this->avecLaCle($ue, $donnees);
 
         return DB::transaction(function () use ($ue, $portee, $donnees, $pivot) {
             $codeLibere = null;
@@ -37,6 +39,7 @@ class EcritureEcue
             if (! empty($donnees['matiere_id'])) {
                 $matiere = ESBTPMatiere::findOrFail($donnees['matiere_id']);
                 $this->refuserAbsorptionMatiereBts($matiere);
+                $this->refuserCodeImprimeEnDouble($ue, $portee, $matiere);
             } else {
                 [$matiere, $codeLibere] = $this->codes->ecrire($donnees['code'], null, $ue, $portee, fn () => ESBTPMatiere::create([
                     'name' => $donnees['name'],
@@ -77,6 +80,13 @@ class EcritureEcue
      */
     public function modifier(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue, int $portee, array $donnees): ?string
     {
+        // La modale montre le code imprime : le renvoyer tel quel ne change rien.
+        if (isset($donnees['code']) && mb_strtoupper((string) $donnees['code']) === mb_strtoupper((string) $ecue->code_affiche)) {
+            $donnees['code'] = $ecue->code;
+        } else {
+            $donnees = $this->avecLaCle($ue, $donnees, (int) $ecue->id);
+        }
+
         $maj = fn () => $ecue->update([
             'name' => $donnees['name'] ?? $ecue->name,
             'code' => $donnees['code'] ?? $ecue->code,
@@ -132,6 +142,41 @@ class EcritureEcue
                 (string) $matiere->name
             ),
         ]);
+    }
+
+    /**
+     * Lier un element existant ne doit pas faire imprimer deux fois le meme
+     * code dans cette maquette : deux elements differents peuvent porter le
+     * meme code imprime, dans deux parcours, jamais cote a cote.
+     */
+    private function refuserCodeImprimeEnDouble(ESBTPUniteEnseignement $ue, int $portee, ESBTPMatiere $matiere): void
+    {
+        $visibles = $ue->getEcuesEffectifs($portee === CompositionUe::COMMUN ? null : $portee);
+        $deja = $visibles->first(fn ($e) => (int) $e->id !== (int) $matiere->id
+            && mb_strtoupper((string) $e->code_affiche) === mb_strtoupper((string) $matiere->code_affiche));
+
+        if ($deja) {
+            throw ValidationException::withMessages(['matiere_id' => sprintf(
+                'Cette unité contient déjà « %s » sous le code %s. Une maquette ne peut pas imprimer deux fois le même code.',
+                $deja->name,
+                $deja->code_affiche
+            )]);
+        }
+    }
+
+    /**
+     * Dans une UE propre a un parcours, un code deja pris ailleurs recoit une
+     * cle suffixee du meme parcours : l'element imprime son code, sans
+     * toucher a celui de l'autre parcours (CodeDeMaquette).
+     */
+    private function avecLaCle(ESBTPUniteEnseignement $ue, array $donnees, ?int $saufMatiereId = null): array
+    {
+        $suffixe = CodeDeMaquette::suffixe($ue->code);
+        if ($suffixe !== null && ! empty($donnees['code']) && empty($donnees['matiere_id'])) {
+            $donnees['code'] = $this->maquette->cleElementPropre((string) $donnees['code'], $ue, $suffixe, $saufMatiereId);
+        }
+
+        return $donnees;
     }
 
     private function pivot(array $donnees): array

@@ -3,7 +3,10 @@
 namespace App\Http\Requests\LMD;
 
 use App\Enums\TypeUE;
+use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPUniteEnseignement;
+use App\Services\LMD\CodeDeMaquette;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -35,17 +38,20 @@ class UniteEnseignementRequest extends FormRequest
         return true;
     }
 
+    /** La cle interne calculee une fois, apres validation (voir cle()). */
+    private ?string $cle = null;
+
     public function rules(): array
     {
-        $ue = $this->route('ue');
-        $uniqueCode = Rule::unique('esbtp_unites_enseignement', 'code');
-        if ($ue) {
-            $uniqueCode = $uniqueCode->ignore($ue->id ?? $ue);
-        }
-
         return [
             'name' => ['required', 'string', 'max:255'],
-            'code' => ['nullable', 'string', 'max:50', $uniqueCode],
+            // L'unicite se controle sur la CLE, pas sur le code saisi : une UE
+            // propre a un parcours imprime le code d'une autre (CodeDeMaquette).
+            // Le tilde est reserve a cette cle, jamais saisi.
+            'code' => ['nullable', 'string', 'max:50', CodeDeMaquette::REGLE_SAISIE],
+            // « Cette UE est propre a ce parcours » : meme code qu'une UE d'un
+            // autre parcours, mais un autre enseignement. Choix de l'ecole.
+            'propre_au_parcours' => ['nullable', 'boolean'],
             'description' => ['nullable', 'string'],
             'credit' => ['nullable', 'integer', 'min:0'],
             'type_ue' => ['required', Rule::in(TypeUE::values())],
@@ -64,7 +70,7 @@ class UniteEnseignementRequest extends FormRequest
             // unique. Un ECUE sans code faisait echouer l'enregistrement au niveau SQL,
             // et comme store()/update() ecrivent dans une transaction, le rollback
             // annulait aussi l'UE : l'utilisateur perdait toute sa saisie sans message.
-            'ecues.*.code' => ['required', 'string', 'max:50', 'distinct:ignore_case'],
+            'ecues.*.code' => ['required', 'string', 'max:50', 'distinct:ignore_case', CodeDeMaquette::REGLE_SAISIE],
             'ecues.*.coefficient_ecue' => ['nullable', 'numeric', 'min:0'],
             'ecues.*.credit_ecue' => ['nullable', 'integer', 'min:0'],
             'ecues.*.ordre_bulletin' => ['nullable', 'integer', 'min:0'],
@@ -76,6 +82,7 @@ class UniteEnseignementRequest extends FormRequest
         return [
             'name' => 'intitulé',
             'code' => 'code',
+            'propre_au_parcours' => 'UE propre à ce parcours',
             'credit' => 'crédits',
             'type_ue' => 'type d\'UE',
             'semestre' => 'semestre',
@@ -89,7 +96,8 @@ class UniteEnseignementRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'code.unique' => 'Ce code est déjà utilisé par une autre unité d\'enseignement.',
+            'code.not_regex' => 'Le caractère « ~ » est réservé : retirez-le du code.',
+            'ecues.*.code.not_regex' => 'Le caractère « ~ » est réservé : retirez-le du code.',
             'semestre.required_with' => 'Choisissez un semestre : c\'est lui qui rattache l\'unité d\'enseignement au parcours.',
             'ecues.*.name.required' => 'Chaque élément constitutif doit avoir un intitulé.',
             'ecues.*.code.required' => 'Chaque élément constitutif doit avoir un code : il l\'identifie de façon unique dans l\'établissement.',
@@ -124,6 +132,84 @@ class UniteEnseignementRequest extends FormRequest
         });
 
         $validator->after(fn (Validator $validator) => $this->refuserCodesDeMatieresBts($validator));
+        $validator->after(fn (Validator $validator) => $this->controlerLeCode($validator));
+    }
+
+    /**
+     * La cle interne de l'UE : le code saisi, suffixe du parcours si l'UE lui
+     * est propre. C'est elle que le controleur enregistre.
+     */
+    public function cle(): ?string
+    {
+        return $this->cle;
+    }
+
+    /**
+     * Le code n'est unique que DANS un parcours (CodeDeMaquette).
+     *
+     * - Une UE deja propre a un parcours garde son suffixe quand on la modifie :
+     *   le formulaire montre le code imprime, on lui rend sa cle.
+     * - A la creation, « propre a ce parcours » derive la cle du parcours choisi.
+     * - Sinon la cle est le code saisi, unique dans l'ecole comme avant, et le
+     *   refus dit comment obtenir une UE propre a un parcours.
+     */
+    private function controlerLeCode(Validator $validator): void
+    {
+        if ($validator->errors()->has('code')) {
+            return;
+        }
+
+        $saisi = trim((string) $this->input('code', ''));
+        if ($saisi === '') {
+            return;
+        }
+
+        $ue = $this->route('ue');
+        $ue = $ue instanceof ESBTPUniteEnseignement ? $ue : ($ue ? ESBTPUniteEnseignement::find($ue) : null);
+        $maquette = app(CodeDeMaquette::class);
+        $parcours = $this->filled('parcours_id') ? ESBTPLMDParcours::find($this->input('parcours_id')) : null;
+
+        if ($ue && CodeDeMaquette::suffixe($ue->code) !== null) {
+            $this->cle = $saisi . CodeDeMaquette::SEPARATEUR . \Illuminate\Support\Str::after($ue->code, CodeDeMaquette::SEPARATEUR);
+        } elseif (! $ue && $this->boolean('propre_au_parcours')) {
+            if (! $parcours) {
+                $validator->errors()->add('parcours_id', 'Choisissez le parcours auquel cette UE est propre.');
+
+                return;
+            }
+            $this->cle = $maquette->cleUnitePropre($saisi, $parcours);
+        } else {
+            $this->cle = $saisi;
+        }
+
+        $prise = ESBTPUniteEnseignement::withTrashed()
+            ->where('code', $this->cle)
+            ->when($ue, fn ($q) => $q->where('id', '!=', $ue->id))
+            ->first(['id', 'name']);
+        if ($prise) {
+            $validator->errors()->add('code', sprintf(
+                'Ce code est déjà celui de l\'UE « %s ». S\'il s\'agit d\'une autre UE, propre à un parcours, cochez « UE propre à ce parcours » et choisissez le parcours.',
+                $prise->name
+            ));
+
+            return;
+        }
+
+        $parcoursIds = $parcours ? [(int) $parcours->id] : [];
+        if ($ue) {
+            $parcoursIds = array_merge($parcoursIds, $ue->parcoursMultiple()->pluck('esbtp_lmd_parcours.id')->map(fn ($id) => (int) $id)->all());
+        }
+        foreach (array_unique($parcoursIds) as $parcoursId) {
+            if ($deja = $maquette->autreUniteDuParcours($parcoursId, $this->cle, $ue?->id)) {
+                $validator->errors()->add('code', sprintf(
+                    'Ce parcours imprime déjà le code %s pour l\'UE « %s ». Un relevé ne peut pas porter deux fois le même code.',
+                    $saisi,
+                    $deja->name
+                ));
+
+                return;
+            }
+        }
     }
 
     /**

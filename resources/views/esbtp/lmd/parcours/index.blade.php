@@ -585,7 +585,7 @@
                                                     <span style="font-size: .7rem; font-weight: 700; color: #64748b;">S{{ $sem }}</span>
                                                     @foreach($ues->sortBy('pivot.ordre') as $ue)
                                                         <span style="display: inline-block; padding: .1rem .45rem; border-radius: 5px; font-size: .75rem; background: #f0fdf4; color: #059669; border: 1px solid #bbf7d0; margin-left: .2rem;">
-                                                            {{ $ue->code }}
+                                                            {{ $ue->code_affiche }}
                                                             @if($ue->pivot->ordre > 0)<sup style="font-size:.6em; color:#94a3b8;">#{{ $ue->pivot->ordre }}</sup>@endif
                                                         </span>
                                                     @endforeach

@@ -82,9 +82,9 @@ class ESBTPLMDNoteController extends Controller
                 'type' => $e->type_evaluation,
                 'date' => $e->date_evaluation?->format('d/m/Y'),
                 'matiere' => $e->matiere?->name,
-                'matiere_code' => $e->matiere?->code,
+                'matiere_code' => $e->matiere?->code_affiche,
                 'ue' => $e->matiere?->uniteEnseignement?->name,
-                'ue_code' => $e->matiere?->uniteEnseignement?->code,
+                'ue_code' => $e->matiere?->uniteEnseignement?->code_affiche,
                 'status' => $e->status,
                 'notes_count' => $e->notes_count,
                 'saisie_url' => route('esbtp.lmd.notes.saisie', $e),
@@ -108,7 +108,7 @@ class ESBTPLMDNoteController extends Controller
                     'name' => $m->name,
                     'code' => $m->code,
                     'ue_name' => $ue->name,
-                    'ue_code' => $ue->code,
+                    'ue_code' => $ue->code_affiche,
                 ]))
                 ->unique('id')
                 ->values();
@@ -128,7 +128,7 @@ class ESBTPLMDNoteController extends Controller
             'ues' => $uesDisponibles->map(fn ($ue) => [
                 'id' => $ue->id,
                 'name' => $ue->name,
-                'code' => $ue->code,
+                'code' => $ue->code_affiche,
                 'semestre' => $ue->pivot->semestre ?? $ue->semestre,
                 'ecues_count' => $ue->matieres->count(),
             ]),

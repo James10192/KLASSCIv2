@@ -117,7 +117,26 @@ simulation reste possible. `reparees` compte les lignes réellement écrites.
                  "semestre": 3, "annee_universitaire_id": 4, "credit_attendu": 2 }] } }
 ```
 
+## Même code dans deux parcours (`POST /api/cli/lmd/import`)
+
+Deux parcours peuvent imprimer le même code pour des UE et des ECUE **différentes** (USAT : `AGR2103` / `AGR21031` « Génétique animale » en LPA, « Génétique végétale » en LPV). Un relevé ne montre qu'un parcours : le code n'y est jamais ambigu. Il n'est unique **que dans un parcours**.
+
+L'école le dit, UE par UE :
+
+```jsonc
+{ "code": "AGR2103", "name": "AMELIORATION GENETIQUE ET REPRODUCTION",
+  "propre_au_parcours": true,
+  "ecues": [{ "code": "AGR21031", "name": "Génétique animale", "credit_ecue": 2 }] }
+```
+
+- L'UE et ses ECUE reçoivent une clé interne suffixée du parcours (`AGR2103~LPA`, `AGR21031~LPA`) ; les documents impriment `AGR2103`, `AGR21031`. Rejouer la maquette ne crée rien de plus.
+- Sans la clé, un même code sous un autre intitulé est **refusé** (`422`, `conflits[]` de type `UE` ou `ECUE`) : auparavant l'import renommait l'élément de l'autre parcours.
+- Un parcours ne peut pas porter deux UE qui impriment le même code : si l'UE partagée de l'autre parcours y est déjà rattachée, l'import est refusé ; retirez-la d'abord (« Lier à des parcours »).
+- Le tilde `~` est refusé dans les codes saisis.
+- La lecture (`GET /api/cli/lmd/maquette`) rend `code` (clé interne) **et** `code_imprime`.
+
 ## Historique
 
 - Septembre 2026 — création (diagnostic maquette USAT).
 - Septembre 2026 — ajout de `POST /api/cli/lmd/planifications/reparer-credits`.
+- Septembre 2026 — codes imprimés par parcours : `propre_au_parcours` à l'import, `code_imprime` à la lecture ; refus du renommage silencieux.

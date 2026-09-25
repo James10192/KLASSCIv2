@@ -247,8 +247,13 @@ class CLILMDSetupController extends BaseApiController
             'niveaux.*.libelle' => 'nullable|string|max:255',
             'niveaux.*.year' => ['required', 'integer', 'between:1,8', new \App\Rules\AnneeDuCycleLmd()],
             'ues' => 'required|array|min:1',
-            'ues.*.code' => 'nullable|string|max:50',
+            // Le tilde est reserve aux cles internes (App\Services\LMD\CodeDeMaquette).
+            'ues.*.code' => 'nullable|string|max:50|not_regex:/~/',
             'ues.*.name' => 'required|string|max:255',
+            // L'ecole dit qu'une UE est propre a ce parcours meme si un autre
+            // parcours imprime le meme code : ses UE et ECUE recoivent une cle
+            // interne suffixee, le releve imprime le code tel quel.
+            'ues.*.propre_au_parcours' => 'sometimes|boolean',
             'ues.*.type_ue' => 'required|string',
             'ues.*.credit' => 'required|integer|min:0|max:60',
             'ues.*.niveau_year' => 'required|integer|between:1,8',
@@ -256,7 +261,7 @@ class CLILMDSetupController extends BaseApiController
             'ues.*.is_optional' => 'sometimes|boolean',
             'ues.*.ordre' => 'sometimes|integer|min:0|max:65535',
             'ues.*.ecues' => 'required|array|min:1',
-            'ues.*.ecues.*.code' => 'nullable|string|max:50',
+            'ues.*.ecues.*.code' => 'nullable|string|max:50|not_regex:/~/',
             'ues.*.ecues.*.name' => 'required|string|max:255',
             'ues.*.ecues.*.credit_ecue' => 'required|integer|min:0|max:60',
             'ues.*.ecues.*.cm' => 'sometimes|integer|min:0|max:1000',

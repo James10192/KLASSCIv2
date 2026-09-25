@@ -52,12 +52,12 @@ class ESBTPLMDAjournesController extends Controller
 
         $lignes = $decisions->map(function (ESBTPLMDJuryDecision $d) use ($naq) {
             $ues = $naq->get($d->etudiant_id, collect())->map(fn (ESBTPLMDResultatUE $ue) => [
-                'ue' => trim(($ue->uniteEnseignement?->code ?? '').' — '.($ue->uniteEnseignement?->name ?? '')),
+                'ue' => trim(($ue->uniteEnseignement?->code_affiche ?? '').' — '.($ue->uniteEnseignement?->name ?? '')),
                 'statut' => $ue->statut,
                 'moyenne' => $ue->moyenne,
                 'ie' => $ue->resultatsECUEs
                     ->filter(fn ($e) => (float) $e->moyenne < 10)
-                    ->map(fn ($e) => $e->matiere?->code ?? $e->matiere?->name)
+                    ->map(fn ($e) => $e->matiere?->code_affiche ?? $e->matiere?->name)
                     ->filter()
                     ->values()
                     ->all(),

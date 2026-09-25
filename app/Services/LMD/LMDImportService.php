@@ -35,9 +35,13 @@ class LMDImportService
         private RefusDeDeplacement $deplacement,
         private CodeDeMatiere $codes,
         ?LmdAcademicRuleProfile $rules = null,
+        ?CodeDeMaquette $maquette = null,
     ) {
         $this->rules = $rules ?? new LmdAcademicRuleProfile();
+        $this->maquette = $maquette ?? new CodeDeMaquette();
     }
+
+    private readonly CodeDeMaquette $maquette;
 
     /**
      * @param  array  $spec  See JSON schema in resources/docs or LmdImportCommand help
@@ -76,7 +80,11 @@ class LMDImportService
                     throw new \InvalidArgumentException("Niveau d'étude year={$niveauYear} référencé par UE {$ueSpec['code']} mais absent de spec.niveaux");
                 }
 
-                [$ue, $ueCreated] = $this->upsertUE($ueSpec, $parcours, $filiere, $niveau, $userId);
+                // L'ecole dit elle-meme qu'une unite est propre a ce parcours, meme
+                // si un autre parcours imprime le meme code (USAT : AGR2103 animale
+                // et AGR2103 vegetale). Jamais devine : voir CodeDeMaquette.
+                $propre = (bool) ($ueSpec['propre_au_parcours'] ?? false);
+                [$ue, $ueCreated] = $this->upsertUE($ueSpec, $parcours, $filiere, $niveau, $userId, $propre);
                 $stats[$ueCreated ? 'ues_attached' : 'ues_updated']++;
                 // Une unite partagee garde le credit de sa fiche. Si cette maquette
                 // lui en donne un autre, il est a elle seule : sur le pivot.
@@ -108,7 +116,7 @@ class LMDImportService
                     // La maquette qu'on importe. Le code d'une unite est unique
                     // dans l'ecole : la meme unite sert plusieurs parcours, et
                     // chacun peut lui donner des elements differents.
-                    [$ecue, $ecueCreated] = $this->upsertECUE($ecueSpec, $ue, $filiere, $niveau, $userId, (int) $parcours->id);
+                    [$ecue, $ecueCreated] = $this->upsertECUE($ecueSpec, $ue, $filiere, $niveau, $userId, (int) $parcours->id, $propre ? $parcours : null);
                     $stats[$ecueCreated ? 'ecues_attached' : 'ecues_updated']++;
 
                     [, $planifCreated] = $this->upsertPlanification($ecueSpec, $ecue, $filiere, $niveau, (int) $ueSpec['semestre'], $annee);
@@ -266,9 +274,12 @@ class LMDImportService
     }
 
     /** @return array{0: ESBTPUniteEnseignement, 1: bool} */
-    private function upsertUE(array $data, ESBTPLMDParcours $parcours, ?ESBTPFiliere $filiere, ESBTPNiveauEtude $niveau, ?int $userId): array
+    private function upsertUE(array $data, ESBTPLMDParcours $parcours, ?ESBTPFiliere $filiere, ESBTPNiveauEtude $niveau, ?int $userId, bool $propre = false): array
     {
         $code = $data['code'] ?? null;
+        if ($propre && $code !== null) {
+            $code = $this->maquette->cleUnitePropre($code, $parcours);
+        }
         $existing = $code ? ESBTPUniteEnseignement::where('code', $code)->first() : null;
         $created = $existing === null;
 
@@ -285,6 +296,22 @@ class LMDImportService
         if ($existing !== null
             && $existing->parcours_id !== null
             && (int) $existing->parcours_id !== (int) $parcours->id) {
+            // Partager une unite dont l'intitule differe imprimerait celui de
+            // l'autre parcours sur nos releves. C'est le signe que l'ecole parle
+            // d'une AUTRE unite sous le meme code : elle doit le dire.
+            if (! CodeDeMaquette::memeIntitule($existing->name, $data['name'] ?? null)) {
+                $this->conflits[] = [
+                    'type' => 'UE',
+                    'code' => (string) $code,
+                    'detail' => sprintf(
+                        "Le code « %s » est déjà celui de l'UE « %s » d'un autre parcours. Si « %s » est une autre unité propre à ce parcours, ajoutez \"propre_au_parcours\": true à cette UE.",
+                        $code,
+                        $existing->name,
+                        $data['name'] ?? ''
+                    ),
+                ];
+            }
+
             return [$existing, false];
         }
 
@@ -315,9 +342,13 @@ class LMDImportService
         ?ESBTPFiliere $filiere,
         ESBTPNiveauEtude $niveau,
         ?int $userId,
-        int $parcoursId = CompositionUe::COMMUN
+        int $parcoursId = CompositionUe::COMMUN,
+        ?ESBTPLMDParcours $parcoursPropre = null
     ): array {
         $code = $data['code'] ?? null;
+        if ($parcoursPropre !== null && $code !== null) {
+            $code = $this->maquette->cleElementPropre($code, $ue, CodeDeMaquette::suffixePour($parcoursPropre->code));
+        }
         // Un code tenu par une matiere supprimee faisait echouer l'insertion sur
         // l'index unique. On le libere ici ; la transaction de l'import annule
         // le renommage si la suite echoue.
@@ -350,6 +381,27 @@ class LMDImportService
         $appartientAilleurs = $conflitEcue !== null;
         if ($conflitEcue) {
             $this->conflits[] = $conflitEcue;
+        }
+
+        // Meme code, autre intitule, sur un element que voit aussi un autre
+        // parcours : le renommer ici le renommerait la-bas. C'est ce qui aurait
+        // imprime « Genetique animale » sur les releves de Productions
+        // Vegetales. On refuse, et on dit comment obtenir deux elements.
+        if ($existing !== null && ! $appartientAilleurs
+            && ! CodeDeMaquette::memeIntitule($existing->name, $data['name'] ?? null)
+            && $this->maquette->servieAilleurs((int) $existing->id, (int) $ue->id, $parcoursId === CompositionUe::COMMUN ? null : $parcoursId)) {
+            $this->conflits[] = [
+                'type' => 'ECUE',
+                'code' => (string) $code,
+                'detail' => sprintf(
+                    "Le code « %s » est déjà celui de l'élément « %s », utilisé par un autre parcours. L'importer sous le nom « %s » le renommerait aussi là-bas. Si c'est un autre élément, marquez son UE \"propre_au_parcours\": true.",
+                    $code,
+                    $existing->name,
+                    $data['name'] ?? ''
+                ),
+            ];
+
+            return [$existing, false];
         }
 
         // Note: filiere_id was dropped from esbtp_matieres in 2025-04 cleanup migration —

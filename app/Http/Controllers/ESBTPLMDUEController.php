@@ -10,6 +10,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Services\LMD\CodeDeMaquette;
 use App\Services\LMD\CodeDeMatiere;
 use App\Services\LMD\CompositionUe;
 use App\Services\LMD\EcritureEcue;
@@ -100,7 +101,11 @@ class ESBTPLMDUEController extends Controller
                     $ecues = $ue->getEcuesEffectifs($parcoursFiltre);
                     return [
                         'id' => $ue->id,
-                        'code' => $ue->code,
+                        // Le code que la maquette imprime. Une UE propre a un
+                        // parcours porte une cle suffixee (`AGR2103~LPA`) qui ne
+                        // s'affiche pas ; `propre_a` dit a quel parcours.
+                        'code' => $ue->code_affiche,
+                        'propre_a' => \App\Services\LMD\CodeDeMaquette::suffixe($ue->code),
                         'name' => $ue->name,
                         'type_ue' => $ue->type_ue,
                         'credit' => $ue->credit,
@@ -134,7 +139,7 @@ class ESBTPLMDUEController extends Controller
 
                             return [
                                 'id' => $e->id,
-                                'code' => $e->code,
+                                'code' => $e->code_affiche,
                                 'name' => $e->name,
                                 // Le coefficient que les bulletins utilisent vraiment
                                 // (meme repli que LMDBulletinService) : afficher
@@ -211,6 +216,9 @@ class ESBTPLMDUEController extends Controller
         $ue->load('matieres', 'parcoursMultiple');
 
         $data = $ue->toArray();
+        // Le formulaire montre le code imprime ; la requete rend sa cle a l'UE.
+        $data['code'] = $ue->code_affiche;
+        $data['propre_a'] = \App\Services\LMD\CodeDeMaquette::suffixe($ue->code);
 
         // Ajouter l'ordre du pivot (premier parcours lié)
         $pivot = $ue->parcoursMultiple->first();
@@ -224,7 +232,7 @@ class ESBTPLMDUEController extends Controller
      */
     public function store(UniteEnseignementRequest $request)
     {
-        $donnees = $request->validated();
+        $donnees = $this->avecLaCle($request);
 
         $ue = DB::transaction(function () use ($donnees, $request) {
             $ue = new ESBTPUniteEnseignement();
@@ -373,7 +381,7 @@ class ESBTPLMDUEController extends Controller
      */
     public function update(UniteEnseignementRequest $request, ESBTPUniteEnseignement $ue)
     {
-        $donnees = $request->validated();
+        $donnees = $this->avecLaCle($request);
 
         DB::transaction(function () use ($donnees, $request, $ue) {
             $ue->fill($this->attributsUe($donnees));
@@ -390,6 +398,20 @@ class ESBTPLMDUEController extends Controller
 
         return redirect()->route('esbtp.lmd.ue.show', $ue)
             ->with('success', $this->avecCodesLiberes('Unité d\'Enseignement mise à jour avec succès.'));
+    }
+
+    /**
+     * Les donnees validees, le code remplace par sa cle interne : suffixee du
+     * parcours pour une UE qui lui est propre (CodeDeMaquette).
+     */
+    private function avecLaCle(UniteEnseignementRequest $request): array
+    {
+        $donnees = $request->validated();
+        if (array_key_exists('code', $donnees) && $request->cle() !== null) {
+            $donnees['code'] = $request->cle();
+        }
+
+        return $donnees;
     }
 
     private function avecCodesLiberes(string $message): string
@@ -495,11 +517,32 @@ class ESBTPLMDUEController extends Controller
             // Une matière supprimée occupe toujours son code (l'index unique la
             // compte) : on le lui libère plutôt que de la ressusciter sous le nom
             // saisi, avec ses notes. Même règle que le modal et l'import.
+            // Une UE propre a un parcours donne a ses elements une cle suffixee
+            // du meme parcours quand leur code imprime est deja pris ailleurs
+            // (AGR21031 « Genetique animale » a cote de la vegetale).
+            $suffixe = CodeDeMaquette::suffixe($ue->code);
+            if ($suffixe !== null && $code !== null) {
+                $code = app(CodeDeMaquette::class)->cleElementPropre($code, $ue, $suffixe);
+            }
             if ($message = $this->codes->libererSiArchive($code)) {
                 $this->codesLiberes[] = $message;
             }
             $matiere = $code ? ESBTPMatiere::where('code', $code)->first() : null;
             $existait = $matiere !== null;
+
+            // Meme code, autre intitule, sur un element qu'une autre unite ou un
+            // autre parcours utilise : le renommer ici le renommerait la-bas, en
+            // silence. On refuse et on dit comment obtenir deux elements.
+            if ($matiere && ! CodeDeMaquette::memeIntitule($matiere->name, $ligne['name'] ?? null)
+                && app(CodeDeMaquette::class)->servieAilleurs((int) $matiere->id, (int) $ue->id)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(["ecues.{$index}.code" => sprintf(
+                    'Le code « %s » est déjà celui de « %s », utilisé ailleurs. L\'enregistrer sous le nom « %s » le renommerait aussi là-bas. '
+                    . 'S\'il s\'agit d\'un autre élément, propre à un parcours, créez une UE propre à ce parcours.',
+                    $matiere->code_affiche,
+                    $matiere->name,
+                    $ligne['name'] ?? ''
+                )]);
+            }
 
             // Reprendre le code d'un element deja rattache a une AUTRE unite ne
             // doit pas le lui retirer. Sans ligne de pivot, cette unite-la lit
@@ -693,7 +736,7 @@ class ESBTPLMDUEController extends Controller
             'matiere_id'       => 'nullable|exists:esbtp_matieres,id',
             // Champs pour création d'une nouvelle matière
             'name'             => 'required_without:matiere_id|nullable|string|max:255',
-            'code'             => 'required_without:matiere_id|nullable|string|max:50',
+            'code'             => 'required_without:matiere_id|nullable|string|max:50|not_regex:/~/',
             'credit_ecue'     => 'nullable|integer|min:1',
             'coefficient_ecue' => 'nullable|numeric|min:0',
             'ordre_bulletin'  => 'nullable|integer|min:0',
@@ -734,7 +777,7 @@ class ESBTPLMDUEController extends Controller
     {
         $validated = $request->validate([
             'name'             => 'sometimes|required|string|max:255',
-            'code'             => 'sometimes|required|string|max:50',
+            'code'             => 'sometimes|required|string|max:50|not_regex:/~/',
             'credit_ecue'     => 'nullable|integer|min:1',
             'coefficient_ecue' => 'nullable|numeric|min:0',
             'ordre_bulletin'  => 'nullable|integer|min:0',
@@ -920,7 +963,18 @@ class ESBTPLMDUEController extends Controller
                 ->where('esbtp_ue_matiere.unite_enseignement_id', $ue->id)
                 ->where('esbtp_ue_matiere.parcours_id', $portee))
             ->orderBy('name')
-            ->get(['id', 'name', 'code', 'coefficient_ecue', 'credit_ecue']);
+            ->get(['id', 'name', 'code', 'coefficient_ecue', 'credit_ecue'])
+            // Deux elements differents peuvent imprimer le meme code dans deux
+            // parcours : on montre le code imprime ET le parcours d'une cle
+            // suffixee, sinon les deux « AGR21031 » seraient indiscernables.
+            ->map(fn ($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'code' => $m->code_affiche,
+                'propre_a' => CodeDeMaquette::suffixe($m->code),
+                'coefficient_ecue' => $m->coefficient_ecue,
+                'credit_ecue' => $m->credit_ecue,
+            ]);
 
         return response()->json($matieres);
     }

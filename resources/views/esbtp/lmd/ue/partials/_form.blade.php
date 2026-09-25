@@ -51,7 +51,7 @@
         foreach ($ue->getEcuesEffectifs() as $ecue) {
             $ecuesInitiaux[] = [
                 'name' => $ecue->name,
-                'code' => $ecue->code ?? '',
+                'code' => $ecue->code_affiche ?? '',
                 'coefficient_ecue' => $ecue->pivot?->coefficient_ecue ?? $ecue->coefficient_ecue ?? '',
                 'credit_ecue' => $ecue->pivot?->credit_ecue ?? $ecue->credit_ecue ?? '',
                 'ordre_bulletin' => $ecue->pivot?->ordre_bulletin ?? $ecue->ordre_bulletin ?? 0,
@@ -124,7 +124,7 @@
                         <input type="text"
                                name="code"
                                class="form-control @error('code') is-invalid @enderror"
-                               value="{{ old('code', $ue->code ?? '') }}"
+                               value="{{ old('code', $ue->code_affiche ?? '') }}"
                                placeholder="MAG2001"
                                x-model="ueCode"
                                @input="codeSaisiManuellement()">
@@ -347,7 +347,7 @@
     function lmdUeForm() {
         return {
             ueName: @json(old('name', $ue->name ?? '')),
-            ueCode: @json(old('code', $ue->code ?? '')),
+            ueCode: @json(old('code', $ue->code_affiche ?? '')),
             ecues: @json($ecuesInitiaux),
 
             // La generation automatique du code depuis l'intitule est un confort

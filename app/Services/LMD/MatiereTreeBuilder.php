@@ -499,7 +499,7 @@ class MatiereTreeBuilder
                 return [
                     'ue' => $ue,
                     'is_orphan' => $isOrphan,
-                    'code' => $isOrphan ? null : ($ue->code ?? null),
+                    'code' => $isOrphan ? null : ($ue->code_affiche ?? null),
                     'name' => $isOrphan ? 'Hors UE' : ($ue->name ?? 'UE sans nom'),
                     'type_ue' => $isOrphan ? null : ($ue->type_ue ?? null),
                     'type_label' => $isOrphan ? null : (optional($ue->type_ue)->label() ?? null),

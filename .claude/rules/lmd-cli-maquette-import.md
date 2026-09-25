@@ -31,6 +31,19 @@ Une **UE et ses ECUE peuvent être partagées** entre plusieurs domaines / menti
 
 **Côté écran** (`/esbtp/lmd/ue`) : le modal ECUE porte un champ **Maquette** (commune / réservée à un parcours), prérempli avec le filtre Parcours ; chaque ligne d'élément affiche « Commun » ou le code du parcours qui la réserve ; le retrait vise la maquette de la ligne cliquée.
 
+## Même code, deux parcours, deux enseignements (septembre 2026)
+
+USAT imprime `AGR2103` / `AGR21031` en Productions Animales ET en Productions Végétales, pour des UE et ECUE **totalement différentes**. Le code n'est unique que dans un parcours. Ne JAMAIS faire tomber l'unicité de `esbtp_matieres.code` / `esbtp_unites_enseignement.code` pour autant : une dizaine de lecteurs retrouvent une ligne par son code.
+
+- **Clé interne suffixée** : `AGR2103~LPA`. `CodeDeMaquette::affiche()` / l'accesseur `code_affiche` rend ce qui précède le tilde. Pas de colonne `code_maquette` (elle dériverait de `code`). Le tilde est déjà la convention « suffixe interne » (`~suppr-`) et il est refusé à la saisie. Pas de tiret : de vrais codes en portent (`ENA4005-AGRO`).
+- **Jamais deviné** : l'école le dit (case « UE propre à ce parcours » dans `/esbtp/lmd/ue`, clé `propre_au_parcours` à l'import). Une UE propre porte TOUJOURS le suffixe : c'est la marque que relisent le formulaire et la modale ECUE pour dériver les codes de ses éléments.
+- **Plus de renommage silencieux** : même code + intitulé différent sur un élément servi ailleurs (`CodeDeMaquette::servieAilleurs`) → conflit à l'import, 422 au formulaire. Même règle pour une UE partagée d'intitulé différent.
+- **Unicité par parcours** gardée dans `ParcoursUeSyncService` (passage commun du formulaire, de l'import et de « Lier à des parcours »).
+- **Documents officiels** (bulletins LMD, relevé, PV annuel, notes étudiant, ajournés) impriment `code_affiche`. Tout nouveau lecteur qui imprime un code d'UE/ECUE LMD fait de même.
+- `LMDEnseignantsImporter` s'abstient (avertissement) quand un code désigne plusieurs éléments.
+
+Cas USAT : AGR2103 (id 130) est partagée LPA+LPV avec des ECUE réservées à LPV. Pour LPA : retirer LPA de l'UE 130 (« Lier à des parcours »), puis créer AGR2103 propre à LPA ; idem pour MML2103, IAP2103, EME2103 (non rattachées à LPA). Ne pas saisir les ECUE animales dans l'UE 130 : l'intitulé de l'UE resterait commun.
+
 ## Idempotence & sécurité
 
 - `import` = upsert idempotent par `code` (domaine/mention/parcours/filière/UE/ECUE). Re-run = no-op si inchangé. **PAS de dry-run** sur `import` → la revue humaine du payload EST le dry-run.

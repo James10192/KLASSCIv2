@@ -101,6 +101,15 @@ class ESBTPMatiere extends Model implements Auditable
     ];
 
     /**
+     * Le code que la maquette imprime : sans le suffixe de parcours
+     * (`AGR21031~LPA` imprime `AGR21031`). Voir CodeDeMaquette.
+     */
+    public function getCodeAfficheAttribute(): ?string
+    {
+        return \App\Services\LMD\CodeDeMaquette::affiche($this->code);
+    }
+
+    /**
      * Relation avec le niveau d'étude.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

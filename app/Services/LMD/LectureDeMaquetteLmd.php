@@ -80,6 +80,7 @@ class LectureDeMaquetteLmd
         return [
             'id' => $ue->id,
             'code' => $ue->code,
+            'code_imprime' => $ue->code_affiche,
             'name' => $ue->name,
             'semestre' => (int) $ue->pivot->semestre,
             'niveau' => $ue->niveau?->name,
@@ -104,6 +105,7 @@ class LectureDeMaquetteLmd
                 return [
                     'id' => $e->id,
                     'code' => $e->code,
+                    'code_imprime' => $e->code_affiche,
                     'name' => $e->name,
                     'origine' => $this->origine($e, $idsPivot),
                     'reserve_ailleurs' => $reserveAilleurs,
@@ -149,6 +151,7 @@ class LectureDeMaquetteLmd
         return [
             'id' => $ue->id,
             'code' => $ue->code,
+            'code_imprime' => $ue->code_affiche,
             'name' => $ue->name,
             'parcours' => $codes->unique()->values(),
             'lignes' => $lignes->values(),

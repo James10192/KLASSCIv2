@@ -196,7 +196,7 @@ class LmdTranscriptSnapshotBuilder
         // l'emission, conserve, et incoherent avec lui-meme pour toujours.
         $elements = $resultat->resultatsECUEs
             ->map(fn ($ecue) => [
-                'code' => $ecue->matiere?->code,
+                'code' => $ecue->matiere?->code_affiche,
                 'name' => $ecue->matiere?->name,
                 'credits' => (int) $ecue->credit,
                 'average' => $this->decimal($this->bulletins->noteEffectiveECUE($ecue)),
@@ -211,7 +211,7 @@ class LmdTranscriptSnapshotBuilder
         $acquise = $resultat->isValidee();
 
         return [
-            'code' => $resultat->uniteEnseignement?->code,
+            'code' => $resultat->uniteEnseignement?->code_affiche,
             'name' => $resultat->uniteEnseignement?->name,
             'credits' => (int) $resultat->credit,
             'average' => $moyenne,

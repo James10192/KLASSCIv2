@@ -115,7 +115,7 @@ class EtudiantNotesLmdPresenter
 
         return [
             'id' => (int) ($resultatUe['unite_enseignement_id'] ?? $ue->id ?? 0),
-            'code' => (string) ($ue->code ?? ''),
+            'code' => (string) ($ue->code_affiche ?? ''),
             'name' => (string) ($ue->name ?? ''),
             'credit' => (int) ($resultatUe['credit'] ?? 0),
             'moyenne' => $moyenne,
@@ -154,7 +154,7 @@ class EtudiantNotesLmdPresenter
 
         return [
             'id' => $matiereId,
-            'code' => (string) ($matiere->code ?? ''),
+            'code' => (string) ($matiere->code_affiche ?? ''),
             'name' => (string) ($matiere->name ?? ''),
             'credit' => (int) ($resultatEcue['credit'] ?? 0),
             'coefficient' => (float) ($resultatEcue['coefficient'] ?? 1),

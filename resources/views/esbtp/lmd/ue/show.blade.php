@@ -13,7 +13,7 @@
                 </div>
                 <div class="lmd-hero-subtitle">
                     @if($ue->code)
-                        <span class="lmd-hero-code">{{ $ue->code }}</span>
+                        <span class="lmd-hero-code">{{ $ue->code_affiche }}</span>
                     @else
                         <span class="lmd-hero-code lmd-hero-code--muted">Sans code</span>
                     @endif
@@ -207,7 +207,7 @@
                                                 <span class="lmd-ecue-hint" title="Heures portées par la matière, pas encore planifiées">indicatif</span>
                                             @endif
                                         </td>
-                                        <td><span class="lmd-code">{{ $ecue->code ?: '—' }}</span></td>
+                                        <td><span class="lmd-code">{{ $ecue->code_affiche ?: '—' }}</span></td>
                                         <td>{{ $coefficient !== null && $coefficient !== '' ? rtrim(rtrim(number_format((float) $coefficient, 2, ',', ' '), '0'), ',') : '—' }}</td>
                                         <td>{{ $credit !== null && $credit !== '' ? (int) $credit : '—' }}</td>
                                         <td>{{ $volume['cm'] ?: '—' }}</td>

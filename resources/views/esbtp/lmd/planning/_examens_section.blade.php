@@ -208,7 +208,7 @@
                                 @if($exam->matiere)
                                     <strong>{{ $exam->matiere->name }}</strong>
                                     @if($exam->matiere->code)
-                                        <small class="text-muted">{{ $exam->matiere->code }}</small>
+                                        <small class="text-muted">{{ \App\Services\LMD\CodeDeMaquette::affiche($exam->matiere->code) }}</small>
                                     @endif
                                 @else
                                     —
