@@ -20,6 +20,11 @@ use Illuminate\Support\Facades\Cache;
  * chaque debiteur, dans l'ordre) et les compteurs ; une tranche ne recalcule
  * que ses propres lignes. Le cache ne porte que des entiers et des chaines :
  * driver `file`, pas de `tags`.
+ *
+ * L'arrivee sur la page, elle, recalcule toujours (`$rafraichir`) : un
+ * encaissement fait a l'instant doit sortir l'etudiant de la liste et
+ * changer les compteurs tout de suite. Seules les tranches suivantes
+ * relisent l'index, pour rester dans le meme ordre que la premiere.
  */
 class ListeDesRelances
 {
@@ -36,9 +41,15 @@ class ListeDesRelances
      * @param  array<string, mixed>  $query
      * @return array{paginated: LengthAwarePaginator, kpis: array<string, mixed>}
      */
-    public function tranche(array $filtres, int $page, string $path, array $query): array
+    public function tranche(array $filtres, int $page, string $path, array $query, bool $rafraichir = false): array
     {
-        $index = Cache::remember($this->cle($filtres), self::DUREE_CACHE_SECONDES, fn () => $this->indexer($filtres));
+        $cle = $this->cle($filtres);
+        if ($rafraichir) {
+            $index = $this->indexer($filtres);
+            Cache::put($cle, $index, self::DUREE_CACHE_SECONDES);
+        } else {
+            $index = Cache::remember($cle, self::DUREE_CACHE_SECONDES, fn () => $this->indexer($filtres));
+        }
 
         $lignes = collect($index['lignes']);
         if ($filtres['risk'] !== '') {

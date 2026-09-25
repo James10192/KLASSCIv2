@@ -107,11 +107,21 @@ class RechercheRdv
             return;
         }
 
-        // Un numero de telephone : « 07 07 12 34 », « +225 0707… ».
+        // Une saisie de chiffres : un telephone (« 07 07 12 34 », « +225 0707… »),
+        // mais aussi un matricule ou une reference, dont le format se regle
+        // par ecole et peut n'etre fait que de chiffres (« 22-0545 »).
         if (preg_match('/^[\d\s+().-]+$/', $q) === 1) {
             $chiffres = preg_replace('/\D/', '', $q) ?? '';
             if (strlen($chiffres) >= 4) {
-                $requete->where('esbtp_rdv_reservations.telephone', 'like', '%'.$this->echapper($chiffres).'%');
+                $likeTel = '%'.$this->echapper($chiffres).'%';
+                $likeSaisie = '%'.$this->echapper($q).'%';
+                $requete->where(function (Builder $w) use ($likeTel, $likeSaisie, $chiffres) {
+                    $w->where('esbtp_rdv_reservations.telephone', 'like', $likeTel)
+                        ->orWhereHas('demande.etudiant', fn (Builder $e) => $e
+                            ->where('matricule', 'like', $likeSaisie)
+                            ->orWhere('matricule', 'like', $likeTel));
+                    $this->references($w, $chiffres);
+                });
 
                 return;
             }
@@ -126,15 +136,22 @@ class RechercheRdv
                     ->orWhere('esbtp_rdv_reservations.prenoms', 'like', $like)
                     ->orWhere('esbtp_rdv_reservations.email', 'like', $like)
                     ->orWhereHas('demande.etudiant', fn (Builder $e) => $e->where('matricule', 'like', $like));
-
-                // Les references sont stockees sans tiret ni espace.
-                if (strlen($reference) >= 4) {
-                    $like = '%'.$reference.'%';
-                    $w->orWhereHas('candidature', fn (Builder $c) => $c->where('reference_publique', 'like', $like))
-                        ->orWhereHas('demande', fn (Builder $d) => $d->where('reference_publique', 'like', $like));
-                }
+                $this->references($w, $reference);
             });
         }
+    }
+
+    /**
+     * Les references sont stockees sans tiret ni espace (ReferencePublique).
+     */
+    private function references(Builder $w, string $reference): void
+    {
+        if (strlen($reference) < 4) {
+            return;
+        }
+        $likeRef = '%'.$reference.'%';
+        $w->orWhereHas('candidature', fn (Builder $c) => $c->where('reference_publique', 'like', $likeRef))
+            ->orWhereHas('demande', fn (Builder $d) => $d->where('reference_publique', 'like', $likeRef));
     }
 
     private function echapper(string $valeur): string

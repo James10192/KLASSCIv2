@@ -117,4 +117,21 @@ class RelancesDefilementTest extends TestCase
 
         $this->assertSame(5, self::$calculs, 'La tranche 2 relit l\'index en cache et ne calcule que ses 5 lignes.');
     }
+
+    public function test_l_arrivee_sur_la_page_recalcule_toujours_la_liste(): void
+    {
+        $annee = ESBTPAnneeUniversitaire::factory()->create();
+        ESBTPInscription::factory()->count(3)->create([
+            'annee_universitaire_id' => $annee->id,
+            'workflow_step' => 'etudiant_cree',
+        ]);
+
+        $this->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->assertOk();
+        self::$calculs = 0;
+        $this->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->assertOk();
+
+        // 3 lignes pour l'index + 3 pour la tranche : un encaissement fait
+        // entre les deux visites serait deja pris en compte.
+        $this->assertSame(6, self::$calculs);
+    }
 }

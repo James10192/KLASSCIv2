@@ -44,7 +44,7 @@ Mêmes règles que l'écran « Retrouver un rendez-vous » (`App\Services\Rendez
 |---|---|---|
 | `q` | nom, prénoms, courriel, référence du dossier, matricule ; une saisie de chiffres est lue comme un téléphone | — |
 | `quand` | `a_venir`, `passes`, `tous` | `a_venir` sans `q`, `tous` avec |
-| `statut` | `confirmee`, `honoree`, `manquee`, `liberee`, `annulee` | tous |
+| `statut` | une valeur de `App\Enums\StatutReservationRdv` | tous |
 | `type` | `candidature`, `reinscription` | tous |
 | `per_page` / `page` | 1 à 100 | 25 / 1 |
 

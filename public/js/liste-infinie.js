@@ -219,6 +219,11 @@
             liAPlus: false,
             liTotal: null,
             liNumero: 0,
+            // Lignes retirees sur place depuis la derniere tranche : le serveur
+            // pagine par decalage, donc la suite a recule d'autant. La prochaine
+            // demande rejoue la tranche courante (le dedoublonnage ecarte ce qui
+            // est deja affiche) au lieu de sauter ces lignes.
+            liRejouer: false,
 
             liInit: function () {
                 injecterStyles();
@@ -242,7 +247,10 @@
             retirer: function (valeur) {
                 var avant = this[champ].length;
                 this[champ] = this[champ].filter(function (x) { return cle(x) !== valeur; });
-                if (this.liTotal !== null && this[champ].length < avant) this.liTotal--;
+                if (this[champ].length < avant) {
+                    if (this.liTotal !== null) this.liTotal--;
+                    this.liRejouer = true;
+                }
             },
             liVide: function () { return this[champ].length === 0; },
             liEtat: function () {
@@ -257,7 +265,8 @@
                 var numero = ++this.liNumero;
                 if (ajouter) { this.liSuite = true; } else { this.loading = true; this.liSuite = false; }
                 this.liErreur = false;
-                return Promise.resolve(options.tranche.call(this, ajouter ? this.liPage + 1 : 1))
+                var page = !ajouter ? 1 : (this.liRejouer ? this.liPage : this.liPage + 1);
+                return Promise.resolve(options.tranche.call(this, page))
                     .then(function (res) {
                         // Un filtre ou un onglet change entre-temps : reponse perimee.
                         if (numero !== self.liNumero) return;
@@ -271,7 +280,8 @@
                         } else {
                             self[champ] = lignes;
                         }
-                        self.liPage = p.current_page || (ajouter ? self.liPage + 1 : 1);
+                        self.liPage = p.current_page || page;
+                        self.liRejouer = false;
                         self.liAPlus = !!p.has_more;
                         self.liTotal = p.total === undefined ? null : p.total;
                         self.$nextTick(function () {
@@ -304,6 +314,10 @@
         var d = bas.dataset;
         d.affiches = String(Math.max(0, Number(d.affiches || 0) - retirees));
         if (d.total !== '') d.total = String(Math.max(0, Number(d.total) - retirees));
+        // Pagination par decalage : la suite a recule d'autant de lignes. On
+        // redemande la tranche d'avant ; le dedoublonnage (data-li-cle) ecarte
+        // ce qui est deja affiche, et rien n'est saute.
+        if (d.pageSuivante) d.pageSuivante = String(Math.max(1, Number(d.pageSuivante) - 1));
         afficherEtat(bas, d.pageSuivante ? 'pret' : 'fin');
     }
 

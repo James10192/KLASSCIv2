@@ -169,4 +169,32 @@ class RechercheRdvTest extends TestCase
             ->assertJsonPath('data.rendez_vous.0.date', Carbon::today()->addDays(2)->toDateString())
             ->assertJsonPath('data.rendez_vous.0.etat_accueil', 'attendu');
     }
+
+    public function test_un_matricule_fait_de_chiffres_retrouve_la_reinscription(): void
+    {
+        $etudiant = \App\Models\ESBTPEtudiant::factory()->create(['matricule' => '22-0545']);
+        $classe = \App\Models\ESBTPClasse::factory()->create();
+        $demande = \App\Models\ESBTPReinscriptionDemande::create([
+            'etudiant_id' => $etudiant->id, 'annee_universitaire_id' => $this->annee,
+            'classe_souhaitee_id' => $classe->id, 'statut' => \App\Models\ESBTPReinscriptionDemande::STATUT_EN_ATTENTE,
+            'consentement_at' => now(),
+        ]);
+        $creneau = ESBTPRdvCreneau::firstOrCreate([
+            'annee_universitaire_id' => $this->annee,
+            'date' => Carbon::today()->addDay()->toDateString(),
+            'heure_debut' => '10:00:00',
+        ], ['heure_fin' => '10:30:00', 'capacite' => 40, 'ouvert' => true]);
+        $resa = ESBTPRdvReservation::create([
+            'creneau_id' => $creneau->id, 'reinscription_demande_id' => $demande->id, 'statut' => 'confirmee',
+            'nom' => 'BAMBA', 'prenoms' => 'Awa', 'telephone' => '+2250102030405', 'date_naissance' => '2006-01-01',
+        ]);
+        $this->rdv('KOUASSI', 'Ama', 1, '+2250707123456');
+        $agent = $this->agent(['admin.access', 'inscriptions.rdv.accueil']);
+
+        foreach (['22-0545', '0545'] as $saisie) {
+            $this->assertSame([$resa->id], $this->cles(
+                $this->actingAs($agent)->get(route('esbtp.rendez-vous.recherche', ['q' => $saisie]))->getContent()
+            ), "« {$saisie} » doit retrouver le matricule, pas seulement un téléphone.");
+        }
+    }
 }

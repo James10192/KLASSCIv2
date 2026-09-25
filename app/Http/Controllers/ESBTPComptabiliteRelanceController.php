@@ -122,6 +122,7 @@ class ESBTPComptabiliteRelanceController extends Controller
             (int) $request->input('page', 1),
             $request->url(),
             $request->query(),
+            rafraichir: ! ListeInfinie::demandee($request),
         );
 
         if (ListeInfinie::demandee($request)) {

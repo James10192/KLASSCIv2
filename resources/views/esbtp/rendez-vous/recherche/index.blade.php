@@ -101,8 +101,9 @@
                 @endforeach
             </div>
             <div class="rdr-groupe" role="radiogroup" aria-label="Statut">
-                @foreach(['' => 'Tous statuts', 'confirmee' => 'Confirmés', 'honoree' => 'Reçues', 'manquee' => 'Non venues', 'liberee' => 'Libérés', 'annulee' => 'Annulés'] as $_v => $_l)
-                    <label><input type="radio" name="statut" value="{{ $_v }}" @checked($filtres['statut'] === $_v)><span>{{ $_l }}</span></label>
+                <label><input type="radio" name="statut" value="" @checked($filtres['statut'] === '')><span>Tous statuts</span></label>
+                @foreach(\App\Enums\StatutReservationRdv::cases() as $_statut)
+                    <label><input type="radio" name="statut" value="{{ $_statut->value }}" @checked($filtres['statut'] === $_statut->value)><span>{{ $_statut->libelleFiltre() }}</span></label>
                 @endforeach
             </div>
         </div>
@@ -194,7 +195,19 @@
         clearTimeout(minuterie);
         minuterie = setTimeout(() => rafraichir(adresse()), 350);
     });
-    window.addEventListener('popstate', () => { rafraichir(window.location.href, false); });
+    // « Precedent » : le formulaire reprend les filtres de l'adresse avant de
+    // relire la liste, sinon il afficherait d'autres filtres que les resultats.
+    window.addEventListener('popstate', () => {
+        const params = new URLSearchParams(window.location.search);
+        champ.value = params.get('q') || '';
+        ['quand', 'type', 'statut'].forEach((nom) => {
+            const valeur = params.get(nom) || (nom === 'quand' ? (champ.value.trim() ? 'tous' : 'a_venir') : '');
+            const radio = form.querySelector('input[name="' + nom + '"][value="' + valeur + '"]');
+            if (radio) radio.checked = true;
+        });
+        periodeChoisie = params.has('quand');
+        rafraichir(window.location.href, false);
+    });
 })();
 </script>
 @endpush
