@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\Admissions\FileDesDemandes;
 use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
@@ -12,14 +13,12 @@ use App\Domain\AcademicPilotage\Services\OpenAlertMetricService;
 use App\Domain\Notifications\PhoneNormalizer;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAttendance;
-use App\Models\ESBTPCandidature;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPPlanificationAcademique;
-use App\Models\ESBTPReinscriptionDemande;
 use App\Observers\ESBTPAttendanceAcademicPilotageObserver;
 use App\Observers\ESBTPEvaluationAcademicPilotageObserver;
 use App\Observers\ESBTPInscriptionAcademicPilotageObserver;
@@ -37,7 +36,6 @@ use App\Services\SsoSecretValidator;
 use App\View\Composers\CouleursDesCourrielsParents;
 use App\View\Composers\MobileShellComposer;
 use Illuminate\Pagination\Paginator;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
@@ -292,7 +290,7 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Compteur du badge « Demandes en ligne » de la barre laterale.
+     * Les deux badges de la section « Admissions » de la barre laterale.
      *
      * Le calcul vit ici, et non dans le gabarit, pour deux raisons. D'abord le
      * cout : le gabarit est rendu par CHAQUE page, le compte serait donc paye
@@ -300,89 +298,17 @@ class AppServiceProvider extends ServiceProvider
      * deploiement : la sequence est `pull` puis `migrate`, donc le code
      * precede la table de quelques secondes. Une requete dans le gabarit
      * global ferait tomber l'application ENTIERE pendant cette fenetre.
+     * FileDesDemandes garde ses tables et met ses comptes en cache.
      */
     private function partagerCompteurDemandesReinscription(): void
     {
         View::composer('layouts.app', function ($view): void {
-            $enAttente = 0;
+            $agent = auth()->user();
 
-            if (auth()->check() && auth()->user()->can('reinscriptions.demandes.view')) {
-                $enAttente = Cache::remember(ESBTPReinscriptionDemande::CLE_CACHE_EN_ATTENTE, 60, function (): int {
-                    if (! Schema::hasTable('esbtp_reinscription_demandes')) {
-                        return 0;
-                    }
-
-                    return ESBTPReinscriptionDemande::enAttente()->count();
-                });
-            }
-
-            $view->with('reinscriptionDemandesEnAttente', $enAttente);
-            $view->with('candidaturesEnAttente', $this->candidaturesEnAttente());
-            // L'entree unique « Demandes d'inscription » : ce qui attend une
-            // decision, dans les types que l'agent peut lire. Une candidature
-            // acceptee attend encore son inscription, elle compte.
-            $view->with('demandesATraiter', $enAttente + $this->candidaturesATraiter());
-            $view->with('accueilAttendues', $this->famillesAttenduesAujourdhui());
-        });
-    }
-
-    private function candidaturesATraiter(): int
-    {
-        if (! auth()->check() || ! auth()->user()->can('inscriptions.candidatures.view')) {
-            return 0;
-        }
-
-        return Cache::remember('admissions.candidatures.a_traiter', 60, function (): int {
-            if (! Schema::hasTable('esbtp_candidatures')) {
-                return 0;
-            }
-
-            return ESBTPCandidature::whereIn('statut', [ESBTPCandidature::STATUT_EN_ATTENTE, ESBTPCandidature::STATUT_ACCEPTEE])->count();
-        });
-    }
-
-    /** Familles encore attendues au guichet aujourd'hui : pas reçues, creneau pas termine, dossier ouvert. */
-    private function famillesAttenduesAujourdhui(): int
-    {
-        if (! auth()->check() || ! auth()->user()->can('inscriptions.rdv.accueil')) {
-            return 0;
-        }
-
-        return Cache::remember('admissions.accueil.attendues.'.now()->format('Y-m-d-H-i'), 60, function (): int {
-            if (! Schema::hasTable('esbtp_rdv_reservations')) {
-                return 0;
-            }
-
-            return \App\Models\ESBTPRdvReservation::query()
-                ->where('statut', \App\Enums\StatutReservationRdv::Confirmee->value)
-                // Creneau pas termine : le meme compte que « À recevoir » sur l'Accueil du jour.
-                ->whereHas('creneau', fn ($c) => $c->whereDate('date', today())->whereTime('heure_fin', '>', now()->format('H:i:s')))
-                ->dossierOuvert()
-                ->count();
-        });
-    }
-
-    /**
-     * Compteur du badge « Candidatures en ligne ».
-     *
-     * Meme discipline que pour les demandes de reinscription : cache court, et
-     * garde sur l'existence de la table. Le deploiement fait `pull` puis
-     * `migrate` — le code precede donc la table de quelques secondes, et une
-     * requete non gardee dans le gabarit global ferait tomber l'application
-     * ENTIERE pendant cette fenetre.
-     */
-    private function candidaturesEnAttente(): int
-    {
-        if (! auth()->check() || ! auth()->user()->can('inscriptions.candidatures.view')) {
-            return 0;
-        }
-
-        return Cache::remember('inscriptions.candidatures.en_attente', 60, function (): int {
-            if (! Schema::hasTable('esbtp_candidatures')) {
-                return 0;
-            }
-
-            return ESBTPCandidature::enAttente()->count();
+            // Le meme compte que le bandeau de la file et que son bouton
+            // « Accueil du jour » : une seule source, FileDesDemandes.
+            $view->with('demandesATraiter', FileDesDemandes::aTraiter($agent));
+            $view->with('accueilAttendues', FileDesDemandes::famillesAttenduesAujourdhui($agent));
         });
     }
 }

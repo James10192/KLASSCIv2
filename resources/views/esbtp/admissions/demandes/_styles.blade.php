@@ -66,12 +66,13 @@
 .dmi-liste.is-chargement { opacity: .55; pointer-events: none; transition: opacity .2s ease; }
 .dmi-ligne { padding: .8rem 1.1rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background .15s ease; outline: none; }
 .dmi-ligne:hover { background: #f8fbff; }
-.dmi-ligne:focus-visible { box-shadow: inset 0 0 0 2px rgba(4,83,203,.45); }
+.dmi-ligne:has(:focus-visible) { box-shadow: inset 0 0 0 2px rgba(4,83,203,.45); }
+.dmi-nom:focus-visible { outline: none; }
 .dmi-ligne.is-selection { background: #f1f6ff; box-shadow: inset 3px 0 0 var(--dmi-primary); }
 .dmi-ligne.is-recue { background: #f6faff; }
 .dmi-qui { display: flex; gap: .7rem; align-items: center; min-width: 0; }
 .dmi-av { width: 38px; height: 38px; border-radius: 50%; background: var(--dmi-soft); color: var(--dmi-primary); font-weight: 800; font-size: .78rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.dmi-nom { font-size: .88rem; font-weight: 700; color: var(--dmi-dark); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
+.dmi-nom { background: none; border: 0; padding: 0; margin: 0; text-align: left; font-family: inherit; cursor: pointer; font-size: .88rem; font-weight: 700; color: var(--dmi-dark); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
 .dmi-sous { display: flex; gap: .35rem; align-items: center; font-size: .74rem; color: var(--dmi-muted); flex-wrap: wrap; margin-top: .15rem; }
 .dmi-type { font-size: .66rem; font-weight: 800; padding: .12rem .45rem; border-radius: 6px; white-space: nowrap; }
 .dmi-type--nouvelle { background: var(--dmi-primary); color: #fff; }
@@ -110,6 +111,11 @@
 .dmi-info span { color: var(--dmi-muted); display: block; font-size: .7rem; }
 .dmi-info strong { display: block; font-weight: 700; color: var(--dmi-dark); margin-top: .1rem; overflow-wrap: anywhere; }
 .dmi-info--large { grid-column: 1 / -1; }
+.dmi-depot { margin-top: .6rem; font-size: .78rem; border: 1px solid var(--dmi-line); border-radius: 10px; padding: .5rem .7rem; }
+.dmi-depot summary { cursor: pointer; font-weight: 700; color: var(--dmi-primary); }
+.dmi-depot dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .3rem .8rem; margin: .6rem 0 .1rem; }
+.dmi-depot dt { color: var(--dmi-muted); font-weight: 600; }
+.dmi-depot dd { margin: 0; color: var(--dmi-dark); overflow-wrap: anywhere; }
 .dmi-ok { color: var(--dmi-success); font-weight: 700; }
 .dmi-section-titre { font-size: .66rem; font-weight: 800; letter-spacing: .08em; color: var(--dmi-muted); text-transform: uppercase; margin: 1.1rem 0 .6rem; }
 .dmi-etapes { list-style: none; margin: 0; padding: 0; }
@@ -165,6 +171,9 @@
 .dmi-picker-menu { position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30; background: #fff; border: 1px solid var(--dmi-line); border-radius: 12px; box-shadow: 0 16px 40px rgba(15,23,42,.16); padding: .5rem; max-height: 320px; display: flex; flex-direction: column; }
 .dmi-picker-menu input { border: 1px solid var(--dmi-line); border-radius: 8px; padding: .45rem .6rem; font: inherit; font-size: .82rem; margin-bottom: .4rem; }
 .dmi-picker-liste { overflow: auto; }
+/* Dans une fenetre, le corps defile (overflow:auto) : un menu en surimpression y serait
+   rogne et masquerait le champ suivant. Il s ouvre donc dans le flux et pousse la suite. */
+.dmi-f-corps .dmi-picker-menu { position: static; margin-top: .4rem; box-shadow: 0 4px 14px rgba(15,23,42,.08); max-height: 280px; }
 .dmi-picker-option { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: .6rem; border: 0; background: none; border-radius: 8px; padding: .5rem .55rem; font: inherit; text-align: left; cursor: pointer; }
 .dmi-picker-option:hover, .dmi-picker-option.is-focus { background: #f1f6ff; }
 .dmi-picker-option[disabled] { opacity: .5; cursor: not-allowed; }

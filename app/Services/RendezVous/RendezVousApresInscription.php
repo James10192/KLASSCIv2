@@ -31,28 +31,39 @@ class RendezVousApresInscription
     ) {
     }
 
-    /** @return string|null ce qui a ete fait : `honore`, `libere`, ou null */
-    public function clore(PorteurDeRendezVous $porteur, ?int $agentId): ?string
+    public function clore(PorteurDeRendezVous $porteur, ?int $agentId): void
     {
         try {
             $reservation = $this->reservateur->reservationActive($porteur)?->load('creneau');
             if ($reservation === null || $reservation->creneau === null || $reservation->statut !== StatutReservationRdv::Confirmee) {
-                return null;
+                return;
             }
 
             if ($reservation->creneau->date->isFuture() && ! $reservation->creneau->date->isToday()) {
-                return $this->reservateur->liberer($porteur, 'Dossier inscrit') !== null ? 'libere' : null;
+                if ($this->reservateur->liberer($porteur, 'Dossier inscrit') === null) {
+                    $this->signaler($porteur, 'place non rendue');
+                }
+
+                return;
             }
 
-            return $this->accueil->marquerRecu($reservation, (int) $agentId) === null ? 'honore' : null;
+            if (($refus = $this->accueil->marquerRecu($reservation, (int) $agentId)) !== null) {
+                // Un refus n'est pas une panne (rendez-vous deplace entre-temps,
+                // annule, d'un autre jour) : il se dit quand meme, sinon le
+                // planning garde une famille « attendue » deja inscrite.
+                $this->signaler($porteur, 'non marque honore : '.$refus);
+            }
         } catch (\Throwable $e) {
-            Log::warning('Rendez-vous non clos apres inscription', [
-                'porteur' => $porteur::class,
-                'porteur_id' => $porteur->getKey(),
-                'message' => $e->getMessage(),
-            ]);
-
-            return null;
+            $this->signaler($porteur, $e->getMessage());
         }
+    }
+
+    private function signaler(PorteurDeRendezVous $porteur, string $raison): void
+    {
+        Log::warning('Rendez-vous non clos apres inscription', [
+            'porteur' => $porteur::class,
+            'porteur_id' => $porteur->getKey(),
+            'raison' => $raison,
+        ]);
     }
 }

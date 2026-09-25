@@ -3,13 +3,13 @@
 namespace App\Domain\Admissions;
 
 use App\Enums\StatutReservationRdv;
-use App\Models\ESBTPCandidature;
 use Carbon\CarbonInterface;
 
 /**
  * Le chemin d'un dossier, du depot a l'inscription, tel que les donnees le
  * prouvent. Aucune etape n'est supposee : une etape sans date n'est pas
- * franchie, et la premiere non franchie est « la prochaine ».
+ * franchie. « La prochaine » est la derniere, l'inscription ou la
+ * reinscription, tant que le dossier est ouvert (voir marquerLaProchaine).
  *
  * C'est ce qui manquait aux deux corbeilles : l'agent voyait un statut, jamais
  * ce qui s'etait passe avant ni ce qui restait a faire.
@@ -27,7 +27,11 @@ final class ParcoursDuDossier
 
         $etapes = [
             self::etape('Déposée en ligne', $m->created_at, 'depuis le portail'),
-            self::etape('Contact vérifié', $contact, $m->contact_confirme_at ? 'confirmé par l\'école' : 'confirmé par la famille'),
+            self::etape('Contact vérifié', $contact, match (true) {
+                $contact === null => '',
+                $m->contact_confirme_at !== null => 'confirmé par l\'école',
+                default => 'confirmé par la famille',
+            }),
             self::etape('Rendez-vous fixé', $rdv?->created_at,
                 $rdv?->creneau ? ucfirst($rdv->creneau->date->translatedFormat('l j F')).' · '.$rdv->creneau->heureDebutHi() : ''),
             self::etape('Reçue au guichet', $rdv?->statut === StatutReservationRdv::Honoree ? $rdv->accueilli_at : null,
@@ -35,14 +39,14 @@ final class ParcoursDuDossier
         ];
 
         if ($demande->estNouvelle()) {
-            $acceptee = in_array($m->statut, [ESBTPCandidature::STATUT_ACCEPTEE, ESBTPCandidature::STATUT_CONVERTIE], true);
+            $acceptee = $demande->estAcceptee() || $demande->estInscrite();
             $etapes[] = self::etape('Acceptée', $acceptee ? ($m->traite_at ?? $m->updated_at) : null, $m->traitePar ? 'par '.$m->traitePar->name : '');
         }
 
-        $etapes[] = $m->statut === 'rejetee'
+        $etapes[] = $demande->estRejetee()
             ? self::etape('Rejetée', $m->traite_at, (string) $m->motif_rejet, 'echec')
-            : self::etape($demande->estNouvelle() ? 'Inscrite' : 'Réinscrite', $m->statut === 'convertie' ? $m->traite_at : null,
-                $m->statut === 'convertie' && $m->traitePar ? 'par '.$m->traitePar->name : 'doublons, classe, matricule, aperçu');
+            : self::etape($demande->estNouvelle() ? 'Inscrite' : 'Réinscrite', $demande->estInscrite() ? $m->traite_at : null,
+                $demande->estInscrite() && $m->traitePar ? 'par '.$m->traitePar->name : 'doublons, classe, matricule, aperçu');
 
         return self::marquerLaProchaine($etapes, $demande->estOuverte());
     }

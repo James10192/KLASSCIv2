@@ -25,6 +25,14 @@ use Illuminate\Support\Str;
  */
 class StudentDuplicateDetector
 {
+    /**
+     * Au-dela de ce score, l'inscription refuse de creer sans confirmation
+     * explicite (« c'est une autre personne »). Lu par le formulaire, l'API et
+     * la fenetre « Accepter et inscrire » : un seul seuil, sinon l'ecran
+     * promettrait ce que l'enregistrement refuse.
+     */
+    public const SCORE_BLOQUANT = 55;
+
     // Points attribués au nom
     private const NOM_EXACT   = 40;
     private const NOM_HIGH    = 30; // similarité ≥ 85%

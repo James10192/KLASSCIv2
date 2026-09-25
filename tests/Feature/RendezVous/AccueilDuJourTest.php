@@ -437,8 +437,11 @@ class AccueilDuJourTest extends TestCase
         $this->reservation($creneau, ['nom' => 'AUTRE']);
         $reference = $visee->candidature->assurerReferencePublique();
 
+        // L'ancienne adresse, par reference, mene a la file filtree sur cette famille.
         $this->actingAs($this->agent)->get(route('esbtp.candidatures.index', ['reference' => strtolower(app(\App\Services\Portail\ReferencePublique::class)->formater($reference))]))
-            ->assertOk()->assertSee('VISEE')->assertDontSee('AUTRE')->assertSee('Voir toutes les candidatures');
+            ->assertStatus(301);
+        $this->get(route('esbtp.demandes.index', ['etat' => 'toutes', 'q' => strtolower(app(\App\Services\Portail\ReferencePublique::class)->formater($reference))]))
+            ->assertOk()->assertSee('VISEE')->assertDontSee('AUTRE');
     }
 
     public function test_le_lien_dossier_est_sur_chaque_famille_pas_seulement_les_non_venues(): void

@@ -46,7 +46,7 @@ final class DemandeDInscription
 
     public static function deCandidature(ESBTPCandidature $c): self
     {
-        $ouverte = in_array($c->statut, [ESBTPCandidature::STATUT_EN_ATTENTE, ESBTPCandidature::STATUT_ACCEPTEE], true);
+        $ouverte = ! $c->dossierClos();
         $rdv = $c->relationLoaded('reservations') ? $c->reservations->first() : null;
         $recue = $rdv?->statut === StatutReservationRdv::Honoree;
         $bac = trim(collect([$c->serie_bac ? 'Bac '.$c->serie_bac : null, $c->annee_bac])->filter()->join(' '));
@@ -146,6 +146,23 @@ final class DemandeDInscription
         return $this->etape !== self::ETAPE_VOIR;
     }
 
+    /** Acceptee, pas encore inscrite : n'existe que pour une candidature. */
+    public function estAcceptee(): bool
+    {
+        return $this->estNouvelle() && $this->statut === ESBTPCandidature::STATUT_ACCEPTEE;
+    }
+
+    /** Inscrite ou reinscrite : les deux tables nomment ce statut de la meme facon. */
+    public function estInscrite(): bool
+    {
+        return $this->statut === $this->modele::STATUT_CONVERTIE;
+    }
+
+    public function estRejetee(): bool
+    {
+        return $this->statut === $this->modele::STATUT_REJETEE;
+    }
+
     public function initiales(): string
     {
         $mots = preg_split('/\s+/u', trim($this->nom)) ?: [];
@@ -176,11 +193,11 @@ final class DemandeDInscription
     /** Libelle du statut, dit du point de vue de l'accueil. */
     public function libelleStatut(): string
     {
-        return match ($this->statut) {
-            'en_attente' => $this->recueAuGuichet() ? 'Reçue au guichet' : 'À examiner',
-            'acceptee' => 'Acceptée · à inscrire',
-            'convertie' => $this->estNouvelle() ? 'Inscrite' : 'Réinscrite',
-            'rejetee' => 'Rejetée',
+        return match (true) {
+            $this->estAcceptee() => 'Acceptée · à inscrire',
+            $this->estInscrite() => $this->estNouvelle() ? 'Inscrite' : 'Réinscrite',
+            $this->estRejetee() => 'Rejetée',
+            $this->estOuverte() => $this->recueAuGuichet() ? 'Reçue au guichet' : 'À examiner',
             default => (string) $this->statut,
         };
     }

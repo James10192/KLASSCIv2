@@ -78,17 +78,23 @@ window.demandesInscription = function () {
             Object.assign(this.filtres, changements);
             this.recharger(true);
         },
-        async recharger(historique) {
+        /* Les compteurs ne dependent d'aucun filtre : ils ne se relisent qu'apres une decision. */
+        async recharger(historique, avecCompteurs = false) {
             this.chargement = true;
             try {
                 const p = this.parametres();
                 const adresse = this.cfg.index + (p.toString() ? '?' + p.toString() : '');
                 p.set('fragment', '1');
+                if (avecCompteurs) p.set('compteurs', '1');
                 const d = await this.appeler(this.cfg.index + '?' + p.toString());
                 document.getElementById('dmi-liste').innerHTML = d.liste;
-                document.getElementById('dmi-kpis').innerHTML = d.kpis;
-                this.compteurs = d.compteurs;
-                this.majBadgeDuMenu();
+                if (d.kpis) {
+                    const kpis = document.getElementById('dmi-kpis');
+                    kpis.innerHTML = d.kpis;
+                    if (window.Alpine) window.Alpine.initTree(kpis);
+                    this.compteurs = d.compteurs;
+                    this.majBadgeDuMenu();
+                }
                 this.marquerSelection();
                 if (historique) window.history.pushState({}, '', adresse);
             } catch (e) {
@@ -149,7 +155,7 @@ window.demandesInscription = function () {
             this.notifier('success', message);
             this.fermerFenetre();
             const cle = this.ouvert;
-            await this.recharger(false);
+            await this.recharger(false, true);
             if (cle) this.ouvrirDossier(cle);
         },
 
@@ -191,12 +197,8 @@ window.demandesInscription = function () {
                 const actuelle = lignes.indexOf(document.activeElement.closest?.('.dmi-ligne'));
                 const depart = actuelle >= 0 ? actuelle : lignes.findIndex((l) => l.dataset.dmiCle === this.ouvert);
                 const suivante = lignes[Math.min(lignes.length - 1, Math.max(0, depart + (e.key === 'ArrowDown' ? 1 : -1)))] || lignes[0];
-                suivante.focus();
-                return;
-            }
-            if (e.key === 'Enter' && document.activeElement.classList?.contains('dmi-ligne')) {
-                e.preventDefault();
-                this.ouvrirDossier(document.activeElement.dataset.dmiCle);
+                // Le nom est le bouton de la ligne : Entree l'ouvre nativement.
+                suivante.querySelector('.dmi-nom')?.focus();
                 return;
             }
             if ((e.key === 'i' || e.key === 'I') && this.ouvert) {
@@ -287,7 +289,7 @@ window.demandesInscription = function () {
             this.fenetre = 'inscrire';
             try {
                 const p = await this.appeler(this.dossier.preparer);
-                const voeux = p.classes.filter((c) => c.voeu && (c.places_totales === 0 || c.places_libres > 0));
+                const voeux = p.classes.filter((c) => c.voeu && !c.complete);
                 this.ins.prep = p;
                 this.ins.f = Object.assign({}, p.identite, {
                     classe_id: voeux.length === 1 ? voeux[0].id : null,
@@ -381,16 +383,12 @@ window.demandesInscription = function () {
             }
             return fd;
         },
-        async accepterSiBesoin() {
-            if (this.ins.prep.candidature.statut !== 'en_attente') return;
-            await this.appeler(this.dossier.accepter, { methode: 'POST' });
-            this.ins.prep.candidature.statut = 'acceptee';
-        },
         async inscrire() {
             if (!this.insPret() || this.occupe) return;
             this.occupe = true; this.ins.erreurs = {}; this.ins.message = '';
+            // Une seule requete : le serveur accepte et inscrit dans la meme
+            // transaction. Un refus laisse la candidature telle qu'elle etait.
             try {
-                await this.accepterSiBesoin();
                 const d = await this.appeler(this.cfg.store, { methode: 'POST', corps: this.formulaire() });
                 this.notifier('success', d.message || 'Inscription enregistrée.');
                 // EXCEPTION ajax-no-reload-premium : l'inscription est creee, sa fiche
@@ -405,12 +403,8 @@ window.demandesInscription = function () {
                 this.occupe = false;
             }
         },
-        async formulaireComplet() {
-            if (!this.dossier.formulaire) return;
-            try {
-                await this.accepterSiBesoin();
-                window.location.href = this.dossier.formulaire;
-            } catch (e) { this.notifier('error', e.message); }
+        formulaireComplet() {
+            if (this.dossier.formulaire) window.location.href = this.dossier.formulaire;
         },
 
         /* ---------- Petits outils d'affichage ---------- */
@@ -433,15 +427,16 @@ window.demandesInscription = function () {
         },
         jaugePct(c) { return c && c.places_totales > 0 ? Math.min(100, Math.round(c.places_prises / c.places_totales * 100)) : 0; },
         jaugeTon(c) {
-            if (!c || !c.places_totales) return '';
-            if (c.places_libres <= 0) return 'dmi-jauge--pleine';
+            if (!c || c.complete === undefined) return '';
+            if (c.complete) return 'dmi-jauge--pleine';
             return this.jaugePct(c) >= 85 ? 'dmi-jauge--presque' : '';
         },
         placesTexte(c) {
             if (!c) return '';
             if (c.places_totales === undefined) return '';
-            if (!c.places_totales) return 'capacité libre';
-            return c.places_libres <= 0 ? 'complète' : c.places_prises + ' / ' + c.places_totales;
+            // Sans capacite reglee, l'enregistrement refuse la classe comme pleine.
+            if (!c.places_totales) return 'capacité non réglée';
+            return c.complete ? 'complète' : c.places_prises + ' / ' + c.places_totales;
         },
     };
 };

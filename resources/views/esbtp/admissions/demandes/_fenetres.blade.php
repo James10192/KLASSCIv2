@@ -8,13 +8,13 @@
         </div>
         <div class="dmi-f-corps">
             <div class="dmi-champ" :class="reins.erreurs.classe_id ? 'is-erreur' : ''">Classe de l'année
-                @include('esbtp.admissions.demandes._picker-classe', ['modele' => 'reins.classe_id', 'liste' => 'classes'])
+                @include('esbtp.admissions.demandes._picker-classe', ['modele' => 'reins.classe_id', 'liste' => 'classes', 'bloquer' => false])
                 <span class="dmi-champ-aide">Proposée : la classe souhaitée par l'étudiant. C'est l'école qui affecte.</span>
                 <span class="dmi-champ-erreur" x-text="reins.erreurs.classe_id" x-show="reins.erreurs.classe_id"></span>
             </div>
             <div class="dmi-champ" style="margin-top:.9rem" :class="reins.erreurs.decision ? 'is-erreur' : ''">Décision du conseil
                 <div class="dmi-choix" role="radiogroup" aria-label="Décision">
-                    <template x-for="opt in [['passage', 'Passage'], ['redoublement', 'Redoublement'], ['rattrapage', 'Rattrapage']]" :key="opt[0]">
+                    <template x-for="opt in Object.entries(cfg.decisions || {})" :key="opt[0]">
                         <button type="button" role="radio" :aria-checked="reins.decision === opt[0]" :class="reins.decision === opt[0] ? 'is-actif' : ''" x-on:click="reins.decision = opt[0]" x-text="opt[1]"></button>
                     </template>
                 </div>

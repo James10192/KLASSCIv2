@@ -359,8 +359,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         // Corbeille des demandes de reinscription deposees en ligne.
         // La conversion passe par le flux canonique : aucune re-saisie.
         Route::prefix('reinscriptions')->middleware(['auth', 'paywall'])->name('reinscription-demandes.')->group(function () {
-            Route::get('/demandes', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'index'])
-                ->name('index');
+            // L'ancienne corbeille : la file des demandes la remplace.
+            Route::get('/demandes', [\App\Http\Controllers\ESBTP\ESBTPDemandesInscriptionController::class, 'depuisLAncienneCorbeille'])
+                ->defaults('type', \App\Domain\Admissions\FileDesDemandes::TYPE_REINSCRIPTION)->name('index');
             Route::post('/demandes/{demande}/convertir', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'convertir'])
                 ->middleware('throttle:30,1')->name('convertir');
             Route::post('/demandes/{demande}/rejeter', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'rejeter'])
@@ -372,8 +373,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         // automatique : admettre un nouveau est une decision, pas la
         // reconduction d'un dossier qui existe deja.
         Route::prefix('inscriptions')->middleware(['auth', 'paywall'])->name('candidatures.')->group(function () {
-            Route::get('/candidatures', [\App\Http\Controllers\ESBTP\ESBTPCandidatureController::class, 'index'])
-                ->name('index');
+            // L'ancienne corbeille : la file des demandes la remplace.
+            Route::get('/candidatures', [\App\Http\Controllers\ESBTP\ESBTPDemandesInscriptionController::class, 'depuisLAncienneCorbeille'])
+                ->defaults('type', \App\Domain\Admissions\FileDesDemandes::TYPE_NOUVELLE)->name('index');
             Route::post('/candidatures/{candidature}/accepter', [\App\Http\Controllers\ESBTP\ESBTPCandidatureController::class, 'accepter'])
                 ->middleware('throttle:30,1')->name('accepter');
             Route::post('/candidatures/{candidature}/rejeter', [\App\Http\Controllers\ESBTP\ESBTPCandidatureController::class, 'rejeter'])

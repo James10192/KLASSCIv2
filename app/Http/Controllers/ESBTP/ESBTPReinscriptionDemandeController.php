@@ -4,21 +4,17 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Exceptions\ReinscriptionRefuseeException;
 use App\Http\Controllers\Controller;
-use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Services\ReeinscriptionService;
 use App\Services\RendezVous\RendezVousApresInscription;
 use App\Services\RendezVous\ReservateurRdv;
-use App\Support\ListeInfinie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 
 /**
  * Corbeille des demandes de reinscription deposees en ligne.
@@ -35,56 +31,7 @@ class ESBTPReinscriptionDemandeController extends Controller
 
     public function __construct(private readonly ReeinscriptionService $reinscription)
     {
-        $this->middleware('permission:reinscriptions.demandes.view')->only('index');
         $this->middleware('permission:reinscriptions.demandes.process')->only(['convertir', 'rejeter']);
-    }
-
-    public function index(Request $request): View|JsonResponse
-    {
-        // Un statut inconnu rendrait une page vide sans rien expliquer : on
-        // retombe sur « tous » plutot que de filtrer sur une valeur qui
-        // n'existe pas.
-        $statut = $request->string('statut')->toString();
-        if (! in_array($statut, ESBTPReinscriptionDemande::STATUTS, true)) {
-            $statut = '';
-        }
-
-        // Un dossier precis, depuis l'accueil du jour : la liste pagine par 25
-        // sans recherche, la famille y serait a une page quelconque.
-        $reference = app(\App\Services\Portail\ReferencePublique::class)->normaliser($request->string('reference')->toString());
-
-        $demandes = ESBTPReinscriptionDemande::query()
-            ->with(['etudiant:id,nom,prenoms,matricule,email,email_personnel,telephone', 'anneeUniversitaire:id,name', 'classeSouhaitee:id,name', 'traitePar:id,name'])
-            ->when($statut !== '', fn ($q) => $q->where('statut', $statut))
-            ->when($reference !== '', fn ($q) => $q->where('reference_publique', $reference))
-            ->when($request->query('contact') === 'non_verifie', fn ($q) => $q->contactNonConfirme())
-            ->orderByRaw("FIELD(statut, 'en_attente') DESC")
-            ->latest('created_at')
-            // Departage stable : la liste se charge par tranches, et deux demandes
-            // deposees a la meme seconde changeraient d'ordre d'une tranche a l'autre.
-            ->orderByDesc('id')
-            ->paginate(25)
-            ->withQueryString();
-
-        if (ListeInfinie::demandee($request)) {
-            return ListeInfinie::reponse(
-                $demandes,
-                fn (ESBTPReinscriptionDemande $demande) => view('esbtp.reinscriptions.demandes._ligne', compact('demande'))->render(),
-            );
-        }
-
-        $compteurs = ESBTPReinscriptionDemande::query()
-            ->selectRaw('statut, COUNT(*) as total')
-            ->groupBy('statut')
-            ->pluck('total', 'statut');
-
-        return view('esbtp.reinscriptions.demandes.index', [
-            'demandes' => $demandes,
-            'compteurs' => $compteurs,
-            'statutActif' => $statut,
-            'referenceActive' => $reference === '' ? '' : app(\App\Services\Portail\ReferencePublique::class)->formater($reference),
-            'classes' => ESBTPClasse::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-        ]);
     }
 
     /**
@@ -99,7 +46,7 @@ class ESBTPReinscriptionDemandeController extends Controller
             // La fenetre ne propose que les classes actives ; sans ce filtre,
             // un envoi forge affecterait un etudiant a une classe archivee.
             'classe_id' => ['required', Rule::exists('esbtp_classes', 'id')->where('is_active', true)],
-            'decision' => ['required', 'in:passage,redoublement,rattrapage'],
+            'decision' => ['required', Rule::in(array_keys(ESBTPReinscriptionDemande::DECISIONS))],
             'observations' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -182,7 +129,6 @@ class ESBTPReinscriptionDemandeController extends Controller
 
         app(RendezVousApresInscription::class)->clore($demande, auth()->id());
 
-        $this->oublierLeCompteur();
 
         Log::info('Demande de reinscription convertie', [
             'demande_id' => $demande->id,
@@ -223,19 +169,7 @@ class ESBTPReinscriptionDemandeController extends Controller
             return $this->repondre($request, false, 'Cette demande a déjà été traitée.');
         }
 
-        $this->oublierLeCompteur();
 
         return $this->repondre($request, true, 'Demande rejetée.'.ReservateurRdv::phraseLiberation($liberee));
-    }
-
-    /**
-     * Le badge de la barre laterale compte les demandes en attente et vit en
-     * cache une minute. Sans cet oubli, l'agent qui vient de traiter une
-     * demande verrait le compteur inchange apres rechargement — et c'est
-     * precisement la mise a jour de ce badge qui justifie le rechargement.
-     */
-    private function oublierLeCompteur(): void
-    {
-        Cache::forget(ESBTPReinscriptionDemande::CLE_CACHE_EN_ATTENTE);
     }
 }

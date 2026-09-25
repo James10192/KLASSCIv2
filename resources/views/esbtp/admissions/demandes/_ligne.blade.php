@@ -1,6 +1,8 @@
 {{-- Une ligne de la file. Rendue par la page et par chaque tranche du
      defilement (ESBTPDemandesInscriptionController::index). La ligne entiere
-     ouvre le dossier ; le bouton de droite lance directement l'etape suivante. --}}
+     ouvre le dossier au clic ; au clavier, c'est le nom, un vrai bouton (la ligne
+     n'est pas un role=button : elle contient elle-meme un bouton). Le bouton de
+     droite lance directement l'etape suivante. --}}
 @php
     /** @var \App\Domain\Admissions\DemandeDInscription $d */
     [$_rdv, $_rdvDetail, $_rdvTon] = $d->rendezVousResume();
@@ -15,14 +17,12 @@
     };
     $_contact = $d->estOuverte() ? $d->contactAVerifier() : null;
 @endphp
-<div class="dmi-ligne {{ $d->recueAuGuichet() && $d->estOuverte() ? 'is-recue' : '' }}" role="button" tabindex="0"
-     data-li-cle="{{ $d->cle() }}" data-dmi-cle="{{ $d->cle() }}"
-     data-dmi-url="{{ route('esbtp.demandes.dossier', [$d->type, $d->id]) }}"
-     aria-label="Ouvrir le dossier de {{ $d->nom }}">
+<div class="dmi-ligne {{ $d->recueAuGuichet() && $d->estOuverte() ? 'is-recue' : '' }}"
+     data-li-cle="{{ $d->cle() }}" data-dmi-cle="{{ $d->cle() }}">
     <div class="dmi-qui">
         <span class="dmi-av" aria-hidden="true">{{ $d->initiales() }}</span>
         <div style="min-width:0">
-            <span class="dmi-nom">{{ $d->nom }}</span>
+            <button type="button" class="dmi-nom" aria-label="Ouvrir le dossier de {{ $d->nom }}">{{ $d->nom }}</button>
             <span class="dmi-sous">
                 <span class="dmi-type dmi-type--{{ $d->type }}">{{ $d->estNouvelle() ? 'Nouvelle' : 'Réinscription' }}</span>
                 @if($d->sousTitre !== '')<span class="{{ $d->estNouvelle() ? '' : 'dmi-mono' }}">{{ $d->sousTitre }}</span>@endif

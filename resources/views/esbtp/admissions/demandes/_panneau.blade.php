@@ -69,6 +69,34 @@
         @endif
     </div>
 
+    @if($_nouvelle)
+        @php
+            // Tout ce que la famille a declare au depot, pour ne rien avoir a
+            // chercher ailleurs. Seules les lignes renseignees s'affichent.
+            $_depot = array_filter([
+                'Sexe' => $m->sexe ? ($m->sexe === 'F' ? 'Féminin' : 'Masculin') : null,
+                'Nationalité' => $m->nationalite,
+                'Résidence' => collect([$m->commune, $m->ville])->filter()->join(', '),
+                'Baccalauréat' => collect([$m->serie_bac ? 'série '.$m->serie_bac : null, $m->annee_bac, $m->etablissement_origine])->filter()->join(' · '),
+                'Affectation déclarée' => $m->affectation_status ? (\App\Models\ESBTPCandidature::affectationsDeclarables()[$m->affectation_status] ?? $m->affectation_status) : null,
+                'Formation d\'origine' => $m->est_transfert ? collect([$m->formation_origine, $m->niveau_atteint_origine])->filter()->join(' · ') : null,
+                'Dernière inscription' => $m->est_transfert ? $m->annee_derniere_inscription : null,
+                'Motif du transfert' => $m->est_transfert ? $m->motif_transfert : null,
+                'Profession du tuteur' => $m->tuteur_profession,
+            ], fn ($v) => filled($v));
+        @endphp
+        @if($_depot !== [])
+            <details class="dmi-depot">
+                <summary>Tout le dossier déposé</summary>
+                <dl>
+                    @foreach($_depot as $_libelle => $_valeur)
+                        <dt>{{ $_libelle }}</dt><dd>{{ $_valeur }}</dd>
+                    @endforeach
+                </dl>
+            </details>
+        @endif
+    @endif
+
     @if($_contact)
         <div class="dmi-encart dmi-encart--alerte">
             <i class="fas fa-user-clock" aria-hidden="true"></i>
@@ -139,8 +167,8 @@
         @if($d->estOuverte() && $_traiter)
             <div class="dmi-p-actions-rangee">
                 @if($_nouvelle && $_inscrire)
-                    <button type="button" class="dmi-btn dmi-btn--primary" data-dmi-agir="inscrire"><i class="fas fa-user-plus"></i>{{ $m->statut === 'acceptee' ? 'Inscrire' : 'Accepter et inscrire' }}</button>
-                @elseif($_nouvelle && $m->statut === 'en_attente')
+                    <button type="button" class="dmi-btn dmi-btn--primary" data-dmi-agir="inscrire"><i class="fas fa-user-plus"></i>{{ $d->estAcceptee() ? 'Inscrire' : 'Accepter et inscrire' }}</button>
+                @elseif($_nouvelle && ! $d->estAcceptee())
                     <button type="button" class="dmi-btn dmi-btn--primary" data-dmi-agir="accepter"><i class="fas fa-check"></i>Accepter</button>
                 @elseif(! $_nouvelle && ! $d->obstacle)
                     <button type="button" class="dmi-btn dmi-btn--primary" data-dmi-agir="reinscrire"><i class="fas fa-user-check"></i>Réinscrire</button>
@@ -148,14 +176,14 @@
                 <button type="button" class="dmi-btn dmi-btn--danger" data-dmi-agir="rejeter">Rejeter{{ $d->obstacle ? ' la demande' : '' }}</button>
             </div>
             <span class="dmi-p-note">Rejeter libère aussi son créneau de rendez-vous, s'il en a un.</span>
-            @if($_nouvelle && ! $_inscrire && $m->statut === 'acceptee')
+            @if(! $_inscrire && $d->estAcceptee())
                 <span class="dmi-p-note">Acceptée : le service des inscriptions la reprend. Vous n'avez pas le droit d'inscrire vous-même.</span>
             @endif
         @elseif($d->estOuverte())
             <span class="dmi-p-note">Vous pouvez consulter ce dossier, mais pas le traiter.</span>
-        @elseif($m->statut === 'convertie' && ($m->inscription_id ?? null) && $u?->can('inscriptions.view'))
+        @elseif($d->estInscrite() && ($m->inscription_id ?? null) && $u?->can('inscriptions.view'))
             <a class="dmi-btn dmi-btn--ghost" href="{{ route('esbtp.inscriptions.show', $m->inscription_id) }}"><i class="fas fa-id-card"></i>Ouvrir l'inscription</a>
-        @elseif($m->statut === 'rejetee')
+        @elseif($d->estRejetee())
             <span class="dmi-p-note"><strong>Motif du rejet :</strong> {{ $m->motif_rejet }}</span>
         @endif
         @if($_etudiant && $u?->can('students.view'))

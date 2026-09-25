@@ -1,5 +1,5 @@
 {{-- Section « Etudiants » de la barre laterale. Incluse par layouts/app ; elle lit
-     $candidaturesEnAttente et $reinscriptionDemandesEnAttente, partages par la mise en page. --}}
+     $demandesATraiter et $accueilAttendues, partages par AppServiceProvider (FileDesDemandes). --}}
                     <!-- Students Section -->
                     @can('module.etudiants.access')
                     @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer', 'identity.communicate']) || auth()->user()->hasRole(['superAdmin', 'admin', 'serviceTechnique']))

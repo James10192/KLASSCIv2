@@ -22,6 +22,7 @@ use OwenIt\Auditing\Contracts\Auditable;
 class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
 {
     use Concerns\AttendVerificationContact;
+    use Concerns\CompteDansLaFileDesDemandes;
     use Concerns\EstPorteurDeRendezVous;
     use Concerns\HasReferencePublique;
     use HasFactory;

@@ -13,6 +13,7 @@ use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\RendezVous\ReservateurRdv;
 use App\Support\ListeInfinie;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -43,23 +44,51 @@ class ESBTPDemandesInscriptionController extends Controller
         $donnees = [
             'demandes' => $page,
             'filtres' => $filtres,
-            'compteurs' => $this->file->compteurs($request->user()),
             'types' => FileDesDemandes::typesVisibles($request->user()),
         ];
 
+        // Une recherche ou un filtre ne change aucun compteur : ils ne se
+        // recalculent qu'au chargement et apres une decision.
         if ($request->boolean('fragment')) {
-            return response()->json([
-                'liste' => view('esbtp.admissions.demandes._liste', $donnees)->render(),
+            $liste = ['liste' => view('esbtp.admissions.demandes._liste', $donnees)->render()];
+            if (! $request->boolean('compteurs')) {
+                return response()->json($liste);
+            }
+            $donnees['compteurs'] = $this->file->compteurs($request->user());
+
+            return response()->json($liste + [
                 'kpis' => view('esbtp.admissions.demandes._kpis', $donnees)->render(),
                 'compteurs' => $donnees['compteurs'],
             ]);
         }
+
+        $donnees['compteurs'] = $this->file->compteurs($request->user());
 
         return view('esbtp.admissions.demandes.index', $donnees + [
             'classes' => $request->user()->can('reinscriptions.demandes.process') ? app(PreparationDInscription::class)->classes() : [],
             'ouvrir' => (string) $request->query('ouvrir', ''),
             'agir' => $request->boolean('agir'),
         ]);
+    }
+
+    /**
+     * Les deux anciennes corbeilles, candidatures et demandes de reinscription,
+     * ramenees a la file avec leurs filtres : leurs adresses sont dans des
+     * favoris, des courriels internes et l'historique des navigateurs.
+     */
+    public function depuisLAncienneCorbeille(Request $request, string $type): RedirectResponse
+    {
+        $statut = (string) $request->query('statut', '');
+        $reference = trim((string) $request->query('reference', ''));
+
+        return redirect()->route('esbtp.demandes.index', array_filter([
+            'type' => $type,
+            // « Inscrites » et « Rejetees » de la file ne couvrent que la semaine ;
+            // l'ancienne corbeille montrait tout l'historique d'un statut.
+            'etat' => $reference !== '' || in_array($statut, ['convertie', 'rejetee'], true) ? 'toutes' : null,
+            'q' => $reference !== '' ? $reference : null,
+            'contact' => $request->query('contact') === 'non_verifie' ? 1 : null,
+        ]), 301);
     }
 
     /** Le panneau du dossier, rendu cote serveur. */
@@ -76,7 +105,7 @@ class ESBTPDemandesInscriptionController extends Controller
     /** Ce que la fenetre « Accepter et inscrire » affiche avant le clic. */
     public function preparerInscription(ESBTPCandidature $candidature, PreparationDInscription $preparation): JsonResponse
     {
-        abort_unless(in_array($candidature->statut, [ESBTPCandidature::STATUT_EN_ATTENTE, ESBTPCandidature::STATUT_ACCEPTEE], true), 422, 'Cette candidature est déjà traitée.');
+        abort_if($candidature->dossierClos(), 422, 'Cette candidature est déjà traitée.');
 
         return response()->json($preparation->pour($candidature));
     }

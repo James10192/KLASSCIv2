@@ -71,7 +71,7 @@
                         <h3>2 · Affectation <small x-show="ins.prep?.candidature?.voeu" x-text="'Vœu du candidat : ' + ins.prep?.candidature?.voeu"></small></h3>
                         <div class="dmi-grille">
                             <div class="dmi-champ" :class="ins.erreurs.classe_id ? 'is-erreur' : ''">Classe
-                                @include('esbtp.admissions.demandes._picker-classe', ['modele' => 'ins.f.classe_id', 'liste' => 'ins.prep?.classes'])
+                                @include('esbtp.admissions.demandes._picker-classe', ['modele' => 'ins.f.classe_id', 'liste' => 'ins.prep?.classes', 'bloquer' => true])
                                 <span class="dmi-champ-erreur" x-text="ins.erreurs.classe_id" x-show="ins.erreurs.classe_id"></span>
                             </div>
                             <div class="dmi-champ" :class="ins.erreurs.matricule ? 'is-erreur' : ''">Matricule
@@ -104,7 +104,7 @@
                             <label class="dmi-champ" :class="ins.erreurs['parents.0.telephone'] ? 'is-erreur' : ''">Téléphone<input type="tel" x-model="ins.tuteur.telephone" maxlength="20"></label>
                             <div class="dmi-champ" :class="ins.erreurs['parents.0.relation'] ? 'is-erreur' : ''">Lien
                                 <div class="dmi-choix" role="radiogroup" aria-label="Lien avec l'étudiant">
-                                    <template x-for="lien in ['Père', 'Mère', 'Tuteur', 'Autre']" :key="lien">
+                                    <template x-for="lien in (cfg.liensTuteur || [])" :key="lien">
                                         <button type="button" role="radio" :aria-checked="ins.tuteur.relation === lien" :class="ins.tuteur.relation === lien ? 'is-actif' : ''" x-on:click="ins.tuteur.relation = lien" x-text="lien"></button>
                                     </template>
                                 </div>

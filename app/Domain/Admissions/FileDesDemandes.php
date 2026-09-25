@@ -4,6 +4,7 @@ namespace App\Domain\Admissions;
 
 use App\Enums\StatutReservationRdv;
 use App\Models\ESBTPCandidature;
+use App\Models\ESBTPRdvReservation;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Models\User;
 use App\Services\Portail\ReferencePublique;
@@ -11,7 +12,9 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Une seule file pour les deux sortes de demandes : la candidature d'un nouvel
@@ -40,10 +43,10 @@ class FileDesDemandes
 
     public const PAR_PAGE = 25;
 
-    /** Ouverts, du point de vue de la decision : ce qui attend encore quelqu'un. */
-    private const OUVERTS_CANDIDATURE = [ESBTPCandidature::STATUT_EN_ATTENTE, ESBTPCandidature::STATUT_ACCEPTEE];
+    /** Prefixe du compte « a traiter » d'un type, partage par le menu et le bandeau. */
+    private const CLE_CACHE_A_TRAITER = 'admissions.a_traiter.';
 
-    private const OUVERTS_DEMANDE = [ESBTPReinscriptionDemande::STATUT_EN_ATTENTE];
+    private const CLE_CACHE_ATTENDUES = 'admissions.accueil.attendues';
 
     public function __construct(private readonly ReferencePublique $references)
     {
@@ -56,6 +59,55 @@ class FileDesDemandes
             $agent?->can('inscriptions.candidatures.view') ? self::TYPE_NOUVELLE : null,
             $agent?->can('reinscriptions.demandes.view') ? self::TYPE_REINSCRIPTION : null,
         ]));
+    }
+
+    /**
+     * Ce qui attend une decision, dans les types que l'agent lit. Lu par le menu
+     * sur CHAQUE page : cache court, et garde sur les tables, parce que le code
+     * precede la migration de quelques secondes au deploiement.
+     */
+    public static function aTraiter(?User $agent): int
+    {
+        return array_sum(array_map(fn (string $type) => self::aTraiterDuType($type), self::typesVisibles($agent)));
+    }
+
+    public static function aTraiterDuType(string $type): int
+    {
+        $modele = self::modele($type);
+
+        return Cache::remember(self::CLE_CACHE_A_TRAITER.$type, 60, fn (): int => Schema::hasTable((new $modele())->getTable())
+            ? self::ouvertes($modele::query())->count()
+            : 0);
+    }
+
+    /**
+     * Les familles encore attendues au guichet aujourd'hui : pas reçues, creneau
+     * pas termine, dossier ouvert. Le meme compte que « À recevoir » sur
+     * l'Accueil du jour, que le menu et le bouton de cette page affichent tous
+     * les deux. Tous types confondus : l'Accueil du jour les montre tous.
+     */
+    public static function famillesAttenduesAujourdhui(?User $agent): int
+    {
+        if (! $agent?->can('inscriptions.rdv.accueil')) {
+            return 0;
+        }
+
+        return Cache::remember(self::CLE_CACHE_ATTENDUES.'.'.now()->format('Y-m-d-H-i'), 60, fn (): int => Schema::hasTable('esbtp_rdv_reservations')
+            ? ESBTPRdvReservation::query()
+                ->where('statut', StatutReservationRdv::Confirmee->value)
+                ->whereHas('creneau', fn ($c) => $c->whereDate('date', today())->whereTime('heure_fin', '>', now()->format('H:i:s')))
+                ->dossierOuvert()
+                ->count()
+            : 0);
+    }
+
+    /** Apres une decision : le menu et le bandeau se relisent au prochain affichage. */
+    public static function oublierLesCompteurs(): void
+    {
+        foreach ([self::TYPE_NOUVELLE, self::TYPE_REINSCRIPTION] as $type) {
+            Cache::forget(self::CLE_CACHE_A_TRAITER.$type);
+        }
+        Cache::forget(self::CLE_CACHE_ATTENDUES.'.'.now()->format('Y-m-d-H-i'));
     }
 
     /**
@@ -88,22 +140,37 @@ class FileDesDemandes
         $types = self::typesVisibles($agent);
         $debutSemaine = now()->startOfWeek();
         $semainePassee = $debutSemaine->copy()->subWeek();
-        $somme = fn (callable $candidatures, callable $demandes) => (in_array(self::TYPE_NOUVELLE, $types, true) ? $candidatures(ESBTPCandidature::query())->count() : 0)
-            + (in_array(self::TYPE_REINSCRIPTION, $types, true) ? $demandes(ESBTPReinscriptionDemande::query())->count() : 0);
+        $somme = fn (callable $filtre) => array_sum(array_map(fn (string $type) => $filtre(self::modele($type)::query())->count(), $types));
+        $closes = fn (string $statut, $depuis, $jusqua = null) => fn ($q) => $q->where('statut', constant(get_class($q->getModel()).'::'.$statut))
+            ->when($jusqua, fn ($q) => $q->whereBetween('traite_at', [$depuis, $jusqua]), fn ($q) => $q->where('traite_at', '>=', $depuis));
+        $nouvelles = in_array(self::TYPE_NOUVELLE, $types, true) ? self::aTraiterDuType(self::TYPE_NOUVELLE) : 0;
+        $reinscriptions = in_array(self::TYPE_REINSCRIPTION, $types, true) ? self::aTraiterDuType(self::TYPE_REINSCRIPTION) : 0;
 
         return [
-            'a_traiter' => $somme(fn ($q) => $q->whereIn('statut', self::OUVERTS_CANDIDATURE), fn ($q) => $q->whereIn('statut', self::OUVERTS_DEMANDE)),
-            'nouvelles' => in_array(self::TYPE_NOUVELLE, $types, true) ? ESBTPCandidature::whereIn('statut', self::OUVERTS_CANDIDATURE)->count() : 0,
-            'reinscriptions' => in_array(self::TYPE_REINSCRIPTION, $types, true) ? ESBTPReinscriptionDemande::whereIn('statut', self::OUVERTS_DEMANDE)->count() : 0,
-            'recues' => $somme(fn ($q) => $this->recues($q->whereIn('statut', self::OUVERTS_CANDIDATURE)), fn ($q) => $this->recues($q->whereIn('statut', self::OUVERTS_DEMANDE))),
-            'rendez_vous' => $somme(fn ($q) => $this->avecRdvAVenir($q->whereIn('statut', self::OUVERTS_CANDIDATURE)), fn ($q) => $this->avecRdvAVenir($q->whereIn('statut', self::OUVERTS_DEMANDE))),
-            'rendez_vous_aujourdhui' => $somme(fn ($q) => $this->avecRdvLe($q->whereIn('statut', self::OUVERTS_CANDIDATURE)), fn ($q) => $this->avecRdvLe($q->whereIn('statut', self::OUVERTS_DEMANDE))),
-            'sans_rdv' => $somme(fn ($q) => $this->sansRdv($q->whereIn('statut', self::OUVERTS_CANDIDATURE)), fn ($q) => $this->sansRdv($q->whereIn('statut', self::OUVERTS_DEMANDE))),
-            'contact' => $somme(fn ($q) => $q->whereIn('statut', self::OUVERTS_CANDIDATURE)->contactNonConfirme(), fn ($q) => $q->whereIn('statut', self::OUVERTS_DEMANDE)->contactNonConfirme()),
-            'inscrites_semaine' => $somme(fn ($q) => $q->where('statut', 'convertie')->where('traite_at', '>=', $debutSemaine), fn ($q) => $q->where('statut', 'convertie')->where('traite_at', '>=', $debutSemaine)),
-            'inscrites_semaine_passee' => $somme(fn ($q) => $q->where('statut', 'convertie')->whereBetween('traite_at', [$semainePassee, $debutSemaine]), fn ($q) => $q->where('statut', 'convertie')->whereBetween('traite_at', [$semainePassee, $debutSemaine])),
-            'rejetees_semaine' => $somme(fn ($q) => $q->where('statut', 'rejetee')->where('traite_at', '>=', $debutSemaine), fn ($q) => $q->where('statut', 'rejetee')->where('traite_at', '>=', $debutSemaine)),
+            'a_traiter' => $nouvelles + $reinscriptions,
+            'nouvelles' => $nouvelles,
+            'reinscriptions' => $reinscriptions,
+            'recues' => $somme(fn ($q) => $this->recues(self::ouvertes($q))),
+            'rendez_vous' => $somme(fn ($q) => $this->avecRdvAVenir(self::ouvertes($q))),
+            'attendues_aujourdhui' => self::famillesAttenduesAujourdhui($agent),
+            'sans_rdv' => $somme(fn ($q) => $this->sansRdv(self::ouvertes($q))),
+            'contact' => $somme(fn ($q) => self::ouvertes($q)->contactNonConfirme()),
+            'inscrites_semaine' => $somme($closes('STATUT_CONVERTIE', $debutSemaine)),
+            'inscrites_semaine_passee' => $somme($closes('STATUT_CONVERTIE', $semainePassee, $debutSemaine)),
+            'rejetees_semaine' => $somme($closes('STATUT_REJETEE', $debutSemaine)),
         ];
+    }
+
+    /** @return class-string<ESBTPCandidature|ESBTPReinscriptionDemande> */
+    private static function modele(string $type): string
+    {
+        return $type === self::TYPE_NOUVELLE ? ESBTPCandidature::class : ESBTPReinscriptionDemande::class;
+    }
+
+    /** Dossier ouvert : la regle des deux modeles, celle que lisent aussi les rendez-vous. */
+    private static function ouvertes(Builder $q): Builder
+    {
+        return $q->whereNotIn('statut', $q->getModel()::statutsDossierClos());
     }
 
     /** @param  array<string, mixed>  $filtres */
@@ -115,15 +182,15 @@ class FileDesDemandes
 
         $parties = [];
         if (in_array(self::TYPE_NOUVELLE, $voulus, true)) {
-            $parties[] = $this->filtrer(ESBTPCandidature::query(), self::OUVERTS_CANDIDATURE, $filtres)
+            $parties[] = $this->filtrer(ESBTPCandidature::query(), $filtres)
                 ->where(fn ($q) => $this->chercherCandidature($q, (string) ($filtres['q'] ?? '')))
-                ->selectRaw("'".self::TYPE_NOUVELLE."' as type, esbtp_candidatures.id, esbtp_candidatures.created_at as depose_le, ".$this->priorite('esbtp_candidatures', 'candidature_id', self::OUVERTS_CANDIDATURE).' as priorite')
+                ->selectRaw("'".self::TYPE_NOUVELLE."' as type, esbtp_candidatures.id, esbtp_candidatures.created_at as depose_le, ".$this->priorite('esbtp_candidatures', 'candidature_id', ESBTPCandidature::statutsDossierClos()).' as priorite')
                 ->toBase();
         }
         if (in_array(self::TYPE_REINSCRIPTION, $voulus, true)) {
-            $parties[] = $this->filtrer(ESBTPReinscriptionDemande::query(), self::OUVERTS_DEMANDE, $filtres)
+            $parties[] = $this->filtrer(ESBTPReinscriptionDemande::query(), $filtres)
                 ->where(fn ($q) => $this->chercherDemande($q, (string) ($filtres['q'] ?? '')))
-                ->selectRaw("'".self::TYPE_REINSCRIPTION."' as type, esbtp_reinscription_demandes.id, esbtp_reinscription_demandes.created_at as depose_le, ".$this->priorite('esbtp_reinscription_demandes', 'reinscription_demande_id', self::OUVERTS_DEMANDE).' as priorite')
+                ->selectRaw("'".self::TYPE_REINSCRIPTION."' as type, esbtp_reinscription_demandes.id, esbtp_reinscription_demandes.created_at as depose_le, ".$this->priorite('esbtp_reinscription_demandes', 'reinscription_demande_id', ESBTPReinscriptionDemande::statutsDossierClos()).' as priorite')
                 ->toBase();
         }
 
@@ -135,22 +202,20 @@ class FileDesDemandes
         return array_reduce(array_slice($parties, 1), fn (QueryBuilder $u, QueryBuilder $p) => $u->unionAll($p), $parties[0]);
     }
 
-    /**
-     * @param  list<string>  $ouverts
-     * @param  array<string, mixed>  $filtres
-     */
-    private function filtrer(Builder $q, array $ouverts, array $filtres): Builder
+    /** @param  array<string, mixed>  $filtres */
+    private function filtrer(Builder $q, array $filtres): Builder
     {
         $etat = in_array($filtres['etat'] ?? '', self::ETATS, true) ? $filtres['etat'] : 'a_traiter';
+        $modele = $q->getModel();
 
         match ($etat) {
-            'a_traiter' => $q->whereIn('statut', $ouverts),
-            'recues' => $this->recues($q->whereIn('statut', $ouverts)),
-            'rendez_vous' => $this->avecRdvAVenir($q->whereIn('statut', $ouverts)),
+            'a_traiter' => self::ouvertes($q),
+            'recues' => $this->recues(self::ouvertes($q)),
+            'rendez_vous' => $this->avecRdvAVenir(self::ouvertes($q)),
             // Comme leurs compteurs : la semaine en cours. L'historique complet
             // est la vue `toutes`, avec la recherche.
-            'inscrites' => $q->where('statut', 'convertie')->where('traite_at', '>=', now()->startOfWeek()),
-            'rejetees' => $q->where('statut', 'rejetee')->where('traite_at', '>=', now()->startOfWeek()),
+            'inscrites' => $q->where('statut', $modele::STATUT_CONVERTIE)->where('traite_at', '>=', now()->startOfWeek()),
+            'rejetees' => $q->where('statut', $modele::STATUT_REJETEE)->where('traite_at', '>=', now()->startOfWeek()),
             default => $q,
         };
 
@@ -163,14 +228,14 @@ class FileDesDemandes
      * 0 : reçue au guichet, la decision attend ; 1 : a traiter ; 2 : close.
      * Une famille deja sur place passe devant : elle attend au comptoir.
      *
-     * @param  list<string>  $ouverts
+     * @param  list<string>  $clos
      */
-    private function priorite(string $table, string $cle, array $ouverts): string
+    private function priorite(string $table, string $cle, array $clos): string
     {
-        $liste = implode(',', array_map(fn ($s) => "'".$s."'", $ouverts));
+        $liste = implode(',', array_map(fn ($s) => "'".$s."'", $clos));
         $honoree = StatutReservationRdv::Honoree->value;
 
-        return "CASE WHEN {$table}.statut NOT IN ({$liste}) THEN 2"
+        return "CASE WHEN {$table}.statut IN ({$liste}) THEN 2"
             ." WHEN EXISTS (SELECT 1 FROM esbtp_rdv_reservations r WHERE r.{$cle} = {$table}.id AND r.statut = '{$honoree}') THEN 0"
             .' ELSE 1 END';
     }
@@ -184,16 +249,6 @@ class FileDesDemandes
     {
         return $q->whereHas('reservations', fn ($r) => $r->where('statut', StatutReservationRdv::Confirmee->value)
             ->whereHas('creneau', fn ($c) => $c->whereDate('date', '>=', today())));
-    }
-
-    /**
-     * Encore attendues aujourd'hui : pas reçues, creneau pas termine. Le meme
-     * compte que « À recevoir » sur l'Accueil du jour ; une non-venue n'y est plus.
-     */
-    private function avecRdvLe(Builder $q): Builder
-    {
-        return $q->whereHas('reservations', fn ($r) => $r->where('statut', StatutReservationRdv::Confirmee->value)
-            ->whereHas('creneau', fn ($c) => $c->whereDate('date', today())->whereTime('heure_fin', '>', now()->format('H:i:s'))));
     }
 
     private function sansRdv(Builder $q): Builder

@@ -18,6 +18,9 @@
         'compteurs' => $compteurs,
         'ouvrir' => $ouvrir,
         'agir' => $agir,
+        // Les deux listes fermees des fenetres, lues a leur source.
+        'liensTuteur' => array_keys(\App\Models\ESBTPCandidature::liensTuteurDeclarables()),
+        'decisions' => \App\Models\ESBTPReinscriptionDemande::DECISIONS,
     ];
 @endphp
 <div class="dmi" x-data="demandesInscription()" data-dmi-config='@json($_config)' data-dmi-classes='@json($classes)'>
@@ -27,12 +30,12 @@
                 <div class="dmi-hero-icon"><i class="fas fa-inbox" aria-hidden="true"></i></div>
                 <div>
                     <h1>Demandes d'inscription</h1>
-                    <p>Nouvelles inscriptions et réinscriptions, déposées en ligne ou au guichet. Un seul chemin jusqu'à l'inscription.</p>
+                    <p>Nouvelles inscriptions et réinscriptions, déposées en ligne. Un seul chemin jusqu'à l'inscription.</p>
                 </div>
             </div>
             <div class="dmi-hero-actions">
                 @can('inscriptions.rdv.accueil')
-                    <a class="dmi-btn dmi-btn--glass" href="{{ route('esbtp.rendez-vous.accueil.index') }}"><i class="fas fa-clipboard-check"></i>Accueil du jour<span x-text="' · ' + compteurs.rendez_vous_aujourdhui" x-show="compteurs.rendez_vous_aujourdhui > 0"></span></a>
+                    <a class="dmi-btn dmi-btn--glass" href="{{ route('esbtp.rendez-vous.accueil.index') }}"><i class="fas fa-clipboard-check"></i>Accueil du jour<span x-text="' · ' + compteurs.attendues_aujourdhui" x-show="compteurs.attendues_aujourdhui > 0"></span></a>
                 @endcan
                 @can('inscriptions.rdv.view')
                     <a class="dmi-btn dmi-btn--glass" href="{{ route('esbtp.rendez-vous.index') }}"><i class="fas fa-calendar-week"></i>Planning des rendez-vous</a>

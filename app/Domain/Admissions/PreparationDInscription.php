@@ -3,7 +3,6 @@
 namespace App\Domain\Admissions;
 
 use App\Domain\Notifications\PhoneFormatter;
-use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
@@ -23,8 +22,6 @@ use App\Services\EnrollmentAmountVisibility;
  */
 class PreparationDInscription
 {
-    /** Au-dela, le flux canonique refuse sans confirmation (meme seuil). */
-    public const SEUIL_DOUBLON_BLOQUANT = 55;
 
     public function __construct(
         private readonly StudentDuplicateDetector $doublons,
@@ -80,7 +77,7 @@ class PreparationDInscription
     {
         return $this->doublons->find((string) $c->nom, (string) $c->prenoms, $c->date_naissance?->toDateString(), $c->sexe ?: null, 4)
             ->map(fn (array $d) => $d + [
-                'bloquant' => ($d['score'] ?? 0) >= self::SEUIL_DOUBLON_BLOQUANT,
+                'bloquant' => ($d['score'] ?? 0) >= StudentDuplicateDetector::SCORE_BLOQUANT,
                 // Pas de lien vers une fiche que l'agent ne peut pas ouvrir.
                 'fiche' => auth()->user()?->can('students.view') ? route('esbtp.etudiants.show', $d['id']) : null,
             ])->values()->all();
@@ -88,8 +85,10 @@ class PreparationDInscription
 
     /**
      * Les classes actives, le voeu en tete, avec leurs places comptees comme
-     * le flux canonique les compte (inscriptions actives et abouties de
-     * l'annee courante) — mais en une requete, pas une par classe.
+     * le flux canonique les compte (ESBTPClasse::placesPrisesParClasse, la
+     * regle de nombre_etudiants) — mais en une requete, pas une par classe.
+     * `complete` suit le refus de ESBTPInscriptionController::store() :
+     * places disponibles nulles, capacite non reglee comprise.
      *
      * Sert aussi a la reinscription, sans voeu.
      *
@@ -97,10 +96,7 @@ class PreparationDInscription
      */
     public function classes(?int $filiereVoulue = null, ?int $niveauVoulu = null): array
     {
-        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
-        $inscrits = $annee === null ? collect() : ESBTPInscription::query()
-            ->where('annee_universitaire_id', $annee)->where('status', 'active')->where('workflow_step', 'etudiant_cree')
-            ->selectRaw('classe_id, COUNT(*) as n')->groupBy('classe_id')->pluck('n', 'classe_id');
+        $inscrits = ESBTPClasse::placesPrisesParClasse();
 
         return ESBTPClasse::query()->where('is_active', true)->with(['filiere:id,name', 'niveau:id,name'])
             ->get(['id', 'name', 'filiere_id', 'niveau_etude_id', 'places_totales'])
@@ -115,6 +111,7 @@ class PreparationDInscription
                     'places_totales' => $total,
                     'places_prises' => $pris,
                     'places_libres' => max(0, $total - $pris),
+                    'complete' => max(0, $total - $pris) <= 0,
                     'voeu' => $filiereVoulue && (int) $classe->filiere_id === (int) $filiereVoulue
                         && (! $niveauVoulu || (int) $classe->niveau_etude_id === (int) $niveauVoulu),
                 ];

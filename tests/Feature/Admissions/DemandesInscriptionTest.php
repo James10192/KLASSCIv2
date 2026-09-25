@@ -136,7 +136,7 @@ class DemandesInscriptionTest extends TestCase
         $recue = $this->candidature(['nom' => 'RECUE']);
         $this->reserver($recue, 0, StatutReservationRdv::Honoree);
 
-        $fragment = $this->actingAs($this->agent)->getJson(route('esbtp.demandes.index', ['fragment' => 1]))->assertOk()->json();
+        $fragment = $this->actingAs($this->agent)->getJson(route('esbtp.demandes.index', ['fragment' => 1, 'compteurs' => 1]))->assertOk()->json();
 
         $this->assertSame(1, $fragment['compteurs']['recues']);
         $this->assertLessThan(strpos($fragment['liste'], 'ATTEND'), strpos($fragment['liste'], 'RECUE'));
@@ -172,7 +172,8 @@ class DemandesInscriptionTest extends TestCase
     public function test_accepter_et_inscrire_cree_l_inscription_ferme_la_candidature_et_honore_le_rendez_vous(): void
     {
         $classe = $this->classe('1A BTS Génie civil', 30);
-        $c = $this->candidature(['nom' => 'TRAORE', 'prenoms' => 'Issouf', 'statut' => 'acceptee']);
+        // En attente : inscrire vaut acceptation, dans la meme requete.
+        $c = $this->candidature(['nom' => 'TRAORE', 'prenoms' => 'Issouf']);
         $rdv = $this->reserver($c, 0);
 
         $reponse = $this->actingAs($this->agent)->postJson(route('esbtp.inscriptions.store'), [
@@ -193,7 +194,7 @@ class DemandesInscriptionTest extends TestCase
     {
         $classe = $this->classe('1A BTS Génie civil', 1);
         ESBTPEtudiant::factory()->create(['nom' => 'TRAORE', 'prenoms' => 'Issouf', 'date_naissance' => '2007-03-12', 'sexe' => 'M']);
-        $c = $this->candidature(['nom' => 'TRAORE', 'prenoms' => 'Issouf', 'statut' => 'acceptee']);
+        $c = $this->candidature(['nom' => 'TRAORE', 'prenoms' => 'Issouf']);
 
         $this->actingAs($this->agent)->postJson(route('esbtp.inscriptions.store'), [
             'nom' => 'TRAORE', 'prenoms' => 'Issouf', 'sexe' => 'M', 'date_naissance' => '2007-03-12',
@@ -201,7 +202,8 @@ class DemandesInscriptionTest extends TestCase
         ])->assertStatus(422)->assertJsonPath('ok', false)->assertJsonStructure(['errors' => ['duplicate'], 'doublons']);
 
         $this->assertFalse(session()->has('errors'));
-        $this->assertSame('acceptee', $c->fresh()->statut);
+        // Refusee, l'inscription ne laisse pas la candidature a moitie decidee.
+        $this->assertSame('en_attente', $c->fresh()->statut);
     }
 
     public function test_une_inscription_libere_un_rendez_vous_encore_a_venir(): void
@@ -231,6 +233,39 @@ class DemandesInscriptionTest extends TestCase
         $this->assertSame('rejetee', $b->fresh()->statut);
 
         $this->actingAs($this->agent)->postJson(route('esbtp.candidatures.accepter', $b))->assertStatus(422)->assertJsonPath('ok', false);
+    }
+
+    public function test_une_candidature_acceptee_se_rejette_encore(): void
+    {
+        $c = $this->candidature(['nom' => 'RENONCE', 'statut' => 'acceptee']);
+
+        $this->actingAs($this->agent)->postJson(route('esbtp.candidatures.rejeter', $c), ['motif_rejet' => 'La famille a renoncé à l\'inscription'])
+            ->assertOk()->assertJsonPath('ok', true);
+        $this->assertSame('rejetee', $c->fresh()->statut);
+    }
+
+    public function test_une_classe_sans_capacite_reglee_est_complete_comme_a_l_enregistrement(): void
+    {
+        $sansCapacite = $this->classe('Sans capacité', 0);
+        $c = $this->candidature(['nom' => 'TRAORE', 'filiere_id' => $this->filiere->id, 'niveau_id' => $this->niveau->id]);
+
+        $prep = $this->actingAs($this->agent)->getJson(route('esbtp.demandes.preparer-inscription', $c))->assertOk()->json();
+        $ligne = collect($prep['classes'])->firstWhere('id', $sansCapacite->id);
+
+        $this->assertTrue($ligne['complete']);
+        $this->assertSame(0, $sansCapacite->places_disponibles);
+    }
+
+    public function test_le_compte_du_menu_se_relit_des_qu_une_demande_arrive_ou_change(): void
+    {
+        $c = $this->candidature(['nom' => 'PREMIERE']);
+        $this->assertSame(1, \App\Domain\Admissions\FileDesDemandes::aTraiter($this->agent));
+
+        $this->candidature(['nom' => 'SECONDE']);
+        $this->assertSame(2, \App\Domain\Admissions\FileDesDemandes::aTraiter($this->agent));
+
+        $c->update(['statut' => 'rejetee', 'motif_rejet' => 'Dossier incomplet ce jour']);
+        $this->assertSame(1, \App\Domain\Admissions\FileDesDemandes::aTraiter($this->agent));
     }
 
     public function test_reinscrire_depuis_la_file_repond_en_json_et_honore_le_rendez_vous(): void
