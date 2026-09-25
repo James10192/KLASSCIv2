@@ -77,7 +77,7 @@
      data-groups='@json($groupedJson)'
      data-submit-on-change="{{ $submitOnChange ? '1' : '0' }}"
      data-current="{{ $value ?? '' }}"
-     @click.outside="fermer()"
+     @click.outside="fermerSiExterieur($event)"
      @keydown.escape="fermer()">
 
     <button type="button"
@@ -307,6 +307,8 @@
 
 @push('scripts')
 <script>
+@include('components.partials.au-menu-ancrage-js')
+
 if (typeof window.auUserPicker !== 'function') {
     window.auUserPicker = function () {
         return {
@@ -319,6 +321,8 @@ if (typeof window.auUserPicker !== 'function') {
             _racine: null,
             _declencheur: null,
             _menu: null,
+            _marqueur: null,
+            _arreterVeille: null,
             init() {
                 // Dans une methode appelee depuis un gestionnaire
                 // (`@click="toggle()"` sur le bouton), `$el` designe le BOUTON,
@@ -347,6 +351,7 @@ if (typeof window.auUserPicker !== 'function') {
                 window.visualViewport?.addEventListener('scroll', this._repositionMenu, { passive: true });
             },
             destroy() {
+                this.lacherLeMenu();
                 window.removeEventListener('resize', this._repositionMenu);
                 window.removeEventListener('scroll', this._repositionMenu, { capture: true });
                 window.visualViewport?.removeEventListener('resize', this._repositionMenu);
@@ -358,6 +363,9 @@ if (typeof window.auUserPicker !== 'function') {
                     return;
                 }
                 this.open = true;
+                // Le deplacement se decide AVANT la mesure : il change la
+                // reference des coordonnees.
+                this.ancrer();
                 // Position before Alpine reveals the menu, then refine with its rendered size.
                 this.positionMenu();
                 this.$nextTick(() => {
@@ -372,6 +380,39 @@ if (typeof window.auUserPicker !== 'function') {
                 this.open = false;
                 this.search = '';
                 this.effacerPositionMenu();
+                this.lacherLeMenu();
+            },
+            /**
+             * Une modale animee par un `transform` (planning LMD) devient le
+             * bloc conteneur des descendants `fixed` : le menu y partirait de
+             * plusieurs centaines de pixels. On le passe alors sous <body>,
+             * par la mecanique partagee avec x-au-select, et on surveille les
+             * `transform` de survol tant qu'il n'est pas deplace.
+             */
+            ancrer() {
+                if (this._marqueur || typeof window.auMenuAncrage !== 'object') return;
+                this._marqueur = window.auMenuAncrage.deplacerSiBloque(this._racine, this._menu);
+                if (this._marqueur || this._arreterVeille) return;
+                this._arreterVeille = window.auMenuAncrage.veiller(() => {
+                    if (! this.open || this._marqueur) { this.cesserVeille(); return; }
+                    this._marqueur = window.auMenuAncrage.deplacerSiBloque(this._racine, this._menu);
+                    if (this._marqueur) { this.positionMenu(); this.cesserVeille(); }
+                });
+            },
+            cesserVeille() {
+                if (this._arreterVeille) { this._arreterVeille(); this._arreterVeille = null; }
+            },
+            lacherLeMenu() {
+                this.cesserVeille();
+                if (! this._marqueur) return;
+                window.auMenuAncrage.rapatrier(this._menu, this._marqueur);
+                this._marqueur = null;
+            },
+            /** `@click.outside` ne connait que la racine : un menu deplace sous <body> serait « dehors ». */
+            fermerSiExterieur(evenement) {
+                if (! this.open) return;
+                if (this._menu && evenement && this._menu.contains(evenement.target)) return;
+                this.fermer();
             },
             positionMenu() {
                 const trigger = this._declencheur;
@@ -393,6 +434,9 @@ if (typeof window.auUserPicker !== 'function') {
                 const availableHeight = Math.max(0, Math.min(500, openUp ? spaceAbove : spaceBelow));
 
                 this.appliquerPositionMenu({
+                    // Sous <body>, le z-index de la feuille (1050) passerait
+                    // sous le fond des modales LMD (2050).
+                    'z-index': this._marqueur ? '99999' : '',
                     position: 'fixed',
                     left: `${left}px`,
                     right: 'auto',
@@ -412,11 +456,13 @@ if (typeof window.auUserPicker !== 'function') {
              */
             appliquerPositionMenu(proprietes) {
                 if (! this._menu) return;
-                Object.entries(proprietes).forEach(([nom, valeur]) => this._menu.style.setProperty(nom, valeur));
+                Object.entries(proprietes).forEach(([nom, valeur]) => (valeur === ''
+                    ? this._menu.style.removeProperty(nom)
+                    : this._menu.style.setProperty(nom, valeur)));
             },
             effacerPositionMenu() {
                 if (! this._menu) return;
-                ['position', 'left', 'right', 'top', 'bottom', 'width', 'min-width',
+                ['z-index', 'position', 'left', 'right', 'top', 'bottom', 'width', 'min-width',
                     'max-width', 'max-height', 'transform-origin']
                     .forEach((nom) => this._menu.style.removeProperty(nom));
             },
