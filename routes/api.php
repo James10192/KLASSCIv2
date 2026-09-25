@@ -727,6 +727,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // Lecture seule : matieres de specialite qui atteignent un bulletin de
         // tronc commun, etudiant par etudiant, avec la cause et l'action suggeree.
         Route::get('/diagnostics/tc-specialite-leak', [App\Http\Controllers\API\CLI\CLITcSpecialiteLeakController::class, 'index'])
+            ->middleware('throttle:10,1')
             ->name('diagnostics.tc-specialite-leak');
         // Unicité des notes : la migration ne la pose pas tant que des notes
         // sont en double. Lister, trancher, puis poser — sans SSH.

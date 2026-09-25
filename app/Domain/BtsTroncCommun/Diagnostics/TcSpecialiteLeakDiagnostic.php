@@ -85,6 +85,10 @@ final class TcSpecialiteLeakDiagnostic
                 'niveau_etude_id' => (int) $classe->niveau_etude_id,
                 'niveau' => $classe->niveau?->name,
                 'semestres' => $semestres,
+                // Sans planification, la regle (b) n'a aucun repere : elle
+                // signalerait toute matiere partagee (maths, francais...) et
+                // pousserait l'ecole a la retirer du bulletin. On le dit plutot.
+                'planification_absente' => $this->pieces->planifiees((int) $classe->filiere_id, (int) $classe->niveau_etude_id, (int) $annee->id) === [],
             ];
         }
 
@@ -203,6 +207,7 @@ final class TcSpecialiteLeakDiagnostic
         }
 
         if ($classification === ESBTPMatiereFilierNiveau::TRONC_COMMUN
+            || $planifiees === []
             || ! isset($couple['combos_specialite'][$matiereId])
             || isset($planifiees[$matiereId])) {
             return null;

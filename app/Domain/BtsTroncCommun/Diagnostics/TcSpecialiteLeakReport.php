@@ -122,6 +122,12 @@ final class TcSpecialiteLeakReport
                 'par_cause' => $parCause,
                 'matieres_par_cause' => $matieresParCause,
                 'par_classe' => $parClasse,
+                // Classes ou la regle « non classee hors planification » n'a pas
+                // pu s'appliquer : a planifier avant de conclure qu'elles sont saines.
+                'classes_sans_planification' => array_values(array_map(
+                    fn (array $c) => ['classe_id' => $c['classe_id'], 'classe' => $c['classe']],
+                    array_filter($classes, fn (array $c) => $c['planification_absente'] ?? false)
+                )),
             ],
             'classes' => array_values(array_filter($classes, fn (array $c) => $c['semestres'] !== [])),
         ];

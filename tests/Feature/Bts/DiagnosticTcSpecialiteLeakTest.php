@@ -186,6 +186,28 @@ class DiagnosticTcSpecialiteLeakTest extends TestCase
             ->assertJsonPath('data.classes', []);
     }
 
+    public function test_sans_planification_une_matiere_partagee_n_est_pas_signalee(): void
+    {
+        // Matiere partagee, non classee, presente sur la filiere fille : sans
+        // planification du tronc commun, rien ne permet d'y voir une fuite.
+        $maths = $this->matiere('Mathematiques');
+        $this->lier($maths, $this->tc, null);
+        $this->lier($maths, $this->specialite, null);
+        $etudiant = $this->etudiantTc('SANSPLANIF');
+        $this->noter($etudiant, $this->evaluation($maths, $this->classeTc), 12);
+
+        Sanctum::actingAs(User::factory()->create(), ['cli:read']);
+        $data = $this->getJson('/api/cli/diagnostics/tc-specialite-leak?annee_universitaire_id='.$this->annee->id)
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame(0, $data['resume']['matieres_suspectes']);
+        $this->assertContains(
+            $this->classeTc->id,
+            array_column($data['resume']['classes_sans_planification'], 'classe_id')
+        );
+    }
+
     public function test_un_jeton_sans_cli_read_est_refuse(): void
     {
         Sanctum::actingAs(User::factory()->create(), ['cli:write']);

@@ -141,6 +141,7 @@ final class TcSpecialiteLeakEvidence
             ->where('filiere_id', $filiereId)
             ->where('niveau_etude_id', $niveauId)
             ->where('annee_universitaire_id', $anneeId)
+            ->where('is_active', true)
             ->pluck('matiere_id')
             ->mapWithKeys(fn ($id) => [(int) $id => true])
             ->all();
