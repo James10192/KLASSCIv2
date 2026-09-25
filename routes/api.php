@@ -316,6 +316,14 @@ Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(func
     // Statut des cours
     Route::put('/cours/{coursId}/statut', [App\Http\Controllers\API\LMSWriteController::class, 'updateCourseStatus'])
         ->name('cours.statut.update');
+
+    // ================================
+    // SYNCHRONISATION v2 (jeton serveur)
+    // ================================
+
+    // « Ce qui a change depuis », tous types confondus (docs/api/LMS_SYNCHRONISATION.md)
+    Route::get('/v2/sync', [App\Http\Controllers\API\LMSSyncController::class, 'sync'])
+        ->name('v2.sync');
 });
 
 // ================================
@@ -623,6 +631,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // LMD cleanup — soft-delete UE/ECUE/planifs d'un parcours pour ré-import propre
         // (dry_run par défaut SAFE, garde-fou évaluations). Idempotent.
         Route::post('/lmd/cleanup', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'cleanup'])->name('lmd.cleanup');
+
+        // Planifications LMD laissees a 0 credit par la saisie d'heures : recense,
+        // repare sur demande (dry_run par defaut). Un 0 modifie a la main est garde.
+        Route::post('/lmd/planifications/reparer-credits', [App\Http\Controllers\API\CLI\CLILMDMaquetteController::class, 'reparerCredits'])->name('lmd.planifications.reparer-credits');
 
         // LMD link-classes — rattache des classes LMD à un parcours (parcours_id +
         // filiere_id dérivé + systeme=LMD). Domaine/Mention via parcours. Dry-run par défaut.

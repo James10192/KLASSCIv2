@@ -44,6 +44,8 @@
     /* ── Filters ── */
     .lu-filters { background: #fff; border-radius: 14px; padding: 1rem 1.5rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,.04), 0 4px 12px rgba(0,0,0,.03); border: 1px solid #e8ecf1; display: flex; align-items: flex-end; gap: .85rem; flex-wrap: wrap; animation: lu-fadeUp .45s ease-out .1s both; }
     .lu-filter-group { display: flex; flex-direction: column; gap: .3rem; flex: 1; min-width: 140px; }
+    .lu-au-full { display: flex !important; width: 100%; }
+    .lu-au-full .au-select-trigger { width: 100%; }
     .lu-filter-label { font-size: .72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; }
     .lu-filter-control { padding: .5rem .75rem; border: 1.5px solid #e2e8f0; border-radius: 9px; font-size: .86rem; color: #1e293b; background: #f8fafc; transition: all .2s; width: 100%; }
     .lu-filter-control:focus { outline: none; border-color: #0453cb; background: #fff; box-shadow: 0 0 0 3px rgba(4,83,203,.08); }
@@ -221,21 +223,20 @@
         </div>
         <div class="lu-filter-group">
             <label class="lu-filter-label">@rang('parcours')</label>
-            <select class="lu-filter-control" x-model="filters.parcours_id" @change="loadUes()">
-                <option value="">Tous</option>
-                @foreach($parcours as $p)
-                    <option value="{{ $p->id }}">{{ $p->code }} — {{ $p->name }}</option>
-                @endforeach
-            </select>
+            @php
+                $_optionsParcours = $parcours->mapWithKeys(fn ($p) => [$p->id => trim(($p->code ? $p->code . ' · ' : '') . $p->name)])->all();
+            @endphp
+            <x-au-select class="lu-au-full" x-model="filters.parcours_id" @change="loadUes()"
+                :value="(string) request('parcours_id', '')" placeholder="Tous" icon="fa-route"
+                :searchable="count($_optionsParcours) > 8" :options="$_optionsParcours" />
         </div>
-        <div class="lu-filter-group" style="max-width:160px;">
+        <div class="lu-filter-group" style="max-width:200px;">
             <label class="lu-filter-label">Type UE</label>
-            <select class="lu-filter-control" x-model="filters.type_ue" @change="loadUes()">
-                <option value="">Tous</option>
-                @foreach(\App\Enums\TypeUE::cases() as $type)
-                    <option value="{{ $type->value }}">{{ $type->label() }}</option>
-                @endforeach
-            </select>
+            @php
+                $_optionsTypes = collect(\App\Enums\TypeUE::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()])->all();
+            @endphp
+            <x-au-select class="lu-au-full" x-model="filters.type_ue" @change="loadUes()"
+                :value="(string) request('type_ue', '')" placeholder="Tous" :options="$_optionsTypes" />
         </div>
     </div>
 
@@ -599,7 +600,7 @@
                         <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:.75rem;">
                             <div>
                                 <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;"><i class="fas fa-balance-scale" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Coefficient</label>
-                                <input type="number" class="form-control" name="coefficient_ecue" id="ecue_coefficient" min="0" step="0.5" placeholder="1" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
+                                <input type="number" class="form-control" name="coefficient_ecue" id="ecue_coefficient" min="0" step="0.5" style="border-radius:10px; border:1.5px solid #e2e8f0; padding:.55rem .85rem; font-size:.88rem;">
                             </div>
                             <div>
                                 <label style="font-size:.82rem; font-weight:600; color:#334155; margin-bottom:.3rem; display:block;"><i class="fas fa-award" style="font-size:.7rem; color:#94a3b8; margin-right:.25rem;"></i>Crédits</label>
@@ -811,19 +812,24 @@ function ueManager() {
         },
 
         // ── Delete ECUE ──
-        async deleteEcue(ue, ecue) {
+        async deleteEcue(ue, ecue, confirmerSortie = false) {
             const maquette = ecue.portee
                 ? `de la maquette ${ecue.portee_label || ecue.portee_code}`
                 : 'de la composition commune (tous les parcours de l\'UE)';
-            if (!confirm(`Retirer « ${ecue.name} » ${maquette} ?`)) return;
+            if (!confirmerSortie && !confirm(`Retirer « ${ecue.name} » ${maquette} ?`)) return;
             try {
                 const resp = await fetch(`${BASE}/${ue.id}/ecue/${ecue.id}`, {
                     method: 'DELETE',
                     headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
                     // La ligne visee : celle de CETTE maquette, et d'elle seule.
-                    body: JSON.stringify({ parcours_id: ecue.portee || null }),
+                    body: JSON.stringify({ parcours_id: ecue.portee || null, confirmer_sortie: confirmerSortie }),
                 });
                 const data = await resp.json();
+                // Derniere ligne de l'element : le serveur demande une seconde confirmation.
+                if (resp.status === 409 && data.confirmation_requise) {
+                    if (confirm(data.message)) return this.deleteEcue(ue, ecue, true);
+                    return;
+                }
                 if (resp.ok && data.success) {
                     ue.ecues = (ue.ecues || []).filter(e => !(e.id === ecue.id && (e.portee || 0) === (ecue.portee || 0)));
                     ue.matieres_count = new Set(ue.ecues.map(e => e.id)).size;
@@ -1084,7 +1090,7 @@ function onMatiereSelected(option) {
     document.getElementById('ecue_preview_name').textContent = option.dataset.name || '';
     document.getElementById('ecue_preview_code').textContent = option.dataset.code ? '(' + option.dataset.code + ')' : '';
     preview.style.display = 'block';
-    if (option.dataset.coeff && !document.getElementById('ecue_coefficient').value) document.getElementById('ecue_coefficient').value = option.dataset.coeff;
+    if (option.dataset.coeff) document.getElementById('ecue_coefficient').value = option.dataset.coeff;
     if (option.dataset.credit && !document.getElementById('ecue_credit').value) { document.getElementById('ecue_credit').value = option.dataset.credit; updateCreditGauge(); }
 }
 
@@ -1154,6 +1160,9 @@ function openEcueCreateModal(ueId, ueName, ueCredit, creditsUsed, parcoursList, 
     document.getElementById('ecue_form').action = `${BASE}/${ueId}/ecue`;
     document.getElementById('ecue_form').reset();
     document.getElementById('ecue_method').value = 'POST';
+    // Une vraie valeur, pas un exemple grise : laissee vide, la case
+    // n'enregistrait rien et la liste affichait « Coeff. — ».
+    document.getElementById('ecue_coefficient').value = '1';
     remplirEcuePortee(parcoursList, porteeParDefaut);
     document.getElementById('ecue_matiere_id').value = '';
     document.getElementById('ecue_ue_label').textContent = ueName;

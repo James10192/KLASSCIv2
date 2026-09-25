@@ -36,7 +36,42 @@ class ResolveurDnsSysteme implements ResolveurDns
             || $this->interroger($serveur, $nom, self::TYPE_A, $limite);
     }
 
+    public function domaineInexistant(string $domaine): ?bool
+    {
+        $serveur = $this->serveur();
+        if ($serveur === null) {
+            return null; // pas de repli sur checkdnsrr : il ne distingue pas NXDOMAIN d'une panne
+        }
+
+        $nom = rtrim($domaine, '.');
+        $limite = microtime(true) + (float) config('emails_joignables.mx.delai_secondes', 1.0);
+        try {
+            foreach ([self::TYPE_MX, self::TYPE_A] as $type) {
+                ['code' => $code] = $this->repondre($serveur, $nom, $type, $limite);
+                if ($code !== self::NXDOMAIN) {
+                    return $code === 0 ? false : null;
+                }
+            }
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return true;
+    }
+
     private function interroger(string $serveur, string $nom, int $type, float $limite): bool
+    {
+        ['code' => $code, 'reponses' => $reponses, 'tronquee' => $tronquee] = $this->repondre($serveur, $nom, $type, $limite);
+
+        return match ($code) {
+            0 => $reponses > 0 || $tronquee, // tronquee : il y avait des enregistrements
+            self::NXDOMAIN => false,
+            default => throw new RuntimeException('Resolveur en erreur (code '.$code.')'),
+        };
+    }
+
+    /** @return array{code: int, reponses: int, tronquee: bool} */
+    private function repondre(string $serveur, string $nom, int $type, float $limite): array
     {
         $reste = $limite - microtime(true);
         if ($reste <= 0) {
@@ -68,11 +103,7 @@ class ResolveurDnsSysteme implements ResolveurDns
             throw new RuntimeException('Reponse DNS etrangere a la question');
         }
 
-        return match ($drapeaux & 0x000F) {
-            0 => $reponses > 0 || ($drapeaux & 0x0200) !== 0, // tronquee : il y avait des enregistrements
-            self::NXDOMAIN => false,
-            default => throw new RuntimeException('Resolveur en erreur (code '.($drapeaux & 0x000F).')'),
-        };
+        return ['code' => $drapeaux & 0x000F, 'reponses' => $reponses, 'tronquee' => ($drapeaux & 0x0200) !== 0];
     }
 
     private function question(string $nom): string

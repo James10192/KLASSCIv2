@@ -251,6 +251,58 @@ class EcuePorteeDepuisEcranTest extends TestCase
         $this->assertSame(1, $compte($this->batiment->id));
     }
 
+    public function test_retirer_la_derniere_ligne_d_un_element_demande_confirmation(): void
+    {
+        // ECUE-BU n'a qu'une ligne (reservee a Batiment) : la retirer le ferait
+        // sortir du LMD. Le serveur refuse sans confirmation explicite.
+        $url = route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]);
+
+        $this->actingAs($this->acteur)
+            ->deleteJson($url, ['parcours_id' => $this->batiment->id])
+            ->assertStatus(409)
+            ->assertJson(['confirmation_requise' => true]);
+        $this->assertContains('ECUE-BU', $this->vusPar($this->batiment), 'Rien ne doit etre retire sans confirmation.');
+
+        $this->actingAs($this->acteur)
+            ->deleteJson($url, ['parcours_id' => $this->batiment->id, 'confirmer_sortie' => true])
+            ->assertOk();
+        $this->assertNotContains('ECUE-BU', $this->vusPar($this->batiment));
+    }
+
+    public function test_une_ligne_dans_une_autre_ue_n_evite_pas_la_confirmation(): void
+    {
+        // La cle etrangere est coupee des qu'il ne reste plus de ligne dans
+        // CETTE unite : une ligne ailleurs ne retient pas l'element dans le LMD.
+        $autre = $this->ue->replicate();
+        $autre->code = 'UE-AUTRE';
+        $autre->save();
+        DB::table('esbtp_ue_matiere')->insert([
+            'unite_enseignement_id' => $autre->id, 'matiere_id' => $this->ecueBu->id,
+            'parcours_id' => 0, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->acteur)
+            ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]), ['parcours_id' => $this->batiment->id])
+            ->assertStatus(409);
+    }
+
+    public function test_la_liste_montre_le_coefficient_que_le_bulletin_utilise(): void
+    {
+        // Enregistre sans coefficient : le bulletin retombe sur la matiere,
+        // puis sur 1. La liste affichait « Coeff. — ».
+        DB::table('esbtp_ue_matiere')->where('matiere_id', $this->ecueBu->id)->update(['coefficient_ecue' => null]);
+        DB::table('esbtp_matieres')->where('id', $this->ecueBu->id)->update(['coefficient_ecue' => null]);
+
+        $ecues = $this->actingAs($this->acteur)
+            ->getJson(route('esbtp.lmd.ue.index', ['format' => 'json', 'search' => 'UE-PARTAGEE', 'parcours_id' => $this->batiment->id]))
+            ->assertOk()
+            ->json('ues.0.ecues');
+
+        $bu = collect($ecues)->firstWhere('code', 'ECUE-BU');
+        $attendu = DB::table('esbtp_matieres')->where('id', $this->ecueBu->id)->value('coefficient') ?? 1;
+        $this->assertEquals($attendu, $bu['coefficient']);
+    }
+
     public function test_la_liste_signale_un_element_a_la_fois_commun_et_reserve(): void
     {
         // L'import a reserve ECUE-BU a Batiment ; on ajoute la ligne commune.
@@ -427,6 +479,21 @@ class EcuePorteeDepuisEcranTest extends TestCase
         // L'onglet « Lier un existant » ne liste pas les matieres BTS : le proposer mentirait.
         $this->assertStringContainsString('cursus BTS', $erreur);
         $this->assertStringNotContainsString('Lier un existant', $erreur);
+    }
+
+    public function test_modifier_une_ue_sans_tous_ses_champs_garde_les_autres(): void
+    {
+        $avant = $this->ue->fresh();
+
+        $this->actingAs($this->acteur)
+            ->putJson(route('esbtp.lmd.ue.update', $this->ue), ['name' => 'Intitule revu', 'type_ue' => 'fondamentale'])
+            ->assertOk();
+
+        $apres = $this->ue->fresh();
+        $this->assertSame('Intitule revu', $apres->name);
+        $this->assertSame($avant->code, $apres->code, 'Le code non envoye ne doit pas etre efface.');
+        $this->assertSame((int) $avant->credit, (int) $apres->credit);
+        $this->assertSame($avant->semestre, $apres->semestre);
     }
 
     public function test_le_formulaire_d_ue_libere_le_code_au_lieu_de_ressusciter_la_matiere(): void
