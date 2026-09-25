@@ -22,7 +22,7 @@ class EntityLabelHelper
         'App\Models\ESBTPPaiement' => 'Paiement',
         'App\Models\ESBTPDepense' => 'Dépense',
         'App\Models\ESBTPFacture' => 'Facture',
-        'App\Models\ESBTPFactureDetail' => 'Détail facture',
+        'App\Models\ESBTPFactureDetail' => 'Détail de facture',
         'App\Models\ESBTPFraisScolarite' => 'Frais de scolarité',
         'App\Models\ESBTPFraisCategorie' => 'Catégorie de frais',
         'App\Models\ESBTPFraisCategory' => 'Catégorie de frais',
@@ -98,9 +98,12 @@ class EntityLabelHelper
             if (in_array(mb_strtolower($mot, 'UTF-8'), ['de', 'du', 'des'], true) || str_starts_with($mot, "d'")) {
                 break;
             }
-            if (! preg_match('/[sxz]$/iu', $mot) && ! preg_match('/^[A-Z]{2,}$/', $mot)) {
-                $mots[$i] = $mot.'s';
-            }
+            $mots[$i] = match (true) {
+                preg_match('/[sxz]$/iu', $mot) === 1, preg_match('/^[A-Z]{2,}$/', $mot) === 1 => $mot,
+                preg_match('/al$/iu', $mot) === 1 => mb_substr($mot, 0, -2).'aux',
+                preg_match('/(eau|eu)$/iu', $mot) === 1 => $mot.'x',
+                default => $mot.'s',
+            };
         }
 
         return implode(' ', $mots);

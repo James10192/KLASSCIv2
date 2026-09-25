@@ -38,18 +38,39 @@ class JournalLisible
         $audits = collect($audits);
         $objets = $this->nommage->pour($audits);
         $champs = new ChampsLisibles($audits);
+        $lecteur = auth()->user();
+        $ouvrable = [];
 
-        return $audits->map(fn (Audit $a) => new LigneDuJournal(
-            id: (int) $a->id,
-            acteur: $a->user?->name ?? 'Système',
-            role: $this->role($a->user),
-            automatique: $a->user_id === null,
-            verbe: self::verbe($a),
-            objet: $objets[$a->id],
-            changement: $champs->principal($a, self::VALEUR_PRINCIPALE[$a->auditable_type] ?? []),
-            quand: $a->created_at,
-            motifs: ThemesDuJournal::motifs($a),
-        ))->values()->all();
+        return $audits->map(function (Audit $a) use ($objets, $champs, $lecteur, &$ouvrable) {
+            $type = (string) $a->auditable_type;
+            $peutOuvrir = $ouvrable[$type] ??= ThemesDuJournal::peutOuvrir($lecteur, $type);
+            $objet = $objets[$a->id];
+            $changement = $champs->principal($a, self::VALEUR_PRINCIPALE[$type] ?? []);
+
+            // Sans l'acces aux donnees sensibles, l'argent se dit sans montant :
+            // la liste ne montre pas ce que le detail refuserait.
+            if (in_array($type, ThemesDuJournal::ARGENT, true) && ! $lecteur?->can('comptabilite.sensitive.access')) {
+                $objet = new ObjetNomme($objet->type, $objet->designation, $objet->nom, [], null, $objet->supprime);
+                $changement = null;
+            }
+
+            return new LigneDuJournal(
+                id: (int) $a->id,
+                acteur: $a->user?->name ?? 'Système',
+                role: $this->role($a->user),
+                automatique: $a->user_id === null,
+                verbe: self::verbe($a),
+                objet: $objet,
+                changement: $changement,
+                quand: $a->created_at,
+                motifs: ThemesDuJournal::motifs($a),
+                peutOuvrir: $peutOuvrir,
+                evenement: $a->event,
+                ip: $a->ip_address,
+                agent: $a->user_agent,
+                url: $a->url,
+            );
+        })->values()->all();
     }
 
     public function ligne(Audit $audit): LigneDuJournal

@@ -45,6 +45,7 @@
 .jda-jour:first-child { border-radius: 14px 14px 0 0; }
 .jda-ligne { display: flex; gap: .9rem; align-items: flex-start; padding: .85rem 1.25rem; border-bottom: 1px solid #f1f5f9; color: inherit; text-decoration: none; transition: background .15s ease; }
 .jda-ligne:hover { background: #f7faff; color: inherit; }
+.jda-ligne.is-fermee:hover { background: transparent; }
 .jda-ligne:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(4,83,203,.45); }
 .jda-ligne.is-alerte { box-shadow: inset 3px 0 0 var(--jda-danger); }
 .jda-av { width: 36px; height: 36px; border-radius: 50%; background: var(--jda-soft); color: var(--jda-primary); font-weight: 800; font-size: .78rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }

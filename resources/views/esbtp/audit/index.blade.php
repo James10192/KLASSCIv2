@@ -20,6 +20,8 @@
             'auto' => $filtres->automatiques,
             'model_type' => $filtres->typeObjet,
             'objet_id' => $filtres->idObjet,
+            'date_from' => $filtres->du?->format('Y-m-d'),
+            'date_to' => $filtres->au?->format('Y-m-d'),
         ],
     ];
 @endphp
@@ -73,6 +75,11 @@
         <div class="jda-filtre" x-on:change="choisir($event)">
             <x-au-select name="periode" :value="$filtres->periode" icon="fa-calendar" :options="\App\Domain\Audit\FiltresDuJournal::PERIODES" :placeholder-is-first-option="false" />
         </div>
+        @if($filtres->plage())
+            <button type="button" class="jda-bascule is-actif" x-show="filtres.date_from || filtres.date_to" data-jda-filtre='@json(['date_from' => '', 'date_to' => ''])' title="Revenir aux périodes proposées">
+                <i class="fas fa-calendar-days" aria-hidden="true"></i>{{ \Illuminate\Support\Str::ucfirst($filtres->plage()) }} <i class="fas fa-xmark" aria-hidden="true"></i>
+            </button>
+        @endif
         <button type="button" class="jda-bascule" :class="!filtres.auto ? 'is-actif' : ''" :aria-pressed="(!filtres.auto).toString()" x-on:click="filtrer({auto: !filtres.auto})">
             <i class="fas fa-gear" aria-hidden="true"></i>Masquer les tâches automatiques
         </button>

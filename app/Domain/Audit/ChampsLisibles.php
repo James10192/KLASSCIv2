@@ -85,6 +85,9 @@ class ChampsLisibles
         return $statut === null || $statut === '' ? null : (self::STATUTS[$statut] ?? Str::ucfirst(str_replace('_', ' ', $statut)));
     }
 
+    /** Un « total » ou des « frais » qui se comptent, pas qui se paient. */
+    private const NON_MONETAIRES = ['absence', 'heure', 'credit', 'note', 'coef', 'nombre', 'effectif', 'place', 'jour', 'pourcent', 'taux_presence'];
+
     private const MONETAIRES = ['amount', 'montant', 'prix', 'total', 'cout', 'frais', 'salaire', 'taux_horaire', 'reliquat', 'reduction', 'bourse'];
 
     /** @var array<string, Collection<int|string, string>> table => id => nom */
@@ -179,11 +182,15 @@ class ChampsLisibles
         if (is_array($v)) {
             return Str::limit(json_encode($v, JSON_UNESCAPED_UNICODE), 120);
         }
-        if (is_numeric($v) && ! str_ends_with($cle, '_id') && Str::contains($cle, self::MONETAIRES)) {
+        if (is_numeric($v) && ! str_ends_with($cle, '_id') && Str::contains($cle, self::MONETAIRES) && ! Str::contains($cle, self::NON_MONETAIRES)) {
             return number_format((float) $v, 0, ',', ' ').' FCFA';
         }
         if (is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}(?:[ T](\d{2}:\d{2}))?/', $v, $m)) {
-            $date = \Carbon\Carbon::parse($v);
+            try {
+                $date = \Carbon\Carbon::parse($v);
+            } catch (\Throwable) {
+                return $v; // une chaine qui ressemble a une date sans en etre une
+            }
 
             return isset($m[1]) && $m[1] !== '00:00' ? $date->format('d/m/Y à H:i') : $date->format('d/m/Y');
         }

@@ -100,8 +100,8 @@
                     @foreach($vie as $_v)
                         <li class="{{ $_v->id === $ligne->id ? 'is-courant' : '' }} {{ $_v->motifs !== [] ? 'is-alerte' : '' }}">
                             <span class="jda-d-point" aria-hidden="true"></span>
-                            @if($_v->id === $ligne->id)
-                                <span class="jda-d-vie-titre">{{ \Illuminate\Support\Str::ucfirst(preg_replace('/^a /u', '', $_v->verbe)) }} <span class="jda-sup">cette action</span></span>
+                            @if($_v->id === $ligne->id || ! $_v->peutOuvrir)
+                                <span class="jda-d-vie-titre">{{ \Illuminate\Support\Str::ucfirst(preg_replace('/^a /u', '', $_v->verbe)) }}@if($_v->id === $ligne->id) <span class="jda-sup">cette action</span>@endif</span>
                             @else
                                 <a class="jda-d-vie-titre" href="{{ route('esbtp.audit.show', $_v->id) }}">{{ \Illuminate\Support\Str::ucfirst(preg_replace('/^a /u', '', $_v->verbe)) }}</a>
                             @endif
@@ -110,7 +110,7 @@
                         </li>
                     @endforeach
                 </ol>
-                @if(count($vie) >= 30)
+                @if($vieTronquee)
                     <a class="jda-lien" href="{{ route('esbtp.audit.index', ['model_type' => $audit->auditable_type, 'objet_id' => $audit->auditable_id, 'periode' => 'tout', 'auto' => 1]) }}">Voir toute son histoire</a>
                 @endif
             </section>

@@ -23,6 +23,12 @@ final class LigneDuJournal
         public readonly ?string $changement,
         public readonly CarbonInterface $quand,
         public readonly array $motifs,
+        public readonly bool $peutOuvrir = true,
+        /** La trace brute, pour l'export : elle a valeur de preuve. */
+        public readonly ?string $evenement = null,
+        public readonly ?string $ip = null,
+        public readonly ?string $agent = null,
+        public readonly ?string $url = null,
     ) {
     }
 

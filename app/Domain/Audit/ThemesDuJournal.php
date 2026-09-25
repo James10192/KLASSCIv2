@@ -84,6 +84,25 @@ final class ThemesDuJournal
         return $agent?->can('comptabilite.audit.view') ? [self::FINANCES] : [];
     }
 
+    /** L'argent lui-meme : son detail demande en plus l'acces aux donnees sensibles. */
+    public const ARGENT = ['App\Models\ESBTPPaiement', 'App\Models\ESBTPDepense', 'App\Models\ESBTPFacture', 'App\Models\ESBTPSalaire'];
+
+    /**
+     * Ce lecteur peut-il ouvrir le detail d'une action sur ce type d'objet ?
+     * La liste et le detail posent la meme question : une ligne ne mene
+     * jamais a un refus.
+     */
+    public static function peutOuvrir(?User $lecteur, string $type): bool
+    {
+        if (! $lecteur) {
+            return false;
+        }
+        $theme = $lecteur->can('security.audit.view')
+            || ($lecteur->can('comptabilite.audit.view') && self::de($type) === self::FINANCES);
+
+        return $theme && (! in_array($type, self::ARGENT, true) || $lecteur->can('comptabilite.sensitive.access'));
+    }
+
     public static function appliquer(Builder $requete, string $theme): Builder
     {
         return match ($theme) {
@@ -102,7 +121,7 @@ final class ThemesDuJournal
             ->where(fn (Builder $s) => $s->whereIn('event', ['deleted', 'restored'])->whereIn('auditable_type', self::sensibles()))
             ->orWhere(fn (Builder $p) => $p->where('auditable_type', 'App\Models\ESBTPPaiement')->where('event', 'updated')
                 ->where('old_values', 'like', '%"status":"valid%')->where('new_values', 'like', '%"status":%')
-                ->where('new_values', 'not like', '%"status":"valid%'))
+                ->where('new_values', 'not like', '%"status":"valid%')->where('new_values', 'not like', '%"status":null%'))
             ->orWhereIn('auditable_type', self::DROITS)
             ->orWhereRaw('HOUR(created_at) < ?', [$plage->debut()])
             ->orWhereRaw('HOUR(created_at) >= ?', [$plage->fin()]));

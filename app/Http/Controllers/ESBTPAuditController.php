@@ -12,7 +12,6 @@ use App\Models\User;
 use App\Services\Audit\AuditEntityResolver;
 use App\Support\ListeInfinie;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,8 +37,7 @@ class ESBTPAuditController extends Controller
 
     private const EXPORT_PDF_MAX = 300;
 
-    /** Le detail de ces objets demande l'acces aux donnees sensibles. */
-    private const SENSIBLES = ['App\Models\ESBTPPaiement', 'App\Models\ESBTPDepense', 'App\Models\ESBTPFacture', 'App\Models\ESBTPSalaire'];
+    private const VIE_DE_CHAQUE_COTE = 15;
 
     public function __construct(
         private readonly JournalLisible $journal,
@@ -63,14 +61,20 @@ class ESBTPAuditController extends Controller
             return $this->suite($tranche);
         }
 
+        // Les deux comptes balaient toute la periode. Pendant une recherche
+        // (une requete par frappe) on ne les refait pas : la page garde le
+        // dernier compte de l'onglet, et la banniere des taches automatiques
+        // se tait. Avec une personne choisie, il n'y a pas de tache automatique.
+        $compter = $filtres->recherche === '';
         $donnees = [
             'lignes' => $this->journal->lignes($tranche->items()),
             'tranche' => $tranche,
             'filtres' => $filtres,
-            'automatiques' => $filtres->automatiques ? null : $this->compte($filtres, 'auto', fn () => $this->automatiques($filtres)),
+            'automatiques' => $filtres->automatiques || $filtres->personne || $filtres->idObjet || ! $compter ? null
+                : $this->compte($filtres, 'auto', fn () => $this->automatiques($filtres)),
         ];
-        $aRegarder = in_array(ThemesDuJournal::A_REGARDER, $themes, true)
-            ? $this->compte($filtres, 'regarder', fn () => ThemesDuJournal::aRegarder($this->sansTheme($filtres))->count()) : 0;
+        $aRegarder = ! in_array(ThemesDuJournal::A_REGARDER, $themes, true) ? 0
+            : ($compter ? $this->compte($filtres, 'regarder', fn () => ThemesDuJournal::aRegarder($this->sansTheme($filtres))->count()) : null);
 
         // Un filtre change : la liste seule, sans recharger la page.
         if ($request->boolean('fragment')) {
@@ -79,7 +83,7 @@ class ESBTPAuditController extends Controller
 
         return view('esbtp.audit.index', $donnees + [
             'themes' => $themes,
-            'aRegarder' => $aRegarder,
+            'aRegarder' => $aRegarder ?? $this->compte($filtres, 'regarder', fn () => ThemesDuJournal::aRegarder($this->sansTheme($filtres))->count()),
             'personnes' => User::query()->select('id', 'name', 'email', 'username')->with('roles:id,name')->orderBy('name')->get(),
         ]);
     }
@@ -88,24 +92,26 @@ class ESBTPAuditController extends Controller
     {
         $audit = Audit::with('user.roles:id,name')->findOrFail($id);
 
-        // Le droit comptable seul n'ouvre que les finances, comme l'onglet ; et
-        // l'argent lui-meme (paiements, factures, salaires) demande en plus
-        // l'acces aux donnees sensibles, quel que soit le droit d'audit.
-        abort_unless($request->user()->can('security.audit.view')
-            || ThemesDuJournal::de((string) $audit->auditable_type) === ThemesDuJournal::FINANCES, 403);
-        abort_if(in_array($audit->auditable_type, self::SENSIBLES, true) && ! $request->user()->can('comptabilite.sensitive.access'),
-            403, 'Accès aux données sensibles non autorisé');
+        // La meme regle que les liens de la liste (ThemesDuJournal::peutOuvrir) :
+        // le droit comptable seul n'ouvre que les finances, et l'argent demande
+        // en plus l'acces aux donnees sensibles.
+        abort_unless(ThemesDuJournal::peutOuvrir($request->user(), (string) $audit->auditable_type), 403);
 
-        // La vie de l'objet : ses actions dans l'ordre, celle-ci comprise.
-        $vie = Audit::with('user.roles:id,name')
-            ->where('auditable_type', $audit->auditable_type)->where('auditable_id', $audit->auditable_id)
-            ->orderBy('created_at')->orderBy('id')->limit(30)->get();
+        // La vie de l'objet autour de cette action : les quinze d'avant, celle-ci
+        // et les quinze d'apres. Au-dela, « Voir toute son histoire » ouvre le
+        // journal filtre sur l'objet.
+        $memeObjet = fn () => Audit::with('user.roles:id,name')
+            ->where('auditable_type', $audit->auditable_type)->where('auditable_id', $audit->auditable_id);
+        $avant = $memeObjet()->where('id', '<', $audit->id)->orderByDesc('id')->limit(self::VIE_DE_CHAQUE_COTE)->get();
+        $apres = $memeObjet()->where('id', '>', $audit->id)->orderBy('id')->limit(self::VIE_DE_CHAQUE_COTE)->get();
+        $vie = $avant->reverse()->push($audit)->concat($apres)->values();
 
         return view('esbtp.audit.show', [
             'audit' => $audit,
             'ligne' => $this->journal->ligne($audit),
             'changements' => (new ChampsLisibles([$audit]))->changements($audit),
             'vie' => $this->journal->lignes($vie),
+            'vieTronquee' => $avant->count() === self::VIE_DE_CHAQUE_COTE || $apres->count() === self::VIE_DE_CHAQUE_COTE,
             'touches' => $this->liens->resolve($audit),
         ]);
     }
@@ -119,8 +125,8 @@ class ESBTPAuditController extends Controller
     public function userActivity(Request $request): View|JsonResponse
     {
         $userId = $request->integer('user_id') ?: null;
-        $du = $request->filled('date_from') ? Carbon::parse($request->get('date_from'))->startOfDay() : now()->subDays(30);
-        $au = $request->filled('date_to') ? Carbon::parse($request->get('date_to'))->endOfDay() : now();
+        $du = FiltresDuJournal::date($request->query('date_from'))?->startOfDay() ?? now()->subDays(30)->startOfDay();
+        $au = FiltresDuJournal::date($request->query('date_to'))?->endOfDay() ?? now();
 
         $portee = fn () => Audit::whereBetween('created_at', [$du, $au])->when($userId, fn ($q) => $q->where('user_id', $userId));
         $tranche = $portee()->with('user.roles:id,name')->orderByDesc('created_at')->orderByDesc('id')
@@ -173,7 +179,7 @@ class ESBTPAuditController extends Controller
             'lignes' => $lignes,
             'filtres' => [
                 'Onglet' => ThemesDuJournal::LIBELLES[$filtres->theme],
-                'Période' => FiltresDuJournal::PERIODES[$filtres->periode],
+                'Période' => $filtres->plage() ? \Illuminate\Support\Str::ucfirst($filtres->plage()) : FiltresDuJournal::PERIODES[$filtres->periode],
                 'Recherche' => $filtres->recherche ?: null,
             ],
         ])->setPaper('a4', 'landscape');

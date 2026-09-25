@@ -78,11 +78,6 @@ class NommageDesObjets
         ])->all();
     }
 
-    public function un(Audit $audit): ObjetNomme
-    {
-        return $this->pour([$audit])[$audit->id];
-    }
-
     /** @return Collection<int|string, Model> */
     private function charger(string $type, array $ids): Collection
     {

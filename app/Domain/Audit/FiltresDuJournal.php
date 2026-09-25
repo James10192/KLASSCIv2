@@ -30,6 +30,9 @@ final class FiltresDuJournal
         public readonly bool $automatiques,
         public readonly ?string $typeObjet,
         public readonly ?int $idObjet,
+        public readonly ?Carbon $du = null,
+        public readonly ?Carbon $au = null,
+        public readonly bool $aucunOnglet = false,
     ) {
     }
 
@@ -48,7 +51,25 @@ final class FiltresDuJournal
             // L'historique d'un objet precis, depuis sa fiche (x-entity-history).
             typeObjet: $request->filled('model_type') ? (string) $request->query('model_type') : null,
             idObjet: $request->filled('objet_id') ? (int) $request->query('objet_id') : null,
+            // Une plage libre, venue de l'activite des personnes : elle prime sur la periode.
+            du: self::date($request->query('date_from'))?->startOfDay(),
+            au: self::date($request->query('date_to'))?->endOfDay(),
+            // Aucun onglet ouvert : aucune ligne, jamais tout le journal par defaut.
+            aucunOnglet: $themes === [],
         );
+    }
+
+    /** Une date Y-m-d saisie, ou null si elle n'en est pas une (jamais d'erreur 500). */
+    public static function date(mixed $valeur): ?Carbon
+    {
+        if (! is_string($valeur) || ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $valeur)) {
+            return null;
+        }
+        try {
+            return Carbon::createFromFormat('Y-m-d', $valeur);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /** La requete de l'ecran, hors taches automatiques si elles sont masquees. */
@@ -61,7 +82,9 @@ final class FiltresDuJournal
     public function base(): Builder
     {
         $requete = ThemesDuJournal::appliquer(Audit::query(), $this->theme)
+            ->when($this->aucunOnglet, fn (Builder $q) => $q->whereRaw('0 = 1'))
             ->when($this->depuisLe(), fn (Builder $q, Carbon $d) => $q->where('created_at', '>=', $d))
+            ->when($this->au, fn (Builder $q, Carbon $d) => $q->where('created_at', '<=', $d))
             ->when($this->personne, fn (Builder $q, int $id) => $q->where('user_id', $id))
             ->when($this->typeObjet, fn (Builder $q, string $t) => $q->where('auditable_type', $t))
             ->when($this->idObjet, fn (Builder $q, int $id) => $q->where('auditable_id', $id));
@@ -71,7 +94,21 @@ final class FiltresDuJournal
 
     public function depuisLe(): ?Carbon
     {
+        if ($this->du) {
+            return $this->du;
+        }
+
         return $this->periode === 'tout' ? null : now()->subDays((int) $this->periode - 1)->startOfDay();
+    }
+
+    /** « du 01/08/2026 au 15/08/2026 », quand une plage libre remplace la periode. */
+    public function plage(): ?string
+    {
+        if (! $this->du && ! $this->au) {
+            return null;
+        }
+
+        return trim(($this->du ? 'du '.$this->du->format('d/m/Y') : '').($this->au ? ' au '.$this->au->format('d/m/Y') : ''));
     }
 
     /** @return array<string, string|int> les filtres, pour les liens et l'export */
@@ -85,6 +122,8 @@ final class FiltresDuJournal
             'auto' => $this->automatiques ? 1 : null,
             'model_type' => $this->typeObjet,
             'objet_id' => $this->idObjet,
+            'date_from' => $this->du?->format('Y-m-d'),
+            'date_to' => $this->au?->format('Y-m-d'),
         ], fn ($v) => $v !== null && $v !== '');
     }
 

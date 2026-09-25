@@ -153,8 +153,79 @@ class JournalAuditDefilementTest extends TestCase
             ->assertSee('Frais d&#039;examen', false);
         $this->get(route('esbtp.audit.show', $frais))->assertOk();
         $this->get(route('esbtp.audit.show', $compte))->assertForbidden();
-        // L'argent lui-meme demande en plus l'acces aux donnees sensibles.
+        // L'argent lui-meme demande en plus l'acces aux donnees sensibles...
         $this->get(route('esbtp.audit.show', $paiement))->assertForbidden();
+
+        // ... et la liste le sait : la ligne du paiement n'est pas un lien, jamais un 403.
+        $html = $this->tranche(['theme' => 'finances'])->json('rows_html');
+        $this->assertMatchesRegularExpression('/<div\s+class="jda-ligne[^"]*is-fermee[^"]*" data-li-cle="'.$paiement.'"/', $html);
+        $this->assertStringNotContainsString(route('esbtp.audit.show', $paiement).'"', $html);
+        $this->assertStringContainsString(route('esbtp.audit.show', $frais).'"', $html);
+    }
+
+    public function test_la_regle_a_regarder_est_la_meme_en_sql_et_en_php(): void
+    {
+        DB::table('audits')->delete();
+        $paiement = 'App\Models\ESBTPPaiement';
+        $this->audit(['auditable_type' => $paiement, 'old_values' => '{"status":"validé"}', 'new_values' => '{"status":"annulé"}']);
+        $this->audit(['auditable_type' => $paiement, 'old_values' => '{"status":"validé"}', 'new_values' => '{"status":null}']);
+        $this->audit(['auditable_type' => $paiement, 'old_values' => '{"status":"en_attente"}', 'new_values' => '{"status":"validé"}']);
+        $this->audit(['auditable_type' => $paiement, 'event' => 'deleted']);
+        $this->audit(['auditable_type' => 'App\Models\ESBTPClasse', 'event' => 'deleted']);
+        $this->audit(['auditable_type' => 'Spatie\Permission\Models\Role']);
+        $this->audit(['created_at' => now()->setTime(3, 0)]);
+        $this->audit([]);
+        $this->audit(['user_id' => null, 'user_type' => null, 'event' => 'deleted', 'auditable_type' => $paiement]);
+
+        $sql = \App\Domain\Audit\ThemesDuJournal::aRegarder(\OwenIt\Auditing\Models\Audit::query())->orderBy('id')->pluck('id')->all();
+        $php = \OwenIt\Auditing\Models\Audit::orderBy('id')->get()
+            ->filter(fn ($a) => \App\Domain\Audit\ThemesDuJournal::motifs($a) !== [])->pluck('id')->values()->all();
+
+        $this->assertSame($php, $sql);
+        // Annulation apres validation, suppression d'un paiement, droits, hors horaires.
+        $this->assertCount(4, $sql);
+    }
+
+    public function test_sans_aucun_onglet_l_export_ne_rend_rien(): void
+    {
+        Permission::findOrCreate('security.audit.export', 'web');
+        $exporteur = User::factory()->create();
+        $exporteur->givePermissionTo(['admin.access', 'security.audit.export']);
+        $filtres = \App\Domain\Audit\FiltresDuJournal::depuis(new \Illuminate\Http\Request(), []);
+
+        $this->assertTrue($filtres->aucunOnglet);
+        $this->assertSame(0, $filtres->requete()->count());
+    }
+
+    public function test_la_vie_de_l_objet_entoure_l_action_ouverte(): void
+    {
+        $ids = [];
+        for ($i = 0; $i < 40; $i++) {
+            $ids[] = $this->audit(['created_at' => now()->setTime(12, 0)->subMinutes(40 - $i)]);
+        }
+
+        $html = $this->get(route('esbtp.audit.show', end($ids)))->assertOk()->getContent();
+        $this->assertStringContainsString('cette action', $html);
+        $this->assertStringContainsString('Voir toute son histoire', $html);
+        // Les quinze actions d'avant la derniere, pas les trente plus anciennes.
+        $this->assertStringContainsString(route('esbtp.audit.show', $ids[38]).'"', $html);
+        $this->assertStringNotContainsString(route('esbtp.audit.show', $ids[0]).'"', $html);
+    }
+
+    public function test_une_plage_libre_prime_sur_la_periode(): void
+    {
+        $dedans = $this->audit(['created_at' => now()->subDays(20)->setTime(12, 0)]);
+        $dehors = $this->audit(['created_at' => now()->subDays(40)->setTime(12, 0)]);
+
+        $html = $this->tranche([
+            'date_from' => now()->subDays(25)->format('Y-m-d'),
+            'date_to' => now()->subDays(10)->format('Y-m-d'),
+        ])->json('rows_html');
+        $this->assertStringContainsString('data-li-cle="'.$dedans.'"', $html);
+        $this->assertStringNotContainsString('data-li-cle="'.$dehors.'"', $html);
+
+        // Une date qui n'en est pas une est ignoree, jamais une erreur.
+        $this->tranche(['date_from' => '2026-13-45'])->assertOk();
     }
 
     public function test_l_ancien_audit_comptable_mene_a_l_onglet_finances(): void

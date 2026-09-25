@@ -14,7 +14,8 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Le journal d'audit en tableur, ligne pour ligne comme a l'ecran : la meme
- * phrase, les memes reperes, le meme changement (JournalLisible).
+ * phrase, les memes reperes, le meme changement (JournalLisible), suivis de
+ * la trace technique (entree, evenement, IP, navigateur, ecran).
  */
 class AuditExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize, WithStyles
 {
@@ -30,7 +31,8 @@ class AuditExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
 
     public function headings(): array
     {
-        return ['Date et heure', 'Qui', 'Rôle', 'Ce qui s\'est passé', 'Repères', 'Changement', 'À regarder'];
+        return ['Date et heure', 'Qui', 'Rôle', 'Ce qui s\'est passé', 'Repères', 'Changement', 'À regarder',
+            'N° d\'entrée', 'Événement', 'Adresse IP', 'Navigateur', 'Écran'];
     }
 
     /** @param  LigneDuJournal  $ligne */
@@ -44,6 +46,12 @@ class AuditExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
             implode(' · ', $ligne->objet->reperes),
             $ligne->changement ?? '',
             implode(', ', $ligne->motifs),
+            // La trace technique, conservee pour la valeur probante de l'export.
+            $ligne->id,
+            $ligne->evenement ?? '',
+            $ligne->ip ?? '',
+            \App\Domain\Audit\JournalLisible::navigateur($ligne->agent) ?? '',
+            $ligne->url ?? '',
         ];
     }
 

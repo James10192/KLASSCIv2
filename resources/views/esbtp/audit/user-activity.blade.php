@@ -9,10 +9,9 @@
 @section('content')
 @php
     $_max = max(1, max($hourlyDistribution ?: [0]));
-    // Le journal n'a que des periodes fixes : on prend la plus courte qui couvre ces dates.
-    $_jours = (int) round(abs($dateFrom->diffInDays(now())));
-    $_periode = collect(['1', '7', '30', '90'])->first(fn ($p) => (int) $p >= $_jours && $dateTo->isToday()) ?? 'tout';
-    $_journal = array_filter(['user_id' => $selectedUser?->id, 'periode' => $_periode]);
+    // Le journal reprend exactement la plage de cette page.
+    $_journal = array_filter(['user_id' => $selectedUser?->id, 'date_from' => $dateFrom->format('Y-m-d'), 'date_to' => $dateTo->format('Y-m-d')]);
+    $_peutLire = auth()->user()->can('security.audit.view');
 @endphp
 <div class="jda">
     <header class="jda-hero">
@@ -25,7 +24,9 @@
                 </div>
             </div>
             <div class="jda-actions">
-                <a class="jda-btn jda-btn--glass" href="{{ route('esbtp.audit.index', $_journal) }}"><i class="fas fa-clipboard-list"></i>Journal d'audit</a>
+                @canany(['security.audit.view', 'comptabilite.audit.view'])
+                    <a class="jda-btn jda-btn--glass" href="{{ route('esbtp.audit.index', $_journal) }}"><i class="fas fa-clipboard-list"></i>Journal d'audit</a>
+                @endcanany
                 @if($selectedUser)
                     <a class="jda-btn jda-btn--white" href="{{ route('esbtp.audit.user-activity', ['date_from' => $dateFrom->format('Y-m-d'), 'date_to' => $dateTo->format('Y-m-d')]) }}">Tout le monde</a>
                 @endif
@@ -35,10 +36,11 @@
             <div class="jda-kpi"><div class="jda-kpi-valeur">{{ number_format($stats['total_actions'], 0, ',', ' ') }}</div><div class="jda-kpi-libelle">actions sur la période</div></div>
             <div class="jda-kpi"><div class="jda-kpi-valeur">{{ number_format($stats['unique_users'], 0, ',', ' ') }}</div><div class="jda-kpi-libelle">personnes actives</div></div>
             <div class="jda-kpi"><div class="jda-kpi-valeur">{{ $stats['peak_hour'] }}</div><div class="jda-kpi-libelle">heure la plus chargée</div></div>
-            <a class="jda-kpi {{ $stats['a_regarder'] > 0 ? 'jda-kpi--alerte' : '' }}" href="{{ route('esbtp.audit.index', $_journal + ['theme' => \App\Domain\Audit\ThemesDuJournal::A_REGARDER]) }}">
+            @php $_balise = $_peutLire ? 'a' : 'div'; @endphp
+            <{{ $_balise }} class="jda-kpi {{ $stats['a_regarder'] > 0 ? 'jda-kpi--alerte' : '' }}" @if($_peutLire) href="{{ route('esbtp.audit.index', $_journal + ['theme' => \App\Domain\Audit\ThemesDuJournal::A_REGARDER]) }}" @endif>
                 <div class="jda-kpi-valeur">{{ number_format($stats['a_regarder'], 0, ',', ' ') }}</div>
-                <div class="jda-kpi-libelle">actions à regarder <i class="fas fa-arrow-right" aria-hidden="true"></i></div>
-            </a>
+                <div class="jda-kpi-libelle">actions à regarder @if($_peutLire)<i class="fas fa-arrow-right" aria-hidden="true"></i>@endif</div>
+            </{{ $_balise }}>
         </div>
     </header>
 
