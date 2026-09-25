@@ -9,9 +9,9 @@
 
     {{-- PWA : installable des la page de connexion (manifest servi hors auth), couleur de barre = couleur primaire de l'ecole --}}
     @php
-        $pwaPdf = \App\Helpers\SettingsHelper::getPdfSettings();
-        $pwaThemeColor = preg_match('/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', (string) ($pwaPdf['primary_color'] ?? ''))
-            ? $pwaPdf['primary_color'] : '#0453cb';
+        $pwaPrimaire = \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb');
+        $pwaThemeColor = preg_match('/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', (string) $pwaPrimaire)
+            ? $pwaPrimaire : '#0453cb';
     @endphp
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="theme-color" content="{{ $pwaThemeColor }}">
