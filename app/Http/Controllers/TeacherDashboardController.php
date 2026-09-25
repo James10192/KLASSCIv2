@@ -125,7 +125,7 @@ class TeacherDashboardController extends Controller
             $notifications[] = [
                 'type' => 'warning',
                 'message' => 'Vous n\'avez pas encore fait votre émargement aujourd\'hui.',
-                'action' => route('esbtp.attendance.mark'),
+                'action' => route('esbtp.teacher-attendance.index'),
                 'action_text' => 'Émarger maintenant',
             ];
         }
@@ -194,18 +194,12 @@ class TeacherDashboardController extends Controller
         if ($callType === 'end') {
             $now = Carbon::now();
 
-            // heure_fin est déjà un DATETIME complet
-            $heureFin = Carbon::parse($seance->heure_fin);
-
-            // FENÊTRE 1 : Avant heure_fin - 20min → ❌ TROP TÔT
-            $fenetreDebut = $heureFin->copy()->subMinutes(20);
+            // Délais réglés par l'école, prolongation accordée comprise.
+            [$fenetreDebut, $fenetreFin] = app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->fenetreDeFin($seance);
             if ($now < $fenetreDebut) {
                 return redirect()->route('teacher.select-call-type', $seanceId)
-                    ->with('error', 'L\'appel de fin ne peut être fait que 20 minutes avant la fin du cours ('.$fenetreDebut->format('H:i').').');
+                    ->with('error', 'L\'appel de fin sera possible à partir de '.$fenetreDebut->format('H:i').'.');
             }
-
-            // FENÊTRE 2 : heure_fin - 20min → heure_fin + 30min → ✅ OK pour clôturer normalement
-            $fenetreFin = $heureFin->copy()->addMinutes(30);
 
             // Stocker si on est dans la fenêtre normale ou pas
             request()->merge(['within_close_window' => $now <= $fenetreFin]);
@@ -1157,8 +1151,9 @@ class TeacherDashboardController extends Controller
             ->first();
 
         // Fenêtres de temps
-        $limite45min = $heureDebut->copy()->addMinutes(45);
-        $fenetreClotureFin = $heureFin->copy()->addMinutes(30);
+        $fenetres = app(\App\Domain\EmploiTemps\FenetresDEmargement::class);
+        $limite45min = $fenetres->limiteRetard($heureDebut);
+        $fenetreClotureFin = $fenetres->fenetreDeFin($seance, $dateSeance)[1];
 
         // 🟢 VERT : Complet (début + fin)
         if ($emargementDebut && $emargementFin) {
@@ -1213,7 +1208,7 @@ class TeacherDashboardController extends Controller
                 'details' => [
                     'Début' => Carbon::parse($emargementDebut->validated_at)->format('H:i'),
                     'Fin' => 'En attente',
-                    'Fenêtre clôture' => $heureFin->copy()->subMinutes(20)->format('H:i').' - '.$fenetreClotureFin->format('H:i'),
+                    'Fenêtre clôture' => $fenetres->ouvertureFin($heureFin)->format('H:i').' - '.$fenetreClotureFin->format('H:i'),
                 ],
             ];
         }

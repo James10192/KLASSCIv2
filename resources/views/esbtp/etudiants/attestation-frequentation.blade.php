@@ -320,7 +320,7 @@
                 @php
                     $anneeText = $inscription->anneeUniversitaire->name
                         ?? $inscription->anneeUniversitaire->nom
-                        ?? $inscription->anneeUniversitaire->libelle
+                        ?? $inscription->anneeUniversitaire->display_name
                         ?? '';
                     $anneeFormatted = preg_match('/(\d{4}-\d{4})/', $anneeText, $matches)
                         ? $matches[1] : $anneeText;

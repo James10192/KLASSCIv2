@@ -22,7 +22,7 @@
                 @endif
             </div>
             <div class="amh-header__meta">
-                Année {{ $anneeUniversitaire->name ?? $anneeUniversitaire->libelle ?? '—' }}
+                Année {{ $anneeUniversitaire->name ?? $anneeUniversitaire->display_name ?? '—' }}
                 · {{ $etudiants->count() }} étudiant{{ $etudiants->count() > 1 ? 's' : '' }}
                 @if(!$isGlobal && $volumeHoraireTotal > 0)
                     · <span class="amh-chip amh-chip--blue"><i class="fas fa-clock"></i>Volume prévu : {{ $fmtHours($volumeHoraireTotal) }}h</span>

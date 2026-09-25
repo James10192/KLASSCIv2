@@ -211,7 +211,7 @@
                                 <div class="em-code-value">{{ $ac->code }}</div>
                                 <div class="em-code-meta">
                                     <div class="em-code-meta-item"><i class="fas fa-calendar-plus"></i>{{ $ac->created_at->format('d/m/Y H:i') }}</div>
-                                    <div class="em-code-meta-item"><i class="fas fa-clock"></i>Jusqu'à {{ $ac->valid_until->format('H:i') }}</div>
+                                    <div class="em-code-meta-item"><i class="fas fa-clock"></i>Jusqu'à {{ $ac->valid_until->isToday() ? $ac->valid_until->format('H:i') : $ac->valid_until->format('d/m H:i') }}</div>
                                     <div class="em-code-meta-item"><i class="fas fa-user"></i>{{ $ac->generator->name ?? 'Système' }}</div>
                                 </div>
                             </div>
@@ -230,7 +230,7 @@
                                         @if($code->seance) {{ $code->seance->matiere?->name ?? 'Séance' }}
                                         @else Code général @endif
                                     </div>
-                                    <div class="em-code-card-expire"><i class="fas fa-clock" style="font-size:.6rem;"></i> Jusqu'à {{ $code->valid_until->format('H:i') }}</div>
+                                    <div class="em-code-card-expire"><i class="fas fa-clock" style="font-size:.6rem;"></i> Jusqu'à {{ $code->valid_until->isToday() ? $code->valid_until->format('H:i') : $code->valid_until->format('d/m H:i') }}</div>
                                 </div>
                                 @endforeach
                             </div>

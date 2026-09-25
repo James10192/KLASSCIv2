@@ -27,6 +27,12 @@
     @endif
     @endcan
 
+    @if($jury->status === 'publie')
+    <a href="{{ route('esbtp.lmd.bulletins.index', array_filter(['classe_id' => $jury->classe_id, 'annee_universitaire_id' => $jury->annee_universitaire_id, 'semestre' => $jury->semestre])) }}" class="juy-btn juy-btn--primary h-11">
+        <i class="fas fa-file-alt"></i> Voir les bulletins de ce jury
+    </a>
+    @endif
+
     @can('lmd.pv.export')
     <a href="{{ route('esbtp.lmd.jurys.pv-annuel.pdf', $jury) }}?inline=1" target="_blank" rel="noopener" class="juy-btn juy-btn--secondary h-11">
         <i class="fas fa-eye"></i> Aperçu PDF du PV annuel
