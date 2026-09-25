@@ -683,7 +683,7 @@
     .etm-tete { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .etm-avatar {
         width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-        object-fit: cover; background: rgba(4,83,203,.08);
+        object-fit: cover; object-position: center top; background: rgba(4,83,203,.08);
     }
     .etm-avatar--initiales {
         display: grid; place-items: center;
@@ -753,6 +753,22 @@
     .etm-btn--contour { background: #fff; color: #0453cb; border-color: rgba(4,83,203,.3); }
     .etm-btn--contour:hover { background: rgba(4,83,203,.06); }
     .etm-btn--valider { background: #10b981; color: #fff; }
+
+    /* En-tete sur telephone : l'action principale pleine largeur, les autres
+       en grille de deux au lieu d'une pile de cinq boutons. */
+    @media (max-width: 767.98px) {
+        .dashboard-header .header-actions {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%;
+        }
+        .dashboard-header .header-actions > * {
+            width: 100%; min-height: 44px; margin: 0; justify-content: center;
+            font-size: .85rem; padding: .55rem .6rem; white-space: nowrap;
+        }
+        .dashboard-header .header-actions > .btn-acasi.primary { grid-column: 1 / -1; }
+        /* Sur telephone la carte des filtres ne porte que les filtres de bureau,
+           caches : elle restait comme une bande blanche vide. */
+        .etu-carte-filtres:not(:has(.alert)) { display: none; }
+    }
 
     /* Le bouton des filtres passait sous la barre de navigation du telephone.
        Au-dela de 768px la barre cede la place a un rail lateral : rien a eviter. */
@@ -2581,7 +2597,7 @@
                 </a>
                 @endcan
                 @can('inscriptions.view')
-                <a href="{{ route('esbtp.reinscription.index') }}" class="btn-acasi success">
+                <a href="{{ route('esbtp.reinscription.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-user-graduate"></i>Réinscriptions
                 </a>
                 @endcan
@@ -2592,7 +2608,7 @@
                 @endcan
                 @can('inscriptions.create')
                 <button type="button"
-                        class="btn-acasi success"
+                        class="btn-acasi secondary"
                         data-bs-toggle="modal"
                         data-bs-target="#bulkReinscriptionModal"
                         title="Lancer une réinscription groupée — diagnostic moyenne/décision/frais soldés par étudiant">
@@ -2782,7 +2798,7 @@
             </div>
         </div>
 
-        <div class="card-moderne">
+        <div class="card-moderne etu-carte-filtres">
             <div class="p-lg">
                     @if(session('success'))
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -3521,9 +3537,8 @@
         var badge = document.getElementById('student-count-badge');
         if (el && badge) {
             var total = el.dataset.total;
-            var page = el.dataset.page;
-            var hasPages = el.dataset.hasPages === '1';
-            badge.textContent = total + ' étudiant' + (parseInt(total) > 1 ? 's' : '') + (hasPages ? ' (' + page + ' sur cette page)' : '');
+            // La liste se charge au defilement : « N sur cette page » ne voulait plus rien dire.
+            badge.textContent = total + ' étudiant' + (parseInt(total) > 1 ? 's' : '');
         }
     }
     document.addEventListener('DOMContentLoaded', function () {

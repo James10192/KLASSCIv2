@@ -485,10 +485,12 @@
                             <dd class="etm-tronque">{{ $etudiant->email }}</dd>
                         </div>
                     @endif
+                    @if($latestInscription?->date_inscription)
                     <div>
                         <dt><i class="fas fa-calendar"></i><span class="visually-hidden">Date d'inscription</span></dt>
                         <dd>Inscrit le {{ $latestDate }}</dd>
                     </div>
+                    @endif
                 </dl>
 
                 <footer class="etm-actions">
