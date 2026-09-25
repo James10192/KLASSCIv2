@@ -1,7 +1,7 @@
 /* =====================================================================
    Assistant KLASSCI — namespace ast-*
    Composant : resources/views/components/chatbot/assistant.blade.php
-   Script    : public/js/assistant.js
+   Scripts   : public/js/assistant/*.js
 
    Palette monochrome bleu KLASSCI ; couleurs sémantiques réservées aux
    statuts (badges, étapes, repères de KPI). Aucun transform au survol
@@ -263,6 +263,8 @@
 .ast-md table { width: 100%; border-collapse: collapse; font-size: .84rem; font-variant-numeric: tabular-nums; }
 .ast-md th { padding: .5rem .7rem; background: var(--ast-surface); color: var(--ast-muted); font-size: .72rem; font-weight: 700; text-align: left; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; border-bottom: 1px solid var(--ast-line); }
 .ast-md td { padding: .5rem .7rem; border-bottom: 1px solid var(--ast-line-2); vertical-align: top; }
+.ast-md td[align="right"], .ast-md th[align="right"] { text-align: right; white-space: nowrap; }
+.ast-md td:not([align="right"]) { min-width: 7.5rem; overflow-wrap: normal; word-break: normal; }
 .ast-md tr:last-child td { border-bottom: 0; }
 
 /* Mots qui apparaissent : fondu de 150 ms */

@@ -19,13 +19,34 @@ l'application (`[DOSSO Ibrahim](/esbtp/etudiants/2743)`), blocs ```` ```mermaid 
 ### Sécurité du rendu (obligatoire côté client)
 
 Le texte du modèle n'est pas fiable : une injection peut passer par une donnée lue par un outil.
-- Tout HTML issu du Markdown passe par DOMPurify.
+Tout ce qui suit vit dans `public/js/assistant/noyau.js`.
+
+- **Balisage du texte** : marked, puis DOMPurify avec une liste blanche limitée à ce que marked
+  produit — `p br strong em del s code pre blockquote ul ol li h1-h6 hr table thead tbody tr th td a` —
+  et aux attributs `href title class align start`. Sont refusés `style` (un `url()` déclencherait une
+  requête vers un tiers à chaque rendu, historique compris ; `position:fixed` permettrait de recouvrir
+  l'écran d'un faux message), `id`, tout `data-*` et `aria-*`. Une classe n'est gardée que si elle
+  s'écrit `language-…` (c'est la seule que lit l'enrichissement des blocs de code).
 - **Liens** : n'est cliquable qu'un chemin interne qui satisfait
   `^/(esbtp|dashboard|chatbot)([/?#][A-Za-z0-9/_\-?=&%.#]*)?\z` (même règle que
   `AfficherTableau::estLienInterne`, côté serveur). Tout autre lien est rendu en texte :
   `/\site.tld`, une tabulation ou un retour à la ligne dans l'URL mènent sinon à un autre site.
+  La même règle s'applique aux URL des widgets (cellules de tableau, actions de cartes,
+  indicateurs, `lien.url`). Aucun lien ne s'ouvre dans un nouvel onglet.
 - **Mermaid** : `securityLevel: 'strict'` toujours, y compris pour les blocs ```` ```mermaid ```` du texte libre,
-  qui n'ont pas traversé le contrôle d'`afficher_diagramme`. Les directives `%%{…}` et les `click` sont retirées avant rendu.
+  qui n'ont pas traversé le contrôle d'`afficher_diagramme`. Avant rendu sont retirés l'en-tête
+  `---` de configuration, les directives `%%{…}` et les instructions `click`, `link`, `links`,
+  `callback`, y compris après un `;` sur la même ligne. La source est validée par
+  `mermaid.parse(…, { suppressErrors: true })` : invalide, elle s'affiche en code sans passer par
+  `render`, et les nœuds d'erreur que mermaid laisse sous `<body>` sont retirés dans tous les cas.
+- **SVG des diagrammes** : DOMPurify (profil `svg`) sans `a`, `foreignObject`, `image`, `use`,
+  `animate`, `set`, ni `href` / `xlink:href` ; la feuille de style et les attributs `style` perdent
+  `url()`, `@import` et `expression()`. Le fichier téléchargé est ce SVG nettoyé.
+- **Copie en CSV** : une cellule qui commence par `= + - @`, une tabulation ou un retour chariot
+  est préfixée d'une apostrophe, pour qu'un tableur ne l'exécute pas.
+
+La preuve est le harnais navigateur `tests/js/assistant-securite.spec.mjs` (lancement dans
+`tests/js/README.md`) : il charge les vrais scripts et rejoue ces charges malveillantes.
 
 ## Parties propres à KLASSCI
 
