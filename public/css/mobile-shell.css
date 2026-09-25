@@ -697,6 +697,15 @@ body.m-sheet-open { overflow: hidden; }
         z-index: 1081 !important;
         animation: none;
     }
+    /* Même forme que le .m-fab des autres écrans : carré arrondi, un seul +. */
+    html body.has-m-shell .fab-encaisser {
+        width: 56px; height: 56px; padding: 0; gap: 0;
+        justify-content: center; border-radius: 18px;
+    }
+    html body.has-m-shell .fab-encaisser .fab-encaisser-icon { background: none; width: auto; height: auto; }
+    html body.has-m-shell .fab-encaisser .fab-encaisser-icon i { font-size: 1.25rem; }
+    html body.has-m-shell .fab-encaisser .fab-encaisser-label,
+    html body.has-m-shell .fab-encaisser .fab-encaisser-kbd { display: none; }
     html body.has-m-shell .chatbot-widget {
         bottom: calc(164px + var(--m-safe-b)) !important;
         right: 22px !important;
