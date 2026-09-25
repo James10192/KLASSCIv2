@@ -2,6 +2,7 @@
 
 namespace App\Domain\Lms\Synchronisation;
 
+use App\Helpers\SettingsHelper;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -14,11 +15,22 @@ use Illuminate\Support\Facades\DB;
 final class SynchronisationLms
 {
     /**
-     * Les lignes modifiees dans les dernieres secondes attendent l'appel
-     * suivant : une transaction encore ouverte peut ecrire une date anterieure
-     * a la ligne deja lue, et le curseur l'aurait depassee.
+     * Les lignes modifiees depuis moins de ce delai attendent l'appel suivant.
+     * Eloquent date une ligne au `save()`, DANS la transaction, pas a sa
+     * validation : une transaction encore ouverte (un import de maquette LMD
+     * tient tout dans une seule) validera plus tard des lignes datees d'avant
+     * le curseur, qui ne repartiraient jamais. Le LMS n'appelle que toutes les
+     * 5 minutes : un delai large ne coute rien.
+     *
+     * Limite assumee : une transaction plus longue que ce delai peut encore
+     * faire perdre une ligne.
      */
-    public const DECALAGE_SECONDES = 5;
+    public const DECALAGE_PAR_DEFAUT = 120;
+
+    public static function decalageSecondes(): int
+    {
+        return max(5, (int) SettingsHelper::get('lms.sync.decalage_secondes', self::DECALAGE_PAR_DEFAUT));
+    }
 
     /**
      * @param  array<int, string>  $types
@@ -26,7 +38,7 @@ final class SynchronisationLms
      */
     public function page(array $types, CurseurDeSynchronisation $curseur, int $limite): array
     {
-        $borne = now()->subSeconds(self::DECALAGE_SECONDES)->format('Y-m-d H:i:s');
+        $borne = now()->subSeconds(self::decalageSecondes())->format('Y-m-d H:i:s');
         $reste = $limite;
         $aSuivre = false;
         $changements = [];

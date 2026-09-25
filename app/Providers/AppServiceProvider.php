@@ -184,8 +184,10 @@ class AppServiceProvider extends ServiceProvider
 
         $this->brancherReglagesTelephone();
 
-        // Pierres tombales des purges, pour la synchronisation LMS.
+        // Synchronisation LMS : pierres tombales des purges, et fiche qui
+        // avance quand le compte change.
         \App\Domain\Lms\Synchronisation\SuppressionsDefinitives::ecouter();
+        \App\Domain\Lms\Synchronisation\CompteLmsSuitLaFiche::ecouter();
 
         $this->partagerCompteurDemandesReinscription();
 

@@ -16,9 +16,11 @@ use Illuminate\Support\Facades\DB;
  *  - les heures de seance doivent sortir telles qu'en base : l'accesseur de
  *    `ESBTPSeanceCours` les transforme en dates du jour (piege #14).
  *
- * Toutes les tables portent l'alias `t`. La date de modification est une
- * expression SQL : pour un eleve ou un enseignant, c'est la plus recente de sa
- * fiche et de son compte, pour qu'une desactivation du compte parte aussi.
+ * Toutes les tables portent l'alias `t`, et chaque flux avance sur sa propre
+ * date de modification. Un changement du COMPTE d'un eleve ou d'un enseignant
+ * (desactivation, adresse, identifiant) fait avancer sa fiche :
+ * `CompteLmsSuitLaFiche`. Lire la date du compte ici ferait repartir toute
+ * personne connectee, dont la derniere visite est ecrite sur le compte.
  */
 final class FluxDeSynchronisation
 {
@@ -56,13 +58,13 @@ final class FluxDeSynchronisation
                 ->leftJoin('users as u', 'u.id', '=', 't.user_id')
                 ->select('t.id', 't.user_id', 't.matricule', 't.nom', 't.prenoms', 't.sexe', 't.statut', 't.deleted_at',
                     'u.username', 'u.email', 'u.is_active as compte_actif', 'u.deleted_at as compte_supprime_le'),
-                self::plusRecente()],
+                self::date('t')],
             'enseignants' => [DB::table('esbtp_teachers as t')
                 ->leftJoin('users as u', 'u.id', '=', 't.user_id')
                 ->select('t.id', 't.user_id', 't.matricule', 't.specialization', 't.is_active', 't.deleted_at',
                     't.email as email_fiche', 'u.name', 'u.username', 'u.email', 'u.is_active as compte_actif',
                     'u.deleted_at as compte_supprime_le'),
-                self::plusRecente()],
+                self::date('t')],
             'inscriptions' => [DB::table('esbtp_inscriptions as t')
                 ->select('t.id', 't.etudiant_id', 't.classe_id', 't.annee_universitaire_id', 't.status',
                     't.workflow_step', 't.date_inscription', 't.deleted_at')
@@ -128,11 +130,6 @@ final class FluxDeSynchronisation
     private static function date(string $alias): string
     {
         return "COALESCE({$alias}.updated_at, {$alias}.created_at, ".self::JAMAIS.')';
-    }
-
-    private static function plusRecente(): string
-    {
-        return 'GREATEST('.self::date('t').', '.self::date('u').')';
     }
 
     private static function compteActif(object $r): bool

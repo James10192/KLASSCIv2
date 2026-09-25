@@ -9,7 +9,6 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Support\Lms\JetonServeurLms;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use InvalidArgumentException;
 
 /**
@@ -21,7 +20,7 @@ class LMSSyncController extends BaseApiController
 {
     public const LIMITE_MAX = 500;
 
-    public function sync(Request $request, SynchronisationLms $synchronisation): JsonResponse|Response
+    public function sync(Request $request, SynchronisationLms $synchronisation): JsonResponse
     {
         if (! JetonServeurLms::peut($request->user(), JetonServeurLms::LECTURE)) {
             return $this->errorResponse('Réservé au jeton serveur du LMS doté du droit lms:lecture.', [], 403);
@@ -51,15 +50,12 @@ class LMSSyncController extends BaseApiController
             'a_suivre' => $page['a_suivre'],
         ];
 
-        // Rien n'a change : meme curseur, memes changements (aucun), meme ETag.
-        $etag = '"'.md5(json_encode($corps)).'"';
-        if (trim((string) $request->header('If-None-Match')) === $etag) {
-            return response('', 304)->header('ETag', $etag);
-        }
-
+        // L'annee courante a cote de celle du curseur : a la rentree, le LMS
+        // voit qu'elles different et recommence sans « since ».
         return $this->successResponse($corps + ['nombre' => count($corps['changements'])], '', [
             'annee_universitaire_id' => $curseur->anneeId,
-        ])->header('ETag', $etag);
+            'annee_courante_id' => ESBTPAnneeUniversitaire::anneeCourante()?->id,
+        ]);
     }
 
     /** @return array<int, string>|string les types, ou la raison du refus */

@@ -62,7 +62,7 @@ class SynchronisationLmsTest extends TestCase
     public function la_premiere_synchronisation_rend_tout_avec_la_forme_attendue(): void
     {
         $this->seance();
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
 
         $data = $this->sync()->assertOk()->json('data');
         $parType = collect($data['changements'])->groupBy('type');
@@ -83,21 +83,37 @@ class SynchronisationLmsTest extends TestCase
     }
 
     /** @test */
-    public function sans_changement_le_meme_curseur_revient_et_l_etag_donne_304(): void
+    public function sans_changement_la_reponse_est_vide_et_le_curseur_inchange(): void
     {
-        $this->travel(1)->minutes();
-        $premier = $this->sync();
-        $curseur = $premier->json('data.curseur');
+        $this->passerLeDecalage();
+        $curseur = $this->sync()->json('data.curseur');
 
         $second = $this->sync(['since' => $curseur])->assertOk();
         $this->assertSame([], $second->json('data.changements'));
         $this->assertSame($curseur, $second->json('data.curseur'));
+        $this->assertSame($this->annee->id, $second->json('meta.annee_courante_id'));
+    }
 
-        $this->app['auth']->forgetGuards();
-        $this->withToken($this->jeton)
-            ->withHeaders(['If-None-Match' => $second->headers->get('ETag')])
-            ->getJson('/api/lms/v2/sync?since='.$curseur)
-            ->assertStatus(304);
+    /** @test */
+    public function un_eleve_qui_navigue_ne_repart_pas_mais_un_changement_d_adresse_si(): void
+    {
+        $user = User::factory()->create(['is_active' => true]);
+        $this->eleve->update(['user_id' => $user->id]);
+        $this->passerLeDecalage();
+        $curseur = $this->sync()->json('data.curseur');
+
+        // Ce que fait UpdateLastLogin a chaque navigation.
+        $user->last_seen_at = now();
+        $user->saveQuietly();
+        $user->update(['last_login_at' => now()]);
+        $this->passerLeDecalage();
+        $this->assertSame([], $this->sync(['since' => $curseur])->json('data.changements'));
+
+        $user->update(['email' => 'nouvelle@ecole.test']);
+        $this->passerLeDecalage();
+        $changements = $this->sync(['since' => $curseur])->json('data.changements');
+        $this->assertSame(['etudiant'], array_column($changements, 'type'));
+        $this->assertSame('nouvelle@ecole.test', $changements[0]['donnees']['email']);
     }
 
     /** @test */
@@ -106,7 +122,7 @@ class SynchronisationLmsTest extends TestCase
         foreach (range(1, 3) as $i) {
             $this->etudiantInscrit();
         }
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
         $complet = collect($this->sync()->json('data.changements'))->map(fn ($c) => $c['type'].':'.$c['id'])->all();
 
         $vus = [];
@@ -126,11 +142,11 @@ class SynchronisationLmsTest extends TestCase
     /** @test */
     public function une_modification_apres_le_curseur_revient_seule(): void
     {
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
         $curseur = $this->sync()->json('data.curseur');
 
         $this->classe->update(['name' => 'Classe renommee']);
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
 
         $changements = $this->sync(['since' => $curseur])->json('data.changements');
         $this->assertCount(1, $changements);
@@ -142,11 +158,11 @@ class SynchronisationLmsTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true]);
         $this->eleve->update(['user_id' => $user->id]);
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
         $curseur = $this->sync()->json('data.curseur');
 
         $user->update(['is_active' => false]);
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
 
         $changements = $this->sync(['since' => $curseur])->json('data.changements');
         $this->assertSame(['etudiant'], array_column($changements, 'type'));
@@ -156,12 +172,12 @@ class SynchronisationLmsTest extends TestCase
     /** @test */
     public function une_suppression_douce_part_sans_donnees(): void
     {
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
         $curseur = $this->sync()->json('data.curseur');
 
         $inscription = ESBTPInscription::firstOrFail();
         $inscription->delete();
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
 
         $changements = $this->sync(['since' => $curseur])->json('data.changements');
         $this->assertSame([['type' => 'inscription', 'id' => $inscription->id, 'supprime' => true]],
@@ -173,17 +189,17 @@ class SynchronisationLmsTest extends TestCase
     {
         $avant = $this->seance();
         $avant->forceDelete();
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
 
         $premiere = $this->sync()->json('data');
         $this->assertNotContains(true, array_column($premiere['changements'], 'definitif'));
 
         $seance = $this->seance();
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
         $curseur = $this->sync(['since' => $premiere['curseur']])->json('data.curseur');
 
         $seance->forceDelete();
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
 
         $changements = $this->sync(['since' => $curseur])->json('data.changements');
         $this->assertSame([['type' => 'seance', 'id' => $seance->id, 'supprime' => true, 'definitif' => true]],
@@ -198,7 +214,7 @@ class SynchronisationLmsTest extends TestCase
             'etudiant_id' => $this->eleve->id, 'classe_id' => $this->classe->id,
             'annee_universitaire_id' => $autre->id, 'status' => 'active', 'workflow_step' => 'etudiant_cree',
         ]);
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
 
         $inscriptions = collect($this->sync(['types' => 'inscriptions'])->json('data.changements'));
         $this->assertSame([$this->annee->id], $inscriptions->pluck('donnees.annee_universitaire_id')->unique()->values()->all());
@@ -207,13 +223,13 @@ class SynchronisationLmsTest extends TestCase
     /** @test */
     public function les_lignes_trop_recentes_attendent_l_appel_suivant(): void
     {
-        $this->travel(1)->minutes();
+        $this->passerLeDecalage();
         $curseur = $this->sync()->json('data.curseur');
 
         $this->classe->update(['name' => 'Tout juste modifiee']);
         $this->assertSame([], $this->sync(['since' => $curseur])->json('data.changements'));
 
-        $this->travel(SynchronisationLms::DECALAGE_SECONDES + 1)->seconds();
+        $this->travel(SynchronisationLms::decalageSecondes() + 1)->seconds();
         $this->assertCount(1, $this->sync(['since' => $curseur])->json('data.changements'));
     }
 
@@ -234,6 +250,11 @@ class SynchronisationLmsTest extends TestCase
         $this->app['auth']->forgetGuards();
 
         return $this->withToken($jeton ?? $this->jeton)->getJson('/api/lms/v2/sync?'.http_build_query($params));
+    }
+
+    private function passerLeDecalage(): void
+    {
+        $this->travel(SynchronisationLms::decalageSecondes() + 60)->seconds();
     }
 
     private function createToken(string $droit): string

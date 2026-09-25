@@ -9,7 +9,6 @@ qui rend tout ce qui a changé, tous types confondus.
 ```
 GET /api/lms/v2/sync?since=<curseur>&types=classes,etudiants&limit=500
 Authorization: Bearer <jeton serveur>
-If-None-Match: "<ETag de la réponse précédente>"
 ```
 
 | Paramètre | Défaut | Rôle |
@@ -38,7 +37,7 @@ If-None-Match: "<ETag de la réponse précédente>"
     "a_suivre": false,
     "nombre": 3
   },
-  "meta": { "annee_universitaire_id": 4, "...": "..." }
+  "meta": { "annee_universitaire_id": 4, "annee_courante_id": 4, "...": "..." }
 }
 ```
 
@@ -49,8 +48,10 @@ If-None-Match: "<ETag de la réponse précédente>"
 - **`definitif: true`** : l'objet a été purgé de la corbeille. Même traitement.
 - Un objet supprimé puis restauré revient ensuite avec `supprime: false` : il
   suffit d'appliquer les changements **dans l'ordre**.
-- **`304` sans corps** si `If-None-Match` porte l'ETag de la réponse précédente
-  et que rien n'a changé.
+- **Rien n'a changé** : `changements` vide et curseur inchangé. C'est la réponse
+  bon marché.
+- **`meta.annee_courante_id`** : si elle diffère de `annee_universitaire_id` (celle
+  du curseur), c'est la rentrée : recommencer sans `since`.
 
 ### Contenu de `donnees`
 
@@ -72,7 +73,8 @@ classe KLASSCI est universelle). Les inscriptions et les séances le sont.
 2. Appliquer les changements à son cache, **puis** enregistrer le nouveau
    curseur — jamais avant : une coupure entre les deux ferait perdre la page.
 3. Tant que `a_suivre` vaut `true`, rappeler aussitôt.
-4. Envoyer `If-None-Match` avec l'ETag précédent.
+4. Comparer `meta.annee_courante_id` à `meta.annee_universitaire_id` ; s'ils
+   diffèrent, recommencer sans `since`.
 5. Fréquence : toutes les 5 minutes tant que le lot 3 (KLASSCI prévient le LMS)
    n'est pas livré ; toutes les 15 à 30 minutes ensuite.
 6. Sur `422` « Curseur illisible » ou changement d'année : recommencer sans
@@ -82,24 +84,35 @@ classe KLASSCI est universelle). Les inscriptions et les séances le sont.
 
 - **Aucune ligne perdue à égalité** : le curseur porte, pour chaque type, la date
   de modification **et** l'identifiant de la dernière ligne rendue.
-- **Les 5 dernières secondes attendent l'appel suivant** : une transaction encore
-  ouverte peut écrire une date antérieure à une ligne déjà lue.
-- **Un élève ou un enseignant repart quand sa fiche OU son compte change** :
-  une désactivation du compte suffit à le renvoyer avec `actif: false`.
+- **Les 2 dernières minutes attendent l'appel suivant** (réglage
+  `lms.sync.decalage_secondes`, 120 par défaut) : une ligne est datée à son
+  enregistrement, dans sa transaction, pas à sa validation. Une transaction
+  encore ouverte (un import de maquette) validerait sinon des lignes datées
+  d'avant le curseur. **Limite** : une transaction plus longue que ce délai peut
+  encore faire perdre une ligne.
+- **Un élève ou un enseignant repart quand son compte change** sur ce que le LMS
+  reçoit (actif, email, identifiant, nom, suppression) : sa fiche avance. Une
+  simple visite sur KLASSCI ne le fait pas repartir.
 - **Pas vu** : une écriture faite en SQL direct (`DB::table(...)->update()` ou
   `->delete()`), qui ne touche pas `updated_at` et n'émet aucun événement. Aucun
   écran de KLASSCI ne modifie ces six tables ainsi aujourd'hui, hormis le
   peuplement de démonstration de la paie.
+- **Suppressions en cascade non signalées** : la purge d'un élève supprime ses
+  inscriptions, celle d'une classe ses séances, par la base, sans événement. La
+  suppression d'un enseignant vide `enseignant_id` sur ses séances sans les
+  dater. Le LMS doit répercuter lui-même ces trois cas quand il reçoit la
+  suppression définitive de l'élève, de la classe ou de l'enseignant.
 - Une première synchronisation ignore les purges antérieures : le LMS n'a rien à
   retirer.
 
 ## Architecture
 
-- `app/Http/Controllers/API/LMSSyncController.php` — contrôle d'accès, paramètres, ETag.
+- `app/Http/Controllers/API/LMSSyncController.php` — contrôle d'accès, paramètres.
 - `app/Domain/Lms/Synchronisation/SynchronisationLms.php` — assemblage d'une page.
 - `app/Domain/Lms/Synchronisation/FluxDeSynchronisation.php` — requête et forme de chaque type.
 - `app/Domain/Lms/Synchronisation/CurseurDeSynchronisation.php` — le curseur opaque.
 - `app/Domain/Lms/Synchronisation/SuppressionsDefinitives.php` — trace des purges (table `lms_suppressions`).
+- `app/Domain/Lms/Synchronisation/CompteLmsSuitLaFiche.php` — fait avancer la fiche quand le compte change.
 
 ## Historique
 
