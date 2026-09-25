@@ -1002,6 +1002,12 @@ document.addEventListener('DOMContentLoaded', function () {
         bsModal.show();
     }
 
+    // Lien profond depuis le tableau de bord : ?evaluation=ID ouvre directement la saisie.
+    const evaluationDemandee = new URLSearchParams(window.location.search).get('evaluation');
+    if (evaluationDemandee && /^\d+$/.test(evaluationDemandee)) {
+        openNoteModal(evaluationDemandee);
+    }
+
     document.addEventListener('click', function (event) {
         const trigger = event.target.closest('[data-action="open-notes-modal"]');
         if (!trigger) {
