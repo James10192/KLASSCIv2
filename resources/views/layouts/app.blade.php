@@ -2139,22 +2139,6 @@
                         </div>
                         @endcan
 
-                        {{-- Ces deux écrans n'étaient atteignables que par les tuiles de
-                             l'accueil : l'enseignant devait deviner leur adresse ailleurs. --}}
-                        @role('enseignant')
-                        <div class="menu-item">
-                            <a href="{{ route('esbtp.teacher-attendance.index') }}" class="menu-link {{ Request::routeIs('esbtp.teacher-attendance.index') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-calendar-day"></i></div>
-                                <div class="menu-text">Mes cours du jour</div>
-                            </a>
-                        </div>
-                        <div class="menu-item">
-                            <a href="{{ route('teacher.availability') }}" class="menu-link {{ Request::routeIs('teacher.availability*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
-                                <div class="menu-text">Mes disponibilités</div>
-                            </a>
-                        </div>
-                        @endrole
                     @endif
                     @endcan
 
@@ -2535,6 +2519,25 @@
                     @endrole
 
                     <!-- Section profil utilisateur -->
+                {{-- Mes cours du jour et mes disponibilités n'étaient atteignables que par
+                     les tuiles de l'accueil. Section à part : un enseignant qui a aussi
+                     `admin.access` ne voit pas la section « Enseignement » plus haut. --}}
+                @role('enseignant')
+                <div class="menu-category">Mon enseignement</div>
+                <div class="menu-item">
+                    <a href="{{ route('esbtp.teacher-attendance.index') }}" class="menu-link {{ Request::routeIs('esbtp.teacher-attendance.index') ? 'active' : '' }}">
+                        <div class="menu-icon"><i class="fas fa-calendar-day"></i></div>
+                        <div class="menu-text">Mes cours du jour</div>
+                    </a>
+                </div>
+                <div class="menu-item">
+                    <a href="{{ route('teacher.availability') }}" class="menu-link {{ Request::routeIs('teacher.availability*') ? 'active' : '' }}">
+                        <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
+                        <div class="menu-text">Mes disponibilités</div>
+                    </a>
+                </div>
+                @endrole
+
                 <div class="menu-category">Mon compte</div>
 
                     @role('etudiant')

@@ -13,8 +13,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Ajouts
+- **Disponibilités enseignant : « Ouvrir la semaine »** (`/dashboard/teacher/availability`). Un clic rend disponibles toutes les heures du lundi au vendredi, sans toucher aux créneaux déjà « Préféré » ; on retouche ensuite les exceptions. La page s'ouvre directement en modification.
 - **Émargement enseignant : « Je n'ai pas le code — le demander à la coordination »** sous chaque cours du jour. La demande arrive dans la cloche de toutes les personnes qui génèrent les codes, avec la matière, la classe et l'heure ; une seule demande par cours toutes les dix minutes.
-- **Menu enseignant : « Mes cours du jour » et « Mes disponibilités »**, jusqu'ici accessibles seulement par les tuiles de l'accueil. Le menu « Gestion des présences » gagne « Prolongations de cours » pour qui décide des prolongations.
+- **Menu enseignant : section « Mon enseignement » avec « Mes cours du jour » et « Mes disponibilités »**, jusqu'ici accessibles seulement par les tuiles de l'accueil, visible pour tout enseignant. Le menu « Gestion des présences » gagne « Prolongations de cours » pour qui décide des prolongations.
 - **Jury LMD : « Reprendre la composition du dernier jury »**, coché par défaut à la création. Les membres du dernier jury du même parcours ou de la même classe (à défaut, du dernier jury) sont repris avec leur rôle, sans signature ni décision ; un compte désactivé n'est pas repris.
 - **Séances : « Le rendre disponible sur ce créneau » et « Programmer quand même »** sous le message d'indisponibilité d'un enseignant (`/esbtp/seances-cours/create`). Il n'est plus nécessaire de se connecter avec le compte de l'enseignant pour ouvrir son créneau ; la première action exige la permission de modifier les enseignants.
 - **Choix de l'emploi du temps pour ajouter une séance : recherche et période.** Une carte par classe (la semaine en cours d'office, le nombre d'autres semaines indiqué), recherche par classe, filière ou niveau, et filtre « Cette semaine / En cours et à venir / Tout ». Les emplois du temps expirés sont masqués par défaut.
@@ -331,6 +332,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **L'enseignant posé sur le planning LMD apparaît enfin à la création d'une séance** — le formulaire d'ajout de séance vidait la liste des enseignants des ECUE, alors que la page Planning LMD les affichait. On reprend l'enseignant principal (et les assignations) de la planification.
 
 ### Améliorations
+- **Tableau de bord enseignant : sans cours aujourd'hui, les indicateurs restent neutres** (bleu) au lieu de jaune et rouge ; le bloc « Émargement » propose « Saisir ou demander le code » au lieu du texte « Demander le code au coordinateur ». Les délais d'émargement qu'il affiche suivent les réglages de l'école. Les disponibilités passent aux couleurs de la charte.
 - **Années universitaires : écran refait** (`/esbtp/annees-universitaires`). En-tête avec l'année en cours, les jours restants et le nombre d'années ; une carte par année avec ses dates, sa description, l'avancement de l'année en cours et des boutons nommés (« Définir comme année en cours » au lieu d'une icône seule).
 - **Sélecteurs de la charte sur les écrans LMD restants** : semestre et année des résultats de classe, classe et année de la génération des bulletins passent au sélecteur premium (recherche dès huit classes). Les listes UE et élément constitutif de la saisie des notes et du nouvel examen, remplies selon le parcours choisi, prennent l'habillage de la charte.
 - **Pilotage académique : l'adresse d'une classe s'ouvre dans l'écran**, filtrée sur cette classe, au lieu d'afficher des données brutes.
