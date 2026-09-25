@@ -170,6 +170,7 @@
 
 @section('scripts')
     {{-- Éditeur riche : l'ancienne initialisation appelait Summernote, Select2 et
-         bsCustomFileInput sans qu'aucun ne soit chargé, et plantait à la première ligne. --}}
+         bsCustomFileInput sans qu'aucun ne soit chargé, et plantait à la première ligne.
+         Les selects et le champ de fichier restent natifs : hors du périmètre de l'éditeur. --}}
     @include('partials.editeur-riche')
 @endsection 

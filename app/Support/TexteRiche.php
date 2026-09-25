@@ -20,6 +20,13 @@ use Illuminate\Support\HtmlString;
  * rend comme avant (retours à la ligne conservés, rien d'interprété), et
  * pourEditeur() les convertit en paragraphes pour que l'éditeur ne les écrase
  * pas sur une seule ligne.
+ *
+ * Pourquoi pas HTMLPurifier, pourtant présent dans vendor (tiré par
+ * phpoffice/phpspreadsheet) : ce n'est qu'une dépendance transitive, qui
+ * disparaîtrait à une mise à jour d'export sans que rien ne le signale ; et il
+ * repose lui aussi sur libxml, donc il n'apporterait pas de garantie de plus
+ * pour une liste aussi courte que celle-ci. Si la liste s'allonge (images,
+ * tableaux stylés), le déclarer dans composer.json et l'utiliser ici.
  */
 final class TexteRiche
 {
@@ -38,9 +45,17 @@ final class TexteRiche
 
     public static function contientDuHtml(?string $texte): bool
     {
-        // Une vraie balise, pas un « < » de texte (« note < 10 », « <3 ») :
-        // strip_tags() mange ces derniers et ferait prendre du texte brut pour du HTML.
-        return $texte !== null && preg_match('#<\s*/?\s*[a-z][a-z0-9]*(\s[^<>]*)?/?\s*>#i', $texte) === 1;
+        // Du HTML, c'est une balise que l'éditeur sait produire (il envoie toujours
+        // au moins un <p>). Un « <BAC> » ou un « note < 10 » dans une ancienne
+        // description en texte brut n'en est pas : la traiter en HTML ferait
+        // disparaître le mot et ses retours à la ligne au prochain enregistrement.
+        if ($texte === null) {
+            return false;
+        }
+
+        $balises = implode('|', self::BALISES);
+
+        return preg_match('#<\s*/?\s*(' . $balises . ')(\s[^<>]*)?/?\s*>#i', $texte) === 1;
     }
 
     public static function nettoyer(?string $texte): ?string

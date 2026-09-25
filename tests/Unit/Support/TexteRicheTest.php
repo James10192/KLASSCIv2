@@ -14,6 +14,16 @@ class TexteRicheTest extends TestCase
         $this->assertFalse(TexteRiche::contientDuHtml('Je <3 KLASSCI'));
     }
 
+    public function test_un_ancien_texte_avec_des_chevrons_reste_du_texte_brut(): void
+    {
+        $ancien = "Objectifs :\n- former\n\nNiveau requis <BAC> ou équivalent";
+
+        $this->assertFalse(TexteRiche::contientDuHtml($ancien));
+        $this->assertSame($ancien, TexteRiche::nettoyer($ancien));
+        $this->assertSame("Objectifs :<br />\n- former<br />\n<br />\nNiveau requis &lt;BAC&gt; ou équivalent", (string) TexteRiche::afficher($ancien));
+        $this->assertStringContainsString('&lt;BAC&gt;', TexteRiche::pourEditeur($ancien));
+    }
+
     public function test_la_mise_en_forme_de_l_editeur_est_gardee(): void
     {
         $html = '<h3>Objectifs</h3><p>Un <strong>cycle</strong> de <em>3 ans</em>, <u>souligné</u></p><ul><li>BTS</li></ul><blockquote>citation</blockquote>';
@@ -40,7 +50,16 @@ class TexteRicheTest extends TestCase
 
     public function test_une_balise_inconnue_laisse_son_texte(): void
     {
-        $this->assertSame('gros', TexteRiche::nettoyer('<div><span style="font-size:40px">gros</span></div>'));
+        $this->assertSame('<p>gros</p>', TexteRiche::nettoyer('<p><span style="font-size:40px">gros</span></p>'));
+    }
+
+    public function test_sans_balise_de_l_editeur_le_contenu_est_du_texte_et_s_affiche_echappe(): void
+    {
+        // Pas de <p> : ce n'est pas l'éditeur qui l'a produit. Gardé tel quel, jamais interprété.
+        $charge = '<img src=x onerror=alert(1)><div><span>gros</span></div>';
+
+        $this->assertSame('&lt;img src=x onerror=alert(1)&gt;&lt;div&gt;&lt;span&gt;gros&lt;/span&gt;&lt;/div&gt;', (string) TexteRiche::afficher($charge));
+        $this->assertStringNotContainsString('<img', TexteRiche::pourEditeur($charge));
     }
 
     public function test_un_editeur_vide_donne_une_description_vide(): void
