@@ -1,5 +1,8 @@
 # API Performance Personnel
 
+> **Retiré le 2026-09-25.** Le score du personnel (sur 100, niveaux, dimensions par permission) est supprimé, ainsi que la commande `personnel-scores:recalculate`. L’activité se lit en faits prévus / réalisés : voir [CLI_PERSONNEL_ACTIVITE.md](CLI_PERSONNEL_ACTIVITE.md). Ce document est conservé pour l’historique.
+
+
 ## Vue d'ensemble
 
 Le module de scoring personnel expose des endpoints internes pour consulter les snapshots de performance calculés à partir des rôles, des permissions effectives et des obligations académiques explicitement attribuées.

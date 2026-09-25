@@ -75,14 +75,14 @@
                             $typeLabel = $ue->type_ue?->label() ?? '—';
                             $respName = $ue->responsableUe?->name;
                             $respId = $ue->responsable_ue_id;
-                            $ueLabel = trim(($hasCode ? $ue->code . ' · ' : '') . $ue->name);
+                            $ueLabel = trim(($hasCode ? $ue->code_affiche . ' · ' : '') . $ue->name);
                             $canEditUe = auth()->user()?->can('lmd.planning.edit');
                         @endphp
                         <tr class="lp-ue-row js-ue-row" data-idx="{{ $idx }}">
                             @if($bulkEnabled)<td class="lpb-check-cell"></td>@endif
                             <td>
                                 <span class="lp-ue-caret js-ue-caret"><i class="fas fa-chevron-right"></i></span>
-                                @if($hasCode)<span class="lp-ue-code">{{ $ue->code }}</span>@else<span class="lp-ue-code lp-ue-code-virtual">virtuelle</span>@endif
+                                @if($hasCode)<span class="lp-ue-code">{{ $ue->code_affiche }}</span>@else<span class="lp-ue-code lp-ue-code-virtual">virtuelle</span>@endif
                                 {{ $ue->name }}
                             </td>
                             <td><span class="lp-type-chip">{{ $typeLabel }}</span></td>
@@ -118,7 +118,7 @@
                                 $canEdit = auth()->user()?->can('lmd.planning.edit') && $filters['niveau_id'] && $filters['semestre'];
                                 $teacherName = $planif?->enseignantPrincipal?->name;
                                 $teacherId = $planif?->enseignant_principal_id;
-                                $ecueLabel = trim((!empty($ecue->code) ? $ecue->code . ' · ' : '') . $ecue->name);
+                                $ecueLabel = trim((!empty($ecue->code) ? $ecue->code_affiche . ' · ' : '') . $ecue->name);
                             @endphp
                             <tr class="lp-ecue-row js-ecue-row" data-parent-idx="{{ $idx }}" style="display:none;">
                                 @if($bulkEnabled)
@@ -131,7 +131,7 @@
                                     </td>
                                 @endif
                                 <td class="lp-ecue-indent">
-                                    @if(!empty($ecue->code))<span class="lp-ecue-code">{{ $ecue->code }}</span>@endif
+                                    @if(!empty($ecue->code))<span class="lp-ecue-code">{{ $ecue->code_affiche }}</span>@endif
                                     {{ $ecue->name }}
                                 </td>
                                 <td>—</td>

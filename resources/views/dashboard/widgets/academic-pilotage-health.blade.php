@@ -17,5 +17,5 @@
     :color="$widget['color']"
 >
     <div class="dw-widget-hint">{{ $classes }} classe(s) avec données suffisantes</div>
-    <a class="dw-widget-link" href="{{ route('esbtp.pilotage-academique.index') }}#classes">Voir la santé des classes <i class="fas fa-arrow-right"></i></a>
+    <a class="dw-widget-link" href="{{ route('esbtp.pilotage-academique.index') }}">Voir la santé des classes <i class="fas fa-arrow-right"></i></a>
 </x-dw-widget>

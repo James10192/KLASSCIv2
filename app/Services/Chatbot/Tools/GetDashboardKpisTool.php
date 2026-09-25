@@ -13,7 +13,7 @@ class GetDashboardKpisTool extends ChatbotTool
 
     public function description(): string
     {
-        return 'Obtenir les indicateurs clés (KPI) du tableau de bord : nombre d\'étudiants, inscriptions actives, paiements reçus, taux de présence, évaluations en cours. Utiliser quand l\'utilisateur demande un résumé, des statistiques, ou l\'état général de l\'établissement.';
+        return 'Obtenir les indicateurs clés (KPI) du tableau de bord : inscrits de l\'année courante (le nombre à donner quand on demande combien d\'étudiants sont inscrits), étudiants en base toutes années confondues, paiements reçus, taux de présence, évaluations. Utiliser quand l\'utilisateur demande un résumé, des statistiques, ou l\'état général de l\'établissement.';
     }
 
     public function parameters(): array
@@ -34,12 +34,14 @@ class GetDashboardKpisTool extends ChatbotTool
         $focus = $args['focus'] ?? 'general';
         $kpis = [];
 
-        // KPIs généraux (toujours inclus)
-        $kpis['etudiants'] = DB::table('esbtp_etudiants')->whereNull('deleted_at')->count();
-        $kpis['inscriptions_actives'] = DB::table('esbtp_inscriptions')
-            ->where('status', 'active')
-            ->whereNull('deleted_at')
-            ->count();
+        // KPIs généraux (toujours inclus). Mêmes chiffres que le tableau de bord :
+        // « inscrits » porte sur l'année courante, « étudiants en base » sur tout
+        // l'historique. Les deux clés disent leur portée, sinon le modèle prend le
+        // total de la base pour les inscrits de l'année (262 annoncés pour 214).
+        $comptes = app(\App\Domain\Students\StudentCountService::class)->counts();
+        $kpis['annee_courante'] = $comptes['annee_courante_label'] ?? 'non définie';
+        $kpis['inscrits_annee_courante'] = $comptes['inscrits_annee_courante'];
+        $kpis['etudiants_en_base_toutes_annees'] = $comptes['total_base'];
         $kpis['classes'] = DB::table('esbtp_classes')->whereNull('deleted_at')->count();
         $kpis['enseignants'] = DB::table('esbtp_teachers')->where('is_active', true)->whereNull('deleted_at')->count();
 

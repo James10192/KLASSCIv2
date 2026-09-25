@@ -284,7 +284,7 @@
 
             {{-- UE ROW --}}
             <tr>
-                <td style="background-color: #f3f4f6; font-weight: bold; font-size: 8.5px;">{{ $ue->code ?? '' }}</td>
+                <td style="background-color: #f3f4f6; font-weight: bold; font-size: 8.5px;">{{ $ue->code_affiche ?? '' }}</td>
                 <td style="background-color: #f3f4f6; font-weight: bold; font-size: 8.5px;">{{ $ue->name ?? '' }}</td>
                 <td class="num" style="background-color: #f3f4f6; font-weight: bold;">{{ $resUE->moyenne !== null ? number_format($resUE->moyenne, 2) : '' }}</td>
                 <td class="num" style="background-color: #f3f4f6; font-weight: bold;">{{ $resUE->statut }}</td>
@@ -300,7 +300,7 @@
             @foreach($ecues as $resECUE)
                 @php $mat = $resECUE->matiere; @endphp
                 <tr>
-                    <td style="font-size: 8.5px;">{{ $mat->code ?? '' }}</td>
+                    <td style="font-size: 8.5px;">{{ $mat->code_affiche ?? '' }}</td>
                     <td style="font-size: 8.5px;">{{ $mat->name ?? '' }}</td>
                     <td class="num" style="font-size: 8.5px;">{{ $resECUE->moyenne !== null ? number_format($resECUE->moyenne, 2) : '' }}</td>
                     <td class="num"></td>

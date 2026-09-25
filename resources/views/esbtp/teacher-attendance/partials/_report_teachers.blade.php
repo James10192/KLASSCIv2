@@ -4,17 +4,12 @@
         $h = (int) floor($v); $m = (int) round(($v - $h) * 60);
         return $h . 'h' . ($m > 0 ? sprintf('%02d', $m) : '');
     };
-    $performanceScores = collect($performanceScores ?? []);
 @endphp
 @forelse($report['enseignants'] as $ens)
     @php
         $t = $ens['totaux'];
         $taux = $ens['taux_realisation'];
         $pColor = $taux >= 80 ? '#10b981' : ($taux >= 40 ? '#d97706' : '#0453cb');
-        $score = $performanceScores->get((int) $ens['teacher_id']);
-        $scoreLevel = $score?->level ?? 'insufficient_data';
-        $scoreClass = config("personnel_scoring.levels.{$scoreLevel}.class", 'muted');
-        $scoreLabel = config("personnel_scoring.levels.{$scoreLevel}.label", 'Donnees insuffisantes');
     @endphp
     <div class="tar-tcard">
         <div class="tar-tcard-head">
@@ -23,11 +18,6 @@
                 <a href="{{ route('esbtp.teacher-attendance.teacher-report', $ens['teacher_id']) }}" class="tar-tcard-name">{{ $ens['name'] }}</a>
                 <div class="tar-tcard-sub">{{ $fmtH($t['heures_realisees']) }} réalisées · {{ $t['nb_realisees'] }}/{{ $t['nb_seances'] }} séances</div>
             </div>
-            @if($score)
-                <span class="tar-score-badge {{ $scoreClass }}" title="{{ $scoreLabel }}">
-                    <i class="fas fa-chart-line"></i>{{ (int) $score->total_score }}%
-                </span>
-            @endif
             @if($ens['nb_warnings'] > 0)
                 <span class="tar-tcard-warn" title="{{ $ens['nb_warnings'] }} alerte(s) de ponctualité"><i class="fas fa-exclamation-triangle"></i> {{ $ens['nb_warnings'] }}</span>
             @endif

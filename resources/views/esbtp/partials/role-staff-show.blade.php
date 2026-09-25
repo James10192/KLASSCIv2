@@ -1,10 +1,15 @@
 @php
-    $score = null;
-    if (!empty($performanceScore)) {
-        $score = is_array($performanceScore)
-            ? ($performanceScore['total_score'] ?? null)
-            : ($performanceScore->total_score ?? null);
-    }
+    // Des faits, pas une note : les séances tenues si la personne enseigne,
+    // sinon ce qu'elle a saisi. Le détail est sur sa page d'activité.
+    $_rsActivite = $activite ?? null;
+    $_rsFait = match (true) {
+        ! $_rsActivite => ['—', 'Activité'],
+        $_rsActivite['seances_prevues'] > 0 => [$_rsActivite['seances_tenues'].' / '.$_rsActivite['seances_prevues'], 'Séances tenues'],
+        $_rsActivite['inscriptions'] > 0 => [$_rsActivite['inscriptions'], 'Inscriptions saisies'],
+        $_rsActivite['paiements_saisis'] > 0 => [$_rsActivite['paiements_saisis'], 'Paiements saisis'],
+        default => ['—', 'Activité'],
+    };
+    $_rsPeutVoir = \App\Services\Personnel\ActiviteDuPersonnel::peutLire(auth()->user(), (int) $model->id);
     $initiales = collect(preg_split('/\s+/', trim((string) $model->name)))
         ->filter()
         ->take(2)
@@ -78,13 +83,17 @@
                     <div class="cs-kpi-lbl">Identifiant</div>
                 </div>
             </div>
+            @if($_rsPeutVoir)
             <div class="cs-kpi">
                 <i class="fas fa-chart-line cs-kpi-icon"></i>
                 <div>
-                    <div class="cs-kpi-val">{{ $score !== null ? $score : '—' }}</div>
-                    <div class="cs-kpi-lbl">Score</div>
+                    <div class="cs-kpi-val">{{ $_rsFait[0] }}</div>
+                    <div class="cs-kpi-lbl">
+                        <a href="{{ route('esbtp.personnel.performance.show', ['user' => $model->id]) }}">{{ $_rsFait[1] }}</a>
+                    </div>
                 </div>
             </div>
+            @endif
         </div>
     </div>
 
