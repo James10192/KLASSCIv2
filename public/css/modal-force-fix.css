@@ -150,7 +150,7 @@ body.modal-open {
 /* S'assurer qu'aucun élément n'a de backdrop-filter */
 .navbar, .sidebar, .dropdown, .dropdown-menu, 
 .modal, .modal-backdrop, .modal-dialog, .modal-content,
-.search-results, .overlay, .backdrop {
+.overlay, .backdrop {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
 }

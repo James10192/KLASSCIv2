@@ -50,12 +50,6 @@
     z-index: 1045 !important;
 }
 
-/* Correction Search Results - RÉDUIRE pour passer sous les modals */
-.search-results,
-#search-results {
-    z-index: 1047 !important;
-}
-
 /* ===== CORRECTIONS SPÉCIFIQUES MODALS ===== */
 
 /* S'assurer que les modals Bootstrap conservent leur z-index par défaut */
