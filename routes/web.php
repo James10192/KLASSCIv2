@@ -1840,6 +1840,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/settings/mailpulse/test-notification', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'testMailPulseNotification'])
                 ->middleware('throttle:10,1')
                 ->name('esbtp.settings.mailpulse.test-notification');
+            // Assistant IA : clés des fournisseurs (chiffrées), modèle par défaut, essai réel.
+            Route::prefix('/settings/assistant')->name('esbtp.settings.assistant.')->group(function () {
+                Route::get('/', [App\Http\Controllers\ESBTP\AssistantReglagesController::class, 'etat'])->name('etat');
+                Route::put('/cle', [App\Http\Controllers\ESBTP\AssistantReglagesController::class, 'poserCle'])->middleware('throttle:20,1')->name('cle');
+                Route::delete('/cle/{fournisseur}', [App\Http\Controllers\ESBTP\AssistantReglagesController::class, 'retirerCle'])->middleware('throttle:20,1')->name('cle.retirer');
+                Route::put('/modele', [App\Http\Controllers\ESBTP\AssistantReglagesController::class, 'choisirModele'])->middleware('throttle:20,1')->name('modele');
+                Route::post('/tester', [App\Http\Controllers\ESBTP\AssistantReglagesController::class, 'tester'])->middleware('throttle:6,1')->name('tester');
+            });
         });
 
         // Phase 9 â€” AperÃ§u PDF avec settings non persistÃ©s (nouvelle tab)
