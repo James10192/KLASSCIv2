@@ -150,6 +150,6 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Une erreur est survenue');
         }
     });
-
+});
 </script>
 @endpush
