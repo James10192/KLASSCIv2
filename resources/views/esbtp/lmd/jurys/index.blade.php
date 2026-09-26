@@ -41,7 +41,7 @@
 @endpush
 
 @section('content')
-<div x-data="juryIndex()" x-init="init()">
+<div x-data="juryIndex()">
 
 <div class="juy-hero">
     <div class="juy-hero-top">

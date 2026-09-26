@@ -163,7 +163,7 @@
         'frequenceDefaut' => $rimFrequenceDefaut,
     ];
 @endphp
-<div x-data="recIndex()" x-init="init()" class="container-fluid">
+<div x-data="recIndex()" class="container-fluid">
 <div class="{{ $rimShell ? 'm-only-desktop' : '' }}">
     {{-- Hero gradient KLASSCI --}}
     <div class="rec-hero">

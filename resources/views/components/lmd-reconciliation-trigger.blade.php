@@ -7,8 +7,7 @@
 
 @can('lmd.reconciliation.manage')
 <div class="lrt-root"
-     x-data="lmdReconcileTrigger({ parcoursId: {{ $parcoursId ? (int) $parcoursId : 'null' }}, mentionId: {{ $mentionId ? (int) $mentionId : 'null' }} })"
-     x-init="init()">
+     x-data="lmdReconcileTrigger({ parcoursId: {{ $parcoursId ? (int) $parcoursId : 'null' }}, mentionId: {{ $mentionId ? (int) $mentionId : 'null' }} })">
 
     <button type="button" class="lrt-btn lrt-btn--{{ $variant }}" @click="open()" :disabled="loading">
         <i class="fas fa-clone" x-show="!loading"></i>

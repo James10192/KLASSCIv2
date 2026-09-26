@@ -354,7 +354,6 @@
 @section('content')
 <div class="pref-page"
      x-data="studentPreferences()"
-     x-init="init()"
      data-vapid-public-key="{{ $vapidPublicKey }}"
      data-has-subscription="{{ $hasPushSubscription ? '1' : '0' }}"
      data-subscribe-url="{{ route('esbtp.push.subscribe') }}"

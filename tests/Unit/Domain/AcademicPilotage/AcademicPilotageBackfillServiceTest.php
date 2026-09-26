@@ -29,6 +29,10 @@ class AcademicPilotageBackfillServiceTest extends AcademicPilotageDatabaseTestCa
             $table->softDeletes();
         });
 
+        // Le schéma de base crée déjà `esbtp_evaluations`, avec `classe_id` et
+        // `annee_universitaire_id` obligatoires : ce test a besoin de sa propre
+        // forme (colonnes nullables, horodatages), donc il la remplace.
+        Schema::dropIfExists('esbtp_evaluations');
         Schema::create('esbtp_evaluations', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('classe_id')->nullable();

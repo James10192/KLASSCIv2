@@ -21,6 +21,9 @@ function busSelect() {
         // Portée du save : 'selected' (semestre courant) ou 'both' (S1 + S2 via periode=annuel).
         saveScope: 'selected',
         init() {
+            // Cette page affiche ses propres toasts : le relais du shell mobile
+            // les doublerait, a toutes les largeurs.
+            document.body.dataset.mToast = 'off';
             window.addEventListener('toast', (ev) => this.pushToast(ev.detail));
             window.addEventListener('bus-open-config-modal', (ev) => this.openConfigModal(ev.detail || {}));
         },
@@ -45,7 +48,7 @@ function busSelect() {
             };
 
             if (!context.classe_id || !context.annee_universitaire_id || !context.periode) {
-                this.pushToast({ type: 'error', message: 'Selectionnez classe, annee universitaire et periode avant de configurer.' });
+                this.pushToast({ type: 'error', message: "Sélectionnez la classe, l'année universitaire et la période avant de configurer." });
                 return;
             }
 
@@ -446,7 +449,16 @@ window.busCard = function (cfg) {
 
             const skipped = this.lastGeneration.skipped?.length || 0;
             const blocked = (this.lastGeneration.blocking_errors?.length || 0) + (this.lastGeneration.errors?.length || 0);
-            return `${this.lastGeneration.created || 0} cree(s), ${this.lastGeneration.regenerated || 0} recalcule(s), ${skipped} ignore(s), ${blocked} blocage(s).`;
+            return `${this.lastGeneration.created || 0} créé(s), ${this.lastGeneration.regenerated || 0} recalculé(s), ${skipped} ignoré(s), ${blocked} blocage(s).`;
+        },
+
+        // Les blocages du pre-controle, regroupes par cause : [{ cause, nombre }].
+        blocagesParCause() {
+            const parCause = {};
+            (this.preflight?.blocking_errors || []).forEach((e) => {
+                parCause[e.message] = (parCause[e.message] || 0) + 1;
+            });
+            return Object.entries(parCause).map(([cause, nombre]) => ({ cause, nombre }));
         },
 
         generationStudentsLabel() {
@@ -458,14 +470,14 @@ window.busCard = function (cfg) {
                 const count = this.preflight.students_count || 0;
                 const plural = count > 1 ? 's' : '';
                 const verb = count > 1 ? 'seront' : 'sera';
-                return `${count} etudiant${plural} ${verb} concerne${plural}`;
+                return `${count} étudiant${plural} ${verb} concerné${plural}`;
             }
 
             if (this.preflightBusy) {
-                return 'Verification des etudiants concernes...';
+                return 'Vérification des étudiants concernés…';
             }
 
-            return 'Pre-controle requis';
+            return 'Pré-contrôle requis';
         },
 
         canOpenPilotage() {
@@ -504,7 +516,7 @@ window.busCard = function (cfg) {
 
         openInlineConfig(issue = null) {
             if (!this.form.classe_id || !this.form.annee_universitaire_id || !this.form.periode) {
-                this.notify('error', 'Selectionnez classe, annee universitaire et periode avant de configurer.');
+                this.notify('error', "Sélectionnez la classe, l'année universitaire et la période avant de configurer.");
                 return;
             }
 
@@ -671,7 +683,7 @@ window.busCard = function (cfg) {
             } catch (err) {
                 if (err.name === 'AbortError') return null;
                 this.preflight = null;
-                this.notify('error', err.message || 'Erreur de pre-controle.');
+                this.notify('error', err.message || 'Erreur de pré-contrôle.');
                 return null;
             } finally {
                 if (this.preflightAbort === controller) {
@@ -778,11 +790,11 @@ window.busCard = function (cfg) {
                 if (this.kind === 'generate') {
                     const preflight = await this.fetchPreflight();
                     if (!preflight) {
-                        this.notify('error', 'Pre-controle indisponible. La generation est annulee.');
+                        this.notify('error', 'Pré-contrôle indisponible. La génération est annulée.');
                         return;
                     }
                     if (!preflight.ok && this.isGenerationBlocked()) {
-                        this.notify('error', preflight.message || 'Des prerequis bloquent la generation.');
+                        this.notify('error', preflight.message || 'Des prérequis bloquent la génération.');
                         return;
                     }
 
@@ -816,7 +828,7 @@ window.busCard = function (cfg) {
                     }
 
                     if (tranches.length === 0) {
-                        this.notify('info', 'Aucun etudiant a generer pour cette periode.');
+                        this.notify('info', 'Aucun étudiant à générer pour cette période.');
                         return;
                     }
 
@@ -876,7 +888,7 @@ window.busCard = function (cfg) {
 
                         if (reponse.redirected) {
                             this.progression = null;
-                            this.notify('error', 'Le serveur a redirige la requete au lieu de retourner le resultat JSON.');
+                            this.notify('error', 'Le serveur a redirigé la requête au lieu de renvoyer le résultat.');
                             return;
                         }
                         if (!reponse.ok) {
@@ -916,14 +928,14 @@ window.busCard = function (cfg) {
                     const failures = (data.blocking_errors?.length || 0) + (data.errors?.length || 0);
 
                     if (writes > 0) {
-                        this.notify(failures > 0 ? 'info' : 'success', data.message || 'Generation terminee.');
+                        this.notify(failures > 0 ? 'info' : 'success', data.message || 'Génération terminée.');
                         setTimeout(() => {
                             window.location.href = `{{ route('esbtp.bulletins.index') }}?classe_id=${this.form.classe_id}&annee_universitaire_id=${this.form.annee_universitaire_id}&periode_id=${this.form.periode}`;
                         }, 1200);
                         return;
                     }
 
-                    this.notify(failures > 0 ? 'error' : 'info', data.message || 'Aucun bulletin genere.');
+                    this.notify(failures > 0 ? 'error' : 'info', data.message || 'Aucun bulletin généré.');
                     return;
                 }
             } catch (err) {

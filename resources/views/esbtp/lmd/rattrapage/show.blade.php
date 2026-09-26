@@ -31,7 +31,7 @@
 @endpush
 
 @section('content')
-<div x-data="sessionShow()" x-init="init()">
+<div x-data="sessionShow()">
 
 <div class="rtp-hero">
     <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">

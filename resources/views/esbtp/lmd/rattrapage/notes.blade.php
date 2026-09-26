@@ -73,7 +73,7 @@
     $_nbSaisies = collect($_lignes)->filter(fn ($l) => $l['note_rattrapage'] !== '')->count();
 @endphp
 
-<div x-data="saisieRattrapage()" x-init="init()">
+<div x-data="saisieRattrapage()">
 
 <div class="rtn-hero">
     <div class="rtn-hero-top">
