@@ -450,7 +450,7 @@
 @endpush
 
 @section('content')
-<div class="container-fluid" x-data="bulIndex()" x-init="init()">
+<div class="container-fluid" x-data="bulIndex()">
     {{-- ══ HERO ═══════════════════════════════════════════ --}}
     <div class="bul-hero">
         <div class="bul-hero-top">

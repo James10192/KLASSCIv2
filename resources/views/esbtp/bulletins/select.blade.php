@@ -702,7 +702,7 @@
     ];
 @endphp
 
-<div class="container-fluid" x-data="busSelect()" x-init="init()">
+<div class="container-fluid" x-data="busSelect()">
 
     {{-- ══ HERO ═══════════════════════════════════════════ --}}
     <div class="bus-hero">
@@ -936,7 +936,7 @@
                         <i class="fas fa-spinner fa-spin"></i>
                         <span>Pré-contrôle en cours</span>
                     </div>
-                    <p class="bus-inline-panel__body">Verification des inscriptions actives, coefficients et donnees academiques.</p>
+                    <p class="bus-inline-panel__body">Vérification des inscriptions actives, coefficients et données académiques.</p>
                 </div>
                 <div class="bus-inline-panel"
                      :class="panelClass()"

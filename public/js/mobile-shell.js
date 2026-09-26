@@ -357,6 +357,10 @@
         /* Relais uniquement dans le shell mobile, et désactivable par une page
            qui affiche déjà ses propres toasts : <body data-m-toast="off">. */
         if (!hasShell()) { return; }
+        /* has-m-shell est posé quel que soit l'écran : sur ordinateur, la page
+           affiche déjà ses toasts, et relayer les doublerait. Même seuil que
+           le CSS du shell (mobile-shell.css). */
+        if (!window.matchMedia('(max-width: 991.98px)').matches) { return; }
         if (document.body.getAttribute('data-m-toast') === 'off') { return; }
         var d = ev.detail || {};
         if (d.message) { mToast(d.message, d.type); }
