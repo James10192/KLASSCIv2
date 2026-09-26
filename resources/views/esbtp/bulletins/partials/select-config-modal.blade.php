@@ -33,7 +33,7 @@
                     <div>
                         <div class="bus-config-summary">
                             <div class="bus-config-summary__item">
-                                <span class="bus-config-summary__label">Types matieres</span>
+                                <span class="bus-config-summary__label">Types de matières</span>
                                 <span class="bus-config-summary__value" x-text="configModal.matieres.filter(m => m.selected_type && m.selected_type !== 'none').length + ' / ' + configModal.matieres.length"></span>
                             </div>
                             <div class="bus-config-summary__item">
@@ -89,7 +89,7 @@
                             <table class="bus-config-table">
                                 <thead>
                                     <tr>
-                                        <th>Matiere</th>
+                                        <th>Matière</th>
                                         <th>Source</th>
                                         <th>Type</th>
                                         <th>Coeff.</th>
@@ -106,7 +106,7 @@
                                             <td><span class="bus-config-source" x-text="matiere.source === 'evaluations' ? 'notes' : 'classe'"></span></td>
                                             <td :class="matiere._copied && matiere._copied.type ? 'bus-config-cell--copied' : ''">
                                                 <select x-model="matiere.selected_type" :aria-label="'Type de ' + matiere.name">
-                                                    <option value="general">Generale</option>
+                                                    <option value="general">Générale</option>
                                                     <option value="technique">Technique</option>
                                                     <option value="none">Ignorer</option>
                                                 </select>

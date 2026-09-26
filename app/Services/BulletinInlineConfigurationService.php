@@ -8,6 +8,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPConfigMatiere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
+use App\Models\ESBTPMatiereFilierNiveau;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -239,12 +240,24 @@ class BulletinInlineConfigurationService
         // ecrit ensemble, et `$evaluated` remonte tout ce qui porte une
         // evaluation — y compris ce qui a ete cree avant que les ecrans
         // d'evaluation ne soient gardes.
+        // Sur une classe de tronc commun, une matiere classee « specialite »
+        // n'appartient pas au bulletin : la configurer ici l'y ramenerait, alors
+        // que le resolveur du bulletin (BtsBulletinSubjectResolver)
+        // l'ecarte. Les matieres non classees restent, comme la-bas.
+        $estTroncCommun = (bool) $classe->filiere?->isTroncCommun();
+        $specialites = $estTroncCommun
+            ? ESBTPMatiereFilierNiveau::specialiteMatiereIdsForCombo($classe->filiere_id, $classe->niveau_etude_id)->all()
+            : [];
+
         $official = ESBTPMatiere::query()
             ->where('is_active', true)
             ->btsOnly()
-            ->whereHas('liaisonsFilieresNiveaux', function ($query) use ($classe) {
+            ->whereHas('liaisonsFilieresNiveaux', function ($query) use ($classe, $estTroncCommun) {
                 $query->where('filiere_id', $classe->filiere_id)
                     ->where('niveau_etude_id', $classe->niveau_etude_id);
+                if ($estTroncCommun) {
+                    $query->notSpecialite();
+                }
             })
             ->orderBy('name')
             ->get();
@@ -255,9 +268,10 @@ class BulletinInlineConfigurationService
                 ->btsOnly()
                 ->orderBy('name')
                 ->get()
-                ->filter(function ($matiere) use ($classe) {
+                ->filter(function ($matiere) use ($classe, $specialites) {
                     return $matiere->filieres->pluck('id')->contains($classe->filiere_id)
-                        && $matiere->niveaux->pluck('id')->contains($classe->niveau_etude_id);
+                        && $matiere->niveaux->pluck('id')->contains($classe->niveau_etude_id)
+                        && ! in_array($matiere->id, $specialites);
                 })
                 ->values();
         }
