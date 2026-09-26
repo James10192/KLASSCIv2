@@ -127,6 +127,7 @@ class ConversationEntityLinkService
 
         $entity = $this->resolveEntity($link->entity_type, (int) $link->entity_id, $detailAllowed);
         $verified = $link->isVerified();
+        $relationshipSupportsSensitiveAction = in_array($link->relation_type, ['concerns', 'parent_of'], true);
 
         return [
             'id' => $link->id,
@@ -144,7 +145,9 @@ class ConversationEntityLinkService
             'can_view_details' => $detailAllowed,
             'details' => $detailAllowed ? $entity['details'] : $this->nonSensitiveDetails($entity['details']),
             'open_url' => $entity['url'],
-            'sensitive_actions_allowed' => $verified && $detailAllowed,
+            // Une relation « partagé par », « responsable » ou « contact administratif »
+            // peut être vraie sans faire du participant la personne à relancer/payer.
+            'sensitive_actions_allowed' => $verified && $detailAllowed && $relationshipSupportsSensitiveAction,
         ];
     }
 
@@ -167,6 +170,25 @@ class ConversationEntityLinkService
         ]);
 
         return $link->fresh();
+    }
+
+    public function describeEntity(string $type, int $id, User $viewer, string $purpose = 'legacy_workflow'): array
+    {
+        $permission = match ($type) {
+            'inscription' => 'inscriptions.view',
+            'paiement' => 'paiements.view',
+            default => null,
+        };
+        if (! $this->allowed($viewer, $permission)) {
+            return [
+                'found' => false,
+                'label' => 'Données indisponibles',
+                'details' => [],
+                'url' => null,
+            ];
+        }
+
+        return $this->resolveEntity($type, $id, false);
     }
 
     private function resolveEntity(string $type, int $id, bool $includeSensitive = true): array
