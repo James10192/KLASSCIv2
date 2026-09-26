@@ -991,3 +991,10 @@ html.ast-lock, html.ast-lock body { overflow: hidden !important; }
 .ast-retour-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 .ast-retour-merci { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; font-size: .8rem; color: var(--ast-ok); }
 .ast-retour-care { font-size: .78rem; color: var(--ast-muted); }
+
+/* Nanan : une présence discrète, jamais décorative. Clignement rare, regard levé quand elle réfléchit. */
+.ast-nanan .ast-nanan-yeux { transform-origin: 12px 11px; animation: ast-nanan-cligne 7s infinite; }
+.ast-mark.is-pense .ast-nanan-yeux { animation: none; transform: translateY(-1.2px); }
+.ast-mark.is-pense .ast-nanan-bouche { opacity: .6; }
+@keyframes ast-nanan-cligne { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+@media (prefers-reduced-motion: reduce) { .ast-nanan .ast-nanan-yeux { animation: none; } }

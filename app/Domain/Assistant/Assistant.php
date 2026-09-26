@@ -102,7 +102,7 @@ class Assistant
 
         if ($resultat->estErreur() || $resultat->estInterrompu()) {
             return [
-                'text' => $resultat->texte !== '' ? $resultat->texte : "Désolé, l'assistant n'a pas pu répondre. Réessayez dans un instant.",
+                'text' => $resultat->texte !== '' ? $resultat->texte : "Désolée, je n'ai pas pu répondre cette fois. Réessayez dans un instant.",
                 'tool_calls' => $resultat->appels,
                 'display_type' => 'text',
                 'display_data' => null,

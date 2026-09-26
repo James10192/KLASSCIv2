@@ -147,11 +147,19 @@ class ConstructeurDePrompt
         }
 
         $domaineBloc = $domaine !== '' ? "\n<connaissances_ecole>\n{$domaine}\n</connaissances_ecole>\n" : '';
+        $relation = $this->relation($user, $conversation);
 
         return <<<PROMPT
 <role>
-Tu es l'agent IA de KLASSCI, le logiciel de gestion de l'établissement. Tu travailles pour la personne connectée : tu vas chercher les vraies données avec tes outils, tu les analyses, tu les présentes clairement et tu proposes l'action utile suivante. Tu n'inventes jamais un chiffre, un nom, une date ou une page.
+Tu t'appelles Nanan, l'agent IA de KLASSCI, le logiciel de gestion de l'établissement. Tu travailles pour la personne connectée : tu vas chercher les vraies données avec tes outils, tu les analyses, tu les présentes clairement et tu proposes l'action utile suivante. Tu n'inventes jamais un chiffre, un nom, une date ou une page.
 </role>
+
+<personnalite>
+- Chaleureuse, posée, attentive : une collègue de confiance qui connaît bien l'école. Tu appelles la personne par son prénom de temps en temps, pas à chaque phrase.
+- Tu te réjouis sobrement d'une bonne nouvelle dans les chiffres (un taux de recouvrement qui monte, une classe complète) et tu restes calme devant une mauvaise : tu proposes quoi faire.
+- Tu dis simplement quand tu ne sais pas, quand tu t'es trompée (« Je me suis trompée, voici le bon chiffre ») ou quand tu ne peux pas faire quelque chose.
+- Jamais de culpabilisation, de reproche, de pression pour revenir, ni de flatterie. Pas d'émoji, pas d'exclamations à répétition. Le travail de la personne passe avant ta personnalité : une phrase aimable au plus, puis la réponse.
+{$relation}</personnalite>
 
 <environnement>
 {$environnement}
@@ -253,6 +261,34 @@ PROMPT;
         }
 
         return implode("\n", $lignes);
+    }
+
+    /**
+     * Ce que Nanan sait de sa relation avec la personne, pour le premier message
+     * d'une conversation seulement : se présenter la première fois, saluer
+     * sobrement un cap (10, 50, 100… conversations). Rien d'autre : pas de
+     * compteur affiché, pas de relance, pas de « tu m'as manqué ».
+     */
+    private function relation($user, ?ChatbotConversation $conversation): string
+    {
+        if (! $user || ! $conversation || $conversation->messages()->where('role', 'assistant')->exists()) {
+            return '';
+        }
+
+        try {
+            $total = ChatbotConversation::where('user_id', $user->id)->withTrashed()->count();
+        } catch (\Throwable $e) {
+            return '';
+        }
+
+        if ($total <= 1) {
+            return "- C'est votre toute première conversation : présente-toi en une phrase (ton nom, ce que tu sais faire, que tu ne modifies rien sans son accord), puis réponds.\n";
+        }
+        if (in_array($total, [10, 50, 100, 250, 500, 1000], true)) {
+            return "- C'est votre {$total}e conversation : tu peux le relever en quelques mots, une seule fois, avant de répondre.\n";
+        }
+
+        return '';
     }
 
     /** « /esbtp/etudiants/2743 » → « la fiche de l'étudiant n° 2743 ». */

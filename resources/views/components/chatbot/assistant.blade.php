@@ -14,11 +14,11 @@
     <script type="application/json" data-ast-config>@json($astConfig)</script>
 
     <button type="button" class="ast-launcher" x-ref="lanceur" x-show="!ouvert"
-            x-on:click="ouvrir()" aria-haspopup="dialog" aria-label="Ouvrir l'assistant KLASSCI">
+            x-on:click="ouvrir()" aria-haspopup="dialog" aria-label="Ouvrir Nanan, l'assistante KLASSCI">
         <span class="ast-mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6L5.5 10l4.6-1.9L12 3.5z" fill="currentColor"/><path d="M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" fill="currentColor" opacity=".7"/></svg>
         </span>
-        <span class="ast-launcher-label">Assistant</span>
+        <span class="ast-launcher-label">Nanan</span>
     </button>
 
     <div class="ast-scrim" x-show="ouvert" x-cloak x-transition.opacity x-on:click="fermer()" aria-hidden="true"></div>
@@ -33,15 +33,15 @@
             <button type="button" class="ast-icon-btn" x-show="vue !== 'chat'" x-on:click="vue = 'chat'" aria-label="Retour à la conversation">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i>
             </button>
-            <span class="ast-mark ast-mark--head" x-show="vue === 'chat'" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="17" height="17" fill="none"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6L5.5 10l4.6-1.9L12 3.5z" fill="currentColor"/><path d="M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" fill="currentColor" opacity=".7"/></svg>
+            <span class="ast-mark ast-mark--head" x-show="vue === 'chat'" x-bind:class="{ 'is-pense': envoiEnCours }" aria-hidden="true">
+                <svg class="ast-nanan" viewBox="0 0 24 24" width="20" height="20" fill="none"><rect x="2.5" y="3" width="19" height="18" rx="8" fill="currentColor"/><g class="ast-nanan-yeux"><circle cx="9" cy="11" r="1.6" fill="#fff"/><circle cx="15" cy="11" r="1.6" fill="#fff"/></g><path class="ast-nanan-bouche" d="M9.2 15.2c1.6 1.3 4 1.3 5.6 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>
             </span>
             <div class="ast-head-titles">
                 <h2 id="ast-title" class="ast-title"
-                    x-text="vue === 'historique' ? 'Conversations' : (vue === 'preferences' ? 'Préférences' : 'Assistant KLASSCI')">Assistant KLASSCI</h2>
+                    x-text="vue === 'historique' ? 'Conversations' : (vue === 'preferences' ? 'Préférences' : 'Nanan')">Nanan</h2>
                 <p class="ast-subtitle" x-show="vue === 'chat'">
                     <span class="ast-live-dot" aria-hidden="true"></span>
-                    <span>Connecté à vos données KLASSCI</span>
+                    <span x-text="envoiEnCours ? 'Nanan réfléchit…' : 'Votre assistante KLASSCI'">Votre assistante KLASSCI</span>
                 </p>
             </div>
             <div class="ast-head-actions">
@@ -73,10 +73,10 @@
 
                     <div class="ast-empty" x-show="messages.length === 0 && !chargementHistorique">
                         <span class="ast-mark ast-mark--xl" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6L5.5 10l4.6-1.9L12 3.5z" fill="currentColor"/><path d="M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" fill="currentColor" opacity=".7"/></svg>
+                            <svg class="ast-nanan" viewBox="0 0 24 24" width="30" height="30" fill="none"><rect x="2.5" y="3" width="19" height="18" rx="8" fill="currentColor"/><g class="ast-nanan-yeux"><circle cx="9" cy="11" r="1.6" fill="#fff"/><circle cx="15" cy="11" r="1.6" fill="#fff"/></g><path class="ast-nanan-bouche" d="M9.2 15.2c1.6 1.3 4 1.3 5.6 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>
                         </span>
                         <h3 class="ast-empty-title" x-text="cfg.prenom ? 'Bonjour ' + cfg.prenom : 'Bonjour'">Bonjour</h3>
-                        <p class="ast-empty-text">Posez une question sur l'école : je consulte KLASSCI avec les accès de votre compte, et je vous montre ce que j'ai trouvé.</p>
+                        <p class="ast-empty-text">Je suis Nanan. Posez-moi une question sur l'école : je consulte KLASSCI avec les accès de votre compte, je vous montre ce que j'ai trouvé, et je ne modifie rien sans votre accord.</p>
                         <div class="ast-suggestions" x-show="cfg.suggestions.length">
                             <template x-for="s in cfg.suggestions.slice(0, 4)" x-bind:key="s">
                                 <button type="button" class="ast-suggestion" x-on:click="proposer(s)">
@@ -222,7 +222,7 @@
                     <textarea id="ast-input" class="ast-textarea" x-ref="saisie" rows="1"
                               x-model="saisie" x-on:input="ajusterHauteur(); erreurSaisie = ''" x-on:keydown="surTouche($event)"
                               x-bind:maxlength="cfg.maxLength" x-bind:disabled="envoiEnCours"
-                              placeholder="Demandez à KLASSCI…" aria-describedby="ast-hint"></textarea>
+                              placeholder="Demandez à Nanan…" aria-describedby="ast-hint"></textarea>
                     <div class="ast-composer-row">
                         <template x-if="cfg.modeles && cfg.modeles.liste">
                             <div class="ast-model" x-on:click.outside="menuModele = false" x-on:keydown.escape.stop="menuModele = false">
