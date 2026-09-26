@@ -155,10 +155,14 @@ class LectureDePieceTest extends TestCase
         $ligne = fn ($a, $b) => "<w:tr><w:tc><w:p><w:r><w:t>{$a}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$b}</w:t></w:r></w:p></w:tc></w:tr>";
 
         // Une ligne de 300 000 cellules : bornée à 30 colonnes, signalée comme tronquée.
+        if (function_exists('memory_reset_peak_usage')) {
+            memory_reset_peak_usage();
+        }
         $t = app(LectureDePiece::class)->lire($docx('<w:tbl>' . $ligne('A', 'B') . '<w:tr>' . str_repeat('<w:tc><w:p><w:r><w:t>x</w:t></w:r></w:p></w:tc>', 300000) . '</w:tr></w:tbl>'));
         $this->assertCount(30, $t['lignes'][0]);
         $this->assertTrue($t['tronque']);
-        $this->assertLessThan(200 * 1024 * 1024, memory_get_peak_usage());
+        // Le pic reste proche de l'usage courant : pas de tableau démesuré en mémoire.
+        $this->assertLessThan(memory_get_usage() + 120 * 1024 * 1024, memory_get_peak_usage());
 
         // Balise cassée au milieu du tableau : refusé, pas lu à moitié.
         $this->expectException(PieceIllisible::class);
