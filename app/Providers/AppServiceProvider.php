@@ -53,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
         // des modèles le consulte à chaque appel. Sans cela, une requête et un
         // déchiffrement par fournisseur à chaque résolution.
         $this->app->scoped(\App\Domain\Assistant\Cles\CoffreDesCles::class);
+        $this->app->scoped(\App\Domain\Assistant\Actions\ContexteDEchange::class);
 
         // Singleton : le service memorise ses resolutions de chemin. Resolu a la
         // volee, le conteneur en reconstruisait une instance neuve a chaque acces

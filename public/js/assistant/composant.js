@@ -40,6 +40,8 @@
             menuModele: false,
             messages: [],
             saisie: '',
+            // Fichiers joints au prochain message (déjà déposés et lus par le serveur).
+            pieces: [],
             envoiEnCours: false,
             relanceEnCours: false,
             controleur: null,
@@ -197,7 +199,10 @@
                 this.messages.push({
                     key: uid('m'), role: 'assistant', status: etat || 'streaming', question: question || null,
                     copie: false, erreur: '', aTexte: false, lienWidget: false, liens: [],
-                    suites: { questions: [], actions: [] }
+                    suites: { questions: [], actions: [] },
+                    // Avis 👍 / 👎 et signalement KLASSCI Care
+                    dbId: null, avis: null, retourOuvert: false, raison: '', commentaire: '', retourEnvoye: false,
+                    signalement: { ouvert: false, texte: '', etat: '', message: '', cle: null }
                 });
                 var msg = this.messages[this.messages.length - 1];
                 this.creerVue(msg);
@@ -241,6 +246,10 @@
                 var opts = options || {};
                 var texte = String(texteImpose !== undefined ? texteImpose : this.saisie).trim();
                 if (!texte || this.envoiEnCours) { return; }
+                if (this.pieces.some(function (p) { return p.etat === 'envoi'; })) {
+                    this.erreurSaisie = 'Un fichier est encore en lecture : patientez un instant.';
+                    return;
+                }
                 if (texte.length > this.cfg.maxLength) {
                     this.erreurSaisie = 'Message trop long : ' + this.cfg.maxLength + ' caractères au plus.';
                     return;
@@ -253,7 +262,7 @@
                 var cleQuestion = null;
                 if (!opts.relance) {
                     cleQuestion = uid('m');
-                    this.messages.push({ key: cleQuestion, role: 'user', text: texte });
+                    this.messages.push({ key: cleQuestion, role: 'user', text: texte, pieces: this.piecesPretes().map(function (p) { return { nom: p.nom }; }) });
                 } else {
                     for (var i = this.messages.length - 1; i >= 0; i -= 1) {
                         if (this.messages[i].role === 'user') { cleQuestion = this.messages[i].key; break; }
@@ -279,6 +288,9 @@
 
                 var diffusion = typeof window.ReadableStream === 'function' && typeof window.TextDecoder === 'function';
                 var promesse = diffusion ? this.diffuser(texte, msg) : this.envoyerSansDiffusion(texte, msg);
+                // Les fichiers partis avec ce message quittent la zone de saisie une fois la
+                // réponse obtenue ; en cas d'échec, ils restent là pour le prochain essai.
+                var envoyees = this.piecesPretes().map(function (p) { return p.key; });
 
                 promesse.catch(function (e) {
                     if (e && e.name === 'AbortError') {
@@ -296,6 +308,10 @@
                         self.clore(msg, true);
                         msg.erreur = 'La réponse a été interrompue avant la fin. Réessayez.';
                         msg.status = 'error';
+                    }
+                    // Fichiers retirés seulement si la réponse a vraiment abouti (statut final connu ici).
+                    if (msg.status === 'done') {
+                        self.pieces = self.pieces.filter(function (p) { return envoyees.indexOf(p.key) < 0; });
                     }
                     self.envoiEnCours = false;
                     self.nonLu = false;
@@ -329,7 +345,8 @@
                     current_path: window.location.pathname.slice(0, 1024),
                     page_title: document.title.slice(0, 255),
                     // Réessai : le serveur remplace la réponse ratée au lieu d'ajouter un tour.
-                    relance: this.relanceEnCours || undefined
+                    relance: this.relanceEnCours || undefined,
+                    pieces: this.piecesPretes().map(function (p) { return p.id; })
                 });
             },
 
@@ -419,6 +436,7 @@
                 if (meta && meta.conversationId) {
                     this.memoriserConversation(meta.conversationId, meta.title);
                 }
+                if (meta && meta.dbMessageId) { msg.dbId = meta.dbMessageId; }
 
                 if (type === 'text-start') {
                     v.texteDebut(partie.id);
@@ -514,6 +532,125 @@
                 }).catch(function () { /* presse-papiers refusé */ });
             },
 
+            // ─── Fichiers joints (Excel, CSV, Word) ───
+
+            piecesPretes: function () {
+                return this.pieces.filter(function (p) { return p.etat === 'pret'; });
+            },
+
+            joindre: function (evenement) {
+                var self = this;
+                var fichiers = Array.prototype.slice.call((evenement.target && evenement.target.files) || [], 0, 3 - this.pieces.length);
+                evenement.target.value = '';
+                fichiers.forEach(function (fichier) {
+                    var cle = uid('f');
+                    self.pieces.push({ key: cle, nom: fichier.name, etat: 'envoi', message: '', id: null, lignes: 0, tronque: false });
+                    // Toujours retrouver la pièce par sa clé, sur le tableau réactif : une
+                    // autre pièce retirée pendant la lecture ne décale plus rien.
+                    var maj = function (valeurs) {
+                        var p = self.pieces.find(function (x) { return x.key === cle; });
+                        if (p) { Object.assign(p, valeurs); }
+                    };
+                    var donnees = new FormData();
+                    donnees.append('fichier', fichier);
+                    fetch(self.cfg.routes.pieces, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': self.cfg.csrfToken || '', 'X-Requested-With': 'XMLHttpRequest' },
+                        credentials: 'same-origin',
+                        body: donnees
+                    }).then(function (res) {
+                        return res.json().catch(function () { return {}; }).then(function (json) {
+                            if (res.ok) {
+                                maj({ id: json.id, lignes: json.nombre_lignes, tronque: !!json.tronque, etat: 'pret',
+                                      message: json.tronque ? 'Fichier plus long : seules les 500 premières lignes et 30 colonnes sont lues.' : '' });
+                                return;
+                            }
+                            var detail = json.errors ? Object.values(json.errors)[0] : null;
+                            maj({ etat: 'erreur', message: (Array.isArray(detail) ? detail[0] : detail) || json.message || 'Fichier illisible.' });
+                        });
+                    }).catch(function () { maj({ etat: 'erreur', message: 'Connexion interrompue.' }); });
+                });
+            },
+
+            retirerPiece: function (piece) {
+                this.pieces = this.pieces.filter(function (p) { return p.key !== piece.key; });
+            },
+
+            // ─── Avis sur une réponse (👍 / 👎) et signalement à KLASSCI Care ───
+
+            urlDe: function (route, msg) {
+                return this.cfg.routes[route] ? this.cfg.routes[route].replace('__ID__', encodeURIComponent(msg.dbId)) : null;
+            },
+
+            donnerAvis: function (msg, avis) {
+                if (!msg.dbId || msg.avis === avis) {
+                    if (avis === 'pas_utile') { msg.retourOuvert = !msg.retourOuvert; }
+                    return;
+                }
+                var avant = msg.avis;
+                msg.avis = avis;
+                msg.retourOuvert = avis === 'pas_utile';
+                msg.retourEnvoye = false;
+                var self = this;
+                this.postJson(this.urlDe('retour', msg), { avis: avis }).then(function (r) {
+                    if (!r.ok) { msg.avis = avant; msg.retourOuvert = false; }
+                    self.annonce = r.ok ? (avis === 'utile' ? 'Merci pour votre avis.' : 'Merci. Dites-nous ce qui ne va pas.') : 'Avis non enregistré.';
+                }).catch(function () { msg.avis = avant; });
+            },
+
+            envoyerRetour: function (msg) {
+                if (!msg.dbId) { return; }
+                var self = this;
+                this.postJson(this.urlDe('retour', msg), { avis: 'pas_utile', raison: msg.raison || null, commentaire: msg.commentaire || null }).then(function (r) {
+                    msg.retourEnvoye = r.ok;
+                    self.annonce = r.ok ? 'Merci : la prochaine réponse sera plus poussée.' : 'Avis non enregistré.';
+                }).catch(function () { self.annonce = 'Connexion interrompue : avis non enregistré.'; });
+            },
+
+            /** Brouillon relu par la personne : sa question et un extrait de la réponse, qu'elle peut retirer. */
+            ouvrirSignalement: function (msg) {
+                var question = this.questionDe(msg);
+                var extrait = this.texteDe(msg).slice(0, 600);
+                msg.signalement.texte = (msg.commentaire ? msg.commentaire + '\n\n' : 'Ce qui ne va pas : \n\n')
+                    + (question ? 'Ma question : ' + question + '\n' : '')
+                    + (extrait ? 'Réponse de Nanan (extrait) : ' + extrait : '');
+                msg.signalement.ouvert = true;
+                msg.signalement.etat = '';
+                msg.signalement.cle = null;
+            },
+
+            questionDe: function (msg) {
+                var i = this.messages.indexOf(msg);
+                for (var j = i - 1; j >= 0; j--) {
+                    if (this.messages[j].role === 'user') { return this.messages[j].text || ''; }
+                }
+                return msg.question || '';
+            },
+
+            signaler: function (msg, deuxiemeEssai) {
+                var sig = msg.signalement;
+                if (!msg.dbId || sig.etat === 'envoi') { return; }
+                sig.cle = sig.cle && !deuxiemeEssai ? sig.cle : nouvelleCle();
+                sig.etat = 'envoi';
+                var self = this;
+                this.postJson(this.urlDe('signaler', msg), {
+                    description: sig.texte, cle: sig.cle,
+                    contexte: { url_path: window.location.pathname, viewport: window.innerWidth + 'x' + window.innerHeight }
+                }).then(function (r) {
+                    if (r.statut === 409 && r.json && r.json.erreur === 'cle_perimee' && !deuxiemeEssai) {
+                        sig.etat = '';
+                        self.signaler(msg, true);
+                        return;
+                    }
+                    var detail = r.json && r.json.errors ? Object.values(r.json.errors)[0] : null;
+                    sig.etat = r.ok ? 'envoye' : 'erreur';
+                    sig.message = r.ok
+                        ? (r.json.en_attente ? r.json.message : 'Signalement transmis au support' + (r.json.reference ? ' (' + r.json.reference + ')' : '') + '.')
+                        : ((Array.isArray(detail) ? detail[0] : detail) || r.message || 'Envoi impossible.');
+                    if (r.ok) { sig.ouvert = false; }
+                }).catch(function () { sig.etat = 'erreur'; sig.message = 'Connexion interrompue.'; });
+            },
+
             // ─── Conversations ───
 
             memoriserConversation: function (id, titre) {
@@ -556,10 +693,18 @@
                     self.messages = [];
                     ((json && json.messages) || []).forEach(function (m) {
                         if (m.role === 'user') {
-                            self.messages.push({ key: uid('m'), role: 'user', text: m.content || '' });
+                            self.messages.push({ key: uid('m'), role: 'user', text: m.content || '', pieces: m.pieces || [] });
                             return;
                         }
                         var msg = self.nouveauMessageAssistant(null, 'done');
+                        msg.dbId = m.id || null;
+                        msg.avis = m.retour ? m.retour.avis : null;
+                        msg.retourEnvoye = !!(m.retour && m.retour.avis === 'pas_utile');
+                        if (m.retour && m.retour.care_reference) {
+                            // Déjà signalé : on ne propose pas d'ouvrir une seconde demande.
+                            msg.signalement.etat = 'envoye';
+                            msg.signalement.message = 'Signalement transmis au support (' + m.retour.care_reference + ').';
+                        }
                         var v = vueDe(msg);
                         if (Array.isArray(m.parties) && m.parties.length) {
                             v.chargerParties(m.parties);
@@ -634,6 +779,15 @@
                 }).catch(function () { return { ok: false, message: 'Connexion interrompue.' }; });
             },
 
+            /** Valider ou refuser une proposition de l'assistant : la réponse dit ce qui a été fait. */
+            repondreProposition: function (url, corps) {
+                if (!envoiSur(url)) { return Promise.resolve({ ok: false, statut: 'refus', message: 'Action indisponible.' }); }
+                return this.postJson(url, corps).then(function (r) {
+                    var j = r.json || {};
+                    return { ok: r.ok, statut: j.statut || (r.ok ? 'executee' : 'refus'), message: j.message || r.message, lien: j.lien || null };
+                }).catch(function () { return { ok: false, statut: 'reseau', message: 'Connexion interrompue : rien n\'a été confirmé. Rouvrez la conversation pour voir l\'état réel.' }; });
+            },
+
             deciderAction: function (url, approuver) {
                 var self = this;
                 if (!envoiSur(url)) { return Promise.resolve({ ok: false, message: 'Action indisponible.' }); }
@@ -706,6 +860,17 @@
             }
         };
     };
+
+    /** Clé d'idempotence du signalement (UUID v4), comme le widget KLASSCI Care. */
+    function nouvelleCle() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') { return window.crypto.randomUUID(); }
+        var o = new Uint8Array(16);
+        window.crypto.getRandomValues(o);
+        o[6] = (o[6] & 0x0f) | 0x40;
+        o[8] = (o[8] & 0x3f) | 0x80;
+        var h = Array.prototype.map.call(o, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+        return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+    }
 
     function enCoursStatut(msg) {
         return msg.status === 'streaming';
