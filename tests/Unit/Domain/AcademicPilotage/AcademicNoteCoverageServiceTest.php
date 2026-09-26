@@ -362,8 +362,9 @@ class AcademicNoteCoverageServiceTest extends AcademicPilotageDatabaseTestCase
             $table->string('titre')->nullable();
             $table->string('type')->nullable();
             $table->dateTime('date_evaluation')->nullable();
-            $table->string('status')->nullable();
-            $table->softDeletes();
+            // `status` et `deleted_at` viennent déjà du schéma de base
+            // (AcademicPilotageDatabaseTestCase) : les rajouter lève
+            // « duplicate column name » sous SQLite.
         });
         Schema::table('esbtp_notes', function (Blueprint $table): void {
             $table->decimal('note', 8, 2)->nullable();

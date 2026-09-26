@@ -1428,8 +1428,8 @@ class ESBTPBulletinController extends Controller
             'success' => true,
             'supprimees' => $supprimees,
             'message' => $supprimees > 0
-                ? "$supprimees moyenne(s) supprimee(s)."
-                : 'Aucune moyenne a supprimer : elles ont retrouve une note.',
+                ? "$supprimees moyenne(s) supprimée(s)."
+                : 'Aucune moyenne à supprimer : elles ont retrouvé une note.',
         ]);
     }
 

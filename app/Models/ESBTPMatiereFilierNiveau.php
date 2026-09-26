@@ -77,6 +77,33 @@ class ESBTPMatiereFilierNiveau extends Model
     }
 
     /**
+     * Ce que le bulletin d'un combo retient. Sur un combo de tronc commun, une
+     * matière classée `specialite` en est écartée ; ailleurs, tout reste.
+     *
+     * C'est la seule écriture de cette règle : le résolveur du bulletin et la
+     * fenêtre de configuration la lisent ici, pour ne pas se contredire.
+     */
+    public function scopeAuBulletinDe($query, ?ESBTPFiliere $filiere)
+    {
+        return $filiere?->isTroncCommun() ? $query->notSpecialite() : $query;
+    }
+
+    /**
+     * Même règle, pour une liste déjà chargée : les matières que le bulletin
+     * de ce combo écarte.
+     *
+     * @return list<int>
+     */
+    public static function ecarteesDuBulletin(?ESBTPFiliere $filiere, $niveauId): array
+    {
+        if (! $filiere?->isTroncCommun()) {
+            return [];
+        }
+
+        return static::specialiteMatiereIdsForCombo($filiere->id, $niveauId)->map(fn ($id) => (int) $id)->all();
+    }
+
+    /**
      * IDs des matières `specialite` d'un combo (filière, niveau).
      *
      * @return \Illuminate\Support\Collection<int, int>

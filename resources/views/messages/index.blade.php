@@ -454,7 +454,7 @@
 @endpush
 
 @section('content')
-<div class="dashboard-acasi" x-data="messagesPage()" x-init="init()">
+<div class="dashboard-acasi" x-data="messagesPage()">
     <div class="main-content" style="padding: 1rem;">
 
         <div class="ms-shell" :class="{ 'show-list': !activeConvo }">
