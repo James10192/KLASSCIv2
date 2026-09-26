@@ -2522,7 +2522,7 @@
                                  pas un chemin de menu. Celui-ci nommait « Scolarité › Demandes de
                                  réinscription » — une section qui n'existe pas, et un intitulé qui
                                  n'est pas celui du lien (« Demandes en ligne », sous Étudiants). --}}
-                            <div class="bc-desc">Ouvre le portail public. Les demandes arrivent dans @can('reinscriptions.demandes.view')<a href="{{ route('esbtp.reinscription-demandes.index') }}">la liste des demandes en ligne</a>@else la liste des demandes en ligne @endcan et ne deviennent des inscriptions qu'une fois converties par vos soins. Désactivé par défaut.</div>
+                            <div class="bc-desc">Ouvre le portail public. Les demandes arrivent dans @can('reinscriptions.demandes.view')<a href="{{ route('esbtp.demandes.index', ['type' => 'reinscription']) }}">les demandes d'inscription</a>@else la liste des demandes en ligne @endcan et ne deviennent des inscriptions qu'une fois converties par vos soins. Désactivé par défaut.</div>
                             <div class="row g-2" style="margin-top:.6rem;max-width:420px;">
                                 <div class="col-6">
                                     <label class="bc-desc" for="rd-ouverture" style="display:block;margin-bottom:.2rem;">Ouverture</label>
@@ -2582,7 +2582,7 @@
                                  dépend du rôle qui lit, et il a déjà été décrit faux une fois.
                                  Le lien, lui, mène au même endroit pour tout le monde — et n'est
                                  montré qu'à qui a le droit d'y aller. --}}
-                            <div class="bc-desc">Ouvre les candidatures des nouveaux bacheliers depuis klassci.com. Elles arrivent dans @can('inscriptions.candidatures.view')<a href="{{ route('esbtp.candidatures.index') }}">la corbeille des candidatures</a>@else la corbeille des candidatures @endcan et ne deviennent des inscriptions qu'une fois acceptées puis créées par vos soins. Désactivé par défaut. La période d'ouverture est celle de la réinscription ci-dessus ; <strong>l'année visée doit y être renseignée</strong>, sans quoi ce canal refuse toutes les candidatures.</div>
+                            <div class="bc-desc">Ouvre les candidatures des nouveaux bacheliers depuis klassci.com. Elles arrivent dans @can('inscriptions.candidatures.view')<a href="{{ route('esbtp.demandes.index', ['type' => 'nouvelle']) }}">les demandes d'inscription</a>@else la corbeille des candidatures @endcan et ne deviennent des inscriptions qu'une fois acceptées puis créées par vos soins. Désactivé par défaut. La période d'ouverture est celle de la réinscription ci-dessus ; <strong>l'année visée doit y être renseignée</strong>, sans quoi ce canal refuse toutes les candidatures.</div>
                             <div class="row g-2" style="margin-top:.6rem;max-width:420px;">
                                 <div class="col-12">
                                     <label class="bc-desc" for="ci-physiques" style="display:block;margin-bottom:.2rem;">Début des inscriptions sur place</label>

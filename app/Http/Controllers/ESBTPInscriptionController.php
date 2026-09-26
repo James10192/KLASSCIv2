@@ -51,8 +51,7 @@ use Illuminate\Support\Str;
 
 class ESBTPInscriptionController extends Controller
 {
-    // Seuil pour afficher l'alerte doublon à l'utilisateur (score ≥ 55 = "possible")
-    private const DUPLICATE_BLOCKING_SCORE = 55;
+    use Concerns\RepondEnJsonOuRedirige;
 
     protected $inscriptionService;
 
@@ -338,7 +337,7 @@ class ESBTPInscriptionController extends Controller
         // produit en silence.
         $idCandidature = (int) old("candidature_id", $request->integer("candidature"));
 
-        $candidatureSource = PreRemplissageCandidature::acceptee($idCandidature);
+        $candidatureSource = PreRemplissageCandidature::aInscrire($idCandidature);
 
         $preRemplissage = $candidatureSource === null
             ? []
@@ -401,8 +400,20 @@ class ESBTPInscriptionController extends Controller
 
     /**
      * Enregistrer une nouvelle inscription.
+     *
+     * Deux ecrans y arrivent : le formulaire complet, qui attend une
+     * redirection, et la fenetre « Accepter et inscrire » des demandes, qui
+     * appelle en arriere-plan. La logique est la meme ; seule la reponse est
+     * traduite, par traduireRedirection().
      */
     public function store(
+        \App\Http\Requests\Inscription\StoreInscriptionRequest $request,
+        StudentDuplicateDetector $duplicateDetector,
+    ) {
+        return $this->traduireRedirection($request, $this->enregistrer($request, $duplicateDetector));
+    }
+
+    private function enregistrer(
         \App\Http\Requests\Inscription\StoreInscriptionRequest $request,
         StudentDuplicateDetector $duplicateDetector,
     ) {
@@ -447,7 +458,7 @@ class ESBTPInscriptionController extends Controller
             $request->input("date_naissance"),
             $request->input("sexe"),
         )->filter(function ($duplicate) {
-            return ($duplicate["score"] ?? 0) >= self::DUPLICATE_BLOCKING_SCORE;
+            return ($duplicate["score"] ?? 0) >= StudentDuplicateDetector::SCORE_BLOQUANT;
         });
 
         if ($blockingDuplicates->isNotEmpty()) {

@@ -100,7 +100,7 @@ if (auth()->user()->can('paiements.validate.high_amount')) {  // ✅ OUI
 ```blade
 {{-- Vue --}}
 @can('comptabilite.audit.view')  {{-- ✅ marche pour superAdmin + tout rôle custom qui a cette perm --}}
-    <a href="{{ route('esbtp.audit.comptabilite') }}">Audit</a>
+    <a href="{{ route('esbtp.audit.index', ['theme' => 'finances']) }}">Audit</a>
 @endcan
 ```
 

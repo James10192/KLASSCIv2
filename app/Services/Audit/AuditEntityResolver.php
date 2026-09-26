@@ -183,7 +183,7 @@ class AuditEntityResolver
             $links[] = [
                 'key' => 'annee_universitaire',
                 'label' => 'Année universitaire',
-                'value' => $paiement->anneeUniversitaire->name ?? ('#'.$paiement->annee_universitaire_id),
+                'value' => $paiement->anneeUniversitaire->name ?? 'Année supprimée',
                 'sublabel' => null,
                 'route' => null,
                 'icon' => 'fa-calendar-alt',
@@ -759,7 +759,7 @@ class AuditEntityResolver
                 $parts[] = $inscription->anneeUniversitaire->name;
             }
             if ($inscription->status) {
-                $parts[] = ucfirst($inscription->status);
+                $parts[] = \App\Domain\Audit\ChampsLisibles::statut($inscription->status);
             }
             if ($parts) {
                 $sublabel = implode(' · ', $parts);
@@ -768,7 +768,8 @@ class AuditEntityResolver
         return [
             'key' => 'inscription',
             'label' => 'Inscription',
-            'value' => '#'.$inscriptionId,
+            // Une inscription se reconnait a sa classe, jamais a son numero.
+            'value' => $inscription?->classe?->name ?? ($inscription ? 'Sans classe' : 'Inscription supprimée'),
             'sublabel' => $sublabel,
             'route' => $this->safeRoute('esbtp.inscriptions.show', $inscriptionId),
             'icon' => 'fa-file-signature',

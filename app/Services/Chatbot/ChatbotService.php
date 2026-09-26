@@ -62,26 +62,8 @@ class ChatbotService
             $preferredNameCandidate = $this->detectPreferredName($message);
             $memoryAction = $this->buildMemoryAction($preferredNameCandidate, $preferences);
 
-            // 3. Sauvegarder le message utilisateur
-            if (!($relance && $this->preparerRelance($conversation, $message))) {
-                ChatbotMessage::create([
-                    'conversation_id' => $conversation->id,
-                    'role' => 'user',
-                    'content' => $message,
-                    'display_type' => 'text',
-                ]);
-            }
-
-            // 4. Mettre à jour le contexte de page
-            if ($clientContext) {
-                $conversation->update([
-                    'context' => array_filter(array_merge($conversation->context ?? [], [
-                        'last_page_url' => $clientContext['current_url'] ?? null,
-                        'last_page_path' => $clientContext['current_path'] ?? null,
-                        'last_page_title' => $clientContext['page_title'] ?? null,
-                    ])),
-                ]);
-            }
+            // 3-4. Question, fichiers joints et contexte de page (même chemin que la diffusion)
+            $this->enregistrerQuestion($conversation, $user->id, $message, $clientContext, $relance);
 
             // 5. Appel de l'assistant (même boucle que la diffusion, sortie muette)
             $agentResponse = $this->agent->repondre(
@@ -91,7 +73,8 @@ class ChatbotService
                 $preferences,
                 $clientContext,
                 UiMessageStream::silencieux(),
-                $modele
+                $modele,
+                $relance
             );
 
             // 6. Construire les display_data finales
@@ -122,6 +105,7 @@ class ChatbotService
 
             // 8. Audit log
             $this->auditToolCalls($conversation, $user->id, $agentResponse['tool_calls'] ?? []);
+            $this->retenirRoutage($conversation, $assistantMessage, $agentResponse);
 
             // 9. Mettre à jour la conversation (merge, pas overwrite)
             $conversation->update([
@@ -191,27 +175,10 @@ class ChatbotService
             $preferredNameCandidate = $this->detectPreferredName($message);
             $memoryAction = $this->buildMemoryAction($preferredNameCandidate, $preferences);
 
-            if (!($relance && $this->preparerRelance($conversation, $message))) {
-                ChatbotMessage::create([
-                    'conversation_id' => $conversation->id,
-                    'role' => 'user',
-                    'content' => $message,
-                    'display_type' => 'text',
-                ]);
-            }
-
-            if ($clientContext) {
-                $conversation->update([
-                    'context' => array_filter(array_merge($conversation->context ?? [], [
-                        'last_page_url' => $clientContext['current_url'] ?? null,
-                        'last_page_path' => $clientContext['current_path'] ?? null,
-                        'last_page_title' => $clientContext['page_title'] ?? null,
-                    ])),
-                ]);
-            }
+            $this->enregistrerQuestion($conversation, $user->id, $message, $clientContext, $relance);
 
             $agentResponse = $this->agent->repondre(
-                $conversation, $message, $user, $preferences, $clientContext, $ui, $modele
+                $conversation, $message, $user, $preferences, $clientContext, $ui, $modele, $relance
             );
 
             $displayData = $agentResponse['display_data'];
@@ -240,6 +207,7 @@ class ChatbotService
             ]);
 
             $this->auditToolCalls($conversation, $user->id, $agentResponse['tool_calls'] ?? []);
+            $this->retenirRoutage($conversation, $assistantMessage, $agentResponse);
 
             $conversation->update([
                 'last_activity_at' => now(),
@@ -364,6 +332,50 @@ class ChatbotService
     }
 
     /**
+     * La question de la personne, ses fichiers joints et le contexte de page :
+     * commun à la diffusion et au repli sans diffusion.
+     */
+    private function enregistrerQuestion(ChatbotConversation $conversation, int $userId, string $message, ?array $clientContext, bool $relance): void
+    {
+        $pieces = $this->piecesDuMessage($userId, $clientContext['pieces'] ?? []);
+        if (!($relance && $this->preparerRelance($conversation, $message))) {
+            ChatbotMessage::create([
+                'conversation_id' => $conversation->id,
+                'role' => 'user',
+                'content' => $message,
+                'display_type' => 'text',
+                'metadata' => $pieces ? ['pieces' => array_map(fn ($p) => ['id' => $p['id'], 'nom' => $p['nom']], $pieces)] : null,
+            ]);
+        }
+
+        if ($clientContext) {
+            $contexte = array_merge($conversation->context ?? [], [
+                'last_page_url' => $clientContext['current_url'] ?? null,
+                'last_page_path' => $clientContext['current_path'] ?? null,
+                'last_page_title' => $clientContext['page_title'] ?? null,
+            ]);
+            // La conversation se souvient des fichiers joints : « valide » au message
+            // suivant doit encore pouvoir s'appuyer sur eux.
+            if ($pieces) {
+                $contexte['pieces'] = array_slice(array_values(array_unique(array_merge($contexte['pieces'] ?? [], array_column($pieces, 'id')))), -3);
+            }
+            $conversation->update(['context' => array_filter($contexte)]);
+        }
+    }
+
+    /** Les pièces jointes réellement déposées par cette personne (les autres identifiants sont ignorés). */
+    private function piecesDuMessage(int $userId, array $ids): array
+    {
+        $pieces = app(\App\Domain\Assistant\Pieces\PiecesJointes::class);
+
+        return array_values(array_filter(array_map(function ($id) use ($pieces, $userId) {
+            $piece = $pieces->pour($userId, $id);
+
+            return $piece ? ['id' => $id] + $piece : null;
+        }, $ids)));
+    }
+
+    /**
      * Récupérer l'historique d'une conversation.
      */
     public function getHistory(string $sessionId, int $userId): array
@@ -374,8 +386,27 @@ class ChatbotService
 
         $messages = $conversation->messages()
             ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($message) {
+            ->get();
+
+        // Une proposition rouverte montre son état RÉEL (validée, refusée, expirée) :
+        // l'état enregistré dans le fil est celui du moment où elle a été faite.
+        $propositions = \App\Models\ChatbotActionLog::where('conversation_id', $conversation->id)
+            ->where('user_id', $userId)->get()->keyBy('id');
+        $retours = \App\Domain\Assistant\Retours\RetourDeReponse::where('conversation_id', $conversation->id)
+            ->where('user_id', $userId)->get()->keyBy('message_id');
+
+        $messages = $messages
+            ->map(function ($message) use ($propositions, $retours) {
+                $parties = $message->metadata['parties'] ?? null;
+                if (is_array($parties)) {
+                    foreach ($parties as $i => $partie) {
+                        if (($partie['data']['kind'] ?? null) === 'approbation') {
+                            $journal = $propositions->get($partie['data']['id'] ?? null);
+                            $parties[$i]['data']['etat'] = $journal ? \App\Domain\Assistant\Actions\ExecutionDesPropositions::etat($journal) : 'expiree';
+                        }
+                    }
+                }
+
                 return [
                     'id' => $message->id,
                     'role' => $message->role,
@@ -383,7 +414,9 @@ class ChatbotService
                     'display_type' => $message->display_type,
                     'display_data' => $message->display_data,
                     'deep_link' => $message->deep_link,
-                    'parties' => $message->metadata['parties'] ?? null,
+                    'parties' => $parties,
+                    'retour' => ($r = $retours->get($message->id)) ? ['avis' => $r->avis, 'care_reference' => $r->care_reference] : null,
+                    'pieces' => $message->metadata['pieces'] ?? null,
                     'created_at' => $message->created_at->toIso8601String(),
                 ];
             });
@@ -636,13 +669,33 @@ class ChatbotService
         ];
     }
 
+    /**
+     * Rattache la consommation de l'échange à son message, et retient le palier
+     * que le routeur a fait monter : la conversation le garde pour la suite.
+     */
+    private function retenirRoutage(ChatbotConversation $conversation, ChatbotMessage $message, array $reponse): void
+    {
+        app(\App\Domain\Assistant\Consommation\JournalDeConsommation::class)
+            ->rattacherAuMessage($reponse['consommation'] ?? [], $message->id);
+
+        // Palier retenu par la conversation : monté après un échec, redescendu
+        // après des réussites ; null = plus rien à retenir.
+        if (is_array($reponse['palier'] ?? null)) {
+            $contexte = array_merge($conversation->context ?? [], $reponse['palier']);
+            if ($contexte['palier'] === null) {
+                unset($contexte['palier'], $contexte['succes_au_palier']);
+            }
+            $conversation->update(['context' => $contexte]);
+        }
+    }
+
     protected function updateConversationTitleIfNeeded(ChatbotConversation $conversation, string $message): void
     {
         if (!empty($conversation->title)) {
             return;
         }
 
-        $newTitle = $this->agent->genererTitre($message);
+        $newTitle = $this->agent->genererTitre($message, $conversation->user_id, $conversation->id);
         $newTitle = $this->sanitizeTitle($newTitle ?: $message);
 
         if ($newTitle) {
@@ -654,7 +707,7 @@ class ChatbotService
     protected function redigerTitreApresCoup(ChatbotConversation $conversation, string $message): void
     {
         try {
-            $titre = $this->agent->genererTitre($message);
+            $titre = $this->agent->genererTitre($message, $conversation->user_id, $conversation->id);
             if ($titre) {
                 $conversation->update(['title' => $this->sanitizeTitle($titre)]);
             }

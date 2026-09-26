@@ -73,6 +73,7 @@ class CatalogueOutils
             new AfficherGraphique(),
             new AfficherTableau(),
             new AfficherDiagramme(),
+            ...app(\App\Domain\Assistant\Actions\RegistreDesActions::class)->toutes(),
         ];
     }
 

@@ -6,6 +6,8 @@
     $_familles = app(\App\Services\RendezVous\FamillesAPrevenirRdv::class);
     $_voitCandidatures = auth()->user()?->can('inscriptions.candidatures.view') ?? false;
     $_voitDemandes = auth()->user()?->can('reinscriptions.demandes.view') ?? false;
+    $_inscritCandidatures = (auth()->user()?->can('inscriptions.candidatures.process') && auth()->user()?->can('inscriptions.ouvrir-formulaire')) ?? false;
+    $_traiteDemandes = auth()->user()?->can('reinscriptions.demandes.process') ?? false;
     $_nonVenuesMasse = $aReprogrammer;
     $_recidives = $_nonVenuesMasse->where('absences', '>', 0)->count();
 @endphp
@@ -132,9 +134,16 @@
                             {{-- Sur chaque ligne, pas seulement sur les non-venues : l'agent qui
                                  vient de recevoir une famille a besoin de son dossier pour la
                                  suite (accepter, inscrire, reinscrire), pas seulement pour clore. --}}
-                            @if($_ref !== '' && ($resa->candidature ? $_voitCandidatures : $_voitDemandes))
+                            @if($resa->candidature ? $_voitCandidatures : $_voitDemandes)
+                                @php $_suite = $_etat === 'recu' && $resa->dossierOuvert() && ($resa->candidature ? $_inscritCandidatures : $_traiteDemandes); @endphp
+                                {{-- Reçue : la suite logique est la decision. Le bouton ouvre le dossier
+                                     dans la file des demandes et enchaine sur l'inscription. --}}
+                                @if($_suite)
+                                    <a class="rdv-btn rdv-btn--primary rdv-btn--sm" title="Ouvrir le dossier et inscrire"
+                                       href="{{ \App\Domain\Admissions\DemandeDInscription::lien($resa->candidature_id, $resa->reinscription_demande_id, true) }}"><i class="fas fa-user-plus"></i>{{ $resa->candidature ? 'Inscrire' : 'Réinscrire' }}</a>
+                                @endif
                                 <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" title="Ouvrir le dossier de cette famille"
-                                   href="{{ $resa->candidature ? route('esbtp.candidatures.index', ['reference' => $_ref]) : route('esbtp.reinscription-demandes.index', ['reference' => $_ref]) }}"><i class="fas fa-folder-open"></i>Dossier</a>
+                                   href="{{ \App\Domain\Admissions\DemandeDInscription::lien($resa->candidature_id, $resa->reinscription_demande_id) }}"><i class="fas fa-folder-open"></i>Dossier</a>
                             @endif
                             @if(in_array($_etat, ['attendu', 'non_venue'], true))
                                 <button type="button" class="rdv-btn {{ $_etat === 'non_venue' ? 'rdv-btn--primary' : 'rdv-btn--ghost' }} rdv-btn--sm"

@@ -54,6 +54,11 @@ return [
             'libelle' => 'Recherche des évaluations…',
             'suggestion' => 'Quelles évaluations sont prévues cette semaine ?',
         ],
+        'proposer_saisie_notes' => [
+            'enabled' => true,
+            'any_permissions' => ['notes.create', 'notes.edit', 'notes.manage_own'],
+            'libelle' => 'Préparation des notes à enregistrer…',
+        ],
         'search_attendances' => [
             'enabled' => true,
             'any_permissions' => ['attendances.view'],

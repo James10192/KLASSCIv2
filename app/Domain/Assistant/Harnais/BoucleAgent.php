@@ -2,6 +2,7 @@
 
 namespace App\Domain\Assistant\Harnais;
 
+use App\Domain\Assistant\Consommation\Compteur;
 use App\Domain\Assistant\Flux\UiMessageStream;
 use App\Domain\Assistant\Fournisseurs\EvenementModele;
 use App\Domain\Assistant\Fournisseurs\FournisseurDeModele;
@@ -40,6 +41,9 @@ class BoucleAgent
     /** Numéro du dernier identifiant d'appel attribué dans l'échange en cours. */
     private int $numeroAppel = 0;
 
+    /** Appels d'outil en échec dans l'échange en cours. */
+    private int $echecsOutils = 0;
+
     public function __construct(private CatalogueOutils $catalogue)
     {
     }
@@ -49,10 +53,11 @@ class BoucleAgent
      * @param callable(string $nom, array $arguments, array $resultat):?array|null $surResultat
      *        rend le widget du résultat (ou null)
      */
-    public function executer(array $candidats, RequeteModele $requete, $user, UiMessageStream $ui, ?callable $surResultat = null, ?FilDeReponse $fil = null): ResultatBoucle
+    public function executer(array $candidats, RequeteModele $requete, $user, UiMessageStream $ui, ?callable $surResultat = null, ?FilDeReponse $fil = null, ?Compteur $compteur = null): ResultatBoucle
     {
         $fil ??= new FilDeReponse();
         $this->numeroAppel = 0;
+        $this->echecsOutils = 0;
         $deja = [];
         $trace = [];
         $maxTours = max(1, (int) config('assistant.limites.tours', 4));
@@ -96,6 +101,7 @@ class BoucleAgent
             // qu'il a. Ses outils restent déclarés mais il ne peut plus les appeler,
             // sinon l'utilisateur ne recevrait que des étapes sans réponse.
             $requeteTour = ($tours === $maxTours && $tours > 1) ? $requete->pourConclure() : $requete;
+            $debutTour = microtime(true);
             $tour = $this->unTour($this->fournisseur($modele), $requeteTour, $modele, $ui, $arreter, $fil);
             $entree += $tour['entree'];
             $sortie += $tour['sortie'];
@@ -103,6 +109,12 @@ class BoucleAgent
             if ($tour['texte'] !== '' || $tour['appels'] !== []) {
                 $montre = true;
             }
+
+            // Chaque appel au modèle est facturé, réussi ou non : il est compté. Il est
+            // marqué en échec exactement quand la boucle l'abandonne pour le suivant.
+            $abandonne = $tour['erreur'] !== null && !$montre && !$delaiDepasse && $candidats !== [];
+            $compteur?->ajouter($modele, $tour['entree'], $tour['sortie'], $tour['cache'], $tour['cout'],
+                (int) round((microtime(true) - $debutTour) * 1000), $abandonne);
 
             if ($ui->aborted()) {
                 $ui->finishStep();
@@ -117,7 +129,7 @@ class BoucleAgent
                 Log::error('assistant.tour_en_echec', ['fournisseur' => $modele->fournisseur, 'modele' => $modele->cle, 'code' => $code, 'tour' => $tours]);
                 $ui->finishStep();
 
-                if (!$montre && !$delaiDepasse && $candidats !== []) {
+                if ($abandonne) {
                     // Les puces d'outil annoncées par le modèle abandonné ne décrivent
                     // plus rien : le suivant repart de zéro. On les retire.
                     foreach ($tour['puces'] as $puce) {
@@ -194,6 +206,9 @@ class BoucleAgent
         $debut = microtime(true);
         $resultat = $this->catalogue->executer($appel['nom'], $appel['arguments'], $user);
         $ok = !isset($resultat['error']);
+        if (!$ok) {
+            $this->echecsOutils++;
+        }
         $widget = ($ok && $surResultat) ? $surResultat($appel['nom'], $appel['arguments'], $resultat) : null;
 
         $etape = [
@@ -246,7 +261,7 @@ class BoucleAgent
      */
     private function unTour(FournisseurDeModele $fournisseur, RequeteModele $requete, ModeleIa $modele, UiMessageStream $ui, callable $arreter, FilDeReponse $fil): array
     {
-        $tour = ['texte' => '', 'appels' => [], 'puces' => [], 'raison' => null, 'erreur' => null, 'entree' => 0, 'sortie' => 0];
+        $tour = ['texte' => '', 'appels' => [], 'puces' => [], 'raison' => null, 'erreur' => null, 'entree' => 0, 'sortie' => 0, 'cache' => 0, 'cout' => null];
         $idTexte = null;
         $bloc = '';
         // Identifiant du fournisseur → le nôtre. Les fournisseurs ne garantissent ni
@@ -297,6 +312,8 @@ class BoucleAgent
                     case EvenementModele::USAGE:
                         $tour['entree'] = $evenement->donnees['entree'];
                         $tour['sortie'] = $evenement->donnees['sortie'];
+                        $tour['cache'] = (int) ($evenement->donnees['cache'] ?? 0);
+                        $tour['cout'] = $evenement->donnees['cout'] ?? null;
                         break;
 
                     case EvenementModele::FIN:
@@ -391,6 +408,7 @@ class BoucleAgent
             tours: $tours,
             latenceMs: (int) round((microtime(true) - $debut) * 1000),
             trace: $trace,
+            echecsOutils: $this->echecsOutils,
         );
     }
 }
