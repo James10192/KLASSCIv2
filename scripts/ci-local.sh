@@ -12,18 +12,20 @@
 #
 # Variables (toutes facultatives) :
 #   CI_BASE=origin/presentation   branche de comparaison (messages, changelog, diff)
-#   PHP=php                       binaire PHP 8.3
+#   PHP_BIN=/chemin/php           binaire PHP (sinon cherche : php8.3, php, WinGet, Laragon) ;
+#                                 sa version doit satisfaire le "php" de composer.json
 #   COMPOSER_BIN="composer"       commande composer (pas COMPOSER : Composer y lit le chemin de composer.json)
 #   MYSQLD=mysqld                 serveur MariaDB (sous XAMPP : /c/xampp/mysql/bin/mysqld.exe)
 #   MYSQL_INSTALL_DB=mysql_install_db   initialisation du repertoire de donnees
 #   MYSQL=mysql                   client
 #   CI_DATADIR=${TMPDIR:-/tmp}/klassci-ci-mariadb   donnees de l'instance isolee
+#                                 (caches Laravel a cote : ${CI_DATADIR}-laravel-cache)
 #   CI_DB_PORT=3317               port de l'instance isolee
 #   CI_TESTS_BRANCHE="..."        filtre PHPUnit des tests de la branche (vide : sautes)
 set -uo pipefail
 
 CI_BASE="${CI_BASE:-origin/presentation}"
-PHP="${PHP:-php}"
+PHP_BIN="${PHP_BIN:-${PHP:-}}"   # PHP : ancien nom, encore lu
 COMPOSER_BIN="${COMPOSER_BIN:-composer}"
 MYSQLD="${MYSQLD:-mysqld}"
 MYSQL_INSTALL_DB="${MYSQL_INSTALL_DB:-mysql_install_db}"
@@ -43,17 +45,51 @@ abandon() { printf '\nCI LOCALE : ABANDON (%s)\n' "$1"; exit 1; }
 
 cd "$(dirname "$0")/.." || exit 2
 
+# ---------------------------------------------------------------- PHP
+# Le `php` du PATH n'est pas forcement le bon (XAMPP fournit un 8.2) : la
+# version minimale est lue dans composer.json, et un binaire trop ancien fait
+# echouer la CI tout de suite plutot que de rendre des erreurs trompeuses.
+version_php() { "$1" -r 'echo PHP_VERSION_ID, " ", PHP_VERSION, PHP_EOL;' 2>/dev/null; }
+candidats_php() {
+    command -v php8.3 php83 php 2>/dev/null
+    local winget="" c
+    [ -n "${LOCALAPPDATA:-}" ] && winget=$(cygpath -u "$LOCALAPPDATA" 2>/dev/null || printf '%s' "$LOCALAPPDATA")
+    for c in "$winget"/Microsoft/WinGet/Packages/PHP.PHP.*/php.exe /c/laragon/bin/php/php-*/php.exe; do
+        [ -f "$c" ] && printf '%s\n' "$c"
+    done | sort -V -r
+}
+read -r PHP_MIN_MAJ PHP_MIN_MIN < <(sed -n 's/^[[:space:]]*"php"[[:space:]]*:[[:space:]]*"[^0-9]*\([0-9][0-9]*\)\.\([0-9][0-9]*\).*/\1 \2/p' composer.json | head -n 1)
+[ -n "${PHP_MIN_MIN:-}" ] || abandon "version de PHP exigee introuvable dans composer.json"
+PHP_MIN="$PHP_MIN_MAJ.$PHP_MIN_MIN"; PHP_MIN_ID=$((PHP_MIN_MAJ * 10000 + PHP_MIN_MIN * 100))
+if [ -n "$PHP_BIN" ]; then
+    read -r id version < <(version_php "$PHP_BIN")
+    [ -n "${id:-}" ] || abandon "PHP_BIN=$PHP_BIN ne s'execute pas"
+    [ "$id" -ge "$PHP_MIN_ID" ] || abandon "PHP_BIN=$PHP_BIN est en PHP $version, composer.json exige $PHP_MIN au minimum"
+    PHP="$PHP_BIN"
+else
+    PHP=""; vus=""
+    while IFS= read -r c; do
+        id=""; read -r id version < <(version_php "$c") || continue
+        vus="$vus $c ($version)"
+        [ "$id" -ge "$PHP_MIN_ID" ] && { PHP="$c"; break; }
+    done < <(candidats_php)
+    [ -n "$PHP" ] || abandon "aucun PHP $PHP_MIN ou plus recent trouve (vus :${vus:- aucun}) ; indiquer le binaire avec PHP_BIN=/chemin/vers/php"
+fi
+printf 'PHP : %s (%s)\n' "$PHP" "$("$PHP" -r 'echo PHP_VERSION;')"
+
 # ---------------------------------------------------------------- isolation
 # Des le depart, et pas seulement avant la migration : un test « sans base »
 # qui ouvrirait quand meme une connexion ne doit jamais atteindre la base du
 # poste. `.env.testing` vise le port 3306, et un `config:cache` oublie dans
 # bootstrap/cache ignorerait toutes ces variables : les caches sont rediriges
-# vers des fichiers qui n'existent pas, sous le repertoire de l'instance isolee.
+# vers des fichiers qui n'existent pas, dans un repertoire A COTE de celui de
+# l'instance isolee. Pas dedans : MariaDB refuse d'initialiser un repertoire
+# de donnees qui n'est pas vide, et un premier lancement echouerait.
 [ "$CI_DB_PORT" = "3306" ] && abandon "CI_DB_PORT=3306 est le port de la base partagee"
-mkdir -p "$CI_DATADIR" || abandon "repertoire $CI_DATADIR impossible a creer"
+CI_DATADIR="${CI_DATADIR%/}"
 DATADIR_NATIF=$(cygpath -m "$CI_DATADIR" 2>/dev/null || printf '%s' "$CI_DATADIR")
-REP_CACHES="$(cd "$CI_DATADIR" && pwd -P)/laravel-cache"
-mkdir -p "$REP_CACHES" || abandon "repertoire des caches impossible a creer"
+mkdir -p "$CI_DATADIR-laravel-cache" || abandon "repertoire des caches impossible a creer"
+REP_CACHES="$(cd "$CI_DATADIR-laravel-cache" && pwd -P)"
 # config, routes, events : ces fichiers ne doivent pas exister (personne ne
 # fait config:cache ici) ; services : Laravel l'ecrit la, pas dans bootstrap/cache.
 for f in config routes events; do
@@ -137,6 +173,11 @@ etape "MariaDB isolee ($CI_DATADIR, port $CI_DB_PORT)"
 repond() { "$PHP" -r "new PDO('mysql:host=127.0.0.1;port=$CI_DB_PORT','root','');" 2>/dev/null; }
 # Un serveur qui repond deja sur ce port n'est pas le notre : ni DROP, ni SHUTDOWN.
 repond && abandon "le port $CI_DB_PORT est deja occupe par un autre serveur"
+# Repertoire non initialise mais deja rempli (un ancien premier lancement y
+# ecrivait laravel-cache) : MariaDB refuserait, autant le dire clairement.
+if [ ! -d "$CI_DATADIR/mysql" ] && [ -n "$(ls -A "$CI_DATADIR" 2>/dev/null)" ]; then
+    abandon "$CI_DATADIR n'est pas initialise mais n'est pas vide : le vider ou choisir un autre CI_DATADIR"
+fi
 [ -d "$CI_DATADIR/mysql" ] || "$MYSQL_INSTALL_DB" --datadir="$DATADIR_NATIF" --port="$CI_DB_PORT" > /dev/null 2>&1 \
     || abandon "initialisation de la base isolee"
 # Le fichier de reglages ecrit par l'initialisation (XAMPP) porte le datadir ;
