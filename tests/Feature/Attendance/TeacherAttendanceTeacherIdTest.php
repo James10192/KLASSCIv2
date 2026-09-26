@@ -41,6 +41,10 @@ class TeacherAttendanceTeacherIdTest extends TestCase
         foreach (['attendances.sign', 'attendances.view_own'] as $permission) {
             Permission::findOrCreate($permission, 'web');
         }
+
+        // Sans superAdmin, CheckInstalled renvoie toute requête vers /install.
+        Role::findOrCreate('superAdmin', 'web');
+        User::factory()->create()->assignRole('superAdmin');
         InstallationHelper::flushCachedStatus();
     }
 
