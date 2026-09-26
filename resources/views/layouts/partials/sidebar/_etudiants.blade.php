@@ -1,5 +1,5 @@
 {{-- Section « Etudiants » de la barre laterale. Incluse par layouts/app ; elle lit
-     $candidaturesEnAttente et $reinscriptionDemandesEnAttente, partages par la mise en page. --}}
+     $demandesATraiter et $accueilAttendues, partages par AppServiceProvider (FileDesDemandes). --}}
                     <!-- Students Section -->
                     @can('module.etudiants.access')
                     @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer', 'identity.communicate']) || auth()->user()->hasRole(['superAdmin', 'admin', 'serviceTechnique']))
@@ -18,7 +18,7 @@
                             $_navAccueil = Request::routeIs('esbtp.rendez-vous.accueil.*');
                             $_navPlanning = Request::routeIs('esbtp.rendez-vous.*') && ! $_navAccueil;
                             $_navEtudiants = Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.accessibility.*') || Request::routeIs('esbtp.trash.*');
-                            $_navAdmissions = Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.rendez-vous.*');
+                            $_navAdmissions = Request::routeIs('esbtp.demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.rendez-vous.*');
                             $_navInscriptions = Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.pieces-dossier.*');
                             $_navBadge = fn ($n) => $n > 999 ? '999+' : (string) $n;
                         @endphp
@@ -63,45 +63,40 @@
                         <div class="menu-accordion">
                             <button class="menu-accordion-btn {{ $_navAdmissions ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-door-open"></i></div>
-                                <div class="menu-text">Admissions et accueil</div>
+                                <div class="menu-text">Admissions</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ $_navAdmissions ? 'show' : '' }}">
-                                {{-- Candidatures des NOUVEAUX etudiants, distinctes des demandes de
-                                     reinscription : ce ne sont pas les memes dossiers, et la
-                                     scolarite ne les traite pas au meme moment de la rentree. --}}
-                                @can('inscriptions.candidatures.view')
-                                <a href="{{ route('esbtp.candidatures.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.candidatures.*') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-address-card"></i></div>
-                                    <div class="menu-text">
-                                        <span class="menu-label">Candidatures en ligne</span>
-                                        @if(($candidaturesEnAttente ?? 0) > 0)
-                                            <span class="menu-badge" title="{{ $candidaturesEnAttente }} en attente">{{ $_navBadge($candidaturesEnAttente) }}</span>
-                                        @endif
-                                    </div>
-                                </a>
-                                @endcan
-                                @can('reinscriptions.demandes.view')
-                                <a href="{{ route('esbtp.reinscription-demandes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription-demandes.*') ? 'active' : '' }}">
+                                {{-- Une seule entree pour les deux sortes de demandes : l'agent ne sait
+                                     pas toujours laquelle la famille a deposee. Le type est un filtre de
+                                     la page. Les deux anciennes corbeilles restent joignables par leurs
+                                     adresses, mais ne sont plus au menu. --}}
+                                @canany(['inscriptions.candidatures.view', 'reinscriptions.demandes.view'])
+                                <a href="{{ route('esbtp.demandes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.reinscription-demandes.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-inbox"></i></div>
                                     <div class="menu-text">
-                                        <span class="menu-label">Demandes de réinscription</span>
-                                        @if(($reinscriptionDemandesEnAttente ?? 0) > 0)
-                                            <span class="menu-badge" title="{{ $reinscriptionDemandesEnAttente }} en attente">{{ $_navBadge($reinscriptionDemandesEnAttente) }}</span>
+                                        <span class="menu-label">Demandes d'inscription</span>
+                                        @if(($demandesATraiter ?? 0) > 0)
+                                            <span class="menu-badge" title="{{ $demandesATraiter }} à traiter">{{ $_navBadge($demandesATraiter) }}</span>
                                         @endif
                                     </div>
                                 </a>
-                                @endcan
+                                @endcanany
                                 @can('inscriptions.rdv.view')
                                 <a href="{{ route('esbtp.rendez-vous.index') }}" class="menu-sublink {{ $_navPlanning ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
-                                    <div class="menu-text"><span class="menu-label">Rendez-vous</span></div>
+                                    <div class="menu-text"><span class="menu-label">Planning des rendez-vous</span></div>
                                 </a>
                                 @endcan
                                 @can('inscriptions.rdv.accueil')
                                 <a href="{{ route('esbtp.rendez-vous.accueil.index') }}" class="menu-sublink {{ $_navAccueil ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
-                                    <div class="menu-text"><span class="menu-label">Accueil du jour</span></div>
+                                    <div class="menu-text">
+                                        <span class="menu-label">Accueil du jour</span>
+                                        @if(($accueilAttendues ?? 0) > 0)
+                                            <span class="menu-badge" title="{{ $accueilAttendues }} famille(s) encore attendue(s) aujourd'hui">{{ $_navBadge($accueilAttendues) }}</span>
+                                        @endif
+                                    </div>
                                 </a>
                                 @endcan
                             </div>

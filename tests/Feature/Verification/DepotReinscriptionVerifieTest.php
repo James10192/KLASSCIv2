@@ -117,18 +117,18 @@ class DepotReinscriptionVerifieTest extends TestCase
             ->assertStatus(201)->assertJson(['statut' => 'verification_email_requise']);
         $this->actingAs($this->secretaire());
 
-        $this->get(route('esbtp.reinscription-demandes.index'))
-            ->assertOk()->assertSee('KOUASSI')->assertSee('pas de convocation automatique tant que le contact');
-        $this->get(route('esbtp.reinscription-demandes.index', ['contact' => 'non_verifie']))
+        $this->get(route('esbtp.demandes.index'))
+            ->assertOk()->assertSee('KOUASSI')->assertSee('Contact à vérifier');
+        $this->get(route('esbtp.demandes.index', ['contact' => 1]))
             ->assertOk()->assertSee('KOUASSI');
 
         $demandeId = \App\Models\ESBTPVerificationContact::query()->sole()->demande_id;
         $this->appeler('api/portail/email/verifier', ['canal' => 'email', 'demande_id' => $demandeId, 'code' => $this->dernierCode()])->assertOk();
 
-        $this->get(route('esbtp.reinscription-demandes.index', ['contact' => 'non_verifie']))
+        $this->get(route('esbtp.demandes.index', ['contact' => 1]))
             ->assertOk()->assertDontSee('KOUASSI');
-        $this->get(route('esbtp.reinscription-demandes.index'))
-            ->assertOk()->assertSee('KOUASSI')->assertDontSee('pas de convocation automatique tant que le contact');
+        $this->get(route('esbtp.demandes.index'))
+            ->assertOk()->assertSee('KOUASSI')->assertDontSee('dmi-contact" title', false);
     }
 
     private function secretaire(): User
