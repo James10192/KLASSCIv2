@@ -43,8 +43,6 @@ use Illuminate\Support\Str;
 
 class ESBTPInscriptionApiController extends Controller
 {
-    private const DUPLICATE_BLOCKING_SCORE = 55;
-
     private $inscriptionService;
     private $comptabiliteService;
     private $workflowService;
@@ -677,7 +675,7 @@ class ESBTPInscriptionApiController extends Controller
                 6,
             )
             ->filter(function (array $item) {
-                return ($item["score"] ?? 0) >= self::DUPLICATE_BLOCKING_SCORE;
+                return ($item["score"] ?? 0) >= \App\Services\StudentDuplicateDetector::SCORE_BLOQUANT;
             })
             ->map(function (array $item) {
                 $item["show_url"] = route("esbtp.etudiants.show", $item["id"]);

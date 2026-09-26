@@ -76,6 +76,7 @@ Même `id` que l'étape qui l'a produit ; émis une fois, juste après l'étape 
 | `tableau` | `titre`, `colonnes[{cle, libelle, type}]` (`texte`, `montant`, `nombre`, `date`, `lien`, `statut`), `lignes[]` ; lien `{url, texte}` (URL interne seulement), statut `{texte, ton}` (`succes`, `alerte`, `danger`, `neutre`) |
 | `diagramme` | `titre`, `mermaid` (types acceptés : flowchart, graph, sequenceDiagram, stateDiagram(-v2), timeline, mindmap, journey, gantt, pie ; sans `%%{…}`, `click`, lien) |
 | `kpis` | `titre`, `elements[{libelle, valeur, unite, repere, ton, url}]` |
+| `approbation` | proposition d'un outil `proposer_*` : `id`, `jeton`, `titre`, `resume`, `colonnes[]` (libellés), `lignes[][]`, `avertissements[]`, `risque` (`moyen`, `eleve`), `expire_a`, `etat`, `valider_url`, `refuser_url` (relatives). Rien n'est écrit avant le clic. |
 | `table`, `cards`, `fee-groups`, `payment-groups`, `stat-cards`, `timetable`, `checklist`, `form`, `proposal` | formes `display_data` historiques |
 
 ### `data-suites` (fin d'échange) · `data-lien`
@@ -93,6 +94,25 @@ antérieurs à la v2, qui gardent `content` + `display_type` / `display_data`) :
   {"type": "suites", "data": {…}}, {"type": "lien", "url": "…"} ]
 ```
 
+### Fichiers joints
+
+`POST /chatbot/pieces` (multipart, champ `fichier` : .xlsx, .xls, .csv, .docx, 2 Mo au plus) → **201**
+`{id, nom, colonnes[], nombre_lignes, apercu[][]}`, **422** avec `message` si le fichier ne donne pas de tableau.
+Le fichier est lu puis oublié : seul le tableau (500 lignes, 30 colonnes au plus) est gardé deux heures, lisible par
+la seule personne qui l'a déposé. L'envoi d'un message accepte `pieces: [id, …]` (3 au plus) ; la conversation s'en
+souvient. Le modèle ne voit que les en-têtes et cinq lignes ; pour écrire, l'outil `proposer_saisie_notes` reçoit
+`piece: {piece_id, colonnes_etudiant[], colonne_note, colonne_absent?}` et le serveur relit les valeurs.
+Dans l'historique, un message de la personne porte `pieces: [{id, nom}]`.
+
+### Valider ou refuser une proposition
+
+`POST /chatbot/propositions/{id}/valider` avec `{"jeton": "…"}` ; `POST /chatbot/propositions/{id}/refuser`.
+Réponse `{statut, message, lien?}` : **200** si `statut` vaut `executee` (ou `refusee`), **409** sinon —
+`traitee` (déjà traitée), `expiree` (30 minutes), `perimee` (les données ont changé depuis la proposition : rien
+n'est écrit, la proposition est à refaire), `echec` (erreur à l'écriture, rien n'est écrit), `refus` (jeton, personne
+ou droit). Le serveur refait la préparation au moment du clic et compare son empreinte avant d'écrire. Dans
+l'historique, `etat` d'un widget `approbation` est l'état réel au moment de la lecture.
+
 ## Côté modèle (pour mémoire)
 
 Le modèle ne reçoit pas le widget : il reçoit `ResumeOutil::pourModele()` (douze lignes au plus, 6 000 octets,
@@ -100,6 +120,8 @@ identifiants et URL, consigne de ne pas recopier le widget). Un appel identique 
 pas rejoué. La trace compacte des appels est enregistrée dans `metadata.trace` et rejouée pour les trois dernières réponses.
 
 ## Historique des versions
+
+- **v2.1 (septembre 2026)** — nouveau kind `approbation` et routes `propositions/{id}/valider|refuser` ; fichiers joints (`POST /chatbot/pieces`, paramètre `pieces`) ; avis (`messages/{id}/retour|signaler`, champ `retour` de l'historique). Ajouts, non cassants.
 
 - **v2 (septembre 2026)** — paramètre `relance`. ⚠️ changement cassant : `data-outil` est remplacé par `data-etape` ; les résultats ne partent
   plus en `data-table` / `data-cards` / … en fin de réponse mais en `data-widget` sous chaque étape. Nouveaux kinds

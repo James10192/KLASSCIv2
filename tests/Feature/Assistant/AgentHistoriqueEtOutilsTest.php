@@ -119,6 +119,29 @@ class AgentHistoriqueEtOutilsTest extends TestCase
         $this->assertStringNotContainsString('Ne génère JAMAIS de tableaux', $systeme);
     }
 
+    public function test_nanan_se_presente_une_fois_puis_salue_les_caps_sans_insister(): void
+    {
+        $user = User::factory()->create(['username' => 'u_' . Str::lower(Str::random(8))]);
+        $nouvelle = fn () => ChatbotConversation::create(['user_id' => $user->id, 'session_id' => (string) Str::uuid(), 'last_activity_at' => now()]);
+        $prompt = app(ConstructeurDePrompt::class);
+
+        $premiere = $nouvelle();
+        $systeme = $prompt->systeme($user, null, null, $premiere);
+        $this->assertStringContainsString('Tu t\'appelles Nanan', $systeme);
+        $this->assertStringContainsString('toute première conversation', $systeme);
+        $this->assertStringContainsString('Jamais de culpabilisation', $systeme);
+
+        // Une fois qu'elle a répondu, plus de présentation dans cette conversation.
+        ChatbotMessage::create(['conversation_id' => $premiere->id, 'role' => 'assistant', 'content' => 'Bonjour.']);
+        $this->assertStringNotContainsString('toute première conversation', $prompt->systeme($user, null, null, $premiere));
+
+        foreach (range(2, 9) as $i) {
+            $nouvelle();
+        }
+        $this->assertStringContainsString('votre 10e conversation', $prompt->systeme($user, null, null, $nouvelle()));
+        $this->assertStringNotContainsString('conversation :', $prompt->systeme($user, null, null, $nouvelle()));
+    }
+
     public function test_les_indicateurs_comparent_avec_l_annee_precedente_et_donnent_des_cartes(): void
     {
         ESBTPAnneeUniversitaire::query()->update(['is_current' => false]);

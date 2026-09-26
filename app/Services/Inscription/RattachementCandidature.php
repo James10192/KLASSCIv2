@@ -55,7 +55,7 @@ final class RattachementCandidature
             return null;
         }
 
-        $candidature = PreRemplissageCandidature::acceptee((int) $request->input('candidature_id'));
+        $candidature = PreRemplissageCandidature::aInscrire((int) $request->input('candidature_id'));
 
         if ($candidature === null) {
             return null;
@@ -129,10 +129,15 @@ final class RattachementCandidature
                 'message' => $e->getMessage(),
             ]);
 
-            // Aucun bouton ne clot une candidature « acceptée » : on dit donc
-            // ce qui est vrai et ce qui est faisable, et on n'envoie pas
-            // l'agent chercher une action qui n'existe pas.
-            return "L'inscription est enregistrée, mais la candidature en ligne est restée « acceptée » dans la corbeille : son bouton « Créer l'inscription » est toujours affiché, ne vous en resservez pas. Signalez-le au support.";
+            // On dit ce qui est vrai et ce qui est faisable : une candidature
+            // ouverte, acceptee ou non, se rejette depuis la file.
+            return "L'inscription est enregistrée, mais la candidature en ligne est restée ouverte dans les demandes d'inscription : ne l'inscrivez pas une seconde fois, rejetez-la en indiquant qu'elle est déjà inscrite. Signalez-le au support.";
+        }
+
+        // La famille est inscrite : son rendez-vous du jour devient honore, un
+        // rendez-vous a venir rend sa place. Voir RendezVousApresInscription.
+        if ($issue === ClotureCandidature::Fermee && ($candidature = \App\Models\ESBTPCandidature::find($id)) !== null) {
+            app(\App\Services\RendezVous\RendezVousApresInscription::class)->clore($candidature, auth()->id());
         }
 
         if ($issue !== ClotureCandidature::Fermee) {

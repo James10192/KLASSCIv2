@@ -57,6 +57,9 @@ class GradeSheet extends Model implements AuditableContract
         'lock_version' => 'integer',
     ];
 
+    /** Jamais 'retrieved' : chaque lecture ecrirait une ligne vide dans le journal. */
+    protected $auditEvents = ['created', 'updated', 'deleted', 'restored'];
+
     protected $auditInclude = [
         'teacher_id',
         'assigned_processor_id',

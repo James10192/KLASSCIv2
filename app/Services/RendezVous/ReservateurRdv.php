@@ -232,10 +232,10 @@ class ReservateurRdv
      * est celui de occuper() et deplacer(), la place ne peut pas changer de main
      * entre le rejet et la liberation.
      */
-    public function liberer(PorteurDeRendezVous $porteur): ?ESBTPRdvReservation
+    public function liberer(PorteurDeRendezVous $porteur, string $pourquoi = 'Dossier rejeté'): ?ESBTPRdvReservation
     {
         // sousVerrou() rend un tableau de refus si le dossier a disparu entre-temps.
-        $liberee = $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur): ?ESBTPRdvReservation {
+        $liberee = $this->sousVerrou($porteur, function (PorteurDeRendezVous $porteur) use ($pourquoi): ?ESBTPRdvReservation {
             $actuelle = $this->reservationActive($porteur, true)?->load('creneau');
             if (
                 $actuelle === null
@@ -250,7 +250,7 @@ class ReservateurRdv
             if ($actuelle->convocation_statut === StatutConvocationRdv::EnAttente) {
                 $valeurs += [
                     'convocation_statut' => StatutConvocationRdv::SansObjet,
-                    'convocation_erreur' => 'Dossier rejeté : le créneau a été libéré avant l\'envoi.',
+                    'convocation_erreur' => $pourquoi.' : le créneau a été libéré avant l\'envoi.',
                 ];
             }
             $actuelle->update($valeurs);

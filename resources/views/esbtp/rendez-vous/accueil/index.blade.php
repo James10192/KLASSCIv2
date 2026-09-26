@@ -156,6 +156,9 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
                 <a class="rdv-btn rdv-btn--glass" href="{{ route('esbtp.rendez-vous.recherche') }}"><i class="fas fa-magnifying-glass"></i>Retrouver une famille</a>
                 <a class="rdv-btn rdv-btn--glass" href="{{ route('esbtp.rendez-vous.feuille.apercu', ['jour' => $jour->toDateString()]) }}" target="_blank" rel="noopener" data-rac-imprimer
                    title="Liste des familles attendues ce jour, à remettre à l'entrée : une case « Reçue » par famille"><i class="fas fa-print"></i>Imprimer la liste</a>
+                @canany(['inscriptions.candidatures.view', 'reinscriptions.demandes.view'])
+                    <a class="rdv-btn rdv-btn--glass" href="{{ route('esbtp.demandes.index') }}" title="Candidatures et réinscriptions, reçues ou non"><i class="fas fa-inbox"></i>Toutes les demandes</a>
+                @endcanany
                 @can('inscriptions.rdv.view')
                     <a class="rdv-btn rdv-btn--white" href="{{ route('esbtp.rendez-vous.index', ['debut' => $jour->toDateString()]) }}" data-rac-planning><i class="fas fa-calendar-week"></i>Planning</a>
                 @endcan

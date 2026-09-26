@@ -22,8 +22,8 @@
                 </div>
             </div>
             <div class="rdr-actions">
-                @if($_demande && $_demande->reference_publique && $_voitDemandes)
-                    <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.reinscription-demandes.index', ['reference' => $_demande->referencePubliqueAffichee()]) }}"><i class="fas fa-folder-open"></i>Demande</a>
+                @if($_demande && $_voitDemandes)
+                    <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ \App\Domain\Admissions\DemandeDInscription::lien(null, $_demande->id) }}"><i class="fas fa-folder-open"></i>Demande</a>
                 @endif
                 @if($_voitEleve)
                     <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.etudiants.show', $_eleve->id) }}"><i class="fas fa-user"></i>Fiche élève</a>
