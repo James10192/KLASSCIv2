@@ -458,14 +458,14 @@ window.busCard = function (cfg) {
                 const count = this.preflight.students_count || 0;
                 const plural = count > 1 ? 's' : '';
                 const verb = count > 1 ? 'seront' : 'sera';
-                return `${count} etudiant${plural} ${verb} concerne${plural}`;
+                return `${count} étudiant${plural} ${verb} concerné${plural}`;
             }
 
             if (this.preflightBusy) {
-                return 'Verification des etudiants concernes...';
+                return 'Vérification des étudiants concernés…';
             }
 
-            return 'Pre-controle requis';
+            return 'Pré-contrôle requis';
         },
 
         canOpenPilotage() {
@@ -778,7 +778,7 @@ window.busCard = function (cfg) {
                 if (this.kind === 'generate') {
                     const preflight = await this.fetchPreflight();
                     if (!preflight) {
-                        this.notify('error', 'Pre-controle indisponible. La generation est annulee.');
+                        this.notify('error', 'Pré-contrôle indisponible. La génération est annulée.');
                         return;
                     }
                     if (!preflight.ok && this.isGenerationBlocked()) {

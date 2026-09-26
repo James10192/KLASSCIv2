@@ -934,7 +934,7 @@
                 <div class="bus-inline-panel" x-show="preflightBusy" x-cloak>
                     <div class="bus-inline-panel__title">
                         <i class="fas fa-spinner fa-spin"></i>
-                        <span>Pre-controle en cours</span>
+                        <span>Pré-contrôle en cours</span>
                     </div>
                     <p class="bus-inline-panel__body">Verification des inscriptions actives, coefficients et donnees academiques.</p>
                 </div>
@@ -944,7 +944,7 @@
                      x-cloak>
                     <div class="bus-inline-panel__title">
                         <i class="fas" :class="panelIcon()"></i>
-                        <span>Pre-controle generation</span>
+                        <span>Pré-contrôle de la génération</span>
                     </div>
                     <p class="bus-inline-panel__body" x-text="preflight?.message"></p>
                     <template x-if="preflight?.missing_coefficients?.length">
@@ -968,7 +968,7 @@
                         </ul>
                     </template>
                     <template x-if="preflight?.blocking_errors?.length && !preflight?.missing_coefficients?.length && !preflight?.missing_professeurs?.length">
-                        <p class="bus-inline-panel__body" x-text="preflight.blocking_errors.length + ' blocage(s) detecte(s).'"></p>
+                        <p class="bus-inline-panel__body" x-text="preflight.blocking_errors.length + ' blocage(s) détecté(s).'"></p>
                     </template>
                     {{-- Un bulletin vide est repris d'office : plus rien à cocher.
                          Ceux que le verrou empêche de reprendre sont comptés à part,
@@ -1035,7 +1035,7 @@
                     <template x-if="preflight?.has_hard_blocks">
                         <button type="button" class="bus-inline-panel__link bus-inline-panel__button" @click="openInlineConfig(preflight)">
                             <i class="fas fa-sliders"></i>
-                            Completer matieres, coefficients et professeurs
+                            Compléter matières, coefficients et professeurs
                         </button>
                     </template>
                     <div class="bus-field" x-show="preflight?.requires_incomplete_reason" x-cloak>

@@ -115,7 +115,7 @@ final class BtsBulkBulletinGenerationService
             if (! $hasSubjectConfiguration) {
                 $blockingErrors[] = $this->studentPayload($student) + [
                     'code' => 'missing_subject_configuration',
-                    'message' => 'La configuration des matieres du bulletin est manquante.',
+                    'message' => 'La configuration des matières du bulletin est manquante.',
                     'configuration_url' => $configurationUrl,
                 ];
                 continue;
@@ -144,7 +144,7 @@ final class BtsBulkBulletinGenerationService
                 $blockingErrors[] = $this->studentPayload($student) + [
                     'code' => $isHard ? 'coefficients_missing' : 'incomplete_academic_data',
                     'message' => $isHard
-                        ? 'Coefficients manquants : completez la configuration du bulletin.'
+                        ? 'Coefficients manquants : complétez la configuration du bulletin.'
                         : 'Aucune note exploitable pour cette periode.',
                     'preparation' => $preparation->toArray(),
                     'missing_coefficients' => $missingCoefficients,
@@ -482,7 +482,7 @@ final class BtsBulkBulletinGenerationService
         if ($bulletin->moyenne_generale !== null) {
             return [
                 'code' => self::ECART_DEJA_GENERE,
-                'message' => 'Bulletin deja genere pour cette periode.',
+                'message' => 'Bulletin déjà généré pour cette période.',
             ];
         }
 
@@ -492,7 +492,7 @@ final class BtsBulkBulletinGenerationService
 
         return [
             'code' => self::ECART_VIDE_VERROUILLE,
-            'message' => 'Bulletin publie ou signe mais sans moyenne : deverrouillez-le pour le regenerer.',
+            'message' => 'Bulletin publié ou signé mais sans moyenne : déverrouillez-le pour le régénérer.',
         ];
     }
 
@@ -563,7 +563,7 @@ final class BtsBulkBulletinGenerationService
 
         if ($config === ['generales' => [], 'techniques' => []]) {
             throw new BulletinConfigurationException(
-                'La configuration des matieres du bulletin est manquante.',
+                'La configuration des matières du bulletin est manquante.',
                 [
                     'classe_id' => $classeId,
                     'annee_universitaire_id' => $academicYearId,
@@ -788,12 +788,12 @@ final class BtsBulkBulletinGenerationService
             'nothing_to_generate' => $verrouillesVides > 0
                 ? 'Aucun bulletin ne peut etre repris : '.$verrouillesVides.' bulletin(s) sans moyenne sont publies ou signes. Deverrouillez-les avant de relancer.'
                 : 'Tous les bulletins existent deja pour cette periode : cochez « Recalculer » pour les mettre a jour.',
-            'needs_reason' => 'Donnees academiques incompletes : renseignez un motif (8 caracteres minimum) pour generer des bulletins incomplets.',
+            'needs_reason' => 'Données académiques incomplètes : renseignez un motif (8 caractères minimum) pour générer des bulletins incomplets.',
             'blocked' => $hasHardBlocks
-                ? 'Pre-controle bloque : completez les matieres, coefficients et professeurs requis avant de generer.'
-                : 'Pre-controle bloque : donnees academiques incompletes et vous n\'avez pas le droit de generer un bulletin incomplet.',
-            'ready' => 'Pre-controle valide : la generation peut etre lancee.',
-            default => 'Pre-controle indisponible.',
+                ? 'Pré-contrôle bloqué : complétez les matières, coefficients et professeurs requis avant de générer.'
+                : 'Pré-contrôle bloqué : données académiques incomplètes, et vous n\'avez pas le droit de générer un bulletin incomplet.',
+            'ready' => 'Pré-contrôle validé : la génération peut être lancée.',
+            default => 'Pré-contrôle indisponible.',
         };
     }
 
@@ -807,7 +807,7 @@ final class BtsBulkBulletinGenerationService
                 .'Générez les bulletins depuis chaque classe de spécialité (le semestre 1 du tronc commun y est agrégé automatiquement).';
         }
 
-        return 'Aucun etudiant actif et valide dans cette classe pour cette annee.';
+        return 'Aucun étudiant actif et validé dans cette classe pour cette année.';
     }
 
     private function configurationUrl(int $classeId, int $academicYearId, string $period): string
