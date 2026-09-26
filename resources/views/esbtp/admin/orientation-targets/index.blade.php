@@ -160,7 +160,7 @@
 @endpush
 
 @section('content')
-<div x-data="orientationTargets()" x-init="init()">
+<div x-data="orientationTargets()">
     @php
         $bulkClassOptions = $sourceClasses->mapWithKeys(fn ($classe) => [
             $classe->id => $classe->name . ' · ' . ($classe->niveauEtude?->name ?? 'Niveau non défini'),

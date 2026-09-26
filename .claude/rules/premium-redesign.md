@@ -630,8 +630,13 @@ Toutes les mutations passent par :
 
 ### Pattern canonique
 
+> **Pas de `x-init="init()"`.** Alpine v3 appelle `init()` de lui-même dès qu'il évalue `x-data`
+> (y compris après `Alpine.initTree` sur du HTML injecté). L'ajouter le relance une seconde fois :
+> écouteurs `window` posés deux fois, toasts et chargements AJAX en double. Retiré de 31 vues en
+> septembre 2026 ; mesuré sur `/esbtp/examens` : un événement `toast`, trois messages affichés.
+
 ```blade
-<div x-data="moduleAction()" x-init="init()">
+<div x-data="moduleAction()">
     <form @submit.prevent="save()">
         <input x-model="form.field">
         <button :disabled="saving" type="submit">

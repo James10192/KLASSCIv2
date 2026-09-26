@@ -565,7 +565,7 @@
 @endpush
 
 @section('content')
-<div x-data="examensIndex()" x-init="init()">
+<div x-data="examensIndex()">
 
     {{-- ═══════════════════════════ HERO ═══════════════════════════ --}}
     <div class="exp-hero">

@@ -37,7 +37,7 @@
     compte de l'étudiant existe à ce moment-là — et se rappelle à l'écran depuis
     la fiche à tout moment ensuite.
 --}}
-<div class="phx" data-phx='@json($_phxCharge)' x-data="photoEtudiant()" x-init="init()">
+<div class="phx" data-phx='@json($_phxCharge)' x-data="photoEtudiant()">
 
     <div class="phx-voile" x-show="ouvert" x-cloak
          @keydown.escape.window="fermer()"

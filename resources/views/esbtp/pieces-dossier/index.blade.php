@@ -215,7 +215,7 @@
     ];
 @endphp
 
-<div class="main-content" x-data="cataloguePiecesDossier()" x-init="init()">
+<div class="main-content" x-data="cataloguePiecesDossier()">
 
     <div class="pce-hero">
         <div class="pce-hero-top">

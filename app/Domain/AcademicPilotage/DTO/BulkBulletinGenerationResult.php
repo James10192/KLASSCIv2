@@ -47,7 +47,7 @@ final readonly class BulkBulletinGenerationResult
     {
         if ($this->hasWrites() && $this->hasFailures()) {
             return sprintf(
-                '%d bulletin(s) cree(s), %d recalcule(s), avec %d blocage(s).',
+                '%d bulletin(s) créé(s), %d recalculé(s), avec %d blocage(s).',
                 $this->created,
                 $this->regenerated,
                 count($this->blockingErrors) + count($this->errors)
@@ -56,25 +56,25 @@ final readonly class BulkBulletinGenerationResult
 
         if ($this->hasWrites()) {
             return sprintf(
-                '%d bulletin(s) cree(s), %d bulletin(s) recalcule(s).',
+                '%d bulletin(s) créé(s), %d bulletin(s) recalculé(s).',
                 $this->created,
                 $this->regenerated
             );
         }
 
         if ($this->blockingErrors !== []) {
-            return 'Aucun bulletin genere : des prerequis academiques bloquent la generation.';
+            return 'Aucun bulletin généré : des prérequis académiques bloquent la génération.';
         }
 
         if ($this->errors !== []) {
-            return 'Aucun bulletin genere : une erreur est survenue pendant la generation.';
+            return 'Aucun bulletin généré : une erreur est survenue pendant la génération.';
         }
 
         if ($this->skipped !== []) {
-            return 'Aucun nouveau bulletin genere : les bulletins existent deja ou sont hors perimetre.';
+            return 'Aucun nouveau bulletin généré : les bulletins existent déjà ou sont hors périmètre.';
         }
 
-        return 'Aucun etudiant actif trouve pour cette classe et cette annee.';
+        return 'Aucun étudiant actif trouvé pour cette classe et cette année.';
     }
 
     public function toArray(): array

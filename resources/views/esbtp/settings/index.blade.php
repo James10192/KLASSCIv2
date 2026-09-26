@@ -1971,25 +1971,25 @@
                             <i class="fas fa-check-double"></i> Tout cocher
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="toggleSectionCheckboxes('content-section', false)">
-                            <i class="fas fa-times"></i> Tout decocher
+                            <i class="fas fa-times"></i> Tout décocher
                         </button>
                     </div>
                 </div>
 
                 <div class="bc-grid bc-grid-3" id="content-section">
                     @php $contentToggles = [
-                        ['name' => 'bulletin_show_student_info', 'label' => 'Info Etudiant', 'icon' => 'fa-user', 'color' => 'blue'],
+                        ['name' => 'bulletin_show_student_info', 'label' => 'Infos de l\'étudiant', 'icon' => 'fa-user', 'color' => 'blue'],
                         ['name' => 'bulletin_show_matricule', 'label' => 'Matricule', 'icon' => 'fa-id-badge', 'color' => 'slate'],
-                        ['name' => 'bulletin_show_birth_date', 'label' => 'Date Naissance', 'icon' => 'fa-calendar-day', 'color' => 'cyan'],
+                        ['name' => 'bulletin_show_birth_date', 'label' => 'Date de naissance', 'icon' => 'fa-calendar-day', 'color' => 'cyan'],
                         ['name' => 'bulletin_show_redoublant', 'label' => 'Redoublant', 'icon' => 'fa-redo-alt', 'color' => 'amber'],
                         ['name' => 'bulletin_show_student_phone', 'label' => 'Téléphone de l\'étudiant', 'icon' => 'fa-phone', 'color' => 'blue'],
-                        ['name' => 'bulletin_show_subjects_table', 'label' => 'Tableau Matieres', 'icon' => 'fa-table', 'color' => 'blue'],
+                        ['name' => 'bulletin_show_subjects_table', 'label' => 'Tableau des matières', 'icon' => 'fa-table', 'color' => 'blue'],
                         ['name' => 'bulletin_show_teachers', 'label' => 'Professeurs', 'icon' => 'fa-chalkboard-teacher', 'color' => 'green'],
                         ['name' => 'bulletin_show_absences', 'label' => 'Absences', 'icon' => 'fa-user-clock', 'color' => 'red'],
                         ['name' => 'bulletin_show_statistics', 'label' => 'Statistiques', 'icon' => 'fa-chart-bar', 'color' => 'purple'],
                         ['name' => 'bulletin_show_signature', 'label' => 'Signature', 'icon' => 'fa-signature', 'color' => 'slate'],
-                        ['name' => 'bulletin_show_attendance_note', 'label' => 'Note d\'assiduite', 'icon' => 'fa-clipboard-check', 'color' => 'green'],
-                        ['name' => 'bulletin_show_council_decision', 'label' => 'Decision du conseil', 'icon' => 'fa-gavel', 'color' => 'amber'],
+                        ['name' => 'bulletin_show_attendance_note', 'label' => 'Note d\'assiduité', 'icon' => 'fa-clipboard-check', 'color' => 'green'],
+                        ['name' => 'bulletin_show_council_decision', 'label' => 'Décision du conseil', 'icon' => 'fa-gavel', 'color' => 'amber'],
                     ]; @endphp
                     @foreach($contentToggles as $t)
                     <div class="bc-card">
@@ -2121,7 +2121,7 @@
                             <i class="fas fa-check-double"></i> Tout cocher
                         </button>
                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="toggleSectionCheckboxes('stats-section', false)">
-                            <i class="fas fa-times"></i> Tout decocher
+                            <i class="fas fa-times"></i> Tout décocher
                         </button>
                     </div>
                 </div>

@@ -26,7 +26,7 @@
     $_paAnnees = collect($annees)->mapWithKeys(fn ($nom, $id) => [(string) $id => $nom])->all();
     $_paClasses = collect($classes)->mapWithKeys(fn ($nom, $id) => [(string) $id => $nom])->all();
 @endphp
-<div class="container-fluid pa-shell" x-data="paApercu(@js($_paConfig))" x-init="init()">
+<div class="container-fluid pa-shell" x-data="paApercu(@js($_paConfig))">
     <header class="pa-hero">
         <div class="pa-hero-top">
             <div class="pa-hero-left">

@@ -7,10 +7,8 @@ use App\Domain\AcademicPilotage\Models\GradeSheet;
 use App\Domain\AcademicPilotage\Models\GradeSheetRevision;
 use App\Domain\AcademicPilotage\Services\GradeSheetRevisionService;
 use Carbon\Carbon;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use LogicException;
 
 class GradeSheetRevisionServiceTest extends AcademicPilotageDatabaseTestCase
@@ -21,9 +19,7 @@ class GradeSheetRevisionServiceTest extends AcademicPilotageDatabaseTestCase
     {
         parent::setUp();
 
-        Schema::table('esbtp_evaluations', function (Blueprint $table): void {
-            $table->softDeletes();
-        });
+        // `esbtp_evaluations.deleted_at` vient déjà du schéma de base.
         $migration = require database_path('migrations/2026_07_22_051713_create_esbtp_grade_sheet_revisions_table.php');
         $migration->up();
         $this->service = new GradeSheetRevisionService;

@@ -106,8 +106,7 @@
 
 <div class="ra-card sr-animate sr-animate-delay-4"
      data-ra-config='@json($raConfig)'
-     x-data="releveAnnuel()"
-     x-init="init()">
+     x-data="releveAnnuel()">
 
     <div class="ra-head">
         <div class="ra-head-icon"><i class="fas fa-file-contract"></i></div>

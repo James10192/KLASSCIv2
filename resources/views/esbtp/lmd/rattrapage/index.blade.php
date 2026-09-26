@@ -45,7 +45,7 @@
 @endpush
 
 @section('content')
-<div x-data="rattrapageIndex()" x-init="init()">
+<div x-data="rattrapageIndex()">
 
 <div class="rtp-hero">
     <div class="rtp-hero-top">

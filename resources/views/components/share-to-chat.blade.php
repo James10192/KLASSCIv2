@@ -26,7 +26,7 @@
 
 <div class="modal fade ms-modal" id="{{ $modalId }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content" x-data="shareToChat_{{ $kind }}_{{ $id }}()" x-init="init()">
+        <div class="modal-content" x-data="shareToChat_{{ $kind }}_{{ $id }}()">
             <div class="modal-header">
                 <div class="ms-modal-icon"><i class="fas fa-share-alt"></i></div>
                 <div class="ms-modal-title-block">

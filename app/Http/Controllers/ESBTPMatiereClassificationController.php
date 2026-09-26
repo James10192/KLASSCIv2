@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\BtsTroncCommun\RetraitDeMaquette;
+use App\Domain\BtsTroncCommun\SuggestionDeClassement;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereFilierNiveau;
@@ -225,28 +226,17 @@ class ESBTPMatiereClassificationController extends Controller
      */
     private function lignesDuCombo(int $filiereId, int $niveauId, ?ESBTPFiliere $filiere, bool $isTroncCommun)
     {
-        // Suggestion : sur un combo TC, une matière aussi rattachée à une filière fille
-        // (spécialité) du même niveau est probablement de spécialité mal rattachée.
-        $specialiteSuggestionIds = [];
-        if ($isTroncCommun) {
-            $childFiliereIds = ESBTPFiliere::where('parent_id', $filiereId)->pluck('id');
-            if ($childFiliereIds->isNotEmpty()) {
-                $specialiteSuggestionIds = ESBTPMatiereFilierNiveau::query()
-                    ->whereIn('filiere_id', $childFiliereIds)
-                    ->where('niveau_etude_id', $niveauId)
-                    ->pluck('matiere_id')
-                    ->unique()
-                    ->all();
-            }
-        }
-        $specialiteSuggestionIds = array_flip($specialiteSuggestionIds);
+        // Suggestion fondee sur ce que l'ecole a evalue ou planifie cette annee.
+        $suggestions = ($isTroncCommun && $filiere)
+            ? app(SuggestionDeClassement::class)->pourCouple($filiere, $niveauId)
+            : [];
 
         $rangsEffectifs = app(\App\Domain\BtsTroncCommun\BulletinSubjectOrder::class)
             ->rankMapForFiliereNiveau($filiereId, $niveauId, $filiere?->troncCommunUnionFiliereIds());
 
         return $this->lignesBrutesDuCombo($filiereId, $niveauId)
             ->filter(fn ($row) => $row->matiere && $row->matiere->unite_enseignement_id === null) // BTS only
-            ->map(function ($row) use ($specialiteSuggestionIds, $rangsEffectifs) {
+            ->map(function ($row) use ($suggestions, $rangsEffectifs) {
                 $rangPropre = \App\Domain\BtsTroncCommun\BulletinSubjectOrder::rang($row->ordre_bulletin);
                 $rangGeneral = \App\Domain\BtsTroncCommun\BulletinSubjectOrder::rang($row->matiere->ordre_bulletin ?? null);
                 // Rang du bulletin : il tient compte du tronc commun parent.
@@ -260,9 +250,10 @@ class ESBTPMatiereClassificationController extends Controller
                     'code' => $row->matiere->code,
                     'is_active' => (bool) $row->matiere->is_active,
                     'classification' => $row->classification,
-                    'suggested' => $row->classification === null && isset($specialiteSuggestionIds[$row->matiere_id])
-                        ? ESBTPMatiereFilierNiveau::SPECIALITE
+                    'suggested' => $row->classification === null
+                        ? ($suggestions[(int) $row->matiere_id]['valeur'] ?? null)
                         : null,
+                    'suggestion_raison' => $suggestions[(int) $row->matiere_id]['raison'] ?? null,
                     'ordre_bulletin' => $rangPropre,
                     'ordre_general' => $rangGeneral,
                     'ordre_effectif' => $rangEffectif,
