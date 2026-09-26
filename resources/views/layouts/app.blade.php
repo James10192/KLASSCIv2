@@ -2279,7 +2279,7 @@
                     @endrole
 
                     <!-- Security & Audit Section - permission-gated (superAdmin + serviceTechnique by default via *) -->
-                    @can('security.audit.view')
+                    @canany(['security.audit.view', 'comptabilite.audit.view'])
                         <div class="menu-category">Sécurité & Audit</div>
 
                         <div class="menu-accordion">
@@ -2289,25 +2289,27 @@
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ Request::routeIs('esbtp.audit.*') ? 'show' : '' }}">
-                                <a href="{{ route('esbtp.audit.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.audit.index') ? 'active' : '' }}">
+                                @can('security.audit.view')
+                                <a href="{{ route('esbtp.audit.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.audit.index', 'esbtp.audit.show') && request('theme') !== 'finances' ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span><i class="fas fa-list me-2"></i>Toutes les actions</span>
                                 </a>
+                                @endcan
                                 @can('comptabilite.audit.view')
-                                <a href="{{ route('esbtp.audit.comptabilite') }}" class="menu-sublink {{ Request::routeIs('esbtp.audit.comptabilite') ? 'active' : '' }}">
+                                <a href="{{ route('esbtp.audit.index', ['theme' => 'finances']) }}" class="menu-sublink {{ Request::routeIs('esbtp.audit.index') && request('theme') === 'finances' ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <span><i class="fas fa-coins me-2"></i>Audit comptable</span>
+                                    <span><i class="fas fa-coins me-2"></i>Finances</span>
                                 </a>
                                 @endcan
                                 @can('security.users.monitor')
                                 <a href="{{ route('esbtp.audit.user-activity') }}" class="menu-sublink {{ Request::routeIs('esbtp.audit.user-activity') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
-                                    <span><i class="fas fa-user-clock me-2"></i>Activité utilisateurs</span>
+                                    <span><i class="fas fa-user-clock me-2"></i>Activité des personnes</span>
                                 </a>
                                 @endcan
                             </div>
                         </div>
-                    @endcan
+                    @endcanany
 
                     <!-- System Section -->
                     @can('system.manage')

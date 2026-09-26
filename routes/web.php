@@ -359,8 +359,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         // Corbeille des demandes de reinscription deposees en ligne.
         // La conversion passe par le flux canonique : aucune re-saisie.
         Route::prefix('reinscriptions')->middleware(['auth', 'paywall'])->name('reinscription-demandes.')->group(function () {
-            Route::get('/demandes', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'index'])
-                ->name('index');
+            // L'ancienne corbeille : la file des demandes la remplace.
+            Route::get('/demandes', [\App\Http\Controllers\ESBTP\ESBTPDemandesInscriptionController::class, 'depuisLAncienneCorbeille'])
+                ->defaults('type', \App\Domain\Admissions\FileDesDemandes::TYPE_REINSCRIPTION)->name('index');
             Route::post('/demandes/{demande}/convertir', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'convertir'])
                 ->middleware('throttle:30,1')->name('convertir');
             Route::post('/demandes/{demande}/rejeter', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'rejeter'])
@@ -372,12 +373,30 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         // automatique : admettre un nouveau est une decision, pas la
         // reconduction d'un dossier qui existe deja.
         Route::prefix('inscriptions')->middleware(['auth', 'paywall'])->name('candidatures.')->group(function () {
-            Route::get('/candidatures', [\App\Http\Controllers\ESBTP\ESBTPCandidatureController::class, 'index'])
-                ->name('index');
+            // L'ancienne corbeille : la file des demandes la remplace.
+            Route::get('/candidatures', [\App\Http\Controllers\ESBTP\ESBTPDemandesInscriptionController::class, 'depuisLAncienneCorbeille'])
+                ->defaults('type', \App\Domain\Admissions\FileDesDemandes::TYPE_NOUVELLE)->name('index');
             Route::post('/candidatures/{candidature}/accepter', [\App\Http\Controllers\ESBTP\ESBTPCandidatureController::class, 'accepter'])
                 ->middleware('throttle:30,1')->name('accepter');
             Route::post('/candidatures/{candidature}/rejeter', [\App\Http\Controllers\ESBTP\ESBTPCandidatureController::class, 'rejeter'])
                 ->middleware('throttle:30,1')->name('rejeter');
+        });
+
+        // Demandes d'inscription : candidatures et demandes de reinscription dans
+        // une seule file. Lecture et preparation ici ; les decisions restent sur
+        // les routes des deux corbeilles, qui repondent aussi en JSON.
+        Route::prefix('inscriptions/demandes')->middleware(['auth', 'paywall'])->name('demandes.')->group(function () {
+            $c = \App\Http\Controllers\ESBTP\ESBTPDemandesInscriptionController::class;
+            $lire = 'permission:inscriptions.candidatures.view|reinscriptions.demandes.view';
+            Route::get('/', [$c, 'index'])->middleware($lire)->name('index');
+            Route::get('/creneaux', [$c, 'creneaux'])->middleware(['permission:inscriptions.rdv.manage', 'throttle:60,1'])->name('creneaux');
+            Route::get('/nouvelle/{candidature}/inscription', [$c, 'preparerInscription'])
+                ->middleware(['permission:inscriptions.candidatures.process', 'can:inscriptions.ouvrir-formulaire', 'throttle:60,1'])
+                ->name('preparer-inscription');
+            Route::get('/{type}/{id}', [$c, 'dossier'])->middleware([$lire, 'throttle:120,1'])
+                ->whereIn('type', ['nouvelle', 'reinscription'])->whereNumber('id')->name('dossier');
+            Route::post('/{type}/{id}/rendez-vous', [$c, 'fixerRendezVous'])->middleware(['permission:inscriptions.rdv.manage', 'throttle:30,1'])
+                ->whereIn('type', ['nouvelle', 'reinscription'])->whereNumber('id')->name('rendez-vous');
         });
 
         Route::prefix('inscriptions')->middleware(['auth', 'paywall'])->name('rendez-vous.')->group(function () {
@@ -2894,12 +2913,7 @@ Route::middleware(['auth', 'throttle:audit'])->prefix('esbtp/audit')->name('esbt
     // Page principale d'audit
     Route::get('/', [ESBTPAuditController::class, 'index'])->name('index');
 
-    // DonnÃ©es d'audit via AJAX (avec rate limiting strict)
-    Route::get('/data', [ESBTPAuditController::class, 'getAuditData'])
-        ->middleware('throttle:30,1')
-        ->name('data');
-
-    // Audits spÃ©cifiques Ã  la comptabilitÃ© (avant /{id} pour Ã©viter capture wildcard)
+    // L'ancien audit comptable : l'onglet Finances du journal (avant /{id}).
     Route::get('/comptabilite', [ESBTPAuditController::class, 'comptabiliteAudits'])
         ->middleware('permission:comptabilite.audit.view')
         ->name('comptabilite');
@@ -2914,12 +2928,6 @@ Route::middleware(['auth', 'throttle:audit'])->prefix('esbtp/audit')->name('esbt
         Route::get('/export/excel', [ESBTPAuditController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export/pdf', [ESBTPAuditController::class, 'exportPdf'])->name('export.pdf');
     });
-
-    // Liens entitÃ©s liÃ©es d'un audit (AJAX, pour modal "AperÃ§u rapide")
-    Route::get('/{id}/related-links', [ESBTPAuditController::class, 'relatedLinks'])
-        ->where('id', '[0-9]+')
-        ->middleware('throttle:60,1')
-        ->name('related-links');
 
     // DÃ©tails d'un audit spÃ©cifique (en dernier pour Ã©viter conflit avec routes nommÃ©es ci-dessus)
     Route::get('/{id}', [ESBTPAuditController::class, 'show'])
@@ -3206,6 +3214,19 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('chatbot')->name('chatbot.'
     Route::post('/preferences/memory', [App\Http\Controllers\ChatbotController::class, 'saveMemory'])->name('preferences.memory');
     Route::post('/actions/{action}/approve', [App\Http\Controllers\ChatbotController::class, 'approveAction'])->name('actions.approve');
     Route::post('/actions/{action}/reject', [App\Http\Controllers\ChatbotController::class, 'rejectAction'])->name('actions.reject');
+    // Propositions de l'assistant : rien n'est écrit avant ce clic.
+    Route::post('/propositions/{proposition}/valider', [App\Http\Controllers\Assistant\PropositionController::class, 'valider'])
+        ->middleware('throttle:20,1')->name('propositions.valider');
+    Route::post('/propositions/{proposition}/refuser', [App\Http\Controllers\Assistant\PropositionController::class, 'refuser'])
+        ->middleware('throttle:20,1')->name('propositions.refuser');
+    // Fichier joint (Excel, CSV, Word) : lu tout de suite, seul son tableau est gardé.
+    Route::post('/pieces', [App\Http\Controllers\Assistant\PieceJointeController::class, 'deposer'])
+        ->middleware('throttle:10,1')->name('pieces.deposer');
+    // Avis sur une réponse et signalement à KLASSCI Care.
+    Route::post('/messages/{message}/retour', [App\Http\Controllers\Assistant\RetourController::class, 'enregistrer'])
+        ->middleware('throttle:30,1')->name('messages.retour');
+    Route::post('/messages/{message}/signaler', [App\Http\Controllers\Assistant\RetourController::class, 'signaler'])
+        ->middleware('throttle:5,1')->name('messages.signaler');
     Route::get('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'getMandatoryFraisCategoryForm'])->name('forms.frais-category');
     Route::post('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'storeMandatoryFraisCategory'])->name('forms.frais-category.store');
     Route::get('/forms/frais-config', [App\Http\Controllers\ChatbotController::class, 'getFraisConfigForm'])->name('forms.frais-config');

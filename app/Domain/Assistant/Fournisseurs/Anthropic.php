@@ -39,6 +39,7 @@ class Anthropic extends AdaptateurHttp
         $outils = [];
         $entree = 0;
         $sortie = 0;
+        $cache = 0;
         $raison = null;
         $termine = false;
 
@@ -46,6 +47,7 @@ class Anthropic extends AdaptateurHttp
             $d = $evenement['data'];
             switch ($d['type'] ?? $evenement['event']) {
                 case 'message_start':
+                    $cache = (int) ($d['message']['usage']['cache_read_input_tokens'] ?? 0);
                     $entree = (int) ($d['message']['usage']['input_tokens'] ?? 0)
                         + (int) ($d['message']['usage']['cache_read_input_tokens'] ?? 0)
                         + (int) ($d['message']['usage']['cache_creation_input_tokens'] ?? 0);
@@ -96,7 +98,7 @@ class Anthropic extends AdaptateurHttp
             }
         }
 
-        yield EvenementModele::usage($entree, $sortie);
+        yield EvenementModele::usage($entree, $sortie, $cache);
 
         if (!$termine) {
             yield EvenementModele::erreur('flux_interrompu');

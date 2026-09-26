@@ -965,3 +965,55 @@ html.ast-lock, html.ast-lock body { overflow: hidden !important; }
 @media print {
     .ast-root { display: none !important; }
 }
+
+/* Proposition de l'assistant (outil proposer_*) */
+.ast-prop .ast-w-body { display: grid; gap: .65rem; }
+.ast-prop .ast-w { border: 0; box-shadow: none; padding: 0; background: transparent; }
+.ast-prop-ruban { display: flex; align-items: center; gap: .45rem; font-size: .74rem; font-weight: 600; color: var(--ast-primary); background: rgba(4, 83, 203, .06); border-radius: 8px; padding: .4rem .6rem; }
+.ast-prop-alertes { list-style: none; margin: 0; padding: 0; display: grid; gap: .3rem; }
+.ast-prop-alertes li { display: flex; gap: .45rem; align-items: flex-start; font-size: .8rem; color: #92400e; }
+.ast-prop-alertes i { margin-top: .15rem; color: #f59e0b; }
+.ast-prop--eleve { border-color: rgba(245, 158, 11, .45); }
+.ast-prop.is-close { opacity: .92; }
+@media (max-width: 576px) {
+    .ast-prop .ast-approval-actions .ast-btn { flex: 1 1 0; justify-content: center; }
+}
+
+/* Avis sur une réponse (👍 / 👎) et signalement KLASSCI Care */
+.ast-avis { display: inline-flex; gap: .15rem; margin-left: .15rem; }
+.ast-avis .ast-icon-btn.is-on { color: var(--ast-primary); background: rgba(4, 83, 203, .08); }
+.ast-retour { margin-top: .5rem; display: grid; gap: .6rem; }
+.ast-retour-form { display: grid; gap: .5rem; padding: .75rem; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.ast-retour-titre { font-size: .82rem; font-weight: 700; color: var(--ast-text, #1e293b); }
+.ast-retour-aide { margin: 0; font-size: .76rem; color: var(--ast-muted); }
+.ast-retour-raisons { display: flex; flex-wrap: wrap; gap: .35rem; }
+.ast-retour-raisons .ast-chip.is-on { background: rgba(4, 83, 203, .1); border-color: rgba(4, 83, 203, .35); color: var(--ast-primary); }
+.ast-retour-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.ast-retour-merci { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; font-size: .8rem; color: var(--ast-ok); }
+.ast-retour-care { font-size: .78rem; color: var(--ast-muted); }
+
+/* Nanan : une présence discrète, jamais décorative. Clignement rare, regard levé quand elle réfléchit. */
+/* La tête prend la couleur du pastillage (blanc) : les traits doivent donc être bleus, sinon blanc sur blanc. */
+.ast-nanan .ast-nanan-yeux circle { fill: var(--ast-primary, #0453cb); }
+.ast-nanan .ast-nanan-bouche { stroke: var(--ast-primary, #0453cb); }
+.ast-nanan .ast-nanan-yeux { transform-origin: 12px 11px; animation: ast-nanan-cligne 7s infinite; }
+.ast-mark.is-pense .ast-nanan-yeux { animation: none; transform: translateY(-1.2px); }
+.ast-mark.is-pense .ast-nanan-bouche { opacity: .6; }
+@keyframes ast-nanan-cligne { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
+@media (prefers-reduced-motion: reduce) { .ast-nanan .ast-nanan-yeux { animation: none; } }
+
+/* Fichiers joints (composer et bulle de la question) */
+.ast-bubble-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: .3rem; max-width: 82%; }
+.ast-bubble-wrap .ast-bubble { max-width: 100%; }
+.ast-pieces, .ast-bubble-pieces { display: flex; flex-wrap: wrap; gap: .35rem; }
+.ast-pieces { padding: .5rem .6rem 0; }
+.ast-piece { display: inline-flex; align-items: center; gap: .35rem; max-width: 100%; padding: .28rem .5rem; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; font-size: .76rem; color: var(--ast-dark); }
+.ast-piece i { color: var(--ast-primary); }
+.ast-piece-nom { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 14rem; }
+.ast-piece-info { color: var(--ast-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16rem; }
+.ast-piece.is-erreur { border-color: rgba(220, 38, 38, .35); }
+.ast-piece.is-erreur i, .ast-piece.is-erreur .ast-piece-info { color: var(--ast-bad); }
+.ast-piece-retirer { border: 0; background: transparent; color: var(--ast-muted); padding: 0 .1rem; cursor: pointer; }
+.ast-joindre { cursor: pointer; }
+@media (max-width: 576px) { .ast-bubble-wrap { max-width: 88%; } .ast-piece-nom { max-width: 9rem; } }
+.ast-joindre:focus-within { outline: 2px solid var(--ast-primary); outline-offset: 2px; }

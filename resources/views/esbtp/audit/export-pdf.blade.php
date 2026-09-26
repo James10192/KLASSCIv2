@@ -1,78 +1,41 @@
+{{-- Le journal d'audit en PDF : les phrases de l'ecran, avec les filtres appliques. --}}
 <x-pdf-document
     title="Journal d'audit"
-    subtitle="Traçabilité des actions système"
+    subtitle="Qui a fait quoi, sur qui, et quand"
+    :filters="array_filter($filtres)"
     orientation="landscape">
 
     <style>
-        .audit-table { width:100%; border-collapse: collapse; font-size: 8.5pt; }
-        .audit-table th { background: #0453cb; color:#fff; padding: 6px 4px; text-align:left; font-weight:700; }
-        .audit-table td { padding: 5px 4px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-        .audit-table tr:nth-child(even) td { background:#f8fafc; }
-        .chip { display:inline-block; padding: 2px 7px; border-radius: 9px; font-size: 7pt; font-weight:600; }
-        .chip-created { background:#dcfce7; color:#15803d; }
-        .chip-updated { background:#dbeafe; color:#1d4ed8; }
-        .chip-deleted { background:#fee2e2; color:#991b1b; }
-        .chip-restored { background:#fef3c7; color:#92400e; }
-        .chip-retrieved { background:#f3f4f6; color:#4b5563; }
-        .ip { font-family: monospace; font-size: 7.5pt; color:#64748b; }
-        .meta-cell { color:#64748b; font-size:7.5pt; }
+        .jda-t { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
+        .jda-t th { background: #0453cb; color: #fff; padding: 6px 5px; text-align: left; font-weight: 700; }
+        .jda-t td { padding: 5px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+        .jda-t tr:nth-child(even) td { background: #f8fafc; }
+        .jda-sous { color: #64748b; font-size: 7.5pt; }
+        .jda-alerte { color: #b91c1c; font-weight: 700; font-size: 7.5pt; }
     </style>
 
-    @php
-        $eventLabels = [
-            'created' => 'Création',
-            'updated' => 'Modification',
-            'deleted' => 'Suppression',
-            'restored' => 'Restauration',
-            'retrieved' => 'Consultation',
-        ];
-    @endphp
-
-    <table class="audit-table">
+    <table class="jda-t">
         <thead>
             <tr>
-                <th style="width: 14%;">Date / heure</th>
-                <th style="width: 18%;">Utilisateur</th>
-                <th style="width: 11%;">Action</th>
-                <th style="width: 22%;">Entité</th>
-                <th style="width: 13%;">IP</th>
-                <th>Changements</th>
+                <th style="width: 12%;">Date et heure</th>
+                <th>Ce qui s'est passé</th>
+                <th style="width: 20%;">Changement</th>
+                <th style="width: 14%;">À regarder</th>
             </tr>
         </thead>
         <tbody>
-            @forelse($audits as $audit)
-                @php
-                    $event = $audit->event;
-                    $oldVals = $audit->old_values ?? [];
-                    $newVals = $audit->new_values ?? [];
-                    $fields = array_unique(array_merge(array_keys((array) $oldVals), array_keys((array) $newVals)));
-                @endphp
+            @forelse($lignes as $l)
                 <tr>
-                    <td>{{ $audit->created_at->format('d/m/Y H:i:s') }}</td>
+                    <td>{{ $l->quand->format('d/m/Y H:i') }}</td>
                     <td>
-                        {{ $audit->user?->name ?? 'Système' }}<br>
-                        <span class="meta-cell">{{ $audit->user?->email ?? '' }}</span>
+                        {{ $l->phrase() }}
+                        @if($l->objet->reperes !== [])<br><span class="jda-sous">{{ implode(' · ', $l->objet->reperes) }}</span>@endif
                     </td>
-                    <td><span class="chip chip-{{ $event }}">{{ $eventLabels[$event] ?? mb_strtoupper($event, 'UTF-8') }}</span></td>
-                    <td>
-                        {{ \App\Helpers\EntityLabelHelper::for($audit->auditable_type) }} #{{ $audit->auditable_id }}
-                    </td>
-                    <td class="ip">{{ $audit->ip_address ?? '—' }}</td>
-                    <td>
-                        @if(empty($fields))
-                            <span class="meta-cell">—</span>
-                        @else
-                            {{ count($fields) }} champ(s) :
-                            <span class="meta-cell">{{ \Illuminate\Support\Str::limit(implode(', ', $fields), 80) }}</span>
-                        @endif
-                    </td>
+                    <td>{{ $l->changement ?? '' }}</td>
+                    <td class="jda-alerte">{{ implode(', ', $l->motifs) }}</td>
                 </tr>
             @empty
-                <tr>
-                    <td colspan="6" style="text-align:center; padding:20px; color:#64748b;">
-                        Aucun événement sur la période sélectionnée.
-                    </td>
-                </tr>
+                <tr><td colspan="4" style="text-align:center; padding:20px; color:#64748b;">Aucune action sur la période choisie.</td></tr>
             @endforelse
         </tbody>
     </table>

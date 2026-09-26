@@ -5,13 +5,11 @@ namespace App\Http\Controllers\ESBTP;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPCandidature;
 use App\Services\RendezVous\ReservateurRdv;
-use App\Support\ListeInfinie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
 
 /**
  * Corbeille des candidatures deposees en ligne par les nouveaux etudiants.
@@ -48,55 +46,11 @@ use Illuminate\View\View;
  */
 class ESBTPCandidatureController extends Controller
 {
+    use \App\Http\Controllers\Concerns\RepondEnJsonOuRedirige;
+
     public function __construct()
     {
-        $this->middleware('permission:inscriptions.candidatures.view')->only('index');
         $this->middleware('permission:inscriptions.candidatures.process')->only(['accepter', 'rejeter']);
-    }
-
-    public function index(Request $request): View|JsonResponse
-    {
-        $statut = $request->string('statut')->toString();
-        $statutsConnus = [
-            ESBTPCandidature::STATUT_EN_ATTENTE,
-            ESBTPCandidature::STATUT_ACCEPTEE,
-            ESBTPCandidature::STATUT_REJETEE,
-            ESBTPCandidature::STATUT_CONVERTIE,
-        ];
-
-        // Un dossier precis, depuis l'accueil du jour : la liste pagine par 25
-        // sans recherche, la famille y serait a une page quelconque.
-        $reference = app(\App\Services\Portail\ReferencePublique::class)->normaliser($request->string('reference')->toString());
-
-        $candidatures = ESBTPCandidature::query()
-            ->with(['anneeUniversitaire:id,name', 'filiere:id,name', 'niveau:id,name', 'traitePar:id,name'])
-            ->when(in_array($statut, $statutsConnus, true), fn ($q) => $q->where('statut', $statut))
-            ->when($reference !== '', fn ($q) => $q->where('reference_publique', $reference))
-            ->when($request->query('contact') === 'non_verifie', fn ($q) => $q->contactNonConfirme())
-            ->orderByRaw("FIELD(statut, 'en_attente') DESC")
-            ->latest('created_at')
-            // Departage stable : la liste se charge par tranches, et deux dossiers
-            // recus a la meme seconde changeraient d'ordre d'une tranche a l'autre.
-            ->orderByDesc('id')
-            ->paginate(25)
-            ->withQueryString();
-
-        if (ListeInfinie::demandee($request)) {
-            return ListeInfinie::reponse(
-                $candidatures,
-                fn (ESBTPCandidature $c) => view('esbtp.inscriptions.candidatures._ligne', compact('c'))->render(),
-            );
-        }
-
-        return view('esbtp.inscriptions.candidatures.index', [
-            'candidatures' => $candidatures,
-            'compteurs' => ESBTPCandidature::query()
-                ->selectRaw('statut, COUNT(*) as total')
-                ->groupBy('statut')
-                ->pluck('total', 'statut'),
-            'statutActif' => in_array($statut, $statutsConnus, true) ? $statut : '',
-            'referenceActive' => $reference === '' ? '' : app(\App\Services\Portail\ReferencePublique::class)->formater($reference),
-        ]);
     }
 
     /**
@@ -106,10 +60,10 @@ class ESBTPCandidatureController extends Controller
      * file d'attente et le range dans « a inscrire ». L'inscription elle-meme
      * se fait par le flux habituel, avec les pieces sous les yeux.
      */
-    public function accepter(Request $request, ESBTPCandidature $candidature): RedirectResponse
+    public function accepter(Request $request, ESBTPCandidature $candidature): RedirectResponse|JsonResponse
     {
-        if (! $this->decider($candidature, ['statut' => ESBTPCandidature::STATUT_ACCEPTEE])) {
-            return back()->with('error', 'Cette candidature a déjà été traitée.');
+        if (! $this->decider($candidature, ['statut' => ESBTPCandidature::STATUT_ACCEPTEE], fn (ESBTPCandidature $c) => $c->estTraitable())) {
+            return $this->repondre($request, false, 'Cette candidature a déjà été traitée.');
         }
 
         Log::info('Candidature acceptee', [
@@ -137,6 +91,12 @@ class ESBTPCandidatureController extends Controller
         // pose la meme question pour afficher son lien, et interroge le meme
         // Gate — sans quoi le bouton resterait visible la ou la redirection
         // s'abstient, et rendrait le 403 que tout ceci evite.
+        // L'ecran des demandes enchaine lui-meme sur « Accepter et inscrire » :
+        // il n'a besoin que de savoir que la decision est prise.
+        if ($request->expectsJson()) {
+            return $this->repondre($request, true, 'Candidature acceptée.');
+        }
+
         if ($request->user()?->can('inscriptions.ouvrir-formulaire')) {
             return redirect()
                 ->route('esbtp.inscriptions.create', ['candidature' => $candidature->id])
@@ -151,7 +111,7 @@ class ESBTPCandidatureController extends Controller
         );
     }
 
-    public function rejeter(Request $request, ESBTPCandidature $candidature, ReservateurRdv $reservateur): RedirectResponse
+    public function rejeter(Request $request, ESBTPCandidature $candidature, ReservateurRdv $reservateur): RedirectResponse|JsonResponse
     {
         $valide = $request->validate([
             // Un rejet sans motif est un rejet qu'on ne saura pas expliquer a
@@ -162,19 +122,21 @@ class ESBTPCandidatureController extends Controller
         // Rejet et liberation du creneau dans la meme transaction : sinon la
         // famille pourrait deplacer ou reprendre sa place entre les deux.
         [$decidee, $liberee] = DB::transaction(function () use ($candidature, $valide, $reservateur) {
+            // Une candidature acceptee se rejette encore : une famille acceptee
+            // qui renonce ne doit pas rester « a inscrire » pour toujours.
             $decidee = $this->decider($candidature, [
                 'statut' => ESBTPCandidature::STATUT_REJETEE,
                 'motif_rejet' => $valide['motif_rejet'],
-            ]);
+            ], fn (ESBTPCandidature $c) => ! $c->dossierClos());
 
             return [$decidee, $decidee ? $reservateur->liberer($candidature) : null];
         });
 
         if (! $decidee) {
-            return back()->with('error', 'Cette candidature a déjà été traitée.');
+            return $this->repondre($request, false, 'Cette candidature a déjà été traitée.');
         }
 
-        return back()->with('success', 'Candidature rejetée.'.ReservateurRdv::phraseLiberation($liberee));
+        return $this->repondre($request, true, 'Candidature rejetée.'.ReservateurRdv::phraseLiberation($liberee));
     }
 
     /**
@@ -196,17 +158,18 @@ class ESBTPCandidatureController extends Controller
      * verrou porte sur elle et sur rien d'autre.
      *
      * @param  array<string, mixed>  $valeurs
+     * @param  callable(ESBTPCandidature): bool  $admissible  lu sur la ligne verrouillee
      * @return bool false si la candidature n'etait plus a decider
      */
-    private function decider(ESBTPCandidature $candidature, array $valeurs): bool
+    private function decider(ESBTPCandidature $candidature, array $valeurs, callable $admissible): bool
     {
-        return DB::transaction(function () use ($candidature, $valeurs): bool {
+        return DB::transaction(function () use ($candidature, $valeurs, $admissible): bool {
             $verrouillee = ESBTPCandidature::query()
                 ->whereKey($candidature->getKey())
                 ->lockForUpdate()
                 ->first();
 
-            if ($verrouillee === null || ! $verrouillee->estTraitable()) {
+            if ($verrouillee === null || ! $admissible($verrouillee)) {
                 return false;
             }
 

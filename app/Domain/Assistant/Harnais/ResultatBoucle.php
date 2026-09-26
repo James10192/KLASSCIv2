@@ -23,6 +23,8 @@ final class ResultatBoucle
         public readonly int $latenceMs,
         /** Messages neutres produits pendant l'échange (appels d'outil et leurs résultats compacts), rejoués dans l'historique. */
         public readonly array $trace = [],
+        /** Appels d'outil qui ont échoué dans l'échange : un signal pour le routeur. */
+        public readonly int $echecsOutils = 0,
     ) {
     }
 

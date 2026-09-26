@@ -54,6 +54,14 @@ class RegistreDesModeles
         return (string) ($this->reglage('assistant.modele_defaut') ?: config('assistant.modele_defaut', ''));
     }
 
+    /** Modèle par défaut posé explicitement par l'école (réglage d'instance), null sinon. */
+    public function defautChoisiParLEcole(): ?string
+    {
+        $valeur = $this->reglage('assistant.modele_defaut');
+
+        return is_string($valeur) && $valeur !== '' ? $valeur : null;
+    }
+
     /** @return string[] clés autorisées ; vide = tout le registre */
     public function clesAutorisees(): array
     {
