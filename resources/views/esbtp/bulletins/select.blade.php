@@ -702,7 +702,7 @@
     ];
 @endphp
 
-<div class="container-fluid" x-data="busSelect()" x-init="init()">
+<div class="container-fluid" x-data="busSelect()">
 
     {{-- ══ HERO ═══════════════════════════════════════════ --}}
     <div class="bus-hero">
@@ -843,7 +843,7 @@
                 <div class="bus-inline-panel bus-inline-panel--danger" x-show="previewIssue" x-cloak>
                     <div class="bus-inline-panel__title">
                         <i class="fas fa-circle-exclamation"></i>
-                        <span>Configuration a completer</span>
+                        <span>Configuration à compléter</span>
                     </div>
                     <p class="bus-inline-panel__body" x-text="previewIssue?.message"></p>
                     <template x-if="previewIssue">
@@ -934,9 +934,9 @@
                 <div class="bus-inline-panel" x-show="preflightBusy" x-cloak>
                     <div class="bus-inline-panel__title">
                         <i class="fas fa-spinner fa-spin"></i>
-                        <span>Pre-controle en cours</span>
+                        <span>Pré-contrôle en cours</span>
                     </div>
-                    <p class="bus-inline-panel__body">Verification des inscriptions actives, coefficients et donnees academiques.</p>
+                    <p class="bus-inline-panel__body">Vérification des inscriptions actives, coefficients et données académiques.</p>
                 </div>
                 <div class="bus-inline-panel"
                      :class="panelClass()"
@@ -944,7 +944,7 @@
                      x-cloak>
                     <div class="bus-inline-panel__title">
                         <i class="fas" :class="panelIcon()"></i>
-                        <span>Pre-controle generation</span>
+                        <span>Pré-contrôle de la génération</span>
                     </div>
                     <p class="bus-inline-panel__body" x-text="preflight?.message"></p>
                     <template x-if="preflight?.missing_coefficients?.length">
@@ -952,7 +952,7 @@
                             <template x-for="item in preflight.missing_coefficients" :key="item.matiere_id">
                                 <li>
                                     <span x-text="item.matiere"></span>
-                                    <span x-text="' - ' + item.students_count + ' etudiant' + (item.students_count > 1 ? 's' : '')"></span>
+                                    <span x-text="' - ' + item.students_count + ' étudiant' + (item.students_count > 1 ? 's' : '')"></span>
                                 </li>
                             </template>
                         </ul>
@@ -967,8 +967,17 @@
                             </template>
                         </ul>
                     </template>
+                    {{-- Le nombre seul ne dit pas quoi corriger : on regroupe les
+                         blocages par cause, avec le nombre d'étudiants touchés. --}}
                     <template x-if="preflight?.blocking_errors?.length && !preflight?.missing_coefficients?.length && !preflight?.missing_professeurs?.length">
-                        <p class="bus-inline-panel__body" x-text="preflight.blocking_errors.length + ' blocage(s) detecte(s).'"></p>
+                        <ul class="bus-inline-panel__list">
+                            <template x-for="ligne in blocagesParCause()" :key="ligne.cause">
+                                <li>
+                                    <span x-text="ligne.cause"></span>
+                                    <span x-text="' ' + ligne.nombre + ' étudiant' + (ligne.nombre > 1 ? 's' : '') + ' concerné' + (ligne.nombre > 1 ? 's' : '') + '.'"></span>
+                                </li>
+                            </template>
+                        </ul>
                     </template>
                     {{-- Un bulletin vide est repris d'office : plus rien à cocher.
                          Ceux que le verrou empêche de reprendre sont comptés à part,
@@ -1035,7 +1044,7 @@
                     <template x-if="preflight?.has_hard_blocks">
                         <button type="button" class="bus-inline-panel__link bus-inline-panel__button" @click="openInlineConfig(preflight)">
                             <i class="fas fa-sliders"></i>
-                            Completer matieres, coefficients et professeurs
+                            Compléter matières, coefficients et professeurs
                         </button>
                     </template>
                     <div class="bus-field" x-show="preflight?.requires_incomplete_reason" x-cloak>
