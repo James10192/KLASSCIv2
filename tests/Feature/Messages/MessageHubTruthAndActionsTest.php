@@ -2,15 +2,12 @@
 
 namespace Tests\Feature\Messages;
 
-use App\Domain\Assistant\Harnais\SafeMessageHubPrompt;
 use App\Events\WorkflowStepCompleted;
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\User;
-use App\Models\WorkflowAction;
-use App\Models\WorkflowActionActivity;
 use App\Notifications\WorkflowNextStepNotification;
 use App\Services\Messages\MessageAssistantContextBuilder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -75,6 +72,7 @@ class MessageHubTruthAndActionsTest extends TestCase
             ->assertJsonPath('linked_entities.0.entity_label', 'Inscription — KIPRE JEAN')
             ->assertJsonPath('linked_entities.0.relation_label', 'Relation à vérifier')
             ->assertJsonPath('linked_entities.0.relation_verified', false)
+            ->assertJsonPath('linked_entities.0.can_verify', false)
             ->assertJsonPath('linked_entities.0.sensitive_actions_allowed', false)
             ->assertJsonPath('messages.0.business_card.entity_label', 'Inscription — KIPRE JEAN')
             ->assertJsonPath('messages.0.business_card.sensitive_actions_allowed', false);
@@ -82,7 +80,46 @@ class MessageHubTruthAndActionsTest extends TestCase
         $json = $response->getContent();
         $this->assertStringNotContainsString('Dossier KLASSCI', $json);
         $this->assertStringNotContainsString('À consulter', $json);
-        $this->assertStringNotContainsString('LOSSENI KABIROU COULIBALY\"', json_encode($response->json('linked_entities.0.details.student_name')) ?: '');
+        $this->assertNotSame(
+            'LOSSENI KABIROU COULIBALY',
+            $response->json('linked_entities.0.details.student_name'),
+            'Le participant ne doit jamais devenir l’étudiant lié par fallback.'
+        );
+    }
+
+    public function test_link_verification_requires_validator_permission_and_non_debtor_relations_stay_safe(): void
+    {
+        [$conversation] = $this->losseniKipreConversation();
+        $context = $this->actingAs($this->viewer)
+            ->getJson(route('message-hub.conversations.show', $conversation))
+            ->assertOk();
+        $linkId = $context->json('linked_entities.0.id');
+
+        $this->actingAs($this->viewer)->patchJson(route('message-hub.entity-links.update', $linkId), [
+            'relation' => 'shared_by',
+            'related_user_id' => $this->losseni->id,
+        ])->assertForbidden();
+
+        $this->viewer->givePermissionTo('inscriptions.validate');
+
+        $verified = $this->actingAs($this->viewer)->patchJson(route('message-hub.entity-links.update', $linkId), [
+            'relation' => 'shared_by',
+            'related_user_id' => $this->losseni->id,
+        ]);
+
+        $verified->assertOk()
+            ->assertJsonPath('link.relation_verified', true)
+            ->assertJsonPath('link.relation_label', 'Partagé par cet interlocuteur')
+            ->assertJsonPath('link.can_verify', true)
+            ->assertJsonPath('link.sensitive_actions_allowed', false);
+
+        $this->assertDatabaseHas('chat_conversation_entity_links', [
+            'id' => $linkId,
+            'relation_type' => 'shared_by',
+            'related_user_id' => $this->losseni->id,
+            'verified_by' => $this->viewer->id,
+            'confidence' => 'verified',
+        ]);
     }
 
     public function test_nanan_receives_real_authors_and_must_refuse_financial_conclusion_when_link_is_ambiguous(): void
