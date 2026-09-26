@@ -15,6 +15,7 @@ on:
       - 'routes/message-hub.php'
       - 'resources/views/messages/**'
       - 'public/js/messages-hub-v2.js'
+      - 'public/js/messages-hub-v2-hardening.js'
       - 'public/css/messages-hub-v2.css'
       - 'tests/Feature/Messages/**'
       - 'tests/browser/messages-critical.js'
@@ -67,6 +68,7 @@ jobs:
       - name: JavaScript syntax
         run: |
           node --check public/js/messages-hub-v2.js
+          node --check public/js/messages-hub-v2-hardening.js
           node --check tests/browser/messages-critical.js
 
       - name: Losseni/KIPRE + legacy workflow + action persistence
