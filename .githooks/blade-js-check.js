@@ -20,8 +20,9 @@
 //   @verbatim … @endverbatim  -> laisse tel quel, c'est du JS brut
 //
 // Les retours a la ligne avales par un remplacement sont rendus au saut de
-// ligne suivant : le numero rendu est celui de la vue Blade (a une ligne pres
-// quand l'erreur suit un remplacement multiligne sur la meme ligne logique).
+// ligne suivant : le numero rendu est celui de la vue Blade. Exception : une
+// erreur qui suit un remplacement multiligne sur la meme ligne logique est
+// signalee trop tot, d'autant de lignes que le remplacement en a avale.
 //
 // Un bloc qui ne peut pas etre verifie (Blade non referme, type="module") est
 // signale sur stderr, sans faire echouer le commit : jamais saute en silence.

@@ -344,8 +344,9 @@ commentaire CSS.
 - Le JavaScript des attributs (`onclick="…"`, `x-data="…"`, `@click="…"`) n'est pas lu.
 - Seule la première erreur d'un bloc est rendue : corriger, puis relancer.
 - Quand l'erreur suit, **sur la même ligne logique**, un remplacement multiligne
-  (`foo({{ route('x',` ⏎ `[…]) }}, 'mal fermé);`), le numéro rendu peut précéder d'une
-  ligne la vraie : les sauts de ligne avalés ne sont rendus qu'au saut suivant.
+  (`foo({{ route('x',` ⏎ `[…]) }}, 'mal fermé);`), le numéro rendu précède la vraie
+  ligne **d'autant de lignes que le remplacement en a avalé** : les sauts de ligne
+  avalés ne sont rendus qu'au saut suivant.
 - Un bloc qui **ne peut pas** être vérifié n'est jamais sauté en silence : un
   `{{`, `{!!`, `@json(` ou `@php` jamais refermé dans le bloc, ou un
   `<script type="module">` (analyse de module non prise en charge), est signalé sur
