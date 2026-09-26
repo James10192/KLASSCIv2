@@ -68,7 +68,9 @@ class ExecutionDesPropositions
             'statut' => 'en_attente_de_validation',
             'resume' => $proposition->resume,
             'message' => 'Proposition présentée. RIEN N\'EST ENREGISTRÉ tant que l\'utilisateur n\'a pas cliqué « Valider ». '
-                . 'Ne dis pas que c\'est fait ; résume ce qui sera écrit et les avertissements.',
+                . 'La carte affiche déjà le détail. Réponds en une ou deux phrases qui commencent par « Je propose » '
+                . '(jamais « a été saisie », « ajoutée » ou « enregistrée »), reprends l\'avertissement principal s\'il y en a un, '
+                . 'et invite à relire puis cliquer « Valider ».',
             'avertissements' => $proposition->avertissements,
             'widget' => $this->widget($journal, $proposition, $user),
         ];
