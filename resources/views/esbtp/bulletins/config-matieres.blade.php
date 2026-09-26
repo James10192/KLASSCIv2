@@ -466,7 +466,7 @@
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content" x-data="cmConfigMatieres()" x-init="init()">
+    <div class="main-content" x-data="cmConfigMatieres()">
 
         {{-- ═══════════════════════ HERO ═══════════════════════ --}}
         <div class="cm-hero">

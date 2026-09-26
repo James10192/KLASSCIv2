@@ -3,7 +3,7 @@
      {moyenne, decision, frais_soldes, solde_restant}. Aucune mutation, juste diagnostic. --}}
 @include('partials._klassci_toast')
 <div class="modal fade" id="bulkReinscriptionModal" tabindex="-1" aria-labelledby="bulkReinscriptionModalLabel" aria-hidden="true"
-     x-data="bulkReinscriptionModal()" x-init="init()">
+     x-data="bulkReinscriptionModal()">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content brm-modal">
             <div class="modal-header brm-modal-header">

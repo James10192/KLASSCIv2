@@ -141,7 +141,7 @@
 @endpush
 
 @section('content')
-<div class="rec-page" x-data="recManager()" x-init="init()">
+<div class="rec-page" x-data="recManager()">
 
     {{-- Hero --}}
     <div class="rec-hero">

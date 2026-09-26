@@ -18,8 +18,7 @@
         assignmentUrl: @js(url('/esbtp/academic-assignments')),
         canManageAssignments: @js(auth()->user()->can('academic_sheets.assign')),
         initialFilters: @js($initialFilters),
-     })"
-     x-init="init()">
+     })">
     <header class="cpa-hero">
         <div class="cpa-hero-top">
             <div class="cpa-hero-title">
