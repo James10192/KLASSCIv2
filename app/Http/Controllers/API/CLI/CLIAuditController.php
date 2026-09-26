@@ -72,10 +72,17 @@ class CLIAuditController extends BaseApiController
         $lot = max(500, min((int) $request->input('lot', 5000), 20000));
         $fin = microtime(true) + self::SECONDES_PAR_APPEL;
         $supprimees = 0;
+        $apres = 0;
         do {
-            $n = $consultations()->orderBy('id')->limit($lot)->delete();
-            $supprimees += $n;
-        } while ($n > 0 && microtime(true) < $fin);
+            // Chaque lot reprend apres le precedent : sans cette borne, chaque DELETE
+            // relirait (et verrouillerait) toutes les lignes gardees depuis l'id 1.
+            $ids = $consultations()->where('id', '>', $apres)->orderBy('id')->limit($lot)->pluck('id');
+            if ($ids->isEmpty()) {
+                break;
+            }
+            $apres = $ids->last();
+            $supprimees += DB::table('audits')->whereIn('id', $ids)->delete();
+        } while (microtime(true) < $fin);
 
         $restantes = $consultations()->count();
         Log::warning('[cli/audit] consultations purgees', ['supprimees' => $supprimees, 'restantes' => $restantes, 'par' => $request->user()->id]);

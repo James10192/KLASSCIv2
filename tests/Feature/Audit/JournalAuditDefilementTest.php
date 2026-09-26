@@ -130,6 +130,13 @@ class JournalAuditDefilementTest extends TestCase
         $html = (string) $this->tranche()->json('rows_html');
         $this->assertStringContainsString('>MU</span>', $html);
         $this->assertStringNotContainsString('M(', $html);
+
+        foreach (["N'Guessan Yao" => 'NY', 'Jean-Paul Kouassi' => 'JK'] as $nom => $attendu) {
+            DB::table('audits')->delete();
+            $this->agent->forceFill(['name' => $nom])->save();
+            $this->audit([]);
+            $this->assertStringContainsString('>'.$attendu.'</span>', (string) $this->tranche()->json('rows_html'), $nom);
+        }
     }
 
     public function test_une_consultation_heritee_n_apparait_nulle_part(): void
