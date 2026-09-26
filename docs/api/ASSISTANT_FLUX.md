@@ -76,6 +76,7 @@ Même `id` que l'étape qui l'a produit ; émis une fois, juste après l'étape 
 | `tableau` | `titre`, `colonnes[{cle, libelle, type}]` (`texte`, `montant`, `nombre`, `date`, `lien`, `statut`), `lignes[]` ; lien `{url, texte}` (URL interne seulement), statut `{texte, ton}` (`succes`, `alerte`, `danger`, `neutre`) |
 | `diagramme` | `titre`, `mermaid` (types acceptés : flowchart, graph, sequenceDiagram, stateDiagram(-v2), timeline, mindmap, journey, gantt, pie ; sans `%%{…}`, `click`, lien) |
 | `kpis` | `titre`, `elements[{libelle, valeur, unite, repere, ton, url}]` |
+| `approbation` | proposition d'un outil `proposer_*` : `id`, `jeton`, `titre`, `resume`, `colonnes[]` (libellés), `lignes[][]`, `avertissements[]`, `risque` (`moyen`, `eleve`), `expire_a`, `etat`, `valider_url`, `refuser_url` (relatives). Rien n'est écrit avant le clic. |
 | `table`, `cards`, `fee-groups`, `payment-groups`, `stat-cards`, `timetable`, `checklist`, `form`, `proposal` | formes `display_data` historiques |
 
 ### `data-suites` (fin d'échange) · `data-lien`
@@ -93,6 +94,15 @@ antérieurs à la v2, qui gardent `content` + `display_type` / `display_data`) :
   {"type": "suites", "data": {…}}, {"type": "lien", "url": "…"} ]
 ```
 
+### Valider ou refuser une proposition
+
+`POST /chatbot/propositions/{id}/valider` avec `{"jeton": "…"}` ; `POST /chatbot/propositions/{id}/refuser`.
+Réponse `{statut, message, lien?}` : **200** si `statut` vaut `executee` (ou `refusee`), **409** sinon —
+`traitee` (déjà traitée), `expiree` (30 minutes), `perimee` (les données ont changé depuis la proposition : rien
+n'est écrit, la proposition est à refaire), `echec` (erreur à l'écriture, rien n'est écrit), `refus` (jeton, personne
+ou droit). Le serveur refait la préparation au moment du clic et compare son empreinte avant d'écrire. Dans
+l'historique, `etat` d'un widget `approbation` est l'état réel au moment de la lecture.
+
 ## Côté modèle (pour mémoire)
 
 Le modèle ne reçoit pas le widget : il reçoit `ResumeOutil::pourModele()` (douze lignes au plus, 6 000 octets,
@@ -100,6 +110,8 @@ identifiants et URL, consigne de ne pas recopier le widget). Un appel identique 
 pas rejoué. La trace compacte des appels est enregistrée dans `metadata.trace` et rejouée pour les trois dernières réponses.
 
 ## Historique des versions
+
+- **v2.1 (septembre 2026)** — nouveau kind `approbation` et routes `propositions/{id}/valider|refuser` (ajout, non cassant).
 
 - **v2 (septembre 2026)** — paramètre `relance`. ⚠️ changement cassant : `data-outil` est remplacé par `data-etape` ; les résultats ne partent
   plus en `data-table` / `data-cards` / … en fin de réponse mais en `data-widget` sous chaque étape. Nouveaux kinds

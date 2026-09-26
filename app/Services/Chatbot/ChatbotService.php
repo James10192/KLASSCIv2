@@ -377,8 +377,25 @@ class ChatbotService
 
         $messages = $conversation->messages()
             ->orderBy('created_at', 'asc')
-            ->get()
-            ->map(function ($message) {
+            ->get();
+
+        // Une proposition rouverte montre son état RÉEL (validée, refusée, expirée) :
+        // l'état enregistré dans le fil est celui du moment où elle a été faite.
+        $propositions = \App\Models\ChatbotActionLog::where('conversation_id', $conversation->id)
+            ->where('user_id', $userId)->get()->keyBy('id');
+
+        $messages = $messages
+            ->map(function ($message) use ($propositions) {
+                $parties = $message->metadata['parties'] ?? null;
+                if (is_array($parties)) {
+                    foreach ($parties as $i => $partie) {
+                        if (($partie['data']['kind'] ?? null) === 'approbation') {
+                            $journal = $propositions->get($partie['data']['id'] ?? null);
+                            $parties[$i]['data']['etat'] = $journal ? \App\Domain\Assistant\Actions\ExecutionDesPropositions::etat($journal) : 'expiree';
+                        }
+                    }
+                }
+
                 return [
                     'id' => $message->id,
                     'role' => $message->role,
@@ -386,7 +403,7 @@ class ChatbotService
                     'display_type' => $message->display_type,
                     'display_data' => $message->display_data,
                     'deep_link' => $message->deep_link,
-                    'parties' => $message->metadata['parties'] ?? null,
+                    'parties' => $parties,
                     'created_at' => $message->created_at->toIso8601String(),
                 ];
             });

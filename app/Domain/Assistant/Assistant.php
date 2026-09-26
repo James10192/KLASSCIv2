@@ -68,6 +68,9 @@ class Assistant
             return $this->reponseEnPause($ui);
         }
 
+        // Une proposition d'action se rattache à la conversation de cet échange.
+        app(\App\Domain\Assistant\Actions\ContexteDEchange::class)->conversation = $conversation;
+
         $requete = new RequeteModele(
             systeme: $this->prompt->systeme($user, $preferences, $contexteClient, $conversation),
             messages: $this->prompt->messages($conversation, $question),

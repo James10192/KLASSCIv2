@@ -634,6 +634,15 @@
                 }).catch(function () { return { ok: false, message: 'Connexion interrompue.' }; });
             },
 
+            /** Valider ou refuser une proposition de l'assistant : la réponse dit ce qui a été fait. */
+            repondreProposition: function (url, corps) {
+                if (!envoiSur(url)) { return Promise.resolve({ ok: false, statut: 'refus', message: 'Action indisponible.' }); }
+                return this.postJson(url, corps).then(function (r) {
+                    var j = r.json || {};
+                    return { ok: r.ok, statut: j.statut || (r.ok ? 'executee' : 'refus'), message: j.message || r.message, lien: j.lien || null };
+                }).catch(function () { return { ok: false, statut: 'reseau', message: 'Connexion interrompue : rien n\'a été confirmé. Rouvrez la conversation pour voir l\'état réel.' }; });
+            },
+
             deciderAction: function (url, approuver) {
                 var self = this;
                 if (!envoiSur(url)) { return Promise.resolve({ ok: false, message: 'Action indisponible.' }); }

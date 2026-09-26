@@ -3206,6 +3206,11 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('chatbot')->name('chatbot.'
     Route::post('/preferences/memory', [App\Http\Controllers\ChatbotController::class, 'saveMemory'])->name('preferences.memory');
     Route::post('/actions/{action}/approve', [App\Http\Controllers\ChatbotController::class, 'approveAction'])->name('actions.approve');
     Route::post('/actions/{action}/reject', [App\Http\Controllers\ChatbotController::class, 'rejectAction'])->name('actions.reject');
+    // Propositions de l'assistant : rien n'est écrit avant ce clic.
+    Route::post('/propositions/{proposition}/valider', [App\Http\Controllers\Assistant\PropositionController::class, 'valider'])
+        ->middleware('throttle:20,1')->name('propositions.valider');
+    Route::post('/propositions/{proposition}/refuser', [App\Http\Controllers\Assistant\PropositionController::class, 'refuser'])
+        ->middleware('throttle:20,1')->name('propositions.refuser');
     Route::get('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'getMandatoryFraisCategoryForm'])->name('forms.frais-category');
     Route::post('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'storeMandatoryFraisCategory'])->name('forms.frais-category.store');
     Route::get('/forms/frais-config', [App\Http\Controllers\ChatbotController::class, 'getFraisConfigForm'])->name('forms.frais-config');

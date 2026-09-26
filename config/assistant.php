@@ -53,6 +53,18 @@ return [
         'taux_usd_fcfa' => (float) env('ASSISTANT_TAUX_USD_FCFA', 600),
     ],
 
+    /*
+    | Actions que l'assistant peut PROPOSER. Rien n'est écrit sans le clic
+    | « Valider » de l'utilisateur, et chaque action reste soumise à sa
+    | permission (config/chatbot.php). ASSISTANT_ACTIONS=false les retire toutes.
+    */
+    'actions' => [
+        'actives' => (bool) env('ASSISTANT_ACTIONS', true),
+        'classes' => [
+            \App\Domain\Assistant\Actions\Notes\SaisirNotes::class,
+        ],
+    ],
+
     'limites' => [
         'tours' => (int) env('ASSISTANT_MAX_TOURS', 8),
         'budget_tokens' => (int) env('ASSISTANT_BUDGET_TOKENS', 150000),

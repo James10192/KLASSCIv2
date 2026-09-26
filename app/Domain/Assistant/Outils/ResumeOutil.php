@@ -93,6 +93,11 @@ class ResumeOutil
             return self::json(['error' => $resultat['error']]);
         }
 
+        // Proposition d'action : ni le jeton ni le tableau, seulement ce qu'il faut dire.
+        if (isset($resultat['proposition'])) {
+            return self::json(array_intersect_key($resultat, array_flip(['statut', 'message', 'resume', 'avertissements'])));
+        }
+
         // Outils de présentation : il n'y a rien à relire, seulement à ne pas recopier.
         if (!empty($resultat['affiche'])) {
             return self::json([
