@@ -87,8 +87,7 @@
       action="{{ $formAction }}"
       method="POST"
       data-mode="{{ strtolower($renderedMode ?: 'unknown') }}"
-      x-data="classeLmdForm()"
-      x-init="init()">
+      x-data="classeLmdForm()">
     @csrf
     @if($isEdit)
         @method('PUT')
