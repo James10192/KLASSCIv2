@@ -270,7 +270,7 @@ Une correction d'accents a réécrit, dans
 `resources/views/esbtp/bulletins/partials/select-scripts.blade.php` :
 
 ```js
-this.notify('error', 'Sélectionnez la classe, l'année universitaire et la période avant de configurer.');
+this.pushToast({ type: 'error', message: 'Sélectionnez la classe, l'année universitaire et la période avant de configurer.' });
 ```
 
 L'apostrophe de `l'année` ferme la chaîne. Tout le script de `/esbtp/bulletins/select`
@@ -307,7 +307,8 @@ sur trois lignes à l'intérieur d'une chaîne.
 Les balises sont parcourues dans l'ordre du document, comme le fait le navigateur :
 un `<script>` cité dans une feuille de style (`/* lus par le <script> en bas */`) ou
 un commentaire HTML n'est que du texte. Les `type="application/json"` et autres types
-non JavaScript sont ignorés.
+non JavaScript sont ignorés ; `type="module"` est signalé comme non vérifié (voir les
+angles morts).
 
 **Sans node**, le hook le dit (`node introuvable, syntaxe JavaScript des <script> NON
 vérifiée`) et laisse passer : les quatre autres pièges restent contrôlés.
@@ -318,9 +319,14 @@ vérifiée`) et laisse passer : les quatre autres pièges restent contrôlés.
 cassée de `select-scripts.blade.php` à la ligne 48. Sur l'arbre, il a trouvé **un vrai
 défaut** et zéro faux positif une fois les règles ci-dessus posées :
 `esbtp/admin/attendance/forgotten-codes.blade.php`, dont le `DOMContentLoaded` n'était
-jamais refermé. Le bloc entier était ignoré : le formulaire de génération de code
-manuel (sans `action`) rechargeait la page au lieu de générer le code. Corrigé dans le
-même chantier.
+jamais refermé. Le bloc entier était ignoré. L'accolade est posée dans le même
+chantier, mais **cela ne répare pas l'écran**, et ce n'est pas annoncé comme tel : une
+fois le script exécuté, `ESBTPForgottenCodeController::generateManualCode()` écrit
+`'type' => 'manuel'` dans une colonne `enum('session', 'journee', 'personnalise')`
+(MySQL strict) et rend un 500. La page n'est de toute façon liée nulle part, et son
+middleware exige un rôle `secretary` qui n'existe pas (le rôle s'appelle
+`secretaire`) : seul un superAdmin qui tape l'URL y arrive. À traiter à part, si
+l'écran doit vivre.
 
 Les six fausses alertes de la première version, pour ne pas les réintroduire : `{{ }}`
 en position de nom de propriété (remplacé par `0`), `{{ }}` multiligne dans une chaîne
@@ -337,6 +343,14 @@ commentaire CSS.
   un nom de fonction, une erreur à l'exécution passent.
 - Le JavaScript des attributs (`onclick="…"`, `x-data="…"`, `@click="…"`) n'est pas lu.
 - Seule la première erreur d'un bloc est rendue : corriger, puis relancer.
+- Quand l'erreur suit, **sur la même ligne logique**, un remplacement multiligne
+  (`foo({{ route('x',` ⏎ `[…]) }}, 'mal fermé);`), le numéro rendu peut précéder d'une
+  ligne la vraie : les sauts de ligne avalés ne sont rendus qu'au saut suivant.
+- Un bloc qui **ne peut pas** être vérifié n'est jamais sauté en silence : un
+  `{{`, `{!!`, `@json(` ou `@php` jamais refermé dans le bloc, ou un
+  `<script type="module">` (analyse de module non prise en charge), est signalé sur
+  la sortie d'erreur (`… non vérifié`), sans faire échouer le commit. Aucun des deux
+  n'existe dans l'arbre au 26 septembre 2026.
 
 ## Le hook qui les attrape — `.githooks/pre-commit`
 

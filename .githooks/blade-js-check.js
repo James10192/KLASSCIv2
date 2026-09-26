@@ -11,15 +11,20 @@
 // ce que Blade injecte par une valeur JS neutre, puis on demande a V8 de
 // l'analyser (meme analyseur que `node --check`, sans un processus par bloc).
 //
-//   {{-- … --}}            -> supprime
-//   {!! … !!}               -> null
-//   {{ … }}                 -> 0
-//   @json(…) / @js(…)       -> null   (parentheses comptees, pas de regex)
-//   ligne @directive(…)     -> vide   (@if, @foreach, @php … @endphp, …)
-//   @verbatim … @endverbatim -> laisse tel quel, c'est du JS brut
+//   {{-- … --}}              -> supprime
+//   {!! … !!}                 -> null
+//   {{ … }}                   -> __blade (un identifiant : `window.{{ $x }} = …`)
+//   @json(…) / @js(…)         -> null    (parentheses comptees, pas de regex)
+//   @php … @endphp            -> vide, ou qu'il s'ouvre dans la ligne
+//   ligne @directive(…)       -> vide    (@if, @foreach, @can…, arguments multilignes)
+//   @verbatim … @endverbatim  -> laisse tel quel, c'est du JS brut
 //
-// Les remplacements conservent les retours a la ligne : le numero rendu est
-// celui de la vue Blade.
+// Les retours a la ligne avales par un remplacement sont rendus au saut de
+// ligne suivant : le numero rendu est celui de la vue Blade (a une ligne pres
+// quand l'erreur suit un remplacement multiligne sur la meme ligne logique).
+//
+// Un bloc qui ne peut pas etre verifie (Blade non referme, type="module") est
+// signale sur stderr, sans faire echouer le commit : jamais saute en silence.
 //
 // Usage : node blade-js-check.js [--index] fichier…
 //   --index : lit la version mise en index (git show :fichier), pas le disque.
@@ -163,11 +168,20 @@ for (const f of fichiers) {
     const attributs = m[1];
     if (/\bsrc\s*=/i.test(attributs)) continue;
     const type = /\btype\s*=\s*["']?([^"'\s>]*)/i.exec(attributs);
+    const ligneDuBloc = texte.slice(0, m.index + m[0].indexOf('>') + 1).split('\n').length;
+    if (type && /^module$/i.test(type[1])) {
+      console.error(`${f}:${ligneDuBloc}  <script type="module"> non verifie (analyse de module non prise en charge)`);
+      continue;
+    }
     if (!TYPES_JS.test(type ? type[1] : '')) continue;
 
-    const ligneDuBloc = texte.slice(0, m.index + m[0].indexOf('>') + 1).split('\n').length;
     const js = neutraliser(m[2]);
-    if (js === null) continue; // Blade mal ferme : autre controle, pas le notre.
+    if (js === null) {
+      // Un {{, {!!, @json( ou @php sans fermeture : on ne sait pas ou reprendre
+      // le JavaScript. Le dire plutot que de laisser croire le bloc verifie.
+      console.error(`${f}:${ligneDuBloc}  <script> non verifie : construction Blade non refermee dans le bloc`);
+      continue;
+    }
 
     try {
       new vm.Script(js, { filename: 'bloc' });
