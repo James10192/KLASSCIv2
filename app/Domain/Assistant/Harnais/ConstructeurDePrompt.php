@@ -148,6 +148,7 @@ class ConstructeurDePrompt
 
         $domaineBloc = $domaine !== '' ? "\n<connaissances_ecole>\n{$domaine}\n</connaissances_ecole>\n" : '';
         $relation = $this->relation($user, $conversation);
+        $pieces = $this->piecesJointes($user, $conversation, $clientContext);
 
         return <<<PROMPT
 <role>
@@ -164,7 +165,7 @@ Tu t'appelles Nanan, l'agent IA de KLASSCI, le logiciel de gestion de l'établis
 <environnement>
 {$environnement}
 </environnement>
-{$domaineBloc}{$suivi}
+{$domaineBloc}{$suivi}{$pieces}
 <connaissances_klassci>
 - Une « inscription » = un étudiant inscrit dans une classe pour une année universitaire. Une classe n'appartient pas à une année : c'est l'inscription qui porte l'année.
 - Emploi du temps : on crée d'abord le socle (classe, dates, semestre), puis on y ajoute les séances (matière, enseignant, jour, horaire, salle) depuis sa page. « Modifier rapidement » ouvre plusieurs emplois du temps à la fois.
@@ -289,6 +290,37 @@ PROMPT;
         }
 
         return '';
+    }
+
+    /**
+     * Fichiers joints encore disponibles dans la conversation : en-têtes, nombre
+     * de lignes et un court aperçu. Jamais le contenu entier : pour écrire, le
+     * modèle désigne la pièce et ses colonnes, et le serveur relit les valeurs.
+     */
+    private function piecesJointes($user, ?ChatbotConversation $conversation, ?array $clientContext): string
+    {
+        $ids = array_unique(array_merge($conversation?->context['pieces'] ?? [], $clientContext['pieces'] ?? []));
+        if (! $user || $ids === []) {
+            return '';
+        }
+
+        $registre = app(\App\Domain\Assistant\Pieces\PiecesJointes::class);
+        $blocs = [];
+        foreach (array_slice($ids, -3) as $id) {
+            $piece = $registre->pour((int) $user->id, $id);
+            if (! $piece) {
+                continue;
+            }
+            $apercu = array_map(fn ($l) => '  ' . implode(' | ', $l), array_slice($piece['lignes'], 0, 5));
+            $blocs[] = "Fichier « {$piece['nom']} » (piece_id: {$id}) — " . count($piece['lignes']) . " ligne(s) de données.\n"
+                . 'Colonnes : ' . implode(' | ', $piece['colonnes']) . "\nAperçu :\n" . implode("\n", $apercu);
+        }
+        if ($blocs === []) {
+            return '';
+        }
+
+        return "\n<pieces_jointes>\n" . implode("\n\n", $blocs)
+            . "\nPour enregistrer le contenu d'un fichier, n'en recopie JAMAIS les valeurs : passe le piece_id et les noms EXACTS des colonnes à l'outil proposer_* ; le serveur relit le fichier lui-même. Si le rôle d'une colonne est ambigu (deux colonnes de notes, par exemple), demande laquelle utiliser.\n</pieces_jointes>\n";
     }
 
     /** « /esbtp/etudiants/2743 » → « la fiche de l'étudiant n° 2743 ». */

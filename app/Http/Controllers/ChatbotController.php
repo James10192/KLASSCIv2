@@ -89,6 +89,9 @@ class ChatbotController extends Controller
             // « auto » = le routeur choisit, comme pour qui n'a pas le choix du modèle.
             'modele' => ['nullable', 'string', Rule::in(array_merge(['auto'], array_keys(app(RegistreDesModeles::class)->disponibles())))],
             'relance' => 'nullable|boolean',
+            // Fichiers déjà déposés (POST /chatbot/pieces) : leurs identifiants seulement.
+            'pieces' => 'nullable|array|max:3',
+            'pieces.*' => 'uuid',
         ]);
 
         $modele = ($validated['modele'] ?? null) === 'auto' ? null : ($validated['modele'] ?? null);
@@ -103,6 +106,7 @@ class ChatbotController extends Controller
                 'current_url' => $validated['current_url'] ?? null,
                 'current_path' => $validated['current_path'] ?? null,
                 'page_title' => $validated['page_title'] ?? null,
+                'pieces' => array_values($validated['pieces'] ?? []),
             ],
             $modele,
             (bool) ($validated['relance'] ?? false),

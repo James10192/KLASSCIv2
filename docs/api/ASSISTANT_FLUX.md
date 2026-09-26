@@ -94,6 +94,16 @@ antérieurs à la v2, qui gardent `content` + `display_type` / `display_data`) :
   {"type": "suites", "data": {…}}, {"type": "lien", "url": "…"} ]
 ```
 
+### Fichiers joints
+
+`POST /chatbot/pieces` (multipart, champ `fichier` : .xlsx, .xls, .csv, .docx, 2 Mo au plus) → **201**
+`{id, nom, colonnes[], nombre_lignes, apercu[][]}`, **422** avec `message` si le fichier ne donne pas de tableau.
+Le fichier est lu puis oublié : seul le tableau (500 lignes, 30 colonnes au plus) est gardé deux heures, lisible par
+la seule personne qui l'a déposé. L'envoi d'un message accepte `pieces: [id, …]` (3 au plus) ; la conversation s'en
+souvient. Le modèle ne voit que les en-têtes et cinq lignes ; pour écrire, l'outil `proposer_saisie_notes` reçoit
+`piece: {piece_id, colonnes_etudiant[], colonne_note, colonne_absent?}` et le serveur relit les valeurs.
+Dans l'historique, un message de la personne porte `pieces: [{id, nom}]`.
+
 ### Valider ou refuser une proposition
 
 `POST /chatbot/propositions/{id}/valider` avec `{"jeton": "…"}` ; `POST /chatbot/propositions/{id}/refuser`.
@@ -111,7 +121,7 @@ pas rejoué. La trace compacte des appels est enregistrée dans `metadata.trace`
 
 ## Historique des versions
 
-- **v2.1 (septembre 2026)** — nouveau kind `approbation` et routes `propositions/{id}/valider|refuser` (ajout, non cassant).
+- **v2.1 (septembre 2026)** — nouveau kind `approbation` et routes `propositions/{id}/valider|refuser` ; fichiers joints (`POST /chatbot/pieces`, paramètre `pieces`) ; avis (`messages/{id}/retour|signaler`, champ `retour` de l'historique). Ajouts, non cassants.
 
 - **v2 (septembre 2026)** — paramètre `relance`. ⚠️ changement cassant : `data-outil` est remplacé par `data-etape` ; les résultats ne partent
   plus en `data-table` / `data-cards` / … en fin de réponse mais en `data-widget` sous chaque étape. Nouveaux kinds

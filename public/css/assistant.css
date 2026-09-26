@@ -998,3 +998,18 @@ html.ast-lock, html.ast-lock body { overflow: hidden !important; }
 .ast-mark.is-pense .ast-nanan-bouche { opacity: .6; }
 @keyframes ast-nanan-cligne { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.1); } }
 @media (prefers-reduced-motion: reduce) { .ast-nanan .ast-nanan-yeux { animation: none; } }
+
+/* Fichiers joints (composer et bulle de la question) */
+.ast-bubble-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: .3rem; max-width: 82%; }
+.ast-bubble-wrap .ast-bubble { max-width: 100%; }
+.ast-pieces, .ast-bubble-pieces { display: flex; flex-wrap: wrap; gap: .35rem; }
+.ast-pieces { padding: .5rem .6rem 0; }
+.ast-piece { display: inline-flex; align-items: center; gap: .35rem; max-width: 100%; padding: .28rem .5rem; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; font-size: .76rem; color: var(--ast-dark); }
+.ast-piece i { color: var(--ast-primary); }
+.ast-piece-nom { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 14rem; }
+.ast-piece-info { color: var(--ast-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16rem; }
+.ast-piece.is-erreur { border-color: rgba(220, 38, 38, .35); }
+.ast-piece.is-erreur i, .ast-piece.is-erreur .ast-piece-info { color: var(--ast-bad); }
+.ast-piece-retirer { border: 0; background: transparent; color: var(--ast-muted); padding: 0 .1rem; cursor: pointer; }
+.ast-joindre { cursor: pointer; }
+@media (max-width: 576px) { .ast-bubble-wrap { max-width: 88%; } .ast-piece-nom { max-width: 9rem; } }

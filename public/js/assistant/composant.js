@@ -40,6 +40,8 @@
             menuModele: false,
             messages: [],
             saisie: '',
+            // Fichiers joints au prochain message (déjà déposés et lus par le serveur).
+            pieces: [],
             envoiEnCours: false,
             relanceEnCours: false,
             controleur: null,
@@ -256,7 +258,7 @@
                 var cleQuestion = null;
                 if (!opts.relance) {
                     cleQuestion = uid('m');
-                    this.messages.push({ key: cleQuestion, role: 'user', text: texte });
+                    this.messages.push({ key: cleQuestion, role: 'user', text: texte, pieces: this.piecesPretes().map(function (p) { return { nom: p.nom }; }) });
                 } else {
                     for (var i = this.messages.length - 1; i >= 0; i -= 1) {
                         if (this.messages[i].role === 'user') { cleQuestion = this.messages[i].key; break; }
@@ -282,6 +284,8 @@
 
                 var diffusion = typeof window.ReadableStream === 'function' && typeof window.TextDecoder === 'function';
                 var promesse = diffusion ? this.diffuser(texte, msg) : this.envoyerSansDiffusion(texte, msg);
+                // Les fichiers partent avec ce message ; la conversation s'en souvient côté serveur.
+                this.pieces = [];
 
                 promesse.catch(function (e) {
                     if (e && e.name === 'AbortError') {
@@ -332,7 +336,8 @@
                     current_path: window.location.pathname.slice(0, 1024),
                     page_title: document.title.slice(0, 255),
                     // Réessai : le serveur remplace la réponse ratée au lieu d'ajouter un tour.
-                    relance: this.relanceEnCours || undefined
+                    relance: this.relanceEnCours || undefined,
+                    pieces: this.piecesPretes().map(function (p) { return p.id; })
                 });
             },
 
@@ -518,6 +523,47 @@
                 }).catch(function () { /* presse-papiers refusé */ });
             },
 
+            // ─── Fichiers joints (Excel, CSV, Word) ───
+
+            piecesPretes: function () {
+                return this.pieces.filter(function (p) { return p.etat === 'pret'; });
+            },
+
+            joindre: function (evenement) {
+                var self = this;
+                var fichiers = Array.prototype.slice.call((evenement.target && evenement.target.files) || [], 0, 3 - this.pieces.length);
+                evenement.target.value = '';
+                fichiers.forEach(function (fichier) {
+                    var piece = { key: uid('f'), nom: fichier.name, etat: 'envoi', message: '', id: null, lignes: 0 };
+                    self.pieces.push(piece);
+                    var i = self.pieces.length - 1;
+                    var donnees = new FormData();
+                    donnees.append('fichier', fichier);
+                    fetch(self.cfg.routes.pieces, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': self.cfg.csrfToken || '', 'X-Requested-With': 'XMLHttpRequest' },
+                        credentials: 'same-origin',
+                        body: donnees
+                    }).then(function (res) {
+                        return res.json().catch(function () { return {}; }).then(function (json) {
+                            var p = self.pieces[i] && self.pieces[i].key === piece.key ? self.pieces[i] : null;
+                            if (!p) { return; }
+                            if (res.ok) {
+                                p.id = json.id; p.lignes = json.nombre_lignes; p.etat = 'pret';
+                            } else {
+                                var detail = json.errors ? Object.values(json.errors)[0] : null;
+                                p.etat = 'erreur';
+                                p.message = (Array.isArray(detail) ? detail[0] : detail) || json.message || 'Fichier illisible.';
+                            }
+                        });
+                    }).catch(function () { piece.etat = 'erreur'; piece.message = 'Connexion interrompue.'; });
+                });
+            },
+
+            retirerPiece: function (piece) {
+                this.pieces = this.pieces.filter(function (p) { return p.key !== piece.key; });
+            },
+
             // ─── Avis sur une réponse (👍 / 👎) et signalement à KLASSCI Care ───
 
             urlDe: function (route, msg) {
@@ -635,7 +681,7 @@
                     self.messages = [];
                     ((json && json.messages) || []).forEach(function (m) {
                         if (m.role === 'user') {
-                            self.messages.push({ key: uid('m'), role: 'user', text: m.content || '' });
+                            self.messages.push({ key: uid('m'), role: 'user', text: m.content || '', pieces: m.pieces || [] });
                             return;
                         }
                         var msg = self.nouveauMessageAssistant(null, 'done');

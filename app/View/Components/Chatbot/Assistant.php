@@ -50,6 +50,7 @@ class Assistant extends Component
                 'formFraisConfig' => route('chatbot.forms.frais-config'),
                 'formInscriptionsFilter' => route('chatbot.forms.inscriptions-filter'),
                 'retour' => route('chatbot.messages.retour', ['message' => '__ID__'], false),
+                'pieces' => route('chatbot.pieces.deposer', [], false),
                 'signaler' => route('chatbot.messages.signaler', ['message' => '__ID__'], false),
             ],
             'raisons' => \App\Domain\Assistant\Retours\RetourDeReponse::RAISONS,

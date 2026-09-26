@@ -5,6 +5,7 @@ namespace App\Domain\Assistant\Actions\Notes;
 use App\Domain\Assistant\Actions\ActionAgent;
 use App\Domain\Assistant\Actions\Proposition;
 use App\Domain\Assistant\Actions\PropositionPerimee;
+use App\Domain\Assistant\Pieces\PiecesJointes;
 use App\Domain\Notes\Exceptions\SaisieInterrompue;
 use App\Domain\Notes\SaisieGroupeeDeNotes;
 use App\Models\ESBTPEtudiant;
@@ -24,7 +25,7 @@ use Illuminate\Support\Str;
  */
 class SaisirNotes extends ActionAgent
 {
-    private const MAX_LIGNES = 200;
+    private const MAX_LIGNES = 500;
 
     public function __construct(
         private SaisieGroupeeDeNotes $saisie,
@@ -45,7 +46,8 @@ class SaisirNotes extends ActionAgent
     public function description(): string
     {
         return "PROPOSE des notes pour UNE évaluation (retrouvée d'abord avec search_evaluations, qui donne son id). "
-            . "N'enregistre rien : l'utilisateur voit le tableau et valide. Chaque étudiant est désigné par son matricule "
+            . "N'enregistre rien : l'utilisateur voit le tableau et valide. Notes venues d'un fichier joint : passe « piece » (piece_id + noms exacts des colonnes), jamais les valeurs recopiées. "
+            . "Sinon, chaque étudiant est désigné par son matricule "
             . "ou son nom complet exactement comme donné par l'utilisateur ; n'invente ni nom, ni note. Absent = absent: true, sans note. "
             . "Si le résultat contient des manques, pose la question à l'utilisateur au lieu de corriger toi-même.";
     }
@@ -69,9 +71,20 @@ class SaisirNotes extends ActionAgent
                         'required' => ['etudiant'],
                     ],
                 ],
+                'piece' => [
+                    'type' => 'object',
+                    'description' => 'À la place de « notes », quand les notes viennent d\'un fichier joint : le serveur relit le fichier, ne recopie rien.',
+                    'properties' => [
+                        'piece_id' => ['type' => 'string', 'description' => 'piece_id donné dans <pieces_jointes>.'],
+                        'colonnes_etudiant' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Colonne(s) qui désignent l\'étudiant : le matricule, ou le nom et les prénoms (plusieurs colonnes sont réunies).'],
+                        'colonne_note' => ['type' => 'string', 'description' => 'Nom exact de la colonne des notes.'],
+                        'colonne_absent' => ['type' => 'string', 'description' => 'Facultatif : colonne qui marque les absents.'],
+                    ],
+                    'required' => ['piece_id', 'colonnes_etudiant', 'colonne_note'],
+                ],
                 'valider' => ['type' => 'boolean', 'description' => 'true seulement si l\'utilisateur demande de VALIDER (soumettre) les notes ; sinon brouillon.'],
             ],
-            'required' => ['evaluation_id', 'notes'],
+            'required' => ['evaluation_id'],
         ];
     }
 
@@ -87,7 +100,12 @@ class SaisirNotes extends ActionAgent
         if ((float) $evaluation->bareme <= 0) {
             return $this->manque("Le barème de cette évaluation n'est pas défini : il faut le renseigner avant de saisir des notes.");
         }
-        $lignes = array_values(array_filter((array) ($args['notes'] ?? []), 'is_array'));
+        [$lignes, $manquesPiece, $avertissementsPiece] = isset($args['piece']) && is_array($args['piece'])
+            ? $this->lignesDepuisLaPiece($args['piece'], $user)
+            : [array_values(array_filter((array) ($args['notes'] ?? []), 'is_array')), [], []];
+        if ($manquesPiece !== []) {
+            return new Proposition(titre: 'Saisie de notes', resume: '', manques: $manquesPiece);
+        }
         if ($lignes === [] || count($lignes) > self::MAX_LIGNES) {
             return $this->manque($lignes === [] ? 'Aucune note fournie.' : 'Trop de lignes en une fois (' . self::MAX_LIGNES . ' au plus).');
         }
@@ -104,7 +122,7 @@ class SaisirNotes extends ActionAgent
                 $this->nombre($evaluation->bareme), $valider ? 'Validation finale' : 'Brouillon'),
             tableau: ['colonnes' => ['Étudiant', 'Matricule', 'Avant', 'Après', 'Effet'], 'lignes' => $tableau],
             manques: array_merge($manques, $refus, $retenues === [] && $refus === [] && $manques === [] ? ['Rien à changer : ces notes sont déjà enregistrées.'] : []),
-            avertissements: $this->avertissements($etudiants, $vus, $evaluation, $compte, $valider),
+            avertissements: array_merge($avertissementsPiece, $this->avertissements($etudiants, $vus, $evaluation, $compte, $valider)),
             donnees: ['evaluation_id' => (int) $evaluation->id, 'entrees' => $retenues, 'valider' => $valider],
             // Tout ce qui, en changeant, rendrait la proposition trompeuse : les notes
             // actuelles ET l'évaluation (un barème passé de 20 à 40 ferait d'un 15 un 7,5).
@@ -138,6 +156,50 @@ class SaisirNotes extends ActionAgent
     }
 
     /**
+     * Les lignes d'un fichier joint, lues par le serveur : le modèle n'a désigné
+     * que la pièce et ses colonnes. Une cellule de note vide n'est pas une note
+     * (ligne ignorée, et dit) ; « abs », « absent » valent absence ; « 12,5 » vaut 12,5.
+     *
+     * @return array{0: array, 1: string[], 2: string[]}
+     */
+    private function lignesDepuisLaPiece(array $source, $user): array
+    {
+        $piece = app(PiecesJointes::class)->pour((int) $user->id, (string) ($source['piece_id'] ?? ''));
+        if (! $piece) {
+            return [[], ['Le fichier joint n\'est plus disponible (deux heures au plus) : demande à la personne de le joindre de nouveau.'], []];
+        }
+
+        $index = array_flip(array_map(fn ($c) => mb_strtolower(trim($c)), $piece['colonnes']));
+        $trouver = fn ($nom) => $index[mb_strtolower(trim((string) $nom))] ?? null;
+        $colsEtudiant = array_map($trouver, (array) ($source['colonnes_etudiant'] ?? []));
+        $colNote = $trouver($source['colonne_note'] ?? '');
+        $colAbsent = isset($source['colonne_absent']) ? $trouver($source['colonne_absent']) : null;
+        if ($colsEtudiant === [] || in_array(null, $colsEtudiant, true) || $colNote === null || (isset($source['colonne_absent']) && $colAbsent === null)) {
+            return [[], ['Colonne introuvable dans « ' . $piece['nom'] . ' ». Colonnes disponibles : ' . implode(', ', $piece['colonnes']) . '.'], []];
+        }
+
+        $lignes = [];
+        $vides = 0;
+        foreach ($piece['lignes'] as $l) {
+            $etudiant = trim(implode(' ', array_map(fn ($i) => $l[$i] ?? '', $colsEtudiant)));
+            $valeur = trim((string) ($l[$colNote] ?? ''));
+            $absent = preg_match('/^(abs|absent|absente)\.?$/iu', $valeur)
+                || ($colAbsent !== null && preg_match('/^(x|oui|1|abs|absent|absente)$/iu', trim((string) ($l[$colAbsent] ?? ''))));
+            if ($etudiant === '' && $valeur === '') {
+                continue;
+            }
+            if ($valeur === '' && ! $absent) {
+                $vides++;
+                continue;
+            }
+            $nombre = str_replace([',', ' ', "\u{00A0}"], ['.', '', ''], $valeur);
+            $lignes[] = ['etudiant' => $etudiant] + ($absent ? ['absent' => true] : ['note' => is_numeric($nombre) ? (float) $nombre : $valeur]);
+        }
+
+        return [$lignes, [], $vides > 0 ? ["{$vides} ligne(s) du fichier sans note sont ignorées (rien n'est écrit pour elles)."] : []];
+    }
+
+    /**
      * Chaque ligne donnée par la personne → une entrée résolue, ou un manque.
      *
      * @return array{0: array, 1: string[], 2: array<int, bool>}
@@ -166,7 +228,9 @@ class SaisirNotes extends ActionAgent
             $absent = filter_var($ligne['absent'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $note = $ligne['note'] ?? null;
             if (! $absent && ! is_numeric($note)) {
-                $manques[] = $this->nom($etudiant) . ' : note absente. Donne la note ou dis s\'il était absent.';
+                $manques[] = $this->nom($etudiant) . (! is_scalar($note) || $note === ''
+                    ? ' : note absente. Donne la note ou dis s\'il était absent.'
+                    : ' : « ' . mb_substr((string) $note, 0, 30) . " » n'est pas une note.");
                 continue;
             }
             $note = $absent ? null : round((float) $note, 2);

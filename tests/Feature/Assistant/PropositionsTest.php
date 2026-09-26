@@ -264,6 +264,56 @@ class PropositionsTest extends TestCase
         $this->assertSame(0, ChatbotMessage::where('content', 'like', 'Proposition refusée%')->count());
     }
 
+    public function test_les_notes_d_un_fichier_joint_sont_relues_par_le_serveur(): void
+    {
+        $id = app(\App\Domain\Assistant\Pieces\PiecesJointes::class)->garder($this->user->id, 'notes.xlsx', [
+            'colonnes' => ['Matricule', 'Nom', 'Prénoms', 'Note /20'],
+            'lignes' => [
+                ['MAT-001', 'KOUASSI', 'Aya Marie', '12,5'],
+                ['', 'KONAN', 'Jean', 'ABS'],
+                ['MAT-003', 'KONAN', 'Paul', ''],
+            ],
+        ]);
+
+        $p = app(SaisirNotes::class)->preparer(['evaluation_id' => $this->evaluation->id, 'piece' => [
+            'piece_id' => $id, 'colonnes_etudiant' => ['nom', 'prénoms'], 'colonne_note' => 'Note /20',
+        ]], $this->user);
+
+        $this->assertTrue($p->estComplete(), implode(' | ', $p->manques));
+        $this->assertSame([[$this->etudiants[0]->id, 12.5, false], [$this->etudiants[1]->id, null, true]],
+            array_map(fn ($e) => [$e['etudiant_id'], $e['note'], $e['is_absent']], $p->donnees['entrees']));
+        $this->assertStringContainsString('1 ligne(s) du fichier sans note sont ignorées', implode(' ', $p->avertissements));
+
+        // Une colonne mal nommée, ou la pièce d'une autre personne : rien n'est deviné.
+        $faux = app(SaisirNotes::class)->preparer(['evaluation_id' => $this->evaluation->id, 'piece' => [
+            'piece_id' => $id, 'colonnes_etudiant' => ['Matricule'], 'colonne_note' => 'Note',
+        ]], $this->user);
+        $this->assertStringContainsString('Colonnes disponibles : Matricule, Nom, Prénoms, Note /20', $faux->manques[0]);
+
+        $autre = User::withoutEvents(fn () => User::factory()->create(['username' => 'u_' . Str::lower(Str::random(8))]));
+        $autre->assignRole('superAdmin');
+        $etrangere = app(SaisirNotes::class)->preparer(['evaluation_id' => $this->evaluation->id, 'piece' => [
+            'piece_id' => $id, 'colonnes_etudiant' => ['Matricule'], 'colonne_note' => 'Note /20',
+        ]], $autre);
+        $this->assertStringContainsString("n'est plus disponible", $etrangere->manques[0]);
+    }
+
+    public function test_deposer_un_fichier_le_lit_et_l_annonce_au_modele(): void
+    {
+        $fichier = \Illuminate\Http\UploadedFile::fake()->createWithContent('notes.csv', "Matricule;Note\nMAT-001;14\n");
+
+        $reponse = $this->actingAs($this->user)->post(route('chatbot.pieces.deposer'), ['fichier' => $fichier], ['Accept' => 'application/json'])
+            ->assertCreated()->assertJson(['nom' => 'notes.csv', 'colonnes' => ['Matricule', 'Note'], 'nombre_lignes' => 1]);
+
+        $systeme = app(\App\Domain\Assistant\Harnais\ConstructeurDePrompt::class)
+            ->systeme($this->user, null, ['pieces' => [$reponse->json('id')]], $this->conversation);
+        $this->assertStringContainsString('piece_id: ' . $reponse->json('id'), $systeme);
+        $this->assertStringContainsString("n'en recopie JAMAIS les valeurs", $systeme);
+
+        $this->actingAs($this->user)->post(route('chatbot.pieces.deposer'), ['fichier' => \Illuminate\Http\UploadedFile::fake()->create('photo.png', 10)], ['Accept' => 'application/json'])
+            ->assertStatus(422);
+    }
+
     public function test_refuser_ferme_la_proposition_et_l_historique_montre_l_etat_reel(): void
     {
         $widget = $this->proposer([['etudiant' => 'MAT-001', 'note' => 14]])['widget'];

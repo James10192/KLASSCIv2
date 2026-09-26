@@ -3211,6 +3211,9 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('chatbot')->name('chatbot.'
         ->middleware('throttle:20,1')->name('propositions.valider');
     Route::post('/propositions/{proposition}/refuser', [App\Http\Controllers\Assistant\PropositionController::class, 'refuser'])
         ->middleware('throttle:20,1')->name('propositions.refuser');
+    // Fichier joint (Excel, CSV, Word) : lu tout de suite, seul son tableau est gardé.
+    Route::post('/pieces', [App\Http\Controllers\Assistant\PieceJointeController::class, 'deposer'])
+        ->middleware('throttle:10,1')->name('pieces.deposer');
     // Avis sur une réponse et signalement à KLASSCI Care.
     Route::post('/messages/{message}/retour', [App\Http\Controllers\Assistant\RetourController::class, 'enregistrer'])
         ->middleware('throttle:30,1')->name('messages.retour');

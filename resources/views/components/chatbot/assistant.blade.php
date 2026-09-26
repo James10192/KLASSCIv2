@@ -94,7 +94,16 @@
                     <template x-for="msg in messages" x-bind:key="msg.key">
                         <div class="ast-msg" x-bind:class="'ast-msg--' + msg.role" x-bind:data-key="msg.key">
                             <template x-if="msg.role === 'user'">
-                                <div class="ast-bubble" x-text="msg.text"></div>
+                                <div class="ast-bubble-wrap">
+                                    <div class="ast-bubble" x-text="msg.text"></div>
+                                    <template x-if="msg.pieces && msg.pieces.length">
+                                        <div class="ast-bubble-pieces">
+                                            <template x-for="p in msg.pieces" x-bind:key="p.nom">
+                                                <span class="ast-piece is-pret"><i class="fas fa-file-lines" aria-hidden="true"></i><span class="ast-piece-nom" x-text="p.nom"></span></span>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
                             </template>
 
                             <template x-if="msg.role === 'assistant'">
@@ -218,12 +227,29 @@
                 </button>
 
                 <form class="ast-composer" x-on:submit.prevent="envoyer()">
+                    <div class="ast-pieces" x-show="pieces.length" x-cloak>
+                        <template x-for="p in pieces" x-bind:key="p.key">
+                            <span class="ast-piece" x-bind:class="'is-' + p.etat" x-bind:title="p.message || p.nom">
+                                <i class="fas" x-bind:class="p.etat === 'envoi' ? 'fa-spinner fa-spin' : (p.etat === 'erreur' ? 'fa-triangle-exclamation' : 'fa-file-lines')" aria-hidden="true"></i>
+                                <span class="ast-piece-nom" x-text="p.nom"></span>
+                                <span class="ast-piece-info" x-text="p.etat === 'pret' ? p.lignes + ' ligne(s)' : (p.etat === 'erreur' ? p.message : 'Lecture…')"></span>
+                                <button type="button" class="ast-piece-retirer" x-on:click="retirerPiece(p)" x-bind:aria-label="'Retirer ' + p.nom">
+                                    <i class="fas fa-xmark" aria-hidden="true"></i>
+                                </button>
+                            </span>
+                        </template>
+                    </div>
                     <label for="ast-input" class="ast-sr">Votre question</label>
                     <textarea id="ast-input" class="ast-textarea" x-ref="saisie" rows="1"
                               x-model="saisie" x-on:input="ajusterHauteur(); erreurSaisie = ''" x-on:keydown="surTouche($event)"
                               x-bind:maxlength="cfg.maxLength" x-bind:disabled="envoiEnCours"
                               placeholder="Demandez à Nanan…" aria-describedby="ast-hint"></textarea>
                     <div class="ast-composer-row">
+                        <label class="ast-icon-btn ast-joindre" title="Joindre un fichier Excel, CSV ou Word" x-show="pieces.length < 3">
+                            <input type="file" class="ast-sr" accept=".xlsx,.xls,.csv,.docx" multiple x-on:change="joindre($event)"
+                                   x-bind:disabled="envoiEnCours" aria-label="Joindre un fichier Excel, CSV ou Word">
+                            <i class="fas fa-paperclip" aria-hidden="true"></i>
+                        </label>
                         <template x-if="cfg.modeles && cfg.modeles.liste">
                             <div class="ast-model" x-on:click.outside="menuModele = false" x-on:keydown.escape.stop="menuModele = false">
                                 <button type="button" class="ast-model-btn" x-on:click="menuModele = !menuModele"
