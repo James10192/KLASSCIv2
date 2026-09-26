@@ -2640,7 +2640,7 @@
              EXPORT MODAL — Multi-select avec checkboxes
              ============================================================ --}}
         <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true"
-             x-data="exportModal()" x-init="init()">
+             x-data="exportModal()">
             <div class="modal-dialog modal-lg modal-dialog-centered">
                 <div class="modal-content export-modal-content">
                     {{-- Header --}}

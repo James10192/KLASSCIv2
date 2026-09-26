@@ -51,7 +51,7 @@
 @endif
 
 <div class="modal fade" id="{{ $modalId }}" tabindex="-1" aria-labelledby="{{ $modalId }}Label" aria-hidden="true"
-     x-data="{{ $alpineFactory }}()" x-init="init()">
+     x-data="{{ $alpineFactory }}()">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content brm-modal">
             <div class="modal-header brm-modal-header">

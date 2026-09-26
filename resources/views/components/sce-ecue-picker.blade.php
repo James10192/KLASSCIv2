@@ -201,7 +201,6 @@
         name: {{ Js::from($name) }},
         @if($onchangeJs) onChange: function(value, ecue) { {{ $onchangeJs }} } @endif
     })"
-    x-init="init()"
     @keydown.escape.window="open = false"
     @click.outside="open = false">
 

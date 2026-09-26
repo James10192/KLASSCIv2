@@ -310,7 +310,7 @@
 @endpush
 
 @section('content')
-<div x-data="flIndex()" x-init="init()" x-cloak class="container-fluid" style="padding:1.25rem;">
+<div x-data="flIndex()" x-cloak class="container-fluid" style="padding:1.25rem;">
 
     <div class="fl-hero">
         <div class="fl-hero-top">

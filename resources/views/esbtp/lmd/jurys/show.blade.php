@@ -6,7 +6,7 @@
 @endpush
 
 @section('content')
-<div x-data="jurySalle({{ $jury->id }})" x-init="init()">
+<div x-data="jurySalle({{ $jury->id }})">
     @include('esbtp.lmd.jurys.partials.hero', ['jury' => $jury, 'stats' => $stats])
 
     @include('esbtp.lmd.jurys.partials.actions-bar', ['jury' => $jury, 'officialDocument' => $officialDocument])
