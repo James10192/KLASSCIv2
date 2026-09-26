@@ -547,6 +547,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // elle a bloque une decision de schema.
         Route::get('/moteur', [App\Http\Controllers\API\CLI\CLIMoteurController::class, 'index'])->name('moteur.index');
 
+        // Le journal d'audit : taille, cout des requetes sur l'instance, purge des consultations.
+        Route::get('/audit/etat', [App\Http\Controllers\API\CLI\CLIAuditController::class, 'etat'])->name('audit.etat');
+        Route::post('/audit/purger-consultations', [App\Http\Controllers\API\CLI\CLIAuditController::class, 'purgerConsultations'])->name('audit.purger-consultations');
+
         Route::get('/env', [App\Http\Controllers\API\CLI\CLIEnvController::class, 'index'])->name('env.index');
         Route::post('/env', [App\Http\Controllers\API\CLI\CLIEnvController::class, 'store'])->name('env.store');
         Route::post('/permissions/sync', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'sync'])->name('permissions.sync');

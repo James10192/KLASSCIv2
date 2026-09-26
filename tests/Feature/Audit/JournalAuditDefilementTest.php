@@ -121,6 +121,17 @@ class JournalAuditDefilementTest extends TestCase
         $this->assertStringContainsString('Compte supprimé', (string) $this->tranche()->json('rows_html'));
     }
 
+    public function test_les_initiales_ne_prennent_que_des_lettres(): void
+    {
+        DB::table('audits')->delete();
+        $this->agent->forceFill(['name' => 'Moustapha (USAT)'])->save();
+        $this->audit([]);
+
+        $html = (string) $this->tranche()->json('rows_html');
+        $this->assertStringContainsString('>MU</span>', $html);
+        $this->assertStringNotContainsString('M(', $html);
+    }
+
     public function test_une_consultation_heritee_n_apparait_nulle_part(): void
     {
         DB::table('audits')->delete();
