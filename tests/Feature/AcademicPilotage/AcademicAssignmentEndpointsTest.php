@@ -15,7 +15,16 @@ class AcademicAssignmentEndpointsTest extends AcademicPilotageDatabaseTestCase
         parent::setUp();
 
         $this->createRelations();
-        $this->withoutMiddleware();
+        // Pas withoutMiddleware() nu : il coupe aussi SubstituteBindings, et la route
+        // de desactivation recevait alors une affectation vide (404 sur findOrFail(null)).
+        $this->withoutMiddleware([
+            \App\Http\Middleware\CheckInstalled::class,
+            \App\Http\Middleware\EnsureInstalled::class,
+            \App\Http\Middleware\PaywallMiddleware::class,
+            \App\Http\Middleware\ExigerDoubleAuthentification::class,
+            \App\Http\Middleware\ForcePasswordChange::class,
+            \Illuminate\Routing\Middleware\ThrottleRequests::class,
+        ]);
         $this->actingAs($this->actor(50));
         Gate::before(fn (): bool => true);
     }
@@ -54,6 +63,7 @@ class AcademicAssignmentEndpointsTest extends AcademicPilotageDatabaseTestCase
             $table->id();
             $table->string('name');
             $table->string('email')->nullable();
+            $table->softDeletes();
         });
         Schema::create('esbtp_classes', function (Blueprint $table): void {
             $table->id();
@@ -61,6 +71,13 @@ class AcademicAssignmentEndpointsTest extends AcademicPilotageDatabaseTestCase
             $table->string('code')->nullable();
             $table->softDeletes();
         });
+        // ESBTPClasse charge toujours sa filiere et son niveau ($with).
+        foreach (['esbtp_filieres', 'esbtp_niveau_etudes'] as $table) {
+            Schema::create($table, function (Blueprint $t): void {
+                $t->id();
+                $t->softDeletes();
+            });
+        }
         Schema::create('esbtp_annee_universitaires', function (Blueprint $table): void {
             $table->id();
             $table->string('name')->nullable();

@@ -55,7 +55,7 @@ class MatieresSaisissablesTest extends AcademicPilotageDatabaseTestCase
             $t->timestamps(); $t->softDeletes();
         });
         Schema::table('esbtp_evaluations', function (Blueprint $t): void {
-            $t->string('titre')->nullable(); $t->string('status')->nullable(); $t->softDeletes();
+            $t->string('titre')->nullable();
         });
 
         DB::table('esbtp_filieres')->insert([['id' => 100, 'name' => 'CG', 'code' => 'CG']]);

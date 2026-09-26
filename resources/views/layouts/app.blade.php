@@ -2509,7 +2509,7 @@
                             </ul>
                         </div>
 
-                        <!-- Messages (sous 768px avec le shell mobile : dans la feuille m-navbar-plus) -->
+                        {{-- Messages (sous 768px avec le shell mobile : dans la feuille m-navbar-plus) --}}
                         <div class="dropdown" data-mnb="desktop">
                             <button class="btn-acasi icon-only" type="button" id="messagesDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Messages" title="Messages">
                                 <i class="fas fa-envelope"></i>
@@ -2550,7 +2550,7 @@
             </ul>
     </div>
 
-                    <!-- Quick Actions (sous 768px avec le shell mobile : la grille est adoptée par la feuille m-navbar-plus) -->
+                    {{-- Quick Actions (sous 768px avec le shell mobile : la grille est adoptée par la feuille m-navbar-plus) --}}
                     <div class="dropdown" data-mnb="desktop">
                             <button class="btn-acasi icon-only" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Actions rapides" title="Actions rapides">
                                 <i class="fas fa-th-large"></i>
@@ -2651,7 +2651,7 @@
                             </ul>
                 </div>
 
-                <!-- User Profile (sous 768px avec le shell mobile : remplacé par le bouton .mnb-avatar qui ouvre la feuille m-navbar-plus) -->
+                {{-- User Profile (sous 768px avec le shell mobile : remplacé par le bouton .mnb-avatar qui ouvre la feuille m-navbar-plus) --}}
                 <div class="dropdown ms-2" data-mnb="desktop">
                     <button class="btn-acasi profile-btn" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Mon compte">
                         <div class="navbar-avatar">

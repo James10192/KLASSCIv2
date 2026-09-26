@@ -181,7 +181,8 @@ class GradeSheetResource extends JsonResource
             'id' => $note->id,
             'evaluation_id' => $note->evaluation_id,
             'etudiant_id' => $note->etudiant_id,
-            'note' => $note->note,
+            // Un nombre, quel que soit le moteur : MySQL rend un decimal en texte (« 14.50 »).
+            'note' => $note->note === null ? null : (float) $note->note,
             'is_absent' => (bool) $note->is_absent,
             'commentaire' => $note->commentaire,
             'created_by' => $this->user($note->createdBy),

@@ -58,8 +58,9 @@
     $whatsappUrl = "https://wa.me/2250595459843?text={$whatsappMsg}";
 @endphp
 
-{{-- CSS chargé une seule fois --}}
-<link rel="stylesheet" href="{{ asset('css/contract-expiry.css') }}">
+{{-- Styles poses dans la page : un <link> charge en plein body arrivait apres
+     la fenetre, et une requete refusee (limite de debit) la laissait en texte brut. --}}
+<style>{!! file_get_contents(public_path('css/contract-expiry.css')) !!}</style>
 
 {{-- Bande rouge clignotante si < 7 jours --}}
 @if(!$isExpired && $days <= 7)

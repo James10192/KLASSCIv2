@@ -21,9 +21,6 @@ class GradeSheetRevisionServiceTest extends AcademicPilotageDatabaseTestCase
     {
         parent::setUp();
 
-        Schema::table('esbtp_evaluations', function (Blueprint $table): void {
-            $table->softDeletes();
-        });
         $migration = require database_path('migrations/2026_07_22_051713_create_esbtp_grade_sheet_revisions_table.php');
         $migration->up();
         $this->service = new GradeSheetRevisionService;

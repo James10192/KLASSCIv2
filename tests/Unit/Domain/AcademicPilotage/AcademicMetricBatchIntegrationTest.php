@@ -43,19 +43,11 @@ class AcademicMetricBatchIntegrationTest extends AcademicPilotageDatabaseTestCas
 
     public function test_completion_counts_missing_entries_and_hashes_entry_state(): void
     {
-        $enteredSheet = $this->createGradeSheet([
-            'academic_system' => 'BTS',
-            'semester' => 'semestre1',
-        ]);
-        $this->createGradeSheet([
-            'academic_system' => 'BTS',
-            'semester' => 'semestre1',
-        ]);
-        $this->createGradeSheet([
-            'academic_system' => 'BTS',
-            'semester' => 'semestre1',
-            'status' => 'cancelled',
-        ]);
+        // Le service ne compte que les fiches validees issues d'une evaluation.
+        $compte = ['academic_system' => 'BTS', 'semester' => 'semestre1', 'status' => 'validated', 'source' => 'evaluation'];
+        $enteredSheet = $this->createGradeSheet($compte);
+        $this->createGradeSheet($compte);
+        $this->createGradeSheet(['status' => 'cancelled'] + $compte);
         $entryId = $this->createEntry($enteredSheet, 101);
         $service = new GradeCompletionMetricService($this->periods);
         $context = new StudentMetricContext(101, 10, 20, 'BTS', 'S1');

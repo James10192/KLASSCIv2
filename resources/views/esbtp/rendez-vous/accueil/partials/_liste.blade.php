@@ -79,7 +79,13 @@
                         $_tel = \App\Domain\Notifications\PhoneFormatter::toReadable($resa->telephone) ?? $resa->telephone;
                         $_retard = $accueil->enRetard($resa);
                         $_cherche = mb_strtolower($resa->nomComplet().' '.$resa->telephone.' '.str_replace('-', '', $_ref).' '.$_ref.' '.($_second['telephone'] ?? ''), 'UTF-8');
-                        $_url = fn (string $action) => route('esbtp.rendez-vous.accueil.'.$action, $resa);
+                        // Noms ecrits en entier : le controle des routes (RouteNamesExistTest) les verifie.
+                        $_url = fn (string $action) => match ($action) {
+                            'annuler' => route('esbtp.rendez-vous.accueil.annuler', $resa),
+                            'recu' => route('esbtp.rendez-vous.accueil.recu', $resa),
+                            'prevenue' => route('esbtp.rendez-vous.accueil.prevenue', $resa),
+                            'reprogrammer' => route('esbtp.rendez-vous.accueil.reprogrammer', $resa),
+                        };
                         $_sansNouvelle = $_familles->concerne($resa);
                     @endphp
                     <li class="rac-ligne rac-ligne--{{ $_etat }}" data-statut="{{ $_etat }}" data-cherche="{{ $_cherche }}" data-creneau="{{ $creneau->id }}">

@@ -29,6 +29,8 @@ class AcademicPilotageBackfillServiceTest extends AcademicPilotageDatabaseTestCa
             $table->softDeletes();
         });
 
+        // La base en pose une version reduite : celle-ci la remplace.
+        Schema::dropIfExists('esbtp_evaluations');
         Schema::create('esbtp_evaluations', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('classe_id')->nullable();

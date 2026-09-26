@@ -40,9 +40,16 @@ final class LigneDuJournal
 
     public function initiales(): string
     {
-        $mots = preg_split('/\s+/u', trim($this->acteur)) ?: [];
+        // Un mot = un bloc entre espaces, sa premiere lettre : « N'Guessan Yao » donne NY,
+        // « Jean-Paul Kouassi » JK, « Moustapha (USAT) » MU (et non M().
+        $initiales = [];
+        foreach (preg_split('/\s+/u', trim($this->acteur)) ?: [] as $mot) {
+            if (preg_match('/\p{L}/u', $mot, $lettre) && count($initiales) < 2) {
+                $initiales[] = $lettre[0];
+            }
+        }
 
-        return mb_strtoupper(mb_substr($mots[0] ?? '', 0, 1, 'UTF-8').mb_substr($mots[1] ?? '', 0, 1, 'UTF-8'), 'UTF-8');
+        return mb_strtoupper(implode('', $initiales), 'UTF-8');
     }
 
     /** « Aujourd'hui à 13:06 », « Hier à 18:38 », « le 22/09/2026 à 09:14 ». */
