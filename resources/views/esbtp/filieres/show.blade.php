@@ -363,7 +363,7 @@
 @endpush
 
 @section('content')
-<div class="container-fluid" x-data="filiereShow()" x-init="init()" x-cloak>
+<div class="container-fluid" x-data="filiereShow()" x-cloak>
 
     {{-- ================ HERO ================ --}}
     <div class="fs-hero">

@@ -190,7 +190,7 @@
 @endpush
 
 @section('content')
-<div class="container-fluid" x-data="matiereClassification()" x-init="init()" @change="onNativeChange($event)">
+<div class="container-fluid" x-data="matiereClassification()" @change="onNativeChange($event)">
     <div class="mtc-hero">
         <div class="mtc-hero-top">
             <div class="mtc-hero-left">

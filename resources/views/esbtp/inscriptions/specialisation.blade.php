@@ -296,7 +296,7 @@
         {{ $isCorrection ? 'true' : 'false' }},
         {{ $currentSpecialisation?->filiere_id ?? 'null' }},
         {{ $currentSpecialisation?->classe_id ?? 'null' }}
-    )" x-init="init()">
+    )">
 
     {{-- HERO --}}
     <div class="spc-hero">

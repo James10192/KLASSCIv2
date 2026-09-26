@@ -1255,7 +1255,7 @@
                         })->values()->all();
                     @endphp
 
-                    <div x-data="csOrientationManager()" x-init="init()">
+                    <div x-data="csOrientationManager()">
                         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
                             <div>
                                 <h4 style="margin:0;font-size:.95rem;font-weight:700;color:var(--cs-text);">

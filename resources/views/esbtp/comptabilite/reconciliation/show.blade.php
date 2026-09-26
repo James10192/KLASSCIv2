@@ -408,7 +408,7 @@
     ];
 @endphp
 
-<div class="container-fluid" x-data="recShow()" x-init="init()">
+<div class="container-fluid" x-data="recShow()">
 <div class="{{ $rsmShell ? 'm-only-desktop' : '' }}">
     <div class="rec-hero">
         <div class="rec-hero-top">
