@@ -12,6 +12,7 @@ use App\Domain\Support\Services\DisponibiliteSupport;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Support\Concerns\EcritSurUneDemande;
 use App\Http\Controllers\Support\Concerns\PorteeDeLecture;
+use App\Http\Controllers\Support\Concerns\RepondAUnSignalement;
 use App\Http\Requests\Support\RepondreDemandeRequest;
 use App\Http\Requests\Support\SoumettreDemandeRequest;
 use App\Services\Care\ClientMasterSupport;
@@ -30,6 +31,7 @@ use Illuminate\Support\Facades\Log;
 class DemandeSupportController extends Controller
 {
     use EcritSurUneDemande;
+    use RepondAUnSignalement;
     use PorteeDeLecture;
 
     public function __construct(
@@ -42,44 +44,14 @@ class DemandeSupportController extends Controller
     {
         abort_unless($this->disponibilite->signalement(), 404);
 
-        try {
-            $resultat = $soumettre->executer(
-                $request->user(),
-                $request->validated('categorie'),
-                $request->validated('description'),
-                ContexteDePage::assainir((array) $request->validated('contexte', []), $request),
-                $request->validated('cle'),
-                $request->attributes->get('request_id'),
-            );
-        } catch (MasterSupportRefus $e) {
-            if ($e->codeErreur === 'idempotency_key_reused') {
-                // Le brouillon a change depuis un envoi que le Master a bien recu :
-                // le navigateur tire une cle neuve et renvoie. Pas une faute a montrer.
-                return response()->json(['erreur' => 'cle_perimee'], 409);
-            }
-
-            // Un refus ici est un defaut d'integration, pas une faute de l'utilisateur :
-            // on le journalise et on lui propose le courriel plutot que de lui montrer un code.
-            Log::error('KLASSCI Care : signalement refusé par le Master', ['statut' => $e->statut, 'code' => $e->codeErreur, 'erreurs' => $e->erreurs]);
-
-            return response()->json([
-                'message' => "Votre demande n'a pas pu être transmise. Écrivez-nous à ".config('app.support_email').'.',
-            ], 422);
-        }
-
-        if ($resultat['en_attente'] ?? false) {
-            return response()->json([
-                'en_attente' => true,
-                'message' => 'Votre demande est enregistrée. Elle sera transmise au support dès que la connexion sera rétablie.',
-            ], 202);
-        }
-
-        return response()->json([
-            'reference' => $resultat['reference'] ?? null,
-            'statut' => $resultat['statut']['libelle'] ?? null,
-            'suivi_url' => $this->disponibilite->suivi() && isset($resultat['reference'])
-                ? route('support.demandes.show', $resultat['reference']) : null,
-        ], 201);
+        return $this->repondreAuSignalement(fn () => $soumettre->executer(
+            $request->user(),
+            $request->validated('categorie'),
+            $request->validated('description'),
+            ContexteDePage::assainir((array) $request->validated('contexte', []), $request),
+            $request->validated('cle'),
+            $request->attributes->get('request_id'),
+        ), $this->disponibilite);
     }
 
     public function index(Request $request)

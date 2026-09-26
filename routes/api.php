@@ -579,6 +579,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::put('/assistant/cle', [App\Http\Controllers\API\CLI\CLIAssistantController::class, 'poserCle'])->name('assistant.cle');
         Route::delete('/assistant/cle/{fournisseur}', [App\Http\Controllers\API\CLI\CLIAssistantController::class, 'retirerCle'])->name('assistant.cle.retirer');
         Route::put('/assistant/modele', [App\Http\Controllers\API\CLI\CLIAssistantController::class, 'choisirModele'])->name('assistant.modele');
+        Route::get('/assistant/consommation', [App\Http\Controllers\API\CLI\CLIAssistantController::class, 'consommation'])->name('assistant.consommation');
+        Route::put('/assistant/budget', [App\Http\Controllers\API\CLI\CLIAssistantController::class, 'definirBudget'])->name('assistant.budget');
         Route::post('/assistant/tester', [App\Http\Controllers\API\CLI\CLIAssistantController::class, 'tester'])->middleware('throttle:6,1')->name('assistant.tester');
         Route::post('/rendez-vous/generer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'generer'])->name('rendez-vous.generer');
         Route::post('/rendez-vous/placer', [App\Http\Controllers\API\CLI\CLIRendezVousController::class, 'placer'])->name('rendez-vous.placer');
