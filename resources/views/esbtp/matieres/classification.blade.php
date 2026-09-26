@@ -55,7 +55,7 @@
     .mtc-row-name { font-weight: 600; color: #1e293b; font-size: .92rem; }
     .mtc-row-code { font-size: .72rem; color: #94a3b8; font-family: 'Courier New', monospace; background: #f1f5f9;
         padding: .1rem .4rem; border-radius: 5px; }
-    .mtc-suggest { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+    .mtc-suggest { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
         color: #a5670a; background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.28);
         padding: .1rem .45rem; border-radius: 5px; }
 
