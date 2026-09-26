@@ -28,12 +28,12 @@
 @section('content')
 <div class="container-fluid py-2 py-md-3">
     <div class="mh-page" data-message-hub>
-        <script type="application/json" data-message-hub-config>@json([
+        <script type="application/json" data-message-hub-config>{!! json_encode([
             'conversationBase' => url('/messages/conversations'),
             'conversationsList' => route('chat.conversations.list'),
             'usersSearch' => route('chat.users.search'),
             'startDm' => route('chat.dm.start'),
-        ])</script>
+        ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
 
         <header class="mh-topbar">
             <div class="mh-title-wrap">
