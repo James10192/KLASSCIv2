@@ -33,7 +33,7 @@ function matiereClassification() {
         ajoutRecherche: '',
         ajoutDisponibles: [],
         ajoutSelection: [],
-        get hasSuggestions() { return this.matieres.some(m => m.suggested); },
+        get hasSuggestions() { return this.matieres.some(m => m.suggested && !m.classification); },
 
         init() {
             this.$watch('filiereId', () => this.tryLoad());
@@ -94,8 +94,10 @@ function matiereClassification() {
                 this.filiereName = data.filiere || '';
                 this.matieres = (data.matieres || []).map(m => ({
                     ...m,
-                    wasSuggested: (m.classification === null && m.suggested != null),
-                    classification: m.classification ?? (m.suggested ?? null),
+                    // Une suggestion n'est qu'une proposition : elle ne devient une
+                    // valeur qu'une fois acceptee. La pre-cocher faisait enregistrer
+                    // tout le tronc commun en specialite au premier « Enregistrer ».
+                    classification: m.classification ?? null,
                 }));
                 this.maquette = data.maquette || { renseignee: false, semestre_1: 0, semestre_2: 0 };
                 this.intrusLmd = data.intrus_lmd || [];
@@ -120,7 +122,7 @@ function matiereClassification() {
         },
 
         applySuggestions() {
-            this.matieres.forEach(m => { if (m.suggested) m.classification = m.suggested; });
+            this.matieres.forEach(m => { if (m.suggested && !m.classification) m.classification = m.suggested; });
             this.recomputeKpis();
         },
 
@@ -471,7 +473,7 @@ function matiereClassification() {
                 });
                 const data = await res.json();
                 if (!res.ok || !data.success) throw new Error(data.message || 'Erreur lors de l\'enregistrement.');
-                this.matieres.forEach(m => { m.wasSuggested = false; });
+                this.matieres.forEach(m => { if (m.classification) m.suggested = null; });
                 this.maquette.renseignee = !!data.maquette_renseignee;
                 this.notify(data.message, 'success');
                 if (validerSemestres) await this.loadCombo();
