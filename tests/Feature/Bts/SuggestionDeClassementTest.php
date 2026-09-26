@@ -87,6 +87,31 @@ class SuggestionDeClassementTest extends TestCase
         $this->assertArrayNotHasKey($jamaisEvaluee->id, $suggestions, 'Sans preuve, rien ne doit être proposé.');
     }
 
+    public function test_sur_un_couple_a_une_seule_classe_une_epreuve_ne_suffit_pas(): void
+    {
+        // Petite ecole : une seule classe de tronc commun, aucune planification.
+        $egaree = $this->matiere('Securite', partagee: true);
+        $this->evaluer($egaree, $this->classeTc);
+
+        $suggestions = app(SuggestionDeClassement::class)->pourCouple($this->tc, $this->niveau->id);
+
+        $this->assertArrayNotHasKey($egaree->id, $suggestions, 'Une épreuve unique ne vaut pas preuve, même sur un petit couple.');
+    }
+
+    public function test_une_classe_desactivee_ne_compte_pas_dans_le_seuil(): void
+    {
+        $autresTc = [$this->classe($this->tc), $this->classe($this->tc)];
+        $autresTc[1]->update(['is_active' => false]);
+        $maths = $this->matiere('Mathematiques', partagee: true);
+
+        $this->evaluer($maths, $this->classeTc);
+        $this->evaluer($maths, $autresTc[0]);
+
+        $suggestions = app(SuggestionDeClassement::class)->pourCouple($this->tc, $this->niveau->id);
+
+        $this->assertStringContainsString('2 classe(s) de tronc commun sur 2', $suggestions[$maths->id]['raison']);
+    }
+
     public function test_avec_une_planification_la_proposition_suit_le_critere_du_diagnostic(): void
     {
         $dessin = $this->matiere('Dessin technique', partagee: true);

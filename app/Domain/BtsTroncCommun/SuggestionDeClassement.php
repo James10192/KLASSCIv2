@@ -23,8 +23,11 @@ use App\Models\ESBTPMatiereFilierNiveau;
  *    deux ecrans repondent ainsi la meme chose a la meme question.
  *
  * 2. Sans planification (le cas de Yakro), les evaluations non annulees de
- *    l'annee. Une matiere evaluee dans au moins la moitie des classes du tronc
- *    commun en releve. Une seule evaluation egaree ne suffit pas : c'est
+ *    l'annee, dans les classes actives. Une matiere evaluee dans au moins deux
+ *    classes du tronc commun, et au moins la moitie d'entre elles, en releve.
+ *    Le plancher de deux compte : sur un couple a une ou deux classes, la
+ *    moitie seule laissait passer une epreuve unique. Une seule evaluation
+ *    egaree ne suffit donc jamais, quelle que soit la taille du couple : c'est
  *    justement le symptome qu'on cherche (une epreuve de Securite posee par
  *    erreur sur une classe de tronc commun), et « Appliquer les suggestions »
  *    la transformerait en classement officiel. Une matiere evaluee seulement
@@ -94,8 +97,8 @@ final class SuggestionDeClassement
      */
     private function selonLesEvaluations(array $matieres, ESBTPFiliere $troncCommun, array $fillesIds, int $niveauId, int $anneeId): array
     {
-        $classesTc = ESBTPClasse::where('filiere_id', $troncCommun->id)->where('niveau_etude_id', $niveauId)->pluck('id')->all();
-        $classesFilles = ESBTPClasse::whereIn('filiere_id', $fillesIds)->where('niveau_etude_id', $niveauId)->pluck('id')->all();
+        $classesTc = ESBTPClasse::where('filiere_id', $troncCommun->id)->where('niveau_etude_id', $niveauId)->where('is_active', true)->pluck('id')->all();
+        $classesFilles = ESBTPClasse::whereIn('filiere_id', $fillesIds)->where('niveau_etude_id', $niveauId)->where('is_active', true)->pluck('id')->all();
 
         $classesTcParMatiere = $this->classesEvalueesParMatiere($classesTc, $anneeId);
         $classesFillesParMatiere = $this->classesEvalueesParMatiere($classesFilles, $anneeId);
@@ -105,7 +108,7 @@ final class SuggestionDeClassement
         foreach ($matieres as $id) {
             $nbTc = $classesTcParMatiere[$id] ?? 0;
 
-            if ($totalTc > 0 && $nbTc * 2 >= $totalTc) {
+            if ($nbTc >= 2 && $nbTc * 2 >= $totalTc) {
                 $suggestions[$id] = $this->suggestion(
                     ESBTPMatiereFilierNiveau::TRONC_COMMUN,
                     "Évaluée dans {$nbTc} classe(s) de tronc commun sur {$totalTc} cette année."
