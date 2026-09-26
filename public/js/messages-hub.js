@@ -33,6 +33,12 @@
             .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 
+    function conversationPreview(lastMessage) {
+        if (typeof lastMessage === 'string') return lastMessage;
+        if (!lastMessage || typeof lastMessage !== 'object') return '';
+        return lastMessage.body || lastMessage.content || lastMessage.message || 'Donnée métier partagée';
+    }
+
     function request(url, options) {
         options = options || {};
         options.headers = Object.assign({
@@ -234,7 +240,7 @@
                 if (!row || item.type === 'workflow') return;
                 row.setAttribute('data-unread', String(item.unread_count || 0));
                 var unread = $('.mh-unread', row); if (unread) unread.textContent = item.unread_count || '';
-                var preview = $('.mh-conversation-preview', row); if (preview) preview.textContent = item.last_message || 'Aucun message';
+                var preview = $('.mh-conversation-preview', row); if (preview) preview.textContent = conversationPreview(item.last_message) || 'Aucun message';
                 var time = $('.mh-conversation-meta time', row); if (time) time.textContent = relativeTime(item.last_message_at);
             });
         }).catch(function () {});
