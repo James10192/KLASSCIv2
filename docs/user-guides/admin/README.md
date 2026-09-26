@@ -97,10 +97,10 @@ Le tableau de bord administrateur affiche :
 
 ### Codes Oubliés
 
-1. Accédez à la section "Codes Oubliés"
-2. Sélectionnez l'enseignant concerné
-3. Générez un nouveau code
-4. Communiquez le code de manière sécurisée
+1. Ouvrez **Codes de présence** (`/esbtp/attendance-codes`). La demande « Je n'ai pas le code » envoyée par l'enseignant y mène directement.
+2. Si un code est déjà actif pour son cours, communiquez-le simplement.
+3. Sinon, dans « Séance à venir », choisissez **la séance de l'enseignant** et générez le code : il ne vaut que pour cette séance.
+4. Évitez de générer un code général pour dépanner un seul enseignant : il remplace le code général en cours, et les autres enseignants devront recevoir le nouveau.
 
 ### Problèmes de Connexion
 

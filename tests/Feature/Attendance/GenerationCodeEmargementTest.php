@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Attendance;
 
+use App\Enums\TypeSeance;
 use App\Helpers\InstallationHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -19,8 +20,8 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
- * Génération d'un code d'émargement depuis /esbtp/attendance-codes, le seul
- * écran qui en génère depuis la suppression de « codes oubliés ».
+ * Génération d'un code d'émargement depuis /esbtp/attendance-codes. D'autres
+ * écrans en génèrent aussi, dont /esbtp/planning-general/emargement.
  *
  * La colonne `type` est un ENUM('session', 'journee', 'personnalise') sous
  * MySQL strict : toute autre valeur lève à l'insertion. Et un code lié à une
@@ -143,7 +144,7 @@ class GenerationCodeEmargementTest extends TestCase
             'annee_universitaire_id' => $annee->id,
             'date_seance' => now()->toDateString(),
             'type' => ESBTPSeanceCours::TYPE_COURSE,
-            'type_seance' => 'cours',
+            'type_seance' => TypeSeance::CM->value,
             'is_active' => true,
         ]);
     }
