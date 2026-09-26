@@ -21,7 +21,8 @@ use Tests\TestCase;
  * vingt et une matières, mathématiques comprises. Accepter la proposition les
  * retirait toutes du bulletin de tronc commun.
  *
- * La proposition se fonde désormais sur ce que l'école a évalué ou planifié.
+ * La proposition se fonde désormais sur la planification du tronc commun quand
+ * elle existe, sinon sur les évaluations non annulées de la majorité de ses classes.
  */
 class SuggestionDeClassementTest extends TestCase
 {
@@ -54,25 +55,54 @@ class SuggestionDeClassementTest extends TestCase
         $this->classeSpecialite = $this->classe($this->specialite);
     }
 
-    public function test_une_matiere_partagee_n_est_proposee_en_specialite_que_si_les_faits_le_disent(): void
+    public function test_sans_planification_la_proposition_suit_les_evaluations_du_tronc_commun(): void
     {
+        // Trois classes de tronc commun, aucune planification : le cas de Yakro.
+        $autresTc = [$this->classe($this->tc), $this->classe($this->tc)];
+
         // Rattachees au tronc commun ET a la filiere fille, comme a Yakro.
         $maths = $this->matiere('Mathematiques', partagee: true);
         $securite = $this->matiere('Securite', partagee: true);
-        $dessin = $this->matiere('Dessin technique', partagee: true);
+        $egaree = $this->matiere('Technique des engins', partagee: true);
+        $annulee = $this->matiere('Hydraulique', partagee: true);
         $jamaisEvaluee = $this->matiere('Topographie', partagee: true);
 
         $this->evaluer($maths, $this->classeTc);
+        $this->evaluer($maths, $autresTc[0]);
         $this->evaluer($securite, $this->classeSpecialite);
-        $this->planifier($dessin);
+        // Une seule epreuve posee par erreur sur une classe de tronc commun sur trois.
+        $this->evaluer($egaree, $this->classeTc);
+        $this->evaluer($egaree, $this->classeSpecialite);
+        foreach ([$this->classeTc, ...$autresTc] as $classe) {
+            $this->evaluer($annulee, $classe, 'cancelled');
+        }
 
         $suggestions = app(SuggestionDeClassement::class)->pourCouple($this->tc, $this->niveau->id);
 
         $this->assertSame(ESBTPMatiereFilierNiveau::TRONC_COMMUN, $suggestions[$maths->id]['valeur']);
+        $this->assertStringContainsString('2 classe(s) de tronc commun sur 3', $suggestions[$maths->id]['raison']);
         $this->assertSame(ESBTPMatiereFilierNiveau::SPECIALITE, $suggestions[$securite->id]['valeur']);
-        $this->assertSame(ESBTPMatiereFilierNiveau::TRONC_COMMUN, $suggestions[$dessin->id]['valeur']);
+        $this->assertArrayNotHasKey($egaree->id, $suggestions, 'Une épreuve égarée ne vaut pas preuve.');
+        $this->assertArrayNotHasKey($annulee->id, $suggestions, 'Une évaluation annulée ne compte pas.');
         $this->assertArrayNotHasKey($jamaisEvaluee->id, $suggestions, 'Sans preuve, rien ne doit être proposé.');
-        $this->assertNotEmpty($suggestions[$securite->id]['raison']);
+    }
+
+    public function test_avec_une_planification_la_proposition_suit_le_critere_du_diagnostic(): void
+    {
+        $dessin = $this->matiere('Dessin technique', partagee: true);
+        $securite = $this->matiere('Securite', partagee: true);
+        $propreAuTc = $this->matiere('Expression francaise', partagee: false);
+
+        $this->planifier($dessin);
+        // Meme evaluee en tronc commun, une matiere non planifiee et rattachee a
+        // une specialite est suspecte : c'est la regle du diagnostic des fuites.
+        $this->evaluer($securite, $this->classeTc);
+
+        $suggestions = app(SuggestionDeClassement::class)->pourCouple($this->tc, $this->niveau->id);
+
+        $this->assertSame(ESBTPMatiereFilierNiveau::TRONC_COMMUN, $suggestions[$dessin->id]['valeur']);
+        $this->assertSame(ESBTPMatiereFilierNiveau::SPECIALITE, $suggestions[$securite->id]['valeur']);
+        $this->assertArrayNotHasKey($propreAuTc->id, $suggestions);
     }
 
     public function test_l_ecran_rend_la_proposition_sans_la_poser_comme_classement(): void
@@ -118,14 +148,14 @@ class SuggestionDeClassementTest extends TestCase
         return $matiere;
     }
 
-    private function evaluer(ESBTPMatiere $matiere, ESBTPClasse $classe): void
+    private function evaluer(ESBTPMatiere $matiere, ESBTPClasse $classe, string $status = 'published'): void
     {
         ESBTPEvaluation::factory()->create([
             'matiere_id' => $matiere->id,
             'classe_id' => $classe->id,
             'annee_universitaire_id' => $this->annee->id,
             'periode' => 'semestre1',
-            'status' => 'published',
+            'status' => $status,
         ]);
     }
 

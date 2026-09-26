@@ -14,8 +14,9 @@ use Tests\TestCase;
 
 /**
  * La fenêtre « Configuration requise du bulletin » listait les matières
- * classées « spécialité » d'une classe de tronc commun. Les y configurer les
- * ramenait sur le bulletin de tronc commun, que le résolveur les écarte ou non.
+ * classées « spécialité » d'une classe de tronc commun : l'école y remplissait
+ * coefficients et professeurs pour des matières que le bulletin de tronc commun
+ * n'affiche pas. Elle suit désormais la même règle que la maquette.
  */
 class ConfigurationBulletinTroncCommunTest extends TestCase
 {
