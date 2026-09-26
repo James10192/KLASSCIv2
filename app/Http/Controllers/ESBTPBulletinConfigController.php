@@ -349,7 +349,7 @@ class ESBTPBulletinConfigController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Configuration des matieres enregistree.',
+            'message' => 'Configuration des matières enregistrée.',
             'stats' => $stats,
         ]);
     }
