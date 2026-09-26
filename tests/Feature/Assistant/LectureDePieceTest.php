@@ -120,6 +120,52 @@ class LectureDePieceTest extends TestCase
         app(LectureDePiece::class)->lire(new UploadedFile($chemin, 'notes.xlsx', null, null, true));
     }
 
+    public function test_un_texte_mis_en_forme_est_lu_et_une_mise_en_forme_vide_ne_tronque_pas(): void
+    {
+        $classeur = new Spreadsheet();
+        $f = $classeur->getActiveSheet();
+        $f->fromArray([['Matricule', 'Note']]);
+        $riche = new \PhpOffice\PhpSpreadsheet\RichText\RichText();
+        $riche->createTextRun('MAT')->getFont()->setBold(true);
+        $riche->createText('-002');
+        $f->setCellValue('A2', $riche);
+        $f->setCellValue('B2', 11);
+        // Lignes vides seulement mises en forme, très loin : rien n'est tronqué.
+        $f->getStyle('A900:AZ990')->getFont()->setBold(true);
+        $chemin = tempnam(sys_get_temp_dir(), 'xlsx');
+        (new Xlsx($classeur))->save($chemin);
+
+        $t = app(LectureDePiece::class)->lire(new UploadedFile($chemin, 'notes.xlsx', null, null, true));
+
+        $this->assertSame(['MAT-002', '11'], $t['lignes'][0]);
+        $this->assertFalse($t['tronque']);
+    }
+
+    public function test_un_word_abime_ou_demesure_est_refuse_sans_remplir_la_memoire(): void
+    {
+        $docx = function (string $corps) {
+            $chemin = tempnam(sys_get_temp_dir(), 'docx');
+            $zip = new \ZipArchive();
+            $zip->open($chemin, \ZipArchive::OVERWRITE);
+            $zip->addFromString('word/document.xml', '<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' . $corps . '</w:body></w:document>');
+            $zip->close();
+
+            return new UploadedFile($chemin, 'notes.docx', null, null, true);
+        };
+        $ligne = fn ($a, $b) => "<w:tr><w:tc><w:p><w:r><w:t>{$a}</w:t></w:r></w:p></w:tc><w:tc><w:p><w:r><w:t>{$b}</w:t></w:r></w:p></w:tc></w:tr>";
+
+        // Une ligne de 300 000 cellules : bornée à 30 colonnes, signalée comme tronquée.
+        $t = app(LectureDePiece::class)->lire($docx('<w:tbl>' . $ligne('A', 'B') . '<w:tr>' . str_repeat('<w:tc><w:p><w:r><w:t>x</w:t></w:r></w:p></w:tc>', 300000) . '</w:tr></w:tbl>'));
+        $this->assertCount(30, $t['lignes'][0]);
+        $this->assertTrue($t['tronque']);
+        $this->assertLessThan(200 * 1024 * 1024, memory_get_peak_usage());
+
+        // Balise cassée au milieu du tableau : refusé, pas lu à moitié.
+        $this->expectException(PieceIllisible::class);
+        $this->expectExceptionMessage('endommagé');
+        app(LectureDePiece::class)->lire($docx('<w:tbl>' . $ligne('A', 'B') . $ligne('1', '2') . '<w:tr><w:tc></w:tr></w:tbl>'));
+    }
+
     public function test_un_csv_francais_au_point_virgule_et_en_windows_1252(): void
     {
         $contenu = mb_convert_encoding("Matricule;Nom;Note\nMAT-001;KOUASSI Aïcha;12,5\n\nMAT-002;KONAN Jean;9\n", 'Windows-1252', 'UTF-8');

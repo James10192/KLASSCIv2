@@ -8,6 +8,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Reader\IReadFilter;
+use PhpOffice\PhpSpreadsheet\RichText\RichText;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
@@ -37,8 +38,12 @@ class LectureDePiece
     private const MAX_CELLULE = 200;
     /** Taille décompressée maximale d'un xlsx ou d'un docx : une archive de 2 Mo peut en cacher des centaines. */
     private const MAX_DECOMPRESSE = 40 * 1024 * 1024;
-    /** Une feuille lue en SimpleXML occupe plusieurs fois sa taille, hors memory_limit : bornée à part. */
-    private const MAX_ENTREE = 8 * 1024 * 1024;
+    /**
+     * Une feuille lue en SimpleXML occupe des dizaines de fois sa taille, hors
+     * memory_limit (mesuré : 8 Mo de XML → 570 Mo de mémoire). Une feuille de notes
+     * réelle tient sous 1 Mo : chaque fichier XML de l'archive est borné à 2 Mo.
+     */
+    private const MAX_ENTREE = 2 * 1024 * 1024;
 
     /** La source dépasse ce qui est lu (lignes ou colonnes que le filtre ne charge pas). */
     private bool $auDela = false;
@@ -105,8 +110,10 @@ class LectureDePiece
             $stat = $zip->statIndex($i);
             $taille = (int) ($stat['size'] ?? 0);
             $total += $taille;
-            // Le document Word se lit en flux : seules les feuilles Excel sont bornées une à une.
-            if (($stat['name'] ?? '') !== 'word/document.xml') {
+            // Le document Word se lit en flux ; les images ne sont pas lues : seuls les
+            // XML d'un classeur sont bornés un à un.
+            $nomEntree = (string) ($stat['name'] ?? '');
+            if ($nomEntree !== 'word/document.xml' && str_ends_with($nomEntree, '.xml')) {
                 $plusGrosse = max($plusGrosse, $taille);
             }
         }
@@ -138,9 +145,7 @@ class LectureDePiece
                 // Seule la première feuille est chargée : les autres ne coûtent rien.
                 $lecteur->setLoadSheetsOnly([$lecteur->listWorksheetNames($chemin)[0] ?? '']);
             }
-            $info = $lecteur->listWorksheetInfo($chemin)[0] ?? [];
-            // Lignes et colonnes au-delà de ce qui est chargé : la suite ne sera pas lue.
-            $this->auDela = (int) ($info['totalColumns'] ?? 0) > self::MAX_COLONNES || (int) ($info['totalRows'] ?? 0) > self::MAX_LIGNES + 2;
+            $this->auDela = $format === 'xlsx' ? $this->valeursAuDela($chemin) : $this->dimensionAuDela($lecteur, $chemin);
             $feuille = $lecteur->load($chemin)->getSheet(0);
         } catch (\Throwable $e) {
             throw new PieceIllisible('Le fichier n\'a pas pu être lu.');
@@ -156,6 +161,47 @@ class LectureDePiece
         }
 
         return $lignes;
+    }
+
+    /**
+     * Une cellule PORTANT une valeur au-delà des limites ? Passage en flux sur la
+     * première feuille : les lignes vides mises en forme (fréquentes dans Excel) ne
+     * comptent pas, contrairement aux dimensions déclarées.
+     */
+    private function valeursAuDela(string $chemin): bool
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($chemin) !== true) {
+            return false;
+        }
+        $xml = $zip->getFromName('xl/worksheets/sheet1.xml', self::MAX_ENTREE + 1);
+        $zip->close();
+        if (! is_string($xml) || $xml === '') {
+            return false;
+        }
+
+        $lecteur = \XMLReader::XML($xml, null, LIBXML_NONET);
+        $cellule = null;
+        while (@$lecteur->read()) {
+            if ($lecteur->nodeType !== \XMLReader::ELEMENT) {
+                continue;
+            }
+            if ($lecteur->name === 'c') {
+                $cellule = (string) $lecteur->getAttribute('r');
+            } elseif (in_array($lecteur->name, ['v', 'is'], true) && $cellule && preg_match('/^([A-Z]+)(\d+)$/', $cellule, $m)
+                && (Coordinate::columnIndexFromString($m[1]) > self::MAX_COLONNES || (int) $m[2] > self::MAX_LIGNES + 2)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function dimensionAuDela($lecteur, string $chemin): bool
+    {
+        $info = $lecteur->listWorksheetInfo($chemin)[0] ?? [];
+
+        return (int) ($info['totalColumns'] ?? 0) > self::MAX_COLONNES || (int) ($info['totalRows'] ?? 0) > self::MAX_LIGNES + 2;
     }
 
     private function configurerCsv($lecteur, string $chemin): void
@@ -184,6 +230,10 @@ class LectureDePiece
         } else {
             $valeur = $cellule->getValue();
         }
+        // Texte mis en forme (gras sur une partie, chaîne en ligne) : son texte brut.
+        if ($valeur instanceof RichText) {
+            $valeur = $valeur->getPlainText();
+        }
         // Date : formatée à partir de la valeur lue, sans recalcul.
         if ((is_int($valeur) || is_float($valeur)) && Date::isDateTime($cellule, $valeur)) {
             return (string) NumberFormat::toFormattedString($valeur, (string) $cellule->getStyle()->getNumberFormat()->getFormatCode());
@@ -199,12 +249,28 @@ class LectureDePiece
     /** @return array<int, array<int, string>> */
     private function tableauWord(string $chemin): array
     {
-        $lecteur = new \XMLReader();
-        if (! @$lecteur->open('zip://' . $chemin . '#word/document.xml', null, LIBXML_NONET)) {
+        // Lu par getFromName avec une longueur maximale : la taille DÉCLARÉE dans l'archive
+        // peut mentir, pas celle-ci. zip:// ne respectait ni l'une ni l'autre.
+        $zip = new \ZipArchive();
+        $ouvert = $zip->open($chemin) === true;
+        $xml = $ouvert ? $zip->getFromName('word/document.xml', self::MAX_DECOMPRESSE + 1) : false;
+        if ($ouvert) {
+            $zip->close();
+        }
+        if (! is_string($xml) || $xml === '') {
             throw new PieceIllisible('Le document Word n\'a pas pu être ouvert.');
         }
+        if (strlen($xml) > self::MAX_DECOMPRESSE) {
+            throw new PieceIllisible('Ce fichier est trop volumineux une fois ouvert. Enregistrez seulement le tableau utile.');
+        }
+
+        $erreursAvant = libxml_use_internal_errors(true);
+        libxml_clear_errors();
+        $lecteur = \XMLReader::XML($xml, null, LIBXML_NONET);
+        unset($xml);
 
         $lignes = [];
+        $abime = false;
         $profondeur = 0;   // imbrication des w:tbl : seul le premier tableau (niveau 1) est lu
         $ligne = null;
         $cellule = null;
@@ -244,14 +310,28 @@ class LectureDePiece
                     $cellule = '';
                 }
                 if ($nom === 'w:tc' && $ferme && $ligne !== null) {
-                    $ligne[] = trim((string) $cellule);
+                    // Au-delà de la dernière colonne lue, on ne garde plus rien : une ligne
+                    // de millions de cellules vides ne doit pas remplir la mémoire.
+                    if (count($ligne) < self::MAX_COLONNES) {
+                        $ligne[] = trim((string) $cellule);
+                    } elseif (trim((string) $cellule) !== '') {
+                        $this->auDela = true;
+                    }
                     $cellule = null;
-                } elseif ($nom === 'w:t' && $ouvre && ! $vide && $cellule !== null) {
+                } elseif ($nom === 'w:t' && $ouvre && ! $vide && $cellule !== null && mb_strlen($cellule) < self::MAX_CELLULE) {
                     $cellule .= ($cellule === '' ? '' : ' ') . mb_substr($lecteur->readString(), 0, self::MAX_CELLULE);
                 }
             }
+            // Une erreur de lecture arrête la boucle comme une fin de fichier : il faut
+            // la distinguer, sinon un document abîmé passerait pour complet.
+            $abime = libxml_get_errors() !== [] || $profondeur > 0 && count($lignes) <= self::MAX_LIGNES;
         } finally {
             $lecteur->close();
+            libxml_clear_errors();
+            libxml_use_internal_errors($erreursAvant);
+        }
+        if ($abime) {
+            throw new PieceIllisible('Le document Word est endommagé.');
         }
 
         if ($lignes === []) {
