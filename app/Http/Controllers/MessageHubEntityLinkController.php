@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\ChatConversationEntityLink;
 use App\Models\User;
-use App\Models\WorkflowActionActivity;
 use App\Services\Messages\ConversationEntityLinkService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,6 +28,17 @@ class MessageHubEntityLinkController extends Controller
         if ($link->required_view_permission) {
             abort_unless($actor->can($link->required_view_permission), 403, 'Vous ne pouvez pas vérifier ce dossier.');
         }
+
+        $verificationPermission = match ($link->entity_type) {
+            'inscription' => 'inscriptions.validate',
+            'paiement' => 'paiements.validate',
+            default => 'admin.access',
+        };
+        abort_unless(
+            $actor->can('admin.access') || $actor->can($verificationPermission),
+            403,
+            'La vérification de cette relation nécessite un droit de validation.'
+        );
 
         $data = $request->validate([
             'relation' => ['required', Rule::in(array_values(array_diff(ConversationEntityLinkService::RELATIONS, ['unknown_verify'])))],
