@@ -119,7 +119,7 @@ class LectureDePiece
         }
         $zip->close();
         if ($total > self::MAX_DECOMPRESSE || $plusGrosse > self::MAX_ENTREE) {
-            throw new PieceIllisible('Ce fichier contient trop de données pour être lu ici (plus de 2 Mo de texte une fois ouvert). Gardez seulement les colonnes utiles — matricule, nom, note — dans une feuille, puis joignez-la.');
+            throw new PieceIllisible('Ce fichier contient trop de données pour être lu ici. Gardez seulement le tableau utile — matricule, nom, note — puis joignez-le de nouveau.');
         }
     }
 
@@ -188,9 +188,10 @@ class LectureDePiece
             if ($lecteur->nodeType !== \XMLReader::ELEMENT) {
                 continue;
             }
-            if ($lecteur->name === 'c') {
+            // localName : une feuille écrite « x:c / x:v » (OpenXML SDK) se lit pareil.
+            if ($lecteur->localName === 'c') {
                 $cellule = (string) $lecteur->getAttribute('r');
-            } elseif (in_array($lecteur->name, ['v', 'is'], true) && $cellule && preg_match('/^([A-Z]+)(\d+)$/', $cellule, $m)
+            } elseif (in_array($lecteur->localName, ['v', 'is'], true) && $cellule && preg_match('/^([A-Z]+)(\d+)$/', $cellule, $m)
                 && (Coordinate::columnIndexFromString($m[1]) > self::MAX_COLONNES || (int) $m[2] > self::MAX_LIGNES + 2)
                 // Une formule qui rend "" (modèle « =SI(B2="";"";B2) » tiré sur mille lignes) n'est pas une donnée.
                 && trim($lecteur->readString()) !== '') {
@@ -284,7 +285,7 @@ class LectureDePiece
             throw new PieceIllisible('Le document Word n\'a pas pu être ouvert.');
         }
         if (strlen($xml) > self::MAX_DECOMPRESSE) {
-            throw new PieceIllisible('Ce fichier est trop volumineux une fois ouvert. Enregistrez seulement le tableau utile.');
+            throw new PieceIllisible('Ce fichier contient trop de données pour être lu ici. Gardez seulement le tableau utile — matricule, nom, note — puis joignez-le de nouveau.');
         }
 
         $erreursAvant = libxml_use_internal_errors(true);
@@ -294,6 +295,7 @@ class LectureDePiece
 
         $lignes = [];
         $abime = false;
+        $enTrop = false;   // dans une ligne au-delà de la limite : lue, pas gardée
         $profondeur = 0;   // imbrication des w:tbl : seul le premier tableau (niveau 1) est lu
         $ligne = null;
         $cellule = null;
@@ -321,11 +323,12 @@ class LectureDePiece
                 }
                 if ($nom === 'w:tr' && $ouvre) {
                     // En-têtes + 500 lignes, et une ligne de titre possible : comme pour Excel.
-                    if (count($lignes) > self::MAX_LIGNES + 1) {
-                        $this->auDela = true;
-                        break;
-                    }
-                    $ligne = [];
+                    // Au-delà, on lit sans rien garder : seule une ligne NON vide dit « tronqué ».
+                    $ligne = count($lignes) > self::MAX_LIGNES + 1 ? null : [];
+                    $enTrop = $ligne === null;
+                }
+                if ($nom === 'w:tr' && $ferme) {
+                    $enTrop = false;
                 }
                 if ($nom === 'w:tr' && $ferme && $ligne !== null) {
                     $lignes[] = $ligne;
@@ -342,6 +345,11 @@ class LectureDePiece
                         $this->auDela = true;
                     }
                     $cellule = null;
+                } elseif ($nom === 'w:t' && $ouvre && ! $vide && $enTrop) {
+                    if (trim($lecteur->readString()) !== '') {
+                        $this->auDela = true;
+                        break;
+                    }
                 } elseif ($nom === 'w:t' && $ouvre && ! $vide && $cellule !== null && mb_strlen($cellule) < self::MAX_CELLULE) {
                     $cellule .= ($cellule === '' ? '' : ' ') . mb_substr($lecteur->readString(), 0, self::MAX_CELLULE);
                 }

@@ -166,6 +166,11 @@ class LectureDePieceTest extends TestCase
         // Le pic reste proche de l'usage courant : pas de tableau démesuré en mémoire.
         $this->assertLessThan(memory_get_usage() + 120 * 1024 * 1024, memory_get_peak_usage());
 
+        // 501 lignes lues (dont un titre possible), puis des lignes vides : rien n'est perdu.
+        $corps = $ligne('Matricule', 'Note') . str_repeat($ligne('MAT', '10'), 500) . str_repeat('<w:tr><w:tc><w:p/></w:tc></w:tr>', 3);
+        $this->assertFalse(app(LectureDePiece::class)->lire($docx('<w:tbl>' . $corps . '</w:tbl>'))['tronque']);
+        $this->assertTrue(app(LectureDePiece::class)->lire($docx('<w:tbl>' . $corps . $ligne('MAT-X', '9') . $ligne('MAT-Y', '9') . '</w:tbl>'))['tronque']);
+
         // Balise cassée au milieu du tableau : refusé, pas lu à moitié.
         $this->expectException(PieceIllisible::class);
         $this->expectExceptionMessage('endommagé');
@@ -178,7 +183,9 @@ class LectureDePieceTest extends TestCase
         $classeur->getActiveSheet()->setTitle('Brouillon')->fromArray([['x', 'y'], ['1', '2']]);
         $notes = $classeur->createSheet()->setTitle('Notes');
         $notes->fromArray([['Matricule', 'Note'], ['MAT-001', 14]]);
-        $notes->setCellValue('AH5', 'hors limite');
+        // Premier onglet : mise en forme loin, aucune donnée. sheet1 (second onglet) déborde.
+        $notes->getStyle('A900:AZ990')->getFont()->setBold(true);
+        $classeur->getSheet(0)->setCellValue('AH900', 'hors limite, mais pas sur le premier onglet');
         $chemin = tempnam(sys_get_temp_dir(), 'xlsx');
         (new Xlsx($classeur))->save($chemin);
 
@@ -194,7 +201,8 @@ class LectureDePieceTest extends TestCase
         $t = app(LectureDePiece::class)->lire(new UploadedFile($chemin, 'notes.xlsx', null, null, true));
 
         $this->assertSame(['Matricule', 'Note'], $t['colonnes']);
-        $this->assertTrue($t['tronque']);
+        // Les dimensions déclarées diraient « tronqué » ; le vrai premier onglet, non.
+        $this->assertFalse($t['tronque']);
     }
 
     public function test_un_csv_francais_au_point_virgule_et_en_windows_1252(): void
