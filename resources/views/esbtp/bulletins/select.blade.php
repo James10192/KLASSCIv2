@@ -971,10 +971,10 @@
                          blocages par cause, avec le nombre d'étudiants touchés. --}}
                     <template x-if="preflight?.blocking_errors?.length && !preflight?.missing_coefficients?.length && !preflight?.missing_professeurs?.length">
                         <ul class="bus-inline-panel__list">
-                            <template x-for="ligne in Object.entries(preflight.blocking_errors.reduce((acc, e) => { acc[e.message] = (acc[e.message] || 0) + 1; return acc; }, {}))" :key="ligne[0]">
+                            <template x-for="ligne in blocagesParCause()" :key="ligne.cause">
                                 <li>
-                                    <span x-text="ligne[0]"></span>
-                                    <span x-text="' ' + ligne[1] + ' étudiant' + (ligne[1] > 1 ? 's' : '') + ' concerné' + (ligne[1] > 1 ? 's' : '') + '.'"></span>
+                                    <span x-text="ligne.cause"></span>
+                                    <span x-text="' ' + ligne.nombre + ' étudiant' + (ligne.nombre > 1 ? 's' : '') + ' concerné' + (ligne.nombre > 1 ? 's' : '') + '.'"></span>
                                 </li>
                             </template>
                         </ul>

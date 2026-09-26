@@ -452,6 +452,15 @@ window.busCard = function (cfg) {
             return `${this.lastGeneration.created || 0} créé(s), ${this.lastGeneration.regenerated || 0} recalculé(s), ${skipped} ignoré(s), ${blocked} blocage(s).`;
         },
 
+        // Les blocages du pre-controle, regroupes par cause : [{ cause, nombre }].
+        blocagesParCause() {
+            const parCause = {};
+            (this.preflight?.blocking_errors || []).forEach((e) => {
+                parCause[e.message] = (parCause[e.message] || 0) + 1;
+            });
+            return Object.entries(parCause).map(([cause, nombre]) => ({ cause, nombre }));
+        },
+
         generationStudentsLabel() {
             if (!this.form.classe_id || !this.form.annee_universitaire_id) {
                 return 'Selectionnez une classe et une annee';

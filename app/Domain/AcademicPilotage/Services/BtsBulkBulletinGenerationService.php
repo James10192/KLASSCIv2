@@ -145,7 +145,7 @@ final class BtsBulkBulletinGenerationService
                     'code' => $isHard ? 'coefficients_missing' : 'incomplete_academic_data',
                     'message' => $isHard
                         ? 'Coefficients manquants : complétez la configuration du bulletin.'
-                        : 'Aucune note exploitable pour cette periode.',
+                        : 'Aucune note exploitable pour cette période.',
                     'preparation' => $preparation->toArray(),
                     'missing_coefficients' => $missingCoefficients,
                     'configuration_url' => $configurationUrl,
@@ -786,8 +786,8 @@ final class BtsBulkBulletinGenerationService
             // enverrait l'utilisateur dans le mur : le recalcul y produit des
             // blocages durs. Le seul geste utile est de deverrouiller.
             'nothing_to_generate' => $verrouillesVides > 0
-                ? 'Aucun bulletin ne peut etre repris : '.$verrouillesVides.' bulletin(s) sans moyenne sont publies ou signes. Deverrouillez-les avant de relancer.'
-                : 'Tous les bulletins existent deja pour cette periode : cochez « Recalculer » pour les mettre a jour.',
+                ? 'Aucun bulletin ne peut être repris : '.$verrouillesVides.' bulletin(s) sans moyenne sont publiés ou signés. Déverrouillez-les avant de relancer.'
+                : 'Tous les bulletins existent déjà pour cette période : cochez « Recalculer » pour les mettre à jour.',
             'needs_reason' => 'Données académiques incomplètes : renseignez un motif (8 caractères minimum) pour générer des bulletins incomplets.',
             'blocked' => $hasHardBlocks
                 ? 'Pré-contrôle bloqué : complétez les matières, coefficients et professeurs requis avant de générer.'

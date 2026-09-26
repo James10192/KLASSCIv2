@@ -61,6 +61,8 @@
     .mtc-suggest { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap;
         color: #a5670a; background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.28);
         padding: .1rem .45rem; border-radius: 5px; }
+    /* Sur sa propre ligne : la raison doit se lire au doigt, pas seulement au survol. */
+    .mtc-suggest-raison { flex-basis: 100%; font-size: .74rem; color: #64748b; line-height: 1.35; }
 
     /* Choix des matières à rattacher */
     .mtc-ajout-recherche { width: 100%; padding: .55rem .8rem; border: 1px solid #d7e0ec; border-radius: 9px;

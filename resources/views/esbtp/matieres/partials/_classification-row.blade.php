@@ -31,6 +31,8 @@
             <span class="mtc-suggest" x-show="m.suggested && !m.classification"
                 x-text="m.suggested === 'tronc_commun' ? 'suggéré : tronc commun' : 'suggéré : spécialité'"
                 :title="m.suggestion_raison || ''"></span>
+            <span class="mtc-suggest-raison" x-show="m.suggested && !m.classification && m.suggestion_raison"
+                x-text="m.suggestion_raison"></span>
             </div>
         </div>
 
