@@ -17,6 +17,7 @@ on:
       - 'public/js/messages-hub-v2.js'
       - 'public/css/messages-hub-v2.css'
       - 'tests/Feature/Messages/**'
+      - 'tests/browser/messages-critical.js'
       - '.github/workflows/messages-ci.yml'
 
 jobs:
@@ -64,7 +65,9 @@ jobs:
           php artisan migrate:fresh --force
 
       - name: JavaScript syntax
-        run: node --check public/js/messages-hub-v2.js
+        run: |
+          node --check public/js/messages-hub-v2.js
+          node --check tests/browser/messages-critical.js
 
       - name: Losseni/KIPRE + legacy workflow + action persistence
         run: php vendor/bin/phpunit tests/Feature/Messages/MessageHubTruthAndActionsTest.php --no-coverage
