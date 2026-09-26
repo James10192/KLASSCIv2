@@ -90,6 +90,7 @@ class ConversationEntityLinkService
                 'relation_label' => 'Lien à vérifier',
                 'relation_verified' => false,
                 'confidence' => 'unknown',
+                'can_verify' => false,
                 'details' => [],
                 'open_url' => null,
                 'sensitive_actions_allowed' => false,
@@ -103,6 +104,7 @@ class ConversationEntityLinkService
     {
         $viewAllowed = $this->allowed($viewer, $link->required_view_permission);
         $detailAllowed = $viewAllowed && $this->allowed($viewer, $link->required_detail_permission);
+        $canVerify = $viewAllowed && $this->canVerify($viewer, $link->entity_type);
 
         $this->logAccess($viewer, $link, $purpose, $viewAllowed, $link->required_view_permission);
 
@@ -119,6 +121,7 @@ class ConversationEntityLinkService
                 'confidence' => $link->confidence,
                 'can_view' => false,
                 'can_view_details' => false,
+                'can_verify' => false,
                 'details' => [],
                 'open_url' => null,
                 'sensitive_actions_allowed' => false,
@@ -143,6 +146,7 @@ class ConversationEntityLinkService
             'related_user_id' => $link->related_user_id,
             'can_view' => true,
             'can_view_details' => $detailAllowed,
+            'can_verify' => $canVerify,
             'details' => $detailAllowed ? $entity['details'] : $this->nonSensitiveDetails($entity['details']),
             'open_url' => $entity['url'],
             // Une relation « partagé par », « responsable » ou « contact administratif »
@@ -303,6 +307,19 @@ class ConversationEntityLinkService
     private function allowed(User $viewer, ?string $permission): bool
     {
         return $permission === null || $permission === '' || $viewer->can($permission);
+    }
+
+    private function canVerify(User $viewer, string $entityType): bool
+    {
+        if ($viewer->can('admin.access')) {
+            return true;
+        }
+
+        return match ($entityType) {
+            'inscription' => $viewer->can('inscriptions.validate'),
+            'paiement' => $viewer->can('paiements.validate'),
+            default => false,
+        };
     }
 
     private function logAccess(
