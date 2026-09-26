@@ -739,6 +739,9 @@ function bulIndex() {
         baseUrl: @json(route('esbtp.bulletins.index')),
 
         init() {
+            // Cette page affiche ses propres toasts : le relais du shell mobile
+            // les doublerait, a toutes les largeurs.
+            document.body.dataset.mToast = 'off';
             // AJAX no-reload : intercepter les changes de select premium
             const form = document.getElementById('bul-filter-form');
             if (form) {

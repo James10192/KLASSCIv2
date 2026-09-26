@@ -21,6 +21,9 @@ function busSelect() {
         // Portée du save : 'selected' (semestre courant) ou 'both' (S1 + S2 via periode=annuel).
         saveScope: 'selected',
         init() {
+            // Cette page affiche ses propres toasts : le relais du shell mobile
+            // les doublerait, a toutes les largeurs.
+            document.body.dataset.mToast = 'off';
             window.addEventListener('toast', (ev) => this.pushToast(ev.detail));
             window.addEventListener('bus-open-config-modal', (ev) => this.openConfigModal(ev.detail || {}));
         },
@@ -45,7 +48,7 @@ function busSelect() {
             };
 
             if (!context.classe_id || !context.annee_universitaire_id || !context.periode) {
-                this.pushToast({ type: 'error', message: 'Sélectionnez la classe, l'année universitaire et la période avant de configurer.' });
+                this.pushToast({ type: 'error', message: "Sélectionnez la classe, l'année universitaire et la période avant de configurer." });
                 return;
             }
 
@@ -504,7 +507,7 @@ window.busCard = function (cfg) {
 
         openInlineConfig(issue = null) {
             if (!this.form.classe_id || !this.form.annee_universitaire_id || !this.form.periode) {
-                this.notify('error', 'Sélectionnez la classe, l'année universitaire et la période avant de configurer.');
+                this.notify('error', "Sélectionnez la classe, l'année universitaire et la période avant de configurer.");
                 return;
             }
 
