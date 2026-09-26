@@ -56,9 +56,11 @@ candidats_php() {
     [ -n "${LOCALAPPDATA:-}" ] && winget=$(cygpath -u "$LOCALAPPDATA" 2>/dev/null || printf '%s' "$LOCALAPPDATA")
     for c in "$winget"/Microsoft/WinGet/Packages/PHP.PHP.*/php.exe /c/laragon/bin/php/php-*/php.exe; do
         [ -f "$c" ] && printf '%s\n' "$c"
-    done | sort -V -r
+    done | sort -r
 }
-read -r PHP_MIN_MAJ PHP_MIN_MIN < <(sed -n 's/^[[:space:]]*"php"[[:space:]]*:[[:space:]]*"[^0-9]*\([0-9][0-9]*\)\.\([0-9][0-9]*\).*/\1 \2/p' composer.json | head -n 1)
+# Le "php" du bloc require (config.platform porte aussi un "php", ignore ici).
+read -r PHP_MIN_MAJ PHP_MIN_MIN < <(awk '/"require"[[:space:]]*:/ { r = 1 } r && /"php"[[:space:]]*:/ { print; exit } r && /}/ { r = 0 }' composer.json \
+    | sed -n 's/^[[:space:]]*"php"[[:space:]]*:[[:space:]]*"[^0-9]*\([0-9][0-9]*\)\.\([0-9][0-9]*\).*/\1 \2/p')
 [ -n "${PHP_MIN_MIN:-}" ] || abandon "version de PHP exigee introuvable dans composer.json"
 PHP_MIN="$PHP_MIN_MAJ.$PHP_MIN_MIN"; PHP_MIN_ID=$((PHP_MIN_MAJ * 10000 + PHP_MIN_MIN * 100))
 if [ -n "$PHP_BIN" ]; then
@@ -175,6 +177,7 @@ repond() { "$PHP" -r "new PDO('mysql:host=127.0.0.1;port=$CI_DB_PORT','root','')
 repond && abandon "le port $CI_DB_PORT est deja occupe par un autre serveur"
 # Repertoire non initialise mais deja rempli (un ancien premier lancement y
 # ecrivait laravel-cache) : MariaDB refuserait, autant le dire clairement.
+# Absent, il est cree par mysql_install_db lui-meme.
 if [ ! -d "$CI_DATADIR/mysql" ] && [ -n "$(ls -A "$CI_DATADIR" 2>/dev/null)" ]; then
     abandon "$CI_DATADIR n'est pas initialise mais n'est pas vide : le vider ou choisir un autre CI_DATADIR"
 fi
