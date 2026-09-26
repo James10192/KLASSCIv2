@@ -242,7 +242,8 @@
 
     function filterConversations() {
         var q = ($('[data-mh-conversation-search]').value || '').toLowerCase().trim();
-        var filter = ($('.mh-filter.is-active') || {}).dataset ? $('.mh-filter.is-active').dataset.filter : 'all';
+        var activeFilter = $('.mh-filter.is-active');
+        var filter = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
         $$('.mh-conversation').forEach(function (row) {
             var haystack = (row.getAttribute('data-search') || '').toLowerCase();
             var unread = Number(row.getAttribute('data-unread') || 0) > 0;
@@ -401,6 +402,14 @@
         var gotoActions = e.target.closest('[data-mh-goto-actions]'); if (gotoActions) { closeModal(); setView('actions'); return; }
     });
 
+    root.addEventListener('keydown', function (e) {
+        var action = e.target.closest && e.target.closest('.mh-action-row');
+        if (action && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            openAction(action.getAttribute('data-action-id'));
+        }
+    });
+
     $('[data-mh-compose-input]').addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
@@ -424,7 +433,10 @@
         var status = row.getAttribute('data-status') || 'todo';
         var card = $('[data-kanban-for="' + row.getAttribute('data-action-id') + '"]');
         var column = $('[data-kanban-status="' + status + '"] .mh-kanban-body');
-        if (card && column) column.appendChild(card);
+        if (card && column) {
+            card.style.display = '';
+            column.appendChild(card);
+        }
     });
 
     var queryConversation = new URLSearchParams(window.location.search).get('conversation');
