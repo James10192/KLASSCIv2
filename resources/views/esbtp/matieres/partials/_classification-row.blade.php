@@ -25,11 +25,13 @@
                 <span class="mtc-rank-tag"
                     x-text="m.ordre_source === 'combo' ? 'Propre' : (m.ordre_source === 'general' ? 'Général' : '')"></span>
             </div>
+            <div class="mtc-row-ident">
             <span class="mtc-row-name" x-text="m.name"></span>
             <span class="mtc-row-code" x-show="m.code" x-text="m.code"></span>
             <span class="mtc-suggest" x-show="m.suggested && !m.classification"
                 x-text="m.suggested === 'tronc_commun' ? 'suggéré : tronc commun' : 'suggéré : spécialité'"
                 :title="m.suggestion_raison || ''"></span>
+            </div>
         </div>
 
         <div class="mtc-seg">

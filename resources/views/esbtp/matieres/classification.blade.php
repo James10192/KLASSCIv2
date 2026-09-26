@@ -52,6 +52,9 @@
         border: 1px solid #eef2f7; border-radius: 10px; margin-bottom: .5rem; background: #fff; }
     .mtc-row:hover { border-color: #d7e0ec; }
     .mtc-row-main { display: flex; align-items: center; gap: .7rem; min-width: 0; }
+    /* Nom, code et suggestion vont à la ligne ensemble plutôt que de
+       déborder sous les boutons du semestre. */
+    .mtc-row-ident { display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .5rem; flex: 1 1 auto; min-width: 0; }
     .mtc-row-name { font-weight: 600; color: #1e293b; font-size: .92rem; }
     .mtc-row-code { font-size: .72rem; color: #94a3b8; font-family: 'Courier New', monospace; background: #f1f5f9;
         padding: .1rem .4rem; border-radius: 5px; }
