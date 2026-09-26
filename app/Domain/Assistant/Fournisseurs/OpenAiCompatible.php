@@ -50,6 +50,8 @@ class OpenAiCompatible extends AdaptateurHttp
         $raison = null;
         $entree = 0;
         $sortie = 0;
+        $cache = 0;
+        $cout = null;
         $recu = false;
 
         foreach ($sse as $evenement) {
@@ -64,6 +66,11 @@ class OpenAiCompatible extends AdaptateurHttp
             if (isset($d['usage']) && is_array($d['usage'])) {
                 $entree = (int) ($d['usage']['prompt_tokens'] ?? $entree);
                 $sortie = (int) ($d['usage']['completion_tokens'] ?? $sortie);
+                $cache = (int) ($d['usage']['prompt_tokens_details']['cached_tokens'] ?? $cache);
+                // OpenRouter donne le coût réel de l'appel, en dollars.
+                if (isset($d['usage']['cost']) && is_numeric($d['usage']['cost'])) {
+                    $cout = (float) $d['usage']['cost'];
+                }
             }
 
             $choix = $d['choices'][0] ?? null;
@@ -110,7 +117,7 @@ class OpenAiCompatible extends AdaptateurHttp
             yield EvenementModele::outil($appel['id'], $appel['nom'], is_array($args) ? $args : []);
         }
 
-        yield EvenementModele::usage($entree, $sortie);
+        yield EvenementModele::usage($entree, $sortie, $cache, $cout);
 
         if ($raison === null) {
             yield EvenementModele::erreur('flux_interrompu');

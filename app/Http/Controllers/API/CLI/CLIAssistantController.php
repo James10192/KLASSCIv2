@@ -50,6 +50,28 @@ class CLIAssistantController extends BaseApiController
         return $this->appliquer(fn () => $this->reglages->retirerCle($fournisseur, null), 'Clé retirée.');
     }
 
+    /** Consommation de l'assistant sur les N derniers jours (30 par défaut). */
+    public function consommation(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read') && ! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+        $jours = (int) ($request->validate(['jours' => ['nullable', 'integer', 'min:1', 'max:366']])['jours'] ?? 30);
+
+        return $this->successResponse(app(\App\Domain\Assistant\Consommation\ResumeDeConsommation::class)
+            ->pour(now()->subDays($jours - 1)->startOfDay(), now()));
+    }
+
+    public function definirBudget(Request $request): JsonResponse
+    {
+        if ($refus = $this->refuserSansAdmin($request)) {
+            return $refus;
+        }
+        $donnees = $request->validate(['fcfa' => ['required', 'numeric', 'min:0', 'max:100000000']]);
+
+        return $this->appliquer(fn () => $this->reglages->definirBudget((float) $donnees['fcfa']), 'Budget mensuel enregistré.');
+    }
+
     public function choisirModele(Request $request): JsonResponse
     {
         if ($refus = $this->refuserSansAdmin($request)) {

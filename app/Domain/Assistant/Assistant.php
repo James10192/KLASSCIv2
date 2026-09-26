@@ -3,6 +3,8 @@
 namespace App\Domain\Assistant;
 
 use App\Domain\Assistant\Affichage\ConstructeurAffichage;
+use App\Domain\Assistant\Consommation\Compteur;
+use App\Domain\Assistant\Consommation\JournalDeConsommation;
 use App\Domain\Assistant\Flux\UiMessageStream;
 use App\Domain\Assistant\Fournisseurs\EvenementModele;
 use App\Domain\Assistant\Fournisseurs\RequeteModele;
@@ -12,6 +14,8 @@ use App\Domain\Assistant\Harnais\FilDeReponse;
 use App\Domain\Assistant\Harnais\ResultatBoucle;
 use App\Domain\Assistant\Modeles\RegistreDesModeles;
 use App\Domain\Assistant\Outils\CatalogueOutils;
+use App\Domain\Assistant\Routage\Decision;
+use App\Domain\Assistant\Routage\Routeur;
 use App\Models\ChatbotConversation;
 use App\Models\ChatbotUserPreference;
 use App\Services\Chatbot\ConversationContextProvider;
@@ -22,7 +26,9 @@ use Illuminate\Support\Facades\Log;
  * mise en forme + journal. Indépendant du fournisseur de modèle.
  *
  *   Harnais\ConstructeurDePrompt    prompt système et historique neutres
- *   Modeles\RegistreDesModeles      modèle par défaut, autorisés, chaîne de repli
+ *   Modeles\RegistreDesModeles      modèles déclarés, disponibles, chaîne de repli
+ *   Routage\Routeur                 palier et modèles de l'échange, budget du mois
+ *   Consommation\*                  coût de chaque appel, écrit par échange
  *   Harnais\BoucleAgent             tours, outils, garde-fous, parties du flux
  *   Fournisseurs\*                  Anthropic, OpenAI-compatible, Gemini
  *   Affichage\ConstructeurAffichage résultats d'outils → display_data
@@ -37,6 +43,8 @@ class Assistant
         private BoucleAgent $boucle,
         private CatalogueOutils $catalogue,
         private ConversationContextProvider $contextProvider,
+        private Routeur $routeur,
+        private JournalDeConsommation $journal,
     ) {
     }
 
@@ -51,7 +59,18 @@ class Assistant
         ?array $contexteClient,
         UiMessageStream $ui,
         ?string $modeleDemande = null,
+        bool $relance = false,
     ): array {
+        $decision = $this->routeur->decider($question, $conversation, $relance, $modeleDemande);
+        if ($decision->pause) {
+            Log::info('assistant.pause_budget', ['conversation_id' => $conversation->id, 'user_id' => $user?->id]);
+
+            return $this->reponseEnPause($ui);
+        }
+
+        // Une proposition d'action se rattache à la conversation de cet échange.
+        app(\App\Domain\Assistant\Actions\ContexteDEchange::class)->conversation = $conversation;
+
         $requete = new RequeteModele(
             systeme: $this->prompt->systeme($user, $preferences, $contexteClient, $conversation),
             messages: $this->prompt->messages($conversation, $question),
@@ -62,8 +81,9 @@ class Assistant
 
         $affichage = new ConstructeurAffichage($this->contextProvider);
         $fil = new FilDeReponse();
+        $compteur = new Compteur();
         $resultat = $this->boucle->executer(
-            $this->registre->candidats($modeleDemande),
+            $decision->candidats,
             $requete,
             $user,
             $ui,
@@ -73,13 +93,16 @@ class Assistant
                 return $affichage->widgetPour($nom, $res);
             },
             $fil,
+            $compteur,
         );
 
-        $this->journaliser($resultat, $conversation, $user);
+        $this->journaliser($resultat, $conversation, $user, $decision);
+        $consommation = $this->journal->enregistrer($compteur, $user?->id, $conversation->id, 'question', $decision->palier, $resultat->statut);
+        $palier = $this->routeur->palierApres($decision, $resultat, $conversation);
 
         if ($resultat->estErreur() || $resultat->estInterrompu()) {
             return [
-                'text' => $resultat->texte !== '' ? $resultat->texte : "Désolé, l'assistant n'a pas pu répondre. Réessayez dans un instant.",
+                'text' => $resultat->texte !== '' ? $resultat->texte : "Désolée, je n'ai pas pu répondre cette fois. Réessayez dans un instant.",
                 'tool_calls' => $resultat->appels,
                 'display_type' => 'text',
                 'display_data' => null,
@@ -90,6 +113,8 @@ class Assistant
                 'parties' => $fil->toArray(),
                 'trace' => $resultat->trace,
                 'suites' => [],
+                'consommation' => $consommation,
+                'palier' => $palier,
             ];
         }
 
@@ -127,15 +152,45 @@ class Assistant
             'parties' => $fil->toArray(),
             'trace' => $resultat->trace,
             'suites' => $affichage->suites(),
+            'consommation' => $consommation,
+            'palier' => $palier,
+        ];
+    }
+
+    /**
+     * Budget du mois épuisé au-delà du seuil de pause : aucun appel au modèle,
+     * une réponse qui dit pourquoi et jusqu'à quand.
+     */
+    private function reponseEnPause(UiMessageStream $ui): array
+    {
+        $reprise = now()->addMonthNoOverflow()->startOfMonth()->locale('fr')->isoFormat('D MMMM');
+        $texte = "Je me repose : le budget d'intelligence artificielle prévu ce mois-ci pour l'école est épuisé. "
+            . "Je reprends le {$reprise}. En attendant, toutes les pages de KLASSCI restent accessibles, "
+            . "et l'équipe KLASSCI Care peut relever ce budget si l'école le demande.";
+        $ui->text($texte);
+
+        return [
+            'text' => $texte, 'tool_calls' => [], 'display_type' => 'text', 'display_data' => null,
+            'deep_link' => null, 'erreur' => false, 'interrompu' => false, 'modele' => null,
+            'parties' => [['type' => 'texte', 'texte' => $texte]], 'trace' => [], 'suites' => [],
+            'consommation' => [], 'palier' => null,
         ];
     }
 
     /**
      * Titre court de conversation, par le premier modèle disponible, sans outil.
      */
-    public function genererTitre(string $message): ?string
+    public function genererTitre(string $message, ?int $userId = null, ?int $conversationId = null): ?string
     {
-        foreach (array_slice($this->registre->candidats(), 0, 2) as $modele) {
+        // Un titre ne demande aucun raisonnement : palier le moins cher d'abord.
+        $decision = $this->routeur->decider('', null);
+        if ($decision->pause) {
+            return null;
+        }
+        $candidats = $decision->candidats ?: $this->registre->candidats();
+        $compteur = new Compteur();
+        $titre = null;
+        foreach (array_slice($candidats, 0, 2) as $modele) {
             $requete = new RequeteModele(
                 systeme: 'Génère un titre court (40 caractères au plus) pour cette conversation. Réponds uniquement par le titre, sans guillemets ni ponctuation finale.',
                 messages: [['role' => 'user', 'texte' => $message]],
@@ -145,28 +200,49 @@ class Assistant
 
             $texte = '';
             $erreur = false;
+            $usage = [];
             $fournisseur = app(config('assistant.adaptateurs.' . $modele->adaptateur));
             foreach ($fournisseur->diffuser($requete, $modele, fn () => false) as $evenement) {
                 if ($evenement->type === EvenementModele::TEXTE) {
                     $texte .= $evenement->donnees['delta'];
+                } elseif ($evenement->type === EvenementModele::USAGE) {
+                    $usage = $evenement->donnees;
                 } elseif ($evenement->type === EvenementModele::ERREUR) {
                     $erreur = true;
                     break;
                 }
             }
+            // Un appel est facturé même raté ; il est compté, marqué en échec s'il a échoué.
+            // Sans usage rapporté, une réponse reçue est estimée (4 caractères par jeton)
+            // plutôt que comptée à zéro ; un appel refusé (connexion, clé) n'a rien coûté.
+            $estime = ! $erreur && $usage === [];
+            $compteur->ajouter(
+                $modele,
+                (int) ($usage['entree'] ?? ($estime ? (int) ceil(mb_strlen($requete->systeme . $message, 'UTF-8') / 4) : 0)),
+                (int) ($usage['sortie'] ?? ($estime ? (int) ceil(mb_strlen($texte, 'UTF-8') / 4) : 0)),
+                (int) ($usage['cache'] ?? 0),
+                $usage['cout'] ?? null,
+                0,
+                $erreur || trim($texte) === ''
+            );
 
             if (!$erreur && trim($texte) !== '') {
-                return mb_substr(trim($texte, " \t\n\r\"'"), 0, 40, 'UTF-8');
+                $titre = mb_substr(trim($texte, " \t\n\r\"'"), 0, 40, 'UTF-8');
+                break;
             }
         }
 
-        return null;
+        $this->journal->enregistrer($compteur, $userId, $conversationId, 'titre', null, $titre === null ? 'erreur' : 'ok');
+
+        return $titre;
     }
 
     /** Un échange = une ligne de journal, sans le contenu des messages. */
-    private function journaliser(ResultatBoucle $r, ChatbotConversation $conversation, $user): void
+    private function journaliser(ResultatBoucle $r, ChatbotConversation $conversation, $user, Decision $decision): void
     {
         $contexte = [
+            'palier' => $decision->palier,
+            'routage' => $decision->raison,
             'statut' => $r->statut,
             'fournisseur' => $r->fournisseur,
             'modele' => $r->modele,

@@ -14,11 +14,11 @@
     <script type="application/json" data-ast-config>@json($astConfig)</script>
 
     <button type="button" class="ast-launcher" x-ref="lanceur" x-show="!ouvert"
-            x-on:click="ouvrir()" aria-haspopup="dialog" aria-label="Ouvrir l'assistant KLASSCI">
+            x-on:click="ouvrir()" aria-haspopup="dialog" aria-label="Ouvrir Nanan, l'assistante KLASSCI">
         <span class="ast-mark" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6L5.5 10l4.6-1.9L12 3.5z" fill="currentColor"/><path d="M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" fill="currentColor" opacity=".7"/></svg>
         </span>
-        <span class="ast-launcher-label">Assistant</span>
+        <span class="ast-launcher-label">Nanan</span>
     </button>
 
     <div class="ast-scrim" x-show="ouvert" x-cloak x-transition.opacity x-on:click="fermer()" aria-hidden="true"></div>
@@ -33,15 +33,15 @@
             <button type="button" class="ast-icon-btn" x-show="vue !== 'chat'" x-on:click="vue = 'chat'" aria-label="Retour à la conversation">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i>
             </button>
-            <span class="ast-mark ast-mark--head" x-show="vue === 'chat'" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="17" height="17" fill="none"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6L5.5 10l4.6-1.9L12 3.5z" fill="currentColor"/><path d="M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" fill="currentColor" opacity=".7"/></svg>
+            <span class="ast-mark ast-mark--head" x-show="vue === 'chat'" x-bind:class="{ 'is-pense': envoiEnCours }" aria-hidden="true">
+                <svg class="ast-nanan" viewBox="0 0 24 24" width="20" height="20" fill="none"><rect x="2.5" y="3" width="19" height="18" rx="8" fill="currentColor"/><g class="ast-nanan-yeux"><circle cx="9" cy="11" r="1.6" fill="#fff"/><circle cx="15" cy="11" r="1.6" fill="#fff"/></g><path class="ast-nanan-bouche" d="M9.2 15.2c1.6 1.3 4 1.3 5.6 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>
             </span>
             <div class="ast-head-titles">
                 <h2 id="ast-title" class="ast-title"
-                    x-text="vue === 'historique' ? 'Conversations' : (vue === 'preferences' ? 'Préférences' : 'Assistant KLASSCI')">Assistant KLASSCI</h2>
+                    x-text="vue === 'historique' ? 'Conversations' : (vue === 'preferences' ? 'Préférences' : 'Nanan')">Nanan</h2>
                 <p class="ast-subtitle" x-show="vue === 'chat'">
                     <span class="ast-live-dot" aria-hidden="true"></span>
-                    <span>Connecté à vos données KLASSCI</span>
+                    <span x-text="envoiEnCours ? 'Nanan réfléchit…' : 'Votre assistante KLASSCI'">Votre assistante KLASSCI</span>
                 </p>
             </div>
             <div class="ast-head-actions">
@@ -73,10 +73,10 @@
 
                     <div class="ast-empty" x-show="messages.length === 0 && !chargementHistorique">
                         <span class="ast-mark ast-mark--xl" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" width="24" height="24" fill="none"><path d="M12 3.5l1.9 4.6 4.6 1.9-4.6 1.9L12 16.5l-1.9-4.6L5.5 10l4.6-1.9L12 3.5z" fill="currentColor"/><path d="M18.5 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2z" fill="currentColor" opacity=".7"/></svg>
+                            <svg class="ast-nanan" viewBox="0 0 24 24" width="30" height="30" fill="none"><rect x="2.5" y="3" width="19" height="18" rx="8" fill="currentColor"/><g class="ast-nanan-yeux"><circle cx="9" cy="11" r="1.6" fill="#fff"/><circle cx="15" cy="11" r="1.6" fill="#fff"/></g><path class="ast-nanan-bouche" d="M9.2 15.2c1.6 1.3 4 1.3 5.6 0" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/></svg>
                         </span>
                         <h3 class="ast-empty-title" x-text="cfg.prenom ? 'Bonjour ' + cfg.prenom : 'Bonjour'">Bonjour</h3>
-                        <p class="ast-empty-text">Posez une question sur l'école : je consulte KLASSCI avec les accès de votre compte, et je vous montre ce que j'ai trouvé.</p>
+                        <p class="ast-empty-text">Je suis Nanan. Posez-moi une question sur l'école : je consulte KLASSCI avec les accès de votre compte, je vous montre ce que j'ai trouvé, et je ne modifie rien sans votre accord.</p>
                         <div class="ast-suggestions" x-show="cfg.suggestions.length">
                             <template x-for="s in cfg.suggestions.slice(0, 4)" x-bind:key="s">
                                 <button type="button" class="ast-suggestion" x-on:click="proposer(s)">
@@ -94,7 +94,16 @@
                     <template x-for="msg in messages" x-bind:key="msg.key">
                         <div class="ast-msg" x-bind:class="'ast-msg--' + msg.role" x-bind:data-key="msg.key">
                             <template x-if="msg.role === 'user'">
-                                <div class="ast-bubble" x-text="msg.text"></div>
+                                <div class="ast-bubble-wrap">
+                                    <div class="ast-bubble" x-text="msg.text"></div>
+                                    <template x-if="msg.pieces && msg.pieces.length">
+                                        <div class="ast-bubble-pieces">
+                                            <template x-for="(p, i) in msg.pieces" x-bind:key="i">
+                                                <span class="ast-piece is-pret"><i class="fas fa-file-lines" aria-hidden="true"></i><span class="ast-piece-nom" x-text="p.nom"></span></span>
+                                            </template>
+                                        </div>
+                                    </template>
+                                </div>
                             </template>
 
                             <template x-if="msg.role === 'assistant'">
@@ -139,6 +148,69 @@
                                                 x-bind:aria-label="msg.copie ? 'Copié' : 'Copier la réponse'" x-bind:title="msg.copie ? 'Copié' : 'Copier'">
                                             <i class="fas" x-bind:class="msg.copie ? 'fa-check' : 'fa-copy'" aria-hidden="true"></i>
                                         </button>
+                                        <template x-if="msg.dbId">
+                                            <span class="ast-avis">
+                                                <button type="button" class="ast-icon-btn ast-icon-btn--sm" x-on:click="donnerAvis(msg, 'utile')"
+                                                        x-bind:class="{ 'is-on': msg.avis === 'utile' }" x-bind:aria-pressed="msg.avis === 'utile' ? 'true' : 'false'"
+                                                        aria-label="Réponse utile" title="Utile">
+                                                    <i class="fas fa-thumbs-up" aria-hidden="true"></i>
+                                                </button>
+                                                <button type="button" class="ast-icon-btn ast-icon-btn--sm" x-on:click="donnerAvis(msg, 'pas_utile')"
+                                                        x-bind:class="{ 'is-on': msg.avis === 'pas_utile' }" x-bind:aria-pressed="msg.avis === 'pas_utile' ? 'true' : 'false'"
+                                                        aria-label="Réponse pas utile" title="Pas utile">
+                                                    <i class="fas fa-thumbs-down" aria-hidden="true"></i>
+                                                </button>
+                                            </span>
+                                        </template>
+                                    </div>
+
+                                    <div class="ast-retour" x-show="msg.retourOuvert" x-cloak>
+                                        <template x-if="!msg.retourEnvoye">
+                                            <div class="ast-retour-form">
+                                                <div class="ast-retour-titre">Qu'est-ce qui ne va pas ?</div>
+                                                <div class="ast-retour-raisons" role="radiogroup" aria-label="Raison">
+                                                    <template x-for="(libelle, cle) in cfg.raisons" x-bind:key="cle">
+                                                        <button type="button" class="ast-chip" role="radio" x-bind:aria-checked="msg.raison === cle ? 'true' : 'false'"
+                                                                x-bind:class="{ 'is-on': msg.raison === cle }" x-on:click="msg.raison = cle" x-text="libelle"></button>
+                                                    </template>
+                                                </div>
+                                                <label class="ast-sr" x-bind:for="'ast-com-' + msg.key">Précisez (facultatif)</label>
+                                                <textarea class="ast-input" rows="2" maxlength="1000" x-bind:id="'ast-com-' + msg.key" x-model="msg.commentaire"
+                                                          placeholder="Précisez si vous le souhaitez (facultatif)"></textarea>
+                                                <div class="ast-retour-actions">
+                                                    <button type="button" class="ast-btn ast-btn--primary" x-on:click="envoyerRetour(msg)">Envoyer</button>
+                                                    <button type="button" class="ast-btn ast-btn--ghost" x-on:click="msg.retourOuvert = false">Fermer</button>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <template x-if="msg.retourEnvoye">
+                                            <div class="ast-retour-merci">
+                                                <span><i class="fas fa-check" aria-hidden="true"></i> Merci, c'est noté. La prochaine réponse sera plus poussée.</span>
+                                                <span class="ast-retour-care" x-show="msg.signalement.etat === 'envoye' && !msg.signalement.ouvert" x-text="msg.signalement.message"></span>
+                                                <template x-if="cfg.care && !msg.signalement.ouvert && msg.signalement.etat !== 'envoye'">
+                                                    <button type="button" class="ast-btn ast-btn--ghost" x-on:click="ouvrirSignalement(msg)">
+                                                        <i class="fas fa-life-ring" aria-hidden="true"></i> Signaler à KLASSCI Care
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <template x-if="msg.signalement.ouvert">
+                                            <div class="ast-retour-form">
+                                                <div class="ast-retour-titre">Signaler à KLASSCI Care</div>
+                                                <p class="ast-retour-aide">Relisez le texte et retirez ce que vous ne voulez pas transmettre. Le support le recevra avec des repères techniques : la page ouverte, le navigateur, le numéro de cette réponse et le modèle qui l'a écrite.</p>
+                                                <label class="ast-sr" x-bind:for="'ast-sig-' + msg.key">Description</label>
+                                                <textarea class="ast-input" rows="5" x-bind:maxlength="cfg.signalementMax" x-bind:id="'ast-sig-' + msg.key" x-model="msg.signalement.texte"
+                                                          x-bind:disabled="msg.signalement.etat === 'envoi' || msg.signalement.etat === 'envoye'"></textarea>
+                                                <div class="ast-retour-actions" x-show="msg.signalement.etat !== 'envoye'">
+                                                    <button type="button" class="ast-btn ast-btn--primary" x-on:click="signaler(msg)" x-bind:disabled="msg.signalement.etat === 'envoi'">
+                                                        <span x-text="msg.signalement.etat === 'envoi' ? 'Envoi…' : 'Envoyer au support'"></span>
+                                                    </button>
+                                                    <button type="button" class="ast-btn ast-btn--ghost" x-on:click="msg.signalement.ouvert = false">Annuler</button>
+                                                </div>
+                                                <div class="ast-approval-state" role="status" x-bind:class="{ 'is-ok': msg.signalement.etat === 'envoye', 'is-ko': msg.signalement.etat === 'erreur' }"
+                                                     x-text="msg.signalement.message" x-show="msg.signalement.message"></div>
+                                            </div>
+                                        </template>
                                     </div>
                                 </div>
                             </template>
@@ -155,12 +227,29 @@
                 </button>
 
                 <form class="ast-composer" x-on:submit.prevent="envoyer()">
+                    <div class="ast-pieces" x-show="pieces.length" x-cloak>
+                        <template x-for="p in pieces" x-bind:key="p.key">
+                            <span class="ast-piece" x-bind:class="'is-' + p.etat" x-bind:title="p.message || p.nom">
+                                <i class="fas" x-bind:class="p.etat === 'envoi' ? 'fa-spinner fa-spin' : (p.etat === 'erreur' ? 'fa-triangle-exclamation' : 'fa-file-lines')" aria-hidden="true"></i>
+                                <span class="ast-piece-nom" x-text="p.nom"></span>
+                                <span class="ast-piece-info" x-text="p.etat === 'pret' ? p.lignes + ' ligne(s)' + (p.tronque ? ' (tronqué)' : '') : (p.etat === 'erreur' ? p.message : 'Lecture…')"></span>
+                                <button type="button" class="ast-piece-retirer" x-on:click="retirerPiece(p)" x-bind:aria-label="'Retirer ' + p.nom">
+                                    <i class="fas fa-xmark" aria-hidden="true"></i>
+                                </button>
+                            </span>
+                        </template>
+                    </div>
                     <label for="ast-input" class="ast-sr">Votre question</label>
                     <textarea id="ast-input" class="ast-textarea" x-ref="saisie" rows="1"
                               x-model="saisie" x-on:input="ajusterHauteur(); erreurSaisie = ''" x-on:keydown="surTouche($event)"
                               x-bind:maxlength="cfg.maxLength" x-bind:disabled="envoiEnCours"
-                              placeholder="Demandez à KLASSCI…" aria-describedby="ast-hint"></textarea>
+                              placeholder="Demandez à Nanan…" aria-describedby="ast-hint"></textarea>
                     <div class="ast-composer-row">
+                        <label class="ast-icon-btn ast-joindre" title="Joindre un fichier Excel, CSV ou Word" x-show="pieces.length < 3">
+                            <input type="file" class="ast-sr" accept=".xlsx,.xls,.csv,.docx" multiple x-on:change="joindre($event)"
+                                   x-bind:disabled="envoiEnCours" aria-label="Joindre un fichier Excel, CSV ou Word">
+                            <i class="fas fa-paperclip" aria-hidden="true"></i>
+                        </label>
                         <template x-if="cfg.modeles && cfg.modeles.liste">
                             <div class="ast-model" x-on:click.outside="menuModele = false" x-on:keydown.escape.stop="menuModele = false">
                                 <button type="button" class="ast-model-btn" x-on:click="menuModele = !menuModele"

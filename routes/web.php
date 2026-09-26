@@ -3214,6 +3214,19 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('chatbot')->name('chatbot.'
     Route::post('/preferences/memory', [App\Http\Controllers\ChatbotController::class, 'saveMemory'])->name('preferences.memory');
     Route::post('/actions/{action}/approve', [App\Http\Controllers\ChatbotController::class, 'approveAction'])->name('actions.approve');
     Route::post('/actions/{action}/reject', [App\Http\Controllers\ChatbotController::class, 'rejectAction'])->name('actions.reject');
+    // Propositions de l'assistant : rien n'est écrit avant ce clic.
+    Route::post('/propositions/{proposition}/valider', [App\Http\Controllers\Assistant\PropositionController::class, 'valider'])
+        ->middleware('throttle:20,1')->name('propositions.valider');
+    Route::post('/propositions/{proposition}/refuser', [App\Http\Controllers\Assistant\PropositionController::class, 'refuser'])
+        ->middleware('throttle:20,1')->name('propositions.refuser');
+    // Fichier joint (Excel, CSV, Word) : lu tout de suite, seul son tableau est gardé.
+    Route::post('/pieces', [App\Http\Controllers\Assistant\PieceJointeController::class, 'deposer'])
+        ->middleware('throttle:10,1')->name('pieces.deposer');
+    // Avis sur une réponse et signalement à KLASSCI Care.
+    Route::post('/messages/{message}/retour', [App\Http\Controllers\Assistant\RetourController::class, 'enregistrer'])
+        ->middleware('throttle:30,1')->name('messages.retour');
+    Route::post('/messages/{message}/signaler', [App\Http\Controllers\Assistant\RetourController::class, 'signaler'])
+        ->middleware('throttle:5,1')->name('messages.signaler');
     Route::get('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'getMandatoryFraisCategoryForm'])->name('forms.frais-category');
     Route::post('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'storeMandatoryFraisCategory'])->name('forms.frais-category.store');
     Route::get('/forms/frais-config', [App\Http\Controllers\ChatbotController::class, 'getFraisConfigForm'])->name('forms.frais-config');
