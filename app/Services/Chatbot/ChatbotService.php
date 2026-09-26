@@ -383,9 +383,11 @@ class ChatbotService
         // l'état enregistré dans le fil est celui du moment où elle a été faite.
         $propositions = \App\Models\ChatbotActionLog::where('conversation_id', $conversation->id)
             ->where('user_id', $userId)->get()->keyBy('id');
+        $retours = \App\Domain\Assistant\Retours\RetourDeReponse::where('conversation_id', $conversation->id)
+            ->where('user_id', $userId)->get()->keyBy('message_id');
 
         $messages = $messages
-            ->map(function ($message) use ($propositions) {
+            ->map(function ($message) use ($propositions, $retours) {
                 $parties = $message->metadata['parties'] ?? null;
                 if (is_array($parties)) {
                     foreach ($parties as $i => $partie) {
@@ -404,6 +406,7 @@ class ChatbotService
                     'display_data' => $message->display_data,
                     'deep_link' => $message->deep_link,
                     'parties' => $parties,
+                    'retour' => ($r = $retours->get($message->id)) ? ['avis' => $r->avis, 'care_reference' => $r->care_reference] : null,
                     'created_at' => $message->created_at->toIso8601String(),
                 ];
             });

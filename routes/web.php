@@ -3211,6 +3211,11 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('chatbot')->name('chatbot.'
         ->middleware('throttle:20,1')->name('propositions.valider');
     Route::post('/propositions/{proposition}/refuser', [App\Http\Controllers\Assistant\PropositionController::class, 'refuser'])
         ->middleware('throttle:20,1')->name('propositions.refuser');
+    // Avis sur une réponse et signalement à KLASSCI Care.
+    Route::post('/messages/{message}/retour', [App\Http\Controllers\Assistant\RetourController::class, 'enregistrer'])
+        ->middleware('throttle:30,1')->name('messages.retour');
+    Route::post('/messages/{message}/signaler', [App\Http\Controllers\Assistant\RetourController::class, 'signaler'])
+        ->middleware('throttle:5,1')->name('messages.signaler');
     Route::get('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'getMandatoryFraisCategoryForm'])->name('forms.frais-category');
     Route::post('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'storeMandatoryFraisCategory'])->name('forms.frais-category.store');
     Route::get('/forms/frais-config', [App\Http\Controllers\ChatbotController::class, 'getFraisConfigForm'])->name('forms.frais-config');

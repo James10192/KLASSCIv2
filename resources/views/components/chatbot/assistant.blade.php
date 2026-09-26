@@ -139,6 +139,68 @@
                                                 x-bind:aria-label="msg.copie ? 'Copié' : 'Copier la réponse'" x-bind:title="msg.copie ? 'Copié' : 'Copier'">
                                             <i class="fas" x-bind:class="msg.copie ? 'fa-check' : 'fa-copy'" aria-hidden="true"></i>
                                         </button>
+                                        <template x-if="msg.dbId">
+                                            <span class="ast-avis">
+                                                <button type="button" class="ast-icon-btn ast-icon-btn--sm" x-on:click="donnerAvis(msg, 'utile')"
+                                                        x-bind:class="{ 'is-on': msg.avis === 'utile' }" x-bind:aria-pressed="msg.avis === 'utile' ? 'true' : 'false'"
+                                                        aria-label="Réponse utile" title="Utile">
+                                                    <i class="fas fa-thumbs-up" aria-hidden="true"></i>
+                                                </button>
+                                                <button type="button" class="ast-icon-btn ast-icon-btn--sm" x-on:click="donnerAvis(msg, 'pas_utile')"
+                                                        x-bind:class="{ 'is-on': msg.avis === 'pas_utile' }" x-bind:aria-pressed="msg.avis === 'pas_utile' ? 'true' : 'false'"
+                                                        aria-label="Réponse pas utile" title="Pas utile">
+                                                    <i class="fas fa-thumbs-down" aria-hidden="true"></i>
+                                                </button>
+                                            </span>
+                                        </template>
+                                    </div>
+
+                                    <div class="ast-retour" x-show="msg.retourOuvert" x-cloak>
+                                        <template x-if="!msg.retourEnvoye">
+                                            <div class="ast-retour-form">
+                                                <div class="ast-retour-titre">Qu'est-ce qui ne va pas ?</div>
+                                                <div class="ast-retour-raisons" role="radiogroup" aria-label="Raison">
+                                                    <template x-for="(libelle, cle) in cfg.raisons" x-bind:key="cle">
+                                                        <button type="button" class="ast-chip" role="radio" x-bind:aria-checked="msg.raison === cle ? 'true' : 'false'"
+                                                                x-bind:class="{ 'is-on': msg.raison === cle }" x-on:click="msg.raison = cle" x-text="libelle"></button>
+                                                    </template>
+                                                </div>
+                                                <label class="ast-sr" x-bind:for="'ast-com-' + msg.key">Précisez (facultatif)</label>
+                                                <textarea class="ast-input" rows="2" maxlength="1000" x-bind:id="'ast-com-' + msg.key" x-model="msg.commentaire"
+                                                          placeholder="Précisez si vous le souhaitez (facultatif)"></textarea>
+                                                <div class="ast-retour-actions">
+                                                    <button type="button" class="ast-btn ast-btn--primary" x-on:click="envoyerRetour(msg)">Envoyer</button>
+                                                    <button type="button" class="ast-btn ast-btn--ghost" x-on:click="msg.retourOuvert = false">Fermer</button>
+                                                </div>
+                                            </div>
+                                        </template>
+                                        <template x-if="msg.retourEnvoye">
+                                            <div class="ast-retour-merci">
+                                                <span><i class="fas fa-check" aria-hidden="true"></i> Merci, c'est noté. La prochaine réponse sera plus poussée.</span>
+                                                <template x-if="cfg.care && !msg.signalement.ouvert">
+                                                    <button type="button" class="ast-btn ast-btn--ghost" x-on:click="ouvrirSignalement(msg)">
+                                                        <i class="fas fa-life-ring" aria-hidden="true"></i> Signaler à KLASSCI Care
+                                                    </button>
+                                                </template>
+                                            </div>
+                                        </template>
+                                        <template x-if="msg.signalement.ouvert">
+                                            <div class="ast-retour-form">
+                                                <div class="ast-retour-titre">Signaler à KLASSCI Care</div>
+                                                <p class="ast-retour-aide">Relisez le texte : c'est exactement ce que le support recevra. Retirez ce que vous ne voulez pas transmettre.</p>
+                                                <label class="ast-sr" x-bind:for="'ast-sig-' + msg.key">Description</label>
+                                                <textarea class="ast-input" rows="5" maxlength="4800" x-bind:id="'ast-sig-' + msg.key" x-model="msg.signalement.texte"
+                                                          x-bind:disabled="msg.signalement.etat === 'envoi' || msg.signalement.etat === 'envoye'"></textarea>
+                                                <div class="ast-retour-actions" x-show="msg.signalement.etat !== 'envoye'">
+                                                    <button type="button" class="ast-btn ast-btn--primary" x-on:click="signaler(msg)" x-bind:disabled="msg.signalement.etat === 'envoi'">
+                                                        <span x-text="msg.signalement.etat === 'envoi' ? 'Envoi…' : 'Envoyer au support'"></span>
+                                                    </button>
+                                                    <button type="button" class="ast-btn ast-btn--ghost" x-on:click="msg.signalement.ouvert = false">Annuler</button>
+                                                </div>
+                                                <div class="ast-approval-state" role="status" x-bind:class="{ 'is-ok': msg.signalement.etat === 'envoye', 'is-ko': msg.signalement.etat === 'erreur' }"
+                                                     x-text="msg.signalement.message" x-show="msg.signalement.message"></div>
+                                            </div>
+                                        </template>
                                     </div>
                                 </div>
                             </template>

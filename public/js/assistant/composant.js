@@ -197,7 +197,10 @@
                 this.messages.push({
                     key: uid('m'), role: 'assistant', status: etat || 'streaming', question: question || null,
                     copie: false, erreur: '', aTexte: false, lienWidget: false, liens: [],
-                    suites: { questions: [], actions: [] }
+                    suites: { questions: [], actions: [] },
+                    // Avis 👍 / 👎 et signalement KLASSCI Care
+                    dbId: null, avis: null, retourOuvert: false, raison: '', commentaire: '', retourEnvoye: false,
+                    signalement: { ouvert: false, texte: '', etat: '', message: '', cle: null }
                 });
                 var msg = this.messages[this.messages.length - 1];
                 this.creerVue(msg);
@@ -419,6 +422,7 @@
                 if (meta && meta.conversationId) {
                     this.memoriserConversation(meta.conversationId, meta.title);
                 }
+                if (meta && meta.dbMessageId) { msg.dbId = meta.dbMessageId; }
 
                 if (type === 'text-start') {
                     v.texteDebut(partie.id);
@@ -514,6 +518,78 @@
                 }).catch(function () { /* presse-papiers refusé */ });
             },
 
+            // ─── Avis sur une réponse (👍 / 👎) et signalement à KLASSCI Care ───
+
+            urlDe: function (route, msg) {
+                return this.cfg.routes[route] ? this.cfg.routes[route].replace('__ID__', encodeURIComponent(msg.dbId)) : null;
+            },
+
+            donnerAvis: function (msg, avis) {
+                if (!msg.dbId || msg.avis === avis) {
+                    if (avis === 'pas_utile') { msg.retourOuvert = !msg.retourOuvert; }
+                    return;
+                }
+                var avant = msg.avis;
+                msg.avis = avis;
+                msg.retourOuvert = avis === 'pas_utile';
+                msg.retourEnvoye = false;
+                var self = this;
+                this.postJson(this.urlDe('retour', msg), { avis: avis }).then(function (r) {
+                    if (!r.ok) { msg.avis = avant; msg.retourOuvert = false; }
+                    self.annonce = r.ok ? (avis === 'utile' ? 'Merci pour votre avis.' : 'Merci. Dites-nous ce qui ne va pas.') : 'Avis non enregistré.';
+                }).catch(function () { msg.avis = avant; });
+            },
+
+            envoyerRetour: function (msg) {
+                if (!msg.dbId) { return; }
+                var self = this;
+                this.postJson(this.urlDe('retour', msg), { avis: 'pas_utile', raison: msg.raison || null, commentaire: msg.commentaire || null }).then(function (r) {
+                    msg.retourEnvoye = r.ok;
+                    self.annonce = r.ok ? 'Merci : la prochaine réponse sera plus poussée.' : 'Avis non enregistré.';
+                });
+            },
+
+            /** Brouillon relu par la personne : sa question et un extrait de la réponse, qu'elle peut retirer. */
+            ouvrirSignalement: function (msg) {
+                var question = this.questionDe(msg);
+                var extrait = this.texteDe(msg).slice(0, 600);
+                msg.signalement.texte = (msg.commentaire ? msg.commentaire + '\n\n' : 'Ce qui ne va pas : \n\n')
+                    + (question ? 'Ma question : ' + question + '\n' : '')
+                    + (extrait ? 'Réponse de Nanan (extrait) : ' + extrait : '');
+                msg.signalement.ouvert = true;
+                msg.signalement.etat = '';
+                msg.signalement.cle = null;
+            },
+
+            questionDe: function (msg) {
+                var i = this.messages.indexOf(msg);
+                for (var j = i - 1; j >= 0; j--) {
+                    if (this.messages[j].role === 'user') { return this.messages[j].text || ''; }
+                }
+                return msg.question || '';
+            },
+
+            signaler: function (msg, deuxiemeEssai) {
+                var sig = msg.signalement;
+                if (!msg.dbId || sig.etat === 'envoi') { return; }
+                sig.cle = sig.cle && !deuxiemeEssai ? sig.cle : nouvelleCle();
+                sig.etat = 'envoi';
+                var self = this;
+                this.postJson(this.urlDe('signaler', msg), {
+                    description: sig.texte, cle: sig.cle,
+                    contexte: { url_path: window.location.pathname, viewport: window.innerWidth + 'x' + window.innerHeight }
+                }).then(function (r) {
+                    if (r.statut === 409 && r.json && r.json.erreur === 'cle_perimee' && !deuxiemeEssai) {
+                        sig.etat = '';
+                        self.signaler(msg, true);
+                        return;
+                    }
+                    var detail = r.json && r.json.errors ? Object.values(r.json.errors)[0] : null;
+                    sig.etat = r.ok ? 'envoye' : 'erreur';
+                    sig.message = r.ok ? (r.json.message || 'Signalement envoyé.') : ((Array.isArray(detail) ? detail[0] : detail) || r.message || 'Envoi impossible.');
+                }).catch(function () { sig.etat = 'erreur'; sig.message = 'Connexion interrompue.'; });
+            },
+
             // ─── Conversations ───
 
             memoriserConversation: function (id, titre) {
@@ -560,6 +636,9 @@
                             return;
                         }
                         var msg = self.nouveauMessageAssistant(null, 'done');
+                        msg.dbId = m.id || null;
+                        msg.avis = m.retour ? m.retour.avis : null;
+                        msg.retourEnvoye = !!(m.retour && m.retour.avis === 'pas_utile');
                         var v = vueDe(msg);
                         if (Array.isArray(m.parties) && m.parties.length) {
                             v.chargerParties(m.parties);
@@ -715,6 +794,17 @@
             }
         };
     };
+
+    /** Clé d'idempotence du signalement (UUID v4), comme le widget KLASSCI Care. */
+    function nouvelleCle() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') { return window.crypto.randomUUID(); }
+        var o = new Uint8Array(16);
+        window.crypto.getRandomValues(o);
+        o[6] = (o[6] & 0x0f) | 0x40;
+        o[8] = (o[8] & 0x3f) | 0x80;
+        var h = Array.prototype.map.call(o, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+        return h.slice(0, 8) + '-' + h.slice(8, 12) + '-' + h.slice(12, 16) + '-' + h.slice(16, 20) + '-' + h.slice(20);
+    }
 
     function enCoursStatut(msg) {
         return msg.status === 'streaming';

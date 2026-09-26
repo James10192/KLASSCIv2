@@ -49,8 +49,24 @@ class Assistant extends Component
                 'formFraisCategory' => route('chatbot.forms.frais-category'),
                 'formFraisConfig' => route('chatbot.forms.frais-config'),
                 'formInscriptionsFilter' => route('chatbot.forms.inscriptions-filter'),
+                'retour' => route('chatbot.messages.retour', ['message' => '__ID__'], false),
+                'signaler' => route('chatbot.messages.signaler', ['message' => '__ID__'], false),
             ],
+            'raisons' => \App\Domain\Assistant\Retours\RetourDeReponse::RAISONS,
+            'care' => $user ? $this->careOuvert() : false,
         ];
+    }
+
+    /** « Signaler à KLASSCI Care » n'est proposé que si le support est ouvert à l'instance. */
+    private function careOuvert(): bool
+    {
+        try {
+            return app(\App\Domain\Support\Services\DisponibiliteSupport::class)->signalement();
+        } catch (\Throwable $e) {
+            Log::warning('assistant.care_indisponible', ['erreur' => $e->getMessage()]);
+
+            return false;
+        }
     }
 
     private function prenom($user): string
