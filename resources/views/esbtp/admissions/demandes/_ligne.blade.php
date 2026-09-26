@@ -52,7 +52,7 @@
         @elseif($d->estOuverte() && $d->contactAVerifier())
             <strong class="dmi-conv dmi-conv--alerte">{{ $d->contactAVerifier() }}</strong>
         @else
-            <small>{{ $d->estOuverte() ? 'Pas encore convoquée' : '—' }}</small>
+            <small>{{ $d->estOuverte() ? 'Pas encore convoquée' : 'Aucune' }}</small>
         @endif
     </div>
     <div>

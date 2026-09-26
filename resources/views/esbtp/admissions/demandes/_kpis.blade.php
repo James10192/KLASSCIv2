@@ -9,7 +9,7 @@
 @foreach(\App\Domain\Admissions\EtapeDuDossier::cases() as $_e)
     <button type="button" class="dmi-kpi dmi-kpi--{{ $_e->ton() }}" data-dmi-etape="{{ $_e->value }}"
             :class="filtres.etape === '{{ $_e->value }}' ? 'is-actif' : ''" :aria-pressed="filtres.etape === '{{ $_e->value }}'"
-            title="Afficher les dossiers :{{ mb_strtolower($_e->libelle(), 'UTF-8') }}">
+            title="Afficher les dossiers : {{ mb_strtolower($_e->libelle(), 'UTF-8') }}">
         <span class="dmi-kpi-libelle">{{ $_e->libelle() }}</span>
         <span class="dmi-kpi-valeur">{{ number_format($_etapes[$_e->value] ?? 0, 0, ',', ' ') }}</span>
         <span class="dmi-kpi-repere">{{ $_e->consigne() }}</span>

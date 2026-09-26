@@ -8,12 +8,10 @@ use App\Models\ESBTPCandidature;
 use App\Models\ESBTPRdvReservation;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Models\User;
-use App\Services\Portail\ReferencePublique;
 use App\Services\Reinscription\PortailReinscriptionService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -32,7 +30,9 @@ use Illuminate\Support\Facades\Schema;
  * pas). La file ne fait que les lire ensemble, par une union triee en SQL,
  * pour que la pagination reste exacte quel que soit le volume.
  *
- * Chaque sorte n'apparait qu'a qui a le droit de la voir.
+ * Chaque sorte n'apparait qu'a qui a le droit de la voir. La recherche vit
+ * dans RechercheDesDossiers, le rechargement des lignes dans
+ * HydratationDesDossiers, les etapes dans EtapeDuDossier et EtapesEnSql.
  */
 class FileDesDemandes
 {
@@ -53,7 +53,8 @@ class FileDesDemandes
     private ?EtapesEnSql $etapes = null;
 
     public function __construct(
-        private readonly ReferencePublique $references,
+        private readonly RechercheDesDossiers $recherche,
+        private readonly HydratationDesDossiers $hydratation,
         private readonly PortailReinscriptionService $campagne,
     ) {
     }
@@ -137,7 +138,7 @@ class FileDesDemandes
             ->orderByDesc('id')
             ->paginate(self::PAR_PAGE, ['*'], 'page', $page);
 
-        $paginateur->setCollection($this->hydrater($paginateur->getCollection()));
+        $paginateur->setCollection($this->hydratation->hydrater($paginateur->getCollection()));
 
         return $paginateur;
     }
@@ -147,7 +148,7 @@ class FileDesDemandes
      * etapes et le repere « sans rendez-vous ». Les etapes et le repere suivent
      * l'onglet choisi ; les onglets comptent toujours tous les types visibles.
      *
-     * @return array{a_traiter: int, nouvelles: int, reinscriptions: int, attendues_aujourdhui: int, sans_rdv: int, contact: int, etapes: array<string, int>}
+     * @return array{a_traiter: int, nouvelles: int, reinscriptions: int, attendues_aujourdhui: int, sans_rdv: int, etapes: array<string, int>}
      */
     public function compteurs(User $agent, string $type = ''): array
     {
@@ -170,7 +171,6 @@ class FileDesDemandes
             'reinscriptions' => $reinscriptions,
             'attendues_aujourdhui' => self::famillesAttenduesAujourdhui($agent),
             'sans_rdv' => $somme(fn ($q) => $this->sansRdv(self::ouvertes($q))),
-            'contact' => $somme(fn ($q) => self::ouvertes($q)->contactNonConfirme()),
             'etapes' => $etapes,
         ];
     }
@@ -202,13 +202,13 @@ class FileDesDemandes
         $parties = [];
         if (in_array(self::TYPE_NOUVELLE, $voulus, true)) {
             $parties[] = $this->filtrer(ESBTPCandidature::query(), $filtres)
-                ->where(fn ($q) => $this->chercherCandidature($q, (string) ($filtres['q'] ?? '')))
+                ->where(fn ($q) => $this->recherche->candidatures($q, (string) ($filtres['q'] ?? '')))
                 ->selectRaw("'".self::TYPE_NOUVELLE."' as type, esbtp_candidatures.id, esbtp_candidatures.created_at as depose_le, ".$this->priorite('esbtp_candidatures', 'candidature_id', ESBTPCandidature::statutsDossierClos()).' as priorite')
                 ->toBase();
         }
         if (in_array(self::TYPE_REINSCRIPTION, $voulus, true)) {
             $parties[] = $this->filtrer(ESBTPReinscriptionDemande::query(), $filtres)
-                ->where(fn ($q) => $this->chercherDemande($q, (string) ($filtres['q'] ?? '')))
+                ->where(fn ($q) => $this->recherche->reinscriptions($q, (string) ($filtres['q'] ?? '')))
                 ->selectRaw("'".self::TYPE_REINSCRIPTION."' as type, esbtp_reinscription_demandes.id, esbtp_reinscription_demandes.created_at as depose_le, ".$this->priorite('esbtp_reinscription_demandes', 'reinscription_demande_id', ESBTPReinscriptionDemande::statutsDossierClos()).' as priorite')
                 ->toBase();
         }
@@ -284,90 +284,5 @@ class FileDesDemandes
     private function sansRdv(Builder $q): Builder
     {
         return $q->whereDoesntHave('reservations', fn ($r) => $r->occupantes());
-    }
-
-    private function chercherCandidature(Builder $q, string $texte): void
-    {
-        $texte = trim($texte);
-        if ($texte === '') {
-            return;
-        }
-        $like = '%'.addcslashes($texte, '%_\\').'%';
-        $reference = $this->references->normaliser($texte);
-        $chiffres = preg_replace('/\D/', '', $texte);
-
-        $q->where(fn ($w) => $w->where('nom', 'like', $like)->orWhere('prenoms', 'like', $like)
-            ->orWhereRaw("CONCAT(nom, ' ', prenoms) LIKE ?", [$like])
-            ->orWhereRaw("CONCAT(prenoms, ' ', nom) LIKE ?", [$like])
-            ->orWhere('email', 'like', $like)
-            ->when($reference !== '', fn ($w) => $w->orWhere('reference_publique', $reference))
-            ->when(strlen($chiffres) >= 6, fn ($w) => $w->orWhere('telephone', 'like', '%'.$chiffres.'%')));
-    }
-
-    private function chercherDemande(Builder $q, string $texte): void
-    {
-        $texte = trim($texte);
-        if ($texte === '') {
-            return;
-        }
-        $like = '%'.addcslashes($texte, '%_\\').'%';
-        $reference = $this->references->normaliser($texte);
-        $chiffres = preg_replace('/\D/', '', $texte);
-
-        $q->where(fn ($w) => $w
-            ->whereHas('etudiant', fn ($e) => $e->where(fn ($e) => $e->where('nom', 'like', $like)->orWhere('prenoms', 'like', $like)
-                ->orWhere('matricule', 'like', $like)
-                ->orWhereRaw("CONCAT(nom, ' ', prenoms) LIKE ?", [$like])
-                ->orWhereRaw("CONCAT(prenoms, ' ', nom) LIKE ?", [$like])
-                ->when(strlen($chiffres) >= 6, fn ($e) => $e->orWhere('telephone', 'like', '%'.$chiffres.'%'))))
-            ->when($reference !== '', fn ($w) => $w->orWhere('reference_publique', $reference)));
-    }
-
-    /**
-     * Les lignes de l'union, rechargees en modeles avec ce que l'ecran lit.
-     *
-     * @param  Collection<int, object>  $lignes
-     * @return Collection<int, DemandeDInscription>
-     */
-    private function hydrater(Collection $lignes): Collection
-    {
-        $ids = $lignes->groupBy('type')->map(fn ($g) => $g->pluck('id')->all());
-        $avecRdv = ['reservations' => fn ($r) => $r->occupantes()->with('creneau', 'accueilliPar:id,name')->latest('id')];
-
-        $candidatures = ESBTPCandidature::query()
-            ->with(['anneeUniversitaire:id,name', 'filiere:id,name', 'niveau:id,name', 'traitePar:id,name'] + $avecRdv)
-            ->findMany($ids[self::TYPE_NOUVELLE] ?? [])->keyBy('id');
-        $demandes = ESBTPReinscriptionDemande::query()
-            ->with(['etudiant:id,nom,prenoms,matricule,telephone,email,email_personnel,date_naissance', 'anneeUniversitaire:id,name,is_current', 'classeSouhaitee:id,name', 'traitePar:id,name', 'inscription.classe:id,name'] + $avecRdv)
-            ->findMany($ids[self::TYPE_REINSCRIPTION] ?? [])->keyBy('id');
-        $inscrits = $this->dejaInscrits($demandes);
-
-        return $lignes->map(fn ($l) => $l->type === self::TYPE_NOUVELLE
-            ? ($candidatures->has($l->id) ? DemandeDInscription::deCandidature($candidatures[$l->id]) : null)
-            : ($demandes->has($l->id) ? DemandeDInscription::deReinscription($demandes[$l->id], isset($inscrits[$demandes[$l->id]->etudiant_id.'-'.$demandes[$l->id]->annee_universitaire_id])) : null))
-            ->filter()->values();
-    }
-
-    /**
-     * Les couples (etudiant, annee) deja inscrits, en une requete pour toute la
-     * tranche : la meme regle que ESBTPInscription::aUneInscriptionVivantePour().
-     *
-     * @param  Collection<int, ESBTPReinscriptionDemande>  $demandes
-     * @return array<string, true>
-     */
-    private function dejaInscrits(Collection $demandes): array
-    {
-        $ouvertes = $demandes->filter->estTraitable();
-        if ($ouvertes->isEmpty()) {
-            return [];
-        }
-
-        return \App\Models\ESBTPInscription::query()
-            ->whereIn('etudiant_id', $ouvertes->pluck('etudiant_id')->unique())
-            ->whereIn('annee_universitaire_id', $ouvertes->pluck('annee_universitaire_id')->unique())
-            ->whereIn('status', ['en_attente', 'active'])
-            ->get(['etudiant_id', 'annee_universitaire_id'])
-            ->mapWithKeys(fn ($i) => [$i->etudiant_id.'-'.$i->annee_universitaire_id => true])
-            ->all();
     }
 }

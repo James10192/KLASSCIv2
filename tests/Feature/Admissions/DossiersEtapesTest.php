@@ -98,6 +98,31 @@ class DossiersEtapesTest extends TestCase
         $cas['nouvelle-'.$this->candidature(['nom' => 'INSCRITE', 'statut' => 'convertie', 'traite_at' => now()])->id] = EtapeDuDossier::Inscrit;
         $cas['nouvelle-'.$this->candidature(['nom' => 'REJETEE', 'statut' => 'rejetee', 'traite_at' => now(), 'motif_rejet' => 'Dossier incomplet'])->id] = null;
 
+        // Creneau du jour deja termine sans que la famille soit reçue : non venue, a examiner.
+        $finie = $this->candidature(['nom' => 'FINIE']);
+        $this->reserver($finie, $this->creneau(0, '08:00', '08:30'));
+        $cas['nouvelle-'.$finie->id] = EtapeDuDossier::AExaminer;
+
+        // Creneau du jour en cours : encore planifie.
+        $enCours = $this->candidature(['nom' => 'ENCOURS']);
+        $this->reserver($enCours, $this->creneau(0, '10:00', '10:30'));
+        $cas['nouvelle-'.$enCours->id] = EtapeDuDossier::RdvPlanifie;
+
+        // Reservation marquee non venue : ni reçue, ni planifiee.
+        $manquee = $this->candidature(['nom' => 'MANQUEE']);
+        $this->reserver($manquee, $this->creneau(-3), StatutReservationRdv::Manquee);
+        $cas['nouvelle-'.$manquee->id] = EtapeDuDossier::AExaminer;
+
+        // Reinscription reçue aujourd'hui.
+        $reinsRecue = $this->demande('REINSRECUE');
+        $this->reserver($reinsRecue, $this->creneau(0, '09:00', '09:30'), StatutReservationRdv::Honoree, now()->setTime(9, 20));
+        $cas['reinscription-'.$reinsRecue->id] = EtapeDuDossier::RecuAujourdhui;
+
+        // Reçue sans heure notee (donnees anciennes) : a finaliser, jamais « aujourd'hui ».
+        $sansHeure = $this->candidature(['nom' => 'SANSHEURE']);
+        $this->reserver($sansHeure, $this->creneau(-4), StatutReservationRdv::Honoree)->forceFill(['accueilli_at' => null])->save();
+        $cas['nouvelle-'.$sansHeure->id] = EtapeDuDossier::AFinaliser;
+
         $reins = $this->demande('REINSRDV');
         $this->reserver($reins, $this->creneau(3));
         $cas['reinscription-'.$reins->id] = EtapeDuDossier::RdvPlanifie;

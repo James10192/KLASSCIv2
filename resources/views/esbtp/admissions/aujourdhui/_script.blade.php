@@ -75,12 +75,18 @@ window.aujourdhuiAccueil = function () {
             return id ? document.querySelector('#adj-creneaux [data-adj-famille="' + CSS.escape(id) + '"]') : null;
         },
 
+        /* Une seule relecture a la fois : la plus recente annule celle en cours,
+           sinon une reponse ancienne arrivee en dernier effacerait une coche. */
         async rafraichir() {
+            if (this._relecture) this._relecture.abort();
+            const relecture = new AbortController();
+            this._relecture = relecture;
             this.chargement = true;
             try {
-                const r = await fetch(this.cfg.index + '?fragment=1', { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' });
+                const r = await fetch(this.cfg.index + '?fragment=1', { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin', signal: relecture.signal });
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 const d = await r.json();
+                if (this._relecture !== relecture) return;
                 document.getElementById('adj-kpis').innerHTML = d.kpis;
                 document.getElementById('adj-creneaux').innerHTML = d.creneaux;
                 document.getElementById('adj-guichet').innerHTML = d.guichet;
@@ -88,9 +94,10 @@ window.aujourdhuiAccueil = function () {
                 this.majA = heure();
                 this.filtrer();
             } catch (err) {
+                if (err.name === 'AbortError') return;
                 this.notifier('error', 'La liste du jour n\'a pas pu être relue. Elle se remettra à jour à la prochaine minute.');
             } finally {
-                this.chargement = false;
+                if (this._relecture === relecture) { this._relecture = null; this.chargement = false; }
             }
         },
 

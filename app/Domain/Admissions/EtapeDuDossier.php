@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Model;
  *                          sans inscription ;
  * 4. Contact a confirmer : le contact n'est pas prouve (pas de convocation
  *                          automatique tant que l'ecole ne l'a pas confirme) ;
- * 5. RDV planifie        : un rendez-vous confirme, aujourd'hui ou a venir ;
+ * 5. RDV planifie        : un rendez-vous confirme dont le creneau n'est pas termine ;
  * 6. A examiner          : tout autre dossier ouvert, y compris une famille
  *                          non venue a un rendez-vous passe.
  *
@@ -104,9 +104,15 @@ enum EtapeDuDossier: string
             in_array($dossier->verification_contact ?? null, StatutVerificationContact::valeursAConfirmer(), true) => self::ContactAConfirmer,
             $rdv?->statut === StatutReservationRdv::Confirmee
                 && $rdv->creneau !== null
-                && $rdv->creneau->date->toDateString() >= $maintenant->toDateString() => self::RdvPlanifie,
+                && self::finDuCreneau($rdv) > $maintenant->format('Y-m-d H:i:s') => self::RdvPlanifie,
             default => self::AExaminer,
         };
+    }
+
+    /** « Y-m-d H:i:s » de la fin du creneau, comparable a la meme chaine en SQL. */
+    private static function finDuCreneau(ESBTPRdvReservation $rdv): string
+    {
+        return $rdv->creneau->date->toDateString().' '.$rdv->creneau->heureFinHi().':00';
     }
 
     public static function depuis(?string $valeur): ?self

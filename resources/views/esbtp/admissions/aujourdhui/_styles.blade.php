@@ -1,4 +1,4 @@
-{{-- Aujourd'hui a l'accueil — namespace adj-*. Hero et KPIs : pattern planning-header.
+{{-- Aujourd'hui a l'accueil, namespace adj-*. Hero et KPIs : pattern planning-header.
      Bleu monochrome ; vert (reçue, inscrite) et orange (retard, contact) portent un etat. --}}
 <style>
 .adj { --adj-primary: #0453cb; --adj-primary-d: #033a8e; --adj-accent: #3b7ddb; --adj-dark: #0f172a; --adj-text: #1e293b; --adj-muted: #64748b; --adj-line: #e2e8f0; --adj-surface: #f8fafc; --adj-soft: #e6eefb; --adj-success: #047857; --adj-warning: #92400e; --adj-danger: #b91c1c; color: var(--adj-text); }

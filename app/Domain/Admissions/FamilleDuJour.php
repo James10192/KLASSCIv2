@@ -3,7 +3,6 @@
 namespace App\Domain\Admissions;
 
 use App\Domain\Notifications\PhoneFormatter;
-use App\Models\ESBTPCandidature;
 use App\Models\ESBTPRdvReservation;
 use App\Services\RendezVous\AccueilRdv;
 use Carbon\Carbon;
@@ -48,7 +47,7 @@ final class FamilleDuJour
         $statut = (string) ($porteur?->statut ?? '');
 
         $etat = match (true) {
-            $statut === ESBTPCandidature::STATUT_CONVERTIE => self::INSCRITE,
+            $porteur !== null && $statut === $porteur::STATUT_CONVERTIE => self::INSCRITE,
             $etat === AccueilRdv::TRAITEE => self::REJETEE,
             $accueil->enRetard($r) => self::EN_RETARD,
             default => $etat,

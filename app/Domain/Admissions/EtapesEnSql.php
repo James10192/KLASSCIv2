@@ -47,23 +47,27 @@ final class EtapesEnSql
      */
     public function compter(Builder $q, ?CarbonInterface $maintenant = null): array
     {
-        $table = $q->getModel()->getTable();
-        $inscritHorsCampagne = $this->anneeCampagne === null
-            ? '0'
-            : "CASE WHEN {$table}.annee_universitaire_id <> ".(int) $this->anneeCampagne.' OR '.$table.'.annee_universitaire_id IS NULL THEN 1 ELSE 0 END';
+        $modele = $q->getModel();
+        $statut = $modele->qualifyColumn('statut');
+
+        // Seules les lignes qui peuvent porter une etape sont lues : ni les
+        // rejetees, ni les inscriptions des campagnes passees. Sans ce filtre,
+        // chaque affichage parcourait tout l'historique.
+        $q->where($statut, '<>', $modele::STATUT_REJETEE)
+            ->when($this->anneeCampagne !== null, fn (Builder $w) => $w->where(fn (Builder $o) => $o
+                ->where($statut, '<>', $modele::STATUT_CONVERTIE)
+                ->orWhere($modele->qualifyColumn('annee_universitaire_id'), $this->anneeCampagne)));
 
         $lignes = $q->toBase()
-            ->selectRaw('('.$this->expression($q, $maintenant).') AS etape, '.$inscritHorsCampagne.' AS hors_campagne, COUNT(*) AS n')
-            ->groupBy('etape', 'hors_campagne')
+            ->selectRaw('('.$this->expression($q, $maintenant).') AS etape, COUNT(*) AS n')
+            ->groupBy('etape')
             ->get();
 
         $comptes = array_fill_keys(array_column(EtapeDuDossier::cases(), 'value'), 0);
         foreach ($lignes as $ligne) {
-            $etape = (string) $ligne->etape;
-            if (! array_key_exists($etape, $comptes) || ($etape === EtapeDuDossier::Inscrit->value && (int) $ligne->hors_campagne === 1)) {
-                continue;
+            if (array_key_exists((string) $ligne->etape, $comptes)) {
+                $comptes[(string) $ligne->etape] += (int) $ligne->n;
             }
-            $comptes[$etape] += (int) $ligne->n;
         }
 
         return $comptes;
@@ -79,6 +83,7 @@ final class EtapesEnSql
         $jour = $maintenant->copy()->startOfDay()->format('Y-m-d H:i:s');
         $demain = $maintenant->copy()->addDay()->startOfDay()->format('Y-m-d H:i:s');
         $aujourdhui = $maintenant->format('Y-m-d');
+        $heure = $maintenant->format('H:i:s');
         $honoree = StatutReservationRdv::Honoree->value;
         $confirmee = StatutReservationRdv::Confirmee->value;
         $aConfirmer = self::liste(StatutVerificationContact::valeursAConfirmer());
@@ -91,7 +96,7 @@ final class EtapesEnSql
             ." WHEN EXISTS ({$reservation} AND r.statut = '{$honoree}' AND r.accueilli_at >= '{$jour}' AND r.accueilli_at < '{$demain}') THEN '".EtapeDuDossier::RecuAujourdhui->value."'"
             ." WHEN EXISTS ({$reservation} AND r.statut = '{$honoree}'){$acceptee} THEN '".EtapeDuDossier::AFinaliser->value."'"
             ." WHEN {$t}.verification_contact IN ({$aConfirmer}) THEN '".EtapeDuDossier::ContactAConfirmer->value."'"
-            ." WHEN EXISTS ({$reservation} AND r.statut = '{$confirmee}' AND EXISTS (SELECT 1 FROM esbtp_rdv_creneaux c WHERE c.id = r.creneau_id AND c.date >= '{$aujourdhui}')) THEN '".EtapeDuDossier::RdvPlanifie->value."'"
+            ." WHEN EXISTS ({$reservation} AND r.statut = '{$confirmee}' AND EXISTS (SELECT 1 FROM esbtp_rdv_creneaux c WHERE c.id = r.creneau_id AND (c.date > '{$aujourdhui}' OR (c.date = '{$aujourdhui}' AND c.heure_fin > '{$heure}')))) THEN '".EtapeDuDossier::RdvPlanifie->value."'"
             ." ELSE '".EtapeDuDossier::AExaminer->value."' END";
     }
 

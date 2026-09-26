@@ -24,7 +24,7 @@
                 <strong>{{ $f->nom }}</strong>
                 <span>{{ $f->estNouvelle() ? 'Nouvelle inscription' : 'Réinscription' }} · {{ $f->parcours }}</span>
                 <dl>
-                    <dt>Reçue</dt><dd>{{ $_r->accueilli_at?->format('H:i') ?? '—' }}@if($_r->accueilliPar) · {{ $_r->accueilliPar->name }}@endif</dd>
+                    <dt>Reçue</dt><dd>{{ $_r->accueilli_at?->format('H:i') ?? 'Heure non notée' }}@if($_r->accueilliPar) · {{ $_r->accueilliPar->name }}@endif</dd>
                     <dt>Rendez-vous</dt><dd>{{ $_r->creneau->heureDebutHi() }}</dd>
                     <dt>Contact</dt><dd class="{{ $_contact ? 'adj-g-alerte' : '' }}">{{ $_contactTexte }}</dd>
                 </dl>
