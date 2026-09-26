@@ -82,7 +82,7 @@
                         </div>
 
                         <div class="bus-config-empty" x-show="!configModal.matieres.length">
-                            Aucune matiere a configurer pour cette classe et cette periode.
+                            Aucune matière à configurer pour cette classe et cette période.
                         </div>
 
                         <div class="bus-config-table-wrap" x-show="configModal.matieres.length">
