@@ -119,7 +119,7 @@ class LectureDePiece
         }
         $zip->close();
         if ($total > self::MAX_DECOMPRESSE || $plusGrosse > self::MAX_ENTREE) {
-            throw new PieceIllisible('Ce fichier est trop volumineux une fois ouvert. Enregistrez seulement la feuille utile.');
+            throw new PieceIllisible('Ce fichier contient trop de données pour être lu ici (plus de 2 Mo de texte une fois ouvert). Gardez seulement les colonnes utiles — matricule, nom, note — dans une feuille, puis joignez-la.');
         }
     }
 
@@ -145,7 +145,7 @@ class LectureDePiece
                 // Seule la première feuille est chargée : les autres ne coûtent rien.
                 $lecteur->setLoadSheetsOnly([$lecteur->listWorksheetNames($chemin)[0] ?? '']);
             }
-            $this->auDela = $format === 'xlsx' ? $this->valeursAuDela($chemin) : $this->dimensionAuDela($lecteur, $chemin);
+            $this->auDela = ($format === 'xlsx' ? $this->valeursAuDela($chemin) : null) ?? $this->dimensionAuDela($lecteur, $chemin);
             $feuille = $lecteur->load($chemin)->getSheet(0);
         } catch (\Throwable $e) {
             throw new PieceIllisible('Le fichier n\'a pas pu être lu.');
@@ -168,16 +168,18 @@ class LectureDePiece
      * première feuille : les lignes vides mises en forme (fréquentes dans Excel) ne
      * comptent pas, contrairement aux dimensions déclarées.
      */
-    private function valeursAuDela(string $chemin): bool
+    private function valeursAuDela(string $chemin): ?bool
     {
         $zip = new \ZipArchive();
         if ($zip->open($chemin) !== true) {
-            return false;
+            return null;
         }
-        $xml = $zip->getFromName('xl/worksheets/sheet1.xml', self::MAX_ENTREE + 1);
+        $partie = $this->premiereFeuille($zip);
+        $xml = $partie ? $zip->getFromName($partie, self::MAX_ENTREE + 1) : false;
         $zip->close();
         if (! is_string($xml) || $xml === '') {
-            return false;
+            // Feuille introuvable : les dimensions déclarées, faute de mieux.
+            return null;
         }
 
         $lecteur = \XMLReader::XML($xml, null, LIBXML_NONET);
@@ -189,12 +191,33 @@ class LectureDePiece
             if ($lecteur->name === 'c') {
                 $cellule = (string) $lecteur->getAttribute('r');
             } elseif (in_array($lecteur->name, ['v', 'is'], true) && $cellule && preg_match('/^([A-Z]+)(\d+)$/', $cellule, $m)
-                && (Coordinate::columnIndexFromString($m[1]) > self::MAX_COLONNES || (int) $m[2] > self::MAX_LIGNES + 2)) {
+                && (Coordinate::columnIndexFromString($m[1]) > self::MAX_COLONNES || (int) $m[2] > self::MAX_LIGNES + 2)
+                // Une formule qui rend "" (modèle « =SI(B2="";"";B2) » tiré sur mille lignes) n'est pas une donnée.
+                && trim($lecteur->readString()) !== '') {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Le fichier XML du PREMIER onglet, tel que le classeur l'ordonne : ce n'est pas
+     * toujours sheet1.xml (onglets réordonnés, parties renommées).
+     */
+    private function premiereFeuille(\ZipArchive $zip): ?string
+    {
+        $classeur = $zip->getFromName('xl/workbook.xml', self::MAX_ENTREE + 1);
+        $liens = $zip->getFromName('xl/_rels/workbook.xml.rels', self::MAX_ENTREE + 1);
+        if (! is_string($classeur) || ! is_string($liens)
+            || ! preg_match('/<(?:\w+:)?sheet\b[^>]*\br:id="([^"]+)"/', $classeur, $feuille)
+            || ! preg_match('/<Relationship\b[^>]*\bId="' . preg_quote($feuille[1], '/') . '"[^>]*>/', $liens, $lien)
+            || ! preg_match('/\bTarget="([^"]+)"/', $lien[0], $cible)) {
+            return null;
+        }
+        $cible = $cible[1];
+
+        return str_starts_with($cible, '/') ? ltrim($cible, '/') : 'xl/' . $cible;
     }
 
     private function dimensionAuDela($lecteur, string $chemin): bool
@@ -297,7 +320,8 @@ class LectureDePiece
                     continue;
                 }
                 if ($nom === 'w:tr' && $ouvre) {
-                    if (count($lignes) > self::MAX_LIGNES) {
+                    // En-têtes + 500 lignes, et une ligne de titre possible : comme pour Excel.
+                    if (count($lignes) > self::MAX_LIGNES + 1) {
                         $this->auDela = true;
                         break;
                     }
@@ -324,7 +348,7 @@ class LectureDePiece
             }
             // Une erreur de lecture arrête la boucle comme une fin de fichier : il faut
             // la distinguer, sinon un document abîmé passerait pour complet.
-            $abime = libxml_get_errors() !== [] || $profondeur > 0 && count($lignes) <= self::MAX_LIGNES;
+            $abime = libxml_get_errors() !== [] || $profondeur > 0 && ! $this->auDela;
         } finally {
             $lecteur->close();
             libxml_clear_errors();

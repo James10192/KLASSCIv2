@@ -74,7 +74,7 @@ class LectureDePieceTest extends TestCase
         $zip->addFromString('word/document.xml', str_repeat('A', 50 * 1024 * 1024));
         $zip->close();
         $this->expectException(PieceIllisible::class);
-        $this->expectExceptionMessage('trop volumineux');
+        $this->expectExceptionMessage('trop de données');
         app(LectureDePiece::class)->lire(new UploadedFile($bombe, 'notes.docx', null, null, true));
     }
 
@@ -132,6 +132,8 @@ class LectureDePieceTest extends TestCase
         $f->setCellValue('B2', 11);
         // Lignes vides seulement mises en forme, très loin : rien n'est tronqué.
         $f->getStyle('A900:AZ990')->getFont()->setBold(true);
+        // Un modèle tiré loin vers le bas, dont la formule rend "" : pas une donnée non plus.
+        $f->setCellValue('C950', '=IF(1=1,"","")');
         $chemin = tempnam(sys_get_temp_dir(), 'xlsx');
         (new Xlsx($classeur))->save($chemin);
 
@@ -168,6 +170,31 @@ class LectureDePieceTest extends TestCase
         $this->expectException(PieceIllisible::class);
         $this->expectExceptionMessage('endommagé');
         app(LectureDePiece::class)->lire($docx('<w:tbl>' . $ligne('A', 'B') . $ligne('1', '2') . '<w:tr><w:tc></w:tr></w:tbl>'));
+    }
+
+    public function test_la_troncature_se_lit_sur_le_premier_onglet_meme_s_il_n_est_pas_sheet1(): void
+    {
+        $classeur = new Spreadsheet();
+        $classeur->getActiveSheet()->setTitle('Brouillon')->fromArray([['x', 'y'], ['1', '2']]);
+        $notes = $classeur->createSheet()->setTitle('Notes');
+        $notes->fromArray([['Matricule', 'Note'], ['MAT-001', 14]]);
+        $notes->setCellValue('AH5', 'hors limite');
+        $chemin = tempnam(sys_get_temp_dir(), 'xlsx');
+        (new Xlsx($classeur))->save($chemin);
+
+        // L'onglet « Notes » (partie sheet2.xml) passe en premier.
+        $zip = new \ZipArchive();
+        $zip->open($chemin);
+        $wb = $zip->getFromName('xl/workbook.xml');
+        preg_match_all('#<sheet [^>]*/>#', $wb, $m);
+        $wb = str_replace($m[0][0] . $m[0][1], $m[0][1] . $m[0][0], $wb);
+        $zip->addFromString('xl/workbook.xml', $wb);
+        $zip->close();
+
+        $t = app(LectureDePiece::class)->lire(new UploadedFile($chemin, 'notes.xlsx', null, null, true));
+
+        $this->assertSame(['Matricule', 'Note'], $t['colonnes']);
+        $this->assertTrue($t['tronque']);
     }
 
     public function test_un_csv_francais_au_point_virgule_et_en_windows_1252(): void
