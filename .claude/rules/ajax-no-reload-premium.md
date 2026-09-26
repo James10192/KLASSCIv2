@@ -30,8 +30,14 @@ UX premium = réactif, fluide, sans rupture de contexte (scroll préservé, moda
 
 ### Structure HTML/Blade
 
+> **Pas de `x-init="init()"`.** Alpine v3 appelle `init()` de lui-même dès qu'il évalue `x-data`
+> (y compris après `Alpine.initTree` sur du HTML injecté). L'ajouter le relance une seconde fois :
+> écouteurs `window` posés deux fois, toasts et chargements AJAX en double. Retiré de 31 vues en
+> septembre 2026 ; mesuré sur `/esbtp/examens` : un événement `toast`, trois messages affichés.
+
+
 ```blade
-<div x-data="juryDeliberation()" x-init="init()">
+<div x-data="juryDeliberation()">
     {{-- KPIs live (auto-updated via event) --}}
     <div class="juy-kpis">
         <div class="juy-kpi" x-text="kpis.admis">{{ $kpis['admis'] }}</div>
