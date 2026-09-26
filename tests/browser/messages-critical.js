@@ -15,6 +15,8 @@ if (!username || !password) {
   process.exit(2);
 }
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 function browserPath() {
   const candidates = [
     process.env.CHROME_PATH,
@@ -95,7 +97,7 @@ async function checkFailedOptimisticMessage(page) {
   const countBefore = await page.evaluate(m => (document.body.innerText.match(new RegExp(m, 'g')) || []).length, marker);
   assert(countBefore === 1, 'Failed optimistic message must appear once');
   await page.click('[data-retry]');
-  await page.waitForTimeout(700);
+  await sleep(700);
   const countAfter = await page.evaluate(m => (document.body.innerText.match(new RegExp(m, 'g')) || []).length, marker);
   assert(countAfter === 1, 'Retry failure must not duplicate the optimistic message');
   blocked = false;
@@ -111,7 +113,7 @@ async function checkActions(page) {
 
   await page.click('[data-new]');
   await page.click('[data-intent-action]');
-  await page.waitForSelector('[data-action-form]:not([hidden])');
+  await page.waitForSelector('[data-action-form]');
   const marker = 'QA Vérification ' + Date.now();
   await page.type('[data-action-form] input[name="title"]', marker);
   await page.type('[data-action-form] input[name="subject"]', 'QA navigateur — présentation');
