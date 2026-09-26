@@ -146,7 +146,7 @@ class SecurityAudit202605Test extends TestCase
         // Phase B reporté en issue #410 : CSRF exempt esbtp/api/* doit être nettoyé.
         // Ce test documente que l'exemption existe ENCORE — il PASSE actuellement et
         // devra ÉCHOUER après le fix du #410 (TDD inversé : test as documentation).
-        $middleware = new \App\Http\Middleware\VerifyCsrfToken($this->app);
+        $middleware = new \App\Http\Middleware\VerifyCsrfToken($this->app, $this->app->make(\Illuminate\Contracts\Encryption\Encrypter::class));
         $reflection = new \ReflectionClass($middleware);
         $prop = $reflection->getProperty('except');
         $prop->setAccessible(true);

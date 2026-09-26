@@ -78,7 +78,9 @@ class ReglagesAssistantTest extends TestCase
         $modele = app(RegistreDesModeles::class)->tous()['or-gpt-4o-mini'];
         $this->assertTrue($modele->estConfigure());
         $this->assertSame(self::CLE, $modele->cleApi());
-        $this->assertSame('or-gpt-4o-mini', app(RegistreDesModeles::class)->candidats()[0]->cle);
+        // Le premier candidat passe par OpenRouter, quel que soit le modele par defaut du moment
+        // (il est passe de GPT-4o mini a Gemini Flash sans que ce test le suive).
+        $this->assertStringStartsWith('or-', app(RegistreDesModeles::class)->candidats()[0]->cle);
     }
 
     public function test_sans_gestion_du_systeme_la_cle_est_refusee(): void

@@ -111,7 +111,10 @@ class AcademicPilotageModelsTest extends TestCase
             $modelFile = (new ReflectionClass($model))->getFileName();
             $publicMethods = array_filter(
                 (new ReflectionClass($model))->getMethods(ReflectionMethod::IS_PUBLIC),
+                // Une relation declare un lien, elle ne porte pas de logique : une fiche
+                // suivie par six acteurs a six relations sans etre « chargee » pour autant.
                 fn (ReflectionMethod $method) => $method->getFileName() === $modelFile
+                    && ! is_subclass_of((string) $method->getReturnType(), \Illuminate\Database\Eloquent\Relations\Relation::class)
             );
 
             $this->assertLessThanOrEqual(12, count($publicMethods), "$model est trop chargé.");

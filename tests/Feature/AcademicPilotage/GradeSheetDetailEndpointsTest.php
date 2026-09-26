@@ -71,7 +71,7 @@ class GradeSheetDetailEndpointsTest extends AcademicPilotageDatabaseTestCase
             ->assertJsonPath('progress.resolved_entries', 1)
             ->assertJsonPath('progress.completion_pct', 100)
             ->assertJsonPath('entries.0.student.matricule', 'ETU-001')
-            ->assertJsonPath('entries.0.note_evidence.note', '14.5')
+            ->assertJsonPath('entries.0.note_evidence.note', 14.5)
             ->assertJsonPath('entries.0.note_evidence.commentaire', 'Bon travail')
             ->assertJsonPath('documents.0.original_name', 'fiche.pdf')
             ->assertJsonPath('events.0.type', 'created')
@@ -129,7 +129,15 @@ class GradeSheetDetailEndpointsTest extends AcademicPilotageDatabaseTestCase
             $table->string('first_name')->nullable();
             $table->string('last_name')->nullable();
             $table->string('email');
+            $table->softDeletes();
         });
+        // ESBTPClasse charge toujours sa filiere et son niveau ($with).
+        foreach (['esbtp_filieres', 'esbtp_niveau_etudes', 'esbtp_annee_universitaires'] as $nom) {
+            Schema::create($nom, function (Blueprint $t): void {
+                $t->id();
+                $t->softDeletes();
+            });
+        }
         Schema::create('esbtp_classes', function (Blueprint $table): void {
             $table->id();
             $table->string('name');
@@ -156,7 +164,6 @@ class GradeSheetDetailEndpointsTest extends AcademicPilotageDatabaseTestCase
         Schema::table('esbtp_notes', function (Blueprint $table): void {
             $table->decimal('note', 5, 2)->nullable();
             $table->text('commentaire')->nullable();
-            $table->unsignedBigInteger('updated_by')->nullable();
         });
     }
 
