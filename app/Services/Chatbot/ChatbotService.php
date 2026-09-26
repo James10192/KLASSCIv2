@@ -62,26 +62,8 @@ class ChatbotService
             $preferredNameCandidate = $this->detectPreferredName($message);
             $memoryAction = $this->buildMemoryAction($preferredNameCandidate, $preferences);
 
-            // 3. Sauvegarder le message utilisateur
-            if (!($relance && $this->preparerRelance($conversation, $message))) {
-                ChatbotMessage::create([
-                    'conversation_id' => $conversation->id,
-                    'role' => 'user',
-                    'content' => $message,
-                    'display_type' => 'text',
-                ]);
-            }
-
-            // 4. Mettre à jour le contexte de page
-            if ($clientContext) {
-                $conversation->update([
-                    'context' => array_filter(array_merge($conversation->context ?? [], [
-                        'last_page_url' => $clientContext['current_url'] ?? null,
-                        'last_page_path' => $clientContext['current_path'] ?? null,
-                        'last_page_title' => $clientContext['page_title'] ?? null,
-                    ])),
-                ]);
-            }
+            // 3-4. Question, fichiers joints et contexte de page (même chemin que la diffusion)
+            $this->enregistrerQuestion($conversation, $user->id, $message, $clientContext, $relance);
 
             // 5. Appel de l'assistant (même boucle que la diffusion, sortie muette)
             $agentResponse = $this->agent->repondre(
@@ -193,30 +175,7 @@ class ChatbotService
             $preferredNameCandidate = $this->detectPreferredName($message);
             $memoryAction = $this->buildMemoryAction($preferredNameCandidate, $preferences);
 
-            $pieces = $this->piecesDuMessage($user->id, $clientContext['pieces'] ?? []);
-            if (!($relance && $this->preparerRelance($conversation, $message))) {
-                ChatbotMessage::create([
-                    'conversation_id' => $conversation->id,
-                    'role' => 'user',
-                    'content' => $message,
-                    'display_type' => 'text',
-                    'metadata' => $pieces ? ['pieces' => array_map(fn ($p) => ['id' => $p['id'], 'nom' => $p['nom']], $pieces)] : null,
-                ]);
-            }
-
-            if ($clientContext) {
-                $contexte = array_merge($conversation->context ?? [], [
-                    'last_page_url' => $clientContext['current_url'] ?? null,
-                    'last_page_path' => $clientContext['current_path'] ?? null,
-                    'last_page_title' => $clientContext['page_title'] ?? null,
-                ]);
-                // La conversation se souvient des fichiers joints : « valide » au message
-                // suivant doit encore pouvoir s'appuyer sur eux.
-                if ($pieces) {
-                    $contexte['pieces'] = array_slice(array_values(array_unique(array_merge($contexte['pieces'] ?? [], array_column($pieces, 'id')))), -3);
-                }
-                $conversation->update(['context' => array_filter($contexte)]);
-            }
+            $this->enregistrerQuestion($conversation, $user->id, $message, $clientContext, $relance);
 
             $agentResponse = $this->agent->repondre(
                 $conversation, $message, $user, $preferences, $clientContext, $ui, $modele, $relance
@@ -373,8 +332,37 @@ class ChatbotService
     }
 
     /**
-     * Récupérer l'historique d'une conversation.
+     * La question de la personne, ses fichiers joints et le contexte de page :
+     * commun à la diffusion et au repli sans diffusion.
      */
+    private function enregistrerQuestion(ChatbotConversation $conversation, int $userId, string $message, ?array $clientContext, bool $relance): void
+    {
+        $pieces = $this->piecesDuMessage($userId, $clientContext['pieces'] ?? []);
+        if (!($relance && $this->preparerRelance($conversation, $message))) {
+            ChatbotMessage::create([
+                'conversation_id' => $conversation->id,
+                'role' => 'user',
+                'content' => $message,
+                'display_type' => 'text',
+                'metadata' => $pieces ? ['pieces' => array_map(fn ($p) => ['id' => $p['id'], 'nom' => $p['nom']], $pieces)] : null,
+            ]);
+        }
+
+        if ($clientContext) {
+            $contexte = array_merge($conversation->context ?? [], [
+                'last_page_url' => $clientContext['current_url'] ?? null,
+                'last_page_path' => $clientContext['current_path'] ?? null,
+                'last_page_title' => $clientContext['page_title'] ?? null,
+            ]);
+            // La conversation se souvient des fichiers joints : « valide » au message
+            // suivant doit encore pouvoir s'appuyer sur eux.
+            if ($pieces) {
+                $contexte['pieces'] = array_slice(array_values(array_unique(array_merge($contexte['pieces'] ?? [], array_column($pieces, 'id')))), -3);
+            }
+            $conversation->update(['context' => array_filter($contexte)]);
+        }
+    }
+
     /** Les pièces jointes réellement déposées par cette personne (les autres identifiants sont ignorés). */
     private function piecesDuMessage(int $userId, array $ids): array
     {
@@ -387,6 +375,9 @@ class ChatbotService
         }, $ids)));
     }
 
+    /**
+     * Récupérer l'historique d'une conversation.
+     */
     public function getHistory(string $sessionId, int $userId): array
     {
         $conversation = ChatbotConversation::where('session_id', $sessionId)

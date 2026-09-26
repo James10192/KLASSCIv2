@@ -246,6 +246,10 @@
                 var opts = options || {};
                 var texte = String(texteImpose !== undefined ? texteImpose : this.saisie).trim();
                 if (!texte || this.envoiEnCours) { return; }
+                if (this.pieces.some(function (p) { return p.etat === 'envoi'; })) {
+                    this.erreurSaisie = 'Un fichier est encore en lecture : patientez un instant.';
+                    return;
+                }
                 if (texte.length > this.cfg.maxLength) {
                     this.erreurSaisie = 'Message trop long : ' + this.cfg.maxLength + ' caractères au plus.';
                     return;
@@ -284,9 +288,15 @@
 
                 var diffusion = typeof window.ReadableStream === 'function' && typeof window.TextDecoder === 'function';
                 var promesse = diffusion ? this.diffuser(texte, msg) : this.envoyerSansDiffusion(texte, msg);
-                // Les fichiers partent avec ce message ; la conversation s'en souvient côté serveur.
-                this.pieces = [];
+                // Les fichiers partis avec ce message quittent la zone de saisie une fois la
+                // réponse obtenue ; en cas d'échec, ils restent là pour le prochain essai.
+                var envoyees = this.piecesPretes().map(function (p) { return p.key; });
 
+                promesse.then(function () {
+                    if (msg.status !== 'error' && msg.status !== 'stopped') {
+                        self.pieces = self.pieces.filter(function (p) { return envoyees.indexOf(p.key) < 0; });
+                    }
+                }, function () { /* traité ci-dessous */ });
                 promesse.catch(function (e) {
                     if (e && e.name === 'AbortError') {
                         self.clore(msg, true);
@@ -534,9 +544,14 @@
                 var fichiers = Array.prototype.slice.call((evenement.target && evenement.target.files) || [], 0, 3 - this.pieces.length);
                 evenement.target.value = '';
                 fichiers.forEach(function (fichier) {
-                    var piece = { key: uid('f'), nom: fichier.name, etat: 'envoi', message: '', id: null, lignes: 0 };
-                    self.pieces.push(piece);
-                    var i = self.pieces.length - 1;
+                    var cle = uid('f');
+                    self.pieces.push({ key: cle, nom: fichier.name, etat: 'envoi', message: '', id: null, lignes: 0, tronque: false });
+                    // Toujours retrouver la pièce par sa clé, sur le tableau réactif : une
+                    // autre pièce retirée pendant la lecture ne décale plus rien.
+                    var maj = function (valeurs) {
+                        var p = self.pieces.find(function (x) { return x.key === cle; });
+                        if (p) { Object.assign(p, valeurs); }
+                    };
                     var donnees = new FormData();
                     donnees.append('fichier', fichier);
                     fetch(self.cfg.routes.pieces, {
@@ -546,17 +561,15 @@
                         body: donnees
                     }).then(function (res) {
                         return res.json().catch(function () { return {}; }).then(function (json) {
-                            var p = self.pieces[i] && self.pieces[i].key === piece.key ? self.pieces[i] : null;
-                            if (!p) { return; }
                             if (res.ok) {
-                                p.id = json.id; p.lignes = json.nombre_lignes; p.etat = 'pret';
-                            } else {
-                                var detail = json.errors ? Object.values(json.errors)[0] : null;
-                                p.etat = 'erreur';
-                                p.message = (Array.isArray(detail) ? detail[0] : detail) || json.message || 'Fichier illisible.';
+                                maj({ id: json.id, lignes: json.nombre_lignes, tronque: !!json.tronque, etat: 'pret',
+                                      message: json.tronque ? 'Fichier plus long : seules les 500 premières lignes et 30 colonnes sont lues.' : '' });
+                                return;
                             }
+                            var detail = json.errors ? Object.values(json.errors)[0] : null;
+                            maj({ etat: 'erreur', message: (Array.isArray(detail) ? detail[0] : detail) || json.message || 'Fichier illisible.' });
                         });
-                    }).catch(function () { piece.etat = 'erreur'; piece.message = 'Connexion interrompue.'; });
+                    }).catch(function () { maj({ etat: 'erreur', message: 'Connexion interrompue.' }); });
                 });
             },
 

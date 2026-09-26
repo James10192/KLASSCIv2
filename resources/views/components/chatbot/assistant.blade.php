@@ -98,7 +98,7 @@
                                     <div class="ast-bubble" x-text="msg.text"></div>
                                     <template x-if="msg.pieces && msg.pieces.length">
                                         <div class="ast-bubble-pieces">
-                                            <template x-for="p in msg.pieces" x-bind:key="p.nom">
+                                            <template x-for="(p, i) in msg.pieces" x-bind:key="i">
                                                 <span class="ast-piece is-pret"><i class="fas fa-file-lines" aria-hidden="true"></i><span class="ast-piece-nom" x-text="p.nom"></span></span>
                                             </template>
                                         </div>
@@ -232,7 +232,7 @@
                             <span class="ast-piece" x-bind:class="'is-' + p.etat" x-bind:title="p.message || p.nom">
                                 <i class="fas" x-bind:class="p.etat === 'envoi' ? 'fa-spinner fa-spin' : (p.etat === 'erreur' ? 'fa-triangle-exclamation' : 'fa-file-lines')" aria-hidden="true"></i>
                                 <span class="ast-piece-nom" x-text="p.nom"></span>
-                                <span class="ast-piece-info" x-text="p.etat === 'pret' ? p.lignes + ' ligne(s)' : (p.etat === 'erreur' ? p.message : 'Lecture…')"></span>
+                                <span class="ast-piece-info" x-text="p.etat === 'pret' ? p.lignes + ' ligne(s)' + (p.tronque ? ' (tronqué)' : '') : (p.etat === 'erreur' ? p.message : 'Lecture…')"></span>
                                 <button type="button" class="ast-piece-retirer" x-on:click="retirerPiece(p)" x-bind:aria-label="'Retirer ' + p.nom">
                                     <i class="fas fa-xmark" aria-hidden="true"></i>
                                 </button>

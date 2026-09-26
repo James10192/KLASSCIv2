@@ -37,6 +37,47 @@ class LectureDePieceTest extends TestCase
         $this->assertSame('12', $t['lignes'][1][2]); // la formule rend sa valeur
     }
 
+    public function test_une_note_est_lue_telle_que_stockee_jamais_arrondie_par_le_format(): void
+    {
+        $classeur = new Spreadsheet();
+        $f = $classeur->getActiveSheet();
+        $f->fromArray([['Matricule', 'Note', 'Note', 'Total'], ['MAT-001', 12.5, 12.75, '=SUM(AZ2:BA2)']]);
+        $f->getStyle('B2')->getNumberFormat()->setFormatCode('0');
+        $f->getStyle('C2')->getNumberFormat()->setFormatCode('0.0');
+        $f->setCellValue('AZ2', 3);
+        $f->setCellValue('BA2', 4);
+        $chemin = tempnam(sys_get_temp_dir(), 'xlsx');
+        (new Xlsx($classeur))->save($chemin);
+
+        $t = app(LectureDePiece::class)->lire(new UploadedFile($chemin, 'notes.xlsx', null, null, true));
+
+        $this->assertSame(['MAT-001', '12.5', '12.75', '7'], array_slice($t['lignes'][0], 0, 4));
+        // Deux en-têtes « Note » ne se confondent pas ; la feuille dépasse 30 colonnes : c'est dit.
+        $this->assertSame(['Matricule', 'Note', 'Note (2)', 'Total'], array_slice($t['colonnes'], 0, 4));
+        $this->assertTrue($t['tronque']);
+    }
+
+    public function test_un_fichier_se_juge_sur_son_contenu_et_une_archive_trop_grosse_est_refusee(): void
+    {
+        // Un classeur renommé en .csv n'est pas lu comme un CSV.
+        $classeur = new Spreadsheet();
+        $classeur->getActiveSheet()->fromArray([['Matricule', 'Note'], ['MAT-001', 14]]);
+        $chemin = tempnam(sys_get_temp_dir(), 'xlsx');
+        (new Xlsx($classeur))->save($chemin);
+        $t = app(LectureDePiece::class)->lire(new UploadedFile($chemin, 'notes.csv', null, null, true));
+        $this->assertSame(['MAT-001', '14'], $t['lignes'][0]);
+
+        // Une archive de quelques Ko qui se déplie en 50 Mo : refusée avant lecture.
+        $bombe = tempnam(sys_get_temp_dir(), 'docx');
+        $zip = new \ZipArchive();
+        $zip->open($bombe, \ZipArchive::OVERWRITE);
+        $zip->addFromString('word/document.xml', str_repeat('A', 50 * 1024 * 1024));
+        $zip->close();
+        $this->expectException(PieceIllisible::class);
+        $this->expectExceptionMessage('trop volumineux');
+        app(LectureDePiece::class)->lire(new UploadedFile($bombe, 'notes.docx', null, null, true));
+    }
+
     public function test_un_csv_francais_au_point_virgule_et_en_windows_1252(): void
     {
         $contenu = mb_convert_encoding("Matricule;Nom;Note\nMAT-001;KOUASSI Aïcha;12,5\n\nMAT-002;KONAN Jean;9\n", 'Windows-1252', 'UTF-8');

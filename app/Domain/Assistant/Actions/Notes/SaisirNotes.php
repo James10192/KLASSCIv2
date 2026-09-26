@@ -5,6 +5,7 @@ namespace App\Domain\Assistant\Actions\Notes;
 use App\Domain\Assistant\Actions\ActionAgent;
 use App\Domain\Assistant\Actions\Proposition;
 use App\Domain\Assistant\Actions\PropositionPerimee;
+use App\Domain\Assistant\Pieces\LectureDePiece;
 use App\Domain\Assistant\Pieces\PiecesJointes;
 use App\Domain\Notes\Exceptions\SaisieInterrompue;
 use App\Domain\Notes\SaisieGroupeeDeNotes;
@@ -196,7 +197,12 @@ class SaisirNotes extends ActionAgent
             $lignes[] = ['etudiant' => $etudiant] + ($absent ? ['absent' => true] : ['note' => is_numeric($nombre) ? (float) $nombre : $valeur]);
         }
 
-        return [$lignes, [], $vides > 0 ? ["{$vides} ligne(s) du fichier sans note sont ignorées (rien n'est écrit pour elles)."] : []];
+        $avertissements = $vides > 0 ? ["{$vides} ligne(s) du fichier sans note sont ignorées (rien n'est écrit pour elles)."] : [];
+        if (! empty($piece['tronque'])) {
+            $avertissements[] = 'Le fichier dépasse ' . LectureDePiece::MAX_LIGNES . ' lignes ou ' . LectureDePiece::MAX_COLONNES . ' colonnes : la suite n\'a pas été lue.';
+        }
+
+        return [$lignes, [], $avertissements];
     }
 
     /**

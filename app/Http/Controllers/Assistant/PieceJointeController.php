@@ -39,6 +39,8 @@ class PieceJointeController extends Controller
             'nom' => $fichier->getClientOriginalName(),
             'colonnes' => $tableau['colonnes'],
             'nombre_lignes' => count($tableau['lignes']),
+            // Au-delà de 500 lignes ou 30 colonnes, le reste n'est pas lu : l'écran le dit.
+            'tronque' => $tableau['tronque'],
             'apercu' => array_slice($tableau['lignes'], 0, 5),
         ], 201);
     }

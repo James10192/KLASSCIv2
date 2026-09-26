@@ -1013,3 +1013,4 @@ html.ast-lock, html.ast-lock body { overflow: hidden !important; }
 .ast-piece-retirer { border: 0; background: transparent; color: var(--ast-muted); padding: 0 .1rem; cursor: pointer; }
 .ast-joindre { cursor: pointer; }
 @media (max-width: 576px) { .ast-bubble-wrap { max-width: 88%; } .ast-piece-nom { max-width: 9rem; } }
+.ast-joindre:focus-within { outline: 2px solid var(--ast-primary); outline-offset: 2px; }
