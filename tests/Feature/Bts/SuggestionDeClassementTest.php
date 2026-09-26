@@ -134,6 +134,7 @@ class SuggestionDeClassementTest extends TestCase
     {
         $maths = $this->matiere('Mathematiques', partagee: true);
         $this->evaluer($maths, $this->classeTc);
+        $this->evaluer($maths, $this->classe($this->tc));
 
         $admin = User::find(1);
         $admin->assignRole(\Spatie\Permission\Models\Role::findOrCreate('superAdmin', 'web'));
