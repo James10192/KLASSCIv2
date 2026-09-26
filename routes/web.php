@@ -2589,14 +2589,6 @@ Route::prefix('esbtp')->middleware(['auth', 'validate.device', 'attendance.rate_
     // ... existing routes ...
 });
 
-// Forgotten Codes Routes
-Route::prefix('esbtp/admin/attendance')->name('esbtp.admin.attendance.')->middleware(['auth', 'permission:attendances.generate_codes'])->group(function () {
-    Route::get('/forgotten-codes', [App\Http\Controllers\ESBTP\Admin\ESBTPForgottenCodeController::class, 'index'])
-        ->name('forgotten-codes');
-    Route::post('/generate-manual-code', [App\Http\Controllers\ESBTP\Admin\ESBTPForgottenCodeController::class, 'generateManualCode'])
-        ->name('generate-manual-code');
-});
-
 // Routes pour les paramÃ¨tres systÃ¨me ESBTP (manage_system)
 Route::middleware(['auth', 'permission:system.manage'])->group(function () {
     // ESBTP Settings Routes
