@@ -253,9 +253,110 @@ const rules = @json($_attendanceRules);
 grep -nE "@(json|js)\(\[\s*$" path/to/file.blade.php
 ```
 
+## Pitfall #5 — JavaScript invalide dans un `<script>` inline
+
+### Le piège
+
+Blade ne lit pas le JavaScript : il le recopie. `php artisan view:cache` compile, `php -l`
+sur la vue compilée passe (le JS n'est pour PHP que du texte), les tests Feature
+rendent la page en 200. **Seul le navigateur analyse le script — et une seule erreur
+de syntaxe lui fait ignorer le bloc `<script>` entier.** Aucune fonction du bloc
+n'existe, les boutons ne font plus rien, et la seule trace est une ligne rouge dans
+la console de l'utilisateur.
+
+### Incident fondateur (PR #1257, septembre 2026)
+
+Une correction d'accents a réécrit, dans
+`resources/views/esbtp/bulletins/partials/select-scripts.blade.php` :
+
+```js
+this.pushToast({ type: 'error', message: 'Sélectionnez la classe, l'année universitaire et la période avant de configurer.' });
+```
+
+L'apostrophe de `l'année` ferme la chaîne. Tout le script de `/esbtp/bulletins/select`
+est tombé, et tout est resté vert. Version cassée, pour rejouer le contrôle :
+`git show cb7da1b01:resources/views/esbtp/bulletins/partials/select-scripts.blade.php`.
+
+### ✅ FIX
+
+Échapper (`'l\'année'`), ou changer de guillemets (`"l'année"`). Une correction
+d'accents en masse ne touche jamais les chaînes JS sans que ce contrôle soit repassé.
+
+### Le contrôle — `.githooks/blade-js-check.js`
+
+Appelé par le hook pre-commit (et par `--arbre`). Pour chaque `<script>` sans `src`
+et de type JavaScript, il neutralise ce que Blade injecte, puis fait analyser le
+résultat par V8 (`vm.Script`, le même analyseur que `node --check`, sans un processus
+par bloc — l'arbre entier passe en deux secondes) :
+
+| Motif Blade | Remplacé par | Pourquoi |
+|---|---|---|
+| `{{-- … --}}` | rien | jamais rendu — un `<script>` commenté n'est pas vérifié |
+| `{!! … !!}` | `null` | expression |
+| `{{ … }}` | `__blade` | un identifiant, pas `0` : `window.{{ $factory }} = …` est courant |
+| `@json(…)` / `@js(…)` | `null` | parenthèses **comptées** (chaînes PHP sautées) : jusqu'à trois niveaux d'imbrication, un regex s'y perd |
+| `@php … @endphp` | rien | où qu'il s'ouvre, y compris en milieu de ligne |
+| ligne `@directive(…)` | rien | `@if`, `@foreach`, `@can`… arguments multilignes compris |
+| `@verbatim … @endverbatim` | laissé tel quel | c'est du JS brut |
+| `@@x`, `@{{` | `@x`, `{{` | ce que Blade émet |
+
+Les sauts de ligne avalés par un remplacement sont rendus au saut de ligne suivant :
+le numéro signalé est **celui de la vue Blade**, même après un `{{ route(…) }}` écrit
+sur trois lignes à l'intérieur d'une chaîne.
+
+Les balises sont parcourues dans l'ordre du document, comme le fait le navigateur :
+un `<script>` cité dans une feuille de style (`/* lus par le <script> en bas */`) ou
+un commentaire HTML n'est que du texte. Les `type="application/json"` et autres types
+non JavaScript sont ignorés ; `type="module"` est signalé comme non vérifié (voir les
+angles morts).
+
+**Sans node**, le hook le dit (`node introuvable, syntaxe JavaScript des <script> NON
+vérifiée`) et laisse passer : les quatre autres pièges restent contrôlés.
+
+### Calibration (26 septembre 2026)
+
+863 vues suivies, **362 blocs `<script>` analysés**. Le contrôle attrape la version
+cassée de `select-scripts.blade.php` à la ligne 48. Sur l'arbre, il a trouvé **un vrai
+défaut** et zéro faux positif une fois les règles ci-dessus posées :
+`esbtp/admin/attendance/forgotten-codes.blade.php`, dont le `DOMContentLoaded` n'était
+jamais refermé. Le bloc entier était ignoré. L'accolade est posée dans le même
+chantier, mais **cela ne répare pas l'écran**, et ce n'est pas annoncé comme tel : une
+fois le script exécuté, `ESBTPForgottenCodeController::generateManualCode()` écrit
+`'type' => 'manuel'` dans une colonne `enum('session', 'journee', 'personnalise')`
+(MySQL strict) et rend un 500. La page n'est de toute façon liée nulle part, et son
+middleware exige un rôle `secretary` qui n'existe pas (le rôle s'appelle
+`secretaire`) : seul un superAdmin qui tape l'URL y arrive. À traiter à part, si
+l'écran doit vivre.
+
+Les six fausses alertes de la première version, pour ne pas les réintroduire : `{{ }}`
+en position de nom de propriété (remplacé par `0`), `{{ }}` multiligne dans une chaîne
+(sauts de ligne rendus sur place), `@php` en milieu de ligne, `<script>` cité dans un
+commentaire CSS.
+
+### Angles morts assumés
+
+- Une directive **en milieu de ligne** autre que `@json`/`@js`/`@php`
+  (`x = @if($a) 1 @else 2 @endif;`) n'est pas neutralisée : le contrôle signalerait
+  une erreur. Aucune occurrence aujourd'hui ; si elle apparaît, extraire la valeur
+  dans un `@php` au-dessus.
+- Seule la **syntaxe** est vérifiée : une variable inconnue, une faute de frappe dans
+  un nom de fonction, une erreur à l'exécution passent.
+- Le JavaScript des attributs (`onclick="…"`, `x-data="…"`, `@click="…"`) n'est pas lu.
+- Seule la première erreur d'un bloc est rendue : corriger, puis relancer.
+- Quand l'erreur suit, **sur la même ligne logique**, un remplacement multiligne
+  (`foo({{ route('x',` ⏎ `[…]) }}, 'mal fermé);`), le numéro rendu précède la vraie
+  ligne **d'autant de lignes que le remplacement en a avalé** : les sauts de ligne
+  avalés ne sont rendus qu'au saut suivant.
+- Un bloc qui **ne peut pas** être vérifié n'est jamais sauté en silence : un
+  `{{`, `{!!`, `@json(` ou `@php` jamais refermé dans le bloc, ou un
+  `<script type="module">` (analyse de module non prise en charge), est signalé sur
+  la sortie d'erreur (`… non vérifié`), sans faire échouer le commit. Aucun des deux
+  n'existe dans l'arbre au 26 septembre 2026.
+
 ## Le hook qui les attrape — `.githooks/pre-commit`
 
-Depuis septembre 2026, les quatre pièges sont refusés **au commit**, sur la version
+Depuis septembre 2026, les cinq pièges sont refusés **au commit** (le cinquième, le
+JavaScript, seulement si `node` est installé), sur la version
 mise en index (pas l'arbre de travail — c'est elle qui part). Installation :
 `sh .githooks/install.sh`.
 
@@ -296,7 +397,9 @@ qui rend le chiffre de calibration reproductible en une commande :
 sh .githooks/pre-commit --arbre   # 0 = aucune vue piégée
 ```
 
-Au 14 septembre 2026 : **769 vues suivies, 0 signalée**. Un `@@can` échappé est
+Au 14 septembre 2026 : **769 vues suivies, 0 signalée** pour les pièges #1 à #4.
+Au 26 septembre 2026 : **863 vues, 0 signalée** avec le piège #5 (après correction de
+`forgotten-codes.blade.php`, voir plus haut). Un `@@can` échappé est
 correctement accepté.
 
 **Attention** : contrairement au contrôle de message de commit, aucun garde-fou
@@ -333,7 +436,8 @@ for f in storage/framework/views/*.php; do php -l "$f" 2>&1 | grep -v "No syntax
 3. ❌ `<x-mon-composant>` littéral dans un commentaire CSS (`/* <x-foo> */`), JS (`// <x-bar>`), HTML ou string
 4. ❌ `@json([...])` ou `@js([...])` avec un array literal **multiligne** dans la parenthèse → toujours extraire en `@php $var = [...]; @endphp` puis `@json($var)`
 4. ❌ Tester un Blade modifié uniquement avec `php artisan view:cache` sans `php -l` du compiled output
-5. ❌ Mélanger les deux formes `@php(...)` et `@php...@endphp` dans le même fichier (toujours préférer la block form pour la cohérence)
+5. ❌ Commit d'une vue avec `--no-verify` après un remplacement de texte en masse (accents, libellés) : c'est exactement ce qui casse le JS sans que rien d'autre ne le voie
+6. ❌ Mélanger les deux formes `@php(...)` et `@php...@endphp` dans le même fichier (toujours préférer la block form pour la cohérence)
 
 ## Voir aussi
 
