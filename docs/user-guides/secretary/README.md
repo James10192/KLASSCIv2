@@ -34,7 +34,7 @@ Le tableau de bord secrétaire affiche :
 
 1. Ouvrez **Codes de présence** (`/esbtp/attendance-codes`). La demande « Je n'ai pas le code » envoyée par l'enseignant y mène directement.
 2. Si un code est déjà actif pour son cours, communiquez-le simplement.
-3. Sinon, dans « Séance à venir », choisissez **la séance de l'enseignant** et générez le code : il ne vaut que pour cette séance.
+3. Sinon, dans « Séance à venir », choisissez **la séance de l'enseignant** et générez le code : il ne remplace pas le code général des autres enseignants.
 4. Évitez de générer un code général pour dépanner un seul enseignant : il remplace le code général en cours, et les autres enseignants devront recevoir le nouveau.
 
 ### Historique des Codes
@@ -62,7 +62,7 @@ Le tableau de bord secrétaire affiche :
 ### Procédure pour Code Oublié
 
 1. Vérifiez l'identité de l'enseignant
-2. Suivez la procédure « Codes Oubliés » ci-dessus : un code lié à sa séance, jamais un nouveau code général.
+2. Suivez la procédure « Codes Oubliés » ci-dessus : un code lié à sa séance, évitez un nouveau code général.
 
 ### Support Technique de Base
 
