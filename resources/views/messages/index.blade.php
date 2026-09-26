@@ -263,4 +263,5 @@
 
 @push('scripts')
 <script src="{{ asset('js/messages-hub-v2.js') }}" defer></script>
+<script src="{{ asset('js/messages-hub-v2-hardening.js') }}" defer></script>
 @endpush
