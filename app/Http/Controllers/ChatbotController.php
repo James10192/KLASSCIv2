@@ -471,7 +471,8 @@ class ChatbotController extends Controller
             ], 404);
         }
 
-        if (!in_array($action->status, ['proposed', 'approved'], true)) {
+        // « approved » n'est plus refusable : une action approuvée est en cours d'exécution.
+        if ($action->status !== 'proposed') {
             return response()->json([
                 'success' => false,
                 'message' => 'Cette action ne peut plus être rejetée.',

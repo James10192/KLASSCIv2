@@ -105,6 +105,10 @@ class ExecutionDesPropositions
 
         try {
             $resultat = $action->executer($proposition, $user);
+        } catch (PropositionPerimee $e) {
+            $journal->update(['status' => 'expired', 'error_message' => mb_substr($e->getMessage(), 0, 1000)]);
+
+            return $this->refus($e->getMessage() . ' Rien n\'a été enregistré : demandez à Nanan de refaire la proposition.', 'perimee');
         } catch (\Throwable $e) {
             Log::error('assistant.action_en_echec', ['action' => $journal->action_type, 'journal' => $journal->id, 'erreur' => $e->getMessage()]);
             $journal->update(['status' => 'failed', 'error_message' => mb_substr($e->getMessage(), 0, 1000)]);
@@ -141,11 +145,13 @@ class ExecutionDesPropositions
         if ((int) $journal->user_id !== (int) $user->id) {
             return $this->refus('Cette proposition ne vous est pas destinée.');
         }
-        if ($journal->status !== 'proposed') {
+        // Atomique, comme la validation : un « Refuser » qui croise un « Valider »
+        // dans un autre onglet ne peut pas annoncer un refus après l'écriture.
+        $refusee = ChatbotActionLog::whereKey($journal->id)->where('status', 'proposed')
+            ->update(['status' => 'rejected', 'rejected_at' => now()]);
+        if ($refusee !== 1) {
             return $this->refus('Cette proposition a déjà été traitée.', 'traitee');
         }
-
-        $journal->update(['status' => 'rejected', 'rejected_at' => now()]);
         ChatbotMessage::create([
             'conversation_id' => $journal->conversation_id,
             'role' => 'assistant',
@@ -171,6 +177,9 @@ class ExecutionDesPropositions
 
         return match ($journal->status) {
             'proposed' => 'en_attente',
+            // Réservée mais jamais close (arrêt brutal pendant l'écriture) : on ne sait
+            // pas si c'est écrit. Ni « expirée » ni « refaire » : vérifier d'abord.
+            'approved' => 'a_verifier',
             'executed' => 'executee',
             'rejected' => 'refusee',
             'failed' => 'echec',

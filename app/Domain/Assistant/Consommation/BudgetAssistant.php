@@ -88,7 +88,10 @@ class BudgetAssistant
 
     /**
      * Cache froid : on interroge le master comme PaywallMiddleware, et on remplit
-     * la même clé. Un échec est retenu une minute pour ne pas ralentir chaque échange.
+     * la même clé, sous la même forme brute. Un échec est retenu une minute pour ne
+     * pas ralentir chaque échange. Second lecteur de /limits, assumé pour l'instant :
+     * délai de 3 s ici (une réponse attend), 10 s pour le paywall ; les réunir touche
+     * le middleware de toutes les requêtes et mérite son propre changement.
      */
     private function limitesDuMaster(string $code): ?array
     {

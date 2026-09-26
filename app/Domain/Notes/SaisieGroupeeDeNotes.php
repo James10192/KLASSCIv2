@@ -2,6 +2,7 @@
 
 namespace App\Domain\Notes;
 
+use App\Domain\Notes\Exceptions\SaisieInterrompue;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -83,7 +84,7 @@ class SaisieGroupeeDeNotes
             $evaluation = $evaluations->get($entree['evaluation_id']);
             $note = $existantes->get($entree['etudiant_id'] . '_' . $entree['evaluation_id']);
             $raison = $motifs->pour($entree, $evaluation, $note, $modifierValidee, $peutGerer);
-            $avant = $note ? ['note' => $note->is_absent ? null : (float) $note->note, 'absent' => (bool) $note->is_absent, 'validee' => $note->isSubmitted()] : null;
+            $avant = self::avant($note);
 
             $statut = match (true) {
                 $raison !== null => 'refus',
@@ -102,15 +103,48 @@ class SaisieGroupeeDeNotes
      */
     public function enregistrer(array $entrees, User $user, bool $valider): array
     {
+        return $this->ecrireLot($entrees, $user, $valider, null);
+    }
+
+    /**
+     * Tout ou rien, pour une saisie relue avant validation (l'assistant) : les
+     * notes existantes sont verrouillées, comparées à ce qui a été montré
+     * ($avantAttendu, indexé par étudiant, forme de avant()), et le moindre
+     * refus ou écart annule la transaction AVANT le commit — aucun avis ne part.
+     *
+     * @throws SaisieInterrompue
+     */
+    public function enregistrerToutOuRien(array $entrees, User $user, bool $valider, array $avantAttendu): array
+    {
+        return $this->ecrireLot($entrees, $user, $valider, $avantAttendu);
+    }
+
+    /** Ce qu'une note est en ce moment, sous une forme comparable ; null = pas de note. */
+    public static function avant(?ESBTPNote $note): ?array
+    {
+        return $note ? ['note' => $note->is_absent ? null : (float) $note->note, 'absent' => (bool) $note->is_absent, 'validee' => $note->isSubmitted()] : null;
+    }
+
+    private function ecrireLot(array $entrees, User $user, bool $valider, ?array $avantAttendu): array
+    {
         $saved = 0;
         // Les paires refusées, avec leur raison : l'écran les garde en brouillon
         // au lieu de les écraser par la relecture du serveur.
         $refused = [];
         $avis = [];
 
-        $synchronization = DB::transaction(function () use ($entrees, $user, $valider, &$saved, &$refused, &$avis) {
+        $toutOuRien = $avantAttendu !== null;
+        $synchronization = DB::transaction(function () use ($entrees, $user, $valider, $toutOuRien, $avantAttendu, &$saved, &$refused, &$avis) {
             $evaluations = ESBTPEvaluation::whereIn('id', collect($entrees)->pluck('evaluation_id')->unique())->get()->keyBy('id');
-            $existantes = $this->notesExistantes($entrees);
+            $existantes = $this->notesExistantes($entrees, $toutOuRien);
+            if ($toutOuRien) {
+                foreach ($entrees as $entree) {
+                    $actuelle = self::avant($existantes->get($entree['etudiant_id'] . '_' . $entree['evaluation_id']));
+                    if ($actuelle != ($avantAttendu[$entree['etudiant_id']] ?? null)) {
+                        throw new SaisieInterrompue('Une note a changé depuis la proposition.');
+                    }
+                }
+            }
             $modifierValidee = $user->can('notes.edit');
             $motifs = app(MotifDeRefusDeNote::class);
             $peutGerer = fn (ESBTPEvaluation $e) => $this->peutGerer($user, $e);
@@ -122,12 +156,18 @@ class SaisieGroupeeDeNotes
                 $raison = $motifs->pour($entree, $evaluation, $note, $modifierValidee, $peutGerer);
                 if ($raison !== null) {
                     $refused[] = MotifDeRefusDeNote::ligne($entree, $raison);
+                    if ($toutOuRien) {
+                        throw new SaisieInterrompue('Note refusée : ' . $raison . '.', $refused);
+                    }
                     continue;
                 }
 
                 $resultat = $this->ecrireSansDoublon($evaluation, $note, $entree, $valider, $user);
                 if ($resultat === null) {
                     $refused[] = MotifDeRefusDeNote::ligne($entree, MotifDeRefusDeNote::SAISIE_CONCURRENTE);
+                    if ($toutOuRien) {
+                        throw new SaisieInterrompue('Note saisie au même moment par quelqu\'un d\'autre.', $refused);
+                    }
                     continue;
                 }
 
@@ -149,7 +189,7 @@ class SaisieGroupeeDeNotes
     }
 
     /** Notes déjà en base pour les paires saisies, indexées « élève_évaluation ». */
-    public function notesExistantes(array $entrees): Collection
+    public function notesExistantes(array $entrees, bool $verrouiller = false): Collection
     {
         // Requête tuple-based IN avec cast int pour éviter injection SQL
         $pairs = collect($entrees)
@@ -158,6 +198,7 @@ class SaisieGroupeeDeNotes
 
         return $pairs
             ? ESBTPNote::whereRaw("(etudiant_id, evaluation_id) IN ({$pairs})")
+                ->when($verrouiller, fn ($q) => $q->lockForUpdate())
                 ->get()->keyBy(fn ($n) => $n->etudiant_id . '_' . $n->evaluation_id)
             : collect();
     }

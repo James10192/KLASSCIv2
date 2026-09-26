@@ -4,6 +4,8 @@ namespace App\Domain\Assistant\Actions\Notes;
 
 use App\Domain\Assistant\Actions\ActionAgent;
 use App\Domain\Assistant\Actions\Proposition;
+use App\Domain\Assistant\Actions\PropositionPerimee;
+use App\Domain\Notes\Exceptions\SaisieInterrompue;
 use App\Domain\Notes\SaisieGroupeeDeNotes;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
@@ -82,17 +84,67 @@ class SaisirNotes extends ActionAgent
         if (! $this->saisie->peutGerer($user, $evaluation)) {
             return $this->manque("Cet utilisateur ne peut pas saisir de notes sur cette évaluation (droits ou période de saisie close).");
         }
-
-        $bareme = (float) ($evaluation->bareme ?: 20);
+        if ((float) $evaluation->bareme <= 0) {
+            return $this->manque("Le barème de cette évaluation n'est pas défini : il faut le renseigner avant de saisir des notes.");
+        }
         $lignes = array_values(array_filter((array) ($args['notes'] ?? []), 'is_array'));
-        if ($lignes === []) {
-            return $this->manque('Aucune note fournie.');
-        }
-        if (count($lignes) > self::MAX_LIGNES) {
-            return $this->manque('Trop de lignes en une fois (' . self::MAX_LIGNES . ' au plus).');
+        if ($lignes === [] || count($lignes) > self::MAX_LIGNES) {
+            return $this->manque($lignes === [] ? 'Aucune note fournie.' : 'Trop de lignes en une fois (' . self::MAX_LIGNES . ' au plus).');
         }
 
+        $valider = filter_var($args['valider'] ?? false, FILTER_VALIDATE_BOOLEAN);
         $etudiants = $this->cohorte->studentsForEvaluation($evaluation);
+        [$entrees, $manques, $vus] = $this->resoudreLignes($lignes, $etudiants, $evaluation);
+        [$tableau, $etat, $retenues, $compte, $refus] = $this->comparerALExistant($entrees, $etudiants, $user, $valider);
+
+        return new Proposition(
+            titre: 'Notes : ' . $this->intitule($evaluation),
+            resume: sprintf('%d nouvelle(s), %d remplacée(s), %d à valider, %d inchangée(s), sur %s. %s.',
+                $compte['creation'], $compte['modification'], $compte['validation'], $compte['inchange'],
+                $this->nombre($evaluation->bareme), $valider ? 'Validation finale' : 'Brouillon'),
+            tableau: ['colonnes' => ['Étudiant', 'Matricule', 'Avant', 'Après', 'Effet'], 'lignes' => $tableau],
+            manques: array_merge($manques, $refus, $retenues === [] && $refus === [] && $manques === [] ? ['Rien à changer : ces notes sont déjà enregistrées.'] : []),
+            avertissements: $this->avertissements($etudiants, $vus, $evaluation, $compte, $valider),
+            donnees: ['evaluation_id' => (int) $evaluation->id, 'entrees' => $retenues, 'valider' => $valider],
+            // Tout ce qui, en changeant, rendrait la proposition trompeuse : les notes
+            // actuelles ET l'évaluation (un barème passé de 20 à 40 ferait d'un 15 un 7,5).
+            etat: ['notes' => $etat, 'evaluation' => [
+                'bareme' => (float) $evaluation->bareme, 'publiee' => (bool) $evaluation->is_published,
+                'classe_id' => (int) $evaluation->classe_id, 'matiere_id' => (int) $evaluation->matiere_id,
+                'periode' => (string) $evaluation->periode,
+            ]],
+            risque: $compte['modification'] > 0 || $valider ? 'eleve' : 'moyen',
+        );
+    }
+
+    public function executer(Proposition $proposition, $user): array
+    {
+        try {
+            $resultat = $this->saisie->enregistrerToutOuRien(
+                $proposition->donnees['entrees'], $user, (bool) $proposition->donnees['valider'], $proposition->etat['notes']
+            );
+        } catch (SaisieInterrompue $e) {
+            // Annulée avant le commit : rien n'est écrit, aucun avis d'absence n'est parti.
+            throw new PropositionPerimee($e->getMessage());
+        }
+
+        return [
+            'message' => $resultat['saved'] . ' note(s) enregistrée(s)' . ($proposition->donnees['valider'] ? ' et validée(s)' : ' en brouillon') . '.',
+            'lien' => route('esbtp.notes.saisie-rapide', ['evaluation' => $proposition->donnees['evaluation_id']], false),
+            'model_type' => ESBTPEvaluation::class,
+            'model_id' => (int) $proposition->donnees['evaluation_id'],
+            'details' => ['enregistrees' => $resultat['saved']],
+        ];
+    }
+
+    /**
+     * Chaque ligne donnée par la personne → une entrée résolue, ou un manque.
+     *
+     * @return array{0: array, 1: string[], 2: array<int, bool>}
+     */
+    private function resoudreLignes(array $lignes, $etudiants, ESBTPEvaluation $evaluation): array
+    {
+        $bareme = (float) $evaluation->bareme;
         $manques = [];
         $entrees = [];
         $vus = [];
@@ -101,13 +153,7 @@ class SaisirNotes extends ActionAgent
             $designation = trim((string) ($ligne['etudiant'] ?? ''));
             [$trouves, $proches] = $this->reconnaitre($designation, $etudiants);
             if (count($trouves) !== 1) {
-                $liste = fn (array $es) => implode(', ', array_map(fn ($e) => $this->nom($e) . ' (' . $e->matricule . ')', array_slice($es, 0, 5)));
-                $manques[] = match (true) {
-                    $designation === '' => 'Ligne ' . ($i + 1) . ' : étudiant non précisé.',
-                    count($trouves) > 1 => "« {$designation} » désigne plusieurs étudiants : " . $liste($trouves) . '. Lequel ?',
-                    $proches !== [] => "« {$designation} » ne correspond exactement à personne ; plusieurs étudiants possibles : " . $liste($proches) . '. Lequel ?',
-                    default => "« {$designation} » : aucun étudiant de cette classe ne correspond. Demande le matricule.",
-                };
+                $manques[] = $this->manqueDEtudiant($designation, $i, $trouves, $proches);
                 continue;
             }
             $etudiant = $trouves[0];
@@ -119,49 +165,65 @@ class SaisirNotes extends ActionAgent
 
             $absent = filter_var($ligne['absent'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $note = $ligne['note'] ?? null;
-            if (! $absent) {
-                if (! is_numeric($note)) {
-                    $manques[] = $this->nom($etudiant) . ' : note absente. Donne la note ou dis s\'il était absent.';
-                    continue;
-                }
-                $note = round((float) $note, 2);
-                if ($note < 0 || $note > $bareme) {
-                    $manques[] = $this->nom($etudiant) . " : {$note} n'est pas entre 0 et " . $this->nombre($bareme) . ' (barème).';
-                    continue;
-                }
-            }
-
-            $entrees[] = [
-                'etudiant_id' => (int) $etudiant->id,
-                'evaluation_id' => (int) $evaluation->id,
-                'note' => $absent ? null : $note,
-                'is_absent' => $absent,
-            ];
-        }
-
-        $analyse = $entrees === [] ? [] : $this->saisie->analyser($entrees, $user);
-        $tableau = [];
-        $etat = [];
-        $parId = $etudiants->keyBy('id');
-        $compte = ['creation' => 0, 'modification' => 0, 'inchange' => 0];
-
-        foreach ($analyse as $a) {
-            $etudiant = $parId->get($a['entree']['etudiant_id']);
-            if ($a['statut'] === 'refus') {
-                $manques[] = $this->nom($etudiant) . ' : ' . $a['raison'] . '.';
+            if (! $absent && ! is_numeric($note)) {
+                $manques[] = $this->nom($etudiant) . ' : note absente. Donne la note ou dis s\'il était absent.';
                 continue;
             }
-            $compte[$a['statut']]++;
-            $etat[$a['entree']['etudiant_id']] = $a['avant'];
+            $note = $absent ? null : round((float) $note, 2);
+            if ($note !== null && ($note < 0 || $note > $bareme)) {
+                $manques[] = $this->nom($etudiant) . " : {$this->nombre($note)} n'est pas entre 0 et " . $this->nombre($bareme) . ' (barème).';
+                continue;
+            }
+
+            $entrees[] = ['etudiant_id' => (int) $etudiant->id, 'evaluation_id' => (int) $evaluation->id, 'note' => $note, 'is_absent' => $absent];
+        }
+
+        return [$entrees, $manques, $vus];
+    }
+
+    /**
+     * Ce que change chaque entrée par rapport à la base, avec les mêmes gardes que
+     * l'écran. Une ligne identique n'est pas réécrite, sauf pour être validée.
+     *
+     * @return array{0: array, 1: array, 2: array, 3: array<string,int>, 4: string[]}
+     */
+    private function comparerALExistant(array $entrees, $etudiants, $user, bool $valider): array
+    {
+        $parId = $etudiants->keyBy('id');
+        $tableau = [];
+        $etat = [];
+        $retenues = [];
+        $refus = [];
+        $compte = ['creation' => 0, 'modification' => 0, 'validation' => 0, 'inchange' => 0];
+        $effets = ['creation' => 'Nouvelle', 'modification' => 'Remplace', 'validation' => 'Validée', 'inchange' => 'Inchangée'];
+
+        foreach ($entrees === [] ? [] : $this->saisie->analyser($entrees, $user) as $a) {
+            $etudiant = $parId->get($a['entree']['etudiant_id']);
+            if ($a['statut'] === 'refus') {
+                $refus[] = $this->nom($etudiant) . ' : ' . $a['raison'] . '.';
+                continue;
+            }
+            $statut = $a['statut'] === 'inchange' && $valider && ! ($a['avant']['validee'] ?? false) ? 'validation' : $a['statut'];
+            $compte[$statut]++;
+            if ($statut !== 'inchange') {
+                $retenues[] = $a['entree'];
+                $etat[$a['entree']['etudiant_id']] = $a['avant'];
+            }
             $tableau[] = [
                 $this->nom($etudiant),
                 (string) $etudiant->matricule,
                 $this->affichage($a['avant']),
                 $a['entree']['is_absent'] ? 'Absent' : $this->nombre($a['entree']['note']),
-                ['creation' => 'Nouvelle', 'modification' => 'Remplace', 'inchange' => 'Inchangée'][$a['statut']],
+                $effets[$statut],
             ];
         }
 
+        return [$tableau, $etat, $retenues, $compte, $refus];
+    }
+
+    /** @return string[] */
+    private function avertissements($etudiants, array $vus, ESBTPEvaluation $evaluation, array $compte, bool $valider): array
+    {
         $avertissements = [];
         $restants = $etudiants->reject(fn ($e) => isset($vus[$e->id]));
         $dejaNotes = $this->saisie->notesExistantes($restants->map(fn ($e) => ['etudiant_id' => $e->id, 'evaluation_id' => $evaluation->id])->values()->all());
@@ -173,41 +235,28 @@ class SaisirNotes extends ActionAgent
         if ($compte['modification'] > 0) {
             $avertissements[] = $compte['modification'] . ' note(s) déjà saisie(s) seront remplacées.';
         }
-        $valider = filter_var($args['valider'] ?? false, FILTER_VALIDATE_BOOLEAN);
         if ($valider) {
             $avertissements[] = 'Les notes seront VALIDÉES (soumises), pas laissées en brouillon.';
         }
 
-        $intitule = trim(($evaluation->titre ?: 'Évaluation') . ' — ' . ($evaluation->matiere?->name ?? '') . ' — ' . ($evaluation->classe?->name ?? ''), ' —');
-
-        return new Proposition(
-            titre: 'Notes : ' . $intitule,
-            resume: sprintf('%d nouvelle(s), %d remplacée(s), %d inchangée(s), sur %s. %s.',
-                $compte['creation'], $compte['modification'], $compte['inchange'], $this->nombre($bareme), $valider ? 'Validation finale' : 'Brouillon'),
-            tableau: ['colonnes' => ['Étudiant', 'Matricule', 'Avant', 'Après', 'Effet'], 'lignes' => $tableau],
-            manques: $manques,
-            avertissements: $avertissements,
-            donnees: ['evaluation_id' => (int) $evaluation->id, 'entrees' => $entrees, 'valider' => $valider],
-            etat: $etat,
-            risque: $compte['modification'] > 0 || $valider ? 'eleve' : 'moyen',
-        );
+        return $avertissements;
     }
 
-    public function executer(Proposition $proposition, $user): array
+    private function manqueDEtudiant(string $designation, int $i, array $trouves, array $proches): string
     {
-        $resultat = $this->saisie->enregistrer($proposition->donnees['entrees'], $user, (bool) $proposition->donnees['valider']);
-        if ($resultat['refused'] !== []) {
-            // L'état a été vérifié à l'instant ; un refus ici est une course : rien n'est à moitié écrit.
-            throw new \RuntimeException(count($resultat['refused']) . ' note(s) refusée(s) à l\'enregistrement.');
-        }
+        $liste = fn (array $es) => implode(', ', array_map(fn ($e) => $this->nom($e) . ' (' . $e->matricule . ')', array_slice($es, 0, 5)));
 
-        return [
-            'message' => $resultat['saved'] . ' note(s) enregistrée(s)' . ($proposition->donnees['valider'] ? ' et validée(s)' : ' en brouillon') . '.',
-            'lien' => route('esbtp.notes.saisie-rapide', ['evaluation' => $proposition->donnees['evaluation_id']], false),
-            'model_type' => ESBTPEvaluation::class,
-            'model_id' => (int) $proposition->donnees['evaluation_id'],
-            'details' => ['enregistrees' => $resultat['saved']],
-        ];
+        return match (true) {
+            $designation === '' => 'Ligne ' . ($i + 1) . ' : étudiant non précisé.',
+            count($trouves) > 1 => "« {$designation} » désigne plusieurs étudiants : " . $liste($trouves) . '. Lequel ?',
+            $proches !== [] => "« {$designation} » ne correspond exactement à personne ; plusieurs étudiants possibles : " . $liste($proches) . '. Lequel ?',
+            default => "« {$designation} » : aucun étudiant de cette classe ne correspond. Demande le matricule.",
+        };
+    }
+
+    private function intitule(ESBTPEvaluation $evaluation): string
+    {
+        return implode(' — ', array_filter([$evaluation->titre ?: 'Évaluation', $evaluation->matiere?->name, $evaluation->classe?->name]));
     }
 
     /**

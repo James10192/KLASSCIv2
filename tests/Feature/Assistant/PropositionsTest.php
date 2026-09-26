@@ -197,6 +197,73 @@ class PropositionsTest extends TestCase
         $this->assertSame('expired', ChatbotActionLog::sole()->status);
     }
 
+    public function test_un_bareme_change_entre_temps_perime_la_proposition(): void
+    {
+        $widget = $this->proposer([['etudiant' => 'MAT-001', 'note' => 15]])['widget'];
+        $this->evaluation->update(['bareme' => 40]);
+
+        $this->actingAs($this->user)->postJson($widget['valider_url'], ['jeton' => $widget['jeton']])
+            ->assertStatus(409)->assertJson(['statut' => 'perimee']);
+        $this->assertSame(0, ESBTPNote::where('evaluation_id', $this->evaluation->id)->count());
+    }
+
+    public function test_tout_ou_rien_un_refus_ou_un_ecart_a_l_ecriture_n_ecrit_aucune_note(): void
+    {
+        $saisie = app(\App\Domain\Notes\SaisieGroupeeDeNotes::class);
+        $entree = fn (ESBTPEtudiant $e, $note) => ['etudiant_id' => $e->id, 'evaluation_id' => $this->evaluation->id, 'note' => $note, 'is_absent' => false];
+
+        // Un élève hors de la classe en dernier : les deux premières lignes, valides, ne sont pas écrites.
+        $horsClasse = ['etudiant_id' => 999999, 'evaluation_id' => $this->evaluation->id, 'note' => 10, 'is_absent' => false];
+        try {
+            $saisie->enregistrerToutOuRien([$entree($this->etudiants[0], 12), $entree($this->etudiants[1], 13), $horsClasse], $this->user, false, []);
+            $this->fail('La saisie aurait dû être interrompue.');
+        } catch (\App\Domain\Notes\Exceptions\SaisieInterrompue $e) {
+            $this->assertStringContainsString('hors de la classe', $e->getMessage());
+        }
+        $this->assertSame(0, ESBTPNote::where('evaluation_id', $this->evaluation->id)->count());
+
+        // Ce qui avait été montré (« pas de note ») n'est plus vrai : rien n'est écrit.
+        $saisie->enregistrer([$entree($this->etudiants[0], 8)], $this->user, false);
+        $this->expectException(\App\Domain\Notes\Exceptions\SaisieInterrompue::class);
+        try {
+            $saisie->enregistrerToutOuRien([$entree($this->etudiants[0], 12)], $this->user, false, [$this->etudiants[0]->id => null]);
+        } finally {
+            $this->assertSame(8.0, (float) ESBTPNote::where('evaluation_id', $this->evaluation->id)->value('note'));
+        }
+    }
+
+    public function test_une_note_identique_n_est_pas_reecrite_sauf_pour_etre_validee(): void
+    {
+        app(\App\Domain\Notes\SaisieGroupeeDeNotes::class)->enregistrer([
+            ['etudiant_id' => $this->etudiants[0]->id, 'evaluation_id' => $this->evaluation->id, 'note' => 14, 'is_absent' => false],
+        ], $this->user, false);
+
+        $brouillon = app(SaisirNotes::class)->preparer(['evaluation_id' => $this->evaluation->id, 'notes' => [
+            ['etudiant' => 'MAT-001', 'note' => 14], ['etudiant' => 'MAT-002', 'note' => 11],
+        ]], $this->user);
+        $this->assertSame([$this->etudiants[1]->id], array_column($brouillon->donnees['entrees'], 'etudiant_id'));
+        $this->assertSame('Inchangée', $brouillon->tableau['lignes'][0][4]);
+
+        $validation = app(SaisirNotes::class)->preparer(['evaluation_id' => $this->evaluation->id, 'valider' => true, 'notes' => [
+            ['etudiant' => 'MAT-001', 'note' => 14],
+        ]], $this->user);
+        $this->assertSame('Validée', $validation->tableau['lignes'][0][4]);
+        $this->assertCount(1, $validation->donnees['entrees']);
+
+        $rien = app(SaisirNotes::class)->preparer(['evaluation_id' => $this->evaluation->id, 'notes' => [['etudiant' => 'MAT-001', 'note' => 14]]], $this->user);
+        $this->assertFalse($rien->estComplete());
+    }
+
+    public function test_refuser_apres_validation_ne_dit_pas_refusee(): void
+    {
+        $widget = $this->proposer([['etudiant' => 'MAT-001', 'note' => 14]])['widget'];
+        $this->actingAs($this->user)->postJson($widget['valider_url'], ['jeton' => $widget['jeton']])->assertOk();
+
+        $this->actingAs($this->user)->postJson($widget['refuser_url'])->assertStatus(409)->assertJson(['statut' => 'traitee']);
+        $this->assertSame('executed', ChatbotActionLog::sole()->status);
+        $this->assertSame(0, ChatbotMessage::where('content', 'like', 'Proposition refusée%')->count());
+    }
+
     public function test_refuser_ferme_la_proposition_et_l_historique_montre_l_etat_reel(): void
     {
         $widget = $this->proposer([['etudiant' => 'MAT-001', 'note' => 14]])['widget'];

@@ -679,6 +679,7 @@
         expiree: 'Expirée : demandez une nouvelle proposition.',
         perimee: 'Les données ont changé : rien n\'a été enregistré.',
         traitee: 'Déjà traitée.',
+        a_verifier: 'Enregistrement interrompu : vérifiez la page avant de refaire.',
         echec: 'Échec : rien n\'a été modifié.'
     };
     RENDUS.approbation = function (data, ctx) {
