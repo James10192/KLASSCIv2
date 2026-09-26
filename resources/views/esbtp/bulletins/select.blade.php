@@ -843,7 +843,7 @@
                 <div class="bus-inline-panel bus-inline-panel--danger" x-show="previewIssue" x-cloak>
                     <div class="bus-inline-panel__title">
                         <i class="fas fa-circle-exclamation"></i>
-                        <span>Configuration a completer</span>
+                        <span>Configuration à compléter</span>
                     </div>
                     <p class="bus-inline-panel__body" x-text="previewIssue?.message"></p>
                     <template x-if="previewIssue">
