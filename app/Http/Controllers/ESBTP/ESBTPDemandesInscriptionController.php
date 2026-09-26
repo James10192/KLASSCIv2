@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\ESBTP;
 
 use App\Domain\Admissions\DemandeDInscription;
+use App\Domain\Admissions\EtapeDuDossier;
 use App\Domain\Admissions\FileDesDemandes;
 use App\Domain\Admissions\PreparationDInscription;
 use App\Http\Controllers\Controller;
@@ -47,14 +48,14 @@ class ESBTPDemandesInscriptionController extends Controller
             'types' => FileDesDemandes::typesVisibles($request->user()),
         ];
 
-        // Une recherche ou un filtre ne change aucun compteur : ils ne se
-        // recalculent qu'au chargement et apres une decision.
+        // Une recherche ne change aucun compteur : ils ne se recalculent qu'au
+        // chargement, au changement d'onglet et apres une decision.
         if ($request->boolean('fragment')) {
             $liste = ['liste' => view('esbtp.admissions.demandes._liste', $donnees)->render()];
             if (! $request->boolean('compteurs')) {
                 return response()->json($liste);
             }
-            $donnees['compteurs'] = $this->file->compteurs($request->user());
+            $donnees['compteurs'] = $this->file->compteurs($request->user(), $filtres['type']);
 
             return response()->json($liste + [
                 'kpis' => view('esbtp.admissions.demandes._kpis', $donnees)->render(),
@@ -62,12 +63,13 @@ class ESBTPDemandesInscriptionController extends Controller
             ]);
         }
 
-        $donnees['compteurs'] = $this->file->compteurs($request->user());
+        $donnees['compteurs'] = $this->file->compteurs($request->user(), $filtres['type']);
 
         return view('esbtp.admissions.demandes.index', $donnees + [
             'classes' => $request->user()->can('reinscriptions.demandes.process') ? app(PreparationDInscription::class)->classes() : [],
             'ouvrir' => (string) $request->query('ouvrir', ''),
             'agir' => $request->boolean('agir'),
+            'campagne' => $this->file->anneeDeCampagne()?->name,
         ]);
     }
 
@@ -137,7 +139,7 @@ class ESBTPDemandesInscriptionController extends Controller
         return response()->json(['message' => 'Rendez-vous fixé au '.$c->date->translatedFormat('l j F').' à '.$c->heureDebutHi().'. La convocation part par e-mail si la famille en a un ; sinon, elle rejoint la liste des familles à prévenir.']);
     }
 
-    /** @return array{type: string, etat: string, q: string, sans_rdv: bool, contact: bool} */
+    /** @return array{type: string, etat: string, etape: string, q: string, sans_rdv: bool, contact: bool} */
     private function filtres(Request $request): array
     {
         $etat = (string) $request->query('etat', 'a_traiter');
@@ -145,6 +147,7 @@ class ESBTPDemandesInscriptionController extends Controller
         return [
             'type' => in_array($request->query('type'), [FileDesDemandes::TYPE_NOUVELLE, FileDesDemandes::TYPE_REINSCRIPTION], true) ? (string) $request->query('type') : '',
             'etat' => in_array($etat, FileDesDemandes::ETATS, true) ? $etat : 'a_traiter',
+            'etape' => EtapeDuDossier::depuis(is_string($request->query('etape')) ? $request->query('etape') : null)?->value ?? '',
             'q' => mb_substr(trim((string) $request->query('q', '')), 0, 80),
             'sans_rdv' => $request->boolean('sans_rdv'),
             'contact' => $request->boolean('contact'),
@@ -155,7 +158,7 @@ class ESBTPDemandesInscriptionController extends Controller
     private function demande(Request $request, string $type, int $id): DemandeDInscription
     {
         abort_unless(in_array($type, FileDesDemandes::typesVisibles($request->user()), true), 403);
-        $avecRdv = ['reservations' => fn ($r) => $r->occupantes()->with('creneau', 'accueilliPar:id,name')->latest('id')];
+        $avecRdv = ['reservations' => fn ($r) => $r->occupantes()->with('creneau', 'accueilliPar:id,name', 'prevenuePar:id,name')->latest('id')];
 
         return $type === FileDesDemandes::TYPE_NOUVELLE
             ? DemandeDInscription::deCandidature(ESBTPCandidature::with(['anneeUniversitaire:id,name', 'filiere:id,name', 'niveau:id,name', 'traitePar:id,name'] + $avecRdv)->findOrFail($id))

@@ -3736,6 +3736,7 @@ require __DIR__.'/academic-pilotage.php';
 require __DIR__.'/dispenses.php';
 require __DIR__.'/support.php';
 require __DIR__.'/confirmation-contact.php';
+require __DIR__.'/admissions.php';
 
 
 

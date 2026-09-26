@@ -138,7 +138,7 @@ class DemandesInscriptionTest extends TestCase
 
         $fragment = $this->actingAs($this->agent)->getJson(route('esbtp.demandes.index', ['fragment' => 1, 'compteurs' => 1]))->assertOk()->json();
 
-        $this->assertSame(1, $fragment['compteurs']['recues']);
+        $this->assertSame(1, $fragment['compteurs']['etapes']['recu_aujourdhui']);
         $this->assertLessThan(strpos($fragment['liste'], 'ATTEND'), strpos($fragment['liste'], 'RECUE'));
     }
 

@@ -3,6 +3,8 @@
     $_conv = $convocations;
     $_peutPrevenir = auth()->user()?->can('inscriptions.rdv.accueil') ?? false;
     $_familles = app(\App\Services\RendezVous\FamillesAPrevenirRdv::class);
+    // Chaque famille mene a son dossier, si l'agent a le droit de lire ce type de demande.
+    $_typesLisibles = \App\Domain\Admissions\FileDesDemandes::typesVisibles(auth()->user());
 @endphp
 
 {{-- 1. Les convocations : ce qui est parti, ce qui attend, ce qui a echoue --}}
@@ -31,7 +33,7 @@
             @endif
         </div>
         @if($aPrevenir > 0)
-            <div class="rdv-a-prevenir">
+            <div class="rdv-a-prevenir" id="rdv-a-prevenir">
                 <i class="fas fa-phone-volume"></i>
                 <p><strong>{{ $aPrevenir }} famille{{ $aPrevenir > 1 ? 's' : '' }} à prévenir par téléphone</strong> — rendez-vous à venir sans convocation reçue par e-mail (pas d'adresse, envoi refusé, ou réservation d'avant le suivi).</p>
                 <a class="rdv-btn rdv-btn--ghost rdv-btn--sm" href="{{ route('esbtp.rendez-vous.familles.apercu') }}" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i>Liste d'appel</a>
@@ -164,6 +166,9 @@
                                                     <strong>{{ $resa->nomComplet() }}</strong>
                                                     <span>{{ $resa->telephone }}@if($resa->email) · {{ $resa->email }}@endif</span>
                                                     <x-demande-contact-badge :demande="$resa->porteur()" />
+                                                    @if(($resa->candidature_id || $resa->reinscription_demande_id) && in_array($resa->candidature_id ? \App\Domain\Admissions\FileDesDemandes::TYPE_NOUVELLE : \App\Domain\Admissions\FileDesDemandes::TYPE_REINSCRIPTION, $_typesLisibles, true))
+                                                        <a class="rdv-lien rdv-resa-dossier" href="{{ \App\Domain\Admissions\DemandeDInscription::lien($resa->candidature_id, $resa->reinscription_demande_id) }}"><i class="fas fa-folder-open" aria-hidden="true"></i> Ouvrir le dossier</a>
+                                                    @endif
                                                 </div>
                                                 <div class="rdv-resa-conv">
                                                     @if($_c)

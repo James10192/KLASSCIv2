@@ -23,13 +23,13 @@ window.demandesInscription = function () {
             document.body.setAttribute('data-m-toast', 'off');
             this.cfg = JSON.parse(this.$root.dataset.dmiConfig || '{}');
             this.classes = JSON.parse(this.$root.dataset.dmiClasses || '[]');
-            this.filtres = Object.assign({ type: '', etat: 'a_traiter', q: '', sans_rdv: false, contact: false }, this.cfg.filtres || {});
+            this.filtres = Object.assign({ type: '', etat: 'a_traiter', etape: '', q: '', sans_rdv: false, contact: false }, this.cfg.filtres || {});
             this.compteurs = this.cfg.compteurs || {};
             this.$root.addEventListener('click', (e) => this.surClic(e));
             this.$root.addEventListener('dmi-classe', () => { if (this.fenetre === 'inscrire') this.chargerFrais(); });
             this._clavier = (e) => this.surTouche(e);
             document.addEventListener('keydown', this._clavier);
-            this._retour = () => { this.filtres = Object.assign(this.filtres, this.lireAdresse()); this.recharger(false); };
+            this._retour = () => { this.filtres = Object.assign(this.filtres, this.lireAdresse()); this.recharger(false, true); };
             window.addEventListener('popstate', this._retour);
             if (this.cfg.ouvrir) this.ouvrirDossier(this.cfg.ouvrir, this.cfg.agir ? 'suite' : null);
         },
@@ -63,7 +63,7 @@ window.demandesInscription = function () {
         /* ---------- Filtres et liste ---------- */
         lireAdresse() {
             const p = new URL(window.location.href).searchParams;
-            return { type: p.get('type') || '', etat: p.get('etat') || 'a_traiter', q: p.get('q') || '', sans_rdv: p.get('sans_rdv') === '1', contact: p.get('contact') === '1' };
+            return { type: p.get('type') || '', etat: p.get('etat') || 'a_traiter', etape: p.get('etape') || '', q: p.get('q') || '', sans_rdv: p.get('sans_rdv') === '1', contact: p.get('contact') === '1' };
         },
         parametres() {
             const p = new URLSearchParams();
@@ -72,13 +72,25 @@ window.demandesInscription = function () {
             if ((this.filtres.q || '').trim()) p.set('q', this.filtres.q.trim());
             if (this.filtres.sans_rdv) p.set('sans_rdv', '1');
             if (this.filtres.contact) p.set('contact', '1');
+            if (this.filtres.etape) p.set('etape', this.filtres.etape);
             return p;
         },
         filtrer(changements) {
             Object.assign(this.filtres, changements);
             this.recharger(true);
         },
-        /* Les compteurs ne dependent d'aucun filtre : ils ne se relisent qu'apres une decision. */
+        /* Les etapes comptent les dossiers de l'onglet : changer d'onglet les relit. */
+        changerType(type) {
+            if (this.filtres.type === type) return;
+            this.filtres.type = type;
+            this.recharger(true, true);
+        },
+        /* Un second clic sur l'etape active revient a tous les dossiers ouverts. */
+        choisirEtape(etape) {
+            const nouvelle = etape && this.filtres.etape !== etape ? etape : '';
+            this.filtrer(nouvelle ? { etape: nouvelle } : { etape: '', etat: 'a_traiter' });
+        },
+        /* Les compteurs ne dependent pas de la recherche : ils se relisent au changement d'onglet et apres une decision. */
         async recharger(historique, avecCompteurs = false) {
             this.chargement = true;
             try {
@@ -163,8 +175,15 @@ window.demandesInscription = function () {
         surClic(e) {
             const t = e.target;
             const etat = t.closest('[data-dmi-etat]');
-            if (etat) { this.filtrer({ etat: etat.dataset.dmiEtat }); return; }
-            if (t.closest('[data-dmi-effacer]')) { this.filtrer({ q: '', type: '', sans_rdv: false, contact: false }); return; }
+            if (etat) { this.filtrer({ etat: etat.dataset.dmiEtat, etape: '' }); return; }
+            const etape = t.closest('[data-dmi-etape]');
+            if (etape) { this.choisirEtape(etape.dataset.dmiEtape); return; }
+            if (t.closest('[data-dmi-effacer]')) {
+                const typeChange = this.filtres.type !== '';
+                Object.assign(this.filtres, { q: '', type: '', etape: '', sans_rdv: false, contact: false });
+                this.recharger(true, typeChange);
+                return;
+            }
             if (t.closest('[data-dmi-fermer]')) { this.fermerDossier(); return; }
             const poster = t.closest('[data-dmi-poster]');
             if (poster) { this.poster(poster); return; }

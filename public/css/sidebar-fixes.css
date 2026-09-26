@@ -408,3 +408,13 @@ button:focus,
 .sidebar .menu-sublink.active .menu-badge { background: rgba(255, 255, 255, .22); color: #fff !important; }
 /* L'icone d'un accordeon ouvert restait bleue sur son fond bleu : invisible. */
 .menu-accordion-btn.active .menu-icon i { color: #fff !important; }
+
+/* ===== Admissions : sous-liens de « Dossiers » et compteurs (septembre 2026) =====
+   Les deux types de dossiers se rangent sous « Dossiers », en retrait, sans
+   icone. Le compteur des familles a prevenir est orange : il appelle un geste.
+   Chaque entree garde une cible de 44px sur un ecran tactile. */
+.menu-sublink--enfant { padding-left: 2.9rem; margin: 0; font-size: .8rem; }
+.menu-sublink--enfant::before { width: 4px; height: 4px; }
+.menu-badge--discret { background: transparent; color: #64748b; }
+.menu-badge--alerte { background: #fef3c7; color: #92400e; }
+@media (pointer: coarse) { .menu-accordion-content .menu-sublink { min-height: 44px; } }

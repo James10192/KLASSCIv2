@@ -163,6 +163,18 @@ final class DemandeDInscription
         return $this->statut === $this->modele::STATUT_REJETEE;
     }
 
+    /** L'etape du parcours d'admission ; null pour un dossier rejete. */
+    public function etapeDuDossier(): ?EtapeDuDossier
+    {
+        return EtapeDuDossier::deduire($this->modele, $this->rendezVous);
+    }
+
+    /** @return array{texte: string, detail: string, ton: string} */
+    public function convocation(): array
+    {
+        return EtatConvocation::pour($this->rendezVous);
+    }
+
     public function initiales(): string
     {
         $mots = preg_split('/\s+/u', trim($this->nom)) ?: [];

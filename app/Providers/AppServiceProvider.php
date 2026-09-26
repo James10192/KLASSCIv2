@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\Admissions\CompteursDuMenu;
 use App\Domain\Admissions\FileDesDemandes;
 use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
@@ -310,6 +311,8 @@ class AppServiceProvider extends ServiceProvider
             // « Accueil du jour » : une seule source, FileDesDemandes.
             $view->with('demandesATraiter', FileDesDemandes::aTraiter($agent));
             $view->with('accueilAttendues', FileDesDemandes::famillesAttenduesAujourdhui($agent));
+            $view->with('dossiersParType', CompteursDuMenu::aTraiterParType($agent));
+            $view->with('famillesAPrevenir', CompteursDuMenu::famillesAPrevenir($agent));
         });
     }
 }

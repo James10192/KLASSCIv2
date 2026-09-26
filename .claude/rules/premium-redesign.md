@@ -173,7 +173,8 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | custom-roles (Lot 8) | `cr-*` | `cr-modal`, `cr-picker`, `cr-perm`, `cr-role-card`, `cr-section-bar` |
 | rendez-vous accueil du jour | `rac-*` (sur la base `rdv-*` du planning) | `rac-ligne`, `rac-coche`, `rac-creneau`, `rac-filtre`, `rac-choix` |
 | pilotage académique (tableau de bord) | `pa-*` | `pa-hero`, `pa-kpi`, `pa-relance`, `pa-table`, `pa-panneau` |
-| demandes d'inscription (file unifiée, fenêtre « Accepter et inscrire ») | `dmi-*` | `dmi-ligne`, `dmi-panneau`, `dmi-fenetre`, `dmi-picker`, `dmi-apercu` |
+| dossiers d'admission (file unifiée, étapes, fenêtre « Accepter et inscrire ») | `dmi-*` | `dmi-ligne`, `dmi-panneau`, `dmi-resume`, `dmi-etape-badge`, `dmi-fenetre`, `dmi-picker`, `dmi-apercu` |
+| aujourd'hui à l'accueil (créneaux du jour, coche « Reçue », guichet) | `adj-*` | `adj-hero`, `adj-kpi`, `adj-creneau`, `adj-famille`, `adj-coche`, `adj-guichet` |
 | journal d'audit (liste, détail d'une action, activité des personnes) | `jda-*` | `jda-ligne`, `jda-onglet`, `jda-d-carte`, `jda-d-vie`, `jda-kpi` |
 | rendez-vous d'inscription | `rdv-*` | `rdv-hero`, `rdv-kpi`, `rdv-slot`, `rdv-jauge`, `rdv-resas`, `rdv-switch`, `rdv-reglages` |
 | retrouver un rendez-vous | `rdr-*` (sur la base `rdv-*`) | `rdr-ligne`, `rdr-quand`, `rdr-groupe`, `rdr-recherche` |

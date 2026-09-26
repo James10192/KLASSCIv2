@@ -142,6 +142,8 @@
 .rdv-resa { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .5rem .7rem; border-radius: 8px; background: var(--rdv-surface); flex-wrap: wrap; }
 .rdv-resa-qui { display: flex; flex-direction: column; min-width: 0; font-size: .82rem; }
 .rdv-resa-qui span { color: var(--rdv-muted); font-size: .76rem; overflow-wrap: anywhere; }
+.rdv-resa-dossier { align-self: flex-start; display: inline-flex; align-items: center; gap: .3rem; margin-top: .2rem; text-decoration: none; }
+@media (pointer: coarse) { .rdv-resa-dossier { min-height: 44px; } }
 .rdv-resa-conv { display: flex; flex-direction: column; align-items: flex-end; gap: .15rem; text-align: right; }
 .rdv-resa-conv small { font-size: .72rem; color: var(--rdv-muted); }
 .rdv-resa-erreur { color: #b91c1c !important; max-width: 320px; }

@@ -1,5 +1,6 @@
 {{-- Section « Etudiants » de la barre laterale. Incluse par layouts/app ; elle lit
-     $demandesATraiter et $accueilAttendues, partages par AppServiceProvider (FileDesDemandes). --}}
+     $demandesATraiter, $accueilAttendues (FileDesDemandes), $dossiersParType et
+     $famillesAPrevenir (CompteursDuMenu), partages par AppServiceProvider. --}}
                     <!-- Students Section -->
                     @can('module.etudiants.access')
                     @if(!auth()->user()->can('module.caisse.access') || auth()->user()->canAny(['module.comptabilite.access', 'identity.school_manager', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer', 'identity.communicate']) || auth()->user()->hasRole(['superAdmin', 'admin', 'serviceTechnique']))
@@ -15,10 +16,13 @@
                              guichet), puis le dossier d'inscription. Un seul accordeon de douze
                              entrees depassait la hauteur maximale du panneau et coupait la fin. --}}
                         @php
-                            $_navAccueil = Request::routeIs('esbtp.rendez-vous.accueil.*');
-                            $_navPlanning = Request::routeIs('esbtp.rendez-vous.*') && ! $_navAccueil;
+                            // « Aujourd'hui » couvre aussi l'Accueil du jour detaille, qu'il ouvre.
+                            $_navJour = Request::routeIs('esbtp.admissions.aujourdhui') || Request::routeIs('esbtp.rendez-vous.accueil.*');
+                            $_navPlanning = Request::routeIs('esbtp.rendez-vous.*') && ! Request::routeIs('esbtp.rendez-vous.accueil.*');
+                            $_navDossiers = Request::routeIs('esbtp.demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.reinscription-demandes.*');
+                            $_navTypeDossier = $_navDossiers ? (string) request()->query('type', '') : '';
                             $_navEtudiants = Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.accessibility.*') || Request::routeIs('esbtp.trash.*');
-                            $_navAdmissions = Request::routeIs('esbtp.demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.rendez-vous.*');
+                            $_navAdmissions = $_navDossiers || $_navJour || Request::routeIs('esbtp.rendez-vous.*');
                             $_navInscriptions = Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.pieces-dossier.*');
                             $_navBadge = fn ($n) => $n > 999 ? '999+' : (string) $n;
                         @endphp
@@ -67,34 +71,59 @@
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ $_navAdmissions ? 'show' : '' }}">
-                                {{-- Une seule entree pour les deux sortes de demandes : l'agent ne sait
-                                     pas toujours laquelle la famille a deposee. Le type est un filtre de
-                                     la page. Les deux anciennes corbeilles restent joignables par leurs
-                                     adresses, mais ne sont plus au menu. --}}
-                                @canany(['inscriptions.candidatures.view', 'reinscriptions.demandes.view'])
-                                <a href="{{ route('esbtp.demandes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.reinscription-demandes.*') ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-inbox"></i></div>
+                                {{-- Dans l'ordre d'une journee d'accueil : qui arrive aujourd'hui, les
+                                     dossiers (candidatures et reinscriptions dans une seule liste, le
+                                     type n'est qu'un filtre), le planning, puis les familles a appeler.
+                                     Les anciennes adresses (corbeilles, Accueil du jour) restent
+                                     joignables : redirection, ou lien depuis « Aujourd'hui ». --}}
+                                @can('inscriptions.rdv.accueil')
+                                <a href="{{ route('esbtp.admissions.aujourdhui') }}" class="menu-sublink {{ $_navJour ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-clock"></i></div>
                                     <div class="menu-text">
-                                        <span class="menu-label">Demandes d'inscription</span>
-                                        @if(($demandesATraiter ?? 0) > 0)
-                                            <span class="menu-badge" title="{{ $demandesATraiter }} à traiter">{{ $_navBadge($demandesATraiter) }}</span>
+                                        <span class="menu-label">Aujourd'hui</span>
+                                        @if(($accueilAttendues ?? 0) > 0)
+                                            <span class="menu-badge" title="{{ $accueilAttendues }} famille(s) encore attendue(s) aujourd'hui">{{ $_navBadge($accueilAttendues) }}</span>
                                         @endif
                                     </div>
                                 </a>
+                                @endcan
+                                @canany(['inscriptions.candidatures.view', 'reinscriptions.demandes.view'])
+                                <a href="{{ route('esbtp.demandes.index') }}" class="menu-sublink {{ $_navDossiers && $_navTypeDossier === '' ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-folder-open"></i></div>
+                                    <div class="menu-text">
+                                        <span class="menu-label">Dossiers</span>
+                                        @if(($demandesATraiter ?? 0) > 0)
+                                            <span class="menu-badge" title="{{ $demandesATraiter }} dossier(s) ouvert(s)">{{ $_navBadge($demandesATraiter) }}</span>
+                                        @endif
+                                    </div>
+                                </a>
+                                @foreach([
+                                    \App\Domain\Admissions\FileDesDemandes::TYPE_NOUVELLE => 'Nouvelles inscriptions',
+                                    \App\Domain\Admissions\FileDesDemandes::TYPE_REINSCRIPTION => 'Réinscriptions',
+                                ] as $_type => $_libelle)
+                                    @if(array_key_exists($_type, $dossiersParType ?? []))
+                                    <a href="{{ route('esbtp.demandes.index', ['type' => $_type]) }}" class="menu-sublink menu-sublink--enfant {{ $_navTypeDossier === $_type ? 'active' : '' }}">
+                                        <div class="menu-text">
+                                            <span class="menu-label">{{ $_libelle }}</span>
+                                            @if($dossiersParType[$_type] > 0)
+                                                <span class="menu-badge menu-badge--discret" title="{{ $dossiersParType[$_type] }} ouvert(s)">{{ $_navBadge($dossiersParType[$_type]) }}</span>
+                                            @endif
+                                        </div>
+                                    </a>
+                                    @endif
+                                @endforeach
                                 @endcanany
                                 @can('inscriptions.rdv.view')
                                 <a href="{{ route('esbtp.rendez-vous.index') }}" class="menu-sublink {{ $_navPlanning ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
                                     <div class="menu-text"><span class="menu-label">Planning des rendez-vous</span></div>
                                 </a>
-                                @endcan
-                                @can('inscriptions.rdv.accueil')
-                                <a href="{{ route('esbtp.rendez-vous.accueil.index') }}" class="menu-sublink {{ $_navAccueil ? 'active' : '' }}">
-                                    <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
+                                <a href="{{ route('esbtp.rendez-vous.index') }}#rdv-a-prevenir" class="menu-sublink">
+                                    <div class="menu-icon"><i class="fas fa-phone-volume"></i></div>
                                     <div class="menu-text">
-                                        <span class="menu-label">Accueil du jour</span>
-                                        @if(($accueilAttendues ?? 0) > 0)
-                                            <span class="menu-badge" title="{{ $accueilAttendues }} famille(s) encore attendue(s) aujourd'hui">{{ $_navBadge($accueilAttendues) }}</span>
+                                        <span class="menu-label">Familles à prévenir</span>
+                                        @if(($famillesAPrevenir ?? 0) > 0)
+                                            <span class="menu-badge menu-badge--alerte" title="{{ $famillesAPrevenir }} famille(s) sans convocation reçue par e-mail">{{ $_navBadge($famillesAPrevenir) }}</span>
                                         @endif
                                     </div>
                                 </a>

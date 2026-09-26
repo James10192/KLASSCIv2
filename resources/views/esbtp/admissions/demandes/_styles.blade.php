@@ -10,6 +10,7 @@
 .dmi-hero-icon { width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.15); display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0; color: #fff; }
 .dmi-hero h1 { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; }
 .dmi-hero p { color: rgba(255,255,255,.75); font-size: .88rem; margin: .2rem 0 0; }
+.dmi-hero-sur { display: block; font-size: .74rem; font-weight: 700; letter-spacing: .04em; color: rgba(255,255,255,.72); margin-bottom: .1rem; }
 .dmi-hero-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 .dmi-btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 40px; padding: .5rem 1rem; border-radius: 10px; font-size: .84rem; font-weight: 700; border: 1px solid transparent; cursor: pointer; text-decoration: none; transition: background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease; white-space: nowrap; }
 .dmi-btn:focus-visible { outline: 3px solid rgba(4,83,203,.35); outline-offset: 2px; }
@@ -27,7 +28,7 @@
 .dmi-btn--sm { min-height: 36px; padding: .4rem .8rem; font-size: .79rem; border-radius: 9px; }
 .dmi-btn--bloc { width: 100%; }
 
-.dmi-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .75rem; margin-top: 1.4rem; }
+.dmi-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .75rem; margin-top: 1.4rem; }
 .dmi-kpi { display: flex; flex-direction: column; gap: .3rem; padding: .85rem 1rem; border-radius: 12px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); color: #fff; text-align: left; cursor: pointer; font: inherit; transition: background .2s ease, border-color .2s ease; min-width: 0; }
 .dmi-kpi:hover { background: rgba(255,255,255,.17); }
 .dmi-kpi.is-actif { background: rgba(255,255,255,.24); border-color: rgba(255,255,255,.55); }
@@ -60,7 +61,34 @@
 .dmi-lien { background: none; border: 0; padding: 0; color: var(--dmi-primary); font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; }
 .dmi-lien:hover { color: var(--dmi-primary-d); text-decoration: underline; }
 
-.dmi-entetes, .dmi-ligne { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(0, 1.5fr) minmax(0, 1.4fr) auto; gap: .75rem; align-items: center; }
+.dmi-entetes, .dmi-ligne { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.05fr) minmax(0, 1.25fr) minmax(0, 1.2fr) auto; gap: .75rem; align-items: center; }
+/* Etapes du dossier : bleu pour ce qui suit son cours, orange pour une action en
+   attente, vert pour un resultat acquis. Aucune couleur decorative. */
+.dmi-kpi--alerte .dmi-kpi-libelle::before, .dmi-kpi--succes .dmi-kpi-libelle::before { content: ''; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: .4rem; vertical-align: middle; }
+.dmi-kpi--alerte .dmi-kpi-libelle::before { background: #fbbf24; }
+.dmi-kpi--succes .dmi-kpi-libelle::before { background: #34d399; }
+.dmi-etape-badge { display: inline-flex; align-self: flex-start; align-items: center; font-size: .72rem; font-weight: 700; padding: .22rem .6rem; border-radius: 999px; white-space: nowrap; }
+.dmi-etape-badge--neutre { background: #f1f5f9; color: #334155; }
+.dmi-etape-badge--planifie { background: var(--dmi-soft); color: var(--dmi-primary); }
+.dmi-etape-badge--recu { background: var(--dmi-primary); color: #fff; }
+.dmi-etape-badge--alerte { background: #fef3c7; color: #92400e; }
+.dmi-etape-badge--succes { background: #dcfce7; color: var(--dmi-success); }
+.dmi-conv { font-size: .8rem; }
+.dmi-col strong.dmi-conv--succes, .dmi-resume-case strong.dmi-conv--succes { color: var(--dmi-success); }
+.dmi-col strong.dmi-conv--echec, .dmi-resume-case strong.dmi-conv--echec { color: var(--dmi-danger); }
+.dmi-col strong.dmi-conv--alerte, .dmi-resume-case strong.dmi-conv--alerte { color: var(--dmi-warning); }
+.dmi-col strong.dmi-conv--attente, .dmi-col strong.dmi-conv--neutre { color: #334155; }
+.dmi-parcours { max-width: 16rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dmi-resume { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin-top: .9rem; }
+.dmi-resume-case { background: var(--dmi-surface); border: 1px solid #eef2f7; border-radius: 10px; padding: .55rem .65rem; display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.dmi-resume-case > span { font-size: .68rem; color: var(--dmi-muted); font-weight: 600; }
+.dmi-resume-case > strong { font-size: .8rem; font-weight: 700; color: var(--dmi-dark); overflow-wrap: anywhere; line-height: 1.25; }
+.dmi-resume-case > small { font-size: .7rem; color: var(--dmi-muted); line-height: 1.3; }
+/* Sur un ecran tactile, chaque cible fait au moins 44px. */
+@media (pointer: coarse) {
+    .dmi-btn, .dmi-btn--sm, .dmi-puce, .dmi-seg button, .dmi-fermer { min-height: 44px; }
+    .dmi-fermer { width: 44px; }
+}
 .dmi-entetes { padding: .6rem 1.1rem; font-size: .66rem; font-weight: 800; letter-spacing: .08em; color: var(--dmi-muted); text-transform: uppercase; border-bottom: 1px solid #eef2f7; }
 .dmi-liste { position: relative; }
 .dmi-liste.is-chargement { opacity: .55; pointer-events: none; transition: opacity .2s ease; }
@@ -233,11 +261,13 @@
     .dmi-hero-actions .dmi-btn { flex: 1; }
     .dmi-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .dmi-entetes { display: none; }
-    .dmi-ligne { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "qui action" "parcours parcours" "rdv rdv"; row-gap: .4rem; }
+    .dmi-ligne { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "qui action" "etape etape" "rdv rdv" "conv conv"; row-gap: .4rem; }
     .dmi-ligne > :nth-child(1) { grid-area: qui; }
-    .dmi-ligne > :nth-child(2) { grid-area: parcours; padding-left: 48px; }
+    .dmi-ligne > :nth-child(2) { grid-area: etape; padding-left: 48px; }
     .dmi-ligne > :nth-child(3) { grid-area: rdv; padding-left: 48px; }
-    .dmi-ligne > :nth-child(4) { grid-area: action; }
+    .dmi-ligne > :nth-child(4) { grid-area: conv; padding-left: 48px; }
+    .dmi-ligne > :nth-child(5) { grid-area: action; }
+    .dmi-resume { grid-template-columns: minmax(0, 1fr); }
     .dmi-barre .dmi-seg { width: 100%; }
     .dmi-barre .dmi-seg button { flex: 1; }
     .dmi-grille { grid-template-columns: minmax(0, 1fr); }

@@ -44,6 +44,8 @@
         <button type="button" class="dmi-fermer" data-dmi-fermer aria-label="Fermer le dossier"><i class="fas fa-xmark"></i></button>
     </div>
 
+    @include('esbtp.admissions.demandes._panneau-resume', ['d' => $d])
+
     <div class="dmi-infos">
         @if($_nouvelle)
             <div class="dmi-info"><span>Vœu</span><strong>{{ $d->parcours }}</strong></div>

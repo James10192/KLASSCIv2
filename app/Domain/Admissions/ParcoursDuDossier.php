@@ -2,7 +2,9 @@
 
 namespace App\Domain\Admissions;
 
+use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutReservationRdv;
+use App\Models\ESBTPRdvReservation;
 use Carbon\CarbonInterface;
 
 /**
@@ -34,6 +36,7 @@ final class ParcoursDuDossier
             }),
             self::etape('Rendez-vous fixé', $rdv?->created_at,
                 $rdv?->creneau ? ucfirst($rdv->creneau->date->translatedFormat('l j F')).' · '.$rdv->creneau->heureDebutHi() : ''),
+            ...self::convocation($rdv),
             self::etape('Reçue au guichet', $rdv?->statut === StatutReservationRdv::Honoree ? $rdv->accueilli_at : null,
                 $rdv?->accueilliPar ? 'par '.$rdv->accueilliPar->name : ''),
         ];
@@ -49,6 +52,29 @@ final class ParcoursDuDossier
                 $demande->estInscrite() && $m->traitePar ? 'par '.$m->traitePar->name : 'doublons, classe, matricule, aperçu');
 
         return self::marquerLaProchaine($etapes, $demande->estOuverte());
+    }
+
+    /**
+     * La convocation, seulement quand il y a un rendez-vous : sans lui, il n'y a
+     * rien a convoquer. Remise prouvee, prevenue par telephone, ou echec (rebond)
+     * a rattraper par un appel ; « envoyee » sans remise n'est pas une etape franchie.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function convocation(?ESBTPRdvReservation $rdv): array
+    {
+        if ($rdv === null) {
+            return [];
+        }
+
+        $etat = EtatConvocation::pour($rdv);
+
+        return [match ($rdv->convocation_statut) {
+            StatutConvocationRdv::Envoyee => self::etape($etat['texte'], $rdv->convocation_delivree_at, $rdv->convocation_delivree_at ? '' : $etat['detail']),
+            StatutConvocationRdv::Telephone => self::etape($etat['texte'], $rdv->convocation_envoyee_at, $rdv->prevenuePar ? 'par '.$rdv->prevenuePar->name : ''),
+            StatutConvocationRdv::Echec => self::etape($etat['texte'], $rdv->convocation_synchro_at ?? $rdv->updated_at, $etat['detail'], 'echec'),
+            default => self::etape($etat['texte'], null, $etat['detail']),
+        }];
     }
 
     /** @return array{titre: string, detail: string, fait: bool, prochaine: bool, ton: string, quand: ?CarbonInterface} */

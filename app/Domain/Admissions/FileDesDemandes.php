@@ -3,11 +3,13 @@
 namespace App\Domain\Admissions;
 
 use App\Enums\StatutReservationRdv;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPRdvReservation;
 use App\Models\ESBTPReinscriptionDemande;
 use App\Models\User;
 use App\Services\Portail\ReferencePublique;
+use App\Services\Reinscription\PortailReinscriptionService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
@@ -48,8 +50,18 @@ class FileDesDemandes
 
     private const CLE_CACHE_ATTENDUES = 'admissions.accueil.attendues';
 
-    public function __construct(private readonly ReferencePublique $references)
+    private ?EtapesEnSql $etapes = null;
+
+    public function __construct(
+        private readonly ReferencePublique $references,
+        private readonly PortailReinscriptionService $campagne,
+    ) {
+    }
+
+    /** L'annee que vise la campagne d'admission : elle borne l'etape « Inscrit ». */
+    public function anneeDeCampagne(): ?ESBTPAnneeUniversitaire
     {
+        return $this->campagne->anneeCible();
     }
 
     /** @return list<string> les types que cet agent peut lire */
@@ -111,7 +123,7 @@ class FileDesDemandes
     }
 
     /**
-     * @param  array{type?: string, etat?: string, q?: string, sans_rdv?: bool, contact?: bool}  $filtres
+     * @param  array{type?: string, etat?: string, etape?: string, q?: string, sans_rdv?: bool, contact?: bool}  $filtres
      */
     public function page(User $agent, array $filtres, int $page = 1): LengthAwarePaginator
     {
@@ -131,34 +143,41 @@ class FileDesDemandes
     }
 
     /**
-     * Les compteurs du bandeau, chacun sur les types visibles seulement.
+     * Les compteurs de la page : les onglets (dossiers ouverts par type), les
+     * etapes et le repere « sans rendez-vous ». Les etapes et le repere suivent
+     * l'onglet choisi ; les onglets comptent toujours tous les types visibles.
      *
-     * @return array<string, int>
+     * @return array{a_traiter: int, nouvelles: int, reinscriptions: int, attendues_aujourdhui: int, sans_rdv: int, contact: int, etapes: array<string, int>}
      */
-    public function compteurs(User $agent): array
+    public function compteurs(User $agent, string $type = ''): array
     {
         $types = self::typesVisibles($agent);
-        $debutSemaine = now()->startOfWeek();
-        $semainePassee = $debutSemaine->copy()->subWeek();
-        $somme = fn (callable $filtre) => array_sum(array_map(fn (string $type) => $filtre(self::modele($type)::query())->count(), $types));
-        $closes = fn (string $statut, $depuis, $jusqua = null) => fn ($q) => $q->where('statut', constant(get_class($q->getModel()).'::'.$statut))
-            ->when($jusqua, fn ($q) => $q->whereBetween('traite_at', [$depuis, $jusqua]), fn ($q) => $q->where('traite_at', '>=', $depuis));
+        $voulus = in_array($type, $types, true) ? [$type] : $types;
+        $somme = fn (callable $filtre) => array_sum(array_map(fn (string $t) => $filtre(self::modele($t)::query())->count(), $voulus));
         $nouvelles = in_array(self::TYPE_NOUVELLE, $types, true) ? self::aTraiterDuType(self::TYPE_NOUVELLE) : 0;
         $reinscriptions = in_array(self::TYPE_REINSCRIPTION, $types, true) ? self::aTraiterDuType(self::TYPE_REINSCRIPTION) : 0;
+
+        $etapes = array_fill_keys(array_column(EtapeDuDossier::cases(), 'value'), 0);
+        foreach ($voulus as $t) {
+            foreach ($this->etapes()->compter(self::modele($t)::query()) as $etape => $n) {
+                $etapes[$etape] += $n;
+            }
+        }
 
         return [
             'a_traiter' => $nouvelles + $reinscriptions,
             'nouvelles' => $nouvelles,
             'reinscriptions' => $reinscriptions,
-            'recues' => $somme(fn ($q) => $this->recues(self::ouvertes($q))),
-            'rendez_vous' => $somme(fn ($q) => $this->avecRdvAVenir(self::ouvertes($q))),
             'attendues_aujourdhui' => self::famillesAttenduesAujourdhui($agent),
             'sans_rdv' => $somme(fn ($q) => $this->sansRdv(self::ouvertes($q))),
             'contact' => $somme(fn ($q) => self::ouvertes($q)->contactNonConfirme()),
-            'inscrites_semaine' => $somme($closes('STATUT_CONVERTIE', $debutSemaine)),
-            'inscrites_semaine_passee' => $somme($closes('STATUT_CONVERTIE', $semainePassee, $debutSemaine)),
-            'rejetees_semaine' => $somme($closes('STATUT_REJETEE', $debutSemaine)),
+            'etapes' => $etapes,
         ];
+    }
+
+    private function etapes(): EtapesEnSql
+    {
+        return $this->etapes ??= new EtapesEnSql($this->anneeDeCampagne()?->id);
     }
 
     /** @return class-string<ESBTPCandidature|ESBTPReinscriptionDemande> */
@@ -205,7 +224,22 @@ class FileDesDemandes
     /** @param  array<string, mixed>  $filtres */
     private function filtrer(Builder $q, array $filtres): Builder
     {
-        $etat = in_array($filtres['etat'] ?? '', self::ETATS, true) ? $filtres['etat'] : 'a_traiter';
+        $etape = EtapeDuDossier::depuis($filtres['etape'] ?? null);
+
+        // Une etape choisie remplace la vue : elle dit deja ouvert, inscrit ou pas.
+        if ($etape !== null) {
+            $this->etapes()->filtrer($q, $etape);
+        } else {
+            $this->vue($q, in_array($filtres['etat'] ?? '', self::ETATS, true) ? $filtres['etat'] : 'a_traiter');
+        }
+
+        return $q
+            ->when(! empty($filtres['sans_rdv']), fn ($q) => $this->sansRdv($q))
+            ->when(! empty($filtres['contact']), fn ($q) => $q->contactNonConfirme());
+    }
+
+    private function vue(Builder $q, string $etat): void
+    {
         $modele = $q->getModel();
 
         match ($etat) {
@@ -218,10 +252,6 @@ class FileDesDemandes
             'rejetees' => $q->where('statut', $modele::STATUT_REJETEE)->where('traite_at', '>=', now()->startOfWeek()),
             default => $q,
         };
-
-        return $q
-            ->when(! empty($filtres['sans_rdv']), fn ($q) => $this->sansRdv($q))
-            ->when(! empty($filtres['contact']), fn ($q) => $q->contactNonConfirme());
     }
 
     /**
