@@ -952,7 +952,7 @@
                             <template x-for="item in preflight.missing_coefficients" :key="item.matiere_id">
                                 <li>
                                     <span x-text="item.matiere"></span>
-                                    <span x-text="' - ' + item.students_count + ' etudiant' + (item.students_count > 1 ? 's' : '')"></span>
+                                    <span x-text="' - ' + item.students_count + ' étudiant' + (item.students_count > 1 ? 's' : '')"></span>
                                 </li>
                             </template>
                         </ul>
@@ -967,8 +967,17 @@
                             </template>
                         </ul>
                     </template>
+                    {{-- Le nombre seul ne dit pas quoi corriger : on regroupe les
+                         blocages par cause, avec le nombre d'étudiants touchés. --}}
                     <template x-if="preflight?.blocking_errors?.length && !preflight?.missing_coefficients?.length && !preflight?.missing_professeurs?.length">
-                        <p class="bus-inline-panel__body" x-text="preflight.blocking_errors.length + ' blocage(s) détecté(s).'"></p>
+                        <ul class="bus-inline-panel__list">
+                            <template x-for="ligne in Object.entries(preflight.blocking_errors.reduce((acc, e) => { acc[e.message] = (acc[e.message] || 0) + 1; return acc; }, {}))" :key="ligne[0]">
+                                <li>
+                                    <span x-text="ligne[0]"></span>
+                                    <span x-text="' ' + ligne[1] + ' étudiant' + (ligne[1] > 1 ? 's' : '') + ' concerné' + (ligne[1] > 1 ? 's' : '') + '.'"></span>
+                                </li>
+                            </template>
+                        </ul>
                     </template>
                     {{-- Un bulletin vide est repris d'office : plus rien à cocher.
                          Ceux que le verrou empêche de reprendre sont comptés à part,
