@@ -52,9 +52,9 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
 
         $this->assertStringContainsString("route('esbtp.bulletins.generer-classe.preflight')", $view);
         $this->assertStringContainsString('parseJsonResponse', $view);
-        $this->assertStringContainsString('Le serveur a redirige la requete au lieu de retourner le resultat JSON.', $view);
+        $this->assertStringContainsString('Le serveur a redirigé la requête au lieu de renvoyer le résultat.', $view);
         $this->assertStringContainsString('this.lastGeneration = data', $view);
-        $this->assertStringContainsString('Aucun bulletin genere.', $view);
+        $this->assertStringContainsString('Aucun bulletin généré.', $view);
         $this->assertStringContainsString('generationStudentsLabel()', $view);
         $this->assertStringContainsString('this.preflight?.students_count', $view);
         $this->assertStringNotContainsString('Bulletins générés pour la classe. Redirection…', $view);
