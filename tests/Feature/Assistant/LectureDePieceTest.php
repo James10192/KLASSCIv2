@@ -78,6 +78,48 @@ class LectureDePieceTest extends TestCase
         app(LectureDePiece::class)->lire(new UploadedFile($bombe, 'notes.docx', null, null, true));
     }
 
+    public function test_un_titre_au_dessus_du_tableau_et_une_feuille_trop_longue_sont_geres(): void
+    {
+        $classeur = new Spreadsheet();
+        $f = $classeur->getActiveSheet();
+        $f->setCellValue('A1', 'Notes du devoir de maths');
+        $f->fromArray([['Matricule', 'Note']], null, 'A3');
+        foreach (range(4, 504) as $r) {
+            $f->fromArray([['MAT-' . $r, 10]], null, 'A' . $r);
+        }
+        $chemin = tempnam(sys_get_temp_dir(), 'xlsx');
+        (new Xlsx($classeur))->save($chemin);
+
+        $t = app(LectureDePiece::class)->lire(new UploadedFile($chemin, 'notes.xlsx', null, null, true));
+
+        $this->assertSame(['Matricule', 'Note'], $t['colonnes']);
+        $this->assertSame(['MAT-4', '10'], $t['lignes'][0]);
+        $this->assertTrue($t['tronque']); // 501 élèves : le dernier n'est pas lu, et c'est dit
+    }
+
+    public function test_une_formule_jamais_calculee_fait_refuser_le_fichier_mais_pas_un_egal_en_csv(): void
+    {
+        $t = app(LectureDePiece::class)->lire($this->fichier('notes.csv', "Matricule,Remarque\nMAT-001,=1+1\n"));
+        $this->assertSame('=1+1', $t['lignes'][0][1]);
+
+        $classeur = new Spreadsheet();
+        $classeur->getActiveSheet()->fromArray([['Matricule', 'Note'], ['MAT-001', '=AZ2*2']]);
+        $chemin = tempnam(sys_get_temp_dir(), 'xlsx');
+        $ecrivain = new Xlsx($classeur);
+        $ecrivain->setPreCalculateFormulas(false);
+        $ecrivain->save($chemin);
+        // Sans calcul préalable, PhpSpreadsheet n'écrit pas de valeur : on refuse plutôt que lire 0.
+        $zip = new \ZipArchive();
+        $zip->open($chemin);
+        $feuille = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $zip->addFromString('xl/worksheets/sheet1.xml', preg_replace('#<v>[^<]*</v>#', '', $feuille));
+        $zip->close();
+
+        $this->expectException(PieceIllisible::class);
+        $this->expectExceptionMessage('jamais calculées');
+        app(LectureDePiece::class)->lire(new UploadedFile($chemin, 'notes.xlsx', null, null, true));
+    }
+
     public function test_un_csv_francais_au_point_virgule_et_en_windows_1252(): void
     {
         $contenu = mb_convert_encoding("Matricule;Nom;Note\nMAT-001;KOUASSI Aïcha;12,5\n\nMAT-002;KONAN Jean;9\n", 'Windows-1252', 'UTF-8');

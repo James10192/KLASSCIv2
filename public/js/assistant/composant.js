@@ -292,11 +292,6 @@
                 // réponse obtenue ; en cas d'échec, ils restent là pour le prochain essai.
                 var envoyees = this.piecesPretes().map(function (p) { return p.key; });
 
-                promesse.then(function () {
-                    if (msg.status !== 'error' && msg.status !== 'stopped') {
-                        self.pieces = self.pieces.filter(function (p) { return envoyees.indexOf(p.key) < 0; });
-                    }
-                }, function () { /* traité ci-dessous */ });
                 promesse.catch(function (e) {
                     if (e && e.name === 'AbortError') {
                         self.clore(msg, true);
@@ -313,6 +308,10 @@
                         self.clore(msg, true);
                         msg.erreur = 'La réponse a été interrompue avant la fin. Réessayez.';
                         msg.status = 'error';
+                    }
+                    // Fichiers retirés seulement si la réponse a vraiment abouti (statut final connu ici).
+                    if (msg.status === 'done') {
+                        self.pieces = self.pieces.filter(function (p) { return envoyees.indexOf(p.key) < 0; });
                     }
                     self.envoiEnCours = false;
                     self.nonLu = false;
