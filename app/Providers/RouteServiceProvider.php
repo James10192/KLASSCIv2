@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
@@ -29,6 +30,18 @@ class RouteServiceProvider extends ServiceProvider
      */
     // protected $namespace = 'App\\Http\\Controllers';
 
+    public function register(): void
+    {
+        parent::register();
+
+        // Nanan conserve son prompt normal partout. Sur /messages, la sous-classe
+        // ajoute le contexte conversation reconstruit et autorisé côté serveur.
+        $this->app->bind(
+            \App\Domain\Assistant\Harnais\ConstructeurDePrompt::class,
+            \App\Domain\Assistant\Harnais\SafeMessageHubPrompt::class,
+        );
+    }
+
     /**
      * Define your route model bindings, pattern filters, etc.
      *
@@ -36,6 +49,13 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // Une configuration de production ne doit jamais exposer une trace Laravel,
+        // même si APP_DEBUG a été accidentellement laissé à true.
+        if (app()->environment('production') && config('app.debug')) {
+            config(['app.debug' => false]);
+            Log::critical('APP_DEBUG was enabled in production and has been forced off.');
+        }
+
         $this->configureRateLimiting();
 
         // Vérifier l'état d'installation
@@ -50,6 +70,10 @@ class RouteServiceProvider extends ServiceProvider
             Route::middleware('web')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/web.php'));
+
+            Route::middleware('web')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/message-hub.php'));
 
             // Charger les routes ESBTP
             // Commenté pour éviter les routes dupliquées
@@ -185,7 +209,7 @@ class RouteServiceProvider extends ServiceProvider
                 return;
             }
         } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error('Erreur lors de la vérification de l\'installation: ' . $e->getMessage());
+            Log::error('Erreur lors de la vérification de l\'installation: ' . $e->getMessage());
             $this->redirectToInstall();
         }
     }
