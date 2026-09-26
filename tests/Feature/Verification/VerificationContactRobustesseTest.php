@@ -162,9 +162,9 @@ class VerificationContactRobustesseTest extends TestCase
         $agent = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
         $agent->givePermissionTo('inscriptions.candidatures.view');
 
-        $this->actingAs($agent)->get(route('esbtp.candidatures.index'))
-            ->assertOk()->assertSee('MARQUEE')->assertSee('VERIFIEE')->assertSee('Contact non vérifié');
-        $this->get(route('esbtp.candidatures.index', ['contact' => 'non_verifie']))
+        $this->actingAs($agent)->get(route('esbtp.demandes.index'))
+            ->assertOk()->assertSee('MARQUEE')->assertSee('VERIFIEE')->assertSee('Contact à vérifier');
+        $this->get(route('esbtp.demandes.index', ['contact' => 1]))
             ->assertOk()->assertSee('MARQUEE')->assertDontSee('VERIFIEE');
     }
 

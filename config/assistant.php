@@ -25,6 +25,46 @@ return [
     // Essayés dans cet ordre quand le modèle choisi tombe ou n'a pas de clé.
     'repli' => $liste(env('ASSISTANT_REPLI', 'or-gemini-flash,or-gpt-4.1-mini,or-gpt-4o-mini,or-claude-haiku,claude-haiku,gpt-4o-mini,gemini-flash,mistral-small')),
 
+    /*
+     * Routage automatique : l'utilisateur ne choisit pas de modèle. Chaque échange
+     * part sur le palier le moins cher qui suffit, et monte si le résultat trahit
+     * un modèle trop faible (App\Domain\Assistant\Routage\Routeur). Paliers du
+     * moins cher au plus fort ; dans un palier, les modèles sont essayés dans l'ordre.
+     * Ils se revoient à chaque sortie de modèle, par le banc d'essai.
+     */
+    'paliers' => [
+        // Les modèles en accès direct (clé Anthropic, OpenAI, Gemini, Mistral) figurent aussi,
+        // à leur prix : une école sans OpenRouter ne doit pas sauter droit au palier avancé.
+        'economique' => $liste(env('ASSISTANT_PALIER_ECONOMIQUE', 'or-gemini-flash-lite,or-gpt-4o-mini,or-gpt-4.1-nano,gpt-4o-mini,gemini-flash,mistral-small')),
+        'standard' => $liste(env('ASSISTANT_PALIER_STANDARD', 'or-gemini-flash,or-gpt-4.1-mini,or-claude-haiku,claude-haiku,deepseek-chat')),
+        'avance' => $liste(env('ASSISTANT_PALIER_AVANCE', 'or-claude-sonnet,claude-sonnet')),
+    ],
+
+    /*
+     * Budget mensuel de l'école, en francs CFA. Vide ou 0 = sans limite. Le réglage
+     * d'instance `assistant.budget_mensuel_fcfa` prime sur le .env. À 100 % l'assistant
+     * ne prend plus que le palier économique ; à 120 % il se met en pause jusqu'au mois suivant.
+     */
+    'budget' => [
+        'mensuel_fcfa' => (float) env('ASSISTANT_BUDGET_MENSUEL_FCFA', 0),
+        'seuil_economique' => (float) env('ASSISTANT_BUDGET_SEUIL_ECONOMIQUE', 100),
+        'seuil_pause' => (float) env('ASSISTANT_BUDGET_SEUIL_PAUSE', 120),
+        // Conversion des coûts (facturés en dollars) ; conservée sur chaque ligne de consommation.
+        'taux_usd_fcfa' => (float) env('ASSISTANT_TAUX_USD_FCFA', 600),
+    ],
+
+    /*
+    | Actions que l'assistant peut PROPOSER. Rien n'est écrit sans le clic
+    | « Valider » de l'utilisateur, et chaque action reste soumise à sa
+    | permission (config/chatbot.php). ASSISTANT_ACTIONS=false les retire toutes.
+    */
+    'actions' => [
+        'actives' => (bool) env('ASSISTANT_ACTIONS', true),
+        'classes' => [
+            \App\Domain\Assistant\Actions\Notes\SaisirNotes::class,
+        ],
+    ],
+
     'limites' => [
         'tours' => (int) env('ASSISTANT_MAX_TOURS', 8),
         'budget_tokens' => (int) env('ASSISTANT_BUDGET_TOKENS', 150000),
@@ -86,6 +126,9 @@ return [
     ],
 
     // Registre : clé interne => fournisseur, identifiant chez le fournisseur, libellé, capacités.
+    // `tarif` : dollars par million de jetons (entrée, sortie, entrée lue en cache), relevés
+    // sur l'API OpenRouter le 25 septembre 2026. Ne sert qu'aux fournisseurs qui ne donnent
+    // pas le coût réel : OpenRouter le renvoie à chaque appel, c'est lui qui est enregistré.
     'modeles' => [
         // Via OpenRouter : une seule clé, des modèles économiques choisis pour
         // l'appel d'outils en français. Identifiants surchargeables par le .env.
@@ -95,6 +138,7 @@ return [
             'libelle' => 'GPT-4o mini (OpenRouter)',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 0.15, 'sortie' => 0.6, 'cache' => 0.075],
         ],
         'or-gemini-flash-lite' => [
             'fournisseur' => 'openrouter',
@@ -102,6 +146,7 @@ return [
             'libelle' => 'Gemini Flash Lite (OpenRouter)',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 0.25, 'sortie' => 1.5, 'cache' => 0.025],
         ],
         'or-deepseek' => [
             'fournisseur' => 'openrouter',
@@ -109,6 +154,7 @@ return [
             'libelle' => 'DeepSeek V3.2 (OpenRouter)',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 0.269, 'sortie' => 0.4, 'cache' => 0.1345],
         ],
         // Comparés le 25 septembre 2026 sur presentation (6 questions réelles, 30 réponses,
         // aucune erreur) : Gemini Flash donne les analyses les plus justes et exploitables,
@@ -120,6 +166,7 @@ return [
             'libelle' => 'Gemini Flash (OpenRouter)',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 0.75, 'sortie' => 3.75, 'cache' => 0.075],
         ],
         'or-gpt-4.1-mini' => [
             'fournisseur' => 'openrouter',
@@ -127,6 +174,7 @@ return [
             'libelle' => 'GPT-4.1 mini (OpenRouter)',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 0.4, 'sortie' => 1.6, 'cache' => 0.1],
         ],
         'or-claude-haiku' => [
             'fournisseur' => 'openrouter',
@@ -134,6 +182,23 @@ return [
             'libelle' => 'Claude Haiku 4.5 (OpenRouter)',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 1.0, 'sortie' => 5.0, 'cache' => 0.1],
+        ],
+        'or-gpt-4.1-nano' => [
+            'fournisseur' => 'openrouter',
+            'modele' => env('OPENROUTER_MODEL_GPT41_NANO', 'openai/gpt-4.1-nano'),
+            'libelle' => 'GPT-4.1 nano (OpenRouter)',
+            'outils' => true,
+            'diffusion' => true,
+            'tarif' => ['entree' => 0.1, 'sortie' => 0.4, 'cache' => 0.025],
+        ],
+        'or-claude-sonnet' => [
+            'fournisseur' => 'openrouter',
+            'modele' => env('OPENROUTER_MODEL_SONNET', 'anthropic/claude-sonnet-4.5'),
+            'libelle' => 'Claude Sonnet 4.5 (OpenRouter)',
+            'outils' => true,
+            'diffusion' => true,
+            'tarif' => ['entree' => 3.0, 'sortie' => 15.0, 'cache' => 0.3],
         ],
         'claude-haiku' => [
             'fournisseur' => 'anthropic',
@@ -141,6 +206,7 @@ return [
             'libelle' => 'Claude Haiku',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 1.0, 'sortie' => 5.0, 'cache' => 0.1],
         ],
         'claude-sonnet' => [
             'fournisseur' => 'anthropic',
@@ -148,6 +214,7 @@ return [
             'libelle' => 'Claude Sonnet',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 3.0, 'sortie' => 15.0, 'cache' => 0.3],
         ],
         'gpt-4o-mini' => [
             'fournisseur' => 'openai',
@@ -155,6 +222,7 @@ return [
             'libelle' => 'GPT-4o mini',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 0.15, 'sortie' => 0.6, 'cache' => 0.075],
         ],
         'mistral-small' => [
             'fournisseur' => 'mistral',
@@ -162,6 +230,7 @@ return [
             'libelle' => 'Mistral Small',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 0.1, 'sortie' => 0.3],
         ],
         'deepseek-chat' => [
             'fournisseur' => 'deepseek',
@@ -169,6 +238,7 @@ return [
             'libelle' => 'DeepSeek',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 0.27, 'sortie' => 1.1],
         ],
         'gemini-flash' => [
             'fournisseur' => 'gemini',
@@ -176,6 +246,7 @@ return [
             'libelle' => 'Gemini Flash',
             'outils' => true,
             'diffusion' => true,
+            'tarif' => ['entree' => 0.1, 'sortie' => 0.4],
         ],
     ],
 ];

@@ -36,7 +36,7 @@ final class IndexDesPages
      * `can` : liste de permissions toutes exigées ; `a|b` = l'une des deux.
      * `rang` : ordre des suggestions affichées palette vide (plus petit = d'abord).
      *
-     * @var list<array{route: string, titre: string, groupe: string, icone: string, mots?: list<string>, can?: list<string>, libre?: bool, rang?: int}>
+     * @var list<array{route: string, titre: string, groupe: string, icone: string, mots?: list<string>, can?: list<string>, libre?: bool, rang?: int, params?: array<string, string>}>
      */
     private const PAGES = [
         // Accueil
@@ -47,8 +47,7 @@ final class IndexDesPages
         ['route' => 'esbtp.etudiants.index', 'titre' => 'Étudiants', 'groupe' => 'Scolarité', 'icone' => 'fa-user-graduate', 'mots' => ['élèves', 'liste des étudiants', 'apprenants', 'fiche étudiant'], 'can' => ['module.etudiants.access', 'students.view'], 'rang' => 3],
         ['route' => 'esbtp.accessibility.index', 'titre' => 'Accessibilité et besoins particuliers', 'groupe' => 'Scolarité', 'icone' => 'fa-universal-access', 'mots' => ['handicap', 'aménagements', 'besoins spécifiques'], 'can' => ['module.etudiants.access', 'students.accessibility.view']],
         ['route' => 'esbtp.trash.index', 'titre' => 'Corbeille', 'groupe' => 'Scolarité', 'icone' => 'fa-trash-can', 'mots' => ['supprimés', 'restaurer', 'archives'], 'can' => ['trash.view']],
-        ['route' => 'esbtp.candidatures.index', 'titre' => 'Candidatures', 'groupe' => 'Inscriptions', 'icone' => 'fa-envelope-open-text', 'mots' => ['admission', 'portail', 'dossiers de candidature'], 'can' => ['module.etudiants.access', 'inscriptions.candidatures.view']],
-        ['route' => 'esbtp.reinscription-demandes.index', 'titre' => 'Demandes de réinscription', 'groupe' => 'Inscriptions', 'icone' => 'fa-inbox', 'mots' => ['réinscription en ligne', 'demandes'], 'can' => ['module.etudiants.access', 'reinscriptions.demandes.view']],
+        ['route' => 'esbtp.demandes.index', 'titre' => "Demandes d'inscription", 'groupe' => 'Inscriptions', 'icone' => 'fa-inbox', 'mots' => ['candidatures', 'admission', 'portail', 'dossiers de candidature', 'réinscription en ligne', 'demandes de réinscription', 'accepter et inscrire'], 'can' => ['module.etudiants.access', 'inscriptions.candidatures.view|reinscriptions.demandes.view']],
         ['route' => 'esbtp.rendez-vous.index', 'titre' => "Rendez-vous d'inscription", 'groupe' => 'Inscriptions', 'icone' => 'fa-calendar-check', 'mots' => ['rdv', 'créneaux', 'planning des rendez-vous'], 'can' => ['module.etudiants.access', 'inscriptions.rdv.view']],
         ['route' => 'esbtp.rendez-vous.accueil.index', 'titre' => 'Accueil du jour', 'groupe' => 'Inscriptions', 'icone' => 'fa-door-open', 'mots' => ['rendez-vous du jour', 'rdv', 'arrivées', 'guichet'], 'can' => ['module.etudiants.access', 'inscriptions.rdv.accueil']],
         ['route' => 'esbtp.inscriptions.create', 'titre' => 'Nouvelle inscription', 'groupe' => 'Inscriptions', 'icone' => 'fa-user-plus', 'mots' => ['inscrire', 'ajouter un étudiant', 'nouvel étudiant', 'créer inscription'], 'can' => ['module.etudiants.access', 'inscriptions.create'], 'rang' => 4],
@@ -154,8 +153,8 @@ final class IndexDesPages
         ['route' => 'esbtp.bulletin-style.index', 'titre' => 'Style des bulletins', 'groupe' => 'Paramètres', 'icone' => 'fa-palette', 'mots' => ['mise en page bulletin', 'modèle'], 'can' => ['system.manage']],
         ['route' => 'esbtp.parent-chatbot-onboarding.index', 'titre' => 'Assistant WhatsApp des parents', 'groupe' => 'Paramètres', 'icone' => 'fa-robot', 'mots' => ['chatbot', 'whatsapp', 'parents'], 'can' => ['parent_chatbot.manage']],
         ['route' => 'esbtp.audit.index', 'titre' => "Journal d'audit", 'groupe' => 'Paramètres', 'icone' => 'fa-clock-rotate-left', 'mots' => ['historique', 'traçabilité', 'qui a modifié'], 'can' => ['security.audit.view']],
-        ['route' => 'esbtp.audit.comptabilite', 'titre' => 'Audit comptable', 'groupe' => 'Paramètres', 'icone' => 'fa-magnifying-glass-dollar', 'mots' => ['historique des paiements', 'modifications comptables'], 'can' => ['comptabilite.audit.view']],
-        ['route' => 'esbtp.audit.user-activity', 'titre' => 'Activité des utilisateurs', 'groupe' => 'Paramètres', 'icone' => 'fa-user-clock', 'mots' => ['connexions', 'surveillance', 'activité'], 'can' => ['security.users.monitor']],
+        ['route' => 'esbtp.audit.index', 'params' => ['theme' => 'finances'], 'titre' => 'Journal d\'audit — Finances', 'groupe' => 'Paramètres', 'icone' => 'fa-magnifying-glass-dollar', 'mots' => ['historique des paiements', 'modifications comptables'], 'can' => ['comptabilite.audit.view']],
+        ['route' => 'esbtp.audit.user-activity', 'titre' => 'Activité des personnes', 'groupe' => 'Paramètres', 'icone' => 'fa-user-clock', 'mots' => ['activité des utilisateurs', 'connexions', 'surveillance', 'activité'], 'can' => ['security.users.monitor']],
 
         // Mon espace
         ['route' => 'esbtp.mon-emploi-temps.index', 'titre' => 'Mon emploi du temps', 'groupe' => 'Mon espace', 'icone' => 'fa-calendar-week', 'mots' => ['mes cours', 'horaires'], 'can' => ['identity.student']],
@@ -216,7 +215,7 @@ final class IndexDesPages
                 'icone' => $page['icone'],
                 'mots' => $page['mots'] ?? [],
                 'rang' => $page['rang'] ?? 100,
-                'url' => route($page['route']),
+                'url' => route($page['route'], $page['params'] ?? []),
             ];
         }
 

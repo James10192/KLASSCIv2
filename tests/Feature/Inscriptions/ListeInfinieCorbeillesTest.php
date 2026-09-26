@@ -14,9 +14,10 @@ use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
- * Les deux corbeilles de dossiers en ligne (candidatures, demandes de
- * reinscription) se chargent au defilement : la page rend la premiere tranche,
- * la suite arrive en lignes seules, chacune une fois.
+ * Les dossiers en ligne (candidatures, demandes de reinscription) se chargent
+ * au defilement dans la file des demandes : la page rend la premiere tranche,
+ * la suite arrive en lignes seules, chacune une fois. Les adresses des deux
+ * anciennes corbeilles y menent, avec leurs filtres.
  */
 class ListeInfinieCorbeillesTest extends TestCase
 {
@@ -46,6 +47,20 @@ class ListeInfinieCorbeillesTest extends TestCase
         $this->annee = ESBTPAnneeUniversitaire::factory()->create()->id;
     }
 
+    public function test_les_anciennes_corbeilles_menent_a_la_file_avec_leurs_filtres(): void
+    {
+        $this->get(route('esbtp.candidatures.index', ['reference' => 'kl-2026-0151', 'contact' => 'non_verifie']))
+            ->assertStatus(301)
+            ->assertRedirect(route('esbtp.demandes.index', ['type' => 'nouvelle', 'etat' => 'toutes', 'q' => 'kl-2026-0151', 'contact' => 1]));
+
+        $this->get(route('esbtp.reinscription-demandes.index', ['statut' => 'convertie']))
+            ->assertStatus(301)
+            ->assertRedirect(route('esbtp.demandes.index', ['type' => 'reinscription', 'etat' => 'toutes']));
+
+        $this->get(route('esbtp.candidatures.index'))
+            ->assertRedirect(route('esbtp.demandes.index', ['type' => 'nouvelle']));
+    }
+
     private function ajax(): self
     {
         return $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest']);
@@ -54,7 +69,7 @@ class ListeInfinieCorbeillesTest extends TestCase
     /** @return list<string> */
     private function cles(string $html): array
     {
-        preg_match_all('/data-li-cle="(\d+)"/', $html, $m);
+        preg_match_all('/data-li-cle="([a-z]+-\d+)"/', $html, $m);
 
         return $m[1];
     }
@@ -73,12 +88,12 @@ class ListeInfinieCorbeillesTest extends TestCase
             ]);
         }
 
-        $page = $this->get(route('esbtp.candidatures.index'))->assertOk()
+        $page = $this->get(route('esbtp.demandes.index', ['type' => 'nouvelle']))->assertOk()
             ->assertSee('data-liste-infinie', false)
             ->assertSee('data-page-suivante="2"', false)
             ->getContent();
 
-        $suite = $this->ajax()->getJson(route('esbtp.candidatures.index', ['page' => 2, 'mode' => 'rows']))
+        $suite = $this->ajax()->getJson(route('esbtp.demandes.index', ['type' => 'nouvelle', 'page' => 2, 'mode' => 'rows']))
             ->assertOk()
             ->assertJsonPath('pagination.has_more', false)
             ->assertJsonPath('pagination.total', 30)
@@ -102,11 +117,11 @@ class ListeInfinieCorbeillesTest extends TestCase
             ]);
         }
 
-        $page = $this->get(route('esbtp.reinscription-demandes.index'))->assertOk()
+        $page = $this->get(route('esbtp.demandes.index', ['type' => 'reinscription']))->assertOk()
             ->assertSee('data-page-suivante="2"', false)
             ->getContent();
 
-        $suite = $this->ajax()->getJson(route('esbtp.reinscription-demandes.index', ['page' => 2, 'mode' => 'rows']))
+        $suite = $this->ajax()->getJson(route('esbtp.demandes.index', ['type' => 'reinscription', 'page' => 2, 'mode' => 'rows']))
             ->assertOk()
             ->assertJsonPath('pagination.total', 27)
             ->assertJsonPath('pagination.affiches', 27)
@@ -118,7 +133,7 @@ class ListeInfinieCorbeillesTest extends TestCase
 
     public function test_une_adresse_copiee_avec_le_mode_lignes_rend_la_page(): void
     {
-        $this->get(route('esbtp.reinscription-demandes.index', ['mode' => 'rows']))
+        $this->get(route('esbtp.demandes.index', ['mode' => 'rows']))
             ->assertOk()
             ->assertHeader('content-type', 'text/html; charset=UTF-8')
             ->assertDontSee('rows_html', false);

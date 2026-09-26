@@ -11,7 +11,9 @@ namespace App\Domain\Assistant\Fournisseurs;
  *   texte        ['delta' => string]
  *   outil_debut  ['id' => string, 'nom' => string]      le modèle commence un appel
  *   outil        ['id', 'nom', 'arguments' => array]    appel complet, à exécuter
- *   usage        ['entree' => int, 'sortie' => int]     jetons consommés (cumul du tour)
+ *   usage        ['entree', 'sortie', 'cache' => int, 'cout' => ?float]
+ *                jetons consommés (cumul du tour) ; coût en dollars quand le
+ *                fournisseur le donne (OpenRouter), sinon null
  *   fin          ['raison' => 'fin'|'outils'|'longueur']
  *   erreur       ['code' => string]                     jamais de texte d'exception
  */
@@ -45,9 +47,9 @@ final class EvenementModele
         return new self(self::OUTIL, ['id' => $id, 'nom' => $nom, 'arguments' => $arguments]);
     }
 
-    public static function usage(int $entree, int $sortie): self
+    public static function usage(int $entree, int $sortie, int $cache = 0, ?float $cout = null): self
     {
-        return new self(self::USAGE, ['entree' => $entree, 'sortie' => $sortie]);
+        return new self(self::USAGE, ['entree' => $entree, 'sortie' => $sortie, 'cache' => $cache, 'cout' => $cout]);
     }
 
     public static function fin(string $raison): self

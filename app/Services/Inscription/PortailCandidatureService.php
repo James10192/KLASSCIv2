@@ -324,10 +324,9 @@ class PortailCandidatureService
                 ->lockForUpdate()
                 ->first();
 
-            if (
-                $candidature === null ||
-                $candidature->statut !== ESBTPCandidature::STATUT_ACCEPTEE
-            ) {
+            // Ouverte suffit : inscrire vaut acceptation. Voir
+            // PreRemplissageCandidature::aInscrire(), qui lit la meme regle.
+            if ($candidature === null || $candidature->dossierClos()) {
                 return ClotureCandidature::DejaChangee;
             }
 

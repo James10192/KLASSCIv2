@@ -432,6 +432,18 @@ class ESBTPInscription extends Model implements Auditable
     }
 
     /**
+     * Les inscriptions qui occupent une place de leur classe pour l'annee
+     * donnee : actives et abouties. La regle des places disponibles, lue par
+     * ESBTPClasse, une classe a la fois comme en lot.
+     */
+    public function scopeOccupeUnePlace($query, int $anneeId)
+    {
+        return $query->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->where('annee_universitaire_id', $anneeId);
+    }
+
+    /**
      * Scope pour filtrer les inscriptions par année universitaire.
      *
      * @param \Illuminate\Database\Eloquent\Builder $query

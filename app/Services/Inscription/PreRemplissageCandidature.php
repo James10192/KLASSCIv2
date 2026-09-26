@@ -7,7 +7,7 @@ use App\Models\ESBTPCandidature;
 use App\Services\Reinscription\PortailReinscriptionService;
 
 /**
- * Ce qu'une candidature acceptee donne au formulaire d'inscription.
+ * Ce qu'une candidature ouverte donne au formulaire d'inscription.
  *
  * Une lecture pure, sortie du controleur d'inscription : elle n'y decidait
  * rien, elle y ajoutait soixante lignes de correspondance champ a champ a un
@@ -23,11 +23,13 @@ final class PreRemplissageCandidature
      * La candidature designee, si elle est bien a inscrire ET si l'on a le
      * droit de la lire.
      *
-     * Seule une candidature ACCEPTEE se pre-remplit, et c'est le meme statut
-     * que la fermeture exigera a l'enregistrement. Sans ce filtre, une adresse
-     * modifiee a la main ouvrirait un formulaire pre-rempli depuis un dossier
-     * rejete, sous un bandeau affirmant qu'il vient de la candidature — puis la
-     * fermeture refuserait de lier quoi que ce soit, en silence.
+     * Seule une candidature OUVERTE (en attente ou acceptee) se pre-remplit, et
+     * c'est la meme regle que la fermeture appliquera a l'enregistrement : les
+     * deux lisent ESBTPCandidature::dossierClos(). Inscrire vaut acceptation,
+     * dans la meme transaction que l'inscription ; accepter d'abord, dans une
+     * requete a part, laissait un dossier « accepte » sans inscription quand
+     * l'enregistrement refusait ensuite. Sans ce filtre, une adresse modifiee a
+     * la main ouvrirait un formulaire pre-rempli depuis un dossier rejete.
      *
      * Le DROIT est verifie ici, et non chez les appelants. Il l'etait dans deux
      * des trois : l'ouverture du formulaire et la fermeture le demandaient, le
@@ -41,14 +43,14 @@ final class PreRemplissageCandidature
      * seule facon de ne plus en oublier est de garder le passage, pas les
      * passants.
      */
-    public static function acceptee(int $id): ?ESBTPCandidature
+    public static function aInscrire(int $id): ?ESBTPCandidature
     {
         if ($id <= 0 || ! auth()->user()?->can('inscriptions.candidatures.process')) {
             return null;
         }
 
         return ESBTPCandidature::whereKey($id)
-            ->where('statut', ESBTPCandidature::STATUT_ACCEPTEE)
+            ->whereNotIn('statut', ESBTPCandidature::statutsDossierClos())
             ->first();
     }
 
