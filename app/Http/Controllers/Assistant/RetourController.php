@@ -5,19 +5,20 @@ namespace App\Http\Controllers\Assistant;
 use App\Domain\Assistant\Retours\EnregistrerRetour;
 use App\Domain\Assistant\Retours\RetourDeReponse;
 use App\Domain\Assistant\Retours\SignalerReponse;
-use App\Domain\Support\Exceptions\MasterSupportRefus;
 use App\Domain\Support\Services\DisponibiliteSupport;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Support\Concerns\RepondAUnSignalement;
 use App\Models\ChatbotMessage;
 use App\Services\Care\ClientMasterSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 /** 👍 / 👎 sur une réponse de l'assistant, et « Signaler à KLASSCI Care ». */
 class RetourController extends Controller
 {
+    use RepondAUnSignalement;
+
     public function enregistrer(Request $request, ChatbotMessage $message, EnregistrerRetour $enregistrer): JsonResponse
     {
         $this->verifierProprietaire($request, $message);
@@ -39,31 +40,15 @@ class RetourController extends Controller
 
         $l = app(ClientMasterSupport::class)->limites();
         $donnees = $request->validate([
-            'description' => ['required', 'string', 'min:' . $l['description_min'], 'max:' . ($l['description_max'] - 200)],
+            'description' => ['required', 'string', 'min:' . $l['description_min'], 'max:' . ($l['description_max'] - SignalerReponse::PLACE_DES_REPERES)],
             'cle' => ['required', 'string', 'regex:/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i'],
             'contexte' => ['nullable', 'array'],
         ]);
 
-        try {
-            $resultat = $signaler->executer($message, $request->user(), $donnees['description'], $donnees['cle'], (array) ($donnees['contexte'] ?? []), $request);
-        } catch (MasterSupportRefus $e) {
-            if ($e->codeErreur === 'idempotency_key_reused') {
-                return response()->json(['erreur' => 'cle_perimee'], 409);
-            }
-            Log::error('assistant.signalement_refuse', ['statut' => $e->statut, 'code' => $e->codeErreur]);
-
-            return response()->json(['message' => "Le signalement n'a pas pu être transmis. Écrivez-nous à " . config('app.support_email') . '.'], 422);
-        }
-
-        if ($resultat['en_attente'] ?? false) {
-            return response()->json(['en_attente' => true, 'message' => 'Signalement enregistré : il partira au support dès que la connexion sera rétablie.'], 202);
-        }
-
-        return response()->json([
-            'reference' => $resultat['reference'] ?? null,
-            'message' => 'Merci : le support a reçu votre signalement' . (isset($resultat['reference']) ? ' (' . $resultat['reference'] . ')' : '') . '.',
-            'suivi_url' => $disponibilite->suivi() && isset($resultat['reference']) ? route('support.demandes.show', $resultat['reference'], false) : null,
-        ], 201);
+        return $this->repondreAuSignalement(
+            fn () => $signaler->executer($message, $request->user(), $donnees['description'], $donnees['cle'], (array) ($donnees['contexte'] ?? []), $request),
+            $disponibilite
+        );
     }
 
     /** Seule la personne de la conversation donne un avis, et seulement sur une réponse. */

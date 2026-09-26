@@ -54,6 +54,8 @@ class Assistant extends Component
             ],
             'raisons' => \App\Domain\Assistant\Retours\RetourDeReponse::RAISONS,
             'care' => $user ? $this->careOuvert() : false,
+            // Même borne que le serveur : la limite du Master moins la place des repères ajoutés.
+            'signalementMax' => $user ? $this->limiteSignalement() : 4800,
         ];
     }
 
@@ -66,6 +68,15 @@ class Assistant extends Component
             Log::warning('assistant.care_indisponible', ['erreur' => $e->getMessage()]);
 
             return false;
+        }
+    }
+
+    private function limiteSignalement(): int
+    {
+        try {
+            return app(\App\Services\Care\ClientMasterSupport::class)->limites()['description_max'] - \App\Domain\Assistant\Retours\SignalerReponse::PLACE_DES_REPERES;
+        } catch (\Throwable $e) {
+            return (int) config('support.limites_par_defaut.description_max') - \App\Domain\Assistant\Retours\SignalerReponse::PLACE_DES_REPERES;
         }
     }
 

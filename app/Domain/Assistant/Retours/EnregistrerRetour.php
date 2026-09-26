@@ -34,27 +34,34 @@ class EnregistrerRetour
             ]
         );
 
-        if ($avis === RetourDeReponse::PAS_UTILE && ($retour->wasRecentlyCreated || $retour->wasChanged('avis'))) {
+        if ($avis === RetourDeReponse::PAS_UTILE) {
             $this->monterLaConversation($message, $ligne?->palier);
         }
 
         return $retour;
     }
 
+    /**
+     * Cible : un palier au-dessus de celui qui a produit la réponse notée, jamais
+     * plus. Si la conversation y est déjà (ou plus haut), rien ne bouge, et sa
+     * série de réussites n'est pas remise à zéro : cliquer 👎 à répétition, ou
+     * sur de vieilles réponses, ne peut pas figer la conversation au prix fort.
+     */
     private function monterLaConversation(ChatbotMessage $message, ?string $palierDuMessage): void
     {
         $conversation = $message->conversation;
-        if (! $conversation) {
+        $ordre = array_keys($this->routeur->paliers());
+        if (! $conversation || $ordre === []) {
             return;
         }
 
+        $cible = $this->routeur->palierAuDessus($palierDuMessage ?? $ordre[0]);
         $contexte = $conversation->context ?? [];
-        $base = $contexte['palier'] ?? $palierDuMessage ?? array_key_first($this->routeur->paliers());
-        $au = $base ? ($this->routeur->palierAuDessus($base) ?? $base) : null;
-        if ($au === null) {
+        $actuel = array_search($contexte['palier'] ?? $ordre[0], $ordre, true);
+        if ($cible === null || ($actuel !== false && $actuel >= array_search($cible, $ordre, true))) {
             return;
         }
 
-        $conversation->update(['context' => array_merge($contexte, ['palier' => $au, 'succes_au_palier' => 0])]);
+        $conversation->update(['context' => array_merge($contexte, ['palier' => $cible, 'succes_au_palier' => 0])]);
     }
 }

@@ -70,6 +70,15 @@ class RetoursTest extends TestCase
         $this->assertSame('standard', $this->conversation->fresh()->context['palier']);
         $this->actingAs($this->user)->postJson(route('chatbot.messages.retour', $this->reponse), ['avis' => 'utile'])->assertOk();
         $this->assertSame(1, RetourDeReponse::count());
+
+        // 👎 / 👍 / 👎 en boucle : jamais plus d'un cran au-dessus de la réponse notée,
+        // et la série de réussites n'est pas remise à zéro.
+        $this->conversation->update(['context' => ['palier' => 'standard', 'succes_au_palier' => 2]]);
+        foreach (['pas_utile', 'utile', 'pas_utile'] as $avis) {
+            $this->actingAs($this->user)->postJson(route('chatbot.messages.retour', $this->reponse), ['avis' => $avis])->assertOk();
+        }
+        $this->assertSame(['palier' => 'standard', 'succes_au_palier' => 2], $this->conversation->fresh()->context);
+        $this->actingAs($this->user)->postJson(route('chatbot.messages.retour', $this->reponse), ['avis' => 'utile'])->assertOk();
         $this->assertNull(RetourDeReponse::sole()->raison);
 
         // L'historique rouvert montre l'avis donné.

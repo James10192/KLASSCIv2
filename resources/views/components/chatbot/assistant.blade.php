@@ -177,7 +177,8 @@
                                         <template x-if="msg.retourEnvoye">
                                             <div class="ast-retour-merci">
                                                 <span><i class="fas fa-check" aria-hidden="true"></i> Merci, c'est noté. La prochaine réponse sera plus poussée.</span>
-                                                <template x-if="cfg.care && !msg.signalement.ouvert">
+                                                <span class="ast-retour-care" x-show="msg.signalement.etat === 'envoye' && !msg.signalement.ouvert" x-text="msg.signalement.message"></span>
+                                                <template x-if="cfg.care && !msg.signalement.ouvert && msg.signalement.etat !== 'envoye'">
                                                     <button type="button" class="ast-btn ast-btn--ghost" x-on:click="ouvrirSignalement(msg)">
                                                         <i class="fas fa-life-ring" aria-hidden="true"></i> Signaler à KLASSCI Care
                                                     </button>
@@ -187,9 +188,9 @@
                                         <template x-if="msg.signalement.ouvert">
                                             <div class="ast-retour-form">
                                                 <div class="ast-retour-titre">Signaler à KLASSCI Care</div>
-                                                <p class="ast-retour-aide">Relisez le texte : c'est exactement ce que le support recevra. Retirez ce que vous ne voulez pas transmettre.</p>
+                                                <p class="ast-retour-aide">Relisez le texte et retirez ce que vous ne voulez pas transmettre. Le support le recevra avec des repères techniques : la page ouverte, le navigateur, le numéro de cette réponse et le modèle qui l'a écrite.</p>
                                                 <label class="ast-sr" x-bind:for="'ast-sig-' + msg.key">Description</label>
-                                                <textarea class="ast-input" rows="5" maxlength="4800" x-bind:id="'ast-sig-' + msg.key" x-model="msg.signalement.texte"
+                                                <textarea class="ast-input" rows="5" x-bind:maxlength="cfg.signalementMax" x-bind:id="'ast-sig-' + msg.key" x-model="msg.signalement.texte"
                                                           x-bind:disabled="msg.signalement.etat === 'envoi' || msg.signalement.etat === 'envoye'"></textarea>
                                                 <div class="ast-retour-actions" x-show="msg.signalement.etat !== 'envoye'">
                                                     <button type="button" class="ast-btn ast-btn--primary" x-on:click="signaler(msg)" x-bind:disabled="msg.signalement.etat === 'envoi'">

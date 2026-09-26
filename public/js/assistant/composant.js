@@ -546,7 +546,7 @@
                 this.postJson(this.urlDe('retour', msg), { avis: 'pas_utile', raison: msg.raison || null, commentaire: msg.commentaire || null }).then(function (r) {
                     msg.retourEnvoye = r.ok;
                     self.annonce = r.ok ? 'Merci : la prochaine réponse sera plus poussée.' : 'Avis non enregistré.';
-                });
+                }).catch(function () { self.annonce = 'Connexion interrompue : avis non enregistré.'; });
             },
 
             /** Brouillon relu par la personne : sa question et un extrait de la réponse, qu'elle peut retirer. */
@@ -586,7 +586,10 @@
                     }
                     var detail = r.json && r.json.errors ? Object.values(r.json.errors)[0] : null;
                     sig.etat = r.ok ? 'envoye' : 'erreur';
-                    sig.message = r.ok ? (r.json.message || 'Signalement envoyé.') : ((Array.isArray(detail) ? detail[0] : detail) || r.message || 'Envoi impossible.');
+                    sig.message = r.ok
+                        ? (r.json.en_attente ? r.json.message : 'Signalement transmis au support' + (r.json.reference ? ' (' + r.json.reference + ')' : '') + '.')
+                        : ((Array.isArray(detail) ? detail[0] : detail) || r.message || 'Envoi impossible.');
+                    if (r.ok) { sig.ouvert = false; }
                 }).catch(function () { sig.etat = 'erreur'; sig.message = 'Connexion interrompue.'; });
             },
 
@@ -639,6 +642,11 @@
                         msg.dbId = m.id || null;
                         msg.avis = m.retour ? m.retour.avis : null;
                         msg.retourEnvoye = !!(m.retour && m.retour.avis === 'pas_utile');
+                        if (m.retour && m.retour.care_reference) {
+                            // Déjà signalé : on ne propose pas d'ouvrir une seconde demande.
+                            msg.signalement.etat = 'envoye';
+                            msg.signalement.message = 'Signalement transmis au support (' + m.retour.care_reference + ').';
+                        }
                         var v = vueDe(msg);
                         if (Array.isArray(m.parties) && m.parties.length) {
                             v.chargerParties(m.parties);

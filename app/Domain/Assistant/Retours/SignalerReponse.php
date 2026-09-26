@@ -19,6 +19,9 @@ use Illuminate\Http\Request;
  */
 class SignalerReponse
 {
+    /** Caractères réservés aux repères ajoutés à la description relue. */
+    public const PLACE_DES_REPERES = 200;
+
     public function __construct(private SoumettreDemande $soumettre)
     {
     }
