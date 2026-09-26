@@ -49,8 +49,36 @@ class Assistant extends Component
                 'formFraisCategory' => route('chatbot.forms.frais-category'),
                 'formFraisConfig' => route('chatbot.forms.frais-config'),
                 'formInscriptionsFilter' => route('chatbot.forms.inscriptions-filter'),
+                'retour' => route('chatbot.messages.retour', ['message' => '__ID__'], false),
+                'pieces' => route('chatbot.pieces.deposer', [], false),
+                'signaler' => route('chatbot.messages.signaler', ['message' => '__ID__'], false),
             ],
+            'raisons' => \App\Domain\Assistant\Retours\RetourDeReponse::RAISONS,
+            'care' => $user ? $this->careOuvert() : false,
+            // Même borne que le serveur : la limite du Master moins la place des repères ajoutés.
+            'signalementMax' => $user ? $this->limiteSignalement() : 4800,
         ];
+    }
+
+    /** « Signaler à KLASSCI Care » n'est proposé que si le support est ouvert à l'instance. */
+    private function careOuvert(): bool
+    {
+        try {
+            return app(\App\Domain\Support\Services\DisponibiliteSupport::class)->signalement();
+        } catch (\Throwable $e) {
+            Log::warning('assistant.care_indisponible', ['erreur' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    private function limiteSignalement(): int
+    {
+        try {
+            return app(\App\Services\Care\ClientMasterSupport::class)->limites()['description_max'] - \App\Domain\Assistant\Retours\SignalerReponse::PLACE_DES_REPERES;
+        } catch (\Throwable $e) {
+            return (int) config('support.limites_par_defaut.description_max') - \App\Domain\Assistant\Retours\SignalerReponse::PLACE_DES_REPERES;
+        }
     }
 
     private function prenom($user): string
@@ -74,8 +102,12 @@ class Assistant extends Component
         $registre = app(RegistreDesModeles::class);
         $disponibles = array_values(array_map(fn (ModeleIa $m) => $m->versPublic(), $registre->disponibles()));
 
+        // « Automatique » d'abord et par défaut : le routeur choisit le modèle le
+        // moins cher qui suffit. Forcer un modèle reste possible, pour tester.
+        $auto = ['cle' => 'auto', 'libelle' => 'Automatique', 'fournisseur' => null];
+
         return count($disponibles) > 1
-            ? ['liste' => $disponibles, 'defaut' => $registre->candidats()[0]->cle ?? null]
+            ? ['liste' => array_merge([$auto], $disponibles), 'defaut' => 'auto']
             : [];
     }
 

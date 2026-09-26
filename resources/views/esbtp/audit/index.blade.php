@@ -1,460 +1,95 @@
 @extends('layouts.app')
 
-@section('title', "Journal d'audit & sécurité")
-
-@section('content')
-<div class="container-fluid au-page" x-data="auditPage()">
-
-    {{-- ═══════════════════════════════ HERO ═══════════════════════════════ --}}
-    <div class="au-hero">
-        <div class="au-hero-top">
-            <div class="au-hero-left">
-                <div class="au-hero-icon"><i class="fas fa-shield-alt"></i></div>
-                <div class="au-hero-info">
-                    <h1>Journal d'audit & sécurité</h1>
-                    <p>Surveillance et traçabilité des actions système</p>
-                </div>
-            </div>
-            <div class="au-hero-actions">
-                <button type="button" class="au-btn au-btn--glass" @click="advancedFiltersOpen = true">
-                    <i class="fas fa-sliders-h"></i> Filtres avancés
-                </button>
-                @can('comptabilite.audit.view')
-                    <a href="{{ route('esbtp.audit.comptabilite') }}" class="au-btn au-btn--glass" title="Audit comptabilité">
-                        <i class="fas fa-coins"></i> <span class="d-none d-md-inline">Comptabilité</span>
-                    </a>
-                @endcan
-                @can('security.users.monitor')
-                    <a href="{{ route('esbtp.audit.user-activity') }}" class="au-btn au-btn--glass" title="Activité utilisateurs">
-                        <i class="fas fa-user-clock"></i> <span class="d-none d-md-inline">Activité</span>
-                    </a>
-                @endcan
-                @can('security.audit.export')
-                    <div class="dropdown">
-                        <button type="button" class="au-btn au-btn--white dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-download"></i> Exporter
-                        </button>
-                        <ul class="dropdown-menu au-dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="#" @click.prevent="exportData('pdf')"><i class="fas fa-file-pdf text-danger me-2"></i> Format PDF</a></li>
-                            <li><a class="dropdown-item" href="#" @click.prevent="exportData('excel')"><i class="fas fa-file-excel text-success me-2"></i> Format Excel</a></li>
-                        </ul>
-                    </div>
-                @endcan
-            </div>
-        </div>
-
-        @if ($stats === null)
-            {{-- Aucun instantané encore produit. La page ne recalcule PAS à la volée :
-                 c'est ce calcul qui la rendait inatteignable. Elle le dit et attend le
-                 prochain passage de la tâche planifiée. --}}
-            <div class="au-stats-indispo">
-                <i class="fas fa-hourglass-half"></i>
-                <div>
-                    <strong>Statistiques indisponibles</strong>
-                    <span>Elles sont calculées en tâche de fond et n'ont pas encore été produites. Les journaux ci-dessous restent consultables.</span>
-                </div>
-            </div>
-        @else
-            <div class="au-kpis">
-                <div class="au-kpi">
-                    <div class="au-kpi-icon"><i class="fas fa-database"></i></div>
-                    <div>
-                        <div class="au-kpi-value">{{ number_format($stats['total_audits'] ?? 0) }}</div>
-                        <div class="au-kpi-label">Total audits</div>
-                    </div>
-                </div>
-                <div class="au-kpi">
-                    <div class="au-kpi-icon"><i class="fas fa-calendar-day"></i></div>
-                    <div>
-                        <div class="au-kpi-value">{{ number_format($stats['today_audits'] ?? 0) }}</div>
-                        <div class="au-kpi-label">Aujourd'hui</div>
-                    </div>
-                </div>
-                <div class="au-kpi">
-                    <div class="au-kpi-icon"><i class="fas fa-calendar-week"></i></div>
-                    <div>
-                        <div class="au-kpi-value">{{ number_format($stats['week_audits'] ?? 0) }}</div>
-                        <div class="au-kpi-label">Cette semaine</div>
-                    </div>
-                </div>
-                <div class="au-kpi au-kpi--alert">
-                    <div class="au-kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
-                    <div>
-                        <div class="au-kpi-value">{{ number_format($stats['critical_events'] ?? 0) }}</div>
-                        <div class="au-kpi-label">Événements critiques</div>
-                    </div>
-                </div>
-            </div>
-            <div class="au-stats-age {{ $statsPerimees ? 'au-stats-age--perime' : '' }}">
-                <i class="fas fa-{{ $statsPerimees ? 'triangle-exclamation' : 'clock' }}"></i>
-                @if ($statsPerimees)
-                    Statistiques périmées — dernier calcul {{ $statsCalculeLe->diffForHumans() }}.
-                @else
-                    Calculées {{ $statsCalculeLe->diffForHumans() }}.
-                @endif
-            </div>
-        @endif
-    </div>
-
-    {{-- ═══════════════════════════════ FILTRES RAPIDES ═══════════════════════════════ --}}
-    <div class="au-filters">
-        <div class="au-filters-row">
-            <div class="au-filter-field au-filter-field--grow">
-                <label><i class="fas fa-search"></i></label>
-                <input type="text" x-model="filters.search" @input.debounce.300ms="reload()"
-                       placeholder="Rechercher : ID entité, IP, contenu valeur…">
-            </div>
-            <x-au-select
-                x-model="filters.event"
-                @change="reload()"
-                icon="fa-bolt"
-                placeholder="Tous les événements"
-                :options="[
-                    'created' => 'Création',
-                    'updated' => 'Modification',
-                    'deleted' => 'Suppression',
-                    'restored' => 'Restauration',
-                    'retrieved' => 'Consultation',
-                ]" />
-            <x-au-select
-                x-model="filters.model_type"
-                @change="reload()"
-                icon="fa-cubes"
-                placeholder="Tous les modèles"
-                :searchable="count($auditableModels) > 8"
-                :options="$auditableModels" />
-            <div class="au-filter-field">
-                <input type="date" x-model="filters.date_from" @change="reload()" title="Date début">
-            </div>
-            <div class="au-filter-field">
-                <input type="date" x-model="filters.date_to" @change="reload()" title="Date fin">
-            </div>
-            <button type="button" class="au-filter-reset" @click="resetFilters()" title="Réinitialiser">
-                <i class="fas fa-undo"></i>
-            </button>
-        </div>
-    </div>
-
-    {{-- ═══════════════════════════════ TABLEAU ═══════════════════════════════ --}}
-    <div class="au-card">
-        <div class="au-card-header">
-            <div class="au-card-title">
-                <i class="fas fa-list-ul"></i> Logs d'audit
-                {{-- Plus de total : le comptage global sur `audits` a ete supprime (voir
-                     le controleur). On annonce donc ce qui est reellement affiche. --}}
-                <span class="au-badge-count" x-show="audits.length > 0" x-cloak x-text="audits.length + (audits.length > 1 ? ' affichées' : ' affichée')"></span>
-            </div>
-            <button type="button" class="au-icon-btn" @click="reload()" title="Actualiser">
-                <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }"></i>
-            </button>
-        </div>
-
-        <div class="au-table-wrap">
-            {{-- Loading --}}
-            <div class="au-loading" x-show="loading" x-cloak>
-                <div class="au-spinner"></div>
-                <p>Chargement des données…</p>
-            </div>
-
-            {{-- Empty --}}
-            <div class="au-empty" x-show="!loading && audits.length === 0" x-cloak>
-                <i class="fas fa-search"></i>
-                <h3>Aucun audit trouvé</h3>
-                <p>Essayez de modifier vos critères de recherche.</p>
-            </div>
-
-            {{-- Table --}}
-            <table class="au-table au-table--clickable" x-show="!loading && audits.length > 0" x-cloak>
-                <thead>
-                    <tr>
-                        <th>Date / Heure</th>
-                        <th>Utilisateur</th>
-                        <th>Action</th>
-                        <th>Modèle</th>
-                        <th>ID Entité</th>
-                        <th>Changements</th>
-                        <th>Risque</th>
-                        <th class="au-th-actions">Détails</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <template x-for="audit in audits" :key="audit.id">
-                        <tr @click="openQuickModal(audit)">
-                            <td>
-                                <div class="au-cell-date">
-                                    <i class="far fa-clock"></i>
-                                    <span x-text="audit.created_at"></span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="au-cell-user">
-                                    <span class="au-avatar" x-text="userInitial(audit.user)"></span>
-                                    <span x-text="audit.user"></span>
-                                </div>
-                            </td>
-                            <td><span class="au-chip" :class="'au-chip--' + audit.event_raw" x-text="audit.event"></span></td>
-                            <td><span class="au-chip au-chip--neutral" x-text="audit.auditable_type"></span></td>
-                            <td><code class="au-code" x-text="'#' + audit.auditable_id"></code></td>
-                            <td>
-                                <span class="au-changes" x-show="audit.changes && audit.changes.length > 0"
-                                      x-text="audit.changes.length + ' champ' + (audit.changes.length > 1 ? 's' : '') + ' modifié' + (audit.changes.length > 1 ? 's' : '')"></span>
-                                <span class="au-changes au-changes--empty" x-show="!audit.changes || audit.changes.length === 0">Aucun</span>
-                            </td>
-                            <td><span class="au-chip" :class="'au-chip--risk-' + riskClass(audit.risk_level)" x-text="audit.risk_level"></span></td>
-                            <td class="au-td-actions" @click.stop>
-                                <a :href="`/esbtp/audit/${audit.id}`" class="au-icon-btn au-icon-btn--primary" title="Voir détail complet">
-                                    <i class="fas fa-eye"></i>
-                                </a>
-                            </td>
-                        </tr>
-                    </template>
-                </tbody>
-            </table>
-        </div>
-
-        {{-- Le journal est dessine par Alpine : son bas de liste vient de ListeInfinie.alpine(). --}}
-        <x-liste-infinie-alpine />
-    </div>
-
-    {{-- ═══════════════════════════════ MODAL DIFF RAPIDE ═══════════════════════════════ --}}
-    <div class="au-modal-backdrop" x-show="quickModalOpen" x-cloak @click.self="quickModalOpen = false" x-transition.opacity>
-        <div class="au-modal" x-show="quickModalOpen" x-transition>
-            <div class="au-modal-header">
-                <div class="au-modal-title">
-                    <i class="fas fa-info-circle"></i>
-                    <span>Aperçu de l'audit</span>
-                    <span class="au-chip" :class="quickModalAudit ? 'au-chip--' + quickModalAudit.event_raw : ''" x-text="quickModalAudit?.event ?? ''"></span>
-                </div>
-                <button type="button" class="au-icon-btn" @click="quickModalOpen = false"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="au-modal-body" x-show="quickModalAudit">
-                <div class="au-meta-grid">
-                    <div><strong>Date</strong><span x-text="quickModalAudit?.created_at"></span></div>
-                    <div><strong>Utilisateur</strong><span x-text="quickModalAudit?.user"></span></div>
-                    <div><strong>IP</strong><code x-text="quickModalAudit?.ip_address"></code></div>
-                    <div><strong>Navigateur</strong><span x-text="quickModalAudit?.user_agent"></span></div>
-                    <div><strong>Modèle</strong><span x-text="quickModalAudit?.auditable_type + ' #' + quickModalAudit?.auditable_id"></span></div>
-                    <div><strong>Risque</strong><span class="au-chip" :class="quickModalAudit ? 'au-chip--risk-' + riskClass(quickModalAudit.risk_level) : ''" x-text="quickModalAudit?.risk_level"></span></div>
-                </div>
-
-                <div class="au-diff-list" x-show="quickModalAudit?.changes && quickModalAudit.changes.length > 0">
-                    <h4><i class="fas fa-exchange-alt"></i> Différences</h4>
-                    <table class="au-diff-table">
-                        <thead>
-                            <tr><th>Champ</th><th>Avant</th><th>Après</th></tr>
-                        </thead>
-                        <tbody>
-                            <template x-for="(c, i) in (quickModalAudit?.changes || [])" :key="i">
-                                <tr>
-                                    <td><strong x-text="c.field"></strong></td>
-                                    <td><span class="au-diff-old" x-text="c.old"></span></td>
-                                    <td><span class="au-diff-new" x-text="c.new"></span></td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="au-empty au-empty--small" x-show="!quickModalAudit?.changes || quickModalAudit.changes.length === 0">
-                    <i class="fas fa-info"></i>
-                    <p>Aucun changement enregistré</p>
-                </div>
-
-                {{-- ═══════════════════════════════ LIENS ENTITÉS LIÉES (AJAX) ═══════════════════════════════ --}}
-                <div class="au-quick-links-section">
-                    <h4>
-                        <i class="fas fa-project-diagram"></i> Liens vers les entités liées
-                        <span class="au-meta-sub" x-show="quickLinks.length > 0" x-cloak>
-                            • <span x-text="quickLinks.length"></span>
-                        </span>
-                    </h4>
-                    <div class="au-quick-links-loading" x-show="quickLinksLoading" x-cloak>
-                        <div class="au-spinner au-spinner--sm"></div>
-                        <span>Chargement des liens…</span>
-                    </div>
-                    <div class="al-grid al-grid--compact" x-show="!quickLinksLoading && quickLinks.length > 0" x-cloak>
-                        <template x-for="link in quickLinks" :key="link.key + '_' + (link.value || '')">
-                            <a :href="link.route || null"
-                               :class="'al-item al-item--' + (link.emphasis || 'normal') + (link.route ? ' al-item--linkable' : '')"
-                               :title="link.route ? ('Ouvrir : ' + link.value) : ''">
-                                <span class="al-icon"><i class="fas" :class="link.icon || 'fa-link'"></i></span>
-                                <div class="al-body">
-                                    <div class="al-label" x-text="link.label"></div>
-                                    <div class="al-value" x-text="link.value"></div>
-                                    <div class="al-sub" x-show="link.sublabel" x-text="link.sublabel"></div>
-                                </div>
-                                <span class="al-arrow" x-show="link.route"><i class="fas fa-arrow-up-right-from-square"></i></span>
-                            </a>
-                        </template>
-                    </div>
-                    <div class="au-empty au-empty--small" x-show="!quickLinksLoading && quickLinks.length === 0" x-cloak>
-                        <i class="fas fa-link-slash"></i>
-                        <p>Aucune entité liée détectée</p>
-                    </div>
-                </div>
-            </div>
-            <div class="au-modal-footer">
-                <button type="button" class="au-btn au-btn--ghost" @click="quickModalOpen = false">Fermer</button>
-                <a :href="quickModalAudit ? `/esbtp/audit/${quickModalAudit.id}` : '#'" class="au-btn au-btn--primary">
-                    <i class="fas fa-external-link-alt"></i> Voir détail complet
-                </a>
-            </div>
-        </div>
-    </div>
-
-    {{-- ═══════════════════════════════ MODAL FILTRES AVANCÉS ═══════════════════════════════ --}}
-    <div class="au-modal-backdrop" x-show="advancedFiltersOpen" x-cloak @click.self="advancedFiltersOpen = false" x-transition.opacity>
-        <div class="au-modal" x-show="advancedFiltersOpen" x-transition>
-            <div class="au-modal-header">
-                <div class="au-modal-title"><i class="fas fa-sliders-h"></i> Filtres avancés</div>
-                <button type="button" class="au-icon-btn" @click="advancedFiltersOpen = false"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="au-modal-body">
-                <div class="au-form-grid">
-                    <div>
-                        <label>Utilisateur</label>
-                        <x-au-user-picker
-                            x-model="filters.user_id"
-                            :users="$users"
-                            placeholder="Tous les utilisateurs"
-                            empty-hint="Vue d'ensemble — toutes les actions tracées"
-                            empty-icon="fa-globe" />
-                    </div>
-                    <div>
-                        <label>Adresse IP</label>
-                        <input type="text" x-model="filters.ip_address" placeholder="Ex : 192.168.1.10">
-                    </div>
-                    <div>
-                        <label>Date début</label>
-                        <input type="date" x-model="filters.date_from">
-                    </div>
-                    <div>
-                        <label>Date fin</label>
-                        <input type="date" x-model="filters.date_to">
-                    </div>
-                </div>
-            </div>
-            <div class="au-modal-footer">
-                <button type="button" class="au-btn au-btn--ghost" @click="resetFilters(); advancedFiltersOpen = false;">Réinitialiser</button>
-                <button type="button" class="au-btn au-btn--primary" @click="reload(); advancedFiltersOpen = false;">
-                    <i class="fas fa-check"></i> Appliquer
-                </button>
-            </div>
-        </div>
-    </div>
-
-</div>
-@endsection
+@section('title', "Journal d'audit")
 
 @push('styles')
-<style>
-/* ════════════════════════════════════════════════════════════════════
-   AUDIT — Premium Redesign
-   Namespace : au-*
-   Palette : monochrome KLASSCI bleu + sémantiques (event, risk)
-   Styles partagés : @include('esbtp.audit._styles')
-   ════════════════════════════════════════════════════════════════════ */
-@include('esbtp.audit._styles')
-
-</style>
+@include('esbtp.audit._styles-journal')
 @endpush
 
-@push('scripts')
-<script>
-function auditPage() {
-    // Chargement par tranches : ListeInfinie.alpine() (public/js/liste-infinie.js)
-    // porte l'observateur, les etats et le dedoublonnage ; la page ne fournit
-    // que sa requete.
-    return Object.assign({
-        filters: {
-            search: '',
-            event: '',
-            model_type: '',
-            user_id: '',
-            ip_address: '',
-            date_from: '',
-            date_to: '',
-        },
-        advancedFiltersOpen: false,
-        quickModalOpen: false,
-        quickModalAudit: null,
-        quickLinks: [],
-        quickLinksLoading: false,
+@section('content')
+@php
+    $_parametres = $filtres->enParametres();
+    $_config = [
+        'index' => route('esbtp.audit.index'),
+        'aRegarder' => $aRegarder,
+        'filtres' => [
+            'theme' => $filtres->theme,
+            'user_id' => $filtres->personne ? (string) $filtres->personne : '',
+            'periode' => $filtres->periode,
+            'q' => $filtres->recherche,
+            'auto' => $filtres->automatiques,
+            'model_type' => $filtres->typeObjet,
+            'objet_id' => $filtres->idObjet,
+            'date_from' => $filtres->du?->format('Y-m-d'),
+            'date_to' => $filtres->au?->format('Y-m-d'),
+        ],
+    ];
+@endphp
+<div class="jda" x-data="journalAudit()" data-jda='@json($_config)'>
+    <header class="jda-hero">
+        <div class="jda-hero-top">
+            <div class="jda-hero-gauche">
+                <div class="jda-hero-icone" aria-hidden="true"><i class="fas fa-clipboard-list"></i></div>
+                <div style="min-width:0">
+                    <h1>Journal d'audit</h1>
+                    <p>Qui a fait quoi, sur qui, et quand. Seuls les onglets que vos droits ouvrent apparaissent.</p>
+                </div>
+            </div>
+            <div class="jda-actions">
+                @can('security.users.monitor')
+                    <a class="jda-btn jda-btn--glass" href="{{ route('esbtp.audit.user-activity') }}"><i class="fas fa-user-clock"></i>Activité des personnes</a>
+                @endcan
+                @can('security.audit.export')
+                    <x-export-modal
+                        :preview-url="route('esbtp.audit.export.pdf', ['apercu' => 1])"
+                        :pdf-url="route('esbtp.audit.export.pdf')"
+                        :excel-url="route('esbtp.audit.export.excel')"
+                        button-class="jda-btn jda-btn--white"
+                        label="Exporter la vue" />
+                @endcan
+            </div>
+        </div>
+        @if(count($themes) > 1)
+            <nav class="jda-onglets" aria-label="Vues du journal">
+                @foreach($themes as $_theme)
+                    <a href="{{ route('esbtp.audit.index', array_merge($_parametres, ['theme' => $_theme])) }}"
+                       class="jda-onglet" :class="filtres.theme === '{{ $_theme }}' ? 'is-actif' : ''"
+                       :aria-current="filtres.theme === '{{ $_theme }}' ? 'page' : null"
+                       data-jda-filtre='@json(['theme' => $_theme])'>{{ \App\Domain\Audit\ThemesDuJournal::LIBELLES[$_theme] }}@if($_theme === \App\Domain\Audit\ThemesDuJournal::A_REGARDER)<span class="jda-onglet-compte" x-show="aRegarder > 0" x-text="aRegarder">{{ $aRegarder }}</span>@endif</a>
+                @endforeach
+            </nav>
+        @else
+            <div style="height:1.25rem"></div>
+        @endif
+    </header>
 
-        // Alpine appelle init() de lui-meme : pas de x-init="init()" en plus,
-        // qui lancait deux fois le premier chargement.
-        init() { this.liInit(); },
-        destroy() { this.liDetruire(); },
-        reload() { return this.recharger(); },
+    <div class="jda-filtres">
+        <label class="jda-recherche">
+            <i class="fas fa-search" style="color:#64748b" aria-hidden="true"></i>
+            <input type="search" x-ref="recherche" x-model="filtres.q" x-on:input.debounce.350ms="recharger()" placeholder="Un étudiant, une classe, un reçu, une personne…" aria-label="Rechercher dans le journal">
+            <kbd title="Raccourci">/</kbd>
+        </label>
+        <div class="jda-filtre" x-on:change="choisir($event)">
+            <x-au-user-picker name="user_id" :value="$filtres->personne" :users="$personnes" placeholder="Toutes les personnes" />
+        </div>
+        <div class="jda-filtre" x-on:change="choisir($event)">
+            <x-au-select name="periode" :value="$filtres->periode" icon="fa-calendar" :options="\App\Domain\Audit\FiltresDuJournal::PERIODES" :placeholder-is-first-option="false" />
+        </div>
+        {{-- Toujours dans la page : une plage revenue par le bouton retour doit pouvoir se retirer. --}}
+        <button type="button" class="jda-bascule is-actif" x-show="filtres.date_from || filtres.date_to" @if(! $filtres->plage()) x-cloak @endif data-jda-filtre='@json(['date_from' => '', 'date_to' => ''])' title="Revenir aux périodes proposées">
+            <i class="fas fa-calendar-days" aria-hidden="true"></i><span x-text="plage()">{{ \Illuminate\Support\Str::ucfirst((string) $filtres->plage()) }}</span> <i class="fas fa-xmark" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="jda-bascule" :class="!filtres.auto ? 'is-actif' : ''" :aria-pressed="(!filtres.auto).toString()" x-on:click="filtrer({auto: !filtres.auto})">
+            <i class="fas fa-gear" aria-hidden="true"></i>Masquer les tâches automatiques
+        </button>
+    </div>
 
-        riskClass(level) {
-            const map = { 'Critique': 'critique', 'Élevé': 'eleve', 'Moyen': 'moyen', 'Faible': 'faible' };
-            return map[level] || 'faible';
-        },
+    <section class="jda-carte">
+        <div class="jda-liste" id="jda-liste" :class="chargement ? 'is-chargement' : ''" aria-live="polite">
+            @include('esbtp.audit._liste')
+        </div>
+    </section>
+</div>
 
-        userInitial(name) {
-            if (!name) return '?';
-            return name.charAt(0).toUpperCase();
-        },
-
-        resetFilters() {
-            Object.keys(this.filters).forEach(k => this.filters[k] = '');
-            this.reload();
-        },
-
-        openQuickModal(audit) {
-            this.quickModalAudit = audit;
-            this.quickModalOpen = true;
-            this.fetchQuickLinks(audit.id);
-        },
-
-        fetchQuickLinks(auditId) {
-            this.quickLinks = [];
-            this.quickLinksLoading = true;
-            fetch(`/esbtp/audit/${auditId}/related-links`, {
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-            })
-                .then(r => r.ok ? r.json() : Promise.reject(r))
-                .then(data => {
-                    this.quickLinks = data.links || [];
-                    this.quickLinksLoading = false;
-                })
-                .catch(() => {
-                    this.quickLinks = [];
-                    this.quickLinksLoading = false;
-                });
-        },
-
-        exportData(format) {
-            const params = new URLSearchParams();
-            Object.keys(this.filters).forEach(k => {
-                if (this.filters[k]) params.set(k, this.filters[k]);
-            });
-            const url = format === 'pdf'
-                ? '{{ route("esbtp.audit.export.pdf") }}'
-                : '{{ route("esbtp.audit.export.excel") }}';
-            window.open(url + '?' + params.toString(), '_blank');
-        },
-    }, ListeInfinie.alpine({
-        champ: 'audits',
-        libelle: 'entrées',
-        // event_raw arrive tel qu'Eloquent l'ecrit (created, updated...) : la vue
-        // choisit sa classe sans traduire le libelle a l'envers.
-        tranche(page) {
-            const params = { page };
-            Object.keys(this.filters).forEach(k => {
-                if (this.filters[k]) params[k] = this.filters[k];
-            });
-            return fetch('{{ route("esbtp.audit.data") }}?' + new URLSearchParams(params), {
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-            })
-                .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-                // simplePaginate : pas de total, seulement « il en reste ».
-                .then(data => ({ lignes: data.data || [], pagination: { current_page: data.current_page, has_more: !!data.next_page_url, total: null, par_page: data.per_page } }));
-        },
-        echec() {
-            if (window.toastr) toastr.error('Erreur lors du chargement des audits');
-        },
-    }));
-}
-</script>
-@endpush
+@include('esbtp.audit._script')
+@endsection

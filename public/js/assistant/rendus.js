@@ -667,6 +667,93 @@
     };
     RENDUS.proposal = RENDUS['approval-request'];
 
+    /**
+     * Proposition de l'assistant (outil proposer_*) : ce qui sera écrit, ligne à
+     * ligne, avec « Valider » et « Refuser ». Rien n'est enregistré avant le clic ;
+     * le serveur revérifie tout et refuse si les données ont changé entre-temps.
+     */
+    var ETATS_PROPOSITION = {
+        en_attente: null,
+        executee: 'Enregistré.',
+        refusee: 'Refusée : rien n\'a été enregistré.',
+        expiree: 'Expirée : demandez une nouvelle proposition.',
+        perimee: 'Les données ont changé : rien n\'a été enregistré.',
+        traitee: 'Déjà traitée.',
+        a_verifier: 'Enregistrement interrompu : vérifiez la page avant de refaire.',
+        echec: 'Échec : rien n\'a été modifié.'
+    };
+    RENDUS.approbation = function (data, ctx) {
+        var c = carte({ titre: data.titre || 'Proposition', sousTitre: data.resume || null, icone: 'fas fa-pen-to-square', classe: 'ast-approval ast-prop' + (data.risque === 'eleve' ? ' ast-prop--eleve' : '') });
+        var ruban = el('div', 'ast-prop-ruban');
+        ruban.appendChild(icone('fas fa-shield-halved'));
+        ruban.appendChild(el('span', null, 'Rien n\'est enregistré tant que vous n\'avez pas validé'));
+        c.corps.appendChild(ruban);
+        if ((data.colonnes || []).length && (data.lignes || []).length) {
+            var cols = data.colonnes.map(function (libelle, i) { return { cle: 'c' + i, libelle: libelle }; });
+            c.corps.appendChild(RENDUS.tableau({
+                colonnes: cols,
+                lignes: data.lignes.map(function (ligne) {
+                    var o = {};
+                    cols.forEach(function (col, i) { o[col.cle] = ligne[i]; });
+                    return o;
+                })
+            }));
+        }
+        if ((data.avertissements || []).length) {
+            var alertes = el('ul', 'ast-prop-alertes');
+            data.avertissements.forEach(function (a) {
+                var li = el('li');
+                li.appendChild(icone('fas fa-triangle-exclamation'));
+                li.appendChild(el('span', null, a));
+                alertes.appendChild(li);
+            });
+            c.corps.appendChild(alertes);
+        }
+        var etat = el('div', 'ast-approval-state');
+        etat.setAttribute('role', 'status');
+        var actions = el('div', 'ast-approval-actions');
+        var ok = el('button', 'ast-btn ast-btn--primary', 'Valider');
+        ok.type = 'button';
+        var non = el('button', 'ast-btn ast-btn--ghost', 'Refuser');
+        non.type = 'button';
+        actions.appendChild(ok);
+        actions.appendChild(non);
+        c.corps.appendChild(actions);
+        c.corps.appendChild(etat);
+
+        function clore(statut, message, lienResultat) {
+            actions.remove();
+            etat.textContent = message || ETATS_PROPOSITION[statut] || '';
+            etat.className = 'ast-approval-state ' + (statut === 'executee' ? 'is-ok' : 'is-ko');
+            var l = lienResultat ? lien(lienResultat, 'Voir') : null;
+            if (l) { etat.appendChild(document.createTextNode(' ')); etat.appendChild(l); }
+            c.racine.classList.add('is-close');
+        }
+        function envoyer(url, corps, attente) {
+            ok.disabled = true;
+            non.disabled = true;
+            etat.className = 'ast-approval-state';
+            etat.textContent = attente;
+            ctx.repondreProposition(url, corps).then(function (res) {
+                if (res.ok || ETATS_PROPOSITION[res.statut] !== undefined) {
+                    clore(res.statut, res.message, res.lien);
+                } else {
+                    // Refus récupérable (réseau, droit) : on laisse la main.
+                    etat.textContent = res.message;
+                    etat.className = 'ast-approval-state is-ko';
+                    ok.disabled = false;
+                    non.disabled = false;
+                }
+            });
+        }
+        ok.addEventListener('click', function () { envoyer(data.valider_url, { jeton: data.jeton }, 'Enregistrement…'); });
+        non.addEventListener('click', function () { envoyer(data.refuser_url, {}, 'Refus…'); });
+        if (data.etat && data.etat !== 'en_attente') {
+            clore(data.etat, null, null);
+        }
+        return c.racine;
+    };
+
     /** Clés qui portent un lien de pied : le bouton « Ouvrir la page » du message devient alors redondant. */
     function widgetALien(kind, data) {
         if (!data) { return false; }

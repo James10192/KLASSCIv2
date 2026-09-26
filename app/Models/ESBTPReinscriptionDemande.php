@@ -21,6 +21,7 @@ use OwenIt\Auditing\Contracts\Auditable;
 class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRendezVous
 {
     use Concerns\AttendVerificationContact;
+    use Concerns\CompteDansLaFileDesDemandes;
     use Concerns\EstPorteurDeRendezVous;
     use Concerns\HasReferencePublique;
     use HasFactory;
@@ -41,11 +42,16 @@ class ESBTPReinscriptionDemande extends Model implements Auditable, PorteurDeRen
     public const STATUT_CONVERTIE = 'convertie';
 
     /**
-     * Cle du compteur affiche en badge dans la barre laterale. Partagee entre
-     * qui le calcule (AppServiceProvider) et qui l'invalide (la corbeille) :
-     * deux litteraux divergeraient en silence, et le badge mentirait.
+     * Les decisions du conseil qui fondent une reinscription, avec leur libelle.
+     * La validation de la conversion et la fenetre « Réinscrire » les lisent ici.
+     *
+     * @var array<string, string>
      */
-    public const CLE_CACHE_EN_ATTENTE = 'reinscriptions.demandes.en_attente';
+    public const DECISIONS = [
+        'passage' => 'Passage',
+        'redoublement' => 'Redoublement',
+        'rattrapage' => 'Rattrapage',
+    ];
 
     /** Statuts admis, dans l'ordre du cycle de vie d'une demande. */
     public const STATUTS = [

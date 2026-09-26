@@ -91,7 +91,7 @@ class CorbeilleDemandesTest extends TestCase
 
     public function test_la_corbeille_liste_les_demandes(): void
     {
-        $this->get(route('esbtp.reinscription-demandes.index'))
+        $this->get(route('esbtp.demandes.index'))
             ->assertOk()
             ->assertSee('DEMO-0002');
     }
@@ -214,7 +214,7 @@ class CorbeilleDemandesTest extends TestCase
         // l'ecole en creant une inscription.
         $this->actingAs($this->compteAvec(['reinscriptions.demandes.view']));
 
-        $this->get(route('esbtp.reinscription-demandes.index'))->assertOk();
+        $this->get(route('esbtp.demandes.index'))->assertOk();
 
         $this->convertir()->assertForbidden();
         $this->assertSame(0, $this->inscriptionsSurAnneeCible());
@@ -224,7 +224,7 @@ class CorbeilleDemandesTest extends TestCase
     {
         $this->actingAs($this->compteAvec([]));
 
-        $this->get(route('esbtp.reinscription-demandes.index'))->assertForbidden();
+        $this->get(route('esbtp.demandes.index'))->assertForbidden();
     }
 
     private function convertir()

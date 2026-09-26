@@ -9,6 +9,7 @@ use App\Http\Requests\Notes\StoreNoteRequest;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\Notes\SaisieGroupeeDeNotes;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
@@ -22,15 +23,12 @@ use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\FraisScopeResolver;
 use App\Services\LMD\EtudiantNotesLmdPresenter;
 use App\Services\NoteCalculationService;
-use App\Services\Notes\MotifDeRefusDeNote;
 use App\Services\Notes\NoteStudentCohortService;
 use App\Services\Notes\NoteSubmissionSynchronizationService;
-use App\Services\Notes\UniciteDesNotes;
 use App\Services\NotesImportService;
 use App\Services\NotesWindowGuard;
 use App\Services\NotificationService;
 use Carbon\Carbon;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection;
@@ -62,28 +60,7 @@ class ESBTPNoteController extends Controller
 
     private function canManageEvaluationNotes(?User $user, ESBTPEvaluation $evaluation): bool
     {
-        if (! $user) {
-            return false;
-        }
-
-        if (! $this->notesWindowGuard->canWrite($user, (int) $evaluation->classe_id)) {
-            return false;
-        }
-
-        if ($user->can('notes.edit')) {
-            return true;
-        }
-
-        if (! $user->can('notes.manage_own')) {
-            return $user->can('notes.create');
-        }
-
-        if (! $user->can('identity.teach')) {
-            return true;
-        }
-
-        return (int) $evaluation->enseignant_id === (int) $user->id
-            || (int) $evaluation->created_by === (int) $user->id;
+        return app(SaisieGroupeeDeNotes::class)->peutGerer($user, $evaluation);
     }
 
     private function studentBelongsToEvaluationCohort(int $studentId, ESBTPEvaluation $evaluation): bool
@@ -710,64 +687,23 @@ class ESBTPNoteController extends Controller
      */
     public function saveNotesAjaxBulk(StoreBulkNotesRequest $request)
     {
-        $saved  = 0;
-        // Les paires refusées, avec leur raison : l'écran les garde en
-        // brouillon au lieu de les écraser par la relecture du serveur.
-        $refused = [];
         $notes = $request->input('notes', []);
         $submitFinal = $request->boolean('submit_final');
 
-        DB::beginTransaction();
         try {
-            $evaluations = ESBTPEvaluation::whereIn('id', collect($notes)->pluck('evaluation_id')->unique())->get()->keyBy('id');
-            $existingNotes = $this->notesExistantes($notes);
-            $canEdit = Auth::user()->can('notes.edit');
-            $pendingNotifications = [];
-            $motifs = app(MotifDeRefusDeNote::class);
-            $peutGerer = fn (ESBTPEvaluation $e) => $this->canManageEvaluationNotes(Auth::user(), $e);
-
-            foreach ($notes as $entry) {
-                $evaluation = $evaluations->get($entry['evaluation_id']);
-                $note = $existingNotes->get($entry['etudiant_id'] . '_' . $entry['evaluation_id']);
-
-                $raison = $motifs->pour($entry, $evaluation, $note, $canEdit, $peutGerer);
-                if ($raison !== null) {
-                    $refused[] = MotifDeRefusDeNote::ligne($entry, $raison);
-                    continue;
-                }
-
-                $result = $this->enregistrerSansDoublon($evaluation, $note, $entry, $submitFinal);
-                if ($result === null) {
-                    $refused[] = MotifDeRefusDeNote::ligne($entry, MotifDeRefusDeNote::SAISIE_CONCURRENTE);
-                    continue;
-                }
-
-                if ($result['is_new_absent']) {
-                    $pendingNotifications[] = [$result['note'], $evaluation];
-                }
-                $saved++;
-            }
-
-            $errors = count($refused);
-
-            $synchronization = $this->noteSubmissionSynchronizationService
-                ->apresValidation(Auth::user(), $submitFinal, $errors, $motifs->evaluationsAutorisees());
-
-            DB::commit();
-
-            // Envoyer les notifications après le commit (évite rollback en cascade)
-            foreach ($pendingNotifications as [$note, $evaluation]) {
-                $this->sendAbsenceNotificationForNote($note, $evaluation);
-            }
+            // Mêmes gardes que l'assistant : SaisieGroupeeDeNotes.
+            $r = app(SaisieGroupeeDeNotes::class)->enregistrer($notes, Auth::user(), $submitFinal);
+            $saved = $r['saved'];
+            $errors = count($r['refused']);
 
             return response()->json([
                 'success' => $errors === 0,
                 'saved'   => $saved,
                 'errors'  => $errors,
-                'refused' => $refused,
-                'total'   => count($notes),
+                'refused' => $r['refused'],
+                'total'   => $r['total'],
                 'submission_status' => $submitFinal ? ESBTPNote::SUBMISSION_SUBMITTED : ESBTPNote::SUBMISSION_DRAFT,
-                'synchronization' => $synchronization,
+                'synchronization' => $r['synchronization'],
                 'message' => match (true) {
                     $errors > 0 => "{$saved} enregistrée(s), {$errors} erreur(s).",
                     $submitFinal => "{$saved} note(s) validée(s) avec succès.",
@@ -775,7 +711,6 @@ class ESBTPNoteController extends Controller
                 },
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
             \Log::error('saveNotesAjaxBulk error: ' . $e->getMessage(), [
                 'user_id' => Auth::id(),
                 'count' => count($notes),
@@ -791,15 +726,7 @@ class ESBTPNoteController extends Controller
     /** Notes déjà en base pour les paires saisies, indexées « élève_évaluation ». */
     private function notesExistantes(array $notes): Collection
     {
-        // Requête tuple-based IN avec cast int pour éviter injection SQL
-        $pairs = collect($notes)
-            ->map(fn ($e) => '('.(int) $e['etudiant_id'].', '.(int) $e['evaluation_id'].')')
-            ->implode(',');
-
-        return $pairs
-            ? ESBTPNote::whereRaw("(etudiant_id, evaluation_id) IN ({$pairs})")
-                ->get()->keyBy(fn ($n) => $n->etudiant_id.'_'.$n->evaluation_id)
-            : collect();
+        return app(SaisieGroupeeDeNotes::class)->notesExistantes($notes);
     }
 
     /**
@@ -808,21 +735,7 @@ class ESBTPNoteController extends Controller
      */
     private function enregistrerSansDoublon(ESBTPEvaluation $evaluation, ?ESBTPNote $note, array $entry, bool $submitFinal): ?array
     {
-        try {
-            return $this->processNoteEntry($evaluation, $note, $entry, $submitFinal);
-        } catch (QueryException $e) {
-            // Seul le doublon de notre index d'unicité est une saisie
-            // concurrente ; toute autre violation reste une vraie erreur.
-            if (($e->errorInfo[1] ?? null) !== 1062 || ! str_contains($e->getMessage(), UniciteDesNotes::INDEX)) {
-                throw $e;
-            }
-            \Log::warning('Note en double refusée : saisie concurrente', [
-                'evaluation_id' => $evaluation->id,
-                'etudiant_id' => $entry['etudiant_id'] ?? null,
-            ]);
-
-            return null;
-        }
+        return app(SaisieGroupeeDeNotes::class)->ecrireSansDoublon($evaluation, $note, $entry, $submitFinal);
     }
 
     /**
@@ -832,59 +745,9 @@ class ESBTPNoteController extends Controller
      * (StoreNoteRequest / StoreBulkNotesRequest). On garde un fallback
      * defensif pour les call-sites legacy (ex: enregistrerSaisieRapide).
      */
-    private function processNoteEntry(
-        ESBTPEvaluation $evaluation,
-        ?ESBTPNote $existingNote,
-        array $entry,
-        bool $submitFinal = false
-    ): array
+    private function processNoteEntry(ESBTPEvaluation $evaluation, ?ESBTPNote $existingNote, array $entry, bool $submitFinal = false): array
     {
-        $isAbsent = filter_var(
-            $entry['is_absent'] ?? false,
-            FILTER_VALIDATE_BOOLEAN
-        );
-        $isNew = false;
-
-        if (! $existingNote) {
-            $isNew = true;
-            $existingNote = new ESBTPNote;
-            $existingNote->etudiant_id        = $entry['etudiant_id'];
-            $existingNote->evaluation_id      = $entry['evaluation_id'];
-            $existingNote->classe_id          = $evaluation->classe_id;
-            $existingNote->matiere_id         = $evaluation->matiere_id;
-            $existingNote->semestre           = $evaluation->periode;
-            $existingNote->annee_universitaire = $evaluation->anneeUniversitaire
-                ? $evaluation->anneeUniversitaire->name : 'N/A';
-            $existingNote->type_evaluation    = $evaluation->type;
-            $existingNote->created_by         = Auth::id();
-        } else {
-            $existingNote->semestre = $evaluation->periode;
-        }
-
-        $existingNote->note       = $isAbsent ? 0 : (float) ($entry['note'] ?? 0);
-        $existingNote->is_absent  = $isAbsent ? 1 : 0;
-        $existingNote->updated_by = Auth::id();
-        if (isset($entry['commentaire'])) {
-            $existingNote->commentaire = $entry['commentaire'];
-        }
-
-        if ($submitFinal) {
-            $existingNote->submission_status = ESBTPNote::SUBMISSION_SUBMITTED;
-            $existingNote->submitted_at = $existingNote->submitted_at ?: now();
-            $existingNote->submitted_by = $existingNote->submitted_by ?: Auth::id();
-        } elseif ($isNew) {
-            $existingNote->submission_status = ESBTPNote::SUBMISSION_DRAFT;
-            $existingNote->submitted_at = null;
-            $existingNote->submitted_by = null;
-        } elseif (! $existingNote->isSubmitted()) {
-            $existingNote->submission_status = ESBTPNote::SUBMISSION_DRAFT;
-            $existingNote->submitted_at = null;
-            $existingNote->submitted_by = null;
-        }
-
-        $existingNote->save();
-
-        return ['note' => $existingNote, 'is_new_absent' => $isAbsent && $isNew];
+        return app(SaisieGroupeeDeNotes::class)->ecrire($evaluation, $existingNote, $entry, $submitFinal);
     }
 
     /**
@@ -1448,84 +1311,7 @@ class ESBTPNoteController extends Controller
      */
     private function sendAbsenceNotificationForNote(ESBTPNote $note, ESBTPEvaluation $evaluation)
     {
-        try {
-            // Charger l'étudiant avec sa relation user
-            $etudiant = ESBTPEtudiant::with('user')->find($note->etudiant_id);
-
-            // S'assurer que l'étudiant existe et a un compte utilisateur
-            if (! $etudiant || ! $etudiant->user) {
-                \Log::warning("Impossible d'envoyer la notification d'absence pour la note: étudiant ou utilisateur non trouvé", [
-                    'etudiant_id' => $note->etudiant_id,
-                    'note_id' => $note->id,
-                ]);
-
-                return;
-            }
-
-            // Charger la matière associée à l'évaluation
-            $matiere = $evaluation->matiere;
-            $matiereName = $matiere ? $matiere->name : 'Matière non définie';
-
-            // Formater la date et l'heure
-            $dateEvaluation = $evaluation->date_evaluation ? \Carbon\Carbon::parse($evaluation->date_evaluation) : \Carbon\Carbon::now();
-            $jourSemaine = $dateEvaluation->locale('fr')->dayName;
-            $dateFormatee = $dateEvaluation->format('d/m/Y');
-            $heureFormatee = $evaluation->heure_debut ? $evaluation->heure_debut : 'Heure non définie';
-
-            // Déterminer le type d'activité
-            $typeActivite = 'Évaluation';
-            $typeEvaluation = ucfirst($evaluation->type ?? 'évaluation');
-
-            // Créer un message détaillé
-            $messageDetail = sprintf(
-                "Absence lors d'une %s (%s)\n".
-                "Matière: %s\n".
-                "Date: %s (%s)\n".
-                "Heure: %s\n".
-                'Titre: %s',
-                strtolower($typeActivite),
-                $typeEvaluation,
-                $matiereName,
-                $dateFormatee,
-                ucfirst($jourSemaine),
-                $heureFormatee,
-                $evaluation->titre ?? 'Sans titre'
-            );
-
-            // Créer une entrée d'absence temporaire pour la notification avec informations enrichies
-            $absence = new \App\Models\ESBTPAttendance;
-            $absence->date = $dateEvaluation;
-            $absence->etudiant_id = $note->etudiant_id;
-            $absence->statut = 'absent';
-            $absence->commentaire = $messageDetail;
-            $absence->matiere_id = $evaluation->matiere_id;
-            $absence->type_activite = 'evaluation';
-            $absence->heure_debut = $evaluation->heure_debut;
-            $absence->heure_fin = $evaluation->heure_fin;
-
-            // Utiliser le service de notifications
-            $this->notificationService->notifyNewAbsence($absence, $etudiant);
-
-            \Log::info("Notification d'absence enrichie envoyée pour la note", [
-                'etudiant_id' => $note->etudiant_id,
-                'note_id' => $note->id,
-                'evaluation_id' => $evaluation->id,
-                'matiere' => $matiereName,
-                'date' => $dateFormatee,
-                'jour' => $jourSemaine,
-                'heure' => $heureFormatee,
-                'type' => $typeEvaluation,
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error("Erreur lors de l'envoi de la notification d'absence pour la note", [
-                'etudiant_id' => $note->etudiant_id,
-                'note_id' => $note->id,
-                'evaluation_id' => $evaluation->id,
-                'error' => $e->getMessage(),
-                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
-            ]);
-        }
+        app(SaisieGroupeeDeNotes::class)->notifierAbsence($note, $evaluation);
     }
 
     // ════════════════════════════════════════════════════════════════════════
