@@ -3,7 +3,8 @@
 @section('title', 'Messages & Centre d’actions')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/messages-hub-v2.css') }}">
+<link rel="stylesheet" href="{{ asset('css/messages-hub-v2.css?v=1267-shared-items') }}">
+<link rel="stylesheet" href="{{ asset('css/messages-hub-v2-final.css?v=1267-shared-items') }}">
 @endpush
 
 @section('content')
@@ -262,6 +263,6 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('js/messages-hub-v2.js') }}" defer></script>
-<script src="{{ asset('js/messages-hub-v2-hardening.js') }}" defer></script>
+<script src="{{ asset('js/messages-hub-v2.js?v=1267-shared-items') }}" defer></script>
+<script src="{{ asset('js/messages-hub-v2-hardening.js?v=1267-shared-items') }}" defer></script>
 @endpush
