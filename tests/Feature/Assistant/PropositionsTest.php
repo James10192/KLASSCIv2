@@ -203,6 +203,49 @@ class PropositionsTest extends TestCase
         $this->assertSoftDeleted('esbtp_resultats', ['id' => $resultat->id]);
     }
 
+
+    public function test_nanan_borne_le_nettoyage_a_l_etudiant_de_la_fiche_affichee(): void
+    {
+        Permission::findOrCreate('bulletins.delete', 'web');
+        $this->user->givePermissionTo('bulletins.delete');
+        $this->evaluation->classe->matieres()->syncWithoutDetaching([$this->evaluation->matiere_id]);
+
+        $cible = ESBTPResultat::create([
+            'etudiant_id' => $this->etudiants[0]->id,
+            'classe_id' => $this->evaluation->classe_id,
+            'matiere_id' => $this->evaluation->matiere_id,
+            'annee_universitaire_id' => $this->evaluation->annee_universitaire_id,
+            'periode' => 'semestre1',
+            'moyenne' => 16,
+            'coefficient' => 1,
+        ]);
+        $autre = ESBTPResultat::create([
+            'etudiant_id' => $this->etudiants[1]->id,
+            'classe_id' => $this->evaluation->classe_id,
+            'matiere_id' => $this->evaluation->matiere_id,
+            'annee_universitaire_id' => $this->evaluation->annee_universitaire_id,
+            'periode' => 'semestre1',
+            'moyenne' => 15,
+            'coefficient' => 1,
+        ]);
+
+        $proposition = app(SupprimerMoyennesSansNote::class)->executeAuthorized([
+            'etudiant_id' => $this->etudiants[0]->id,
+            'classe_id' => $this->evaluation->classe_id,
+            'annee_universitaire_id' => $this->evaluation->annee_universitaire_id,
+            'matiere_id' => $this->evaluation->matiere_id,
+            'periode' => 'S1',
+        ], $this->user);
+
+        $this->assertSame('approbation', $proposition['widget']['kind']);
+        $this->assertCount(1, $proposition['widget']['lignes']);
+        $this->actingAs($this->user)->postJson($proposition['widget']['valider_url'], ['jeton' => $proposition['widget']['jeton']])
+            ->assertOk()->assertJson(['statut' => 'executee']);
+
+        $this->assertSoftDeleted('esbtp_resultats', ['id' => $cible->id]);
+        $this->assertDatabaseHas('esbtp_resultats', ['id' => $autre->id, 'deleted_at' => null]);
+    }
+
     public function test_un_jeton_faux_ou_une_autre_personne_ne_valident_pas(): void
     {
         $widget = $this->proposer([['etudiant' => 'MAT-001', 'note' => 14]])['widget'];
