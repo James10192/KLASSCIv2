@@ -1,5 +1,6 @@
 /* Message Hub final responsive pass — viewport ownership and shared-item semantics. */
-.mh2-root{height:calc(100dvh - 92px);min-height:0;display:flex;flex-direction:column;background:#f4f7fb}
+/* Account for the global header and alert area above the hub so the composer stays visible. */
+.mh2-root{height:calc(100dvh - 200px);min-height:0;display:flex;flex-direction:column;background:#f4f7fb}
 .mh2-top{flex:0 0 auto}
 .mh2-workspace,.mh2-actions{flex:1 1 auto;height:auto!important;min-height:0!important;overflow:hidden}
 .mh2-workspace>*{min-height:0}
@@ -50,13 +51,13 @@
   .mh2-context{transition:visibility .15s}
 }
 @media(max-width:1180px){
-  .mh2-root{height:calc(100dvh - 86px)}
+  .mh2-root{height:calc(100dvh - 184px)}
   .mh2-context{height:100%!important;max-height:100%;min-height:0}
   .mh2-context-body{height:0}
   .mh2-action-detail{height:auto;min-height:0;overflow:hidden}
 }
 @media(max-width:820px){
-  .mh2-root{height:calc(100dvh - 70px);min-height:0!important}
+  .mh2-root{height:calc(100dvh - 164px);min-height:0!important}
   .mh2-workspace,.mh2-actions{height:auto!important;min-height:0!important}
   .mh2-thread-pane{min-height:0}
   .mh2-thread-head{position:relative;z-index:4}
