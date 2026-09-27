@@ -13,6 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Corrections
+- **Nanan reprend désormais le contexte affiché sur la fiche de résultats.** Lorsqu'une fiche signale une moyenne sans note, Nanan reçoit directement la classe, l'année, la période et la matière affichées : elle prépare la carte de suppression à valider, sans demander de ressaisir ces informations. Le serveur conserve les mêmes contrôles de droit, de cohérence et de fraîcheur au clic.
 - **Messages / Nanan — auteur de partage fidèle.** « Partagé par » conserve désormais l’auteur réel du message, y compris lorsqu’il s’agit de la personne connectée ; l’interlocuteur n’est plus substitué.
 - **Nanan — documents de scolarité exacts.** Pour un certificat ou une attestation, Nanan recherche d’abord l’étudiant puis ouvre directement la prévisualisation officielle ; elle n’assimile plus le dossier d’inscription à la page de génération.
 - **Messages — restauration d’archive explicite.** L’action Archiver devient immédiatement Désarchiver et rétablit la conversation dans la boîte de réception.

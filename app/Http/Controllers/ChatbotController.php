@@ -86,6 +86,18 @@ class ChatbotController extends Controller
             'current_url' => 'nullable|string|max:2048',
             'current_path' => 'nullable|string|max:1024',
             'page_title' => 'nullable|string|max:255',
+            // Contexte métier affiché par la page, uniquement pour préparer
+            // une proposition. L'action relit et vérifie toujours ces données.
+            'page_context' => 'nullable|array',
+            'page_context.kind' => 'nullable|in:bulletin_moyennes_sans_note',
+            'page_context.etudiant_id' => 'nullable|integer|exists:esbtp_etudiants,id',
+            'page_context.classe_id' => 'nullable|integer|exists:esbtp_classes,id',
+            'page_context.annee_universitaire_id' => 'nullable|integer|exists:esbtp_annee_universitaires,id',
+            'page_context.periode' => 'nullable|in:semestre1,semestre2,1,2',
+            'page_context.moyennes_sans_note' => 'nullable|array|max:20',
+            'page_context.moyennes_sans_note.*.matiere_id' => 'required_with:page_context.moyennes_sans_note|integer|exists:esbtp_matieres,id',
+            'page_context.moyennes_sans_note.*.matiere' => 'nullable|string|max:255',
+            'page_context.moyennes_sans_note.*.moyenne' => 'nullable|numeric',
             // « auto » = le routeur choisit, comme pour qui n'a pas le choix du modèle.
             'modele' => ['nullable', 'string', Rule::in(array_merge(['auto'], array_keys(app(RegistreDesModeles::class)->disponibles())))],
             'relance' => 'nullable|boolean',
@@ -106,6 +118,7 @@ class ChatbotController extends Controller
                 'current_url' => $validated['current_url'] ?? null,
                 'current_path' => $validated['current_path'] ?? null,
                 'page_title' => $validated['page_title'] ?? null,
+                'page_context' => $validated['page_context'] ?? null,
                 'pieces' => array_values($validated['pieces'] ?? []),
             ],
             $modele,
