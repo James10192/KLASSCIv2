@@ -142,7 +142,7 @@ class ConversationEntityLinkService
             'type' => $link->entity_type,
             'entity_id' => $link->entity_id,
             'shared_item' => true,
-            'shared_by' => $this->sharedBy($sourceMessage?->sender),
+            'shared_by' => $this->sharedByForViewer($link, $sourceMessage, $viewer),
             'share_purpose' => $sharePurpose,
             'share_purpose_label' => $sharePurpose ? self::SHARE_PURPOSES[$sharePurpose] : null,
             'source_message_id' => $link->source_message_id,
@@ -289,6 +289,23 @@ class ConversationEntityLinkService
             'role_label' => $user->position ?: $roles->first() ?: 'Personnel de l’école',
             'department' => $user->department,
         ];
+    }
+
+    private function sharedByForViewer(ChatConversationEntityLink $link, ?ChatMessage $sourceMessage, User $viewer): ?array
+    {
+        $author = $sourceMessage?->sender;
+
+        if ($author && $author->id !== $viewer->id) {
+            return $this->sharedBy($author);
+        }
+
+        $conversation = $link->relationLoaded('conversation')
+            ? $link->conversation
+            : $link->conversation()->with('participants.roles')->first();
+        $peer = $conversation?->participants
+            ->first(fn (User $participant) => $participant->id !== $viewer->id);
+
+        return $this->sharedBy($peer) ?: $this->sharedBy($author);
     }
 
     private function nonSensitiveDetails(array $details): array

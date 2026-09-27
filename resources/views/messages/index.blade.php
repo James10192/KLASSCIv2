@@ -4,7 +4,7 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/messages-hub-v2.css?v=1267-shared-items') }}">
-<link rel="stylesheet" href="{{ asset('css/messages-hub-v2-final.css?v=1269-viewport') }}">
+<link rel="stylesheet" href="{{ asset('css/messages-hub-v2-final.css?v=1270-composer-share') }}">
 @endpush
 
 @section('content')
@@ -19,6 +19,10 @@
             'linkBase' => url('/message-hub/entity-links'),
             'legacyReadBase' => url('/message-hub/legacy-actions'),
             'sendBase' => url('/messages/conversations'),
+            'pickerInscriptions' => route('chat.picker.inscriptions'),
+            'pickerPaiements' => route('chat.picker.paiements'),
+            'shareInscriptionBase' => url('/messages/share/inscription'),
+            'sharePaiementBase' => url('/messages/share/paiement'),
             'usersSearch' => route('chat.users.search'),
             'startDm' => route('chat.dm.start'),
         ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
@@ -88,11 +92,13 @@
                 <footer class="mh2-composer" data-composer hidden>
                     <div class="mh2-ai-strip" data-ai-strip aria-label="Aides de Nanan"></div>
                     <div class="mh2-compose">
+                        <button type="button" class="mh2-share-trigger" data-share-entity aria-expanded="false" aria-controls="mh2-share-tray" title="Partager un dossier"><i class="fas fa-paperclip" aria-hidden="true"></i><span>Partager</span></button>
                         <textarea rows="1" maxlength="4000" data-compose placeholder="Écrire un message…" aria-label="Votre message"></textarea>
                         <button type="button" class="mh2-send" data-send aria-label="Envoyer le message" title="Envoyer">
                             <i class="fas fa-paper-plane" aria-hidden="true"></i>
                         </button>
                     </div>
+                    <section id="mh2-share-tray" class="mh2-share-tray" data-share-tray hidden aria-label="Partager un élément métier"><div class="mh2-share-tabs" role="tablist" aria-label="Type d’élément à partager"><button type="button" class="is-active" data-share-kind="inscription">Inscription</button><button type="button" data-share-kind="paiement">Paiement</button></div><label class="mh2-share-search"><i class="fas fa-magnifying-glass" aria-hidden="true"></i><input type="search" data-share-search placeholder="Rechercher par étudiant, matricule ou référence…" aria-label="Rechercher un élément à partager"></label><div class="mh2-share-results" data-share-results><span>Recherchez une inscription ou un paiement à partager dans ce fil.</span></div></section>
                 </footer>
             </main>
 
@@ -264,5 +270,5 @@
 
 @push('scripts')
 <script src="{{ asset('js/messages-hub-v2.js?v=1267-shared-items') }}" defer></script>
-<script src="{{ asset('js/messages-hub-v2-hardening.js?v=1267-shared-items') }}" defer></script>
+<script src="{{ asset('js/messages-hub-v2-hardening.js?v=1270-composer-share') }}" defer></script>
 @endpush
