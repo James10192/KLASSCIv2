@@ -13,7 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Corrections
-- **Messages — partage sans chevauchement.** Nanan se décale avec une marge nette dès l’ouverture du sélecteur de partage, dont le style est versionné afin que la correction soit immédiatement prise en compte dans le navigateur.
+- **Messages — partage sans chevauchement.** Nanan se masque temporairement dès l’ouverture du sélecteur de partage et réapparaît à sa fermeture ; le style est versionné afin que la correction soit immédiatement prise en compte dans le navigateur.
 - **Messages — actions toujours accessibles.** Sur grand écran, Nanan se décale hors du panneau Contexte lié afin de ne recouvrir ni ses actions ni le composeur.
 - **Messages — Nanan ne masque plus le composeur.** Le lanceur est déplacé au-dessus de la zone de saisie afin de laisser Partager et Envoyer immédiatement accessibles.
 - **Messages — partage depuis le fil et finition contextuelle.** Le composeur reste ancré en bas, permet de partager une inscription ou un paiement sans quitter la conversation, et le panneau Contexte lié retrouve ses marges et avatars centrés.
