@@ -4,7 +4,7 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/messages-hub-v2.css?v=1267-shared-items') }}">
-<link rel="stylesheet" href="{{ asset('css/messages-hub-v2-final.css?v=1277-hide-nanan-share') }}">
+<link rel="stylesheet" href="{{ asset('css/messages-hub-v2-final.css?v=1278-share-alignment-search-archives') }}">
 @endpush
 
 @section('content')
@@ -269,6 +269,6 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('js/messages-hub-v2.js?v=1267-shared-items') }}" defer></script>
-<script src="{{ asset('js/messages-hub-v2-hardening.js?v=1270-composer-share') }}" defer></script>
+<script src="{{ asset('js/messages-hub-v2.js?v=1278-share-alignment') }}" defer></script>
+<script src="{{ asset('js/messages-hub-v2-hardening.js?v=1278-live-search-archives') }}" defer></script>
 @endpush
