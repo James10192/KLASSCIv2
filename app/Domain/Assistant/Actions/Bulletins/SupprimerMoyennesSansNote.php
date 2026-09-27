@@ -17,6 +17,12 @@ use Illuminate\Support\Str;
  * Prépare le retrait des moyennes qui ne reposent sur aucune note. Cette action
  * est volontairement aussi stricte que l'écran Bulletins : une seule matière,
  * une classe, une année et une période, puis une relecture complète au clic.
+ *
+ * Une matière retirée de la maquette actuelle reste néanmoins une cible valide
+ * lorsqu'une ancienne moyenne de cette matière est encore enregistrée. C'est
+ * précisément le cas que cette action répare : l'identifiant transmis par la
+ * page désigne l'historique, tandis que la requête finale borne toujours la
+ * suppression à la classe, à l'année, à la période et à l'absence de note.
  */
 class SupprimerMoyennesSansNote extends ActionAgent
 {
@@ -38,7 +44,8 @@ class SupprimerMoyennesSansNote extends ActionAgent
     {
         return "PROPOSE de supprimer les moyennes d'UNE matière qui n'a réellement aucune note sur une période. "
             . "Utilise les identifiants de la page ou des outils lorsqu'ils sont disponibles ; sinon passe les libellés exacts. "
-            . "Ne supprime rien : le serveur vérifie la classe, l'année, la matière et l'absence totale de note, montre chaque étudiant, puis l'utilisateur valide. "
+            . "Une matière retirée de la maquette peut être concernée : si la page donne son identifiant, utilise-le ; le serveur vérifie toujours la classe, l'année, la période et l'absence totale de note. "
+            . "Ne supprime rien : le serveur montre chaque étudiant, puis l'utilisateur valide. "
             . "Si une donnée est absente ou ambiguë, demande-la. N'utilise jamais cette action pour effacer une note ou une moyenne qui a une note.";
     }
 
@@ -176,11 +183,16 @@ class SupprimerMoyennesSansNote extends ActionAgent
     /** @return array{0: ?ESBTPMatiere, 1: ?string} */
     private function matiere(array $args, ?ESBTPClasse $classe): array
     {
-        if (! $classe) return [null, null];
         if (($id = (int) ($args['matiere_id'] ?? 0)) > 0) {
-            $matiere = $classe->matieres()->whereKey($id)->first();
-            return [$matiere, $matiere ? null : 'Cette matière ne fait pas partie de la classe concernée.'];
+            // La maquette est vivante : une matière peut avoir été retirée ou
+            // déplacée après la génération d'un bulletin. L'id précis fourni
+            // par la page est donc une référence historique légitime. La
+            // requête sansNoteSurLaPeriode() reste la garde autoritaire :
+            // aucun résultat hors de ce périmètre ne pourra être supprimé.
+            $matiere = ESBTPMatiere::withTrashed()->find($id);
+            return [$matiere, $matiere ? null : 'Matière introuvable.'];
         }
+        if (! $classe) return [null, null];
         $libelle = trim((string) ($args['matiere'] ?? ''));
         if ($libelle === '') return [null, 'Indiquez la matière concernée.'];
         $trouvees = $classe->matieres()
