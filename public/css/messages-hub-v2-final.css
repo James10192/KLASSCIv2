@@ -1,0 +1,78 @@
+/* Message Hub final responsive pass — viewport ownership and shared-item semantics. */
+.mh2-root{height:calc(100dvh - 92px);min-height:0;display:flex;flex-direction:column;background:#f4f7fb}
+.mh2-top{flex:0 0 auto}
+.mh2-workspace,.mh2-actions{flex:1 1 auto;height:auto!important;min-height:0!important;overflow:hidden}
+.mh2-workspace>*{min-height:0}
+.mh2-sidebar,.mh2-thread-pane,.mh2-context{height:100%;min-height:0;overflow:hidden}
+.mh2-list-head,.mh2-thread-head,.mh2-context-head,.mh2-composer{flex:0 0 auto}
+.mh2-conversation-list,.mh2-thread,.mh2-context-body{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.mh2-thread{position:relative}
+.mh2-composer{position:relative;z-index:4;background:#fff;box-shadow:0 -8px 22px rgba(20,48,82,.05)}
+.mh2-context-head{position:sticky;top:0;z-index:3;background:#fff}
+.mh2-context-body{flex:1 1 auto;height:0;padding:12px}
+.mh2-person-card{display:grid;grid-template-columns:40px minmax(0,1fr);gap:10px;align-items:start;padding:10px}
+.mh2-person-card .mh2-avatar{width:40px;height:40px;align-self:start;margin:0}
+.mh2-person-card>div{min-width:0;padding-top:1px}
+.mh2-person-card strong,.mh2-person-card span,.mh2-person-card small,.mh2-context-entity *{max-width:100%;overflow-wrap:break-word;word-break:normal}
+.mh2-person-card strong{line-height:1.25}
+.mh2-account-kind{display:inline-flex!important;width:max-content;max-width:100%;margin-top:5px!important;padding:3px 6px;border-radius:999px;background:#eef4fb;color:#58708c!important}
+.mh2-context-entity{border-color:#d4e1ef!important;background:#fff!important;padding:10px}
+.mh2-context-entity.is-inscription{border-left:3px solid #3979d4!important;background:#f7faff!important}
+.mh2-context-entity.is-paiement{border-left:3px solid #1b8a69!important;background:#f5fbf8!important}
+.mh2-context-entity.is-document{border-left:3px solid #7556b8!important;background:#faf8ff!important}
+.mh2-context-entity.is-reclamation{border-left:3px solid #b46b18!important;background:#fffaf3!important}
+.mh2-shared-badge{display:inline-flex;align-items:center;gap:5px;width:max-content;max-width:100%;padding:4px 7px;border-radius:999px;background:#eaf2ff;color:#245fae;font-size:.61rem;font-weight:800}
+.mh2-share-meta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 8px;margin-top:8px;font-size:.65rem}
+.mh2-share-meta span{color:#8492a4}.mh2-share-meta b{min-width:0;text-align:right;overflow-wrap:break-word}
+.mh2-business{border-color:#cbdbee!important;border-left-color:#3979d4!important;background:#fff!important}
+.mh2-business.is-ambiguous{border-color:#cbdbee!important;border-left-color:#3979d4!important;background:#fff!important}
+.mh2-business .mh2-link-status{background:#eaf2ff!important;color:#245fae!important;border-color:#c8dbf5!important}
+.mh2-business .mh2-inline-warning{display:none!important}
+.mh2-shared-by{margin-top:9px;padding-top:8px;border-top:1px solid #e6edf5;display:flex;flex-wrap:wrap;gap:6px 12px;color:#63758b;font-size:.67rem}
+.mh2-shared-by strong{color:#304d70}
+.mh2-context-action{min-height:38px}
+.mh2-new-messages{position:sticky;bottom:10px;z-index:5;margin:0 auto 8px;border:0;border-radius:999px;background:#0b55bd;color:#fff;padding:8px 12px;box-shadow:0 8px 24px rgba(4,83,203,.25);font-size:.7rem;font-weight:800;cursor:pointer;display:none}
+.mh2-new-messages.is-visible{display:flex;align-items:center;gap:6px}
+.mh2-actions{display:flex;flex-direction:column}
+.mh2-actions-toolbar{flex:0 0 auto}
+.mh2-actions-body{flex:1 1 auto;height:auto!important;min-height:0;overflow:hidden}
+.mh2-action-list,.mh2-kanban,.mh2-action-detail{min-height:0;height:100%;overflow-y:auto;overscroll-behavior:contain}
+.mh2-kanban{align-items:stretch;overflow-x:auto;overflow-y:hidden}
+.mh2-kanban-col{height:100%;min-height:0;display:flex;flex-direction:column}
+.mh2-kanban-col>header{flex:0 0 auto;position:sticky;top:0;z-index:2;background:#f8fafc}
+.mh2-kanban-col>div{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.mh2-action-detail{display:flex;flex-direction:column}.mh2-detail-head{flex:0 0 auto;position:sticky;top:0;z-index:2}.mh2-detail-body{flex:1 1 auto;min-height:0;overflow-y:auto}
+/* Desktop context toggle is real: the third column collapses instead of toggling an unused class. */
+@media(min-width:1181px){
+  .mh2-workspace{grid-template-columns:minmax(280px,340px) minmax(430px,1fr) minmax(290px,340px)}
+  .mh2-root.is-context-collapsed .mh2-workspace{grid-template-columns:minmax(280px,340px) minmax(430px,1fr) 0}
+  .mh2-root.is-context-collapsed .mh2-context{visibility:hidden;border-left:0;pointer-events:none}
+  .mh2-context{transition:visibility .15s}
+}
+@media(max-width:1180px){
+  .mh2-root{height:calc(100dvh - 86px)}
+  .mh2-context{height:100%!important;max-height:100%;min-height:0}
+  .mh2-context-body{height:0}
+  .mh2-action-detail{height:auto;min-height:0;overflow:hidden}
+}
+@media(max-width:820px){
+  .mh2-root{height:calc(100dvh - 70px);min-height:0!important}
+  .mh2-workspace,.mh2-actions{height:auto!important;min-height:0!important}
+  .mh2-thread-pane{min-height:0}
+  .mh2-thread-head{position:relative;z-index:4}
+  .mh2-thread{min-height:0;padding-bottom:14px}
+  .mh2-composer{position:sticky;bottom:0;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+  .mh2-context{height:100dvh!important;max-height:100dvh}
+  .mh2-actions-toolbar{max-height:150px;overflow-y:auto}
+  .mh2-actions-body{min-height:0}
+  .mh2-action-detail{top:0!important;right:0!important;bottom:0!important;width:min(390px,100vw)!important;height:100%!important;border-radius:0!important}
+}
+@media(max-width:520px){
+  .mh2-head-actions{gap:4px}.mh2-head-actions .mh2-icon{width:34px;height:34px}
+  .mh2-head-actions .mh2-icon:nth-child(2){display:grid!important}
+  .mh2-thread-main p{max-width:46vw}
+  .mh2-business{width:100%}.mh2-business-head{align-items:start}
+  .mh2-context{width:100vw!important}
+  .mh2-actions{padding:8px}.mh2-actions-toolbar{gap:6px;margin-bottom:8px}
+  .mh2-actions-body{height:auto!important}
+}
