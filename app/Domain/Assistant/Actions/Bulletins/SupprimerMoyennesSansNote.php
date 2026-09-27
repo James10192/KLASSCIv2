@@ -118,7 +118,7 @@ class SupprimerMoyennesSansNote extends ActionAgent
 
         return new Proposition(
             titre: 'Supprimer les moyennes sans note',
-            resume: $lignes->count() . ' moyenne(s) sans aucune note seront retirées de ' . $matiere->name . ' (' . $this->libellePeriode($periode) . ')' . ($etudiantId > 0 ? ', uniquement pour l’étudiant affiché.' : '.').
+            resume: $lignes->count() . ' moyenne(s) sans aucune note seront retirées de ' . $matiere->name . ' (' . $this->libellePeriode($periode) . ')' . ($etudiantId > 0 ? ', uniquement pour l’étudiant affiché.' : '.'),
             tableau: [
                 'colonnes' => ['Étudiant', 'Matricule', 'Matière', 'Période', 'Moyenne à retirer'],
                 'lignes' => $lignes->map(fn (ESBTPResultat $ligne) => [
