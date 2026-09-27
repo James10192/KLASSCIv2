@@ -93,3 +93,6 @@ body:has(.mh2-root):has(.mh2-share-trigger[aria-expanded="true"]) .ast-launcher{
 /* Reserve a real visual gap between Nanan and the open sharing tray. */
 body:has(.mh2-root):has(.mh2-share-trigger[aria-expanded="true"]) .ast-launcher{bottom:276px!important}
 @media(max-width:820px){body:has(.mh2-root):has(.mh2-share-trigger[aria-expanded="true"]) .ast-launcher{bottom:260px!important}}
+
+/* Sharing is a focused task: Nanan is hidden until the picker closes, never over it. */
+body:has(.mh2-root):has(.mh2-share-trigger[aria-expanded="true"]) .ast-launcher{display:none!important}
