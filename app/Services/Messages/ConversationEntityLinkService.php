@@ -12,22 +12,21 @@ use App\Models\User;
 use Illuminate\Support\Collection;
 
 /**
- * Source of truth for business entities linked to a conversation.
+ * Source of truth for business items shared inside a conversation.
  *
- * A participant is NEVER used as a substitute for the linked entity. Legacy
- * action cards are linked only through their typed `kind` + numeric `id`.
- * Any link for which a relationship with a participant was not explicitly
- * verified remains `unknown_verify` and financial/enrolment actions stay locked.
+ * A shared item is not evidence of a personal relationship between the sender
+ * and the student/payment/document. The sender is simply the author of the
+ * share. Business actions are gated by the viewer permissions, never by a
+ * guessed participant <-> student relationship.
  */
 class ConversationEntityLinkService
 {
-    public const RELATIONS = [
-        'concerns',
-        'shared_by',
-        'responsible_for',
-        'parent_of',
-        'administrative_contact',
-        'unknown_verify',
+    public const SHARE_PURPOSES = [
+        'validate' => 'À valider',
+        'information' => 'Pour information',
+        'follow_up' => 'Suivi demandé',
+        'question' => 'Question',
+        'check_document' => 'Pièce à contrôler',
     ];
 
     public function ensureForMessage(ChatMessage $message): ?ChatConversationEntityLink
@@ -43,8 +42,10 @@ class ConversationEntityLinkService
         }
 
         $resolved = $this->resolveEntity($kind, (int) $id);
+        $purpose = $message->payload['share_purpose'] ?? null;
+        $purpose = array_key_exists((string) $purpose, self::SHARE_PURPOSES) ? (string) $purpose : null;
 
-        return ChatConversationEntityLink::firstOrCreate(
+        $link = ChatConversationEntityLink::firstOrCreate(
             [
                 'source_message_id' => $message->id,
                 'entity_type' => $kind,
@@ -53,25 +54,41 @@ class ConversationEntityLinkService
             [
                 'chat_conversation_id' => $message->chat_conversation_id,
                 'entity_label' => $resolved['label'],
-                'relation_type' => 'unknown_verify',
-                'confidence' => 'unknown',
+                // Kept only for backwards-compatible storage. The UI/API no longer
+                // asks users to verify a personal relationship for a shared card.
+                'relation_type' => 'shared_by',
+                'confidence' => 'verified',
                 'source_type' => 'action_card',
                 'related_user_id' => null,
                 'required_view_permission' => $resolved['view_permission'],
                 'required_detail_permission' => $resolved['detail_permission'],
                 'created_by' => $message->sender_id,
+                'verified_by' => null,
+                'verified_at' => $message->created_at ?? now(),
                 'metadata' => [
                     'entity_found' => $resolved['found'],
                     'source' => 'typed_action_card',
+                    'share_purpose' => $purpose,
                 ],
             ]
         );
+
+        // Existing links created by the previous relation-verification model are
+        // presented as shares without destructive data migration. Preserve their
+        // audit history, but enrich purpose when the source payload now has one.
+        if ($purpose && data_get($link->metadata, 'share_purpose') !== $purpose) {
+            $metadata = $link->metadata ?: [];
+            $metadata['share_purpose'] = $purpose;
+            $link->forceFill(['metadata' => $metadata])->save();
+        }
+
+        return $link;
     }
 
     /** @return Collection<int, array<string,mixed>> */
     public function forViewer(ChatConversation $conversation, User $viewer, string $purpose = 'message_context'): Collection
     {
-        $conversation->loadMissing('entityLinks');
+        $conversation->loadMissing('entityLinks.sourceMessage.sender.roles');
 
         return $conversation->entityLinks
             ->map(fn (ChatConversationEntityLink $link) => $this->present($link, $viewer, $purpose))
@@ -87,15 +104,20 @@ class ConversationEntityLinkService
                 'label' => 'Données indisponibles',
                 'entity_id' => null,
                 'entity_label' => 'Données indisponibles',
-                'relation_label' => 'Lien à vérifier',
-                'relation_verified' => false,
-                'confidence' => 'unknown',
-                'can_verify' => false,
+                'shared_item' => true,
+                'shared_by' => $this->sharedBy($message->sender),
+                'share_purpose' => null,
+                'share_purpose_label' => null,
+                'can_view' => false,
+                'can_view_details' => false,
+                'can_act' => false,
                 'details' => [],
                 'open_url' => null,
                 'sensitive_actions_allowed' => false,
             ];
         }
+
+        $link->setRelation('sourceMessage', $message->loadMissing('sender.roles'));
 
         return $this->present($link, $viewer, 'business_card');
     }
@@ -104,24 +126,36 @@ class ConversationEntityLinkService
     {
         $viewAllowed = $this->allowed($viewer, $link->required_view_permission);
         $detailAllowed = $viewAllowed && $this->allowed($viewer, $link->required_detail_permission);
-        $canVerify = $viewAllowed && $this->canVerify($viewer, $link->entity_type);
+        $canAct = $viewAllowed && $this->canAct($viewer, $link->entity_type);
 
         $this->logAccess($viewer, $link, $purpose, $viewAllowed, $link->required_view_permission);
 
+        $sourceMessage = $link->relationLoaded('sourceMessage')
+            ? $link->sourceMessage
+            : $link->sourceMessage()->with('sender.roles')->first();
+        $sharePurpose = data_get($link->metadata, 'share_purpose')
+            ?: data_get($sourceMessage?->payload, 'share_purpose');
+        $sharePurpose = array_key_exists((string) $sharePurpose, self::SHARE_PURPOSES) ? (string) $sharePurpose : null;
+
+        $base = [
+            'id' => $link->id,
+            'type' => $link->entity_type,
+            'entity_id' => $link->entity_id,
+            'shared_item' => true,
+            'shared_by' => $this->sharedBy($sourceMessage?->sender),
+            'share_purpose' => $sharePurpose,
+            'share_purpose_label' => $sharePurpose ? self::SHARE_PURPOSES[$sharePurpose] : null,
+            'source_message_id' => $link->source_message_id,
+            'source_type' => $link->source_type,
+        ];
+
         if (! $viewAllowed) {
-            return [
-                'id' => $link->id,
-                'type' => $link->entity_type,
-                'entity_id' => $link->entity_id,
+            return $base + [
                 'entity_label' => 'Données indisponibles',
                 'label' => 'Données indisponibles',
-                'relation' => $link->relation_type,
-                'relation_label' => $this->relationLabel($link->relation_type),
-                'relation_verified' => $link->isVerified(),
-                'confidence' => $link->confidence,
                 'can_view' => false,
                 'can_view_details' => false,
-                'can_verify' => false,
+                'can_act' => false,
                 'details' => [],
                 'open_url' => null,
                 'sensitive_actions_allowed' => false,
@@ -129,51 +163,19 @@ class ConversationEntityLinkService
         }
 
         $entity = $this->resolveEntity($link->entity_type, (int) $link->entity_id, $detailAllowed);
-        $verified = $link->isVerified();
-        $relationshipSupportsSensitiveAction = in_array($link->relation_type, ['concerns', 'parent_of'], true);
 
-        return [
-            'id' => $link->id,
-            'type' => $link->entity_type,
-            'entity_id' => $link->entity_id,
+        return $base + [
             'entity_label' => $entity['label'],
             'label' => $entity['label'],
-            'relation' => $link->relation_type,
-            'relation_label' => $this->relationLabel($link->relation_type),
-            'relation_verified' => $verified,
-            'confidence' => $link->confidence,
-            'source_type' => $link->source_type,
-            'related_user_id' => $link->related_user_id,
             'can_view' => true,
             'can_view_details' => $detailAllowed,
-            'can_verify' => $canVerify,
+            'can_act' => $canAct,
             'details' => $detailAllowed ? $entity['details'] : $this->nonSensitiveDetails($entity['details']),
             'open_url' => $entity['url'],
-            // Une relation « partagé par », « responsable » ou « contact administratif »
-            // peut être vraie sans faire du participant la personne à relancer/payer.
-            'sensitive_actions_allowed' => $verified && $detailAllowed && $relationshipSupportsSensitiveAction,
+            // This permission applies to the shared business item itself. It never
+            // means the sender is the student, debtor or academic subject.
+            'sensitive_actions_allowed' => $detailAllowed && $canAct,
         ];
-    }
-
-    public function verify(
-        ChatConversationEntityLink $link,
-        User $actor,
-        string $relation,
-        ?int $relatedUserId = null
-    ): ChatConversationEntityLink {
-        if (! in_array($relation, self::RELATIONS, true) || $relation === 'unknown_verify') {
-            throw new \InvalidArgumentException('Relation invalide pour une liaison vérifiée.');
-        }
-
-        $link->update([
-            'relation_type' => $relation,
-            'related_user_id' => $relatedUserId,
-            'confidence' => 'verified',
-            'verified_by' => $actor->id,
-            'verified_at' => now(),
-        ]);
-
-        return $link->fresh();
     }
 
     public function describeEntity(string $type, int $id, User $viewer, string $purpose = 'legacy_workflow'): array
@@ -184,12 +186,7 @@ class ConversationEntityLinkService
             default => null,
         };
         if (! $this->allowed($viewer, $permission)) {
-            return [
-                'found' => false,
-                'label' => 'Données indisponibles',
-                'details' => [],
-                'url' => null,
-            ];
+            return ['found' => false, 'label' => 'Données indisponibles', 'details' => [], 'url' => null];
         }
 
         return $this->resolveEntity($type, $id, false);
@@ -203,10 +200,7 @@ class ConversationEntityLinkService
             default => [
                 'found' => false,
                 'label' => ucfirst(str_replace('_', ' ', $type)) . " #{$id} — Données indisponibles",
-                'details' => [],
-                'url' => null,
-                'view_permission' => null,
-                'detail_permission' => null,
+                'details' => [], 'url' => null, 'view_permission' => null, 'detail_permission' => null,
             ],
         };
     }
@@ -214,19 +208,14 @@ class ConversationEntityLinkService
     private function resolveInscription(int $id, bool $includeSensitive): array
     {
         $inscription = ESBTPInscription::with([
-            'etudiant:id,nom,prenoms,matricule',
-            'classe:id,name',
-            'anneeUniversitaire:id,name,libelle',
+            'etudiant:id,nom,prenoms,matricule', 'classe:id,name', 'anneeUniversitaire:id,name,libelle',
         ])->find($id);
 
         if (! $inscription) {
             return [
-                'found' => false,
-                'label' => "Inscription #{$id} — Données indisponibles",
-                'details' => ['status_label' => 'Données indisponibles'],
-                'url' => null,
-                'view_permission' => 'inscriptions.view',
-                'detail_permission' => 'finances.etudiants.voir',
+                'found' => false, 'label' => "Inscription #{$id} — Données indisponibles",
+                'details' => ['status_label' => 'Données indisponibles'], 'url' => null,
+                'view_permission' => 'inscriptions.view', 'detail_permission' => 'finances.etudiants.voir',
             ];
         }
 
@@ -239,10 +228,7 @@ class ConversationEntityLinkService
             'status' => $inscription->status,
             'workflow_step' => $inscription->workflow_step,
         ];
-
-        if ($includeSensitive) {
-            $details['finance_available'] = true;
-        }
+        if ($includeSensitive) $details['finance_available'] = true;
 
         return [
             'found' => true,
@@ -257,19 +243,14 @@ class ConversationEntityLinkService
     private function resolvePaiement(int $id, bool $includeSensitive): array
     {
         $paiement = ESBTPPaiement::with([
-            'etudiant:id,nom,prenoms,matricule',
-            'inscription:id,etudiant_id,classe_id',
-            'inscription.classe:id,name',
+            'etudiant:id,nom,prenoms,matricule', 'inscription:id,etudiant_id,classe_id', 'inscription.classe:id,name',
         ])->find($id);
 
         if (! $paiement) {
             return [
-                'found' => false,
-                'label' => "Paiement #{$id} — Données indisponibles",
-                'details' => ['status_label' => 'Données indisponibles'],
-                'url' => null,
-                'view_permission' => 'paiements.view',
-                'detail_permission' => 'finances.etudiants.voir',
+                'found' => false, 'label' => "Paiement #{$id} — Données indisponibles",
+                'details' => ['status_label' => 'Données indisponibles'], 'url' => null,
+                'view_permission' => 'paiements.view', 'detail_permission' => 'finances.etudiants.voir',
             ];
         }
 
@@ -297,11 +278,22 @@ class ConversationEntityLinkService
         ];
     }
 
+    private function sharedBy(?User $user): ?array
+    {
+        if (! $user) return null;
+        $roles = $user->getRoleNames()->values();
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'role_label' => $user->position ?: $roles->first() ?: 'Personnel de l’école',
+            'department' => $user->department,
+        ];
+    }
+
     private function nonSensitiveDetails(array $details): array
     {
-        return collect($details)
-            ->except(['amount', 'payment_mode', 'finance_available'])
-            ->all();
+        return collect($details)->except(['amount', 'payment_mode', 'finance_available'])->all();
     }
 
     private function allowed(User $viewer, ?string $permission): bool
@@ -309,11 +301,9 @@ class ConversationEntityLinkService
         return $permission === null || $permission === '' || $viewer->can($permission);
     }
 
-    private function canVerify(User $viewer, string $entityType): bool
+    private function canAct(User $viewer, string $entityType): bool
     {
-        if ($viewer->can('admin.access')) {
-            return true;
-        }
+        if ($viewer->can('admin.access')) return true;
 
         return match ($entityType) {
             'inscription' => $viewer->can('inscriptions.validate'),
@@ -322,13 +312,8 @@ class ConversationEntityLinkService
         };
     }
 
-    private function logAccess(
-        User $viewer,
-        ChatConversationEntityLink $link,
-        string $purpose,
-        bool $allowed,
-        ?string $permission
-    ): void {
+    private function logAccess(User $viewer, ChatConversationEntityLink $link, string $purpose, bool $allowed, ?string $permission): void
+    {
         ChatContextAccessLog::create([
             'user_id' => $viewer->id,
             'chat_conversation_id' => $link->chat_conversation_id,
@@ -339,17 +324,5 @@ class ConversationEntityLinkService
             'permission_checked' => $permission,
             'created_at' => now(),
         ]);
-    }
-
-    public function relationLabel(string $relation): string
-    {
-        return match ($relation) {
-            'concerns' => 'Concerne cet interlocuteur',
-            'shared_by' => 'Partagé par cet interlocuteur',
-            'responsible_for' => 'Responsable du dossier',
-            'parent_of' => 'Parent de l’étudiant',
-            'administrative_contact' => 'Contact administratif',
-            default => 'Relation à vérifier',
-        };
     }
 }
