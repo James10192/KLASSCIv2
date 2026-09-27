@@ -13,6 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Corrections
+- **Messages — composeur visible.** La hauteur de l’espace Messages tient désormais compte de l’en-tête global et des alertes de l’application : le champ de saisie reste affiché en bas du fil sur les écrans de présentation.
 - **Messages — livraison fiable de l’interface « éléments partagés ».** Les feuilles de style et scripts du module sont désormais versionnés au déploiement afin qu’un navigateur ne conserve pas l’ancienne interface de relation personnelle lors d’un partage administratif de dossier.
 
 ### Ajouts
