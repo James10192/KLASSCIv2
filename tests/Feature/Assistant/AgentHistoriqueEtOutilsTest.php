@@ -124,15 +124,18 @@ class AgentHistoriqueEtOutilsTest extends TestCase
         $user = User::factory()->create(['name' => 'Awa Koné']);
         $systeme = app(ConstructeurDePrompt::class)->systeme($user, null, ['page_context' => [
             'kind' => 'bulletin_moyennes_sans_note',
+            'etudiant_id' => 2743,
             'classe_id' => 12,
             'annee_universitaire_id' => 4,
             'periode' => 'semestre1',
             'moyennes_sans_note' => [['matiere_id' => 63, 'matiere' => 'Algorithme', 'moyenne' => 16]],
         ]]);
 
+        $this->assertStringContainsString('etudiant_id 2743', $systeme);
         $this->assertStringContainsString('classe_id 12', $systeme);
         $this->assertStringContainsString('annee_universitaire_id 4', $systeme);
         $this->assertStringContainsString('Algorithme (matiere_id 63)', $systeme);
+        $this->assertStringContainsString('etudiant_id borne impérativement l’action', $systeme);
         $this->assertStringContainsString('Ne redemande jamais ces éléments', $systeme);
     }
 
