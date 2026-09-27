@@ -4,7 +4,7 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/messages-hub-v2.css?v=1267-shared-items') }}">
-<link rel="stylesheet" href="{{ asset('css/messages-hub-v2-final.css?v=1270-composer-share') }}">
+<link rel="stylesheet" href="{{ asset('css/messages-hub-v2-final.css?v=1271-nanan-clearance') }}">
 @endpush
 
 @section('content')
