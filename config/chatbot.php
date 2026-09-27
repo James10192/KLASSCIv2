@@ -59,6 +59,11 @@ return [
             'any_permissions' => ['notes.create', 'notes.edit', 'notes.manage_own'],
             'libelle' => 'Préparation des notes à enregistrer…',
         ],
+        'proposer_supprimer_moyennes_sans_note' => [
+            'enabled' => true,
+            'any_permissions' => ['bulletins.delete'],
+            'libelle' => 'Préparation du nettoyage des moyennes sans note…',
+        ],
         'search_attendances' => [
             'enabled' => true,
             'any_permissions' => ['attendances.view'],

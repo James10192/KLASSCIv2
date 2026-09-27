@@ -1,0 +1,214 @@
+<?php
+
+namespace App\Domain\Assistant\Actions\Bulletins;
+
+use App\Domain\Assistant\Actions\ActionAgent;
+use App\Domain\Assistant\Actions\Proposition;
+use App\Domain\Assistant\Actions\PropositionPerimee;
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPMatiere;
+use App\Models\ESBTPResultat;
+use App\Services\BulletinService;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
+
+/**
+ * Prépare le retrait des moyennes qui ne reposent sur aucune note. Cette action
+ * est volontairement aussi stricte que l'écran Bulletins : une seule matière,
+ * une classe, une année et une période, puis une relecture complète au clic.
+ */
+class SupprimerMoyennesSansNote extends ActionAgent
+{
+    public function __construct(private BulletinService $bulletins)
+    {
+    }
+
+    public function cle(): string
+    {
+        return 'supprimer_moyennes_sans_note';
+    }
+
+    public function libelle(): string
+    {
+        return 'Préparation du nettoyage des moyennes sans note…';
+    }
+
+    public function description(): string
+    {
+        return "PROPOSE de supprimer les moyennes d'UNE matière qui n'a réellement aucune note sur une période. "
+            . "Utilise les identifiants de la page ou des outils lorsqu'ils sont disponibles ; sinon passe les libellés exacts. "
+            . "Ne supprime rien : le serveur vérifie la classe, l'année, la matière et l'absence totale de note, montre chaque étudiant, puis l'utilisateur valide. "
+            . "Si une donnée est absente ou ambiguë, demande-la. N'utilise jamais cette action pour effacer une note ou une moyenne qui a une note.";
+    }
+
+    public function parameters(): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [
+                'classe_id' => ['type' => 'integer', 'description' => 'Identifiant de la classe, si la page ou un outil le donne.'],
+                'classe' => ['type' => 'string', 'description' => 'Code ou libellé EXACT de la classe, si son identifiant est inconnu.'],
+                'annee_universitaire_id' => ['type' => 'integer', 'description' => "Identifiant de l'année universitaire, si disponible."],
+                'annee' => ['type' => 'string', 'description' => "Libellé EXACT de l'année universitaire. Omettre seulement pour l'année courante."],
+                'matiere_id' => ['type' => 'integer', 'description' => 'Identifiant de la matière, si disponible.'],
+                'matiere' => ['type' => 'string', 'description' => 'Libellé EXACT de la matière, si son identifiant est inconnu.'],
+                'periode' => ['type' => 'string', 'description' => "Période exacte : semestre1 / semestre2 (ou S1 / S2 si affiché ainsi)."],
+            ],
+            'required' => ['periode'],
+        ];
+    }
+
+    public function preparer(array $args, $user): Proposition
+    {
+        if (! $user->can('bulletins.delete')) {
+            return $this->manque("Cet utilisateur n'a pas le droit de supprimer des moyennes de bulletin.");
+        }
+
+        [$classe, $erreurClasse] = $this->classe($args);
+        [$annee, $erreurAnnee] = $this->annee($args);
+        [$matiere, $erreurMatiere] = $this->matiere($args, $classe);
+        $periode = $this->periode($args['periode'] ?? null);
+        $manques = array_values(array_filter([$erreurClasse, $erreurAnnee, $erreurMatiere, $periode === null ? 'Période inconnue : indiquez S1 ou S2.' : null]));
+        if ($manques !== []) {
+            return new Proposition(titre: 'Nettoyage des moyennes sans note', resume: '', manques: $manques);
+        }
+
+        $lignes = $this->requete($classe->id, $annee->id, $matiere->id, $periode)
+            ->with('etudiant:id,nom,prenoms,matricule')
+            ->orderBy('etudiant_id')
+            ->get();
+        if ($lignes->isEmpty()) {
+            return $this->manque("Aucune moyenne sans note à supprimer pour {$matiere->name}, {$this->libellePeriode($periode)}, {$classe->name}.");
+        }
+
+        $etat = $lignes->map(fn (ESBTPResultat $ligne) => [
+            'id' => (int) $ligne->id,
+            'moyenne' => (string) $ligne->moyenne,
+            'updated_at' => $ligne->updated_at?->toIso8601String(),
+        ])->values()->all();
+
+        return new Proposition(
+            titre: 'Supprimer les moyennes sans note',
+            resume: $lignes->count() . ' moyenne(s) sans aucune note seront retirées de ' . $matiere->name . ' (' . $this->libellePeriode($periode) . ').',
+            tableau: [
+                'colonnes' => ['Étudiant', 'Matricule', 'Matière', 'Période', 'Moyenne à retirer'],
+                'lignes' => $lignes->map(fn (ESBTPResultat $ligne) => [
+                    trim(($ligne->etudiant?->nom ?? '') . ' ' . ($ligne->etudiant?->prenoms ?? '')) ?: 'Étudiant #' . $ligne->etudiant_id,
+                    (string) ($ligne->etudiant?->matricule ?? '—'),
+                    (string) $matiere->name,
+                    $this->libellePeriode($periode),
+                    number_format((float) $ligne->moyenne, 2, ',', ' ') . '/20',
+                ])->all(),
+            ],
+            avertissements: ['Seules les moyennes sans aucune note sont concernées. Si une note revient avant la validation, la proposition expirera et rien ne sera supprimé.'],
+            donnees: [
+                'classe_id' => (int) $classe->id,
+                'annee_universitaire_id' => (int) $annee->id,
+                'matiere_id' => (int) $matiere->id,
+                'periode' => $periode,
+            ],
+            etat: ['lignes' => $etat],
+            risque: 'eleve',
+        );
+    }
+
+    public function executer(Proposition $proposition, $user): array
+    {
+        if (! $user->can('bulletins.delete')) {
+            throw new PropositionPerimee("Vous n'avez plus le droit de supprimer ces moyennes.");
+        }
+
+        $donnees = $proposition->donnees;
+        $lignes = $this->requete((int) $donnees['classe_id'], (int) $donnees['annee_universitaire_id'], (int) $donnees['matiere_id'], (string) $donnees['periode'])
+            ->orderBy('id')->get();
+        $attendues = collect($proposition->etat['lignes'] ?? [])->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()->all();
+        $actuelles = $lignes->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()->all();
+        if ($actuelles !== $attendues) {
+            throw new PropositionPerimee('Les moyennes sans note ont changé depuis la proposition.');
+        }
+
+        foreach ($lignes as $ligne) {
+            if (! $ligne->delete()) {
+                throw new PropositionPerimee('Une moyenne ne peut plus être supprimée.');
+            }
+        }
+
+        return [
+            'message' => count($actuelles) . ' moyenne(s) sans note supprimée(s).',
+            'lien' => route('esbtp.bulletins.select', [], false),
+            'model_type' => ESBTPResultat::class,
+            'model_id' => $actuelles[0] ?? null,
+            'details' => ['supprimees' => count($actuelles)],
+        ];
+    }
+
+    /** @return array{0: ?ESBTPClasse, 1: ?string} */
+    private function classe(array $args): array
+    {
+        if (($id = (int) ($args['classe_id'] ?? 0)) > 0) {
+            return [ESBTPClasse::find($id), ESBTPClasse::find($id) ? null : 'Classe introuvable.'];
+        }
+        $libelle = trim((string) ($args['classe'] ?? ''));
+        if ($libelle === '') return [null, 'Indiquez la classe concernée.'];
+        $trouvees = ESBTPClasse::query()
+            ->where(fn (Builder $q) => $q->whereRaw('LOWER(name) = ?', [mb_strtolower($libelle)])
+                ->orWhereRaw('LOWER(code) = ?', [mb_strtolower($libelle)]))
+            ->get();
+        return $trouvees->count() === 1 ? [$trouvees->first(), null] : [null, $trouvees->isEmpty() ? "Classe introuvable : {$libelle}." : "Plusieurs classes correspondent à {$libelle} : indiquez son code ou son identifiant."];
+    }
+
+    /** @return array{0: ?ESBTPAnneeUniversitaire, 1: ?string} */
+    private function annee(array $args): array
+    {
+        if (($id = (int) ($args['annee_universitaire_id'] ?? 0)) > 0) {
+            return [ESBTPAnneeUniversitaire::find($id), ESBTPAnneeUniversitaire::find($id) ? null : 'Année universitaire introuvable.'];
+        }
+        $libelle = trim((string) ($args['annee'] ?? ''));
+        if ($libelle === '') {
+            $courante = ESBTPAnneeUniversitaire::anneeCourante();
+            return [$courante, $courante ? null : "Aucune année universitaire courante n'est définie."];
+        }
+        $trouvees = ESBTPAnneeUniversitaire::query()->whereRaw('LOWER(name) = ?', [mb_strtolower($libelle)])->get();
+        return $trouvees->count() === 1 ? [$trouvees->first(), null] : [null, $trouvees->isEmpty() ? "Année universitaire introuvable : {$libelle}." : "Plusieurs années correspondent à {$libelle} : indiquez son identifiant."];
+    }
+
+    /** @return array{0: ?ESBTPMatiere, 1: ?string} */
+    private function matiere(array $args, ?ESBTPClasse $classe): array
+    {
+        if (! $classe) return [null, null];
+        if (($id = (int) ($args['matiere_id'] ?? 0)) > 0) {
+            $matiere = $classe->matieres()->whereKey($id)->first();
+            return [$matiere, $matiere ? null : 'Cette matière ne fait pas partie de la classe concernée.'];
+        }
+        $libelle = trim((string) ($args['matiere'] ?? ''));
+        if ($libelle === '') return [null, 'Indiquez la matière concernée.'];
+        $trouvees = $classe->matieres()
+            ->where(fn (Builder $q) => $q->whereRaw('LOWER(name) = ?', [mb_strtolower($libelle)])
+                ->orWhereRaw('LOWER(code) = ?', [mb_strtolower($libelle)]))
+            ->get();
+        return $trouvees->count() === 1 ? [$trouvees->first(), null] : [null, $trouvees->isEmpty() ? "Matière introuvable dans cette classe : {$libelle}." : "Plusieurs matières correspondent à {$libelle} : indiquez son identifiant."];
+    }
+
+    private function periode(mixed $value): ?string
+    {
+        $normalisee = Str::lower(trim((string) $value));
+        return match ($normalisee) {
+            's1', '1', 'semestre 1', 'semestre1' => 'semestre1',
+            's2', '2', 'semestre 2', 'semestre2' => 'semestre2',
+            default => null,
+        };
+    }
+
+    private function libellePeriode(string $periode): string
+    {
+        return $periode === 'semestre1' ? 'Semestre 1' : 'Semestre 2';
+    }
+
+    private function requete(int $classeId, int $anneeId, int $matiereId, string $periode): Builder
+    {
+        return ESBTPResultat::query()
+            ->sansNoteSurLaPeriode($classeId, $anneeId, $this->bulletins->periodeAliases($periode))
+            ->where('matiere_id', $matiereId);
+    }
+}

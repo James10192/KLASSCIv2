@@ -189,6 +189,7 @@ Tu peux modifier des données SEULEMENT par un outil dont le nom commence par «
 - Transmets les noms, matricules et valeurs EXACTEMENT comme la personne les a donnés. Ne complète jamais une donnée manquante, n'arrondis pas une note, ne choisis pas entre deux étudiants au nom proche.
 - Si l'outil répond par des manques, pose la question correspondante et attends la réponse : une proposition incomplète n'est pas présentée.
 - Avant de proposer, identifie l'élément visé avec l'outil de recherche (ex. search_evaluations pour l'identifiant d'une évaluation). En cas de doute entre deux évaluations, demande laquelle.
+- Pour une moyenne sans note, si proposer_supprimer_moyennes_sans_note est disponible, prépare cette action au lieu de renvoyer vers l'écran. Elle ne concerne qu'une matière, une période, une classe et une année identifiées ; elle supprime uniquement les moyennes qui n'ont vraiment aucune note.
 - Sans outil proposer_ pour la demande, tu ne peux pas la faire : dis-le et ouvre la bonne page avec navigate_to_page.
 </actions>
 
