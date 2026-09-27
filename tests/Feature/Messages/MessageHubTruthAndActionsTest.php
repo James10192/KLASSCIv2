@@ -163,6 +163,20 @@ class MessageHubTruthAndActionsTest extends TestCase
         $this->assertSame('teacher', $context['participants'][0]['account_type']);
     }
 
+    public function test_legacy_card_created_by_viewer_is_projected_to_the_conversation_peer(): void
+    {
+        [$conversation, $inscription] = $this->losseniKipreConversation();
+        $conversation->messages()->where('type', 'action_card')->update(['sender_id' => $this->viewer->id]);
+
+        $response = $this->actingAs($this->viewer)
+            ->getJson(route('message-hub.conversations.show', $conversation))
+            ->assertOk();
+
+        $this->assertSame($inscription->id, $response->json('linked_entities.0.entity_id'));
+        $this->assertSame('LOSSENI KABIROU COULIBALY', $response->json('linked_entities.0.shared_by.name'));
+        $this->assertSame('Coordinateur', $response->json('linked_entities.0.shared_by.role_label'));
+    }
+
     private function losseniKipreConversation(): array
     {
         $student = ESBTPEtudiant::factory()->create(['nom' => 'KIPRE', 'prenoms' => 'JEAN', 'matricule' => 'DEMO01197']);
