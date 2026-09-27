@@ -293,19 +293,12 @@ class ConversationEntityLinkService
 
     private function sharedByForViewer(ChatConversationEntityLink $link, ?ChatMessage $sourceMessage, User $viewer): ?array
     {
+        // « Partagé par » désigne toujours l'auteur du message métier, y compris
+        // quand cet auteur est la personne qui consulte le fil. Ne jamais
+        // substituer l'interlocuteur : cela trompe l'interface et Nanan.
         $author = $sourceMessage?->sender;
 
-        if ($author && $author->id !== $viewer->id) {
-            return $this->sharedBy($author);
-        }
-
-        $conversation = $link->relationLoaded('conversation')
-            ? $link->conversation
-            : $link->conversation()->with('participants.roles')->first();
-        $peer = $conversation?->participants
-            ->first(fn (User $participant) => $participant->id !== $viewer->id);
-
-        return $this->sharedBy($peer) ?: $this->sharedBy($author);
+        return $this->sharedBy($author);
     }
 
     private function nonSensitiveDetails(array $details): array
