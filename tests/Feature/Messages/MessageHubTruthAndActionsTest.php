@@ -163,7 +163,7 @@ class MessageHubTruthAndActionsTest extends TestCase
         $this->assertSame('teacher', $context['participants'][0]['account_type']);
     }
 
-    public function test_legacy_card_created_by_viewer_is_projected_to_the_conversation_peer(): void
+    public function test_shared_card_created_by_viewer_keeps_the_real_author_for_ui_and_nanan(): void
     {
         [$conversation, $inscription] = $this->losseniKipreConversation();
         $conversation->messages()->where('type', 'action_card')->update(['sender_id' => $this->viewer->id]);
@@ -173,8 +173,14 @@ class MessageHubTruthAndActionsTest extends TestCase
             ->assertOk();
 
         $this->assertSame($inscription->id, $response->json('linked_entities.0.entity_id'));
-        $this->assertSame('LOSSENI KABIROU COULIBALY', $response->json('linked_entities.0.shared_by.name'));
-        $this->assertSame('Coordinateur', $response->json('linked_entities.0.shared_by.role_label'));
+        $this->assertSame($this->viewer->name, $response->json('linked_entities.0.shared_by.name'));
+        $this->assertSame($this->viewer->name, $response->json('messages.0.business_card.shared_by.name'));
+
+        $context = app(MessageAssistantContextBuilder::class)->fromClientContext(
+            $this->viewer,
+            ['current_url' => url('/messages?conversation=' . $conversation->id)]
+        );
+        $this->assertSame($this->viewer->name, $context['shared_items'][0]['shared_by']['name']);
     }
 
     private function losseniKipreConversation(): array
