@@ -96,3 +96,16 @@ body:has(.mh2-root):has(.mh2-share-trigger[aria-expanded="true"]) .ast-launcher{
 
 /* Sharing is a focused task: Nanan is hidden until the picker closes, never over it. */
 body:has(.mh2-root):has(.mh2-share-trigger[aria-expanded="true"]) .ast-launcher{display:none!important}
+
+
+/* Sent shared items follow the same visual side as sent messages. */
+.mh2-msg-row.is-mine .mh2-business{margin-left:auto;border-left-color:#3979d4!important;border-right:3px solid #3979d4!important;background:#f4f8ff!important}
+.mh2-msg-row.is-mine .mh2-business .mh2-business-head{justify-content:flex-end}
+.mh2-msg-row.is-mine .mh2-business .mh2-business-grid{text-align:right}
+.mh2-msg-row.is-mine .mh2-business .mh2-card-actions,.mh2-msg-row.is-mine .mh2-business .mh2-shared-by{justify-content:flex-end}
+
+/* Archives remain a first-class, visible navigation destination. */
+.mh2-filters{display:flex!important;flex-wrap:wrap!important;gap:6px!important;overflow:visible!important;padding-bottom:2px}
+.mh2-filter[data-filter="archived"]{border-color:#b7cbe6!important;background:#eef5ff!important;color:#1d579c!important}
+.mh2-filter[data-filter="archived"].is-active{background:#1d65b9!important;color:#fff!important;border-color:#1d65b9!important}
+@media(max-width:520px){.mh2-filters{flex-wrap:nowrap!important;overflow-x:auto!important;scrollbar-width:thin}.mh2-filter{flex:0 0 auto}}
