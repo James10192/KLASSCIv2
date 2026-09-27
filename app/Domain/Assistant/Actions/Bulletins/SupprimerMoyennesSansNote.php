@@ -59,6 +59,7 @@ class SupprimerMoyennesSansNote extends ActionAgent
         return [
             'type' => 'object',
             'properties' => [
+                'etudiant_id' => ['type' => 'integer', 'description' => "Identifiant de l'étudiant affiché. Si la demande vient de sa fiche, il borne impérativement le nettoyage à cet étudiant."],
                 'classe_id' => ['type' => 'integer', 'description' => 'Identifiant de la classe, si la page ou un outil le donne.'],
                 'classe' => ['type' => 'string', 'description' => 'Code ou libellé EXACT de la classe, si son identifiant est inconnu.'],
                 'annee_universitaire_id' => ['type' => 'integer', 'description' => "Identifiant de l'année universitaire, si disponible."],
@@ -86,7 +87,9 @@ class SupprimerMoyennesSansNote extends ActionAgent
             return new Proposition(titre: 'Nettoyage des moyennes sans note', resume: '', manques: $manques);
         }
 
+        $etudiantId = (int) ($args['etudiant_id'] ?? 0);
         $lignes = $this->requete($classe->id, $annee->id, $matiere->id, $periode)
+            ->when($etudiantId > 0, fn (Builder $q) => $q->where('etudiant_id', $etudiantId))
             ->with('etudiant:id,nom,prenoms,matricule')
             ->orderBy('etudiant_id')
             ->get();
@@ -115,7 +118,7 @@ class SupprimerMoyennesSansNote extends ActionAgent
 
         return new Proposition(
             titre: 'Supprimer les moyennes sans note',
-            resume: $lignes->count() . ' moyenne(s) sans aucune note seront retirées de ' . $matiere->name . ' (' . $this->libellePeriode($periode) . ').',
+            resume: $lignes->count() . ' moyenne(s) sans aucune note seront retirées de ' . $matiere->name . ' (' . $this->libellePeriode($periode) . ')' . ($etudiantId > 0 ? ', uniquement pour l’étudiant affiché.' : '.').
             tableau: [
                 'colonnes' => ['Étudiant', 'Matricule', 'Matière', 'Période', 'Moyenne à retirer'],
                 'lignes' => $lignes->map(fn (ESBTPResultat $ligne) => [
@@ -133,6 +136,7 @@ class SupprimerMoyennesSansNote extends ActionAgent
                     : null,
             ])),
             donnees: [
+                'etudiant_id' => $etudiantId > 0 ? $etudiantId : null,
                 'classe_id' => (int) $classe->id,
                 'annee_universitaire_id' => (int) $annee->id,
                 'matiere_id' => (int) $matiere->id,
@@ -151,6 +155,7 @@ class SupprimerMoyennesSansNote extends ActionAgent
 
         $donnees = $proposition->donnees;
         $lignes = $this->requete((int) $donnees['classe_id'], (int) $donnees['annee_universitaire_id'], (int) $donnees['matiere_id'], (string) $donnees['periode'])
+            ->when((int) ($donnees['etudiant_id'] ?? 0) > 0, fn (Builder $q) => $q->where('etudiant_id', (int) $donnees['etudiant_id']))
             ->orderBy('id')->get();
         $attendues = collect($proposition->etat['lignes'] ?? [])->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()->all();
         $actuelles = $lignes->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()->all();
