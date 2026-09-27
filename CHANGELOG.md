@@ -13,6 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Corrections
+- **Messages — actions toujours accessibles.** Sur grand écran, Nanan se décale hors du panneau Contexte lié afin de ne recouvrir ni ses actions ni le composeur.
 - **Messages — Nanan ne masque plus le composeur.** Le lanceur est déplacé au-dessus de la zone de saisie afin de laisser Partager et Envoyer immédiatement accessibles.
 - **Messages — partage depuis le fil et finition contextuelle.** Le composeur reste ancré en bas, permet de partager une inscription ou un paiement sans quitter la conversation, et le panneau Contexte lié retrouve ses marges et avatars centrés.
 - **Messages — composeur visible.** La hauteur de l’espace Messages tient désormais compte de l’en-tête global et des alertes de l’application : le champ de saisie reste affiché en bas du fil sur les écrans de présentation.
