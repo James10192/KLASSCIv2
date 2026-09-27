@@ -85,3 +85,7 @@ body:has(.mh2-root) .ast-launcher{bottom:110px!important}
 /* When the sharing tray is open, lift Nanan above it: no control is obscured. */
 body:has(.mh2-root):has(.mh2-share-tray:not([hidden])) .ast-launcher{bottom:252px!important}
 @media(max-width:820px){body:has(.mh2-root):has(.mh2-share-tray:not([hidden])) .ast-launcher{bottom:236px!important}}
+
+/* The semantic open state is authoritative even when legacy JS preserves hidden markup. */
+body:has(.mh2-root):has(.mh2-share-trigger[aria-expanded="true"]) .ast-launcher{bottom:252px!important}
+@media(max-width:820px){body:has(.mh2-root):has(.mh2-share-trigger[aria-expanded="true"]) .ast-launcher{bottom:236px!important}}
