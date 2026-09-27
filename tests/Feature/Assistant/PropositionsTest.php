@@ -168,7 +168,7 @@ class PropositionsTest extends TestCase
         $this->assertSame(2, ESBTPNote::where('evaluation_id', $this->evaluation->id)->count());
     }
 
-    public function test_nanan_propose_puis_supprime_une_moyenne_sans_note_apres_validation(): void
+    public function test_nanan_peut_supprimer_une_moyenne_historique_apres_retrait_de_la_maquette(): void
     {
         Permission::findOrCreate('bulletins.delete', 'web');
         $this->user->givePermissionTo('bulletins.delete');
@@ -182,6 +182,12 @@ class PropositionsTest extends TestCase
             'moyenne' => 16,
             'coefficient' => 1,
         ]);
+
+        // Cas réel : le bulletin avait été généré quand la matière appartenait
+        // à la maquette, puis celle-ci a été déplacée ou retirée. La moyenne
+        // historique ne doit pas survivre seulement parce que la relation
+        // courante classe -> matières ne la contient plus.
+        $this->evaluation->classe->matieres()->detach($this->evaluation->matiere_id);
 
         $proposition = app(SupprimerMoyennesSansNote::class)->executeAuthorized([
             'classe_id' => $this->evaluation->classe_id,
