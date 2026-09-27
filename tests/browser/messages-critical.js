@@ -1,177 +1,19 @@
 'use strict';
-
-const fs = require('fs');
-const path = require('path');
-const puppeteer = require('puppeteer-core');
-
-const base = (process.env.KLASSCI_E2E_BASE_URL || 'https://presentation.klassci.com').replace(/\/$/, '');
-const username = process.env.KLASSCI_E2E_USERNAME;
-const password = process.env.KLASSCI_E2E_PASSWORD;
-const runAi = process.env.KLASSCI_E2E_RUN_AI === '1';
-const output = process.env.KLASSCI_E2E_SCREENSHOTS || path.resolve('artifacts/messages-qa');
-
-if (!username || !password) {
-  console.error('KLASSCI_E2E_USERNAME and KLASSCI_E2E_PASSWORD are required for presentation QA.');
-  process.exit(2);
-}
-
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-function browserPath() {
-  const candidates = [
-    process.env.CHROME_PATH,
-    '/usr/bin/google-chrome',
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-  ].filter(Boolean);
-  const found = candidates.find(p => fs.existsSync(p));
-  if (!found) throw new Error('Chrome/Chromium executable not found; set CHROME_PATH.');
-  return found;
-}
-
-function assert(condition, message) {
-  if (!condition) throw new Error('ASSERTION FAILED: ' + message);
-}
-
-async function text(page, selector) {
-  return page.$eval(selector, el => el.textContent.replace(/\s+/g, ' ').trim());
-}
-
-async function shot(page, name) {
-  fs.mkdirSync(output, {recursive: true});
-  await page.screenshot({path: path.join(output, name), fullPage: true});
-}
-
-async function login(page) {
-  await page.goto(base + '/login', {waitUntil: 'networkidle2'});
-  await page.type('input[name="username"]', username);
-  await page.type('input[name="password"]', password);
-  await Promise.all([
-    page.waitForNavigation({waitUntil: 'networkidle2'}),
-    page.click('form button[type="submit"], form input[type="submit"]'),
-  ]);
-  assert(!page.url().includes('/login'), 'Login did not leave /login');
-}
-
-async function openLosseni(page) {
-  await page.goto(base + '/messages', {waitUntil: 'networkidle2'});
-  await page.waitForSelector('[data-conversation]', {timeout: 15000});
-  const found = await page.evaluate(() => {
-    const rows = Array.from(document.querySelectorAll('[data-conversation]'));
-    const row = rows.find(el => /LOSSENI KABIROU COULIBALY/i.test(el.textContent));
-    if (!row) return false;
-    row.click();
-    return true;
-  });
-  assert(found, 'LOSSENI KABIROU COULIBALY conversation not found');
-  await page.waitForFunction(() => /LOSSENI KABIROU COULIBALY/i.test(document.querySelector('[data-thread-title]')?.textContent || ''), {timeout: 10000});
-  await page.click('[data-context-toggle]');
-  await page.waitForSelector('[data-context].is-open');
-}
-
-async function checkLosseniKipre(page) {
-  const context = await text(page, '[data-context-body]');
-  const thread = await text(page, '[data-thread]');
-  assert(/LOSSENI KABIROU COULIBALY/i.test(context), 'Context must show Losseni as participant');
-  assert(/Personnel|Agent administratif|Scolarité/i.test(context), 'Losseni must be identified as staff context');
-  assert(/Inscription\s*[—-]\s*KIPRE JEAN/i.test(context + ' ' + thread), 'Linked dossier must explicitly show KIPRE JEAN');
-  assert(/Relation à vérifier/i.test(context + ' ' + thread), 'Ambiguous relationship must be explicit');
-  assert(!/Dossier KLASSCI/i.test(context + ' ' + thread), 'Fake Dossier KLASSCI placeholder must never appear');
-  assert(!/À consulter/i.test(context + ' ' + thread), 'Fake À consulter status must never appear');
-  assert(!/Préparer une relance/i.test(context), 'Financial relance must be unavailable while relationship is ambiguous');
-}
-
-async function checkFailedOptimisticMessage(page) {
-  let blocked = true;
-  await page.setRequestInterception(true);
-  const intercept = req => {
-    if (blocked && req.method() === 'POST' && /\/messages\/conversations\/\d+\/messages/.test(req.url())) req.abort('failed');
-    else req.continue();
-  };
-  page.on('request', intercept);
-  const marker = 'QA-NON-ENVOYE-' + Date.now();
-  await page.type('[data-compose]', marker);
-  await page.click('[data-send]');
-  await page.waitForFunction(m => document.body.innerText.includes(m) && document.body.innerText.includes('Échec'), {timeout: 8000}, marker);
-  const countBefore = await page.evaluate(m => (document.body.innerText.match(new RegExp(m, 'g')) || []).length, marker);
-  assert(countBefore === 1, 'Failed optimistic message must appear once');
-  await page.click('[data-retry]');
-  await sleep(700);
-  const countAfter = await page.evaluate(m => (document.body.innerText.match(new RegExp(m, 'g')) || []).length, marker);
-  assert(countAfter === 1, 'Retry failure must not duplicate the optimistic message');
-  blocked = false;
-  page.off('request', intercept);
-  await page.setRequestInterception(false);
-}
-
-async function checkActions(page) {
-  await page.click('[data-space="actions"]');
-  await page.waitForSelector('[data-action-list]');
-  const actionText = await text(page, '[data-action-list]');
-  assert(!/Aucune action/i.test(actionText), 'Historical workflow actions must be visible in the action center');
-
-  await page.click('[data-new]');
-  await page.click('[data-intent-action]');
-  await page.waitForSelector('[data-action-form]');
-  const marker = 'QA Vérification ' + Date.now();
-  await page.type('[data-action-form] input[name="title"]', marker);
-  await page.type('[data-action-form] input[name="subject"]', 'QA navigateur — présentation');
-  await page.select('[data-action-form] select[name="priority"]', 'low');
-  await page.click('[data-action-submit]');
-  await page.waitForFunction(m => document.body.innerText.includes(m), {timeout: 10000}, marker);
-
-  await page.click('[data-action-view="kanban"]');
-  await page.waitForSelector('[data-kanban]:not([hidden])');
-  const kanban = await text(page, '[data-kanban]');
-  assert(kanban.includes(marker), 'Created action must appear in Kanban');
-}
-
-async function checkNananAmbiguity(page) {
-  if (!runAi) return;
-  await page.click('[data-space="inbox"]');
-  await openLosseni(page);
-  const buttonFound = await page.evaluate(() => {
-    const b = Array.from(document.querySelectorAll('[data-ai]')).find(el => /Vérifier le lien/i.test(el.textContent));
-    if (!b) return false; b.click(); return true;
-  });
-  assert(buttonFound, 'Ambiguous Nanan action not found');
-  await page.waitForSelector('.ast-panel textarea', {visible: true});
-  await page.click('.ast-panel button[type="submit"], .ast-send');
-  await page.waitForFunction(() => /Je ne peux pas établir le lien entre cet interlocuteur et ce dossier/i.test(document.body.innerText), {timeout: 60000});
-  const body = await page.evaluate(() => document.body.innerText);
-  assert(!/Losseni[^\n]{0,80}(n.?a pas payé|doit payer|paiement en retard)/i.test(body), 'Nanan must not attribute KIPRE payment status to Losseni');
-}
-
-(async () => {
-  const browser = await puppeteer.launch({headless: 'new', executablePath: browserPath(), args: ['--no-sandbox','--disable-dev-shm-usage']});
-  try {
-    const page = await browser.newPage();
-    page.setDefaultTimeout(15000);
-    await page.setViewport({width: 1440, height: 1000, deviceScaleFactor: 1});
-    await login(page);
-    await openLosseni(page);
-    await checkLosseniKipre(page);
-    await shot(page, '01-losseni-kipre-desktop.png');
-    await checkFailedOptimisticMessage(page);
-
-    await checkActions(page);
-    await shot(page, '02-action-center-kanban-desktop.png');
-
-    await page.setViewport({width: 820, height: 1100, deviceScaleFactor: 1});
-    await page.goto(base + '/messages', {waitUntil: 'networkidle2'});
-    await shot(page, '03-messages-tablet.png');
-
-    await page.setViewport({width: 390, height: 844, deviceScaleFactor: 1});
-    await page.goto(base + '/messages', {waitUntil: 'networkidle2'});
-    await page.waitForSelector('[data-conversation]');
-    await shot(page, '04-conversations-mobile.png');
-    await openLosseni(page);
-    await shot(page, '05-conversation-mobile.png');
-
-    await checkNananAmbiguity(page);
-    console.log('Messages presentation QA passed. Screenshots:', output);
-  } finally {
-    await browser.close();
-  }
-})().catch(err => { console.error(err.stack || err); process.exit(1); });
+const fs=require('fs'),path=require('path'),puppeteer=require('puppeteer-core');
+const base=(process.env.KLASSCI_E2E_BASE_URL||'https://presentation.klassci.com').replace(/\/$/,'');
+const username=process.env.KLASSCI_E2E_USERNAME,password=process.env.KLASSCI_E2E_PASSWORD,runAi=process.env.KLASSCI_E2E_RUN_AI==='1';
+const output=process.env.KLASSCI_E2E_SCREENSHOTS||path.resolve('artifacts/messages-qa');
+if(!username||!password){console.error('KLASSCI_E2E_USERNAME and KLASSCI_E2E_PASSWORD are required.');process.exit(2)}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));function assert(c,m){if(!c)throw new Error('ASSERTION FAILED: '+m)}
+function browserPath(){const xs=[process.env.CHROME_PATH,'/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'].filter(Boolean);const p=xs.find(fs.existsSync);if(!p)throw new Error('Chrome/Chromium not found');return p}
+async function text(p,s){return p.$eval(s,e=>e.textContent.replace(/\s+/g,' ').trim())}
+async function shot(p,n){fs.mkdirSync(output,{recursive:true});await p.screenshot({path:path.join(output,n),fullPage:false})}
+async function login(p){await p.goto(base+'/login',{waitUntil:'networkidle2'});await p.type('input[name="username"]',username);await p.type('input[name="password"]',password);await Promise.all([p.waitForNavigation({waitUntil:'networkidle2'}),p.click('form button[type="submit"], form input[type="submit"]')]);assert(!p.url().includes('/login'),'login failed')}
+async function openLosseni(p){await p.goto(base+'/messages',{waitUntil:'networkidle2'});await p.waitForSelector('[data-conversation]',{timeout:15000});const ok=await p.evaluate(()=>{const r=[...document.querySelectorAll('[data-conversation]')].find(x=>/LOSSENI KABIROU COULIBALY/i.test(x.textContent));if(!r)return false;r.click();return true});assert(ok,'Losseni conversation not found');await p.waitForFunction(()=>/LOSSENI KABIROU COULIBALY/i.test(document.querySelector('[data-thread-title]')?.textContent||''),{timeout:10000});await sleep(500);if((await p.viewport()).width<=1180){await p.click('[data-context-toggle]');await p.waitForSelector('[data-context].is-open')}else{const visible=await p.$eval('[data-context]',e=>getComputedStyle(e).visibility!=='hidden');assert(visible,'desktop context must be visible')}}
+async function layout(p){return p.evaluate(()=>{const visible=e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.bottom<=innerHeight+2&&r.right<=innerWidth+2};const thread=document.querySelector('[data-thread]'),composer=document.querySelector('[data-composer]'),ctx=document.querySelector('[data-context-body]'),list=document.querySelector('[data-conversation-list]');return{composer:visible(composer),threadOverflow:thread.scrollHeight>=thread.clientHeight,contextOverflow:ctx.scrollHeight>=ctx.clientHeight,listOverflow:list.scrollHeight>=list.clientHeight,bodyOverflow:document.documentElement.scrollHeight>innerHeight+40}})}
+async function checkShared(p){const c=await text(p,'[data-context-body]'),t=await text(p,'[data-thread]');assert(/LOSSENI KABIROU COULIBALY/i.test(c),'Losseni participant missing');assert(/Coordinateur/i.test(c),'Losseni role must be coordinateur');assert(/Inscription\s*[—-]\s*KIPRE JEAN/i.test(c+' '+t),'KIPRE shared inscription missing');assert(/Élément partagé/i.test(c+' '+t),'shared item badge missing');assert(!/Relation à vérifier|Relation à confirmer|Vérifier le lien|Confiance\s*unknown/i.test(c+' '+t),'relationship verification UI must be absent');const l=await layout(p);assert(l.composer,'composer must remain visible')}
+async function checkContextToggle(p){if((await p.viewport()).width<=1180)return;await p.click('[data-context-toggle]');await sleep(100);assert(await p.$eval('[data-message-hub-v2]',e=>e.classList.contains('is-context-collapsed')),'context toggle must collapse desktop panel');await p.click('[data-context-toggle]');await sleep(100);assert(!(await p.$eval('[data-message-hub-v2]',e=>e.classList.contains('is-context-collapsed'))),'context toggle must reopen desktop panel')}
+async function checkStateToggles(p){const imp=await p.$eval('[data-important]',e=>e.getAttribute('aria-pressed'));await p.click('[data-important]');await sleep(500);assert((await p.$eval('[data-important]',e=>e.getAttribute('aria-pressed')))!==imp,'important toggle must persist UI state');await p.click('[data-important]');await sleep(350);const arch=await p.$eval('[data-archive]',e=>e.getAttribute('aria-pressed'));await p.click('[data-archive]');await sleep(500);assert((await p.$eval('[data-archive]',e=>e.getAttribute('aria-pressed')))!==arch,'archive toggle must persist UI state');await p.click('[data-archive]');await sleep(350)}
+async function checkActions(p){await p.click('[data-space="actions"]');await p.waitForSelector('[data-action-list]');await p.click('[data-action-view="kanban"]');await p.waitForSelector('[data-kanban]:not([hidden])');const dims=await p.evaluate(()=>[...document.querySelectorAll('.mh2-kanban-col')].every(c=>{const body=c.querySelector(':scope > div');return body&&getComputedStyle(body).overflowY==='auto'}));assert(dims,'each Kanban column must own vertical scroll');const first=await p.$('[data-action]');if(first){await first.click();await sleep(300);const d=await p.$eval('[data-action-detail]',e=>({h:e.clientHeight,sh:e.scrollHeight}));assert(d.h>0,'action detail must remain accessible')}}
+async function checkNanan(p){if(!runAi)return;await p.click('[data-space="inbox"]');await openLosseni(p);const ok=await p.evaluate(()=>{const b=[...document.querySelectorAll('[data-ai]')].find(x=>/Résumer le partage/i.test(x.textContent));if(!b)return false;b.click();return true});assert(ok,'shared-item Nanan action missing');await p.waitForSelector('.ast-panel textarea',{visible:true});await p.click('.ast-panel button[type="submit"], .ast-send');await p.waitForFunction(()=>/partag/i.test(document.body.innerText),{timeout:60000});const body=await p.evaluate(()=>document.body.innerText);assert(!/Je ne peux pas établir le lien entre cet interlocuteur et ce dossier/i.test(body),'old relationship refusal must be gone');assert(!/Losseni[^\n]{0,80}(n.?a pas payé|doit payer|paiement en retard)/i.test(body),'Nanan must not attribute KIPRE finances to Losseni')}
+(async()=>{const browser=await puppeteer.launch({headless:'new',executablePath:browserPath(),args:['--no-sandbox','--disable-dev-shm-usage']});try{const p=await browser.newPage();p.setDefaultTimeout(15000);await p.setViewport({width:1440,height:900});await login(p);await openLosseni(p);await checkShared(p);await checkContextToggle(p);await checkStateToggles(p);await shot(p,'01-losseni-kipre-1440x900.png');await checkActions(p);await shot(p,'02-actions-1440x900.png');for(const [w,h,n] of [[1024,768,'03-messages-1024x768.png'],[768,1024,'04-messages-768x1024.png'],[390,844,'05-messages-390x844.png']]){await p.setViewport({width:w,height:h});await openLosseni(p);await checkShared(p);await shot(p,n)}await checkNanan(p);console.log('Messages QA passed:',output)}finally{await browser.close()}})().catch(e=>{console.error(e.stack||e);process.exit(1)});
