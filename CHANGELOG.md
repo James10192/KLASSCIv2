@@ -13,6 +13,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Corrections
+- **Messages — restauration d’archive explicite.** L’action Archiver devient immédiatement Désarchiver et rétablit la conversation dans la boîte de réception.
 - **Messages — partage aligné, recherche instantanée et archives accessibles.** Les éléments envoyés reprennent le côté droit des messages sortants ; la recherche du sélecteur se lance à chaque saisie, sans changer d’onglet ; le filtre Archivés reste visible et le bouton devient Désarchiver pour restaurer une conversation.
 - **Messages — partage sans chevauchement.** Nanan se masque temporairement dès l’ouverture du sélecteur de partage et réapparaît à sa fermeture ; le style est versionné afin que la correction soit immédiatement prise en compte dans le navigateur.
 - **Messages — actions toujours accessibles.** Sur grand écran, Nanan se décale hors du panneau Contexte lié afin de ne recouvrir ni ses actions ni le composeur.
