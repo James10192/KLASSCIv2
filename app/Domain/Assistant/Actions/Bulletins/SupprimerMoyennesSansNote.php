@@ -7,11 +7,14 @@ use App\Domain\Assistant\Actions\Proposition;
 use App\Domain\Assistant\Actions\PropositionPerimee;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPResultat;
 use App\Services\BulletinService;
+use App\Services\ESBTP\BulletinConsistencyService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Prépare le retrait des moyennes qui ne reposent sur aucune note. Cette action
@@ -26,8 +29,10 @@ use Illuminate\Support\Str;
  */
 class SupprimerMoyennesSansNote extends ActionAgent
 {
-    public function __construct(private BulletinService $bulletins)
-    {
+    public function __construct(
+        private BulletinService $bulletins,
+        private BulletinConsistencyService $consistency,
+    ) {
     }
 
     public function cle(): string
@@ -89,6 +94,19 @@ class SupprimerMoyennesSansNote extends ActionAgent
             return $this->manque("Aucune moyenne sans note à supprimer pour {$matiere->name}, {$this->libellePeriode($periode)}, {$classe->name}.");
         }
 
+        $bulletinsOfficiels = $this->bulletinsOfficiels(
+            $lignes->pluck('etudiant_id')->all(),
+            (int) $classe->id,
+            (int) $annee->id,
+            $periode,
+        );
+        if ($bulletinsOfficiels->isNotEmpty() && ! $user->can('bulletins.edit')) {
+            return $this->manque(
+                'Un bulletin officiel existe déjà pour cette moyenne. La correction doit aussi régénérer son snapshot ; '
+                . 'elle nécessite le droit de modifier les bulletins.'
+            );
+        }
+
         $etat = $lignes->map(fn (ESBTPResultat $ligne) => [
             'id' => (int) $ligne->id,
             'moyenne' => (string) $ligne->moyenne,
@@ -108,7 +126,12 @@ class SupprimerMoyennesSansNote extends ActionAgent
                     number_format((float) $ligne->moyenne, 2, ',', ' ') . '/20',
                 ])->all(),
             ],
-            avertissements: ['Seules les moyennes sans aucune note sont concernées. Si une note revient avant la validation, la proposition expirera et rien ne sera supprimé.'],
+            avertissements: array_values(array_filter([
+                'Seules les moyennes sans aucune note sont concernées. Si une note revient avant la validation, la proposition expirera et rien ne sera supprimé.',
+                $bulletinsOfficiels->isNotEmpty()
+                    ? $bulletinsOfficiels->count() . ' bulletin(s) officiel(s) seront régénérés dans la même validation pour retirer aussi la moyenne du snapshot et du PDF.'
+                    : null,
+            ])),
             donnees: [
                 'classe_id' => (int) $classe->id,
                 'annee_universitaire_id' => (int) $annee->id,
@@ -135,18 +158,45 @@ class SupprimerMoyennesSansNote extends ActionAgent
             throw new PropositionPerimee('Les moyennes sans note ont changé depuis la proposition.');
         }
 
-        foreach ($lignes as $ligne) {
-            if (! $ligne->delete()) {
-                throw new PropositionPerimee('Une moyenne ne peut plus être supprimée.');
-            }
+        $bulletinsOfficiels = $this->bulletinsOfficiels(
+            $lignes->pluck('etudiant_id')->all(),
+            (int) $donnees['classe_id'],
+            (int) $donnees['annee_universitaire_id'],
+            (string) $donnees['periode'],
+        );
+        if ($bulletinsOfficiels->isNotEmpty() && ! $user->can('bulletins.edit')) {
+            throw new PropositionPerimee('Un bulletin officiel doit aussi être régénéré, mais vous n’avez plus le droit de le modifier.');
         }
 
+        // La source et son snapshot officiel sont corrigés ensemble. Si une
+        // régénération échoue (configuration incomplète, par exemple), toute
+        // l'opération est annulée : aucun PDF officiel ne reste en décalage.
+        DB::transaction(function () use ($lignes, $bulletinsOfficiels): void {
+            foreach ($lignes as $ligne) {
+                if (! $ligne->delete()) {
+                    throw new PropositionPerimee('Une moyenne ne peut plus être supprimée.');
+                }
+            }
+
+            foreach ($bulletinsOfficiels as $bulletin) {
+                $this->consistency->regenerateOfficialBulletin(
+                    (int) $bulletin->etudiant_id,
+                    (int) $bulletin->classe_id,
+                    (int) $bulletin->annee_universitaire_id,
+                    (string) $bulletin->periode,
+                );
+            }
+        });
+
+        $regeneres = $bulletinsOfficiels->count();
+
         return [
-            'message' => count($actuelles) . ' moyenne(s) sans note supprimée(s).',
+            'message' => count($actuelles) . ' moyenne(s) sans note supprimée(s).'
+                . ($regeneres > 0 ? ' ' . $regeneres . ' bulletin(s) officiel(s) régénéré(s).' : ''),
             'lien' => route('esbtp.bulletins.select', [], false),
             'model_type' => ESBTPResultat::class,
             'model_id' => $actuelles[0] ?? null,
-            'details' => ['supprimees' => count($actuelles)],
+            'details' => ['supprimees' => count($actuelles), 'bulletins_regeneres' => $regeneres],
         ];
     }
 
@@ -200,6 +250,17 @@ class SupprimerMoyennesSansNote extends ActionAgent
                 ->orWhereRaw('LOWER(code) = ?', [mb_strtolower($libelle)]))
             ->get();
         return $trouvees->count() === 1 ? [$trouvees->first(), null] : [null, $trouvees->isEmpty() ? "Matière introuvable dans cette classe : {$libelle}." : "Plusieurs matières correspondent à {$libelle} : indiquez son identifiant."];
+    }
+
+    /** @return \Illuminate\Support\Collection<int, ESBTPBulletin> */
+    private function bulletinsOfficiels(array $etudiantIds, int $classeId, int $anneeId, string $periode): \Illuminate\Support\Collection
+    {
+        return ESBTPBulletin::query()
+            ->whereIn('etudiant_id', array_values(array_unique(array_map('intval', $etudiantIds))))
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeId)
+            ->whereIn('periode', $this->bulletins->periodeAliases($periode))
+            ->get();
     }
 
     private function periode(mixed $value): ?string
