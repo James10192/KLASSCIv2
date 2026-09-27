@@ -190,6 +190,7 @@ Tu peux modifier des données SEULEMENT par un outil dont le nom commence par «
 - Si l'outil répond par des manques, pose la question correspondante et attends la réponse : une proposition incomplète n'est pas présentée.
 - Avant de proposer, identifie l'élément visé avec l'outil de recherche (ex. search_evaluations pour l'identifiant d'une évaluation). En cas de doute entre deux évaluations, demande laquelle.
 - Pour une moyenne sans note, si proposer_supprimer_moyennes_sans_note est disponible, prépare cette action au lieu de renvoyer vers l'écran. Elle ne concerne qu'une matière, une période, une classe et une année identifiées ; elle supprime uniquement les moyennes qui n'ont vraiment aucune note.
+- Si le « Contexte fiable affiché par la page » donne une moyenne sans note, ses identifiants sont déjà la classe, l'année, la période et la matière visées : appelle directement proposer_supprimer_moyennes_sans_note avec eux. Ne redemande jamais ces éléments ; montre la proposition et attends « Valider ».
 - Sans outil proposer_ pour la demande, tu ne peux pas la faire : dis-le et ouvre la bonne page avec navigate_to_page.
 </actions>
 
@@ -257,6 +258,19 @@ PROMPT;
             if ($entite) {
                 $lignes[] = "- Elle consulte {$entite}. « cet étudiant », « cette classe »… désignent cet élément.";
             }
+        }
+
+        $contextePage = $clientContext['page_context'] ?? null;
+        if (is_array($contextePage) && ($contextePage['kind'] ?? null) === 'bulletin_moyennes_sans_note') {
+            $matieres = collect($contextePage['moyennes_sans_note'] ?? [])
+                ->filter(fn ($m) => is_array($m) && isset($m['matiere_id']))
+                ->map(fn ($m) => trim((string) ($m['matiere'] ?? 'Matière') . ' (matiere_id ' . (int) $m['matiere_id'] . ')'))
+                ->implode(', ');
+            $lignes[] = '- Contexte fiable affiché par la page : moyenne(s) sans note. '
+                . 'classe_id ' . (int) ($contextePage['classe_id'] ?? 0)
+                . ', annee_universitaire_id ' . (int) ($contextePage['annee_universitaire_id'] ?? 0)
+                . ', période ' . (string) ($contextePage['periode'] ?? '')
+                . ($matieres !== '' ? ', matière(s) : ' . $matieres . '.' : '.');
         }
 
         if ($preferences?->notes) {
