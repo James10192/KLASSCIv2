@@ -1,134 +1,40 @@
-/* KLASSCI Message Hub v2 — last-mile UI guards.
- * This file deliberately does not own business truth. It only consumes the typed
- * Message Hub API to hide controls the viewer cannot use and lets a user dismiss
- * an unsent optimistic message without touching server data.
- */
-(function () {
-    'use strict';
-
-    var root = document.querySelector('[data-message-hub-v2]');
-    if (!root) return;
-
-    var cfg = {};
-    try {
-        var node = root.querySelector('[data-message-hub-config]');
-        cfg = JSON.parse(node ? node.textContent : '{}');
-    } catch (e) {
-        cfg = {};
-    }
-
-    var dismissed = new Set();
-    var permissionCache = new Map();
-    var checkingConversation = null;
-    var checkTimer = null;
-
-    function currentConversationId() {
-        var id = new URLSearchParams(window.location.search).get('conversation');
-        return /^\d+$/.test(String(id || '')) ? String(id) : null;
-    }
-
-    function findFailedClientId(row) {
-        var retry = row.querySelector('[data-retry]');
-        return retry ? String(retry.getAttribute('data-retry') || '') : '';
-    }
-
-    function enhanceFailedMessages() {
-        root.querySelectorAll('.mh2-sendstate.is-failed').forEach(function (status) {
-            var row = status.closest('.mh2-msg-row');
-            if (!row) return;
-            var clientId = findFailedClientId(row);
-            if (!clientId) return;
-
-            if (dismissed.has(clientId)) {
-                row.remove();
-                return;
-            }
-
-            if (!status.querySelector('[data-dismiss-failed]')) {
-                var button = document.createElement('button');
-                button.type = 'button';
-                button.setAttribute('data-dismiss-failed', clientId);
-                button.textContent = 'Retirer';
-                button.setAttribute('aria-label', 'Retirer ce message non envoyé');
-                status.appendChild(document.createTextNode(' · '));
-                status.appendChild(button);
-            }
-        });
-    }
-
-    function applyVerifyPermissions(entities) {
-        var byId = new Map((entities || []).map(function (entity) {
-            return [String(entity.id), entity];
-        }));
-
-        root.querySelectorAll('.mh2-verify').forEach(function (panel) {
-            var relation = panel.querySelector('[data-link-relation]');
-            if (!relation) return;
-            var id = String(relation.getAttribute('data-link-relation') || '');
-            var entity = byId.get(id);
-            if (!entity || entity.can_verify !== false) return;
-
-            var readonly = document.createElement('div');
-            readonly.className = 'mh2-muted mh2-verify-readonly';
-            readonly.innerHTML = '<i class="fas fa-lock" aria-hidden="true"></i> Vous pouvez consulter ce lien, mais vous n’avez pas le droit de valider sa relation.';
-            panel.replaceWith(readonly);
-        });
-    }
-
-    function refreshVerifyPermissions() {
-        var conversationId = currentConversationId();
-        if (!conversationId || !cfg.conversationBase) return;
-
-        if (permissionCache.has(conversationId)) {
-            applyVerifyPermissions(permissionCache.get(conversationId));
-            return;
-        }
-        if (checkingConversation === conversationId) return;
-        checkingConversation = conversationId;
-
-        fetch(cfg.conversationBase + '/' + encodeURIComponent(conversationId), {
-            headers: {
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin'
-        }).then(function (response) {
-            if (!response.ok) throw new Error('context permission lookup failed');
-            return response.json();
-        }).then(function (payload) {
-            var entities = payload.linked_entities || [];
-            permissionCache.set(conversationId, entities);
-            applyVerifyPermissions(entities);
-        }).catch(function () {
-            // Backend remains authoritative. If this supplementary lookup fails,
-            // the PATCH endpoint still rejects any forbidden verification.
-        }).finally(function () {
-            checkingConversation = null;
-        });
-    }
-
-    function scheduleEnhance() {
-        window.clearTimeout(checkTimer);
-        checkTimer = window.setTimeout(function () {
-            enhanceFailedMessages();
-            refreshVerifyPermissions();
-        }, 30);
-    }
-
-    root.addEventListener('click', function (event) {
-        var button = event.target.closest('[data-dismiss-failed]');
-        if (!button) return;
-        event.preventDefault();
-        event.stopPropagation();
-        var clientId = String(button.getAttribute('data-dismiss-failed') || '');
-        if (clientId) dismissed.add(clientId);
-        var row = button.closest('.mh2-msg-row');
-        if (row) row.remove();
-    }, true);
-
-    var observer = new MutationObserver(scheduleEnhance);
-    observer.observe(root, {childList: true, subtree: true});
-
-    window.addEventListener('popstate', scheduleEnhance);
-    scheduleEnhance();
+/* KLASSCI Message Hub — shared items + responsive last-mile guards. */
+(function(){
+'use strict';
+var root=document.querySelector('[data-message-hub-v2]');if(!root)return;
+var cfg={};try{cfg=JSON.parse((root.querySelector('[data-message-hub-config]')||{}).textContent||'{}');}catch(e){}
+var link=document.createElement('link');link.rel='stylesheet';link.href='/css/messages-hub-v2-final.css';document.head.appendChild(link);
+var cache=new Map(),archived=new Set(),dismissed=new Set(),loading=null,timer=null,thread=root.querySelector('[data-thread]');
+var scroll={near:true,top:0,count:thread?thread.children.length:0};
+function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+function csrf(){var m=document.querySelector('meta[name="csrf-token"]');return m?m.content:''}
+function id(){var v=new URLSearchParams(location.search).get('conversation');return /^\d+$/.test(String(v||''))?String(v):null}
+function drawer(){return matchMedia('(max-width:1180px)').matches}
+function api(url,o){o=o||{};o.credentials='same-origin';o.headers=Object.assign({'Accept':'application/json','X-Requested-With':'XMLHttpRequest'},o.headers||{});if((o.method||'GET').toUpperCase()!=='GET'){o.headers['X-CSRF-TOKEN']=csrf();o.headers['Content-Type']='application/json'}return fetch(url,o).then(function(r){return r.json().catch(function(){return{}}).then(function(d){if(!r.ok)throw new Error(d.message||'Une erreur est survenue.');return d})})}
+function toast(t,err){var n=root.querySelector('[data-toast]');if(!n)return;n.className='mh2-toast is-visible'+(err?' is-error':'');n.innerHTML='<i class="fas '+(err?'fa-circle-exclamation':'fa-circle-check')+'"></i><span>'+esc(t)+'</span>';clearTimeout(n._timer);n._timer=setTimeout(function(){n.classList.remove('is-visible')},3000)}
+function initials(n){return String(n||'K').trim().split(/\s+/).slice(0,2).map(function(x){return x.charAt(0)}).join('').toUpperCase()}
+function account(t){return{staff:'Personnel',teacher:'Enseignant',student:'Étudiant',parent:'Parent'}[t]||'Compte KLASSCI'}
+function needsFinalRender(){var c=root.querySelector('[data-context-body]');return !!(root.querySelector('.mh2-verify,.mh2-business.is-ambiguous,.mh2-ai-strip .is-warning')||(c&&/(Relation à|Confiance|Dossiers \/ entités liés)/.test(c.textContent||'')))}
+function load(force){var cid=id();if(!cid||!cfg.conversationBase)return Promise.resolve(null);if(!force&&cache.has(cid)){var d=cache.get(cid);if(needsFinalRender())renderAll(d);return Promise.resolve(d)}if(loading===cid)return Promise.resolve(null);loading=cid;return api(cfg.conversationBase+'/'+encodeURIComponent(cid)).then(function(d){cache.set(cid,d);renderAll(d);return d}).catch(function(){return null}).finally(function(){loading=null})}
+function renderAll(d){renderContext(d);decorateCards(d);renderAi(d)}
+function renderContext(d){var box=root.querySelector('[data-context-body]');if(!box||!d)return;var c=d.conversation||{},ps=c.participants||[],items=d.linked_entities||[],hist=d.action_history||[];
+var people=ps.length?ps.map(function(p){return '<div class="mh2-person-card"><span class="mh2-avatar">'+esc(initials(p.name))+'</span><div><strong>'+esc(p.name)+'</strong><span>'+esc(p.role_label||'Compte KLASSCI')+(p.department?' · '+esc(p.department):'')+'</span><small class="mh2-account-kind">'+esc(account(p.account_type))+'</small></div></div>'}).join(''):'<div class="mh2-muted">Aucun participant disponible.</div>';
+var shared=items.length?items.map(function(x){var by=x.shared_by||{},purpose=x.share_purpose_label||'',open=x.open_url?'<a class="mh2-context-action" target="_blank" rel="noopener" href="'+esc(x.open_url)+'"><i class="fas fa-arrow-up-right-from-square"></i><span>Ouvrir le dossier</span></a>':'';return '<article class="mh2-context-entity is-'+esc(x.type)+'"><div class="mh2-entity-title"><strong>'+esc(x.entity_label||'Élément partagé')+'</strong><span class="mh2-shared-badge"><i class="fas fa-share-nodes"></i> Élément partagé</span></div><div class="mh2-share-meta"><span>Type</span><b>'+esc(x.type||'élément')+'</b>'+(by.name?'<span>Partagé par</span><b>'+esc(by.name)+'</b>':'')+(purpose?'<span>But</span><b>'+esc(purpose)+'</b>':'')+'</div>'+open+'</article>'}).join(''):'<div class="mh2-muted">Aucun élément métier partagé dans cette conversation.</div>';
+var peer=(ps[0]&&ps[0].name)||'l’interlocuteur',quick='';if(items.length){quick='<button class="mh2-context-action" data-ai="Résume les éléments partagés, leur auteur, leur objet et la demande explicite éventuelle, sans attribuer le dossier au participant."><i class="fas fa-wand-magic-sparkles"></i><span>Résumer le partage</span></button>'+(items.some(function(x){return x.type==='inscription'})?'<button class="mh2-context-action" data-ai="Explique l’inscription partagée uniquement à partir des données autorisées. Ne suppose aucun lien personnel avec l’auteur du partage."><i class="fas fa-file-signature"></i><span>Expliquer l’inscription</span></button>':'')+(items.some(function(x){return x.type==='paiement'||x.type==='inscription'})?'<button class="mh2-context-action" data-ai="Vérifie le paiement de l’étudiant concerné par l’élément partagé seulement si mes permissions et les sources le permettent. Ne fais aucune déduction financière sur l’auteur du partage."><i class="fas fa-receipt"></i><span>Vérifier le paiement</span></button>':'')+'<button class="mh2-context-action" data-ai="Prépare une réponse professionnelle à '+esc(peer)+' au sujet de l’élément partagé, sans inventer de relation avec l’étudiant."><i class="fas fa-reply"></i><span>Préparer une réponse</span></button><button class="mh2-context-action" data-follow-up><i class="fas fa-list-check"></i><span>Créer une action de suivi</span></button><button class="mh2-context-action" data-ai="La demande liée à cet élément partagé n’est pas assez claire. Prépare une question courte pour demander s’il faut vérifier le paiement, l’état de l’inscription ou autre chose."><i class="fas fa-circle-question"></i><span>Demander une précision</span></button>'}else quick='<div class="mh2-muted">Les actions apparaîtront lorsqu’un élément sera partagé.</div>';
+var history=hist.length?hist.map(function(a){return '<div class="mh2-history"><i class="fas fa-circle-dot"></i><div><strong>'+esc(a.title)+'</strong><span>'+esc(a.status)+' · '+esc(a.priority)+'</span></div></div>'}).join(''):'<div class="mh2-muted">Aucune action enregistrée dans ce fil.</div>';
+box.innerHTML='<section><h4>Participants</h4>'+people+'</section><section><h4>Éléments partagés</h4>'+shared+'</section><section><h4>Actions rapides</h4>'+quick+'</section><section><h4>Historique</h4>'+history+'</section>'}
+function decorateCards(d){var cards=[].slice.call(root.querySelectorAll('.mh2-business')),msgs=(d.messages||[]).filter(function(m){return m.type==='action_card'});cards.forEach(function(card,i){var b=(msgs[i]&&msgs[i].business_card)||{},status=card.querySelector('.mh2-link-status');card.classList.remove('is-ambiguous');if(status){status.className='mh2-link-status is-ok';status.innerHTML='<i class="fas fa-share-nodes"></i> Élément partagé'}card.querySelectorAll('.mh2-inline-warning,.mh2-verify').forEach(function(n){n.remove()});var old=card.querySelector('.mh2-shared-by');if(old)old.remove();var by=b.shared_by||{},purpose=b.share_purpose_label||'';if(by.name||purpose){var m=document.createElement('div');m.className='mh2-shared-by';m.innerHTML=(by.name?'<span>Partagé par : <strong>'+esc(by.name)+'</strong>'+(by.role_label?' · '+esc(by.role_label):'')+'</span>':'')+(purpose?'<span>But : <strong>'+esc(purpose)+'</strong></span>':'');card.appendChild(m)}})}
+function renderAi(d){var box=root.querySelector('[data-ai-strip]');if(!box)return;var p=((d.conversation||{}).participants||[])[0]||{},name=p.name||'l’interlocuteur';box.innerHTML='<button data-ai="Résume le partage : auteur, élément partagé, messages et demande explicite. Ne suppose aucun lien personnel entre l’auteur et l’étudiant."><i class="fas fa-wand-magic-sparkles"></i> Résumer le partage</button><button data-ai="Explique l’élément partagé à partir des seules données autorisées."><i class="fas fa-circle-info"></i> Expliquer</button><button data-ai="Vérifie le paiement de l’étudiant de l’élément partagé si les permissions et sources le permettent. Ne conclus rien sur la situation financière de '+esc(name)+'."><i class="fas fa-receipt"></i> Vérifier le paiement</button><button data-ai="Prépare une réponse professionnelle à '+esc(name)+' fondée uniquement sur la conversation et l’élément partagé."><i class="fas fa-reply"></i> Répondre</button>'}
+function failed(){root.querySelectorAll('.mh2-sendstate.is-failed').forEach(function(s){var row=s.closest('.mh2-msg-row'),r=row&&row.querySelector('[data-retry]');if(!row||!r)return;var x=String(r.dataset.retry||'');if(dismissed.has(x)){row.remove();return}if(!s.querySelector('[data-dismiss-failed]')){var b=document.createElement('button');b.type='button';b.dataset.dismissFailed=x;b.textContent='Retirer';s.appendChild(document.createTextNode(' · '));s.appendChild(b)}})}
+function prune(){var f=root.querySelector('.mh2-filter.is-active');if(!f||f.dataset.filter==='archived')return;root.querySelectorAll('[data-conversation]').forEach(function(r){r.style.display=archived.has(String(r.dataset.conversation))?'none':''})}
+function refreshArchived(){if(!cfg.bootstrap)return;api(cfg.bootstrap).then(function(d){archived=new Set((d.conversations||[]).filter(function(c){return c.state&&c.state.archived}).map(function(c){return String(c.id)}));prune()}).catch(function(){})}
+function patch(btn,key){var cid=id();if(!cid)return;var next=btn.getAttribute('aria-pressed')!=='true',body={};body[key]=next;btn.disabled=true;api(cfg.stateBase+'/'+cid+'/state',{method:'PATCH',body:JSON.stringify(body)}).then(function(){btn.disabled=false;btn.setAttribute('aria-pressed',next?'true':'false');btn.classList.toggle('is-on',next);if(key==='archived'){next?archived.add(cid):archived.delete(cid);prune();toast(next?'Conversation archivée. Retrouvez-la dans « Archivés ».':'Conversation restaurée.')}else toast(next?'Conversation marquée importante.':'Marque importante retirée.')}).catch(function(e){btn.disabled=false;toast(e.message,true)})}
+function toggle(){var p=root.querySelector('[data-context]');if(!p)return;if(drawer())p.classList.toggle('is-open');else root.classList.toggle('is-context-collapsed');var b=root.querySelector('[data-context-toggle]');if(b)b.setAttribute('aria-expanded',drawer()?String(p.classList.contains('is-open')):String(!root.classList.contains('is-context-collapsed')))}
+function newButton(){if(!thread)return null;var b=thread.querySelector('[data-new-messages]');if(b)return b;b=document.createElement('button');b.type='button';b.className='mh2-new-messages';b.dataset.newMessages='';b.innerHTML='<i class="fas fa-arrow-down"></i> Nouveaux messages';thread.appendChild(b);return b}
+if(thread)thread.addEventListener('scroll',function(){var dist=thread.scrollHeight-thread.scrollTop-thread.clientHeight;scroll.near=dist<90;scroll.top=thread.scrollTop;if(scroll.near){var b=thread.querySelector('[data-new-messages]');if(b)b.classList.remove('is-visible')}},{passive:true});
+root.addEventListener('click',function(e){var el=e.target.closest('[data-context-toggle]');if(el){e.preventDefault();e.stopImmediatePropagation();toggle();return}el=e.target.closest('[data-context-close]');if(el){e.preventDefault();e.stopImmediatePropagation();var p=root.querySelector('[data-context]');if(p)p.classList.remove('is-open');if(!drawer())root.classList.add('is-context-collapsed');return}el=e.target.closest('[data-archive]');if(el){e.preventDefault();e.stopImmediatePropagation();patch(el,'archived');return}el=e.target.closest('[data-important]');if(el){e.preventDefault();e.stopImmediatePropagation();patch(el,'important');return}el=e.target.closest('[data-dismiss-failed]');if(el){e.preventDefault();e.stopImmediatePropagation();dismissed.add(String(el.dataset.dismissFailed||''));var row=el.closest('.mh2-msg-row');if(row)row.remove();return}el=e.target.closest('[data-new-messages]');if(el&&thread){thread.scrollTop=thread.scrollHeight;scroll.near=true;el.classList.remove('is-visible');return}el=e.target.closest('[data-follow-up]');if(el){e.preventDefault();var n=root.querySelector('[data-new]');if(n)n.click();setTimeout(function(){var a=root.querySelector('[data-intent-action]');if(a)a.click()},30)}},true);
+function enhance(){failed();prune();var cid=id();if(cid){if(!cache.has(cid))load(true);else if(needsFinalRender())renderAll(cache.get(cid))}if(thread&&!scroll.near){var count=thread.children.length;if(count>scroll.count){thread.scrollTop=scroll.top;var b=newButton();if(b)b.classList.add('is-visible')}scroll.count=count}}
+var observer=new MutationObserver(function(){clearTimeout(timer);timer=setTimeout(enhance,60)});observer.observe(root,{childList:true,subtree:true});
+addEventListener('popstate',function(){load(true)});addEventListener('resize',function(){var p=root.querySelector('[data-context]');if(p&&!drawer())p.classList.remove('is-open')});
+refreshArchived();load(true);failed();
 })();
