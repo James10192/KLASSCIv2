@@ -199,7 +199,7 @@ class ESBTPTeacher extends Model implements Auditable
                 ? $t->type_seance->value : $t->type_seance) === $value);
 
         if ($specifique && $specifique->taux_horaire !== null) {
-            return (float) ($specifique->taux_horaire);
+            return (float) $specifique->taux_horaire;
         }
 
         return (float) ($this->taux_horaire ?? 0);
