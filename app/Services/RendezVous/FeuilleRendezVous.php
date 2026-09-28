@@ -2,6 +2,7 @@
 
 namespace App\Services\RendezVous;
 
+use App\Enums\CanalConvocationRdv;
 use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutReservationRdv;
 use App\Models\ESBTPRdvReservation;
@@ -69,7 +70,7 @@ class FeuilleRendezVous
                     'telephone' => (string) $r->telephone,
                     'contact2_nom' => $second['nom'] ?? null,
                     'contact2_telephone' => $second['telephone'] ?? null,
-                    'convocation' => $this->convocation($r->convocation_statut),
+                    'convocation' => $this->convocation($r),
                     'statut' => match ($r->statut) {
                         StatutReservationRdv::Honoree => 'Reçue',
                         StatutReservationRdv::Manquee => 'Non venue',
@@ -80,11 +81,15 @@ class FeuilleRendezVous
             })->all();
     }
 
-    private function convocation(?StatutConvocationRdv $statut): string
+    private function convocation(ESBTPRdvReservation $reservation): string
     {
-        return match ($statut) {
+        return match ($reservation->convocation_statut) {
             null => 'Non suivie',
-            StatutConvocationRdv::Envoyee => 'E-mail',
+            StatutConvocationRdv::Envoyee => match ($reservation->convocation_canal) {
+                CanalConvocationRdv::Whatsapp => 'WhatsApp',
+                CanalConvocationRdv::Email => 'E-mail',
+                default => 'E-mail', // anciennes reservations sans trace du canal
+            },
             StatutConvocationRdv::Telephone => 'Téléphone',
             StatutConvocationRdv::EnAttente => 'À envoyer',
             StatutConvocationRdv::SansEmail, StatutConvocationRdv::Echec => 'À prévenir',
