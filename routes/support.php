@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ESBTP\ReinscriptionIndexController;
 use App\Http\Controllers\Support\DemandeSupportController;
 use App\Http\Controllers\Support\PieceJointeDemandeController;
 use Illuminate\Support\Facades\Route;
@@ -23,3 +24,19 @@ Route::middleware(['auth'])->prefix('support')->name('support.')->group(function
     Route::get('demandes/{reference}/pieces/{piece}', [PieceJointeDemandeController::class, 'show'])
         ->whereNumber('piece')->middleware('throttle:60,1')->name('demandes.pieces.show');
 });
+
+/*
+| Correctif de charge — tableau de bord des reinscriptions.
+|
+| web.php charge ce fichier apres la declaration historique de la route. Laravel
+| remplace donc l'action de GET /esbtp/reinscription par ce read-model batch sans
+| toucher aux autres endpoints du module (show, create, load-category, API bulk).
+| Ce point peut retourner dans web.php lorsque l'ancien calcul N+1 aura ete retire.
+*/
+Route::get('/esbtp/reinscription', ReinscriptionIndexController::class)
+    ->middleware([
+        'auth',
+        'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer|identity.communicate',
+        'paywall',
+    ])
+    ->name('esbtp.reinscription.index');
