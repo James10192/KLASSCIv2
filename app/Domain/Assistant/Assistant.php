@@ -77,6 +77,10 @@ class Assistant
             outils: $this->catalogue->schemas($user),
             maxTokens: (int) config('assistant.limites.max_tokens', 2048),
             temperature: (float) config('assistant.limites.temperature', 0.2),
+            images: app(\App\Domain\Assistant\Pieces\PiecesJointes::class)->imagesPour(
+                (int) $user->id,
+                array_unique(array_merge($conversation->context['pieces'] ?? [], $contexteClient['pieces'] ?? []))
+            ),
         );
 
         $affichage = new ConstructeurAffichage($this->contextProvider);
