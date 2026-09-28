@@ -9,6 +9,7 @@ namespace App\Domain\Assistant\Fournisseurs;
  *   ['role' => 'user',      'texte' => string]
  *   ['role' => 'assistant', 'texte' => string, 'appels' => [['id', 'nom', 'arguments' => array], …]]
  *   ['role' => 'outil',     'id' => string, 'nom' => string, 'resultat' => string (JSON)]
+ * Images : liste éphémère [{mime, base64, nom}], jointe au dernier message utilisateur.
  *
  * Outils : ['nom', 'description', 'parametres' => schéma JSON], déclarés une
  * seule fois ; chaque adaptateur les traduit dans le format de son API.
@@ -27,12 +28,13 @@ final class RequeteModele
          * déclaration. Chaque adaptateur interdit l'appel à sa façon.
          */
         public readonly bool $conclure = false,
+        public readonly array $images = [],
     ) {
     }
 
     public function pourConclure(): self
     {
-        return new self($this->systeme, $this->messages, $this->outils, $this->maxTokens, $this->temperature, true);
+        return new self($this->systeme, $this->messages, $this->outils, $this->maxTokens, $this->temperature, true, $this->images);
     }
 
     public function avecMessages(array $messages): self
