@@ -49,6 +49,7 @@ class ESBTPTeacher extends Model implements Auditable
 
     protected $fillable = [
         'user_id',
+        'department_id',
         'matricule',
         'title',
         'specialization',
@@ -110,6 +111,18 @@ class ESBTPTeacher extends Model implements Auditable
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Département académique de l'enseignant.
+     *
+     * TeacherController::profile() charge cette relation pour les profils ESBTP.
+     * Elle doit donc être définie sur le modèle ESBTPTeacher afin d'éviter une
+     * RelationNotFoundException (HTTP 500) à l'ouverture du profil enseignant.
+     */
+    public function department()
+    {
+        return $this->belongsTo(ESBTPDepartment::class, 'department_id');
     }
 
     public function seancesCours()
@@ -186,7 +199,7 @@ class ESBTPTeacher extends Model implements Auditable
                 ? $t->type_seance->value : $t->type_seance) === $value);
 
         if ($specifique && $specifique->taux_horaire !== null) {
-            return (float) $specifique->taux_horaire;
+            return (float) ($specifique->taux_horaire);
         }
 
         return (float) ($this->taux_horaire ?? 0);
