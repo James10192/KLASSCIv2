@@ -12,6 +12,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Septembre 2026
 
+### Ajouts
+- **Nanan — images jointes et actions contrôlées.** Nanan accepte désormais une photo JPEG, PNG ou WebP avec une demande : l’image reste temporaire et privée, est lue visuellement par le modèle puis sert à préparer une proposition soumise à validation. Les tableaux Excel/CSV/Word existants restent inchangés ; une image ambiguë ne déclenche jamais de saisie automatique.
+
 ### Corrections
 - **Nanan — contexte de fiche étudiant prioritaire.** Sur un détail de résultats, l’identifiant de l’étudiant affiché est maintenant explicitement présenté à Nanan et imposé à sa proposition ; une ancienne carte de conversation ne peut plus élargir le nettoyage aux autres étudiants de la classe.
 - **Nanan — nettoyage borné à la fiche ouverte.** Depuis le détail d’un étudiant, Nanan utilise désormais son identifiant de page : sa proposition ne liste, ne supprime et ne régénère que le dossier affiché. Le nettoyage global par matière demeure inchangé depuis la génération de classe.
