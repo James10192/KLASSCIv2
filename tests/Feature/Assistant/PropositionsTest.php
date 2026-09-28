@@ -391,8 +391,14 @@ class PropositionsTest extends TestCase
         $this->assertStringContainsString('piece_id: ' . $reponse->json('id'), $systeme);
         $this->assertStringContainsString("n'en recopie JAMAIS les valeurs", $systeme);
 
-        $this->actingAs($this->user)->post(route('chatbot.pieces.deposer'), ['fichier' => \Illuminate\Http\UploadedFile::fake()->create('photo.png', 10)], ['Accept' => 'application/json'])
-            ->assertStatus(422);
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9J0H8AAAAASUVORK5CYII=');
+        $image = \Illuminate\Http\UploadedFile::fake()->createWithContent('notes.png', $png);
+        $imageReponse = $this->actingAs($this->user)->post(route('chatbot.pieces.deposer'), ['fichier' => $image], ['Accept' => 'application/json'])
+            ->assertCreated()->assertJson(['nom' => 'notes.png', 'type' => 'image']);
+
+        $images = app(\App\Domain\Assistant\Pieces\PiecesJointes::class)->imagesPour($this->user->id, [$imageReponse->json('id')]);
+        $this->assertCount(1, $images);
+        $this->assertSame('image/png', $images[0]['mime']);
 
         // Un vrai classeur passe la règle de type et arrive lu.
         $classeur = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
