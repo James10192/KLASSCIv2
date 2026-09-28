@@ -1071,6 +1071,7 @@ class CLIMaintenanceController extends BaseApiController
 
             // Cache clear pour que le nouveau code soit visible
             Artisan::call('config:clear');
+            Artisan::call('route:clear');
             Artisan::call('view:clear');
             Artisan::call('cache:clear');
             $steps[] = ['action' => 'cache_clear', 'status' => 'done'];
