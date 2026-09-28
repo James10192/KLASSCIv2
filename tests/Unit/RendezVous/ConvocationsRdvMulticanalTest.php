@@ -6,7 +6,6 @@ use App\Contracts\PorteurDeRendezVous;
 use App\Enums\CanalConvocationRdv;
 use App\Enums\StatutConvocationRdv;
 use App\Models\ESBTPRdvCreneau;
-use App\Models\ESBTPRdvReservation;
 use App\Services\MailPulse\MailPulseResult;
 use App\Services\RendezVous\CourrielConvocationRdv;
 use App\Services\RendezVous\MessagerieRdv;
@@ -189,15 +188,5 @@ class ConvocationsRdvMulticanalTest extends TestCase
         $r->fakePorteur = $porteur;
 
         return $r;
-    }
-}
-
-class ReservationMulticanalTestDouble extends ESBTPRdvReservation
-{
-    public ?PorteurDeRendezVous $fakePorteur = null;
-
-    public function porteur(): ?PorteurDeRendezVous
-    {
-        return $this->fakePorteur;
     }
 }
