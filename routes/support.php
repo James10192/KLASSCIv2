@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\API\CLI\CLITestFixtureController;
 use App\Http\Controllers\ESBTP\ReinscriptionIndexController;
 use App\Http\Controllers\Support\DemandeSupportController;
 use App\Http\Controllers\Support\PieceJointeDemandeController;
@@ -25,14 +24,6 @@ Route::middleware(['auth'])->prefix('support')->name('support.')->group(function
     Route::get('demandes/{reference}/pieces/{piece}', [PieceJointeDemandeController::class, 'show'])
         ->whereNumber('piece')->middleware('throttle:60,1')->name('demandes.pieces.show');
 });
-
-/*
-| Pont E2E temporaire : aucune cle CLI n'est transportee dans l'URL. Le
-| controleur verifie une preuve HMAC courte duree, un nonce mono-usage et le
-| host presentation. Route a supprimer a la fin de la campagne E2E.
-*/
-Route::get('/_e2e/reinscription-student', [CLITestFixtureController::class, 'signedAgentBridge'])
-    ->middleware('throttle:3,1');
 
 /*
 | Correctif de charge — tableau de bord des reinscriptions.
