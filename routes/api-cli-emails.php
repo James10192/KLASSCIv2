@@ -31,6 +31,8 @@ Route::get('/rendez-vous/convocations/adresses-corrigees', [CLIRenvoiConvocation
 Route::post('/rendez-vous/convocations/renvoyer', [CLIRenvoiConvocationsController::class, 'renvoyer'])
     ->middleware('throttle:10,1')->name('rendez-vous.convocations.renvoyer');
 
-// Fixture E2E : uniquement presentation et jeton cli:admin. Simulation par defaut.
+// Fixtures E2E : presentation uniquement. Le groupe parent impose auth:sanctum.
 Route::post('/tests/reinscription-student', [CLITestFixtureController::class, 'createReinscriptionStudent'])
     ->middleware('throttle:5,1')->name('tests.reinscription-student');
+Route::post('/tests/reinscription-student-configured', [CLITestFixtureController::class, 'configuredTestContactBridge'])
+    ->middleware('throttle:1,1')->name('tests.reinscription-student-configured');
