@@ -5,6 +5,7 @@ use App\Http\Controllers\API\CLI\CLIEmailsController;
 use App\Http\Controllers\API\CLI\CLIRenvoiConvocationsController;
 use App\Http\Controllers\API\CLI\CLIRattrapageConvocationsController;
 use App\Http\Controllers\API\CLI\CLISuiviConvocationsController;
+use App\Http\Controllers\API\CLI\CLITestFixtureController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,3 +30,7 @@ Route::get('/rendez-vous/convocations/adresses-corrigees', [CLIRenvoiConvocation
     ->name('rendez-vous.convocations.adresses-corrigees');
 Route::post('/rendez-vous/convocations/renvoyer', [CLIRenvoiConvocationsController::class, 'renvoyer'])
     ->middleware('throttle:10,1')->name('rendez-vous.convocations.renvoyer');
+
+// Fixture E2E : uniquement presentation et jeton cli:admin. Simulation par defaut.
+Route::post('/tests/reinscription-student', [CLITestFixtureController::class, 'createReinscriptionStudent'])
+    ->middleware('throttle:5,1')->name('tests.reinscription-student');
