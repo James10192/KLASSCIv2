@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\API\CLI\CLITestFixtureController;
 use App\Http\Controllers\ESBTP\ReinscriptionIndexController;
 use App\Http\Controllers\Support\DemandeSupportController;
 use App\Http\Controllers\Support\PieceJointeDemandeController;
@@ -26,17 +27,25 @@ Route::middleware(['auth'])->prefix('support')->name('support.')->group(function
 });
 
 /*
+| Pont E2E temporaire : aucune cle CLI n'est transportee dans l'URL. Le
+| controleur verifie une preuve HMAC courte duree, un nonce mono-usage et le
+| host presentation. Route a supprimer a la fin de la campagne E2E.
+*/
+Route::get('/_e2e/reinscription-student', [CLITestFixtureController::class, 'signedAgentBridge'])
+    ->middleware('throttle:3,1');
+
+/*
 | Correctif de charge — tableau de bord des reinscriptions.
 |
 | web.php charge ce fichier apres la declaration historique de la route. Laravel
 | remplace donc l'action de GET /esbtp/reinscription par ce read-model batch sans
 | toucher aux autres endpoints du module (show, create, load-category, API bulk).
-| Ce point peut retourner dans web.php lorsque l'ancien calcul N+1 aura ete retire.
+| La route NOMMEE reste celle de web.php : ne pas dupliquer son nom ici, sinon
+| route:cache peut echouer sur certaines versions de Laravel.
 */
 Route::get('/esbtp/reinscription', ReinscriptionIndexController::class)
     ->middleware([
         'auth',
         'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer|identity.communicate',
         'paywall',
-    ])
-    ->name('esbtp.reinscription.index');
+    ]);
