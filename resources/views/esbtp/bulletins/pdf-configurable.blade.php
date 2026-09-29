@@ -11,6 +11,10 @@
         $anneeAffichee = ($bulletin ?? null)?->anneeUniversitaire ?? ($anneeUniversitaire ?? null);
         $anneeLabel = $anneeAffichee?->display_name ?? '';
         $typeScale = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
+        $headerScale = max(80, min(150, (int) ($settings['bulletin_header_scale'] ?? 100)));
+        $headerRatio = $headerScale / 100;
+        $headerFont = static fn ($px) => round(((float) $px) * $headerRatio, 2);
+        $headerLogoSize = max(58, min(108, (int) round(72 * $headerRatio)));
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -70,7 +74,7 @@
         }
         .header-left {
             width: 26%;
-            font-size: {{ $typeScale['table_head'] }}px;
+            font-size: {{ $headerFont($typeScale['table_head']) }}px;
             line-height: 1.5;
             color: #374151;
             border-right: 1px solid #e5e7eb;
@@ -84,46 +88,46 @@
         }
         .header-right {
             width: 26%;
-            font-size: {{ $typeScale['info'] }}px;
+            font-size: {{ $headerFont($typeScale['info']) }}px;
             line-height: 1.5;
             text-align: right;
             padding-left: 8px;
             border-left: 1px solid #e5e7eb;
         }
         .logo {
-            width: 72px;
-            height: 72px;
+            width: {{ $headerLogoSize }}px;
+            height: {{ $headerLogoSize }}px;
             object-fit: contain;
             margin-bottom: 4px;
         }
         .school-name {
             font-weight: 700;
-            font-size: {{ $typeScale['heading'] }}px;
+            font-size: {{ $headerFont($typeScale['heading']) }}px;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
             letter-spacing: 0.04em;
             margin-bottom: 3px;
         }
         .school-address {
-            font-size: {{ $typeScale['meta'] }}px;
+            font-size: {{ $headerFont($typeScale['meta']) }}px;
             color: #6b7280;
         }
         .header-right .title {
             font-weight: 700;
-            font-size: {{ $typeScale['title'] }}px;
+            font-size: {{ $headerFont($typeScale['title']) }}px;
             text-decoration: underline;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
             margin-bottom: 4px;
         }
         .header-right .period {
-            font-size: {{ $typeScale['table'] }}px;
+            font-size: {{ $headerFont($typeScale['table']) }}px;
             font-weight: 600;
             color: #1f2937;
             margin-bottom: 2px;
         }
         .header-right .year {
-            font-size: {{ $typeScale['info'] }}px;
+            font-size: {{ $headerFont($typeScale['info']) }}px;
             color: #374151;
         }
 
