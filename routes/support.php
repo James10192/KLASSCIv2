@@ -31,12 +31,13 @@ Route::middleware(['auth'])->prefix('support')->name('support.')->group(function
 | web.php charge ce fichier apres la declaration historique de la route. Laravel
 | remplace donc l'action de GET /esbtp/reinscription par ce read-model batch sans
 | toucher aux autres endpoints du module (show, create, load-category, API bulk).
-| La route NOMMEE reste celle de web.php : ne pas dupliquer son nom ici, sinon
-| route:cache peut echouer sur certaines versions de Laravel.
+| La route finale doit conserver le nom historique, sinon le refresh des lookups
+| de Laravel retire `esbtp.reinscription.index` de la collection des routes.
 */
 Route::get('/esbtp/reinscription', ReinscriptionIndexController::class)
     ->middleware([
         'auth',
         'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk|identity.enrollment_officer|identity.communicate',
         'paywall',
-    ]);
+    ])
+    ->name('esbtp.reinscription.index');
