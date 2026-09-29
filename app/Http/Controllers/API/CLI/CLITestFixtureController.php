@@ -69,7 +69,8 @@ class CLITestFixtureController extends BaseApiController
         }
 
         $token = PersonalAccessToken::query()->find((int) $data['token_id']);
-        if (! $token || ! in_array('cli:admin', $token->abilities ?? [], true)) {
+        $abilities = $token?->abilities ?? [];
+        if (! $token || (! in_array('*', $abilities, true) && ! in_array('cli:admin', $abilities, true))) {
             return response()->json(['message' => 'Preuve CLI invalide.'], 403);
         }
 
