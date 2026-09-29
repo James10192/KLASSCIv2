@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
+use App\Services\MailPulse\MailPulseClient;
 use App\Services\Testing\ReinscriptionStudentFixture;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -111,5 +112,96 @@ class CLITestFixtureController extends BaseApiController
             'message' => 'Etudiant E2E cree sur l annee precedente.',
             'data' => $result,
         ], 201);
+    }
+
+    /**
+     * Pont mono-usage pour la campagne E2E en cours. Il ne prend aucune donnee
+     * utilisateur en entree : il reutilise strictement les destinataires de test
+     * deja configures dans l'instance presentation. Cela permet au runner externe
+     * de creer un dossier sans transporter le jeton CLI ni les contacts dans Git.
+     * A retirer apres la recette.
+     */
+    public function configuredTestContactBridge(
+        Request $request,
+        ReinscriptionStudentFixture $fixture,
+        MailPulseClient $mailpulse
+    ): JsonResponse {
+        if ($request->getHost() !== 'presentation.klassci.com') {
+            abort(404);
+        }
+
+        $email = $this->firstActiveRecipient(
+            $mailpulse->getSetting('mailpulse_test_email_recipients', 'mailpulse_test_email_recipients', '')
+        );
+        if ($email === null) {
+            $legacy = trim($mailpulse->getSetting('mailpulse_test_email', 'test_notification_email', ''));
+            $email = filter_var($legacy, FILTER_VALIDATE_EMAIL) ? $legacy : null;
+        }
+
+        $phone = $this->firstActiveRecipient(
+            $mailpulse->getSetting('mailpulse_test_phone_recipients', 'mailpulse_test_phone_recipients', '')
+        );
+        if ($phone === null) {
+            $raw = trim($mailpulse->getSetting('mailpulse_test_phone', 'test_notification_phone', ''));
+            if ($raw === '') {
+                $raw = trim($mailpulse->getSetting('mailpulse_test_phones', 'test_notification_phones', ''));
+            }
+            $phone = preg_split('/[\r\n,;]+/', $raw)[0] ?? null;
+        }
+        $phone = $this->nationalPhone($phone);
+
+        if ($email === null || $phone === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Les destinataires de test MailPulse ne sont pas configures avec un email et un mobile ivoirien valides.',
+                'email_configured' => $email !== null,
+                'phone_configured' => $phone !== null,
+            ], 422);
+        }
+
+        if (! Cache::add('e2e:reinscription-student:configured:20260929', true, now()->addHour())) {
+            return response()->json(['message' => 'Fixture configuree deja executee.'], 409);
+        }
+
+        $result = $fixture->create($email, $phone, true, 'E2E260929PATRICK');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Etudiant E2E cree avec les destinataires de test configures.',
+            'data' => $result,
+        ], 201);
+    }
+
+    private function firstActiveRecipient(string $json): ?string
+    {
+        $decoded = json_decode($json, true);
+        if (! is_array($decoded)) {
+            return null;
+        }
+
+        foreach ($decoded as $recipient) {
+            if (! is_array($recipient) || ($recipient['enabled'] ?? true) === false) {
+                continue;
+            }
+            $value = trim((string) ($recipient['value'] ?? ''));
+            if ($value !== '') {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function nationalPhone(?string $raw): ?string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $raw) ?: '';
+        if (preg_match('/^0\d{9}$/', $digits)) {
+            return $digits;
+        }
+        if (preg_match('/^225(0\d{9})$/', $digits, $m)) {
+            return $m[1];
+        }
+
+        return null;
     }
 }
