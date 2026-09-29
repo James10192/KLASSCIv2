@@ -24,6 +24,7 @@ class CLITestFixtureController extends BaseApiController
 
         $data = $request->validate([
             'email' => ['required', 'email:rfc', 'max:255'],
+            'telephone' => ['required', 'regex:/^0\d{9}$/'],
             'matricule' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9_-]+$/'],
             'apply' => ['nullable', 'boolean'],
         ]);
@@ -31,6 +32,7 @@ class CLITestFixtureController extends BaseApiController
         return $this->successResponse(
             $fixture->create(
                 $data['email'],
+                $data['telephone'],
                 (bool) ($data['apply'] ?? false),
                 $data['matricule'] ?? null,
             ),
@@ -46,7 +48,8 @@ class CLITestFixtureController extends BaseApiController
      * Le jeton Sanctum n'est jamais transmis. Le client prouve qu'il le connait
      * avec un HMAC court terme construit a partir du hash deja stocke par Sanctum.
      * Le nonce ne peut servir qu'une fois et le lien expire en deux minutes.
-     * Cette route sera retiree apres la campagne E2E.
+     * Les contacts et le matricule font partie de la signature afin qu'aucun
+     * parametre de creation ne puisse etre modifie en transit.
      */
     public function signedAgentBridge(
         Request $request,
@@ -60,6 +63,9 @@ class CLITestFixtureController extends BaseApiController
             'token_id' => ['required', 'integer', 'min:1'],
             'ts' => ['required', 'integer'],
             'nonce' => ['required', 'string', 'size:32', 'regex:/^[a-f0-9]+$/'],
+            'email' => ['required', 'email:rfc', 'max:255'],
+            'telephone' => ['required', 'regex:/^0\d{9}$/'],
+            'matricule' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9_-]+$/'],
             'sig' => ['required', 'string', 'size:64', 'regex:/^[a-f0-9]+$/'],
         ]);
 
@@ -79,6 +85,9 @@ class CLITestFixtureController extends BaseApiController
             'create-reinscription-student',
             $timestamp,
             $data['nonce'],
+            mb_strtolower(trim($data['email'])),
+            $data['telephone'],
+            $data['matricule'] ?? '',
         ]);
         $expected = hash_hmac('sha256', $message, (string) $token->token);
         if (! hash_equals($expected, $data['sig'])) {
@@ -90,7 +99,12 @@ class CLITestFixtureController extends BaseApiController
             return response()->json(['message' => 'Preuve deja utilisee.'], 409);
         }
 
-        $result = $fixture->create('contact@klassci.com', true);
+        $result = $fixture->create(
+            $data['email'],
+            $data['telephone'],
+            true,
+            $data['matricule'] ?? null,
+        );
 
         return response()->json([
             'success' => true,
