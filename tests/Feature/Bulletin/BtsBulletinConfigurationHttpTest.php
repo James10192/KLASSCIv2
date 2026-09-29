@@ -124,6 +124,7 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         $response = $this->postJson(route('esbtp.bulletins.save-configuration'), [
             'bulletin_style' => 'yakro',
             'bulletin_font_size' => '14',
+            'bulletin_header_scale' => '125',
             'bulletin_bts1_s1_council_title' => 'Appreciation du Conseil de Classe',
             'bulletin_bts1_semester1_weight' => '1',
             'bulletin_bts1_semester2_weight' => '2',
@@ -133,6 +134,7 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         $response->assertJsonPath('success', true);
         $response->assertJsonPath('settings.bulletin_style', 'yakro');
         $response->assertJsonPath('settings.bulletin_font_size', '14');
+        $response->assertJsonPath('settings.bulletin_header_scale', '125');
         $response->assertJsonPath(
             'settings.bulletin_bts1_s1_council_title',
             'Appreciation du Conseil de Classe'
@@ -140,9 +142,24 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         self::assertFalse($response->isRedirection());
         self::assertSame('yakro', SettingsHelper::get('bulletin_style'));
         self::assertSame('14', SettingsHelper::get('bulletin_font_size'));
+        self::assertSame('125', SettingsHelper::get('bulletin_header_scale'));
         self::assertSame(
             'Appreciation du Conseil de Classe',
             SettingsHelper::get('bulletin_bts1_s1_council_title')
         );
+    }
+
+    public function test_yakro_header_scale_is_rejected_outside_safe_bounds(): void
+    {
+        SettingsHelper::setOrCreate('bulletin_bts1_semester1_weight', '1', 'bulletin');
+        SettingsHelper::setOrCreate('bulletin_bts1_semester2_weight', '1', 'bulletin');
+
+        $response = $this->postJson(route('esbtp.bulletins.save-configuration'), [
+            'bulletin_header_scale' => '175',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors(['bulletin_header_scale']);
+        self::assertNull(SettingsHelper::get('bulletin_header_scale'));
     }
 }

@@ -14,6 +14,7 @@
     $enabledCount = collect($settings ?? [])->filter(fn($v, $k) => str_starts_with($k, 'bulletin_show_') && $v == '1')->count();
     $currentStyle = $settings['bulletin_style'] ?? 'yakro';
     $currentFont = (int) ($settings['bulletin_font_size'] ?? 13);
+    $currentHeaderScale = max(80, min(150, (int) ($settings['bulletin_header_scale'] ?? 100)));
 @endphp
 
 <div class="dashboard-acasi">
@@ -22,7 +23,7 @@
          premier d'entre eux et Alpine recevait `bulletinConfiguration(` --
          SyntaxError, aucune section visible. $currentStyle est un slug
          controle (yakro|abidjan), pas une donnee libre. --}}
-    <div class="main-content" x-data="bulletinConfiguration('{{ $currentStyle }}', {{ $currentFont }})">
+    <div class="main-content" x-data="bulletinConfiguration('{{ $currentStyle }}', {{ $currentFont }}, {{ $currentHeaderScale }})">
         <div class="bcfg-hero">
             <div class="bcfg-hero-top">
                 <div class="bcfg-hero-left">
@@ -123,6 +124,14 @@
                                     @endforeach
                                 </select>
 
+                                <label class="bcfg-label" style="margin-top:.85rem;">Taille de l'en-tête</label>
+                                <div style="display:flex;align-items:center;gap:.75rem;">
+                                    <input type="range" class="form-range" name="bulletin_header_scale"
+                                           min="80" max="150" step="5" x-model.number="headerScale" style="flex:1;">
+                                    <strong style="min-width:52px;text-align:right;" x-text="headerScale + '%'"></strong>
+                                </div>
+                                <div class="bcfg-hint" style="margin-top:.35rem;">Agrandit uniquement République, ministère, logo, nom de l'école et titre du bulletin. 100 % = taille actuelle.</div>
+
                                 <label class="bcfg-label" style="margin-top:.85rem;">Marge haut / bas (mm)</label>
                                 <input type="number" class="bcfg-input" name="bulletin_margin_vertical"
                                        min="2" max="25" step="1"
@@ -202,17 +211,19 @@
 @include('partials._klassci_toast')
 <script>
 if (typeof window.bulletinConfiguration !== 'function') {
-    window.bulletinConfiguration = function (initialStyle, initialFont) {
+    window.bulletinConfiguration = function (initialStyle, initialFont, initialHeaderScale) {
         return {
             tab: 'bts',
             style: initialStyle || 'yakro',
             fontSize: Number(initialFont || 13),
+            headerScale: Math.max(80, Math.min(150, Number(initialHeaderScale || 100))),
             saving: false,
             get styleLabel() {
                 return this.style === 'abidjan' ? 'Abidjan' : 'Yakro';
             },
             get previewTitleStyle() {
-                return { fontSize: (this.fontSize + 2) + 'px' };
+                const px = (this.fontSize + 2) * (this.headerScale / 100);
+                return { fontSize: px.toFixed(1) + 'px' };
             },
             get previewTableStyle() {
                 return { fontSize: Math.max(8, this.fontSize - 1) + 'px', fontWeight: '700' };
@@ -249,6 +260,9 @@ if (typeof window.bulletinConfiguration !== 'function') {
                     }
                     if (payload.settings && payload.settings.bulletin_font_size) {
                         this.fontSize = Number(payload.settings.bulletin_font_size);
+                    }
+                    if (payload.settings && payload.settings.bulletin_header_scale) {
+                        this.headerScale = Number(payload.settings.bulletin_header_scale);
                     }
                     if (payload.settings && payload.settings.bulletin_style) {
                         this.style = payload.settings.bulletin_style;

@@ -2253,6 +2253,10 @@ class ESBTPBulletinController extends Controller
      */
     public function saveConfiguration(Request $request)
     {
+        $request->validate([
+            'bulletin_header_scale' => ['nullable', 'integer', 'min:80', 'max:150'],
+        ]);
+
         $effectiveBtsSettings = BtsBulletinPolicy::effectiveSettings(
             $request->all(),
             fn (string $key, string $default) => SettingsHelper::get($key, $default)
@@ -2328,6 +2332,7 @@ class ESBTPBulletinController extends Controller
             // Liste de tous les paramètres de bulletin (BTS + LMD)
             $allBulletinFields = array_merge($checkboxFields, [
                 'bulletin_font_size',
+                'bulletin_header_scale',
                 'bulletin_margin_vertical',
                 'bulletin_margin_horizontal',
                 'bulletin_decision_min_height',

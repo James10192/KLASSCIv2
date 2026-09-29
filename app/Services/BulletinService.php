@@ -2006,6 +2006,10 @@ class BulletinService
             // En-tête bulletin
             'bulletin_school_name_custom' => \App\Helpers\SettingsHelper::get('bulletin_school_name_custom', ''),
             'bulletin_font_size' => \App\Helpers\SettingsHelper::get('bulletin_font_size', '13'),
+            // Echelle independante de l'en-tete Yakro : 100 = taille historique.
+            // Elle permet d'agrandir Republique / logo / etablissement / titre sans
+            // gonfler les tableaux et risquer de pousser le bulletin sur 2 pages.
+            'bulletin_header_scale' => \App\Helpers\SettingsHelper::get('bulletin_header_scale', '100'),
             'bulletin_style' => \App\Helpers\SettingsHelper::get('bulletin_style', 'yakro'),
             'bulletin_bts1_s1_council_title' => \App\Helpers\SettingsHelper::get('bulletin_bts1_s1_council_title', 'Décision du conseil de classe'),
             'bulletin_show_header' => \App\Helpers\SettingsHelper::get('bulletin_show_header', '1'),
