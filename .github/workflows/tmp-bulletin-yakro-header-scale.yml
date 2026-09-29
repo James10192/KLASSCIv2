@@ -1,0 +1,198 @@
+name: Temporary Yakro bulletin header patch
+
+on:
+  push:
+    branches: [presentation]
+    paths:
+      - '.github/workflows/tmp-bulletin-yakro-header-scale.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: presentation
+          fetch-depth: 0
+
+      - name: Patch configurable Yakro header
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{path}: expected exactly one occurrence, found {count}\n--- needle ---\n{old}")
+              p.write_text(text.replace(old, new, 1))
+
+          # 1) Canonical bulletin settings payload.
+          replace_once(
+              'app/Services/BulletinService.php',
+              "            'bulletin_font_size' => \\App\\Helpers\\SettingsHelper::get('bulletin_font_size', '13'),\n            'bulletin_style' => \\App\\Helpers\\SettingsHelper::get('bulletin_style', 'yakro'),",
+              "            'bulletin_font_size' => \\App\\Helpers\\SettingsHelper::get('bulletin_font_size', '13'),\n            // Echelle independante de l'en-tete Yakro : 100 = taille historique.\n            // Elle permet d'agrandir Republique / logo / etablissement / titre sans\n            // gonfler les tableaux et risquer de pousser le bulletin sur 2 pages.\n            'bulletin_header_scale' => \\App\\Helpers\\SettingsHelper::get('bulletin_header_scale', '100'),\n            'bulletin_style' => \\App\\Helpers\\SettingsHelper::get('bulletin_style', 'yakro'),"
+          )
+
+          # 2) Persist + validate the setting through the existing bulletin configuration endpoint.
+          replace_once(
+              'app/Http/Controllers/ESBTPBulletinController.php',
+              "    public function saveConfiguration(Request $request)\n    {\n        $effectiveBtsSettings = BtsBulletinPolicy::effectiveSettings(",
+              "    public function saveConfiguration(Request $request)\n    {\n        $request->validate([\n            'bulletin_header_scale' => ['nullable', 'integer', 'min:80', 'max:150'],\n        ]);\n\n        $effectiveBtsSettings = BtsBulletinPolicy::effectiveSettings("
+          )
+          replace_once(
+              'app/Http/Controllers/ESBTPBulletinController.php',
+              "                'bulletin_font_size',\n                'bulletin_margin_vertical',",
+              "                'bulletin_font_size',\n                'bulletin_header_scale',\n                'bulletin_margin_vertical',"
+          )
+
+          # 3) UI: per-tenant control on the existing bulletin configuration screen.
+          replace_once(
+              'resources/views/esbtp/bulletins/configuration.blade.php',
+              "    $currentFont = (int) ($settings['bulletin_font_size'] ?? 13);\n@endphp",
+              "    $currentFont = (int) ($settings['bulletin_font_size'] ?? 13);\n    $currentHeaderScale = max(80, min(150, (int) ($settings['bulletin_header_scale'] ?? 100)));\n@endphp"
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/configuration.blade.php',
+              "x-data=\"bulletinConfiguration('{{ $currentStyle }}', {{ $currentFont }})\"",
+              "x-data=\"bulletinConfiguration('{{ $currentStyle }}', {{ $currentFont }}, {{ $currentHeaderScale }})\""
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/configuration.blade.php',
+              "                                </select>\n\n                                <label class=\"bcfg-label\" style=\"margin-top:.85rem;\">Marge haut / bas (mm)</label>",
+              "                                </select>\n\n                                <label class=\"bcfg-label\" style=\"margin-top:.85rem;\">Taille de l'en-tête</label>\n                                <div style=\"display:flex;align-items:center;gap:.75rem;\">\n                                    <input type=\"range\" class=\"form-range\" name=\"bulletin_header_scale\"\n                                           min=\"80\" max=\"150\" step=\"5\" x-model.number=\"headerScale\" style=\"flex:1;\">\n                                    <strong style=\"min-width:52px;text-align:right;\" x-text=\"headerScale + '%'\"></strong>\n                                </div>\n                                <div class=\"bcfg-hint\" style=\"margin-top:.35rem;\">Agrandit uniquement République, ministère, logo, nom de l'école et titre du bulletin. 100 % = taille actuelle.</div>\n\n                                <label class=\"bcfg-label\" style=\"margin-top:.85rem;\">Marge haut / bas (mm)</label>"
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/configuration.blade.php',
+              "    window.bulletinConfiguration = function (initialStyle, initialFont) {\n        return {\n            tab: 'bts',\n            style: initialStyle || 'yakro',\n            fontSize: Number(initialFont || 13),",
+              "    window.bulletinConfiguration = function (initialStyle, initialFont, initialHeaderScale) {\n        return {\n            tab: 'bts',\n            style: initialStyle || 'yakro',\n            fontSize: Number(initialFont || 13),\n            headerScale: Math.max(80, Math.min(150, Number(initialHeaderScale || 100))),"
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/configuration.blade.php',
+              "            get previewTitleStyle() {\n                return { fontSize: (this.fontSize + 2) + 'px' };\n            },",
+              "            get previewTitleStyle() {\n                const px = (this.fontSize + 2) * (this.headerScale / 100);\n                return { fontSize: px.toFixed(1) + 'px' };\n            },"
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/configuration.blade.php',
+              "                    if (payload.settings && payload.settings.bulletin_font_size) {\n                        this.fontSize = Number(payload.settings.bulletin_font_size);\n                    }\n                    if (payload.settings && payload.settings.bulletin_style) {",
+              "                    if (payload.settings && payload.settings.bulletin_font_size) {\n                        this.fontSize = Number(payload.settings.bulletin_font_size);\n                    }\n                    if (payload.settings && payload.settings.bulletin_header_scale) {\n                        this.headerScale = Number(payload.settings.bulletin_header_scale);\n                    }\n                    if (payload.settings && payload.settings.bulletin_style) {"
+          )
+
+          # 4) Official Yakro PDF: scale only the header, not the body/table typography.
+          replace_once(
+              'resources/views/esbtp/bulletins/pdf-configurable.blade.php',
+              "        $typeScale = \\App\\Services\\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);\n    @endphp",
+              "        $typeScale = \\App\\Services\\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);\n        $headerScale = max(80, min(150, (int) ($settings['bulletin_header_scale'] ?? 100)));\n        $headerRatio = $headerScale / 100;\n        $headerFont = static fn ($px) => round(((float) $px) * $headerRatio, 2);\n        $headerLogoSize = max(58, min(108, (int) round(72 * $headerRatio)));\n    @endphp"
+          )
+          replacements = {
+              "font-size: {{ $typeScale['table_head'] }}px;\n            line-height: 1.5;\n            color: #374151;\n            border-right": "font-size: {{ $headerFont($typeScale['table_head']) }}px;\n            line-height: 1.5;\n            color: #374151;\n            border-right",
+              "font-size: {{ $typeScale['info'] }}px;\n            line-height: 1.5;\n            text-align: right;": "font-size: {{ $headerFont($typeScale['info']) }}px;\n            line-height: 1.5;\n            text-align: right;",
+              "            width: 72px;\n            height: 72px;": "            width: {{ $headerLogoSize }}px;\n            height: {{ $headerLogoSize }}px;",
+              "font-size: {{ $typeScale['heading'] }}px;\n            color: {{ $pdfPrimary }};\n            text-transform: uppercase;": "font-size: {{ $headerFont($typeScale['heading']) }}px;\n            color: {{ $pdfPrimary }};\n            text-transform: uppercase;",
+              "font-size: {{ $typeScale['meta'] }}px;\n            color: #6b7280;\n        }\n        .header-right .title": "font-size: {{ $headerFont($typeScale['meta']) }}px;\n            color: #6b7280;\n        }\n        .header-right .title",
+              "font-size: {{ $typeScale['title'] }}px;\n            text-decoration: underline;\n            color: {{ $pdfPrimary }};": "font-size: {{ $headerFont($typeScale['title']) }}px;\n            text-decoration: underline;\n            color: {{ $pdfPrimary }};",
+              "font-size: {{ $typeScale['table'] }}px;\n            font-weight: 600;\n            color: #1f2937;": "font-size: {{ $headerFont($typeScale['table']) }}px;\n            font-weight: 600;\n            color: #1f2937;",
+              "font-size: {{ $typeScale['info'] }}px;\n            color: #374151;\n        }\n\n        /* ── Fiche étudiant": "font-size: {{ $headerFont($typeScale['info']) }}px;\n            color: #374151;\n        }\n\n        /* ── Fiche étudiant",
+          }
+          for old, new in replacements.items():
+              replace_once('resources/views/esbtp/bulletins/pdf-configurable.blade.php', old, new)
+
+          # 5) Web preview follows the same header-only scale.
+          replace_once(
+              'resources/views/esbtp/bulletins/preview.blade.php',
+              "    $typeScale = \\App\\Services\\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);\n@endphp",
+              "    $typeScale = \\App\\Services\\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);\n    $headerScale = max(80, min(150, (int) ($settings['bulletin_header_scale'] ?? 100)));\n    $headerRatio = $headerScale / 100;\n    $headerFont = static fn ($px) => round(((float) $px) * $headerRatio, 2);\n@endphp"
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/preview.blade.php',
+              "        font-size: {{ $typeScale['title'] }}px;\n    }\n\n    .motto {",
+              "        font-size: {{ $headerFont($typeScale['title']) }}px;\n    }\n\n    .motto {"
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/preview.blade.php',
+              "    .motto {\n        font-style: italic;\n        font-size: {{ $typeScale['info'] }}px;\n    }\n\n    .ministry-title {\n        font-size: {{ $typeScale['info'] }}px;\n    }",
+              "    .motto {\n        font-style: italic;\n        font-size: {{ $headerFont($typeScale['info']) }}px;\n    }\n\n    .ministry-title {\n        font-size: {{ $headerFont($typeScale['info']) }}px;\n    }"
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/preview.blade.php',
+              "    .bulletin-title {\n        font-weight: bold;\n        font-size: {{ $typeScale['title'] }}px;",
+              "    .bulletin-title {\n        font-weight: bold;\n        font-size: {{ $headerFont($typeScale['title']) }}px;"
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/preview.blade.php',
+              "    .edition-date, .cycle-info, .diploma-info, .diploma-code {\n        font-size: {{ $typeScale['info'] }}px;\n    }\n\n    .academic-year {\n        font-size: {{ $typeScale['info'] }}px;",
+              "    .edition-date, .cycle-info, .diploma-info, .diploma-code {\n        font-size: {{ $headerFont($typeScale['info']) }}px;\n    }\n\n    .academic-year {\n        font-size: {{ $headerFont($typeScale['info']) }}px;"
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/preview.blade.php',
+              "        max-width: 150px;\n        margin: 0 auto;\n        text-align: center;\n        display: flex;\n        justify-content: center;\n        align-items: center;\n        height: 120px;",
+              "        max-width: {{ (int) round(150 * $headerRatio) }}px;\n        margin: 0 auto;\n        text-align: center;\n        display: flex;\n        justify-content: center;\n        align-items: center;\n        height: {{ (int) round(120 * $headerRatio) }}px;"
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/preview.blade.php',
+              "    .school-name {\n        font-size: {{ $typeScale['title'] }}px;",
+              "    .school-name {\n        font-size: {{ $headerFont($typeScale['title']) }}px;"
+          )
+          replace_once(
+              'resources/views/esbtp/bulletins/preview.blade.php',
+              "    .school-contact {\n        font-size: {{ $typeScale['meta'] }}px;",
+              "    .school-contact {\n        font-size: {{ $headerFont($typeScale['meta']) }}px;"
+          )
+
+          # 6) Feature test: the new setting is persisted, returned and range-validated.
+          replace_once(
+              'tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php',
+              "            'bulletin_font_size' => '14',\n            'bulletin_bts1_s1_council_title' => 'Appreciation du Conseil de Classe',",
+              "            'bulletin_font_size' => '14',\n            'bulletin_header_scale' => '125',\n            'bulletin_bts1_s1_council_title' => 'Appreciation du Conseil de Classe',"
+          )
+          replace_once(
+              'tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php',
+              "        $response->assertJsonPath('settings.bulletin_font_size', '14');\n        $response->assertJsonPath(\n",
+              "        $response->assertJsonPath('settings.bulletin_font_size', '14');\n        $response->assertJsonPath('settings.bulletin_header_scale', '125');\n        $response->assertJsonPath(\n"
+          )
+          replace_once(
+              'tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php',
+              "        self::assertSame('14', SettingsHelper::get('bulletin_font_size'));\n        self::assertSame(\n",
+              "        self::assertSame('14', SettingsHelper::get('bulletin_font_size'));\n        self::assertSame('125', SettingsHelper::get('bulletin_header_scale'));\n        self::assertSame(\n"
+          )
+          replace_once(
+              'tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php',
+              "    }\n}\n",
+              "    }\n\n    public function test_yakro_header_scale_is_rejected_outside_safe_bounds(): void\n    {\n        SettingsHelper::setOrCreate('bulletin_bts1_semester1_weight', '1', 'bulletin');\n        SettingsHelper::setOrCreate('bulletin_bts1_semester2_weight', '1', 'bulletin');\n\n        $response = $this->postJson(route('esbtp.bulletins.save-configuration'), [\n            'bulletin_header_scale' => '175',\n        ]);\n\n        $response->assertStatus(422);\n        $response->assertJsonValidationErrors(['bulletin_header_scale']);\n        self::assertNull(SettingsHelper::get('bulletin_header_scale'));\n    }\n}\n"
+          )
+          PY
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Syntax and Blade checks
+        shell: bash
+        run: |
+          php -l app/Services/BulletinService.php
+          php -l app/Http/Controllers/ESBTPBulletinController.php
+          php artisan view:cache
+
+      - name: Targeted bulletin configuration tests
+        run: php artisan test --filter=BtsBulletinConfigurationHttpTest
+
+      - name: Review diff
+        shell: bash
+        run: |
+          git diff --check
+          git diff --stat
+          git diff -- app/Services/BulletinService.php app/Http/Controllers/ESBTPBulletinController.php resources/views/esbtp/bulletins/configuration.blade.php resources/views/esbtp/bulletins/pdf-configurable.blade.php resources/views/esbtp/bulletins/preview.blade.php tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php
+
+      - name: Commit tested patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Services/BulletinService.php app/Http/Controllers/ESBTPBulletinController.php resources/views/esbtp/bulletins/configuration.blade.php resources/views/esbtp/bulletins/pdf-configurable.blade.php resources/views/esbtp/bulletins/preview.blade.php tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php
+          git commit -m "feat(bulletins): make Yakro header size configurable"
+          git push origin HEAD:presentation
