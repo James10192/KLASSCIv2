@@ -1,0 +1,68 @@
+name: Temporary Yakro bulletin header patch v2
+
+on:
+  push:
+    branches: [presentation]
+    paths:
+      - '.github/workflows/tmp-bulletin-yakro-header-scale-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: presentation
+          fetch-depth: 0
+
+      - name: Reuse exact Yakro patch script
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          src = Path('.github/workflows/tmp-bulletin-yakro-header-scale.yml').read_text()
+          start_marker = "          python3 <<'PY'\n"
+          end_marker = "\n          PY\n\n      - name: Install dependencies"
+          start = src.index(start_marker) + len(start_marker)
+          end = src.index(end_marker, start)
+          lines = src[start:end].splitlines()
+          # The workflow block scalar indents the embedded Python by 10 spaces.
+          script = '\n'.join(line[10:] if line.startswith('          ') else line for line in lines) + '\n'
+          Path('/tmp/patch_yakro_header.py').write_text(script)
+          PY
+          python3 /tmp/patch_yakro_header.py
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Syntax and Blade checks
+        shell: bash
+        run: |
+          php -l app/Services/BulletinService.php
+          php -l app/Http/Controllers/ESBTPBulletinController.php
+          php artisan view:cache
+
+      - name: Focused header configuration tests
+        shell: bash
+        run: |
+          php artisan test --filter=test_ajax_save_returns_json_settings_without_redirect tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php
+          php artisan test --filter=test_yakro_header_scale_is_rejected_outside_safe_bounds tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php
+
+      - name: Review patch
+        shell: bash
+        run: |
+          git diff --check
+          git diff --stat
+
+      - name: Commit tested application patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/Services/BulletinService.php app/Http/Controllers/ESBTPBulletinController.php resources/views/esbtp/bulletins/configuration.blade.php resources/views/esbtp/bulletins/pdf-configurable.blade.php resources/views/esbtp/bulletins/preview.blade.php tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php
+          git commit -m "feat(bulletins): make Yakro header size configurable"
+          git push origin HEAD:presentation
