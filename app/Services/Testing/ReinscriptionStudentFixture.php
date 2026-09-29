@@ -20,8 +20,12 @@ use RuntimeException;
 class ReinscriptionStudentFixture
 {
     /** @return array<string,mixed> */
-    public function create(string $email, bool $apply = false, ?string $matricule = null): array
-    {
+    public function create(
+        string $email,
+        string $telephone,
+        bool $apply = false,
+        ?string $matricule = null
+    ): array {
         $courante = ESBTPAnneeUniversitaire::query()->where('is_current', true)->first();
         if (! $courante) {
             throw new RuntimeException('Aucune annee universitaire courante configuree.');
@@ -53,6 +57,15 @@ class ReinscriptionStudentFixture
         $suffix = strtoupper(Str::random(6));
         $matricule = trim((string) $matricule) ?: 'E2E' . now()->format('ymd') . $suffix;
         $dateNaissance = '2004-04-12';
+        $email = mb_strtolower(trim($email));
+        $telephone = preg_replace('/\D+/', '', $telephone) ?: '';
+
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new RuntimeException('Adresse e-mail de test invalide.');
+        }
+        if (! preg_match('/^0\d{9}$/', $telephone)) {
+            throw new RuntimeException('Numero de telephone de test invalide (10 chiffres, commencant par 0).');
+        }
 
         $plan = [
             'matricule' => $matricule,
@@ -60,7 +73,7 @@ class ReinscriptionStudentFixture
             'prenoms' => 'REINSCRIPTION ' . $suffix,
             'date_naissance' => $dateNaissance,
             'email' => $email,
-            'telephone' => null,
+            'telephone' => $telephone,
             'classe' => ['id' => $classe->id, 'nom' => $classe->name],
             'annee_precedente' => ['id' => $precedente->id, 'nom' => $precedente->name],
             'annee_courante' => ['id' => $courante->id, 'nom' => $courante->name],
@@ -79,7 +92,10 @@ class ReinscriptionStudentFixture
             throw new RuntimeException('Aucun utilisateur auteur disponible sur cette instance.');
         }
 
-        $result = DB::transaction(function () use ($plan, $classe, $precedente, $auteur, $email): array {
+        $result = DB::transaction(function () use ($plan, $classe, $precedente, $auteur): array {
+            // Le compte applicatif reste volontairement technique pour eviter une
+            // collision d'e-mail unique avec un vrai utilisateur. Les contacts
+            // testes par le portail vivent sur la fiche etudiant ci-dessous.
             $username = strtolower($plan['matricule']);
             $user = User::create([
                 'name' => $plan['prenoms'] . ' ' . $plan['nom'],
@@ -104,8 +120,8 @@ class ReinscriptionStudentFixture
                 'nationalite' => 'Ivoirienne',
                 'ville' => 'Abidjan',
                 'commune' => 'Cocody',
-                'telephone' => null,
-                'email' => $email,
+                'telephone' => $plan['telephone'],
+                'email' => $plan['email'],
                 'statut' => 'actif',
                 'classe_id' => $classe->id,
                 'annee_universitaire_id' => $precedente->id,
