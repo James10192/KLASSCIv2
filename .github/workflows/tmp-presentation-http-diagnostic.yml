@@ -1,0 +1,32 @@
+name: Temporary presentation HTTP diagnostic
+
+on:
+  push:
+    branches: [presentation]
+    paths:
+      - '.github/workflows/tmp-presentation-http-diagnostic.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe public presentation endpoints
+        shell: bash
+        run: |
+          set -u
+          BASE='https://presentation.klassci.com'
+          probe() {
+            local path="$1"
+            local code
+            code=$(curl -L --max-redirs 3 --connect-timeout 10 --max-time 20 -sS -o /dev/null -w '%{http_code}' "$BASE$path" || true)
+            echo "$path -> HTTP $code"
+          }
+          probe '/'
+          probe '/login'
+          probe '/dashboard'
+          probe '/api/public/etablissement'
+          probe '/api/lms/tenant-info'
