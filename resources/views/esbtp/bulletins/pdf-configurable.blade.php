@@ -141,12 +141,17 @@
             margin-bottom: 4px;
         }
         .header-right .period {
-            font-size: {{ min(32, $headerRightFont + 2) }}px;
+            display: inline-block;
+            font-size: {{ min(34, $headerRightFont + 4) }}px;
             font-weight: 700;
             color: {{ $pdfText }};
-            margin: 2px 0 4px;
+            margin: 3px 0 5px;
+            padding: 3px 7px;
+            border: 1.5px solid {{ $pdfPrimary }};
+            border-radius: 4px;
+            background-color: #f8fafc;
             text-transform: uppercase;
-            letter-spacing: 0.02em;
+            letter-spacing: 0.04em;
         }
         .header-right .year {
             font-size: {{ $headerRightFont }}px;
@@ -476,11 +481,14 @@
         }
 
         /* ── Mode PDF export ──────────────────────────────────── */
-        @if($isPdfExport ?? false)
         @page {
             size: A4 portrait;
-            margin: 2mm 2mm;
+            margin: {{ $pdfSettings['margin_top'] ?? 20 }}mm
+                    {{ $pdfSettings['margin_right'] ?? 15 }}mm
+                    {{ $pdfSettings['margin_bottom'] ?? 20 }}mm
+                    {{ $pdfSettings['margin_left'] ?? 15 }}mm;
         }
+        @if($isPdfExport ?? false)
         body.pdf-export {
             margin: 0;
             padding: 0;
@@ -491,11 +499,18 @@
             max-width: none;
             padding: 0;
         }
+        @else
+        body .container {
+            padding: {{ $pdfSettings['margin_top'] ?? 20 }}mm
+                     {{ $pdfSettings['margin_right'] ?? 15 }}mm
+                     {{ $pdfSettings['margin_bottom'] ?? 20 }}mm
+                     {{ $pdfSettings['margin_left'] ?? 15 }}mm;
+        }
         @endif
 
         @media print {
             body { margin: 0; padding: 0; background: #fff; }
-            .container { box-shadow: none; width: 100%; max-width: none; }
+            .container { box-shadow: none; width: 100%; max-width: none; padding: 0 !important; }
             .print-button, .pdf-toggle { display: none !important; }
         }
 
