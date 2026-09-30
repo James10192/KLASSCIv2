@@ -1613,8 +1613,12 @@
                 </div>
 
                 <h4 style="margin-top: 24px; font-size: 0.95rem; color: #64748b; font-weight: 600;">
-                    <i class="fas fa-arrows-alt text-primary"></i> Marges (mm)
+                    <i class="fas fa-arrows-alt text-primary"></i> Marges générales des PDF (mm)
                 </h4>
+                <div class="alert alert-info py-2 px-3 mb-3" style="font-size:.8rem;">
+                    Ces marges concernent les documents PDF généraux. Les bulletins BTS utilisent leurs marges dédiées dans
+                    <a href="{{ route('esbtp.bulletins.configuration') }}" class="fw-semibold">Configuration des bulletins</a>.
+                </div>
                 <p style="font-size: .78rem; color: #64748b; margin: 4px 0 0;">Une imprimante n'imprime pas au bord de la feuille : les documents gardent au moins 10 mm, et 20 mm en bas pour laisser la place au pied de page.</p>
                 <div class="settings-grid-4" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px;">
                     <div class="form-group">

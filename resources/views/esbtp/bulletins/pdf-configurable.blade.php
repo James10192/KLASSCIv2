@@ -33,6 +33,8 @@
         $editionOpacity = max(10, min(100, (int) ($settings['bulletin_edition_opacity'] ?? 100))) / 100;
         $authenticityFontSize = max(6, min(18, (int) (($settings['bulletin_authenticity_font_size'] ?? '') ?: $typeScale['body'])));
         $authenticityOpacity = max(10, min(100, (int) ($settings['bulletin_authenticity_opacity'] ?? 100))) / 100;
+        $marginVertical = max(2, min(25, (int) ($settings['bulletin_margin_vertical'] ?? 5)));
+        $marginHorizontal = max(2, min(25, (int) ($settings['bulletin_margin_horizontal'] ?? 5)));
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -483,10 +485,7 @@
         /* ── Mode PDF export ──────────────────────────────────── */
         @page {
             size: A4 portrait;
-            margin: {{ $pdfSettings['margin_top'] ?? 20 }}mm
-                    {{ $pdfSettings['margin_right'] ?? 15 }}mm
-                    {{ $pdfSettings['margin_bottom'] ?? 20 }}mm
-                    {{ $pdfSettings['margin_left'] ?? 15 }}mm;
+            margin: {{ $marginVertical }}mm {{ $marginHorizontal }}mm;
         }
         @if($isPdfExport ?? false)
         body.pdf-export {
@@ -501,10 +500,7 @@
         }
         @else
         body .container {
-            padding: {{ $pdfSettings['margin_top'] ?? 20 }}mm
-                     {{ $pdfSettings['margin_right'] ?? 15 }}mm
-                     {{ $pdfSettings['margin_bottom'] ?? 20 }}mm
-                     {{ $pdfSettings['margin_left'] ?? 15 }}mm;
+            padding: {{ $marginVertical }}mm {{ $marginHorizontal }}mm;
         }
         @endif
 
