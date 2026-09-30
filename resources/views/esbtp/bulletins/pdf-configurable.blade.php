@@ -11,6 +11,8 @@
         $anneeAffichee = ($bulletin ?? null)?->anneeUniversitaire ?? ($anneeUniversitaire ?? null);
         $anneeLabel = $anneeAffichee?->display_name ?? '';
         $typeScale = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
+        $marginVertical = max(2, min(25, (int) ($settings['bulletin_margin_vertical'] ?? 5)));
+        $marginHorizontal = max(2, min(25, (int) ($settings['bulletin_margin_horizontal'] ?? 5)));
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -437,10 +439,7 @@
         /* ── Mode PDF export ──────────────────────────────────── */
         @page {
             size: A4 portrait;
-            margin: {{ $pdfSettings['margin_top'] ?? 20 }}mm
-                    {{ $pdfSettings['margin_right'] ?? 15 }}mm
-                    {{ $pdfSettings['margin_bottom'] ?? 20 }}mm
-                    {{ $pdfSettings['margin_left'] ?? 15 }}mm;
+            margin: {{ $marginVertical }}mm {{ $marginHorizontal }}mm;
         }
         @if($isPdfExport ?? false)
         body.pdf-export {
@@ -455,10 +454,7 @@
         }
         @else
         body .container {
-            padding: {{ $pdfSettings['margin_top'] ?? 20 }}mm
-                     {{ $pdfSettings['margin_right'] ?? 15 }}mm
-                     {{ $pdfSettings['margin_bottom'] ?? 20 }}mm
-                     {{ $pdfSettings['margin_left'] ?? 15 }}mm;
+            padding: {{ $marginVertical }}mm {{ $marginHorizontal }}mm;
         }
         @endif
 

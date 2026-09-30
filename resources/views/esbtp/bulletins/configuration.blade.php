@@ -133,6 +133,7 @@
                                        min="2" max="25" step="1"
                                        value="{{ $settings['bulletin_margin_horizontal'] ?: '5' }}">
                                 <div class="bcfg-hint" style="margin-top:.35rem;">Plus la marge est petite, plus le contenu du bulletin est grand. En dessous de 5 mm, certaines imprimantes rognent les bords.</div>
+                                <div class="bcfg-hint" style="margin-top:.25rem;font-weight:600;">Ces marges sont propres aux bulletins BTS et priment sur les marges PDF générales de /esbtp/settings.</div>
 
                                 <label class="bcfg-label" style="margin-top:.85rem;">Hauteur de la case décision (px)</label>
                                 <input type="number" class="bcfg-input" name="bulletin_decision_min_height"

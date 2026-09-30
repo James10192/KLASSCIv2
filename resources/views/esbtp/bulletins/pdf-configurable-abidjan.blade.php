@@ -128,9 +128,17 @@
             margin-bottom: 2px;
         }
         .bulletin-period {
-            font-size: {{ $typeScale['info'] }}px;
-            color: #374151;
-            margin-bottom: 1px;
+            display: inline-block;
+            font-size: {{ min(30, $typeScale['table'] + 4) }}px;
+            font-weight: 700;
+            color: {{ $pdfText }};
+            margin: 3px 0 5px;
+            padding: 3px 7px;
+            border: 1.5px solid {{ $pdfPrimary }};
+            border-radius: 4px;
+            background-color: #f8fafc;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
         .academic-year {
             font-size: {{ $typeScale['info'] }}px;
@@ -427,6 +435,12 @@
             max-width: none;
             padding: 0;
             border: none;
+        }
+        @else
+        body .container {
+            width: 100%;
+            max-width: none;
+            padding: {{ $marginVertical }}mm {{ $marginHorizontal }}mm;
         }
         @endif
 
