@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ESBTP\ManagedActivationController;
 use App\Http\Controllers\ESBTP\ManagedCashierEntryController;
 use App\Http\Controllers\ESBTP\ManagedInscriptionCompletionController;
 use App\Http\Controllers\ESBTP\ManagedInscriptionQueueController;
@@ -34,15 +35,23 @@ Route::middleware([
 Route::prefix('esbtp/admissions/workflow')
     ->name('esbtp.admissions.workflow.')
     ->group(function () {
-        // Le lien d'activation doit fonctionner avant la première connexion ; il
-        // ne peut donc pas dépendre du middleware auth. Le service vérifie le
-        // tenant, l'empreinte du jeton, son expiration et son usage unique.
+        // E-mail : jeton aléatoire à usage unique, hashé en base.
         Route::get('/activation/{token}', [ManagedInscriptionWorkflowController::class, 'activationForm'])
             ->middleware('throttle:20,1')
             ->name('activation.form');
         Route::post('/activation/{token}', [ManagedInscriptionWorkflowController::class, 'activate'])
             ->middleware('throttle:10,1')
             ->name('activation.submit');
+
+        // WhatsApp : URL Laravel signée et expirante. Le GET ouvre le formulaire
+        // puis génère un POST signé court ; aucune donnée secrète n'est placée
+        // dans le message WhatsApp ou conservée en clair côté serveur.
+        Route::get('/activation-whatsapp/{workflow}', [ManagedActivationController::class, 'signedForm'])
+            ->middleware(['signed', 'throttle:20,1'])
+            ->name('activation.signed.form');
+        Route::post('/activation-whatsapp/{workflow}', [ManagedActivationController::class, 'signedActivate'])
+            ->middleware(['signed', 'throttle:10,1'])
+            ->name('activation.signed.submit');
 
         Route::middleware(['auth', 'paywall'])->group(function () {
             Route::get('/mon-dossier', [ManagedInscriptionWorkflowController::class, 'student'])
@@ -73,7 +82,7 @@ Route::prefix('esbtp/admissions/workflow')
                     ])
                     ->name('pay');
 
-                Route::post('/{workflow}/activation/renvoyer', [ManagedInscriptionWorkflowController::class, 'resendActivation'])
+                Route::post('/{workflow}/activation/renvoyer', [ManagedActivationController::class, 'resend'])
                     ->middleware('throttle:10,1')
                     ->name('activation.resend');
                 Route::post('/{workflow}/classe', [ManagedInscriptionWorkflowController::class, 'chooseClassAsAdmin'])
