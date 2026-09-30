@@ -481,6 +481,22 @@ final class AcademicNoteCoverageService
             ->values();
 
         $subjectRows = $subjectRows->concat($orphanRows)->values();
+
+        // Une classe BTS peut n'exister que sur un semestre : TC au S1 puis
+        // specialite au S2. Quand la cohorte canonique est vide sur la periode,
+        // le referentiel reste utile au diagnostic mais il n'y a AUCUNE action
+        // de saisie a reclamer. Marquer ces lignes « non_evaluee » fabriquait
+        // precisement les faux « matieres sans evaluation » vus a Yakro.
+        if ($studentIndex->isEmpty()) {
+            $subjectRows = $subjectRows->map(static function (array $row): array {
+                if (! ($row['is_orphan'] ?? false)) {
+                    $row['statut'] = 'non_applicable';
+                }
+
+                return $row;
+            });
+        }
+
         $incompleteStudents = $this->incompleteStudents($studentIndex, $subjectRows);
         $catalogSubjectRows = $subjectRows->where('is_orphan', false);
 
