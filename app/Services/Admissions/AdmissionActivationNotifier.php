@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 /**
- * Livraison du même lien d'activation sur les canaux activés par le tenant.
+ * Livraison des accès d'activation sur les canaux activés par le tenant.
  *
  * Une panne d'un canal ne doit jamais annuler la transition métier : le
  * résultat est journalisé et l'autre canal reste utilisable.
@@ -28,41 +28,15 @@ final class AdmissionActivationNotifier
 
         return [
             'email_sent' => $this->sendEmail($workflow, $url),
-            'whatsapp_sent' => $this->sendWhatsApp($workflow, $url),
+            'whatsapp_sent' => $this->sendWhatsAppLink($workflow, $url),
         ];
     }
 
-    private function sendEmail(ESBTPCandidatureWorkflow $workflow, string $url): bool
+    public function sendWhatsAppLink(ESBTPCandidatureWorkflow $workflow, string $url): bool
     {
-        $email = $workflow->candidature?->email ?: $workflow->etudiant?->email_personnel;
-        if (! $this->settings->notifyEmail() || ! $email) {
-            return false;
-        }
-
-        try {
-            Mail::raw(
-                "Votre dossier ESBTP a franchi l'étape de préinscription.\n\n"
-                ."Activez votre espace KLASSCI et choisissez votre mot de passe : {$url}\n\n"
-                ."Ce lien expire dans 48 heures et ne fonctionne qu'une fois.",
-                function ($message) use ($email) {
-                    $message->to($email)->subject('Activation de votre espace étudiant KLASSCI');
-                },
-            );
-
-            return true;
-        } catch (\Throwable $e) {
-            Log::warning('Activation KLASSCI : échec envoi e-mail', [
-                'workflow_id' => $workflow->id,
-                'message' => $e->getMessage(),
-            ]);
-
-            return false;
-        }
-    }
-
-    private function sendWhatsApp(ESBTPCandidatureWorkflow $workflow, string $url): bool
-    {
+        $workflow->loadMissing('candidature', 'etudiant.user');
         $telephone = $workflow->candidature?->telephone ?: $workflow->etudiant?->telephone;
+
         if (! $this->settings->notifyWhatsapp() || ! $telephone) {
             return false;
         }
@@ -100,6 +74,34 @@ final class AdmissionActivationNotifier
             return true;
         } catch (\Throwable $e) {
             Log::warning('Activation KLASSCI : exception envoi WhatsApp', [
+                'workflow_id' => $workflow->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    private function sendEmail(ESBTPCandidatureWorkflow $workflow, string $url): bool
+    {
+        $email = $workflow->candidature?->email ?: $workflow->etudiant?->email_personnel;
+        if (! $this->settings->notifyEmail() || ! $email) {
+            return false;
+        }
+
+        try {
+            Mail::raw(
+                "Votre dossier ESBTP a franchi l'étape de préinscription.\n\n"
+                ."Activez votre espace KLASSCI et choisissez votre mot de passe : {$url}\n\n"
+                ."Ce lien expire dans 48 heures et ne fonctionne qu'une fois.",
+                function ($message) use ($email) {
+                    $message->to($email)->subject('Activation de votre espace étudiant KLASSCI');
+                },
+            );
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::warning('Activation KLASSCI : échec envoi e-mail', [
                 'workflow_id' => $workflow->id,
                 'message' => $e->getMessage(),
             ]);
