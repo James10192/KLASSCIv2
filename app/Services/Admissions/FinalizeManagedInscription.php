@@ -18,14 +18,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Source canonique de finalisation d'un dossier d'admission deja rattache a
- * un etudiant provisoire.
+ * Source canonique de finalisation d'un dossier d'admission déjà rattaché à
+ * un étudiant provisoire.
  *
- * La candidature, le paiement et les pieces existent AVANT l'inscription.
+ * La candidature, le paiement et les pièces existent AVANT l'inscription.
  * Cette classe est donc volontairement distincte de createInscription(), qui
- * cree lui-meme l'etudiant. En revanche elle reutilise les memes services de
- * frais et le meme InscriptionWorkflowService pour ne pas dupliquer les regles
- * financieres, la capacite de classe ou la conversion prospect -> etudiant.
+ * crée lui-même l'étudiant. En revanche elle réutilise les mêmes services de
+ * frais et le même InscriptionWorkflowService pour ne pas dupliquer les règles
+ * financières, la capacité de classe ou la conversion prospect -> étudiant.
  */
 final class FinalizeManagedInscription
 {
@@ -58,7 +58,7 @@ final class FinalizeManagedInscription
 
             if (! $anneeId) {
                 throw ValidationException::withMessages([
-                    'annee' => "Aucune annee universitaire n'est disponible pour finaliser l'inscription.",
+                    'annee' => "Aucune année universitaire n'est disponible pour finaliser l'inscription.",
                 ]);
             }
 
@@ -70,14 +70,14 @@ final class FinalizeManagedInscription
 
             if ($dejaInscrit) {
                 throw ValidationException::withMessages([
-                    'inscription' => "Cet etudiant possede deja une inscription pour l'annee universitaire selectionnee.",
+                    'inscription' => "Cet étudiant possède déjà une inscription pour l'année universitaire sélectionnée.",
                 ]);
             }
 
             $disponibilite = $this->workflow->checkClassAvailability($classe->id);
             if (! ($disponibilite['available'] ?? false)) {
                 throw ValidationException::withMessages([
-                    'classe_id' => $disponibilite['message'] ?? 'La classe selectionnee n est plus disponible.',
+                    'classe_id' => $disponibilite['message'] ?? "La classe sélectionnée n'est plus disponible.",
                 ]);
             }
 
@@ -101,15 +101,15 @@ final class FinalizeManagedInscription
                 'updated_by' => $userId,
             ]);
 
-            // Le paiement de preinscription precede l'inscription academique :
-            // on le rattache maintenant sans recreer une seconde ecriture.
+            // Le paiement de préinscription précède l'inscription académique :
+            // on le rattache maintenant sans recréer une seconde écriture.
             $workflow->paiement->forceFill([
                 'inscription_id' => $inscription->id,
                 'updated_by' => $userId,
             ])->save();
 
-            // Meme moteur de frais que l'inscription historique. La source des
-            // baremes reste donc unique, y compris pour les options et statuts.
+            // Même moteur de frais que l'inscription historique. La source des
+            // barèmes reste donc unique, y compris pour les options et statuts.
             $generatedFees = $this->inscriptions->generateFeesForInscription(
                 $inscription,
                 [],
@@ -129,8 +129,8 @@ final class FinalizeManagedInscription
                 'updated_by' => $userId,
             ])->save();
 
-            // Derniere porte canonique : controle financier, capacite de classe
-            // et transition prospect -> etudiant restent ceux du flux existant.
+            // Dernière porte canonique : contrôle financier, capacité de classe
+            // et transition prospect -> étudiant restent ceux du flux existant.
             $converted = $this->workflow->convertProspectToStudent(
                 $inscription->fresh(['etudiant.user', 'classe']),
                 'Finalisation du parcours de candidature en ligne',
@@ -138,7 +138,7 @@ final class FinalizeManagedInscription
 
             if (! ($converted['success'] ?? false)) {
                 throw ValidationException::withMessages([
-                    'finalisation' => $converted['message'] ?? "L'inscription n'a pas pu etre finalisee.",
+                    'finalisation' => $converted['message'] ?? "L'inscription n'a pas pu être finalisée.",
                 ]);
             }
 
@@ -162,22 +162,22 @@ final class FinalizeManagedInscription
     private function assertReady(ESBTPCandidatureWorkflow $workflow): void
     {
         if (! $workflow->paymentRecorded()) {
-            throw ValidationException::withMessages(['paiement' => 'Le paiement de preinscription doit etre valide.']);
+            throw ValidationException::withMessages(['paiement' => 'Le paiement de préinscription doit être validé.']);
         }
         if (! $workflow->documentsValidated()) {
-            throw ValidationException::withMessages(['pieces' => 'Le controle physique des pieces doit etre termine.']);
+            throw ValidationException::withMessages(['pieces' => 'Le contrôle physique des pièces doit être terminé.']);
         }
         if (! $workflow->accessActivated()) {
-            throw ValidationException::withMessages(['activation' => "L'espace etudiant doit d'abord etre active."]);
+            throw ValidationException::withMessages(['activation' => "L'espace étudiant doit d'abord être activé."]);
         }
         if (! $workflow->profileCompleted()) {
-            throw ValidationException::withMessages(['profil' => "L'etudiant doit completer ses informations avant la finalisation."]);
+            throw ValidationException::withMessages(['profil' => "L'étudiant doit compléter ses informations avant la finalisation."]);
         }
         if (! $workflow->selected_class_id || ! $workflow->selectedClass) {
-            throw ValidationException::withMessages(['classe_id' => 'Une classe doit etre choisie.']);
+            throw ValidationException::withMessages(['classe_id' => 'Une classe doit être choisie.']);
         }
         if (! $workflow->etudiant || ! $workflow->candidature || ! $workflow->paiement) {
-            throw ValidationException::withMessages(['dossier' => "Le dossier provisoire est incomplet et ne peut pas etre converti."]);
+            throw ValidationException::withMessages(['dossier' => "Le dossier provisoire est incomplet et ne peut pas être converti."]);
         }
     }
 
@@ -201,8 +201,8 @@ final class FinalizeManagedInscription
         $facture->montant_ttc = $facture->montant_ht;
         $facture->montant_regle = 0;
         $facture->montant_du = $facture->montant_ttc;
-        $facture->statut = 'emise';
-        $facture->notes = "Facture generee automatiquement a l'inscription";
+        $facture->statut = 'émise';
+        $facture->notes = "Facture générée automatiquement à l'inscription";
         $facture->createur_id = $userId;
         $facture->save();
 
