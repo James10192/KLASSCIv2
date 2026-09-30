@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPCandidatureWorkflow;
 use App\Models\ESBTPPieceDeposee;
+use App\Services\Admissions\AdmissionWhatsappActivationLink;
 use App\Services\Admissions\InscriptionWorkflowSettings;
 use App\Services\Admissions\ManagedInscriptionSequence;
 use App\Services\Admissions\ManagedInscriptionWorkflow;
@@ -14,11 +15,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 
 /**
- * Ecritures des etapes physiques du parcours gere.
+ * Écritures des étapes physiques du parcours géré.
  *
- * La sequence est verifiee ici avant chaque mutation, de sorte qu'une URL
- * appelee directement ne puisse pas inverser « caisse puis pieces » ou
- * « pieces puis caisse ».
+ * La séquence est vérifiée ici avant chaque mutation, de sorte qu'une URL
+ * appelée directement ne puisse pas inverser « caisse puis pièces » ou
+ * « pièces puis caisse ».
  */
 final class ManagedInscriptionStepController extends Controller
 {
@@ -26,6 +27,7 @@ final class ManagedInscriptionStepController extends Controller
         private readonly ManagedInscriptionWorkflow $managed,
         private readonly ManagedInscriptionSequence $sequence,
         private readonly InscriptionWorkflowSettings $settings,
+        private readonly AdmissionWhatsappActivationLink $whatsapp,
     ) {
     }
 
@@ -44,6 +46,10 @@ final class ManagedInscriptionStepController extends Controller
         ]);
 
         $workflow = $this->managed->recordPayment($candidature, $data, (int) Auth::id());
+
+        if ($this->settings->accountActivationStep() === InscriptionWorkflowSettings::ACTIVATION_AFTER_PAYMENT) {
+            $this->whatsapp->sendIfDue($workflow);
+        }
 
         return redirect()
             ->route('esbtp.admissions.workflow.show', $candidature)
@@ -101,7 +107,11 @@ final class ManagedInscriptionStepController extends Controller
     {
         $this->guardManagedWorkflow();
         $this->sequence->assertDocumentsAllowed($workflow->fresh());
-        $this->managed->validateDocuments($workflow, (int) Auth::id());
+        $workflow = $this->managed->validateDocuments($workflow, (int) Auth::id());
+
+        if ($this->settings->accountActivationStep() === InscriptionWorkflowSettings::ACTIVATION_AFTER_DOCUMENTS) {
+            $this->whatsapp->sendIfDue($workflow);
+        }
 
         return back()->with('success', 'Contrôle physique terminé : le dossier de pièces est complet.');
     }
