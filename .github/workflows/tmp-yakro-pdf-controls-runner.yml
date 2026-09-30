@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   patch:
-    if: "${{ github.event.head_commit.message == 'chore(ci): run Yakro PDF controls patch' }}"
+    if: "${{ github.event.head_commit.message == 'chore(ci): run Yakro PDF controls patch v2' }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,23 +18,10 @@ jobs:
           ref: esbtp-yakro
           fetch-depth: 0
 
-      - name: Execute embedded patch
-        shell: bash
-        run: |
-          python3 <<'PY'
-          from pathlib import Path
-          src = Path('.github/workflows/tmp-yakro-pdf-controls.yml').read_text()
-          marker = "          python3 <<'PY'\n"
-          start = src.index(marker) + len(marker)
-          end = src.index("\n          PY", start)
-          block = src[start:end]
-          code = '\n'.join(line[10:] if line.startswith('          ') else line for line in block.splitlines())
-          compile(code, '<yakro-pdf-controls-patch>', 'exec')
-          exec(code, {'__name__': '__main__'})
-          PY
+      - name: Apply patch v2
+        run: python3 .github/scripts/tmp-yakro-pdf-controls-v2.py
 
       - name: Validate patch contracts
-        shell: bash
         run: |
           php -l app/Http/Controllers/ESBTPBulletinController.php
           php -l app/Services/BulletinService.php
@@ -46,7 +33,6 @@ jobs:
           grep -q 'name="bulletin_authenticity_opacity"' resources/views/esbtp/bulletins/configuration.blade.php
 
       - name: Commit functional changes
-        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -54,7 +40,6 @@ jobs:
                   app/Services/BulletinService.php \
                   resources/views/esbtp/bulletins/configuration.blade.php \
                   resources/views/esbtp/bulletins/pdf-configurable.blade.php \
-                  resources/views/esbtp/bulletins/preview.blade.php \
                   tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php \
                   tests/Feature/Bulletin/BulletinYakroTypographyContractTest.php
           git commit -m "feat(bulletins): make Yakro header and footer sizing configurable"
