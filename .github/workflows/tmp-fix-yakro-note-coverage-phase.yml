@@ -1,0 +1,55 @@
+name: Temporary Yakro note coverage phase fix
+
+on:
+  push:
+    branches:
+      - esbtp-yakro
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "${{ github.event.head_commit.message == 'chore(ci): run Yakro note coverage phase fix' }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: esbtp-yakro
+          fetch-depth: 0
+
+      - name: Apply phase-aware note coverage patch
+        run: python .github/scripts/tmp-fix-yakro-note-coverage-phase.py
+
+      - name: Validate source contract
+        run: |
+          php -l app/Domain/AcademicPilotage/Services/ExpectedSubjectsResolver.php
+          php -l app/Domain/AcademicPilotage/Services/AcademicNoteCoverageService.php
+          php -l tests/Unit/Domain/AcademicPilotage/AcademicNoteCoverageServiceTest.php
+          python - <<'PY'
+          from pathlib import Path
+          r = Path('app/Domain/AcademicPilotage/Services/ExpectedSubjectsResolver.php').read_text()
+          c = Path('app/Domain/AcademicPilotage/Services/AcademicNoteCoverageService.php').read_text()
+          j = Path('resources/views/esbtp/partials/_couverture-notes-script.blade.php').read_text()
+          assert 'estSpecialiteBts1ApresTroncCommun' in r
+          assert 'matieresDuComboDeClasse' in r
+          assert "'non_applicable'" in c
+          assert "matiere.statut === 'non_applicable'" in j
+          PY
+
+      - name: Run focused coverage tests
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          php artisan test tests/Unit/Domain/AcademicPilotage/AcademicNoteCoverageServiceTest.php
+
+      - name: Commit functional changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            app/Domain/AcademicPilotage/Services/ExpectedSubjectsResolver.php \
+            app/Domain/AcademicPilotage/Services/AcademicNoteCoverageService.php \
+            resources/views/esbtp/partials/_couverture-notes-script.blade.php \
+            tests/Unit/Domain/AcademicPilotage/AcademicNoteCoverageServiceTest.php
+          git commit -m 'fix(notes): align Yakro coverage with TC speciality phases'
+          git push origin HEAD:esbtp-yakro
