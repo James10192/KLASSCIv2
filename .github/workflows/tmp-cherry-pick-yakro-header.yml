@@ -1,0 +1,49 @@
+name: Temporary cherry-pick Yakro bulletin header
+
+on:
+  push:
+    branches: [esbtp-yakro]
+    paths:
+      - '.github/workflows/tmp-cherry-pick-yakro-header.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cherry-pick-test-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: esbtp-yakro
+          fetch-depth: 0
+
+      - name: Cherry-pick validated presentation fixes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git cherry-pick e115a3772d4e693165d0016f198cda10245caad9
+          git cherry-pick a2392079a35e0e38dbeaa61ca032beca76a25c8c
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Syntax Blade and route checks
+        shell: bash
+        run: |
+          php -l app/Services/BulletinService.php
+          php -l app/Http/Controllers/ESBTPBulletinController.php
+          php artisan view:cache
+          php artisan route:list --name=esbtp.reinscription.index | grep -q 'esbtp.reinscription.index'
+
+      - name: Header-focused bulletin tests
+        run: php artisan test --filter='(ajax_save_returns_json_settings_without_redirect|yakro_header_scale_is_rejected_outside_safe_bounds)'
+
+      - name: Review diff and push
+        shell: bash
+        run: |
+          git diff --check HEAD~2..HEAD
+          git log -2 --oneline
+          git push origin HEAD:esbtp-yakro
