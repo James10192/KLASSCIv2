@@ -8,6 +8,7 @@
         $pdfHeaderText = $pdfSettings['header_text_color'] ?? '#ffffff';
         $pdfPrimary    = $pdfSettings['primary_color']     ?? $pdfHeaderBg;
         $pdfText       = $pdfSettings['text_color']        ?? '#1f2937';
+        $pdfSecondary  = $pdfSettings['secondary_color']   ?? '#64748b';
         $anneeAffichee = ($bulletin ?? null)?->anneeUniversitaire ?? ($anneeUniversitaire ?? null);
         $anneeLabel = $anneeAffichee?->display_name ?? '';
         $typeScale = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
@@ -45,7 +46,7 @@
             margin: 0;
             padding: 0;
             background: #fff;
-            color: #111827;
+            color: {{ $pdfText }};
             line-height: 1.25;
         }
         /* Compaction auto-fit 1 page : sections critiques évitent coupure */
@@ -170,17 +171,17 @@
             word-wrap: break-word;
         }
         .student-info-table td.student-photo-cell {
-            width: 104px;
-            min-width: 104px;
+            width: 136px;
+            min-width: 136px;
             text-align: center;
             vertical-align: middle;
-            padding: 7px 8px;
+            padding: 2px 3px;
             background-color: #f8fafc;
             border-right: 2px solid {{ $pdfPrimary }};
         }
         .student-photo-shell {
-            width: 78px;
-            height: 88px;
+            width: 116px;
+            height: 124px;
             margin: 0 auto;
             border: 1.5px solid {{ $pdfPrimary }};
             border-radius: 7px;
@@ -188,15 +189,15 @@
             overflow: hidden;
         }
         .student-photo-shell img.student-photo {
-            width: 78px;
-            height: 88px;
+            width: 116px;
+            height: 124px;
             display: block;
             margin: 0;
             object-fit: cover;
         }
         .avatar-initials-fallback {
-            width: 78px;
-            height: 88px;
+            width: 116px;
+            height: 124px;
             display: table;
             background-color: #eef2f7;
         }
@@ -210,8 +211,8 @@
         }
         .matricule-badge {
             display: inline-block;
-            margin-top: 5px;
-            padding: 2px 6px;
+            margin-top: 3px;
+            padding: 1px 4px;
             border: 1px solid #d8e0e8;
             border-radius: 4px;
             background-color: #ffffff;
@@ -224,7 +225,7 @@
         .student-info-table td.info-group {
             width: 43%;
             vertical-align: top;
-            padding: 6px 10px 5px;
+            padding: 3px 6px 2px;
             background-color: #ffffff;
         }
         .student-info-table td.student-academic-group {
@@ -246,7 +247,7 @@
             margin: 0;
         }
         .info-table td {
-            padding: 3px 0;
+            padding: 2px 0;
             border: none;
             border-bottom: 1px solid #eef2f7;
             vertical-align: middle;
@@ -255,7 +256,7 @@
         .info-table td.info-label {
             width: 41%;
             padding-right: 8px;
-            color: #64748b;
+            color: {{ $pdfSecondary }};
             font-size: {{ $typeScale['label'] }}px;
             font-weight: 700;
             text-transform: uppercase;
@@ -263,13 +264,13 @@
             white-space: nowrap;
         }
         .info-table td.info-value {
-            color: #1f2937;
+            color: {{ $pdfText }};
             font-size: {{ $typeScale['table'] }}px;
             font-weight: 600;
             word-wrap: break-word;
         }
         .info-table td.info-value--primary {
-            color: {{ $pdfPrimary }};
+            color: {{ $pdfText }};
             font-weight: 700;
         }
 
@@ -601,7 +602,6 @@
                         @endif
                     </td>
                     <td class="info-group">
-                        <div class="info-section-title">Identité</div>
                         <table class="info-table">
                             <tr>
                                 <td class="info-label">Nom et Prénoms</td>
@@ -636,7 +636,6 @@
                         </table>
                     </td>
                     <td class="info-group student-academic-group">
-                        <div class="info-section-title">Scolarité</div>
                         <table class="info-table">
                             <tr>
                                 <td class="info-label">Classe</td>
