@@ -1,0 +1,57 @@
+name: Temporary Yakro header title controls
+
+on:
+  push:
+    branches:
+      - esbtp-yakro
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "${{ github.event.head_commit.message == 'chore(ci): run Yakro header title controls' }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: esbtp-yakro
+          fetch-depth: 0
+
+      - name: Apply DomPDF-safe title hierarchy patch
+        run: python .github/scripts/tmp-header-title-controls-yakro.py
+
+      - name: Validate PHP source contract
+        run: |
+          php -l app/Services/BulletinService.php
+          php -l app/Http/Controllers/ESBTPBulletinController.php
+          python - <<'PY'
+          from pathlib import Path
+          y = Path('resources/views/esbtp/bulletins/pdf-configurable.blade.php').read_text()
+          a = Path('resources/views/esbtp/bulletins/pdf-configurable-abidjan.blade.php').read_text()
+          c = Path('resources/views/esbtp/bulletins/configuration.blade.php').read_text()
+          assert 'font-size: {{ $headerRightFont }}px;' in y
+          assert 'min(34, $headerRightFont + 4)' not in y
+          assert 'font-size: {{ $headerTitleFont }}px;' in y
+          assert 'font-size: {{ $headerTitleFont }}px;' in a
+          assert 'Titre « BULLETIN DE NOTES »' in c
+          assert 'Semestre / diplôme / niveau / année' in c
+          PY
+
+      - name: Run focused typography test
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          php artisan test tests/Feature/Bulletin/BulletinYakroTypographyContractTest.php
+
+      - name: Commit functional changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            resources/views/esbtp/bulletins/pdf-configurable.blade.php \
+            resources/views/esbtp/bulletins/pdf-configurable-abidjan.blade.php \
+            resources/views/esbtp/bulletins/configuration.blade.php \
+            app/Services/BulletinService.php \
+            tests/Feature/Bulletin/BulletinYakroTypographyContractTest.php
+          git commit -m 'fix(bulletins): prioritize document title over semester'
+          git push origin HEAD:esbtp-yakro
