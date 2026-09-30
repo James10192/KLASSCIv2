@@ -1,0 +1,79 @@
+name: Temporary TC bulletin consistency fix
+
+on:
+  push:
+    branches: [esbtp-yakro]
+    paths:
+      - '.github/tmp-fix-tc-bulletin-consistency-trigger'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: klassci_test
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: esbtp-yakro
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, json, tokenizer
+          tools: composer
+
+      - name: Apply TC consistency fix
+        run: python3 .github/scripts/tmp-fix-tc-bulletin-consistency.py
+
+      - name: Validate syntax
+        run: |
+          php -l app/Services/BulletinService.php
+          php -l app/Services/ESBTP/BtsCurrentResultSnapshotService.php
+          php -l tests/Feature/Bulletin/BtsTcBulletinConsistencyRegenerationTest.php
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Run focused tests
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: klassci_test
+          DB_USERNAME: root
+          DB_PASSWORD: root
+          CACHE_DRIVER: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+        run: |
+          php artisan test tests/Feature/Bulletin/BtsTcBulletinConsistencyRegenerationTest.php --stop-on-failure
+          php artisan test tests/Feature/Bulletin/BtsBulletinConsistencyWorkflowTest.php --stop-on-failure
+          php artisan test tests/Feature/Bts/GenererDonneesBulletinS1TroncCommunTest.php --stop-on-failure
+
+      - name: Commit functional changes and clean temporary files
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f .github/scripts/tmp-fix-tc-bulletin-consistency.py .github/workflows/tmp-fix-tc-bulletin-consistency.yml .github/tmp-fix-tc-bulletin-consistency-trigger || true
+          git add app tests .github
+          git commit -m 'fix(bulletins): align TC consistency snapshot with official calculation'
+          git push origin HEAD:esbtp-yakro
