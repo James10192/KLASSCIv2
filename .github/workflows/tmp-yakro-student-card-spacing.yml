@@ -1,0 +1,146 @@
+name: Temporary Yakro student card spacing patch
+
+on:
+  push:
+    branches: [esbtp-yakro]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "${{ github.event.head_commit.message == 'chore(ci): apply Yakro student card spacing patch' }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: esbtp-yakro
+          fetch-depth: 0
+
+      - name: Apply DomPDF-safe student card patch
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          p = Path('resources/views/esbtp/bulletins/pdf-configurable.blade.php')
+          text = p.read_text()
+
+          def once(old, new):
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected one occurrence, found {count}: {old[:100]!r}')
+              text = text.replace(old, new, 1)
+
+          once(
+              "        $pdfText       = $pdfSettings['text_color']        ?? '#1f2937';\n",
+              "        $pdfText       = $pdfSettings['text_color']        ?? '#1f2937';\n        $pdfSecondary  = $pdfSettings['secondary_color']   ?? '#64748b';\n"
+          )
+          once("            color: #111827;\n            line-height: 1.25;", "            color: {{ $pdfText }};\n            line-height: 1.25;")
+          once(
+              '''        .student-info-table td.student-photo-cell {
+            width: 104px;
+            min-width: 104px;
+            text-align: center;
+            vertical-align: middle;
+            padding: 7px 8px;
+            background-color: #f8fafc;
+            border-right: 2px solid {{ $pdfPrimary }};
+        }
+        .student-photo-shell {
+            width: 78px;
+            height: 88px;
+            margin: 0 auto;
+            border: 1.5px solid {{ $pdfPrimary }};
+            border-radius: 7px;
+            background-color: #ffffff;
+            overflow: hidden;
+        }
+        .student-photo-shell img.student-photo {
+            width: 78px;
+            height: 88px;
+            display: block;
+            margin: 0;
+            object-fit: cover;
+        }
+        .avatar-initials-fallback {
+            width: 78px;
+            height: 88px;
+            display: table;
+            background-color: #eef2f7;
+        }
+''',
+              '''        .student-info-table td.student-photo-cell {
+            width: 136px;
+            min-width: 136px;
+            text-align: center;
+            vertical-align: middle;
+            padding: 2px 3px;
+            background-color: #f8fafc;
+            border-right: 2px solid {{ $pdfPrimary }};
+        }
+        .student-photo-shell {
+            width: 116px;
+            height: 124px;
+            margin: 0 auto;
+            border: 1.5px solid {{ $pdfPrimary }};
+            border-radius: 7px;
+            background-color: #ffffff;
+            overflow: hidden;
+        }
+        .student-photo-shell img.student-photo {
+            width: 116px;
+            height: 124px;
+            display: block;
+            margin: 0;
+            object-fit: cover;
+        }
+        .avatar-initials-fallback {
+            width: 116px;
+            height: 124px;
+            display: table;
+            background-color: #eef2f7;
+        }
+'''
+          )
+          once("            margin-top: 5px;\n            padding: 2px 6px;", "            margin-top: 3px;\n            padding: 1px 4px;")
+          once("            padding: 6px 10px 5px;\n            background-color: #ffffff;", "            padding: 3px 6px 2px;\n            background-color: #ffffff;")
+          once("            padding: 3px 0;\n            border: none;", "            padding: 2px 0;\n            border: none;")
+          once("            color: #64748b;\n            font-size: {{ $typeScale['label'] }}px;", "            color: {{ $pdfSecondary }};\n            font-size: {{ $typeScale['label'] }}px;")
+          once("            color: #1f2937;\n            font-size: {{ $typeScale['table'] }}px;", "            color: {{ $pdfText }};\n            font-size: {{ $typeScale['table'] }}px;")
+          once("            color: {{ $pdfPrimary }};\n            font-weight: 700;\n        }\n\n        /* ── Tableau matières", "            color: {{ $pdfText }};\n            font-weight: 700;\n        }\n\n        /* ── Tableau matières")
+          once("                        <div class=\"info-section-title\">Identité</div>\n", "")
+          once("                        <div class=\"info-section-title\">Scolarité</div>\n", "")
+
+          p.write_text(text)
+
+          # Contract test: the two emphasized values must follow the configurable body text color.
+          t = Path('tests/Feature/Bulletin/BulletinYakroTypographyContractTest.php')
+          test = t.read_text()
+          needle = "        self::assertStringContainsString(\"font-size: {{ \\\$typeScale['signature'] }}px\", $view);\n"
+          if needle not in test:
+              raise SystemExit('test insertion anchor not found')
+          replacement = needle + "        self::assertStringContainsString('color: {{ $pdfText }};', $view);\n        self::assertStringNotContainsString('<div class=\"info-section-title\">Identité</div>', $view);\n        self::assertStringNotContainsString('<div class=\"info-section-title\">Scolarité</div>', $view);\n        self::assertStringContainsString('width: 136px;', $view);\n        self::assertStringContainsString('width: 116px;', $view);\n"
+          t.write_text(test.replace(needle, replacement, 1))
+          PY
+
+      - name: Validate patch
+        shell: bash
+        run: |
+          php -l tests/Feature/Bulletin/BulletinYakroTypographyContractTest.php
+          grep -q 'color: {{ $pdfText }};' resources/views/esbtp/bulletins/pdf-configurable.blade.php
+          ! grep -q '<div class="info-section-title">Identité</div>' resources/views/esbtp/bulletins/pdf-configurable.blade.php
+          ! grep -q '<div class="info-section-title">Scolarité</div>' resources/views/esbtp/bulletins/pdf-configurable.blade.php
+          grep -q 'width: 136px;' resources/views/esbtp/bulletins/pdf-configurable.blade.php
+          grep -q 'width: 116px;' resources/views/esbtp/bulletins/pdf-configurable.blade.php
+
+      - name: Commit functional changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add resources/views/esbtp/bulletins/pdf-configurable.blade.php \
+                  tests/Feature/Bulletin/BulletinYakroTypographyContractTest.php
+          git commit -m "fix(bulletins): compact Yakro identity card and use PDF text color"
+          git push origin HEAD:esbtp-yakro
