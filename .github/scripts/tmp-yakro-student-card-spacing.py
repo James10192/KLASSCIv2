@@ -95,19 +95,5 @@ once(
 )
 once('                        <div class="info-section-title">Identité</div>\n', '')
 once('                        <div class="info-section-title">Scolarité</div>\n', '')
-p.write_text(text)
 
-t = Path('tests/Feature/Bulletin/BulletinYakroTypographyContractTest.php')
-test = t.read_text()
-anchor = "        self::assertStringContainsString(\"font-size: {{ \\\$typeScale['signature'] }}px\", $view);\n"
-if anchor not in test:
-    raise SystemExit('test insertion anchor not found')
-extra = (
-    anchor
-    + "        self::assertStringContainsString('color: {{ $pdfText }};', $view);\n"
-    + "        self::assertStringNotContainsString('<div class=\"info-section-title\">Identité</div>', $view);\n"
-    + "        self::assertStringNotContainsString('<div class=\"info-section-title\">Scolarité</div>', $view);\n"
-    + "        self::assertStringContainsString('width: 136px;', $view);\n"
-    + "        self::assertStringContainsString('width: 116px;', $view);\n"
-)
-t.write_text(test.replace(anchor, extra, 1))
+p.write_text(text)
