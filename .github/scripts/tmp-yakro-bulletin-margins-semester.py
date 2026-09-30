@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Trigger rerun after fixing shell validation quoting.
 p = Path('resources/views/esbtp/bulletins/pdf-configurable.blade.php')
 text = p.read_text()
 
