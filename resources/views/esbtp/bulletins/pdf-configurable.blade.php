@@ -62,14 +62,14 @@
         .edition-footer {
             margin-top: 10px;
             font-size: {{ $editionFontSize }}px;
-            color: #6b7280;
+            color: {{ $pdfText }};
             opacity: {{ $editionOpacity }};
             text-align: left;
         }
         .edition-authenticity {
             margin-top: 4px;
             font-size: {{ $authenticityFontSize }}px;
-            color: #6b7280;
+            color: {{ $pdfText }};
             opacity: {{ $authenticityOpacity }};
             text-align: center;
         }
@@ -96,7 +96,7 @@
             width: 26%;
             font-size: {{ $headerLeftFont }}px;
             line-height: 1.5;
-            color: #374151;
+            color: {{ $pdfText }};
             border-right: 1px solid #e5e7eb;
             padding-right: 8px;
         }
@@ -130,7 +130,7 @@
         }
         .school-address {
             font-size: {{ $headerSchoolMetaFont }}px;
-            color: #6b7280;
+            color: {{ $pdfText }};
         }
         .header-right .title {
             font-weight: 700;
@@ -141,14 +141,16 @@
             margin-bottom: 4px;
         }
         .header-right .period {
-            font-size: {{ $headerRightFont }}px;
-            font-weight: 600;
-            color: #1f2937;
-            margin-bottom: 2px;
+            font-size: {{ min(32, $headerRightFont + 2) }}px;
+            font-weight: 700;
+            color: {{ $pdfText }};
+            margin: 2px 0 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
         }
         .header-right .year {
             font-size: {{ $headerRightFont }}px;
-            color: #374151;
+            color: {{ $pdfText }};
         }
 
         /* ── Fiche étudiant ───────────────────────────────────── */
