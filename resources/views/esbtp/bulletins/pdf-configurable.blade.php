@@ -11,6 +11,8 @@
         $anneeAffichee = ($bulletin ?? null)?->anneeUniversitaire ?? ($anneeUniversitaire ?? null);
         $anneeLabel = $anneeAffichee?->display_name ?? '';
         $typeScale = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
+        $headerTitleFont = max(8, min(30, (int) (($settings['bulletin_header_title_font_size'] ?? '') ?: 18)));
+        $headerRightFont = max(6, min(22, (int) (($settings['bulletin_header_right_font_size'] ?? '') ?: 12)));
         $marginVertical = max(2, min(25, (int) ($settings['bulletin_margin_vertical'] ?? 5)));
         $marginHorizontal = max(2, min(25, (int) ($settings['bulletin_margin_horizontal'] ?? 5)));
     @endphp
@@ -112,7 +114,9 @@
         }
         .header-right .title {
             font-weight: 700;
-            font-size: {{ $typeScale['title'] }}px;
+            font-size: {{ $headerTitleFont }}px;
+            line-height: 1.15;
+            letter-spacing: 0.04em;
             text-decoration: underline;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
@@ -120,7 +124,7 @@
         }
         .header-right .period {
             display: inline-block;
-            font-size: {{ min(30, $typeScale['table'] + 4) }}px;
+            font-size: {{ $headerRightFont }}px;
             font-weight: 700;
             color: {{ $pdfText }};
             margin: 3px 0 5px;
@@ -132,7 +136,7 @@
             letter-spacing: 0.04em;
         }
         .header-right .year {
-            font-size: {{ $typeScale['info'] }}px;
+            font-size: {{ $headerRightFont }}px;
             color: #374151;
         }
 

@@ -123,6 +123,23 @@
                                     @endforeach
                                 </select>
 
+                                <div style="margin-top:1rem;padding:.85rem;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;">
+                                    <div class="bcfg-label" style="margin-bottom:.55rem;">En-tête — hiérarchie du titre</div>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="bcfg-label">Titre « BULLETIN DE NOTES »</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_header_title_font_size" min="8" max="30" step="1"
+                                                   value="{{ $settings['bulletin_header_title_font_size'] ?? '18' }}">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="bcfg-label">Semestre / diplôme / niveau / année</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_header_right_font_size" min="6" max="22" step="1"
+                                                   value="{{ $settings['bulletin_header_right_font_size'] ?? '12' }}">
+                                        </div>
+                                    </div>
+                                    <div class="bcfg-hint" style="margin-top:.45rem;">Le titre du document est volontairement dominant. Le semestre utilise la même taille que les informations secondaires de l'en-tête, notamment le diplôme/cycle lorsque le modèle les affiche. Réglages compatibles Yakro et Abidjan.</div>
+                                </div>
+
                                 <label class="bcfg-label" style="margin-top:.85rem;">Marge haut / bas (mm)</label>
                                 <input type="number" class="bcfg-input" name="bulletin_margin_vertical"
                                        min="2" max="25" step="1"

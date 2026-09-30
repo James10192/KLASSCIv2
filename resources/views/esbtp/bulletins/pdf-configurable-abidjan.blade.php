@@ -11,6 +11,8 @@
         // Meme echelle typographique que le gabarit Yakro : la taille choisie
         // dans /esbtp/bulletins/configuration pilote tout le document.
         $typeScale     = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
+        $headerTitleFont = max(8, min(30, (int) (($settings['bulletin_header_title_font_size'] ?? '') ?: 18)));
+        $headerRightFont = max(6, min(22, (int) (($settings['bulletin_header_right_font_size'] ?? '') ?: 12)));
         // Marges de page reglees dans /esbtp/bulletins/configuration. Les bornes
         // ecartent seulement les valeurs aberrantes : sous ~5 mm, certaines
         // imprimantes rognent encore.
@@ -121,7 +123,7 @@
         }
         .bulletin-title {
             font-weight: 700;
-            font-size: {{ $typeScale['title'] }}px;
+            font-size: {{ $headerTitleFont }}px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: {{ $pdfPrimary }};
@@ -129,7 +131,7 @@
         }
         .bulletin-period {
             display: inline-block;
-            font-size: {{ min(30, $typeScale['table'] + 4) }}px;
+            font-size: {{ $headerRightFont }}px;
             font-weight: 700;
             color: {{ $pdfText }};
             margin: 3px 0 5px;
@@ -141,7 +143,7 @@
             letter-spacing: 0.04em;
         }
         .academic-year {
-            font-size: {{ $typeScale['info'] }}px;
+            font-size: {{ $headerRightFont }}px;
             font-weight: 700;
             color: #111827;
         }

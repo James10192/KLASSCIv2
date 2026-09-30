@@ -2006,6 +2006,8 @@ class BulletinService
             // En-tête bulletin
             'bulletin_school_name_custom' => \App\Helpers\SettingsHelper::get('bulletin_school_name_custom', ''),
             'bulletin_font_size' => \App\Helpers\SettingsHelper::get('bulletin_font_size', '13'),
+            'bulletin_header_title_font_size' => \App\Helpers\SettingsHelper::get('bulletin_header_title_font_size', '18'),
+            'bulletin_header_right_font_size' => \App\Helpers\SettingsHelper::get('bulletin_header_right_font_size', '12'),
             'bulletin_style' => \App\Helpers\SettingsHelper::get('bulletin_style', 'yakro'),
             'bulletin_bts1_s1_council_title' => \App\Helpers\SettingsHelper::get('bulletin_bts1_s1_council_title', 'Décision du conseil de classe'),
             'bulletin_show_header' => \App\Helpers\SettingsHelper::get('bulletin_show_header', '1'),
