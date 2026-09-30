@@ -4,6 +4,7 @@ namespace Tests\Feature\Admissions;
 
 use App\Http\Controllers\ESBTP\ManagedCashierEntryController;
 use App\Http\Controllers\ESBTP\ManagedInscriptionCompletionController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
@@ -42,6 +43,13 @@ class ManagedInscriptionWorkflowRoutesTest extends TestCase
         $this->assertNotNull($post);
         $this->assertSame(ManagedCashierEntryController::class.'@show', $get->getActionName());
         $this->assertSame(ManagedCashierEntryController::class.'@store', $post->getActionName());
+
+        // Verifie aussi le route matching reel : une route dupliquee plus haut
+        // dans web.php ne doit pas reprendre la main au runtime.
+        $matchedGet = Route::getRoutes()->match(Request::create('/esbtp/inscriptions/pre-inscription', 'GET'));
+        $matchedPost = Route::getRoutes()->match(Request::create('/esbtp/inscriptions/pre-inscription', 'POST'));
+        $this->assertSame(ManagedCashierEntryController::class.'@show', $matchedGet->getActionName());
+        $this->assertSame(ManagedCashierEntryController::class.'@store', $matchedPost->getActionName());
     }
 
     /** @test */
