@@ -1,4 +1,3 @@
-# trigger: rerun Yakro header title controls
 from pathlib import Path
 
 
@@ -17,8 +16,6 @@ config = 'resources/views/esbtp/bulletins/configuration.blade.php'
 service = 'app/Services/BulletinService.php'
 test = 'tests/Feature/Bulletin/BulletinYakroTypographyContractTest.php'
 
-# Yakro: le titre du document est dominant; le semestre garde son cadre mais
-# reprend exactement la taille des lignes Brevet/BTS/annee.
 replace_once(yakro,
 """        .header-right .title {
             font-weight: 700;
@@ -42,7 +39,6 @@ replace_once(yakro,
 """)
 replace_once(yakro, "            font-size: {{ min(34, $headerRightFont + 4) }}px;\n", "            font-size: {{ $headerRightFont }}px;\n")
 
-# Modele Abidjan disponible sur le meme tenant: memes deux commandes.
 replace_once(abidjan,
 """        $typeScale     = \\App\\Services\\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
 """,
@@ -88,7 +84,6 @@ replace_once(abidjan, """        .academic-year {
             font-size: {{ $headerRightFont }}px;
 """)
 
-# UI de configuration: deux champs explicites et reutilisables par les deux modeles.
 replace_once(config,
 """                                            <label class="bcfg-label">Titre du bulletin</label>
                                             <input type="number" class="bcfg-input" name="bulletin_header_title_font_size" min="8" max="30" step="1"
@@ -113,7 +108,6 @@ replace_once(config,
 """                                    <div class="bcfg-hint" style="margin-top:.45rem;">Le titre « BULLETIN DE NOTES » se règle séparément. Le semestre reprend la même taille que « Brevet de Technicien Supérieur », BTS et l'année. Valeurs en pixels avant application de l'échelle générale, en mise en page tableau compatible DomPDF.</div>
 """)
 
-# Valeurs par defaut non vides: effet immediat meme avant la premiere sauvegarde.
 replace_once(service,
 """            'bulletin_header_title_font_size' => \\App\\Helpers\\SettingsHelper::get('bulletin_header_title_font_size', ''),
             'bulletin_header_right_font_size' => \\App\\Helpers\\SettingsHelper::get('bulletin_header_right_font_size', ''),
@@ -122,6 +116,24 @@ replace_once(service,
             'bulletin_header_right_font_size' => \\App\\Helpers\\SettingsHelper::get('bulletin_header_right_font_size', '12'),
 """)
 
+# Le test avait pris du retard sur le constructeur de BulletinService: ajoute le
+# septieme collaborateur requis afin que le test de contrat teste bien la typo.
+replace_once(test,
+"""use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
+""",
+"""use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
+use App\Domain\BtsTroncCommun\BulletinSubjectRowsCompleter;
+""")
+replace_once(test,
+"""            new ClasseOuvertureResolver(),
+            new BulletinSubjectOrder(new BtsBulletinSubjectResolver())
+        );
+""",
+"""            new ClasseOuvertureResolver(),
+            new BulletinSubjectOrder(new BtsBulletinSubjectResolver()),
+            Mockery::mock(BulletinSubjectRowsCompleter::class)
+        );
+""")
 replace_once(test,
 """        self::assertStringContainsString('bulletin_header_school_name_font_size', $view);
         self::assertStringContainsString('bulletin_header_logo_height', $view);
@@ -134,7 +146,7 @@ replace_once(test,
         self::assertStringContainsString('bulletin_header_logo_height', $view);
 """)
 
-y = Path(yakro).read_text(); a = Path(abidjan).read_text(); c = Path(config).read_text(); s = Path(service).read_text()
+y = Path(yakro).read_text(); a = Path(abidjan).read_text(); c = Path(config).read_text(); s = Path(service).read_text(); t = Path(test).read_text()
 assert 'font-size: {{ $headerRightFont }}px;' in y
 assert 'min(34, $headerRightFont + 4)' not in y
 assert 'font-size: {{ $headerTitleFont }}px;' in y
@@ -144,3 +156,4 @@ assert 'Titre « BULLETIN DE NOTES »' in c
 assert 'Semestre / diplôme / niveau / année' in c
 assert "get('bulletin_header_title_font_size', '18')" in s
 assert "get('bulletin_header_right_font_size', '12')" in s
+assert 'BulletinSubjectRowsCompleter::class' in t
