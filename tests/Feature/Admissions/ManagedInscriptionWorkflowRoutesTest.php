@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Admissions;
 
+use App\Http\Controllers\ESBTP\ManagedCashierEntryController;
+use App\Http\Controllers\ESBTP\ManagedInscriptionCompletionController;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
@@ -31,9 +33,26 @@ class ManagedInscriptionWorkflowRoutesTest extends TestCase
     }
 
     /** @test */
-    public function le_flux_legacy_reste_enregistre_en_parallele(): void
+    public function la_preinscription_historique_passe_par_le_point_entree_configurable(): void
     {
-        $this->assertTrue(Route::has('esbtp.inscriptions.pre-inscription'));
-        $this->assertTrue(Route::has('esbtp.inscriptions.store-pre-inscription'));
+        $get = Route::getRoutes()->getByName('esbtp.inscriptions.pre-inscription');
+        $post = Route::getRoutes()->getByName('esbtp.inscriptions.store-pre-inscription');
+
+        $this->assertNotNull($get);
+        $this->assertNotNull($post);
+        $this->assertSame(ManagedCashierEntryController::class.'@show', $get->getActionName());
+        $this->assertSame(ManagedCashierEntryController::class.'@store', $post->getActionName());
+    }
+
+    /** @test */
+    public function la_finalisation_utilise_le_controleur_canonique_du_dossier_provisoire(): void
+    {
+        $studentChoice = Route::getRoutes()->getByName('esbtp.admissions.workflow.student.choose-class');
+        $adminFinalize = Route::getRoutes()->getByName('esbtp.admissions.workflow.finalize');
+
+        $this->assertNotNull($studentChoice);
+        $this->assertNotNull($adminFinalize);
+        $this->assertSame(ManagedInscriptionCompletionController::class.'@chooseClass', $studentChoice->getActionName());
+        $this->assertSame(ManagedInscriptionCompletionController::class.'@finalize', $adminFinalize->getActionName());
     }
 }
