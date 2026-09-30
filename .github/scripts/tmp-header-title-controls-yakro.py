@@ -1,4 +1,3 @@
-# trigger: Yakro header title controls
 from pathlib import Path
 
 
@@ -17,6 +16,8 @@ config = 'resources/views/esbtp/bulletins/configuration.blade.php'
 service = 'app/Services/BulletinService.php'
 test = 'tests/Feature/Bulletin/BulletinYakroTypographyContractTest.php'
 
+# Yakro: le titre du document est dominant; le semestre garde son cadre mais
+# reprend exactement la taille des lignes Brevet/BTS/annee.
 replace_once(yakro,
 """        .header-right .title {
             font-weight: 700;
@@ -40,10 +41,11 @@ replace_once(yakro,
 """)
 replace_once(yakro, "            font-size: {{ min(34, $headerRightFont + 4) }}px;\n", "            font-size: {{ $headerRightFont }}px;\n")
 
+# Modele Abidjan disponible sur le meme tenant: memes deux commandes.
 replace_once(abidjan,
-"""        $typeScale     = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
+"""        $typeScale     = \\App\\Services\\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
 """,
-"""        $typeScale     = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
+"""        $typeScale     = \\App\\Services\\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
         $headerTitleFont = max(8, min(30, (int) (($settings['bulletin_header_title_font_size'] ?? '') ?: 18)));
         $headerRightFont = max(6, min(22, (int) (($settings['bulletin_header_right_font_size'] ?? '') ?: 12)));
 """)
@@ -58,13 +60,34 @@ replace_once(abidjan,
             letter-spacing: 0.05em;
             color: {{ $pdfPrimary }};
 """)
-replace_once(abidjan, "            font-size: {{ min(30, $typeScale['table'] + 4) }}px;\n", "            font-size: {{ $headerRightFont }}px;\n")
+replace_once(abidjan,
+"""        .bulletin-period {
+            font-size: {{ $typeScale['info'] }}px;
+            color: #374151;
+            margin-bottom: 1px;
+        }
+""",
+"""        .bulletin-period {
+            display: inline-block;
+            font-size: {{ $headerRightFont }}px;
+            font-weight: 700;
+            color: {{ $pdfText }};
+            margin: 3px 0 5px;
+            padding: 3px 7px;
+            border: 1.5px solid {{ $pdfPrimary }};
+            border-radius: 4px;
+            background-color: #f8fafc;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+""")
 replace_once(abidjan, """        .academic-year {
             font-size: {{ $typeScale['info'] }}px;
 """, """        .academic-year {
             font-size: {{ $headerRightFont }}px;
 """)
 
+# UI de configuration: deux champs explicites et reutilisables par les deux modeles.
 replace_once(config,
 """                                            <label class="bcfg-label">Titre du bulletin</label>
                                             <input type="number" class="bcfg-input" name="bulletin_header_title_font_size" min="8" max="30" step="1"
@@ -89,12 +112,13 @@ replace_once(config,
 """                                    <div class="bcfg-hint" style="margin-top:.45rem;">Le titre « BULLETIN DE NOTES » se règle séparément. Le semestre reprend la même taille que « Brevet de Technicien Supérieur », BTS et l'année. Valeurs en pixels avant application de l'échelle générale, en mise en page tableau compatible DomPDF.</div>
 """)
 
+# Valeurs par defaut non vides: effet immediat meme avant la premiere sauvegarde.
 replace_once(service,
-"""            'bulletin_header_title_font_size' => \App\Helpers\SettingsHelper::get('bulletin_header_title_font_size', ''),
-            'bulletin_header_right_font_size' => \App\Helpers\SettingsHelper::get('bulletin_header_right_font_size', ''),
+"""            'bulletin_header_title_font_size' => \\App\\Helpers\\SettingsHelper::get('bulletin_header_title_font_size', ''),
+            'bulletin_header_right_font_size' => \\App\\Helpers\\SettingsHelper::get('bulletin_header_right_font_size', ''),
 """,
-"""            'bulletin_header_title_font_size' => \App\Helpers\SettingsHelper::get('bulletin_header_title_font_size', '18'),
-            'bulletin_header_right_font_size' => \App\Helpers\SettingsHelper::get('bulletin_header_right_font_size', '12'),
+"""            'bulletin_header_title_font_size' => \\App\\Helpers\\SettingsHelper::get('bulletin_header_title_font_size', '18'),
+            'bulletin_header_right_font_size' => \\App\\Helpers\\SettingsHelper::get('bulletin_header_right_font_size', '12'),
 """)
 
 replace_once(test,
