@@ -37,10 +37,11 @@ class ESBTPCandidatureWorkflow extends Model implements Auditable
         'activation_token_expires_at',
         'activation_token_used_at',
         'access_activated_at',
+        'profile_completed_at',
+        'profile_payload',
         'class_selected_at',
         'class_selected_by',
         'class_locked_at',
-        'profile_payload',
     ];
 
     protected $casts = [
@@ -49,6 +50,7 @@ class ESBTPCandidatureWorkflow extends Model implements Auditable
         'activation_token_expires_at' => 'datetime',
         'activation_token_used_at' => 'datetime',
         'access_activated_at' => 'datetime',
+        'profile_completed_at' => 'datetime',
         'class_selected_at' => 'datetime',
         'class_locked_at' => 'datetime',
         'profile_payload' => 'array',
@@ -66,6 +68,7 @@ class ESBTPCandidatureWorkflow extends Model implements Auditable
         'documents_validated_at',
         'documents_validated_by',
         'access_activated_at',
+        'profile_completed_at',
         'class_selected_at',
         'class_selected_by',
         'class_locked_at',
@@ -111,6 +114,11 @@ class ESBTPCandidatureWorkflow extends Model implements Auditable
     public function accessActivated(): bool
     {
         return $this->access_activated_at !== null;
+    }
+
+    public function profileCompleted(): bool
+    {
+        return $this->profile_completed_at !== null;
     }
 
     public function classIsLocked(): bool
