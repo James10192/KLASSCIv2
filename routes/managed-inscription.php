@@ -31,6 +31,9 @@ Route::prefix('esbtp/admissions/workflow')
         Route::middleware(['auth', 'paywall'])->group(function () {
             Route::get('/mon-dossier', [ManagedInscriptionWorkflowController::class, 'student'])
                 ->name('student');
+            Route::post('/mon-dossier/profil', [ManagedInscriptionWorkflowController::class, 'updateStudentProfile'])
+                ->middleware('throttle:20,1')
+                ->name('student.profile');
             Route::post('/mon-dossier/classe', [ManagedInscriptionWorkflowController::class, 'chooseClass'])
                 ->middleware('throttle:20,1')
                 ->name('student.choose-class');
@@ -58,6 +61,9 @@ Route::prefix('esbtp/admissions/workflow')
                 Route::post('/{workflow}/activation/renvoyer', [ManagedInscriptionWorkflowController::class, 'resendActivation'])
                     ->middleware('throttle:10,1')
                     ->name('activation.resend');
+                Route::post('/{workflow}/classe', [ManagedInscriptionWorkflowController::class, 'chooseClassAsAdmin'])
+                    ->middleware('throttle:20,1')
+                    ->name('class.choose-admin');
                 Route::post('/{workflow}/finaliser', [ManagedInscriptionWorkflowController::class, 'finalize'])
                     ->middleware('throttle:20,1')
                     ->name('finalize');
