@@ -4,6 +4,8 @@ namespace Tests\Feature\Admissions;
 
 use App\Http\Controllers\ESBTP\ManagedCashierEntryController;
 use App\Http\Controllers\ESBTP\ManagedInscriptionCompletionController;
+use App\Http\Controllers\ESBTP\ManagedInscriptionQueueController;
+use App\Http\Controllers\ESBTP\ManagedInscriptionStepController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -44,12 +46,26 @@ class ManagedInscriptionWorkflowRoutesTest extends TestCase
         $this->assertSame(ManagedCashierEntryController::class.'@show', $get->getActionName());
         $this->assertSame(ManagedCashierEntryController::class.'@store', $post->getActionName());
 
-        // Verifie aussi le route matching reel : une route dupliquee plus haut
+        // Vérifie aussi le route matching réel : une route dupliquée plus haut
         // dans web.php ne doit pas reprendre la main au runtime.
         $matchedGet = Route::getRoutes()->match(Request::create('/esbtp/inscriptions/pre-inscription', 'GET'));
         $matchedPost = Route::getRoutes()->match(Request::create('/esbtp/inscriptions/pre-inscription', 'POST'));
         $this->assertSame(ManagedCashierEntryController::class.'@show', $matchedGet->getActionName());
         $this->assertSame(ManagedCashierEntryController::class.'@store', $matchedPost->getActionName());
+    }
+
+    /** @test */
+    public function la_file_et_les_ecritures_physiques_passent_par_la_garde_de_sequence(): void
+    {
+        $index = Route::getRoutes()->getByName('esbtp.admissions.workflow.index');
+        $pay = Route::getRoutes()->getByName('esbtp.admissions.workflow.pay');
+        $receive = Route::getRoutes()->getByName('esbtp.admissions.workflow.pieces.receive');
+        $validate = Route::getRoutes()->getByName('esbtp.admissions.workflow.pieces.validate');
+
+        $this->assertSame(ManagedInscriptionQueueController::class.'@index', $index->getActionName());
+        $this->assertSame(ManagedInscriptionStepController::class.'@pay', $pay->getActionName());
+        $this->assertSame(ManagedInscriptionStepController::class.'@receivePiece', $receive->getActionName());
+        $this->assertSame(ManagedInscriptionStepController::class.'@validateDocuments', $validate->getActionName());
     }
 
     /** @test */
