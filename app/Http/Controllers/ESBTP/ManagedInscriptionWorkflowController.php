@@ -10,7 +10,9 @@ use App\Services\Admissions\InscriptionWorkflowSettings;
 use App\Services\Admissions\ManagedInscriptionWorkflow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ManagedInscriptionWorkflowController extends Controller
 {
@@ -22,6 +24,7 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function index()
     {
+        $this->guardManagedWorkflow();
         $this->settings->ensureDefaults();
 
         return view('esbtp.admissions.workflow.index', [
@@ -32,6 +35,7 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function show(ESBTPCandidature $candidature)
     {
+        $this->guardManagedWorkflow();
         $workflow = $this->managed->ensure($candidature);
 
         return view('esbtp.admissions.workflow.show', [
@@ -40,14 +44,18 @@ class ManagedInscriptionWorkflowController extends Controller
             'pieces' => $this->managed->provisionalPieces($workflow),
             'mode' => $this->settings->mode(),
             'activationStep' => $this->settings->accountActivationStep(),
+            'paymentModes' => config('payment_modes.labels', []),
         ]);
     }
 
     public function pay(Request $request, ESBTPCandidature $candidature)
     {
+        $this->guardManagedWorkflow();
+        $allowedModes = array_keys(config('payment_modes.labels', []));
+
         $data = $request->validate([
             'montant' => ['required', 'numeric', 'min:1'],
-            'mode_paiement' => ['required', 'string', 'max:50'],
+            'mode_paiement' => ['required', 'string', Rule::in($allowedModes)],
             'reference_paiement' => ['nullable', 'string', 'max:120'],
             'numero_transaction' => ['nullable', 'string', 'max:120'],
         ]);
@@ -61,6 +69,7 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function receivePiece(Request $request, ESBTPCandidatureWorkflow $workflow)
     {
+        $this->guardManagedWorkflow();
         $data = $request->validate([
             'piece_id' => ['required', 'integer'],
             'quantite' => ['required', 'integer', 'min:1', 'max:50'],
@@ -73,6 +82,7 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function decidePiece(Request $request, ESBTPCandidatureWorkflow $workflow, ESBTPPieceDeposee $depot)
     {
+        $this->guardManagedWorkflow();
         $data = $request->validate([
             'decision' => ['required', Rule::in(['valider', 'refuser'])],
             'motif' => ['nullable', 'string', 'max:1000'],
@@ -91,6 +101,7 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function validateDocuments(ESBTPCandidatureWorkflow $workflow)
     {
+        $this->guardManagedWorkflow();
         $this->managed->validateDocuments($workflow, (int) Auth::id());
 
         return back()->with('success', 'Contrôle physique terminé : le dossier de pièces est complet.');
@@ -98,6 +109,19 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function resendActivation(ESBTPCandidatureWorkflow $workflow)
     {
+        $this->guardManagedWorkflow();
+
+        $milestoneReached = match ($this->settings->accountActivationStep()) {
+            InscriptionWorkflowSettings::ACTIVATION_AFTER_DOCUMENTS => $workflow->documentsValidated(),
+            default => $workflow->paymentRecorded(),
+        };
+
+        if (! $milestoneReached) {
+            throw ValidationException::withMessages([
+                'activation' => "Le dossier n'a pas encore atteint l'étape configurée pour ouvrir l'espace étudiant.",
+            ]);
+        }
+
         $result = $this->managed->issueActivation($workflow);
 
         return back()->with(
@@ -110,6 +134,7 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function activationForm(string $token)
     {
+        $this->guardManagedWorkflow();
         $workflow = $this->managed->workflowForActivationToken($token);
 
         return view('esbtp.admissions.workflow.activation', [
@@ -120,6 +145,7 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function activate(Request $request, string $token)
     {
+        $this->guardManagedWorkflow();
         $data = $request->validate([
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
@@ -135,6 +161,7 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function student(Request $request)
     {
+        $this->guardManagedWorkflow();
         $workflow = ESBTPCandidatureWorkflow::query()
             ->with(['candidature', 'etudiant.user', 'paiement', 'selectedClass', 'finalInscription'])
             ->whereHas('etudiant', fn ($q) => $q->where('user_id', $request->user()->id))
@@ -152,6 +179,7 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function chooseClass(Request $request)
     {
+        $this->guardManagedWorkflow();
         $data = $request->validate(['classe_id' => ['required', 'integer']]);
         $workflow = ESBTPCandidatureWorkflow::query()
             ->with(['candidature', 'etudiant.user'])
@@ -172,6 +200,7 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function overrideClass(Request $request, ESBTPCandidatureWorkflow $workflow)
     {
+        $this->guardManagedWorkflow();
         $data = $request->validate([
             'classe_id' => ['required', 'integer'],
             'motif' => ['required', 'string', 'min:10', 'max:1000'],
@@ -179,7 +208,7 @@ class ManagedInscriptionWorkflowController extends Controller
 
         $workflow = $this->managed->chooseClass($workflow, (int) $data['classe_id'], (int) Auth::id(), true);
 
-        \Log::notice('Classe du parcours inscription remplacée par un agent', [
+        Log::notice('Classe du parcours inscription remplacée par un agent', [
             'workflow_id' => $workflow->id,
             'classe_id' => $workflow->selected_class_id,
             'motif' => $data['motif'],
@@ -191,10 +220,16 @@ class ManagedInscriptionWorkflowController extends Controller
 
     public function finalize(ESBTPCandidatureWorkflow $workflow)
     {
+        $this->guardManagedWorkflow();
         $inscription = $this->managed->finalize($workflow, (int) Auth::id());
 
         return redirect()
             ->route('esbtp.inscriptions.show', $inscription)
             ->with('success', 'Inscription académique finalisée depuis la candidature en ligne.');
+    }
+
+    private function guardManagedWorkflow(): void
+    {
+        abort_unless($this->settings->usesManagedWorkflow(), 404);
     }
 }
