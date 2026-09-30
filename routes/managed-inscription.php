@@ -63,11 +63,11 @@ Route::prefix('esbtp/admissions/workflow')
                     ->name('pieces.validate');
             });
 
-            // Permission volontairement distincte : le choix étudiant reste
-            // verrouillé une fois confirmé, et seule une décision administrative
-            // explicite peut le remplacer avec un motif audité.
+            // Le droit existe déjà dans le registre et signifie précisément
+            // « corriger une inscription validée ». On le réutilise plutôt que
+            // d'introduire un droit orphelin uniquement pour ce pilote.
             Route::post('/{workflow}/classe/override', [ManagedInscriptionWorkflowController::class, 'overrideClass'])
-                ->middleware(['permission:inscriptions.class.override', 'throttle:20,1'])
+                ->middleware(['permission:inscriptions.edit_validated', 'throttle:20,1'])
                 ->name('class.override');
         });
     });
