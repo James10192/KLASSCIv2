@@ -134,54 +134,54 @@
         /* ── Fiche étudiant ───────────────────────────────────── */
         .student-info {
             width: 100%;
-            margin-bottom: 5px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            background: #f9fafb;
+            margin-bottom: 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #ffffff;
             overflow: hidden;
         }
         .student-info-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
+            margin: 0;
         }
-        .student-info-table td {
+        .student-info-table > tbody > tr > td {
             border: none;
-            padding: 4px 6px;
-            vertical-align: top;
             word-wrap: break-word;
         }
-
-        /* Colonne photo */
-        .student-info-table td:first-child {
-            width: 90px;
-            min-width: 90px;
+        .student-info-table td.student-photo-cell {
+            width: 104px;
+            min-width: 104px;
             text-align: center;
             vertical-align: middle;
-            padding: 5px;
-            background: #eff6ff;
-            border-right: 1px solid #dbeafe;
-            display: table-cell;
+            padding: 7px 8px;
+            background-color: #f8fafc;
+            border-right: 2px solid {{ $pdfPrimary }};
         }
-        .student-info-table td:first-child img {
-            width: 70px;
-            height: 70px;
-            border-radius: 5px;
-            object-fit: cover;
-            border: 2px solid {{ $pdfPrimary }};
+        .student-photo-shell {
+            width: 78px;
+            height: 88px;
+            margin: 0 auto;
+            border: 1.5px solid {{ $pdfPrimary }};
+            border-radius: 7px;
+            background-color: #ffffff;
+            overflow: hidden;
+        }
+        .student-photo-shell img.student-photo {
+            width: 78px;
+            height: 88px;
             display: block;
-            margin: 0 auto;
+            margin: 0;
+            object-fit: cover;
         }
-        .avatar-fallback {
-            width: 70px;
-            height: 70px;
-            border-radius: 5px;
-            border: 2px solid {{ $pdfPrimary }};
+        .avatar-initials-fallback {
+            width: 78px;
+            height: 88px;
             display: table;
-            margin: 0 auto;
-            background: #e5e7eb;
+            background-color: #eef2f7;
         }
-        .avatar-fallback span {
+        .avatar-initials-fallback span {
             display: table-cell;
             vertical-align: middle;
             text-align: center;
@@ -189,47 +189,69 @@
             color: {{ $pdfPrimary }};
             font-weight: 700;
         }
-        .matricule-text {
-            margin-top: 3px;
+        .matricule-badge {
+            display: inline-block;
+            margin-top: 5px;
+            padding: 2px 6px;
+            border: 1px solid #d8e0e8;
+            border-radius: 4px;
+            background-color: #ffffff;
+            color: #334155;
             font-weight: 700;
             font-size: {{ $typeScale['meta'] }}px;
             text-align: center;
-            color: #374151;
+            white-space: nowrap;
         }
-
-        /* Colonnes infos premium — style fiche élève sans ":", labels uppercase muted +
-           valeurs bold primary. Table 2 colonnes pour alignement garanti DomPDF. */
-        .info-group {
-            width: 42%;
+        .student-info-table td.info-group {
+            width: 43%;
             vertical-align: top;
-            padding: 3px 6px;
+            padding: 6px 10px 5px;
+            background-color: #ffffff;
+        }
+        .student-info-table td.student-academic-group {
+            border-left: 1px solid #e5e7eb;
+        }
+        .info-section-title {
+            margin: 0 0 3px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #e2e8f0;
+            color: {{ $pdfPrimary }};
+            font-size: {{ $typeScale['meta'] }}px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
         }
         .info-table {
             width: 100%;
             border-collapse: collapse;
+            margin: 0;
         }
         .info-table td {
             padding: 3px 0;
             border: none;
-            border-bottom: 1px dotted #e5e7eb;
+            border-bottom: 1px solid #eef2f7;
             vertical-align: middle;
         }
         .info-table tr:last-child td { border-bottom: none; }
         .info-table td.info-label {
-            font-weight: 700;
-            white-space: nowrap;
-            padding-right: 10px;
-            color: #6b7280;
+            width: 41%;
+            padding-right: 8px;
+            color: #64748b;
             font-size: {{ $typeScale['label'] }}px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
-            width: 1%; /* shrink to content */
+            letter-spacing: 0.045em;
+            white-space: nowrap;
         }
         .info-table td.info-value {
-            color: {{ $pdfPrimary }};
+            color: #1f2937;
             font-size: {{ $typeScale['table'] }}px;
-            font-weight: 700;
+            font-weight: 600;
             word-wrap: break-word;
+        }
+        .info-table td.info-value--primary {
+            color: {{ $pdfPrimary }};
+            font-weight: 700;
         }
 
         /* ── Tableau matières ─────────────────────────────────── */
@@ -535,27 +557,36 @@
 
         {{-- Fiche étudiant --}}
         @php
-            $prenom   = $etudiant->prenoms ?? $etudiant->prenom ?? '';
+            $prenom = $etudiant->prenoms ?? $etudiant->prenom ?? '';
             $initials = strtoupper(substr($etudiant->nom ?? 'E', 0, 1) . substr($prenom ?: 'T', 0, 1));
+            $avatarFallbackPath = public_path('images/placeholders/student-avatar-fallback.png');
+            $avatarFallbackBase64 = is_file($avatarFallbackPath)
+                ? 'data:image/png;base64,'.base64_encode(file_get_contents($avatarFallbackPath))
+                : null;
         @endphp
         <div class="student-info">
             <table class="student-info-table">
                 <tr>
-                    <td>
-                        @if(isset($photoEtudiantBase64) && $photoEtudiantBase64)
-                            <img src="{{ $photoEtudiantBase64 }}" alt="Photo">
-                        @else
-                            <div class="avatar-fallback"><span>{{ $initials }}</span></div>
-                        @endif
+                    <td class="student-photo-cell">
+                        <div class="student-photo-shell">
+                            @if(isset($photoEtudiantBase64) && $photoEtudiantBase64)
+                                <img src="{{ $photoEtudiantBase64 }}" alt="Photo de l'étudiant" class="student-photo">
+                            @elseif($avatarFallbackBase64)
+                                <img src="{{ $avatarFallbackBase64 }}" alt="Avatar étudiant" class="student-photo">
+                            @else
+                                <div class="avatar-initials-fallback"><span>{{ $initials }}</span></div>
+                            @endif
+                        </div>
                         @if(($settings['bulletin_show_matricule'] ?? '1') == '1')
-                        <div class="matricule-text">{{ $etudiant->matricule }}</div>
+                            <div class="matricule-badge">{{ $etudiant->matricule }}</div>
                         @endif
                     </td>
                     <td class="info-group">
+                        <div class="info-section-title">Identité</div>
                         <table class="info-table">
                             <tr>
                                 <td class="info-label">Nom et Prénoms</td>
-                                <td class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</td>
+                                <td class="info-value info-value--primary">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</td>
                             </tr>
                             @if(($settings['bulletin_show_birth_date'] ?? '1') == '1')
                             <tr>
@@ -585,11 +616,12 @@
                             @endif
                         </table>
                     </td>
-                    <td class="info-group">
+                    <td class="info-group student-academic-group">
+                        <div class="info-section-title">Scolarité</div>
                         <table class="info-table">
                             <tr>
                                 <td class="info-label">Classe</td>
-                                <td class="info-value">{{ $classe->libelle ?? $classe->name }}</td>
+                                <td class="info-value info-value--primary">{{ $classe->libelle ?? $classe->name }}</td>
                             </tr>
                             @if(!empty($isSpecialisation) && !empty($classeTroncCommun) && ($settings['tronc_commun_bulletin_show_origin'] ?? '1') == '1')
                             <tr>
