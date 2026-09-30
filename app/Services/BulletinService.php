@@ -11,6 +11,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPMatiereFilierNiveau;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPPlanificationAcademique;
@@ -66,6 +67,9 @@ class BulletinService
     private array $coefficientCache = [];
 
     private array $classeCache = [];
+
+    /** @var array<string, string|null> type canonique par classe:matiere */
+    private array $formationTypePivotCache = [];
 
     // Caches request-scoped d'invariants de classe : accélèrent l'export groupé (~40
     // bulletins d'une même classe) en calculant une seule fois ce qui est identique pour
@@ -928,9 +932,10 @@ class BulletinService
         ];
     }
 
-    private function configMatieresPayloadForBulletin(int $classeId, int $anneeUniversitaireId, string $periode): array
+    public function configMatieresPayloadForBulletin(int $classeId, int $anneeUniversitaireId, string $periode): array
     {
         $payload = ['generales' => [], 'techniques' => []];
+        $configuredIds = [];
 
         $rows = ESBTPConfigMatiere::query()
             ->where('classe_id', $classeId)
@@ -941,6 +946,11 @@ class BulletinService
         foreach ($rows as $row) {
             $config = is_array($row->config) ? $row->config : $this->decodeJsonToArray($row->config);
             $type = $config['type'] ?? null;
+            // Même `none` compte comme un override : la maquette ne doit pas
+            // réintroduire une matière explicitement exclue dans Résultats.
+            if (array_key_exists('type', $config)) {
+                $configuredIds[(int) $row->matiere_id] = true;
+            }
 
             if (in_array($type, ['general', 'generale'], true)) {
                 $payload['generales'][] = (int) $row->matiere_id;
@@ -948,6 +958,31 @@ class BulletinService
 
             if (in_array($type, ['technique', 'technologique_professionnelle'], true)) {
                 $payload['techniques'][] = (int) $row->matiere_id;
+            }
+        }
+
+        // Complète les matières sans override classe/période avec le défaut
+        // filière × niveau de la Maquette (puis, si absent, le type global).
+        $classe = ESBTPClasse::find($classeId);
+        if ($classe) {
+            $attendu = app(\App\Domain\AcademicPilotage\Services\ExpectedSubjectsResolver::class)
+                ->forClasse($classe, $periode);
+            foreach ($attendu['subjects'] as $matiere) {
+                $matiereId = (int) $matiere->id;
+                if (isset($configuredIds[$matiereId])) {
+                    continue;
+                }
+                $type = $this->resolveMatiereTypeFormation(
+                    $matiereId,
+                    $classeId,
+                    $this->normalizePeriode($periode),
+                    $anneeUniversitaireId,
+                );
+                if ($type === 'generale') {
+                    $payload['generales'][] = $matiereId;
+                } elseif ($type === 'technologique_professionnelle') {
+                    $payload['techniques'][] = $matiereId;
+                }
             }
         }
 
@@ -1092,7 +1127,16 @@ class BulletinService
             }
         }
 
-        // 3. Fallback : type global de la matière
+        // 3. Défaut de la maquette au grain filière × niveau. La ligne de la
+        // filière propre prime sur celle du tronc commun parent. Cela permet
+        // de configurer Général/Technique UNE fois dans /matieres/classification
+        // et d'en faire bénéficier toutes les classes du même combo.
+        $comboType = $this->typeFormationDuCombo($matiereId, $classeId);
+        if ($comboType !== null) {
+            return $comboType;
+        }
+
+        // 4. Fallback : type global de la matière
         $matiere = ESBTPMatiere::find($matiereId);
         $globalType = $matiere?->type_formation;
         if ($globalType === 'technique' || $globalType === 'technologique_professionnelle') {
@@ -1100,6 +1144,43 @@ class BulletinService
         }
 
         return 'generale';
+    }
+
+    private function typeFormationDuCombo(int $matiereId, int $classeId): ?string
+    {
+        $cacheKey = $classeId.':'.$matiereId;
+        if (array_key_exists($cacheKey, $this->formationTypePivotCache)) {
+            return $this->formationTypePivotCache[$cacheKey];
+        }
+
+        if (! isset($this->classeCache[$classeId])) {
+            $this->classeCache[$classeId] = ESBTPClasse::find($classeId);
+        }
+        $classe = $this->classeCache[$classeId];
+        if (! $classe || ! $classe->filiere_id || ! $classe->niveau_etude_id) {
+            return $this->formationTypePivotCache[$cacheKey] = null;
+        }
+
+        $classe->loadMissing('filiere');
+        $filiereIds = $classe->filiere?->troncCommunUnionFiliereIds() ?? [(int) $classe->filiere_id];
+
+        $lignes = ESBTPMatiereFilierNiveau::query()
+            ->where('matiere_id', $matiereId)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->whereIn('filiere_id', $filiereIds)
+            ->orderByRaw('filiere_id = ? desc', [$classe->filiere_id])
+            ->get(['filiere_id', 'type_formation']);
+
+        foreach ($lignes as $ligne) {
+            if ($ligne->type_formation === ESBTPMatiereFilierNiveau::TYPE_GENERAL) {
+                return $this->formationTypePivotCache[$cacheKey] = 'generale';
+            }
+            if ($ligne->type_formation === ESBTPMatiereFilierNiveau::TYPE_TECHNIQUE) {
+                return $this->formationTypePivotCache[$cacheKey] = 'technologique_professionnelle';
+            }
+        }
+
+        return $this->formationTypePivotCache[$cacheKey] = null;
     }
 
     public function getBulletinTemplateView(): string

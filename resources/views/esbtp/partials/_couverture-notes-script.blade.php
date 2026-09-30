@@ -352,7 +352,7 @@ if (typeof window.couvertureNotes !== 'function') {
                     case 'non_evaluee': return 'Aucune évaluation';
                     case 'programmee': return 'Programmée le ' + (matiere.prochaine_evaluation_at || 'date à confirmer');
                     case 'partielle': return matiere.missing_count + ' note(s) manquante(s) sur ' + matiere.evaluations_count + ' évaluation(s)';
-                    case 'hors_maquette': return 'Matière absente de la maquette';
+                    case 'hors_maquette': return 'Hors maquette';
                     default: return 'Complète';
                 }
             },

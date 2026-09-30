@@ -10,12 +10,15 @@ class ESBTPMatiereFilierNiveau extends Model
 
     public const TRONC_COMMUN = 'tronc_commun';
     public const SPECIALITE = 'specialite';
+    public const TYPE_GENERAL = 'general';
+    public const TYPE_TECHNIQUE = 'technique';
 
     protected $fillable = [
         'matiere_id',
         'filiere_id',
         'niveau_etude_id',
         'classification',
+        'type_formation',
         'ordre_bulletin',
         'semestre',
         'semestre_renseigne',
