@@ -1,0 +1,35 @@
+name: Temporary Yakro card patch
+
+on:
+  push:
+    branches:
+      - esbtp-yakro
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'chore(ci): trigger simple Yakro card patch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Yakro
+        uses: actions/checkout@v4
+        with:
+          ref: esbtp-yakro
+          fetch-depth: 0
+      - name: Apply patch
+        run: python3 .github/scripts/tmp-yakro-card.py
+      - name: Validate source
+        run: |
+          php -l tests/Feature/Bulletin/YakroBulletinStudentCardContractTest.php
+          grep -q 'student-avatar-fallback.png' resources/views/esbtp/bulletins/pdf-configurable.blade.php
+          grep -q 'info-section-title">Identité' resources/views/esbtp/bulletins/pdf-configurable.blade.php
+          grep -q 'info-section-title">Scolarité' resources/views/esbtp/bulletins/pdf-configurable.blade.php
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add resources/views/esbtp/bulletins/pdf-configurable.blade.php tests/Feature/Bulletin/YakroBulletinStudentCardContractTest.php
+          git commit -m 'feat(bulletins): redesign Yakro student identity card'
+          git push origin HEAD:esbtp-yakro
