@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('esbtp/admissions/workflow')
     ->name('esbtp.admissions.workflow.')
     ->group(function () {
+        // Le lien d'activation doit fonctionner avant la première connexion ; il
+        // ne peut donc pas dépendre du middleware auth. Le service vérifie le
+        // tenant, l'empreinte du jeton, son expiration et son usage unique.
         Route::get('/activation/{token}', [ManagedInscriptionWorkflowController::class, 'activationForm'])
             ->middleware('throttle:20,1')
             ->name('activation.form');
@@ -25,7 +28,7 @@ Route::prefix('esbtp/admissions/workflow')
             ->middleware('throttle:10,1')
             ->name('activation.submit');
 
-        Route::middleware('auth')->group(function () {
+        Route::middleware(['auth', 'paywall'])->group(function () {
             Route::get('/mon-dossier', [ManagedInscriptionWorkflowController::class, 'student'])
                 ->name('student');
             Route::post('/mon-dossier/classe', [ManagedInscriptionWorkflowController::class, 'chooseClass'])
@@ -40,9 +43,18 @@ Route::prefix('esbtp/admissions/workflow')
 
             Route::middleware('permission:inscriptions.create')->group(function () {
                 Route::get('/', [ManagedInscriptionWorkflowController::class, 'index'])->name('index');
+
+                // Cette action crée ET valide le versement. Un établissement qui
+                // retire la validation au caissier conserve donc sa séparation des
+                // tâches : ce flux ne la contourne pas.
                 Route::post('/candidatures/{candidature}/paiement', [ManagedInscriptionWorkflowController::class, 'pay'])
-                    ->middleware('throttle:20,1')
+                    ->middleware([
+                        'permission:paiements.create',
+                        'permission:paiements.validate',
+                        'throttle:20,1',
+                    ])
                     ->name('pay');
+
                 Route::post('/{workflow}/activation/renvoyer', [ManagedInscriptionWorkflowController::class, 'resendActivation'])
                     ->middleware('throttle:10,1')
                     ->name('activation.resend');
