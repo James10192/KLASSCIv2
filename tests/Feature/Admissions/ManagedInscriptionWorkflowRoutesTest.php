@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admissions;
 
+use App\Http\Controllers\ESBTP\ManagedActivationController;
 use App\Http\Controllers\ESBTP\ManagedCashierEntryController;
 use App\Http\Controllers\ESBTP\ManagedInscriptionCompletionController;
 use App\Http\Controllers\ESBTP\ManagedInscriptionQueueController;
@@ -24,6 +25,9 @@ class ManagedInscriptionWorkflowRoutesTest extends TestCase
             'esbtp.admissions.workflow.pieces.validate',
             'esbtp.admissions.workflow.activation.form',
             'esbtp.admissions.workflow.activation.submit',
+            'esbtp.admissions.workflow.activation.signed.form',
+            'esbtp.admissions.workflow.activation.signed.submit',
+            'esbtp.admissions.workflow.activation.resend',
             'esbtp.admissions.workflow.student',
             'esbtp.admissions.workflow.student.profile',
             'esbtp.admissions.workflow.student.choose-class',
@@ -46,8 +50,6 @@ class ManagedInscriptionWorkflowRoutesTest extends TestCase
         $this->assertSame(ManagedCashierEntryController::class.'@show', $get->getActionName());
         $this->assertSame(ManagedCashierEntryController::class.'@store', $post->getActionName());
 
-        // Vérifie aussi le route matching réel : une route dupliquée plus haut
-        // dans web.php ne doit pas reprendre la main au runtime.
         $matchedGet = Route::getRoutes()->match(Request::create('/esbtp/inscriptions/pre-inscription', 'GET'));
         $matchedPost = Route::getRoutes()->match(Request::create('/esbtp/inscriptions/pre-inscription', 'POST'));
         $this->assertSame(ManagedCashierEntryController::class.'@show', $matchedGet->getActionName());
@@ -66,6 +68,20 @@ class ManagedInscriptionWorkflowRoutesTest extends TestCase
         $this->assertSame(ManagedInscriptionStepController::class.'@pay', $pay->getActionName());
         $this->assertSame(ManagedInscriptionStepController::class.'@receivePiece', $receive->getActionName());
         $this->assertSame(ManagedInscriptionStepController::class.'@validateDocuments', $validate->getActionName());
+    }
+
+    /** @test */
+    public function les_liens_whatsapp_sont_signes_et_le_renvoi_utilise_le_controleur_d_activation(): void
+    {
+        $form = Route::getRoutes()->getByName('esbtp.admissions.workflow.activation.signed.form');
+        $submit = Route::getRoutes()->getByName('esbtp.admissions.workflow.activation.signed.submit');
+        $resend = Route::getRoutes()->getByName('esbtp.admissions.workflow.activation.resend');
+
+        $this->assertSame(ManagedActivationController::class.'@signedForm', $form->getActionName());
+        $this->assertSame(ManagedActivationController::class.'@signedActivate', $submit->getActionName());
+        $this->assertSame(ManagedActivationController::class.'@resend', $resend->getActionName());
+        $this->assertContains('signed', $form->gatherMiddleware());
+        $this->assertContains('signed', $submit->gatherMiddleware());
     }
 
     /** @test */
