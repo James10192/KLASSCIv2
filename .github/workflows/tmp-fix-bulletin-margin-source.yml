@@ -1,0 +1,44 @@
+name: Temporary bulletin margin source fix
+
+on:
+  push:
+    branches:
+      - esbtp-yakro
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "${{ github.event.head_commit.message == 'chore(ci): run bulletin margin source fix' }}"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: esbtp-yakro
+          fetch-depth: 0
+
+      - name: Apply DomPDF-safe margin source fix
+        run: python .github/scripts/tmp-fix-bulletin-margin-source.py
+
+      - name: Validate contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          y = Path('resources/views/esbtp/bulletins/pdf-configurable.blade.php').read_text()
+          s = Path('resources/views/esbtp/settings/index.blade.php').read_text()
+          c = Path('resources/views/esbtp/bulletins/configuration.blade.php').read_text()
+          assert "margin: {{ $marginVertical }}mm {{ $marginHorizontal }}mm;" in y
+          assert "padding: {{ $marginVertical }}mm {{ $marginHorizontal }}mm;" in y
+          assert "margin: {{ $pdfSettings['margin_top'] ?? 20 }}mm" not in y
+          assert 'Marges générales des PDF (mm)' in s
+          assert 'Ces marges sont propres aux bulletins BTS' in c
+          PY
+
+      - name: Commit functional changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add resources/views/esbtp/bulletins/pdf-configurable.blade.php resources/views/esbtp/settings/index.blade.php resources/views/esbtp/bulletins/configuration.blade.php
+          git commit -m 'fix(bulletins): use dedicated margins and clarify PDF settings'
+          git push origin HEAD:esbtp-yakro
