@@ -19,6 +19,9 @@
         'completed' => 6,
     ];
     $current = $states[$workflow->state] ?? 0;
+    $canCash = (auth()->user()?->can('paiements.create') ?? false)
+        && (auth()->user()?->can('paiements.validate') ?? false)
+        && (auth()->user()?->can('inscriptions.create') ?? false);
 @endphp
 <div class="mwf">
     <section class="mwf-hero">
@@ -57,19 +60,25 @@
                 <div class="mwf-kv"><span>Reçu</span><strong>{{ $workflow->paiement?->numero_recu ?: '—' }}</strong></div>
                 <div class="mwf-kv"><span>Montant</span><strong>{{ number_format((float)($workflow->paiement?->montant ?? 0),0,',',' ') }} FCFA</strong></div>
                 <div class="mwf-kv"><span>Date</span><strong>{{ optional($workflow->paid_at)->format('d/m/Y H:i') }}</strong></div>
-            @else
-                @can('inscriptions.create')
+            @elseif($canCash)
                 <form method="POST" action="{{ route('esbtp.admissions.workflow.pay', $candidature) }}" class="mwf-form">
                     @csrf
                     <div class="mwf-field"><label>Montant de préinscription</label><input name="montant" type="number" min="1" required value="{{ old('montant') }}"></div>
-                    <div class="mwf-field"><label>Mode de paiement</label><select name="mode_paiement" required><option value="">Choisir</option><option value="especes">Espèces</option><option value="mobile_money">Mobile Money</option><option value="carte">Carte</option><option value="virement">Virement</option></select></div>
+                    <div class="mwf-field">
+                        <label>Mode de paiement</label>
+                        <select name="mode_paiement" required>
+                            <option value="">Choisir</option>
+                            @foreach($paymentModes as $key => $meta)
+                                <option value="{{ $key }}" @selected(old('mode_paiement') === $key)>{{ $meta['label'] ?? $key }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="mwf-field"><label>Référence externe</label><input name="reference_paiement" value="{{ old('reference_paiement') }}"></div>
                     <div class="mwf-field"><label>N° transaction</label><input name="numero_transaction" value="{{ old('numero_transaction') }}"></div>
                     <div class="mwf-full"><button class="mwf-btn primary" type="submit"><i class="fas fa-cash-register"></i> Encaisser sans ressaisie</button></div>
                 </form>
-                @else
-                    <p class="mwf-muted">En attente du passage à la caisse.</p>
-                @endcan
+            @else
+                <p class="mwf-muted">En attente du passage à la caisse. L'encaissement exige les droits de création et de validation d'un paiement.</p>
             @endif
         </section>
 
