@@ -11,10 +11,27 @@
         $anneeAffichee = ($bulletin ?? null)?->anneeUniversitaire ?? ($anneeUniversitaire ?? null);
         $anneeLabel = $anneeAffichee?->display_name ?? '';
         $typeScale = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
-        $headerScale = max(80, min(150, (int) ($settings['bulletin_header_scale'] ?? 100)));
+        $headerScale = max(70, min(220, (int) ($settings['bulletin_header_scale'] ?? 100)));
         $headerRatio = $headerScale / 100;
-        $headerFont = static fn ($px) => round(((float) $px) * $headerRatio, 2);
-        $headerLogoSize = max(58, min(108, (int) round(72 * $headerRatio)));
+        $headerSetting = static function (string $key, float $fallback, float $min, float $max) use ($settings, $headerRatio): float {
+            $raw = $settings[$key] ?? null;
+            $base = is_numeric($raw) && (float) $raw > 0 ? (float) $raw : $fallback;
+            return round(max($min, min($max, $base * $headerRatio)), 2);
+        };
+        $headerLeftFont = $headerSetting('bulletin_header_left_font_size', $typeScale['table_head'], 6, 32);
+        $headerSchoolNameFont = $headerSetting('bulletin_header_school_name_font_size', $typeScale['heading'], 8, 34);
+        $headerSchoolMetaFont = $headerSetting('bulletin_header_school_meta_font_size', $typeScale['meta'], 6, 24);
+        $headerTitleFont = $headerSetting('bulletin_header_title_font_size', $typeScale['title'], 8, 34);
+        $headerRightFont = $headerSetting('bulletin_header_right_font_size', $typeScale['info'], 6, 26);
+        $logoBaseHeight = is_numeric($settings['bulletin_header_logo_height'] ?? null) ? (int) $settings['bulletin_header_logo_height'] : 72;
+        $headerLogoSize = max(40, min(180, (int) round($logoBaseHeight * $headerRatio)));
+        $signatureHeight = max(70, min(240, (int) ($settings['bulletin_signature_height'] ?? 70)));
+        $signatureWidth = max(180, min(520, (int) ($settings['bulletin_signature_width'] ?? 250)));
+        $signatureFontSize = max(6, min(20, (int) (($settings['bulletin_signature_font_size'] ?? '') ?: $typeScale['signature'])));
+        $editionFontSize = max(6, min(18, (int) (($settings['bulletin_edition_font_size'] ?? '') ?: $typeScale['body'])));
+        $editionOpacity = max(10, min(100, (int) ($settings['bulletin_edition_opacity'] ?? 100))) / 100;
+        $authenticityFontSize = max(6, min(18, (int) (($settings['bulletin_authenticity_font_size'] ?? '') ?: $typeScale['body'])));
+        $authenticityOpacity = max(10, min(100, (int) ($settings['bulletin_authenticity_opacity'] ?? 100))) / 100;
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -43,14 +60,16 @@
         }
         .edition-footer {
             margin-top: 10px;
-            font-size: {{ $typeScale['body'] }}px;
+            font-size: {{ $editionFontSize }}px;
             color: #6b7280;
+            opacity: {{ $editionOpacity }};
             text-align: left;
         }
         .edition-authenticity {
             margin-top: 4px;
-            font-size: {{ $typeScale['body'] }}px;
+            font-size: {{ $authenticityFontSize }}px;
             color: #6b7280;
+            opacity: {{ $authenticityOpacity }};
             text-align: center;
         }
 
@@ -74,7 +93,7 @@
         }
         .header-left {
             width: 26%;
-            font-size: {{ $headerFont($typeScale['table_head']) }}px;
+            font-size: {{ $headerLeftFont }}px;
             line-height: 1.5;
             color: #374151;
             border-right: 1px solid #e5e7eb;
@@ -88,7 +107,7 @@
         }
         .header-right {
             width: 26%;
-            font-size: {{ $headerFont($typeScale['info']) }}px;
+            font-size: {{ $headerRightFont }}px;
             line-height: 1.5;
             text-align: right;
             padding-left: 8px;
@@ -102,32 +121,32 @@
         }
         .school-name {
             font-weight: 700;
-            font-size: {{ $headerFont($typeScale['heading']) }}px;
+            font-size: {{ $headerSchoolNameFont }}px;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
             letter-spacing: 0.04em;
             margin-bottom: 3px;
         }
         .school-address {
-            font-size: {{ $headerFont($typeScale['meta']) }}px;
+            font-size: {{ $headerSchoolMetaFont }}px;
             color: #6b7280;
         }
         .header-right .title {
             font-weight: 700;
-            font-size: {{ $headerFont($typeScale['title']) }}px;
+            font-size: {{ $headerTitleFont }}px;
             text-decoration: underline;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
             margin-bottom: 4px;
         }
         .header-right .period {
-            font-size: {{ $headerFont($typeScale['table']) }}px;
+            font-size: {{ $headerRightFont }}px;
             font-weight: 600;
             color: #1f2937;
             margin-bottom: 2px;
         }
         .header-right .year {
-            font-size: {{ $headerFont($typeScale['info']) }}px;
+            font-size: {{ $headerRightFont }}px;
             color: #374151;
         }
 
@@ -444,11 +463,11 @@
         .signature-box {
             display: inline-block;
             text-align: center;
-            min-width: 250px;
+            min-width: {{ $signatureWidth }}px;
         }
         .signature-line {
-            width: 250px;
-            height: 70px;
+            width: {{ $signatureWidth }}px;
+            height: {{ $signatureHeight }}px;
             border-bottom: 1.5px solid {{ $pdfPrimary }};
             margin-top: 4px;
         }
@@ -966,10 +985,10 @@
         <div class="signature-container">
             @if(($settings['bulletin_show_director_signature'] ?? '1') == '1')
             <div class="signature-box">
-                <div style="font-size: {{ $typeScale['signature'] }}px;">{{ $directorTitle }}</div>
+                <div style="font-size: {{ $signatureFontSize }}px;">{{ $directorTitle }}</div>
                 <div class="signature-line"></div>
                 @if($directorName)
-                    <div style="margin-top: 4px; font-weight: 700; font-size: {{ $typeScale['signature'] }}px;">{{ $directorName }}</div>
+                    <div style="margin-top: 4px; font-weight: 700; font-size: {{ $signatureFontSize }}px;">{{ $directorName }}</div>
                 @endif
             </div>
             @endif

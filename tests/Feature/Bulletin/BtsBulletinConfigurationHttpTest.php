@@ -125,6 +125,19 @@ class BtsBulletinConfigurationHttpTest extends TestCase
             'bulletin_style' => 'yakro',
             'bulletin_font_size' => '14',
             'bulletin_header_scale' => '125',
+            'bulletin_header_left_font_size' => '14',
+            'bulletin_header_school_name_font_size' => '20',
+            'bulletin_header_school_meta_font_size' => '11',
+            'bulletin_header_title_font_size' => '19',
+            'bulletin_header_right_font_size' => '13',
+            'bulletin_header_logo_height' => '110',
+            'bulletin_signature_height' => '120',
+            'bulletin_signature_width' => '330',
+            'bulletin_signature_font_size' => '12',
+            'bulletin_edition_font_size' => '10',
+            'bulletin_edition_opacity' => '75',
+            'bulletin_authenticity_font_size' => '12',
+            'bulletin_authenticity_opacity' => '55',
             'bulletin_bts1_s1_council_title' => 'Appreciation du Conseil de Classe',
             'bulletin_bts1_semester1_weight' => '1',
             'bulletin_bts1_semester2_weight' => '2',
@@ -135,6 +148,13 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         $response->assertJsonPath('settings.bulletin_style', 'yakro');
         $response->assertJsonPath('settings.bulletin_font_size', '14');
         $response->assertJsonPath('settings.bulletin_header_scale', '125');
+        $response->assertJsonPath('settings.bulletin_header_left_font_size', '14');
+        $response->assertJsonPath('settings.bulletin_header_school_name_font_size', '20');
+        $response->assertJsonPath('settings.bulletin_header_logo_height', '110');
+        $response->assertJsonPath('settings.bulletin_signature_height', '120');
+        $response->assertJsonPath('settings.bulletin_signature_width', '330');
+        $response->assertJsonPath('settings.bulletin_authenticity_font_size', '12');
+        $response->assertJsonPath('settings.bulletin_authenticity_opacity', '55');
         $response->assertJsonPath(
             'settings.bulletin_bts1_s1_council_title',
             'Appreciation du Conseil de Classe'
@@ -143,6 +163,10 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         self::assertSame('yakro', SettingsHelper::get('bulletin_style'));
         self::assertSame('14', SettingsHelper::get('bulletin_font_size'));
         self::assertSame('125', SettingsHelper::get('bulletin_header_scale'));
+        self::assertSame('14', SettingsHelper::get('bulletin_header_left_font_size'));
+        self::assertSame('110', SettingsHelper::get('bulletin_header_logo_height'));
+        self::assertSame('120', SettingsHelper::get('bulletin_signature_height'));
+        self::assertSame('55', SettingsHelper::get('bulletin_authenticity_opacity'));
         self::assertSame(
             'Appreciation du Conseil de Classe',
             SettingsHelper::get('bulletin_bts1_s1_council_title')
@@ -155,7 +179,7 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         SettingsHelper::setOrCreate('bulletin_bts1_semester2_weight', '1', 'bulletin');
 
         $response = $this->postJson(route('esbtp.bulletins.save-configuration'), [
-            'bulletin_header_scale' => '175',
+            'bulletin_header_scale' => '225',
         ]);
 
         $response->assertStatus(422);
