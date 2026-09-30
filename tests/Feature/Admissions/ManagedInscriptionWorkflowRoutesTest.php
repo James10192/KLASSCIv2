@@ -20,7 +20,9 @@ class ManagedInscriptionWorkflowRoutesTest extends TestCase
             'esbtp.admissions.workflow.activation.form',
             'esbtp.admissions.workflow.activation.submit',
             'esbtp.admissions.workflow.student',
+            'esbtp.admissions.workflow.student.profile',
             'esbtp.admissions.workflow.student.choose-class',
+            'esbtp.admissions.workflow.class.choose-admin',
             'esbtp.admissions.workflow.class.override',
             'esbtp.admissions.workflow.finalize',
         ] as $route) {
