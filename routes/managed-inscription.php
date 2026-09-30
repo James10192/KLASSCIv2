@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\ESBTP\ManagedCashierEntryController;
 use App\Http\Controllers\ESBTP\ManagedInscriptionCompletionController;
+use App\Http\Controllers\ESBTP\ManagedInscriptionQueueController;
+use App\Http\Controllers\ESBTP\ManagedInscriptionStepController;
 use App\Http\Controllers\ESBTP\ManagedInscriptionWorkflowController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,8 +34,8 @@ Route::middleware([
 Route::prefix('esbtp/admissions/workflow')
     ->name('esbtp.admissions.workflow.')
     ->group(function () {
-        // Le lien d'activation doit fonctionner avant la premiere connexion ; il
-        // ne peut donc pas dependre du middleware auth. Le service verifie le
+        // Le lien d'activation doit fonctionner avant la première connexion ; il
+        // ne peut donc pas dépendre du middleware auth. Le service vérifie le
         // tenant, l'empreinte du jeton, son expiration et son usage unique.
         Route::get('/activation/{token}', [ManagedInscriptionWorkflowController::class, 'activationForm'])
             ->middleware('throttle:20,1')
@@ -52,19 +54,18 @@ Route::prefix('esbtp/admissions/workflow')
                 ->middleware('throttle:20,1')
                 ->name('student.choose-class');
 
-            // La caisse et la scolarite doivent pouvoir ouvrir le meme dossier
-            // sans qu'on leur donne les droits de l'autre metier.
+            // La caisse et la scolarité doivent pouvoir ouvrir le même dossier
+            // sans qu'on leur donne les droits de l'autre métier.
             Route::get('/candidatures/{candidature}', [ManagedInscriptionWorkflowController::class, 'show'])
                 ->middleware('permission:inscriptions.create|pieces_dossier.suivre')
                 ->name('show');
 
             Route::middleware('permission:inscriptions.create')->group(function () {
-                Route::get('/', [ManagedInscriptionWorkflowController::class, 'index'])->name('index');
+                Route::get('/', [ManagedInscriptionQueueController::class, 'index'])->name('index');
 
-                // Cette action cree ET valide le versement. Un etablissement qui
-                // retire la validation au caissier conserve donc sa separation des
-                // taches : ce flux ne la contourne pas.
-                Route::post('/candidatures/{candidature}/paiement', [ManagedInscriptionWorkflowController::class, 'pay'])
+                // Le contrôleur d'étape impose l'ordre choisi par le tenant avant
+                // toute écriture financière : l'URL directe ne contourne rien.
+                Route::post('/candidatures/{candidature}/paiement', [ManagedInscriptionStepController::class, 'pay'])
                     ->middleware([
                         'permission:paiements.create',
                         'permission:paiements.validate',
@@ -84,19 +85,19 @@ Route::prefix('esbtp/admissions/workflow')
             });
 
             Route::middleware('permission:pieces_dossier.suivre')->group(function () {
-                Route::post('/{workflow}/pieces', [ManagedInscriptionWorkflowController::class, 'receivePiece'])
+                Route::post('/{workflow}/pieces', [ManagedInscriptionStepController::class, 'receivePiece'])
                     ->middleware('throttle:60,1')
                     ->name('pieces.receive');
-                Route::post('/{workflow}/pieces/{depot}/decision', [ManagedInscriptionWorkflowController::class, 'decidePiece'])
+                Route::post('/{workflow}/pieces/{depot}/decision', [ManagedInscriptionStepController::class, 'decidePiece'])
                     ->middleware('throttle:60,1')
                     ->name('pieces.decide');
-                Route::post('/{workflow}/pieces/valider-dossier', [ManagedInscriptionWorkflowController::class, 'validateDocuments'])
+                Route::post('/{workflow}/pieces/valider-dossier', [ManagedInscriptionStepController::class, 'validateDocuments'])
                     ->middleware('throttle:20,1')
                     ->name('pieces.validate');
             });
 
-            // Le droit existe deja dans le registre et signifie precisement
-            // « corriger une inscription validee ». On le reutilise plutot que
+            // Le droit existe déjà dans le registre et signifie précisément
+            // « corriger une inscription validée ». On le réutilise plutôt que
             // d'introduire un droit orphelin uniquement pour ce pilote.
             Route::post('/{workflow}/classe/override', [ManagedInscriptionWorkflowController::class, 'overrideClass'])
                 ->middleware(['permission:inscriptions.edit_validated', 'throttle:20,1'])
