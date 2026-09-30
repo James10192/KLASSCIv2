@@ -151,12 +151,12 @@
                                                    value="{{ $settings['bulletin_header_school_meta_font_size'] ?: '10' }}">
                                         </div>
                                         <div class="col-6">
-                                            <label class="bcfg-label">Titre du bulletin</label>
+                                            <label class="bcfg-label">Titre « BULLETIN DE NOTES »</label>
                                             <input type="number" class="bcfg-input" name="bulletin_header_title_font_size" min="8" max="30" step="1"
-                                                   value="{{ $settings['bulletin_header_title_font_size'] ?: '15' }}">
+                                                   value="{{ $settings['bulletin_header_title_font_size'] ?: '18' }}">
                                         </div>
                                         <div class="col-6">
-                                            <label class="bcfg-label">Période / cycle / année</label>
+                                            <label class="bcfg-label">Semestre / diplôme / niveau / année</label>
                                             <input type="number" class="bcfg-input" name="bulletin_header_right_font_size" min="6" max="22" step="1"
                                                    value="{{ $settings['bulletin_header_right_font_size'] ?: '12' }}">
                                         </div>
@@ -166,7 +166,7 @@
                                                    value="{{ $settings['bulletin_header_logo_height'] ?: '72' }}">
                                         </div>
                                     </div>
-                                    <div class="bcfg-hint" style="margin-top:.45rem;">Valeurs en pixels avant application de l'échelle générale. Le PDF reste en mise en page tableau, compatible DomPDF.</div>
+                                    <div class="bcfg-hint" style="margin-top:.45rem;">Le titre « BULLETIN DE NOTES » se règle séparément. Le semestre reprend la même taille que « Brevet de Technicien Supérieur », BTS et l'année. Valeurs en pixels avant application de l'échelle générale, en mise en page tableau compatible DomPDF.</div>
                                 </div>
 
                                 <label class="bcfg-label" style="margin-top:.85rem;">Marge haut / bas (mm)</label>

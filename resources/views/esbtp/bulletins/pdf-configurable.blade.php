@@ -137,14 +137,16 @@
         .header-right .title {
             font-weight: 700;
             font-size: {{ $headerTitleFont }}px;
+            line-height: 1.15;
+            letter-spacing: 0.04em;
             text-decoration: underline;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
         }
         .header-right .period {
             display: inline-block;
-            font-size: {{ min(34, $headerRightFont + 4) }}px;
+            font-size: {{ $headerRightFont }}px;
             font-weight: 700;
             color: {{ $pdfText }};
             margin: 3px 0 5px;
