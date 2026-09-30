@@ -1366,6 +1366,26 @@ class BulletinService
      *
      * @return list<int>
      */
+    /**
+     * Perimetre des evaluations que le snapshot "Courant" doit lire.
+     *
+     * Il doit rester strictement identique a celui de la generation officielle :
+     * classes TC/specialite resolues par phase, moins les classes pas encore
+     * ouvertes pour la periode. Sans cette source unique, le bandeau
+     * Officiel/Courant peut annoncer un ecart impossible a effacer.
+     *
+     * @return list<int>
+     */
+    public function evaluationClassIdsForSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $ids = $this->evaluationClassIdsForBulletin($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+        $fermees = $this->classesPasEncoreOuvertes($periode);
+
+        return $fermees === []
+            ? $ids
+            : array_values(array_diff($ids, $fermees));
+    }
+
     private function evaluationClassIdsForBulletin(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
     {
         $ids = [(int) $classeId];
