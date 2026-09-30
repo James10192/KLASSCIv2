@@ -75,6 +75,13 @@ class RouteServiceProvider extends ServiceProvider
                 ->namespace($this->namespace)
                 ->group(base_path('routes/message-hub.php'));
 
+            // Le parcours pilote vit dans son propre fichier : aucun tenant n'est
+            // câblé ici. Les routes existent partout mais le service refuse tout
+            // traitement tant que `inscriptions.workflow.enabled` reste à 0.
+            Route::middleware('web')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/managed-inscription.php'));
+
             // Charger les routes ESBTP
             // Commenté pour éviter les routes dupliquées
             // if (file_exists(base_path('routes/esbtp.php'))) {
