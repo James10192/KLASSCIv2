@@ -48,14 +48,15 @@ return new class extends Migration
                 $table->timestamp('activation_token_used_at')->nullable();
                 $table->timestamp('access_activated_at')->nullable();
 
+                // La finalisation en ligne est une vraie étape : l'étudiant
+                // complète ses coordonnées avant de pouvoir confirmer sa classe.
+                $table->timestamp('profile_completed_at')->nullable();
+                $table->json('profile_payload')->nullable();
+
                 $table->timestamp('class_selected_at')->nullable();
                 $table->foreignId('class_selected_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->timestamp('class_locked_at')->nullable();
 
-                // Les champs que l'etudiant complete avant la creation finale
-                // restent sur le dossier transitoire. L'inscription definitive
-                // ne recoit que des donnees deja validees par son propre domaine.
-                $table->json('profile_payload')->nullable();
                 $table->timestamps();
 
                 $table->index(['state', 'paid_at'], 'candidature_workflows_queue_idx');
