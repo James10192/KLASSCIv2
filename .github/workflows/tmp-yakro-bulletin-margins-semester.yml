@@ -23,9 +23,9 @@ jobs:
 
       - name: Validate intended PDF contract
         run: |
-          grep -F "margin: {{ $pdfSettings['margin_top'] ?? 20 }}mm" resources/views/esbtp/bulletins/pdf-configurable.blade.php
-          grep -F "{{ $pdfSettings['margin_right'] ?? 15 }}mm" resources/views/esbtp/bulletins/pdf-configurable.blade.php
-          grep -F "padding: {{ $pdfSettings['margin_top'] ?? 20 }}mm" resources/views/esbtp/bulletins/pdf-configurable.blade.php
+          grep -F 'margin: {{ $pdfSettings['"'"'margin_top'"'"'] ?? 20 }}mm' resources/views/esbtp/bulletins/pdf-configurable.blade.php
+          grep -F '{{ $pdfSettings['"'"'margin_right'"'"'] ?? 15 }}mm' resources/views/esbtp/bulletins/pdf-configurable.blade.php
+          grep -F 'padding: {{ $pdfSettings['"'"'margin_top'"'"'] ?? 20 }}mm' resources/views/esbtp/bulletins/pdf-configurable.blade.php
           grep -F 'font-size: {{ min(34, $headerRightFont + 4) }}px;' resources/views/esbtp/bulletins/pdf-configurable.blade.php
           grep -F 'border: 1.5px solid {{ $pdfPrimary }};' resources/views/esbtp/bulletins/pdf-configurable.blade.php
           ! grep -F 'margin: 2mm 2mm;' resources/views/esbtp/bulletins/pdf-configurable.blade.php
