@@ -4,7 +4,7 @@
 
 @push('styles')
 <style>
-.mwf{max-width:1220px;margin:0 auto;padding:24px}.mwf-hero{background:linear-gradient(135deg,#0a3d8f,#0453cb);color:#fff;border-radius:18px;padding:26px;display:flex;justify-content:space-between;gap:22px;align-items:flex-start}.mwf-hero h1{font-size:1.55rem;margin:0 0 6px}.mwf-hero p{margin:0;opacity:.86}.mwf-pill{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.14);font-size:.78rem;font-weight:800}.mwf-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}.mwf-card{background:#fff;border:1px solid #e5eaf2;border-radius:16px;padding:20px;box-shadow:0 8px 28px rgba(15,23,42,.05)}.mwf-card h2{font-size:1.05rem;color:#172033;margin:0 0 14px}.mwf-kv{display:grid;grid-template-columns:150px 1fr;gap:8px;font-size:.9rem;padding:6px 0;border-bottom:1px solid #f1f4f8}.mwf-kv span{color:#64748b}.mwf-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:16px}.mwf-step{padding:10px 8px;border-radius:10px;background:#f3f6fb;text-align:center;font-size:.73rem;font-weight:800;color:#64748b}.mwf-step.done{background:#eaf7ef;color:#14763d}.mwf-step.current{background:#eaf1ff;color:#0453cb}.mwf-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mwf-field{display:flex;flex-direction:column;gap:5px}.mwf-field label{font-size:.78rem;font-weight:800;color:#475569}.mwf-field input,.mwf-field select,.mwf-field textarea{border:1px solid #dce3ed;border-radius:10px;padding:10px;background:#fff}.mwf-btn{border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}.mwf-btn.primary{background:#0453cb;color:#fff}.mwf-btn.soft{background:#eef4ff;color:#0453cb}.mwf-btn.success{background:#137c48;color:#fff}.mwf-btn.danger{background:#fff0f0;color:#b42318}.mwf-piece{border:1px solid #edf1f6;border-radius:12px;padding:13px;margin-bottom:10px}.mwf-piece-top{display:flex;justify-content:space-between;gap:10px}.mwf-piece strong{color:#1f2937}.mwf-status{font-size:.76rem;font-weight:800;border-radius:999px;padding:5px 8px;background:#f3f6fb}.mwf-status.ok{background:#eaf7ef;color:#14763d}.mwf-status.warn{background:#fff7e6;color:#a35c00}.mwf-full{grid-column:1/-1}.mwf-muted{font-size:.82rem;color:#64748b}.mwf-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}@media(max-width:850px){.mwf{padding:14px}.mwf-grid{grid-template-columns:1fr}.mwf-steps{grid-template-columns:1fr 1fr}.mwf-form{grid-template-columns:1fr}.mwf-kv{grid-template-columns:1fr}}
+.mwf{max-width:1220px;margin:0 auto;padding:24px}.mwf-hero{background:linear-gradient(135deg,#0a3d8f,#0453cb);color:#fff;border-radius:18px;padding:26px;display:flex;justify-content:space-between;gap:22px;align-items:flex-start}.mwf-hero h1{font-size:1.55rem;margin:0 0 6px}.mwf-hero p{margin:0;opacity:.86}.mwf-pill{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.14);font-size:.78rem;font-weight:800}.mwf-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}.mwf-card{background:#fff;border:1px solid #e5eaf2;border-radius:16px;padding:20px;box-shadow:0 8px 28px rgba(15,23,42,.05)}.mwf-card h2{font-size:1.05rem;color:#172033;margin:0 0 14px}.mwf-kv{display:grid;grid-template-columns:150px 1fr;gap:8px;font-size:.9rem;padding:6px 0;border-bottom:1px solid #f1f4f8}.mwf-kv span{color:#64748b}.mwf-steps{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:16px}.mwf-step{padding:10px 8px;border-radius:10px;background:#f3f6fb;text-align:center;font-size:.73rem;font-weight:800;color:#64748b}.mwf-step.done{background:#eaf7ef;color:#14763d}.mwf-step.current{background:#eaf1ff;color:#0453cb}.mwf-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mwf-field{display:flex;flex-direction:column;gap:5px}.mwf-field label{font-size:.78rem;font-weight:800;color:#475569}.mwf-field input,.mwf-field select,.mwf-field textarea{border:1px solid #dce3ed;border-radius:10px;padding:10px;background:#fff}.mwf-btn{border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}.mwf-btn.primary{background:#0453cb;color:#fff}.mwf-btn.soft{background:#eef4ff;color:#0453cb}.mwf-btn.success{background:#137c48;color:#fff}.mwf-btn.danger{background:#fff0f0;color:#b42318}.mwf-piece{border:1px solid #edf1f6;border-radius:12px;padding:13px;margin-bottom:10px}.mwf-piece-top{display:flex;justify-content:space-between;gap:10px}.mwf-piece strong{color:#1f2937}.mwf-status{font-size:.76rem;font-weight:800;border-radius:999px;padding:5px 8px;background:#f3f6fb}.mwf-status.ok{background:#eaf7ef;color:#14763d}.mwf-status.warn{background:#fff7e6;color:#a35c00}.mwf-full{grid-column:1/-1}.mwf-muted{font-size:.82rem;color:#64748b}.mwf-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.mwf-select{min-width:220px;border:1px solid #dce3ed;border-radius:9px;padding:9px;background:#fff}@media(max-width:850px){.mwf{padding:14px}.mwf-grid{grid-template-columns:1fr}.mwf-steps{grid-template-columns:1fr 1fr}.mwf-form{grid-template-columns:1fr}.mwf-kv{grid-template-columns:1fr}}
 </style>
 @endpush
 
@@ -15,13 +15,18 @@
         'awaiting_documents' => 2,
         'awaiting_activation' => 3,
         'awaiting_student' => 4,
-        'ready_to_finalize' => 5,
-        'completed' => 6,
+        'ready_to_finalize' => 6,
+        'completed' => 7,
     ];
     $current = $states[$workflow->state] ?? 0;
     $canCash = (auth()->user()?->can('paiements.create') ?? false)
         && (auth()->user()?->can('paiements.validate') ?? false)
         && (auth()->user()?->can('inscriptions.create') ?? false);
+    $readyToFinalize = $workflow->paymentRecorded()
+        && $workflow->documentsValidated()
+        && $workflow->accessActivated()
+        && $workflow->profileCompleted()
+        && (bool) $workflow->selected_class_id;
 @endphp
 <div class="mwf">
     <section class="mwf-hero">
@@ -34,7 +39,7 @@
     </section>
 
     <div class="mwf-steps">
-        @foreach(['Caisse','Pièces','Activation','Espace étudiant','Classe'] as $i => $label)
+        @foreach(['Caisse','Pièces','Activation','Profil étudiant','Classe','Finalisation'] as $i => $label)
             @php $n=$i+1; @endphp
             <div class="mwf-step {{ $current > $n ? 'done' : ($current === $n ? 'current' : '') }}">{{ $n }} · {{ $label }}</div>
         @endforeach
@@ -128,10 +133,11 @@
         </section>
 
         <section class="mwf-card">
-            <h2>3. Activation de l'espace étudiant</h2>
+            <h2>3. Activation et profil étudiant</h2>
             <div class="mwf-kv"><span>Déclenchement</span><strong>{{ $activationStep === 'after_payment' ? 'Après paiement':'Après contrôle des pièces' }}</strong></div>
             <div class="mwf-kv"><span>Compte</span><strong>{{ $workflow->etudiant?->user?->username ?: 'Pas encore préparé' }}</strong></div>
             <div class="mwf-kv"><span>Activation</span><strong>{{ $workflow->accessActivated() ? 'Activé':'En attente' }}</strong></div>
+            <div class="mwf-kv"><span>Profil complété</span><strong>{{ $workflow->profileCompleted() ? optional($workflow->profile_completed_at)->format('d/m/Y H:i') : 'En attente' }}</strong></div>
             @can('inscriptions.create')
             @if($workflow->etudiant_id && !$workflow->accessActivated())
             <form method="POST" action="{{ route('esbtp.admissions.workflow.activation.resend', $workflow) }}" class="mwf-actions">
@@ -145,15 +151,34 @@
 
         <section class="mwf-card">
             <h2>4. Classe et inscription définitive</h2>
-            <div class="mwf-kv"><span>Classe choisie</span><strong>{{ $workflow->selectedClass?->name ?: 'En attente de l’étudiant' }}</strong></div>
+            <div class="mwf-kv"><span>Mode d'affectation</span><strong>{{ $classChoiceActor === \App\Services\Admissions\InscriptionWorkflowSettings::CLASS_ACTOR_STUDENT ? "Choix par l'étudiant" : "Choix par l'administration" }}</strong></div>
+            <div class="mwf-kv"><span>Classe</span><strong>{{ $workflow->selectedClass?->name ?: 'Non affectée' }}</strong></div>
             <div class="mwf-kv"><span>Inscription finale</span><strong>{{ $workflow->final_inscription_id ? '#'.$workflow->final_inscription_id : 'Non créée' }}</strong></div>
+
             @can('inscriptions.create')
-            @if($workflow->selected_class_id && !$workflow->final_inscription_id)
-            <form method="POST" action="{{ route('esbtp.admissions.workflow.finalize', $workflow) }}" class="mwf-actions">
-                @csrf
-                <button class="mwf-btn primary" type="submit">Finaliser l'inscription académique</button>
-            </form>
-            @endif
+                @if($classChoiceActor === \App\Services\Admissions\InscriptionWorkflowSettings::CLASS_ACTOR_ADMIN && !$workflow->final_inscription_id)
+                    <form method="POST" action="{{ route('esbtp.admissions.workflow.class.choose-admin', $workflow) }}" class="mwf-actions">
+                        @csrf
+                        <select name="classe_id" class="mwf-select" required>
+                            <option value="">Choisir une classe disponible</option>
+                            @foreach($eligibleClasses as $classe)
+                                <option value="{{ $classe->id }}" @selected((int)$workflow->selected_class_id === (int)$classe->id)>{{ $classe->name }} · {{ $classe->filiere?->name }}</option>
+                            @endforeach
+                        </select>
+                        <button class="mwf-btn soft" type="submit">Affecter la classe</button>
+                    </form>
+                @elseif($classChoiceActor === \App\Services\Admissions\InscriptionWorkflowSettings::CLASS_ACTOR_STUDENT && !$workflow->selected_class_id)
+                    <p class="mwf-muted">La classe sera choisie une seule fois par l'étudiant dans son espace après complétion du profil et contrôle des pièces.</p>
+                @endif
+
+                @if($readyToFinalize && !$workflow->final_inscription_id)
+                    <form method="POST" action="{{ route('esbtp.admissions.workflow.finalize', $workflow) }}" class="mwf-actions">
+                        @csrf
+                        <button class="mwf-btn primary" type="submit">Finaliser l'inscription académique</button>
+                    </form>
+                @elseif(!$workflow->final_inscription_id)
+                    <p class="mwf-muted">La finalisation reste verrouillée tant que paiement, pièces, activation, profil et classe ne sont pas tous validés.</p>
+                @endif
             @endcan
         </section>
     </div>
