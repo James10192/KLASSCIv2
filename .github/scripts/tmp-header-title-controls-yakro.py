@@ -1,3 +1,4 @@
+# trigger: final Yakro header title controls
 from pathlib import Path
 
 
@@ -116,8 +117,6 @@ replace_once(service,
             'bulletin_header_right_font_size' => \\App\\Helpers\\SettingsHelper::get('bulletin_header_right_font_size', '12'),
 """)
 
-# Le test avait pris du retard sur le constructeur de BulletinService: ajoute le
-# septieme collaborateur requis afin que le test de contrat teste bien la typo.
 replace_once(test,
 """use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
 """,
