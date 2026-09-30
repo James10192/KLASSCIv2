@@ -32,9 +32,14 @@ Route::prefix('esbtp/admissions/workflow')
                 ->middleware('throttle:20,1')
                 ->name('student.choose-class');
 
+            // La caisse et la scolarité doivent pouvoir ouvrir le même dossier
+            // sans qu'on leur donne les droits de l'autre métier.
+            Route::get('/candidatures/{candidature}', [ManagedInscriptionWorkflowController::class, 'show'])
+                ->middleware('permission:inscriptions.create|pieces_dossier.suivre')
+                ->name('show');
+
             Route::middleware('permission:inscriptions.create')->group(function () {
                 Route::get('/', [ManagedInscriptionWorkflowController::class, 'index'])->name('index');
-                Route::get('/candidatures/{candidature}', [ManagedInscriptionWorkflowController::class, 'show'])->name('show');
                 Route::post('/candidatures/{candidature}/paiement', [ManagedInscriptionWorkflowController::class, 'pay'])
                     ->middleware('throttle:20,1')
                     ->name('pay');
