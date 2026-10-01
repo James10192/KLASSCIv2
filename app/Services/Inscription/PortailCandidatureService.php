@@ -231,7 +231,13 @@ class PortailCandidatureService
             // demande une base.
             $refus = self::refusDeRedepot(
                 (string) $candidature->statut,
-                $this->memeIdentite($candidature, $valeurs)
+                $this->memeIdentite($candidature, $valeurs),
+                self::memeContact(
+                    $candidature->email,
+                    $candidature->telephone,
+                    $valeurs['email'] ?? null,
+                    array_key_exists('telephone', $valeurs) ? $valeurs['telephone'] : $candidature->telephone,
+                ),
             );
 
             if ($refus !== null) {
@@ -370,9 +376,10 @@ class PortailCandidatureService
      *   se lit A L'INTERIEUR du bras. Ce refus-la prescrit de ressaisir son nom
      *   comme la premiere fois, remede qui n'aboutit que sur un dossier encore
      *   ouvrable — donc jamais sur une acceptation.
-     * - `en_attente` : rien n'a ete decide, donc tout se corrige — y compris
-     *   une faute de frappe dans son propre nom, ce qu'aucun controle
-     *   d'identite ne doit empecher.
+     * - `en_attente` : rien n'a ete decide, donc tout se corrige — une faute
+     *   de frappe dans son propre nom, ou son propre e-mail — mais pas les deux
+     *   d'un coup : identite ET contact differents sur le meme numero, c'est
+     *   une autre personne qui prendrait le dossier (et son lien d'activation).
      * - defaut : un statut inconnu se refuse, avec SA raison. Il n'en existe
      *   pas d'autre aujourd'hui ; le jour ou il en naitra un, tomber du cote
      *   strict laisse une trace dans le journal, alors que l'ouvrir creerait un
@@ -380,16 +387,21 @@ class PortailCandidatureService
      *   un fait qui n'a pas eu lieu.
      *
      * @param  bool  $memeIdentite  nom, prenoms et date de naissance concordent
+     * @param  bool  $memeContact   e-mail et telephone concordent
      * @return RefusCandidature|null null quand le redepot est autorise
      */
-    public static function refusDeRedepot(string $statut, bool $memeIdentite): ?RefusCandidature
+    public static function refusDeRedepot(string $statut, bool $memeIdentite, bool $memeContact = true): ?RefusCandidature
     {
         return match ($statut) {
             ESBTPCandidature::STATUT_CONVERTIE => RefusCandidature::DejaInscrit,
             ESBTPCandidature::STATUT_ACCEPTEE => $memeIdentite
                 ? RefusCandidature::DejaTraitee
                 : RefusCandidature::AccepteePourUnAutre,
-            ESBTPCandidature::STATUT_EN_ATTENTE => null,
+            // Corriger son propre nom (même contact) ou son propre contact (même
+            // identité) reste possible. Changer LES DEUX à la fois sur le numéro
+            // de quelqu'un d'autre, c'est prendre son dossier : le lien
+            // d'activation du futur compte étudiant partirait vers ce contact.
+            ESBTPCandidature::STATUT_EN_ATTENTE => ($memeIdentite || $memeContact) ? null : RefusCandidature::AutrePersonne,
             ESBTPCandidature::STATUT_REJETEE => $memeIdentite ? null : RefusCandidature::AutrePersonne,
             default => RefusCandidature::EtatInattendu,
         };
