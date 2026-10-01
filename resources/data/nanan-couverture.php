@@ -109,6 +109,7 @@ return [
     'POST api/cli/mailpulse/parent-chatbot/e2e/cleanup' => ['hors_nanan' => 'Données de démonstration ou de recette : jamais sur une école en service.'],
     'POST api/cli/mailpulse/parent-chatbot/e2e/inbound' => ['hors_nanan' => 'Données de démonstration ou de recette : jamais sur une école en service.'],
     'POST api/cli/mailpulse/parent-chatbot/e2e/prepare' => ['hors_nanan' => 'Données de démonstration ou de recette : jamais sur une école en service.'],
+    'POST api/cli/courriels/avis-parents/essai' => ['hors_nanan' => 'Recette des gabarits de courriel par le support, vers les seules adresses de test : pas une opération d\'école.'],
     'POST api/cli/mailpulse/test-notification' => ['hors_nanan' => 'Données de démonstration ou de recette : jamais sur une école en service.'],
     'POST api/cli/maintenance/reparer-encodage' => ['hors_nanan' => 'Exploitation du serveur (déploiement, cache, migrations) : réservé au support technique.'],
     'POST api/cli/matieres/cleanup-tronc-commun' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],

@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Mail;
 
+use App\Mail\Parents\AvisDExemple;
 use App\Mail\Transport\CorpsPourMailPulse;
 use App\Mail\Transport\MailPulseTransport;
 use App\View\Composers\IdentiteDesCourriels;
@@ -41,9 +42,12 @@ class BoutonsDesAvisAuxParentsTest extends TestCase
 
     private function rendre(string $gabarit): string
     {
-        $donnees = require __DIR__.'/Fixtures/donnees-avis-parents.php';
+        return view('esbtp.emails.parents.'.$gabarit, AvisDExemple::donnees())->render();
+    }
 
-        return view('esbtp.emails.parents.'.$gabarit, $donnees)->render();
+    public function test_la_liste_des_avis_est_celle_de_l_essai_par_la_cli(): void
+    {
+        $this->assertSame(array_keys(self::AVIS), AvisDExemple::noms());
     }
 
     public function test_chaque_avis_porte_le_bouton_commun_et_plus_l_ancien(): void

@@ -472,6 +472,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::post('/mailpulse/test-notification', [App\Http\Controllers\API\CLI\CLIMailPulseController::class, 'testNotification'])
         ->middleware('throttle:10,1')
         ->name('mailpulse.test-notification');
+    // Essai d'un avis aux parents (vrai gabarit, vrai mailer) vers les adresses de test uniquement
+    Route::post('/courriels/avis-parents/essai', [App\Http\Controllers\API\CLI\CLIEssaiAvisParentsController::class, 'envoyer'])
+        ->middleware('throttle:10,1')
+        ->name('courriels.avis-parents.essai');
     Route::post('/mailpulse/parent-chatbot/e2e/prepare', [App\Http\Controllers\API\CLI\CLIMailPulseController::class, 'prepareParentChatbotFixture'])
         ->middleware('throttle:10,1')
         ->name('mailpulse.parent-chatbot.e2e.prepare');
