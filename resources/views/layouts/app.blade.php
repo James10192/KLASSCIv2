@@ -4275,6 +4275,8 @@
 
     @auth
         @include('layouts.partials.spotlight')
+        {{-- Travaux longs (bulletins) : toast de fin où qu'on soit dans l'application --}}
+        <x-taches-arriere-plan />
     @endauth
 </body>
 </html>
