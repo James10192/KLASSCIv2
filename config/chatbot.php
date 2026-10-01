@@ -105,6 +105,58 @@ return [
             'libelle' => 'Préparation de la modification des classes…',
             'suggestion' => 'Passe les classes de 1re année à 60 places',
         ],
+        // Structure académique (lot B) : mêmes droits que l'écran qui fait le même geste.
+        'lire_structure_academique' => [
+            'enabled' => true,
+            'any_permissions' => ['annees.view', 'filieres.view', 'niveaux.view'],
+            'libelle' => 'Lecture de la structure académique…',
+        ],
+        'proposer_creation_annee' => [
+            'enabled' => true,
+            'all_permissions' => ['annees.create'],
+            'libelle' => 'Préparation de la nouvelle année universitaire…',
+            'suggestion' => 'Crée l’année universitaire 2027-2028',
+        ],
+        'proposer_annee_courante' => [
+            'enabled' => true,
+            'all_permissions' => ['annees.set_current'],
+            'libelle' => 'Préparation du changement d’année en cours…',
+        ],
+        'proposer_filieres' => [
+            'enabled' => true,
+            'all_permissions' => ['filieres.create'],
+            'libelle' => 'Préparation des filières…',
+        ],
+        'proposer_niveaux' => [
+            'enabled' => true,
+            'all_permissions' => ['niveaux.create'],
+            'libelle' => 'Préparation des niveaux d’études…',
+        ],
+        'proposer_annee_niveau' => [
+            'enabled' => true,
+            'all_permissions' => ['niveaux.edit'],
+            'libelle' => 'Préparation de la correction du niveau…',
+        ],
+        'proposer_tronc_commun_filiere' => [
+            'enabled' => true,
+            'all_permissions' => ['filieres.edit'],
+            'libelle' => 'Préparation du tronc commun…',
+        ],
+        'proposer_sortie_tronc_commun' => [
+            'enabled' => true,
+            'all_permissions' => ['bts_tronc_commun.manage_targets'],
+            'libelle' => 'Préparation des sorties de tronc commun…',
+        ],
+        'proposer_orientation_bts' => [
+            'enabled' => true,
+            'all_permissions' => ['inscriptions.specialisation.manage'],
+            'libelle' => 'Préparation de l’orientation…',
+        ],
+        'proposer_retrait_maquette_bts' => [
+            'enabled' => true,
+            'all_permissions' => ['matieres.edit'],
+            'libelle' => 'Préparation du retrait de la maquette…',
+        ],
         // La pièce appartient à qui l'a déposée (PiecesJointes::pour) : ces droits
         // ne disent que les métiers où lire un tableau joint a un sens.
         'chercher_dans_piece' => [

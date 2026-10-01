@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Domain\BtsTroncCommun\BtsAnnualAggregationService;
+use App\Domain\BtsTroncCommun\ConfigurationTroncCommun;
 use App\Domain\BtsTroncCommun\BtsOrientationService;
 use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Http\Controllers\API\BaseApiController;
@@ -340,10 +341,12 @@ class CLIBtsTroncCommunController extends BaseApiController
             return $this->errorResponse('Filiere not found', [], 404);
         }
 
-        $filiere->update([
-            'is_tronc_commun' => $validated['is_tronc_commun'] ?? true,
-            'semestres_tronc_commun' => $validated['semestres_tronc_commun'] ?? ($filiere->semestres_tronc_commun ?: 1),
-        ]);
+        $configuration = app(ConfigurationTroncCommun::class);
+        $troncCommun = (bool) ($validated['is_tronc_commun'] ?? true);
+        if ($refus = $configuration->refusMarquage($filiere, $troncCommun)) {
+            return $this->errorResponse($refus, [], 422);
+        }
+        $configuration->marquerFiliere($filiere, $troncCommun, isset($validated['semestres_tronc_commun']) ? (int) $validated['semestres_tronc_commun'] : null);
 
         return $this->successResponse([
             'filiere' => [
@@ -376,24 +379,20 @@ class CLIBtsTroncCommunController extends BaseApiController
             return $this->errorResponse('Source or target class not found', [], 404);
         }
 
-        // Les classes KLASSCI sont universelles (cf rule classes-universelles-pas-annee.md) :
-        // on ne contraint PAS la même année universitaire — seul le niveau d'études est requis.
-        if ((int) $sourceClasse->niveau_etude_id !== (int) $targetClasse->niveau_etude_id) {
-            return $this->errorResponse('Target class must share the same study level', [], 422);
+        // Mêmes règles que l'écran de la classe (tronc commun, même niveau, pas
+        // elle-même), par le service que Nanan utilise aussi.
+        try {
+            $target = app(ConfigurationTroncCommun::class)->ajouterSortie(
+                $sourceClasse,
+                $targetClasse,
+                isset($validated['semestre_activation']) ? (int) $validated['semestre_activation'] : null,
+                $validated['notes'] ?? null,
+                (int) ($validated['sort_order'] ?? 0),
+                (bool) ($validated['is_active'] ?? true),
+            );
+        } catch (\InvalidArgumentException $e) {
+            return $this->errorResponse($e->getMessage(), [], 422);
         }
-
-        $target = ESBTPClasseOrientationTarget::updateOrCreate(
-            [
-                'source_classe_id' => $sourceClasse->id,
-                'target_classe_id' => $targetClasse->id,
-            ],
-            [
-                'semestre_activation' => $validated['semestre_activation'] ?? 2,
-                'sort_order' => $validated['sort_order'] ?? 0,
-                'notes' => $validated['notes'] ?? null,
-                'is_active' => $validated['is_active'] ?? true,
-            ]
-        );
 
         return $this->successResponse([
             'target' => [

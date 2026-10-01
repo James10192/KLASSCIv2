@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Domain\Academique\ReferentielAcademique;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPNiveauEtude;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -124,74 +124,22 @@ class CLINiveauEtudeController extends BaseApiController
             'dry_run' => 'nullable|boolean',
         ]);
 
-        $couples = array_map(
-            static fn (array $n): string => $n['type'].'#'.$n['year'],
-            $validated['niveaux']
-        );
+        // Le plan et l'écriture sont ceux de Nanan (ReferentielAcademique).
+        $referentiel = app(ReferentielAcademique::class);
+        $plan = $referentiel->planNiveaux($validated['niveaux']);
 
-        if (count($couples) !== count(array_unique($couples))) {
-            return $this->errorResponse(
-                'Le lot contient deux fois le meme couple type + annee.',
-                [],
-                422
-            );
-        }
-
-        $plan = [];
-        foreach ($validated['niveaux'] as $n) {
-            $existant = ESBTPNiveauEtude::where('type', $n['type'])
-                ->where('year', $n['year'])
-                ->first();
-
-            $plan[] = [
-                'type' => $n['type'],
-                'year' => $n['year'],
-                'name' => trim($n['name']),
-                'action' => $existant ? 'mise a jour' : 'creation',
-                'nom_actuel' => $existant?->name,
-                'id_existant' => $existant?->id,
-            ];
+        if ($plan['refus'] !== []) {
+            return $this->errorResponse(implode(' ', $plan['refus']), ['refus' => $plan['refus']], 422);
         }
 
         if ((bool) ($validated['dry_run'] ?? false)) {
             return $this->successResponse([
                 'dry_run' => true,
-                'plan' => $plan,
+                'plan' => $plan['lignes'],
             ], 'Aucune ecriture : previsualisation seulement.');
         }
 
-        $crees = 0;
-        $misAJour = 0;
-
-        DB::transaction(function () use ($validated, &$crees, &$misAJour) {
-            foreach ($validated['niveaux'] as $n) {
-                $niveau = ESBTPNiveauEtude::where('type', $n['type'])
-                    ->where('year', $n['year'])
-                    ->first();
-
-                $donnees = [
-                    'name' => trim($n['name']),
-                    'libelle' => $n['libelle'] ?? trim($n['name']),
-                    'type' => $n['type'],
-                    'year' => (int) $n['year'],
-                    'is_active' => $n['is_active'] ?? true,
-                ];
-
-                // Le code n'ecrase pas l'existant quand il n'est pas fourni :
-                // un import partiel ne doit pas vider une colonne deja remplie.
-                if (! empty($n['code'])) {
-                    $donnees['code'] = $n['code'];
-                }
-
-                if ($niveau) {
-                    $niveau->update($donnees);
-                    $misAJour++;
-                } else {
-                    ESBTPNiveauEtude::create($donnees);
-                    $crees++;
-                }
-            }
-        });
+        ['crees' => $crees, 'mis_a_jour' => $misAJour] = $referentiel->enregistrerNiveaux($plan['lignes']);
 
         Log::info('CLI: niveaux importes', [
             'crees' => $crees,
