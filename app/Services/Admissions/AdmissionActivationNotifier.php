@@ -8,7 +8,6 @@ use App\Models\ESBTPCandidatureWorkflow;
 use App\Services\MailPulse\MailPulseClient;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 
 /**
  * Livraison des accès d'activation sur les canaux activés par le tenant.
@@ -124,22 +123,52 @@ final class AdmissionActivationNotifier
             return false;
         }
 
-        $email = $workflow->candidature->email;
+        $email = trim((string) $workflow->candidature->email);
         $ecole = $this->ecole();
+        $sujet = "Activation de votre espace étudiant — {$ecole}";
+        $texte = "Votre dossier d'inscription à {$ecole} a franchi l'étape de préinscription.\n\n"
+            ."Activez votre espace étudiant et choisissez votre mot de passe : {$url}\n\n"
+            ."Ce lien expire dans 48 heures et ne fonctionne qu'une fois.";
 
+        // Même chemin que les convocations de rendez-vous : MailPulse. L'envoi
+        // direct par le mailer de l'application échouait sans bruit là où il
+        // n'est pas configuré, alors que les convocations, elles, arrivaient.
         try {
-            Mail::raw(
-                "Votre dossier d'inscription à {$ecole} a franchi l'étape de préinscription.\n\n"
-                ."Activez votre espace étudiant et choisissez votre mot de passe : {$url}\n\n"
-                ."Ce lien expire dans 48 heures et ne fonctionne qu'une fois.",
-                function ($message) use ($email, $ecole) {
-                    $message->to($email)->subject("Activation de votre espace étudiant — {$ecole}");
-                },
-            );
+            $this->mailPulse->createOrUpdateContact([
+                'email' => $email,
+                'first_name' => $workflow->candidature->prenoms ?: $workflow->candidature->nom,
+                'last_name' => $workflow->candidature->nom,
+                'language' => 'fr',
+                'preferred_channel' => 'email',
+                'subscribed' => true,
+                'metadata' => ['source' => 'klassci-admission', 'channel_opt_in' => ['email' => true]],
+            ]);
+
+            $result = $this->mailPulse->sendEmailMessage([
+                'channel' => 'email',
+                'recipient' => ['type' => 'email', 'value' => $email],
+                'content' => ['type' => 'text', 'text' => $texte],
+                'metadata' => [
+                    'source' => 'klassci',
+                    'workflow_event' => 'admission_activation',
+                    'subject' => $sujet,
+                    'workflow_id' => $workflow->id,
+                ],
+            ], 'admission-activation-email-'.$workflow->id.'-'.substr(hash('sha256', $url), 0, 16));
+
+            if (! $result->isDispatchAccepted()) {
+                Log::warning('Activation KLASSCI : échec envoi e-mail', [
+                    'workflow_id' => $workflow->id,
+                    'status' => $result->status,
+                    'request_id' => $result->requestId,
+                ]);
+
+                return false;
+            }
 
             return true;
         } catch (\Throwable $e) {
-            Log::warning('Activation KLASSCI : échec envoi e-mail', [
+            Log::warning('Activation KLASSCI : exception envoi e-mail', [
                 'workflow_id' => $workflow->id,
                 'exception' => $e::class,
             ]);
