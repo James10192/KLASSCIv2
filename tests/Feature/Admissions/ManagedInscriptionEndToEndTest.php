@@ -142,6 +142,7 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertSame('etudiant_cree', $inscription->workflow_step);
         $this->assertSame($this->anneeDossier->id, (int) $inscription->annee_universitaire_id);
         $this->assertSame(ESBTPCandidature::STATUT_CONVERTIE, $candidature->fresh()->statut);
+        $this->assertStringStartsNotWith('PRE-', $workflow->etudiant->fresh()->matricule, 'Inscrit : le matricule provisoire est remplacé.');
 
         // Finance : 500 000 dus, 50 000 versés à la préinscription → 450 000.
         $soldes = app(SoldesParSouscription::class)->pourInscription($inscription);
@@ -307,8 +308,8 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($a->etudiant->user)
             ->get(route('esbtp.admissions.workflow.student'))
             ->assertOk()
-            ->assertSee($a->candidature->reference_publique)
-            ->assertDontSee($b->candidature->reference_publique);
+            ->assertSee($a->candidature->referencePubliqueAffichee())
+            ->assertDontSee($b->candidature->referencePubliqueAffichee());
 
         // Un étudiant n'atteint pas les écrans des guichets.
         $this->actingAs($a->etudiant->user)
@@ -331,8 +332,8 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($caissier)
             ->get(route('esbtp.admissions.workflow.index'))
             ->assertOk()
-            ->assertSee($enAttente->reference_publique)
-            ->assertDontSee($workflow->candidature->reference_publique);
+            ->assertSee($enAttente->referencePubliqueAffichee())
+            ->assertDontSee($workflow->candidature->referencePubliqueAffichee());
 
         $this->actingAs($caissier)
             ->get(route('esbtp.admissions.workflow.show', $workflow->candidature))

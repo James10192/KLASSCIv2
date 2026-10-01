@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Dossier '.($candidature->reference_publique ?: '#'.$candidature->id).' - KLASSCI')
+@section('title', 'Dossier '.($candidature->referencePubliqueAffichee() ?: '#'.$candidature->id).' - KLASSCI')
 
 @push('styles')
 <style>
@@ -67,7 +67,7 @@
             <h1>{{ $candidature->prenoms }} {{ $candidature->nom }}</h1>
             <p>{{ $candidature->filiere?->name ?: 'Filière à confirmer' }} · {{ $candidature->niveau?->name ?: 'Niveau à confirmer' }} · {{ $candidature->anneeUniversitaire?->name ?: 'Année non précisée' }}</p>
         </div>
-        <span class="mwf-ref">{{ $candidature->reference_publique ?: 'Dossier #'.$candidature->id }}</span>
+        <span class="mwf-ref">{{ $candidature->referencePubliqueAffichee() ?: 'Dossier #'.$candidature->id }}</span>
     </div>
 
     <div class="mwf-next" role="status"><i class="fas fa-arrow-right" aria-hidden="true"></i><strong>{{ $prochaineEtape }}</strong></div>

@@ -941,7 +941,18 @@ class DashboardController extends Controller
                 ->with(['classe.filiere', 'classe.niveau', 'classe.parcours'])
                 ->first();
         }
-        $classeId = $inscription->classe_id ?? $student->classe_id;
+
+        // Inscrit pendant la campagne de l'année suivante : rien sur l'année
+        // courante, mais une inscription bien réelle à venir. L'accueil disait
+        // « Aucune inscription active » à un étudiant qui venait de s'inscrire.
+        $data['anneeInscriptionAVenir'] = null;
+        if (! $inscription) {
+            $inscription = $this->inscriptionAVenir($student, $data['anneeEnCours']);
+            $data['anneeInscriptionAVenir'] = $inscription?->anneeUniversitaire?->name;
+        }
+
+        // L'année à venir n'a pas commencé : pas de cours du jour à afficher.
+        $classeId = $data['anneeInscriptionAVenir'] ? null : ($inscription->classe_id ?? $student->classe_id);
 
         // Récupérer l'emploi du temps d'aujourd'hui pour l'étudiant
         try {
@@ -1044,6 +1055,21 @@ class DashboardController extends Controller
      * Valeurs brutes (nombres, dates Carbon) : la vue met en forme. `null` veut
      * dire « indisponible » et s'affiche « — », jamais un faux zéro.
      */
+    /** L'inscription active la plus proche sur une année qui n'a pas encore commencé. */
+    private function inscriptionAVenir(ESBTPEtudiant $student, ?ESBTPAnneeUniversitaire $courante): ?ESBTPInscription
+    {
+        $apres = $courante?->start_date ?? now();
+
+        return ESBTPInscription::query()
+            ->where('etudiant_id', $student->id)
+            ->where('status', 'active')
+            ->whereHas('anneeUniversitaire', fn ($q) => $q->where('start_date', '>', $apres))
+            ->with(['classe.filiere', 'classe.niveau', 'classe.parcours', 'anneeUniversitaire'])
+            ->get()
+            ->sortBy(fn (ESBTPInscription $i) => $i->anneeUniversitaire->start_date)
+            ->first();
+    }
+
     private function accueilMobileEtudiant(ESBTPEtudiant $student, ?ESBTPInscription $inscription, array $data): array
     {
         $annee = $data['anneeEnCours'] ?? null;
@@ -1056,6 +1082,7 @@ class DashboardController extends Controller
             'aujourdhui' => now(),
             'prenom' => trim((string) ($student->prenoms ?? '')) ?: (string) $student->nom,
             'classe' => $classe?->name,
+            'annee_a_venir' => $data['anneeInscriptionAVenir'] ?? null,
             'est_lmd' => $estLmd,
             'prochain_cours' => $this->prochainCoursDuJour($data['todayTimetable'] ?? collect()),
             'moyenne' => null,
