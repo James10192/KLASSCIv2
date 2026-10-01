@@ -114,26 +114,58 @@ class NotificationPresenter
     private function readMessage(Notification $notification, Collection $inscriptions): array
     {
         $inscription = $inscriptions->get($this->inscriptionId($notification->link));
+        [$primary, $labels] = $this->lireLeTexte($notification);
 
+        // Une notification liée à une inscription garde SON message (paiement
+        // reçu, dossier rejeté, rappel…) : l'inscription n'ajoute que le
+        // contexte — qui, quelle classe, où en est le dossier.
         if ($inscription) {
-            $nom = trim(($inscription->etudiant->nom ?? '').' '.($inscription->etudiant->prenoms ?? ''));
-            $filiere = $inscription->classe?->filiere?->name;
-            $primary = "L'étudiant {$nom} s'est inscrit".($filiere ? " en {$filiere}" : '').'.';
-
             $raw = [];
+            $nom = trim(($inscription->etudiant->nom ?? '').' '.($inscription->etudiant->prenoms ?? ''));
+            if ($nom !== '') {
+                $raw[] = ['Étudiant', $nom];
+            }
             if ($inscription->classe?->name) {
                 $raw[] = ['Classe', $inscription->classe->name];
             }
-            $raw[] = ['Statut', $inscription->status ?? 'Non défini'];
+            $raw[] = ['Statut', self::statutInscription($inscription->status)];
             $raw[] = ['Étape', $inscription->workflow_step_label ?? $inscription->workflow_step ?? 'Non définie'];
             $dernier = $inscription->paiements?->sortByDesc('created_at')->first();
             $raw[] = ['Paiement', $dernier && $dernier->status
                 ? Str::ucfirst(str_replace('_', ' ', $dernier->status))
                 : 'Non renseigné'];
 
-            return [$primary, array_map(fn ($l) => $this->pill($l[0], $l[1]), $raw)];
+            // Le contexte de l'inscription fait foi : les étiquettes du texte
+            // portant la même clé sont remplacées, pas doublées.
+            $cles = array_map(fn ($l) => Str::lower(Str::ascii($l[0])), $raw);
+            $labels = array_values(array_filter($labels, fn ($l) => ! in_array(Str::lower(Str::ascii($l['key'])), $cles, true)));
+
+            return [$primary, array_merge(array_map(fn ($l) => $this->pill($l[0], $l[1]), $raw), $labels)];
         }
 
+        return [$primary, $labels];
+    }
+
+    /** Le statut d'une inscription en français lisible, jamais la valeur brute. */
+    public static function statutInscription(?string $statut): string
+    {
+        $cle = Str::lower(Str::ascii((string) $statut));
+
+        return match ($cle) {
+            '' => 'Non défini',
+            'en_attente' => 'En attente',
+            'active' => 'Active',
+            'annulee' => 'Annulée',
+            'terminee' => 'Terminée',
+            default => Str::ucfirst(str_replace('_', ' ', (string) $statut)),
+        };
+    }
+
+    /**
+     * @return array{0: string, 1: array<int, array{key: string, value: string, icon: string, tone: string}>}
+     */
+    private function lireLeTexte(Notification $notification): array
+    {
         // Les messages ne portent pas de HTML a afficher : le texte seul est lu.
         $texte = trim(preg_replace('/\s+/u', ' ', strip_tags((string) $notification->message)));
         $primary = trim(preg_split('/('.self::ETIQUETTES.'|Cliquez)/iu', $texte)[0] ?? '');

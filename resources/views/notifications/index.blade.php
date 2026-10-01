@@ -341,9 +341,7 @@
                 <button type="button" class="ntf-chip" :class="isActive('toutes') ? 'is-active' : ''" @click="apply({ filtre: 'toutes', type: null, periode: null, sujet: null })">
                     Toutes <span class="ntf-chip-count" x-text="counts.total">{{ $counts['total'] }}</span>
                 </button>
-                <button type="button" class="ntf-chip" :class="isActive('non_lues') ? 'is-active' : ''" @click="apply({ filtre: 'non_lues', type: null, periode: null, sujet: null })">
-                    Non lues <span class="ntf-chip-count" x-text="counts.unread">{{ $counts['unread'] }}</span>
-                </button>
+                {{-- « Non lues » vit dans la carte du bandeau, qui filtre déjà : pas de seconde porte. --}}
                 @foreach($ntfTypes as $typeKey => $type)
                     <button type="button" class="ntf-chip"
                             x-show="counts.types['{{ $typeKey }}'] > 0" @if(($counts['types'][$typeKey] ?? 0) === 0) x-cloak @endif
