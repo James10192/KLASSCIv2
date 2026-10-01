@@ -17,6 +17,8 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Models\User;
 use App\Services\Chatbot\Tools\DiagnostiquerReinscriptionTool;
+use App\Services\Inscriptions\NormalisationTypeInscription;
+use App\Services\Reinscription\SoldeDeReinscription;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -184,5 +186,53 @@ class ReinscriptionBloqueeTest extends TestCase
 
         $this->postJson('/api/cli/frais/souscriptions/ajuster', ['inscription_id' => $this->inscription->id, 'montant' => 5000, 'apply' => true])
             ->assertStatus(422);
+    }
+
+    private function diagnostic(): array
+    {
+        return app(DiagnostiquerReinscriptionTool::class)
+            ->executeAuthorized(['etudiant_id' => $this->inscription->etudiant_id], $this->admin)['diagnostic'];
+    }
+
+    public function test_un_trop_verse_sur_un_frais_compense_l_autre_comme_a_l_ecran(): void
+    {
+        $scolarite = ESBTPFraisCategory::factory()->create(['name' => 'Scolarité']);
+        ESBTPFraisSubscription::factory()->create([
+            'inscription_id' => $this->inscription->id, 'frais_category_id' => $scolarite->id, 'amount' => 100000,
+        ]);
+        ESBTPPaiement::factory()->pour($this->inscription)->surCategorie($scolarite->id)->montant(320000)->create();
+
+        $d = $this->diagnostic();
+
+        $this->assertLessThanOrEqual(0, SoldeDeReinscription::solde($this->inscription->id));
+        $this->assertFalse($d['bloquee']);
+        $this->assertNull($d['cause']);
+    }
+
+    public function test_une_inscription_quittee_sur_l_annee_courante_veut_dire_deja_reinscrit(): void
+    {
+        $this->inscription->update(['annee_universitaire_id' => ESBTPAnneeUniversitaire::where('is_current', true)->value('id')]);
+
+        $d = $this->diagnostic();
+
+        $this->assertTrue($d['deja_reinscrit_cette_annee']);
+        $this->assertFalse($d['bloquee']);
+        $this->assertSame('deja_reinscrit', $d['cause']);
+    }
+
+    public function test_une_reinscription_annulee_ne_cache_pas_l_impaye(): void
+    {
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => ESBTPAnneeUniversitaire::where('is_current', true)->value('id'),
+            'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+            'status' => 'annulée',
+            'workflow_step' => 'etudiant_cree',
+        ]);
+
+        $d = $this->diagnostic();
+
+        $this->assertFalse($d['deja_reinscrit_cette_annee']);
+        $this->assertSame('solde_impaye', $d['cause']);
     }
 }

@@ -7,7 +7,9 @@ use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPPaiement;
+use App\Services\Inscriptions\NormalisationTypeInscription;
 use App\Services\Reinscription\ClassesDeReinscription;
+use App\Services\Reinscription\SoldeDeReinscription;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -60,7 +62,9 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
             return ['display_type' => 'text', 'message' => "{$this->studentFullName($etudiant)} n'a aucune inscription validée avec classe : rien à réinscrire."];
         }
 
-        $voirMontants = $user->can('finances.etudiants.voir') || $user->can('paiements.view');
+        // Le droit de l'écran de réinscription, pas un autre : Nanan ne montre
+        // pas plus que la page.
+        $voirMontants = $user->can('finances.etudiants.voir');
         $paye = ESBTPPaiement::netPaidByCategory((int) $inscription->id, false);
         $frais = ESBTPFraisSubscription::query()
             ->where('inscription_id', $inscription->id)->where('is_active', true)
@@ -71,20 +75,28 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
                 'du' => $s->chargedAmount(),
                 'paye' => round((float) ($paye[$s->frais_category_id] ?? 0), 2),
             ])->values();
-        $du = (float) $frais->sum('du');
-        $verse = (float) $frais->sum(fn ($f) => min($f['paye'], $f['du']));
-        $solde = max(0.0, round($du - $verse, 2));
+        // Le solde qui bloque est celui de l'écran ; le détail par frais ne
+        // sert qu'à l'expliquer.
+        $du = SoldeDeReinscription::du((int) $inscription->id);
+        $verse = SoldeDeReinscription::paye((int) $inscription->id);
+        $solde = SoldeDeReinscription::solde((int) $inscription->id);
 
         $notes = ESBTPNote::query()->where('etudiant_id', $etudiant->id)
             ->whereHas('evaluation', fn ($q) => $q->where('annee_universitaire_id', $inscription->annee_universitaire_id))
             ->count();
-        $dejaReinscrit = ESBTPInscription::query()->where('etudiant_id', $etudiant->id)
-            ->where('id', '!=', $inscription->id)
-            ->whereHas('anneeUniversitaire', fn ($q) => $q->where('is_current', true))
-            ->exists();
+        // L'inscription « quittée » est la plus récente validée : si elle est
+        // déjà sur l'année courante, l'élève y est inscrit et il n'y a rien à
+        // débloquer. Sinon, une réinscription non annulée cette année compte —
+        // la même lecture que l'écran.
+        $dejaReinscrit = (bool) $inscription->anneeUniversitaire?->is_current
+            || ESBTPInscription::query()->where('etudiant_id', $etudiant->id)
+                ->where('type_inscription', NormalisationTypeInscription::REINSCRIPTION)
+                ->where('status', '!=', 'annulée')
+                ->whereHas('anneeUniversitaire', fn ($q) => $q->where('is_current', true))
+                ->exists();
 
         $estSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
-        $bloque = $solde > 0 && ! $estSuperAdmin;
+        $bloque = ! $dejaReinscrit && $solde > 0 && ! $estSuperAdmin;
 
         return [
             'display_type' => 'cards',
@@ -94,7 +106,7 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
                 'classe' => $inscription->classe?->name ?? 'N/A',
                 'detail' => 'Inscription quittée : '.($inscription->anneeUniversitaire?->name ?? '?'),
                 'statut' => $dejaReinscrit ? 'Déjà réinscrit' : ($bloque ? 'Bloquée (impayé)' : 'Réinscription possible'),
-                'reste' => $voirMontants ? $this->formatFCFA($solde) : null,
+                'reste' => $voirMontants ? $this->formatFCFA(max(0.0, $solde)) : null,
                 'lien' => Route::has('esbtp.reinscription.show') ? route('esbtp.reinscription.show', $etudiant->id, false) : null,
                 'lien_label' => 'Réinscription',
                 'lien_icon' => 'fas fa-redo',
@@ -108,7 +120,7 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
                 'deja_reinscrit_cette_annee' => $dejaReinscrit,
                 'bloquee' => $bloque,
                 'cause' => $dejaReinscrit ? 'deja_reinscrit' : ($solde > 0 ? 'solde_impaye' : null),
-                'solde' => $voirMontants ? $solde : 'masqué (droit finances requis)',
+                'solde' => $voirMontants ? max(0.0, $solde) : 'masqué (droit finances requis)',
                 'frais' => $voirMontants ? $frais->all() : $frais->map(fn ($f) => ['categorie_id' => $f['categorie_id'], 'frais' => $f['frais']])->all(),
                 'aucun_versement_enregistre' => $verse <= 0.0 && $du > 0.0,
                 'notes_sur_l_annee_quittee' => $notes,

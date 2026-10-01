@@ -6,6 +6,7 @@ use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Services\EcheancierSnapshotService;
+use App\Services\Reinscription\SoldeDeReinscription;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -25,7 +26,13 @@ use Illuminate\Support\Facades\Log;
  *  - un motif de moins de dix caractères : c'est la seule trace du pourquoi.
  *
  * Le modèle est audité : ce changement est donc reconnu comme « retouché à la
- * main » et la régénération des frais ne l'écrase pas d'elle-même.
+ * main » et la régénération des frais ne l'écrase pas d'elle-même. Elle peut en
+ * revanche RETIRER une souscription dont le frais ne s'applique plus à
+ * l'inscription : le motif écrit dans `notes` part avec elle (l'audit reste).
+ *
+ * Le solde annoncé est celui de l'écran de réinscription (SoldeDeReinscription),
+ * pas un calcul propre : une seconde formule disait « bloquée » là où l'écran
+ * laissait passer.
  */
 final class AjustementMontantSouscription
 {
@@ -87,9 +94,11 @@ final class AjustementMontantSouscription
             return $examen;
         }
 
+        // Plancher par frais, en comptant aussi l'en-attente : on ne descend
+        // pas sous un versement qui pourrait être validé demain.
         $paye = ESBTPPaiement::netPaidByCategory($inscriptionId, true);
         $dejaPaye = round((float) ($paye[$souscription->frais_category_id] ?? 0), 2);
-        $soldeAvant = $this->soldeTotal($souscriptions, $paye);
+        $soldeAvant = SoldeDeReinscription::solde($inscriptionId);
 
         $examen['souscription_id'] = (int) $souscription->id;
         $examen['categorie_id'] = (int) $souscription->frais_category_id;
@@ -97,10 +106,7 @@ final class AjustementMontantSouscription
         $examen['avant'] = (float) $souscription->amount;
         $examen['deja_paye'] = $dejaPaye;
         $examen['solde_avant'] = $soldeAvant;
-        $examen['solde_apres'] = round(
-            $soldeAvant - max(0.0, (float) $souscription->amount - $dejaPaye) + max(0.0, $nouveauMontant - $dejaPaye),
-            2
-        );
+        $examen['solde_apres'] = round($soldeAvant - ((float) $souscription->amount - $nouveauMontant), 2);
         $examen['etat'] = [
             'id' => (int) $souscription->id,
             'amount' => (string) $souscription->amount,
@@ -170,9 +176,18 @@ final class AjustementMontantSouscription
             return ['souscription_id' => (int) $souscription->id, 'avant' => (float) $examen['avant'], 'apres' => (float) $examen['apres']];
         });
 
-        $inscription = ESBTPInscription::find($examen['inscription_id']);
-        if ($inscription) {
-            $this->echeanciers->refreshForInscription($inscription);
+        // Après la transaction : le montant est écrit, un échéancier en retard
+        // ne doit pas le faire annoncer comme un échec. Il se recalcule au
+        // prochain affichage de l'inscription.
+        try {
+            $inscription = ESBTPInscription::find($examen['inscription_id']);
+            if ($inscription) {
+                $this->echeanciers->refreshForInscription($inscription);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[frais] echeancier non recalcule apres ajustement', [
+                'inscription_id' => $examen['inscription_id'], 'erreur' => $e->getMessage(),
+            ]);
         }
 
         Log::info('[frais] montant de souscription ajuste', $resultat + [
@@ -183,12 +198,5 @@ final class AjustementMontantSouscription
         ]);
 
         return $resultat;
-    }
-
-    private function soldeTotal($souscriptions, \ArrayAccess|array $paye): float
-    {
-        return round($souscriptions->sum(function (ESBTPFraisSubscription $s) use ($paye) {
-            return max(0.0, $s->chargedAmount() - (float) ($paye[$s->frais_category_id] ?? 0));
-        }), 2);
     }
 }
