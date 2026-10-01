@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Domain\Reglages\ModificationDeReglages;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\Setting;
 use Illuminate\Http\JsonResponse;
@@ -27,17 +28,6 @@ use Illuminate\Http\Request;
  */
 class CLISettingsController extends BaseApiController
 {
-    /**
-     * Motifs de cles dont la valeur ne sort jamais en clair.
-     */
-    private const SENSIBLES = ['token', 'secret', 'password', 'mot_de_passe', 'api_key', 'apikey', 'cle_api'];
-
-    /** Reglages dont la valeur est validee comme booleen, puis ecrite en 1 / 0. */
-    private const BOOLEENS = [
-        \App\Services\TenantScolariteSettings::VERIFICATION_CONTACT,
-        \App\Services\TenantScolariteSettings::VERIFICATION_WHATSAPP_INVERSE,
-    ];
-
     public function index(Request $request): JsonResponse
     {
         if (! $request->user()->tokenCan('cli:read')) {
@@ -64,7 +54,7 @@ class CLISettingsController extends BaseApiController
             'key' => $r->key,
             'group' => $r->group,
             'type' => $r->type,
-            'value' => $this->estSensible($r->key) ? '(masque)' : $r->value,
+            'value' => ModificationDeReglages::estSensible($r->key) ? '(masque)' : $r->value,
         ])->all();
 
         return $this->successResponse(
@@ -97,75 +87,53 @@ class CLISettingsController extends BaseApiController
 
         if ($valide['key'] === 'mailpulse_api_key') {
             if (! ($valide['apply'] ?? false)) {
-                return $this->errorResponse('mailpulse_api_key : passer apply=true pour ecrire. La valeur ne ressort jamais.', [], 422);
+                return $this->errorResponse('mailpulse_api_key : passer apply=true pour écrire. La valeur ne ressort jamais.', [], 422);
             }
             $cle = trim((string) ($valide['value'] ?? ''));
             if (! preg_match('/^mp_(live|test)_[A-Za-z0-9_-]+$/', $cle)) {
-                return $this->errorResponse('Cle MailPulse invalide (mp_live_... ou mp_test_...).', [], 422);
+                return $this->errorResponse('Clé MailPulse invalide (mp_live_... ou mp_test_...).', [], 422);
             }
             \App\Helpers\SettingsHelper::setOrCreate('mailpulse_api_key', $cle, 'mailpulse', 'string');
             \Log::warning('[reglages] mailpulse_api_key ecrite a distance', ['length' => strlen($cle)]);
 
             return $this->successResponse(
                 ['key' => 'mailpulse_api_key', 'value' => '(masque)', 'applique' => true],
-                'Cle MailPulse enregistree.'
+                'Clé MailPulse enregistrée.'
             );
         }
 
-        if (in_array($valide['key'], \App\Mail\Transport\MailerDeLEcole::REGLAGES_RESERVES_A_L_ECRAN, true)) {
-            return $this->errorResponse(
-                sprintf("« %s » décide par où partent les e-mails de l'école : il se change depuis l'écran des paramètres (onglet MailPulse).", $valide['key']),
-                [],
-                422
-            );
+        // Memes refus que l'ecran et que Nanan : une seule classe les porte.
+        $modification = app(ModificationDeReglages::class);
+        if (($refus = $modification->refusDistant($valide['key'])
+            ?? $modification->refusCheminEnTexte($valide['key'], Setting::query()->where('key', $valide['key'])->first(), $valide['value'] ?? null)) !== null) {
+            return $this->errorResponse($refus, [], 422);
         }
 
-        if ($this->estSensible($valide['key'])) {
-            return $this->errorResponse(
-                "Cette cle evoque un secret : elle se change depuis l'ecran de configuration.",
-                [],
-                422
-            );
+        [$valide['value'], $refus] = $modification->normaliserBascules($valide['key'], $valide['value']);
+        if ($refus === null) {
+            $refus = $modification->refusCroise([$valide['key'] => (string) $valide['value']]);
+            if ($refus !== null && $valide['key'] === \App\Domain\Notifications\PhoneNormalizer::CLE_INDICATIF) {
+                // Le CLI pose une cle a la fois : il faut un ordre.
+                $refus .= ' Par le CLI : posez d\'abord les préfixes (« '.\App\Domain\Notifications\PhoneNormalizer::CLE_PREFIXES.' »), puis l\'indicatif.';
+            }
+        }
+        if ($refus !== null) {
+            return $this->errorResponse($refus, [], 422);
         }
 
-        // Bascules d'instance dont la valeur est strictement un booleen.
-        if (in_array($valide['key'], self::BOOLEENS, true)) {
-            $booleen = filter_var($valide['value'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-            if ($booleen === null) {
-                return $this->errorResponse(sprintf('« %s » attend un booléen (1/0, true/false).', $valide['key']), [], 422);
-            }
-            $valide['value'] = $booleen ? '1' : '0';
-        }
-
-        // Le parcours d'inscription configurable : memes choix et memes refus
-        // que l'ecran des reglages, lus dans la meme classe.
-        $workflow = \App\Services\Admissions\InscriptionWorkflowSettings::class;
-        if (in_array($valide['key'], $workflow::booleens(), true)) {
-            $booleen = filter_var($valide['value'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-            if ($booleen === null) {
-                return $this->errorResponse(sprintf('« %s » attend un booléen (1/0, true/false).', $valide['key']), [], 422);
-            }
-            $valide['value'] = $booleen ? '1' : '0';
-        }
-        if (array_key_exists($valide['key'], $workflow::choix())
-            && ! array_key_exists((string) $valide['value'], $workflow::choix()[$valide['key']])) {
-            return $this->errorResponse(sprintf(
-                '« %s » attend une de ces valeurs : %s.',
-                $valide['key'],
-                implode(', ', array_keys($workflow::choix()[$valide['key']]))
-            ), [], 422);
-        }
-        if (in_array($valide['key'], array_merge($workflow::booleens(), array_keys($workflow::choix()), [\App\Services\RendezVous\RendezVousReglages::ENABLED]), true)) {
-            app($workflow)->ensureDefaults();
-            $incoherence = $workflow::incoherence(fn (string $cle): string => $cle === $valide['key']
-                ? (string) $valide['value']
-                : (string) Setting::get($cle, ''));
-            if ($incoherence !== null) {
-                return $this->errorResponse($incoherence, [], 422);
-            }
+        // Le parcours d'inscription : ses lignes doivent exister pour etre ecrites.
+        if (in_array($valide['key'], array_merge(\App\Services\Admissions\InscriptionWorkflowSettings::cles(), [\App\Services\RendezVous\RendezVousReglages::ENABLED]), true)) {
+            app(\App\Services\Admissions\InscriptionWorkflowSettings::class)->ensureDefaults();
         }
 
         $reglage = Setting::query()->where('key', $valide['key'])->first();
+        if ($reglage && ! ModificationDeReglages::inchange($reglage, $valide['value'])) {
+            // Type, bornes et regles du reglage, comme l'ecran (une valeur inchangee n'est pas rejugee).
+            [$valide['value'], $refus] = $modification->normaliserSelonLeReglage($reglage, $valide['value']);
+            if ($refus !== null) {
+                return $this->errorResponse($refus, [], 422);
+            }
+        }
 
         if (! $reglage) {
             $creables = [
@@ -177,7 +145,7 @@ class CLISettingsController extends BaseApiController
                 \App\Services\TenantScolariteSettings::PRINT_REQUIRES_APPROVAL,
             ];
             if (! in_array($valide['key'], $creables, true) || ! ($valide['apply'] ?? false)) {
-                return $this->errorResponse(sprintf("Reglage « %s » introuvable.", $valide['key']), [], 404);
+                return $this->errorResponse(sprintf("Réglage « %s » introuvable.", $valide['key']), [], 404);
             }
 
             \App\Helpers\SettingsHelper::setOrCreate($valide['key'], $valide['value'] ?? '0', 'scolarite', 'boolean');
@@ -188,42 +156,22 @@ class CLISettingsController extends BaseApiController
         $apres = $valide['value'];
         $applique = (bool) ($valide['apply'] ?? false);
 
-        if ((string) $avant === (string) $apres) {
+        if (ModificationDeReglages::inchange($reglage, $apres)) {
             return $this->successResponse(
                 ['key' => $reglage->key, 'avant' => $avant, 'apres' => $apres, 'applique' => false],
-                "La valeur est deja celle-la. Rien a faire."
+                "La valeur est déjà celle-là. Rien à faire."
             );
         }
 
         if ($applique) {
-            $reglage->value = $apres;
-            $reglage->save();
-
-            \Log::warning('[reglages] valeur modifiee a distance', [
-                'key' => $reglage->key,
-                'avant' => $avant,
-                'apres' => $apres,
-            ]);
+            $modification->ecrire($reglage, $apres === null ? null : (string) $apres, $request->user()?->id, 'cli');
         }
 
         return $this->successResponse(
             ['key' => $reglage->key, 'avant' => $avant, 'apres' => $apres, 'applique' => $applique],
             $applique
                 ? sprintf("« %s » : %s -> %s", $reglage->key, $avant, $apres)
-                : sprintf("« %s » passerait de %s a %s. Rien n'a ete ecrit.", $reglage->key, $avant, $apres)
+                : sprintf("« %s » passerait de %s à %s. Rien n'a été écrit.", $reglage->key, $avant, $apres)
         );
-    }
-
-    private function estSensible(string $cle): bool
-    {
-        $cle = mb_strtolower($cle);
-
-        foreach (self::SENSIBLES as $motif) {
-            if (str_contains($cle, $motif)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

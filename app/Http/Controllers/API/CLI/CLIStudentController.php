@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Domain\Inscriptions\ExamenDeDeplacement;
+use App\Domain\Inscriptions\ObstacleALaValidation;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -272,26 +274,17 @@ class CLIStudentController extends BaseApiController
             return $this->errorResponse('Inscription not found', [], 404);
         }
 
-        // Already fully validated
-        if ($inscription->status === 'active' && $inscription->workflow_step === 'etudiant_cree') {
-            return $this->errorResponse('Inscription already validated', [], 422);
-        }
-
-        // Check payment — NEVER auto-validate if payment is en_attente
-        $hasValidPayment = $inscription->paiements()
-            ->where('status', 'validé')
-            ->exists();
-
-        if (!$hasValidPayment) {
-            $pendingPayment = $inscription->paiements()
-                ->where('status', 'en_attente')
-                ->exists();
-
-            $reason = $pendingPayment
-                ? 'Cannot validate: payment is still pending (en_attente)'
-                : 'Cannot validate: no payment found for this inscription';
-
-            return $this->errorResponse($reason, [], 422);
+        // NEVER auto-validate if payment is en_attente (same predicate as Nanan).
+        $obstacle = app(ObstacleALaValidation::class)->pour($inscription);
+        if ($obstacle !== null) {
+            return $this->errorResponse(match ($obstacle) {
+                ObstacleALaValidation::DEJA_VALIDEE => 'Inscription already validated',
+                ObstacleALaValidation::PAIEMENT_EN_ATTENTE => 'Cannot validate: payment is still pending (en_attente)',
+                ObstacleALaValidation::ANNULEE => 'Cannot validate: inscription is cancelled',
+                ObstacleALaValidation::AUTRE_INSCRIPTION_ACTIVE => 'Cannot validate: student already has another active inscription this year',
+                ObstacleALaValidation::CLASSE_PLEINE => 'Cannot validate: class is full',
+                default => 'Cannot validate: no payment found for this inscription',
+            }, [], 422);
         }
 
         try {
@@ -353,54 +346,36 @@ class CLIStudentController extends BaseApiController
                 continue;
             }
 
-            // Pre-check: inscription exists in source class
-            $inscription = ESBTPInscription::where('etudiant_id', $etudiantId)
-                ->where('annee_universitaire_id', $annee->id)
-                ->where('classe_id', $fromClasseId)
-                ->first();
+            $examen = app(ExamenDeDeplacement::class)->examiner((int) $etudiantId, (int) $fromClasseId, (int) $toClasseId, (int) $annee->id);
 
-            if (!$inscription) {
-                $errors[] = ['etudiant_id' => $etudiantId, 'reason' => 'no_inscription_in_source_class', 'from' => $fromClasseId];
+            if ($examen['erreur'] !== null) {
+                $errors[] = array_filter([
+                    'etudiant_id' => $etudiantId,
+                    'reason' => $examen['erreur'],
+                    'from' => $examen['erreur'] === 'no_inscription_in_source_class' ? $fromClasseId : null,
+                    'status' => $examen['erreur'] === 'inscription_not_active' ? $examen['inscription']->status : null,
+                ], fn ($v) => $v !== null);
                 continue;
             }
 
-            if ($inscription->status !== 'active') {
-                $errors[] = ['etudiant_id' => $etudiantId, 'reason' => 'inscription_not_active', 'status' => $inscription->status];
+            if ($examen['saute'] !== null) {
+                $skipped[] = ['etudiant_id' => $etudiantId, 'reason' => $examen['saute'], 'to' => $toClasseId];
                 continue;
             }
 
-            // Pre-check: no existing inscription in target class
-            $existsInTarget = ESBTPInscription::where('etudiant_id', $etudiantId)
-                ->where('annee_universitaire_id', $annee->id)
-                ->where('classe_id', $toClasseId)
-                ->exists();
-
-            if ($existsInTarget) {
-                $skipped[] = ['etudiant_id' => $etudiantId, 'reason' => 'already_in_target_class', 'to' => $toClasseId];
-                continue;
-            }
-
-            // Check for existing data (notes/resultats/bulletins) in source class
-            $fromClasse = ESBTPClasse::find($fromClasseId);
-            $toClasse = ESBTPClasse::find($toClasseId);
-
-            if (!$fromClasse || !$toClasse) {
-                $errors[] = ['etudiant_id' => $etudiantId, 'reason' => 'classe_not_found'];
-                continue;
-            }
-
-            $dataCheck = $this->classStudentService->checkStudentData($fromClasse, [$etudiantId]);
-            $hasData = $dataCheck['has_any_data'] ?? false;
+            $fromClasse = $examen['depuis'];
+            $toClasse = $examen['vers'];
+            $hasData = $examen['donnees'] !== null;
 
             if ($hasData) {
-                $studentData = $dataCheck['students'][0] ?? [];
+                $studentData = $examen['donnees'];
                 $warnings[] = [
                     'etudiant_id' => $etudiantId,
                     'nom' => $studentData['nom'] ?? '',
                     'notes' => $studentData['notes_count'] ?? 0,
                     'resultats' => $studentData['resultats_count'] ?? 0,
                     'bulletins' => $studentData['bulletins_count'] ?? 0,
-                    'message' => 'Student has data in source class — will be archived',
+                    'message' => 'Student has data in source class — it stays attached to the source class',
                 ];
             }
 
@@ -496,24 +471,12 @@ class CLIStudentController extends BaseApiController
                 continue;
             }
 
-            // Already validated
-            if ($inscription->status === 'active' && $inscription->workflow_step === 'etudiant_cree') {
+            $obstacle = app(ObstacleALaValidation::class)->pour($inscription);
+            if ($obstacle !== null) {
                 $skipped[] = [
                     'id' => $inscriptionId,
                     'nom' => trim(($inscription->etudiant?->nom ?? '') . ' ' . ($inscription->etudiant?->prenoms ?? '')),
-                    'reason' => 'already_validated',
-                ];
-                continue;
-            }
-
-            // Check payment
-            $hasValidPayment = $inscription->paiements()->where('status', 'validé')->exists();
-            if (!$hasValidPayment) {
-                $hasPending = $inscription->paiements()->where('status', 'en_attente')->exists();
-                $skipped[] = [
-                    'id' => $inscriptionId,
-                    'nom' => trim(($inscription->etudiant?->nom ?? '') . ' ' . ($inscription->etudiant?->prenoms ?? '')),
-                    'reason' => $hasPending ? 'paiement_en_attente' : 'sans_paiement',
+                    'reason' => $obstacle,
                 ];
                 continue;
             }

@@ -25,7 +25,7 @@ class CommunicationMailPulseController extends Controller
             || trim((string) config('services.mailpulse.api_key', '')) !== '';
 
         return view('esbtp.communication.mailpulse', [
-            'enabled' => SettingsHelper::get('mailpulse_enabled', '0') === '1',
+            'enabled' => SettingsHelper::drapeau('mailpulse_enabled', false),
             'apiConfigured' => $apiConfigured,
         ]);
     }

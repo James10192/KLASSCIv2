@@ -4,6 +4,7 @@ namespace App\Services\RendezVous;
 
 use App\Enums\StatutConvocationRdv;
 use App\Models\ESBTPRdvReservation;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -104,18 +105,13 @@ class FileConvocationsRdv
      *         injoignable...). `en_cours` : un autre envoi tient le verrou —
      *         rien n'a ete tente, rappeler un peu plus tard.
      */
-    public function envoyerUnPaquet(int $maximum = 15, float $budgetSecondes = 20.0): array
+    public function envoyerUnPaquet(int $maximum = 15, float $budgetSecondes = 20.0, ?array $seulement = null): array
     {
         $rapport = ['envoyees' => 0, 'echecs' => 0, 'restantes' => 0, 'bloque' => null, 'en_cours' => false];
 
-        $tenu = $this->sousVerrou(function () use (&$rapport, $maximum, $budgetSecondes) {
+        $tenu = $this->sousVerrou(function () use (&$rapport, $maximum, $budgetSecondes, $seulement) {
             $debut = microtime(true);
-            $paquet = ESBTPRdvReservation::query()
-                ->with(self::CHARGEMENTS)
-                ->where('convocation_statut', StatutConvocationRdv::EnAttente->value)
-                ->orderBy('id')
-                ->limit($maximum)
-                ->get();
+            $paquet = $this->paquetEnAttente($maximum, $seulement)->with(self::CHARGEMENTS)->get();
 
             foreach ($paquet as $reservation) {
                 if (microtime(true) - $debut >= $budgetSecondes) {
@@ -148,13 +144,10 @@ class FileConvocationsRdv
      * @param  'inconnues'|'echecs'  $quoi
      * @param  int|null  $limite  les plus anciennes seulement (verifier un premier envoi)
      */
-    public function remettreEnAttente(string $quoi, ?int $limite = null): int
+    public function remettreEnAttente(string $quoi, ?int $limite = null, ?array $seulement = null): int
     {
-        // Une reservation d'avant le suivi n'interesse que si elle tient encore
-        // son creneau. Un echec, lui, peut etre un avis d'annulation a renvoyer.
-        $requete = $quoi === 'echecs'
-            ? ESBTPRdvReservation::query()->where('convocation_statut', StatutConvocationRdv::Echec->value)
-            : ESBTPRdvReservation::query()->occupantes()->whereNull('convocation_statut');
+        $requete = $this->aRemettre($quoi)
+            ->when($seulement !== null, fn ($q) => $q->whereIn('id', $seulement ?: [0]));
 
         $n = 0;
         $planifier = function (ESBTPRdvReservation $r) use (&$n) {
@@ -171,6 +164,35 @@ class FileConvocationsRdv
             : $requete->orderBy('id')->limit($limite)->get()->each($planifier);
 
         return $n;
+    }
+
+    /**
+     * Les reservations que remettreEnAttente($quoi) reprendrait. Une reservation
+     * d'avant le suivi n'interesse que si elle tient encore son creneau. Un echec,
+     * lui, peut etre un avis d'annulation a renvoyer.
+     *
+     * @param  'inconnues'|'echecs'  $quoi
+     */
+    public function aRemettre(string $quoi): Builder
+    {
+        return $quoi === 'echecs'
+            ? ESBTPRdvReservation::query()->where('convocation_statut', StatutConvocationRdv::Echec->value)
+            : ESBTPRdvReservation::query()->occupantes()->whereNull('convocation_statut');
+    }
+
+    /**
+     * Le paquet que envoyerUnPaquet() prendrait : les plus anciennes en attente,
+     * restreintes a `$seulement` quand une validation a deja fixe la liste.
+     *
+     * @param  list<int>|null  $seulement
+     */
+    public function paquetEnAttente(int $maximum, ?array $seulement = null): Builder
+    {
+        return ESBTPRdvReservation::query()
+            ->where('convocation_statut', StatutConvocationRdv::EnAttente->value)
+            ->when($seulement !== null, fn ($q) => $q->whereIn('id', $seulement ?: [0]))
+            ->orderBy('id')
+            ->limit($maximum);
     }
 
     public function enAttente(): int

@@ -543,12 +543,15 @@ class CLIDataController extends BaseApiController
             return $this->errorResponse('Missing required field: value', [], 422);
         }
 
-        if (in_array($key, \App\Mail\Transport\MailerDeLEcole::REGLAGES_RESERVES_A_L_ECRAN, true)) {
-            return $this->errorResponse(
-                sprintf("« %s » décide par où partent les e-mails de l'école : il se change depuis l'écran des paramètres (onglet MailPulse).", $key),
-                [],
-                422
-            );
+        // Memes refus que POST /api/cli/settings, l'ecran et Nanan (secrets,
+        // envoi des e-mails, controles croises). Cette route garde un seul ecart,
+        // assume : elle CREE une cle absente, pour le provisionnement.
+        $modification = app(\App\Domain\Reglages\ModificationDeReglages::class);
+        $refus = $modification->refusDistant((string) $key)
+            ?? $modification->refusCheminEnTexte((string) $key, Setting::where('key', $key)->first(), $request->input('value'))
+            ?? $modification->refusCroise([(string) $key => (string) $request->input('value')]);
+        if ($refus !== null) {
+            return $this->errorResponse($refus, [], 422);
         }
 
         // Upsert : créer la ligne si elle n'existe pas (utile pour provisionner de
@@ -557,7 +560,24 @@ class CLIDataController extends BaseApiController
         // (default 'string') pour le firstOrCreate.
         $setting = Setting::where('key', $key)->first();
         $created = false;
-        if (!$setting) {
+        $valeur = $request->input('value');
+        if ($setting && \App\Domain\Reglages\ModificationDeReglages::inchange($setting, $valeur)) {
+            // Deja cette valeur : rien a ecrire, rien a rejuger.
+            return $this->successResponse([
+                'key' => $key,
+                'value' => $setting->value,
+                'previous_value' => $setting->value,
+                'created' => false,
+                'changed' => false,
+            ], "Setting '{$key}' already has this value: nothing to do");
+        }
+        if ($setting) {
+            // Type, bornes et regles du reglage existant, comme l'ecran.
+            [$valeur, $refus] = $modification->normaliserSelonLeReglage($setting, $valeur);
+            if ($refus !== null) {
+                return $this->errorResponse($refus, [], 422);
+            }
+        } else {
             $setting = Setting::create([
                 'key' => $key,
                 'value' => $request->input('value'),
@@ -572,7 +592,7 @@ class CLIDataController extends BaseApiController
         try {
             $previousValue = $setting->value;
             if (!$created) {
-                Setting::set($key, $request->input('value'), $request->user()->id);
+                Setting::set($key, $valeur, $request->user()->id);
             }
 
             return $this->successResponse([
@@ -580,6 +600,7 @@ class CLIDataController extends BaseApiController
                 'value' => $request->input('value'),
                 'previous_value' => $previousValue,
                 'created' => $created,
+                'changed' => true,
             ], $created
                 ? "Setting '{$key}' created with value"
                 : "Setting '{$key}' updated successfully"
@@ -695,21 +716,9 @@ class CLIDataController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
-        $dossiers = [
-            'school_logo' => 'logos',
-            'school_favicon' => 'logos',
-            'bulletin_logo' => 'logos',
-            'header_logo' => 'logos',
-            'watermark_image' => 'documents',
-            'signature_image' => 'documents',
-        ];
-
-        if (!array_key_exists($key, $dossiers)) {
-            return $this->errorResponse(
-                "Setting '{$key}' is not an image setting. Allowed: " . implode(', ', array_keys($dossiers)),
-                [],
-                422
-            );
+        $images = app(\App\Domain\Reglages\ImageDeReglage::class);
+        if (($refus = $images->refusCle((string) $key)) !== null) {
+            return $this->errorResponse($refus, [], 422);
         }
 
         if (!$request->hasFile('file')) {
@@ -727,37 +736,14 @@ class CLIDataController extends BaseApiController
         }
 
         try {
-            $setting = Setting::where('key', $key)->first();
-            $ancien = $setting?->value;
-
-            $chemin = $request->file('file')->store($dossiers[$key], 'public');
-
-            if ($setting) {
-                // update() sur l instance, et non sur le query builder : c est ce
-                // qui declenche l evenement saved, donc la purge du cache.
-                $setting->update(['value' => $chemin, 'updated_by' => $request->user()->id]);
-            } else {
-                $setting = Setting::create([
-                    'key' => $key,
-                    'value' => $chemin,
-                    'type' => 'file',
-                    'group' => 'establishment',
-                    'description' => "CLI-provisioned: {$key}",
-                    'is_required' => false,
-                ]);
+            $octets = (string) file_get_contents($request->file('file')->getRealPath());
+            $examen = $images->examinerOctets($octets);
+            if ($examen['refus'] !== null) {
+                return $this->errorResponse($examen['refus'], [], 422);
             }
+            $pose = $images->poser((string) $key, $octets, $examen['extension'], $request->user()?->id);
 
-            // L ancien fichier n est retire qu une fois le nouveau en place.
-            if ($ancien && $ancien !== $chemin && Storage::disk('public')->exists($ancien)) {
-                Storage::disk('public')->delete($ancien);
-            }
-
-            return $this->successResponse([
-                'key' => $key,
-                'value' => $chemin,
-                'previous_value' => $ancien,
-                'url' => asset('storage/' . $chemin),
-            ], "Image setting '{$key}' uploaded");
+            return $this->successResponse($pose, "Image setting '{$key}' uploaded");
         } catch (\Exception $e) {
             Log::error('CLI: settings image upload failed', ['key' => $key, 'error' => $e->getMessage()]);
             return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);

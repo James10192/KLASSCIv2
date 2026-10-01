@@ -25,7 +25,7 @@ class CommunicationDashboardController extends Controller
             'user' => $user,
             'annonces' => $annonces,
             'annoncesPubliees' => ESBTPAnnonce::query()->where('is_published', true)->count(),
-            'mailpulseOn' => SettingsHelper::get('mailpulse_enabled', '0') === '1',
+            'mailpulseOn' => SettingsHelper::drapeau('mailpulse_enabled', false),
         ]);
     }
 }

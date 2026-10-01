@@ -487,7 +487,7 @@ class ESBTPResultatController extends Controller
         }
 
         // Calcul de l'assiduité si le setting est activé
-        $afficherNoteAssiduite = \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+        $afficherNoteAssiduite = \App\Helpers\SettingsHelper::drapeau('bulletin_show_attendance_note', true);
         $anneeObj = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
 
         if ($afficherNoteAssiduite && $anneeObj) {
@@ -1016,7 +1016,7 @@ class ESBTPResultatController extends Controller
         ]);
 
         // Calcul de la note d'assiduité (cohérent avec le bulletin PDF)
-        $afficherNoteAssiduite = \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+        $afficherNoteAssiduite = \App\Helpers\SettingsHelper::drapeau('bulletin_show_attendance_note', true);
         $noteAssiduite = 0;
         $moyenneAvecAssiduite = $moyenneGenerale;
 
@@ -1313,7 +1313,7 @@ class ESBTPResultatController extends Controller
                     $this->bulletinService->calculateStudentStatsFixed($etudiants, $notes, $moyennes, $rangs, $classe_id, $annee_universitaire_id, $semestre);
 
                     // Ajouter l'assiduité si activée
-                    $showAssid = \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+                    $showAssid = \App\Helpers\SettingsHelper::drapeau('bulletin_show_attendance_note', true);
                     if ($showAssid && $annee_universitaire_id) {
                         $anneeObj = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
                         if ($anneeObj) {
