@@ -1582,16 +1582,17 @@
                 </div>
 
                 <div class="settings-grid-2" style="margin-top: 20px;">
+                    @php $_bornesPdf = \App\Domain\Reglages\ModificationDeReglages::BORNES; @endphp
                     <div class="form-group">
                         <label class="form-label-modern">
                             <i class="fas fa-image text-primary"></i>
                             Hauteur max du logo (px)
                         </label>
                         <div style="display: flex; gap: .75rem; align-items: center;">
-                            <input type="range" min="20" max="120" step="5"
+                            <input type="range" min="{{ $_bornesPdf['pdf_logo_size'][0] }}" max="{{ $_bornesPdf['pdf_logo_size'][1] }}" step="5"
                                    x-model="settings.pdf_logo_size"
                                    style="flex: 1;">
-                            <input type="number" min="20" max="120" step="5"
+                            <input type="number" min="{{ $_bornesPdf['pdf_logo_size'][0] }}" max="{{ $_bornesPdf['pdf_logo_size'][1] }}" step="5"
                                    class="form-control form-control-modern"
                                    name="setting_pdf_logo_size"
                                    x-model="settings.pdf_logo_size"
@@ -1604,7 +1605,7 @@
                             <i class="fas fa-text-height text-primary"></i>
                             Taille de police du corps (px)
                         </label>
-                        <input type="number" min="8" max="16" step="1"
+                        <input type="number" min="{{ $_bornesPdf['pdf_font_size'][0] }}" max="{{ $_bornesPdf['pdf_font_size'][1] }}" step="1"
                                class="form-control form-control-modern"
                                name="setting_pdf_font_size"
                                x-model="settings.pdf_font_size">
@@ -1623,28 +1624,28 @@
                 <div class="settings-grid-4" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px;">
                     <div class="form-group">
                         <label class="form-label-modern" style="font-size: .8rem;">Haut</label>
-                        <input type="number" min="0" max="50" step="1"
+                        <input type="number" min="{{ $_bornesPdf['pdf_margin_top'][0] }}" max="{{ $_bornesPdf['pdf_margin_top'][1] }}" step="1"
                                class="form-control form-control-modern"
                                name="setting_pdf_margin_top"
                                x-model="settings.pdf_margin_top">
                     </div>
                     <div class="form-group">
                         <label class="form-label-modern" style="font-size: .8rem;">Bas</label>
-                        <input type="number" min="0" max="50" step="1"
+                        <input type="number" min="{{ $_bornesPdf['pdf_margin_bottom'][0] }}" max="{{ $_bornesPdf['pdf_margin_bottom'][1] }}" step="1"
                                class="form-control form-control-modern"
                                name="setting_pdf_margin_bottom"
                                x-model="settings.pdf_margin_bottom">
                     </div>
                     <div class="form-group">
                         <label class="form-label-modern" style="font-size: .8rem;">Gauche</label>
-                        <input type="number" min="0" max="50" step="1"
+                        <input type="number" min="{{ $_bornesPdf['pdf_margin_left'][0] }}" max="{{ $_bornesPdf['pdf_margin_left'][1] }}" step="1"
                                class="form-control form-control-modern"
                                name="setting_pdf_margin_left"
                                x-model="settings.pdf_margin_left">
                     </div>
                     <div class="form-group">
                         <label class="form-label-modern" style="font-size: .8rem;">Droite</label>
-                        <input type="number" min="0" max="50" step="1"
+                        <input type="number" min="{{ $_bornesPdf['pdf_margin_right'][0] }}" max="{{ $_bornesPdf['pdf_margin_right'][1] }}" step="1"
                                class="form-control form-control-modern"
                                name="setting_pdf_margin_right"
                                x-model="settings.pdf_margin_right">
@@ -1742,11 +1743,11 @@
                             <span style="color: #0453cb; font-weight: 700;">{{ \App\Helpers\SettingsHelper::entierPose('pdf_signature_height', 80) }} px</span>
                         </label>
                         <div style="display: flex; gap: .75rem; align-items: center;">
-                            <input type="range" min="40" max="200" step="10"
+                            <input type="range" min="{{ $_bornesPdf['pdf_signature_height'][0] }}" max="{{ $_bornesPdf['pdf_signature_height'][1] }}" step="10"
                                    value="{{ \App\Helpers\SettingsHelper::entierPose('pdf_signature_height', 80) }}"
                                    oninput="this.nextElementSibling.value = this.value; this.previousElementSibling.querySelector('span').textContent = this.value + ' px';"
                                    style="flex: 1;">
-                            <input type="number" min="40" max="200" step="10"
+                            <input type="number" min="{{ $_bornesPdf['pdf_signature_height'][0] }}" max="{{ $_bornesPdf['pdf_signature_height'][1] }}" step="10"
                                    class="form-control form-control-modern"
                                    name="setting_pdf_signature_height"
                                    value="{{ \App\Helpers\SettingsHelper::entierPose('pdf_signature_height', 80) }}"
@@ -1790,7 +1791,7 @@
                             <i class="fas fa-adjust text-primary"></i>
                             Opacité (<span x-text="(opacity * 100).toFixed(0) + ' %'"></span>)
                         </label>
-                        <input type="range" min="0.02" max="0.30" step="0.01"
+                        <input type="range" min="{{ $_bornesPdf['pdf_watermark_opacity'][0] }}" max="{{ $_bornesPdf['pdf_watermark_opacity'][1] }}" step="0.01"
                                x-model.number="opacity"
                                style="width: 100%;">
                         <input type="hidden" name="setting_pdf_watermark_opacity" :value="opacity">
@@ -1801,7 +1802,7 @@
                             <i class="fas fa-sync-alt text-primary"></i>
                             Rotation (<span x-text="rotation + '°'"></span>)
                         </label>
-                        <input type="range" min="-90" max="90" step="5"
+                        <input type="range" min="{{ $_bornesPdf['pdf_watermark_rotation'][0] }}" max="{{ $_bornesPdf['pdf_watermark_rotation'][1] }}" step="5"
                                x-model.number="rotation"
                                style="width: 100%;">
                         <input type="hidden" name="setting_pdf_watermark_rotation" :value="rotation">

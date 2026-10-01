@@ -218,6 +218,115 @@ class NananLotDTest extends TestCase
         $this->assertNotEmpty(app(PoserImageReglage::class)->executeAuthorized(['cle' => 'pdf_primary_color', 'piece_id' => $piece], $this->admin)['manques'] ?? []);
     }
 
+    private function png(int $l = 40, int $h = 20): string
+    {
+        $image = imagecreatetruecolor($l, $h);
+        ob_start();
+        imagepng($image);
+
+        return (string) ob_get_clean();
+    }
+
+    /**
+     * La signature du directeur : posée par Nanan, elle apparaît vraiment sur un
+     * PDF (lue par <x-pdf-document> sous storage/app/public). Les images que rien
+     * ne lit ne sont pas proposées.
+     */
+    public function test_la_signature_du_directeur_apparait_sur_les_pdf(): void
+    {
+        $this->reglage('pdf_show_director_signature', '1');
+        $png = $this->png(60, 30);
+        $piece = app(PiecesJointes::class)->garderImage($this->admin->id, 'signature.png', 'image/png', $png);
+
+        $r = app(PoserImageReglage::class)->executeAuthorized(['cle' => 'pdf_signature_director', 'piece_id' => $piece], $this->admin);
+        $this->assertNull(Setting::where('key', 'pdf_signature_director')->value('value'), 'rien avant Valider');
+        $this->valider($r);
+
+        $chemin = Setting::where('key', 'pdf_signature_director')->value('value');
+        try {
+            $this->assertSame($chemin, \App\Helpers\SettingsHelper::getPdfSettings()['signature_director']);
+            $html = \Illuminate\Support\Facades\Blade::render('<x-pdf-document title="Essai" signature-block="director">corps</x-pdf-document>');
+            $this->assertStringContainsString(base64_encode($png), $html, 'le PDF doit embarquer la signature posée');
+        } finally {
+            Storage::disk('public')->delete($chemin);
+        }
+
+        foreach (['header_logo', 'bulletin_logo', 'watermark_image', 'signature_image', 'school_favicon'] as $nonLue) {
+            $this->assertStringContainsString('Nanan', implode(' ', app(PoserImageReglage::class)->executeAuthorized(['cle' => $nonLue, 'piece_id' => $piece], $this->admin)['manques'] ?? []), $nonLue);
+        }
+        $this->reglage('header_logo', 'logos/x.png', ['type' => 'file']);
+        $lu = collect(app(LireReglages::class)->executeAuthorized(['cles' => ['header_logo']], $this->admin)['results'])->sole();
+        $this->assertSame('non', $lu['modifiable_par_nanan']);
+    }
+
+    public function test_les_bornes_valent_pour_l_ecran_le_cli_et_nanan(): void
+    {
+        $this->reglage('pdf_margin_top', '20', ['type' => 'integer']);
+        $this->reglage('pdf_watermark_opacity', '0.05', ['type' => 'float']);
+
+        $this->assertStringContainsString('entre 0 et 50', implode(' ', app(ModifierReglages::class)->executeAuthorized(['reglages' => [['cle' => 'pdf_margin_top', 'valeur' => '80']]], $this->admin)['manques'] ?? []));
+        $this->assertStringContainsString('entre 0,02 et 0,3', implode(' ', app(ModifierReglages::class)->executeAuthorized(['reglages' => [['cle' => 'pdf_watermark_opacity', 'valeur' => '0.9']]], $this->admin)['manques'] ?? []));
+
+        $this->actingAs($this->admin)->putJson(route('esbtp.settings.update'), ['setting_pdf_margin_top' => '80'])
+            ->assertStatus(422)->assertJsonPath('errors.pdf_margin_top', fn ($m) => str_contains($m, 'entre 0 et 50'));
+        $this->assertSame('20', Setting::where('key', 'pdf_margin_top')->value('value'));
+        $this->actingAs($this->admin)->putJson(route('esbtp.settings.update'), ['setting_pdf_margin_top' => '25'])->assertOk();
+        $this->assertSame('25', Setting::where('key', 'pdf_margin_top')->value('value'));
+
+        \Laravel\Sanctum\Sanctum::actingAs($this->admin, ['cli:admin']);
+        $this->postJson('/api/cli/settings', ['key' => 'pdf_margin_top', 'value' => '80', 'apply' => true])->assertStatus(422);
+        $this->putJson('/api/cli/settings/pdf_margin_top', ['value' => '80'])->assertStatus(422);
+        $this->assertSame('25', Setting::where('key', 'pdf_margin_top')->value('value'));
+    }
+
+    public function test_le_put_du_cli_garde_les_refus_et_cree_encore_une_cle_absente(): void
+    {
+        $this->reglage('pdf_header_bg_color', '#0453cb');
+        $this->reglage('pdf_header_text_color', '#ffffff');
+        \Laravel\Sanctum\Sanctum::actingAs($this->admin, ['cli:admin']);
+
+        $this->putJson('/api/cli/settings/portail_api_key', ['value' => 'x'])->assertStatus(422);
+        $this->putJson('/api/cli/settings/pdf_header_text_color', ['value' => '#0453CB'])->assertStatus(422);
+        $this->assertSame('#ffffff', Setting::where('key', 'pdf_header_text_color')->value('value'));
+
+        Setting::where('key', 'reglage_provisionne_lot_d')->delete();
+        $this->putJson('/api/cli/settings/reglage_provisionne_lot_d', ['value' => 'oui'])->assertOk()->assertJsonPath('data.created', true);
+    }
+
+    public function test_le_cli_dit_de_poser_les_prefixes_avant_l_indicatif(): void
+    {
+        $this->reglage(PhoneNormalizer::CLE_INDICATIF, '225');
+        $this->reglage(PhoneNormalizer::CLE_PREFIXES, PhoneNormalizer::PREFIXES_PAR_DEFAUT);
+        \Laravel\Sanctum\Sanctum::actingAs($this->admin, ['cli:admin']);
+
+        $this->postJson('/api/cli/settings', ['key' => PhoneNormalizer::CLE_INDICATIF, 'value' => '229', 'apply' => true])
+            ->assertStatus(422)->assertJsonPath('message', fn ($m) => str_contains($m, "posez d'abord les préfixes"));
+    }
+
+    public function test_les_deux_cases_de_signature_du_bulletin_vont_ensemble(): void
+    {
+        $this->reglage('bulletin_show_signature', '1', ['type' => 'boolean']);
+        $this->reglage('bulletin_show_signatures', '1', ['type' => 'boolean']);
+
+        $this->valider(app(ModifierReglages::class)->executeAuthorized(['reglages' => [['cle' => 'bulletin_show_signature', 'valeur' => '0']]], $this->admin));
+
+        $this->assertSame('0', Setting::where('key', 'bulletin_show_signatures')->value('value'), 'le bulletin lit le pluriel');
+        $this->assertSame('0', Setting::where('key', 'bulletin_show_signature')->value('value'));
+    }
+
+    /** Préparer n'écrit rien, même les lignes par défaut du parcours d'inscription. */
+    public function test_proposer_un_parcours_d_inscription_ne_cree_aucune_ligne(): void
+    {
+        $w = \App\Services\Admissions\InscriptionWorkflowSettings::class;
+        Setting::whereIn('key', $w::cles())->delete();
+        $this->reglage($w::ENABLED, '0', ['type' => 'boolean']);
+
+        $r = app(ModifierReglages::class)->executeAuthorized(['reglages' => [['cle' => $w::ENABLED, 'valeur' => '1']]], $this->admin);
+
+        $this->assertSame(1, Setting::whereIn('key', $w::cles())->count(), 'aucune ligne créée par la préparation');
+        $this->assertStringContainsString('entre deux campagnes', implode(' ', $r['widget']['avertissements'] ?? []), json_encode($r, JSON_UNESCAPED_UNICODE));
+    }
+
     public function test_lire_reglages_masque_les_secrets_et_dit_ce_qui_est_modifiable(): void
     {
         $this->reglage('mailpulse_api_key', 'mp_live_secret');
@@ -306,6 +415,26 @@ class NananLotDTest extends TestCase
         $this->assertSame(0, $this->envois, 'placer pose la convocation, la tâche planifiée l\'envoie');
     }
 
+    /** L'aperçu et le placement lisent les dossiers par le même chemin : mêmes comptes. */
+    public function test_l_apercu_annonce_ce_que_le_placement_fait(): void
+    {
+        $this->reglagesRdv();
+        ESBTPRdvCreneau::create(['annee_universitaire_id' => $this->annee->id, 'date' => now()->addDays(2)->toDateString(), 'heure_debut' => '09:00:00', 'heure_fin' => '09:30:00', 'capacite' => 2, 'ouvert' => true]);
+        $ancienne = $this->reservation('ancien@gmail.com', null);      // d'avant le suivi : reconvoquée sans place
+        $this->reservation('deja@gmail.com', StatutConvocationRdv::Envoyee); // déjà traitée
+        $this->candidature('kone8@gmail.com');
+        $this->candidature('');                                          // sans e-mail : à prévenir
+        $this->candidature('kone9@gmail.com');                           // plus de dossiers que de places : sans créneau
+
+        $apercu = app(\App\Services\RendezVous\AffecteurDossiersRdv::class)->apercu();
+        $place = app(\App\Services\RendezVous\AffecteurDossiersRdv::class)->placer();
+
+        $garder = fn (array $r) => array_intersect_key($r, array_flip(['places', 'a_prevenir', 'sans_creneau', 'deja', 'refus']));
+        $this->assertSame($garder($place), $garder($apercu));
+        $this->assertSame(['places' => 3, 'a_prevenir' => 1, 'sans_creneau' => 1, 'deja' => 1, 'refus' => null], $garder($place));
+        $this->assertSame(StatutConvocationRdv::EnAttente, $ancienne->fresh()->convocation_statut);
+    }
+
     public function test_envoyer_les_convocations_en_attente_seulement_apres_valider(): void
     {
         $a = $this->reservation('kone1@gmail.com', StatutConvocationRdv::EnAttente);
@@ -353,7 +482,8 @@ class NananLotDTest extends TestCase
         $action = app(ConvocationsRdv::class);
 
         $this->assertStringContainsString('Lesquelles', implode(' ', $action->executeAuthorized(['mode' => 'remettre', 'confirmation_renvoi' => true], $this->admin)['manques']));
-        $this->assertStringContainsString('confirme', implode(' ', $action->executeAuthorized(['mode' => 'remettre', 'quoi' => 'inconnues'], $this->admin)['manques']));
+        // Le nombre d'abord, la confirmation ensuite.
+        $this->assertStringContainsString('1 famille(s) seraient reconvoquée(s)', implode(' ', $action->executeAuthorized(['mode' => 'remettre', 'quoi' => 'inconnues'], $this->admin)['manques']));
 
         $r = $action->executeAuthorized(['mode' => 'remettre', 'quoi' => 'inconnues', 'confirmation_renvoi' => true], $this->admin);
         $this->assertNull($inconnue->fresh()->convocation_statut, 'rien avant Valider');
@@ -369,6 +499,7 @@ class NananLotDTest extends TestCase
         $action = app(ConvocationsRdv::class);
 
         $this->assertStringContainsString('Pourquoi', implode(' ', $action->executeAuthorized(['mode' => 'renvoyer', 'reservations' => [$cible->id], 'confirmation_renvoi' => true], $this->admin)['manques']));
+        $this->assertStringContainsString('1 famille(s) seraient reconvoquée(s) (motif : adresse_corrigee)', implode(' ', $action->executeAuthorized(['mode' => 'renvoyer', 'reservations' => [$cible->id, 999999], 'motif' => 'adresse_corrigee'], $this->admin)['manques']));
 
         $r = $action->executeAuthorized(['mode' => 'renvoyer', 'reservations' => [$cible->id, 999999], 'motif' => 'adresse_corrigee', 'confirmation_renvoi' => true], $this->admin);
         $this->assertSame(StatutConvocationRdv::Envoyee, $cible->fresh()->convocation_statut, 'rien avant Valider');

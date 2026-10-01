@@ -89,6 +89,9 @@ class ModifierReglages extends ActionAgent
         if (array_filter($cles, fn ($c) => str_starts_with($c, 'inscriptions.') || str_starts_with($c, 'reinscriptions.')) !== []) {
             $avertissements[] = 'Ces réglages changent ce que voient les familles sur le portail d\'inscription.';
         }
+        if (array_intersect($cles, \App\Services\Admissions\InscriptionWorkflowSettings::cles()) !== []) {
+            $avertissements[] = 'Le parcours d\'inscription se relit à chaque action, y compris pour les dossiers en cours : ne le changez qu\'entre deux campagnes.';
+        }
         if ($examen['inchangees'] !== []) {
             $avertissements[] = 'Déjà à la valeur demandée, rien à faire : '.implode(', ', $examen['inchangees']).'.';
         }
@@ -97,7 +100,7 @@ class ModifierReglages extends ActionAgent
 
         return new Proposition(
             titre: $titre,
-            resume: sprintf('%d réglage(s) modifié(s).', count($examen['ecritures'])),
+            resume: sprintf('%d réglage(s) seront modifiés.', count($examen['ecritures'])),
             tableau: [
                 'colonnes' => ['Réglage', 'Clé', 'Valeur actuelle', 'Nouvelle valeur'],
                 'lignes' => array_map(fn ($l) => [$l['libelle'], $l['cle'], $affiche($l['avant']), $affiche($l['apres'])], $examen['lignes']),

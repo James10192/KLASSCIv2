@@ -11,8 +11,9 @@ use App\Models\Setting;
 use Illuminate\Support\Facades\Route;
 
 /**
- * Propose de remplacer le logo, le favicon, le filigrane ou la signature par
- * une image que la personne a jointe à la conversation.
+ * Propose de remplacer le logo de l'école ou la signature du directeur sur les
+ * PDF par une image que la personne a jointe à la conversation. Seules les
+ * images que l'application lit vraiment sont proposées (ImageDeReglage::NANAN).
  *
  * Le serveur relit la pièce lui-même (PiecesJointes : seule la personne qui
  * l'a déposée la lit), la revalide comme l'écran (JPEG, PNG, GIF ou WebP, 2 Mo
@@ -31,7 +32,7 @@ class PoserImageReglage extends ActionAgent
 
     public function description(): string
     {
-        return "PROPOSE de remplacer une image de l'établissement (".implode(', ', array_keys(ImageDeReglage::DOSSIERS)).') par une image JOINTE à la conversation (piece_id). '
+        return "PROPOSE de remplacer le logo de l'école (school_logo) ou la signature du directeur sur les PDF (pdf_signature_director) par une image JOINTE à la conversation (piece_id). "
             .'La personne dit laquelle : ne choisis jamais entre logo et signature à sa place. Rien n\'est écrit avant « Valider ».';
     }
 
@@ -40,7 +41,7 @@ class PoserImageReglage extends ActionAgent
         return [
             'type' => 'object',
             'properties' => [
-                'cle' => ['type' => 'string', 'enum' => array_keys(ImageDeReglage::DOSSIERS), 'description' => 'Le réglage d\'image à remplacer.'],
+                'cle' => ['type' => 'string', 'enum' => array_keys(ImageDeReglage::NANAN), 'description' => 'Le réglage d\'image à remplacer.'],
                 'piece_id' => ['type' => 'string', 'description' => 'Identifiant de l\'image jointe (piece_id).'],
             ],
             'required' => ['cle', 'piece_id'],
@@ -53,8 +54,8 @@ class PoserImageReglage extends ActionAgent
         $cle = trim((string) ($args['cle'] ?? ''));
         $manques = [];
         if ($cle === '') {
-            $manques[] = 'Quelle image remplacer : '.implode(', ', array_keys(ImageDeReglage::DOSSIERS)).' ?';
-        } elseif (($refus = $this->images->refusCle($cle)) !== null) {
+            $manques[] = 'Quelle image remplacer : le logo de l\'école (school_logo) ou la signature du directeur (pdf_signature_director) ?';
+        } elseif (($refus = $this->images->refusCleNanan($cle)) !== null) {
             $manques[] = $refus;
         }
 
@@ -76,10 +77,10 @@ class PoserImageReglage extends ActionAgent
 
         return new Proposition(
             titre: $titre,
-            resume: sprintf('« %s » sera remplacé par « %s » (%d × %d px).', $cle, $piece['nom'], $examen['largeur'], $examen['hauteur']),
+            resume: sprintf('%s : sera remplacé(e) par « %s » (%d × %d px).', ImageDeReglage::NANAN[$cle], $piece['nom'], $examen['largeur'], $examen['hauteur']),
             tableau: [
                 'colonnes' => ['Réglage', 'Image actuelle', 'Nouvelle image', 'Dimensions', 'Taille'],
-                'lignes' => [[$cle, $actuel ? basename((string) $actuel) : '(aucune)', (string) $piece['nom'],
+                'lignes' => [[ImageDeReglage::NANAN[$cle], $actuel ? basename((string) $actuel) : '(aucune)', (string) $piece['nom'],
                     $examen['largeur'].' × '.$examen['hauteur'].' px', number_format(strlen($octets) / 1024, 0, ',', ' ').' Ko']],
             ],
             avertissements: ['L\'image actuelle est supprimée une fois la nouvelle en place : elle apparaîtra sur tous les documents générés ensuite.'],

@@ -543,12 +543,14 @@ class CLIDataController extends BaseApiController
             return $this->errorResponse('Missing required field: value', [], 422);
         }
 
-        if (in_array($key, \App\Mail\Transport\MailerDeLEcole::REGLAGES_RESERVES_A_L_ECRAN, true)) {
-            return $this->errorResponse(
-                sprintf("« %s » décide par où partent les e-mails de l'école : il se change depuis l'écran des paramètres (onglet MailPulse).", $key),
-                [],
-                422
-            );
+        // Memes refus que POST /api/cli/settings, l'ecran et Nanan (secrets,
+        // envoi des e-mails, controles croises). Cette route garde un seul ecart,
+        // assume : elle CREE une cle absente, pour le provisionnement.
+        $modification = app(\App\Domain\Reglages\ModificationDeReglages::class);
+        $refus = $modification->refusDistant((string) $key)
+            ?? $modification->refusCroise([(string) $key => (string) $request->input('value')]);
+        if ($refus !== null) {
+            return $this->errorResponse($refus, [], 422);
         }
 
         // Upsert : créer la ligne si elle n'existe pas (utile pour provisionner de
@@ -557,7 +559,14 @@ class CLIDataController extends BaseApiController
         // (default 'string') pour le firstOrCreate.
         $setting = Setting::where('key', $key)->first();
         $created = false;
-        if (!$setting) {
+        $valeur = $request->input('value');
+        if ($setting) {
+            // Type, bornes et regles du reglage existant, comme l'ecran.
+            [$valeur, $refus] = $modification->normaliserSelonLeReglage($setting, $valeur);
+            if ($refus !== null) {
+                return $this->errorResponse($refus, [], 422);
+            }
+        } else {
             $setting = Setting::create([
                 'key' => $key,
                 'value' => $request->input('value'),
@@ -572,7 +581,7 @@ class CLIDataController extends BaseApiController
         try {
             $previousValue = $setting->value;
             if (!$created) {
-                Setting::set($key, $request->input('value'), $request->user()->id);
+                Setting::set($key, $valeur, $request->user()->id);
             }
 
             return $this->successResponse([

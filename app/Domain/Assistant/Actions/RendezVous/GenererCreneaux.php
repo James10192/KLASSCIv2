@@ -75,7 +75,7 @@ class GenererCreneaux extends ActionAgent
 
         return new Proposition(
             titre: $titre,
-            resume: sprintf('%d créé(s), %d mis à jour, %d fermé(s), %d conservé(s) car réservés.', ...array_values($chiffres)),
+            resume: sprintf('Créneaux : %d seront créés, %d mis à jour, %d fermés ; %d réservés seront conservés.', ...array_values($chiffres)),
             tableau: [
                 'colonnes' => ['Période', 'Jours', 'Horaires', 'Durée', 'Places par créneau', 'Créés', 'Mis à jour', 'Fermés', 'Conservés'],
                 'lignes' => [[

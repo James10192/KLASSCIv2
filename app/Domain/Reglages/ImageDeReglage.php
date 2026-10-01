@@ -8,8 +8,15 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * Poser l'image d'un réglage (logo, favicon, filigrane, signature) : le CLI
- * (`POST /api/cli/settings/{key}/image`) et Nanan (depuis une image jointe).
+ * Poser l'image d'un réglage : le CLI (`POST /api/cli/settings/{key}/image`)
+ * et Nanan (depuis une image jointe).
+ *
+ * Nanan ne propose que les images que l'application LIT vraiment (NANAN) : le
+ * logo de l'école (SettingsHelper::getSchoolInfo) et la signature du directeur
+ * des PDF (`pdf_signature_director`, lue par <x-pdf-document> sous
+ * storage/app/public). Les autres clés de la liste du CLI ne sont lues par
+ * aucun écran ni document aujourd'hui : les proposer à une école lui ferait
+ * croire à un changement qui n'apparaît nulle part.
  *
  * La clé est restreinte à une liste : ce point d'entrée écrit un fichier, il
  * ne doit pas pouvoir viser un réglage arbitraire. Pas de SVG : servi depuis la
@@ -24,11 +31,26 @@ class ImageDeReglage
         'header_logo' => 'logos',
         'watermark_image' => 'documents',
         'signature_image' => 'documents',
+        'pdf_signature_director' => 'documents',
+    ];
+
+    /** @var array<string, string> clé => ce que la personne voit changer */
+    public const NANAN = [
+        'school_logo' => 'Logo de l\'établissement (en-têtes, documents, site)',
+        'pdf_signature_director' => 'Signature du directeur sur les documents PDF',
     ];
 
     public const OCTETS_MAX = 2048 * 1024;
 
     private const TYPES = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_GIF => 'gif', IMAGETYPE_WEBP => 'webp'];
+
+    /** Pour Nanan : seulement les images réellement lues (NANAN). */
+    public function refusCleNanan(string $cle): ?string
+    {
+        return array_key_exists($cle, self::NANAN)
+            ? null
+            : "« {$cle} » n'est pas une image que Nanan peut remplacer. Images possibles : ".implode(', ', array_keys(self::NANAN)).'.';
+    }
 
     public function refusCle(string $cle): ?string
     {
@@ -78,7 +100,7 @@ class ImageDeReglage
                 'key' => $cle,
                 'value' => $chemin,
                 'type' => 'file',
-                'group' => 'establishment',
+                'group' => str_starts_with($cle, 'pdf_') ? 'pdf' : 'establishment',
                 'description' => "CLI-provisioned: {$cle}",
                 'is_required' => false,
             ]);

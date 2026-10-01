@@ -22,16 +22,20 @@ use Illuminate\Support\Facades\Validator;
  * Changer la valeur d'un ou plusieurs réglages d'établissement, avec les gardes
  * de l'écran des paramètres.
  *
- * Trois appelants : l'écran (les contrôles croisés : couleurs, dates, année
- * visée, candidatures), le CLI (`POST /api/cli/settings` : bascules, parcours
- * d'inscription, contrôles croisés, écriture) et Nanan (tout, plus une liste
- * fermée de clés). Une règle écrite ici vaut pour les trois.
+ * Trois appelants, une seule règle :
+ *  - l'écran des paramètres : type, bornes et règles de chaque réglage
+ *    (normaliserSelonLeReglage) et contrôles croisés (couleurs, dates, année
+ *    visée, candidatures) ;
+ *  - le CLI : `POST /api/cli/settings` (refus, bascules, contrôles croisés,
+ *    écriture) et `PUT /api/cli/settings/{key}` (refus et contrôles croisés ;
+ *    il garde le droit de créer une clé absente, pour le provisionnement) ;
+ *  - Nanan : tout cela, plus une liste fermée de clés, sans jamais créer de clé.
  *
  * Ce que Nanan ne touche jamais, et pourquoi (refusPourNanan) :
  *  - un secret (clé d'API, mot de passe, jeton) : il ne transite pas par une conversation ;
  *  - l'envoi des e-mails (MailPulse, transport) : onglet dédié, contrôles propres ;
  *  - les barèmes JSON (assiduité, mentions, appréciations) et la table SAARI : structure validée par l'écran ;
- *  - les fichiers (logo, signature) : par ImageDeReglage, depuis une pièce jointe ;
+ *  - les fichiers : le logo et la signature du directeur passent par ImageDeReglage, depuis une pièce jointe ;
  *  - ce qui ouvre des droits à un rôle (scolarité, agent d'inscription, caisse) : comptes et droits ;
  *  - la prise de rendez-vous : son propre écran et sa propre permission ;
  *  - toute clé hors de la liste ci-dessous, et toute clé absente de la base (Nanan ne crée aucun réglage).
@@ -60,6 +64,30 @@ class ModificationDeReglages
     /** Clés de l'écran que la liste de préfixes couvrirait, mais qui gardent leur propre écran. */
     private const EXCLUES_NANAN = ['attendance_note_rules', 'pdf_logo', 'pdf_watermark_image'];
 
+    /**
+     * Bornes des réglages numériques, déclarées une fois : l'écran les affiche
+     * (min / max des champs) et les fait respecter, comme le CLI et Nanan.
+     *
+     * @var array<string, array{0: int|float, 1: int|float}>
+     */
+    public const BORNES = [
+        'pdf_logo_size' => [20, 120],
+        'pdf_font_size' => [8, 16],
+        'pdf_margin_top' => [0, 50],
+        'pdf_margin_bottom' => [0, 50],
+        'pdf_margin_left' => [0, 50],
+        'pdf_margin_right' => [0, 50],
+        'pdf_signature_height' => [40, 200],
+        'pdf_watermark_opacity' => [0.02, 0.30],
+        'pdf_watermark_rotation' => [-90, 90],
+    ];
+
+    /**
+     * Deux clés pour une même case : l'écran écrit les deux, le bulletin lit le
+     * pluriel. Les changer séparément ferait mentir l'une ou l'autre.
+     */
+    private const JUMELLES = ['bulletin_show_signature' => 'bulletin_show_signatures', 'bulletin_show_signatures' => 'bulletin_show_signature'];
+
     /** Bascules strictement booléennes (CLI) : écrites 1 / 0. */
     private const BASCULES = [
         TenantScolariteSettings::VERIFICATION_CONTACT,
@@ -85,7 +113,7 @@ class ModificationDeReglages
             return sprintf("« %s » décide par où partent les e-mails de l'école : il se change depuis l'écran des paramètres (onglet MailPulse).", $cle);
         }
         if (self::estSensible($cle)) {
-            return "Cette cle evoque un secret : elle se change depuis l'ecran de configuration.";
+            return "Cette clé évoque un secret : elle se change depuis l'écran de configuration.";
         }
 
         return null;
@@ -99,6 +127,12 @@ class ModificationDeReglages
         }
         if (str_starts_with($cle, 'mailpulse') || str_starts_with($cle, 'mail_') || str_starts_with($cle, 'assistant')) {
             return "« {$cle} » touche l'envoi des messages ou l'assistant : il se règle sur son onglet de l'écran des paramètres.";
+        }
+        // Un chemin d'image ne s'écrit jamais en texte : il passe par le fichier.
+        if (array_key_exists($cle, ImageDeReglage::DOSSIERS) || $cle === 'pdf_signature_secretary') {
+            return array_key_exists($cle, ImageDeReglage::NANAN)
+                ? "« {$cle} » est une image : joignez-la et utilisez proposer_image_reglage."
+                : "« {$cle} » est une image : elle se change sur l'écran des paramètres.";
         }
         $permise = in_array($cle, self::CLES_NANAN, true) || in_array($cle, InscriptionWorkflowSettings::cles(), true)
             || collect(self::PREFIXES_NANAN)->contains(fn (string $p) => str_starts_with($cle, $p));
@@ -141,13 +175,19 @@ class ModificationDeReglages
     }
 
     /**
-     * Type et règles de validation du réglage, comme la boucle de l'écran : un
-     * champ facultatif peut être vidé, une valeur identique n'est pas rejugée.
+     * Type, bornes et règles de validation d'UN réglage : la boucle de l'écran
+     * l'appelle pour chaque champ modifié, le CLI et Nanan aussi. Un champ
+     * facultatif peut être vidé ; une valeur structurée (barème JSON) n'est
+     * jugée que sur les règles du réglage.
      *
-     * @return array{0: string, 1: ?string} [valeur normalisée, refus]
+     * @return array{0: mixed, 1: ?string} [valeur normalisée, refus]
      */
     public function normaliserSelonLeReglage(Setting $reglage, mixed $valeur): array
     {
+        if ($valeur !== null && ! is_scalar($valeur)) {
+            return [$valeur, $this->refusDesRegles($reglage, $valeur)];
+        }
+
         $valeur = is_bool($valeur) ? ($valeur ? '1' : '0') : trim((string) ($valeur ?? ''));
         [$valeur, $refus] = $this->normaliserBascules($reglage->key, $valeur);
         if ($refus !== null) {
@@ -179,19 +219,33 @@ class ModificationDeReglages
                 break;
         }
 
-        if ((string) ($reglage->value ?? '') !== $valeur && $reglage->validation_rules) {
-            $regles = $reglage->validation_rules;
-            if (! $reglage->is_required && ! in_array('nullable', $regles, true)) {
-                $regles = array_values(array_diff($regles, ['required']));
-                array_unshift($regles, 'nullable');
-            }
-            $validateur = Validator::make([$reglage->key => $valeur], [$reglage->key => $regles]);
-            if ($validateur->fails()) {
-                return [$valeur, $validateur->errors()->first($reglage->key)];
+        if (isset(self::BORNES[$reglage->key])) {
+            [$min, $max] = self::BORNES[$reglage->key];
+            $nombre = str_replace(',', '.', $valeur);
+            if (! is_numeric($nombre) || (float) $nombre < $min || (float) $nombre > $max) {
+                $f = fn ($n) => str_replace('.', ',', (string) $n);
+
+                return [$valeur, "« {$reglage->key} » doit être compris entre {$f($min)} et {$f($max)}."];
             }
         }
 
-        return [$valeur, null];
+        return [$valeur, (string) ($reglage->value ?? '') === $valeur ? null : $this->refusDesRegles($reglage, $valeur)];
+    }
+
+    /** Les règles enregistrées sur le réglage ; un champ facultatif reste facultatif. */
+    private function refusDesRegles(Setting $reglage, mixed $valeur): ?string
+    {
+        if (! $reglage->validation_rules) {
+            return null;
+        }
+        $regles = $reglage->validation_rules;
+        if (! $reglage->is_required && ! in_array('nullable', $regles, true)) {
+            $regles = array_values(array_diff($regles, ['required']));
+            array_unshift($regles, 'nullable');
+        }
+        $validateur = Validator::make([$reglage->key => $valeur], [$reglage->key => $regles]);
+
+        return $validateur->fails() ? $validateur->errors()->first($reglage->key) : null;
     }
 
     /**
@@ -202,10 +256,12 @@ class ModificationDeReglages
      */
     public function refusCroise(array $soumis): ?string
     {
-        $apres = fn (string $cle) => array_key_exists($cle, $soumis) ? (string) $soumis[$cle] : (string) Setting::get($cle, '');
+        // Lecture seule : une clé absente vaut son défaut, sans être créée.
+        $defauts = array_map(fn (array $d) => $d['value'], InscriptionWorkflowSettings::defaults());
+        $apres = fn (string $cle) => array_key_exists($cle, $soumis) ? (string) $soumis[$cle] : (string) Setting::get($cle, $defauts[$cle] ?? '');
 
         if (array_key_exists('pdf_header_bg_color', $soumis) || array_key_exists('pdf_header_text_color', $soumis)) {
-            if (($m = self::refusCouleurs($apres('pdf_header_bg_color'), $apres('pdf_header_text_color'), "l'en-tete des documents PDF")) !== null) {
+            if (($m = self::refusCouleurs($apres('pdf_header_bg_color'), $apres('pdf_header_text_color'), "l'en-tête des documents PDF")) !== null) {
                 return $m;
             }
         }
@@ -238,8 +294,6 @@ class ModificationDeReglages
 
         $parcours = array_merge(InscriptionWorkflowSettings::cles(), [RendezVousReglages::ENABLED]);
         if (array_intersect(array_keys($soumis), $parcours) !== []) {
-            app(InscriptionWorkflowSettings::class)->ensureDefaults();
-
             return InscriptionWorkflowSettings::incoherence($apres);
         }
 
@@ -255,7 +309,7 @@ class ModificationDeReglages
             return null;
         }
 
-        return "Le texte et le fond de {$ou} ont la meme couleur ({$fond}) : le texte serait invisible a l'impression. Choisissez une couleur de texte contrastee.";
+        return "Le texte et le fond de {$ou} ont la même couleur ({$fond}) : le texte serait invisible à l'impression. Choisissez une couleur de texte contrastée.";
     }
 
     /** Une borne de fenêtre se lit comme le portail la relira (PortailReinscriptionService). */
@@ -313,6 +367,11 @@ class ModificationDeReglages
             return $examen;
         }
 
+        foreach (self::JUMELLES as $cle => $jumelle) {
+            if (array_key_exists($cle, $changements) && ! array_key_exists($jumelle, $changements) && Setting::where('key', $jumelle)->exists()) {
+                $changements[$jumelle] = $changements[$cle];
+            }
+        }
         ksort($changements);
         $reglages = Setting::whereIn('key', array_keys($changements))->get()->keyBy('key');
         foreach ($changements as $cle => $valeur) {
@@ -383,7 +442,7 @@ class ModificationDeReglages
      * L'écriture d'une valeur, journalisée avec l'ancienne : un réglage remis à
      * la main doit pouvoir être remis en arrière sans deviner.
      */
-    public function ecrire(Setting $reglage, string $valeur, ?int $userId, string $source): void
+    public function ecrire(Setting $reglage, ?string $valeur, ?int $userId, string $source): void
     {
         $avant = $reglage->value;
         // update() sur l'instance : l'événement `saved` purge le cache de la clé.

@@ -54,7 +54,7 @@ class LireReglages extends ChatbotTool
         $modification = app(ModificationDeReglages::class);
         $images = app(ImageDeReglage::class);
         $lignes = $reglages->take(self::MAX)->map(function (Setting $r) use ($modification, $images) {
-            $estImage = $images->refusCle($r->key) === null;
+            $estImage = $images->refusCleNanan($r->key) === null;
             $refus = $estImage ? null : $modification->refusPourNanan($r->key, $r);
 
             return [

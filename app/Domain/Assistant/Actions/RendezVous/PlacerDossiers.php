@@ -59,7 +59,7 @@ class PlacerDossiers extends ActionAgent
 
         $convoques = $apercu['places'] - $apercu['a_prevenir'];
         $avertissements = [
-            "{$convoques} famille(s) recevront leur convocation dans les minutes qui suivent la validation (tâche planifiée).",
+            "Au plus {$convoques} famille(s) recevront leur convocation dans les minutes qui suivent la validation (tâche planifiée). Une famille peut réserver sur le portail entre-temps : le compte rendu donnera le nombre exact.",
         ];
         if ($apercu['a_prevenir'] > 0) {
             $avertissements[] = "{$apercu['a_prevenir']} dossier(s) sans adresse : à prévenir par téléphone (liste « Familles à prévenir »).";
@@ -70,9 +70,9 @@ class PlacerDossiers extends ActionAgent
 
         return new Proposition(
             titre: $titre,
-            resume: sprintf('%d dossier(s) placé(s), dont %d convocation(s) envoyée(s) aux familles.', $apercu['places'], $convoques),
+            resume: sprintf('Au plus %d dossier(s) seront placés, dont au plus %d convocation(s) envoyée(s) aux familles.', $apercu['places'], $convoques),
             tableau: [
-                'colonnes' => ['Dossiers placés', 'Convocations envoyées', 'À prévenir par téléphone', 'Sans créneau', 'Déjà placés', 'Places libres'],
+                'colonnes' => ['Dossiers à placer (au plus)', 'Convocations à envoyer', 'À prévenir par téléphone', 'Sans créneau', 'Déjà placés', 'Places libres'],
                 'lignes' => [[(string) $apercu['places'], (string) $convoques, (string) $apercu['a_prevenir'],
                     (string) $apercu['sans_creneau'], (string) $apercu['deja'], (string) $apercu['places_libres']]],
             ],

@@ -687,12 +687,6 @@ class ESBTPSettingsController extends Controller
                             continue;
                         }
 
-                        // Lot 17b — Champs établissement nullable :
-                        // si la valeur est vide ET le champ n'est pas marqué `is_required`,
-                        // on skip la validation (sinon les règles legacy ['required', ...]
-                        // dans la DB rejettent les champs facultatifs laissés vides).
-                        $isEmpty = $value === null || $value === '';
-
                         // Idempotence : si la valeur soumise est identique à celle en DB,
                         // on ne valide pas (évite de pénaliser sur des seeds pourris où
                         // un setting est marqué is_required=1 mais a une value vide
@@ -714,43 +708,17 @@ class ESBTPSettingsController extends Controller
                             continue;
                         }
 
-                        if ($isEmpty && ! $setting->is_required) {
-                            // Permet d'écraser une valeur existante par '' (vidage volontaire).
-                            $setting->update([
-                                'value' => '',
-                                'updated_by' => auth()->id()
-                            ]);
-                            $updatedSettings[] = $settingKey;
+                        // Type, bornes (ModificationDeReglages::BORNES) et règles du
+                        // réglage : la même porte que le CLI et Nanan. Un champ
+                        // facultatif laissé vide est vidé ; un champ obligatoire, refusé.
+                        [$normalisee, $erreur] = app(ModificationDeReglages::class)->normaliserSelonLeReglage($setting, $value);
+                        if ($erreur !== null) {
+                            $errors[$settingKey] = $erreur;
                             continue;
                         }
 
-                        // Valider la valeur selon les règles définies
-                        if ($setting->validation_rules) {
-                            // Lot 17b — Forcer `nullable` en tête de liste sauf si le champ
-                            // est explicitement `is_required` (sinon Laravel évalue
-                            // `email|string|...` avant `nullable` et rejette '').
-                            $rules = $setting->validation_rules;
-                            if (! $setting->is_required && ! in_array('nullable', $rules, true)) {
-                                $rules = array_values(array_diff($rules, ['required']));
-                                array_unshift($rules, 'nullable');
-                            }
-
-                            $validator = Validator::make(
-                                [$settingKey => $value],
-                                [$settingKey => $rules]
-                            );
-
-                            if ($validator->fails()) {
-                                $errors[$settingKey] = $validator->errors()->first($settingKey);
-                                continue;
-                            }
-                        }
-
-                        // Traitement spécial selon le type
-                        $processedValue = $this->processSettingValue($value, $setting->type, $request);
-
                         $setting->update([
-                            'value' => $processedValue,
+                            'value' => $setting->type === 'json' ? $this->processSettingValue($normalisee, 'json', $request) : $normalisee,
                             'updated_by' => auth()->id()
                         ]);
 

@@ -87,18 +87,18 @@ class CLISettingsController extends BaseApiController
 
         if ($valide['key'] === 'mailpulse_api_key') {
             if (! ($valide['apply'] ?? false)) {
-                return $this->errorResponse('mailpulse_api_key : passer apply=true pour ecrire. La valeur ne ressort jamais.', [], 422);
+                return $this->errorResponse('mailpulse_api_key : passer apply=true pour écrire. La valeur ne ressort jamais.', [], 422);
             }
             $cle = trim((string) ($valide['value'] ?? ''));
             if (! preg_match('/^mp_(live|test)_[A-Za-z0-9_-]+$/', $cle)) {
-                return $this->errorResponse('Cle MailPulse invalide (mp_live_... ou mp_test_...).', [], 422);
+                return $this->errorResponse('Clé MailPulse invalide (mp_live_... ou mp_test_...).', [], 422);
             }
             \App\Helpers\SettingsHelper::setOrCreate('mailpulse_api_key', $cle, 'mailpulse', 'string');
             \Log::warning('[reglages] mailpulse_api_key ecrite a distance', ['length' => strlen($cle)]);
 
             return $this->successResponse(
                 ['key' => 'mailpulse_api_key', 'value' => '(masque)', 'applique' => true],
-                'Cle MailPulse enregistree.'
+                'Clé MailPulse enregistrée.'
             );
         }
 
@@ -111,12 +111,28 @@ class CLISettingsController extends BaseApiController
         [$valide['value'], $refus] = $modification->normaliserBascules($valide['key'], $valide['value']);
         if ($refus === null) {
             $refus = $modification->refusCroise([$valide['key'] => (string) $valide['value']]);
+            if ($refus !== null && $valide['key'] === \App\Domain\Notifications\PhoneNormalizer::CLE_INDICATIF) {
+                // Le CLI pose une cle a la fois : il faut un ordre.
+                $refus .= ' Par le CLI : posez d\'abord les préfixes (« '.\App\Domain\Notifications\PhoneNormalizer::CLE_PREFIXES.' »), puis l\'indicatif.';
+            }
         }
         if ($refus !== null) {
             return $this->errorResponse($refus, [], 422);
         }
 
+        // Le parcours d'inscription : ses lignes doivent exister pour etre ecrites.
+        if (in_array($valide['key'], array_merge(\App\Services\Admissions\InscriptionWorkflowSettings::cles(), [\App\Services\RendezVous\RendezVousReglages::ENABLED]), true)) {
+            app(\App\Services\Admissions\InscriptionWorkflowSettings::class)->ensureDefaults();
+        }
+
         $reglage = Setting::query()->where('key', $valide['key'])->first();
+        if ($reglage) {
+            // Type, bornes et regles du reglage, comme l'ecran.
+            [$valide['value'], $refus] = $modification->normaliserSelonLeReglage($reglage, $valide['value']);
+            if ($refus !== null) {
+                return $this->errorResponse($refus, [], 422);
+            }
+        }
 
         if (! $reglage) {
             $creables = [
@@ -128,7 +144,7 @@ class CLISettingsController extends BaseApiController
                 \App\Services\TenantScolariteSettings::PRINT_REQUIRES_APPROVAL,
             ];
             if (! in_array($valide['key'], $creables, true) || ! ($valide['apply'] ?? false)) {
-                return $this->errorResponse(sprintf("Reglage « %s » introuvable.", $valide['key']), [], 404);
+                return $this->errorResponse(sprintf("Réglage « %s » introuvable.", $valide['key']), [], 404);
             }
 
             \App\Helpers\SettingsHelper::setOrCreate($valide['key'], $valide['value'] ?? '0', 'scolarite', 'boolean');
@@ -142,19 +158,19 @@ class CLISettingsController extends BaseApiController
         if ((string) $avant === (string) $apres) {
             return $this->successResponse(
                 ['key' => $reglage->key, 'avant' => $avant, 'apres' => $apres, 'applique' => false],
-                "La valeur est deja celle-la. Rien a faire."
+                "La valeur est déjà celle-là. Rien à faire."
             );
         }
 
         if ($applique) {
-            $modification->ecrire($reglage, (string) $apres, $request->user()?->id, 'cli');
+            $modification->ecrire($reglage, $apres === null ? null : (string) $apres, $request->user()?->id, 'cli');
         }
 
         return $this->successResponse(
             ['key' => $reglage->key, 'avant' => $avant, 'apres' => $apres, 'applique' => $applique],
             $applique
                 ? sprintf("« %s » : %s -> %s", $reglage->key, $avant, $apres)
-                : sprintf("« %s » passerait de %s a %s. Rien n'a ete ecrit.", $reglage->key, $avant, $apres)
+                : sprintf("« %s » passerait de %s à %s. Rien n'a été écrit.", $reglage->key, $avant, $apres)
         );
     }
 }

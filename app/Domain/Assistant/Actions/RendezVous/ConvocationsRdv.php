@@ -131,7 +131,7 @@ class ConvocationsRdv extends ActionAgent
 
         return new Proposition(
             titre: $titre,
-            resume: sprintf('%d famille(s) reçoivent leur convocation maintenant.', $paquet->count()),
+            resume: sprintf('%d famille(s) recevront leur convocation dès la validation.', $paquet->count()),
             tableau: $this->tableau($paquet),
             avertissements: $avertissements,
             donnees: ['mode' => 'envoyer', 'ids' => $paquet->pluck('id')->map(fn ($id) => (int) $id)->all()],
@@ -152,9 +152,6 @@ class ConvocationsRdv extends ActionAgent
         if ($limite !== null && (filter_var($limite, FILTER_VALIDATE_INT) === false || (int) $limite < 1)) {
             $manques[] = 'La limite doit être un nombre entier positif.';
         }
-        if (($args['confirmation_renvoi'] ?? false) !== true) {
-            $manques[] = 'Ces familles ont pu déjà recevoir un message : la personne confirme-t-elle explicitement les reconvoquer ?';
-        }
         if ($manques !== []) {
             return new Proposition(titre: $titre, resume: '', manques: $manques);
         }
@@ -164,6 +161,13 @@ class ConvocationsRdv extends ActionAgent
         if ($ids === []) {
             return new Proposition(titre: $titre, resume: '', manques: [$quoi === 'echecs' ? 'Aucun envoi en échec.' : 'Aucune réservation d\'avant le suivi à convoquer.']);
         }
+        // Le nombre d'abord, la confirmation ensuite : on confirme ce qu'on sait.
+        if (($args['confirmation_renvoi'] ?? false) !== true) {
+            return new Proposition(titre: $titre, resume: '', manques: [sprintf(
+                '%d famille(s) seraient reconvoquée(s) (%s), dont certaines ont pu déjà recevoir un message : la personne le confirme-t-elle ?',
+                count($ids), $quoi === 'echecs' ? 'envois échoués' : 'réservations d\'avant le suivi'
+            )]);
+        }
         $reservations = ESBTPRdvReservation::with('creneau')->whereIn('id', array_slice($ids, 0, self::LIGNES_MONTREES))->orderBy('id')->get();
         $avertissements = ['Elles partiront au prochain passage de la tâche planifiée (toutes les 5 minutes), sans autre validation.'];
         if (count($ids) > self::LIGNES_MONTREES) {
@@ -172,7 +176,7 @@ class ConvocationsRdv extends ActionAgent
 
         return new Proposition(
             titre: $titre,
-            resume: sprintf('%d convocation(s) remise(s) en attente (%s) : %d famille(s) seront reconvoquées.', count($ids), $quoi === 'echecs' ? 'envois échoués' : 'réservations d\'avant le suivi', count($ids)),
+            resume: sprintf('%d convocation(s) seront remises en attente (%s) : %d famille(s) seront reconvoquées.', count($ids), $quoi === 'echecs' ? 'envois échoués' : 'réservations d\'avant le suivi', count($ids)),
             tableau: $this->tableau($reservations),
             avertissements: $avertissements,
             donnees: ['mode' => 'remettre', 'quoi' => $quoi, 'ids' => $ids],
@@ -195,9 +199,6 @@ class ConvocationsRdv extends ActionAgent
         if (! in_array($motif, RenvoyerConvocationsRequest::MOTIFS, true)) {
             $manques[] = 'Pourquoi ce renvoi : '.implode(', ', RenvoyerConvocationsRequest::MOTIFS).' ?';
         }
-        if (($args['confirmation_renvoi'] ?? false) !== true) {
-            $manques[] = 'Ces familles ont déjà été convoquées : la personne confirme-t-elle explicitement le renvoi ?';
-        }
         if ($manques !== []) {
             return new Proposition(titre: $titre, resume: '', manques: $manques);
         }
@@ -208,6 +209,12 @@ class ConvocationsRdv extends ActionAgent
         if ($eligibles === []) {
             return new Proposition(titre: $titre, resume: '', manques: ['Aucune de ces réservations ne peut être reconvoquée : '
                 .implode(', ', array_map(fn ($l) => "n° {$l['id']} ({$l['raison']})", $simulation)).'.']);
+        }
+        if (($args['confirmation_renvoi'] ?? false) !== true) {
+            return new Proposition(titre: $titre, resume: '', manques: [sprintf(
+                '%d famille(s) seraient reconvoquée(s) (motif : %s) alors qu\'elles ont déjà été convoquées : la personne le confirme-t-elle ?',
+                count($eligibles), $motif
+            )]);
         }
 
         return new Proposition(
