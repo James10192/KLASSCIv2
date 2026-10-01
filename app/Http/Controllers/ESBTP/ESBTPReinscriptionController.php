@@ -285,77 +285,46 @@ class ESBTPReinscriptionController extends Controller
 
     public function show($etudiantId, Request $request)
     {
-        $anneeAcademique = $request->get('annee_academique', date('Y') . '-' . (date('Y') + 1));
+        $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)->pour((int) $etudiantId, auth()->user());
+        $inscription = $eligibilite['inscription'];
+        if (!$inscription) {
+            return redirect()->route('esbtp.reinscription.index')
+                ->withErrors(['error' => "Cet étudiant n'a aucune inscription validée avec classe : rien à réinscrire."]);
+        }
+
+        // L'analyse académique porte sur l'année QUITTÉE, pas sur la cible.
+        $anneeAcademique = $request->get('annee_academique', $eligibilite['annee_cible']?->name ?? $inscription->anneeUniversitaire?->name);
 
         try {
-            $inscription = $this->classes->inscriptionQuittee((int) $etudiantId);
-
-            if (!$inscription) {
-                throw new \Exception("Aucune inscription avec classe trouvée pour cet étudiant");
-            }
-
             $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
-            $classesProposees = $this->classes->pour($inscription->classe, $analyse['decision']);
+        } catch (\Throwable $e) {
+            \Log::error('Analyse de réinscription impossible', ['etudiant_id' => $etudiantId, 'erreur' => $e->getMessage()]);
 
-            // Calculer les soldes financiers pour l'étudiant
-            $etudiant = $analyse['etudiant'];
-            $totalAttendu = $this->calculerTotalAttendu($inscription);
-            $totalPaye = $this->calculerTotalPaye($inscription);
-            $soldeRestant = $totalAttendu - $totalPaye;
-
-            // Ajouter les informations financières à l'étudiant
-            $etudiant->montant_attendu = $totalAttendu;
-            $etudiant->montant_paye = $totalPaye;
-            $etudiant->solde_restant = $soldeRestant;
-
-            // Calculer le VRAI reliquat (uniquement les dettes des années précédentes via ESBTPReliquatDetail)
-            // comme dans inscriptions.show
-            $reliquatsEntrants = \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $inscription->id)
-                ->actifs()
-                ->get();
-
-            $reliquatMontant = $reliquatsEntrants->sum('solde_restant');
-
-            // Logique d'éligibilité selon le rôle
-            $isSuperAdmin = auth()->user() && auth()->user()->isSuperAdmin();
-            $etudiant->peut_reinscrire = $soldeRestant <= 0 || $isSuperAdmin;
-            $etudiant->reliquat_possible = $isSuperAdmin && $soldeRestant > 0;
-            $etudiant->reliquat_montant = $isSuperAdmin ? max(0, $soldeRestant) : 0;
-
-            // IMPORTANT: Le reliquat affiché dans la carte de validation = uniquement années précédentes
-            $etudiant->reliquat_reel = $reliquatMontant;
-            
-            // Ajouter l'inscription pour l'accès aux données de classe dans la vue
-            $analyse['inscription'] = $inscription;
-            
-            $anneeCouranteModel = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-            $existingReinscription = null;
-            $validatedReinscription = null;
-
-            if ($anneeCouranteModel) {
-                $existingReinscription = \App\Models\ESBTPInscription::with([
-                        'classe.filiere',
-                        'classe.niveau',
-                        'anneeUniversitaire',
-                        'reinscriptionValidatedBy'
-                    ])
-                    ->where('etudiant_id', $etudiantId)
-                    ->where('annee_universitaire_id', $anneeCouranteModel->id)
-                    ->where('type_inscription', NormalisationTypeInscription::REINSCRIPTION)
-                    ->latest()
-                    ->first();
-
-                if ($existingReinscription && $existingReinscription->reinscription_status === 'validated') {
-                    $validatedReinscription = $existingReinscription;
-                }
-            }
-
-            $voirFinances = auth()->user()->can('finances.etudiants.voir');
-
-            return view('esbtp.reinscription.show', compact('analyse', 'classesProposees', 'anneeAcademique', 'validatedReinscription', 'existingReinscription', 'voirFinances'));
-        } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
+            return redirect()->route('esbtp.reinscription.index')
+                ->withErrors(['error' => "L'analyse de ce dossier a échoué. Le détail est dans le journal du serveur."]);
         }
+        $analyse['inscription'] = $inscription;
+
+        // Les mêmes propriétés que lisent les autres écrans (liste, finalisation).
+        $etudiant = $analyse['etudiant'];
+        $etudiant->montant_attendu = $eligibilite['du'];
+        $etudiant->montant_paye = $eligibilite['paye'];
+        $etudiant->solde_restant = $eligibilite['solde'];
+        $etudiant->peut_reinscrire = $eligibilite['peut_poursuivre'];
+
+        // Les reliquats d'années antérieures reportés SUR l'inscription quittée,
+        // et ceux reportés sur l'inscription de l'année cible si elle existe.
+        $reliquatsVers = fn (int $id) => (float) \App\Models\ESBTPReliquatDetail::where('inscription_destination_id', $id)->actifs()->get()->sum('solde_restant');
+        $reliquatEntrant = $reliquatsVers((int) $inscription->id);
+        $existante = $eligibilite['inscription_annee_cible'];
+        $reliquatAnneeCible = $existante && $existante->id !== $inscription->id ? $reliquatsVers((int) $existante->id) : 0.0;
+
+        $voirFinances = auth()->user()->can('finances.etudiants.voir');
+        $notesComptees = is_countable($analyse['notes'] ?? null) ? count($analyse['notes']) : 0;
+
+        return view('esbtp.reinscription.show', compact(
+            'analyse', 'eligibilite', 'anneeAcademique', 'voirFinances', 'reliquatEntrant', 'reliquatAnneeCible', 'notesComptees'
+        ));
     }
 
     /**
@@ -384,11 +353,13 @@ class ESBTPReinscriptionController extends Controller
             $soldeRestant = $totalAttendu - $totalPaye;
 
             // Ajouter les informations financières et de rôle
+            // La même décision que la fiche (tolérance de l'école comprise).
             $isSuperAdmin = auth()->user() && auth()->user()->isSuperAdmin();
+            $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)->pour((int) $etudiantId, auth()->user());
             $etudiant->montant_attendu = $totalAttendu;
             $etudiant->montant_paye = $totalPaye;
             $etudiant->solde_restant = $soldeRestant;
-            $etudiant->peut_reinscrire = $soldeRestant <= 0 || $isSuperAdmin;
+            $etudiant->peut_reinscrire = $eligibilite['peut_poursuivre'];
             $etudiant->reliquat_possible = $isSuperAdmin && $soldeRestant > 0;
             $etudiant->reliquat_montant = $isSuperAdmin ? max(0, $soldeRestant) : 0;
 

@@ -4,12 +4,10 @@ namespace App\Services\Chatbot\Tools;
 
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFraisSubscription;
-use App\Models\ESBTPInscription;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPPaiement;
-use App\Services\Inscriptions\NormalisationTypeInscription;
 use App\Services\Reinscription\ClassesDeReinscription;
-use App\Services\Reinscription\SoldeDeReinscription;
+use App\Services\Reinscription\EligibiliteReinscription;
 use Illuminate\Support\Facades\Route;
 
 /**
@@ -75,28 +73,22 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
                 'du' => $s->chargedAmount(),
                 'paye' => round((float) ($paye[$s->frais_category_id] ?? 0), 2),
             ])->values();
-        // Le solde qui bloque est celui de l'écran ; le détail par frais ne
-        // sert qu'à l'expliquer.
-        $du = SoldeDeReinscription::du((int) $inscription->id);
-        $verse = SoldeDeReinscription::paye((int) $inscription->id);
-        $solde = SoldeDeReinscription::solde((int) $inscription->id);
+        // L'état et le solde sont ceux de l'écran : un seul service les calcule.
+        $eligibilite = app(EligibiliteReinscription::class)->pour((int) $etudiant->id, $user);
+        $du = $eligibilite['du'];
+        $verse = $eligibilite['paye'];
+        $solde = $eligibilite['solde'];
 
         $notes = ESBTPNote::query()->where('etudiant_id', $etudiant->id)
             ->whereHas('evaluation', fn ($q) => $q->where('annee_universitaire_id', $inscription->annee_universitaire_id))
             ->count();
-        // L'inscription « quittée » est la plus récente validée : si elle est
-        // déjà sur l'année courante, l'élève y est inscrit et il n'y a rien à
-        // débloquer. Sinon, une réinscription non annulée cette année compte —
-        // la même lecture que l'écran.
-        $dejaReinscrit = (bool) $inscription->anneeUniversitaire?->is_current
-            || ESBTPInscription::query()->where('etudiant_id', $etudiant->id)
-                ->where('type_inscription', NormalisationTypeInscription::REINSCRIPTION)
-                ->where('status', '!=', 'annulée')
-                ->whereHas('anneeUniversitaire', fn ($q) => $q->where('is_current', true))
-                ->exists();
-
-        $estSuperAdmin = method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin();
-        $bloque = ! $dejaReinscrit && $solde > 0 && ! $estSuperAdmin;
+        $dejaReinscrit = $eligibilite['etat'] === EligibiliteReinscription::DEJA_INSCRIT;
+        // `bloquee` décrit le DOSSIER, pas le lecteur : un superadministrateur
+        // voit le même blocage, et `peut_autoriser_reliquat` dit qu'il peut y
+        // déroger. Mélanger les deux faisait dire « non bloquée » à Nanan
+        // pendant que l'écran affichait « Réinscription bloquée ».
+        $bloque = $eligibilite['etat'] === EligibiliteReinscription::IMPAYE;
+        $estSuperAdmin = $eligibilite['peut_deroger'];
 
         return [
             'display_type' => 'cards',
@@ -105,7 +97,7 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
                 'initials' => $this->studentInitials($etudiant),
                 'classe' => $inscription->classe?->name ?? 'N/A',
                 'detail' => 'Inscription quittée : '.($inscription->anneeUniversitaire?->name ?? '?'),
-                'statut' => $dejaReinscrit ? 'Déjà réinscrit' : ($bloque ? 'Bloquée (impayé)' : ($solde > 0 ? 'Impayé, report possible' : 'Réinscription possible')),
+                'statut' => $dejaReinscrit ? 'Déjà inscrit cette année' : ($bloque ? ($estSuperAdmin ? 'Bloquée (impayé), dérogation possible' : 'Bloquée (impayé)') : 'Réinscription possible'),
                 'reste' => $voirMontants ? $this->formatFCFA(max(0.0, $solde)) : null,
                 'lien' => Route::has('esbtp.reinscription.show') ? route('esbtp.reinscription.show', $etudiant->id, false) : null,
                 'lien_label' => 'Réinscription',
@@ -119,7 +111,10 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
                 'annee_quittee_id' => (int) $inscription->annee_universitaire_id,
                 'deja_reinscrit_cette_annee' => $dejaReinscrit,
                 'bloquee' => $bloque,
-                'cause' => $dejaReinscrit ? 'deja_reinscrit' : ($solde > 0 ? 'solde_impaye' : null),
+                'cause' => $dejaReinscrit ? 'deja_reinscrit' : ($bloque ? 'solde_impaye' : null),
+                'etat' => $eligibilite['etat'],
+                'tolerance_ecole' => $voirMontants ? $eligibilite['tolerance'] : null,
+                'annee_cible' => $eligibilite['annee_cible']?->name,
                 'solde' => $voirMontants ? max(0.0, $solde) : 'masqué (droit finances requis)',
                 'frais' => $voirMontants ? $frais->all() : $frais->map(fn ($f) => ['categorie_id' => $f['categorie_id'], 'frais' => $f['frais']])->all(),
                 'aucun_versement_enregistre' => $verse <= 0.0 && $du > 0.0,

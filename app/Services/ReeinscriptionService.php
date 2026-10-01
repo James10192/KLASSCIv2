@@ -706,17 +706,15 @@ class ReeinscriptionService
      */
     public function peutSeReinscrire($etudiantId): bool
     {
-        $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
-        $inscriptionActive = $etudiant->inscriptions()
-            ->where('status', 'active')
-            ->latest()
-            ->first();
-        
-        if (!$inscriptionActive) return false;
-        
-        $soldeRestant = $this->calculerSoldeInscription($inscriptionActive);
+        // La même inscription et le même solde que la fiche de réinscription.
+        // Avant : la dernière inscription ACTIVE (`latest()`), qui pouvait être
+        // une autre que celle affichée, donc un autre verdict que l'écran.
+        $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)->pour((int) $etudiantId);
+        if (!$eligibilite['inscription']) {
+            return false;
+        }
 
-        return $soldeRestant <= $this->toleranceSolde();
+        return $eligibilite['solde'] <= $eligibilite['tolerance'];
     }
 
     /**
@@ -729,7 +727,7 @@ class ReeinscriptionService
      */
     private function toleranceSolde(): float
     {
-        return (float) \App\Helpers\SettingsHelper::get('reinscription.tolerance_solde', 0);
+        return \App\Services\Reinscription\EligibiliteReinscription::tolerance();
     }
 
     /**
