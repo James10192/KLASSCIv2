@@ -101,7 +101,9 @@ Codes gérés : `201`, `409 whatsapp_indisponible`, `429 retry_after`, `502 envo
 
 Réglage `inscriptions.portail.verification_whatsapp_inverse`
 (`TenantScolariteSettings::VERIFICATION_WHATSAPP_INVERSE`), **désactivé par défaut**,
-non semé : à poser par l'école. Activé, KLASSCI demande à MailPulse
+non semé : à poser par l'école, depuis l'écran ou par
+`klassci settings:set <ecole> inscriptions.portail.verification_whatsapp_inverse 1`
+(le CLI crée la ligne si elle manque). Activé, KLASSCI demande à MailPulse
 `POST /api/v1/verifications` avec `"mode":"reverse"` : rien ne part, MailPulse rend
 `wa_link`, le lien qui ouvre WhatsApp sur le numéro de l'école avec le code déjà saisi.
 La famille l'envoie ; MailPulse approuve sur son message et lui répond.
