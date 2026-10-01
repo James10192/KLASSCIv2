@@ -50,8 +50,32 @@ class LMDImportService
     /** @var list<array{type: string, code: string, detail: string}> */
     private array $conflits = [];
 
+    /**
+     * L'import, rejoue puis annule : ce qu'il ECRIRAIT (compteurs) et ce qu'il
+     * REFUSERAIT (conflits), sans rien laisser en base. Meme chemin que
+     * l'import reel — c'est ce qui permet a Nanan de montrer la proposition
+     * sans recopier la detection des conflits.
+     *
+     * @return array{resultat: ?array, conflits: list<array{type: string, code: string, detail: string}>}
+     */
+    public function simuler(array $spec, ?int $userId = null): array
+    {
+        DB::beginTransaction();
+        try {
+            return ['resultat' => $this->import($spec, $userId), 'conflits' => []];
+        } catch (ConflitDeMaquette $e) {
+            return ['resultat' => null, 'conflits' => $e->conflits()];
+        } finally {
+            DB::rollBack();
+        }
+    }
+
     public function import(array $spec, ?int $userId = null): array
     {
+        // Une instance peut servir deux fois (simulation puis import reel) :
+        // les conflits d'un premier passage ne doivent pas refuser le second.
+        $this->conflits = [];
+
         return DB::transaction(function () use ($spec, $userId) {
             $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first()
                 ?? ESBTPAnneeUniversitaire::where('is_active', true)->orderByDesc('start_date')->first();

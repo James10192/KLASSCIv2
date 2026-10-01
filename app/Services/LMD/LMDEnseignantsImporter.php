@@ -75,9 +75,20 @@ class LMDEnseignantsImporter
      */
     private array $stats;
 
+    /**
+     * @param  bool  $creerLesComptes  false : un enseignant inconnu n'est PAS cree
+     *                                  (pas de compte ni de mot de passe temporaire) ;
+     *                                  l'ECUE reste sans affectation, et c'est dit.
+     * @param  bool  $correspondanceStricte  true : aucun rattrapage par prefixe de
+     *                                  code, et un nom ne designe qu'un compte
+     *                                  enseignant unique. Ce que Nanan exige : elle
+     *                                  ne devine ni un code, ni une personne.
+     */
     public function __construct(
         private readonly bool $dryRun = true,
         private readonly bool $includeInferredResponsableUe = false,
+        private readonly bool $creerLesComptes = true,
+        private readonly bool $correspondanceStricte = false,
     ) {
         $this->stats = $this->emptyStats();
     }
@@ -103,10 +114,27 @@ class LMDEnseignantsImporter
             throw new \RuntimeException("Structure JSON invalide (clé 'ues' manquante) : {$jsonPath}");
         }
 
+        return $this->importDonnees($data, $jsonPath);
+    }
+
+    /**
+     * Le meme import, sur des donnees deja lues (un fichier joint a Nanan).
+     * `ues` (UE → ECUE) comme dans les JSON, et/ou `ecues` a plat quand la
+     * source ne donne pas l'UE.
+     *
+     * @return array<string, mixed>
+     */
+    public function importDonnees(array $data, string $source = 'donnees'): array
+    {
+        $jsonPath = $source;
+
         DB::beginTransaction();
         try {
-            foreach ($data['ues'] as $ueData) {
+            foreach ((array) ($data['ues'] ?? []) as $ueData) {
                 $this->processUe($ueData);
+            }
+            foreach ((array) ($data['ecues'] ?? []) as $ecueData) {
+                $this->processEcue((array) $ecueData, '—');
             }
 
             if ($this->dryRun) {
@@ -163,7 +191,7 @@ class LMDEnseignantsImporter
         // PDF à partir du préfixe d'un ECUE (ex: JSON ue_code=ACN5001 alors que
         // la vraie UE-mère est COG5001 contenant ECUE ACN5001.1). On retrouve
         // l'UE réelle en cherchant un ECUE dont le code commence par {ueCode}.
-        if (!$ue && !$ueAmbigue) {
+        if (!$ue && !$ueAmbigue && !$this->correspondanceStricte) {
             $matiere = ESBTPMatiere::where('code', 'LIKE', $ueCode.'.%')
                 ->orWhere('code', 'LIKE', $ueCode.'-%')
                 ->whereNotNull('unite_enseignement_id')
@@ -249,7 +277,7 @@ class LMDEnseignantsImporter
         // On cherche donc `{ecueCode}.%` (suffixe `.1/.2`) ou `{ecueCode}-%`
         // (suffixe parcours `-AGRO/-ECO/-GES`) avant de warner.
         // Rattrape ~15 cas par tenant (cf agent PDF re-extraction 16/05/2026).
-        if (!$ecue && !str_contains($ecueCode, '.')) {
+        if (!$ecue && !str_contains($ecueCode, '.') && !$this->correspondanceStricte) {
             $ecue = ESBTPMatiere::where('code', 'LIKE', $ecueCode.'.%')
                 ->orWhere('code', 'LIKE', $ecueCode.'-%')
                 ->orderBy('id')
@@ -280,6 +308,9 @@ class LMDEnseignantsImporter
         // On ne touche QUE les rows où enseignant_principal_id est null OU différent,
         // pour éviter les updated events inutiles + préserver les assignations
         // manuelles existantes (cf. ues_assigned_responsable défensif).
+        $avant = ESBTPPlanificationAcademique::where('matiere_id', $ecue->id)
+            ->with('enseignantPrincipal:id,name')->get(['id', 'enseignant_principal_id'])
+            ->map(fn ($p) => $p->enseignantPrincipal?->name ?? '—')->unique()->sort()->values()->all();
         $count = ESBTPPlanificationAcademique::where('matiere_id', $ecue->id)
             ->where(function ($q) use ($primaryTeacher) {
                 $q->whereNull('enseignant_principal_id')
@@ -291,6 +322,16 @@ class LMDEnseignantsImporter
             ]);
 
         $this->stats['ecues_assigned'] += $count;
+        // Le detail, ECUE par ECUE : c'est ce que relit la personne avant de
+        // valider (Nanan), et ce qui rend une proposition perimee s'il bouge.
+        $this->stats['affectations'][] = [
+            'ecue' => (string) \App\Services\LMD\CodeDeMaquette::affiche($ecue->code),
+            'ecue_nom' => (string) $ecue->name,
+            'enseignant' => (string) $primaryTeacher->name,
+            'enseignant_id' => (int) $primaryTeacher->id,
+            'avant' => $avant,
+            'planifications' => $count,
+        ];
     }
 
     /**
@@ -310,13 +351,32 @@ class LMDEnseignantsImporter
 
         // Dédup par normalisation case-insensitive (UTF-8 safe)
         $normalized = mb_strtolower($name, 'UTF-8');
-        $existingUser = User::query()
-            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
-            ->first();
+        if ($this->correspondanceStricte) {
+            // Un compte ENSEIGNANT, et un seul : un etudiant homonyme ne doit
+            // jamais recevoir un cours, et entre deux homonymes on ne choisit pas.
+            $candidats = User::role('enseignant')->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])->get();
+            if ($candidats->count() > 1) {
+                $this->stats['warnings'][] = "Enseignant ambigu : {$name} désigne {$candidats->count()} comptes enseignants. Affectez depuis l'écran de l'ECUE.";
+
+                return null;
+            }
+            $existingUser = $candidats->first();
+        } else {
+            $existingUser = User::query()
+                ->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
+                ->first();
+        }
 
         if ($existingUser) {
             $this->stats['users_matched']++;
             return $existingUser;
+        }
+
+        if (! $this->creerLesComptes) {
+            $this->stats['enseignants_inconnus'][] = $name;
+            $this->stats['warnings'][] = "Enseignant inconnu : {$name}. Aucun compte n'est créé ici : créez-le depuis l'écran Enseignants, puis relancez.";
+
+            return null;
         }
 
         // Création
@@ -433,6 +493,8 @@ class LMDEnseignantsImporter
             'ues_assigned_responsable' => 0,
             'ues_not_found' => 0,
             'warnings' => [],
+            'affectations' => [],
+            'enseignants_inconnus' => [],
         ];
     }
 }
