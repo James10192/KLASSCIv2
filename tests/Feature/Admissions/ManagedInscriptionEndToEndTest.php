@@ -475,6 +475,17 @@ class ManagedInscriptionEndToEndTest extends TestCase
     }
 
     /** @test */
+    public function un_lien_d_activation_perime_affiche_une_page_et_ne_boucle_pas(): void
+    {
+        // Ouvert depuis un e-mail, le lien n'a pas de page précédente : l'erreur
+        // de validation renvoyait vers la même URL, jusqu'au « trop de redirections ».
+        $this->get(route('esbtp.admissions.workflow.activation.form', ['token' => 'inconnu']))
+            ->assertStatus(410)
+            ->assertSee('Ce lien ne peut plus servir', false)
+            ->assertSee("Ce lien d'activation est invalide ou expiré.");
+    }
+
+    /** @test */
     public function le_formulaire_classique_refuse_une_candidature_du_parcours(): void
     {
         $candidature = $this->candidature();
