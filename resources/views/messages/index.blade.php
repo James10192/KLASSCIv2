@@ -1,10 +1,17 @@
 @extends('layouts.app')
 
-@section('title', 'Messages & Centre d’actions')
+@section('title', 'Messages & Demandes aux services')
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/messages-hub-v2.css?v=1267-shared-items') }}">
 <link rel="stylesheet" href="{{ asset('css/messages-hub-v2-final.css?v=1278-share-alignment-search-archives') }}">
+<style>
+    /* Non lu : on le voit sans lire le compteur. */
+    .mh2-conversation.is-unread { background: #eef4ff; }
+    .mh2-conversation.is-unread .mh2-conversation-preview { color: #10233f; font-weight: 700; }
+    .mh2-conversation.is-unread .mh2-conversation-meta time { color: #0453cb; font-weight: 700; }
+    .mh2-zero .mh2-btn, .mh2-empty .mh2-btn { margin-top: .75rem; }
+</style>
 @endpush
 
 @section('content')
@@ -30,7 +37,7 @@
         <header class="mh2-top">
             <div class="mh2-brand">
                 <h1>Messages</h1>
-                <p>Échanges humains, dossiers liés et actions métier — chacun à sa place.</p>
+                <p>Vos échanges avec l’équipe et les actions à suivre.</p>
             </div>
             <div class="mh2-tabs" role="tablist" aria-label="Espaces du module">
                 <button type="button" class="mh2-tab is-active" data-space="inbox" role="tab" aria-selected="true">
@@ -38,12 +45,12 @@
                     <span class="mh2-count" data-inbox-count>0</span>
                 </button>
                 <button type="button" class="mh2-tab" data-space="actions" role="tab" aria-selected="false">
-                    <i class="fas fa-list-check" aria-hidden="true"></i> Centre d’actions
+                    <i class="fas fa-list-check" aria-hidden="true"></i> Demandes aux services
                     <span class="mh2-count" data-action-count>0</span>
                 </button>
             </div>
             <button type="button" class="mh2-primary" data-new>
-                <i class="fas fa-plus" aria-hidden="true"></i><span>Nouveau</span>
+                <i class="fas fa-pen" aria-hidden="true"></i><span>Écrire</span>
             </button>
         </header>
 
@@ -71,8 +78,8 @@
                         <i class="fas fa-arrow-left" aria-hidden="true"></i>
                     </button>
                     <div class="mh2-thread-main">
-                        <h2 data-thread-title>Sélectionnez une conversation</h2>
-                        <p data-thread-sub>Les personnes et les dossiers liés sont volontairement séparés.</p>
+                        <h2 data-thread-title>Vos messages</h2>
+                        <p data-thread-sub>Choisissez une conversation à gauche, ou écrivez à quelqu’un.</p>
                     </div>
                     <div class="mh2-head-actions">
                         <button type="button" class="mh2-icon" data-important aria-label="Marquer la conversation importante" aria-pressed="false" title="Important">
@@ -81,7 +88,7 @@
                         <button type="button" class="mh2-icon" data-archive aria-label="Archiver la conversation" aria-pressed="false" title="Archiver">
                             <i class="fas fa-box-archive" aria-hidden="true"></i>
                         </button>
-                        <button type="button" class="mh2-icon" data-context-toggle aria-label="Afficher le contexte lié" title="Contexte lié">
+                        <button type="button" class="mh2-icon" data-context-toggle aria-label="Afficher le dossier concerné" title="Dossier concerné">
                             <i class="fas fa-circle-info" aria-hidden="true"></i>
                         </button>
                     </div>
@@ -102,9 +109,9 @@
                 </footer>
             </main>
 
-            <aside class="mh2-context" data-context aria-label="Contexte lié">
+            <aside class="mh2-context" data-context aria-label="Dossier concerné">
                 <header class="mh2-context-head">
-                    <h3>Contexte lié</h3>
+                    <h3>Dossier concerné</h3>
                     <button type="button" class="mh2-icon" data-context-close aria-label="Fermer le contexte">
                         <i class="fas fa-xmark" aria-hidden="true"></i>
                     </button>
@@ -115,7 +122,7 @@
             </aside>
         </section>
 
-        <section class="mh2-actions" data-actions hidden aria-label="Centre d’actions">
+        <section class="mh2-actions" data-actions hidden aria-label="Demandes aux services">
             <div class="mh2-actions-toolbar">
                 <label class="mh2-search">
                     <i class="fas fa-magnifying-glass" aria-hidden="true"></i>
@@ -138,7 +145,7 @@
                 </select>
                 <div class="mh2-view-switch" aria-label="Mode d’affichage">
                     <button type="button" class="is-active" data-action-view="list" title="Vue liste"><i class="fas fa-list"></i> Liste</button>
-                    <button type="button" data-action-view="kanban" title="Vue Kanban"><i class="fas fa-table-columns"></i> Kanban</button>
+                    <button type="button" data-action-view="kanban" title="Vue par étape"><i class="fas fa-table-columns"></i> Par étape</button>
                 </div>
                 <button type="button" class="mh2-primary" data-new><i class="fas fa-plus"></i><span>Créer une action</span></button>
             </div>
@@ -156,7 +163,7 @@
             <div class="mh2-modal-backdrop" data-modal-close></div>
             <div class="mh2-modal-card">
                 <header class="mh2-modal-head">
-                    <h3 id="mh2-modal-title">Nouveau</h3>
+                    <h3 id="mh2-modal-title">Écrire</h3>
                     <button type="button" class="mh2-icon" data-modal-close aria-label="Fermer"><i class="fas fa-xmark"></i></button>
                 </header>
                 <div class="mh2-modal-body">
@@ -167,25 +174,13 @@
                             </button>
                             @can('annonces.create')
                             <a class="mh2-intent" href="{{ route('esbtp.annonces.create') }}">
-                                <i class="fas fa-users"></i><span><strong>Écrire à une classe ou promotion</strong><small>Diffusion ciblée via le module d’annonces existant.</small></span>
-                            </a>
-                            <a class="mh2-intent" href="{{ route('esbtp.annonces.create') }}">
-                                <i class="fas fa-user-graduate"></i><span><strong>Contacter un étudiant ou parent</strong><small>Utilise la diffusion ciblée : aucun DM étudiant n’est créé en contournant les droits.</small></span>
-                            </a>
-                            <a class="mh2-intent" href="{{ route('esbtp.annonces.create') }}">
-                                <i class="fas fa-bullhorn"></i><span><strong>Publier une annonce</strong><small>Communication descendante vers les audiences autorisées.</small></span>
+                                <i class="fas fa-bullhorn"></i><span><strong>Écrire à une classe, un étudiant ou un parent</strong><small>Par une annonce ciblée : vous choisissez la classe, la promotion ou les personnes.</small></span>
                             </a>
                             @endcan
+                            {{-- Une seule porte : demande interne et action à traiter menaient au même formulaire. --}}
                             <button type="button" class="mh2-intent" data-intent-internal>
-                                <i class="fas fa-arrows-turn-to-dots"></i><span><strong>Créer une demande interne</strong><small>Crée une vraie action suivie, affectable et journalisée.</small></span>
+                                <i class="fas fa-arrows-turn-to-dots"></i><span><strong>Demander quelque chose à un service</strong><small>Qui, quoi, pour quand. On vous prévient quand c'est fait.</small></span>
                             </button>
-                            <button type="button" class="mh2-intent" data-intent-action>
-                                <i class="fas fa-list-check"></i><span><strong>Créer une action à traiter</strong><small>Priorité, responsable, échéance, statut et historique.</small></span>
-                            </button>
-                        </div>
-                        <div class="mh2-inline-warning">
-                            <i class="fas fa-circle-info"></i>
-                            <span>La création de groupe d’équipe n’est pas proposée tant que son CRUD complet et ses permissions ne sont pas implémentés. Aucun bouton factice n’est laissé en production.</span>
                         </div>
                     </div>
 
@@ -204,7 +199,7 @@
                     <div data-modal-panel="action" hidden>
                         <div class="mh2-panel-title">
                             <button type="button" data-back-intents aria-label="Retour"><i class="fas fa-arrow-left"></i></button>
-                            <h4>Créer une action à traiter</h4>
+                            <h4>Demander quelque chose à un service</h4>
                         </div>
                         <form class="mh2-action-form" data-action-form onsubmit="return false;">
                             <label class="mh2-field">
@@ -269,6 +264,6 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('js/messages-hub-v2.js?v=1278-share-alignment') }}" defer></script>
-<script src="{{ asset('js/messages-hub-v2-hardening.js?v=1279-archive-restore-label') }}" defer></script>
+<script src="{{ asset('js/messages-hub-v2.js?v=2026-10-01-services') }}" defer></script>
+<script src="{{ asset('js/messages-hub-v2-hardening.js?v=2026-10-01-services') }}" defer></script>
 @endpush

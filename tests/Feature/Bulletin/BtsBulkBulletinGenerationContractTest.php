@@ -20,7 +20,9 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $resultDto = file_get_contents(app_path('Domain/AcademicPilotage/DTO/BulkBulletinGenerationResult.php'));
 
         $this->assertStringContainsString('BtsBulkBulletinGenerationService', $controller);
-        $this->assertStringContainsString('response()->json($result->toArray(), $result->statusCode())', $controller);
+        // La génération d'une classe passe par une tâche en arrière-plan ; le
+        // contrôleur garde le pré-contrôle et le rendu, pas l'ancien point d'entrée.
+        $this->assertStringNotContainsString('function genererClasseBulletins', $controller);
         $this->assertStringContainsString('preflightClasseBulletins', $controller);
         $this->assertStringContainsString("'recalculer'             => 'sometimes|boolean'", $request);
         $this->assertStringContainsString("REGLE_MOTIF_INCOMPLET = 'nullable|string|min:8|max:1000'", $request);
@@ -126,51 +128,38 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString("if (p.status === 'ready') return false;", $view);
         $this->assertStringContainsString("if (p.status === 'needs_reason') return !this.hasIncompleteReason();", $view);
         // Motif : hint minimum 8 caractères + compteur live.
-        $this->assertStringContainsString('Minimum 8 caracteres requis pour debloquer.', $view);
+        $this->assertStringContainsString('Minimum 8 caractères requis pour débloquer.', $view);
         $this->assertStringContainsString("preflight?.existing_empty_count > 0 && !preflight?.recalculer", $view);
     }
 
     /**
-     * L'export groupé passe par le découpage : ouvrir, tranche, assembler,
-     * telecharger. Le chemin en une seule requête a disparu — il plafonnait à
-     * six bulletins alors qu'une classe en compte soixante-dix.
+     * L'export groupé se fait en arrière-plan : un lancement fige la liste, la
+     * tâche avance (onglet ou planification), le document se sert à part. Le
+     * chemin piloté tranche par tranche par l'onglet, qu'il suffisait de
+     * fermer pour tout perdre, a disparu.
      *
      * Ce test interroge le routeur et la classe, il ne relit pas leur source.
      */
-    public function test_grouped_export_is_chunked_and_serves_the_document_separately(): void
+    public function test_grouped_export_runs_in_background_and_serves_the_document_separately(): void
     {
-        foreach (['ouvrir', 'tranche', 'assembler', 'telecharger'] as $etape) {
-            $this->assertTrue(
-                \Illuminate\Support\Facades\Route::has("esbtp.bulletins.export-pdf.$etape"),
-                "La route esbtp.bulletins.export-pdf.$etape doit exister."
-            );
-        }
+        $routes = \Illuminate\Support\Facades\Route::getRoutes();
 
-        // Produire le document et le servir sont deux gestes distincts : le
-        // second est rejouable, donc recharger l'onglet ne perd pas le travail.
-        $assembler = \Illuminate\Support\Facades\Route::getRoutes()->getByName('esbtp.bulletins.export-pdf.assembler');
-        $telecharger = \Illuminate\Support\Facades\Route::getRoutes()->getByName('esbtp.bulletins.export-pdf.telecharger');
-        $this->assertContains('POST', $assembler->methods());
-        $this->assertContains('GET', $telecharger->methods());
+        $this->assertContains('POST', $routes->getByName('esbtp.bulletins.export-pdf.lancer')->methods());
+        $this->assertContains('POST', $routes->getByName('esbtp.bulletins.taches.avancer')->methods());
+        // Servir le document est rejouable : recharger l'onglet ne perd pas le travail.
+        $this->assertContains('GET', $routes->getByName('esbtp.bulletins.taches.fichier')->methods());
 
-        foreach (['export-pdf', 'export-pdf-preview', 'export-precheck'] as $mort) {
+        foreach (['export-pdf', 'export-pdf-preview', 'export-precheck', 'export-pdf.ouvrir', 'export-pdf.tranche', 'export-pdf.assembler', 'export-pdf.telecharger', 'generer-classe'] as $mort) {
             $this->assertFalse(
                 \Illuminate\Support\Facades\Route::has("esbtp.bulletins.$mort"),
-                "La route esbtp.bulletins.$mort plafonnait l'export : elle doit avoir disparu."
+                "La route esbtp.bulletins.$mort appartient au chemin retiré."
             );
         }
 
         $controleur = new \ReflectionClass(\App\Http\Controllers\ESBTPBulletinController::class);
-        foreach ([
-            'ouvrirExportParTranches',
-            'rendreTrancheExport',
-            'assemblerExportParTranches',
-            'telechargerExportParTranches',
-        ] as $methode) {
-            $this->assertTrue($controleur->hasMethod($methode), "Le contrôleur doit exposer $methode().");
-        }
+        $this->assertTrue($controleur->hasMethod('lancerExportEnArrierePlan'));
 
-        foreach (['exportBulkPdf', 'exportBulkPdfPreview', 'prepareBulkExport', 'exportPrecheck'] as $mort) {
+        foreach (['exportBulkPdf', 'exportBulkPdfPreview', 'prepareBulkExport', 'exportPrecheck', 'ouvrirExportParTranches', 'rendreTrancheExport', 'assemblerExportParTranches', 'telechargerExportParTranches', 'genererClasseBulletins'] as $mort) {
             $this->assertFalse($controleur->hasMethod($mort), "$mort() appartient au chemin retiré.");
         }
     }
