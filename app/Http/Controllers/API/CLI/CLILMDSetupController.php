@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
-use App\Models\ESBTPFiliere;
 use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
@@ -12,14 +11,15 @@ use App\Console\Commands\LMDImportEnseignantsCommand;
 use App\Services\LMD\LMDCleanupService;
 use App\Services\LMD\LMDClassLinkService;
 use App\Services\LMD\LMDEnseignantsImporter;
-use App\Services\LMD\LmdAcademicRuleProfile;
+use App\Services\LMD\ConflitDeMaquette;
+use App\Services\LMD\HierarchieLmd;
 use App\Services\LMD\LMDImportService;
 use App\Services\LMD\ParcoursUeSyncService;
+use App\Services\LMD\ReglesDeMaquette;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
  * Bulk-setup endpoints for LMD hierarchy provisioning via klassci-cli.
@@ -50,39 +50,10 @@ class CLILMDSetupController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
-        $validated = $request->validate([
-            'domaine.name' => 'required|string|max:255',
-            'domaine.code' => 'nullable|string|max:50',
-            'domaine.nature' => ['nullable', \Illuminate\Validation\Rule::in(\App\Enums\NatureComposante::values())],
-            'domaine.description' => 'nullable|string|max:1000',
-            'mention.name' => 'required|string|max:255',
-            'mention.code' => 'nullable|string|max:50',
-            'parcours.name' => 'required|string|max:255',
-            'parcours.code' => 'nullable|string|max:50',
-            'parcours.credits_licence' => 'nullable|integer|min:30|max:360',
-            'parcours.credits_master' => 'nullable|integer|min:30|max:240',
-            'filiere.name' => 'nullable|string|max:255',
-            'filiere.code' => 'nullable|string|max:50',
-        ]);
+        $validated = $request->validate(ReglesDeMaquette::hierarchie());
 
         try {
-            $result = DB::transaction(function () use ($validated) {
-                $userId = optional($this->resolveActor())->id;
-
-                $domaine = $this->upsertDomaine($validated['domaine'], $userId);
-                $mention = $this->upsertMention($validated['mention'], $domaine->id, $userId);
-                $filiere = isset($validated['filiere'])
-                    ? $this->upsertFiliere($validated['filiere'], $userId)
-                    : null;
-                $parcours = $this->upsertParcours(
-                    $validated['parcours'],
-                    $mention->id,
-                    $filiere?->id,
-                    $userId
-                );
-
-                return compact('domaine', 'mention', 'filiere', 'parcours');
-            });
+            $result = app(HierarchieLmd::class)->installer($validated, $request->user()?->id);
 
             return $this->successResponse([
                 'domaine' => $this->formatModel($result['domaine']),
@@ -90,6 +61,10 @@ class CLILMDSetupController extends BaseApiController
                 'filiere' => $result['filiere'] ? $this->formatModel($result['filiere']) : null,
                 'parcours' => $this->formatModel($result['parcours']),
             ], 'LMD hierarchy created/updated');
+        } catch (ConflitDeMaquette $e) {
+            // Refus, pas panne : rien n'a ete ecrit, le code designe deja une
+            // fiche rattachee ailleurs.
+            return $this->errorResponse($e->getMessage(), ['conflits' => $e->conflits()], 422);
         } catch (\Throwable $e) {
             Log::error('CLI: lmd setup failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return $this->errorResponse('Setup failed: ' . $e->getMessage(), [], 500);
@@ -225,51 +200,7 @@ class CLILMDSetupController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
-        $validated = $request->validate([
-            'domaine.name' => 'required|string|max:255',
-            'domaine.code' => 'nullable|string|max:50',
-            'domaine.nature' => ['nullable', \Illuminate\Validation\Rule::in(\App\Enums\NatureComposante::values())],
-            'mention.name' => 'required|string|max:255',
-            'mention.code' => 'nullable|string|max:50',
-            'parcours.name' => 'required|string|max:255',
-            'parcours.code' => 'nullable|string|max:50',
-            'parcours.credits_licence' => 'nullable|integer|min:0|max:600',
-            'parcours.credits_master' => 'nullable|integer|min:0|max:600',
-            'filiere.name' => 'nullable|string|max:255',
-            'filiere.code' => 'nullable|string|max:50',
-            'niveaux' => 'required|array|min:1',
-            'niveaux.*.name' => 'required|string|max:50',
-            // Le type et le code etaient lus par l'import mais absents des
-            // regles, donc retires par validate() : tout niveau importe
-            // devenait une Licence. L'annee doit appartenir au cycle annonce.
-            'niveaux.*.type' => ['nullable', 'string', \Illuminate\Validation\Rule::in(array_keys(\App\Models\ESBTPNiveauEtude::ANNEES_PAR_CYCLE_LMD))],
-            'niveaux.*.code' => 'nullable|string|max:50',
-            'niveaux.*.libelle' => 'nullable|string|max:255',
-            'niveaux.*.year' => ['required', 'integer', 'between:1,8', new \App\Rules\AnneeDuCycleLmd()],
-            'ues' => 'required|array|min:1',
-            // Le tilde est reserve aux cles internes (App\Services\LMD\CodeDeMaquette).
-            'ues.*.code' => 'nullable|string|max:50|not_regex:/~/',
-            'ues.*.name' => 'required|string|max:255',
-            // L'ecole dit qu'une UE est propre a ce parcours meme si un autre
-            // parcours imprime le meme code : ses UE et ECUE recoivent une cle
-            // interne suffixee, le releve imprime le code tel quel.
-            'ues.*.propre_au_parcours' => 'sometimes|boolean',
-            'ues.*.type_ue' => 'required|string',
-            'ues.*.credit' => 'required|integer|min:0|max:60',
-            'ues.*.niveau_year' => 'required|integer|between:1,8',
-            'ues.*.semestre' => 'required|integer|between:1,10',
-            'ues.*.is_optional' => 'sometimes|boolean',
-            'ues.*.ordre' => 'sometimes|integer|min:0|max:65535',
-            'ues.*.ecues' => 'required|array|min:1',
-            'ues.*.ecues.*.code' => 'nullable|string|max:50|not_regex:/~/',
-            'ues.*.ecues.*.name' => 'required|string|max:255',
-            'ues.*.ecues.*.credit_ecue' => 'required|integer|min:0|max:60',
-            'ues.*.ecues.*.cm' => 'sometimes|integer|min:0|max:1000',
-            'ues.*.ecues.*.td' => 'sometimes|integer|min:0|max:1000',
-            'ues.*.ecues.*.tp' => 'sometimes|integer|min:0|max:1000',
-            'ues.*.ecues.*.projet' => 'sometimes|integer|min:0|max:1000',
-            'ues.*.ecues.*.tpe' => 'sometimes|integer|min:0|max:1000',
-        ]);
+        $validated = $request->validate(ReglesDeMaquette::import());
 
         try {
             $result = $importer->import($validated, $request->user()->id);
@@ -483,78 +414,6 @@ class CLILMDSetupController extends BaseApiController
             'per_file' => $perFile,
             'total' => $totalStats,
         ], $message);
-    }
-
-    private function upsertDomaine(array $data, ?int $userId): ESBTPLMDDomaine
-    {
-        $code = $data['code'] ?? Str::upper(Str::slug($data['name'], ''));
-        $valeurs = [
-            'name' => $data['name'],
-            'description' => $data['description'] ?? null,
-            'is_active' => true,
-            'created_by' => $userId,
-            'updated_by' => $userId,
-        ];
-        // La nature (UFR, ecole...) n'est ecrite que si l'appel la donne : un
-        // appel qui l'omet ne doit pas effacer celle posee depuis l'ecran.
-        if (array_key_exists('nature', $data)) {
-            $valeurs['nature'] = $data['nature'];
-        }
-
-        return ESBTPLMDDomaine::updateOrCreate(['code' => $code], $valeurs);
-    }
-
-    private function upsertMention(array $data, int $domaineId, ?int $userId): ESBTPLMDMention
-    {
-        $code = $data['code'] ?? Str::upper(Str::slug($data['name'], ''));
-        return ESBTPLMDMention::updateOrCreate(
-            ['code' => $code, 'domaine_id' => $domaineId],
-            [
-                'name' => $data['name'],
-                'is_active' => true,
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]
-        );
-    }
-
-    private function upsertFiliere(array $data, ?int $userId): ESBTPFiliere
-    {
-        $code = $data['code'] ?? Str::upper(Str::slug($data['name'], ''));
-        return ESBTPFiliere::updateOrCreate(
-            ['code' => $code],
-            [
-                'name' => $data['name'],
-                'is_active' => true,
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]
-        );
-    }
-
-    private function upsertParcours(array $data, int $mentionId, ?int $filiereId, ?int $userId): ESBTPLMDParcours
-    {
-        $code = $data['code'] ?? Str::upper(Str::slug($data['name'], ''));
-        $rules = app(LmdAcademicRuleProfile::class);
-
-        return ESBTPLMDParcours::updateOrCreate(
-            ['code' => $code, 'mention_id' => $mentionId],
-            [
-                'name' => $data['name'],
-                'filiere_id' => $filiereId,
-                // Totaux par defaut lus dans les reglages de l'ecole, pas ecrits en dur.
-                'credits_licence' => $data['credits_licence'] ?? $rules->diplomaCreditTotal('licence'),
-                'credits_master' => $data['credits_master'] ?? $rules->diplomaCreditTotal('master'),
-                'is_active' => true,
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]
-        );
-    }
-
-    private function resolveActor(): ?\App\Models\User
-    {
-        return request()->user();
     }
 
     private function formatModel($model): array

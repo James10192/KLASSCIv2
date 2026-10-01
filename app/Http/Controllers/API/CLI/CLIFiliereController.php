@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Domain\Academique\ReferentielAcademique;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPFiliere;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -61,64 +61,23 @@ class CLIFiliereController extends BaseApiController
             'dry_run' => 'nullable|boolean',
         ]);
 
-        $codes = array_map(
-            static fn (array $f): string => strtoupper(trim($f['code'])),
-            $validated['filieres']
-        );
+        // Le plan et l'écriture sont ceux de Nanan (ReferentielAcademique) :
+        // un seul jeu de refus, quel que soit le chemin.
+        $referentiel = app(ReferentielAcademique::class);
+        $plan = $referentiel->planFilieres($validated['filieres']);
 
-        if (count($codes) !== count(array_unique($codes))) {
-            return $this->errorResponse(
-                'Codes en double dans le lot : '.implode(', ', array_diff_assoc($codes, array_unique($codes))),
-                [],
-                422
-            );
+        if ($plan['refus'] !== []) {
+            return $this->errorResponse(implode(' ', $plan['refus']), ['refus' => $plan['refus']], 422);
         }
 
-        $existants = ESBTPFiliere::whereIn('code', $codes)->pluck('name', 'code');
-        $dryRun = (bool) ($validated['dry_run'] ?? false);
-
-        $plan = [];
-        foreach ($validated['filieres'] as $f) {
-            $code = strtoupper(trim($f['code']));
-            $plan[] = [
-                'code' => $code,
-                'name' => trim($f['name']),
-                'action' => $existants->has($code) ? 'mise a jour' : 'creation',
-                'nom_actuel' => $existants[$code] ?? null,
-            ];
-        }
-
-        if ($dryRun) {
+        if ((bool) ($validated['dry_run'] ?? false)) {
             return $this->successResponse([
                 'dry_run' => true,
-                'plan' => $plan,
+                'plan' => $plan['lignes'],
             ], 'Aucune ecriture : previsualisation seulement.');
         }
 
-        $crees = 0;
-        $misAJour = 0;
-
-        DB::transaction(function () use ($validated, &$crees, &$misAJour) {
-            foreach ($validated['filieres'] as $f) {
-                $code = strtoupper(trim($f['code']));
-                $filiere = ESBTPFiliere::where('code', $code)->first();
-
-                $donnees = [
-                    'name' => trim($f['name']),
-                    'code' => $code,
-                    'description' => $f['description'] ?? null,
-                    'is_active' => $f['is_active'] ?? true,
-                ];
-
-                if ($filiere) {
-                    $filiere->update($donnees);
-                    $misAJour++;
-                } else {
-                    ESBTPFiliere::create($donnees);
-                    $crees++;
-                }
-            }
-        });
+        ['crees' => $crees, 'mis_a_jour' => $misAJour] = $referentiel->enregistrerFilieres($plan['lignes']);
 
         Log::info('CLI: filieres importees', [
             'crees' => $crees,

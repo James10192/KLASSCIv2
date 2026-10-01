@@ -22,6 +22,14 @@ class RestaurerPaiement
 {
     use VerrouilleLesPeriodesComptables;
 
+    /** Le verrou comptable qui interdit la restauration, lu sans rien écrire. */
+    public function refus(ESBTPPaiement $paiement): ?string
+    {
+        $verrou = $this->assertPeriodNotLocked($paiement) ?? $this->assertReconciliationNotLocked($paiement);
+
+        return $verrou['message'] ?? null;
+    }
+
     /**
      * @return array{inscription: bool, etudiant: bool}
      *
@@ -29,9 +37,9 @@ class RestaurerPaiement
      */
     public function execute(ESBTPPaiement $paiement, ?int $auteurId): array
     {
-        $verrou = $this->assertPeriodNotLocked($paiement) ?? $this->assertReconciliationNotLocked($paiement);
-        if ($verrou) {
-            throw new \DomainException($verrou['message']);
+        $refus = $this->refus($paiement);
+        if ($refus) {
+            throw new \DomainException($refus);
         }
 
         $inscription = ESBTPInscription::withTrashed()->find($paiement->inscription_id);

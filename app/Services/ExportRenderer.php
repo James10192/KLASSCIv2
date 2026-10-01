@@ -107,6 +107,6 @@ class ExportRenderer
 
     private function cacheEnabled(): bool
     {
-        return (string) \App\Helpers\SettingsHelper::get('analytics.exports.cache_enabled', '1') === '1';
+        return \App\Helpers\SettingsHelper::drapeau('analytics.exports.cache_enabled', true);
     }
 }

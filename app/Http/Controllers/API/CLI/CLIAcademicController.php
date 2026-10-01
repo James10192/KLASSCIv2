@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Domain\Academique\AnneesUniversitaires;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPAnneeUniversitaire;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CLIAcademicController extends BaseApiController
@@ -60,11 +60,8 @@ class CLIAcademicController extends BaseApiController
             return $this->errorResponse("Academic year #{$id} not found", [], 404);
         }
 
-        // Unset all current + set the new one atomically
-        DB::transaction(function () use ($annee) {
-            ESBTPAnneeUniversitaire::where('is_current', true)->update(['is_current' => false]);
-            $annee->update(['is_current' => true]);
-        });
+        // Le chemin de l'écran (setAsCurrent, cache vidé), partagé avec Nanan.
+        app(AnneesUniversitaires::class)->definirCourante($annee);
 
         return $this->successResponse([
             'id' => $annee->id,
@@ -83,7 +80,7 @@ class CLIAcademicController extends BaseApiController
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:50',
+            'name' => 'required|string|max:50|unique:esbtp_annee_universitaires,name',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
             'set_current' => 'nullable|boolean',
@@ -92,20 +89,7 @@ class CLIAcademicController extends BaseApiController
         try {
             $setCurrent = $validated['set_current'] ?? true;
 
-            $annee = DB::transaction(function () use ($validated, $setCurrent) {
-                // Si set_current, retirer le flag des autres
-                if ($setCurrent) {
-                    ESBTPAnneeUniversitaire::where('is_current', true)->update(['is_current' => false]);
-                }
-
-                return ESBTPAnneeUniversitaire::create([
-                    'name' => $validated['name'],
-                    'start_date' => $validated['start_date'],
-                    'end_date' => $validated['end_date'],
-                    'is_current' => $setCurrent,
-                    'is_active' => true,
-                ]);
-            });
+            $annee = app(AnneesUniversitaires::class)->creer($validated, (bool) $setCurrent);
 
             return $this->successResponse([
                 'id' => $annee->id,
