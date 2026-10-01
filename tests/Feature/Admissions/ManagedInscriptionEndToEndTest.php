@@ -426,7 +426,10 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $mailpulse->shouldReceive('createOrUpdateContact')->andReturn(new \App\Services\MailPulse\MailPulseResult(true, 'ok'));
         $mailpulse->shouldReceive('sendEmailMessage')->atLeast()->once()
             ->withArgs(fn (array $message) => ($message['recipient']['value'] ?? null) === $candidature->email
-                && str_contains($message['content']['text'] ?? '', '/activation/'))
+                && str_contains($message['content']['text'] ?? '', '/activation/')
+                // La version mise en page : gabarit commun, bouton vers le même lien.
+                && str_contains($message['metadata']['email_html'] ?? '', 'Activer mon espace')
+                && str_contains($message['metadata']['email_html'] ?? '', '/activation/'))
             ->andReturn(new \App\Services\MailPulse\MailPulseResult(true, 'queued', 202, null, 'msg-1', null, null, null, 'accepted'));
         $this->app->instance(MailPulseClient::class, $mailpulse);
 

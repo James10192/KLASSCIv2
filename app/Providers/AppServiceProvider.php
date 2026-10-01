@@ -204,7 +204,9 @@ class AppServiceProvider extends ServiceProvider
         // `@php` du gabarit, donc APRÈS l'évaluation des `@section` de ses
         // enfants : l'avis de paiement validé échouait sur
         // `Undefined variable $emailPrimaryColor`, dans un `try` muet.
-        View::composer('esbtp.emails.parents.*', CouleursDesCourrielsParents::class);
+        View::composer('esbtp.emails.*', CouleursDesCourrielsParents::class);
+        // Logo, nom et coordonnées de l'école pour le gabarit commun.
+        View::composer('esbtp.emails.*', \App\View\Composers\IdentiteDesCourriels::class);
 
         // Nom des rangs de la structure LMD, regle par etablissement (Domaine /
         // Mention / Parcours, ou Composante / Departement / Specialite).
