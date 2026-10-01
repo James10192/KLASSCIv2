@@ -28,6 +28,7 @@ class BoutonsDesAvisAuxParentsTest extends TestCase
         'paiement-rejete' => ['https://ecole.test/paiements', 'Soumettre un nouveau paiement'],
         'paiement-relance' => ['https://ecole.test/paiements', 'Effectuer un paiement'],
         'paiement-valide' => ['https://ecole.test/recus/42', 'Télécharger le reçu'],
+        'reinscription-confirmation' => ['https://ecole.test/login', 'Accéder à la plateforme'],
     ];
 
     protected function setUp(): void

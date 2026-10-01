@@ -2,8 +2,7 @@
 
 /**
  * Données d'exemple suffisantes pour rendre chacun des avis aux parents
- * (`esbtp.emails.parents.*`) sans variable indéfinie. Partagées par le test des
- * boutons et par le rendu des captures.
+ * (`esbtp.emails.parents.*`) sans variable indéfinie, pour le test des boutons.
  */
 return [
     'parentName' => 'M. Koné', 'studentName' => 'Awa Koné', 'classe' => '2A BTS Bâtiment',
@@ -24,6 +23,7 @@ return [
     'tauxPresence' => 78, 'requiresSignature' => false, 'date' => '30/09/2026', 'heureDebut' => '08:00',
     'heureFin' => '10:00', 'typeActivite' => 'Cours', 'commentaire' => null, 'coursDisponibles' => true,
     'matieresEnDifficulte' => [['nom' => 'Mathématiques', 'moyenne' => 7.5, 'coefficient' => 3]],
+    'dateReinscription' => '30/09/2026',
     'platformUrl' => 'https://ecole.test/login', 'suiviUrl' => 'https://ecole.test/paiements/42',
     'paiementUrl' => 'https://ecole.test/paiements', 'noteUrl' => 'https://ecole.test/notes',
     'absencesUrl' => 'https://ecole.test/absences', 'justificationUrl' => 'https://ecole.test/absences/justifier',

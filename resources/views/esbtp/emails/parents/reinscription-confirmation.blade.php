@@ -66,12 +66,7 @@
         Vous pouvez continuer à suivre la scolarité de votre enfant sur la plateforme en ligne avec vos identifiants habituels.
     </p>
 
-    <div style="text-align: center; margin: 30px 0;">
-        <a href="{{ $platformUrl }}"
-           style="display: inline-block; padding: 15px 40px; background: #007bff; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: 600; font-size: 16px;">
-            Accéder à la plateforme
-        </a>
-    </div>
+    @include('esbtp.emails.partials.bouton', ['url' => $platformUrl, 'libelle' => 'Accéder à la plateforme'])
 
     @if(isset($reliquatMontant) && $reliquatMontant > 0)
     <div style="background: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0;">
