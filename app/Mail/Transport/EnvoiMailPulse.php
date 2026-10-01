@@ -3,6 +3,7 @@
 namespace App\Mail\Transport;
 
 use App\Services\MailPulse\MailPulseClient;
+use App\Services\MailPulse\RefusMailPulse;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Mailer\Exception\TransportException;
 
@@ -12,15 +13,18 @@ use Symfony\Component\Mailer\Exception\TransportException;
  *
  * Trois issues, pas deux :
  * - `null` : MailPulse l'a accepté ;
- * - un entier : refus de DÉBIT (plafond local ou 429 de débit de MailPulse),
- *   rien n'est parti, réessayer dans autant de secondes ;
+ * - un entier : refus PASSAGER (plafond local, 429 de débit, MailPulse
+ *   indisponible ou injoignable, délai dépassé — `RefusMailPulse::PASSAGERS`),
+ *   réessayer dans autant de secondes. Rejouer est sans risque : la clé
+ *   d'idempotence fait renvoyer par MailPulse le message déjà pris au lieu
+ *   d'en créer un second ;
  * - `TransportException` : tout autre refus, journalisé en erreur. Le quota
  *   mensuel en fait partie : il ne passera pas avant le mois suivant.
  */
 final class EnvoiMailPulse
 {
-    /** MailPulse ne renvoie pas de délai exploitable dans son 429 : une fenêtre entière. */
-    public const ATTENTE_SUR_429 = 60;
+    /** Attente quand MailPulse ne dit pas combien (pas d'en-tête Retry-After) : une fenêtre de débit. */
+    public const ATTENTE_PAR_DEFAUT = 60;
 
     public function __construct(
         private readonly MailPulseClient $client,
@@ -47,11 +51,11 @@ final class EnvoiMailPulse
                 'domaine_destinataire' => substr(strrchr((string) ($charge['recipient']['value'] ?? ''), '@') ?: '', 1),
             ];
 
-            if ($resultat->status === 'rate_limited') {
-                // Pas une panne : le courriel repart plus tard, à l'identique.
+            if (in_array($resultat->status, RefusMailPulse::PASSAGERS, true)) {
+                // Pas une panne définitive : le courriel repart plus tard, à l'identique.
                 Log::warning('Courriel refusé par MailPulse', $journal);
 
-                return self::ATTENTE_SUR_429;
+                return $resultat->retryAfter ?? self::ATTENTE_PAR_DEFAUT;
             }
 
             Log::error('Courriel refusé par MailPulse', $journal);
@@ -61,7 +65,7 @@ final class EnvoiMailPulse
                 $resultat->status,
                 $resultat->httpStatus ? ', HTTP '.$resultat->httpStatus : '',
                 $resultat->message ?? 'aucun détail'
-            ));
+            ), (int) ($resultat->httpStatus ?? 0));
         }
 
         if (! $resultat->isDispatchAccepted()) {

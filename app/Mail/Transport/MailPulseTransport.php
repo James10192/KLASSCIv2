@@ -26,8 +26,8 @@ use Symfony\Component\Mime\MessageConverter;
  * - Reply-To : non transmis, journalisé ;
  * - Cc / Cci : chacun reçoit son propre message ;
  * - plafond de 60 par minute et par organisation : voir `CadenceMailPulse`.
- *   Un courriel retenu pour débit (plafond local ou 429) n'est PAS une erreur
- *   pour l'appelant : il est confié à `RemettreCourrielMailPulse`, qui le remet
+ *   Un courriel retenu pour un refus PASSAGER (plafond local, 429 de débit,
+ *   MailPulse indisponible ou injoignable) n'est PAS une erreur pour l'appelant : il est confié à `RemettreCourrielMailPulse`, qui le remet
  *   plus tard. Sans file (`QUEUE_CONNECTION=sync`), impossible de différer : il
  *   est refusé comme les autres.
  *
@@ -106,7 +106,7 @@ final class MailPulseTransport extends AbstractTransport
     }
 
     /**
-     * Refus de débit : un job par destinataire, qui remettra ce message-là.
+     * Refus passager : un job par destinataire, qui remettra ce message-là.
      * Une file `sync` exécuterait le job sur-le-champ, donc retomberait sur le
      * même refus : on refuse alors franchement, comme avant.
      */
@@ -118,10 +118,10 @@ final class MailPulseTransport extends AbstractTransport
         ];
 
         if (config('queue.default') === 'sync') {
-            Log::error('Courriel par MailPulse : débit atteint et aucune file pour différer, envoi refusé', $journal);
+            Log::error('Courriel par MailPulse : refus passager et aucune file pour différer, envoi refusé', $journal);
 
             throw new TransportException(
-                "Débit d'envoi MailPulse atteint et aucune file d'attente (QUEUE_CONNECTION=sync) : le courriel n'est pas parti, réessayez dans {$attente} s."
+                "MailPulse ne peut pas prendre le courriel maintenant et aucune file d'attente ne permet de le différer (QUEUE_CONNECTION=sync) : il n'est pas parti, réessayez dans {$attente} s."
             );
         }
 

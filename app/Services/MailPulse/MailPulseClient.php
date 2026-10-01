@@ -333,7 +333,7 @@ class MailPulseClient
             // quota du mois non. Seul le premier vaut d'être réessayé.
             429 => str_contains(strtolower($this->providerMessage(is_array($body) ? $body : [])), 'quota')
                 ? $this->failure('quota_exceeded', 429, $requestHeader, 'Quota mensuel MailPulse atteint.', "Vérifiez l'offre de l'organisation MailPulse.")
-                : $this->failure('rate_limited', 429, $requestHeader, 'MailPulse limite la requête.', 'Réessayez plus tard.'),
+                : $this->failure('rate_limited', 429, $requestHeader, 'MailPulse limite la requête.', 'Réessayez plus tard.', $this->retryAfter($response)),
             500, 501, 502, 503, 504 => $this->failure('provider_unavailable', $response->status(), $requestHeader, 'MailPulse est temporairement indisponible.', 'Réessayez plus tard.'),
             default => $this->providerFailure($response, is_array($body) ? $body : [], $requestHeader),
         };
@@ -466,9 +466,17 @@ class MailPulseClient
         return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: $default;
     }
 
-    private function failure(string $status, ?int $httpStatus, string $requestId, string $message, string $action): MailPulseResult
+    private function failure(string $status, ?int $httpStatus, string $requestId, string $message, string $action, ?int $retryAfter = null): MailPulseResult
     {
-        return new MailPulseResult(false, $status, $httpStatus, $requestId, null, $status, $message, $action);
+        return new MailPulseResult(false, $status, $httpStatus, $requestId, null, $status, $message, $action, null, false, $retryAfter);
+    }
+
+    /** L'en-tête Retry-After en secondes (MailPulse le pose sur ses 429), borné ; null s'il manque ou n'est pas un nombre. */
+    private function retryAfter(Response $response): ?int
+    {
+        $valeur = trim((string) $response->header('Retry-After'));
+
+        return ctype_digit($valeur) ? max(1, min(3600, (int) $valeur)) : null;
     }
 
     private function extractId(array $body): ?string

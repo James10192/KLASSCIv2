@@ -99,6 +99,31 @@ class RemettreCourrielMailPulseTest extends TestCase
     }
 
     /** @test */
+    public function mailpulse_indisponible_le_relache_au_lieu_de_le_faire_echouer(): void
+    {
+        Http::fake([self::ENDPOINT => Http::response(['error' => 'down'], 503)]);
+        $this->mettreEnFile();
+
+        $this->executerUnJob();
+
+        $ligne = DB::table('jobs')->sole();
+        $this->assertSame(1, (int) $ligne->attempts);
+        $this->assertGreaterThanOrEqual(time() + RemettreCourrielMailPulse::DELAI_MINIMAL - 1, (int) $ligne->available_at);
+        $this->assertSame(0, $this->echecs, 'Une panne passagère se rejoue : la clé d\'idempotence empêche le doublon.');
+    }
+
+    /** @test */
+    public function la_charge_en_file_est_chiffree(): void
+    {
+        $this->mettreEnFile();
+
+        $payload = DB::table('jobs')->value('payload');
+        $this->assertStringNotContainsString('Votre enfant était absent', $payload);
+        $this->assertStringNotContainsString('parent@example.com', $payload);
+        $this->assertStringNotContainsString(self::CLE, $payload);
+    }
+
+    /** @test */
     public function le_plafond_local_le_relache_sans_appeler_mailpulse(): void
     {
         Http::fake();

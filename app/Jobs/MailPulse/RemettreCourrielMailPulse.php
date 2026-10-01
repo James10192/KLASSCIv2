@@ -5,6 +5,7 @@ namespace App\Jobs\MailPulse;
 use App\Mail\Transport\EnvoiMailPulse;
 use DateTimeInterface;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -13,7 +14,7 @@ use Throwable;
 
 /**
  * Remet plus tard UN courriel que MailPulse ne pouvait pas prendre tout de suite
- * (plafond de débit local, ou 429 de débit). `MailPulseTransport` le crée au
+ * (plafond de débit local, 429 de débit, MailPulse indisponible ou injoignable). `MailPulseTransport` le crée au
  * lieu de lever : l'appelant — une requête web, une boucle de relances, un appel
  * de fin de cours — n'a rien à rattraper, et le courriel n'est pas perdu.
  *
@@ -26,10 +27,16 @@ use Throwable;
  * pour que les courriels retenus ne retombent pas tous dans la même minute — soit
  * au plus 120 tentatives, sous le plafond de `jobs.attempts` (255).
  *
- * Tout autre refus le fait échouer tout de suite, journalisé : le rejouer pendant
- * deux heures ne servirait à rien.
+ * Un refus définitif (adresse refusée, clé invalide, quota du mois) le fait
+ * échouer tout de suite, journalisé : il ne passerait pas davantage dans deux
+ * heures. Rejouer un refus passager, lui, est sans risque : la clé d'idempotence
+ * fait renvoyer par MailPulse le message déjà pris au lieu d'en créer un second.
+ *
+ * Chiffré en file (`ShouldBeEncrypted`) : la charge porte le corps du courriel,
+ * donc parfois un mot de passe initial ou un lien de réinitialisation, et
+ * `jobs` comme `failed_jobs` partent dans les sauvegardes.
  */
-final class RemettreCourrielMailPulse implements ShouldQueue
+final class RemettreCourrielMailPulse implements ShouldQueue, ShouldBeEncrypted
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
@@ -70,9 +77,12 @@ final class RemettreCourrielMailPulse implements ShouldQueue
 
     public function failed(Throwable $exception): void
     {
+        // Pas le message brut : celui de MailPulse peut citer l'adresse. Le statut
+        // et le code du refus sont sur la ligne « Courriel refusé par MailPulse ».
         Log::error('Courriel différé abandonné', $this->contexte + [
             'domaine_destinataire' => substr(strrchr((string) ($this->charge['recipient']['value'] ?? ''), '@') ?: '', 1),
-            'erreur' => $exception->getMessage(),
+            'cause' => class_basename($exception),
+            'http' => $exception->getCode() ?: null,
         ]);
     }
 }

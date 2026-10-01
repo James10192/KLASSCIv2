@@ -192,6 +192,30 @@ class MailPulseTransportTest extends TestCase
     }
 
     /** @test */
+    public function le_delai_retry_after_de_mailpulse_est_respecte(): void
+    {
+        Http::fake([self::ENDPOINT => Http::response(['error' => 'Message rate limit exceeded'], 429, ['Retry-After' => '17'])]);
+        Queue::fake();
+
+        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
+
+        Queue::assertPushed(RemettreCourrielMailPulse::class, fn (RemettreCourrielMailPulse $job) => abs($job->delay->diffInSeconds(now()) - 17) <= 1);
+    }
+
+    /** @test */
+    public function mailpulse_indisponible_differe_le_courriel_au_lieu_de_le_perdre(): void
+    {
+        Http::fake([self::ENDPOINT => Http::response(['error' => 'down'], 503)]);
+        Queue::fake();
+        Log::spy();
+
+        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
+
+        Queue::assertPushed(RemettreCourrielMailPulse::class, 1);
+        Log::shouldNotHaveReceived('error');
+    }
+
+    /** @test */
     public function sans_file_le_refus_de_debit_reste_un_echec_d_envoi(): void
     {
         $this->accepte();
@@ -305,20 +329,20 @@ class MailPulseTransportTest extends TestCase
     }
 
     /** @test */
-    public function un_refus_de_mailpulse_leve_et_se_journalise(): void
+    public function un_refus_definitif_de_mailpulse_leve_et_se_journalise(): void
     {
-        Http::fake([self::ENDPOINT => Http::response(['error' => 'down'], 503)]);
+        Http::fake([self::ENDPOINT => Http::response(['error' => 'Invalid API key'], 401)]);
         Log::spy();
 
         $this->expectException(TransportException::class);
-        $this->expectExceptionMessage('provider_unavailable, HTTP 503');
+        $this->expectExceptionMessage('auth_failed, HTTP 401');
 
         try {
             Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
         } finally {
             Log::shouldHaveReceived('error')->withArgs(fn ($msg, $ctx) => $msg === 'Courriel refusé par MailPulse'
-                && $ctx['statut'] === 'provider_unavailable'
-                && $ctx['http'] === 503
+                && $ctx['statut'] === 'auth_failed'
+                && $ctx['http'] === 401
                 && $ctx['domaine_destinataire'] === 'example.com')->once();
         }
     }

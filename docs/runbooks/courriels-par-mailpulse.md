@@ -66,23 +66,34 @@ Ce que fait le mailer pour tenir le débit (`App\Mail\Transport\CadenceMailPulse
   au worker son délai de 60 s ou le `retry_after` de 90 s, et le job repartirait
   en double. Le message déjà construit et sa clé d'idempotence partent dans un
   job dédié, `App\Jobs\MailPulse\RemettreCourrielMailPulse`, **un par
-  destinataire**, avec le délai du refus. L'appelant n'a rien à rattraper : pour
+  destinataire**, avec le délai du refus (l'en-tête `Retry-After` de MailPulse
+  s'il est présent, 60 s sinon). La charge est chiffrée en file
+  (`ShouldBeEncrypted`) : elle porte le corps du courriel, donc parfois un mot de
+  passe initial ou un lien de réinitialisation, et `jobs` comme `failed_jobs`
+  partent dans les sauvegardes. L'appelant n'a rien à rattraper : pour
   lui le courriel est parti (journal : `Courriel par MailPulse : envoi différé`) ;
-- ce job réessaie tant que le débit refuse, sans brûler d'essai : sa patience est
+- il en va de même des **pannes passagères** de MailPulse
+  (`RefusMailPulse::PASSAGERS` : service indisponible en 5xx, délai dépassé,
+  connexion impossible) : le courriel est différé, pas perdu. Le rejouer est sans
+  risque : la clé d'idempotence fait renvoyer par MailPulse le message déjà pris
+  au lieu d'en créer un second ;
+- ce job réessaie tant que le refus est passager, sans brûler d'essai : sa patience est
   bornée dans le temps (`retryUntil`, **deux heures** à compter de la mise en
   file), pas en tentatives, et `--tries` est alors ignoré par le worker. Chaque
   refus le relâche avec au moins 60 s, plus un peu de hasard pour que les
   courriels retenus ne retombent pas tous dans la même minute. Parti, il le
   journalise (`Courriel différé parti par MailPulse`) ; passé deux heures, il
   échoue (`Courriel différé abandonné`, et `failed_jobs`) ;
-- tout autre refus de MailPulse dans ce job (adresse refusée, clé invalide,
-  quota) le fait échouer **tout de suite**, journalisé : le rejouer pendant deux
-  heures ne servirait à rien ;
+- un refus **définitif** dans ce job (adresse refusée, clé invalide, quota) le
+  fait échouer **tout de suite**, journalisé : il ne passerait pas davantage dans
+  deux heures. Le journal d'abandon ne reprend pas le message brut de MailPulse,
+  qui peut citer l'adresse : le statut et le code sont sur la ligne
+  `Courriel refusé par MailPulse` qui le précède ;
 - un `429` de **quota** (`quota_exceeded`) n'est jamais différé : il ne passera
   pas avant le mois suivant ou un changement d'offre. C'est un échec d'envoi
   ordinaire, et il arrête la file des convocations ;
 - **sans file** (`QUEUE_CONNECTION=sync`), différer est impossible : le refus de
-  débit redevient un échec d'envoi, journalisé, que l'appelant traite comme
+  débit ou la panne passagère redevient un échec d'envoi, journalisé, que l'appelant traite comme
   toute panne. D'où le prérequis plus bas.
 
 « Au mieux » veut dire : pas de garantie. La fenêtre est fixe ici et glissante
@@ -112,7 +123,7 @@ file et un worker actifs) :
 
 **Ce qu'un courriel différé ne dit pas à l'appelant.** Pour lui, le courriel est
 parti au moment de la mise en file. Si le job échoue ensuite (deux heures de
-débit saturé, ou un refus non lié au débit), l'appelant ne le saura pas : une
+débit saturé ou MailPulse en panne, ou un refus définitif), l'appelant ne le saura pas : une
 relance reste marquée `envoyee`, un avis reste « envoyé ». La seule trace est au
 journal (`Courriel différé abandonné`) et dans `failed_jobs`. C'est le prix de ne
 plus perdre les rafales ; un écran de suivi des courriels différés n'existe pas.
