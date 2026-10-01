@@ -39,7 +39,8 @@ class ActionsEvaluationsTest extends TestCase
     {
         $schema = app(CreerEvaluation::class)->parameters();
 
-        $this->assertSame(ESBTPEvaluation::TYPES_SAISISSABLES, $schema['properties']['type']['enum']);
+        $this->assertSame(array_keys(ESBTPEvaluation::getTypes()), $schema['properties']['type']['enum']);
+        $this->assertSame(array_keys(ESBTPEvaluation::getPeriodes()), $schema['properties']['periode']['enum']);
         $this->assertNotContains('bareme', $schema['required'], 'Le barème est demandé par la proposition, pas imposé au schéma.');
     }
 
@@ -54,14 +55,32 @@ class ActionsEvaluationsTest extends TestCase
         return [
             ['S1', 'semestre1'],
             ['s2', 'semestre2'],
-            ['semestre3', 'semestre3'],
-            ['Semestre 4', 'semestre4'],
-            ['5', 'semestre5'],
+            ['Semestre 2', 'semestre2'],
+            ['1', 'semestre1'],
+            // L'écran ne propose que les semestres 1 et 2 : l'assistant non plus.
+            ['semestre3', null],
+            ['5', null],
             ['S11', null],
             ['S0', null],
             ['annuel', null],
             ['', null],
         ];
+    }
+
+    public function test_l_ecran_et_la_validation_lisent_la_meme_liste_de_types(): void
+    {
+        $this->assertSame(array_keys(ESBTPEvaluation::getTypes()), ESBTPEvaluation::typesSaisissables());
+        // Types acceptés avant l'unification : des évaluations en portent, elles restent modifiables.
+        foreach (['devoir', 'examen', 'projet', 'tp', 'controle', 'quiz', 'oral', 'cc'] as $type) {
+            $this->assertArrayHasKey($type, ESBTPEvaluation::getTypes());
+        }
+    }
+
+    public function test_une_periode_hors_ecran_reste_proposable_pour_l_evaluation_qui_la_porte(): void
+    {
+        $evaluation = new ESBTPEvaluation(['periode' => 'semestre3']);
+        $this->assertSame('Semestre 3', $evaluation->periodesProposables()['semestre3']);
+        $this->assertSame(ESBTPEvaluation::getPeriodes(), (new ESBTPEvaluation(['periode' => 'semestre1']))->periodesProposables());
     }
 
     public function test_les_horaires_impossibles_sont_refuses(): void

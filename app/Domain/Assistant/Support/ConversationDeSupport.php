@@ -36,7 +36,7 @@ class ConversationDeSupport
      */
     public function tour($user, Intention $intention, FilDeSupport $fil, array $page, bool $forcerRecap = false): TourDeSupport
     {
-        $questionsMax = max(1, (int) config('assistant.support.questions_max', 6));
+        $questionsMax = max(1, (int) config('assistant.support.questions_max', 7));
 
         // Rien n'est encore dit : la question d'ouverture n'a pas besoin du modèle.
         if ($fil->estVide()) {
@@ -47,11 +47,51 @@ class ConversationDeSupport
         $forcer = $forcerRecap || $fil->toursDeNanan() >= $questionsMax;
 
         $tour = $this->parLeModele($user, $intention, $fil, $page, $questionsMax, $forcer);
-        if ($tour !== null && (! $forcer || $tour->action === TourDeSupport::RECAPITULATIF)) {
-            return $tour;
+        if ($tour === null || ($forcer && $tour->action !== TourDeSupport::RECAPITULATIF)) {
+            $tour = $this->guide->tour($intention, $fil, $page, $questionsMax, $forcer);
         }
 
-        return $this->guide->tour($intention, $fil, $page, $questionsMax, $forcer);
+        return $this->finaliser($tour, $fil, $page);
+    }
+
+    /**
+     * Ce qui vaut quelle que soit la source du tour : le titre de l'onglet
+     * n'en sort jamais (il part au support dans l'échange, et porte souvent un
+     * nom d'élève), et une personne bloquée l'est aussi dans la catégorie.
+     */
+    private function finaliser(TourDeSupport $tour, FilDeSupport $fil, array $page): TourDeSupport
+    {
+        $titres = array_filter([trim((string) ($page['titre'] ?? '')), (string) GuideDeSupport::titrePage($page)]);
+        $nettoyer = fn (string $t) => self::sansTitre($t, $titres);
+
+        $recap = $tour->recap;
+        if ($recap !== null) {
+            $recap['titre'] = $nettoyer((string) $recap['titre']);
+            $recap['description'] = $nettoyer((string) $recap['description']);
+            if (GuideDeSupport::estBloque($fil)) {
+                $recap['categorie'] = 'BLOQUE';
+            }
+        }
+
+        return new TourDeSupport($tour->action, $nettoyer($tour->texte), array_map($nettoyer, $tour->choix), $recap, $tour->source);
+    }
+
+    /**
+     * Remplace le titre de la page par « la page ouverte ». Les titres de
+     * moins de quatre caractères sont laissés : trop courts pour être sûrs.
+     *
+     * @param  list<string>  $titres
+     */
+    public static function sansTitre(string $texte, array $titres): string
+    {
+        usort($titres, fn ($a, $b) => mb_strlen($b) <=> mb_strlen($a));
+        foreach ($titres as $titre) {
+            if (mb_strlen($titre) >= 4) {
+                $texte = str_ireplace($titre, 'la page ouverte', $texte);
+            }
+        }
+
+        return $texte;
     }
 
     private function parLeModele($user, Intention $intention, FilDeSupport $fil, array $page, int $questionsMax, bool $forcer): ?TourDeSupport

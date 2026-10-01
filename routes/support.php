@@ -29,7 +29,8 @@ Route::middleware(['auth'])->prefix('support')->name('support.')->group(function
     Route::post('courriel/lien', [VerificationCourrielController::class, 'envoyer'])
         ->middleware('throttle:3,10')->name('courriel.lien');
     Route::get('courriel/confirmer/{id}/{hash}', [VerificationCourrielController::class, 'confirmer'])
-        ->whereNumber('id')->middleware(['signed', 'throttle:10,1'])->name('courriel.confirmer');
+        // Signature verifiee par le controleur : un lien expire affiche une page claire.
+        ->whereNumber('id')->middleware(['throttle:10,1'])->name('courriel.confirmer');
 });
 
 /*

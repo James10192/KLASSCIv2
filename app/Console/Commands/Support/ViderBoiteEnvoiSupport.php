@@ -39,9 +39,38 @@ class ViderBoiteEnvoiSupport extends Command
             return self::SUCCESS;
         }
 
+        $limite = (int) $this->option('limite');
         $envoyes = 0;
-        foreach (SupportOutbox::query()->aEnvoyer()->orderBy('id')->limit((int) $this->option('limite'))->get() as $ligne) {
+
+        // Les signalements d'abord, puis peu d'avis par passage : les deux
+        // partagent la limite d'ecriture du Master (30 par minute), et un
+        // signalement compte plus qu'un 👍.
+        $signalements = SupportOutbox::query()->aEnvoyer()->signalements()->orderBy('id')->limit($limite)->get();
+        $continuer = $this->envoyer($master, $signalements, $envoyes);
+
+        if ($continuer) {
+            $avis = SupportOutbox::query()->aEnvoyer()->where('kind', SupportOutbox::AVIS_ASSISTANT)
+                ->orderBy('id')->limit(min($limite, (int) config('support.boite_envoi.avis_par_passage', 10)))->get();
+            $this->envoyer($master, $avis, $envoyes);
+        }
+
+        if ($envoyes > 0) {
+            $this->info("{$envoyes} envoi(s) transmis au Master.");
+        }
+
+        return self::SUCCESS;
+    }
+
+    /** Rend faux quand la passe doit s'arreter (Master injoignable, instance refusee). */
+    private function envoyer(ClientMasterSupport $master, $lignes, int &$envoyes): bool
+    {
+        foreach ($lignes as $ligne) {
             $avis = $ligne->kind === SupportOutbox::AVIS_ASSISTANT;
+            // Reserve la ligne avant l'appel : un avis change pendant l'envoi
+            // ne peut plus remplacer une charge deja en route (TransmettreRetour).
+            if (! $ligne->reserver()) {
+                continue;
+            }
 
             try {
                 $reponse = $avis
@@ -51,15 +80,16 @@ class ViderBoiteEnvoiSupport extends Command
                 $envoyes++;
             } catch (PorteeAbsente $e) {
                 if (! $avis) {
-                    break;
+                    return false;
                 }
                 $ligne->differer('Portée absente : '.$e->getMessage());
             } catch (IdentifiantInstanceRefuse $e) {
                 // La faute est celle de l'instance : la ligne garde tous ses essais.
-                break;
+                return false;
             } catch (MasterSupportIndisponible $e) {
                 $ligne->reporter($e->getMessage());
-                break;
+
+                return false;
             } catch (MasterSupportRefus $e) {
                 // Route des avis pas encore deployee au Master : on attend qu'elle le soit.
                 if ($avis && in_array($e->statut, [404, 405], true)) {
@@ -74,10 +104,6 @@ class ViderBoiteEnvoiSupport extends Command
             }
         }
 
-        if ($envoyes > 0) {
-            $this->info("{$envoyes} envoi(s) transmis au Master.");
-        }
-
-        return self::SUCCESS;
+        return true;
     }
 }

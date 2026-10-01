@@ -24,6 +24,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ESBTPEvaluationController extends Controller
@@ -389,17 +390,17 @@ class ESBTPEvaluationController extends Controller
         $validator = \Validator::make($request->all(), [
             'titre' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'type' => 'required|string|in:'.implode(',', ESBTPEvaluation::TYPES_SAISISSABLES),
+            'type' => ['required', 'string', Rule::in(ESBTPEvaluation::typesSaisissables())],
             'date_evaluation' => 'required|date',
             'heure_debut' => 'required|date_format:H:i',
             'heure_fin' => 'required|date_format:H:i|after:heure_debut',
             'classe_id' => 'required|exists:esbtp_classes,id',
             'matiere_id' => 'required|exists:esbtp_matieres,id',
-            'bareme' => 'required|numeric|min:0.1|max:100',
-            'coefficient' => 'required|numeric|min:0.1|max:10',
+            'bareme' => 'required|numeric|min:'.ESBTPEvaluation::BAREME_MIN.'|max:'.ESBTPEvaluation::BAREME_MAX,
+            'coefficient' => 'required|numeric|min:'.ESBTPEvaluation::COEFFICIENT_MIN.'|max:'.ESBTPEvaluation::COEFFICIENT_MAX,
             'duree_minutes' => 'nullable|integer|min:1|max:480',
             'is_published' => 'nullable|boolean',
-            'periode' => 'required|in:1,2,3,4,5,6,7,8,9,10,semestre1,semestre2,semestre3,semestre4,semestre5,semestre6,semestre7,semestre8,semestre9,semestre10,Semestre 1,Semestre 2,Semestre 3,Semestre 4,Semestre 5,Semestre 6,Semestre 7,Semestre 8,Semestre 9,Semestre 10',
+            'periode' => ['required', Rule::in(array_keys(ESBTPEvaluation::getPeriodes()))],
         ], [
             'titre.required' => 'Le titre est obligatoire',
             'type.required' => 'Le type d\'évaluation est obligatoire',
@@ -412,11 +413,11 @@ class ESBTPEvaluationController extends Controller
             'matiere_id.exists' => 'La matière sélectionnée n\'existe pas',
             'bareme.required' => 'Le barème est obligatoire',
             'bareme.min' => 'Le barème doit être strictement supérieur à zéro.',
-            'bareme.max' => 'Le barème ne peut pas dépasser 100.',
+            'bareme.max' => 'Le barème ne peut pas dépasser '.ESBTPEvaluation::BAREME_MAX.'.',
             'coefficient.required' => 'Le coefficient de l\'évaluation est obligatoire',
             'coefficient.numeric' => 'Le coefficient doit être un nombre',
             'coefficient.min' => 'Le coefficient doit être strictement supérieur à zéro.',
-            'coefficient.max' => 'Le coefficient ne peut pas dépasser 10',
+            'coefficient.max' => 'Le coefficient ne peut pas dépasser '.ESBTPEvaluation::COEFFICIENT_MAX.'.',
             'duree_minutes.max' => 'La durée ne peut pas dépasser 480 minutes (8h).',
         ]);
 
@@ -655,7 +656,9 @@ class ESBTPEvaluationController extends Controller
             $heureFin = $dateEval->copy()->addMinutes($minutes)->format('H:i');
         }
 
-        return view('esbtp.evaluations.edit', compact('evaluation', 'classes', 'matieres', 'types', 'heureDebut', 'heureFin'));
+        $periodes = $evaluation->periodesProposables();
+
+        return view('esbtp.evaluations.edit', compact('evaluation', 'classes', 'matieres', 'types', 'periodes', 'heureDebut', 'heureFin'));
     }
 
     /**
@@ -671,16 +674,16 @@ class ESBTPEvaluationController extends Controller
             $request->validate([
                 'titre' => 'required|string|max:255',
                 'description' => 'nullable|string|max:1000',
-                'type' => 'required|in:'.implode(',', ESBTPEvaluation::TYPES_SAISISSABLES),
+                'type' => ['required', Rule::in(ESBTPEvaluation::typesSaisissables())],
                 'date_evaluation' => 'required|date',
                 'heure_debut' => 'required|date_format:H:i',
                 'heure_fin' => 'required|date_format:H:i|after:heure_debut',
                 'classe_id' => 'required|exists:esbtp_classes,id',
                 'matiere_id' => 'required|exists:esbtp_matieres,id',
-                'bareme' => 'required|numeric|min:0.1|max:100',
-                'coefficient' => 'nullable|numeric|min:0.1|max:10',
+                'bareme' => 'required|numeric|min:'.ESBTPEvaluation::BAREME_MIN.'|max:'.ESBTPEvaluation::BAREME_MAX,
+                'coefficient' => 'nullable|numeric|min:'.ESBTPEvaluation::COEFFICIENT_MIN.'|max:'.ESBTPEvaluation::COEFFICIENT_MAX,
                 'duree_minutes' => 'nullable|integer|min:1|max:480',
-                'periode' => 'required|in:1,2,3,4,5,6,7,8,9,10,semestre1,semestre2,semestre3,semestre4,semestre5,semestre6,semestre7,semestre8,semestre9,semestre10,Semestre 1,Semestre 2,Semestre 3,Semestre 4,Semestre 5,Semestre 6,Semestre 7,Semestre 8,Semestre 9,Semestre 10',
+                'periode' => ['required', Rule::in(array_keys($evaluation->periodesProposables()))],
             ], [
                 'titre.required' => 'Le titre est obligatoire',
                 'type.required' => 'Le type d\'évaluation est obligatoire',
@@ -689,9 +692,9 @@ class ESBTPEvaluationController extends Controller
                 'matiere_id.required' => 'La matière est obligatoire',
                 'bareme.required' => 'Le barème est obligatoire',
                 'bareme.min' => 'Le barème doit être strictement supérieur à zéro.',
-                'bareme.max' => 'Le barème ne peut pas dépasser 100.',
+                'bareme.max' => 'Le barème ne peut pas dépasser '.ESBTPEvaluation::BAREME_MAX.'.',
                 'coefficient.min' => 'Le coefficient doit être strictement supérieur à zéro.',
-                'coefficient.max' => 'Le coefficient ne peut pas dépasser 10.',
+                'coefficient.max' => 'Le coefficient ne peut pas dépasser '.ESBTPEvaluation::COEFFICIENT_MAX.'.',
                 'duree_minutes.max' => 'La durée ne peut pas dépasser 480 minutes (8h).',
             ]);
         } catch (ValidationException $e) {
@@ -849,15 +852,15 @@ class ESBTPEvaluationController extends Controller
         $validated = $request->validate([
             'titre' => 'required|string|max:255',
             'bareme' => 'required|numeric|min:1|max:100',
-            'coefficient' => 'required|numeric|min:0.1|max:10',
+            'coefficient' => 'required|numeric|min:'.ESBTPEvaluation::COEFFICIENT_MIN.'|max:'.ESBTPEvaluation::COEFFICIENT_MAX,
         ], [
             'titre.required' => 'Le titre est obligatoire.',
             'bareme.required' => 'Le barème est obligatoire.',
             'bareme.min' => 'Le barème doit être au moins 1.',
-            'bareme.max' => 'Le barème ne peut pas dépasser 100.',
+            'bareme.max' => 'Le barème ne peut pas dépasser '.ESBTPEvaluation::BAREME_MAX.'.',
             'coefficient.required' => 'Le coefficient est obligatoire.',
             'coefficient.min' => 'Le coefficient doit être au moins 0,1.',
-            'coefficient.max' => 'Le coefficient ne peut pas dépasser 10.',
+            'coefficient.max' => 'Le coefficient ne peut pas dépasser '.ESBTPEvaluation::COEFFICIENT_MAX.'.',
         ]);
 
         // Avant le `try` : son rattrapage large ferait de ce refus une erreur 500.

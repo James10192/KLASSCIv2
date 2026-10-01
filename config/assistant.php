@@ -89,8 +89,10 @@ return [
     */
     'support' => [
         'ia' => (bool) env('ASSISTANT_SUPPORT_IA', true),
-        // Questions au plus avant le récapitulatif : la personne ne doit pas s'épuiser.
-        'questions_max' => (int) env('ASSISTANT_SUPPORT_QUESTIONS_MAX', 6),
+        // Questions au plus avant le récapitulatif (question d'ouverture comprise) :
+        // la personne ne doit pas s'épuiser. 7 = ouverture, page, urgence, élément,
+        // attendu, depuis quand, message d'erreur.
+        'questions_max' => (int) env('ASSISTANT_SUPPORT_QUESTIONS_MAX', 7),
         'max_tokens' => (int) env('ASSISTANT_SUPPORT_MAX_TOKENS', 900),
     ],
 

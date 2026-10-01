@@ -4,6 +4,7 @@ namespace Tests\Feature\Assistant;
 
 use App\Domain\Assistant\Consommation\LigneDeConsommation;
 use App\Domain\Assistant\Fournisseurs\OpenAiCompatible;
+use App\Domain\Assistant\Support\GuideDeSupport;
 use App\Http\Middleware\CheckInstalled;
 use App\Http\Middleware\EnsureInstalled;
 use App\Http\Middleware\PaywallMiddleware;
@@ -118,9 +119,9 @@ class NananSupportTest extends TestCase
             ->assertOk()
             ->assertJsonPath('action', 'question')
             ->assertJsonPath('source', 'guide')
-            ->assertJsonPath('texte', 'Cela se passe-t-il sur la page « Liste des étudiants » ?');
+            ->assertJsonPath('texte', "Cela se passe-t-il sur la page que vous aviez ouverte en demandant de l'aide ?");
 
-        $fil[] = ['role' => 'nanan', 'texte' => 'Cela se passe-t-il sur la page « Liste des étudiants » ?'];
+        $fil[] = ['role' => 'nanan', 'texte' => "Cela se passe-t-il sur la page que vous aviez ouverte en demandant de l'aide ?"];
         $fil[] = ['role' => 'personne', 'texte' => 'Oui, sur cette page'];
 
         $this->tour(['intention' => 'probleme', 'fil' => $fil, 'recapitulatif' => true])
@@ -128,7 +129,7 @@ class NananSupportTest extends TestCase
             ->assertJsonPath('action', 'recapitulatif')
             ->assertJsonPath('recap.categorie', 'PROBLEME')
             ->assertJsonPath('recap.titre', 'Le bulletin de Koné Awa ne sort pas.')
-            ->assertJsonFragment(['transcription' => "Personne : Le bulletin de Koné Awa ne sort pas.\nNanan : Cela se passe-t-il sur la page « Liste des étudiants » ?\nPersonne : Oui, sur cette page"]);
+            ->assertJsonFragment(['transcription' => "Personne : Le bulletin de Koné Awa ne sort pas.\nNanan : Cela se passe-t-il sur la page que vous aviez ouverte en demandant de l'aide ?\nPersonne : Oui, sur cette page"]);
     }
 
     /** @test */
@@ -145,7 +146,7 @@ class NananSupportTest extends TestCase
 
         $this->assertSame(1, LigneDeConsommation::where('fonction', 'support')->count());
         $systeme = $this->faux->recues[0]['requete']->systeme;
-        $this->assertStringContainsString('Liste des étudiants - KLASSCI', $systeme);
+        $this->assertStringContainsString('Page ouverte quand elle a demandé de l\'aide : Liste des étudiants', $systeme);
         $this->assertStringContainsString('Ne promets jamais de délai', $systeme);
     }
 
@@ -211,12 +212,49 @@ class NananSupportTest extends TestCase
 
         $this->assertStringContainsString('window.klassciNananSupport', $html);
         $this->assertStringContainsString(route('chatbot.support.tour'), str_replace('\\/', '/', $html));
-        foreach (["J'ai un problème", 'Comment faire… ?', 'Une idée, une suggestion', 'Suivre mes demandes'] as $choix) {
+        foreach (["J'ai un problème", 'Comment faire… ?', 'Une idée, une suggestion', "Mes demandes d'aide"] as $choix) {
             $this->assertStringContainsString($choix, $html);
         }
         $this->assertStringNotContainsString('x-init="init()"', $html);
         // Contrat KLASSCI Care : l'URL de confirmation d'adresse s'appelle email_verification_url.
         $this->assertStringContainsString('corps.email_verification_url', $html);
         $this->assertStringContainsString('corps.email_masque', $html);
+    }
+    /** @test */
+    public function les_tours_sont_limites_par_jour_et_par_personne(): void
+    {
+        config(['support.tours_par_jour' => 2]);
+        $user = $this->utilisateur();
+        $appel = fn () => $this->actingAs($user)->postJson(route('chatbot.support.tour'), ['intention' => 'probleme', 'fil' => []]);
+
+        $appel()->assertOk();
+        $appel()->assertOk();
+        $appel()->assertStatus(429)->assertJsonPath('message', fn ($m) => str_contains($m, "Mes demandes d'aide"));
+
+        // Une autre personne n'est pas comptée avec la première.
+        $this->tour(['intention' => 'probleme', 'fil' => []])->assertOk();
+    }
+    /** @test */
+    public function le_titre_de_l_onglet_ne_sort_ni_des_questions_ni_du_recapitulatif_ni_de_la_transcription(): void
+    {
+        $titre = 'Fiche de Koné Awa - KLASSCI';
+        $this->modele(FauxFournisseur::texte('{"action":"recapitulatif","texte":"Relisez.","recap":{"titre":"Problème sur Fiche de Koné Awa","description":"Sur la page Fiche de Koné Awa, le bouton ne marche pas. Je suis bloquée.","categorie":"PROBLEME"}}'));
+
+        $r = $this->actingAs($this->utilisateur())->postJson(route('chatbot.support.tour'), [
+            'intention' => 'probleme',
+            'fil' => [
+                ['role' => 'personne', 'texte' => 'Le bouton Valider ne marche pas.'],
+                ['role' => 'nanan', 'texte' => 'Cela arrive-t-il sur Fiche de Koné Awa ?'],
+                ['role' => 'personne', 'texte' => 'Oui'],
+                ['role' => 'nanan', 'texte' => GuideDeSupport::QUESTION_URGENCE],
+                ['role' => 'personne', 'texte' => GuideDeSupport::CHOIX_BLOQUE],
+            ],
+            'page' => ['titre' => $titre, 'route_name' => 'support.demandes.index'],
+        ])->assertOk();
+
+        $this->assertStringNotContainsString('Koné Awa', json_encode($r->json('recap'), JSON_UNESCAPED_UNICODE));
+        $this->assertStringNotContainsString('Koné Awa', (string) $r->json('transcription'));
+        $this->assertSame('BLOQUE', $r->json('recap.categorie'), 'Bloquée à la question d\'urgence : catégorie BLOQUE, quoi qu\'ait dit le modèle.');
+        $this->assertStringContainsString('empêche de travailler', $this->faux->recues[0]['requete']->systeme);
     }
 }

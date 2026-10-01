@@ -10,9 +10,16 @@ use Illuminate\Support\Facades\Route;
  * Peut-on ecrire a cette personne par e-mail ?
  *
  * Une seule reponse pour toute l'application : une adresse bien formee ET
- * verifiee (`email_verified_at`). Une adresse jamais confirmee peut etre une
- * faute de frappe, ou celle d'un collegue : y envoyer le contenu d'une demande
- * de support serait l'envoyer a un inconnu.
+ * marquee `email_verified_at`. Ce que ce champ garantit, et rien de plus :
+ * l'adresse a ete saisie par l'administration a la creation du compte (qui
+ * pose le champ d'office), ou confirmee par un lien recu a cette adresse.
+ * Il ne prouve pas que l'administration ne s'est pas trompee en la saisissant.
+ * En revanche, une adresse modifiee depuis n'est jamais tenue pour confirmee :
+ * User remet le champ a null quand `email` change sans qu'il soit repose.
+ *
+ * Une adresse jamais confirmee peut etre une faute de frappe, ou celle d'un
+ * collegue : y envoyer le contenu d'une demande de support serait l'envoyer
+ * a un inconnu.
  *
  * Rien n'est bloque quand l'adresse n'est pas joignable : l'avertissement
  * dans l'application suffit, l'e-mail ne fait que s'y ajouter.

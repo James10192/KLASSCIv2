@@ -3,8 +3,9 @@
 
     Inclus par le lanceur du support, qui ne le rend que si KLASSCI Care est
     ouvert à l'instance. Il intercepte les boutons `data-support-ouvrir` (menu du
-    compte, feuille mobile, page d'erreur) avant le formulaire classique, qui
-    reste accessible depuis l'accueil pour joindre une capture d'écran.
+    compte, feuille mobile, page d'erreur) avant le formulaire classique. Une
+    capture d'écran se joint ensuite depuis la page de la demande (« Ajouter une
+    capture d'écran », après l'envoi).
 
     Parcours : accueil (quatre choix + saisie libre) → conversation (une question
     à la fois, le serveur décide : modèle ou questions scriptées) → récapitulatif
@@ -58,6 +59,8 @@ if (typeof window.klassciNananSupport !== 'function') {
             saisie: '',
             attente: false,
             erreur: '',
+            confirmerEffacer: false,
+            choisirType: false,
             recap: { titre: '', description: '', categorie: '' },
             transcription: '',
             voirTranscription: false,
@@ -164,6 +167,8 @@ if (typeof window.klassciNananSupport !== 'function') {
                 this.recap = { titre: '', description: '', categorie: '' };
                 this.transcription = '';
                 this.voirTranscription = false;
+                this.confirmerEffacer = false;
+                this.choisirType = false;
                 this.cle = null;
                 this.resultat = null;
                 this.verification = { etat: 'repos', message: '' };
@@ -204,6 +209,11 @@ if (typeof window.klassciNananSupport !== 'function') {
                 this.saisie = '';
                 this.choix = [];
                 this.tour(false);
+            },
+
+            /* La personne a écrit au moins un message : revenir à l'accueil effacerait son travail. */
+            aParle() {
+                return this.fil.some(function (m) { return m.role === 'personne'; });
             },
 
             peutRecapituler() {
@@ -301,6 +311,15 @@ if (typeof window.klassciNananSupport !== 'function') {
 
             categories() { return this.support.categories || []; },
 
+            libelleCategorie(code) {
+                var c = this.categories().find(function (x) { return x.code === code; });
+                return c ? c.libelle : code;
+            },
+
+            libelleDescription() {
+                return { comment: 'Votre question', idee: 'Votre idée' }[this.intention] || 'Ce qui se passe';
+            },
+
             min() { return (this.support.limites && this.support.limites.description_min) || 10; },
             max() { return (this.support.limites && this.support.limites.description_max) || 5000; },
 
@@ -397,6 +416,8 @@ if (typeof window.klassciNananSupport !== 'function') {
                     reference: corps.reference || null,
                     message: corps.message || '',
                     suivi: corps.suivi_url || this.support.suivi || null,
+                    /* La demande existe au support : la capture se joint depuis sa page. */
+                    capture: typeof corps.suivi_url === 'string' ? corps.suivi_url + '#sd-joindre' : null,
                     verifier: corps.email_a_verifier === true && typeof corps.email_verification_url === 'string' ? corps.email_verification_url : null,
                     emailMasque: typeof corps.email_masque === 'string' ? corps.email_masque : null
                 };
@@ -437,16 +458,7 @@ if (typeof window.klassciNananSupport !== 'function') {
                 }).catch(function () {
                     self.verification = { etat: 'erreur', message: 'Connexion perdue. Réessayez dans un instant.' };
                 });
-            },
-
-            /* Le formulaire classique reste là pour joindre une capture d'écran. */
-            formulaireClassique() {
-                var code = this.codeSuivi;
-                this.fermer();
-                if (window.KlassciSupport && typeof window.KlassciSupport.ouvrir === 'function') { window.KlassciSupport.ouvrir(code); }
-            },
-
-            classiqueDisponible() { return !!(window.KlassciSupport && typeof window.KlassciSupport.ouvrir === 'function'); }
+            }
         };
     };
 }
@@ -462,7 +474,8 @@ if (typeof window.klassciNananSupport !== 'function') {
              role="dialog" aria-modal="true" aria-labelledby="nsp-titre">
 
         <header class="nsp-tete">
-            <button type="button" class="nsp-icone-btn" x-show="vue === 'conversation' || vue === 'recap'"
+            {{-- La flèche ne vide jamais une conversation commencée : « Recommencer », en bas, demande confirmation. --}}
+            <button type="button" class="nsp-icone-btn" x-show="vue === 'recap' || (vue === 'conversation' && !aParle())"
                     x-on:click="vue === 'recap' ? (vue = 'conversation') : recommencer()" aria-label="Revenir en arrière">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i>
             </button>
@@ -470,7 +483,7 @@ if (typeof window.klassciNananSupport !== 'function') {
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="2.5" y="3" width="19" height="18" rx="8" fill="currentColor"/><circle cx="9" cy="11" r="1.6" fill="#0453cb"/><circle cx="15" cy="11" r="1.6" fill="#0453cb"/><path d="M9.2 15.2c1.6 1.3 4 1.3 5.6 0" stroke="#0453cb" stroke-width="1.4" stroke-linecap="round"/></svg>
             </span>
             <div class="nsp-tete-textes">
-                <h2 id="nsp-titre">Aide &amp; support</h2>
+                <h2 id="nsp-titre">Aide</h2>
                 <p x-text="attente ? 'Nanan réfléchit…' : 'Avec Nanan, votre assistante'">Avec Nanan, votre assistante</p>
             </div>
             <button type="button" class="nsp-icone-btn nsp-icone-btn--fermer" x-on:click="fermer()" aria-label="Fermer">
@@ -502,7 +515,7 @@ if (typeof window.klassciNananSupport !== 'function') {
                 </button>
                 <a class="nsp-grand" x-show="support.suivi" x-bind:href="support.suivi">
                     <span class="nsp-grand-icone"><i class="fas fa-inbox" aria-hidden="true"></i></span>
-                    <span class="nsp-grand-textes"><strong>Suivre mes demandes</strong><small>Voir les réponses du support</small></span>
+                    <span class="nsp-grand-textes"><strong>Mes demandes d'aide</strong><small>Voir les réponses de l'équipe support</small></span>
                     <i class="fas fa-chevron-right nsp-grand-fleche" aria-hidden="true"></i>
                 </a>
             </div>
@@ -517,9 +530,6 @@ if (typeof window.klassciNananSupport !== 'function') {
                     </button>
                 </div>
             </form>
-            <button type="button" class="nsp-lien nsp-lien--bas" x-show="classiqueDisponible()" x-on:click="formulaireClassique()">
-                <i class="fas fa-camera" aria-hidden="true"></i> Préférer le formulaire avec capture d'écran
-            </button>
         </div>
 
         {{-- Conversation : une question à la fois --}}
@@ -555,9 +565,19 @@ if (typeof window.klassciNananSupport !== 'function') {
             </div>
 
             <div class="nsp-pied">
-                <button type="button" class="nsp-lien nsp-lien--recap" x-show="peutRecapituler() && dernierType === 'question'" x-on:click="tour(true)">
-                    J'ai tout dit, préparer ma demande <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                </button>
+                <div class="nsp-pied-liens">
+                    <button type="button" class="nsp-lien nsp-lien--discret" x-show="aParle() && !confirmerEffacer" x-on:click="confirmerEffacer = true">
+                        <i class="fas fa-rotate-left" aria-hidden="true"></i> Recommencer
+                    </button>
+                    <span class="nsp-confirmer" x-show="confirmerEffacer" role="group" aria-label="Effacer la conversation ?">
+                        Effacer la conversation ?
+                        <button type="button" class="nsp-lien" x-on:click="recommencer()">Oui</button>
+                        <button type="button" class="nsp-lien" x-on:click="confirmerEffacer = false">Non</button>
+                    </span>
+                    <button type="button" class="nsp-lien nsp-lien--recap" x-show="peutRecapituler() && dernierType === 'question'" x-on:click="tour(true)">
+                        J'ai tout dit, préparer ma demande <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                    </button>
+                </div>
                 <form class="nsp-barre" x-on:submit.prevent="repondre()">
                     <label class="visually-hidden" for="nsp-saisie">Votre réponse à Nanan</label>
                     <textarea id="nsp-saisie" x-ref="saisie" rows="1" class="nsp-champ" x-model="saisie" maxlength="1500"
@@ -577,24 +597,29 @@ if (typeof window.klassciNananSupport !== 'function') {
             <label class="nsp-etiquette" for="nsp-recap-titre">Titre</label>
             <input id="nsp-recap-titre" type="text" class="nsp-input" maxlength="120" x-model="recap.titre" x-on:input.debounce.600ms="sauver()">
 
-            <label class="nsp-etiquette" for="nsp-recap-description">Ce qui se passe</label>
+            <label class="nsp-etiquette" for="nsp-recap-description" x-text="libelleDescription()">Ce qui se passe</label>
             <textarea id="nsp-recap-description" class="nsp-input nsp-input--long" rows="6" x-model="recap.description" x-on:input.debounce.600ms="sauver()"></textarea>
             <p class="nsp-aide" x-show="recap.description.trim().length < min()"
                x-text="'Encore quelques mots : ' + min() + ' caractères au moins.'"></p>
 
-            <p class="nsp-etiquette" id="nsp-recap-categorie">Type de demande</p>
-            <div class="nsp-categories" role="radiogroup" aria-labelledby="nsp-recap-categorie">
+            {{-- Le type est déjà proposé par Nanan : une ligne, et on ne déplie la liste que pour le changer. --}}
+            <p class="nsp-type" x-show="recap.categorie !== '' && !choisirType">
+                Type : <strong x-text="libelleCategorie(recap.categorie)"></strong> ·
+                <button type="button" class="nsp-lien" x-on:click="choisirType = true">Modifier</button>
+            </p>
+            <p class="nsp-etiquette" id="nsp-recap-categorie" x-show="recap.categorie === '' || choisirType">Type de demande</p>
+            <div class="nsp-categories" role="radiogroup" aria-labelledby="nsp-recap-categorie" x-show="recap.categorie === '' || choisirType">
                 <template x-for="c in categories()" x-bind:key="c.code">
                     <button type="button" class="nsp-pastille" role="radio"
                             x-bind:aria-checked="recap.categorie === c.code ? 'true' : 'false'"
-                            x-on:click="recap.categorie = c.code; sauver()">
+                            x-on:click="recap.categorie = c.code; choisirType = false; sauver()">
                         <i class="fas" x-bind:class="c.icone" aria-hidden="true"></i><span x-text="c.libelle"></span>
                     </button>
                 </template>
             </div>
 
             <p class="nsp-note"><i class="fas fa-shield-halved" aria-hidden="true"></i>
-                Nous joignons votre échange avec Nanan, la page ouverte et un code de suivi technique. Aucun contenu de la page n'est transmis.
+                Nous joignons votre échange avec Nanan, le nom technique de l'écran ouvert et un code de suivi. Ni le titre ni le contenu de la page ne sont transmis.
                 <button type="button" class="nsp-lien" x-show="transcription" x-on:click="voirTranscription = !voirTranscription"
                         x-text="voirTranscription ? 'Masquer l\'échange' : 'Voir l\'échange joint'"></button>
             </p>
@@ -616,7 +641,7 @@ if (typeof window.klassciNananSupport !== 'function') {
             <p class="nsp-question nsp-question--centre" tabindex="-1" data-nsp-focus="envoye"
                x-text="resultat && resultat.enAttente ? 'Demande enregistrée' : 'Demande envoyée'"></p>
             <p class="nsp-fin-texte" x-show="resultat && !resultat.enAttente">
-                Votre référence : <strong x-text="resultat ? resultat.reference : ''"></strong>. L'équipe support vous répondra dans « Mes demandes ».
+                Votre référence : <strong x-text="resultat ? resultat.reference : ''"></strong>. L'équipe support vous répondra dans « Mes demandes d'aide ».
             </p>
             <p class="nsp-fin-texte" x-show="resultat && resultat.enAttente" x-text="resultat ? resultat.message : ''"></p>
 
@@ -631,6 +656,9 @@ if (typeof window.klassciNananSupport !== 'function') {
             </div>
 
             <div class="nsp-actions nsp-actions--centre">
+                <a class="nsp-btn nsp-btn--secondaire" x-show="resultat && resultat.capture" x-bind:href="resultat && resultat.capture ? resultat.capture : '#'">
+                    <i class="fas fa-camera" aria-hidden="true"></i> Ajouter une capture d'écran
+                </a>
                 <a class="nsp-btn nsp-btn--secondaire" x-show="resultat && resultat.suivi" x-bind:href="resultat ? resultat.suivi : '#'">Suivre ma demande</a>
                 <button type="button" class="nsp-btn nsp-btn--primaire" x-on:click="fermer()">Fermer</button>
             </div>
@@ -704,7 +732,6 @@ if (typeof window.klassciNananSupport !== 'function') {
     .nsp-envoyer { width: 40px; height: 40px; border-radius: 11px; border: 0; flex-shrink: 0; background: #0453cb; color: #fff; }
     .nsp-envoyer:disabled { background: #cbd5e1; }
     .nsp-lien { background: none; border: 0; padding: 0; color: #0453cb; font-size: .82rem; font-weight: 600; }
-    .nsp-lien--bas { display: block; margin: 1rem auto 0; }
 
     .nsp-fil { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 1rem 1.15rem; display: flex; flex-direction: column; gap: .55rem; outline: none; }
     .nsp-bulle { max-width: 88%; padding: .65rem .85rem; border-radius: 14px; font-size: .92rem; line-height: 1.45; }
@@ -731,7 +758,13 @@ if (typeof window.klassciNananSupport !== 'function') {
     .nsp-resolu-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 
     .nsp-pied { flex-shrink: 0; padding: .6rem 1.15rem .85rem; border-top: 1px solid #e2e8f0; background: #fff; }
-    .nsp-lien--recap { display: block; margin: 0 0 .5rem auto; }
+    .nsp-pied-liens { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .4rem .8rem; margin: 0 0 .5rem; }
+    .nsp-pied-liens:empty { display: none; }
+    .nsp-lien--recap { margin-left: auto; }
+    .nsp-lien--discret { color: #64748b; font-weight: 500; }
+    .nsp-confirmer { font-size: .82rem; color: #1e293b; font-weight: 600; display: inline-flex; gap: .55rem; align-items: center; }
+    .nsp-type { margin: .9rem 0 0; font-size: .88rem; color: #1e293b; }
+    .nsp-type .nsp-lien { font-size: .84rem; }
 
     .nsp-input { width: 100%; border: 1px solid #cbd5e1; border-radius: 12px; padding: .65rem .8rem; font-size: .92rem; color: #1e293b; }
     .nsp-input:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }

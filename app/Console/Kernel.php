@@ -35,9 +35,9 @@ class Kernel extends ConsoleKernel
         $schedule->command('attendance:mark-unattended-teacher-sessions')->everyTenMinutes();
 
         // KLASSCI Care : signalements que le Master n'a pas pu recevoir.
-        $schedule->command('support:vider-boite-envoi')->everyMinute()->withoutOverlapping();
+        $schedule->command('support:vider-boite-envoi')->everyMinute()->withoutOverlapping(10);
         // KLASSCI Care : avertir quand le support a répondu ou clôturé une demande.
-        $schedule->command('support:suivre-demandes')->everyFiveMinutes()->withoutOverlapping();
+        $schedule->command('support:suivre-demandes')->everyFiveMinutes()->withoutOverlapping(10);
 
         // Restes des exports groupés abandonnés (dossiers de tranches, PDF
         // assemblés jamais récupérés). Sans ça, rien ne les reprenait.

@@ -122,7 +122,7 @@
                                     icon="fa-calendar-alt"
                                     :value="old('periode', '')"
                                     placeholder="Sélectionner une période"
-                                    :options="['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2']"
+                                    :options="\App\Models\ESBTPEvaluation::getPeriodes()"
                                     required />
                                 @error('periode')<div class="ec-error">{{ $message }}</div>@enderror
                             </div>

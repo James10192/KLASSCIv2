@@ -69,6 +69,26 @@ class SupportOutbox extends Model
         return mb_strimwidth((string) ($this->payload['report']['description'] ?? ''), 0, 90, '…');
     }
 
+    /**
+     * Reserve la ligne pour un envoi : pose `next_attempt_at` quelques minutes
+     * plus loin, de facon atomique. Une ligne reservee n'est plus remplacee
+     * par TransmettreRetour, et une seconde passe ne la reprend pas. Si
+     * l'appel n'aboutit pas, reporter() ou differer() reposent la date.
+     *
+     * Rend faux si une autre passe l'a deja prise.
+     */
+    public function reserver(int $minutes = 5): bool
+    {
+        $jusqua = now()->addMinutes($minutes);
+        $prise = static::whereKey($this->getKey())->aEnvoyer()->update(['next_attempt_at' => $jusqua]) === 1;
+        if ($prise) {
+            $this->next_attempt_at = $jusqua;
+            $this->syncOriginalAttribute('next_attempt_at');
+        }
+
+        return $prise;
+    }
+
     /** Recul progressif : 1, 2, 4… minutes, plafonne a une heure. */
     public function reporter(string $erreur): void
     {
@@ -76,8 +96,9 @@ class SupportOutbox extends Model
         $this->last_error = mb_substr($erreur, 0, 1000);
         if ($this->attempts >= (int) config('support.boite_envoi.tentatives_max', 20)) {
             $this->abandoned_at = now();
-            Log::error('KLASSCI Care : signalement abandonné après tous les essais', [
+            Log::error('KLASSCI Care : '.($this->kind === self::AVIS_ASSISTANT ? 'avis sur l\'assistant' : 'signalement').' abandonné après tous les essais', [
                 'outbox_id' => $this->id,
+                'nature' => $this->kind,
                 'tentatives' => $this->attempts,
                 'erreur' => $this->last_error,
             ]);
