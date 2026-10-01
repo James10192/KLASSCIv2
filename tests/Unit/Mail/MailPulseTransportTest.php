@@ -5,7 +5,6 @@ namespace Tests\Unit\Mail;
 use App\Mail\Transport\DebitMailPulseAtteint;
 use App\Mail\Transport\CorpsPourMailPulse;
 use App\Mail\Transport\MailPulseTransport;
-use Illuminate\Queue\Events\JobExceptionOccurred;
 use Mockery;
 use Illuminate\Http\Client\Request;
 use Illuminate\Mail\Message;
@@ -135,6 +134,7 @@ class MailPulseTransportTest extends TestCase
         $this->accepte();
         config()->set('services.mailpulse.mail_per_minute', 2);
         $debut = microtime(true);
+        Log::spy();
 
         Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
         Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('b@example.com')->subject('S'));
@@ -152,9 +152,31 @@ class MailPulseTransportTest extends TestCase
     }
 
     /** @test */
+    public function un_refus_local_en_cours_de_boucle_dit_combien_de_destinataires_sont_deja_partis(): void
+    {
+        $this->accepte();
+        config()->set('services.mailpulse.mail_per_minute', 2);
+        Log::spy();
+
+        try {
+            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to(['a@example.com', 'b@example.com', 'c@example.com'])->subject('S'));
+            $this->fail('Le troisième destinataire aurait dû être refusé.');
+        } catch (DebitMailPulseAtteint $e) {
+            // Rien de plus à vérifier sur l'exception : c'est la trace qui compte.
+        }
+
+        Http::assertSentCount(2);
+        Log::shouldHaveReceived('warning')->with(
+            'Courriel par MailPulse : plafond par minute atteint, envoi refusé',
+            Mockery::on(fn (array $c) => $c['deja_partis'] === 2 && $c['destinataires'] === 3)
+        )->once();
+    }
+
+    /** @test */
     public function un_429_de_debit_leve_un_refus_de_debit_rejouable(): void
     {
         Http::fake([self::ENDPOINT => Http::response(['error' => 'Message rate limit exceeded'], 429)]);
+        Log::spy();
 
         try {
             Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
@@ -164,6 +186,9 @@ class MailPulseTransportTest extends TestCase
         }
 
         Http::assertSentCount(1);
+        // Un 429 de débit n'est pas une panne : avertissement, pas erreur.
+        Log::shouldHaveReceived('warning')->with('Courriel refusé par MailPulse', Mockery::type('array'))->once();
+        Log::shouldNotHaveReceived('error');
     }
 
     /** @test */
@@ -178,20 +203,6 @@ class MailPulseTransportTest extends TestCase
             $this->assertNotInstanceOf(DebitMailPulseAtteint::class, $e, 'Le quota ne passera pas avant le mois suivant : pas de remise en file.');
             $this->assertStringContainsString('quota_exceeded', $e->getMessage());
         }
-    }
-
-    /** @test */
-    public function un_job_refuse_pour_debit_repart_en_file_avec_le_delai_et_les_autres_non(): void
-    {
-        $job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
-        $job->shouldReceive('isDeleted', 'isReleased', 'hasFailed')->andReturn(false);
-        $job->shouldReceive('release')->once()->with(42);
-        event(new JobExceptionOccurred('database', $job, new DebitMailPulseAtteint('plafond', 42)));
-
-        $autre = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
-        $autre->shouldReceive('isDeleted', 'isReleased', 'hasFailed')->andReturn(false);
-        $autre->shouldNotReceive('release');
-        event(new JobExceptionOccurred('database', $autre, new TransportException('refus')));
     }
 
     /** @test */

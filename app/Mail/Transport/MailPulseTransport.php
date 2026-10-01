@@ -91,11 +91,14 @@ final class MailPulseTransport extends AbstractTransport
             $charge = ['channel' => 'email', 'recipient' => ['type' => 'email', 'value' => $destinataire->getAddress()]] + $corps;
             $requestId = self::cleIdempotence($charge);
 
-            $this->cadence->avantEnvoi($contexte);
+            $this->cadence->avantEnvoi($contexte + ['deja_partis' => $rang, 'destinataires' => count($destinataires)]);
             $resultat = $this->client->sendEmailMessage($charge, $requestId);
 
             if (! $resultat->ok) {
-                Log::error('Courriel refusé par MailPulse', $contexte + [
+                // Un 429 de débit n'est pas une panne : le courriel repart plus
+                // tard, à l'identique. Tout autre refus en est une.
+                $niveau = $resultat->status === 'rate_limited' ? 'warning' : 'error';
+                Log::$niveau('Courriel refusé par MailPulse', $contexte + [
                     'statut' => $resultat->status,
                     'http' => $resultat->httpStatus,
                     'request_id' => $resultat->requestId,

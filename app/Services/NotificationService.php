@@ -66,6 +66,11 @@ class NotificationService
             return ['success' => true, 'message' => 'Email envoyé avec succès'];
 
         } catch (\Exception $e) {
+            // Refus de débit dans un job de file : la relance n'est pas en
+            // échec, elle repart plus tard (ReportDesCourrielsRefuses). Hors
+            // file, elle reste marquée en échec comme avant.
+            \App\Mail\Transport\ReportDesCourrielsRefuses::remonterSiDansUneFile($e);
+
             $relance->update([
                 'statut' => 'echec',
                 'response_data' => json_encode(['error' => $e->getMessage()])
@@ -3021,12 +3026,14 @@ class NotificationService
                 'schoolLogoPath' => $schoolSettings['schoolLogoPath'],
             ];
 
-            // Notification in-app (utilise le compte de l'étudiant)
-            Notification::create([
+            // Notification in-app (utilise le compte de l'étudiant). firstOrCreate :
+            // un job refusé pour débit est rejoué, et ne doit pas la doubler.
+            Notification::firstOrCreate([
                 'user_id' => $etudiant->user_id,
                 'type' => 'reinscription_confirmation',
-                'title' => 'Réinscription confirmée',
                 'message' => "La réinscription de {$etudiant->nom} {$etudiant->prenoms} a été enregistrée pour l'année {$data['anneeUniversitaire']} en classe {$data['classe']}.",
+            ], [
+                'title' => 'Réinscription confirmée',
                 'is_read' => false,
             ]);
 
@@ -3046,6 +3053,10 @@ class NotificationService
             Log::info('Notification réinscription envoyée aux parents', ['parent_id' => $tuteur->id, 'email' => $tuteur->email]);
 
         } catch (\Exception $e) {
+            // Appelée par SendReinscriptionMailJob : un refus de débit y remonte
+            // pour que le worker reporte le courriel. Depuis l'écran, avalé.
+            \App\Mail\Transport\ReportDesCourrielsRefuses::remonterSiDansUneFile($e);
+
             Log::error('Erreur notification réinscription parent: ' . $e->getMessage());
         }
     }

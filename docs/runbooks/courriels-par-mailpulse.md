@@ -65,11 +65,18 @@ Ce que fait le mailer pour tenir le débit (`App\Mail\Transport\CadenceMailPulse
   (`DebitMailPulseAtteint`, journalisé) **sans jamais attendre** : un `sleep()`
   ferait dépasser au worker son délai de 60 s ou le `retry_after` de 90 s, et le
   job repartirait en double ;
-- **dans un job de file**, le refus remet le job en file avec le délai indiqué
-  (écouteur dans `AppServiceProvider`) ; les essais restent comptés (`--tries=3`),
-  au-delà le job échoue et se voit dans `failed_jobs` ;
-- **ailleurs** (requête web, commande, planificateur), c'est un échec d'envoi
-  ordinaire, que l'appelant affiche ou enregistre comme tel ;
+- **dans un job de file**, le refus est reporté sans brûler d'essai
+  (`App\Mail\Transport\ReportDesCourrielsRefuses`) : le job refusé est supprimé
+  et une **copie neuve** est remise en file, compteur d'essais à zéro, avec le
+  délai du refus (60 s au plus). Le nombre de reports voyage dans la charge du
+  job (`mailpulse_reports`) et plafonne à **120**, soit un peu plus de **deux
+  heures** de patience. Au-delà, le report redevient un `release()` qui compte :
+  avec `--tries=3`, le job finit dans `failed_jobs` après deux essais de plus, et
+  `queue:prune-failed --hours=168` l'efface au bout de **sept jours**. Un job déjà
+  à sa dernière tentative pour une autre raison échoue normalement : le worker
+  tranche avant le report, qui ne le ressuscite pas ;
+- **ailleurs** (requête web, commande, planificateur, job `sync`), c'est un échec
+  d'envoi ordinaire, que l'appelant affiche ou enregistre comme tel ;
 - un `429` de **quota** (`quota_exceeded`) n'est jamais réessayé : il ne passera
   pas avant le mois suivant ou un changement d'offre.
 
@@ -77,20 +84,41 @@ Ce que fait le mailer pour tenir le débit (`App\Mail\Transport\CadenceMailPulse
 chez MailPulse, l'incrément du cache `file` n'est pas atomique entre deux
 processus, et le compteur ne voit que son instance — ni les autres écoles d'une
 même organisation, ni les autres flux MailPulse. Un `429` reste possible ; il
-prend alors le même chemin que le refus local.
+prend alors le même chemin que le refus local. Il s'écrit en **avertissement**
+au journal (`Courriel refusé par MailPulse`), pas en erreur : rien n'est cassé.
+Un refus local en cours de boucle dit combien de destinataires du même courriel
+sont déjà partis (`deja_partis`).
 
-**Ce qui reste exposé.** Deux flux déclenchés depuis un écran envoient en rafale
-dans la requête :
+**Un courriel à plus de destinataires que le plafond ne peut pas partir.** Chaque
+reprise renvoie d'abord les destinataires déjà servis (MailPulse les dédoublonne
+par la clé d'idempotence, mais le plafond les compte), puis bute au même rang.
+Il finit en échec après ses reports, et une reprise qui franchit l'heure peut
+doubler les premiers. **Aucun courriel de KLASSCI n'a aujourd'hui plus d'un
+destinataire** (tous partent en `Mail::to($une_adresse)`) ; un envoi groupé à
+venir doit faire un courriel par adresse.
 
-- « Exécuter les relances en attente » (`ESBTPComptabiliteRelanceController::executerRelances()`
-  → `NotificationService::executerRelancesEnAttente()`) : au-delà du plafond par
-  minute, les suivantes sont marquées `echec` — **visibles et relançables**, pas
-  perdues en silence, mais non parties ;
-- les avis aux parents émis pendant une validation groupée.
+**Ce qui se passe, appelant par appelant**, quand le débit est atteint :
 
-Tant que ces deux flux ne passent pas par la file (worker actif sur l'instance),
-**ne pas basculer les instances Élite (`esbtp-abidjan`, `esbtp-yakro`, plus de
-2 000 inscriptions)**. Les petites instances peuvent basculer d'abord.
+| appelant | contexte | ce qui se passe |
+|---|---|---|
+| `SendReinscriptionMailJob` (réinscription groupée) → `NotificationService::notifyParentsReinscriptionCreated()` | file | le refus remonte, le job est **reporté**. L'avis dans l'application n'est pas doublé à la reprise (`firstOrCreate`) |
+| `EnvoyerRelanceJob` (« Renvoyer » une relance) → `NotificationService::envoyerRelanceEmail()` | file | le refus remonte, le job est **reporté** ; la relance n'est ni marquée `echec` ni passée au `fail()` |
+| Notifications en file (`ESBTPNotification`, `PaiementNotification`, `AbsenceNotification`, `AbsenceJustificationNotification`, `PaiementHighAmountValidatedNotification`, `TpeDeclarationStatusChangedNotification`, `AnalyticsAnomalyNotification`), canal `mail` | file (un job par canal) | l'exception remonte d'elle-même au worker : **reportées**, sans doubler l'avis en base, qui part dans son propre job |
+| « Exécuter les relances en attente » (`ESBTPComptabiliteRelanceController::executerRelances()` → `executerRelancesEnAttente()`) | requête web, en rafale | au-delà du plafond, les suivantes passent en `echec` : **visibles et relançables** depuis l'écran, mais non parties |
+| Appel de fin de cours (`TeacherDashboardController`), appels du LMS (`API\LMSWriteController`, `API\LMSDataController`), saisie d'absence (`ESBTPAttendanceController`) → `notifyParentsAbsence()` | requête web, en rafale (jusqu'à deux courriels par élève absent) | refus **avalé et journalisé** (`Log::error`) : l'avis au parent est **perdu**, l'appel est enregistré. Le seul vrai trou |
+| Inscription, réinscription à l'unité, validation et rejet de paiement, publication de bulletin → `notifyParents*()` | requête web, un courriel | refus avalé et journalisé, comme toute autre panne d'envoi : l'écran ne casse pas |
+| Mot de passe oublié (`ForgotPasswordController`) | requête web | message « n'a pas pu partir, réessayez dans quelques minutes » |
+| Fin des tâches de bulletins, retour du support, rapport généré | file ou web, un courriel | refus avalé et journalisé par leur propre `catch`, non réessayé |
+
+Les `notifyParents*()` appelés depuis l'écran ne remontent pas le refus, et c'est
+voulu : ils créent l'avis dans l'application **avant** le courriel, donc une
+reprise le doublerait. Seul l'avis de réinscription, appelé depuis une file,
+remonte, et son avis est rendu idempotent pour ça.
+
+**Tant que l'appel de fin de cours envoie dans la requête, ne pas basculer les
+instances Élite (`esbtp-abidjan`, `esbtp-yakro`, plus de 2 000 inscriptions)** :
+une journée d'appels y dépasse vite 30 courriels par minute aux heures de
+cours. Les petites instances peuvent basculer d'abord, avec un worker actif.
 
 **Avant toute bascule, vérifier dans MailPulse** l'organisation à laquelle la clé
 de l'école appartient, son offre et le quota du mois restant. Une organisation

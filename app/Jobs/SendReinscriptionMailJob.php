@@ -42,7 +42,9 @@ class SendReinscriptionMailJob implements ShouldQueue
         try {
             $notif->notifyParentsReinscriptionCreated($inscription, $this->decision, null);
         } catch (\Throwable $e) {
-            Log::error('SendReinscriptionMailJob: notification failed', [
+            // Refus de débit : le worker reporte le job (ReportDesCourrielsRefuses), ce n'est pas une panne.
+            $niveau = $e instanceof \App\Mail\Transport\DebitMailPulseAtteint ? 'warning' : 'error';
+            Log::$niveau('SendReinscriptionMailJob: notification failed', [
                 'inscription_id' => $this->inscriptionId,
                 'batch_id' => $this->batchId,
                 'error' => $e->getMessage(),

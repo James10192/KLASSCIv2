@@ -52,6 +52,9 @@ class EnvoyerRelanceJob implements ShouldQueue
             }
 
         } catch (\Exception $e) {
+            // Refus de débit : ni échec ni fail(), le worker reporte le job.
+            \App\Mail\Transport\ReportDesCourrielsRefuses::remonterSiDansUneFile($e);
+
             Log::error("Erreur critique Job EnvoyerRelance ID: {$this->relance->id} - " . $e->getMessage());
             $this->relance->marquerCommeEchec(['error' => $e->getMessage()]);
             $this->fail($e);
