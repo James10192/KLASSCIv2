@@ -14,7 +14,7 @@
     $enabledCount = collect($settings ?? [])->filter(fn($v, $k) => str_starts_with($k, 'bulletin_show_') && $v == '1')->count();
     $currentStyle = $settings['bulletin_style'] ?? 'yakro';
     $currentFont = (int) ($settings['bulletin_font_size'] ?? 13);
-    $currentHeaderScale = max(80, min(150, (int) ($settings['bulletin_header_scale'] ?? 100)));
+    $currentHeaderScale = max(70, min(220, (int) ($settings['bulletin_header_scale'] ?? 100)));
 @endphp
 
 <div class="dashboard-acasi">
@@ -127,10 +127,47 @@
                                 <label class="bcfg-label" style="margin-top:.85rem;">Taille de l'en-tête</label>
                                 <div style="display:flex;align-items:center;gap:.75rem;">
                                     <input type="range" class="form-range" name="bulletin_header_scale"
-                                           min="80" max="150" step="5" x-model.number="headerScale" style="flex:1;">
+                                           min="70" max="220" step="5" x-model.number="headerScale" style="flex:1;">
                                     <strong style="min-width:52px;text-align:right;" x-text="headerScale + '%'"></strong>
                                 </div>
-                                <div class="bcfg-hint" style="margin-top:.35rem;">Agrandit uniquement République, ministère, logo, nom de l'école et titre du bulletin. 100 % = taille actuelle.</div>
+                                <div class="bcfg-hint" style="margin-top:.35rem;">Échelle générale de l'en-tête Yakro. Elle multiplie les tailles détaillées ci-dessous. 100 % = taille de référence.</div>
+
+                                <div style="margin-top:1rem;padding:.85rem;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;">
+                                    <div class="bcfg-label" style="margin-bottom:.55rem;">En-tête Yakro — réglages détaillés</div>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="bcfg-label">République / ministère</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_header_left_font_size" min="6" max="24" step="1"
+                                                   value="{{ $settings['bulletin_header_left_font_size'] ?: '11' }}">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="bcfg-label">Nom de l'école</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_header_school_name_font_size" min="8" max="30" step="1"
+                                                   value="{{ $settings['bulletin_header_school_name_font_size'] ?: '16' }}">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="bcfg-label">Coordonnées école</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_header_school_meta_font_size" min="6" max="20" step="1"
+                                                   value="{{ $settings['bulletin_header_school_meta_font_size'] ?: '10' }}">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="bcfg-label">Titre « BULLETIN DE NOTES »</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_header_title_font_size" min="8" max="30" step="1"
+                                                   value="{{ $settings['bulletin_header_title_font_size'] ?: '18' }}">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="bcfg-label">Semestre / diplôme / niveau / année</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_header_right_font_size" min="6" max="22" step="1"
+                                                   value="{{ $settings['bulletin_header_right_font_size'] ?: '12' }}">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="bcfg-label">Hauteur du logo</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_header_logo_height" min="40" max="180" step="2"
+                                                   value="{{ $settings['bulletin_header_logo_height'] ?: '72' }}">
+                                        </div>
+                                    </div>
+                                    <div class="bcfg-hint" style="margin-top:.45rem;">Le titre « BULLETIN DE NOTES » se règle séparément. Le semestre reprend la même taille que « Brevet de Technicien Supérieur », BTS et l'année. Valeurs en pixels avant application de l'échelle générale, en mise en page tableau compatible DomPDF.</div>
+                                </div>
 
                                 <label class="bcfg-label" style="margin-top:.85rem;">Marge haut / bas (mm)</label>
                                 <input type="number" class="bcfg-input" name="bulletin_margin_vertical"
@@ -142,6 +179,7 @@
                                        min="2" max="25" step="1"
                                        value="{{ $settings['bulletin_margin_horizontal'] ?: '5' }}">
                                 <div class="bcfg-hint" style="margin-top:.35rem;">Plus la marge est petite, plus le contenu du bulletin est grand. En dessous de 5 mm, certaines imprimantes rognent les bords.</div>
+                                <div class="bcfg-hint" style="margin-top:.25rem;font-weight:600;">Ces marges sont propres aux bulletins BTS et priment sur les marges PDF générales de /esbtp/settings.</div>
 
                                 <label class="bcfg-label" style="margin-top:.85rem;">Hauteur de la case décision (px)</label>
                                 <input type="number" class="bcfg-input" name="bulletin_decision_min_height"
@@ -150,8 +188,48 @@
 
                                 <label class="bcfg-label" style="margin-top:.85rem;">Hauteur de l'espace signature (px)</label>
                                 <input type="number" class="bcfg-input" name="bulletin_signature_height"
-                                       min="20" max="160" step="2"
-                                       value="{{ $settings['bulletin_signature_height'] ?: '44' }}">
+                                       min="70" max="240" step="2"
+                                       value="{{ $settings['bulletin_signature_height'] ?: '70' }}">
+
+                                <div class="row g-2" style="margin-top:.15rem;">
+                                    <div class="col-6">
+                                        <label class="bcfg-label">Largeur signature (px)</label>
+                                        <input type="number" class="bcfg-input" name="bulletin_signature_width" min="180" max="520" step="5"
+                                               value="{{ $settings['bulletin_signature_width'] ?: '250' }}">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="bcfg-label">Police signature (px)</label>
+                                        <input type="number" class="bcfg-input" name="bulletin_signature_font_size" min="6" max="20" step="1"
+                                               value="{{ $settings['bulletin_signature_font_size'] ?: '11' }}">
+                                    </div>
+                                </div>
+
+                                <div style="margin-top:1rem;padding:.85rem;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;">
+                                    <div class="bcfg-label" style="margin-bottom:.55rem;">Bas de page</div>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <label class="bcfg-label">Police « Édition du »</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_edition_font_size" min="6" max="18" step="1"
+                                                   value="{{ $settings['bulletin_edition_font_size'] ?: '11' }}">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="bcfg-label">Opacité « Édition du »</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_edition_opacity" min="10" max="100" step="5"
+                                                   value="{{ $settings['bulletin_edition_opacity'] ?: '100' }}">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="bcfg-label">Police « aucun duplicata »</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_authenticity_font_size" min="6" max="18" step="1"
+                                                   value="{{ $settings['bulletin_authenticity_font_size'] ?: '11' }}">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="bcfg-label">Opacité « aucun duplicata »</label>
+                                            <input type="number" class="bcfg-input" name="bulletin_authenticity_opacity" min="10" max="100" step="5"
+                                                   value="{{ $settings['bulletin_authenticity_opacity'] ?: '100' }}">
+                                        </div>
+                                    </div>
+                                    <div class="bcfg-hint" style="margin-top:.45rem;">Opacité : 100 % = texte normal, 10 % = très discret.</div>
+                                </div>
                             </div>
                             <div class="col-md-8">
                                 <label class="bcfg-label">Aperçu live</label>
@@ -216,7 +294,7 @@ if (typeof window.bulletinConfiguration !== 'function') {
             tab: 'bts',
             style: initialStyle || 'yakro',
             fontSize: Number(initialFont || 13),
-            headerScale: Math.max(80, Math.min(150, Number(initialHeaderScale || 100))),
+            headerScale: Math.max(70, Math.min(220, Number(initialHeaderScale || 100))),
             saving: false,
             get styleLabel() {
                 return this.style === 'abidjan' ? 'Abidjan' : 'Yakro';

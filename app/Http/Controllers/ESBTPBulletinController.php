@@ -2254,7 +2254,20 @@ class ESBTPBulletinController extends Controller
     public function saveConfiguration(Request $request)
     {
         $request->validate([
-            'bulletin_header_scale' => ['nullable', 'integer', 'min:80', 'max:150'],
+            'bulletin_header_scale' => ['nullable', 'integer', 'min:70', 'max:220'],
+            'bulletin_header_left_font_size' => ['nullable', 'integer', 'min:6', 'max:24'],
+            'bulletin_header_school_name_font_size' => ['nullable', 'integer', 'min:8', 'max:30'],
+            'bulletin_header_school_meta_font_size' => ['nullable', 'integer', 'min:6', 'max:20'],
+            'bulletin_header_title_font_size' => ['nullable', 'integer', 'min:8', 'max:30'],
+            'bulletin_header_right_font_size' => ['nullable', 'integer', 'min:6', 'max:22'],
+            'bulletin_header_logo_height' => ['nullable', 'integer', 'min:40', 'max:180'],
+            'bulletin_signature_height' => ['nullable', 'integer', 'min:70', 'max:240'],
+            'bulletin_signature_width' => ['nullable', 'integer', 'min:180', 'max:520'],
+            'bulletin_signature_font_size' => ['nullable', 'integer', 'min:6', 'max:20'],
+            'bulletin_edition_font_size' => ['nullable', 'integer', 'min:6', 'max:18'],
+            'bulletin_edition_opacity' => ['nullable', 'integer', 'min:10', 'max:100'],
+            'bulletin_authenticity_font_size' => ['nullable', 'integer', 'min:6', 'max:18'],
+            'bulletin_authenticity_opacity' => ['nullable', 'integer', 'min:10', 'max:100'],
         ]);
 
         $effectiveBtsSettings = BtsBulletinPolicy::effectiveSettings(
@@ -2333,10 +2346,22 @@ class ESBTPBulletinController extends Controller
             $allBulletinFields = array_merge($checkboxFields, [
                 'bulletin_font_size',
                 'bulletin_header_scale',
+                'bulletin_header_left_font_size',
+                'bulletin_header_school_name_font_size',
+                'bulletin_header_school_meta_font_size',
+                'bulletin_header_title_font_size',
+                'bulletin_header_right_font_size',
+                'bulletin_header_logo_height',
                 'bulletin_margin_vertical',
                 'bulletin_margin_horizontal',
                 'bulletin_decision_min_height',
                 'bulletin_signature_height',
+                'bulletin_signature_width',
+                'bulletin_signature_font_size',
+                'bulletin_edition_font_size',
+                'bulletin_edition_opacity',
+                'bulletin_authenticity_font_size',
+                'bulletin_authenticity_opacity',
                 'bulletin_school_name_custom',
                 'bulletin_republic_text',
                 'bulletin_union_text',

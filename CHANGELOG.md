@@ -13,6 +13,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ## Septembre 2026
 
 ### Ajouts
+- **Bulletins style Yakro — en-tête, pied de page et carte d'identité réglables.** Taille de chaque bloc de l'en-tête (République, nom de l'école, coordonnées, titre, semestre, logo), signature, mention d'édition et d'authenticité, marges dédiées ; carte d'identité compacte avec photo de repli. Mise en page validée par la direction des études d'ESBTP Yamoussoukro.
+- **Maquette BTS unifiée par combinaison filière / niveau**, avec le type de formation, et proposée par Nanan pour configuration.
 - **Nanan — images jointes et actions contrôlées.** Nanan accepte désormais une photo JPEG, PNG ou WebP avec une demande : l’image reste temporaire et privée, est lue visuellement par le modèle puis sert à préparer une proposition soumise à validation. Les tableaux Excel/CSV/Word existants restent inchangés ; une image ambiguë ne déclenche jamais de saisie automatique.
 
 ### Corrections
@@ -21,6 +23,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Validation d'inscription — places comptées sur l'année de l'inscription** (et non plus sur l'année courante) : une inscription de l'année suivante ne se voit plus refuser une classe pleine… l'année d'avant.
 - **Fiche paiement — plus d'erreur sur un versement non encore rattaché à une inscription.**
 - **Bulletins — décocher une rubrique d'affichage est de nouveau enregistré** (la case décochée n'était jamais sauvegardée).
+- **Couverture des notes en tronc commun BTS** alignée sur les phases de spécialité ; instantané de cohérence TC aligné sur le calcul officiel du bulletin.
 - **Bulletins LMD — ordre officiel de la maquette.** Le rendu relit maintenant les positions UE et ECUE de la maquette pour afficher chaque bulletin dans l’ordre pédagogique officiel, y compris pour un snapshot créé avant cette correction ; il ne modifie ni notes, ni crédits, ni résultats.
 - **Nanan — contexte de fiche étudiant prioritaire.** Sur un détail de résultats, l’identifiant de l’étudiant affiché est maintenant explicitement présenté à Nanan et imposé à sa proposition ; une ancienne carte de conversation ne peut plus élargir le nettoyage aux autres étudiants de la classe.
 - **Nanan — nettoyage borné à la fiche ouverte.** Depuis le détail d’un étudiant, Nanan utilise désormais son identifiant de page : sa proposition ne liste, ne supprime et ne régénère que le dossier affiché. Le nettoyage global par matière demeure inchangé depuis la génération de classe.
