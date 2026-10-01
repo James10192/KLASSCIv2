@@ -28,7 +28,7 @@ class ReponseDuSupportMail extends Mailable
         $sujet = AvertirDuRetourDuSupport::titre([
             'reference' => $this->donnees['reference'],
             'titre' => $this->donnees['titre'],
-            'statut' => ['libelle' => $this->donnees['statut_libelle']],
+            'statut' => ['libelle' => $this->donnees['statut_libelle'], 'code' => $this->donnees['statut_code'] ?? null],
         ], (bool) $this->donnees['a_repondu']).' · '.$ecole['schoolName'];
 
         return $this->subject($sujet)
