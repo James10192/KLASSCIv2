@@ -12,8 +12,8 @@ use Tests\TestCase;
 
 /**
  * Les courriels KLASSCI Care prennent le gabarit commun : logo de l'école par
- * son URL publique ABSOLUE (les courriels partent par MailPulse, qui ne
- * transporte que du HTML : ni pièce intégrée, ni base64 que Gmail bloque), et
+ * son URL publique ABSOLUE (les courriels partiront par MailPulse, qui
+ * ne transporte que du HTML : ni pièce intégrée, ni base64 que Gmail bloque), et
  * une initiale à la place quand aucun logo n'est configuré — jamais une image
  * cassée. Les réglages sont posés dans le cache que lit `Setting::get`.
  */

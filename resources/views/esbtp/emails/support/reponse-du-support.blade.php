@@ -45,7 +45,7 @@
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f8fafc;border-radius:14px;">
             <tr>
                 <td width="4" bgcolor="{{ $emailPrimaryColor }}" style="width:4px;background:{{ $emailPrimaryColor }};border-radius:14px 0 0 14px;font-size:0;line-height:0;">&nbsp;</td>
-                <td style="padding:16px 20px;font-size:15px;line-height:1.65;color:#1e293b;white-space:pre-line;">{{ $extrait }}</td>
+                <td style="padding:16px 20px;font-size:15px;line-height:1.65;color:#1e293b;">{!! nl2br(e($extrait)) !!}</td>
             </tr>
         </table>
     @elseif(! $a_repondu)

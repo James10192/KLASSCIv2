@@ -11,8 +11,9 @@ use App\Helpers\SettingsHelper;
  * Tout le reste (logo par URL publique absolue, couleurs, adresse,
  * coordonnées) est posé par les composeurs de `esbtp.emails.*`
  * (CouleursDesCourrielsParents, IdentiteDesCourriels) et rendu par le gabarit
- * commun `esbtp.emails.layout`. Le logo n'est pas une pièce intégrée : les
- * courriels partent par MailPulse, qui ne transporte que du HTML.
+ * commun `esbtp.emails.layout`. Le logo n'est pas une pièce intégrée : ces
+ * courriels partent encore par le mailer SMTP de Laravel, mais PARTIRONT par
+ * MailPulse, qui ne transporte que du HTML : l'URL publique y fonctionnera telle quelle.
  */
 final class IdentiteDeLEcole
 {
