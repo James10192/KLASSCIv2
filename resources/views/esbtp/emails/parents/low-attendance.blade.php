@@ -27,7 +27,7 @@
                 <div class="kpi-label">Taux de présence</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $emailSuccessColor }};">80%</div>
+                <div class="kpi-value" style="color: {{ $emailSuccessText }};">80%</div>
                 <div class="kpi-label">Seuil recommandé</div>
             </div>
         </div>

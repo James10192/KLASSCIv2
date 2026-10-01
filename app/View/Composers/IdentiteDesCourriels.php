@@ -41,6 +41,16 @@ class IdentiteDesCourriels
      */
     public const COULEUR_ALERTE = '#f59e0b';
 
+    /**
+     * Vert et orange de TEXTE. Écrits sur fond blanc, `#10b981` ne donne que
+     * 2,54:1 et `#f59e0b` 2,15:1 : illisibles pour un montant ou une note. Ces
+     * deux teintes foncées dépassent 4,5:1 (WCAG AA). Les couleurs de sens
+     * ci-dessus restent réservées aux fonds et aux bordures.
+     */
+    public const COULEUR_SUCCES_TEXTE = '#047857';
+
+    public const COULEUR_ALERTE_TEXTE = '#b45309';
+
     public function compose(View $view): void
     {
         $donnees = $view->getData();
@@ -62,6 +72,8 @@ class IdentiteDesCourriels
             'emailDangerColor' => $donnees['emailDangerColor'] ?? self::COULEUR_DANGER,
             'emailSuccessColor' => $donnees['emailSuccessColor'] ?? self::COULEUR_SUCCES,
             'emailWarningColor' => $donnees['emailWarningColor'] ?? self::COULEUR_ALERTE,
+            'emailSuccessText' => $donnees['emailSuccessText'] ?? self::COULEUR_SUCCES_TEXTE,
+            'emailWarningText' => $donnees['emailWarningText'] ?? self::COULEUR_ALERTE_TEXTE,
             'emailGardeGmailSombre' => self::texteQuasiBlanc((string) ($donnees['emailHeaderTextColor'] ?? '#ffffff')),
         ]);
     }

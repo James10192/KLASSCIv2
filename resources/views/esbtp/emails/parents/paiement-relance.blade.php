@@ -38,7 +38,7 @@
                 <div class="kpi-label">Montant total</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $emailSuccessColor }};">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</div>
+                <div class="kpi-value" style="color: {{ $emailSuccessText }};">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</div>
                 <div class="kpi-label">Montant payé</div>
             </div>
         </div>
@@ -53,7 +53,7 @@
                 <div class="kpi-label"><strong>Reste à payer</strong></div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $emailPrimaryColor }};">{{ $pourcentagePaye }}%</div>
+                <div class="kpi-value">{{ $pourcentagePaye }}%</div>
                 <div class="kpi-label">Progression</div>
             </div>
         </div>

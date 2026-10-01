@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Mail;
 
+use App\Helpers\SettingsHelper;
 use App\View\Composers\IdentiteDesCourriels;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -38,6 +39,27 @@ class CouleursEnDurDesAvisParentsTest extends TestCase
         $this->assertSame('#f59e0b', IdentiteDesCourriels::COULEUR_ALERTE);
     }
 
+    public function test_les_couleurs_de_texte_sont_lisibles_sur_fond_blanc(): void
+    {
+        foreach ([IdentiteDesCourriels::COULEUR_SUCCES_TEXTE, IdentiteDesCourriels::COULEUR_ALERTE_TEXTE] as $couleur) {
+            $this->assertGreaterThanOrEqual(4.5, $this->contrasteSurBlanc($couleur), "$couleur est illisible sur fond blanc.");
+        }
+    }
+
+    public function test_aucun_texte_n_est_ecrit_dans_une_couleur_de_fond(): void
+    {
+        foreach (glob(resource_path('views/esbtp/emails/parents/*.blade.php')) as $gabarit) {
+            preg_match_all('/(?<![-\w])color:\s*\{\{[^}]*\}\}/', (string) file_get_contents($gabarit), $styles);
+            foreach ($styles[0] as $style) {
+                $this->assertDoesNotMatchRegularExpression(
+                    '/\$email(Success|Warning)Color\b/',
+                    $style,
+                    basename($gabarit)." écrit du texte en couleur de fond : $style",
+                );
+            }
+        }
+    }
+
     public function test_le_composeur_expose_le_vert_et_l_orange(): void
     {
         $donnees = $this->composer(view('esbtp.emails.layout'));
@@ -45,6 +67,8 @@ class CouleursEnDurDesAvisParentsTest extends TestCase
         $this->assertSame(IdentiteDesCourriels::COULEUR_SUCCES, $donnees['emailSuccessColor']);
         $this->assertSame(IdentiteDesCourriels::COULEUR_ALERTE, $donnees['emailWarningColor']);
         $this->assertSame(IdentiteDesCourriels::COULEUR_DANGER, $donnees['emailDangerColor']);
+        $this->assertSame(IdentiteDesCourriels::COULEUR_SUCCES_TEXTE, $donnees['emailSuccessText']);
+        $this->assertSame(IdentiteDesCourriels::COULEUR_ALERTE_TEXTE, $donnees['emailWarningText']);
     }
 
     public function test_une_valeur_fournie_par_l_appelant_garde_la_main(): void
@@ -56,6 +80,14 @@ class CouleursEnDurDesAvisParentsTest extends TestCase
 
         $this->assertSame('#123456', $donnees['emailSuccessColor']);
         $this->assertSame('#654321', $donnees['emailWarningColor']);
+    }
+
+    private function contrasteSurBlanc(string $couleur): float
+    {
+        $l = SettingsHelper::relativeLuminance($couleur);
+        $this->assertNotNull($l);
+
+        return (1.0 + 0.05) / ($l + 0.05);
     }
 
     private function composer(\Illuminate\View\View $vue): array

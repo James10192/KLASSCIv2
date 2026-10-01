@@ -54,7 +54,7 @@
     <div class="kpi-section">
         <div class="kpi-row">
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $emailWarningColor }};">{{ $absencesJustifiees }}</div>
+                <div class="kpi-value" style="color: {{ $emailWarningText }};">{{ $absencesJustifiees }}</div>
                 <div class="kpi-label">Absences justifiées</div>
             </div>
             <div class="kpi-card">
@@ -71,7 +71,7 @@
                 <div class="kpi-label">Total absences</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $tauxPresence >= 80 ? $emailSuccessColor : $emailDangerColor }};">
+                <div class="kpi-value" style="color: {{ $tauxPresence >= 80 ? $emailSuccessText : $emailDangerColor }};">
                     {{ $tauxPresence }}%
                 </div>
                 <div class="kpi-label">Taux de présence</div>

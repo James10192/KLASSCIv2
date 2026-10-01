@@ -48,12 +48,14 @@
         <tr>
             <th>Décision</th>
             <td>
-                <span style="padding: 5px 10px; border-radius: 3px; background:
-                    @if($decision === 'passage') {{ $emailSuccessColor }}
-                    @elseif($decision === 'redoublement') {{ $emailWarningColor }}
-                    @else {{ $emailPrimaryColor }}
-                    @endif;
-                    color: white; font-weight: 600;">
+                @php
+                    [$fondDecision, $texteDecision] = match ($decision) {
+                        'passage' => [$emailSuccessText, '#ffffff'],
+                        'redoublement' => [$emailWarningColor, '#78350f'],
+                        default => [$emailPrimaryColor, $emailHeaderTextColor],
+                    };
+                @endphp
+                <span style="padding: 5px 10px; border-radius: 3px; background: {{ $fondDecision }}; color: {{ $texteDecision }}; font-weight: 600;">
                     {{ ucfirst($decision) }}
                 </span>
             </td>

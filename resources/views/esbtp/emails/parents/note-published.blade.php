@@ -24,7 +24,7 @@
     <div class="kpi-section" style="margin-top: 20px;">
         <div class="kpi-row">
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $note >= 10 ? $emailSuccessColor : $emailDangerColor }}; font-size: 32px;">
+                <div class="kpi-value" style="color: {{ $note >= 10 ? $emailSuccessText : $emailDangerColor }}; font-size: 32px;">
                     {{ number_format($note, 2) }}/{{ $bareme }}
                 </div>
                 <div class="kpi-label">Note obtenue</div>
@@ -44,7 +44,7 @@
                 <div class="kpi-label">Rang</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $note >= $moyenneClasse ? $emailSuccessColor : $emailDangerColor }};">
+                <div class="kpi-value" style="color: {{ $note >= $moyenneClasse ? $emailSuccessText : $emailDangerColor }};">
                     {{ $note >= $moyenneClasse ? 'Au-dessus' : 'En-dessous' }}
                 </div>
                 <div class="kpi-label">Par rapport à la classe</div>

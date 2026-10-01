@@ -40,7 +40,7 @@
     <div class="kpi-section">
         <div class="kpi-row">
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $moyenneGenerale >= 10 ? $emailSuccessColor : $emailDangerColor }};">
+                <div class="kpi-value" style="color: {{ $moyenneGenerale >= 10 ? $emailSuccessText : $emailDangerColor }};">
                     {{ number_format($moyenneGenerale, 2) }}/20
                 </div>
                 <div class="kpi-label">Moyenne générale</div>
@@ -59,7 +59,7 @@
                 <div class="kpi-label">Total absences</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ isset($noteAssiduite) && $noteAssiduite >= 0 ? $emailSuccessColor : $emailDangerColor }};">
+                <div class="kpi-value" style="color: {{ isset($noteAssiduite) && $noteAssiduite >= 0 ? $emailSuccessText : $emailDangerColor }};">
                     {{ isset($noteAssiduite) ? ($noteAssiduite >= 0 ? '+' : '') . number_format($noteAssiduite, 2) : 'N/A' }}
                 </div>
                 <div class="kpi-label">Note d'assiduité</div>
