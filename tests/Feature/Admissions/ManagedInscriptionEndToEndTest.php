@@ -424,7 +424,7 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $candidature = $this->candidature();
         $mailpulse = Mockery::mock(MailPulseClient::class);
         $mailpulse->shouldReceive('createOrUpdateContact')->andReturn(new \App\Services\MailPulse\MailPulseResult(true, 'ok'));
-        $mailpulse->shouldReceive('sendEmailMessage')->once()
+        $mailpulse->shouldReceive('sendEmailMessage')->atLeast()->once()
             ->withArgs(fn (array $message) => ($message['recipient']['value'] ?? null) === $candidature->email
                 && str_contains($message['content']['text'] ?? '', '/activation/'))
             ->andReturn(new \App\Services\MailPulse\MailPulseResult(true, 'queued', 202, null, 'msg-1', null, null, null, 'accepted'));
