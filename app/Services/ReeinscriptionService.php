@@ -369,17 +369,19 @@ class ReeinscriptionService
             // Vérifier permissions SuperAdmin pour outrepasser
             $isSuperAdmin = auth()->user() && auth()->user()->can('admin.access');
 
-            if (!$this->peutSeReinscrire($etudiantId) && !$isSuperAdmin) {
+            if (!$this->peutSeReinscrire($etudiantId, $anneeUniversitaireId) && !$isSuperAdmin) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException("L'étudiant doit solder tous ses frais avant la réinscription");
             }
 
             // Note: Si SuperAdmin et que l'étudiant a des impayés, les reliquats seront créés automatiquement
 
-            // 2. Récupérer l'inscription active actuelle de l'étudiant
-            $inscriptionActuelle = $etudiant->inscriptions()
-                ->where('status', 'active')
-                ->latest()
-                ->first();
+            // 2. L'inscription QUITTÉE pour l'année visée : celle que la garde
+            // vient de juger, et dont le reste dû part en reliquat. La dernière
+            // inscription active (`latest()`) pouvait être une autre — celle de
+            // l'année visée elle-même, quand la réinscription est rejouée.
+            $inscriptionActuelle = app(\App\Services\Reinscription\EligibiliteReinscription::class)
+                ->pour((int) $etudiantId, null, $anneeUniversitaireId ? (int) $anneeUniversitaireId : null)['inscription']
+                ?? $etudiant->inscriptions()->where('status', 'active')->latest()->first();
 
             if (!$inscriptionActuelle) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException("Aucune inscription active trouvée pour cet étudiant");
@@ -405,6 +407,41 @@ class ReeinscriptionService
                 if (!$nouvelleAnnee) {
                     throw new \App\Exceptions\ReinscriptionRefuseeException("Aucune année universitaire active trouvée");
                 }
+            }
+
+            // On ne se réinscrit jamais dans l'année qu'on quitte : l'étape
+            // suivante terminerait l'inscription en cours de l'élève et la
+            // remplacerait, sans retour possible.
+            if ((int) $inscriptionActuelle->annee_universitaire_id === (int) $nouvelleAnnee->id) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException(
+                    "L'année de destination ({$nouvelleAnnee->name}) est celle que l'étudiant quitte : choisissez l'année suivante."
+                );
+            }
+
+            // Une inscription existe déjà sur l'année visée : la refaire la
+            // termine et la remplace (correction de classe). Réservé à qui peut
+            // déroger — la fiche ne propose « Corriger » qu'à ce compte-là.
+            $dejaInscrit = \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
+                ->where('annee_universitaire_id', $nouvelleAnnee->id)
+                ->where('status', '!=', 'annulée')
+                ->exists();
+            // Rejouer vers la MÊME classe ne corrige rien, et heurterait l'index
+            // unique (étudiant, année, classe) : l'ancienne ligne n'est que
+            // « terminée », pas supprimée.
+            // L'index ne regarde pas le statut : une ligne annulée bloque aussi.
+            $memeClasse = \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
+                ->where('annee_universitaire_id', $nouvelleAnnee->id)
+                ->where('classe_id', $nouvelleClasseId)
+                ->first();
+            if ($memeClasse) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException($memeClasse->status === 'annulée'
+                    ? "Une inscription annulée existe déjà dans cette classe pour {$nouvelleAnnee->name} : rouvrez-la depuis la liste des inscriptions."
+                    : "L'étudiant est déjà inscrit dans cette classe pour {$nouvelleAnnee->name} : choisissez une autre classe pour corriger.");
+            }
+            if ($dejaInscrit && !$isSuperAdmin) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException(
+                    "L'étudiant est déjà inscrit pour {$nouvelleAnnee->name}. Pour corriger cette inscription, demandez à un superadministrateur."
+                );
             }
 
             // 4. Vérifier et désactiver toute inscription active existante pour cet étudiant dans cette année
@@ -704,19 +741,18 @@ class ReeinscriptionService
     /**
      * Vérifier si un étudiant peut se réinscrire (doit être entièrement soldé)
      */
-    public function peutSeReinscrire($etudiantId): bool
+    public function peutSeReinscrire($etudiantId, $anneeCibleId = null): bool
     {
-        $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
-        $inscriptionActive = $etudiant->inscriptions()
-            ->where('status', 'active')
-            ->latest()
-            ->first();
-        
-        if (!$inscriptionActive) return false;
-        
-        $soldeRestant = $this->calculerSoldeInscription($inscriptionActive);
+        // La même inscription et le même solde que la fiche de réinscription.
+        // Avant : la dernière inscription ACTIVE (`latest()`), qui pouvait être
+        // une autre que celle affichée, donc un autre verdict que l'écran.
+        $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)
+            ->pour((int) $etudiantId, null, $anneeCibleId ? (int) $anneeCibleId : null);
+        if (!$eligibilite['inscription']) {
+            return false;
+        }
 
-        return $soldeRestant <= $this->toleranceSolde();
+        return $eligibilite['solde'] <= $eligibilite['tolerance'];
     }
 
     /**
@@ -729,7 +765,7 @@ class ReeinscriptionService
      */
     private function toleranceSolde(): float
     {
-        return (float) \App\Helpers\SettingsHelper::get('reinscription.tolerance_solde', 0);
+        return \App\Services\Reinscription\EligibiliteReinscription::tolerance();
     }
 
     /**
