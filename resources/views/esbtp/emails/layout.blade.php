@@ -5,7 +5,22 @@
 
      Tout ce qui structure la page est en style en ligne : plusieurs messageries
      ignorent le bloc <style>. Le bloc ne sert qu'aux classes historiques des
-     avis aux parents, qui gardent un rendu propre là où il est lu. --}}
+     avis aux parents, et à la garde contre le mode sombre de Gmail ci-dessous.
+
+     Mode sombre des applications Gmail (iOS, Android) : elles ignorent
+     `color-scheme` et recolorent d'office. Un fond porté par `background-image`
+     garde sa couleur, pas le texte : le blanc de l'en-tête et du bouton devenait
+     gris foncé sur le bleu. Technique de Rémi Parmentier (« Fixing Gmail's dark
+     mode issues with CSS Blend Modes », 2021) : deux enveloppes à fond noir,
+     `gm-ecran` (fondu `screen`) puis `gm-diff` (fondu `difference`). Gmail
+     inverse ce fond noir en blanc et le texte blanc en noir ; la différence
+     remet le texte en blanc sur noir, l'écran rend ce noir transparent sur la
+     couleur de l'école. Sans inversion, les deux fondus ne changent rien. Le
+     sélecteur `u + .body` ne vise que Gmail, qui remplace le doctype par un
+     `<u></u>` : Apple Mail (qui respecte `color-scheme`), Outlook et
+     Outlook.com ne le voient pas. Le logo reste HORS des enveloppes : le fondu
+     inverserait ses couleurs. Garde posée seulement si ce texte est blanc
+     (`emailGardeGmailSombre`, composeur `IdentiteDesCourriels`). --}}
 @php
     $logoSrc = null;
     // Un courriel envoyé par SMTP porte le logo en pièce intégrée, que les
@@ -59,6 +74,8 @@
         .instruction-box h3 { color: {{ $emailPrimaryColor }}; margin: 0 0 12px; font-size: 15px; }
         .instruction-box li { margin-bottom: 6px; color: #475569; }
         .greeting { font-size: 16px; color: #0f172a; font-weight: 600; margin: 0 0 16px; }
+        u + .body .gm-ecran { background: #000; mix-blend-mode: screen; }
+        u + .body .gm-diff { background: #000; mix-blend-mode: difference; }
         @media only screen and (max-width: 620px) {
             .kl-wrap { padding: 0 !important; }
             .kl-card { border-radius: 0 !important; }
@@ -67,7 +84,7 @@
         }
     </style>
 </head>
-<body style="margin:0;padding:0;background:#eef2f7;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;-webkit-text-size-adjust:100%;">
+<body class="body" style="margin:0;padding:0;background:#eef2f7;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;-webkit-text-size-adjust:100%;">
     {{-- Aperçu affiché par la messagerie à côté du sujet. --}}
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;">@yield('preheader')</div>
 
@@ -91,19 +108,23 @@
                                         </div>
                                     </td>
                                     <td valign="middle" style="padding-left:16px;">
+                                        @if($emailGardeGmailSombre)<div class="gm-ecran"><div class="gm-diff">@endif
                                         <div style="font-size:19px;font-weight:700;line-height:1.3;color:{{ $emailHeaderTextColor }};">{{ $schoolName }}</div>
                                         @if(! empty($schoolAddress))
                                             <div style="font-size:13px;opacity:.82;margin-top:3px;color:{{ $emailHeaderTextColor }};">{{ $schoolAddress }}</div>
                                         @endif
+                                        @if($emailGardeGmailSombre)</div></div>@endif
                                     </td>
                                 </tr>
                             </table>
+                            @if($emailGardeGmailSombre)<div class="gm-ecran"><div class="gm-diff">@endif
                             @if(! empty($emailTitle))
                                 <div style="margin-top:24px;font-size:24px;font-weight:700;line-height:1.3;color:{{ $emailHeaderTextColor }};">{{ $emailTitle }}</div>
                             @endif
                             @hasSection('subtitle')
                                 <div style="margin-top:6px;font-size:14px;opacity:.85;color:{{ $emailHeaderTextColor }};">@yield('subtitle')</div>
                             @endif
+                            @if($emailGardeGmailSombre)</div></div>@endif
                         </td>
                     </tr>
 
