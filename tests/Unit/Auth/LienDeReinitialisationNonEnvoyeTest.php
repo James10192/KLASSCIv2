@@ -3,7 +3,7 @@
 namespace Tests\Unit\Auth;
 
 use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Mail\Transport\DebitMailPulseAtteint;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Illuminate\Contracts\Auth\PasswordBroker;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +18,7 @@ class LienDeReinitialisationNonEnvoyeTest extends TestCase
     public function un_courriel_refuse_devient_un_message_a_l_ecran_et_une_ligne_au_journal(): void
     {
         $courtier = Mockery::mock(PasswordBroker::class);
-        $courtier->shouldReceive('sendResetLink')->once()->andThrow(new DebitMailPulseAtteint('plafond', 30));
+        $courtier->shouldReceive('sendResetLink')->once()->andThrow(new TransportException('plafond'));
         Password::shouldReceive('broker')->andReturn($courtier);
         Log::spy();
 

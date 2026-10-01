@@ -61,64 +61,78 @@ Ce que fait le mailer pour tenir le débit (`App\Mail\Transport\CadenceMailPulse
 - il compte ses propres envois par minute (`MAILPULSE_MAIL_PER_MINUTE`, **30** par
   défaut, pour laisser la place aux notifications et aux convocations qui passent
   déjà par MailPulse) ;
-- au-delà, ou sur un `429` de débit de MailPulse, il **refuse** le courriel
-  (`DebitMailPulseAtteint`, journalisé) **sans jamais attendre** : un `sleep()`
-  ferait dépasser au worker son délai de 60 s ou le `retry_after` de 90 s, et le
-  job repartirait en double ;
-- **dans un job de file**, le refus est reporté sans brûler d'essai
-  (`App\Mail\Transport\ReportDesCourrielsRefuses`) : le job refusé est supprimé
-  et une **copie neuve** est remise en file, compteur d'essais à zéro, avec le
-  délai du refus (60 s au plus). Le nombre de reports voyage dans la charge du
-  job (`mailpulse_reports`) et plafonne à **120**, soit un peu plus de **deux
-  heures** de patience. Au-delà, le report redevient un `release()` qui compte :
-  avec `--tries=3`, le job finit dans `failed_jobs` après deux essais de plus, et
-  `queue:prune-failed --hours=168` l'efface au bout de **sept jours**. Un job déjà
-  à sa dernière tentative pour une autre raison échoue normalement : le worker
-  tranche avant le report, qui ne le ressuscite pas ;
-- **ailleurs** (requête web, commande, planificateur, job `sync`), c'est un échec
-  d'envoi ordinaire, que l'appelant affiche ou enregistre comme tel ;
-- un `429` de **quota** (`quota_exceeded`) n'est jamais réessayé : il ne passera
-  pas avant le mois suivant ou un changement d'offre.
+- au-delà, ou sur un `429` de débit de MailPulse, il **diffère** le courriel au
+  lieu de le refuser, et **sans jamais attendre** : un `sleep()` ferait dépasser
+  au worker son délai de 60 s ou le `retry_after` de 90 s, et le job repartirait
+  en double. Le message déjà construit et sa clé d'idempotence partent dans un
+  job dédié, `App\Jobs\MailPulse\RemettreCourrielMailPulse`, **un par
+  destinataire**, avec le délai du refus. L'appelant n'a rien à rattraper : pour
+  lui le courriel est parti (journal : `Courriel par MailPulse : envoi différé`) ;
+- ce job réessaie tant que le débit refuse, sans brûler d'essai : sa patience est
+  bornée dans le temps (`retryUntil`, **deux heures** à compter de la mise en
+  file), pas en tentatives, et `--tries` est alors ignoré par le worker. Chaque
+  refus le relâche avec au moins 60 s, plus un peu de hasard pour que les
+  courriels retenus ne retombent pas tous dans la même minute. Parti, il le
+  journalise (`Courriel différé parti par MailPulse`) ; passé deux heures, il
+  échoue (`Courriel différé abandonné`, et `failed_jobs`) ;
+- tout autre refus de MailPulse dans ce job (adresse refusée, clé invalide,
+  quota) le fait échouer **tout de suite**, journalisé : le rejouer pendant deux
+  heures ne servirait à rien ;
+- un `429` de **quota** (`quota_exceeded`) n'est jamais différé : il ne passera
+  pas avant le mois suivant ou un changement d'offre. C'est un échec d'envoi
+  ordinaire, et il arrête la file des convocations ;
+- **sans file** (`QUEUE_CONNECTION=sync`), différer est impossible : le refus de
+  débit redevient un échec d'envoi, journalisé, que l'appelant traite comme
+  toute panne. D'où le prérequis plus bas.
 
 « Au mieux » veut dire : pas de garantie. La fenêtre est fixe ici et glissante
 chez MailPulse, l'incrément du cache `file` n'est pas atomique entre deux
 processus, et le compteur ne voit que son instance — ni les autres écoles d'une
 même organisation, ni les autres flux MailPulse. Un `429` reste possible ; il
-prend alors le même chemin que le refus local. Il s'écrit en **avertissement**
+prend le même chemin que le refus local. Il s'écrit en **avertissement**
 au journal (`Courriel refusé par MailPulse`), pas en erreur : rien n'est cassé.
-Un refus local en cours de boucle dit combien de destinataires du même courriel
-sont déjà partis (`deja_partis`).
 
-**Un courriel à plus de destinataires que le plafond ne peut pas partir.** Chaque
-reprise renvoie d'abord les destinataires déjà servis (MailPulse les dédoublonne
-par la clé d'idempotence, mais le plafond les compte), puis bute au même rang.
-Il finit en échec après ses reports, et une reprise qui franchit l'heure peut
-doubler les premiers. **Aucun courriel de KLASSCI n'a aujourd'hui plus d'un
-destinataire** (tous partent en `Mail::to($une_adresse)`) ; un envoi groupé à
-venir doit faire un courriel par adresse.
+Un courriel à plusieurs destinataires (À, Cc, Cci) part en un message par
+adresse ; seuls ceux que le débit retient sont différés, chacun dans son job.
+Aucun n'est renvoyé deux fois, et le plafond ne peut plus bloquer un courriel
+qui aurait plus de destinataires que lui.
 
-**Ce qui se passe, appelant par appelant**, quand le débit est atteint :
+**Ce qui se passe, appelant par appelant**, quand le débit est atteint (avec une
+file et un worker actifs) :
 
 | appelant | contexte | ce qui se passe |
 |---|---|---|
-| `SendReinscriptionMailJob` (réinscription groupée) → `NotificationService::notifyParentsReinscriptionCreated()` | file | le refus remonte, le job est **reporté**. L'avis dans l'application n'est pas doublé à la reprise (`firstOrCreate`) |
-| `EnvoyerRelanceJob` (« Renvoyer » une relance) → `NotificationService::envoyerRelanceEmail()` | file | le refus remonte, le job est **reporté** ; la relance n'est ni marquée `echec` ni passée au `fail()` |
-| Notifications en file (`ESBTPNotification`, `PaiementNotification`, `AbsenceNotification`, `AbsenceJustificationNotification`, `PaiementHighAmountValidatedNotification`, `TpeDeclarationStatusChangedNotification`, `AnalyticsAnomalyNotification`), canal `mail` | file (un job par canal) | l'exception remonte d'elle-même au worker : **reportées**, sans doubler l'avis en base, qui part dans son propre job |
-| « Exécuter les relances en attente » (`ESBTPComptabiliteRelanceController::executerRelances()` → `executerRelancesEnAttente()`) | requête web, en rafale | au-delà du plafond, les suivantes passent en `echec` : **visibles et relançables** depuis l'écran, mais non parties |
-| Appel de fin de cours (`TeacherDashboardController`), appels du LMS (`API\LMSWriteController`, `API\LMSDataController`), saisie d'absence (`ESBTPAttendanceController`) → `notifyParentsAbsence()` | requête web, en rafale (jusqu'à deux courriels par élève absent) | refus **avalé et journalisé** (`Log::error`) : l'avis au parent est **perdu**, l'appel est enregistré. Le seul vrai trou |
-| Inscription, réinscription à l'unité, validation et rejet de paiement, publication de bulletin → `notifyParents*()` | requête web, un courriel | refus avalé et journalisé, comme toute autre panne d'envoi : l'écran ne casse pas |
-| Mot de passe oublié (`ForgotPasswordController`) | requête web | message « n'a pas pu partir, réessayez dans quelques minutes » |
-| Fin des tâches de bulletins, retour du support, rapport généré | file ou web, un courriel | refus avalé et journalisé par leur propre `catch`, non réessayé |
+| Appel de fin de cours (`TeacherDashboardController`), appels du LMS (`API\LMSWriteController`, `API\LMSDataController`), saisie d'absence (`ESBTPAttendanceController`) → `notifyParentsAbsence()` | requête web, en rafale | **différé**, plus perdu : l'avis au parent part dans les deux heures |
+| « Exécuter les relances en attente » (`ESBTPComptabiliteRelanceController::executerRelances()`) | requête web, en rafale | **différé** ; la relance est marquée `envoyee` dès la mise en file (voir plus bas) |
+| `EnvoyerRelanceJob` (« Renvoyer » une relance), `SendReinscriptionMailJob` (réinscription groupée) | file | **différé** par son propre job, le job appelant se termine normalement |
+| Notifications en file (`ESBTPNotification`, `PaiementNotification`, `AbsenceNotification`, …), canal `mail` | file | **différé**, l'avis en base n'est pas doublé |
+| Inscription, réinscription à l'unité, validation et rejet de paiement, publication de bulletin → `notifyParents*()` | requête web, un courriel | **différé** |
+| Mot de passe oublié (`ForgotPasswordController`) | requête web | **différé** ; sous `sync` seulement, message « n'a pas pu partir, réessayez dans quelques minutes » |
+| Fin des tâches de bulletins, retour du support, rapport généré | file ou web, un courriel | **différé** |
 
-Les `notifyParents*()` appelés depuis l'écran ne remontent pas le refus, et c'est
-voulu : ils créent l'avis dans l'application **avant** le courriel, donc une
-reprise le doublerait. Seul l'avis de réinscription, appelé depuis une file,
-remonte, et son avis est rendu idempotent pour ça.
+**Ce qu'un courriel différé ne dit pas à l'appelant.** Pour lui, le courriel est
+parti au moment de la mise en file. Si le job échoue ensuite (deux heures de
+débit saturé, ou un refus non lié au débit), l'appelant ne le saura pas : une
+relance reste marquée `envoyee`, un avis reste « envoyé ». La seule trace est au
+journal (`Courriel différé abandonné`) et dans `failed_jobs`. C'est le prix de ne
+plus perdre les rafales ; un écran de suivi des courriels différés n'existe pas.
 
-**Tant que l'appel de fin de cours envoie dans la requête, ne pas basculer les
-instances Élite (`esbtp-abidjan`, `esbtp-yakro`, plus de 2 000 inscriptions)** :
-une journée d'appels y dépasse vite 30 courriels par minute aux heures de
-cours. Les petites instances peuvent basculer d'abord, avec un worker actif.
+Deux autres limites, à connaître :
+
+- un job différé mis en file **dans une transaction** qui est ensuite annulée
+  l'est avec elle ; le courriel ne part pas, comme les données ;
+- la clé d'idempotence voyage dans le job, inchangée : si MailPulse a déjà pris
+  le message (réponse perdue), il ne le doublera pas.
+
+**Les instances Élite (`esbtp-abidjan`, `esbtp-yakro`, plus de 2 000
+inscriptions) peuvent maintenant basculer, à trois conditions** : un worker qui
+tourne en permanence et `QUEUE_CONNECTION` différent de `sync` ; une offre
+MailPulse dont le quota tient le mois (une journée d'appels y dépasse vite 30
+courriels par minute, et chaque courriel retardé reste un courriel compté) ;
+et l'acceptation qu'une rafale prolongée au-delà de deux heures se perde au
+journal plutôt qu'à l'écran. Les 60 par minute restent partagés par toute
+l'organisation MailPulse : deux grandes écoles sur la même organisation se
+ralentissent l'une l'autre. Commencer par une petite instance reste le plus sûr.
 
 **Avant toute bascule, vérifier dans MailPulse** l'organisation à laquelle la clé
 de l'école appartient, son offre et le quota du mois restant. Une organisation
@@ -127,10 +141,16 @@ en offre gratuite atteint 5 000 e-mails en une campagne de relances d'une grande
 
 ## Ce qu'il faut poser sur chaque instance
 
-Prérequis : l'instance parle déjà à MailPulse.
+Prérequis : l'instance parle déjà à MailPulse, **et elle a une file qui tourne**.
+Vérifier, instance par instance, `QUEUE_CONNECTION` dans le `.env` (il doit valoir
+`database` ou `redis`, pas `sync`) et qu'un worker (`php artisan queue:work`) est
+lancé en permanence (cron ou superviseur). Sans worker, les courriels différés
+s'accumulent dans `jobs` et ne partent jamais ; avec `sync`, un pic de débit fait
+échouer les courriels au lieu de les différer.
 
 | clé | où | valeur |
 |---|---|---|
+| `QUEUE_CONNECTION` | `.env` | `database` (ou `redis`), **pas `sync`** ; et un worker actif |
 | `MAILPULSE_API_KEY` | `.env`, ou réglage `mailpulse_api_key` | clé API v1 de l'organisation MailPulse (déjà posée là où les notifications parents partent) |
 | `mailpulse_enabled` | réglage, ou `.env` `MAILPULSE_ENABLED` | `1` — **à `0`, plus aucun courriel ne part**, y compris les liens de confirmation |
 | `MAIL_MAILER` | `.env` | `mailpulse` |
@@ -145,12 +165,12 @@ Puis `php artisan config:clear` (ou `klassci cache:clear <instance>`).
 
 | instance | clé MailPulse | à faire |
 |---|---|---|
-| `esbtp-abidjan` | posée (relevé du 1er octobre, `activation-notifications-abidjan-yakro.md`) | **attendre** : relances et avis parents encore en rafale dans la requête (voir les limites) ; vérifier offre et quota |
-| `esbtp-yakro` | posée (même relevé) | **attendre**, même raison |
-| `presentation`, `ephrata`, `hetec`, `rostan`, `usat`, `ucao-benin` | **non vérifiée** | vérifier la clé avant de basculer `MAIL_MAILER` : `GET /api/cli/rendez-vous/diagnostic` rend la ligne `messagerie` à `ok: true` (« Envoi des convocations par MailPulse actif » : MailPulse activé et clé présente) |
+| `esbtp-abidjan` | posée (relevé du 1er octobre, `activation-notifications-abidjan-yakro.md`) | vérifier `QUEUE_CONNECTION` et le worker, puis offre et quota ; basculer après une petite instance |
+| `esbtp-yakro` | posée (même relevé) | idem |
+| `presentation`, `ephrata`, `hetec`, `rostan`, `usat`, `ucao-benin` | **non vérifiée** | vérifier la clé avant de basculer `MAIL_MAILER` : `GET /api/cli/rendez-vous/diagnostic` rend la ligne `messagerie` à `ok: true` (« Envoi des convocations par MailPulse actif » : MailPulse activé et clé présente) ; puis `QUEUE_CONNECTION` et le worker |
 
 Basculer une instance sans clé fait échouer **tous** ses courriels : vérifier
-la clé, l'offre et le quota d'abord, basculer ensuite.
+la clé, la file, l'offre et le quota d'abord, basculer ensuite.
 
 ## Contrôle après bascule
 
@@ -160,6 +180,9 @@ la clé, l'offre et le quota d'abord, basculer ensuite.
    Une ligne `HTML trop volumineux` désigne un gabarit à alléger.
 3. Côté MailPulse, le message apparaît avec `external_tenant_id` = code de
    l'instance et `workflow_event` = `laravel_mail`.
+4. Les jours de rafale (appels, relances) : `jobs` ne doit pas grossir sans fin
+   (sinon le worker ne tourne pas), et aucune ligne `Courriel différé abandonné`
+   au journal. `failed_jobs` les garde sept jours (`queue:prune-failed --hours=168`).
 
 ## Ce qui ne passe pas encore
 

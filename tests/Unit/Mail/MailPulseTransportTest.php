@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Mail;
 
-use App\Mail\Transport\DebitMailPulseAtteint;
+use App\Jobs\MailPulse\RemettreCourrielMailPulse;
 use App\Mail\Transport\CorpsPourMailPulse;
 use App\Mail\Transport\MailPulseTransport;
 use Mockery;
@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
+use Illuminate\Support\Facades\Queue;
 use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 
@@ -34,6 +35,7 @@ class MailPulseTransportTest extends TestCase
         config()->set('services.mailpulse.messages_endpoint', '/api/v1/messages');
         config()->set('services.mailpulse.sender_email', '');
         config()->set('services.mailpulse.mail_per_minute', 30);
+        config()->set('queue.default', 'database');
     }
 
     protected function tearDown(): void
@@ -129,80 +131,101 @@ class MailPulseTransportTest extends TestCase
     }
 
     /** @test */
-    public function au_dela_du_plafond_le_courriel_est_refuse_sans_appeler_mailpulse_et_sans_attendre(): void
+    public function au_dela_du_plafond_le_courriel_est_differe_sans_appeler_mailpulse_ni_attendre(): void
     {
         $this->accepte();
+        Queue::fake();
         config()->set('services.mailpulse.mail_per_minute', 2);
         $debut = microtime(true);
         Log::spy();
 
-        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
-        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('b@example.com')->subject('S'));
-
-        try {
-            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('c@example.com')->subject('S'));
-            $this->fail('Le troisième courriel aurait dû être refusé.');
-        } catch (DebitMailPulseAtteint $e) {
-            $this->assertGreaterThan(0, $e->reessayerDans);
-            $this->assertLessThanOrEqual(60, $e->reessayerDans);
+        foreach (['a', 'b', 'c'] as $qui) {
+            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to("{$qui}@example.com")->subject('S'));
         }
 
         Http::assertSentCount(2);
+        Queue::assertPushed(RemettreCourrielMailPulse::class, 1);
+        Queue::assertPushed(RemettreCourrielMailPulse::class, function (RemettreCourrielMailPulse $job) {
+            return $job->charge['recipient']['value'] === 'c@example.com'
+                && $job->cleIdempotence === MailPulseTransport::cleIdempotence($job->charge)
+                && $job->charge['metadata']['subject'] === 'S'
+                && $job->delay !== null && $job->delay->isFuture();
+        });
+        Log::shouldHaveReceived('warning')->with('Courriel par MailPulse : envoi différé', Mockery::type('array'))->once();
         $this->assertLessThan(5, microtime(true) - $debut, 'La cadence ne dort jamais.');
     }
 
     /** @test */
-    public function un_refus_local_en_cours_de_boucle_dit_combien_de_destinataires_sont_deja_partis(): void
+    public function chaque_destinataire_retenu_a_son_propre_job(): void
     {
         $this->accepte();
-        config()->set('services.mailpulse.mail_per_minute', 2);
-        Log::spy();
+        Queue::fake();
+        config()->set('services.mailpulse.mail_per_minute', 1);
 
-        try {
-            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to(['a@example.com', 'b@example.com', 'c@example.com'])->subject('S'));
-            $this->fail('Le troisième destinataire aurait dû être refusé.');
-        } catch (DebitMailPulseAtteint $e) {
-            // Rien de plus à vérifier sur l'exception : c'est la trace qui compte.
-        }
+        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to(['a@example.com', 'b@example.com'])->cc('c@example.com')->subject('S'));
 
-        Http::assertSentCount(2);
-        Log::shouldHaveReceived('warning')->with(
-            'Courriel par MailPulse : plafond par minute atteint, envoi refusé',
-            Mockery::on(fn (array $c) => $c['deja_partis'] === 2 && $c['destinataires'] === 3)
-        )->once();
+        Http::assertSentCount(1);
+        $retenus = [];
+        Queue::assertPushed(RemettreCourrielMailPulse::class, function (RemettreCourrielMailPulse $job) use (&$retenus) {
+            $retenus[] = $job->charge['recipient']['value'];
+
+            return true;
+        });
+        sort($retenus);
+        $this->assertSame(['b@example.com', 'c@example.com'], $retenus, 'Un job par destinataire : plus de courriel trop large pour le plafond.');
     }
 
     /** @test */
-    public function un_429_de_debit_leve_un_refus_de_debit_rejouable(): void
+    public function un_429_de_debit_differe_le_courriel_sans_erreur(): void
     {
         Http::fake([self::ENDPOINT => Http::response(['error' => 'Message rate limit exceeded'], 429)]);
+        Queue::fake();
         Log::spy();
 
-        try {
-            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
-            $this->fail('Un 429 aurait dû lever.');
-        } catch (DebitMailPulseAtteint $e) {
-            $this->assertSame(60, $e->reessayerDans);
-        }
+        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
 
         Http::assertSentCount(1);
+        Queue::assertPushed(RemettreCourrielMailPulse::class, fn (RemettreCourrielMailPulse $job) => $job->delay->diffInSeconds(now()) >= 55);
         // Un 429 de débit n'est pas une panne : avertissement, pas erreur.
         Log::shouldHaveReceived('warning')->with('Courriel refusé par MailPulse', Mockery::type('array'))->once();
         Log::shouldNotHaveReceived('error');
     }
 
     /** @test */
-    public function un_quota_mensuel_epuise_n_est_pas_un_refus_de_debit(): void
+    public function sans_file_le_refus_de_debit_reste_un_echec_d_envoi(): void
+    {
+        $this->accepte();
+        Queue::fake();
+        config()->set('queue.default', 'sync');
+        config()->set('services.mailpulse.mail_per_minute', 1);
+
+        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
+
+        try {
+            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('b@example.com')->subject('S'));
+            $this->fail('Sans file, un courriel retenu ne peut pas être différé.');
+        } catch (TransportException $e) {
+            $this->assertStringContainsString('QUEUE_CONNECTION=sync', $e->getMessage());
+        }
+
+        Http::assertSentCount(1);
+        Queue::assertNothingPushed();
+    }
+
+    /** @test */
+    public function un_quota_mensuel_epuise_n_est_pas_differe(): void
     {
         Http::fake([self::ENDPOINT => Http::response(['error' => 'Monthly email quota exceeded'], 429)]);
+        Queue::fake();
 
         try {
             Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
             $this->fail('Le quota aurait dû lever.');
         } catch (TransportException $e) {
-            $this->assertNotInstanceOf(DebitMailPulseAtteint::class, $e, 'Le quota ne passera pas avant le mois suivant : pas de remise en file.');
             $this->assertStringContainsString('quota_exceeded', $e->getMessage());
         }
+
+        Queue::assertNothingPushed();
     }
 
     /** @test */

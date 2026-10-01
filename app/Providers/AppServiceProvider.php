@@ -211,9 +211,8 @@ class AppServiceProvider extends ServiceProvider
         // MAIL_MAILER=mailpulse : tout courriel de Laravel part par l'API MailPulse.
         \Illuminate\Support\Facades\Mail::extend('mailpulse', fn () => new \App\Mail\Transport\MailPulseTransport(
             $this->app->make(\App\Services\MailPulse\MailPulseClient::class),
-            $this->app->make(\App\Mail\Transport\CadenceMailPulse::class),
+            $this->app->make(\App\Mail\Transport\EnvoiMailPulse::class),
         ));
-        \App\Mail\Transport\ReportDesCourrielsRefuses::brancher();
 
         // Nom des rangs de la structure LMD, regle par etablissement (Domaine /
         // Mention / Parcours, ou Composante / Departement / Specialite).

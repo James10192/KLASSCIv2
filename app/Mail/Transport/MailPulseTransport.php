@@ -2,6 +2,7 @@
 
 namespace App\Mail\Transport;
 
+use App\Jobs\MailPulse\RemettreCourrielMailPulse;
 use App\Services\MailPulse\MailPulseClient;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Mailer\Exception\TransportException;
@@ -24,11 +25,14 @@ use Symfony\Component\Mime\MessageConverter;
  *   journalisé. Le contenu arrive, sans la mise en page ;
  * - Reply-To : non transmis, journalisé ;
  * - Cc / Cci : chacun reçoit son propre message ;
- * - plafond de 60 par minute et par organisation : voir `CadenceMailPulse` ;
- *   un 429 de débit lève `DebitMailPulseAtteint`, qu'un job de file rejoue plus tard.
+ * - plafond de 60 par minute et par organisation : voir `CadenceMailPulse`.
+ *   Un courriel retenu pour débit (plafond local ou 429) n'est PAS une erreur
+ *   pour l'appelant : il est confié à `RemettreCourrielMailPulse`, qui le remet
+ *   plus tard. Sans file (`QUEUE_CONNECTION=sync`), impossible de différer : il
+ *   est refusé comme les autres.
  *
- * Tout refus de MailPulse lève une `TransportException` : les appelants qui
- * affichent « le courriel n'a pas pu partir » continuent de le dire.
+ * Tout autre refus de MailPulse lève une `TransportException` : les appelants
+ * qui affichent « le courriel n'a pas pu partir » continuent de le dire.
  */
 final class MailPulseTransport extends AbstractTransport
 {
@@ -40,7 +44,7 @@ final class MailPulseTransport extends AbstractTransport
 
     public function __construct(
         private readonly MailPulseClient $client,
-        private readonly CadenceMailPulse $cadence,
+        private readonly EnvoiMailPulse $envoi,
     ) {
         parent::__construct();
     }
@@ -91,47 +95,38 @@ final class MailPulseTransport extends AbstractTransport
             $charge = ['channel' => 'email', 'recipient' => ['type' => 'email', 'value' => $destinataire->getAddress()]] + $corps;
             $requestId = self::cleIdempotence($charge);
 
-            $this->cadence->avantEnvoi($contexte + ['deja_partis' => $rang, 'destinataires' => count($destinataires)]);
-            $resultat = $this->client->sendEmailMessage($charge, $requestId);
-
-            if (! $resultat->ok) {
-                // Un 429 de débit n'est pas une panne : le courriel repart plus
-                // tard, à l'identique. Tout autre refus en est une.
-                $niveau = $resultat->status === 'rate_limited' ? 'warning' : 'error';
-                Log::$niveau('Courriel refusé par MailPulse', $contexte + [
-                    'statut' => $resultat->status,
-                    'http' => $resultat->httpStatus,
-                    'request_id' => $resultat->requestId,
-                    'code' => $resultat->errorCode,
-                    'erreur' => $resultat->message,
-                    'domaine_destinataire' => substr(strrchr($destinataire->getAddress(), '@') ?: '', 1),
-                    'deja_partis' => $rang,
+            $attente = $this->envoi->tenter($charge, $requestId, $contexte);
+            if ($attente !== null) {
+                $this->differer($charge, $requestId, $attente, $contexte + [
+                    'rang' => $rang,
                     'destinataires' => count($destinataires),
-                ]);
-
-                if ($resultat->status === 'rate_limited') {
-                    throw new DebitMailPulseAtteint('MailPulse limite le débit (429) : le courriel n\'est pas parti, réessayez dans 60 s.', 60);
-                }
-
-                throw new TransportException(sprintf(
-                    'MailPulse n\'a pas accepté le courriel (%s%s) : %s',
-                    $resultat->status,
-                    $resultat->httpStatus ? ', HTTP '.$resultat->httpStatus : '',
-                    $resultat->message ?? 'aucun détail'
-                ));
-            }
-
-            if (! $resultat->isDispatchAccepted()) {
-                // Accepté par MailPulse mais pas encore remis au fournisseur
-                // (« pending », « pending_reconciliation ») : MailPulse le
-                // rejoue ou le tranche. Une ligne, pour qu'un courriel qui
-                // n'arrive pas se retrouve sans deviner.
-                Log::warning('Courriel par MailPulse : remise à confirmer', $contexte + [
-                    'etat' => $resultat->dispatchState,
-                    'request_id' => $resultat->requestId,
                 ]);
             }
         }
+    }
+
+    /**
+     * Refus de débit : un job par destinataire, qui remettra ce message-là.
+     * Une file `sync` exécuterait le job sur-le-champ, donc retomberait sur le
+     * même refus : on refuse alors franchement, comme avant.
+     */
+    private function differer(array $charge, string $requestId, int $attente, array $contexte): void
+    {
+        $journal = $contexte + [
+            'reessayer_dans' => $attente,
+            'domaine_destinataire' => substr(strrchr((string) $charge['recipient']['value'], '@') ?: '', 1),
+        ];
+
+        if (config('queue.default') === 'sync') {
+            Log::error('Courriel par MailPulse : débit atteint et aucune file pour différer, envoi refusé', $journal);
+
+            throw new TransportException(
+                "Débit d'envoi MailPulse atteint et aucune file d'attente (QUEUE_CONNECTION=sync) : le courriel n'est pas parti, réessayez dans {$attente} s."
+            );
+        }
+
+        RemettreCourrielMailPulse::dispatch($charge, $requestId, $contexte)->delay(now()->addSeconds($attente));
+        Log::warning('Courriel par MailPulse : envoi différé', $journal);
     }
 
     /**
