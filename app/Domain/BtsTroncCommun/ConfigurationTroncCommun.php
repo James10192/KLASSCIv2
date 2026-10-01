@@ -52,7 +52,7 @@ class ConfigurationTroncCommun
 
         return [
             "{$filiere->name} deviendra un tronc commun secondaire rattaché à {$parent}.",
-            "Ce qui change : ses étudiants apparaîtront parmi ceux à orienter, ses classes pourront être reprises comme classes de tronc commun du parent, la resynchronisation des phases et la CLI des matières la traiteront comme tronc commun. L'écran d'orientation, lui, ne la propose pas comme tronc commun principal.",
+            "Ce qui change : ses étudiants apparaîtront parmi ceux à orienter, ses classes seront vues comme classes de tronc commun par ses propres options, la resynchronisation des phases et la CLI des matières la traiteront comme tronc commun. L'écran d'orientation, lui, ne la propose pas comme tronc commun principal.",
         ];
     }
 
