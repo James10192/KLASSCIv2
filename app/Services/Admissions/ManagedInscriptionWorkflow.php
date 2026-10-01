@@ -75,6 +75,9 @@ final class ManagedInscriptionWorkflow
                 'state' => $this->initialState(),
             ]);
         } catch (QueryException $e) {
+            if ((string) $e->getCode() !== '23000') {
+                throw $e;
+            }
             // Deux guichets ouvrent le même dossier au même instant : l'index
             // unique a tranché, on relit la ligne gagnante.
             return ESBTPCandidatureWorkflow::query()->where('candidature_id', $candidature->id)->firstOrFail();
@@ -110,14 +113,25 @@ final class ManagedInscriptionWorkflow
 
         return $scopes
             ->flatMap(fn (array $scope) => ESBTPFraisConfiguration::getConfigurationsForScope($scope, (int) $anneeId, 'effective', true))
-            ->filter(fn (ESBTPFraisConfiguration $c) => $c->fraisCategory && (float) $c->amount > 0)
+            ->filter(fn (ESBTPFraisConfiguration $c) => $c->fraisCategory)
+            ->map(function (ESBTPFraisConfiguration $c) use ($candidature) {
+                // Même tarif que celui que la souscription facturera : selon le
+                // statut d'affectation du candidat (affecté, non affecté…).
+                $c->montant_du_candidat = (float) $c->getMontantByStatus(
+                    $candidature->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS
+                );
+
+                return $c;
+            })
+            ->filter(fn (ESBTPFraisConfiguration $c) => $c->montant_du_candidat > 0)
             ->groupBy('frais_category_id')
             ->map(fn (Collection $configs) => [
                 'category_id' => (int) $configs->first()->frais_category_id,
                 'name' => (string) $configs->first()->fraisCategory->name,
                 // Classe pas encore choisie : le plafond est le plus élevé des
-                // tarifs possibles, la facture finale reprend le tarif exact.
-                'amount' => (float) $configs->max('amount'),
+                // tarifs possibles ; la finalisation refuse un versement qui
+                // dépasserait le tarif de la classe finalement choisie.
+                'amount' => (float) $configs->max('montant_du_candidat'),
                 'sort' => (int) ($configs->first()->fraisCategory->sort_order ?? 9999),
             ])
             ->sortBy('sort')
@@ -273,18 +287,28 @@ final class ManagedInscriptionWorkflow
         int $quantity,
         int $userId,
     ): ESBTPPieceDeposee {
-        $workflow->loadMissing('candidature');
-        $this->assertNotFinalized($workflow);
-        // Le rendez-vous précède TOUTE étape physique, que la caisse ou les
-        // pièces viennent en premier.
-        $this->assertAppointment($workflow->candidature);
+        return DB::transaction(function () use ($workflow, $pieceId, $quantity, $userId) {
+            // Verrou : deux clics sur la première pièce ne créent pas deux
+            // dossiers étudiants provisoires.
+            $workflow = ESBTPCandidatureWorkflow::query()->lockForUpdate()->with('candidature')->findOrFail($workflow->id);
+            $this->assertNotFinalized($workflow);
+            // Le rendez-vous précède TOUTE étape physique, que la caisse ou les
+            // pièces viennent en premier.
+            $this->assertAppointment($workflow->candidature);
 
-        $etudiant = $workflow->etudiant ?: $this->ensureProvisionalStudent(
-            $workflow->candidature,
-            $workflow,
-            $userId,
-        );
+            $etudiant = $this->ensureProvisionalStudent($workflow->candidature, $workflow, $userId);
 
+            return $this->deposer($workflow, $etudiant, $pieceId, $quantity, $userId);
+        });
+    }
+
+    private function deposer(
+        ESBTPCandidatureWorkflow $workflow,
+        ESBTPEtudiant $etudiant,
+        int $pieceId,
+        int $quantity,
+        int $userId,
+    ): ESBTPPieceDeposee {
         $piece = $this->catalogue
             ->pourScope($workflow->candidature->filiere_id, $workflow->candidature->niveau_id)
             ->firstWhere('id', $pieceId);
@@ -396,6 +420,14 @@ final class ManagedInscriptionWorkflow
         $workflow->save();
 
         $url = route('esbtp.admissions.workflow.activation.form', ['token' => $token]);
+
+        // Jamais d'envoi sous verrou ni avant validation : dans une transaction,
+        // l'e-mail part après le commit (et pas du tout en cas d'annulation).
+        if (DB::transactionLevel() > 0) {
+            DB::afterCommit(fn () => $this->notifier->sendEmail($workflow, $url));
+
+            return ['token' => $token, 'url' => $url, 'email_sent' => false];
+        }
 
         return ['token' => $token, 'url' => $url, 'email_sent' => $this->notifier->sendEmail($workflow, $url)];
     }

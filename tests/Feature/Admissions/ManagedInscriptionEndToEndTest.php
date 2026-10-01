@@ -349,6 +349,18 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertNull($workflow->fresh()->final_inscription_id);
     }
 
+    /** @test */
+    public function un_dossier_paye_reste_accessible_au_guichet_des_pieces(): void
+    {
+        $candidature = $this->candidature();
+        app(ManagedInscriptionWorkflow::class)->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+        $sequence = app(ManagedInscriptionSequence::class);
+
+        $this->assertCount(0, $sequence->dossiers(ManagedInscriptionSequence::ETAPE_CAISSE)->items());
+        $this->assertSame([$candidature->id], collect($sequence->dossiers(ManagedInscriptionSequence::ETAPE_PIECES)->items())->pluck('id')->all());
+        $this->assertSame([$candidature->id], collect($sequence->dossiers(ManagedInscriptionSequence::ETAPE_TOUS)->items())->pluck('id')->all());
+    }
+
     // ── Préparation ─────────────────────────────────────────────────────
 
     private function dossierPretAChoisir(): ESBTPCandidatureWorkflow

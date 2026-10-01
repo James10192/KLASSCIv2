@@ -124,11 +124,24 @@ final class FinalizeManagedInscription
             ]);
         }
 
-        $disponibilite = $this->workflow->checkClassAvailability($classe->id, $this->anneeId($candidature));
-        if (! ($disponibilite['available'] ?? false)) {
-            throw ValidationException::withMessages([
-                'classe_id' => "Cette classe vient d'être complétée. Choisissez une autre classe.",
-            ]);
+        // Lecture VERROUILLANTE des places prises : sous REPEATABLE READ, un
+        // COUNT ordinaire relirait l'instantané pris avant d'attendre le verrou
+        // de la classe et manquerait l'inscription que l'autre transaction
+        // vient de valider — deux étudiants auraient la dernière place.
+        if ($classe->places_totales) {
+            $occupees = ESBTPInscription::query()
+                ->where('classe_id', $classe->id)
+                ->where('annee_universitaire_id', $this->anneeId($candidature))
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->lockForUpdate()
+                ->count();
+
+            if ($occupees >= (int) $classe->places_totales) {
+                throw ValidationException::withMessages([
+                    'classe_id' => "Cette classe vient d'être complétée. Choisissez une autre classe.",
+                ]);
+            }
         }
 
         return $classe;
@@ -218,6 +231,10 @@ final class FinalizeManagedInscription
             'updated_by' => $userId,
         ])->save();
 
+        // La conversion historique marque l'e-mail vérifié sans condition ;
+        // une activation par WhatsApp ne prouve pas l'adresse.
+        $emailVerifieAvant = $etudiant->user?->email_verified_at;
+
         // Dernière porte canonique : contrôle financier, capacité de classe
         // et transition prospect -> étudiant restent ceux du flux existant.
         $converted = $this->workflow->convertProspectToStudent(
@@ -229,6 +246,10 @@ final class FinalizeManagedInscription
             throw ValidationException::withMessages([
                 'finalisation' => $converted['message'] ?? "L'inscription n'a pas pu être finalisée.",
             ]);
+        }
+
+        if ($etudiant->user && $emailVerifieAvant === null) {
+            $etudiant->user->forceFill(['email_verified_at' => null])->saveQuietly();
         }
 
         $candidature->forceFill([
@@ -298,11 +319,20 @@ final class FinalizeManagedInscription
     {
         $categoryId = (int) $paiement->frais_category_id;
 
-        $souscrit = $categoryId > 0 && ESBTPFraisSubscription::query()
+        $souscription = $categoryId > 0 ? ESBTPFraisSubscription::query()
             ->where('inscription_id', $inscription->id)
             ->where('frais_category_id', $categoryId)
             ->charged()
-            ->exists();
+            ->first() : null;
+        $souscrit = $souscription !== null;
+
+        if ($souscrit && (float) $paiement->montant > (float) $souscription->chargedAmount() + 0.01) {
+            throw ValidationException::withMessages([
+                'paiement' => 'Le versement de préinscription ('.number_format((float) $paiement->montant, 0, ',', ' ')
+                    .' FCFA) dépasse le frais de cette classe ('.number_format((float) $souscription->chargedAmount(), 0, ',', ' ')
+                    .' FCFA). Un agent comptable doit régulariser avant la finalisation.',
+            ]);
+        }
 
         if (! $souscrit) {
             throw ValidationException::withMessages([

@@ -150,7 +150,7 @@
                         ] as $champ => $libelle)
                             <label class="bcfg-toggle" for="{{ $champ }}">
                                 <span class="bcfg-toggle-label">{{ $libelle }}</span>
-                                <input class="form-check-input" type="checkbox" id="{{ $champ }}" name="{{ $champ }}" value="1" {{ ($settings[$champ] ?? '1') == '1' ? 'checked' : '' }}>
+                                <input type="hidden" name="{{ $champ }}_present" value="1"><input class="form-check-input" type="checkbox" id="{{ $champ }}" name="{{ $champ }}" value="1" {{ ($settings[$champ] ?? '1') == '1' ? 'checked' : '' }}>
                             </label>
                         @endforeach
                     </div>

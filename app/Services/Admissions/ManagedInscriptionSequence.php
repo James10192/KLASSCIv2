@@ -20,27 +20,44 @@ final class ManagedInscriptionSequence
     {
     }
 
-    /**
-     * Dossiers acceptés qui attendent la caisse, filtrés en base et paginés :
-     * la file reste rapide avec des milliers de candidatures.
-     */
+    public const ETAPE_CAISSE = 'caisse';
+    public const ETAPE_PIECES = 'pieces';
+    public const ETAPE_SUITE = 'suite';
+    public const ETAPE_TOUS = 'tous';
+
+    /** Dossiers qui attendent la caisse (raccourci de dossiers()). */
     public function cashierQueue(?string $recherche = null, int $parPage = 30): ?LengthAwarePaginator
+    {
+        return $this->dossiers(self::ETAPE_CAISSE, $recherche, $parPage);
+    }
+
+    /**
+     * Dossiers en cours (acceptés, pas encore inscrits), filtrés en base par
+     * étape et paginés : chaque guichet retrouve SES dossiers, y compris ceux
+     * qui ont déjà franchi la caisse.
+     */
+    public function dossiers(string $etape, ?string $recherche = null, int $parPage = 30): ?LengthAwarePaginator
     {
         if (! $this->settings->usesManagedWorkflow()) {
             return null;
         }
 
         $piecesAvant = $this->settings->mode() === InscriptionWorkflowSettings::MODE_PIECES_AVANT_CAISSE;
+        $paye = fn (Builder $w) => $w->whereNotNull('paid_at');
+        $piecesOk = fn (Builder $w) => $w->whereNotNull('documents_validated_at');
 
         return ESBTPCandidature::query()
-            ->with(['filiere:id,name,code', 'niveau:id,name', 'anneeUniversitaire:id,name'])
+            ->with(['filiere:id,name,code', 'niveau:id,name', 'anneeUniversitaire:id,name', 'managedWorkflow'])
             ->where('statut', ESBTPCandidature::STATUT_ACCEPTEE)
             ->whereNull('inscription_id')
-            ->whereDoesntHave('managedWorkflow', fn (Builder $w) => $w->whereNotNull('paid_at'))
-            ->when($piecesAvant, fn (Builder $q) => $q->whereHas(
-                'managedWorkflow',
-                fn (Builder $w) => $w->whereNotNull('documents_validated_at')
-            ))
+            ->when($etape === self::ETAPE_CAISSE, fn (Builder $q) => $q
+                ->whereDoesntHave('managedWorkflow', $paye)
+                ->when($piecesAvant, fn (Builder $q) => $q->whereHas('managedWorkflow', $piecesOk)))
+            ->when($etape === self::ETAPE_PIECES, fn (Builder $q) => $q
+                ->whereDoesntHave('managedWorkflow', $piecesOk)
+                ->when(! $piecesAvant, fn (Builder $q) => $q->whereHas('managedWorkflow', $paye)))
+            ->when($etape === self::ETAPE_SUITE, fn (Builder $q) => $q
+                ->whereHas('managedWorkflow', fn (Builder $w) => $w->whereNotNull('paid_at')->whereNotNull('documents_validated_at')))
             ->when($recherche !== null && trim($recherche) !== '', function (Builder $q) use ($recherche) {
                 $terme = '%'.trim($recherche).'%';
                 $q->where(fn (Builder $s) => $s

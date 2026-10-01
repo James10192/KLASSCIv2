@@ -84,7 +84,7 @@ Route::prefix('esbtp/admissions/workflow')
                 ->name('pay');
 
             Route::post('/{workflow}/activation/renvoyer', [ManagedActivationController::class, 'resend'])
-                ->middleware(['permission:inscriptions.create|pieces_dossier.suivre', 'throttle:10,1'])
+                ->middleware(['permission:inscriptions.validate|pieces_dossier.suivre', 'throttle:10,1'])
                 ->name('activation.resend');
 
             // Décisions académiques : affecter une classe, finaliser. Le droit

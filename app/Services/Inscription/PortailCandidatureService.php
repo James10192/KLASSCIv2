@@ -232,7 +232,9 @@ class PortailCandidatureService
             $refus = self::refusDeRedepot(
                 (string) $candidature->statut,
                 $this->memeIdentite($candidature, $valeurs),
-                self::memeContact(
+                // Pas d'e-mail fourni au redepot : le contact du dossier ne change
+                // pas, c'est donc le meme contact.
+                blank($valeurs['email'] ?? null) || self::memeContact(
                     $candidature->email,
                     $candidature->telephone,
                     $valeurs['email'] ?? null,

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Préinscriptions à encaisser - KLASSCI')
+@section('title', 'Dossiers d\'inscription en cours - KLASSCI')
 
 @push('styles')
 <style>
@@ -16,23 +16,31 @@
 .miw-name{font-weight:600;color:#0f172a}
 .miw-muted{font-size:.82rem;color:#64748b;margin-top:2px}
 .miw-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:10px;background:#0453cb;color:#fff;text-decoration:none;font-weight:600;min-height:44px}
-.miw-empty{text-align:center;padding:40px;color:#64748b}
+.miw-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}.miw-tab{padding:8px 12px;border-radius:999px;border:1px solid #dce3ed;color:#475569;text-decoration:none;font-size:.85rem;font-weight:600;min-height:40px;display:inline-flex;align-items:center}.miw-tab.actif{background:#0453cb;border-color:#0453cb;color:#fff}.miw-step{font-size:.82rem;color:#0453cb;font-weight:600}.miw-empty{text-align:center;padding:40px;color:#64748b}
 @media(max-width:800px){.miw{padding:14px}.miw-row{grid-template-columns:1fr;gap:6px}}
 </style>
 @endpush
 
 @section('content')
+@inject('presentateur', 'App\\Services\\Admissions\\ManagedWorkflowPresenter')
 <div class="miw">
     <div class="miw-head">
-        <h1>Préinscriptions à encaisser</h1>
-        <p>Dossiers acceptés en ligne. L'identité vient de la candidature : rien à ressaisir.</p>
+        <h1>Dossiers d'inscription en cours</h1>
+        <p>Candidatures acceptées en ligne. L'identité vient de la candidature : rien à ressaisir.</p>
     </div>
+
+    <nav class="miw-tabs" aria-label="Étape">
+        @foreach($etapes as $cle => $libelle)
+            <a class="miw-tab {{ $etape === $cle ? 'actif' : '' }}" href="{{ route('esbtp.admissions.workflow.index', ['etape' => $cle, 'q' => $recherche ?: null]) }}" @if($etape === $cle) aria-current="page" @endif>{{ $libelle }}</a>
+        @endforeach
+    </nav>
 
     @if(session('success'))<div class="alert alert-success mt-3">{{ session('success') }}</div>@endif
     @if(session('info'))<div class="alert alert-info mt-3">{{ session('info') }}</div>@endif
     @if(session('warning'))<div class="alert alert-warning mt-3">{{ session('warning') }}</div>@endif
 
     <form class="miw-search" method="GET" role="search">
+        <input type="hidden" name="etape" value="{{ $etape }}">
         <label class="visually-hidden" for="miw-q">Rechercher un candidat</label>
         <input id="miw-q" name="q" value="{{ $recherche }}" placeholder="Nom, téléphone ou référence">
         <button type="submit"><i class="fas fa-search" aria-hidden="true"></i> Rechercher</button>
@@ -49,15 +57,18 @@
                     <div>{{ $candidature->filiere?->name ?: 'Filière à confirmer' }}</div>
                     <div class="miw-muted">{{ $candidature->niveau?->name ?: 'Niveau à confirmer' }} · {{ $candidature->anneeUniversitaire?->name ?: 'année ?' }}</div>
                 </div>
-                <div class="miw-muted">Acceptée le {{ optional($candidature->traite_at)->format('d/m/Y') ?: '—' }}</div>
+                <div>
+                    <div class="miw-step">{{ $candidature->managedWorkflow ? $presentateur->prochaineEtape($candidature->managedWorkflow) : 'Premier passage au guichet.' }}</div>
+                    <div class="miw-muted">Acceptée le {{ optional($candidature->traite_at)->format('d/m/Y') ?: '—' }}</div>
+                </div>
                 <a class="miw-btn" href="{{ route('esbtp.admissions.workflow.show', $candidature) }}">
-                    <i class="fas fa-cash-register" aria-hidden="true"></i> Ouvrir
+                    <i class="fas fa-folder-open" aria-hidden="true"></i> Ouvrir
                 </a>
             </div>
         @empty
             <div class="miw-empty">
                 <i class="fas fa-check-circle fa-2x mb-2" aria-hidden="true"></i>
-                <div><strong>{{ $recherche !== '' ? 'Aucun dossier ne correspond.' : 'Rien en attente à la caisse.' }}</strong></div>
+                <div><strong>{{ $recherche !== '' ? 'Aucun dossier ne correspond.' : 'Aucun dossier à cette étape.' }}</strong></div>
                 <div class="miw-muted">Dernier contrôle : {{ now()->format('H:i') }}</div>
             </div>
         @endforelse

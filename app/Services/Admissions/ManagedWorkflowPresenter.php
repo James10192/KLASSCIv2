@@ -43,6 +43,12 @@ final class ManagedWorkflowPresenter
         }, $liste);
     }
 
+    public static function piecesOuvertes(ESBTPCandidatureWorkflow $w): bool
+    {
+        return app(InscriptionWorkflowSettings::class)->mode() !== InscriptionWorkflowSettings::MODE_CAISSE_AVANT_PIECES
+            || $w->paymentRecorded();
+    }
+
     /** Ce que l'agent doit faire maintenant, en une phrase. */
     public function prochaineEtape(ESBTPCandidatureWorkflow $w): string
     {

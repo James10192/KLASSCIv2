@@ -51,6 +51,10 @@
     $canPieces = $user?->can('pieces_dossier.suivre');
     $canDecide = $user?->can('inscriptions.validate');
     $finalisee = (bool) $workflow->final_inscription_id;
+    // L'ordre choisi par l'établissement : en « caisse puis pièces », le
+    // guichet des pièces n'agit qu'après le paiement (le serveur refuse aussi).
+    $piecesOuvertes = \App\Services\Admissions\ManagedWorkflowPresenter::piecesOuvertes($workflow);
+    $canPieces = $canPieces && $piecesOuvertes;
     $piecesSatisfaites = $pieces->where('satisfaite', true)->count();
     $fraisOptions = $fraisEncaissables->mapWithKeys(fn ($f) => [$f['category_id'] => $f['name'].' — '.number_format($f['amount'], 0, ',', ' ').' FCFA'])->all();
     $modeOptions = collect($paymentModes)->mapWithKeys(fn ($meta, $key) => [$key => $meta['label'] ?? $key])->all();
@@ -85,7 +89,7 @@
                 <div class="mwf-kv"><span>Frais</span><strong>{{ $workflow->paiement?->fraisCategory?->name ?: '—' }}</strong></div>
                 <div class="mwf-kv"><span>Montant</span><strong>{{ number_format((float) ($workflow->paiement?->montant ?? 0), 0, ',', ' ') }} FCFA</strong></div>
                 <div class="mwf-kv"><span>Date</span><strong>{{ optional($workflow->paid_at)->format('d/m/Y H:i') }}</strong></div>
-                @if($workflow->paiement)
+                @if($workflow->paiement && $workflow->paiement->inscription_id)
                     <div class="mt-2"><a class="mwf-btn soft" href="{{ route('esbtp.paiements.show', $workflow->paiement) }}"><i class="fas fa-receipt" aria-hidden="true"></i> Voir le paiement et le reçu</a></div>
                 @endif
             @elseif($canCash)
@@ -133,6 +137,9 @@
             <h2 id="mwf-pieces">Contrôle physique des pièces</h2>
             @if($workflow->documentsValidated())
                 <span class="mwf-ok"><i class="fas fa-check" aria-hidden="true"></i> Dossier physique validé le {{ optional($workflow->documents_validated_at)->format('d/m/Y à H:i') }}</span>
+            @endif
+            @if(!$piecesOuvertes && !$finalisee)
+                <p class="mwf-muted">Le contrôle des pièces s'ouvre après le paiement de préinscription.</p>
             @endif
             <div class="mwf-progress"><strong>{{ $piecesSatisfaites }} / {{ $pieces->count() }}</strong> pièce(s) complète(s)</div>
             @forelse($pieces as $row)
@@ -188,7 +195,7 @@
             <div class="mwf-kv"><span>Identifiant</span><strong>{{ $workflow->etudiant?->user?->username ?: 'Pas encore créé' }}</strong></div>
             <div class="mwf-kv"><span>Compte</span><strong>{{ $workflow->accessActivated() ? 'Activé' : 'En attente d\'activation' }}</strong></div>
             <div class="mwf-kv"><span>Informations</span><strong>{{ $workflow->profileCompleted() ? 'Complétées' : 'À compléter par l\'étudiant' }}</strong></div>
-            @if($workflow->etudiant_id && !$workflow->accessActivated() && ($user?->can('inscriptions.create') || $canPieces))
+            @if($workflow->etudiant_id && !$workflow->accessActivated() && ($user?->can('inscriptions.validate') || $user?->can('pieces_dossier.suivre')))
                 <form method="POST" action="{{ route('esbtp.admissions.workflow.activation.resend', $workflow) }}" class="mt-2">
                     @csrf
                     <button class="mwf-btn soft" type="submit">Renvoyer le lien d'activation</button>
