@@ -389,7 +389,7 @@ class ESBTPEvaluationController extends Controller
         $validator = \Validator::make($request->all(), [
             'titre' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
-            'type' => 'required|string|in:devoir,examen,projet,tp,controle,quiz,oral,cc',
+            'type' => 'required|string|in:'.implode(',', ESBTPEvaluation::TYPES_SAISISSABLES),
             'date_evaluation' => 'required|date',
             'heure_debut' => 'required|date_format:H:i',
             'heure_fin' => 'required|date_format:H:i|after:heure_debut',
@@ -671,7 +671,7 @@ class ESBTPEvaluationController extends Controller
             $request->validate([
                 'titre' => 'required|string|max:255',
                 'description' => 'nullable|string|max:1000',
-                'type' => 'required|in:devoir,examen,projet,tp,controle,quiz,oral,cc',
+                'type' => 'required|in:'.implode(',', ESBTPEvaluation::TYPES_SAISISSABLES),
                 'date_evaluation' => 'required|date',
                 'heure_debut' => 'required|date_format:H:i',
                 'heure_fin' => 'required|date_format:H:i|after:heure_debut',
