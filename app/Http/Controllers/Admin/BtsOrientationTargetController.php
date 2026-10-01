@@ -109,18 +109,22 @@ class BtsOrientationTargetController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $target = ESBTPClasseOrientationTarget::updateOrCreate(
-            [
-                'source_classe_id' => $data['source_classe_id'],
-                'target_classe_id' => $data['target_classe_id'],
-            ],
-            [
-                'semestre_activation' => $data['semestre_activation'] ?? 2,
-                'is_active' => true,
-                'sort_order' => ESBTPClasseOrientationTarget::where('source_classe_id', $data['source_classe_id'])->count(),
-                'notes' => $data['notes'] ?? null,
-            ]
-        );
+        // Mêmes règles que les autres écrans, la CLI et Nanan (source tronc
+        // commun, même niveau, pas elle-même) : ConfigurationTroncCommun.
+        try {
+            $target = app(\App\Domain\BtsTroncCommun\ConfigurationTroncCommun::class)->ajouterSortie(
+                ESBTPClasse::findOrFail($data['source_classe_id']),
+                ESBTPClasse::findOrFail($data['target_classe_id']),
+                isset($data['semestre_activation']) ? (int) $data['semestre_activation'] : null,
+                $data['notes'] ?? null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            }
+
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
         if ($request->wantsJson()) {
             return response()->json([

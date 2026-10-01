@@ -1,64 +1,50 @@
-@extends('esbtp.emails.parents.layout', [
-    'emailTitle' => 'Alerte Taux de Présence',
-    'parentName' => $parentName,
-    'schoolName' => $schoolName ?? 'KLASSCI',
-    'schoolAddress' => $schoolAddress ?? \App\Helpers\SettingsHelper::get('school_address', ''),
-    'schoolPhone' => $schoolPhone ?? \App\Helpers\SettingsHelper::get('school_phone', ''),
-    'schoolEmail' => $schoolEmail ?? \App\Helpers\SettingsHelper::get('school_email', ''),
-    'schoolLogoPath' => $schoolLogoPath ?? null
-])
+@php
+    $emailTitle = 'Alerte taux de présence';
+    $statutTon = 'danger';
+    $statutTexte = 'Assiduité insuffisante';
+    $service = 'Scolarité';
+    $raison = "Message automatique envoyé au contact parent de l'élève {$studentName}. Pour toute question, contactez la scolarité.";
+    // Seuil de l'école (préférence de notification), 80 pour les données d'exemple.
+    $seuilPresence = (int) ($seuilPresence ?? 80);
+    // L'appelant réel transmet les données de l'avis d'absence : la période y
+    // s'appelle `periodeStats`, et le lien `justificationUrl`.
+    $periodeVue = $periode ?? $periodeStats ?? null;
+    $lienAbsences = $absencesUrl ?? $justificationUrl ?? null;
+    $tauxTexte = number_format((float) $tauxPresence, fmod((float) $tauxPresence, 1.0) == 0.0 ? 0 : 1, ',', ' ');
+@endphp
+@extends('esbtp.emails.parents.recu')
+
+@section('preheader')Taux de présence de {{ $tauxTexte }} % pour {{ $studentName }}, sous le seuil recommandé de {{ $seuilPresence }} %.
+@endsection
+
+@section('titre'){{ $studentName }} n'est présent(e) qu'à {{ $tauxTexte }}&nbsp;% des cours
+@endsection
 
 @section('content')
-    <div class="alert alert-danger">
-        <strong>Alerte - Taux de présence faible</strong><br>
-        Le taux de présence de {{ $studentName }} est en dessous du seuil recommandé.
-    </div>
-
-    <table class="info-table">
-        <tr><th style="width: 40%;">Étudiant</th><td><strong>{{ $studentName }}</strong></td></tr>
-        <tr><th>Classe</th><td>{{ $classe }}</td></tr>
-        <tr><th>Période</th><td>{{ $periode }}</td></tr>
-    </table>
-
-    <div class="kpi-section" style="margin-top: 20px;">
-        <div class="kpi-row">
-            <div class="kpi-card">
-                <div class="kpi-value" style="color: #dc3545; font-size: 32px;">{{ $tauxPresence }}%</div>
-                <div class="kpi-label">Taux de présence</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value" style="color: #28a745;">80%</div>
-                <div class="kpi-label">Seuil recommandé</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="kpi-section" style="margin-top: 10px;">
-        <div class="kpi-row">
-            <div class="kpi-card">
-                <div class="kpi-value">{{ $totalAbsences }}h</div>
-                <div class="kpi-label">Total absences</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value" style="color: #dc3545;">{{ $absencesNonJustifiees }}h</div>
-                <div class="kpi-label">Non justifiées</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="alert alert-warning" style="margin-top: 20px;">
-        <strong>Impact sur les résultats</strong><br>
-        Un taux de présence faible peut affecter négativement les résultats académiques et la note d'assiduité de votre enfant.
-    </div>
-
-    <h3 style="color: #007bff; margin-top: 30px;">Recommandations</h3>
-    <ul style="color: #6c757d;">
-        <li>Assurez-vous que votre enfant assiste régulièrement aux cours</li>
-        <li>Justifiez les absences inévitables dans les 48h</li>
-        <li>Contactez le coordinateur en cas de difficultés persistantes</li>
-    </ul>
-
-    <div class="button-container">
-        <a href="{{ $absencesUrl }}" class="button">Voir les détails des absences</a>
-    </div>
+<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, ce taux de présence est en dessous du seuil recommandé de {{ $seuilPresence }}&nbsp;%. Un taux faible peut peser sur les résultats et sur la note d'assiduité.</p>
+@include('esbtp.emails.parents.partials.vedette', [
+    'libelle' => 'Taux de présence',
+    'valeur' => $tauxTexte,
+    'unite' => '%',
+    'precision' => 'Seuil recommandé : '.$seuilPresence.' %',
+    'tonPrecision' => $emailDangerColor,
+    'progression' => $tauxPresence,
+    'couleurBarre' => $emailDangerColor,
+    'gauche' => $totalAbsences.' absence(s) au total',
+    'droite' => $absencesNonJustifiees.' non justifiée(s)',
+])
+@include('esbtp.emails.parents.partials.lignes', ['lignes' => [
+    ['Élève', $studentName],
+    ['Classe', $classe ?? null],
+    ['Période', $periodeVue],
+], 'marge' => '8px 0 0'])
+@include('esbtp.emails.parents.partials.intertitre', ['texte' => 'Ce que nous recommandons'])
+<ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:#334155;">
+<li>Veillez à ce que votre enfant assiste régulièrement aux cours.</li>
+<li>Justifiez les absences inévitables dans les 48&nbsp;heures.</li>
+<li>Contactez le coordinateur en cas de difficultés persistantes.</li>
+</ul>
+@if($lienAbsences)
+@include('esbtp.emails.partials.bouton', ['url' => $lienAbsences, 'libelle' => 'Voir les détails des absences', 'pleineLargeur' => true])
+@endif
 @endsection

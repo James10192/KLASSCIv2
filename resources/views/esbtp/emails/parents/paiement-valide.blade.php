@@ -1,105 +1,44 @@
-@extends('esbtp.emails.parents.layout', [
-    'emailTitle' => 'Paiement Validé',
-    'parentName' => $parentName,
-    'schoolName' => $schoolName ?? 'KLASSCI',
-    'schoolAddress' => $schoolAddress ?? \App\Helpers\SettingsHelper::get('school_address', ''),
-    'schoolPhone' => $schoolPhone ?? \App\Helpers\SettingsHelper::get('school_phone', ''),
-    'schoolEmail' => $schoolEmail ?? \App\Helpers\SettingsHelper::get('school_email', ''),
-    'schoolLogoPath' => $schoolLogoPath ?? null
-])
+@php
+    $emailTitle = 'Paiement validé';
+    $statutTon = 'succes';
+    $statutTexte = 'Paiement validé';
+    $service = 'Comptabilité';
+    $raison = "Message automatique envoyé au contact parent de l'élève {$studentName}. Pour toute question, contactez la comptabilité.";
+    $solde = (float) $resteDu <= 0;
+    $valideLe = \App\Helpers\ValeurConnue::ou($dateValidation ?? null);
+@endphp
+@extends('esbtp.emails.parents.recu')
+
+@section('preheader')Paiement de {{ \App\Helpers\MontantFcfa::nombre($montant) }} FCFA validé pour {{ $studentName }}, reçu {{ $numeroRecu }}.
+@endsection
+
+@section('titre')Nous avons bien reçu {{ \App\Helpers\MontantFcfa::html($montant) }}
+@endsection
 
 @section('content')
-    <div class="alert alert-success">
-        <strong>Paiement validé avec succès!</strong><br>
-        Le paiement de {{ $studentName }} a été validé par l'administration.
-    </div>
-
-    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Détails du paiement</h3>
-
-    <table class="info-table">
-        <tr>
-            <th style="width: 40%;">Étudiant</th>
-            <td><strong>{{ $studentName }}</strong></td>
-        </tr>
-        <tr>
-            <th>Montant payé</th>
-            <td><strong style="color: #28a745; font-size: 16px;">{{ number_format($montant, 0, ',', ' ') }} FCFA</strong></td>
-        </tr>
-        <tr>
-            <th>Référence</th>
-            <td>{{ $reference }}</td>
-        </tr>
-        <tr>
-            <th>Numéro de reçu</th>
-            <td><strong>{{ $numeroRecu }}</strong></td>
-        </tr>
-        <tr>
-            <th>Mode de paiement</th>
-            <td><span class="badge badge-info">{{ $modePaiement }}</span></td>
-        </tr>
-        <tr>
-            <th>Date de paiement</th>
-            <td>{{ $datePaiement }}</td>
-        </tr>
-        <tr>
-            <th>Date de validation</th>
-            <td>{{ $dateValidation }}</td>
-        </tr>
-        <tr>
-            <th>Validé par</th>
-            <td>{{ $validePar }}</td>
-        </tr>
-    </table>
-
-    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Situation financière</h3>
-
-    <div class="kpi-section">
-        <div class="kpi-row">
-            <div class="kpi-card">
-                <div class="kpi-value">{{ number_format($montantTotal, 0, ',', ' ') }} FCFA</div>
-                <div class="kpi-label">Montant total</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value" style="color: #28a745;">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</div>
-                <div class="kpi-label">Total payé</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="kpi-section" style="margin-top: 10px;">
-        <div class="kpi-row">
-            <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $resteDu > 0 ? '#dc3545' : '#28a745' }};">
-                    {{ number_format($resteDu, 0, ',', ' ') }} FCFA
-                </div>
-                <div class="kpi-label">Reste à payer</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value" style="color: #17a2b8;">{{ $pourcentagePaye }}%</div>
-                <div class="kpi-label">Progression</div>
-            </div>
-        </div>
-    </div>
-
-    @if($resteDu > 0)
-    <div class="alert alert-warning">
-        <strong>Frais restants</strong><br>
-        Il reste encore <strong>{{ number_format($resteDu, 0, ',', ' ') }} FCFA</strong> à payer pour compléter les frais de scolarité.
-    </div>
-    @else
-    <div class="alert alert-success">
-        <strong>Félicitations!</strong><br>
-        Tous les frais de scolarité ont été payés. Votre enfant est à jour.
-    </div>
-    @endif
-
-    <div class="button-container">
-        <a href="{{ $recuUrl }}" class="button">Télécharger le reçu</a>
-    </div>
-
-    <div class="divider"></div>
-
-    <p style="color: #6c757d; font-size: 13px;">
-        Conservez ce reçu comme preuve de paiement. Vous pouvez également le télécharger à tout moment depuis votre espace parent sur la plateforme.
-    </p>
+<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, le paiement pour {{ $studentName }} a été validé{{ $valideLe ? ' le '.$valideLe : '' }}. Merci.</p>
+@include('esbtp.emails.parents.partials.vedette', [
+    'libelle' => 'Montant reçu',
+    'valeur' => \App\Helpers\MontantFcfa::nombre($montant),
+    'unite' => 'FCFA',
+    'lignes' => [
+        ['Reçu n°', $numeroRecu],
+        ['Mode', $modePaiement],
+        ['Payé le', $datePaiement],
+        ['Référence', $reference],
+        ['Validé par', $validePar ?? null],
+    ],
+])
+@if($montantTotal > 0)
+@include('esbtp.emails.parents.partials.intertitre', ['texte' => 'Situation des frais de scolarité'])
+@include('esbtp.emails.parents.partials.progression', [
+    'pct' => $pourcentagePaye,
+    'couleurBarre' => $emailSuccessColor,
+    'gauche' => new \Illuminate\Support\HtmlString(\App\Helpers\MontantFcfa::nombre($montantPaye).' sur '.\App\Helpers\MontantFcfa::html($montantTotal).' · '.e($pourcentagePaye).'&nbsp;%'),
+    'droite' => $solde ? 'Tout est réglé' : new \Illuminate\Support\HtmlString('Reste '.\App\Helpers\MontantFcfa::html($resteDu)),
+    'fort' => true,
+])
+@endif
+@include('esbtp.emails.partials.bouton', ['url' => $recuUrl, 'libelle' => 'Télécharger le reçu', 'pleineLargeur' => true])
+<p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#64748b;">Conservez ce reçu comme preuve de paiement. Il reste disponible à tout moment dans l'espace parent.</p>
 @endsection

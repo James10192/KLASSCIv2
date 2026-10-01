@@ -262,7 +262,7 @@ class CLIResultatController extends BaseApiController
                         'effective_total' => $bulletin->moyenne_generale !== null
                             ? round(
                                 $bulletin->moyenne_generale + (
-                                    \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') === '1'
+                                    \App\Helpers\SettingsHelper::drapeau('bulletin_show_attendance_note', true)
                                         ? ($bulletin->note_assiduite ?? 0)
                                         : 0
                                 ),
