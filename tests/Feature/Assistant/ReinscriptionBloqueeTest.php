@@ -64,9 +64,10 @@ class ReinscriptionBloqueeTest extends TestCase
         $this->admin->assignRole('superAdmin');
 
         // L'année quittée, et une année courante à part.
-        ESBTPAnneeUniversitaire::query()->update(['is_current' => false]);
+        // Aucune autre année ouverte : l'année visée se déduit des seules années du test.
+        ESBTPAnneeUniversitaire::query()->update(['is_current' => false, 'is_active' => false]);
         $quittee = ESBTPAnneeUniversitaire::factory()->create(['is_current' => false, 'start_date' => now()->subYear()->startOfMonth(), 'end_date' => now()->subMonths(2)]);
-        ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
+        ESBTPAnneeUniversitaire::factory()->create(['is_current' => true, 'start_date' => now()->subMonth()->startOfMonth(), 'end_date' => now()->addMonths(9)]);
 
         $this->inscription = ESBTPInscription::factory()->create(['annee_universitaire_id' => $quittee->id]);
         $this->categorie = ESBTPFraisCategory::factory()->create(['name' => 'Frais d\'inscription']);
@@ -217,9 +218,28 @@ class ReinscriptionBloqueeTest extends TestCase
         $this->assertNull($d['cause']);
     }
 
-    public function test_une_inscription_quittee_sur_l_annee_courante_veut_dire_deja_reinscrit(): void
+    /**
+     * Élève entré cette année, rien avant : c'est l'inscription qu'il quittera
+     * (campagne ouverte avant la bascule), pas une réinscription déjà faite.
+     */
+    public function test_un_eleve_entre_cette_annee_n_est_pas_deja_reinscrit(): void
     {
         $this->inscription->update(['annee_universitaire_id' => ESBTPAnneeUniversitaire::where('is_current', true)->value('id')]);
+
+        $d = $this->diagnostic();
+
+        $this->assertFalse($d['deja_reinscrit_cette_annee']);
+        $this->assertSame('solde_impaye', $d['cause']);
+    }
+
+    public function test_une_reinscription_sur_l_annee_courante_veut_dire_deja_reinscrit(): void
+    {
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => ESBTPAnneeUniversitaire::where('is_current', true)->value('id'),
+            'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+            'status' => 'active',
+        ]);
 
         $d = $this->diagnostic();
 

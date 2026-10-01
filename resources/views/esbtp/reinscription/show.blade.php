@@ -299,6 +299,15 @@
                     <a href="{{ route('esbtp.inscriptions.index') }}" class="rsd-btn rsd-btn--outline">
                         <i class="fas fa-list"></i>Liste des inscriptions
                     </a>
+                    @if($eligibilite['annee_suivante'])
+                        <a href="{{ $lienFinalisation }}" class="rsd-btn rsd-btn--outline">
+                            <i class="fas fa-forward"></i>Préparer {{ $eligibilite['annee_suivante']->name }}
+                        </a>
+                    @elseif($eligibilite['peut_rejouer'])
+                        <a href="{{ $lienFinalisation }}" class="rsd-btn rsd-btn--outline" title="Refaire la réinscription : l'inscription actuelle sera terminée et remplacée">
+                            <i class="fas fa-pen"></i>Corriger la réinscription
+                        </a>
+                    @endif
                 </div>
             </div>
         </section>

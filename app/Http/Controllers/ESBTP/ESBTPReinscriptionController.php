@@ -136,7 +136,8 @@ class ESBTPReinscriptionController extends Controller
                             
                             // Déterminer si l'étudiant peut se réinscrire
                             // (seulement si tout est soldé - solde restant = 0 ou négatif)
-                            $etudiant->peut_reinscrire = $soldeRestant <= 0;
+                            // Le seuil de l'école, comme la fiche et la garde.
+            $etudiant->peut_reinscrire = $soldeRestant <= \App\Services\Reinscription\EligibiliteReinscription::tolerance();
                         } else {
                             // Pas d'inscription active, utiliser les anciennes valeurs par défaut
                             $etudiant->montant_attendu = 0;
@@ -190,7 +191,8 @@ class ESBTPReinscriptionController extends Controller
             $etudiant->montant_attendu = $totalAttendu;
             $etudiant->montant_paye = $totalPaye;
             $etudiant->solde_restant = $soldeRestant;
-            $etudiant->peut_reinscrire = $soldeRestant <= 0;
+            // Le seuil de l'école, comme la fiche et la garde.
+            $etudiant->peut_reinscrire = $soldeRestant <= \App\Services\Reinscription\EligibiliteReinscription::tolerance();
         } else {
             // Pas d'inscription active
             $etudiant->montant_attendu = 0;
@@ -335,12 +337,22 @@ class ESBTPReinscriptionController extends Controller
         $anneeAcademique = $request->get('annee_academique', date('Y') . '-' . (date('Y') + 1));
 
         try {
-            // La meme inscription que la fiche de reinscription : decision et
-            // classes proposees partent du meme cursus.
-            $inscription = $this->classes->inscriptionQuittee((int) $etudiantId);
+            // La meme decision que la fiche : meme inscription quittee, meme
+            // annee visee. Un dossier qui ne peut pas avancer revient a la fiche,
+            // qui dit pourquoi, au lieu d'un formulaire inerte.
+            $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)->pour((int) $etudiantId, auth()->user());
+            $inscription = $eligibilite['inscription'];
 
             if (!$inscription) {
                 throw new \Exception("Aucune inscription avec classe trouvée pour cet étudiant");
+            }
+            // Un impayé sans dérogation ne mène qu'à un formulaire inerte : la
+            // fiche explique et propose quoi faire. « Déjà inscrit » ne bloque
+            // pas ici : le formulaire choisit l'année visée (l'année suivante,
+            // ou la même pour corriger), et la garde juge à l'envoi.
+            if ($eligibilite['etat'] === \App\Services\Reinscription\EligibiliteReinscription::IMPAYE && !$eligibilite['peut_deroger']) {
+                return redirect()->route('esbtp.reinscription.show', $etudiantId)
+                    ->withErrors(['error' => 'La réinscription est bloquée par un reste à payer : voir le détail ci-dessous.']);
             }
 
             $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
@@ -355,11 +367,10 @@ class ESBTPReinscriptionController extends Controller
             // Ajouter les informations financières et de rôle
             // La même décision que la fiche (tolérance de l'école comprise).
             $isSuperAdmin = auth()->user() && auth()->user()->isSuperAdmin();
-            $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)->pour((int) $etudiantId, auth()->user());
             $etudiant->montant_attendu = $totalAttendu;
             $etudiant->montant_paye = $totalPaye;
             $etudiant->solde_restant = $soldeRestant;
-            $etudiant->peut_reinscrire = $eligibilite['peut_poursuivre'];
+            $etudiant->peut_reinscrire = $eligibilite['etat'] !== \App\Services\Reinscription\EligibiliteReinscription::IMPAYE || $eligibilite['peut_deroger'];
             $etudiant->reliquat_possible = $isSuperAdmin && $soldeRestant > 0;
             $etudiant->reliquat_montant = $isSuperAdmin ? max(0, $soldeRestant) : 0;
 
@@ -379,7 +390,7 @@ class ESBTPReinscriptionController extends Controller
 
             // Déterminer les années pour l'affichage cohérent
             $anneeEtudiantActuelle = $inscription->anneeUniversitaire->name ?? 'N/A'; // Année de l'inscription actuelle de l'étudiant
-            $anneeDestination = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeDestination = $eligibilite['annee_cible'] ?? \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
             $anneeDestinationName = $anneeDestination ? $anneeDestination->name : $anneeAcademique;
 
             return view('esbtp.reinscription.create', compact(
@@ -391,7 +402,8 @@ class ESBTPReinscriptionController extends Controller
                 'isSuperAdmin',
                 'anneeUniversitairesFutures',
                 'anneeEtudiantActuelle',
-                'anneeDestinationName'
+                'anneeDestinationName',
+                'anneeDestination'
             ));
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
@@ -1097,7 +1109,8 @@ class ESBTPReinscriptionController extends Controller
             $etudiant->montant_attendu = $totalAttendu;
             $etudiant->montant_paye = $totalPaye;
             $etudiant->solde_restant = $soldeRestant;
-            $etudiant->peut_reinscrire = $soldeRestant <= 0;
+            // Le seuil de l'école, comme la fiche et la garde.
+            $etudiant->peut_reinscrire = $soldeRestant <= \App\Services\Reinscription\EligibiliteReinscription::tolerance();
         } else {
             // Pas d'inscription active
             $etudiant->montant_attendu = 0;
@@ -1270,7 +1283,7 @@ class ESBTPReinscriptionController extends Controller
                 $totalPaye    = $this->calculerTotalPaye($inscription);
                 $soldeRestant = $totalAttendu - $totalPaye;
                 $fraisSoldes  = $soldeRestant <= 0;
-                $peutReinscrire = $fraisSoldes || $isSuperAdmin;
+                $peutReinscrire = $soldeRestant <= \App\Services\Reinscription\EligibiliteReinscription::tolerance() || $isSuperAdmin;
 
                 $etudiant = $analyse['etudiant'] ?? $inscription->etudiant;
 

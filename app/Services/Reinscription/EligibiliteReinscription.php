@@ -34,18 +34,33 @@ final class EligibiliteReinscription
     }
 
     /**
+     * @param  int|null  $anneeCibleId  l'année où l'élève doit entrer, quand la
+     *   personne l'a choisie (page de finalisation, garde). Sinon : l'année
+     *   courante. On ne devine pas « l'année suivante » d'après les années
+     *   créées : une école peut les créer d'avance sans ouvrir de campagne.
+     *
      * @return array{
      *   inscription: ?ESBTPInscription, annee_cible: ?ESBTPAnneeUniversitaire,
-     *   inscription_annee_cible: ?ESBTPInscription,
+     *   annee_suivante: ?ESBTPAnneeUniversitaire, inscription_annee_cible: ?ESBTPInscription,
      *   du: float, paye: float, solde: float, tolerance: float,
-     *   etat: ?string, autorisee: bool, peut_deroger: bool, peut_poursuivre: bool
+     *   etat: ?string, autorisee: bool, peut_deroger: bool, peut_poursuivre: bool, peut_rejouer: bool
      * }
      */
-    public function pour(int $etudiantId, $lecteur = null): array
+    public function pour(int $etudiantId, $lecteur = null, ?int $anneeCibleId = null): array
     {
-        $inscription = $this->classes->inscriptionQuittee($etudiantId);
-        $anneeCible = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $existante = $anneeCible ? $this->inscriptionDeLAnnee($etudiantId, (int) $anneeCible->id) : null;
+        $anneeCible = $anneeCibleId
+            ? ESBTPAnneeUniversitaire::find($anneeCibleId)
+            : ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // L'inscription qu'on quitte pour entrer dans l'année cible. Un élève
+        // entré cette année n'en a pas d'antérieure : sa dernière inscription
+        // est celle qu'il quittera (campagne ouverte avant la bascule), et elle
+        // ne compte pas comme « déjà inscrit ».
+        $inscription = ($anneeCible ? $this->classes->inscriptionQuitteeAvant($etudiantId, $anneeCible) : null)
+            ?? $this->classes->inscriptionQuittee($etudiantId);
+        $existante = $anneeCible && $inscription
+            ? $this->inscriptionDeLAnnee($etudiantId, (int) $anneeCible->id, (int) $inscription->id)
+            : null;
 
         $du = $inscription ? SoldeDeReinscription::du((int) $inscription->id) : 0.0;
         $paye = $inscription ? SoldeDeReinscription::paye((int) $inscription->id) : 0.0;
@@ -60,12 +75,14 @@ final class EligibiliteReinscription
             default => self::IMPAYE,
         };
         $autorisee = in_array($etat, [self::SOLDEE, self::DANS_TOLERANCE], true);
-        $peutDeroger = $etat === self::IMPAYE && $lecteur !== null
-            && method_exists($lecteur, 'isSuperAdmin') && $lecteur->isSuperAdmin();
+        $deroge = $lecteur !== null && method_exists($lecteur, 'isSuperAdmin') && $lecteur->isSuperAdmin();
 
         return [
             'inscription' => $inscription,
             'annee_cible' => $anneeCible,
+            'annee_suivante' => $anneeCible
+                ? ESBTPAnneeUniversitaire::where('is_active', true)->where('start_date', '>', $anneeCible->start_date)->orderBy('start_date')->first()
+                : null,
             'inscription_annee_cible' => $existante,
             'du' => $du,
             'paye' => $paye,
@@ -73,8 +90,11 @@ final class EligibiliteReinscription
             'tolerance' => $tolerance,
             'etat' => $etat,
             'autorisee' => $autorisee,
-            'peut_deroger' => $peutDeroger,
-            'peut_poursuivre' => $autorisee || $peutDeroger,
+            'peut_deroger' => $etat === self::IMPAYE && $deroge,
+            'peut_poursuivre' => $autorisee || ($etat === self::IMPAYE && $deroge),
+            // Rejouer une réinscription déjà faite (correction de classe) :
+            // effectuerReinscription la gère, la fiche l'offre à qui peut déroger.
+            'peut_rejouer' => $etat === self::DEJA_INSCRIT && $deroge,
         ];
     }
 
@@ -89,9 +109,10 @@ final class EligibiliteReinscription
      * annulées. Une réinscription en cours (dossier non finalisé) compte : on ne
      * relance pas une seconde réinscription par-dessus.
      */
-    private function inscriptionDeLAnnee(int $etudiantId, int $anneeId): ?ESBTPInscription
+    private function inscriptionDeLAnnee(int $etudiantId, int $anneeId, int $saufId): ?ESBTPInscription
     {
         return ESBTPInscription::query()
+            ->where('id', '!=', $saufId)
             ->with(['classe.filiere', 'classe.niveau', 'anneeUniversitaire', 'reinscriptionValidatedBy'])
             ->where('etudiant_id', $etudiantId)
             ->where('annee_universitaire_id', $anneeId)

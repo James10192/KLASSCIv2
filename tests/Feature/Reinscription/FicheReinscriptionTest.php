@@ -51,10 +51,12 @@ class FicheReinscriptionTest extends TestCase
         $this->admin = User::withoutEvents(fn () => User::factory()->create(['username' => 'u_'.Str::lower(Str::random(8))]));
         $this->admin->assignRole('superAdmin');
 
-        ESBTPAnneeUniversitaire::query()->update(['is_current' => false]);
+        // Aucune autre année ouverte : l'année visée se déduit des seules années du test.
+        ESBTPAnneeUniversitaire::query()->update(['is_current' => false, 'is_active' => false]);
         $quittee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false,
             'start_date' => now()->subYear()->startOfMonth(), 'end_date' => now()->subMonths(2)]);
-        $this->courante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2026-2027', 'is_current' => true]);
+        $this->courante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2026-2027', 'is_current' => true,
+            'start_date' => now()->subMonth()->startOfMonth(), 'end_date' => now()->addMonths(9)]);
 
         $this->inscription = ESBTPInscription::factory()->create(['annee_universitaire_id' => $quittee->id]);
         ESBTPFraisSubscription::factory()->create([
@@ -137,6 +139,50 @@ class FicheReinscriptionTest extends TestCase
 
         $this->assertSame(EligibiliteReinscription::IMPAYE, app(EligibiliteReinscription::class)->pour($this->inscription->etudiant_id)['etat']);
         $this->fiche($this->agent)->assertOk()->assertSee('Réinscription bloquée');
+    }
+
+    /**
+     * Campagne ouverte avant la bascule : l'élève est entré cette année, rien
+     * avant. Il n'est PAS « déjà inscrit » : on juge le solde de cette année,
+     * et la finalisation choisit l'année suivante.
+     */
+    public function test_un_eleve_entre_cette_annee_n_est_pas_deja_inscrit(): void
+    {
+        $this->inscription->update(['annee_universitaire_id' => $this->courante->id]);
+
+        $e = app(EligibiliteReinscription::class)->pour($this->inscription->etudiant_id);
+        $this->assertSame($this->inscription->id, $e['inscription']->id);
+        $this->assertSame(EligibiliteReinscription::IMPAYE, $e['etat']);
+        $this->fiche($this->agent)->assertOk()->assertSee('Réinscription bloquée');
+    }
+
+    public function test_deja_inscrit_la_fiche_offre_la_correction_et_la_finalisation_reste_ouverte(): void
+    {
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $this->courante->id,
+            'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+            'status' => 'active',
+        ]);
+        ESBTPAnneeUniversitaire::where('id', '!=', $this->courante->id)->where('start_date', '>', $this->courante->start_date)->update(['is_active' => false]);
+
+        $this->fiche($this->agent)->assertOk()->assertSee('Déjà inscrit pour 2026-2027')->assertDontSee('Corriger la réinscription');
+        $this->fiche($this->admin)->assertOk()->assertSee('Corriger la réinscription');
+        // Pas de formulaire inerte : la finalisation s'ouvre (l'année se choisit à l'envoi).
+        $this->actingAs($this->agent)->get(route('esbtp.reinscription.create', $this->inscription->etudiant_id))->assertOk();
+    }
+
+    public function test_une_finalisation_bloquee_renvoie_a_la_fiche(): void
+    {
+        $this->actingAs($this->agent)->get(route('esbtp.reinscription.create', $this->inscription->etudiant_id))
+            ->assertRedirect(route('esbtp.reinscription.show', $this->inscription->etudiant_id));
+    }
+
+    public function test_la_garde_juge_l_annee_visee(): void
+    {
+        $this->assertFalse(app(ReeinscriptionService::class)->peutSeReinscrire($this->inscription->etudiant_id, $this->courante->id));
+        ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->update(['amount' => 0]);
+        $this->assertTrue(app(ReeinscriptionService::class)->peutSeReinscrire($this->inscription->etudiant_id, $this->courante->id));
     }
 
     public function test_sans_droit_finances_les_montants_restent_caches(): void

@@ -6,7 +6,6 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPPaiement;
-use App\Services\Reinscription\ClassesDeReinscription;
 use App\Services\Reinscription\EligibiliteReinscription;
 use Illuminate\Support\Facades\Route;
 
@@ -55,7 +54,10 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
             return $probleme;
         }
 
-        $inscription = app(ClassesDeReinscription::class)->inscriptionQuittee((int) $etudiant->id);
+        // Une seule lecture du dossier, la même que la fiche : inscription
+        // quittée, année visée, état.
+        $eligibilite = app(EligibiliteReinscription::class)->pour((int) $etudiant->id, $user);
+        $inscription = $eligibilite['inscription'];
         if (! $inscription) {
             return ['display_type' => 'text', 'message' => "{$this->studentFullName($etudiant)} n'a aucune inscription validée avec classe : rien à réinscrire."];
         }
@@ -74,7 +76,6 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
                 'paye' => round((float) ($paye[$s->frais_category_id] ?? 0), 2),
             ])->values();
         // L'état et le solde sont ceux de l'écran : un seul service les calcule.
-        $eligibilite = app(EligibiliteReinscription::class)->pour((int) $etudiant->id, $user);
         $du = $eligibilite['du'];
         $verse = $eligibilite['paye'];
         $solde = $eligibilite['solde'];

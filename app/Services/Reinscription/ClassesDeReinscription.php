@@ -32,6 +32,25 @@ class ClassesDeReinscription
      */
     public function inscriptionQuittee(int $etudiantId): ?ESBTPInscription
     {
+        return $this->inscriptionsFinalisees($etudiantId)->first();
+    }
+
+    /**
+     * La même lecture, bornée aux années qui commencent AVANT l'année visée :
+     * l'inscription qu'on quitte pour entrer dans `$anneeCible`. Sans cette
+     * borne, une réinscription rejouée (correction de classe) ou préparée
+     * avant la bascule de l'année courante prendrait l'inscription de l'année
+     * visée pour celle qu'on quitte.
+     */
+    public function inscriptionQuitteeAvant(int $etudiantId, \App\Models\ESBTPAnneeUniversitaire $anneeCible): ?ESBTPInscription
+    {
+        return $this->inscriptionsFinalisees($etudiantId)
+            ->where('annee.start_date', '<', $anneeCible->start_date)
+            ->first();
+    }
+
+    private function inscriptionsFinalisees(int $etudiantId)
+    {
         return ESBTPInscription::query()
             ->select('esbtp_inscriptions.*')
             ->join('esbtp_annee_universitaires as annee', 'annee.id', '=', 'esbtp_inscriptions.annee_universitaire_id')
@@ -41,8 +60,7 @@ class ClassesDeReinscription
             ->whereNotNull('esbtp_inscriptions.classe_id')
             ->orderByDesc('annee.start_date')
             ->orderByDesc('esbtp_inscriptions.id')
-            ->with(['etudiant', 'classe.niveau', 'classe.filiere', 'classe.parcours', 'anneeUniversitaire'])
-            ->first();
+            ->with(['etudiant', 'classe.niveau', 'classe.filiere', 'classe.parcours', 'anneeUniversitaire']);
     }
 
     /**

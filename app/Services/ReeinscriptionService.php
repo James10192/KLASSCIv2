@@ -369,17 +369,19 @@ class ReeinscriptionService
             // Vérifier permissions SuperAdmin pour outrepasser
             $isSuperAdmin = auth()->user() && auth()->user()->can('admin.access');
 
-            if (!$this->peutSeReinscrire($etudiantId) && !$isSuperAdmin) {
+            if (!$this->peutSeReinscrire($etudiantId, $anneeUniversitaireId) && !$isSuperAdmin) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException("L'étudiant doit solder tous ses frais avant la réinscription");
             }
 
             // Note: Si SuperAdmin et que l'étudiant a des impayés, les reliquats seront créés automatiquement
 
-            // 2. Récupérer l'inscription active actuelle de l'étudiant
-            $inscriptionActuelle = $etudiant->inscriptions()
-                ->where('status', 'active')
-                ->latest()
-                ->first();
+            // 2. L'inscription QUITTÉE pour l'année visée : celle que la garde
+            // vient de juger, et dont le reste dû part en reliquat. La dernière
+            // inscription active (`latest()`) pouvait être une autre — celle de
+            // l'année visée elle-même, quand la réinscription est rejouée.
+            $inscriptionActuelle = app(\App\Services\Reinscription\EligibiliteReinscription::class)
+                ->pour((int) $etudiantId, null, $anneeUniversitaireId ? (int) $anneeUniversitaireId : null)['inscription']
+                ?? $etudiant->inscriptions()->where('status', 'active')->latest()->first();
 
             if (!$inscriptionActuelle) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException("Aucune inscription active trouvée pour cet étudiant");
@@ -704,12 +706,13 @@ class ReeinscriptionService
     /**
      * Vérifier si un étudiant peut se réinscrire (doit être entièrement soldé)
      */
-    public function peutSeReinscrire($etudiantId): bool
+    public function peutSeReinscrire($etudiantId, $anneeCibleId = null): bool
     {
         // La même inscription et le même solde que la fiche de réinscription.
         // Avant : la dernière inscription ACTIVE (`latest()`), qui pouvait être
         // une autre que celle affichée, donc un autre verdict que l'écran.
-        $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)->pour((int) $etudiantId);
+        $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)
+            ->pour((int) $etudiantId, null, $anneeCibleId ? (int) $anneeCibleId : null);
         if (!$eligibilite['inscription']) {
             return false;
         }
