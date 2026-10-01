@@ -35,6 +35,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Courriels aux couleurs de l'école.** Le lien d'activation de l'espace étudiant, la convocation au guichet, le code de confirmation d'e-mail et les avis aux parents partagent un même gabarit : logo et couleurs de l'établissement comme sur ses PDF, bouton d'action, coordonnées en pied. Le lien d'activation partait jusqu'ici en texte brut.
 
 ### Corrections
+- **Réinscription — corriger une réinscription vers la même classe n'affiche plus d'erreur technique.** Le refus est expliqué (« déjà inscrit dans cette classe »), et une erreur imprévue ne montre plus de requête SQL à l'écran : le détail part au journal.
 - **Unités d'enseignement — « Lier à des parcours » ne remet plus à zéro l'ordre ni le caractère optionnel des liens gardés.** Retirer un parcours à une UE réinitialisait ceux des autres parcours, sans le signaler.
 - **Nanan — un fichier joint n'est plus jamais lu à moitié en silence.** Chercher un matricule dans un état de vingt colonnes pouvait couper la réponse ; les verdicts « présent / absent » passent désormais en entier, et une feuille illisible du classeur est nommée.
 - **Unités d'enseignement — une UE retirée d'un parcours disparaît de sa liste.** Le filtre par parcours lisait aussi l'ancienne colonne de l'UE : AGR2103, retirée de LPA, restait affichée sous LPA et le retrait semblait avoir échoué. L'ancienne colonne ne compte plus que pour une UE sans aucun lien de parcours.

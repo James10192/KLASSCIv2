@@ -425,6 +425,19 @@ class ReeinscriptionService
                 ->where('annee_universitaire_id', $nouvelleAnnee->id)
                 ->where('status', '!=', 'annulée')
                 ->exists();
+            // Rejouer vers la MÊME classe ne corrige rien, et heurterait l'index
+            // unique (étudiant, année, classe) : l'ancienne ligne n'est que
+            // « terminée », pas supprimée.
+            // L'index ne regarde pas le statut : une ligne annulée bloque aussi.
+            $memeClasse = \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
+                ->where('annee_universitaire_id', $nouvelleAnnee->id)
+                ->where('classe_id', $nouvelleClasseId)
+                ->first();
+            if ($memeClasse) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException($memeClasse->status === 'annulée'
+                    ? "Une inscription annulée existe déjà dans cette classe pour {$nouvelleAnnee->name} : rouvrez-la depuis la liste des inscriptions."
+                    : "L'étudiant est déjà inscrit dans cette classe pour {$nouvelleAnnee->name} : choisissez une autre classe pour corriger.");
+            }
             if ($dejaInscrit && !$isSuperAdmin) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException(
                     "L'étudiant est déjà inscrit pour {$nouvelleAnnee->name}. Pour corriger cette inscription, demandez à un superadministrateur."

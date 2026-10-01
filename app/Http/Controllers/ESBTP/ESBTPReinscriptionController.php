@@ -871,8 +871,14 @@ class ESBTPReinscriptionController extends Controller
                 // joue dans le dialogue lui-meme : si l'etudiant a deja une
                 // photo, il commence par demander s'il faut la remplacer.
                 ->with('demander_photo', true);
-        } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'Erreur lors de la réinscription: ' . $e->getMessage()]);
+        } catch (\App\Exceptions\ReinscriptionRefuseeException $e) {
+            // Refus métier : le message est écrit pour la personne.
+            return back()->withInput()->withErrors(['error' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            // Le détail (SQL compris) reste au journal, jamais à l'écran.
+            \Log::error('Réinscription impossible', ['etudiant_id' => $etudiantId, 'erreur' => $e->getMessage()]);
+
+            return back()->withInput()->withErrors(['error' => "La réinscription n'a pas pu être enregistrée. Le détail est dans le journal du serveur."]);
         }
     }
 

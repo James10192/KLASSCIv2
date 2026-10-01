@@ -207,8 +207,30 @@ class FicheReinscriptionTest extends TestCase
             app(ReeinscriptionService::class)->effectuerReinscription($this->inscription->etudiant_id, $enCours->classe_id, 'passage', null, [], null, $this->courante->id, null, false, false);
             $this->fail("Un agent ne doit pas pouvoir remplacer l'inscription en cours.");
         } catch (\App\Exceptions\ReinscriptionRefuseeException $ex) {
-            $this->assertStringContainsString('déjà inscrit pour 2026-2027', $ex->getMessage());
+            $this->assertStringContainsString('déjà inscrit', $ex->getMessage());
         }
+        $this->assertSame('active', $enCours->fresh()->status);
+    }
+
+    public function test_corriger_vers_la_meme_classe_est_refuse_proprement(): void
+    {
+        $enCours = ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $this->courante->id,
+            'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+            'status' => 'active',
+        ]);
+        ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->update(['amount' => 0]);
+
+        $this->actingAs($this->admin)
+            ->from(route('esbtp.reinscription.create', $this->inscription->etudiant_id))
+            ->put(route('esbtp.reinscription.update', $this->inscription->etudiant_id), [
+                'nouvelle_classe_id' => $enCours->classe_id, 'decision' => 'passage', 'annee_universitaire_id' => $this->courante->id,
+            ])
+            ->assertSessionHasErrors('error');
+
+        $this->assertStringContainsString('déjà inscrit dans cette classe', session('errors')->first('error'));
+        $this->assertStringNotContainsString('SQLSTATE', session('errors')->first('error'));
         $this->assertSame('active', $enCours->fresh()->status);
     }
 
