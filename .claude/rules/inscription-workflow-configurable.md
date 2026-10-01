@@ -82,3 +82,34 @@ Cette configuration décrit Yamoussoukro ; elle ne constitue pas le défaut glob
 5. valider le parcours complet ;
 6. propager le code ;
 7. activer tenant par tenant selon décision de l'établissement.
+
+## Invariants posés par la revue du 1er octobre 2026
+
+Ce qui suit a été cassé une fois ; chaque point a son test dans
+`tests/Feature/Admissions/ManagedInscriptionEndToEndTest.php` (joué en CI sur MariaDB).
+
+1. **Une seule finalisation** : `FinalizeManagedInscription`. Le choix de classe par
+   l'étudiant passe par `chooseAndFinalize()` — classe et inscription dans la même
+   transaction, ligne de classe verrouillée, places comptées sur l'année DU DOSSIER
+   (`checkClassAvailability($classe, $annee)`). Ne jamais verrouiller une classe
+   avant que l'inscription existe.
+2. **Le versement de préinscription porte un `frais_category_id`** choisi parmi les
+   frais configurés du périmètre, plafonné au tarif. Sans catégorie, il n'est déduit
+   d'aucun solde (`SoldesParSouscription` calcule par frais).
+3. **La caisse ne décide rien d'académique** : affecter une classe et finaliser
+   exigent `inscriptions.validate`.
+4. **Lien d'activation** : seulement vers un contact prouvé ; tout renvoi rend
+   caducs les anciens liens (version `v` dans l'URL WhatsApp signée). Seul le lien
+   reçu par e-mail pose `email_verified_at`.
+5. **Après finalisation, le parcours n'écrit plus rien** (classe, pièces) : la
+   correction passe par la fiche d'inscription.
+6. **Écrire une colonne, c'est vérifier qu'elle existe** sur la table cible
+   (`esbtp_paiements` n'a ni `statut` ni `createur_id` ; `esbtp_etudiants` n'a ni
+   `filiere_id` ni `niveau_etude_id` ; `esbtp_inscriptions.montant_scolarite` est NOT NULL).
+
+### Limite connue (non traitée)
+
+La configuration est lue **au moment de chaque action**, pas figée à l'ouverture du
+dossier. Changer `mode` ou `account_activation_step` pendant la campagne s'applique
+aux dossiers en cours. Ne changer ces réglages qu'entre deux campagnes, ou ajouter
+un instantané de configuration sur `esbtp_candidature_workflows`.

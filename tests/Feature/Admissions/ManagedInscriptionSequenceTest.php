@@ -29,14 +29,14 @@ class ManagedInscriptionSequenceTest extends TestCase
         $this->settings->ensureDefaults();
         $this->sequence = app(ManagedInscriptionSequence::class);
 
-        Setting::setOrCreate(InscriptionWorkflowSettings::KEY_ENABLED, '1', 'inscriptions', 'boolean');
+        Setting::setOrCreate(InscriptionWorkflowSettings::ENABLED, '1', 'inscriptions', 'boolean');
     }
 
     /** @test */
     public function caisse_avant_pieces_interdit_le_controle_documentaire_avant_paiement(): void
     {
         Setting::setOrCreate(
-            InscriptionWorkflowSettings::KEY_MODE,
+            InscriptionWorkflowSettings::MODE,
             InscriptionWorkflowSettings::MODE_CAISSE_AVANT_PIECES,
             'inscriptions',
         );
@@ -60,7 +60,7 @@ class ManagedInscriptionSequenceTest extends TestCase
     public function pieces_avant_caisse_interdit_le_paiement_avant_validation_documentaire(): void
     {
         Setting::setOrCreate(
-            InscriptionWorkflowSettings::KEY_MODE,
+            InscriptionWorkflowSettings::MODE,
             InscriptionWorkflowSettings::MODE_PIECES_AVANT_CAISSE,
             'inscriptions',
         );
@@ -83,7 +83,7 @@ class ManagedInscriptionSequenceTest extends TestCase
     public function en_mode_pieces_avant_caisse_la_file_ne_montre_que_les_dossiers_documentaires_valides(): void
     {
         Setting::setOrCreate(
-            InscriptionWorkflowSettings::KEY_MODE,
+            InscriptionWorkflowSettings::MODE,
             InscriptionWorkflowSettings::MODE_PIECES_AVANT_CAISSE,
             'inscriptions',
         );
@@ -110,7 +110,8 @@ class ManagedInscriptionSequenceTest extends TestCase
         $niveau = ESBTPNiveauEtude::factory()->create();
 
         return ESBTPCandidature::forceCreate([
-            'reference' => 'CAND-SEQ-'.uniqid(),
+            'consentement_at' => now(),
+            'date_naissance' => '2006-01-01',
             'statut' => ESBTPCandidature::STATUT_ACCEPTEE,
             'nom' => 'KOUASSI',
             'prenoms' => 'Awa',

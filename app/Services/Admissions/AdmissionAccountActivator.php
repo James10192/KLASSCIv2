@@ -9,19 +9,31 @@ use Illuminate\Validation\ValidationException;
 /**
  * Active un compte étudiant à partir d'un workflow déjà authentifié par son
  * canal (jeton e-mail ou URL WhatsApp signée).
+ *
+ * Activer n'est pas vérifier une adresse : seul le lien reçu PAR E-MAIL prouve
+ * que l'étudiant lit cette boîte. Un lien WhatsApp ne touche pas à
+ * `email_verified_at`.
  */
 final class AdmissionAccountActivator
 {
-    public function activateWorkflow(ESBTPCandidatureWorkflow $workflow, string $password): ESBTPCandidatureWorkflow
+    public function __construct(private readonly InscriptionWorkflowSettings $settings)
     {
-        return DB::transaction(function () use ($workflow, $password) {
+    }
+
+    public function activateWorkflow(ESBTPCandidatureWorkflow $workflow, string $password, bool $emailProven = false): ESBTPCandidatureWorkflow
+    {
+        return DB::transaction(function () use ($workflow, $password, $emailProven) {
             $workflow = ESBTPCandidatureWorkflow::query()
                 ->lockForUpdate()
                 ->with(['candidature', 'etudiant.user'])
                 ->findOrFail($workflow->id);
 
+            // Double clic, ou deux onglets : le second ne réécrit pas le mot
+            // de passe que le premier vient de poser.
             if ($workflow->accessActivated()) {
-                return $workflow;
+                throw ValidationException::withMessages([
+                    'activation' => 'Cet espace étudiant a déjà été activé. Connectez-vous avec votre mot de passe.',
+                ]);
             }
 
             $user = $workflow->etudiant?->user;
@@ -35,7 +47,7 @@ final class AdmissionAccountActivator
                 'password' => $password,
                 'is_active' => true,
                 'must_change_password' => false,
-                'email_verified_at' => $user->email ? now() : $user->email_verified_at,
+                'email_verified_at' => $emailProven && $user->email ? now() : $user->email_verified_at,
                 'first_login_at' => $user->first_login_at ?: now(),
             ])->save();
 
@@ -44,25 +56,11 @@ final class AdmissionAccountActivator
                 'access_activated_at' => now(),
                 'activation_token_hash' => null,
                 'activation_token_expires_at' => null,
-                'state' => $this->nextState($workflow),
-            ])->save();
+            ]);
+            $workflow->state = ManagedInscriptionWorkflow::stateFor($workflow, $this->settings->mode());
+            $workflow->save();
 
             return $workflow->fresh(['candidature', 'etudiant.user']);
         });
-    }
-
-    private function nextState(ESBTPCandidatureWorkflow $workflow): string
-    {
-        if (! $workflow->paymentRecorded()) {
-            return ESBTPCandidatureWorkflow::STATE_AWAITING_PAYMENT;
-        }
-
-        if (! $workflow->documentsValidated()) {
-            return ESBTPCandidatureWorkflow::STATE_AWAITING_DOCUMENTS;
-        }
-
-        return $workflow->selected_class_id
-            ? ESBTPCandidatureWorkflow::STATE_READY_TO_FINALIZE
-            : ESBTPCandidatureWorkflow::STATE_AWAITING_STUDENT;
     }
 }

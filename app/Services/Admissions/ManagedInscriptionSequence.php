@@ -4,7 +4,8 @@ namespace App\Services\Admissions;
 
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPCandidatureWorkflow;
-use Illuminate\Support\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -19,42 +20,39 @@ final class ManagedInscriptionSequence
     {
     }
 
-    /** @return Collection<int, ESBTPCandidature> */
-    public function cashierQueue(): Collection
+    /**
+     * Dossiers acceptés qui attendent la caisse, filtrés en base et paginés :
+     * la file reste rapide avec des milliers de candidatures.
+     */
+    public function cashierQueue(?string $recherche = null, int $parPage = 30): ?LengthAwarePaginator
     {
         if (! $this->settings->usesManagedWorkflow()) {
-            return collect();
+            return null;
         }
 
-        $candidatures = ESBTPCandidature::query()
+        $piecesAvant = $this->settings->mode() === InscriptionWorkflowSettings::MODE_PIECES_AVANT_CAISSE;
+
+        return ESBTPCandidature::query()
             ->with(['filiere:id,name,code', 'niveau:id,name', 'anneeUniversitaire:id,name'])
             ->where('statut', ESBTPCandidature::STATUT_ACCEPTEE)
             ->whereNull('inscription_id')
+            ->whereDoesntHave('managedWorkflow', fn (Builder $w) => $w->whereNotNull('paid_at'))
+            ->when($piecesAvant, fn (Builder $q) => $q->whereHas(
+                'managedWorkflow',
+                fn (Builder $w) => $w->whereNotNull('documents_validated_at')
+            ))
+            ->when($recherche !== null && trim($recherche) !== '', function (Builder $q) use ($recherche) {
+                $terme = '%'.trim($recherche).'%';
+                $q->where(fn (Builder $s) => $s
+                    ->where('nom', 'like', $terme)
+                    ->orWhere('prenoms', 'like', $terme)
+                    ->orWhere('telephone', 'like', $terme)
+                    ->orWhere('reference_publique', 'like', $terme));
+            })
             ->orderBy('traite_at')
             ->orderBy('id')
-            ->get();
-
-        $workflows = ESBTPCandidatureWorkflow::query()
-            ->whereIn('candidature_id', $candidatures->pluck('id'))
-            ->get()
-            ->keyBy('candidature_id');
-
-        return $candidatures
-            ->filter(function (ESBTPCandidature $candidature) use ($workflows) {
-                /** @var ESBTPCandidatureWorkflow|null $workflow */
-                $workflow = $workflows->get($candidature->id);
-
-                if ($workflow?->paymentRecorded()) {
-                    return false;
-                }
-
-                if ($this->settings->mode() === InscriptionWorkflowSettings::MODE_PIECES_AVANT_CAISSE) {
-                    return $workflow?->documentsValidated() === true;
-                }
-
-                return true;
-            })
-            ->values();
+            ->paginate($parPage)
+            ->withQueryString();
     }
 
     public function assertPaymentAllowed(ESBTPCandidatureWorkflow $workflow): void
@@ -62,7 +60,7 @@ final class ManagedInscriptionSequence
         if ($this->settings->mode() === InscriptionWorkflowSettings::MODE_PIECES_AVANT_CAISSE
             && ! $workflow->documentsValidated()) {
             throw ValidationException::withMessages([
-                'workflow' => "Le controle physique des pieces doit etre valide avant le passage a la caisse.",
+                'workflow' => 'Le contrôle physique des pièces doit être validé avant le passage à la caisse.',
             ]);
         }
     }
@@ -72,7 +70,7 @@ final class ManagedInscriptionSequence
         if ($this->settings->mode() === InscriptionWorkflowSettings::MODE_CAISSE_AVANT_PIECES
             && ! $workflow->paymentRecorded()) {
             throw ValidationException::withMessages([
-                'workflow' => "Le paiement de preinscription doit etre valide avant le controle physique des pieces.",
+                'workflow' => 'Le paiement de préinscription doit être validé avant le contrôle physique des pièces.',
             ]);
         }
     }

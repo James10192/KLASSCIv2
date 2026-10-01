@@ -39,6 +39,7 @@ final class ManagedInscriptionStepController extends Controller
 
         $allowedModes = array_keys(config('payment_modes.labels', []));
         $data = $request->validate([
+            'frais_category_id' => ['required', 'integer'],
             'montant' => ['required', 'numeric', 'min:1'],
             'mode_paiement' => ['required', 'string', Rule::in($allowedModes)],
             'reference_paiement' => ['nullable', 'string', 'max:120'],
@@ -51,9 +52,13 @@ final class ManagedInscriptionStepController extends Controller
             $this->whatsapp->sendIfDue($workflow);
         }
 
+        $suite = $this->settings->mode() === InscriptionWorkflowSettings::MODE_CAISSE_AVANT_PIECES
+            ? "L'étudiant doit maintenant présenter ses pièces au secrétariat."
+            : "Le dossier passe à l'activation de l'espace étudiant.";
+
         return redirect()
             ->route('esbtp.admissions.workflow.show', $candidature)
-            ->with('success', 'Préinscription encaissée et rattachée à la candidature. Reçu : '.($workflow->paiement?->numero_recu ?? '—'));
+            ->with('success', 'Paiement enregistré. Reçu n° '.($workflow->paiement?->numero_recu ?? '—').'. '.$suite);
     }
 
     public function receivePiece(Request $request, ESBTPCandidatureWorkflow $workflow)

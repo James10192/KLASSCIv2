@@ -23,16 +23,16 @@ final class ManagedActivationController extends Controller
     ) {
     }
 
-    public function signedForm(ESBTPCandidatureWorkflow $workflow)
+    public function signedForm(Request $request, ESBTPCandidatureWorkflow $workflow)
     {
         $this->guardManagedWorkflow();
         $workflow->loadMissing(['candidature', 'etudiant.user']);
-        $this->assertActivatable($workflow);
+        $this->assertActivatable($workflow, $request->query('v'));
 
         $submitUrl = URL::temporarySignedRoute(
             'esbtp.admissions.workflow.activation.signed.submit',
             now()->addMinutes(30),
-            ['workflow' => $workflow->id],
+            ['workflow' => $workflow->id, 'v' => $request->query('v')],
         );
 
         return view('esbtp.admissions.workflow.activation-signed', [
@@ -44,7 +44,7 @@ final class ManagedActivationController extends Controller
     public function signedActivate(Request $request, ESBTPCandidatureWorkflow $workflow)
     {
         $this->guardManagedWorkflow();
-        $this->assertActivatable($workflow);
+        $this->assertActivatable($workflow, $request->query('v'));
 
         $data = $request->validate([
             'password' => ['required', 'string', 'min:8', 'confirmed'],
@@ -64,9 +64,13 @@ final class ManagedActivationController extends Controller
         $this->guardManagedWorkflow();
         $this->assertMilestoneReached($workflow);
 
+        if ($workflow->accessActivated()) {
+            throw ValidationException::withMessages(['activation' => 'Cet espace étudiant est déjà activé.']);
+        }
+
         // Le canal e-mail conserve le jeton aléatoire historique. WhatsApp
-        // reçoit une URL Laravel signée, elle aussi expirante et inutilisable
-        // dès que le compte est activé.
+        // reçoit une URL Laravel signée portant la version de ce jeton : la
+        // régénération ci-dessous rend donc caducs TOUS les anciens liens.
         $emailResult = $this->managed->issueActivation($workflow);
         $whatsappSent = $this->whatsapp->sendIfDue($workflow);
 
@@ -82,7 +86,7 @@ final class ManagedActivationController extends Controller
             'success',
             $channels
                 ? 'Nouveau lien d’activation envoyé par '.implode(' et ', $channels).'.'
-                : "Le lien d'activation a été régénéré, mais aucun canal configuré n'a pu le délivrer.",
+                : "Lien régénéré, mais aucun contact vérifié ne permet de l'envoyer. Vérifiez l'e-mail ou le numéro du candidat, puis renvoyez.",
         );
     }
 
@@ -90,15 +94,23 @@ final class ManagedActivationController extends Controller
     {
         $workflow->refresh();
 
-        if (! $this->whatsapp->milestoneReached($workflow)) {
+        if (! $this->managed->activationMilestoneReached($workflow)) {
             throw ValidationException::withMessages([
                 'activation' => "Le dossier n'a pas encore atteint l'étape configurée pour ouvrir l'espace étudiant.",
             ]);
         }
     }
 
-    private function assertActivatable(ESBTPCandidatureWorkflow $workflow): void
+    private function assertActivatable(ESBTPCandidatureWorkflow $workflow, ?string $version): void
     {
+        $workflow->refresh();
+
+        if (! $this->whatsapp->isCurrent($workflow, $version) && ! $workflow->accessActivated()) {
+            throw ValidationException::withMessages([
+                'activation' => "Ce lien a été remplacé par un lien plus récent. Utilisez le dernier message reçu.",
+            ]);
+        }
+
         if ($workflow->accessActivated()) {
             throw ValidationException::withMessages([
                 'activation' => 'Cet espace étudiant a déjà été activé.',
@@ -107,7 +119,7 @@ final class ManagedActivationController extends Controller
 
         $this->assertMilestoneReached($workflow);
 
-        if (! $workflow->etudiant?->user) {
+        if (! $workflow->loadMissing('etudiant.user')->etudiant?->user) {
             throw ValidationException::withMessages([
                 'compte' => "Le compte étudiant n'a pas encore été préparé.",
             ]);

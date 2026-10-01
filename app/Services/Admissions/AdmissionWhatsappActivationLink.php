@@ -8,15 +8,16 @@ use Illuminate\Support\Facades\URL;
 /**
  * Produit et livre le lien d'activation WhatsApp du parcours géré.
  *
- * La signature Laravel expire au bout de 48 h et le contrôleur d'activation
- * refuse en plus tout workflow déjà activé. L'URL ne contient donc ni mot de
- * passe, ni jeton stocké en clair.
+ * La signature Laravel expire au bout de 48 h. Le lien porte en plus la
+ * version du jeton courant (`v`) : régénérer le lien rend les précédents
+ * inutilisables, et activer le compte les éteint tous.
  */
 final class AdmissionWhatsappActivationLink
 {
     public function __construct(
         private readonly InscriptionWorkflowSettings $settings,
         private readonly AdmissionActivationNotifier $notifier,
+        private readonly ManagedInscriptionWorkflow $managed,
     ) {
     }
 
@@ -25,8 +26,15 @@ final class AdmissionWhatsappActivationLink
         return URL::temporarySignedRoute(
             'esbtp.admissions.workflow.activation.signed.form',
             now()->addHours(48),
-            ['workflow' => $workflow->id],
+            ['workflow' => $workflow->id, 'v' => ManagedInscriptionWorkflow::linkVersion($workflow)],
         );
+    }
+
+    public function isCurrent(ESBTPCandidatureWorkflow $workflow, ?string $version): bool
+    {
+        $courante = ManagedInscriptionWorkflow::linkVersion($workflow);
+
+        return $courante !== '' && $version !== null && hash_equals($courante, $version);
     }
 
     public function sendIfDue(ESBTPCandidatureWorkflow $workflow): bool
@@ -36,7 +44,8 @@ final class AdmissionWhatsappActivationLink
         if (! $this->settings->usesManagedWorkflow()
             || ! $this->settings->notifyWhatsapp()
             || $workflow->accessActivated()
-            || ! $this->milestoneReached($workflow)) {
+            || ! $workflow->activation_token_hash
+            || ! $this->managed->activationMilestoneReached($workflow)) {
             return false;
         }
 
@@ -44,13 +53,5 @@ final class AdmissionWhatsappActivationLink
             $workflow->loadMissing(['candidature', 'etudiant.user']),
             $this->url($workflow),
         );
-    }
-
-    public function milestoneReached(ESBTPCandidatureWorkflow $workflow): bool
-    {
-        return match ($this->settings->accountActivationStep()) {
-            InscriptionWorkflowSettings::ACTIVATION_AFTER_DOCUMENTS => $workflow->documentsValidated(),
-            default => $workflow->paymentRecorded(),
-        };
     }
 }
