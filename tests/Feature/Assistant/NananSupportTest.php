@@ -211,5 +211,8 @@ class NananSupportTest extends TestCase
             $this->assertStringContainsString($choix, $html);
         }
         $this->assertStringNotContainsString('x-init="init()"', $html);
+        // Contrat KLASSCI Care : l'URL de confirmation d'adresse s'appelle email_verification_url.
+        $this->assertStringContainsString('corps.email_verification_url', $html);
+        $this->assertStringContainsString('corps.email_masque', $html);
     }
 }

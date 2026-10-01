@@ -397,7 +397,8 @@ if (typeof window.klassciNananSupport !== 'function') {
                     reference: corps.reference || null,
                     message: corps.message || '',
                     suivi: corps.suivi_url || this.support.suivi || null,
-                    verifier: corps.email_a_verifier === true && typeof corps.verification_url === 'string' ? corps.verification_url : null
+                    verifier: corps.email_a_verifier === true && typeof corps.email_verification_url === 'string' ? corps.email_verification_url : null,
+                    emailMasque: typeof corps.email_masque === 'string' ? corps.email_masque : null
                 };
                 this.oublier();
                 this.vue = 'envoye';
@@ -423,9 +424,16 @@ if (typeof window.klassciNananSupport !== 'function') {
                 }).then(function (r) {
                     return r.json().catch(function () { return {}; }).then(function (corps) { return { ok: r.ok, corps: corps }; });
                 }).then(function (r) {
-                    self.verification = r.ok
-                        ? { etat: 'ok', message: r.corps.message || 'Un lien de vérification vous a été envoyé. Ouvrez votre messagerie.' }
-                        : { etat: 'erreur', message: r.corps.message || "L'envoi du lien a échoué. Réessayez dans un instant." };
+                    /* Contrat KLASSCI Care : 200 {envoye:true}, 422 {envoye:false, deja_verifiee}, 503 {envoye:false}.
+                       Une adresse déjà vérifiée n'est pas une erreur : le bouton disparaît. */
+                    if (r.ok && r.corps.envoye === true) {
+                        if (r.corps.email_masque) { self.resultat.emailMasque = r.corps.email_masque; }
+                        self.verification = { etat: 'ok', message: r.corps.message || 'Un lien de confirmation vous a été envoyé. Ouvrez votre messagerie.' };
+                    } else if (r.corps.deja_verifiee === true) {
+                        self.verification = { etat: 'ok', message: r.corps.message || 'Votre adresse est déjà confirmée.' };
+                    } else {
+                        self.verification = { etat: 'erreur', message: r.corps.message || "L'envoi du lien a échoué. Réessayez dans un instant." };
+                    }
                 }).catch(function () {
                     self.verification = { etat: 'erreur', message: 'Connexion perdue. Réessayez dans un instant.' };
                 });
@@ -614,10 +622,10 @@ if (typeof window.klassciNananSupport !== 'function') {
 
             <div class="nsp-verifier" x-show="resultat && resultat.verifier">
                 <p><i class="fas fa-envelope-circle-check" aria-hidden="true"></i>
-                    Pour recevoir la réponse par e-mail, vérifiez d'abord votre adresse.</p>
+                    <span x-text="'Confirmez votre adresse ' + ((resultat && resultat.emailMasque) ? resultat.emailMasque + ' ' : '') + 'pour être averti(e) par e-mail des réponses du support'"></span></p>
                 <button type="button" class="nsp-btn nsp-btn--secondaire" x-on:click="verifierEmail()"
                         x-show="verification.etat !== 'ok'" x-bind:disabled="verification.etat === 'envoi'"
-                        x-text="verification.etat === 'envoi' ? 'Envoi…' : 'Vérifier mon adresse e-mail'"></button>
+                        x-text="verification.etat === 'envoi' ? 'Envoi…' : 'Confirmer mon adresse'"></button>
                 <p class="nsp-verifier-message" x-show="verification.message" x-text="verification.message"
                    x-bind:class="verification.etat === 'erreur' ? 'nsp-verifier-message--erreur' : ''" role="status"></p>
             </div>
