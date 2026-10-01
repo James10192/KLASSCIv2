@@ -138,7 +138,14 @@ if (typeof window.klassciNananSupport !== 'function') {
                 /* La feuille rend, en se fermant, le focus à ce qui l'avait avant elle (son
                    bouton au clavier ; au doigt, souvent le corps de page) : c'est lui qu'on retient. */
                 window.dispatchEvent(new CustomEvent('m-sheet:close'));
-                if (feuille) { retour = document.activeElement; }
+                if (feuille) {
+                    retour = document.activeElement;
+                    /* Au doigt (iOS), la feuille n'a rien eu à rendre : le focus est resté sur son
+                       propre bouton « Fermer », désormais caché. On revient au bouton qui l'ouvre. */
+                    if (!retour || retour === document.body || feuille.contains(retour)) {
+                        retour = feuille.id ? document.querySelector('[aria-controls="' + feuille.id + '"]') : null;
+                    }
+                }
                 /* x-trap rendra le focus à l'élément actif au moment où Nanan s'ouvre :
                    ce doit être l'ouvreur, pas l'entrée du menu qui vient d'être cachée. */
                 if (retour !== declencheur && retour && typeof retour.focus === 'function') { retour.focus({ preventScroll: true }); }
