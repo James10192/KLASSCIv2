@@ -175,7 +175,10 @@ class ActionsEvaluationsTest extends TestCase
             'date_evaluation' => now()->subWeek(), 'is_published' => true, 'notes_published' => false,
             'status' => ESBTPEvaluation::STATUS_COMPLETED,
         ], $surcharge));
-        ESBTPNote::factory()->create(['evaluation_id' => $evaluation->id, 'note' => 12, 'valeur' => 12]);
+        ESBTPNote::factory()->create([
+            'evaluation_id' => $evaluation->id, 'matiere_id' => $evaluation->matiere_id,
+            'classe_id' => $evaluation->classe_id, 'note' => 12, 'valeur' => 12,
+        ]);
 
         return $evaluation;
     }

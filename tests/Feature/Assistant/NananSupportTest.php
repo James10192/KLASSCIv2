@@ -51,6 +51,10 @@ class NananSupportTest extends TestCase
 
     private function supportOuvert(bool $ouvert): void
     {
+        // Http::fake empile : le premier faux qui correspond gagne. On repart
+        // d'un client vierge pour que l'état demandé remplace celui de setUp.
+        Http::swap(new \Illuminate\Http\Client\Factory());
+        Cache::flush();
         Http::fake([
             'master.test/api/v1/support/bootstrap' => Http::response([
                 'fonctionnalites' => ['support_widget' => $ouvert, 'support_customer_portal' => $ouvert],
