@@ -150,7 +150,7 @@ php artisan tenant:health-check --all
 
 ```env
 # Mail
-MAIL_MAILER=mailpulse  MAILPULSE_API_KEY=...  (tout courriel part par l'API MailPulse — docs/runbooks/courriels-par-mailpulse.md)
+MAIL_MAILER=mailpulse  MAILPULSE_API_KEY=...  (cible : tout courriel part par l'API MailPulse ; une instance reste en smtp tant qu'elle n'est pas basculée — docs/runbooks/courriels-par-mailpulse.md)
 
 # IA
 ASSISTANT_MODELE=claude-haiku  ANTHROPIC_API_KEY=...  (optionnels : OPENAI_API_KEY, MISTRAL_API_KEY, GEMINI_API_KEY, ASSISTANT_REPLI)

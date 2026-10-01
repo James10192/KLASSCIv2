@@ -34,16 +34,18 @@ final class CorpsPourMailPulse
     }
 
     /**
-     * Resserre les blancs et retire les commentaires HTML, sauf les
-     * commentaires conditionnels d'Outlook (`<!--[if mso]>`), qui portent du
-     * rendu. Un courriel n'a ni `<pre>` ni `<textarea>` : les blancs n'y
-     * portent aucun sens.
+     * Retire les commentaires HTML (sauf les conditionnels d'Outlook,
+     * `<!--[if mso]>`, qui portent du rendu) et l'indentation des lignes.
+     *
+     * Les sauts de ligne restent, lignes vides comprises : un bloc en
+     * `white-space: pre-line` les affiche — la réponse du support en est un. Les espaces de tête, eux,
+     * n'y comptent pas, et ce sont eux qui pèsent dans un gabarit indenté.
      */
     public static function resserrer(string $html): string
     {
         $html = preg_replace('/<!--(?!\[if|<!\[endif)(?:(?!-->).)*-->/s', '', $html) ?? $html;
 
-        return trim(preg_replace('/\s+/u', ' ', $html) ?? $html);
+        return trim(preg_replace('/[ \t]*\R[ \t]*/u', "\n", $html) ?? $html);
     }
 
     /** Version texte d'un HTML : liens conservés en clair, structure en sauts de ligne. */

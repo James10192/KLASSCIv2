@@ -85,6 +85,17 @@ final class MailPulseTransport extends AbstractTransport
                     $resultat->message ?? 'aucun détail'
                 ));
             }
+
+            if (! $resultat->isDispatchAccepted()) {
+                // Accepté par MailPulse mais pas encore remis au fournisseur
+                // (« pending », « pending_reconciliation ») : MailPulse le
+                // rejoue ou le tranche. Une ligne, pour qu'un courriel qui
+                // n'arrive pas se retrouve sans deviner.
+                Log::warning('Courriel par MailPulse : remise à confirmer', $contexte + [
+                    'etat' => $resultat->dispatchState,
+                    'request_id' => $resultat->requestId,
+                ]);
+            }
         }
     }
 

@@ -25,12 +25,13 @@ dans `metadata.email_html` ; l'objet `metadata` entier est plafonné à
 |---|---|
 | À, Cc, Cci | un message MailPulse par adresse, chacun avec sa clé d'idempotence |
 | Sujet | `metadata.subject` |
-| HTML | resserré (blancs, commentaires), puis `metadata.email_html` |
+| HTML | commentaires et indentation retirés (les sauts de ligne restent, un bloc `pre-line` en dépend), puis `metadata.email_html` |
 | HTML au-delà du plafond | **la version texte part seule**, avertissement au journal |
 | Texte | `content.text` ; tiré du HTML (liens conservés en clair) s'il manque |
 | Expéditeur | réglage `mailpulse_sender_email` s'il est posé, sinon `MAIL_FROM_ADDRESS` ; nom = nom du courriel, sinon `mailpulse_sender_name`. MailPulse ne retient l'adresse que si son domaine est vérifié chez lui, sinon il prend l'expéditeur par défaut de l'organisation |
 | Image intégrée (`cid:`) | retirée du HTML, avertissement au journal. Le gabarit commun `esbtp.emails.layout` passe déjà par l'URL du logo quand ce mailer est actif |
 | Pièce jointe | **refus** : exception, rien ne part. Un « ci-joint votre export » sans l'export serait un succès mensonger |
+| Accepté mais remise à confirmer (`pending`, `pending_reconciliation`) | part sans exception, avertissement au journal (`remise à confirmer`) : MailPulse rejoue ou tranche |
 | Reply-To, en-têtes personnalisés | non transmis (Reply-To journalisé) |
 
 Tout refus de MailPulse (désactivé, clé absente, injoignable, 4xx/5xx, envoi
@@ -74,9 +75,11 @@ d'abord, basculer ensuite.
 
 ## Ce qui ne passe pas encore
 
-- **L'envoi d'un export PDF par courriel** (`ExportableReportMail`) est refusé
-  tant que MailPulse n'accepte pas de pièce jointe. Le lien de téléchargement
-  reste la voie.
+- **L'envoi d'un export PDF par courriel** (`ExportableReportMail`) n'est plus
+  proposé : le menu d'export masque « Envoyer par e-mail » quand ce mailer est
+  actif, et `ExportRenderer::emailPdf()` le refuse avec un message (422) plutôt
+  que d'annoncer un envoi qui finirait en job échoué. Le téléchargement reste la
+  voie, tant que MailPulse n'accepte pas de pièce jointe.
 - Le plafond de 16 Ko oblige les gros gabarits à partir en texte.
 
 Ces deux limites tiennent à l'API publique de MailPulse, produit distinct : elles

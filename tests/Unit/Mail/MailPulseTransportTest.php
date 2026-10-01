@@ -47,7 +47,7 @@ class MailPulseTransportTest extends TestCase
     {
         $this->accepte();
 
-        Mail::mailer('mailpulse')->html('<html><body>  <p>Bonjour</p>  <!-- note --> <a href="https://x.test/lien">Ouvrir</a></body></html>', function (Message $m) {
+        Mail::mailer('mailpulse')->html("<html>\n    <body>\n        <p>Bonjour</p>\n        <!-- note -->\n        <a href=\"https://x.test/lien\">Ouvrir</a>\n    </body>\n</html>", function (Message $m) {
             $m->to('parent@example.com')->cc('copie@example.com')->bcc('cache@example.com')
                 ->subject('Avis de paiement');
             $m->getSymfonyMessage()->text('Bonjour, ouvrez https://x.test/lien');
@@ -66,7 +66,7 @@ class MailPulseTransportTest extends TestCase
                 && $corps['recipient']['type'] === 'email'
                 && $corps['content'] === ['type' => 'text', 'text' => 'Bonjour, ouvrez https://x.test/lien']
                 && $corps['metadata']['subject'] === 'Avis de paiement'
-                && $corps['metadata']['email_html'] === '<html><body> <p>Bonjour</p> <a href="https://x.test/lien">Ouvrir</a></body></html>'
+                && $corps['metadata']['email_html'] === "<html>\n<body>\n<p>Bonjour</p>\n\n<a href=\"https://x.test/lien\">Ouvrir</a>\n</body>\n</html>"
                 && $corps['metadata']['sender_email'] === 'noreply@klassci.com'
                 && $corps['metadata']['sender_name'] === 'École Test'
                 && $corps['metadata']['external_tenant_id'] === 'presentation'
@@ -76,6 +76,17 @@ class MailPulseTransportTest extends TestCase
         sort($destinataires);
         $this->assertSame(['cache@example.com', 'copie@example.com', 'parent@example.com'], $destinataires);
         $this->assertCount(3, array_unique($cles), 'Chaque destinataire porte sa propre clé d\'idempotence.');
+    }
+
+    /** @test */
+    public function un_bloc_pre_line_garde_ses_sauts_de_ligne_et_ses_paragraphes(): void
+    {
+        $html = "<div style=\"white-space:pre-line;\">Bonjour,\n\n  Votre demande est traitée.\nCordialement</div>";
+
+        $this->assertSame(
+            "<div style=\"white-space:pre-line;\">Bonjour,\n\nVotre demande est traitée.\nCordialement</div>",
+            CorpsPourMailPulse::resserrer($html)
+        );
     }
 
     /** @test */
@@ -175,6 +186,21 @@ class MailPulseTransportTest extends TestCase
     }
 
     /** @test */
+    public function une_remise_a_confirmer_part_sans_exception_mais_se_journalise(): void
+    {
+        Http::fake([self::ENDPOINT => Http::response([
+            'dispatch' => ['state' => 'pending_reconciliation', 'sms_fallback_eligible' => false],
+            'message' => ['id' => 'm', 'status' => 'submission_unknown'],
+        ], 202)]);
+        Log::spy();
+
+        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
+
+        Log::shouldHaveReceived('warning')->withArgs(fn ($msg, $ctx) => str_contains($msg, 'remise à confirmer')
+            && $ctx['etat'] === 'pending_reconciliation')->once();
+    }
+
+    /** @test */
     public function mailpulse_desactive_n_est_jamais_un_succes(): void
     {
         Http::fake();
@@ -242,5 +268,20 @@ class MailPulseTransportTest extends TestCase
         $this->assertStringContainsString('https://ecole.test/logo.png', $html);
         $this->assertStringNotContainsString('cid:', $html);
         @unlink($logo);
+    }
+
+    /** @test */
+    public function l_envoi_d_un_pdf_par_courriel_n_est_ni_propose_ni_accepte_sous_mailpulse(): void
+    {
+        $rendu = fn () => \Illuminate\Support\Facades\Blade::render(
+            '<x-export-modal preview-url="p" pdf-url="d" excel-url="e" email-url="https://ecole.test/email-pdf" />'
+        );
+        $this->assertStringNotContainsString('https://ecole.test/email-pdf', $rendu());
+        config()->set('mail.default', 'smtp');
+        $this->assertStringContainsString('https://ecole.test/email-pdf', $rendu(), 'Sous SMTP, le bouton reste.');
+        config()->set('mail.default', 'mailpulse');
+
+        $this->expectException(\DomainException::class);
+        app(\App\Services\ExportRenderer::class)->emailPdf($this->createMock(\App\Domain\Exports\ExportableReport::class), 'a@example.com');
     }
 }
