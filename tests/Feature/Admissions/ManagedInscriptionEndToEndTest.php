@@ -440,6 +440,38 @@ class ManagedInscriptionEndToEndTest extends TestCase
     }
 
     /** @test */
+    public function un_numero_verifie_n_empeche_pas_de_confirmer_l_email(): void
+    {
+        // Cas réel de recette : numéro prouvé, e-mail non. Le lien ne part
+        // que par WhatsApp ; si le message n'arrive pas, l'agent doit pouvoir
+        // confirmer l'e-mail au lieu de rester sans issue.
+        $this->reglage(\App\Services\TenantScolariteSettings::VERIFICATION_CONTACT, '1');
+        $this->reglage(InscriptionWorkflowSettings::NOTIFY_WHATSAPP, '1');
+        $this->reglage(InscriptionWorkflowSettings::ACCOUNT_ACTIVATION_STEP, InscriptionWorkflowSettings::ACTIVATION_AFTER_PAYMENT);
+
+        $candidature = $this->candidature(emailVerifie: false);
+        $candidature->forceFill(['telephone_verifie_at' => now()])->save();
+        $workflow = app(ManagedInscriptionWorkflow::class)->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+
+        $admin = User::role('superAdmin')->first();
+        $this->actingAs($admin)
+            ->get(route('esbtp.admissions.workflow.show', $candidature))
+            ->assertOk()
+            ->assertSee('Le lien ne part que par WhatsApp', false);
+
+        $this->actingAs($admin)
+            ->post(route('esbtp.admissions.workflow.activation.confirm-contact', $workflow), [
+                'empreinte' => $candidature->fresh()->empreinteContact(),
+            ])
+            ->assertSessionHas('success', fn (string $m) => str_starts_with($m, 'Contact confirmé.'));
+
+        $this->assertTrue(app(\App\Services\Admissions\AdmissionActivationNotifier::class)->emailUsable($workflow->fresh()));
+        $this->actingAs($admin)
+            ->get(route('esbtp.admissions.workflow.show', $candidature))
+            ->assertDontSee('Le lien ne part que par WhatsApp', false);
+    }
+
+    /** @test */
     public function le_formulaire_classique_refuse_une_candidature_du_parcours(): void
     {
         $candidature = $this->candidature();

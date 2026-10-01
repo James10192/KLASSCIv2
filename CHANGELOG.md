@@ -10,6 +10,14 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ---
 
+## Octobre 2026
+
+### Ajouts
+- **Rendez-vous d'inscription — le lieu est enfin annoncé.** Nouveau réglage « Lieu du rendez-vous » (page Rendez-vous, bloc Accueil au guichet), repris sur la convocation PDF, l'e-mail, le WhatsApp et la page de rendez-vous de klassci.com. Laissé vide, l'adresse de l'établissement est reprise.
+
+### Corrections
+- **« Retrouver ma référence » accepte le numéro tel qu'on le dit.** Un « 07 07 … » saisi par la famille retrouve désormais la candidature enregistrée sous sa forme internationale ; à dossier multiple, le plus récent est rendu.
+
 ## Septembre 2026
 
 ### Ajouts
@@ -19,6 +27,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 - **Parcours d'inscription — le lien d'activation par e-mail arrive.** Il part désormais par le même service que les convocations de rendez-vous, qui elles arrivaient ; l'ancien envoi échouait sans bruit là où la messagerie de l'application n'était pas configurée.
+- **Parcours d'inscription — l'e-mail se confirme même quand WhatsApp est disponible.** Si le lien ne part que par WhatsApp et que l'étudiant ne l'a pas reçu, la fiche propose de confirmer son e-mail au guichet : le lien part alors aussi par e-mail. La fiche ne prétend plus qu'un lien a été reçu.
 - **Parcours d'inscription — un lien d'activation qui n'est pas parti est dit comme tel.** Quand le contact de l'étudiant n'est pas vérifié, la fiche l'affiche avec l'e-mail et le numéro, et l'agent peut les confirmer de vive voix au guichet : le lien part aussitôt, et le badge « contact à vérifier » de la file des demandes tombe. Auparavant, la fiche annonçait un lien reçu qui n'avait jamais été envoyé.
 - **Parcours d'inscription — plus de contournement par le formulaire classique.** Quand le parcours est actif, une candidature ne s'inscrit plus par « Inscrire » ni par le formulaire pré-rempli : la file des demandes mène à son dossier en cours.
 - **Paramètres — le bloc « Workflow d'inscription » est enfin enregistré.** Cocher la case ou choisir l'ordre caisse / pièces ne changeait rien : la page ne relisait pas ces champs. Les choix inconnus et un parcours exigeant un rendez-vous alors que la prise de rendez-vous est fermée sont refusés, à l'écran comme en ligne de commande, qui peut désormais régler ces options sur une école où personne n'a encore ouvert la page. La page Rendez-vous refuse aussi de fermer la prise de rendez-vous tant que le parcours l'exige.
