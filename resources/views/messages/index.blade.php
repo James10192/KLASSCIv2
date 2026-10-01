@@ -5,6 +5,13 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/messages-hub-v2.css?v=1267-shared-items') }}">
 <link rel="stylesheet" href="{{ asset('css/messages-hub-v2-final.css?v=1278-share-alignment-search-archives') }}">
+<style>
+    /* Non lu : on le voit sans lire le compteur. */
+    .mh2-conversation.is-unread { background: #eef4ff; }
+    .mh2-conversation.is-unread .mh2-conversation-preview { color: #10233f; font-weight: 700; }
+    .mh2-conversation.is-unread .mh2-conversation-meta time { color: #0453cb; font-weight: 700; }
+    .mh2-zero .mh2-btn, .mh2-empty .mh2-btn { margin-top: .75rem; }
+</style>
 @endpush
 
 @section('content')
@@ -30,7 +37,7 @@
         <header class="mh2-top">
             <div class="mh2-brand">
                 <h1>Messages</h1>
-                <p>Échanges humains, dossiers liés et actions métier — chacun à sa place.</p>
+                <p>Vos échanges avec l’équipe et les actions à suivre.</p>
             </div>
             <div class="mh2-tabs" role="tablist" aria-label="Espaces du module">
                 <button type="button" class="mh2-tab is-active" data-space="inbox" role="tab" aria-selected="true">
@@ -43,7 +50,7 @@
                 </button>
             </div>
             <button type="button" class="mh2-primary" data-new>
-                <i class="fas fa-plus" aria-hidden="true"></i><span>Nouveau</span>
+                <i class="fas fa-pen" aria-hidden="true"></i><span>Écrire</span>
             </button>
         </header>
 
@@ -71,8 +78,8 @@
                         <i class="fas fa-arrow-left" aria-hidden="true"></i>
                     </button>
                     <div class="mh2-thread-main">
-                        <h2 data-thread-title>Sélectionnez une conversation</h2>
-                        <p data-thread-sub>Les personnes et les dossiers liés sont volontairement séparés.</p>
+                        <h2 data-thread-title>Vos messages</h2>
+                        <p data-thread-sub>Choisissez une conversation à gauche, ou écrivez à quelqu’un.</p>
                     </div>
                     <div class="mh2-head-actions">
                         <button type="button" class="mh2-icon" data-important aria-label="Marquer la conversation importante" aria-pressed="false" title="Important">
@@ -167,13 +174,7 @@
                             </button>
                             @can('annonces.create')
                             <a class="mh2-intent" href="{{ route('esbtp.annonces.create') }}">
-                                <i class="fas fa-users"></i><span><strong>Écrire à une classe ou promotion</strong><small>Diffusion ciblée via le module d’annonces existant.</small></span>
-                            </a>
-                            <a class="mh2-intent" href="{{ route('esbtp.annonces.create') }}">
-                                <i class="fas fa-user-graduate"></i><span><strong>Contacter un étudiant ou parent</strong><small>Utilise la diffusion ciblée : aucun DM étudiant n’est créé en contournant les droits.</small></span>
-                            </a>
-                            <a class="mh2-intent" href="{{ route('esbtp.annonces.create') }}">
-                                <i class="fas fa-bullhorn"></i><span><strong>Publier une annonce</strong><small>Communication descendante vers les audiences autorisées.</small></span>
+                                <i class="fas fa-bullhorn"></i><span><strong>Écrire à une classe, un étudiant ou un parent</strong><small>Par une annonce ciblée : vous choisissez la classe, la promotion ou les personnes.</small></span>
                             </a>
                             @endcan
                             <button type="button" class="mh2-intent" data-intent-internal>
@@ -182,10 +183,6 @@
                             <button type="button" class="mh2-intent" data-intent-action>
                                 <i class="fas fa-list-check"></i><span><strong>Créer une action à traiter</strong><small>Priorité, responsable, échéance, statut et historique.</small></span>
                             </button>
-                        </div>
-                        <div class="mh2-inline-warning">
-                            <i class="fas fa-circle-info"></i>
-                            <span>La création de groupe d’équipe n’est pas proposée tant que son CRUD complet et ses permissions ne sont pas implémentés. Aucun bouton factice n’est laissé en production.</span>
                         </div>
                     </div>
 

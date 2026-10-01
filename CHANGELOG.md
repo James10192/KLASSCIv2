@@ -21,6 +21,13 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 - **Bulletins — la génération d'une classe et le PDF groupé continuent quand on quitte la page.** Le travail est suivi en base (`esbtp_bulletin_taches`) : la page le fait avancer tant qu'elle reste ouverte, la planification (`bulletins:traiter-taches`, chaque minute) le finit sinon. À la fin, le demandeur est prévenu par la cloche, par un toast où qu'il soit dans l'application, et par e-mail si son adresse est vérifiée ; un échec est annoncé avec sa raison. Le PDF groupé reste disponible 72 heures. Remplace les tranches pilotées par l'onglet (routes `export-pdf/ouvrir|tranche|assembler|telecharger` retirées).
+- **Notifications — refonte premium sans rechargement (`/notifications`).** Bandeau avec trois compteurs cliquables (non lues, aujourd'hui, cette semaine), filtres en pastilles (toutes, non lues, par type, et par sujet pour les coordinateurs), lignes regroupées Aujourd'hui / Hier / Cette semaine / Plus ancien, bouton « Ouvrir » qui mène à l'objet et marque lu au passage, suppression en deux appuis sans fenêtre, « Tout marquer comme lu » et « Afficher les plus anciennes » en AJAX, alerte quand de nouvelles notifications arrivent. Les raccourcis (notes à saisir, évaluations à activer, emplois du temps) forment une file « À traiter maintenant ». Logique de lecture déplacée dans `App\Services\Notifications\NotificationPresenter` (une requête pour toutes les inscriptions citées au lieu d'une par ligne). Namespace CSS `ntf-*`. (captures à prendre sur presentation : `notifications-avant/apres.webp`)
+- **Messages — moins de questions à se poser (`/messages`).** Une conversation non lue se repère d'un coup d'œil (fond et aperçu en gras), une boîte vide propose « Écrire un message », un filtre sans résultat propose « Tout afficher », l'écran d'accueil du fil invite à choisir ou écrire. Le choix « Nouveau » est renommé « Écrire », les trois entrées qui menaient toutes aux annonces n'en font plus qu'une, et le texte technique sur la création de groupe a disparu.
+
+### Corrections
+- **Notifications — le bouton de suppression marchait seulement pour les coordinateurs** : la fonction était définie dans un bloc réservé à ce rôle, les autres obtenaient une erreur JavaScript. Supprimer ne recharge plus la page, et le dernier élément supprimé affiche l'état vide.
+- **Notifications — « Rappel » ne propose plus « Voir les présences »** : les raccourcis par rôle lisent des mots entiers (« Rappel » contenait « appel »).
+- **Notifications — un lien hors de l'application n'est plus proposé** (adresse `javascript:` ou autre domaine) ; seuls les chemins internes s'ouvrent.
 
 ---
 
