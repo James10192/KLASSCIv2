@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Contracts\PorteurDeRendezVous;
+use App\Enums\CanalConvocationRdv;
 use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutReservationRdv;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,6 +32,9 @@ class ESBTPRdvReservation extends Model
         'convocation_envoyee_at',
         'convocation_erreur',
         'convocation_message_id',
+        'convocation_canal',
+        'convocation_destination_masquee',
+        'convocation_fallback_utilise',
         'accueilli_at',
         'accueilli_par',
         'prevenue_par',
@@ -44,6 +48,8 @@ class ESBTPRdvReservation extends Model
         'date_naissance' => 'date',
         'libere_at' => 'datetime',
         'convocation_statut' => StatutConvocationRdv::class,
+        'convocation_canal' => CanalConvocationRdv::class,
+        'convocation_fallback_utilise' => 'boolean',
         'convocation_tentatives' => 'integer',
         'convocation_envoyee_at' => 'datetime',
         'accueilli_at' => 'datetime',

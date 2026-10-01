@@ -590,31 +590,7 @@ final class BtsBulkBulletinGenerationService
 
     private function configMatieresPayload(int $classeId, int $academicYearId, string $period): array
     {
-        $payload = ['generales' => [], 'techniques' => []];
-
-        $rows = ESBTPConfigMatiere::query()
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $academicYearId)
-            ->whereIn('periode', $this->configPeriods($period))
-            ->get(['matiere_id', 'config']);
-
-        foreach ($rows as $row) {
-            $config = is_array($row->config) ? $row->config : $this->decodeJsonToArray($row->config);
-            $type = $config['type'] ?? null;
-
-            if (in_array($type, ['general', 'generale'], true)) {
-                $payload['generales'][] = (int) $row->matiere_id;
-            }
-
-            if (in_array($type, ['technique', 'technologique_professionnelle'], true)) {
-                $payload['techniques'][] = (int) $row->matiere_id;
-            }
-        }
-
-        $payload['generales'] = array_values(array_unique($payload['generales']));
-        $payload['techniques'] = array_values(array_unique($payload['techniques']));
-
-        return $payload;
+        return $this->bulletinService->configMatieresPayloadForBulletin($classeId, $academicYearId, $period);
     }
 
     private function configPeriods(string $period): array

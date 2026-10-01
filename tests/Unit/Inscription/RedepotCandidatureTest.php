@@ -56,6 +56,11 @@ class RedepotCandidatureTest extends TestCase
             'en attente, meme personne' => [ESBTPCandidature::STATUT_EN_ATTENTE, true, null],
             'en attente, nom corrige' => [ESBTPCandidature::STATUT_EN_ATTENTE, false, null],
 
+            // Mais identite ET contact differents sur le meme numero : c'est une
+            // autre personne. Rouvrir lui donnerait le dossier — et le lien
+            // d'activation du compte etudiant qui en sortira.
+            'en attente, autre personne et autre contact' => [ESBTPCandidature::STATUT_EN_ATTENTE, false, RefusCandidature::AutrePersonne, false],
+
             // Etat inconnu : refuse, et avec SA raison. Les trois autres
             // affirment chacune un fait precis qui, ici, serait faux.
             'statut inconnu' => ['statut_qui_nexiste_pas', true, RefusCandidature::EtatInattendu],
@@ -63,11 +68,11 @@ class RedepotCandidatureTest extends TestCase
     }
 
     /** @dataProvider matrice */
-    public function test_la_decision_de_redepot(string $statut, bool $memeIdentite, ?RefusCandidature $attendu): void
+    public function test_la_decision_de_redepot(string $statut, bool $memeIdentite, ?RefusCandidature $attendu, bool $memeContact = true): void
     {
         $this->assertSame(
             $attendu,
-            PortailCandidatureService::refusDeRedepot($statut, $memeIdentite)
+            PortailCandidatureService::refusDeRedepot($statut, $memeIdentite, $memeContact)
         );
     }
 

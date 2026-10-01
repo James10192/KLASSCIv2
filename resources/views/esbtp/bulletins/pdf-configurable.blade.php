@@ -8,11 +8,31 @@
         $pdfHeaderText = $pdfSettings['header_text_color'] ?? '#ffffff';
         $pdfPrimary    = $pdfSettings['primary_color']     ?? $pdfHeaderBg;
         $pdfText       = $pdfSettings['text_color']        ?? '#1f2937';
+        $pdfSecondary  = $pdfSettings['secondary_color']   ?? '#64748b';
         $anneeAffichee = ($bulletin ?? null)?->anneeUniversitaire ?? ($anneeUniversitaire ?? null);
         $anneeLabel = $anneeAffichee?->display_name ?? '';
         $typeScale = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
-        $headerTitleFont = max(8, min(30, (int) (($settings['bulletin_header_title_font_size'] ?? '') ?: 18)));
-        $headerRightFont = max(6, min(22, (int) (($settings['bulletin_header_right_font_size'] ?? '') ?: 12)));
+        $headerScale = max(70, min(220, (int) ($settings['bulletin_header_scale'] ?? 100)));
+        $headerRatio = $headerScale / 100;
+        $headerSetting = static function (string $key, float $fallback, float $min, float $max) use ($settings, $headerRatio): float {
+            $raw = $settings[$key] ?? null;
+            $base = is_numeric($raw) && (float) $raw > 0 ? (float) $raw : $fallback;
+            return round(max($min, min($max, $base * $headerRatio)), 2);
+        };
+        $headerLeftFont = $headerSetting('bulletin_header_left_font_size', $typeScale['table_head'], 6, 32);
+        $headerSchoolNameFont = $headerSetting('bulletin_header_school_name_font_size', $typeScale['heading'], 8, 34);
+        $headerSchoolMetaFont = $headerSetting('bulletin_header_school_meta_font_size', $typeScale['meta'], 6, 24);
+        $headerTitleFont = $headerSetting('bulletin_header_title_font_size', $typeScale['title'], 8, 34);
+        $headerRightFont = $headerSetting('bulletin_header_right_font_size', $typeScale['info'], 6, 26);
+        $logoBaseHeight = is_numeric($settings['bulletin_header_logo_height'] ?? null) ? (int) $settings['bulletin_header_logo_height'] : 72;
+        $headerLogoSize = max(40, min(180, (int) round($logoBaseHeight * $headerRatio)));
+        $signatureHeight = max(70, min(240, (int) ($settings['bulletin_signature_height'] ?? 70)));
+        $signatureWidth = max(180, min(520, (int) ($settings['bulletin_signature_width'] ?? 250)));
+        $signatureFontSize = max(6, min(20, (int) (($settings['bulletin_signature_font_size'] ?? '') ?: $typeScale['signature'])));
+        $editionFontSize = max(6, min(18, (int) (($settings['bulletin_edition_font_size'] ?? '') ?: $typeScale['body'])));
+        $editionOpacity = max(10, min(100, (int) ($settings['bulletin_edition_opacity'] ?? 100))) / 100;
+        $authenticityFontSize = max(6, min(18, (int) (($settings['bulletin_authenticity_font_size'] ?? '') ?: $typeScale['body'])));
+        $authenticityOpacity = max(10, min(100, (int) ($settings['bulletin_authenticity_opacity'] ?? 100))) / 100;
         $marginVertical = max(2, min(25, (int) ($settings['bulletin_margin_vertical'] ?? 5)));
         $marginHorizontal = max(2, min(25, (int) ($settings['bulletin_margin_horizontal'] ?? 5)));
     @endphp
@@ -28,7 +48,7 @@
             margin: 0;
             padding: 0;
             background: #fff;
-            color: #111827;
+            color: {{ $pdfText }};
             line-height: 1.25;
         }
         /* Compaction auto-fit 1 page : sections critiques évitent coupure */
@@ -43,14 +63,16 @@
         }
         .edition-footer {
             margin-top: 10px;
-            font-size: {{ $typeScale['body'] }}px;
-            color: #6b7280;
+            font-size: {{ $editionFontSize }}px;
+            color: {{ $pdfText }};
+            opacity: {{ $editionOpacity }};
             text-align: left;
         }
         .edition-authenticity {
             margin-top: 4px;
-            font-size: {{ $typeScale['body'] }}px;
-            color: #6b7280;
+            font-size: {{ $authenticityFontSize }}px;
+            color: {{ $pdfText }};
+            opacity: {{ $authenticityOpacity }};
             text-align: center;
         }
 
@@ -74,9 +96,9 @@
         }
         .header-left {
             width: 26%;
-            font-size: {{ $typeScale['table_head'] }}px;
+            font-size: {{ $headerLeftFont }}px;
             line-height: 1.5;
-            color: #374151;
+            color: {{ $pdfText }};
             border-right: 1px solid #e5e7eb;
             padding-right: 8px;
         }
@@ -88,29 +110,29 @@
         }
         .header-right {
             width: 26%;
-            font-size: {{ $typeScale['info'] }}px;
+            font-size: {{ $headerRightFont }}px;
             line-height: 1.5;
             text-align: right;
             padding-left: 8px;
             border-left: 1px solid #e5e7eb;
         }
         .logo {
-            width: 72px;
-            height: 72px;
+            width: {{ $headerLogoSize }}px;
+            height: {{ $headerLogoSize }}px;
             object-fit: contain;
             margin-bottom: 4px;
         }
         .school-name {
             font-weight: 700;
-            font-size: {{ $typeScale['heading'] }}px;
+            font-size: {{ $headerSchoolNameFont }}px;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
             letter-spacing: 0.04em;
             margin-bottom: 3px;
         }
         .school-address {
-            font-size: {{ $typeScale['meta'] }}px;
-            color: #6b7280;
+            font-size: {{ $headerSchoolMetaFont }}px;
+            color: {{ $pdfText }};
         }
         .header-right .title {
             font-weight: 700;
@@ -120,7 +142,7 @@
             text-decoration: underline;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
         }
         .header-right .period {
             display: inline-block;
@@ -137,60 +159,60 @@
         }
         .header-right .year {
             font-size: {{ $headerRightFont }}px;
-            color: #374151;
+            color: {{ $pdfText }};
         }
 
         /* ── Fiche étudiant ───────────────────────────────────── */
         .student-info {
             width: 100%;
-            margin-bottom: 5px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            background: #f9fafb;
+            margin-bottom: 6px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #ffffff;
             overflow: hidden;
         }
         .student-info-table {
             width: 100%;
             border-collapse: collapse;
             table-layout: fixed;
+            margin: 0;
         }
-        .student-info-table td {
+        .student-info-table > tbody > tr > td {
             border: none;
-            padding: 4px 6px;
-            vertical-align: top;
             word-wrap: break-word;
         }
-
-        /* Colonne photo */
-        .student-info-table td:first-child {
-            width: 90px;
-            min-width: 90px;
+        .student-info-table td.student-photo-cell {
+            width: 136px;
+            min-width: 136px;
             text-align: center;
             vertical-align: middle;
-            padding: 5px;
-            background: #eff6ff;
-            border-right: 1px solid #dbeafe;
-            display: table-cell;
+            padding: 2px 3px;
+            background-color: #f8fafc;
+            border-right: 2px solid {{ $pdfPrimary }};
         }
-        .student-info-table td:first-child img {
-            width: 70px;
-            height: 70px;
-            border-radius: 5px;
-            object-fit: cover;
-            border: 2px solid {{ $pdfPrimary }};
+        .student-photo-shell {
+            width: 116px;
+            height: 124px;
+            margin: 0 auto;
+            border: 1.5px solid {{ $pdfPrimary }};
+            border-radius: 7px;
+            background-color: #ffffff;
+            overflow: hidden;
+        }
+        .student-photo-shell img.student-photo {
+            width: 116px;
+            height: 124px;
             display: block;
-            margin: 0 auto;
+            margin: 0;
+            object-fit: cover;
         }
-        .avatar-fallback {
-            width: 70px;
-            height: 70px;
-            border-radius: 5px;
-            border: 2px solid {{ $pdfPrimary }};
+        .avatar-initials-fallback {
+            width: 116px;
+            height: 124px;
             display: table;
-            margin: 0 auto;
-            background: #e5e7eb;
+            background-color: #eef2f7;
         }
-        .avatar-fallback span {
+        .avatar-initials-fallback span {
             display: table-cell;
             vertical-align: middle;
             text-align: center;
@@ -198,47 +220,69 @@
             color: {{ $pdfPrimary }};
             font-weight: 700;
         }
-        .matricule-text {
+        .matricule-badge {
+            display: inline-block;
             margin-top: 3px;
+            padding: 1px 4px;
+            border: 1px solid #d8e0e8;
+            border-radius: 4px;
+            background-color: #ffffff;
+            color: #334155;
             font-weight: 700;
             font-size: {{ $typeScale['meta'] }}px;
             text-align: center;
-            color: #374151;
+            white-space: nowrap;
         }
-
-        /* Colonnes infos premium — style fiche élève sans ":", labels uppercase muted +
-           valeurs bold primary. Table 2 colonnes pour alignement garanti DomPDF. */
-        .info-group {
-            width: 42%;
+        .student-info-table td.info-group {
+            width: 43%;
             vertical-align: top;
-            padding: 3px 6px;
+            padding: 3px 6px 2px;
+            background-color: #ffffff;
+        }
+        .student-info-table td.student-academic-group {
+            border-left: 1px solid #e5e7eb;
+        }
+        .info-section-title {
+            margin: 0 0 3px;
+            padding-bottom: 3px;
+            border-bottom: 1px solid #e2e8f0;
+            color: {{ $pdfPrimary }};
+            font-size: {{ $typeScale['meta'] }}px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
         }
         .info-table {
             width: 100%;
             border-collapse: collapse;
+            margin: 0;
         }
         .info-table td {
-            padding: 3px 0;
+            padding: 2px 0;
             border: none;
-            border-bottom: 1px dotted #e5e7eb;
+            border-bottom: 1px solid #eef2f7;
             vertical-align: middle;
         }
         .info-table tr:last-child td { border-bottom: none; }
         .info-table td.info-label {
-            font-weight: 700;
-            white-space: nowrap;
-            padding-right: 10px;
-            color: #6b7280;
+            width: 41%;
+            padding-right: 8px;
+            color: {{ $pdfSecondary }};
             font-size: {{ $typeScale['label'] }}px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
-            width: 1%; /* shrink to content */
+            letter-spacing: 0.045em;
+            white-space: nowrap;
         }
         .info-table td.info-value {
-            color: {{ $pdfPrimary }};
+            color: {{ $pdfText }};
             font-size: {{ $typeScale['table'] }}px;
-            font-weight: 700;
+            font-weight: 600;
             word-wrap: break-word;
+        }
+        .info-table td.info-value--primary {
+            color: {{ $pdfText }};
+            font-weight: 700;
         }
 
         /* ── Tableau matières ─────────────────────────────────── */
@@ -431,11 +475,11 @@
         .signature-box {
             display: inline-block;
             text-align: center;
-            min-width: 250px;
+            min-width: {{ $signatureWidth }}px;
         }
         .signature-line {
-            width: 250px;
-            height: 70px;
+            width: {{ $signatureWidth }}px;
+            height: {{ $signatureHeight }}px;
             border-bottom: 1.5px solid {{ $pdfPrimary }};
             margin-top: 4px;
         }
@@ -548,27 +592,35 @@
 
         {{-- Fiche étudiant --}}
         @php
-            $prenom   = $etudiant->prenoms ?? $etudiant->prenom ?? '';
+            $prenom = $etudiant->prenoms ?? $etudiant->prenom ?? '';
             $initials = strtoupper(substr($etudiant->nom ?? 'E', 0, 1) . substr($prenom ?: 'T', 0, 1));
+            $avatarFallbackPath = public_path('images/placeholders/student-avatar-fallback.png');
+            $avatarFallbackBase64 = is_file($avatarFallbackPath)
+                ? 'data:image/png;base64,'.base64_encode(file_get_contents($avatarFallbackPath))
+                : null;
         @endphp
         <div class="student-info">
             <table class="student-info-table">
                 <tr>
-                    <td>
-                        @if(isset($photoEtudiantBase64) && $photoEtudiantBase64)
-                            <img src="{{ $photoEtudiantBase64 }}" alt="Photo">
-                        @else
-                            <div class="avatar-fallback"><span>{{ $initials }}</span></div>
-                        @endif
+                    <td class="student-photo-cell">
+                        <div class="student-photo-shell">
+                            @if(isset($photoEtudiantBase64) && $photoEtudiantBase64)
+                                <img src="{{ $photoEtudiantBase64 }}" alt="Photo de l'étudiant" class="student-photo">
+                            @elseif($avatarFallbackBase64)
+                                <img src="{{ $avatarFallbackBase64 }}" alt="Avatar étudiant" class="student-photo">
+                            @else
+                                <div class="avatar-initials-fallback"><span>{{ $initials }}</span></div>
+                            @endif
+                        </div>
                         @if(($settings['bulletin_show_matricule'] ?? '1') == '1')
-                        <div class="matricule-text">{{ $etudiant->matricule }}</div>
+                            <div class="matricule-badge">{{ $etudiant->matricule }}</div>
                         @endif
                     </td>
                     <td class="info-group">
                         <table class="info-table">
                             <tr>
                                 <td class="info-label">Nom et Prénoms</td>
-                                <td class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</td>
+                                <td class="info-value info-value--primary">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</td>
                             </tr>
                             @if(($settings['bulletin_show_birth_date'] ?? '1') == '1')
                             <tr>
@@ -598,11 +650,11 @@
                             @endif
                         </table>
                     </td>
-                    <td class="info-group">
+                    <td class="info-group student-academic-group">
                         <table class="info-table">
                             <tr>
                                 <td class="info-label">Classe</td>
-                                <td class="info-value">{{ $classe->libelle ?? $classe->name }}</td>
+                                <td class="info-value info-value--primary">{{ $classe->libelle ?? $classe->name }}</td>
                             </tr>
                             @if(!empty($isSpecialisation) && !empty($classeTroncCommun) && ($settings['tronc_commun_bulletin_show_origin'] ?? '1') == '1')
                             <tr>
@@ -947,10 +999,10 @@
         <div class="signature-container">
             @if(($settings['bulletin_show_director_signature'] ?? '1') == '1')
             <div class="signature-box">
-                <div style="font-size: {{ $typeScale['signature'] }}px;">{{ $directorTitle }}</div>
+                <div style="font-size: {{ $signatureFontSize }}px;">{{ $directorTitle }}</div>
                 <div class="signature-line"></div>
                 @if($directorName)
-                    <div style="margin-top: 4px; font-weight: 700; font-size: {{ $typeScale['signature'] }}px;">{{ $directorName }}</div>
+                    <div style="margin-top: 4px; font-weight: 700; font-size: {{ $signatureFontSize }}px;">{{ $directorName }}</div>
                 @endif
             </div>
             @endif
