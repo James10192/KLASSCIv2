@@ -7,6 +7,9 @@
 # c'est tout le probleme. Deux d'entre eux ont deja mis des pages a terre
 # (mai 2026 : /esbtp/inscriptions/create, quatre PDF, /esbtp/comptabilite/analytics).
 #
+# Un cinquieme, le JavaScript invalide dans un <script> inline, est confie a
+# node (blade-js-check.js) : sans node, il est signale et laisse passer.
+#
 # Voir .claude/rules/blade-pitfalls.md pour le detail de chaque piege.
 #
 # Ce hook lit la version MISE EN INDEX, pas l'arbre de travail : c'est elle
@@ -180,6 +183,22 @@ while IFS= read -r f; do
   ' "$copie" >> "$constats"
 done < "$tmp/liste"
 
+# --- Piege 5 : JavaScript invalide dans un <script> inline ----------------
+# Une apostrophe qui ferme une chaine (PR #1257) tue tout le script de la page,
+# et ni view:cache, ni php -l, ni les tests ne lisent ce JavaScript. L'analyse
+# est confiee a node (meme analyseur V8 que `node --check`) : voir
+# blade-js-check.js pour ce qui est neutralise avant.
+if command -v node >/dev/null 2>&1; then
+  mode_js="--index"
+  [ "$arbre" -eq 1 ] && mode_js=""
+  # $mode_js non cite expres : vide, il ne doit pas devenir un argument "".
+  # shellcheck disable=SC2086
+  tr '\n' '\0' < "$tmp/liste" \
+    | xargs -0 node "$(dirname "$0")/blade-js-check.js" $mode_js >> "$constats"
+else
+  echo "pre-commit : node introuvable, syntaxe JavaScript des <script> NON verifiee." >&2
+fi
+
 [ -s "$constats" ] || exit 0
 
 {
@@ -194,6 +213,7 @@ done < "$tmp/liste"
   echo "Verification complete apres correction :"
   echo "  rm -f storage/framework/views/*.php && php artisan view:cache"
   echo "  for v in storage/framework/views/*.php; do php -l \"\$v\"; done | grep -v 'No syntax errors'"
+  echo "  sh .githooks/pre-commit --arbre   # rejoue aussi le controle JavaScript"
   echo
 } >&2
 

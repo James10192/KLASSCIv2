@@ -353,6 +353,25 @@ jobs:
       - name: L import LMD refuse d ecraser une maquette
         run: php vendor/bin/phpunit tests/Feature/LMD/ImportRefuseEcrasementTest.php --no-coverage
 
+      # Parcours d'inscription configurable : caisse, pièces, activation,
+      # choix de classe et inscription, sur MariaDB. Les premiers tests de ce
+      # parcours n'avaient jamais tourné nulle part — ils référençaient des
+      # constantes et une colonne inexistantes — et cinq écritures vers des
+      # colonnes absentes ou NOT NULL étaient passées inaperçues.
+      - name: Parcours d'inscription configurable (bout en bout)
+        run: |
+          echec=0
+          for chemin in \
+            tests/Feature/Admissions/ManagedInscriptionEndToEndTest.php \
+            tests/Feature/Admissions/ManagedInscriptionSequenceTest.php \
+            tests/Unit/Admissions
+          do
+            echo "::group::$chemin"
+            php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
+            echo "::endgroup::"
+          done
+          exit $echec
+
       # KLASSCI Care : les demandes de support, leurs pieces jointes et la file
       # d'envoi vers le Master vivent en base. Ces tests montent leurs tables
       # par RefreshDatabase : poses dans le job « sans base », ils tomberaient

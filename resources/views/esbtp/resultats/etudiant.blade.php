@@ -324,7 +324,22 @@
                      d'autre sur cette page ne peut le signaler. Regenerer n'y
                      change rien, la ligne survit a la generation. --}}
                 @if(!empty($moyennesSansNote))
-                    <div class="srb-perimees">
+                    {{-- Lu par Nanan au moment de l'envoi, y compris après un
+                         changement AJAX de période : le contexte affiché sert
+                         à préparer la proposition, jamais à la valider. --}}
+                    <div class="srb-perimees"
+                         data-ast-page-context="{{ json_encode([
+                            'kind' => 'bulletin_moyennes_sans_note',
+                            'etudiant_id' => (int) $etudiant->id,
+                            'classe_id' => (int) $classe->id,
+                            'annee_universitaire_id' => (int) $annee_id,
+                            'periode' => (string) $bulletinWorkflowPeriode,
+                            'moyennes_sans_note' => array_map(fn ($ligne) => [
+                                'matiere_id' => (int) $ligne['matiere_id'],
+                                'matiere' => (string) $ligne['matiere'],
+                                'moyenne' => $ligne['moyenne'],
+                            ], $moyennesSansNote),
+                         ], JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG) }}">
                         <div class="srb-perimees__titre">
                             <i class="fas fa-triangle-exclamation"></i>
                             Moyenne(s) sans note sur cette période

@@ -18,7 +18,7 @@
                             $_navAccueil = Request::routeIs('esbtp.rendez-vous.accueil.*');
                             $_navPlanning = Request::routeIs('esbtp.rendez-vous.*') && ! $_navAccueil;
                             $_navEtudiants = Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.accessibility.*') || Request::routeIs('esbtp.trash.*');
-                            $_navAdmissions = Request::routeIs('esbtp.demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.rendez-vous.*');
+                            $_navAdmissions = Request::routeIs('esbtp.admissions.workflow.*') || Request::routeIs('esbtp.demandes.*') || Request::routeIs('esbtp.candidatures.*') || Request::routeIs('esbtp.reinscription-demandes.*') || Request::routeIs('esbtp.rendez-vous.*');
                             $_navInscriptions = Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') || Request::routeIs('esbtp.pieces-dossier.*');
                             $_navBadge = fn ($n) => $n > 999 ? '999+' : (string) $n;
                         @endphp
@@ -82,6 +82,16 @@
                                     </div>
                                 </a>
                                 @endcanany
+                                {{-- Parcours d'inscription configurable : visible seulement quand
+                                     l'etablissement l'a active. Chaque guichet y retrouve ses dossiers. --}}
+                                @if(app(\App\Services\Admissions\InscriptionWorkflowSettings::class)->usesManagedWorkflow())
+                                @canany(['paiements.create', 'inscriptions.create', 'pieces_dossier.suivre'])
+                                <a href="{{ route('esbtp.admissions.workflow.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.admissions.workflow.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-route"></i></div>
+                                    <div class="menu-text"><span class="menu-label">Dossiers en cours</span></div>
+                                </a>
+                                @endcanany
+                                @endif
                                 @can('inscriptions.rdv.view')
                                 <a href="{{ route('esbtp.rendez-vous.index') }}" class="menu-sublink {{ $_navPlanning ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
