@@ -58,19 +58,19 @@
                     <div class="bcfg-toggles" style="margin-bottom:1rem;">
                         <label class="bcfg-toggle" for="bulletin_show_header">
                             <span class="bcfg-toggle-label">En-tête complet</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_header" name="bulletin_show_header" value="1" {{ ($settings['bulletin_show_header'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_header_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_header" name="bulletin_show_header" value="1" {{ ($settings['bulletin_show_header'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_logo">
                             <span class="bcfg-toggle-label">Logo</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_logo" name="bulletin_show_logo" value="1" {{ ($settings['bulletin_show_logo'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_logo_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_logo" name="bulletin_show_logo" value="1" {{ ($settings['bulletin_show_logo'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_republic_info">
                             <span class="bcfg-toggle-label">Informations République</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_republic_info" name="bulletin_show_republic_info" value="1" {{ ($settings['bulletin_show_republic_info'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_republic_info_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_republic_info" name="bulletin_show_republic_info" value="1" {{ ($settings['bulletin_show_republic_info'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_ministry_info">
                             <span class="bcfg-toggle-label">Informations Ministère</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_ministry_info" name="bulletin_show_ministry_info" value="1" {{ ($settings['bulletin_show_ministry_info'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_ministry_info_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_ministry_info" name="bulletin_show_ministry_info" value="1" {{ ($settings['bulletin_show_ministry_info'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                     </div>
                     <div class="row g-3">
@@ -104,7 +104,7 @@
                     <div class="bcfg-toggles" style="margin-bottom:1rem;">
                         <label class="bcfg-toggle" for="bulletin_show_cycle_info">
                             <span class="bcfg-toggle-label">Afficher les informations du cycle</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_cycle_info" name="bulletin_show_cycle_info" value="1" {{ ($settings['bulletin_show_cycle_info'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_cycle_info_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_cycle_info" name="bulletin_show_cycle_info" value="1" {{ ($settings['bulletin_show_cycle_info'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                     </div>
                     <div class="row g-3">
@@ -172,27 +172,27 @@
                     <div class="bcfg-toggles">
                         <label class="bcfg-toggle" for="bulletin_show_subjects_table">
                             <span class="bcfg-toggle-label">Tableau des matières</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_subjects_table" name="bulletin_show_subjects_table" value="1" {{ ($settings['bulletin_show_subjects_table'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_subjects_table_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_subjects_table" name="bulletin_show_subjects_table" value="1" {{ ($settings['bulletin_show_subjects_table'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_subject_average">
                             <span class="bcfg-toggle-label">Moyennes par matière</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_subject_average" name="bulletin_show_subject_average" value="1" {{ ($settings['bulletin_show_subject_average'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_subject_average_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_subject_average" name="bulletin_show_subject_average" value="1" {{ ($settings['bulletin_show_subject_average'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_coefficient">
                             <span class="bcfg-toggle-label">Coefficients</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_coefficient" name="bulletin_show_coefficient" value="1" {{ ($settings['bulletin_show_coefficient'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_coefficient_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_coefficient" name="bulletin_show_coefficient" value="1" {{ ($settings['bulletin_show_coefficient'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_teachers">
                             <span class="bcfg-toggle-label">Professeurs</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_teachers" name="bulletin_show_teachers" value="1" {{ ($settings['bulletin_show_teachers'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_teachers_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_teachers" name="bulletin_show_teachers" value="1" {{ ($settings['bulletin_show_teachers'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_appreciations">
                             <span class="bcfg-toggle-label">Appréciations</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_appreciations" name="bulletin_show_appreciations" value="1" {{ ($settings['bulletin_show_appreciations'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_appreciations_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_appreciations" name="bulletin_show_appreciations" value="1" {{ ($settings['bulletin_show_appreciations'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_appreciation_plain">
                             <span class="bcfg-toggle-label">Appréciations en noir sans couleur de fond</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_appreciation_plain" name="bulletin_appreciation_plain" value="1" {{ ($settings['bulletin_appreciation_plain'] ?? '0') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_appreciation_plain_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_appreciation_plain" name="bulletin_appreciation_plain" value="1" {{ ($settings['bulletin_appreciation_plain'] ?? '0') == '1' ? 'checked' : '' }}>
                         </label>
                     </div>
                 </div>
@@ -213,43 +213,43 @@
                     <div class="bcfg-toggles">
                         <label class="bcfg-toggle" for="bulletin_show_general_average">
                             <span class="bcfg-toggle-label">Moyenne générale</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_general_average" name="bulletin_show_general_average" value="1" {{ ($settings['bulletin_show_general_average'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_general_average_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_general_average" name="bulletin_show_general_average" value="1" {{ ($settings['bulletin_show_general_average'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_technical_average">
                             <span class="bcfg-toggle-label">Moyenne technique</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_technical_average" name="bulletin_show_technical_average" value="1" {{ ($settings['bulletin_show_technical_average'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_technical_average_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_technical_average" name="bulletin_show_technical_average" value="1" {{ ($settings['bulletin_show_technical_average'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_class_rank">
                             <span class="bcfg-toggle-label">Rang de classe</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_class_rank" name="bulletin_show_class_rank" value="1" {{ ($settings['bulletin_show_class_rank'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_class_rank_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_class_rank" name="bulletin_show_class_rank" value="1" {{ ($settings['bulletin_show_class_rank'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_class_size">
                             <span class="bcfg-toggle-label">Effectif de classe</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_class_size" name="bulletin_show_class_size" value="1" {{ ($settings['bulletin_show_class_size'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_class_size_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_class_size" name="bulletin_show_class_size" value="1" {{ ($settings['bulletin_show_class_size'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_attendance">
                             <span class="bcfg-toggle-label">Informations d'assiduité</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_attendance" name="bulletin_show_attendance" value="1" {{ ($settings['bulletin_show_attendance'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_attendance_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_attendance" name="bulletin_show_attendance" value="1" {{ ($settings['bulletin_show_attendance'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_attendance_note">
                             <span class="bcfg-toggle-label">Note d'assiduité (bonus/malus)</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_attendance_note" name="bulletin_show_attendance_note" value="1" {{ ($settings['bulletin_show_attendance_note'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_attendance_note_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_attendance_note" name="bulletin_show_attendance_note" value="1" {{ ($settings['bulletin_show_attendance_note'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_highest_average">
                             <span class="bcfg-toggle-label">Plus forte moyenne</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_highest_average" name="bulletin_show_highest_average" value="1" {{ ($settings['bulletin_show_highest_average'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_highest_average_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_highest_average" name="bulletin_show_highest_average" value="1" {{ ($settings['bulletin_show_highest_average'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_lowest_average">
                             <span class="bcfg-toggle-label">Plus faible moyenne</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_lowest_average" name="bulletin_show_lowest_average" value="1" {{ ($settings['bulletin_show_lowest_average'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_lowest_average_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_lowest_average" name="bulletin_show_lowest_average" value="1" {{ ($settings['bulletin_show_lowest_average'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_class_average">
                             <span class="bcfg-toggle-label">Moyenne de classe</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_class_average" name="bulletin_show_class_average" value="1" {{ ($settings['bulletin_show_class_average'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_class_average_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_class_average" name="bulletin_show_class_average" value="1" {{ ($settings['bulletin_show_class_average'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_council_decision">
                             <span class="bcfg-toggle-label">Décision du conseil de classe</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_council_decision" name="bulletin_show_council_decision" value="1" {{ ($settings['bulletin_show_council_decision'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_council_decision_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_council_decision" name="bulletin_show_council_decision" value="1" {{ ($settings['bulletin_show_council_decision'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                     </div>
                 </div>
@@ -349,11 +349,11 @@
                     <div class="bcfg-toggles">
                         <label class="bcfg-toggle" for="bulletin_show_signatures">
                             <span class="bcfg-toggle-label">Section signatures</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_signatures" name="bulletin_show_signatures" value="1" {{ ($settings['bulletin_show_signatures'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_signatures_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_signatures" name="bulletin_show_signatures" value="1" {{ ($settings['bulletin_show_signatures'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="bulletin_show_director_signature">
                             <span class="bcfg-toggle-label">Signature du directeur</span>
-                            <input class="form-check-input" type="checkbox" id="bulletin_show_director_signature" name="bulletin_show_director_signature" value="1" {{ ($settings['bulletin_show_director_signature'] ?? '1') == '1' ? 'checked' : '' }}>
+                            <input type="hidden" name="bulletin_show_director_signature_present" value="1"><input class="form-check-input" type="checkbox" id="bulletin_show_director_signature" name="bulletin_show_director_signature" value="1" {{ ($settings['bulletin_show_director_signature'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                     </div>
                 </div>
