@@ -66,6 +66,7 @@ return [
             \App\Domain\Assistant\Actions\Matieres\ConfigurerMaquetteBts::class,
             \App\Domain\Assistant\Actions\Evaluations\CreerEvaluation::class,
             \App\Domain\Assistant\Actions\Evaluations\PublierNotes::class,
+            \App\Domain\Assistant\Actions\Frais\AjusterMontantSouscription::class,
         ],
     ],
 
