@@ -417,6 +417,29 @@ class ManagedInscriptionEndToEndTest extends TestCase
     }
 
     /** @test */
+    public function le_lien_par_e_mail_part_par_mailpulse_comme_les_convocations(): void
+    {
+        // Le mailer de l'application n'est pas configuré partout ; MailPulse,
+        // qui porte déjà les convocations, l'est. Le lien prend ce chemin.
+        $candidature = $this->candidature();
+        $mailpulse = Mockery::mock(MailPulseClient::class);
+        $mailpulse->shouldReceive('createOrUpdateContact')->andReturn(new \App\Services\MailPulse\MailPulseResult(true, 'ok'));
+        $mailpulse->shouldReceive('sendEmailMessage')->once()
+            ->withArgs(fn (array $message) => ($message['recipient']['value'] ?? null) === $candidature->email
+                && str_contains($message['content']['text'] ?? '', '/activation/'))
+            ->andReturn(new \App\Services\MailPulse\MailPulseResult(true, 'queued', 202, null, 'msg-1', null, null, null, 'accepted'));
+        $this->app->instance(MailPulseClient::class, $mailpulse);
+
+        $managed = app(ManagedInscriptionWorkflow::class);
+        $workflow = $managed->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+
+        // Hors transaction de test, l'envoi est immédiat : on le prouve sur
+        // le notificateur, qui est ce que la caisse et le guichet appellent.
+        $this->assertTrue(app(\App\Services\Admissions\AdmissionActivationNotifier::class)
+            ->sendEmail($workflow->fresh(), route('esbtp.admissions.workflow.activation.form', ['token' => 'x'])));
+    }
+
+    /** @test */
     public function le_formulaire_classique_refuse_une_candidature_du_parcours(): void
     {
         $candidature = $this->candidature();
