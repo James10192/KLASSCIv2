@@ -33,6 +33,7 @@ final class ResultatControle
         return match (true) {
             $this->verifie => 200,
             $this->motif === ControleVerification::INDISPONIBLE => 503,
+            $this->motif === ControleVerification::EN_ATTENTE => 202,
             default => 422,
         };
     }
