@@ -10,6 +10,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ---
 
+## Octobre 2026
+
+### Ajouts
+- **KLASSCI Care — avis sur Nanan transmis au support.** Chaque 👍 / 👎 sur une réponse de l'assistant part au Master (`POST /api/v1/support/retours-assistant`) par la boîte d'envoi, avec reprise, sans jamais faire attendre la personne. Un changement d'avis après envoi part sous une nouvelle clé (`uuid:N`).
+
 ## Septembre 2026
 
 ### Ajouts

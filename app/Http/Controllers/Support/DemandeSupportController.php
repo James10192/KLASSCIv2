@@ -78,7 +78,7 @@ class DemandeSupportController extends Controller
         }
 
         return view('support.demandes.index', $donnees + [
-            'boiteEnvoi' => SupportOutbox::aMontrer()->where('user_id', $request->user()->getKey())->latest()->get(),
+            'boiteEnvoi' => SupportOutbox::signalements()->aMontrer()->where('user_id', $request->user()->getKey())->latest()->get(),
             'peutVoirEcole' => $request->user()->can('support.tickets.view_school'),
             'signalementOuvert' => $this->disponibilite->signalement(),
         ]);
