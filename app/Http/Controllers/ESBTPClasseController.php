@@ -2515,26 +2515,18 @@ class ESBTPClasseController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
-        // Sécurité : la classe target doit être au même niveau que la classe source
+        // Mêmes règles que la CLI et Nanan (même niveau, pas elle-même).
         $target = ESBTPClasse::findOrFail($data['target_classe_id']);
-        abort_unless(
-            (int) $target->niveau_etude_id === (int) $classe->niveau_etude_id,
-            422,
-            'La classe cible doit être au même niveau que la classe TC.'
-        );
-
-        $orientation = ESBTPClasseOrientationTarget::updateOrCreate(
-            [
-                'source_classe_id' => $classe->id,
-                'target_classe_id' => $target->id,
-            ],
-            [
-                'semestre_activation' => $data['semestre_activation'] ?? 2,
-                'is_active' => true,
-                'sort_order' => ESBTPClasseOrientationTarget::where('source_classe_id', $classe->id)->count(),
-                'notes' => $data['notes'] ?? null,
-            ]
-        );
+        try {
+            $orientation = app(\App\Domain\BtsTroncCommun\ConfigurationTroncCommun::class)->ajouterSortie(
+                $classe,
+                $target,
+                isset($data['semestre_activation']) ? (int) $data['semestre_activation'] : null,
+                $data['notes'] ?? null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            abort(422, $e->getMessage());
+        }
 
         $orientation->load('targetClasse.filiere:id,name,code', 'targetClasse.niveau:id,name');
 

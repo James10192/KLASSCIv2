@@ -67,6 +67,7 @@ class CatalogueOutils
             new SearchDebtorsTool(),
             new DiagnostiquerReinscriptionTool(),
             new ChercherDansPiece(),
+            new LireStructureAcademique(),
             new SearchBulletinsTool(),
             new SearchAbsencesSummaryTool(),
             new EvolutionEncaissementsTool(),

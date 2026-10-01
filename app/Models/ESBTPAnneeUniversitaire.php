@@ -173,18 +173,10 @@ class ESBTPAnneeUniversitaire extends Model
      */
     public function setAsCurrent()
     {
-        return \DB::transaction(function () {
-            // Désactiver toutes les autres années universitaires
-            self::where('id', '!=', $this->id)
-                ->update(['is_current' => false]);
+        // Un seul chemin pour l'écran, la CLI et Nanan : il bascule le drapeau
+        // et vide le cache APRÈS le commit (voir AnneesUniversitaires).
+        app(\App\Domain\Academique\AnneesUniversitaires::class)->definirCourante($this);
 
-            // Définir cette année comme l'année en cours
-            $result = self::where('id', $this->id)->update(['is_current' => true]);
-            
-            // Effacer le cache si nécessaire
-            \Cache::flush();
-            
-            return $result > 0;
-        });
+        return true;
     }
 }
