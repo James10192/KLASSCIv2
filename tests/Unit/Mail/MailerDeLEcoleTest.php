@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
+use Tests\Unit\Mail\Fixtures\MailableDeTestEnFile;
+use Tests\Unit\Mail\Fixtures\NotificationDeTestEnFile;
 
 /**
  * Le réglage « Envoyer tous les e-mails de l'école par MailPulse » remplace
@@ -314,28 +316,5 @@ class MailerDeLEcoleTest extends TestCase
 
         Http::assertNothingSent();
         $this->assertCount(1, app('mail.manager')->mailer('array')->getSymfonyTransport()->messages());
-    }
-}
-
-class MailableDeTestEnFile extends \Illuminate\Mail\Mailable implements \Illuminate\Contracts\Queue\ShouldQueue
-{
-    public function build()
-    {
-        return $this->subject('Rappel')->html('<p>Bonjour</p>');
-    }
-}
-
-class NotificationDeTestEnFile extends \Illuminate\Notifications\Notification implements \Illuminate\Contracts\Queue\ShouldQueue
-{
-    use \Illuminate\Bus\Queueable;
-
-    public function via($notifiable): array
-    {
-        return ['mail'];
-    }
-
-    public function toMail($notifiable): \Illuminate\Notifications\Messages\MailMessage
-    {
-        return (new \Illuminate\Notifications\Messages\MailMessage())->subject('Avis')->line('Bonjour');
     }
 }
