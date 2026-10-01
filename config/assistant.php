@@ -70,6 +70,13 @@ return [
             \App\Domain\Assistant\Actions\Lmd\LierUeAuxParcours::class,
             \App\Domain\Assistant\Actions\Classes\AjouterClasses::class,
             \App\Domain\Assistant\Actions\Classes\ModifierClasses::class,
+            \App\Domain\Assistant\Actions\Inscriptions\ValiderInscriptions::class,
+            \App\Domain\Assistant\Actions\Inscriptions\DeplacerEtudiants::class,
+            \App\Domain\Assistant\Actions\Paiements\AnnulerVersement::class,
+            \App\Domain\Assistant\Actions\Paiements\RestaurerVersement::class,
+            \App\Domain\Assistant\Actions\Frais\AnnulerDepotNature::class,
+            \App\Domain\Assistant\Actions\Frais\RepartirTropPercu::class,
+            \App\Domain\Assistant\Actions\Frais\PoserBareme::class,
         ],
     ],
 

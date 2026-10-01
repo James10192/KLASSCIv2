@@ -192,6 +192,11 @@ class PermissionSyncService
             'mailpulse.send',
             'cash_session.manage',
             'inscriptions.in_kind.mark',
+            // Remplace le test de la colonne héritée users.role dans
+            // checkClassAvailability. Aucun rôle par défaut : la migration
+            // 2026_10_01_223307 la donne aux seuls comptes qui l'avaient, et
+            // l'école l'attribue ensuite à qui elle veut.
+            'inscriptions.override_capacity',
             'inscriptions.rdv.view',
             'inscriptions.rdv.manage',
             'inscriptions.rdv.configure',

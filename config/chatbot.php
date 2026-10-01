@@ -117,6 +117,43 @@ return [
             'all_permissions' => ['frais.souscriptions.ajuster'],
             'libelle' => 'Préparation de l’ajustement du montant dû…',
         ],
+        // Lot A (inscriptions, paiements, frais) : mêmes droits que la route de l'écran.
+        'proposer_validation_inscriptions' => [
+            'enabled' => true,
+            'all_permissions' => ['inscriptions.validate'],
+            'libelle' => 'Préparation de la validation des inscriptions…',
+            'suggestion' => 'Valide les inscriptions de cette classe dont le versement est validé',
+        ],
+        'proposer_deplacement_etudiants' => [
+            'enabled' => true,
+            'all_permissions' => ['students.edit'],
+            'libelle' => 'Préparation du changement de classe…',
+        ],
+        'proposer_annulation_versement' => [
+            'enabled' => true,
+            'all_permissions' => ['paiements.avoir'],
+            'libelle' => 'Préparation de l’annulation du versement…',
+        ],
+        'proposer_restauration_versement' => [
+            'enabled' => true,
+            'all_permissions' => ['trash.view', 'paiements.restore'],
+            'libelle' => 'Préparation de la restauration du versement…',
+        ],
+        'proposer_annulation_depot_nature' => [
+            'enabled' => true,
+            'all_permissions' => ['inscriptions.in_kind.mark'],
+            'libelle' => 'Préparation de l’annulation du dépôt en nature…',
+        ],
+        'proposer_repartition_trop_percu' => [
+            'enabled' => true,
+            'all_permissions' => ['paiements.reventiler'],
+            'libelle' => 'Préparation de la répartition des versements…',
+        ],
+        'proposer_pose_bareme' => [
+            'enabled' => true,
+            'all_permissions' => ['frais.configure', 'frais.create', 'frais.edit'],
+            'libelle' => 'Préparation du barème des frais…',
+        ],
         'search_attendances' => [
             'enabled' => true,
             'any_permissions' => ['attendances.view'],
