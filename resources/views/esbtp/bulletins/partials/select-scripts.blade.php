@@ -830,12 +830,13 @@ window.busCard = function (cfg) {
                         tache: lance.tache,
                         csrf,
                         onEtat: (etat, extra) => {
-                            const taille = 6;
                             this.progression = {
                                 faits: etat.position,
                                 total: etat.total,
-                                tranche: Math.min(Math.floor(etat.position / taille) + 1, Math.max(1, Math.ceil(etat.total / taille))),
-                                tranches: Math.max(1, Math.ceil(etat.total / taille)),
+                                // Le serveur connaît la taille des tranches : on ne la recopie pas.
+                                tranche: etat.tranche,
+                                tranches: etat.tranches,
+                                pause: !!etat.en_pause,
                                 pourcent: etat.pourcent,
                                 restant: extra.restant,
                                 restantTexte: this.dureeLisible(extra.restant),

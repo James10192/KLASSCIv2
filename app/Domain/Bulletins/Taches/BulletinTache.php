@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Un travail long sur les bulletins, suivi en base.
@@ -19,7 +21,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * @property int $id
  * @property string $type
- * @property string $systeme
  * @property int $user_id
  * @property string $statut
  * @property array $elements
@@ -55,6 +56,8 @@ class BulletinTache extends Model
      */
     public const CONSERVATION_HEURES = 72;
 
+    public const TABLE_ABONNES = 'esbtp_bulletin_tache_abonnes';
+
     protected $table = 'esbtp_bulletin_taches';
 
     protected $guarded = ['id'];
@@ -66,6 +69,9 @@ class BulletinTache extends Model
         'total' => 'integer',
         'position' => 'integer',
         'reprises' => 'integer',
+        'position_essayee' => 'integer',
+        'essais_position' => 'integer',
+        'cloche_at' => 'datetime',
         'demarree_at' => 'datetime',
         'terminee_at' => 'datetime',
         'notifiee_at' => 'datetime',
@@ -92,6 +98,65 @@ class BulletinTache extends Model
     public function scopeNonVues(Builder $query): Builder
     {
         return $query->whereIn('statut', self::FINAUX)->whereNull('vue_at');
+    }
+
+    /** Le demandeur, ou une personne qui a rejoint la tâche en relançant le même travail. */
+    public function concerne(int $userId): bool
+    {
+        return (int) $this->user_id === $userId
+            || DB::table(self::TABLE_ABONNES)->where('tache_id', $this->id)->where('user_id', $userId)->exists();
+    }
+
+    public function abonner(int $userId): void
+    {
+        if ((int) $this->user_id === $userId) {
+            return;
+        }
+
+        DB::table(self::TABLE_ABONNES)->insertOrIgnore([
+            'tache_id' => $this->id,
+            'user_id' => $userId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * Le toast de cette personne ne la rejouera plus. Chacun a sa propre
+     * marque : le demandeur sur la tâche, les autres sur leur abonnement.
+     */
+    public function marquerVuePar(int $userId): void
+    {
+        if (! $this->estFinale()) {
+            return;
+        }
+
+        if ((int) $this->user_id === $userId) {
+            if ($this->vue_at === null) {
+                $this->forceFill(['vue_at' => now()])->save();
+            }
+
+            return;
+        }
+
+        DB::table(self::TABLE_ABONNES)->where('tache_id', $this->id)->where('user_id', $userId)
+            ->whereNull('vue_at')->update(['vue_at' => now(), 'updated_at' => now()]);
+    }
+
+    /**
+     * Qui prévenir, et si chacun a déjà vu la fin.
+     *
+     * @return Collection<int, array{user: User, vue: bool}>
+     */
+    public function destinataires(): Collection
+    {
+        $abonnes = DB::table(self::TABLE_ABONNES)->where('tache_id', $this->id)->get(['user_id', 'vue_at']);
+        $users = User::whereIn('id', $abonnes->pluck('user_id')->push($this->user_id)->all())->get()->keyBy('id');
+
+        return collect([['user' => $users->get($this->user_id), 'vue' => $this->vue_at !== null]])
+            ->concat($abonnes->map(fn ($a) => ['user' => $users->get($a->user_id), 'vue' => $a->vue_at !== null]))
+            ->filter(fn (array $d) => $d['user'] !== null)
+            ->values();
     }
 
     public function estFinale(): bool

@@ -3,6 +3,8 @@
 namespace App\Mail;
 
 use App\Domain\Bulletins\Taches\BulletinTache;
+use App\Domain\Bulletins\Taches\SuiviTachesBulletins;
+use App\Models\User;
 use App\Helpers\SettingsHelper;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -23,6 +25,7 @@ class TacheBulletinsTermineeMail extends Mailable
     public function __construct(
         public readonly BulletinTache $tache,
         public readonly ?string $lien,
+        public readonly ?User $destinataire = null,
     ) {}
 
     public function envelope(): Envelope
@@ -47,15 +50,10 @@ class TacheBulletinsTermineeMail extends Mailable
                 'libelle' => $this->tache->libelle(),
                 'message' => (string) $this->tache->message,
                 'lien' => $this->lien,
-                'libelleLien' => match (true) {
-                    $this->tache->statut !== BulletinTache::TERMINEE => 'Revenir aux bulletins',
-                    $this->tache->type === BulletinTache::TYPE_GENERATION => 'Voir les bulletins',
-                    $this->tache->parametre('mode') === 'apercu' => "Ouvrir l'aperçu",
-                    default => 'Télécharger le PDF',
-                },
+                'libelleLien' => SuiviTachesBulletins::libelleLien($this->tache),
                 'conservationHeures' => BulletinTache::CONSERVATION_HEURES,
                 'estExport' => $this->tache->type === BulletinTache::TYPE_EXPORT,
-                'prenom' => trim((string) ($this->tache->user->name ?? '')),
+                'prenom' => trim((string) (($this->destinataire ?? $this->tache->user)->name ?? '')),
             ],
         );
     }

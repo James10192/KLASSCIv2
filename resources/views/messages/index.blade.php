@@ -266,6 +266,6 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('js/messages-hub-v2.js?v=1278-share-alignment') }}" defer></script>
+<script src="{{ asset('js/messages-hub-v2.js?v=2026-10-01-inbox') }}" defer></script>
 <script src="{{ asset('js/messages-hub-v2-hardening.js?v=1279-archive-restore-label') }}" defer></script>
 @endpush

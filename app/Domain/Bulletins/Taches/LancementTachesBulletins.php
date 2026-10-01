@@ -8,9 +8,11 @@ use App\Models\User;
 /**
  * Crée une tâche, ou rend celle qui tourne déjà pour la même demande.
  *
- * Un double clic, ou un second onglet, ne lance pas deux fois soixante-dix
- * bulletins : la même personne, le même travail sur le même périmètre
- * retrouve la tâche en cours.
+ * Un double clic, un second onglet ou une collègue qui lance la même chose ne
+ * produisent pas deux fois soixante-dix bulletins en parallèle (deux
+ * générations concurrentes écriraient les mêmes lignes) : le même travail sur
+ * le même périmètre, quel qu'en soit le demandeur, retrouve la tâche en cours.
+ * La seconde personne y est abonnée et sera prévenue elle aussi.
  */
 class LancementTachesBulletins
 {
@@ -24,14 +26,15 @@ class LancementTachesBulletins
         bool $recalculer,
         ?string $raisonIncomplete,
     ): BulletinTache {
-        $existante = $this->enCours($demandeur, BulletinTache::TYPE_GENERATION, $classe->id, $anneeId, $periode);
+        $existante = $this->enCours(BulletinTache::TYPE_GENERATION, $classe->id, $anneeId, $periode);
         if ($existante !== null) {
+            $existante->abonner($demandeur->id);
+
             return $existante;
         }
 
         return BulletinTache::create([
             'type' => BulletinTache::TYPE_GENERATION,
-            'systeme' => 'BTS',
             'user_id' => $demandeur->id,
             'classe_id' => $classe->id,
             'annee_universitaire_id' => $anneeId,
@@ -58,15 +61,18 @@ class LancementTachesBulletins
         $anneeId = isset($filtres['annee_universitaire_id']) ? (int) $filtres['annee_universitaire_id'] : null;
         $periode = $filtres['periode_id'] ?? null;
 
-        $existante = $this->enCours($demandeur, BulletinTache::TYPE_EXPORT, $classeId, $anneeId, $periode);
+        // Deux exports de listes différentes ne se gênent pas (dossiers
+        // séparés) : seul le même document est partagé.
+        $existante = $this->enCours(BulletinTache::TYPE_EXPORT, $classeId, $anneeId, $periode);
         if ($existante !== null && $existante->parametre('mode') === $mode
-            && $existante->elements === array_values($bulletinIds)) {
+            && $existante->elements === array_values(array_map('intval', $bulletinIds))) {
+            $existante->abonner($demandeur->id);
+
             return $existante;
         }
 
         return BulletinTache::create([
             'type' => BulletinTache::TYPE_EXPORT,
-            'systeme' => 'BTS',
             'user_id' => $demandeur->id,
             'classe_id' => $classeId,
             'annee_universitaire_id' => $anneeId,
@@ -84,10 +90,9 @@ class LancementTachesBulletins
         ]);
     }
 
-    private function enCours(User $demandeur, string $type, ?int $classeId, ?int $anneeId, ?string $periode): ?BulletinTache
+    private function enCours(string $type, ?int $classeId, ?int $anneeId, ?string $periode): ?BulletinTache
     {
         return BulletinTache::actives()
-            ->where('user_id', $demandeur->id)
             ->where('type', $type)
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeId)

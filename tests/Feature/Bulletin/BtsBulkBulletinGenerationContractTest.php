@@ -20,7 +20,9 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $resultDto = file_get_contents(app_path('Domain/AcademicPilotage/DTO/BulkBulletinGenerationResult.php'));
 
         $this->assertStringContainsString('BtsBulkBulletinGenerationService', $controller);
-        $this->assertStringContainsString('response()->json($result->toArray(), $result->statusCode())', $controller);
+        // La génération d'une classe passe par une tâche en arrière-plan ; le
+        // contrôleur garde le pré-contrôle et le rendu, pas l'ancien point d'entrée.
+        $this->assertStringNotContainsString('function genererClasseBulletins', $controller);
         $this->assertStringContainsString('preflightClasseBulletins', $controller);
         $this->assertStringContainsString("'recalculer'             => 'sometimes|boolean'", $request);
         $this->assertStringContainsString("REGLE_MOTIF_INCOMPLET = 'nullable|string|min:8|max:1000'", $request);
@@ -147,7 +149,7 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         // Servir le document est rejouable : recharger l'onglet ne perd pas le travail.
         $this->assertContains('GET', $routes->getByName('esbtp.bulletins.taches.fichier')->methods());
 
-        foreach (['export-pdf', 'export-pdf-preview', 'export-precheck', 'export-pdf.ouvrir', 'export-pdf.tranche', 'export-pdf.assembler', 'export-pdf.telecharger'] as $mort) {
+        foreach (['export-pdf', 'export-pdf-preview', 'export-precheck', 'export-pdf.ouvrir', 'export-pdf.tranche', 'export-pdf.assembler', 'export-pdf.telecharger', 'generer-classe'] as $mort) {
             $this->assertFalse(
                 \Illuminate\Support\Facades\Route::has("esbtp.bulletins.$mort"),
                 "La route esbtp.bulletins.$mort appartient au chemin retiré."
@@ -157,7 +159,7 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $controleur = new \ReflectionClass(\App\Http\Controllers\ESBTPBulletinController::class);
         $this->assertTrue($controleur->hasMethod('lancerExportEnArrierePlan'));
 
-        foreach (['exportBulkPdf', 'exportBulkPdfPreview', 'prepareBulkExport', 'exportPrecheck', 'ouvrirExportParTranches', 'rendreTrancheExport', 'assemblerExportParTranches', 'telechargerExportParTranches'] as $mort) {
+        foreach (['exportBulkPdf', 'exportBulkPdfPreview', 'prepareBulkExport', 'exportPrecheck', 'ouvrirExportParTranches', 'rendreTrancheExport', 'assemblerExportParTranches', 'telechargerExportParTranches', 'genererClasseBulletins'] as $mort) {
             $this->assertFalse($controleur->hasMethod($mort), "$mort() appartient au chemin retiré.");
         }
     }

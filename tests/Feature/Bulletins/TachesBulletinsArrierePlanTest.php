@@ -48,6 +48,9 @@ class TachesBulletinsArrierePlanTest extends TestCase
 
     public bool $renduEchoue = false;
 
+    /** @var array<int, int> tâches dont chaque tranche lève */
+    public array $tachesEnPanne = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -144,6 +147,9 @@ class TachesBulletinsArrierePlanTest extends TestCase
 
             protected function genererLaTranche(ESBTPClasse $classe, BulletinTache $tache, array $ids): BulkBulletinGenerationResult
             {
+                if (in_array($tache->id, $this->test->tachesEnPanne, true)) {
+                    throw new \RuntimeException('Mémoire épuisée');
+                }
                 $this->test->tranchesGenerees[] = $ids;
 
                 return $this->test->resultatImpose ?? new BulkBulletinGenerationResult(created: count($ids));
@@ -165,13 +171,13 @@ class TachesBulletinsArrierePlanTest extends TestCase
         };
     }
 
-    private function generation(int $userId = 1, int $classeId = 1, int $eleves = 8): BulletinTache
+    private function generation(int $userId = 1, int $classeId = 1, int $eleves = 8, string $periode = 'semestre1'): BulletinTache
     {
         return app(LancementTachesBulletins::class)->generation(
             User::findOrFail($userId),
             ESBTPClasse::findOrFail($classeId),
             1,
-            'semestre1',
+            $periode,
             range(101, 100 + $eleves),
             false,
             null
@@ -197,16 +203,168 @@ class TachesBulletinsArrierePlanTest extends TestCase
         $this->assertSame([range(101, 106), [107, 108]], $this->tranchesGenerees);
         $this->assertSame(BulletinTache::TERMINEE, $tache->statut);
         $this->assertSame(8, $tache->resultat['created']);
-        $this->assertNotNull($tache->notifiee_at);
+        $this->assertNotNull($tache->cloche_at);
 
         $notification = DB::table('custom_notifications')->where('user_id', 1)->first();
         $this->assertNotNull($notification);
         $this->assertSame('success', $notification->type);
         $this->assertStringContainsString('classe_id=1', (string) $notification->link);
+        // Lien relatif : la cloche reste sur l'hôte d'où l'on regarde.
+        $this->assertStringStartsWith('/', (string) $notification->link);
 
-        // Adresse vérifiée : l'e-mail part.
-        Mail::assertSent(TacheBulletinsTermineeMail::class, fn ($m) => $m->hasTo('awa@ecole.test'));
+        // L'e-mail ne part jamais dans la requête qui finit la tâche…
+        Mail::assertNothingSent();
+        $this->assertNull($tache->notifiee_at);
+
+        // …mais par la planification, si la personne n'a pas vu la fin à l'écran.
+        $this->travel(NotificationTachesBulletins::DELAI_COURRIEL_DEFAUT + 1)->minutes();
+        app(NotificationTachesBulletins::class)->rattraper();
+
+        Mail::assertSent(TacheBulletinsTermineeMail::class, fn ($m) => $m->hasTo('awa@ecole.test')
+            && str_starts_with((string) $m->lien, 'http'));
+        $tache->refresh();
         $this->assertNotNull($tache->email_envoye_at);
+        $this->assertNotNull($tache->notifiee_at);
+    }
+
+    public function test_pas_d_e_mail_si_la_fin_a_ete_vue_a_l_ecran(): void
+    {
+        $tache = $this->generation(eleves: 2);
+        app(ExecuteurTachesBulletins::class)->avancer($tache, 50);
+
+        // Avant le délai : rien.
+        app(NotificationTachesBulletins::class)->rattraper();
+        Mail::assertNothingSent();
+
+        app(ESBTPBulletinTacheController::class)->marquerVue($this->requetePour(1), $tache->fresh());
+
+        $this->travel(NotificationTachesBulletins::DELAI_COURRIEL_DEFAUT + 1)->minutes();
+        app(NotificationTachesBulletins::class)->rattraper();
+
+        Mail::assertNothingSent();
+        $tache->refresh();
+        $this->assertNotNull($tache->notifiee_at);
+        $this->assertNull($tache->email_envoye_at);
+    }
+
+    public function test_une_tranche_qui_echoue_trois_fois_fait_echouer_la_tache_en_la_nommant(): void
+    {
+        $tache = $this->generation(eleves: 8);
+        $this->tachesEnPanne = [$tache->id];
+        $executeur = app(ExecuteurTachesBulletins::class);
+
+        // Une erreur rattrapée n'achève plus la tâche d'un coup : elle compte un essai.
+        $executeur->avancer($tache, 50);
+        $this->assertSame(BulletinTache::EN_COURS, $tache->fresh()->statut);
+        $this->assertSame(1, $tache->fresh()->essais_position);
+        $executeur->avancer($tache, 50);
+        $this->assertSame(BulletinTache::EN_COURS, $tache->fresh()->statut);
+
+        $executeur->avancer($tache, 50);
+        $tache->refresh();
+
+        $this->assertSame(BulletinTache::ECHOUEE, $tache->statut);
+        $this->assertStringContainsString('tranche 1 sur 2', (string) $tache->message);
+        $this->assertStringContainsString('3 fois', (string) $tache->message);
+        $this->assertSame('error', DB::table('custom_notifications')->where('user_id', 1)->value('type'));
+    }
+
+    public function test_une_tranche_qui_tue_le_processus_n_est_pas_rejouee_a_l_infini(): void
+    {
+        // Trois essais datés, aucun n'a rendu la main : le processus a été tué
+        // (mémoire, hébergeur) sans passer par aucun catch.
+        $tache = $this->generation(eleves: 8);
+        $tache->forceFill(['statut' => BulletinTache::EN_COURS, 'position_essayee' => 0, 'essais_position' => 3])->save();
+
+        app(ExecuteurTachesBulletins::class)->avancer($tache, 50);
+        $tache->refresh();
+
+        $this->assertSame([], $this->tranchesGenerees);
+        $this->assertSame(BulletinTache::ECHOUEE, $tache->statut);
+        $this->assertStringContainsString('élèves 1 à 6', (string) $tache->message);
+        $this->assertNotNull($tache->cloche_at);
+    }
+
+    public function test_un_export_ecarte_la_tranche_qui_tue_le_processus_et_continue(): void
+    {
+        $now = now();
+        foreach (range(701, 707) as $id) {
+            DB::table('esbtp_bulletins')->insert(['id' => $id, 'classe_id' => 1, 'created_at' => $now, 'updated_at' => $now]);
+        }
+        $tache = app(LancementTachesBulletins::class)->export(User::findOrFail(1), 'telechargement', range(701, 707), [
+            'entete' => [], 'ungenerated_ids' => [], 'filtres' => [],
+        ]);
+        $tache->forceFill(['statut' => BulletinTache::EN_COURS, 'position_essayee' => 0, 'essais_position' => 3])->save();
+
+        app(ExecuteurTachesBulletins::class)->avancer($tache, 50);
+        $tache->refresh();
+
+        $this->assertSame(BulletinTache::TERMINEE, $tache->statut);
+        $this->assertSame(1, $tache->resultat['rendus']);
+        $this->assertCount(6, $tache->resultat['echecs']);
+        $this->assertStringContainsString('Tranche 1 sur 2 écartée', $tache->resultat['echecs'][0]['message']);
+        $this->assertStringContainsString("6 n'ont pas pu être rendus", (string) $tache->message);
+    }
+
+    public function test_une_tache_en_panne_ne_bloque_pas_les_suivantes_de_l_ecole(): void
+    {
+        $enPanne = $this->generation(classeId: 1, eleves: 2);
+        $saine = $this->generation(eleves: 2, periode: 'semestre2');
+        $this->tachesEnPanne = [$enPanne->id];
+
+        app(ExecuteurTachesBulletins::class)->traiterLaFile(50);
+
+        $this->assertSame(BulletinTache::TERMINEE, $saine->fresh()->statut);
+        $this->assertSame(BulletinTache::EN_COURS, $enPanne->fresh()->statut);
+        $this->assertSame(1, $enPanne->fresh()->essais_position);
+    }
+
+    public function test_une_tache_immobile_est_dite_en_pause(): void
+    {
+        $tache = $this->generation(eleves: 2);
+        $this->assertFalse(SuiviTachesBulletins::etat($tache)['en_pause']);
+
+        DB::table('esbtp_bulletin_taches')->where('id', $tache->id)
+            ->update(['updated_at' => now()->subMinutes(SuiviTachesBulletins::PAUSE_MINUTES + 1)]);
+        $etat = SuiviTachesBulletins::etat($tache->fresh());
+
+        $this->assertTrue($etat['en_pause']);
+        $this->assertSame(ExecuteurTachesBulletins::TAILLE_TRANCHE, $etat['taille']);
+        $this->assertSame(1, $etat['tranches']);
+    }
+
+    public function test_une_seconde_personne_rejoint_la_generation_en_cours_et_est_prevenue(): void
+    {
+        $premiere = $this->generation(userId: 1, eleves: 2);
+        $seconde = $this->generation(userId: 2, eleves: 2);
+
+        $this->assertSame($premiere->id, $seconde->id);
+        $this->assertSame(1, BulletinTache::count());
+        $this->assertTrue($premiere->concerne(2));
+
+        $controleur = app(ESBTPBulletinTacheController::class);
+        $this->assertSame([$premiere->id], array_column($controleur->suivi($this->requetePour(2))->getData(true)['taches'], 'id'));
+
+        app(ExecuteurTachesBulletins::class)->avancer($premiere, 50);
+
+        $this->assertSame(1, DB::table('custom_notifications')->where('user_id', 1)->count());
+        $this->assertSame(1, DB::table('custom_notifications')->where('user_id', 2)->count());
+
+        // Chacun marque sa propre vue.
+        $controleur->marquerVue($this->requetePour(2), $premiere->fresh());
+        $this->assertSame([], $controleur->suivi($this->requetePour(2))->getData(true)['taches']);
+        $this->assertCount(1, $controleur->suivi($this->requetePour(1))->getData(true)['taches']);
+    }
+
+    public function test_une_generation_echouee_ramene_sur_l_ecran_pre_rempli(): void
+    {
+        $tache = $this->generation(classeId: 2);
+        app(ExecuteurTachesBulletins::class)->avancer($tache, 50);
+        $etat = SuiviTachesBulletins::etat($tache->fresh());
+
+        $this->assertStringContainsString('classe_id=2', (string) $etat['url']);
+        $this->assertStringContainsString('periode=semestre1', (string) $etat['url']);
+        $this->assertSame('Relancer la génération', $etat['libelle_lien']);
     }
 
     public function test_aucun_courriel_vers_une_adresse_non_verifiee(): void
@@ -216,6 +374,9 @@ class TachesBulletinsArrierePlanTest extends TestCase
 
         $this->assertSame(BulletinTache::TERMINEE, $tache->fresh()->statut);
         $this->assertSame(1, DB::table('custom_notifications')->where('user_id', 2)->count());
+
+        $this->travel(NotificationTachesBulletins::DELAI_COURRIEL_DEFAUT + 1)->minutes();
+        app(NotificationTachesBulletins::class)->rattraper();
         Mail::assertNothingSent();
     }
 
@@ -337,7 +498,7 @@ class TachesBulletinsArrierePlanTest extends TestCase
     public function test_le_suivi_ne_montre_que_ses_propres_taches_et_la_vue_les_retire(): void
     {
         $mienne = $this->generation(userId: 1, eleves: 2);
-        $autre = $this->generation(userId: 2, eleves: 2);
+        $autre = $this->generation(userId: 2, eleves: 2, periode: 'semestre2');
         app(ExecuteurTachesBulletins::class)->avancer($mienne, 50);
 
         $controleur = app(ESBTPBulletinTacheController::class);
@@ -370,11 +531,18 @@ class TachesBulletinsArrierePlanTest extends TestCase
         $this->assertSame(6, $donnees['tache']['position']);
         $verrou->release();
 
-        // La dernière tranche conclut dans la même requête : l'onglet n'attend
-        // pas un tour de plus pour annoncer la fin.
+        // La dernière tranche ne conclut pas dans la même requête : la
+        // conclusion (assemblage) ne doit pas s'ajouter à une tranche sous la
+        // limite des trente secondes.
+        $donnees = $controleur->avancer($this->requetePour(1), $tache->fresh())->getData(true);
+        $this->assertSame(8, $donnees['tache']['position']);
+        $this->assertFalse($donnees['tache']['finale']);
+
+        // L'appel suivant conclut, et c'est tout ce qu'il fait.
         $donnees = $controleur->avancer($this->requetePour(1), $tache->fresh())->getData(true);
         $this->assertTrue($donnees['tache']['finale']);
         $this->assertSame('terminee', $donnees['tache']['statut']);
+        $this->assertCount(2, $this->tranchesGenerees);
     }
 
     public function test_la_commande_planifiee_finit_les_taches_et_purge_les_documents_expires(): void
@@ -407,7 +575,7 @@ class TachesBulletinsArrierePlanTest extends TestCase
         ]);
 
         $this->assertSame(1, app(NotificationTachesBulletins::class)->rattraper());
-        $this->assertNotNull($tache->fresh()->notifiee_at);
+        $this->assertNotNull($tache->fresh()->cloche_at);
         $this->assertSame(0, app(NotificationTachesBulletins::class)->rattraper());
     }
 
@@ -442,7 +610,7 @@ class TachesBulletinsArrierePlanTest extends TestCase
         });
 
         $this->generation(userId: 1, eleves: 2);
-        $this->generation(userId: 2, eleves: 2);
+        $this->generation(userId: 2, eleves: 2, periode: 'semestre2');
 
         $this->actingAs(User::findOrFail(1));
         $html = Blade::render('<x-taches-arriere-plan />');

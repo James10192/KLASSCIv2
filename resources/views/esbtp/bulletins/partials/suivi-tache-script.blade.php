@@ -33,7 +33,8 @@ if (typeof window.suivreTacheBulletins !== 'function') {
         window.dispatchEvent(new CustomEvent('taches-bulletins:suivie', { detail: { id: tache.id } }));
 
         let etat = tache;
-        let relais = false;          // le serveur a lâché une requête : on ne fait plus que lire
+        let relais = false;          // le serveur a lâché une requête : on ne fait que lire…
+        let positionAuRelais = null; // …jusqu'à voir le travail repartir
         const debut = Date.now();
         const depart = tache.position || 0;
 
@@ -69,6 +70,7 @@ if (typeof window.suivreTacheBulletins !== 'function') {
                 // contente désormais de suivre.
                 if (reponse.status >= 500 || charge === null) {
                     relais = true;
+                    positionAuRelais = etat.position || 0;
                     onEtat(etat, { restant: restant(), relais });
                     await pause(10000);
                     continue;
@@ -77,6 +79,11 @@ if (typeof window.suivreTacheBulletins !== 'function') {
             }
 
             etat = charge.tache;
+            // Une requête coupée une fois n'est pas une raison de ne plus jamais
+            // aider : dès que le travail a repris, l'onglet reprend la main.
+            if (relais && (etat.position || 0) > positionAuRelais) {
+                relais = false;
+            }
             onEtat(etat, { restant: restant(), relais: relais || !!charge.occupee });
 
             if (!etat.finale && (relais || charge.occupee)) {

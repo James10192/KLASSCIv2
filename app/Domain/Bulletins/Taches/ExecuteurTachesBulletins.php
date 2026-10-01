@@ -42,6 +42,9 @@ class ExecuteurTachesBulletins
      */
     public const TAILLE_TRANCHE = 6;
 
+    /** Essais accordés à une même étape avant de l'abandonner. */
+    public const ESSAIS_MAX = 3;
+
     /** Durée de vie du verrou : une tranche et sa marge. */
     private const VERROU_SECONDES = 180;
 
@@ -57,6 +60,10 @@ class ExecuteurTachesBulletins
     /**
      * Fait avancer les tâches en attente, dans la limite du budget.
      *
+     * La tâche qui a bougé le moins récemment passe en premier : une tâche
+     * dont chaque passage échoue (l'essai est daté avant d'être tenté) cède
+     * son tour aux suivantes au lieu de bloquer toute l'école.
+     *
      * @return array{tranches: int, occupees: int, actives: int}
      */
     public function traiterLaFile(float $budgetSecondes): array
@@ -65,7 +72,10 @@ class ExecuteurTachesBulletins
         $tranches = 0;
         $occupees = 0;
 
-        foreach (BulletinTache::actives()->orderBy('id')->limit(20)->get() as $tache) {
+        $taches = BulletinTache::actives()->orderBy('updated_at')->orderBy('id')->limit(20)->get();
+        $this->signalerLesPauses($taches);
+
+        foreach ($taches as $tache) {
             $reste = $budgetSecondes - (microtime(true) - $debut);
             if ($reste <= 0) {
                 break;
@@ -86,6 +96,10 @@ class ExecuteurTachesBulletins
 
     /**
      * Fait avancer une tâche.
+     *
+     * Appelée par un onglet ($maxTranches = 1), elle ne conclut jamais dans la
+     * requête qui vient de rendre une tranche : la conclusion (assemblage du
+     * PDF) prendrait le reste des trente secondes. L'appel suivant la fait.
      *
      * @return int|null nombre de tranches traitées, null si un autre processus
      *                  tient déjà la tâche
@@ -114,12 +128,42 @@ class ExecuteurTachesBulletins
             $debut = microtime(true);
 
             while (! $tache->estFinale()) {
-                if ($tache->position >= $tache->total) {
-                    $this->conclure($tache);
+                $aConclure = $tache->position >= $tache->total;
+                if ($aConclure && $maxTranches !== null && $faites > 0) {
                     break;
                 }
 
-                $this->traiterUneTranche($tache);
+                if (! $this->noterUnEssai($tache)) {
+                    // Trois essais déjà consommés sur cette étape : la tâche a
+                    // échoué, ou (export) la tranche a été écartée.
+                    continue;
+                }
+
+                try {
+                    $aConclure ? $this->conclure($tache) : $this->traiterUneTranche($tache);
+                } catch (TacheBulletinsImpossible $e) {
+                    throw $e;
+                } catch (\Throwable $e) {
+                    Log::error('Tâche bulletins #'.$tache->id.' : étape en erreur (essai '.$tache->essais_position.'/'.self::ESSAIS_MAX.')', [
+                        'type' => $tache->type,
+                        'position' => $tache->position,
+                        'exception' => $e,
+                    ]);
+                    if ($tache->essais_position >= self::ESSAIS_MAX) {
+                        $this->abandonnerLEtape($tache);
+                        if ($maxTranches === null) {
+                            continue;
+                        }
+                    }
+
+                    // On réessaiera au prochain passage, pas dans celui-ci.
+                    break;
+                }
+
+                if ($aConclure) {
+                    break;
+                }
+
                 $faites++;
 
                 if ($maxTranches !== null && $faites >= $maxTranches) {
@@ -131,12 +175,6 @@ class ExecuteurTachesBulletins
                 if ($ecoule + $ecoule / $faites > $budgetSecondes) {
                     break;
                 }
-            }
-
-            // La dernière tranche vient de passer : conclure tout de suite, plutôt
-            // que d'attendre l'appel suivant pour annoncer la fin.
-            if (! $tache->estFinale() && $tache->position >= $tache->total) {
-                $this->conclure($tache);
             }
         } catch (TacheBulletinsImpossible $e) {
             $this->echouer($tache, $e->getMessage());
@@ -152,6 +190,116 @@ class ExecuteurTachesBulletins
         }
 
         return $faites;
+    }
+
+    /**
+     * Date l'essai AVANT de le tenter.
+     *
+     * Une tranche qui tue le processus (mémoire de DomPDF, arrêt par
+     * l'hébergeur) ne passe par aucun catch ni finally : sans ce compteur
+     * écrit d'avance, elle serait rejouée à chaque minute, pour toujours, et
+     * personne ne serait prévenu.
+     *
+     * @return bool false si l'étape a déjà épuisé ses essais (et vient d'être abandonnée)
+     */
+    private function noterUnEssai(BulletinTache $tache): bool
+    {
+        $memeEtape = $tache->position_essayee !== null && $tache->position_essayee === $tache->position;
+
+        if ($memeEtape && $tache->essais_position >= self::ESSAIS_MAX) {
+            Log::error('Tâche bulletins #'.$tache->id.' : étape abandonnée après '.self::ESSAIS_MAX.' essais sans réponse', [
+                'type' => $tache->type,
+                'position' => $tache->position,
+            ]);
+            $this->abandonnerLEtape($tache);
+
+            return false;
+        }
+
+        $tache->forceFill([
+            'position_essayee' => $tache->position,
+            'essais_position' => $memeEtape ? $tache->essais_position + 1 : 1,
+        ])->save();
+
+        return true;
+    }
+
+    /**
+     * Une étape a échoué trois fois. Un PDF groupé écarte la tranche (ses
+     * bulletins sont listés en page de garde, comme un rendu raté) ; une
+     * génération, elle, échoue en nommant la tranche.
+     */
+    private function abandonnerLEtape(BulletinTache $tache): void
+    {
+        $taille = self::TAILLE_TRANCHE;
+        $numero = intdiv($tache->position, $taille) + 1;
+        $tranches = max(1, (int) ceil($tache->total / $taille));
+
+        if ($tache->position >= $tache->total) {
+            $this->echouer($tache, sprintf(
+                "La dernière étape (%s) a échoué %d fois de suite. Relancez le travail ; si cela se reproduit, prévenez le support.",
+                $tache->type === BulletinTache::TYPE_EXPORT ? 'assemblage du document' : 'bilan de la génération',
+                self::ESSAIS_MAX
+            ));
+
+            return;
+        }
+
+        $ids = array_slice($tache->elements, $tache->position, $taille);
+
+        if ($tache->type === BulletinTache::TYPE_EXPORT) {
+            $cumul = $tache->resultat ?? [];
+            $message = sprintf('Tranche %d sur %d écartée après %d essais', $numero, $tranches, self::ESSAIS_MAX);
+            $cumul['echecs'] = array_slice(array_merge(
+                $cumul['echecs'] ?? [],
+                array_map(fn ($id) => ['id' => (int) $id, 'message' => $message], $ids)
+            ), 0, self::ERREURS_MAX);
+
+            Log::warning('Tâche bulletins #'.$tache->id.' : '.$message, ['bulletins' => $ids]);
+
+            $tache->forceFill([
+                'resultat' => $cumul,
+                'position' => $tache->position + count($ids),
+                'position_essayee' => null,
+                'essais_position' => 0,
+            ])->save();
+
+            return;
+        }
+
+        $this->echouer($tache, sprintf(
+            "La tranche %d sur %d (élèves %d à %d) a échoué %d fois de suite. Les tranches précédentes sont enregistrées. Relancez la génération ; si cela se reproduit, prévenez le support.",
+            $numero,
+            $tranches,
+            $tache->position + 1,
+            $tache->position + count($ids),
+            self::ESSAIS_MAX
+        ));
+    }
+
+    /**
+     * Une tâche active que rien n'a fait bouger depuis plusieurs minutes : la
+     * planification ne tourne plus, ou une étape se fait tuer. Le dire.
+     *
+     * @param  Collection<int, BulletinTache>  $taches
+     */
+    private function signalerLesPauses(Collection $taches): void
+    {
+        foreach ($taches as $tache) {
+            if (! SuiviTachesBulletins::estEnPause($tache)) {
+                continue;
+            }
+
+            // Une ligne par tâche et par heure, pas une par minute.
+            if (Cache::add('bulletin_tache.pause.'.$tache->id, true, 3600)) {
+                Log::warning('Tâche bulletins #'.$tache->id.' immobile depuis '.$tache->updated_at?->diffForHumans(), [
+                    'type' => $tache->type,
+                    'position' => $tache->position,
+                    'total' => $tache->total,
+                    'essais_position' => $tache->essais_position,
+                ]);
+            }
+        }
     }
 
     private function traiterUneTranche(BulletinTache $tache): void

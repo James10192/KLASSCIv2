@@ -234,8 +234,10 @@ class NotificationPresenter
 
     /**
      * Un lien de notification ne sort jamais de l'application : chemin relatif,
-     * ou URL absolue sur le meme hote. Tout le reste (javascript:, autre domaine)
-     * est ignore.
+     * ou URL absolue sur l'hôte de la requête ou sur celui de APP_URL. Une URL
+     * interne absolue est ramenée à son chemin : écrite par la planification
+     * (qui ne connaît que APP_URL), elle doit mener à l'hôte d'où l'on regarde.
+     * Tout le reste (javascript:, autre domaine) est ignoré.
      */
     private function safeUrl(?string $link): ?string
     {
@@ -251,6 +253,17 @@ class NotificationPresenter
             return null;
         }
 
-        return Str::lower($parts['host'] ?? '') === Str::lower(request()->getHost()) ? $link : null;
+        $hote = Str::lower($parts['host'] ?? '');
+        $internes = array_filter([
+            Str::lower(request()->getHost()),
+            Str::lower((string) parse_url((string) config('app.url'), PHP_URL_HOST)),
+        ]);
+        if ($hote === '' || ! in_array($hote, $internes, true)) {
+            return null;
+        }
+
+        return ($parts['path'] ?? '/')
+            .(isset($parts['query']) ? '?'.$parts['query'] : '')
+            .(isset($parts['fragment']) ? '#'.$parts['fragment'] : '');
     }
 }

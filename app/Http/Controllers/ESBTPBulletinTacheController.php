@@ -130,9 +130,7 @@ class ESBTPBulletinTacheController extends Controller
     {
         $this->assurerProprietaire($request, $tache);
 
-        if ($tache->estFinale() && $tache->vue_at === null) {
-            $tache->forceFill(['vue_at' => now()])->save();
-        }
+        $tache->marquerVuePar((int) $request->user()->id);
 
         return response()->json(['success' => true]);
     }
@@ -161,11 +159,12 @@ class ESBTPBulletinTacheController extends Controller
     }
 
     /**
-     * Une tâche appartient à celui qui l'a lancée. 404 plutôt que 403 : on ne
-     * confirme pas l'existence d'un travail qui n'est pas le sien.
+     * Une tâche appartient à celui qui l'a lancée, et à qui l'a rejointe en
+     * relançant le même travail. 404 plutôt que 403 : on ne confirme pas
+     * l'existence d'un travail qui n'est pas le sien.
      */
     private function assurerProprietaire(Request $request, BulletinTache $tache): void
     {
-        abort_unless((int) $tache->user_id === (int) $request->user()->id, 404);
+        abort_unless($tache->concerne((int) $request->user()->id), 404);
     }
 }

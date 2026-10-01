@@ -35,14 +35,18 @@ parce que les matières d'une classe LMD ne se lisent pas par le pivot BTS.
 ## État actuel — ce qui est déjà en place
 
 Les gardes côté BTS **existent** (chantier PR7, `abort_if(… === 'LMD', 422)`), sur les
-quatre points d'entrée qui prennent une classe :
+points d'entrée qui prennent une classe :
 
 | Méthode de `ESBTPBulletinController` | Ce qu'elle fait |
 |---|---|
 | `store()` | création/configuration d'un bulletin |
-| `genererClasseBulletins()` | génération en masse |
 | `preflightClasseBulletins()` | contrôle avant génération en masse |
 | `previewBulletin()` | aperçu |
+
+La génération en masse vit en arrière-plan depuis octobre 2026 : sa garde est dans
+`ESBTPBulletinTacheController::lancerGeneration()` (au lancement) et
+`ExecuteurTachesBulletins::classeBts()` (à chaque tranche). L'ancienne route
+`esbtp.bulletins.generer-classe` est retirée.
 
 Ne les cherchez pas par numéro de ligne : `grep -n "systeme_academique" app/Http/Controllers/ESBTPBulletinController.php`.
 

@@ -4,8 +4,11 @@
     Rendu sur toutes les pages : la personne qui a lancé une génération puis
     est partie ailleurs dans l'application voit un toast quand elle se termine.
     Il n'interroge le serveur que s'il sait une tâche en cours (toutes les
-    15 s) ; sinon il ne fait rien. Une tâche finie pendant qu'on était
-    déconnecté s'annonce au chargement suivant.
+    15 s) ; sinon il ne fait rien. Et tant qu'il en sait une, il la fait
+    avancer d'une tranche à chaque tour : n'importe quelle page ouverte fait
+    progresser le travail, même si la planification ne tourne pas (le verrou
+    de la tâche empêche qu'une tranche soit rendue deux fois). Une tâche finie
+    pendant qu'on était déconnecté s'annonce au chargement suivant.
 
     Script et style en ligne, avec garde d'idempotence : le composant ne
     dépend d'aucune pile du layout.
@@ -15,17 +18,19 @@
         ? \App\Domain\Bulletins\Taches\SuiviTachesBulletins::pourUtilisateur(auth()->user())
         : [];
     $tapUrls = [
-        'suivi' => route('esbtp.bulletins.taches.suivi'),
-        'vue' => route('esbtp.bulletins.taches.vue', ['tache' => '__ID__']),
+        'suivi' => route('esbtp.bulletins.taches.suivi', [], false),
+        'avancer' => route('esbtp.bulletins.taches.avancer', ['tache' => '__ID__'], false),
+        'vue' => route('esbtp.bulletins.taches.vue', ['tache' => '__ID__'], false),
+        'bulletins' => route('esbtp.bulletins.select', [], false),
     ];
 @endphp
 @auth
 <div class="tap-pile" x-data="tachesArrierePlan()" data-taches='@json($tapEtatInitial)' data-urls='@json($tapUrls)'
      aria-live="polite" role="status">
     <template x-for="toast in toasts" :key="toast.id">
-        <div class="tap-toast" :class="toast.reussie ? 'tap-toast--ok' : 'tap-toast--ko'" x-transition.opacity>
+        <div class="tap-toast" :class="toast.pause ? 'tap-toast--pause' : (toast.reussie ? 'tap-toast--ok' : 'tap-toast--ko')" x-transition.opacity>
             <span class="tap-toast__icone">
-                <i class="fas" :class="toast.reussie ? 'fa-circle-check' : 'fa-circle-exclamation'"></i>
+                <i class="fas" :class="toast.pause ? 'fa-circle-pause' : (toast.reussie ? 'fa-circle-check' : 'fa-circle-exclamation')"></i>
             </span>
             <div class="tap-toast__corps">
                 <p class="tap-toast__titre" x-text="toast.titre"></p>
@@ -60,6 +65,8 @@
     }
     .tap-toast--ok { border-left-color: #10b981; }
     .tap-toast--ko { border-left-color: #dc2626; }
+    .tap-toast--pause { border-left-color: #f59e0b; }
+    .tap-toast--pause .tap-toast__icone { color: #d97706; }
     .tap-toast__icone { font-size: 1.05rem; line-height: 1.2; color: #0453cb; }
     .tap-toast--ok .tap-toast__icone { color: #10b981; }
     .tap-toast--ko .tap-toast__icone { color: #dc2626; }
@@ -135,9 +142,23 @@ window.tachesArrierePlan = function () {
             this.minuteur = setTimeout(() => this.interroger(), 15000);
         },
 
+        // Une tranche de la première tâche que la page ne pilote pas déjà.
+        async avancerUneTache() {
+            const t = this.taches.find((x) => !x.finale && !this.suiviesParLaPage[x.id]);
+            if (!t) return;
+            const jeton = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            await fetch(this.urls.avancer.replace('__ID__', String(t.id)), {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': jeton, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            }).catch(() => {});
+        },
+
         async interroger() {
             if (document.hidden) { this.planifier(); return; }
             try {
+                // Une 500 ici (requête coupée) ne perd rien : le suivi qui suit
+                // dit où en est le travail.
+                await this.avancerUneTache();
                 const reponse = await fetch(this.urls.suivi, {
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
@@ -154,6 +175,24 @@ window.tachesArrierePlan = function () {
 
         traiter(taches) {
             taches.filter((t) => t.finale).forEach((t) => this.annoncer(t));
+            taches.filter((t) => !t.finale && t.en_pause).forEach((t) => this.signalerPause(t));
+        },
+
+        // Une tâche immobile depuis plusieurs minutes : le dire une fois, sans alarmer.
+        signalerPause(t) {
+            const cle = 'pause-' + t.id;
+            if (this.annoncees[cle] || this.suiviesParLaPage[t.id]) return;
+            this.annoncees[cle] = true;
+            this.toasts.push({
+                id: cle,
+                pause: true,
+                reussie: false,
+                titre: 'En pause · ' + t.libelle,
+                texte: 'Le travail est en pause, il reprendra automatiquement. Vous pouvez aussi rouvrir la page des bulletins.',
+                url: this.urls.bulletins,
+                nouvelOnglet: false,
+                libelleLien: 'Ouvrir les bulletins',
+            });
         },
 
         annoncer(t) {
@@ -162,17 +201,16 @@ window.tachesArrierePlan = function () {
             if (this.suiviesParLaPage[t.id]) return;
 
             const reussie = t.statut === 'terminee';
-            const estExport = t.type === 'export';
+            this.fermer('pause-' + t.id);
             this.toasts.push({
                 id: t.id,
                 reussie,
                 titre: (reussie ? 'Terminé · ' : 'Échec · ') + t.libelle,
                 texte: t.message || '',
                 url: t.url,
-                nouvelOnglet: reussie && estExport,
-                libelleLien: !reussie ? 'Revenir aux bulletins'
-                    : (!estExport ? 'Voir les bulletins'
-                        : (t.mode === 'apercu' ? 'Ouvrir l\'aperçu' : 'Télécharger le PDF')),
+                nouvelOnglet: reussie && t.type === 'export',
+                // Le serveur nomme le lien, comme dans la cloche et l'e-mail.
+                libelleLien: t.libelle_lien,
             });
             this.marquerVue(t.id);
         },

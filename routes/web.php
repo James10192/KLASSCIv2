@@ -2792,7 +2792,6 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
         ->name('esbtp.bulletins.regenerate');
     Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');
     Route::get('/esbtp/bulletins/generer-classe/preflight', [ESBTPBulletinController::class, 'preflightClasseBulletins'])->name('esbtp.bulletins.generer-classe.preflight');
-    Route::post('/esbtp/bulletins/generer-classe', [ESBTPBulletinController::class, 'genererClasseBulletins'])->name('esbtp.bulletins.generer-classe');
     // bulletins.delete et non bulletins.generate : detruire des moyennes
     // enregistrees est un pouvoir plus etroit que generer des bulletins, et le
     // registre le distingue deja.
