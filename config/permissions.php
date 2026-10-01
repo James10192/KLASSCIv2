@@ -1119,6 +1119,12 @@ return [
             'group' => 'Frais',
             'icon' => 'fa-trash',
         ],
+        'frais.souscriptions.ajuster' => [
+            'label' => 'Ajuster ce qu\'un étudiant doit sur un frais (exonération, remise, reprise)',
+            'description' => 'Change le montant dû d\'une inscription sur un frais, avec motif obligatoire et trace d\'audit. Jamais en dessous de ce qui est déjà payé.',
+            'group' => 'Frais',
+            'icon' => 'fa-hand-holding-usd',
+        ],
         'frais.configure' => [
             'label' => 'Configurer le détail des frais d\'une catégorie',
             'group' => 'Frais',
