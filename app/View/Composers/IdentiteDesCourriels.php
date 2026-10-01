@@ -8,8 +8,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 /**
- * Ce qu'un courriel doit porter de l'école : nom, logo, coordonnées, et deux
- * nuances de sa couleur pour le gabarit `esbtp.emails.layout`.
+ * Ce qu'un courriel doit porter de l'école : nom, logo, coordonnées, deux
+ * nuances de sa couleur pour le gabarit `esbtp.emails.layout`, et le rouge
+ * d'alerte, commun à toutes les écoles.
  *
  * Enregistré APRÈS `CouleursDesCourrielsParents`, dont il lit la couleur
  * primaire. Un appelant qui fournit une valeur garde la main.
@@ -44,7 +45,7 @@ class IdentiteDesCourriels
             'schoolLogoUrl' => $donnees['schoolLogoUrl'] ?? $this->logoPublic(),
             'emailPrimarySoft' => self::melanger($primaire, '#ffffff', 0.92),
             'emailPrimaryDark' => self::melanger($primaire, '#000000', 0.28),
-            'emailDangerColor' => self::COULEUR_DANGER,
+            'emailDangerColor' => $donnees['emailDangerColor'] ?? self::COULEUR_DANGER,
             'emailGardeGmailSombre' => self::texteQuasiBlanc((string) ($donnees['emailHeaderTextColor'] ?? '#ffffff')),
         ]);
     }
