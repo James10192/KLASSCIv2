@@ -142,6 +142,7 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertSame('etudiant_cree', $inscription->workflow_step);
         $this->assertSame($this->anneeDossier->id, (int) $inscription->annee_universitaire_id);
         $this->assertSame(ESBTPCandidature::STATUT_CONVERTIE, $candidature->fresh()->statut);
+        $this->assertStringStartsNotWith('PRE-', $workflow->etudiant->fresh()->matricule, 'Inscrit : le matricule provisoire est remplacé.');
 
         // Finance : 500 000 dus, 50 000 versés à la préinscription → 450 000.
         $soldes = app(SoldesParSouscription::class)->pourInscription($inscription);
@@ -299,6 +300,25 @@ class ManagedInscriptionEndToEndTest extends TestCase
     }
 
     /** @test */
+    public function un_dossier_sans_sexe_n_est_pas_finalise_et_garde_son_matricule_provisoire(): void
+    {
+        // Le contrôle de complétude ne joue que sur un matricule PRE- : le
+        // remplacer d'abord laissait finaliser un dossier sans sexe, avec un
+        // matricule numéroté sur un sexe deviné.
+        $workflow = $this->dossierPretAChoisir();
+        $workflow->etudiant->forceFill(['sexe' => null])->save();
+        $this->actingAs($workflow->etudiant->user);
+
+        $this->assertRefus(
+            fn () => app(FinalizeManagedInscription::class)->chooseAndFinalize($workflow->fresh(), $this->classe->id, $workflow->etudiant->user_id),
+            'finalisation'
+        );
+
+        $this->assertStringStartsWith('PRE-', $workflow->etudiant->fresh()->matricule);
+        $this->assertNull($workflow->fresh()->final_inscription_id);
+    }
+
+    /** @test */
     public function un_etudiant_ne_voit_que_son_propre_dossier(): void
     {
         $a = $this->dossierPretAChoisir();
@@ -307,8 +327,8 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($a->etudiant->user)
             ->get(route('esbtp.admissions.workflow.student'))
             ->assertOk()
-            ->assertSee($a->candidature->reference_publique)
-            ->assertDontSee($b->candidature->reference_publique);
+            ->assertSee($a->candidature->referencePubliqueAffichee())
+            ->assertDontSee($b->candidature->referencePubliqueAffichee());
 
         // Un étudiant n'atteint pas les écrans des guichets.
         $this->actingAs($a->etudiant->user)
@@ -331,8 +351,8 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($caissier)
             ->get(route('esbtp.admissions.workflow.index'))
             ->assertOk()
-            ->assertSee($enAttente->reference_publique)
-            ->assertDontSee($workflow->candidature->reference_publique);
+            ->assertSee($enAttente->referencePubliqueAffichee())
+            ->assertDontSee($workflow->candidature->referencePubliqueAffichee());
 
         $this->actingAs($caissier)
             ->get(route('esbtp.admissions.workflow.show', $workflow->candidature))

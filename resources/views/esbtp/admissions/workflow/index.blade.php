@@ -51,7 +51,7 @@
             <div class="miw-row">
                 <div>
                     <div class="miw-name">{{ $candidature->nom }} {{ $candidature->prenoms }}</div>
-                    <div class="miw-muted">{{ $candidature->reference_publique ?: 'Dossier #'.$candidature->id }} · {{ $candidature->telephone ?: 'sans téléphone' }}</div>
+                    <div class="miw-muted">{{ $candidature->referencePubliqueAffichee() ?: 'Dossier #'.$candidature->id }} · {{ $candidature->telephone ?: 'sans téléphone' }}</div>
                 </div>
                 <div>
                     <div>{{ $candidature->filiere?->name ?: 'Filière à confirmer' }}</div>

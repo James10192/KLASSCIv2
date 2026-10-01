@@ -12,7 +12,7 @@
 <div class="mws">
     <section class="mws-hero">
         <h1>Mon inscription</h1>
-        <p>{{ $workflow->candidature?->prenoms }} {{ $workflow->candidature?->nom }} · {{ $workflow->candidature?->reference_publique }}</p>
+        <p>{{ $workflow->candidature?->prenoms }} {{ $workflow->candidature?->nom }} · {{ $workflow->candidature?->referencePubliqueAffichee() }}</p>
     </section>
 
     @if(session('success'))<div class="alert alert-success mt-3">{{ session('success') }}</div>@endif
