@@ -197,10 +197,15 @@
             <div class="mwf-kv"><span>Compte</span><strong>{{ $workflow->accessActivated() ? 'Activé' : 'En attente d\'activation' }}</strong></div>
             <div class="mwf-kv"><span>Informations</span><strong>{{ $workflow->profileCompleted() ? 'Complétées' : 'À compléter par l\'étudiant' }}</strong></div>
             @if($workflow->etudiant_id && !$workflow->accessActivated() && ($user?->can('inscriptions.validate') || $user?->can('pieces_dossier.suivre')))
-                @if(! $contactJoignable)
+                @if(! $contactJoignable || $emailEnAttente)
                     <div class="mwf-alerte mt-2" role="status">
-                        <strong>Le lien n'est pas parti.</strong>
-                        Il ne part que vers un contact vérifié, et celui de ce dossier ne l'est pas.
+                        @if(! $contactJoignable)
+                            <strong>Le lien n'est pas parti.</strong>
+                            Il ne part que vers un contact vérifié, et celui de ce dossier ne l'est pas.
+                        @else
+                            <strong>Le lien ne part que par WhatsApp :</strong> l'e-mail de ce dossier n'est pas vérifié.
+                            Si l'étudiant n'a rien reçu, confirmez son e-mail : le lien partira aussi par e-mail.
+                        @endif
                         Relisez-les avec l'étudiant :
                         <div class="mwf-kv"><span>E-mail</span><strong>{{ $candidature->email ?: '—' }}</strong></div>
                         <div class="mwf-kv"><span>Téléphone</span><strong>{{ $candidature->telephone ?: '—' }}</strong></div>

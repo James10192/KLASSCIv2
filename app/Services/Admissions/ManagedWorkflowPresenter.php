@@ -25,6 +25,12 @@ final class ManagedWorkflowPresenter
         return $this->notifier->peutEnvoyer($w);
     }
 
+    /** L'e-mail est attendu mais non prouvé : le lien n'y part pas. */
+    public function emailEnAttente(ESBTPCandidatureWorkflow $w): bool
+    {
+        return $this->notifier->emailEnAttente($w);
+    }
+
     /**
      * @return list<array{cle:string, libelle:string, statut:'faite'|'en_cours'|'a_venir'}>
      */
@@ -76,7 +82,7 @@ final class ManagedWorkflowPresenter
                 'caisse' => 'En attente du paiement de préinscription à la caisse.',
                 'pieces' => 'En attente du contrôle physique des pièces au secrétariat.',
                 'activation' => $this->contactJoignable($w)
-                    ? "Compte étudiant à activer : le lien lui a été envoyé."
+                    ? "Compte étudiant à activer : le lien part vers son contact vérifié. S'il ne l'a pas reçu, renvoyez-le."
                     : "Lien d'activation non envoyé : aucun e-mail ni numéro vérifié. Confirmez le contact avec l'étudiant.",
                 'profil' => "L'étudiant doit compléter ses informations dans son espace.",
                 'classe' => $this->settings->classChoiceActor() === InscriptionWorkflowSettings::CLASS_ACTOR_STUDENT

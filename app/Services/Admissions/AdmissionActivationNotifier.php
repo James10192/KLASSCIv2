@@ -54,6 +54,20 @@ final class AdmissionActivationNotifier
             || ($this->settings->notifyWhatsapp() && $this->whatsappUsable($workflow));
     }
 
+    /**
+     * L'école envoie par e-mail, mais l'e-mail de ce dossier n'est pas prouvé :
+     * le lien n'y part pas. Même si WhatsApp est utilisable, l'agent doit
+     * pouvoir confirmer l'e-mail : un message WhatsApp peut ne jamais arriver.
+     */
+    public function emailEnAttente(ESBTPCandidatureWorkflow $workflow): bool
+    {
+        $workflow->loadMissing('candidature');
+
+        return $this->settings->notifyEmail()
+            && (bool) $workflow->candidature?->email
+            && ! $this->emailUsable($workflow);
+    }
+
     public function sendWhatsAppLink(ESBTPCandidatureWorkflow $workflow, string $url): bool
     {
         $workflow->loadMissing('candidature', 'etudiant.user');

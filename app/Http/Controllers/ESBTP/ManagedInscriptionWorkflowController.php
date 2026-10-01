@@ -44,6 +44,7 @@ class ManagedInscriptionWorkflowController extends Controller
             'etapes' => $this->presenter->etapes($workflow),
             'prochaineEtape' => $this->presenter->prochaineEtape($workflow),
             'contactJoignable' => $this->presenter->contactJoignable($workflow),
+            'emailEnAttente' => $this->presenter->emailEnAttente($workflow),
             'activationStep' => $this->settings->accountActivationStep(),
             'classChoiceActor' => $classChoiceActor,
             'eligibleClasses' => $workflow->final_inscription_id ? collect() : $this->managed->eligibleClasses($workflow),
