@@ -107,4 +107,18 @@ class VerificationCourrielSupportTest extends TestCase
             ->assertStatus(422)->assertJsonPath('deja_verifiee', true);
         Mail::assertNothingSent();
     }
+    public function test_une_adresse_modifiee_n_est_plus_confirmee_sauf_si_la_meme_sauvegarde_la_confirme(): void
+    {
+        $user = $this->utilisateur(true);
+
+        $user->update(['email' => 'autre.adresse@ecole.test']);
+        $this->assertNull($user->fresh()->email_verified_at, 'Une adresse changée n\'est plus tenue pour confirmée.');
+        $this->assertFalse(\App\Domain\Support\Services\AdresseJoignable::estJoignable($user->fresh()));
+
+        $user->forceFill(['email' => 'troisieme@ecole.test', 'email_verified_at' => now()])->save();
+        $this->assertNotNull($user->fresh()->email_verified_at, 'Confirmée dans la même sauvegarde : elle le reste.');
+
+        $user->update(['name' => 'Awa Koné']);
+        $this->assertNotNull($user->fresh()->email_verified_at, 'Un autre champ ne touche pas à la confirmation.');
+    }
 }
