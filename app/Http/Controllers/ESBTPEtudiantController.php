@@ -1667,10 +1667,39 @@ class ESBTPEtudiantController extends Controller
                 }
             }
 
+            // 3. Dernier recours : les notes saisies. Une annee terminee sans
+            // bulletin genere n'a ni bulletin ni moyenne enregistree, et
+            // `esbtp_resultats` n'est remplie qu'a la generation : sans ce
+            // repli, le certificat imprimait « — » alors que la fiche de
+            // resultats de l'etudiant affichait sa moyenne. Annees passees
+            // seulement : sur l'annee en cours, ce calcul donne une moyenne
+            // partielle, qu'un document officiel ne doit pas imprimer.
+            if ($mg === null && $anneeId && ! (optional($inscription->anneeUniversitaire)->is_current ?? false)) {
+                $mg = $this->moyenneAnnuelleDepuisLesNotes($inscription, $etudiantId, $anneeId);
+            }
+
             $inscription->moyenne_generale_calculee = $mg;
         }
 
         return $inscriptions;
+    }
+
+    /**
+     * Moyenne annuelle calculee en direct depuis les notes, comme le Bilan de
+     * la fiche de resultats. BTS seulement : le calcul LMD (UE, credits,
+     * compensation) ne passe pas par ce service.
+     */
+    private function moyenneAnnuelleDepuisLesNotes($inscription, int $etudiantId, int $anneeId): ?float
+    {
+        $classeId = $inscription->classe_id ?? null;
+        if (! $classeId || (optional($inscription->classe)->systeme_academique ?? '') === 'LMD') {
+            return null;
+        }
+
+        $total = app(\App\Services\ESBTP\BtsCurrentResultSnapshotService::class)
+            ->getAnnualSnapshot($etudiantId, (int) $classeId, $anneeId)['effective_total'] ?? null;
+
+        return $total !== null ? round((float) $total, 2) : null;
     }
 
     /**
