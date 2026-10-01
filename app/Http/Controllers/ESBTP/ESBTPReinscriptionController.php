@@ -214,8 +214,8 @@ class ESBTPReinscriptionController extends Controller
     private function calculerTotalAttendu($inscription)
     {
         // Basé UNIQUEMENT sur les frais souscriptions actives.
-        // Pas de souscriptions → rien à payer → 0.
-        return \App\Models\ESBTPFraisSubscription::dueAmountForInscription($inscription->id);
+        // Pas de souscriptions → rien à payer → 0. La même règle que Nanan.
+        return \App\Services\Reinscription\SoldeDeReinscription::du((int) $inscription->id);
     }
     
     /**
@@ -223,7 +223,7 @@ class ESBTPReinscriptionController extends Controller
      */
     private function calculerTotalPaye($inscription)
     {
-        return \App\Models\ESBTPPaiement::netPaidForInscription((int) $inscription->id);
+        return \App\Services\Reinscription\SoldeDeReinscription::paye((int) $inscription->id);
     }
 
     /**
