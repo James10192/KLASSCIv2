@@ -10,6 +10,13 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ---
 
+## Octobre 2026
+
+### Ajouts
+- **Nanan — créer une évaluation et publier ses notes.** Nanan prépare désormais une nouvelle évaluation (classe, matière, type, date et horaires, barème, coefficient, semestre) et la publication des notes d'une ou plusieurs évaluations terminées. Rien n'est créé ni publié avant le clic « Valider » ; le barème et le coefficient sont toujours demandés, jamais supposés ; une évaluation identique n'est pas créée deux fois ; un enseignant n'agit que sur ses matières et ses évaluations. Chaque création et publication figure au journal d'audit.
+
+---
+
 ## Septembre 2026
 
 ### Ajouts
