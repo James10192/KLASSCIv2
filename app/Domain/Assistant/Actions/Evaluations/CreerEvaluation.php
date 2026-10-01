@@ -48,13 +48,13 @@ final class CreerEvaluation extends ActionAgent
                 'classe_id' => ['type' => 'integer', 'description' => 'Identifiant de la classe (search_classes).'],
                 'matiere_id' => ['type' => 'integer', 'description' => 'Identifiant de la matière (search_subjects).'],
                 'titre' => ['type' => 'string', 'description' => 'Intitulé, tel que donné par l\'utilisateur.'],
-                'type' => ['type' => 'string', 'enum' => ESBTPEvaluation::TYPES_SAISISSABLES],
+                'type' => ['type' => 'string', 'enum' => ESBTPEvaluation::typesSaisissables()],
                 'date' => ['type' => 'string', 'description' => 'Date AAAA-MM-JJ.'],
                 'heure_debut' => ['type' => 'string', 'description' => 'HH:MM'],
                 'heure_fin' => ['type' => 'string', 'description' => 'HH:MM, après l\'heure de début.'],
                 'bareme' => ['type' => 'number', 'description' => 'Note maximale (20 le plus souvent) : à demander si non donnée.'],
                 'coefficient' => ['type' => 'number', 'description' => 'Coefficient de l\'évaluation : à demander si non donné.'],
-                'periode' => ['type' => 'string', 'description' => 'Semestre : S1, S2… (ou semestre1, semestre2…).'],
+                'periode' => ['type' => 'string', 'enum' => array_keys(ESBTPEvaluation::getPeriodes()), 'description' => 'Semestre de l\'évaluation.'],
                 'publier' => ['type' => 'boolean', 'description' => 'true seulement si l\'utilisateur demande de la publier tout de suite ; sinon brouillon.'],
             ],
             'required' => ['classe_id', 'matiere_id', 'titre', 'type', 'date', 'heure_debut', 'heure_fin', 'periode'],
@@ -63,8 +63,6 @@ final class CreerEvaluation extends ActionAgent
 
     public function preparer(array $args, $user): Proposition
     {
-        $manques = [];
-
         $classe = ESBTPClasse::find((int) ($args['classe_id'] ?? 0));
         $matiere = ESBTPMatiere::find((int) ($args['matiere_id'] ?? 0));
         if (! $classe || ! $matiere) {
@@ -83,19 +81,42 @@ final class CreerEvaluation extends ActionAgent
             return $this->manque("Cet utilisateur n'est pas affecté à « {$matiere->name} » pour la classe {$classe->name} cette année.");
         }
 
+        [$champs, $manques] = $this->lireLesChamps($args);
+        if ($manques !== []) {
+            return new Proposition(titre: 'Nouvelle évaluation', resume: '', manques: $manques);
+        }
+
+        $memeJour = $this->evaluationsDuMemeJour((int) $classe->id, (int) $matiere->id, (int) $annee->id, $champs['debut']);
+        $doublon = $memeJour->first(fn (ESBTPEvaluation $e) => mb_strtolower(trim((string) $e->titre)) === mb_strtolower($champs['titre']));
+        if ($doublon) {
+            return $this->manque("Cette évaluation existe déjà (« {$doublon->titre} », n° {$doublon->id}, le {$champs['debut']->format('d/m/Y')}) : utilise son identifiant au lieu d'en créer une seconde.");
+        }
+
+        return $this->proposition($classe, $matiere, $annee, $champs, $memeJour);
+    }
+
+    /**
+     * Lit et contrôle les champs saisis, avec les mêmes bornes que l'écran.
+     *
+     * @return array{0: array<string, mixed>, 1: list<string>} les champs lus, et ce qui manque
+     */
+    private function lireLesChamps(array $args): array
+    {
+        $manques = [];
+
         $titre = trim((string) ($args['titre'] ?? ''));
         if ($titre === '' || mb_strlen($titre) > 255) {
             $manques[] = $titre === '' ? 'Intitulé de l\'évaluation absent.' : 'Intitulé trop long (255 caractères au plus).';
         }
 
         $type = (string) ($args['type'] ?? '');
-        if (! in_array($type, ESBTPEvaluation::TYPES_SAISISSABLES, true)) {
-            $manques[] = 'Type d\'évaluation inconnu : ' . implode(', ', ESBTPEvaluation::TYPES_SAISISSABLES) . '.';
+        if (! array_key_exists($type, ESBTPEvaluation::getTypes())) {
+            $manques[] = 'Type d\'évaluation inconnu : ' . implode(', ', ESBTPEvaluation::typesSaisissables()) . '.';
         }
 
         $periode = self::normaliserPeriode((string) ($args['periode'] ?? ''));
         if ($periode === null) {
-            $manques[] = 'Période inconnue : indique le semestre (S1, S2…).';
+            $manques[] = 'Période inconnue : ' . implode(', ', ESBTPEvaluation::getPeriodes()) . ' seulement.';
         }
 
         $horaires = self::horaires((string) ($args['date'] ?? ''), (string) ($args['heure_debut'] ?? ''), (string) ($args['heure_fin'] ?? ''));
@@ -104,27 +125,34 @@ final class CreerEvaluation extends ActionAgent
         }
 
         $bareme = self::nombre($args['bareme'] ?? null);
-        if ($bareme === null || $bareme < 0.1 || $bareme > 100) {
-            $manques[] = $bareme === null ? 'Barème non donné : demande-le (20 le plus souvent), ne le suppose pas.' : 'Barème hors bornes (entre 0,1 et 100).';
+        if ($bareme === null || $bareme < ESBTPEvaluation::BAREME_MIN || $bareme > ESBTPEvaluation::BAREME_MAX) {
+            $manques[] = $bareme === null
+                ? 'Barème non donné : demande-le (20 le plus souvent), ne le suppose pas.'
+                : 'Barème hors bornes (entre ' . self::texte(ESBTPEvaluation::BAREME_MIN) . ' et ' . self::texte(ESBTPEvaluation::BAREME_MAX) . ').';
         }
 
         $coefficient = self::nombre($args['coefficient'] ?? null);
-        if ($coefficient === null || $coefficient < 0.1 || $coefficient > 10) {
-            $manques[] = $coefficient === null ? 'Coefficient non donné : demande-le, ne le suppose pas.' : 'Coefficient hors bornes (entre 0,1 et 10).';
+        if ($coefficient === null || $coefficient < ESBTPEvaluation::COEFFICIENT_MIN || $coefficient > ESBTPEvaluation::COEFFICIENT_MAX) {
+            $manques[] = $coefficient === null
+                ? 'Coefficient non donné : demande-le, ne le suppose pas.'
+                : 'Coefficient hors bornes (entre ' . self::texte(ESBTPEvaluation::COEFFICIENT_MIN) . ' et ' . self::texte(ESBTPEvaluation::COEFFICIENT_MAX) . ').';
         }
 
-        if ($manques !== []) {
-            return new Proposition(titre: 'Nouvelle évaluation', resume: '', manques: $manques);
-        }
+        [$debut, $fin] = $horaires ?? [null, null];
 
-        [$debut, $fin] = $horaires;
-        $memeJour = $this->evaluationsDuMemeJour((int) $classe->id, (int) $matiere->id, (int) $annee->id, $debut);
-        $doublon = $memeJour->first(fn (ESBTPEvaluation $e) => mb_strtolower(trim((string) $e->titre)) === mb_strtolower($titre));
-        if ($doublon) {
-            return $this->manque("Cette évaluation existe déjà (« {$doublon->titre} », n° {$doublon->id}, le {$debut->format('d/m/Y')}) : utilise son identifiant au lieu d'en créer une seconde.");
-        }
+        return [[
+            'titre' => $titre, 'type' => $type, 'periode' => $periode, 'debut' => $debut, 'fin' => $fin,
+            'bareme' => $bareme, 'coefficient' => $coefficient,
+            'publier' => filter_var($args['publier'] ?? false, FILTER_VALIDATE_BOOLEAN),
+        ], $manques];
+    }
 
-        $publier = filter_var($args['publier'] ?? false, FILTER_VALIDATE_BOOLEAN);
+    /** @param array<string, mixed> $c champs déjà contrôlés par lireLesChamps() */
+    private function proposition(ESBTPClasse $classe, ESBTPMatiere $matiere, ESBTPAnneeUniversitaire $annee, array $c, $memeJour): Proposition
+    {
+        /** @var Carbon $debut */
+        $debut = $c['debut'];
+        $fin = $c['fin'];
         $avertissements = [];
         if ($memeJour->isNotEmpty()) {
             $avertissements[] = $memeJour->count() . ' autre(s) évaluation(s) de cette matière existe(nt) déjà ce jour-là pour cette classe : vérifie qu\'il ne s\'agit pas de la même.';
@@ -132,19 +160,21 @@ final class CreerEvaluation extends ActionAgent
         if ($debut->isPast()) {
             $avertissements[] = 'La date est passée : l\'évaluation sera créée pour une épreuve déjà tenue.';
         }
+        $type = ESBTPEvaluation::getTypes()[$c['type']];
+        $periode = self::libellePeriode($c['periode']);
 
         return new Proposition(
             titre: 'Nouvelle évaluation · ' . $classe->name,
             resume: sprintf('%s « %s » en %s, le %s de %s à %s, sur %s, coefficient %s, %s. %s.',
-                ucfirst($type), $titre, $matiere->name, $debut->format('d/m/Y'), $debut->format('H:i'), $fin->format('H:i'),
-                self::texte($bareme), self::texte($coefficient), self::libellePeriode($periode),
-                $publier ? 'Publiée dès la création' : 'Brouillon (non visible des étudiants)'),
+                $type, $c['titre'], $matiere->name, $debut->format('d/m/Y'), $debut->format('H:i'), $fin->format('H:i'),
+                self::texte($c['bareme']), self::texte($c['coefficient']), $periode,
+                $c['publier'] ? 'Publiée dès la création' : 'Brouillon (non visible des étudiants)'),
             tableau: [
                 'colonnes' => ['Classe', 'Matière', 'Type', 'Date', 'Barème', 'Coefficient', 'Période'],
                 'lignes' => [[
-                    (string) $classe->name, (string) $matiere->name, ucfirst($type),
+                    (string) $classe->name, (string) $matiere->name, $type,
                     $debut->format('d/m/Y H:i') . ' – ' . $fin->format('H:i'),
-                    self::texte($bareme), self::texte($coefficient), self::libellePeriode($periode),
+                    self::texte($c['bareme']), self::texte($c['coefficient']), $periode,
                 ]],
             ],
             avertissements: $avertissements,
@@ -152,14 +182,14 @@ final class CreerEvaluation extends ActionAgent
                 'classe_id' => (int) $classe->id,
                 'matiere_id' => (int) $matiere->id,
                 'annee_universitaire_id' => (int) $annee->id,
-                'titre' => $titre,
-                'type' => $type,
+                'titre' => $c['titre'],
+                'type' => $c['type'],
                 'debut' => $debut->format('Y-m-d H:i'),
                 'fin' => $fin->format('Y-m-d H:i'),
-                'bareme' => $bareme,
-                'coefficient' => $coefficient,
-                'periode' => $periode,
-                'publier' => $publier,
+                'bareme' => $c['bareme'],
+                'coefficient' => $c['coefficient'],
+                'periode' => $c['periode'],
+                'publier' => $c['publier'],
             ],
             // Une évaluation créée entre-temps le même jour (par l'écran ou un
             // autre onglet) change l'empreinte : la validation repropose.
@@ -215,16 +245,20 @@ final class CreerEvaluation extends ActionAgent
         ];
     }
 
-    /** « S1 », « semestre1 », « Semestre 1 », « 1 » → « semestre1 ». Null si inconnu. */
+    /**
+     * « S1 », « semestre1 », « Semestre 1 », « 1 » → « semestre1 ». Null si
+     * la période n'est pas l'une de celles que l'écran propose
+     * (ESBTPEvaluation::getPeriodes()).
+     */
     public static function normaliserPeriode(string $brute): ?string
     {
         $s = mb_strtolower(trim($brute));
         if (preg_match('/^(?:s|sem|semestre)?\s*(\d{1,2})$/u', $s, $m) !== 1) {
             return null;
         }
-        $n = (int) $m[1];
+        $periode = 'semestre' . (int) $m[1];
 
-        return $n >= 1 && $n <= 10 ? 'semestre' . $n : null;
+        return array_key_exists($periode, ESBTPEvaluation::getPeriodes()) ? $periode : null;
     }
 
     /** @return array{0: Carbon, 1: Carbon}|null */
@@ -251,7 +285,7 @@ final class CreerEvaluation extends ActionAgent
 
     public static function libellePeriode(string $periode): string
     {
-        return 'Semestre ' . (int) preg_replace('/\D/', '', $periode);
+        return ESBTPEvaluation::getPeriodes()[$periode] ?? $periode;
     }
 
     /**
