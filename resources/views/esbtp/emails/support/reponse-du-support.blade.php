@@ -4,12 +4,12 @@
     $_rsTitre = \App\Domain\Support\Services\AvertirDuRetourDuSupport::formuler(
         null, ['libelle' => $statut_libelle ?? null, 'code' => $statut_code ?? null], (bool) $a_repondu
     );
-    // La couleur de la pastille porte un sens, comme sur l'écran des demandes :
-    // vert = réglé, gris = clos, couleur pleine = l'école doit agir.
-    [$_rsFond, $_rsTexte] = match ($statut_code ?? '') {
-        'RESOLU' => ['#dcfce7', '#166534'],
-        'FERME' => ['#f1f5f9', '#475569'],
-        'ACTION_REQUISE' => [$emailPrimaryColor, $emailHeaderTextColor],
+    // Même sens que la pastille de l'écran des demandes (TonDuStatut) ; seule
+    // la couleur « attention » diffère : pleine couleur de l'école, pas d'orange.
+    [$_rsFond, $_rsTexte] = match (\App\Domain\Support\TonDuStatut::pour($statut_code ?? null)) {
+        'succes' => ['#dcfce7', '#166534'],
+        'neutre' => ['#f1f5f9', '#475569'],
+        'attention' => [$emailPrimaryColor, $emailHeaderTextColor],
         default => [$emailPrimarySoft, $emailPrimaryColor],
     };
 @endphp

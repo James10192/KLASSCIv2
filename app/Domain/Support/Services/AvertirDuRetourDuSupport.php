@@ -2,6 +2,7 @@
 
 namespace App\Domain\Support\Services;
 
+use App\Domain\Support\TonDuStatut;
 use App\Mail\Support\ReponseDuSupportMail;
 use App\Models\User;
 use App\Services\NotificationService;
@@ -55,7 +56,7 @@ class AvertirDuRetourDuSupport
         }
         $sujet = $objet === null ? 'Votre demande' : "Votre demande {$objet}";
         // « est action requise » ne se lit pas : ce statut se dit autrement.
-        if (($statut['code'] ?? null) === 'ACTION_REQUISE') {
+        if (($statut['code'] ?? null) === TonDuStatut::ACTION_REQUISE) {
             return "{$sujet} attend une action de votre part";
         }
 

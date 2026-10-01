@@ -139,4 +139,14 @@ class CourrielsSupportTest extends TestCase
         $this->assertStringContainsString('Votre demande attend une action de votre part', $email->getHtmlBody());
         $this->assertStringNotContainsString('est action requise', $email->getHtmlBody());
     }
+
+    public function test_la_pastille_de_l_ecran_et_celle_du_courriel_lisent_le_meme_sens(): void
+    {
+        $this->assertSame('succes', \App\Domain\Support\TonDuStatut::pour('RESOLU'));
+        $this->assertSame('attention', \App\Domain\Support\TonDuStatut::pour('ACTION_REQUISE'));
+        $this->assertSame('neutre', \App\Domain\Support\TonDuStatut::pour('FERME'));
+        $this->assertSame('info', \App\Domain\Support\TonDuStatut::pour(null));
+        $pastille = view('support.demandes._statut', ['statut' => ['code' => 'RESOLU', 'libelle' => 'Résolue']])->render();
+        $this->assertStringContainsString('sd-statut--succes', $pastille);
+    }
 }
