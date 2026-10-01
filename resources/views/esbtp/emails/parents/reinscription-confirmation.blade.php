@@ -51,7 +51,7 @@
                 @php
                     [$fondDecision, $texteDecision] = match ($decision) {
                         'passage' => [$emailSuccessText, '#ffffff'],
-                        'redoublement' => [$emailWarningColor, '#78350f'],
+                        'redoublement' => [$emailWarningColor, '#451a03'],
                         default => [$emailPrimaryColor, $emailHeaderTextColor],
                     };
                 @endphp
