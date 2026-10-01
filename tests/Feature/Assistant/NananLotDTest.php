@@ -438,6 +438,15 @@ class NananLotDTest extends TestCase
     }
 
     /** L'égalité numérique ne vaut que pour un réglage numérique : « 0123 » n'est pas « 123 » pour un texte. */
+    public function test_une_virgule_en_base_ne_masque_pas_une_correction(): void
+    {
+        // « 1,5 » en base est lu 1 par castValue : « 1.5 » est donc une vraie correction.
+        $this->assertFalse(\App\Domain\Reglages\ModificationDeReglages::memeNombre('1,5', '1.5'));
+        // Une virgule tapée par l'école vaut un point.
+        $this->assertTrue(\App\Domain\Reglages\ModificationDeReglages::memeNombre('1.5', '1,5'));
+        $this->assertTrue(\App\Domain\Reglages\ModificationDeReglages::memeNombre('0.50', '0.5'));
+    }
+
     public function test_un_texte_garde_ses_zeros_de_tete(): void
     {
         $this->reglage('school_postal_code', '123');
