@@ -201,6 +201,12 @@ class FicheReinscriptionTest extends TestCase
         $this->fiche($this->admin)->assertOk()->assertSee('Préparer 2027-2028')->assertSee('Corriger la réinscription')
             ->assertDontSee("Dossier d'inscription en attente", false);
 
+        // N pas encore finalisée : préparer N+1 partirait de N-1 et sauterait N.
+        $enCours->update(['workflow_step' => 'documents_complets']);
+        $this->fiche($this->admin)->assertOk()->assertDontSee('Préparer 2027-2028')
+            ->assertSee("Dossier d'inscription en attente", false);
+        $enCours->update(['workflow_step' => 'etudiant_cree']);
+
         $e = app(EligibiliteReinscription::class)->pour($this->inscription->etudiant_id, $this->agent, $suivante->id);
         $this->assertSame($enCours->id, $e['inscription']->id, 'on quitte N, pas N-1');
 
@@ -240,6 +246,32 @@ class FicheReinscriptionTest extends TestCase
         $this->assertStringContainsString('déjà inscrit dans cette classe', session('errors')->first('error'));
         $this->assertStringNotContainsString('SQLSTATE', session('errors')->first('error'));
         $this->assertSame('active', $enCours->fresh()->status);
+    }
+
+    public function test_on_ne_saute_pas_une_annee_dont_le_dossier_est_en_cours(): void
+    {
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $this->courante->id,
+            'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+            'status' => 'active',
+            'workflow_step' => 'documents_complets',
+        ]);
+        ESBTPAnneeUniversitaire::where('start_date', '>', $this->courante->start_date)->update(['is_active' => false]);
+        $suivante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => false, 'is_active' => true,
+            'start_date' => $this->courante->start_date->copy()->addYear(), 'end_date' => $this->courante->end_date->copy()->addYear()]);
+        ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->update(['amount' => 0]);
+        $avant = ESBTPInscription::where('etudiant_id', $this->inscription->etudiant_id)->count();
+
+        $this->actingAs($this->admin)
+            ->from(route('esbtp.reinscription.create', $this->inscription->etudiant_id))
+            ->put(route('esbtp.reinscription.update', $this->inscription->etudiant_id), [
+                'nouvelle_classe_id' => $this->inscription->classe_id, 'decision' => 'passage', 'annee_universitaire_id' => $suivante->id,
+            ])
+            ->assertSessionHasErrors('error');
+
+        $this->assertStringContainsString("n'est pas finalisé", session('errors')->first('error'));
+        $this->assertSame($avant, ESBTPInscription::where('etudiant_id', $this->inscription->etudiant_id)->count());
     }
 
     public function test_une_finalisation_bloquee_renvoie_a_la_fiche(): void

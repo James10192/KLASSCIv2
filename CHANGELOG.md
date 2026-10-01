@@ -39,6 +39,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 - Fiche de réinscription : « Corriger la réinscription » reste offert au superadministrateur même quand l'année suivante est ouverte, et un élève réinscrit dont le dossier n'est pas encore validé est signalé « en attente »
+- Réinscription : impossible de préparer l'année suivante tant que le dossier de l'année en cours n'est pas finalisé ; l'élève aurait sauté une année et gardé deux inscriptions actives
 - Finalisation de la réinscription et filtres de la liste des étudiants : le texte « Sélectionner une classe… » s'affichait comme une barre grise illisible (conflit avec une classe de style de Bootstrap)
 - Une page d'erreur (403) devenait une erreur serveur sur une instance dont la table des préférences de Nanan n'était pas encore créée
 - Fiche de réinscription : l'en-tête du tableau précise qu'il ne liste que les matières sous la moyenne de passage

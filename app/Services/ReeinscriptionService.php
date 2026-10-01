@@ -418,6 +418,23 @@ class ReeinscriptionService
                 );
             }
 
+            // Un dossier encore en cours sur une année intermédiaire : réinscrire
+            // plus loin partirait de l'année d'avant et laisserait ce dossier
+            // actif à côté. On le finalise ou on l'annule d'abord.
+            $anneeQuittee = $inscriptionActuelle->anneeUniversitaire;
+            $intermediaire = $anneeQuittee ? \App\Models\ESBTPInscription::query()
+                ->join('esbtp_annee_universitaires as annee', 'annee.id', '=', 'esbtp_inscriptions.annee_universitaire_id')
+                ->where('esbtp_inscriptions.etudiant_id', $etudiantId)
+                ->where('esbtp_inscriptions.status', '!=', 'annulée')
+                ->where('annee.start_date', '>', $anneeQuittee->start_date)
+                ->where('annee.start_date', '<', $nouvelleAnnee->start_date)
+                ->value('annee.name') : null;
+            if ($intermediaire) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException(
+                    "Le dossier de {$intermediaire} n'est pas finalisé : terminez-le ou annulez-le avant de préparer {$nouvelleAnnee->name}."
+                );
+            }
+
             // Une inscription existe déjà sur l'année visée : la refaire la
             // termine et la remplace (correction de classe). Réservé à qui peut
             // déroger — la fiche ne propose « Corriger » qu'à ce compte-là.

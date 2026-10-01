@@ -308,7 +308,8 @@
                     <a href="{{ route('esbtp.inscriptions.index') }}" class="rsd-btn rsd-btn--outline">
                         <i class="fas fa-list"></i>Liste des inscriptions
                     </a>
-                    @if($eligibilite['annee_suivante'])
+                    {{-- Tant que N n'est pas finalisée, préparer N+1 partirait de N-1 et sauterait N. --}}
+                    @if($eligibilite['annee_suivante'] && $existante->workflow_step === 'etudiant_cree')
                         <a href="{{ $lienVers($eligibilite['annee_suivante']) }}" class="rsd-btn rsd-btn--outline">
                             <i class="fas fa-forward"></i>Préparer {{ $eligibilite['annee_suivante']->name }}
                         </a>
