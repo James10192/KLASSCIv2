@@ -67,11 +67,15 @@ class BtsTroncCommunCliTest extends TestCase
         $mark = $controller->markFiliereTroncCommun($markRequest, $inscription->inscriptionOrigine?->filiere_id ?? $inscription->filiere_id);
 
         $sourceClasseId = $inscription->inscriptionOrigine?->classe_id ?? $inscription->classe_id;
-        $targetRequest = Request::create('/', 'POST', ['target_classe_id' => $inscription->classe_id, 'semestre_activation' => 2]);
+        // La sortie va vers la classe de spécialité, pas vers la classe TC
+        // elle-même : la CLI l'acceptait, l'écran l'a toujours refusé, et les
+        // deux passent désormais par ConfigurationTroncCommun.
+        $specialite = ESBTPClasse::whereHas('filiere', fn ($q) => $q->where('parent_id', $inscription->filiere_id))->firstOrFail();
+        $targetRequest = Request::create('/', 'POST', ['target_classe_id' => $specialite->id, 'semestre_activation' => 2]);
         $targetRequest->setUserResolver($resolver);
         $target = $controller->addOrientationTarget($targetRequest, $sourceClasseId);
 
-        $orientRequest = Request::create('/', 'POST', ['target_classe_id' => $inscription->classe_id]);
+        $orientRequest = Request::create('/', 'POST', ['target_classe_id' => $specialite->id]);
         $orientRequest->setUserResolver($resolver);
         $orient = $controller->orientInscription($orientRequest, $inscription->inscriptionOrigine?->id ?? $inscription->id);
 

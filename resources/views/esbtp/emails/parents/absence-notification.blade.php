@@ -1,114 +1,47 @@
-@extends('esbtp.emails.parents.layout', [
-    'emailTitle' => 'Notification d\'Absence',
-    'parentName' => $parentName,
-    'schoolName' => $schoolName ?? 'KLASSCI',
-    'schoolAddress' => $schoolAddress ?? \App\Helpers\SettingsHelper::get('school_address', ''),
-    'schoolPhone' => $schoolPhone ?? \App\Helpers\SettingsHelper::get('school_phone', ''),
-    'schoolEmail' => $schoolEmail ?? \App\Helpers\SettingsHelper::get('school_email', ''),
-    'schoolLogoPath' => $schoolLogoPath ?? null
-])
+@php
+    $emailTitle = "Notification d'absence";
+    $statutTon = 'alerte';
+    $statutTexte = 'Absence';
+    $service = 'Scolarité';
+    $raison = "Message automatique envoyé au contact parent de l'élève {$studentName}. Pour toute question, contactez la scolarité.";
+    // Seuil de l'école (préférence de notification), 80 pour les données d'exemple.
+    $seuilPresence = (int) ($seuilPresence ?? 80);
+    $sousLeSeuil = $tauxPresence < $seuilPresence;
+    $tauxTexte = number_format((float) $tauxPresence, fmod((float) $tauxPresence, 1.0) == 0.0 ? 0 : 1, ',', ' ');
+@endphp
+@extends('esbtp.emails.parents.recu')
+
+@section('preheader'){{ $studentName }} était absent(e) le {{ $date }} en {{ $matiere }}. Vous pouvez justifier cette absence en ligne.
+@endsection
+
+@section('titre'){{ $studentName }} était absent(e) le {{ $date }}
+@endsection
 
 @section('content')
-    <div class="alert alert-warning">
-        <strong>Absence enregistrée</strong><br>
-        Votre enfant {{ $studentName }} a été marqué(e) absent(e) en cours.
-    </div>
-
-    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Détails de l'absence</h3>
-
-    <table class="info-table">
-        <tr>
-            <th style="width: 40%;">Étudiant</th>
-            <td><strong>{{ $studentName }}</strong></td>
-        </tr>
-        <tr>
-            <th>Classe</th>
-            <td>{{ $classe }}</td>
-        </tr>
-        <tr>
-            <th>Date</th>
-            <td><strong style="color: #dc3545;">{{ $date }}</strong></td>
-        </tr>
-        <tr>
-            <th>Heure</th>
-            <td>{{ $heureDebut }} - {{ $heureFin }}</td>
-        </tr>
-        <tr>
-            <th>Matière</th>
-            <td>{{ $matiere }}</td>
-        </tr>
-        <tr>
-            <th>Type d'activité</th>
-            <td><span class="badge badge-info">{{ $typeActivite }}</span></td>
-        </tr>
-        @if(isset($commentaire) && $commentaire)
-        <tr>
-            <th>Commentaire</th>
-            <td>{{ $commentaire }}</td>
-        </tr>
-        @endif
-    </table>
-
-    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Statistiques des absences ({{ $periodeStats }})</h3>
-
-    <div class="kpi-section">
-        <div class="kpi-row">
-            <div class="kpi-card">
-                <div class="kpi-value" style="color: #ffc107;">{{ $absencesJustifiees }}</div>
-                <div class="kpi-label">Absences justifiées</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value" style="color: #dc3545;">{{ $absencesNonJustifiees }}</div>
-                <div class="kpi-label">Absences non justifiées</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="kpi-section" style="margin-top: 10px;">
-        <div class="kpi-row">
-            <div class="kpi-card">
-                <div class="kpi-value">{{ $totalAbsences }}h</div>
-                <div class="kpi-label">Total absences</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $tauxPresence >= 80 ? '#28a745' : '#dc3545' }};">
-                    {{ $tauxPresence }}%
-                </div>
-                <div class="kpi-label">Taux de présence</div>
-            </div>
-        </div>
-    </div>
-
-    @if($absencesNonJustifiees >= 3)
-    <div class="alert alert-danger">
-        <strong>Attention!</strong><br>
-        Votre enfant cumule <strong>{{ $absencesNonJustifiees }} absences non justifiées</strong> ce mois.
-        Les absences répétées peuvent impacter les résultats académiques et la note d'assiduité.
-    </div>
-    @endif
-
-    @if($tauxPresence < 80)
-    <div class="alert alert-warning">
-        <strong>Taux de présence faible</strong><br>
-        Le taux de présence de votre enfant est de {{ $tauxPresence }}%, inférieur au seuil recommandé de 80%.
-        Nous vous encourageons à suivre de près l'assiduité de votre enfant.
-    </div>
-    @endif
-
-    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Justifier cette absence</h3>
-
-    <p class="message">
-        Si cette absence est justifiée (maladie, raison familiale, etc.), vous pouvez soumettre un justificatif via la plateforme.
-    </p>
-
-    <div class="button-container">
-        <a href="{{ $justificationUrl }}" class="button">Soumettre un justificatif</a>
-    </div>
-
-    <div class="divider"></div>
-
-    <p style="color: #6c757d; font-size: 13px;">
-        Les absences justifiées nécessitent un document officiel (certificat médical, attestation, etc.).
-        Les justificatifs doivent être soumis dans un délai de 48 heures.
-    </p>
+<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, {{ $studentName }} a été marqué(e) absent(e) en {{ $matiere }}, de {{ $heureDebut }} à {{ $heureFin }}. Si l'absence est justifiée, vous pouvez transmettre un justificatif en ligne.</p>
+@include('esbtp.emails.parents.partials.vedette', [
+    'libelle' => 'Taux de présence · '.$periodeStats,
+    'valeur' => $tauxTexte,
+    'unite' => '%',
+    'precision' => $sousLeSeuil ? 'Sous le seuil recommandé de '.$seuilPresence.' %' : null,
+    'tonPrecision' => $emailDangerColor,
+    'progression' => $tauxPresence,
+    'couleurBarre' => $sousLeSeuil ? $emailDangerColor : $emailSuccessColor,
+    'gauche' => $absencesNonJustifiees.' non justifiée(s) · '.$absencesJustifiees.' justifiée(s)',
+    'droite' => $totalAbsences.' absence(s) au total',
+])
+@include('esbtp.emails.parents.partials.lignes', ['lignes' => [
+    ['Élève', $studentName],
+    ['Classe', $classe ?? null],
+    ['Date', $date],
+    ['Horaire', $heureDebut.' – '.$heureFin],
+    ['Matière', $matiere],
+    ['Activité', $typeActivite ?? null],
+    ['Commentaire', $commentaire ?? null],
+], 'marge' => '8px 0 0'])
+@if($absencesNonJustifiees >= 3)
+<p style="margin:18px 0 0;font-size:14px;line-height:1.6;color:#334155;"><strong style="color:#0f172a;">{{ $absencesNonJustifiees }} absences non justifiées ce mois-ci.</strong> Les absences répétées peuvent peser sur les résultats et sur la note d'assiduité.</p>
+@endif
+@include('esbtp.emails.partials.bouton', ['url' => $justificationUrl, 'libelle' => 'Soumettre un justificatif', 'pleineLargeur' => true])
+<p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#64748b;">Un justificatif officiel est demandé (certificat médical, attestation…), dans les 48&nbsp;heures.</p>
 @endsection

@@ -382,6 +382,17 @@ class ESBTPInscriptionService
 
             $inscription = ESBTPInscription::findOrFail($inscriptionId);
 
+            // Une inscription annulée ne se revalide jamais, même avec un versement
+            // validé (cas courant après un avoir) : elle réactiverait l'élève et son compte.
+            if (\App\Domain\Inscriptions\ObstacleALaValidation::estAnnulee($inscription)) {
+                DB::rollBack();
+
+                return [
+                    'success' => false,
+                    'message' => 'Cette inscription est annulée : elle ne peut pas être validée.'
+                ];
+            }
+
             // Ne pas valider une inscription déjà complètement validée
             if ($inscription->status === 'active' && $inscription->workflow_step === 'etudiant_cree') {
                 DB::rollBack();
@@ -993,6 +1004,16 @@ class ESBTPInscriptionService
 
                 $etudiantNom = $inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms;
 
+                // Annulée : jamais revalidée, quel que soit le cas ci-dessous.
+                if (\App\Domain\Inscriptions\ObstacleALaValidation::estAnnulee($inscription)) {
+                    $stats['ignorees'][] = [
+                        'id' => $inscription->id,
+                        'etudiant' => $etudiantNom,
+                        'raison' => 'Inscription annulée',
+                    ];
+                    continue;
+                }
+
                 // Cas 1: A déjà un paiement validé ET workflow = en_validation
                 if ($inscription->paiement_validation_id && $inscription->workflow_step === 'en_validation') {
                     $result = $this->processBulkCase1($inscription, $etudiantNom, $forceValidation, $workflowService, $stats, $userId);
@@ -1179,7 +1200,7 @@ class ESBTPInscriptionService
     ): ?array {
         // Vérifier disponibilité classe
         if (!$forceValidation) {
-            $classAvailability = $workflowService->checkClassAvailability($inscription->classe_id);
+            $classAvailability = $workflowService->checkClassAvailability($inscription->classe_id, $inscription->annee_universitaire_id);
             if (!$classAvailability['available']) {
                 return [
                     'id' => $inscription->id,

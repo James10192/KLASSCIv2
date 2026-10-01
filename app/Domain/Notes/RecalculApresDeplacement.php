@@ -813,8 +813,14 @@ final class RecalculApresDeplacement
     public static function motDeLaFin(array $recalcul): string
     {
         $fait = ' '.$recalcul['recalculs_tentes'].' recalcul(s) lance(s).';
+        // Un recalcul en echec laisse la moyenne d'avant, qui l'emporte sur les
+        // notes : le taire ferait croire la reparation complete.
+        if (($recalcul['echecs'] ?? 0) > 0) {
+            $fait .= ' ATTENTION : '.$recalcul['echecs'].' recalcul(s) en echec (journalises) :'
+                .' rejouer POST /api/cli/notes/recompute sur ce perimetre.';
+        }
 
-        if (! $recalcul['reporte']) {
+        if (! ($recalcul['reporte'] ?? false)) {
             return $fait;
         }
 

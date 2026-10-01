@@ -1098,7 +1098,7 @@ class ESBTPPaiementController extends Controller
             'school_address' => \App\Helpers\SettingsHelper::get('school_address', ''),
             'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
             'school_email' => \App\Helpers\SettingsHelper::get('school_email', ''),
-            'show_logo' => \App\Helpers\SettingsHelper::get('receipt_show_logo', '1') === '1',
+            'show_logo' => \App\Helpers\SettingsHelper::drapeau('receipt_show_logo', true),
         ];
 
         // Préparer le logo si nécessaire
