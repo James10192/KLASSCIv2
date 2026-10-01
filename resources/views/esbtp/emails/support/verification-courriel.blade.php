@@ -1,27 +1,36 @@
-@php $primaire = $emailPrimaryColor ?? '#0453cb'; @endphp
-<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:16px auto;background:#ffffff;border-radius:12px;overflow:hidden;">
-    <tr>
-        <td style="background:{{ $primaire }};color:#ffffff;padding:22px 20px;text-align:center;">
-            <div style="font-size:18px;font-weight:bold;">{{ $schoolName }}</div>
-            <div style="font-size:13px;margin-top:6px;opacity:.85;">Confirmation de votre adresse e-mail</div>
-        </td>
-    </tr>
-    <tr>
-        <td style="padding:22px 20px;color:#1e293b;font-size:14px;line-height:1.6;">
-            <p style="margin:0 0 14px;">Bonjour {{ $nom }},</p>
-            <p style="margin:0 0 14px;">Confirmez que cette adresse est bien la vôtre : vous serez alors averti par e-mail quand le support KLASSCI répond à vos demandes.</p>
-            <p style="margin:22px 0;">
-                <a href="{{ $lien }}" style="display:inline-block;background:{{ $primaire }};color:#ffffff;padding:12px 18px;text-decoration:none;font-weight:bold;border-radius:8px;">
-                    Confirmer mon adresse
-                </a>
-            </p>
-            <p style="margin:0;font-size:12px;color:#64748b;">Le lien est valable {{ $heures }} heures et demande d'être connecté à KLASSCI. Si vous n'êtes pas à l'origine de cette demande, ignorez ce message.</p>
-        </td>
-    </tr>
-</table>
-</body>
-</html>
+@extends('esbtp.emails.layout', ['emailTitle' => 'Confirmez votre adresse e‑mail'])
+
+@section('subtitle', 'Support KLASSCI · suivi de vos demandes')
+
+@section('preheader', 'Un clic pour être averti par e-mail des réponses du support. Lien valable '.$heures.' heures.')
+
+@section('content')
+    <p style="margin:0 0 16px;font-size:16px;color:#0f172a;font-weight:600;">Bonjour {{ $nom }},</p>
+    <p style="margin:0 0 6px;">Confirmez que cette adresse est bien la vôtre&nbsp;: vous serez alors averti par e-mail dès que le support KLASSCI répond à l'une de vos demandes.</p>
+
+    @include('esbtp.emails.partials.bouton', ['url' => $lien, 'libelle' => 'Confirmer mon adresse'])
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 8px;background:{{ $emailPrimarySoft }};border-radius:14px;">
+        <tr>
+            <td style="padding:16px 20px;font-size:13px;line-height:1.6;color:#475569;">
+                <div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:{{ $emailPrimaryColor }};margin-bottom:6px;">Bon à savoir</div>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:13px;line-height:1.6;color:#475569;">
+                    <tr>
+                        <td width="16" valign="top" style="width:16px;padding:2px 0;color:{{ $emailPrimaryColor }};">&bull;</td>
+                        <td valign="top" style="padding:2px 0;">Le lien est valable <strong style="color:#0f172a;">{{ $heures }} heures</strong>.</td>
+                    </tr>
+                    <tr>
+                        <td width="16" valign="top" style="width:16px;padding:2px 0;color:{{ $emailPrimaryColor }};">&bull;</td>
+                        <td valign="top" style="padding:2px 0;">Il s'ouvre dans KLASSCI&nbsp;: connectez-vous d'abord si on vous le demande.</td>
+                    </tr>
+                    <tr>
+                        <td width="16" valign="top" style="width:16px;padding:2px 0;color:{{ $emailPrimaryColor }};">&bull;</td>
+                        <td valign="top" style="padding:2px 0;">Vous n'êtes pas à l'origine de cette demande&nbsp;? Ignorez simplement ce message.</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+@endsection
+
+@section('mention', 'Message automatique du support KLASSCI, merci de ne pas y répondre.')

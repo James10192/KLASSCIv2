@@ -7,6 +7,7 @@ use App\Models\ESBTPVerificationContact;
 use App\Services\MailPulse\MailPulseVerifications;
 use App\Services\MailPulse\ResultatVerificationDistante;
 use App\Services\MailPulse\RefusMailPulse;
+use App\Services\TenantScolariteSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -27,6 +28,7 @@ class ExpediteurVerification
     public function __construct(
         private readonly CourrielVerification $courriel,
         private readonly MailPulseVerifications $whatsapp,
+        private readonly TenantScolariteSettings $reglages,
     ) {}
 
     public function expedier(ESBTPVerificationContact $verification): ResultatVerificationDistante
@@ -94,7 +96,9 @@ class ExpediteurVerification
 
     private function parWhatsapp(ESBTPVerificationContact $verification): ResultatVerificationDistante
     {
-        $resultat = $this->whatsapp->creer($verification->destination, $verification->demande_id);
+        $resultat = $this->creerWhatsapp($verification);
+        // Un renvoi refuse (pacing, quota) laisse la verification precedente
+        // valable : son lien reste en cache, la famille peut encore l'utiliser.
         if (! $resultat->ok) {
             return $resultat;
         }
@@ -106,7 +110,36 @@ class ExpediteurVerification
             'code_expire_at' => now()->addMinutes((int) config('verification_contact.code_whatsapp_expire_minutes', 10)),
         ]);
 
-        return $ecrit ? $resultat : ResultatVerificationDistante::echec(self::CONTACT_CHANGE);
+        if (! $ecrit) {
+            return ResultatVerificationDistante::echec(self::CONTACT_CHANGE);
+        }
+        if ($resultat->lienWhatsapp !== null) {
+            LienWhatsappVerification::poser($verification->demande_id, $resultat->lienWhatsapp);
+        } else {
+            // Repli sur l'envoi classique : l'ancien lien designe une
+            // verification que MailPulse vient de remplacer.
+            LienWhatsappVerification::oublier($verification->demande_id);
+        }
+
+        return $resultat;
+    }
+
+    /**
+     * Inversee quand l'ecole l'a choisi : la famille envoie le code au numero
+     * de l'ecole, et aucun message ne part vers un inconnu. Si MailPulse ne
+     * peut pas lire les messages entrants de ce numero, le code part comme avant.
+     */
+    private function creerWhatsapp(ESBTPVerificationContact $verification): ResultatVerificationDistante
+    {
+        if ($this->reglages->verificationWhatsappInverse()) {
+            $inverse = $this->whatsapp->creerInverse($verification->destination, $verification->demande_id);
+            if ($inverse->ok || $inverse->code !== 'inverse_indisponible') {
+                return $inverse;
+            }
+            Log::info('Verification de contact : mode inverse indisponible, envoi du code', ['demande_id' => $verification->demande_id]);
+        }
+
+        return $this->whatsapp->creer($verification->destination, $verification->demande_id);
     }
 
     /**

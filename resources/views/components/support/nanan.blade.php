@@ -106,7 +106,7 @@ if (typeof window.klassciNananSupport !== 'function') {
             cleBrouillon() { return 'klassci.nanan.support.' + (this.support.utilisateur || 'anonyme'); },
 
             ouvrir(code, declencheur) {
-                this.declencheur = declencheur || document.activeElement;
+                this.declencheur = this.fermerLeMenu(declencheur || document.activeElement);
                 this.codeSuivi = code || null;
                 this.erreur = '';
                 if (this.vue === 'envoye' || this.vue === 'merci') { this.recommencer(); }
@@ -115,6 +115,41 @@ if (typeof window.klassciNananSupport !== 'function') {
                 document.documentElement.classList.add('nsp-ouvert');
                 var self = this;
                 this.$nextTick(function () { self.focaliser(); });
+            },
+
+            /* L'entrée « Aide » vit dans la feuille du compte (mobile) ou le menu
+               du profil (bureau). Le clic est arrêté avant eux : sans ceci, ils
+               restaient ouverts et la feuille masquait Nanan. On les referme
+               comme la palette de recherche, et le focus reviendra, à la
+               fermeture, à ce qui les avait ouverts plutôt qu'à une entrée cachée. */
+            fermerLeMenu(declencheur) {
+                var retour = declencheur;
+                var menu = declencheur && declencheur.closest ? declencheur.closest('.dropdown-menu') : null;
+                if (menu && menu.getAttribute('aria-labelledby')) {
+                    retour = document.getElementById(menu.getAttribute('aria-labelledby')) || retour;
+                }
+                if (window.bootstrap && window.bootstrap.Dropdown) {
+                    document.querySelectorAll('[data-bs-toggle="dropdown"][aria-expanded="true"]').forEach(function (bouton) {
+                        var instance = window.bootstrap.Dropdown.getInstance(bouton);
+                        if (instance) { instance.hide(); }
+                    });
+                }
+                var feuille = declencheur && declencheur.closest ? declencheur.closest('.m-sheet-root') : null;
+                /* La feuille rend, en se fermant, le focus à ce qui l'avait avant elle (son
+                   bouton au clavier ; au doigt, souvent le corps de page) : c'est lui qu'on retient. */
+                window.dispatchEvent(new CustomEvent('m-sheet:close'));
+                if (feuille) {
+                    retour = document.activeElement;
+                    /* Au doigt (iOS), la feuille n'a rien eu à rendre : le focus est resté sur son
+                       propre bouton « Fermer », désormais caché. On revient au bouton qui l'ouvre. */
+                    if (!retour || retour === document.body || feuille.contains(retour)) {
+                        retour = feuille.id ? document.querySelector('[aria-controls="' + feuille.id + '"]') : null;
+                    }
+                }
+                /* x-trap rendra le focus à l'élément actif au moment où Nanan s'ouvre :
+                   ce doit être l'ouvreur, pas l'entrée du menu qui vient d'être cachée. */
+                if (retour !== declencheur && retour && typeof retour.focus === 'function') { retour.focus({ preventScroll: true }); }
+                return retour;
             },
 
             fermer() {
@@ -679,8 +714,10 @@ if (typeof window.klassciNananSupport !== 'function') {
 
 <style>
     html.nsp-ouvert .m-bottomnav, html.nsp-ouvert .m-fab { z-index: 1040; }
-    .nsp-voile { position: fixed; inset: 0; z-index: 1094; background: rgba(15,23,42,.45); }
-    .nsp-fenetre { position: fixed; z-index: 1095; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    /* Au-dessus des feuilles mobiles (m-sheet, 1095-1096) : leur fermeture anime
+       encore le panneau quand Nanan apparaît. */
+    .nsp-voile { position: fixed; inset: 0; z-index: 1097; background: rgba(15,23,42,.45); }
+    .nsp-fenetre { position: fixed; z-index: 1098; left: 50%; top: 50%; transform: translate(-50%, -50%);
         width: min(520px, calc(100vw - 2rem)); height: min(680px, calc(100vh - 2rem));
         display: flex; flex-direction: column; background: #fff; border-radius: 18px; overflow: hidden;
         box-shadow: 0 24px 60px rgba(15,23,42,.22); }

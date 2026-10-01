@@ -72,6 +72,13 @@ class ExportRenderer
      */
     public function emailPdf(ExportableReport $report, string $toEmail, ?string $senderName = null): void
     {
+        // Le mailer `mailpulse` refuse toute pièce jointe. Le dire ici, avant de
+        // construire le PDF : mis en file, le refus ne tomberait que dans un job
+        // échoué, après que l'écran a annoncé « en cours d'envoi ».
+        if (\App\Mail\Transport\MailPulseTransport::actif()) {
+            throw new \DomainException("L'envoi d'un PDF par e-mail n'est pas disponible : la messagerie de l'établissement ne transporte pas les pièces jointes. Téléchargez le PDF.");
+        }
+
         $binary = $this->buildPdf($report)->output();
         $mailable = new \App\Mail\ExportableReportMail(
             reportTitle: $report->title(),
