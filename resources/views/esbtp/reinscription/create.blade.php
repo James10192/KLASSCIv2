@@ -72,7 +72,7 @@
         cursor: pointer;
     }
 
-    .searchable-select-trigger-text.placeholder {
+    .searchable-select-trigger-text.est-indicatif {
         color: #64748b;
         font-style: italic;
     }
@@ -466,7 +466,7 @@
                                 data-initial-value="{{ old('nouvelle_classe_id') }}">
                                     <input type="hidden" name="nouvelle_classe_id" :value="selectedValue" id="nouvelle_classe_id">
                                     <button type="button" class="searchable-select-trigger" @click="open = !open" :disabled="!choixFiliere || choixFiliere !== 'meme'">
-                                        <span class="searchable-select-trigger-text" :class="{ 'placeholder': selectedValue === '' }" x-text="selectedLabel || placeholder"></span>
+                                        <span class="searchable-select-trigger-text" :class="{ 'est-indicatif': selectedValue === '' }" x-text="selectedLabel || placeholder"></span>
                                         <i class="fas fa-chevron-down searchable-select-icon"></i>
                                     </button>
                                     <div x-show="open" class="searchable-select-dropdown" x-cloak>
@@ -541,7 +541,7 @@
                                     x-init="window.autreClasseSelector = $data">
                                         <input type="hidden" name="autre_classe_id" :value="selectedValue" id="autre_classe_id">
                                         <button type="button" class="searchable-select-trigger" @click="open = !open">
-                                            <span class="searchable-select-trigger-text" :class="{ 'placeholder': selectedValue === '' }" x-text="selectedLabel || placeholder"></span>
+                                            <span class="searchable-select-trigger-text" :class="{ 'est-indicatif': selectedValue === '' }" x-text="selectedLabel || placeholder"></span>
                                             <i class="fas fa-chevron-down searchable-select-icon"></i>
                                         </button>
                                         <div x-show="open" class="searchable-select-dropdown" x-cloak>

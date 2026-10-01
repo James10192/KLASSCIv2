@@ -503,7 +503,7 @@
 
             @if(count($analyse['matieres_echouees']) > 0)
                 <table class="rsd-table" aria-label="Matières sous la moyenne de passage">
-                    <thead><tr><th>Matière</th><th>Moyenne</th></tr></thead>
+                    <thead><tr><th>Matière sous la moyenne de passage</th><th>Moyenne</th></tr></thead>
                     <tbody>
                         @foreach($analyse['matieres_echouees'] as $matiere)
                             <tr>
