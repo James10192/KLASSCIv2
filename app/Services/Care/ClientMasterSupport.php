@@ -182,6 +182,22 @@ class ClientMasterSupport
     }
 
     /**
+     * Les demandes de toute l'ecole modifiees depuis une date (resume : statut,
+     * rapporteur, derniere reponse). `reporter` est exige par la validation du
+     * Master mais ignore en `scope=school` : c'est l'instance, pas une personne,
+     * qui interroge ici.
+     */
+    public function demandesModifiees(?string $depuis, int $page = 1): array
+    {
+        return $this->requete('GET', 'tickets', array_filter([
+            'reporter' => 1,
+            'scope' => 'school',
+            'mis_a_jour_depuis' => $depuis,
+            'page' => $page,
+        ], fn ($v) => $v !== null));
+    }
+
+    /**
      * Une reponse de l'ecole dans la conversation. La cle d'idempotence vient
      * du navigateur : un double clic ou un renvoi apres coupure ne publie
      * pas deux fois le meme message.
