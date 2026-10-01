@@ -48,9 +48,10 @@ class ConfirmationContactEcole
      */
     public function confirmerAuGuichet(Model $demande, string $empreinte, int $agentId): array
     {
-        return $this->poser($demande, $empreinte, $agentId, fn (Model $ligne): bool => $ligne->contact_confirme_at === null
-            && $ligne->email_verifie_at === null
-            && $ligne->telephone_verifie_at === null);
+        // Seule une confirmation au guichet deja posee rend l'acte inutile :
+        // un e-mail prouve par code ne suffit pas si l'ecole n'envoie que par
+        // WhatsApp, et confirmer n'efface aucune preuve deja acquise.
+        return $this->poser($demande, $empreinte, $agentId, fn (Model $ligne): bool => $ligne->contact_confirme_at === null);
     }
 
     /**
