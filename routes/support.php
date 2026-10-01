@@ -3,6 +3,7 @@
 use App\Http\Controllers\ESBTP\ReinscriptionIndexController;
 use App\Http\Controllers\Support\DemandeSupportController;
 use App\Http\Controllers\Support\PieceJointeDemandeController;
+use App\Http\Controllers\Support\VerificationCourrielController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -23,6 +24,12 @@ Route::middleware(['auth'])->prefix('support')->name('support.')->group(function
         ->middleware('throttle:20,1')->name('demandes.pieces.store');
     Route::get('demandes/{reference}/pieces/{piece}', [PieceJointeDemandeController::class, 'show'])
         ->whereNumber('piece')->middleware('throttle:60,1')->name('demandes.pieces.show');
+
+    // Confirmer son adresse pour etre averti par e-mail des reponses du support.
+    Route::post('courriel/lien', [VerificationCourrielController::class, 'envoyer'])
+        ->middleware('throttle:3,10')->name('courriel.lien');
+    Route::get('courriel/confirmer/{id}/{hash}', [VerificationCourrielController::class, 'confirmer'])
+        ->whereNumber('id')->middleware(['signed', 'throttle:10,1'])->name('courriel.confirmer');
 });
 
 /*

@@ -8,12 +8,22 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Log;
 
-/** Un signalement en attente d'envoi au Master. */
+/**
+ * Un envoi au Master en attente : un signalement, ou un avis 👍 / 👎 sur une
+ * reponse de l'assistant. Les deux partagent la reprise ; seul l'ecran
+ * « Mes demandes » ne montre que les signalements.
+ */
 class SupportOutbox extends Model
 {
+    public const SIGNALEMENT = 'ticket';
+
+    public const AVIS_ASSISTANT = 'assistant_feedback';
+
     protected $table = 'support_outbox';
 
-    protected $fillable = ['user_id', 'idempotency_key', 'payload', 'request_id', 'next_attempt_at'];
+    protected $fillable = ['user_id', 'kind', 'idempotency_key', 'payload', 'request_id', 'next_attempt_at'];
+
+    protected $attributes = ['kind' => self::SIGNALEMENT];
 
     protected $casts = [
         'payload' => 'array',
@@ -30,6 +40,11 @@ class SupportOutbox extends Model
     public function scopeEnAttente(Builder $query): Builder
     {
         return $query->whereNull('sent_at')->whereNull('abandoned_at');
+    }
+
+    public function scopeSignalements(Builder $query): Builder
+    {
+        return $query->where('kind', self::SIGNALEMENT);
     }
 
     public function scopeAEnvoyer(Builder $query): Builder
@@ -70,5 +85,18 @@ class SupportOutbox extends Model
             $this->next_attempt_at = now()->addMinutes(min(60, 2 ** ($this->attempts - 1)));
         }
         $this->save();
+    }
+
+    /**
+     * Remis a plus tard sans compter d'essai : la ligne n'est pas en cause
+     * (route ou portee pas encore ouverte au Master), elle ne doit pas
+     * s'approcher de l'abandon pendant qu'on attend.
+     */
+    public function differer(string $raison, int $minutes = 60): void
+    {
+        $this->forceFill([
+            'last_error' => mb_substr($raison, 0, 1000),
+            'next_attempt_at' => now()->addMinutes($minutes),
+        ])->save();
     }
 }
