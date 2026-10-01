@@ -62,6 +62,8 @@ return [
         'actives' => (bool) env('ASSISTANT_ACTIONS', true),
         'classes' => [
             \App\Domain\Assistant\Actions\Notes\SaisirNotes::class,
+            \App\Domain\Assistant\Actions\Bulletins\SupprimerMoyennesSansNote::class,
+            \App\Domain\Assistant\Actions\Matieres\ConfigurerMaquetteBts::class,
         ],
     ],
 

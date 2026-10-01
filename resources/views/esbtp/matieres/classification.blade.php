@@ -104,6 +104,8 @@
     .mtc-seg-btn:hover:not(.mtc-seg-btn--active) { background: rgba(4,83,203,.05); color: #0453cb; }
     .mtc-seg-btn--tc.mtc-seg-btn--active { background: #0453cb; color: #fff; }
     .mtc-seg-btn--spe.mtc-seg-btn--active { background: #334155; color: #fff; }
+    .mtc-seg-btn--general.mtc-seg-btn--active { background: #0453cb; color: #fff; }
+    .mtc-seg-btn--technique.mtc-seg-btn--active { background: #059669; color: #fff; }
 
     /* Place sur le bulletin : numéro + deux flèches. Cibles tactiles 44px. */
     .mtc-rank { display: inline-flex; align-items: center; gap: .3rem; flex-shrink: 0; }
@@ -207,7 +209,7 @@
                          elle est citée dans le journal des versions et dans la
                          requête SQL de `lmd-ecue-leak-bts-picker.md`. --}}
                     <h1>Maquette du bulletin</h1>
-                    <p>Par filière et niveau : quelles matières composent le bulletin, à quel semestre, dans quel ordre, et lesquelles relèvent du tronc commun.</p>
+                    <p>Une seule configuration par filière et niveau : matières, S1/S2, tronc commun/spécialité, bloc Général/Technique et ordre du bulletin.</p>
                 </div>
             </div>
             <a href="{{ route('esbtp.matieres.index') }}" class="mtc-mini"><i class="fas fa-arrow-left"></i> Matières</a>
@@ -217,6 +219,10 @@
             <div class="mtc-kpi"><div class="mtc-kpi-value" x-text="kpis.tronc_commun"></div><div class="mtc-kpi-label">Tronc commun</div></div>
             <div class="mtc-kpi"><div class="mtc-kpi-value" x-text="kpis.specialite"></div><div class="mtc-kpi-label">Spécialité</div></div>
             <div class="mtc-kpi"><div class="mtc-kpi-value" x-text="kpis.non_classe"></div><div class="mtc-kpi-label">Non classé</div></div>
+            @can('bulletins.configure')
+            <div class="mtc-kpi"><div class="mtc-kpi-value" x-text="kpis.general"></div><div class="mtc-kpi-label">Général</div></div>
+            <div class="mtc-kpi"><div class="mtc-kpi-value" x-text="kpis.technique"></div><div class="mtc-kpi-label">Technique</div></div>
+            @endcan
         </div>
     </div>
 
@@ -264,7 +270,7 @@
                 @include('esbtp.matieres.partials._classification-maquette')
 
                 <div class="mtc-bulk">
-                    <span class="mtc-bulk-lbl">Tout marquer :</span>
+                    <span class="mtc-bulk-lbl">TC / Spécialité :</span>
                     <button type="button" class="mtc-mini" @click="bulk('tronc_commun')" :disabled="saving">Tronc commun</button>
                     <button type="button" class="mtc-mini" @click="bulk('specialite')" :disabled="saving">Spécialité</button>
                     <button type="button" class="mtc-mini" @click="bulk(null)" :disabled="saving">Effacer</button>
@@ -274,6 +280,16 @@
                         </button>
                     </template>
                 </div>
+
+                @can('bulletins.configure')
+                <div class="mtc-bulk">
+                    <span class="mtc-bulk-lbl">Bloc du bulletin :</span>
+                    <button type="button" class="mtc-mini" @click="bulkFormationType('general')" :disabled="saving">Général</button>
+                    <button type="button" class="mtc-mini" @click="bulkFormationType('technique')" :disabled="saving">Technique</button>
+                    <button type="button" class="mtc-mini" @click="bulkFormationType(null)" :disabled="saving">Hériter du type matière</button>
+                    <span class="mtc-bulk-lbl">Ce choix devient le défaut de toutes les classes de ce couple filière × niveau ; Résultats peut toujours le surcharger par classe/période.</span>
+                </div>
+                @endcan
 
                 @include('esbtp.matieres.partials._classification-row')
 

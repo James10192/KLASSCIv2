@@ -13,12 +13,12 @@
                     <div class="bcfg-toggles" style="margin-bottom:1rem;">
                         <label class="bcfg-toggle" for="lmd_bulletin_show_republic_info">
                             <span class="bcfg-toggle-label">Informations de la République</span>
-                            <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_republic_info" name="lmd_bulletin_show_republic_info" value="1"
+                            <input type="hidden" name="lmd_bulletin_show_republic_info_present" value="1"><input class="form-check-input" type="checkbox" id="lmd_bulletin_show_republic_info" name="lmd_bulletin_show_republic_info" value="1"
                                    {{ ($settings['lmd_bulletin_show_republic_info'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="lmd_bulletin_show_ministry_info">
                             <span class="bcfg-toggle-label">Informations du ministère</span>
-                            <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_ministry_info" name="lmd_bulletin_show_ministry_info" value="1"
+                            <input type="hidden" name="lmd_bulletin_show_ministry_info_present" value="1"><input class="form-check-input" type="checkbox" id="lmd_bulletin_show_ministry_info" name="lmd_bulletin_show_ministry_info" value="1"
                                    {{ ($settings['lmd_bulletin_show_ministry_info'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                     </div>
@@ -57,7 +57,7 @@
                     <div class="bcfg-toggles" style="margin-bottom:1rem;">
                         <label class="bcfg-toggle" for="lmd_bulletin_show_etablissement_box">
                             <span class="bcfg-toggle-label">Afficher l'encadré établissement</span>
-                            <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_etablissement_box" name="lmd_bulletin_show_etablissement_box" value="1"
+                            <input type="hidden" name="lmd_bulletin_show_etablissement_box_present" value="1"><input class="form-check-input" type="checkbox" id="lmd_bulletin_show_etablissement_box" name="lmd_bulletin_show_etablissement_box" value="1"
                                    {{ ($settings['lmd_bulletin_show_etablissement_box'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                     </div>
@@ -99,22 +99,22 @@
                     <div class="bcfg-toggles" style="margin-bottom:1rem;">
                         <label class="bcfg-toggle" for="lmd_bulletin_show_domaine">
                             <span class="bcfg-toggle-label">Afficher Domaine</span>
-                            <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_domaine" name="lmd_bulletin_show_domaine" value="1"
+                            <input type="hidden" name="lmd_bulletin_show_domaine_present" value="1"><input class="form-check-input" type="checkbox" id="lmd_bulletin_show_domaine" name="lmd_bulletin_show_domaine" value="1"
                                    {{ ($settings['lmd_bulletin_show_domaine'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="lmd_bulletin_show_mention">
                             <span class="bcfg-toggle-label">Afficher Mention</span>
-                            <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_mention" name="lmd_bulletin_show_mention" value="1"
+                            <input type="hidden" name="lmd_bulletin_show_mention_present" value="1"><input class="form-check-input" type="checkbox" id="lmd_bulletin_show_mention" name="lmd_bulletin_show_mention" value="1"
                                    {{ ($settings['lmd_bulletin_show_mention'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="lmd_bulletin_show_specialite">
                             <span class="bcfg-toggle-label" title="Aucune spécialité n'est encore enregistrée sur les étudiants : la ligne reste absente du bulletin tant que la donnée n'existe pas.">Afficher Spécialité (aucune donnée pour l'instant)</span>
-                            <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_specialite" name="lmd_bulletin_show_specialite" value="1"
+                            <input type="hidden" name="lmd_bulletin_show_specialite_present" value="1"><input class="form-check-input" type="checkbox" id="lmd_bulletin_show_specialite" name="lmd_bulletin_show_specialite" value="1"
                                    {{ ($settings['lmd_bulletin_show_specialite'] ?? '0') == '1' ? 'checked' : '' }}>
                         </label>
                         <label class="bcfg-toggle" for="lmd_bulletin_show_parcours">
                             <span class="bcfg-toggle-label">Afficher Parcours</span>
-                            <input class="form-check-input" type="checkbox" id="lmd_bulletin_show_parcours" name="lmd_bulletin_show_parcours" value="1"
+                            <input type="hidden" name="lmd_bulletin_show_parcours_present" value="1"><input class="form-check-input" type="checkbox" id="lmd_bulletin_show_parcours" name="lmd_bulletin_show_parcours" value="1"
                                    {{ ($settings['lmd_bulletin_show_parcours'] ?? '1') == '1' ? 'checked' : '' }}>
                         </label>
                     </div>

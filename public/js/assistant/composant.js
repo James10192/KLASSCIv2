@@ -337,6 +337,14 @@
             corpsRequete: function (texte) {
                 // Le modèle n'est envoyé que si le sélecteur est proposé (permission assistant.model.choose).
                 var avecChoix = this.cfg.modeles && this.cfg.modeles.liste && this.modeleChoisi;
+                // Certaines pages exposent un contexte métier précis (ex. une
+                // moyenne sans note visible). Il est relu à chaque envoi, et
+                // non mémorisé : un changement AJAX de période reste juste.
+                var contextePage;
+                var noeudContexte = document.querySelector('[data-ast-page-context]');
+                if (noeudContexte && noeudContexte.dataset.astPageContext) {
+                    try { contextePage = JSON.parse(noeudContexte.dataset.astPageContext); } catch (e) { contextePage = undefined; }
+                }
                 return JSON.stringify({
                     modele: avecChoix ? this.modeleChoisi : undefined,
                     message: texte,
@@ -344,6 +352,7 @@
                     current_url: window.location.href.slice(0, 2048),
                     current_path: window.location.pathname.slice(0, 1024),
                     page_title: document.title.slice(0, 255),
+                    page_context: contextePage,
                     // Réessai : le serveur remplace la réponse ratée au lieu d'ajouter un tour.
                     relance: this.relanceEnCours || undefined,
                     pieces: this.piecesPretes().map(function (p) { return p.id; })

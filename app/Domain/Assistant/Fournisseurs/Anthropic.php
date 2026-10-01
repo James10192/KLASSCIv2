@@ -144,7 +144,7 @@ class Anthropic extends AdaptateurHttp
             'system' => $oauth
                 ? $requete->systeme
                 : [['type' => 'text', 'text' => $requete->systeme, 'cache_control' => ['type' => 'ephemeral']]],
-            'messages' => $this->messages($requete->messages),
+            'messages' => $this->messages($requete->messages, $requete->images),
         ];
 
         if ($requete->outils !== [] && $modele->outils) {
@@ -159,11 +159,13 @@ class Anthropic extends AdaptateurHttp
         return $corps;
     }
 
-    private function messages(array $messages): array
+    private function messages(array $messages, array $images = []): array
     {
         $sortie = [];
+        $dernierUtilisateur = null;
+        foreach ($messages as $i => $message) { if (($message['role'] ?? null) === 'user') { $dernierUtilisateur = $i; } }
 
-        foreach ($messages as $m) {
+        foreach ($messages as $i => $m) {
             if ($m['role'] === 'outil') {
                 $resultat = ['type' => 'tool_result', 'tool_use_id' => $m['id'], 'content' => $m['resultat']];
                 $dernier = end($sortie);
@@ -188,7 +190,15 @@ class Anthropic extends AdaptateurHttp
                 continue;
             }
 
-            $sortie[] = ['role' => 'user', 'content' => (string) ($m['texte'] ?? '')];
+            $contenu = (string) ($m['texte'] ?? '');
+            if ($i === $dernierUtilisateur && $images !== []) {
+                $blocs = [['type' => 'text', 'text' => $contenu]];
+                foreach ($images as $image) {
+                    $blocs[] = ['type' => 'image', 'source' => ['type' => 'base64', 'media_type' => $image['mime'], 'data' => $image['base64']]];
+                }
+                $contenu = $blocs;
+            }
+            $sortie[] = ['role' => 'user', 'content' => $contenu];
         }
 
         return $sortie;

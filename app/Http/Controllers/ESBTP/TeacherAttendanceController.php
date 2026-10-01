@@ -8,7 +8,6 @@ use App\Models\ESBTPTeacher;
 use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPAttendanceSettings;
 use App\Models\ESBTPEmploiTemps;
-use App\Models\ESBTPMatiere;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPSessionWorkflow;
 use App\Services\NotificationService;
@@ -333,56 +332,6 @@ class TeacherAttendanceController extends Controller
 
         return redirect()->route('teacher.dashboard')
             ->with('error', 'Délai d\'émargement dépassé (' . $fenetres->minutes(FenetresDEmargement::CLE_RETARD) . ' minutes après le début). Vous êtes marqué absent : la séance ne sera pas comptée. Adressez-vous à la coordination si c\'est une erreur.');
-    }
-
-    public function generateDailyCode()
-    {
-        $this->authorize('attendances.generate_codes');
-
-        $code = ESBTPDailyCode::create([
-            'code' => ESBTPDailyCode::generateCode(),
-            'expiration' => now()->addHours(24),
-            'is_active' => true,
-            'generated_by' => auth()->id()
-        ]);
-
-        return redirect()->back()->with('success', 'Code généré avec succès: ' . $code->code);
-    }
-
-    public function signAttendance(Request $request)
-    {
-        $request->validate([
-            'code' => 'required|string|size:6',
-            'course_id' => 'required|exists:esbtp_matieres,id'
-        ]);
-
-        $dailyCode = ESBTPDailyCode::where('code', $request->code)
-            ->where('is_active', true)
-            ->where('expiration', '>', now())
-            ->firstOrFail();
-
-        // Vérifier si l'enseignant n'a pas déjà émargé pour ce cours
-        $existingAttendance = ESBTPTeacherAttendance::where([
-            'teacher_id' => auth()->id(),
-            'course_id' => $request->course_id,
-            'daily_code_id' => $dailyCode->id
-        ])->first();
-
-        if ($existingAttendance) {
-            return redirect()->back()->with('error', 'Vous avez déjà émargé pour ce cours.');
-        }
-
-        // Créer l'enregistrement de présence
-        ESBTPTeacherAttendance::create([
-            'teacher_id' => auth()->id(),
-            'course_id' => $request->course_id,
-            'daily_code_id' => $dailyCode->id,
-            'validated_at' => now(),
-            'ip_address' => $request->ip(),
-            'device_info' => $request->userAgent()
-        ]);
-
-        return redirect()->back()->with('success', 'Présence enregistrée avec succès.');
     }
 
     /**

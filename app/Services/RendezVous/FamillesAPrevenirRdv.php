@@ -10,8 +10,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Les familles qu'aucun courriel n'a prevenues de leur rendez-vous a venir :
- * sans adresse, envoi refuse, ou reservation d'avant le suivi des envois.
+ * Les familles qu'aucun canal numerique n'a prevenues de leur rendez-vous a
+ * venir : aucun contact joignable, envoi refuse, ou reservation d'avant le
+ * suivi des envois.
  *
  * Une convocation « en attente » n'y figure pas : elle partira au prochain
  * envoi. Un creneau deja commence non plus : il n'y a plus personne a prevenir,
@@ -19,10 +20,6 @@ use Illuminate\Support\Facades\DB;
  * refuse) non plus : on n'appelle pas un candidat refuse pour lui rappeler son
  * rendez-vous. Une famille prevenue par telephone en sort : la liste raccourcit
  * au fil des appels.
- *
- * concerne() et requete() disent la meme chose, l'une pour une ligne en main,
- * l'autre en SQL : l'ecran, le verrou et la liste d'appel ne peuvent pas
- * diverger.
  */
 class FamillesAPrevenirRdv
 {
@@ -34,8 +31,10 @@ class FamillesAPrevenirRdv
         'non_annulable' => 'Cet appel ne peut plus être annulé.',
     ];
 
-    public function __construct(private readonly ContactsFamilleRdv $contacts)
-    {
+    public function __construct(
+        private readonly ContactsFamilleRdv $contacts,
+        private readonly CanalConvocationDisponible $canaux,
+    ) {
     }
 
     public static function message(string $code): string
@@ -82,8 +81,8 @@ class FamillesAPrevenirRdv
     /**
      * Annule un « prevenue » pose par erreur : la famille revient dans la liste
      * d'appel. Rien ne part tout seul — repasser par la file d'envoi relancerait
-     * un courriel que l'ecole n'a pas demande ; avec une adresse, c'est
-     * « Relancer les echecs » qui decide.
+     * une convocation que l'ecole n'a pas demandee ; avec un canal numerique,
+     * c'est « Relancer les echecs » qui decide.
      */
     public function annulerPrevenue(ESBTPRdvReservation $reservation): ?string
     {
@@ -92,10 +91,10 @@ class FamillesAPrevenirRdv
             if ($r === null || ! $this->annulable($r)) {
                 return 'non_annulable';
             }
-            $avecAdresse = filter_var(trim((string) $r->email), FILTER_VALIDATE_EMAIL) !== false;
+            $avecCanalNumerique = $this->canaux->pour($r) !== null;
             $r->forceFill([
-                'convocation_statut' => $avecAdresse ? StatutConvocationRdv::Echec : StatutConvocationRdv::SansEmail,
-                'convocation_erreur' => $avecAdresse ? 'Appel annulé : convocation à relancer ou famille à rappeler.' : null,
+                'convocation_statut' => $avecCanalNumerique ? StatutConvocationRdv::Echec : StatutConvocationRdv::SansEmail,
+                'convocation_erreur' => $avecCanalNumerique ? 'Appel annulé : convocation à relancer ou famille à rappeler.' : null,
                 'convocation_envoyee_at' => null,
                 'prevenue_par' => null,
             ])->save();
@@ -137,15 +136,12 @@ class FamillesAPrevenirRdv
 
     private function motif(ESBTPRdvReservation $r): string
     {
-        // Une adresse presente mais jamais prouvee retient aussi la convocation
-        // (MessagerieRdv::emailValide) : « pas d'adresse » enverrait l'agent
-        // chercher un courriel qui existe.
         if ($r->convocation_statut === StatutConvocationRdv::SansEmail && $r->porteur()?->contactAConfirmer()) {
             return 'Contact non confirmé : code jamais saisi par la famille';
         }
 
         return match ($r->convocation_statut) {
-            StatutConvocationRdv::SansEmail => 'Pas d\'adresse e-mail',
+            StatutConvocationRdv::SansEmail => 'Aucun canal numérique joignable',
             StatutConvocationRdv::Echec => 'Envoi refusé'.($r->convocation_erreur ? ' : '.$r->convocation_erreur : ''),
             default => 'Réservation d\'avant le suivi des envois',
         };

@@ -160,8 +160,10 @@ class OpenAiCompatible extends AdaptateurHttp
     private function messages(RequeteModele $requete): array
     {
         $sortie = [['role' => 'system', 'content' => $requete->systeme]];
+        $dernierUtilisateur = null;
+        foreach ($requete->messages as $i => $message) { if (($message['role'] ?? null) === 'user') { $dernierUtilisateur = $i; } }
 
-        foreach ($requete->messages as $m) {
+        foreach ($requete->messages as $i => $m) {
             if ($m['role'] === 'outil') {
                 $sortie[] = ['role' => 'tool', 'tool_call_id' => $m['id'], 'content' => $m['resultat']];
             } elseif ($m['role'] === 'assistant') {
@@ -178,7 +180,16 @@ class OpenAiCompatible extends AdaptateurHttp
                 }
                 $sortie[] = $message;
             } else {
-                $sortie[] = ['role' => 'user', 'content' => (string) ($m['texte'] ?? '')];
+                $texte = (string) ($m['texte'] ?? '');
+                if ($i === $dernierUtilisateur && $requete->images !== []) {
+                    $contenu = [['type' => 'text', 'text' => $texte]];
+                    foreach ($requete->images as $image) {
+                        $contenu[] = ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $image['mime'] . ';base64,' . $image['base64'], 'detail' => 'high']];
+                    }
+                    $sortie[] = ['role' => 'user', 'content' => $contenu];
+                } else {
+                    $sortie[] = ['role' => 'user', 'content' => $texte];
+                }
             }
         }
 

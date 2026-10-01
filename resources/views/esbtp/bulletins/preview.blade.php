@@ -5,6 +5,9 @@
 @include('pdf.partials.theme')
 @php
     $typeScale = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
+    $headerScale = max(80, min(150, (int) ($settings['bulletin_header_scale'] ?? 100)));
+    $headerRatio = $headerScale / 100;
+    $headerFont = static fn ($px) => round(((float) $px) * $headerRatio, 2);
 @endphp
 <style>
     /* Styles du bulletin basés sur Layout pdf/Bulletin */
@@ -32,43 +35,43 @@
 
     .republic-title {
         font-weight: bold;
-        font-size: {{ $typeScale['title'] }}px;
+        font-size: {{ $headerFont($typeScale['title']) }}px;
     }
 
     .motto {
         font-style: italic;
-        font-size: {{ $typeScale['info'] }}px;
+        font-size: {{ $headerFont($typeScale['info']) }}px;
     }
 
     .ministry-title {
-        font-size: {{ $typeScale['info'] }}px;
+        font-size: {{ $headerFont($typeScale['info']) }}px;
     }
 
     .bulletin-title {
         font-weight: bold;
-        font-size: {{ $typeScale['title'] }}px;
+        font-size: {{ $headerFont($typeScale['title']) }}px;
         text-transform: uppercase;
     }
 
     .edition-date, .cycle-info, .diploma-info, .diploma-code {
-        font-size: {{ $typeScale['info'] }}px;
+        font-size: {{ $headerFont($typeScale['info']) }}px;
     }
 
     .academic-year {
-        font-size: {{ $typeScale['info'] }}px;
+        font-size: {{ $headerFont($typeScale['info']) }}px;
         font-weight: bold;
         margin-top: 20px;
     }
 
     /* Logo ESBTP */
     .esbtp-logo {
-        max-width: 150px;
+        max-width: {{ (int) round(150 * $headerRatio) }}px;
         margin: 0 auto;
         text-align: center;
         display: flex;
         justify-content: center;
         align-items: center;
-        height: 120px;
+        height: {{ (int) round(120 * $headerRatio) }}px;
     }
 
     .esbtp-logo img {
@@ -87,13 +90,13 @@
     }
 
     .school-name {
-        font-size: {{ $typeScale['title'] }}px;
+        font-size: {{ $headerFont($typeScale['title']) }}px;
         color: #0A6B31;
         font-weight: bold;
     }
 
     .school-contact {
-        font-size: {{ $typeScale['meta'] }}px;
+        font-size: {{ $headerFont($typeScale['meta']) }}px;
         color: #333;
     }
 

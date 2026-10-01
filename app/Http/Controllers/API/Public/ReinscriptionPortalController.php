@@ -92,7 +92,17 @@ class ReinscriptionPortalController extends Controller
         //
         // Si l'ecole l'a active, un code part vers le contact du dossier (e-mail
         // joignable, sinon WhatsApp) ; la demande est transmise dans tous les cas.
-        $verification = app(DemarrageVerification::class)->apresDepot($demande);
+        $demarrage = app(DemarrageVerification::class);
+        $verification = $demarrage->apresDepot($demande);
+
+        if ($verification === null && $demarrage->active() && $demande->fresh()->contactMarque()) {
+            return response()->json([
+                'enregistre' => true,
+                'statut' => 'verification_indisponible',
+                'message' => 'Votre demande est enregistrée, mais le code de vérification n’a pas pu être envoyé. Vérifiez votre contact, puis réessayez ou utilisez une adresse e-mail.',
+                'reference_publique' => $demande->referencePubliqueAffichee(),
+            ], 503);
+        }
 
         return response()->json(array_merge([
             'enregistre' => true,
