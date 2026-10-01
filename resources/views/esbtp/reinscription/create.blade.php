@@ -405,7 +405,7 @@
                                 <select name="annee_universitaire_id" id="annee_universitaire_id" class="form-select-moderne" required>
                                     <option value="">Sélectionner l'année universitaire</option>
                                     @foreach($anneeUniversitairesFutures as $annee)
-                                        <option value="{{ $annee->id }}">{{ $annee->name }}</option>
+                                        <option value="{{ $annee->id }}" {{ isset($anneeDestination) && $anneeDestination && (int) $anneeDestination->id === (int) $annee->id ? 'selected' : '' }}>{{ $annee->name }}</option>
                                     @endforeach
                                 </select>
                                 <small class="form-text text-muted">

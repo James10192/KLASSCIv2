@@ -93,6 +93,16 @@ jobs:
       - name: Check PHP syntax errors
         run: find app config routes -name "*.php" -print0 | xargs -0 -n1 php -l
 
+      # Chaque operation d'ecriture de la CLI est declaree pour Nanan : faite par
+      # lui, a lui apprendre, ou hors de sa portee avec la raison. Une operation
+      # faite a la main pour une ecole ne doit pas rester a la main. Ne touche
+      # pas la base : la liste des routes suffit.
+      - name: Couverture Nanan
+        run: |
+          cp -n .env.example .env
+          php artisan key:generate --force --no-interaction
+          php bin/verifier-couverture-nanan.php
+
       # `php -l` ne voit PAS un `use` oublie : la syntaxe est correcte, le nom
       # ne se resout qu'a l'execution. En aout 2026, une extraction de classe a
       # laisse `ESBTPCandidature` sans import, et le catalogue du portail public
