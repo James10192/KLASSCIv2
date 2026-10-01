@@ -309,6 +309,9 @@ class FicheReinscriptionTest extends TestCase
         $prompt = app(\App\Domain\Assistant\Harnais\ConstructeurDePrompt::class)->systeme($this->agent, null, null);
         $this->assertStringContainsString('Cause « dossier_intermediaire »', $prompt);
         $this->assertStringContainsString('ne propose aucun ajustement de frais', $prompt);
+        // Aucun mot du paiement dans cette consigne : il ramènerait Nanan vers l'ajustement.
+        $ligne = collect(explode("\n", $prompt))->first(fn ($l) => str_contains($l, 'Cause « dossier_intermediaire »'));
+        $this->assertDoesNotMatchRegularExpression('/réglée|impayé|solde/u', $ligne);
 
         // Une inscription « terminée » n'est pas un dossier à finaliser : le
         // message le dit au lieu de conseiller une annulation.
