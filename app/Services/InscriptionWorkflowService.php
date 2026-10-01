@@ -85,7 +85,7 @@ class InscriptionWorkflowService
             }
 
             // Vérifier la disponibilité de la classe
-            $classAvailability = $this->checkClassAvailability($inscription->classe_id);
+            $classAvailability = $this->checkClassAvailability($inscription->classe_id, $inscription->annee_universitaire_id);
             if (!$classAvailability['available']) {
                 return [
                     'success' => false,
@@ -133,7 +133,7 @@ class InscriptionWorkflowService
      * @param  int  $classeId
      * @return array
      */
-    public function checkClassAvailability($classeId)
+    public function checkClassAvailability($classeId, $anneeUniversitaireId = null)
     {
         try {
             $classe = ESBTPClasse::find($classeId);
@@ -145,8 +145,12 @@ class InscriptionWorkflowService
                 ];
             }
 
-            // Récupérer l'année universitaire courante
-            $anneeUniversitaireCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            // Les places se comptent sur l'année de l'inscription quand elle est
+            // connue : une classe est universelle, c'est l'inscription qui porte
+            // l'année. Sans année explicite, comportement historique (année courante).
+            $anneeUniversitaireCourante = $anneeUniversitaireId
+                ? \App\Models\ESBTPAnneeUniversitaire::find($anneeUniversitaireId)
+                : \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
             if (!$anneeUniversitaireCourante) {
                 Log::warning('Aucune année universitaire courante définie');

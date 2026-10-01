@@ -2,35 +2,33 @@
 
 namespace App\Http\Controllers\ESBTP;
 
+use App\Domain\Notifications\PhoneNormalizer;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPCandidatureWorkflow;
-use App\Models\ESBTPPieceDeposee;
 use App\Services\Admissions\InscriptionWorkflowSettings;
 use App\Services\Admissions\ManagedInscriptionWorkflow;
+use App\Services\Admissions\ManagedWorkflowPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Lecture du dossier (guichets et étudiant), activation par e-mail, profil et
+ * affectation de classe par l'administration.
+ *
+ * Les écritures physiques (caisse, pièces) vivent dans
+ * ManagedInscriptionStepController ; la finalisation dans
+ * ManagedInscriptionCompletionController. Ce contrôleur n'en garde aucune copie.
+ */
 class ManagedInscriptionWorkflowController extends Controller
 {
     public function __construct(
         private readonly ManagedInscriptionWorkflow $managed,
         private readonly InscriptionWorkflowSettings $settings,
+        private readonly ManagedWorkflowPresenter $presenter,
     ) {
-    }
-
-    public function index()
-    {
-        $this->guardManagedWorkflow();
-        $this->settings->ensureDefaults();
-
-        return view('esbtp.admissions.workflow.index', [
-            'candidatures' => $this->managed->cashierQueue(),
-            'mode' => $this->settings->mode(),
-        ]);
     }
 
     public function show(ESBTPCandidature $candidature)
@@ -41,100 +39,16 @@ class ManagedInscriptionWorkflowController extends Controller
 
         return view('esbtp.admissions.workflow.show', [
             'candidature' => $candidature->loadMissing(['filiere', 'niveau', 'anneeUniversitaire', 'reservations.creneau']),
-            'workflow' => $workflow->loadMissing(['paiement', 'etudiant.user', 'selectedClass', 'finalInscription']),
+            'workflow' => $workflow->loadMissing(['paiement.fraisCategory', 'etudiant.user', 'selectedClass', 'finalInscription']),
             'pieces' => $this->managed->provisionalPieces($workflow),
-            'mode' => $this->settings->mode(),
+            'etapes' => $this->presenter->etapes($workflow),
+            'prochaineEtape' => $this->presenter->prochaineEtape($workflow),
             'activationStep' => $this->settings->accountActivationStep(),
             'classChoiceActor' => $classChoiceActor,
-            'eligibleClasses' => $classChoiceActor === InscriptionWorkflowSettings::CLASS_ACTOR_ADMIN
-                ? $this->managed->eligibleClasses($workflow)
-                : collect(),
+            'eligibleClasses' => $workflow->final_inscription_id ? collect() : $this->managed->eligibleClasses($workflow),
+            'fraisEncaissables' => $workflow->paymentRecorded() ? collect() : $this->managed->fraisEncaissables($candidature),
             'paymentModes' => config('payment_modes.labels', []),
         ]);
-    }
-
-    public function pay(Request $request, ESBTPCandidature $candidature)
-    {
-        $this->guardManagedWorkflow();
-        $allowedModes = array_keys(config('payment_modes.labels', []));
-
-        $data = $request->validate([
-            'montant' => ['required', 'numeric', 'min:1'],
-            'mode_paiement' => ['required', 'string', Rule::in($allowedModes)],
-            'reference_paiement' => ['nullable', 'string', 'max:120'],
-            'numero_transaction' => ['nullable', 'string', 'max:120'],
-        ]);
-
-        $workflow = $this->managed->recordPayment($candidature, $data, (int) Auth::id());
-
-        return redirect()
-            ->route('esbtp.admissions.workflow.show', $candidature)
-            ->with('success', 'Préinscription encaissée et rattachée à la candidature. Reçu : '.($workflow->paiement?->numero_recu ?? '—'));
-    }
-
-    public function receivePiece(Request $request, ESBTPCandidatureWorkflow $workflow)
-    {
-        $this->guardManagedWorkflow();
-        $data = $request->validate([
-            'piece_id' => ['required', 'integer'],
-            'quantite' => ['required', 'integer', 'min:1', 'max:50'],
-        ]);
-
-        $this->managed->receivePiece($workflow, (int) $data['piece_id'], (int) $data['quantite'], (int) Auth::id());
-
-        return back()->with('success', 'Pièce enregistrée dans le dossier physique.');
-    }
-
-    public function decidePiece(Request $request, ESBTPCandidatureWorkflow $workflow, ESBTPPieceDeposee $depot)
-    {
-        $this->guardManagedWorkflow();
-        $data = $request->validate([
-            'decision' => ['required', Rule::in(['valider', 'refuser'])],
-            'motif' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        $this->managed->decidePiece(
-            $workflow,
-            $depot,
-            $data['decision'] === 'valider',
-            $data['motif'] ?? null,
-            (int) Auth::id(),
-        );
-
-        return back()->with('success', $data['decision'] === 'valider' ? 'Pièce validée.' : 'Pièce refusée avec motif.');
-    }
-
-    public function validateDocuments(ESBTPCandidatureWorkflow $workflow)
-    {
-        $this->guardManagedWorkflow();
-        $this->managed->validateDocuments($workflow, (int) Auth::id());
-
-        return back()->with('success', 'Contrôle physique terminé : le dossier de pièces est complet.');
-    }
-
-    public function resendActivation(ESBTPCandidatureWorkflow $workflow)
-    {
-        $this->guardManagedWorkflow();
-
-        $milestoneReached = match ($this->settings->accountActivationStep()) {
-            InscriptionWorkflowSettings::ACTIVATION_AFTER_DOCUMENTS => $workflow->documentsValidated(),
-            default => $workflow->paymentRecorded(),
-        };
-
-        if (! $milestoneReached) {
-            throw ValidationException::withMessages([
-                'activation' => "Le dossier n'a pas encore atteint l'étape configurée pour ouvrir l'espace étudiant.",
-            ]);
-        }
-
-        $result = $this->managed->issueActivation($workflow);
-
-        return back()->with(
-            'success',
-            $result['email_sent']
-                ? "Un nouveau lien d'activation a été envoyé par e-mail."
-                : "Le lien d'activation a été régénéré. Vérifiez le canal de notification configuré."
-        );
     }
 
     public function activationForm(string $token)
@@ -171,7 +85,9 @@ class ManagedInscriptionWorkflowController extends Controller
 
         return view('esbtp.admissions.workflow.student', [
             'workflow' => $workflow,
+            'etapes' => $this->presenter->etapes($workflow),
             'classes' => $this->settings->classChoiceActor() === InscriptionWorkflowSettings::CLASS_ACTOR_STUDENT
+                && ! $workflow->final_inscription_id
                 ? $this->managed->eligibleClasses($workflow)
                 : collect(),
             'classChoiceOnce' => $this->settings->classChoiceOnce(),
@@ -191,6 +107,12 @@ class ManagedInscriptionWorkflowController extends Controller
 
         abort_unless($workflow->accessActivated(), 403);
 
+        if ($workflow->final_inscription_id) {
+            throw ValidationException::withMessages([
+                'profil' => 'Votre inscription est finalisée : modifiez vos informations depuis votre profil.',
+            ]);
+        }
+
         $data = $request->validate([
             'adresse' => ['required', 'string', 'max:500'],
             'ville' => ['required', 'string', 'max:120'],
@@ -204,6 +126,13 @@ class ManagedInscriptionWorkflowController extends Controller
             'urgence_contact_telephone' => ['required', 'string', 'max:40'],
             'urgence_contact_relation' => ['nullable', 'string', 'max:80'],
         ]);
+
+        foreach (['telephone', 'urgence_contact_telephone'] as $champ) {
+            if (! PhoneNormalizer::isValid($data[$champ])) {
+                throw ValidationException::withMessages([$champ => 'Numéro de téléphone invalide.']);
+            }
+            $data[$champ] = PhoneNormalizer::toE164($data[$champ]);
+        }
 
         $workflow->etudiant->forceFill([
             'adresse' => $data['adresse'],
@@ -223,33 +152,13 @@ class ManagedInscriptionWorkflowController extends Controller
         $workflow->forceFill([
             'profile_payload' => $data,
             'profile_completed_at' => now(),
-        ])->save();
+        ]);
+        $workflow->state = ManagedInscriptionWorkflow::stateFor($workflow, $this->settings->mode());
+        $workflow->save();
 
         return redirect()
             ->route('esbtp.admissions.workflow.student')
             ->with('success', 'Vos informations ont été enregistrées. Vous pouvez poursuivre la finalisation de votre inscription.');
-    }
-
-    public function chooseClass(Request $request)
-    {
-        $this->guardManagedWorkflow();
-        $data = $request->validate(['classe_id' => ['required', 'integer']]);
-        $workflow = $this->studentWorkflow($request);
-
-        abort_unless($this->settings->classChoiceActor() === InscriptionWorkflowSettings::CLASS_ACTOR_STUDENT, 403);
-
-        if (! $workflow->profileCompleted()) {
-            throw ValidationException::withMessages([
-                'profil' => "Complétez d'abord vos informations avant de confirmer votre classe.",
-            ]);
-        }
-
-        $workflow = $this->managed->chooseClass($workflow, (int) $data['classe_id'], (int) $request->user()->id);
-        $inscription = $this->managed->finalize($workflow, (int) $request->user()->id);
-
-        return redirect()
-            ->route('esbtp.admissions.workflow.student')
-            ->with('success', 'Votre classe est confirmée et votre inscription académique est finalisée (n° '.$inscription->id.').');
     }
 
     /**
@@ -262,11 +171,16 @@ class ManagedInscriptionWorkflowController extends Controller
         abort_unless($this->settings->classChoiceActor() === InscriptionWorkflowSettings::CLASS_ACTOR_ADMIN, 403);
 
         $data = $request->validate(['classe_id' => ['required', 'integer']]);
-        $this->managed->chooseClass($workflow, (int) $data['classe_id'], (int) Auth::id(), true);
+        $this->managed->assignClassByAdministration($workflow, (int) $data['classe_id'], (int) Auth::id());
 
-        return back()->with('success', "Classe affectée par l'administration. L'inscription sera finalisée lorsque les autres étapes seront terminées.");
+        return back()->with('success', "Classe affectée. La place est réservée au moment de la finalisation de l'inscription.");
     }
 
+    /**
+     * Correction exceptionnelle AVANT finalisation (étudiant bloqué, choix
+     * erroné). Après finalisation, le service refuse : la correction passe par
+     * le changement de classe officiel de l'inscription, qui recalcule les frais.
+     */
     public function overrideClass(Request $request, ESBTPCandidatureWorkflow $workflow)
     {
         $this->guardManagedWorkflow();
@@ -275,7 +189,7 @@ class ManagedInscriptionWorkflowController extends Controller
             'motif' => ['required', 'string', 'min:10', 'max:1000'],
         ]);
 
-        $workflow = $this->managed->chooseClass($workflow, (int) $data['classe_id'], (int) Auth::id(), true);
+        $workflow = $this->managed->assignClassByAdministration($workflow, (int) $data['classe_id'], (int) Auth::id());
 
         Log::notice('Classe du parcours inscription remplacée par un agent', [
             'workflow_id' => $workflow->id,
@@ -285,23 +199,6 @@ class ManagedInscriptionWorkflowController extends Controller
         ]);
 
         return back()->with('success', 'Classe remplacée. Le motif a été journalisé.');
-    }
-
-    public function finalize(ESBTPCandidatureWorkflow $workflow)
-    {
-        $this->guardManagedWorkflow();
-
-        if (! $workflow->profileCompleted()) {
-            throw ValidationException::withMessages([
-                'profil' => "L'étudiant doit compléter ses informations avant la finalisation de l'inscription.",
-            ]);
-        }
-
-        $inscription = $this->managed->finalize($workflow, (int) Auth::id());
-
-        return redirect()
-            ->route('esbtp.inscriptions.show', $inscription)
-            ->with('success', 'Inscription académique finalisée depuis la candidature en ligne.');
     }
 
     private function studentWorkflow(Request $request): ESBTPCandidatureWorkflow

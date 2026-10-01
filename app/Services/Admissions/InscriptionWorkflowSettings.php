@@ -190,7 +190,7 @@ final class InscriptionWorkflowSettings
     {
         return [
             self::MODE_LEGACY => 'Historique — comportement actuel de KLASSCI',
-            self::MODE_CAISSE_AVANT_PIECES => 'Caisse puis contrôle physique des pièces (ESBTP Yamoussoukro)',
+            self::MODE_CAISSE_AVANT_PIECES => 'Caisse puis contrôle physique des pièces',
             self::MODE_PIECES_AVANT_CAISSE => 'Contrôle physique des pièces puis caisse',
         ];
     }

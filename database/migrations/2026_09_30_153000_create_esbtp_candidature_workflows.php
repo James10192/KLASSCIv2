@@ -64,7 +64,7 @@ return new class extends Migration
         }
 
         // Un versement de preinscription existe AVANT l'inscription academique.
-        // `inscription_id` est deja nullable ; cette cle donne au paiement sa
+        // `inscription_id` devient nullable (migration 2026_10_01_012319) ; cette cle donne au paiement sa
         // source certaine jusqu'a la conversion finale.
         if (Schema::hasTable('esbtp_paiements') && ! Schema::hasColumn('esbtp_paiements', 'candidature_id')) {
             Schema::table('esbtp_paiements', function (Blueprint $table) {

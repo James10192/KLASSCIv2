@@ -4,25 +4,22 @@ namespace App\Services\Admissions;
 
 use App\Enums\EtatPieceDossier;
 use App\Enums\StatutReservationRdv;
-use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPCandidatureWorkflow;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPInscription;
-use App\Models\ESBTPInscriptionPiece;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPPieceDeposee;
 use App\Models\User;
 use App\Services\CataloguePiecesDossier;
 use App\Services\DossierPiecesEtudiant;
-use App\Services\ESBTPInscriptionService;
-use App\Services\InscriptionWorkflowService;
+use App\Services\FraisScopeResolver;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
@@ -34,6 +31,9 @@ use Spatie\Permission\Models\Role;
  * pieces, ni le workflow d'inscription existants. Il les relie dans l'ordre
  * choisi par le tenant et garde le dossier transitoire necessaire avant que la
  * classe — donc l'inscription academique — existe.
+ *
+ * La finalisation (choix de classe atomique, frais, facture, conversion) vit
+ * dans {@see FinalizeManagedInscription} et nulle part ailleurs.
  */
 final class ManagedInscriptionWorkflow
 {
@@ -41,11 +41,15 @@ final class ManagedInscriptionWorkflow
         private readonly InscriptionWorkflowSettings $settings,
         private readonly CataloguePiecesDossier $catalogue,
         private readonly DossierPiecesEtudiant $dossiers,
-        private readonly ESBTPInscriptionService $inscriptions,
-        private readonly InscriptionWorkflowService $workflow,
+        private readonly AdmissionActivationNotifier $notifier,
+        private readonly FraisScopeResolver $scopes,
     ) {
     }
 
+    /**
+     * Dossier existant, quel que soit l'état de la candidature (un dossier
+     * converti reste consultable), sinon création si la candidature est acceptée.
+     */
     public function ensure(ESBTPCandidature $candidature): ESBTPCandidatureWorkflow
     {
         if (! $this->settings->usesManagedWorkflow()) {
@@ -54,85 +58,145 @@ final class ManagedInscriptionWorkflow
             ]);
         }
 
+        $existant = ESBTPCandidatureWorkflow::query()->where('candidature_id', $candidature->id)->first();
+        if ($existant) {
+            return $existant;
+        }
+
         if ($candidature->statut !== ESBTPCandidature::STATUT_ACCEPTEE) {
             throw ValidationException::withMessages([
                 'candidature' => "La candidature doit être acceptée avant d'entrer dans le parcours d'inscription.",
             ]);
         }
 
-        return ESBTPCandidatureWorkflow::firstOrCreate(
-            ['candidature_id' => $candidature->id],
-            ['state' => $this->initialState()]
-        );
+        try {
+            return ESBTPCandidatureWorkflow::create([
+                'candidature_id' => $candidature->id,
+                'state' => $this->initialState(),
+            ]);
+        } catch (QueryException $e) {
+            if ((string) $e->getCode() !== '23000') {
+                throw $e;
+            }
+            // Deux guichets ouvrent le même dossier au même instant : l'index
+            // unique a tranché, on relit la ligne gagnante.
+            return ESBTPCandidatureWorkflow::query()->where('candidature_id', $candidature->id)->firstOrFail();
+        }
     }
 
-    /** @return Collection<int, ESBTPCandidature> */
-    public function cashierQueue(): Collection
+    /**
+     * Frais que la caisse peut encaisser pour ce dossier, lus dans la
+     * configuration des frais du périmètre (jamais un montant saisi au hasard).
+     *
+     * @return Collection<int, array{category_id:int, name:string, amount:float}>
+     */
+    public function fraisEncaissables(ESBTPCandidature $candidature): Collection
     {
-        if (! $this->settings->usesManagedWorkflow()) {
+        $anneeId = $candidature->annee_universitaire_id;
+        if (! $anneeId || ! $candidature->filiere_id || ! $candidature->niveau_id) {
             return collect();
         }
 
-        $candidatures = ESBTPCandidature::query()
-            ->with(['filiere:id,name,code', 'niveau:id,name', 'anneeUniversitaire:id,name'])
-            ->where('statut', ESBTPCandidature::STATUT_ACCEPTEE)
-            ->whereNull('inscription_id')
-            ->orderBy('traite_at')
-            ->orderBy('id')
-            ->get();
+        $scopes = ESBTPClasse::query()
+            ->with(['filiere', 'niveau', 'parcours.mention.domaine'])
+            ->where('is_active', true)
+            ->where('filiere_id', $candidature->filiere_id)
+            ->where('niveau_etude_id', $candidature->niveau_id)
+            ->get()
+            ->map(fn (ESBTPClasse $classe) => $this->scopes->resolveForClasse($classe))
+            ->whenEmpty(fn () => collect([[
+                'systeme' => FraisScopeResolver::SYSTEME_BTS,
+                'filiere_id' => $candidature->filiere_id,
+                'niveau_id' => $candidature->niveau_id,
+            ]]))
+            ->unique(fn (array $s) => ($s['systeme'] ?? '').'|'.($s['filiere_id'] ?? '').'|'.($s['parcours_id'] ?? '').'|'.($s['niveau_id'] ?? ''));
 
-        if ($this->settings->mode() !== InscriptionWorkflowSettings::MODE_CAISSE_AVANT_PIECES) {
-            return $candidatures;
-        }
+        return $scopes
+            ->flatMap(fn (array $scope) => ESBTPFraisConfiguration::getConfigurationsForScope($scope, (int) $anneeId, 'effective', true))
+            ->filter(fn (ESBTPFraisConfiguration $c) => $c->fraisCategory)
+            ->map(function (ESBTPFraisConfiguration $c) use ($candidature) {
+                // Même tarif que celui que la souscription facturera : selon le
+                // statut d'affectation du candidat (affecté, non affecté…).
+                $c->montant_du_candidat = (float) $c->getMontantByStatus(
+                    $candidature->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS
+                );
 
-        $paid = ESBTPCandidatureWorkflow::query()
-            ->whereIn('candidature_id', $candidatures->pluck('id'))
-            ->whereNotNull('paid_at')
-            ->pluck('candidature_id')
-            ->all();
-
-        return $candidatures
-            ->reject(fn (ESBTPCandidature $c) => in_array($c->id, $paid, true))
+                return $c;
+            })
+            ->filter(fn (ESBTPFraisConfiguration $c) => $c->montant_du_candidat > 0)
+            ->groupBy('frais_category_id')
+            ->map(fn (Collection $configs) => [
+                'category_id' => (int) $configs->first()->frais_category_id,
+                'name' => (string) $configs->first()->fraisCategory->name,
+                // Classe pas encore choisie : le plafond est le plus élevé des
+                // tarifs possibles ; la finalisation refuse un versement qui
+                // dépasserait le tarif de la classe finalement choisie.
+                'amount' => (float) $configs->max('montant_du_candidat'),
+                'sort' => (int) ($configs->first()->fraisCategory->sort_order ?? 9999),
+            ])
+            ->sortBy('sort')
             ->values();
     }
 
     public function recordPayment(ESBTPCandidature $candidature, array $data, int $userId): ESBTPCandidatureWorkflow
     {
-        return DB::transaction(function () use ($candidature, $data, $userId) {
-            $workflow = $this->ensure($candidature)->newQuery()->lockForUpdate()->findOrFail(
-                $this->ensure($candidature)->id
-            );
+        $workflowId = $this->ensure($candidature)->id;
 
+        return DB::transaction(function () use ($candidature, $data, $userId, $workflowId) {
+            $workflow = ESBTPCandidatureWorkflow::query()->lockForUpdate()->findOrFail($workflowId);
+
+            // Deux caissiers, ou un double clic : le second voit le paiement
+            // du premier sous verrou et ne crée rien.
             if ($workflow->paymentRecorded()) {
                 return $workflow->fresh(['paiement', 'etudiant']);
             }
 
-            $this->assertAppointment($candidature);
-            $etudiant = $this->ensureProvisionalStudent($candidature, $workflow, $userId);
-            $anneeId = $candidature->annee_universitaire_id
-                ?: ESBTPAnneeUniversitaire::query()->where('is_current', true)->value('id');
+            if ($workflow->final_inscription_id || $candidature->fresh()->statut !== ESBTPCandidature::STATUT_ACCEPTEE) {
+                throw ValidationException::withMessages(['candidature' => "Ce dossier n'est plus en attente de préinscription."]);
+            }
 
+            $this->assertAppointment($candidature);
+
+            $anneeId = $candidature->annee_universitaire_id;
             if (! $anneeId) {
                 throw ValidationException::withMessages([
-                    'annee' => "Aucune année universitaire n'est disponible pour enregistrer la préinscription.",
+                    'annee' => "La candidature n'indique pas d'année universitaire : impossible d'encaisser sans deviner l'année.",
                 ]);
             }
+
+            $frais = $this->fraisEncaissables($candidature)->firstWhere('category_id', (int) ($data['frais_category_id'] ?? 0));
+            if (! $frais) {
+                throw ValidationException::withMessages([
+                    'frais_category_id' => "Ce frais n'est pas configuré pour la filière, le niveau et l'année de ce dossier.",
+                ]);
+            }
+
+            $montant = round((float) $data['montant'], 2);
+            if ($montant <= 0 || $montant > $frais['amount']) {
+                throw ValidationException::withMessages([
+                    'montant' => 'Le montant doit être compris entre 1 et '.number_format($frais['amount'], 0, ',', ' ').' FCFA ('.$frais['name'].').',
+                ]);
+            }
+
+            $etudiant = $this->ensureProvisionalStudent($candidature, $workflow, $userId);
 
             $paiement = new ESBTPPaiement([
                 'inscription_id' => null,
                 'etudiant_id' => $etudiant->id,
                 'annee_universitaire_id' => $anneeId,
-                'type_paiement' => 'preinscription',
-                'montant' => (float) $data['montant'],
-                'reference_paiement' => $data['reference_paiement'] ?? ESBTPPaiement::genererNumeroRecu('PRE'),
+                'frais_category_id' => $frais['category_id'],
+                'type_paiement' => 'inscription',
+                'montant' => $montant,
+                'reference_paiement' => $data['reference_paiement'] ?? null,
                 'mode_paiement' => $data['mode_paiement'],
                 'numero_transaction' => $data['numero_transaction'] ?? null,
                 'date_paiement' => now()->toDateString(),
-                'statut' => 'completé',
+                // Colonnes réelles de esbtp_paiements : `statut` et `createur_id`
+                // n'existent pas sur cette table (ils appartiennent aux factures),
+                // les écrire faisait échouer chaque encaissement.
                 'status' => 'validé',
-                'motif' => 'Préinscription',
+                'motif' => 'Préinscription — '.$frais['name'],
                 'numero_recu' => ESBTPPaiement::genererNumeroRecu('PRE'),
-                'createur_id' => $userId,
                 'validateur_id' => $userId,
                 'date_validation' => now(),
                 'created_by' => $userId,
@@ -207,19 +271,44 @@ final class ManagedInscriptionWorkflow
         })->values();
     }
 
+    /** @return list<string> libellés des pièces obligatoires encore incomplètes */
+    public function missingMandatoryPieces(ESBTPCandidatureWorkflow $workflow): array
+    {
+        return $this->provisionalPieces($workflow)
+            ->filter(fn (array $row) => $row['piece']->is_obligatoire && ! $row['satisfaite'])
+            ->map(fn (array $row) => (string) $row['piece']->libelle)
+            ->values()
+            ->all();
+    }
+
     public function receivePiece(
         ESBTPCandidatureWorkflow $workflow,
         int $pieceId,
         int $quantity,
         int $userId,
     ): ESBTPPieceDeposee {
-        $workflow->loadMissing('candidature');
-        $etudiant = $workflow->etudiant ?: $this->ensureProvisionalStudent(
-            $workflow->candidature,
-            $workflow,
-            $userId,
-        );
+        return DB::transaction(function () use ($workflow, $pieceId, $quantity, $userId) {
+            // Verrou : deux clics sur la première pièce ne créent pas deux
+            // dossiers étudiants provisoires.
+            $workflow = ESBTPCandidatureWorkflow::query()->lockForUpdate()->with('candidature')->findOrFail($workflow->id);
+            $this->assertNotFinalized($workflow);
+            // Le rendez-vous précède TOUTE étape physique, que la caisse ou les
+            // pièces viennent en premier.
+            $this->assertAppointment($workflow->candidature);
 
+            $etudiant = $this->ensureProvisionalStudent($workflow->candidature, $workflow, $userId);
+
+            return $this->deposer($workflow, $etudiant, $pieceId, $quantity, $userId);
+        });
+    }
+
+    private function deposer(
+        ESBTPCandidatureWorkflow $workflow,
+        ESBTPEtudiant $etudiant,
+        int $pieceId,
+        int $quantity,
+        int $userId,
+    ): ESBTPPieceDeposee {
         $piece = $this->catalogue
             ->pourScope($workflow->candidature->filiere_id, $workflow->candidature->niveau_id)
             ->firstWhere('id', $pieceId);
@@ -253,7 +342,9 @@ final class ManagedInscriptionWorkflow
         ?string $motif,
         int $userId,
     ): ESBTPPieceDeposee {
-        if ((int) $depot->etudiant_id !== (int) $workflow->etudiant_id) {
+        $this->assertNotFinalized($workflow);
+
+        if ((int) $depot->etudiant_id !== (int) $workflow->etudiant_id || $depot->inscription_id !== null) {
             throw ValidationException::withMessages(['piece' => "Ce dépôt n'appartient pas à ce dossier."]);
         }
 
@@ -261,28 +352,36 @@ final class ManagedInscriptionWorkflow
             throw ValidationException::withMessages(['motif' => 'Le motif est obligatoire pour refuser une pièce.']);
         }
 
-        $depot->forceFill([
-            'etat' => $accepted ? EtatPieceDossier::VALIDEE->value : EtatPieceDossier::REFUSEE->value,
-            'motif' => $accepted ? null : trim((string) $motif),
-            'decidee_par' => $userId,
-            'decidee_at' => now(),
-            'updated_by' => $userId,
-        ])->save();
+        return DB::transaction(function () use ($workflow, $depot, $accepted, $motif, $userId) {
+            $depot->forceFill([
+                'etat' => $accepted ? EtatPieceDossier::VALIDEE->value : EtatPieceDossier::REFUSEE->value,
+                'motif' => $accepted ? null : trim((string) $motif),
+                'decidee_par' => $userId,
+                'decidee_at' => now(),
+                'updated_by' => $userId,
+            ])->save();
 
-        return $depot->fresh();
+            // Une pièce refusée après la validation globale rouvre le contrôle :
+            // le dossier ne reste jamais « complet » sur une pièce rejetée.
+            if (! $accepted && $workflow->documentsValidated() && $this->missingMandatoryPieces($workflow->fresh()) !== []) {
+                $workflow->forceFill(['documents_validated_at' => null, 'documents_validated_by' => null])->save();
+                $this->advance($workflow);
+            }
+
+            return $depot->fresh();
+        });
     }
 
     public function validateDocuments(ESBTPCandidatureWorkflow $workflow, int $userId): ESBTPCandidatureWorkflow
     {
-        $pieces = $this->provisionalPieces($workflow);
-        $missing = $pieces
-            ->filter(fn (array $row) => $row['piece']->is_obligatoire && ! $row['satisfaite'])
-            ->map(fn (array $row) => $row['piece']->libelle)
-            ->values();
+        $workflow->loadMissing('candidature');
+        $this->assertNotFinalized($workflow);
+        $this->assertAppointment($workflow->candidature);
 
-        if ($missing->isNotEmpty()) {
+        $missing = $this->missingMandatoryPieces($workflow);
+        if ($missing !== []) {
             throw ValidationException::withMessages([
-                'pieces' => 'Dossier incomplet : '.implode(', ', $missing->all()).'.',
+                'pieces' => 'Dossier incomplet : '.implode(', ', $missing).'.',
             ]);
         }
 
@@ -298,10 +397,9 @@ final class ManagedInscriptionWorkflow
     }
 
     /**
-     * Crée un jeton à usage unique et tente l'envoi par e-mail. Le jeton brut
-     * n'est jamais stocké. WhatsApp reste un canal de livraison du même lien ;
-     * tant qu'aucun template Meta approuvé n'est configuré, on journalise le
-     * canal indisponible au lieu d'envoyer un message qui serait rejeté.
+     * Crée un jeton à usage unique et l'envoie par e-mail si l'adresse a été
+     * prouvée. Le jeton brut n'est jamais stocké. Régénérer invalide l'ancien
+     * jeton e-mail ET les anciens liens WhatsApp (voir linkVersion()).
      *
      * @return array{token:string,url:string,email_sent:bool}
      */
@@ -315,50 +413,45 @@ final class ManagedInscriptionWorkflow
             'activation_token_hash' => hash('sha256', $token),
             'activation_token_expires_at' => now()->addHours(48),
             'activation_token_used_at' => null,
-            'state' => ESBTPCandidatureWorkflow::STATE_AWAITING_ACTIVATION,
-        ])->save();
+        ]);
+        // L'état suit les jalons : un lien émis après paiement ne fait pas
+        // sauter le contrôle des pièces encore à faire.
+        $workflow->state = self::stateFor($workflow, $this->settings->mode());
+        $workflow->save();
 
         $url = route('esbtp.admissions.workflow.activation.form', ['token' => $token]);
-        $sent = false;
-        $email = $workflow->candidature?->email ?: $workflow->etudiant?->email_personnel;
 
-        if ($this->settings->notifyEmail() && $email) {
-            try {
-                Mail::raw(
-                    "Votre dossier ESBTP a franchi l'étape de préinscription.\n\nActivez votre espace KLASSCI et choisissez votre mot de passe : {$url}\n\nCe lien expire dans 48 heures et ne fonctionne qu'une fois.",
-                    function ($message) use ($email) {
-                        $message->to($email)->subject('Activation de votre espace étudiant KLASSCI');
-                    }
-                );
-                $sent = true;
-            } catch (\Throwable $e) {
-                Log::warning('Activation KLASSCI : échec envoi e-mail', [
-                    'workflow_id' => $workflow->id,
-                    'message' => $e->getMessage(),
-                ]);
-            }
+        // Jamais d'envoi sous verrou ni avant validation : dans une transaction,
+        // l'e-mail part après le commit (et pas du tout en cas d'annulation).
+        if (DB::transactionLevel() > 0) {
+            DB::afterCommit(fn () => $this->notifier->sendEmail($workflow, $url));
+
+            return ['token' => $token, 'url' => $url, 'email_sent' => false];
         }
 
-        if ($this->settings->notifyWhatsapp()) {
-            Log::info('Activation KLASSCI : lien prêt pour le canal WhatsApp', [
-                'workflow_id' => $workflow->id,
-                'telephone' => $workflow->candidature?->telephone,
-                'template_requis' => true,
-            ]);
-        }
-
-        return ['token' => $token, 'url' => $url, 'email_sent' => $sent];
+        return ['token' => $token, 'url' => $url, 'email_sent' => $this->notifier->sendEmail($workflow, $url)];
     }
 
-    public function workflowForActivationToken(string $token): ESBTPCandidatureWorkflow
+    /**
+     * Version courte du jeton en cours : posée dans les liens WhatsApp signés,
+     * elle les rend caducs dès qu'un nouveau lien est émis.
+     */
+    public static function linkVersion(ESBTPCandidatureWorkflow $workflow): string
+    {
+        return substr((string) $workflow->activation_token_hash, 0, 16);
+    }
+
+    public function workflowForActivationToken(string $token, bool $lock = false): ESBTPCandidatureWorkflow
     {
         $workflow = ESBTPCandidatureWorkflow::query()
             ->with(['candidature', 'etudiant.user'])
+            ->when($lock, fn ($q) => $q->lockForUpdate())
             ->where('activation_token_hash', hash('sha256', $token))
             ->first();
 
         if (! $workflow
             || $workflow->activation_token_used_at
+            || $workflow->accessActivated()
             || ! $workflow->activation_token_expires_at
             || $workflow->activation_token_expires_at->isPast()) {
             throw ValidationException::withMessages(['token' => "Ce lien d'activation est invalide ou expiré."]);
@@ -367,67 +460,66 @@ final class ManagedInscriptionWorkflow
         return $workflow;
     }
 
+    /** Activation par le lien reçu PAR E-MAIL : l'adresse est donc prouvée. */
     public function activate(string $token, string $password): ESBTPCandidatureWorkflow
     {
         return DB::transaction(function () use ($token, $password) {
-            $workflow = $this->workflowForActivationToken($token);
-            $user = $workflow->etudiant?->user;
+            $workflow = $this->workflowForActivationToken($token, true);
 
-            if (! $user) {
-                throw ValidationException::withMessages(['compte' => "Le compte étudiant n'a pas pu être préparé."]);
-            }
-
-            $user->forceFill([
-                'password' => $password,
-                'is_active' => true,
-                'must_change_password' => false,
-                'email_verified_at' => $user->email ? now() : $user->email_verified_at,
-                'first_login_at' => $user->first_login_at ?: now(),
-            ])->save();
-
-            $workflow->forceFill([
-                'activation_token_used_at' => now(),
-                'access_activated_at' => now(),
-                'activation_token_hash' => null,
-                'activation_token_expires_at' => null,
-            ])->save();
-
-            $this->advance($workflow);
-
-            return $workflow->fresh(['candidature', 'etudiant.user']);
+            return app(AdmissionAccountActivator::class)->activateWorkflow($workflow, $password, emailProven: true);
         });
     }
 
-    /** @return Collection<int, ESBTPClasse> */
+    /**
+     * Classes ouvertes au dossier : universelles (filière + niveau + actives),
+     * places comptées sur l'année DU DOSSIER, en une seule requête groupée.
+     *
+     * @return Collection<int, ESBTPClasse>
+     */
     public function eligibleClasses(ESBTPCandidatureWorkflow $workflow): Collection
     {
         $workflow->loadMissing('candidature');
         $c = $workflow->candidature;
 
-        if (! $c) {
+        if (! $c || ! $c->filiere_id || ! $c->niveau_id || ! $c->annee_universitaire_id) {
             return collect();
         }
 
-        return ESBTPClasse::query()
+        $classes = ESBTPClasse::query()
             ->with(['filiere:id,name,code', 'niveau:id,name'])
             ->where('is_active', true)
             ->where('filiere_id', $c->filiere_id)
             ->where('niveau_etude_id', $c->niveau_id)
             ->orderBy('name')
-            ->get()
-            ->filter(fn (ESBTPClasse $classe) => ($this->workflow->checkClassAvailability($classe->id)['available'] ?? false))
+            ->get();
+
+        $occupees = ESBTPInscription::query()
+            ->selectRaw('classe_id, COUNT(*) as total')
+            ->whereIn('classe_id', $classes->pluck('id'))
+            ->where('annee_universitaire_id', $c->annee_universitaire_id)
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->groupBy('classe_id')
+            ->pluck('total', 'classe_id');
+
+        return $classes
+            ->each(function (ESBTPClasse $classe) use ($occupees) {
+                $classe->places_restantes = $classe->places_totales
+                    ? max(0, (int) $classe->places_totales - (int) ($occupees[$classe->id] ?? 0))
+                    : null;
+            })
+            ->filter(fn (ESBTPClasse $classe) => $classe->places_restantes === null || $classe->places_restantes > 0)
             ->values();
     }
 
-    public function chooseClass(
-        ESBTPCandidatureWorkflow $workflow,
-        int $classId,
-        int $userId,
-        bool $override = false,
-    ): ESBTPCandidatureWorkflow {
-        if ($this->settings->classChoiceOnce() && $workflow->classIsLocked() && ! $override) {
-            throw ValidationException::withMessages(['classe_id' => 'Votre choix de classe a déjà été confirmé.']);
-        }
+    /**
+     * Affectation par l'administration (mode « l'administration choisit »).
+     * Rien n'est verrouillé : la place est réservée sous verrou au moment de la
+     * finalisation. Interdit une fois l'inscription créée.
+     */
+    public function assignClassByAdministration(ESBTPCandidatureWorkflow $workflow, int $classId, int $userId): ESBTPCandidatureWorkflow
+    {
+        $this->assertNotFinalized($workflow->fresh());
 
         $classe = $this->eligibleClasses($workflow)->firstWhere('id', $classId);
         if (! $classe) {
@@ -438,138 +530,43 @@ final class ManagedInscriptionWorkflow
             'selected_class_id' => $classe->id,
             'class_selected_at' => now(),
             'class_selected_by' => $userId,
-            'class_locked_at' => $this->settings->classChoiceOnce() && ! $override ? now() : $workflow->class_locked_at,
-            'state' => ESBTPCandidatureWorkflow::STATE_READY_TO_FINALIZE,
         ])->save();
+        $this->advance($workflow);
 
         return $workflow->fresh('selectedClass');
-    }
-
-    public function finalize(ESBTPCandidatureWorkflow $workflow, ?int $userId = null): ESBTPInscription
-    {
-        return DB::transaction(function () use ($workflow, $userId) {
-            $workflow = ESBTPCandidatureWorkflow::query()
-                ->lockForUpdate()
-                ->with(['candidature', 'etudiant.user', 'paiement', 'selectedClass'])
-                ->findOrFail($workflow->id);
-
-            if ($workflow->final_inscription_id) {
-                return ESBTPInscription::findOrFail($workflow->final_inscription_id);
-            }
-
-            if (! $workflow->paymentRecorded()) {
-                throw ValidationException::withMessages(['paiement' => 'Le paiement de préinscription doit être validé.']);
-            }
-            if (! $workflow->documentsValidated()) {
-                throw ValidationException::withMessages(['pieces' => 'Le contrôle physique des pièces doit être terminé.']);
-            }
-            if (! $workflow->accessActivated()) {
-                throw ValidationException::withMessages(['activation' => "L'espace étudiant doit d'abord être activé."]);
-            }
-            if (! $workflow->selected_class_id || ! $workflow->selectedClass) {
-                throw ValidationException::withMessages(['classe_id' => 'Une classe doit être choisie.']);
-            }
-
-            $c = $workflow->candidature;
-            $e = $workflow->etudiant;
-            $classe = $workflow->selectedClass;
-            $anneeId = $c->annee_universitaire_id ?: ESBTPAnneeUniversitaire::query()->where('is_current', true)->value('id');
-
-            $inscription = ESBTPInscription::create([
-                'etudiant_id' => $e->id,
-                'annee_universitaire_id' => $anneeId,
-                'filiere_id' => $classe->filiere_id,
-                'niveau_id' => $classe->niveau_etude_id,
-                'classe_id' => $classe->id,
-                'affectation_status' => $c->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
-                'date_inscription' => now()->toDateString(),
-                'type_inscription' => 'première_inscription',
-                'status' => 'en_attente',
-                'workflow_step' => 'en_validation',
-                'paiement_validation_id' => $workflow->paiement_id,
-                'comptabilite_activee' => true,
-                'statut_etablissement' => ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU,
-                'est_transfert' => (bool) $c->est_transfert,
-                'etablissement_origine' => $c->etablissement_sup_origine ?: $c->etablissement_origine,
-                'created_by' => $userId,
-                'updated_by' => $userId,
-            ]);
-
-            $workflow->paiement->forceFill(['inscription_id' => $inscription->id])->save();
-
-            // Une fois la classe connue, on repasse par la source canonique des
-            // frais. Aucun barème n'est recopié dans ce workflow.
-            $this->inscriptions->regenererFraisInscription($inscription);
-
-            // Les dépôts provisoires deviennent ceux de cette inscription, puis
-            // la consommation annuelle est matérialisée comme sur le module
-            // Pièces du dossier existant.
-            ESBTPPieceDeposee::query()
-                ->where('etudiant_id', $e->id)
-                ->whereNull('inscription_id')
-                ->update(['inscription_id' => $inscription->id, 'updated_by' => $userId, 'updated_at' => now()]);
-
-            foreach ($this->catalogue->pourInscription($inscription) as $piece) {
-                $depose = ESBTPPieceDeposee::query()
-                    ->where('etudiant_id', $e->id)
-                    ->where('inscription_id', $inscription->id)
-                    ->where('piece_dossier_id', $piece->id)
-                    ->get()
-                    ->filter(fn (ESBTPPieceDeposee $d) => $d->compteDansLeStock($piece))
-                    ->sum('quantite_deposee');
-
-                ESBTPInscriptionPiece::updateOrCreate(
-                    ['inscription_id' => $inscription->id, 'piece_dossier_id' => $piece->id],
-                    [
-                        'etudiant_id' => $e->id,
-                        'quantite_consommee' => min((int) $depose, max(1, (int) $piece->exemplaires_par_inscription)),
-                        'non_applicable' => false,
-                        'created_by' => $userId,
-                        'updated_by' => $userId,
-                    ]
-                );
-            }
-
-            $e->forceFill([
-                'classe_id' => $classe->id,
-                'annee_universitaire_id' => $anneeId,
-                'statut' => 'actif',
-                'updated_by' => $userId,
-            ])->save();
-
-            // Validation finale : même garde paiement/capacité et même passage
-            // prospect -> étudiant que le flux historique.
-            $converted = $this->workflow->convertProspectToStudent(
-                $inscription->fresh(['etudiant.user', 'classe']),
-                'Finalisation du parcours de candidature en ligne'
-            );
-
-            if (! ($converted['success'] ?? false)) {
-                throw ValidationException::withMessages([
-                    'finalisation' => $converted['message'] ?? "L'inscription n'a pas pu être finalisée.",
-                ]);
-            }
-
-            $c->forceFill([
-                'statut' => ESBTPCandidature::STATUT_CONVERTIE,
-                'etudiant_id' => $e->id,
-                'inscription_id' => $inscription->id,
-                'traite_at' => now(),
-                'traite_par' => $userId,
-            ])->save();
-
-            $workflow->forceFill([
-                'final_inscription_id' => $inscription->id,
-                'state' => ESBTPCandidatureWorkflow::STATE_COMPLETED,
-            ])->save();
-
-            return $inscription->fresh();
-        });
     }
 
     public function belongsToAuthenticatedStudent(ESBTPCandidatureWorkflow $workflow, User $user): bool
     {
         return (int) ($workflow->etudiant?->user_id ?? 0) === (int) $user->id;
+    }
+
+    /**
+     * L'activation sert soit après le paiement, soit après les pièces, selon le
+     * réglage du tenant. Appelée par les deux transitions.
+     */
+    public function maybeIssueActivation(ESBTPCandidatureWorkflow $workflow): void
+    {
+        if (! $this->activationMilestoneReached($workflow) || $workflow->accessActivated()) {
+            return;
+        }
+
+        // Ne régénère pas un lien encore valable à chaque rafraîchissement.
+        if ($workflow->activation_token_hash
+            && $workflow->activation_token_expires_at
+            && $workflow->activation_token_expires_at->isFuture()) {
+            return;
+        }
+
+        $this->issueActivation($workflow);
+    }
+
+    public function activationMilestoneReached(ESBTPCandidatureWorkflow $workflow): bool
+    {
+        return match ($this->settings->accountActivationStep()) {
+            InscriptionWorkflowSettings::ACTIVATION_AFTER_DOCUMENTS => $workflow->documentsValidated(),
+            default => $workflow->paymentRecorded(),
+        };
     }
 
     private function initialState(): string
@@ -579,9 +576,18 @@ final class ManagedInscriptionWorkflow
             : ESBTPCandidatureWorkflow::STATE_AWAITING_PAYMENT;
     }
 
-    private function assertAppointment(ESBTPCandidature $candidature): void
+    private function assertNotFinalized(ESBTPCandidatureWorkflow $workflow): void
     {
-        if (! $this->settings->requiresAppointment()) {
+        if ($workflow->final_inscription_id) {
+            throw ValidationException::withMessages([
+                'workflow' => "L'inscription est finalisée : toute correction passe par la fiche d'inscription (changement de classe, pièces du dossier).",
+            ]);
+        }
+    }
+
+    private function assertAppointment(?ESBTPCandidature $candidature): void
+    {
+        if (! $candidature || ! $this->settings->requiresAppointment()) {
             return;
         }
 
@@ -662,11 +668,18 @@ final class ManagedInscriptionWorkflow
             $username = $base.'.'.$suffix++;
         }
 
+        $email = $workflow->candidature?->email;
+        if ($email && User::withTrashed()->where('email', $email)->exists()) {
+            // L'adresse sert déjà un autre compte : on n'en crée pas un second
+            // sur la même adresse ; le lien passera par WhatsApp.
+            $email = null;
+        }
+
         $user = User::create([
             'name' => trim($etudiant->prenoms.' '.$etudiant->nom),
             'first_name' => $etudiant->prenoms,
             'last_name' => $etudiant->nom,
-            'email' => $workflow->candidature?->email,
+            'email' => $email,
             'username' => $username,
             // Secret aleatoire non communique : le vrai mot de passe est choisi
             // uniquement depuis le lien d'activation à usage unique.
@@ -681,58 +694,43 @@ final class ManagedInscriptionWorkflow
         }
 
         $etudiant->forceFill(['user_id' => $user->id])->save();
+
         return $user;
-    }
-
-    private function maybeIssueActivation(ESBTPCandidatureWorkflow $workflow): void
-    {
-        $requiredMilestoneReached = match ($this->settings->accountActivationStep()) {
-            InscriptionWorkflowSettings::ACTIVATION_AFTER_DOCUMENTS => $workflow->documentsValidated(),
-            default => $workflow->paymentRecorded(),
-        };
-
-        if (! $requiredMilestoneReached || $workflow->accessActivated()) {
-            return;
-        }
-
-        // Ne régénère pas un lien encore valable à chaque rafraîchissement.
-        if ($workflow->activation_token_hash
-            && $workflow->activation_token_expires_at
-            && $workflow->activation_token_expires_at->isFuture()) {
-            return;
-        }
-
-        $this->issueActivation($workflow);
     }
 
     private function advance(ESBTPCandidatureWorkflow $workflow): void
     {
         $workflow->refresh();
 
+        $workflow->forceFill(['state' => self::stateFor($workflow, $this->settings->mode())])->save();
+    }
+
+    /**
+     * État affiché, déduit des jalons : une seule règle pour tous les écrans
+     * et pour l'activateur.
+     */
+    public static function stateFor(ESBTPCandidatureWorkflow $workflow, string $mode): string
+    {
         if ($workflow->final_inscription_id) {
-            $workflow->forceFill(['state' => ESBTPCandidatureWorkflow::STATE_COMPLETED])->save();
-            return;
+            return ESBTPCandidatureWorkflow::STATE_COMPLETED;
         }
 
-        if (! $workflow->paymentRecorded()) {
-            $workflow->forceFill(['state' => ESBTPCandidatureWorkflow::STATE_AWAITING_PAYMENT])->save();
-            return;
+        $paiementAvant = $mode !== InscriptionWorkflowSettings::MODE_PIECES_AVANT_CAISSE;
+        if ($paiementAvant && ! $workflow->paymentRecorded()) {
+            return ESBTPCandidatureWorkflow::STATE_AWAITING_PAYMENT;
         }
-
         if (! $workflow->documentsValidated()) {
-            $workflow->forceFill(['state' => ESBTPCandidatureWorkflow::STATE_AWAITING_DOCUMENTS])->save();
-            return;
+            return ESBTPCandidatureWorkflow::STATE_AWAITING_DOCUMENTS;
         }
-
+        if (! $workflow->paymentRecorded()) {
+            return ESBTPCandidatureWorkflow::STATE_AWAITING_PAYMENT;
+        }
         if (! $workflow->accessActivated()) {
-            $workflow->forceFill(['state' => ESBTPCandidatureWorkflow::STATE_AWAITING_ACTIVATION])->save();
-            return;
+            return ESBTPCandidatureWorkflow::STATE_AWAITING_ACTIVATION;
         }
 
-        $workflow->forceFill([
-            'state' => $workflow->selected_class_id
-                ? ESBTPCandidatureWorkflow::STATE_READY_TO_FINALIZE
-                : ESBTPCandidatureWorkflow::STATE_AWAITING_STUDENT,
-        ])->save();
+        return $workflow->selected_class_id && $workflow->profileCompleted()
+            ? ESBTPCandidatureWorkflow::STATE_READY_TO_FINALIZE
+            : ESBTPCandidatureWorkflow::STATE_AWAITING_STUDENT;
     }
 }

@@ -1,18 +1,18 @@
-@extends('layouts.app')
+@extends('layouts.app-public')
 
 @section('title', 'Activer mon espace étudiant - KLASSCI')
 
-@push('styles')
+@section('styles')
 <style>
 .mwa{min-height:72vh;display:grid;place-items:center;padding:24px}.mwa-card{width:min(540px,100%);background:#fff;border:1px solid #e6ebf3;border-radius:20px;box-shadow:0 18px 55px rgba(15,23,42,.10);overflow:hidden}.mwa-head{background:linear-gradient(135deg,#0a3d8f,#0453cb);color:#fff;padding:28px}.mwa-head h1{font-size:1.45rem;margin:0 0 7px}.mwa-head p{margin:0;opacity:.88}.mwa-body{padding:26px}.mwa-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}.mwa-field label{font-weight:800;font-size:.83rem;color:#475569}.mwa-field input{border:1px solid #d9e1ec;border-radius:11px;padding:12px}.mwa-btn{width:100%;border:0;border-radius:11px;padding:12px 16px;background:#0453cb;color:#fff;font-weight:800}.mwa-note{font-size:.82rem;color:#64748b;margin-top:14px}
 </style>
-@endpush
+@endsection
 
 @section('content')
 <div class="mwa">
     <div class="mwa-card">
         <div class="mwa-head">
-            <h1>Activez votre espace KLASSCI</h1>
+            <h1>Activez votre espace étudiant</h1>
             <p>{{ $workflow->candidature?->prenoms }} {{ $workflow->candidature?->nom }} · {{ $workflow->candidature?->reference_publique }}</p>
         </div>
         <div class="mwa-body">

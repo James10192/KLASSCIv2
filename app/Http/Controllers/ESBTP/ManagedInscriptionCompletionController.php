@@ -13,9 +13,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Termine le parcours gere sans laisser le controleur principal recreer une
- * seconde logique d'inscription. Le choix de classe reste porte par
- * ManagedInscriptionWorkflow ; la creation academique/frais/facture/conversion
- * passe ensuite par FinalizeManagedInscription.
+ * seconde logique d'inscription. Choix de classe par l'etudiant et creation
+ * academique/frais/facture/conversion passent par FinalizeManagedInscription.
  */
 final class ManagedInscriptionCompletionController extends Controller
 {
@@ -39,21 +38,22 @@ final class ManagedInscriptionCompletionController extends Controller
 
         if (! $workflow->profileCompleted()) {
             throw ValidationException::withMessages([
-                'profil' => "Completez d'abord vos informations avant de confirmer votre classe.",
+                'profil' => "Complétez d'abord vos informations avant de confirmer votre classe.",
             ]);
         }
 
-        $workflow = $this->managed->chooseClass(
+        // Choix et finalisation dans UNE transaction : si l'inscription ne
+        // peut pas être créée (classe complétée entre-temps, dossier devenu
+        // incomplet), rien n'est verrouillé et l'étudiant peut choisir à nouveau.
+        $inscription = $this->finalizer->chooseAndFinalize(
             $workflow,
             (int) $data['classe_id'],
             (int) $request->user()->id,
         );
 
-        $inscription = $this->finalizer->handle($workflow, (int) $request->user()->id);
-
         return redirect()
             ->route('esbtp.admissions.workflow.student')
-            ->with('success', 'Votre classe est confirmee et votre inscription academique est finalisee (n° '.$inscription->id.').');
+            ->with('success', 'Votre classe est confirmée et votre inscription est terminée. Bienvenue !');
     }
 
     public function finalize(ESBTPCandidatureWorkflow $workflow)
@@ -62,7 +62,7 @@ final class ManagedInscriptionCompletionController extends Controller
 
         if (! $workflow->profileCompleted()) {
             throw ValidationException::withMessages([
-                'profil' => "L'etudiant doit completer ses informations avant la finalisation de l'inscription.",
+                'profil' => "L'étudiant doit compléter ses informations avant la finalisation de l'inscription.",
             ]);
         }
 
@@ -70,7 +70,7 @@ final class ManagedInscriptionCompletionController extends Controller
 
         return redirect()
             ->route('esbtp.inscriptions.show', $inscription)
-            ->with('success', 'Inscription academique finalisee depuis la candidature en ligne.');
+            ->with('success', 'Inscription finalisée depuis la candidature en ligne.');
     }
 
     private function studentWorkflow(Request $request): ESBTPCandidatureWorkflow

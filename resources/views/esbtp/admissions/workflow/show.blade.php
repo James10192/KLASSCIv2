@@ -1,185 +1,232 @@
 @extends('layouts.app')
 
-@section('title', 'Dossier '.$candidature->reference_publique.' - KLASSCI')
+@section('title', 'Dossier '.($candidature->reference_publique ?: '#'.$candidature->id).' - KLASSCI')
 
 @push('styles')
 <style>
-.mwf{max-width:1220px;margin:0 auto;padding:24px}.mwf-hero{background:linear-gradient(135deg,#0a3d8f,#0453cb);color:#fff;border-radius:18px;padding:26px;display:flex;justify-content:space-between;gap:22px;align-items:flex-start}.mwf-hero h1{font-size:1.55rem;margin:0 0 6px}.mwf-hero p{margin:0;opacity:.86}.mwf-pill{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.14);font-size:.78rem;font-weight:800}.mwf-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}.mwf-card{background:#fff;border:1px solid #e5eaf2;border-radius:16px;padding:20px;box-shadow:0 8px 28px rgba(15,23,42,.05)}.mwf-card h2{font-size:1.05rem;color:#172033;margin:0 0 14px}.mwf-kv{display:grid;grid-template-columns:150px 1fr;gap:8px;font-size:.9rem;padding:6px 0;border-bottom:1px solid #f1f4f8}.mwf-kv span{color:#64748b}.mwf-steps{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:16px}.mwf-step{padding:10px 8px;border-radius:10px;background:#f3f6fb;text-align:center;font-size:.73rem;font-weight:800;color:#64748b}.mwf-step.done{background:#eaf7ef;color:#14763d}.mwf-step.current{background:#eaf1ff;color:#0453cb}.mwf-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mwf-field{display:flex;flex-direction:column;gap:5px}.mwf-field label{font-size:.78rem;font-weight:800;color:#475569}.mwf-field input,.mwf-field select,.mwf-field textarea{border:1px solid #dce3ed;border-radius:10px;padding:10px;background:#fff}.mwf-btn{border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}.mwf-btn.primary{background:#0453cb;color:#fff}.mwf-btn.soft{background:#eef4ff;color:#0453cb}.mwf-btn.success{background:#137c48;color:#fff}.mwf-btn.danger{background:#fff0f0;color:#b42318}.mwf-piece{border:1px solid #edf1f6;border-radius:12px;padding:13px;margin-bottom:10px}.mwf-piece-top{display:flex;justify-content:space-between;gap:10px}.mwf-piece strong{color:#1f2937}.mwf-status{font-size:.76rem;font-weight:800;border-radius:999px;padding:5px 8px;background:#f3f6fb}.mwf-status.ok{background:#eaf7ef;color:#14763d}.mwf-status.warn{background:#fff7e6;color:#a35c00}.mwf-full{grid-column:1/-1}.mwf-muted{font-size:.82rem;color:#64748b}.mwf-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.mwf-select{min-width:220px;border:1px solid #dce3ed;border-radius:9px;padding:9px;background:#fff}@media(max-width:850px){.mwf{padding:14px}.mwf-grid{grid-template-columns:1fr}.mwf-steps{grid-template-columns:1fr 1fr}.mwf-form{grid-template-columns:1fr}.mwf-kv{grid-template-columns:1fr}}
+.mwf{max-width:1180px;margin:0 auto;padding:24px}
+.mwf-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.mwf-head h1{font-size:1.5rem;font-weight:700;color:#0f172a;margin:0}
+.mwf-head p{margin:4px 0 0;color:#64748b;font-size:.9rem}
+.mwf-ref{font-family:ui-monospace,monospace;font-size:.82rem;color:#0453cb;background:rgba(4,83,203,.07);padding:4px 10px;border-radius:8px}
+.mwf-next{margin-top:16px;padding:14px 16px;border-radius:12px;background:#f1f6ff;border:1px solid rgba(4,83,203,.18);color:#0f172a;display:flex;gap:10px;align-items:center}
+.mwf-next i{color:#0453cb}
+.mwf-steps{display:flex;gap:6px;margin-top:16px;overflow-x:auto;padding-bottom:4px}
+.mwf-step{flex:1 0 120px;font-size:.76rem;font-weight:600;color:#64748b;border-top:3px solid #e2e8f0;padding-top:8px}
+.mwf-step.faite{color:#14763d;border-color:#10b981}
+.mwf-step.en_cours{color:#0453cb;border-color:#0453cb}
+.mwf-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:18px}
+.mwf-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:20px}
+.mwf-card h2{font-size:1rem;font-weight:700;color:#0f172a;margin:0 0 12px}
+.mwf-full{grid-column:1/-1}
+.mwf-kv{display:grid;grid-template-columns:140px 1fr;gap:8px;font-size:.88rem;padding:6px 0;border-bottom:1px solid #f1f5f9}
+.mwf-kv span{color:#64748b}
+.mwf-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mwf-field{display:flex;flex-direction:column;gap:5px}
+.mwf-field label{font-size:.78rem;font-weight:600;color:#475569}
+.mwf-field input{border:1px solid #dce3ed;border-radius:10px;padding:10px;background:#fff;min-height:44px}
+.mwf-help{font-size:.78rem;color:#64748b}
+.mwf-btn{border:0;border-radius:10px;padding:11px 16px;font-weight:600;cursor:pointer;min-height:44px}
+.mwf-btn.primary{background:#0453cb;color:#fff}
+.mwf-btn.soft{background:#eef4ff;color:#0453cb}
+.mwf-btn.success{background:#10b981;color:#fff}
+.mwf-btn.danger{background:#fff;color:#dc2626;border:1px solid #fecaca}
+.mwf-ok{display:inline-flex;gap:6px;align-items:center;font-size:.8rem;font-weight:600;color:#14763d;background:#ecfdf5;border-radius:999px;padding:5px 10px}
+.mwf-wait{display:inline-flex;gap:6px;align-items:center;font-size:.8rem;font-weight:600;color:#a35c00;background:#fffbeb;border-radius:999px;padding:5px 10px}
+.mwf-progress{font-size:.86rem;color:#0f172a;margin-bottom:10px}
+.mwf-piece{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #f1f5f9;flex-wrap:wrap}
+.mwf-piece:last-child{border-bottom:0}
+.mwf-piece strong{color:#0f172a;font-size:.92rem}
+.mwf-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mwf-inline input{border:1px solid #dce3ed;border-radius:9px;padding:8px;min-height:40px}
+.mwf-muted{font-size:.84rem;color:#64748b}
+@media(max-width:850px){.mwf{padding:14px}.mwf-grid,.mwf-form{grid-template-columns:1fr}.mwf-kv{grid-template-columns:1fr}}
 </style>
 @endpush
 
 @section('content')
 @php
-    $states = [
-        'awaiting_payment' => 1,
-        'awaiting_documents' => 2,
-        'awaiting_activation' => 3,
-        'awaiting_student' => 4,
-        'ready_to_finalize' => 6,
-        'completed' => 7,
-    ];
-    $current = $states[$workflow->state] ?? 0;
-    $canCash = (auth()->user()?->can('paiements.create') ?? false)
-        && (auth()->user()?->can('paiements.validate') ?? false)
-        && (auth()->user()?->can('inscriptions.create') ?? false);
-    $readyToFinalize = $workflow->paymentRecorded()
-        && $workflow->documentsValidated()
-        && $workflow->accessActivated()
-        && $workflow->profileCompleted()
-        && (bool) $workflow->selected_class_id;
+    $user = auth()->user();
+    $canCash = $user?->can('paiements.create') && $user?->can('paiements.validate');
+    $canPieces = $user?->can('pieces_dossier.suivre');
+    $canDecide = $user?->can('inscriptions.validate');
+    $finalisee = (bool) $workflow->final_inscription_id;
+    // L'ordre choisi par l'établissement : en « caisse puis pièces », le
+    // guichet des pièces n'agit qu'après le paiement (le serveur refuse aussi).
+    $piecesOuvertes = \App\Services\Admissions\ManagedWorkflowPresenter::piecesOuvertes($workflow);
+    $canPieces = $canPieces && $piecesOuvertes;
+    $piecesSatisfaites = $pieces->where('satisfaite', true)->count();
+    $fraisOptions = $fraisEncaissables->mapWithKeys(fn ($f) => [$f['category_id'] => $f['name'].' — '.number_format($f['amount'], 0, ',', ' ').' FCFA'])->all();
+    $modeOptions = collect($paymentModes)->mapWithKeys(fn ($meta, $key) => [$key => $meta['label'] ?? $key])->all();
+    $classOptions = $eligibleClasses->mapWithKeys(fn ($c) => [$c->id => $c->name.($c->places_restantes !== null ? ' · '.$c->places_restantes.' place(s)' : '')])->all();
 @endphp
 <div class="mwf">
-    <section class="mwf-hero">
+    <div class="mwf-head">
         <div>
-            <div class="mwf-pill">{{ $candidature->reference_publique ?: 'Candidature #'.$candidature->id }}</div>
-            <h1>{{ $candidature->nom }} {{ $candidature->prenoms }}</h1>
-            <p>{{ $candidature->filiere?->name }} · {{ $candidature->niveau?->name }} · parcours {{ $mode }}</p>
+            <h1>{{ $candidature->prenoms }} {{ $candidature->nom }}</h1>
+            <p>{{ $candidature->filiere?->name ?: 'Filière à confirmer' }} · {{ $candidature->niveau?->name ?: 'Niveau à confirmer' }} · {{ $candidature->anneeUniversitaire?->name ?: 'Année non précisée' }}</p>
         </div>
-        <div class="mwf-pill">État : {{ str_replace('_', ' ', $workflow->state) }}</div>
-    </section>
-
-    <div class="mwf-steps">
-        @foreach(['Caisse','Pièces','Activation','Profil étudiant','Classe','Finalisation'] as $i => $label)
-            @php $n=$i+1; @endphp
-            <div class="mwf-step {{ $current > $n ? 'done' : ($current === $n ? 'current' : '') }}">{{ $n }} · {{ $label }}</div>
-        @endforeach
+        <span class="mwf-ref">{{ $candidature->reference_publique ?: 'Dossier #'.$candidature->id }}</span>
     </div>
 
+    <div class="mwf-next" role="status"><i class="fas fa-arrow-right" aria-hidden="true"></i><strong>{{ $prochaineEtape }}</strong></div>
+
+    <ol class="mwf-steps" aria-label="Avancement du dossier" style="list-style:none;padding-left:0">
+        @foreach($etapes as $etape)
+            <li class="mwf-step {{ $etape['statut'] }}">{{ $etape['libelle'] }}</li>
+        @endforeach
+    </ol>
+
     @if(session('success'))<div class="alert alert-success mt-3">{{ session('success') }}</div>@endif
-    @if($errors->any())<div class="alert alert-danger mt-3"><strong>Le dossier n'a pas été modifié.</strong><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+    @if($errors->any())<div class="alert alert-danger mt-3"><strong>Rien n'a été enregistré.</strong><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 
     <div class="mwf-grid">
-        <section class="mwf-card">
-            <h2>Identité reprise de la candidature</h2>
-            <div class="mwf-kv"><span>Téléphone</span><strong>{{ $candidature->telephone ?: '—' }}</strong></div>
-            <div class="mwf-kv"><span>E-mail</span><strong>{{ $candidature->email ?: '—' }}</strong></div>
-            <div class="mwf-kv"><span>Naissance</span><strong>{{ optional($candidature->date_naissance)->format('d/m/Y') ?: '—' }} · {{ $candidature->lieu_naissance ?: '—' }}</strong></div>
-            <div class="mwf-kv"><span>Filière / niveau</span><strong>{{ $candidature->filiere?->name ?: '—' }} / {{ $candidature->niveau?->name ?: '—' }}</strong></div>
-            <div class="mwf-kv"><span>Dossier provisoire</span><strong>{{ $workflow->etudiant?->matricule ?: 'Créé au premier geste physique' }}</strong></div>
-        </section>
-
-        <section class="mwf-card">
-            <h2>1. Préinscription à la caisse</h2>
+        <section class="mwf-card" aria-labelledby="mwf-caisse">
+            <h2 id="mwf-caisse">Préinscription à la caisse</h2>
             @if($workflow->paymentRecorded())
-                <div class="mwf-status ok">Paiement validé</div>
+                <span class="mwf-ok"><i class="fas fa-check" aria-hidden="true"></i> Payée</span>
                 <div class="mwf-kv"><span>Reçu</span><strong>{{ $workflow->paiement?->numero_recu ?: '—' }}</strong></div>
-                <div class="mwf-kv"><span>Montant</span><strong>{{ number_format((float)($workflow->paiement?->montant ?? 0),0,',',' ') }} FCFA</strong></div>
+                <div class="mwf-kv"><span>Frais</span><strong>{{ $workflow->paiement?->fraisCategory?->name ?: '—' }}</strong></div>
+                <div class="mwf-kv"><span>Montant</span><strong>{{ number_format((float) ($workflow->paiement?->montant ?? 0), 0, ',', ' ') }} FCFA</strong></div>
                 <div class="mwf-kv"><span>Date</span><strong>{{ optional($workflow->paid_at)->format('d/m/Y H:i') }}</strong></div>
+                @if($workflow->paiement && $workflow->paiement->inscription_id)
+                    <div class="mt-2"><a class="mwf-btn soft" href="{{ route('esbtp.paiements.show', $workflow->paiement) }}"><i class="fas fa-receipt" aria-hidden="true"></i> Voir le paiement et le reçu</a></div>
+                @endif
             @elseif($canCash)
-                <form method="POST" action="{{ route('esbtp.admissions.workflow.pay', $candidature) }}" class="mwf-form">
-                    @csrf
-                    <div class="mwf-field"><label>Montant de préinscription</label><input name="montant" type="number" min="1" required value="{{ old('montant') }}"></div>
-                    <div class="mwf-field">
-                        <label>Mode de paiement</label>
-                        <select name="mode_paiement" required>
-                            <option value="">Choisir</option>
-                            @foreach($paymentModes as $key => $meta)
-                                <option value="{{ $key }}" @selected(old('mode_paiement') === $key)>{{ $meta['label'] ?? $key }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="mwf-field"><label>Référence externe</label><input name="reference_paiement" value="{{ old('reference_paiement') }}"></div>
-                    <div class="mwf-field"><label>N° transaction</label><input name="numero_transaction" value="{{ old('numero_transaction') }}"></div>
-                    <div class="mwf-full"><button class="mwf-btn primary" type="submit"><i class="fas fa-cash-register"></i> Encaisser sans ressaisie</button></div>
-                </form>
+                @if($fraisOptions === [])
+                    <p class="mwf-muted">Aucun frais n'est configuré pour cette filière, ce niveau et cette année. Configurez les frais avant d'encaisser.</p>
+                @else
+                    <form method="POST" action="{{ route('esbtp.admissions.workflow.pay', $candidature) }}" class="mwf-form">
+                        @csrf
+                        <div class="mwf-field mwf-full">
+                            <label>Frais encaissé</label>
+                            <x-au-select name="frais_category_id" :value="old('frais_category_id', array_key_first($fraisOptions))" :options="$fraisOptions" :placeholder-is-first-option="false" />
+                            <span class="mwf-help">Le montant indiqué est le tarif configuré ; un acompte inférieur est accepté.</span>
+                        </div>
+                        <div class="mwf-field">
+                            <label for="mwf-montant">Montant reçu (FCFA)</label>
+                            <input id="mwf-montant" name="montant" type="number" min="1" required inputmode="numeric" value="{{ old('montant', (int) ($fraisEncaissables->first()['amount'] ?? 0)) }}">
+                        </div>
+                        <div class="mwf-field">
+                            <label>Mode de paiement</label>
+                            <x-au-select name="mode_paiement" :value="old('mode_paiement')" :options="$modeOptions" placeholder="Choisir" />
+                        </div>
+                        <div class="mwf-field mwf-full">
+                            <label for="mwf-ref">N° de transaction (Mobile Money, virement)</label>
+                            <input id="mwf-ref" name="numero_transaction" value="{{ old('numero_transaction') }}">
+                        </div>
+                        <div class="mwf-full"><button class="mwf-btn primary" type="submit"><i class="fas fa-cash-register" aria-hidden="true"></i> Encaisser</button></div>
+                    </form>
+                @endif
             @else
-                <p class="mwf-muted">En attente du passage à la caisse. L'encaissement exige les droits de création et de validation d'un paiement.</p>
+                <span class="mwf-wait">En attente de la caisse</span>
             @endif
         </section>
 
-        <section class="mwf-card mwf-full">
-            <h2>2. Contrôle physique des pièces</h2>
-            <p class="mwf-muted">Même catalogue « Pièces du dossier » que le reste de KLASSCI. Ici les dépôts sont rattachés au dossier étudiant provisoire ; aucune seconde liste de pièces n'est créée.</p>
+        <section class="mwf-card" aria-labelledby="mwf-identite">
+            <h2 id="mwf-identite">Identité (reprise de la candidature)</h2>
+            <div class="mwf-kv"><span>Téléphone</span><strong>{{ $candidature->telephone ?: '—' }} @if($candidature->telephone_verifie_at)<span class="mwf-ok">vérifié</span>@endif</strong></div>
+            <div class="mwf-kv"><span>E-mail</span><strong>{{ $candidature->email ?: '—' }} @if($candidature->email_verifie_at)<span class="mwf-ok">vérifié</span>@endif</strong></div>
+            <div class="mwf-kv"><span>Naissance</span><strong>{{ optional($candidature->date_naissance)->format('d/m/Y') ?: '—' }} · {{ $candidature->lieu_naissance ?: '—' }}</strong></div>
+            @php $rdv = $candidature->reservations->sortByDesc('id')->first(); @endphp
+            <div class="mwf-kv"><span>Rendez-vous</span><strong>{{ $rdv?->creneau ? $rdv->creneau->date?->format('d/m/Y').' à '.substr((string) $rdv->creneau->heure_debut, 0, 5) : ($rdv ? 'Réservé' : 'Aucun') }}</strong></div>
+            <div class="mwf-kv"><span>Matricule provisoire</span><strong>{{ $workflow->etudiant?->matricule ?: 'Créé au premier passage au guichet' }}</strong></div>
+        </section>
+
+        <section class="mwf-card mwf-full" aria-labelledby="mwf-pieces">
+            <h2 id="mwf-pieces">Contrôle physique des pièces</h2>
+            @if($workflow->documentsValidated())
+                <span class="mwf-ok"><i class="fas fa-check" aria-hidden="true"></i> Dossier physique validé le {{ optional($workflow->documents_validated_at)->format('d/m/Y à H:i') }}</span>
+            @endif
+            @if(!$piecesOuvertes && !$finalisee)
+                <p class="mwf-muted">Le contrôle des pièces s'ouvre après le paiement de préinscription.</p>
+            @endif
+            <div class="mwf-progress"><strong>{{ $piecesSatisfaites }} / {{ $pieces->count() }}</strong> pièce(s) complète(s)</div>
             @forelse($pieces as $row)
                 <div class="mwf-piece">
-                    <div class="mwf-piece-top">
-                        <div><strong>{{ $row['piece']->libelle }}</strong><div class="mwf-muted">{{ $row['depose'] }}/{{ $row['requis'] }} exemplaire(s) validé(s){{ $row['piece']->is_obligatoire ? ' · obligatoire' : '' }}</div></div>
-                        <div class="mwf-status {{ $row['satisfaite'] ? 'ok':'warn' }}">{{ $row['satisfaite'] ? 'Complet':'À fournir' }}</div>
+                    <div>
+                        <strong>{{ $row['piece']->libelle }}</strong>{!! $row['piece']->is_obligatoire ? '' : ' <span class="mwf-muted">(facultative)</span>' !!}
+                        <div class="mwf-muted">{{ $row['depose'] }} reçu(s) sur {{ $row['requis'] }} requis{{ $row['manquant'] > 0 ? ' · '.$row['manquant'].' manquant(s)' : '' }}</div>
                     </div>
-                    @can('pieces_dossier.suivre')
-                    <form class="mwf-actions" method="POST" action="{{ route('esbtp.admissions.workflow.pieces.receive', $workflow) }}">
-                        @csrf
-                        <input type="hidden" name="piece_id" value="{{ $row['piece']->id }}">
-                        <input style="width:80px;border:1px solid #dce3ed;border-radius:9px;padding:8px" type="number" name="quantite" min="1" max="50" value="1">
-                        <button class="mwf-btn soft" type="submit">Enregistrer la remise</button>
-                    </form>
-                    @foreach($row['depots'] as $depot)
-                        @if($depot->etat?->value === 'deposee')
-                        <form class="mwf-actions" method="POST" action="{{ route('esbtp.admissions.workflow.pieces.decide', [$workflow,$depot]) }}">
-                            @csrf
-                            <span class="mwf-muted">Dépôt #{{ $depot->id }} à relire</span>
-                            <button class="mwf-btn success" name="decision" value="valider">Valider</button>
-                            <input name="motif" placeholder="Motif si refus" style="border:1px solid #dce3ed;border-radius:9px;padding:8px">
-                            <button class="mwf-btn danger" name="decision" value="refuser">Refuser</button>
-                        </form>
+                    <div class="mwf-inline">
+                        @if($row['satisfaite'])<span class="mwf-ok">Complet</span>@else<span class="mwf-wait">Manquant</span>@endif
+                        @if($canPieces && !$finalisee && !$row['satisfaite'])
+                            <form class="mwf-inline" method="POST" action="{{ route('esbtp.admissions.workflow.pieces.receive', $workflow) }}">
+                                @csrf
+                                <input type="hidden" name="piece_id" value="{{ $row['piece']->id }}">
+                                <label class="visually-hidden" for="q-{{ $row['piece']->id }}">Nombre d'exemplaires reçus</label>
+                                <input id="q-{{ $row['piece']->id }}" style="width:72px" type="number" name="quantite" min="1" max="50" value="{{ max(1, $row['manquant']) }}">
+                                <button class="mwf-btn soft" type="submit">Reçu</button>
+                            </form>
                         @endif
-                    @endforeach
-                    @endcan
+                    </div>
+                    @if($canPieces && !$finalisee)
+                        @foreach($row['depots'] as $depot)
+                            @if($depot->etat?->value === 'deposee')
+                                <form class="mwf-inline mwf-full" method="POST" action="{{ route('esbtp.admissions.workflow.pieces.decide', [$workflow, $depot]) }}">
+                                    @csrf
+                                    <span class="mwf-muted">{{ $depot->quantite_deposee }} exemplaire(s) à relire</span>
+                                    <button class="mwf-btn success" name="decision" value="valider">Valider</button>
+                                    <label class="visually-hidden" for="motif-{{ $depot->id }}">Motif du refus</label>
+                                    <input id="motif-{{ $depot->id }}" name="motif" placeholder="Motif si refus">
+                                    <button class="mwf-btn danger" name="decision" value="refuser">Refuser</button>
+                                </form>
+                            @elseif($depot->etat?->value === 'refusee')
+                                <div class="mwf-muted mwf-full">Refusé : {{ $depot->motif }}</div>
+                            @endif
+                        @endforeach
+                    @endif
                 </div>
             @empty
-                <div class="mwf-muted">Aucun catalogue de pièces n'est configuré pour ce périmètre.</div>
+                <p class="mwf-muted">Aucune pièce n'est configurée pour cette filière et ce niveau.</p>
             @endforelse
 
-            @can('pieces_dossier.suivre')
-            @if(!$workflow->documentsValidated())
-            <form method="POST" action="{{ route('esbtp.admissions.workflow.pieces.validate', $workflow) }}">
-                @csrf
-                <button class="mwf-btn success" type="submit">Confirmer le contrôle physique complet</button>
-            </form>
-            @else
-                <div class="mwf-status ok">Dossier physique validé le {{ optional($workflow->documents_validated_at)->format('d/m/Y H:i') }}</div>
+            @if($canPieces && !$workflow->documentsValidated() && !$finalisee)
+                <form method="POST" action="{{ route('esbtp.admissions.workflow.pieces.validate', $workflow) }}" class="mt-3">
+                    @csrf
+                    <button class="mwf-btn success" type="submit"><i class="fas fa-check-double" aria-hidden="true"></i> Valider le dossier physique</button>
+                </form>
             @endif
-            @endcan
         </section>
 
-        <section class="mwf-card">
-            <h2>3. Activation et profil étudiant</h2>
-            <div class="mwf-kv"><span>Déclenchement</span><strong>{{ $activationStep === 'after_payment' ? 'Après paiement':'Après contrôle des pièces' }}</strong></div>
-            <div class="mwf-kv"><span>Compte</span><strong>{{ $workflow->etudiant?->user?->username ?: 'Pas encore préparé' }}</strong></div>
-            <div class="mwf-kv"><span>Activation</span><strong>{{ $workflow->accessActivated() ? 'Activé':'En attente' }}</strong></div>
-            <div class="mwf-kv"><span>Profil complété</span><strong>{{ $workflow->profileCompleted() ? optional($workflow->profile_completed_at)->format('d/m/Y H:i') : 'En attente' }}</strong></div>
-            @can('inscriptions.create')
-            @if($workflow->etudiant_id && !$workflow->accessActivated())
-            <form method="POST" action="{{ route('esbtp.admissions.workflow.activation.resend', $workflow) }}" class="mwf-actions">
-                @csrf
-                <button class="mwf-btn soft" type="submit">Régénérer / renvoyer le lien</button>
-            </form>
+        <section class="mwf-card" aria-labelledby="mwf-espace">
+            <h2 id="mwf-espace">Espace étudiant</h2>
+            <div class="mwf-kv"><span>Envoi du lien</span><strong>{{ $activationStep === 'after_payment' ? 'Après le paiement' : 'Après le contrôle des pièces' }}</strong></div>
+            <div class="mwf-kv"><span>Identifiant</span><strong>{{ $workflow->etudiant?->user?->username ?: 'Pas encore créé' }}</strong></div>
+            <div class="mwf-kv"><span>Compte</span><strong>{{ $workflow->accessActivated() ? 'Activé' : 'En attente d\'activation' }}</strong></div>
+            <div class="mwf-kv"><span>Informations</span><strong>{{ $workflow->profileCompleted() ? 'Complétées' : 'À compléter par l\'étudiant' }}</strong></div>
+            @if($workflow->etudiant_id && !$workflow->accessActivated() && ($user?->can('inscriptions.validate') || $user?->can('pieces_dossier.suivre')))
+                <form method="POST" action="{{ route('esbtp.admissions.workflow.activation.resend', $workflow) }}" class="mt-2">
+                    @csrf
+                    <button class="mwf-btn soft" type="submit">Renvoyer le lien d'activation</button>
+                </form>
+                <p class="mwf-muted mt-2">Le lien part uniquement vers un e-mail ou un numéro vérifié. Renvoyer annule les liens précédents.</p>
             @endif
-            @endcan
-            <p class="mwf-muted">Aucun mot de passe permanent n'est envoyé : l'étudiant choisit le sien depuis un lien à usage unique valable 48 h.</p>
         </section>
 
-        <section class="mwf-card">
-            <h2>4. Classe et inscription définitive</h2>
-            <div class="mwf-kv"><span>Mode d'affectation</span><strong>{{ $classChoiceActor === \App\Services\Admissions\InscriptionWorkflowSettings::CLASS_ACTOR_STUDENT ? "Choix par l'étudiant" : "Choix par l'administration" }}</strong></div>
-            <div class="mwf-kv"><span>Classe</span><strong>{{ $workflow->selectedClass?->name ?: 'Non affectée' }}</strong></div>
-            <div class="mwf-kv"><span>Inscription finale</span><strong>{{ $workflow->final_inscription_id ? '#'.$workflow->final_inscription_id : 'Non créée' }}</strong></div>
-
-            @can('inscriptions.create')
-                @if($classChoiceActor === \App\Services\Admissions\InscriptionWorkflowSettings::CLASS_ACTOR_ADMIN && !$workflow->final_inscription_id)
-                    <form method="POST" action="{{ route('esbtp.admissions.workflow.class.choose-admin', $workflow) }}" class="mwf-actions">
+        <section class="mwf-card" aria-labelledby="mwf-classe">
+            <h2 id="mwf-classe">Classe et inscription</h2>
+            <div class="mwf-kv"><span>Choix</span><strong>{{ $classChoiceActor === \App\Services\Admissions\InscriptionWorkflowSettings::CLASS_ACTOR_STUDENT ? "Par l'étudiant" : "Par l'administration" }}</strong></div>
+            <div class="mwf-kv"><span>Classe</span><strong>{{ $workflow->selectedClass?->name ?: 'Non choisie' }}</strong></div>
+            @if($finalisee)
+                <div class="mt-2"><a class="mwf-btn primary" href="{{ route('esbtp.inscriptions.show', $workflow->final_inscription_id) }}">Ouvrir l'inscription</a></div>
+            @elseif($canDecide)
+                @if($classChoiceActor === \App\Services\Admissions\InscriptionWorkflowSettings::CLASS_ACTOR_ADMIN)
+                    <form method="POST" action="{{ route('esbtp.admissions.workflow.class.choose-admin', $workflow) }}" class="mwf-inline mt-2">
                         @csrf
-                        <select name="classe_id" class="mwf-select" required>
-                            <option value="">Choisir une classe disponible</option>
-                            @foreach($eligibleClasses as $classe)
-                                <option value="{{ $classe->id }}" @selected((int)$workflow->selected_class_id === (int)$classe->id)>{{ $classe->name }} · {{ $classe->filiere?->name }}</option>
-                            @endforeach
-                        </select>
-                        <button class="mwf-btn soft" type="submit">Affecter la classe</button>
+                        <x-au-select name="classe_id" :value="$workflow->selected_class_id" :options="$classOptions" placeholder="Choisir une classe" />
+                        <button class="mwf-btn soft" type="submit">Affecter</button>
                     </form>
-                @elseif($classChoiceActor === \App\Services\Admissions\InscriptionWorkflowSettings::CLASS_ACTOR_STUDENT && !$workflow->selected_class_id)
-                    <p class="mwf-muted">La classe sera choisie une seule fois par l'étudiant dans son espace après complétion du profil et contrôle des pièces.</p>
                 @endif
-
-                @if($readyToFinalize && !$workflow->final_inscription_id)
-                    <form method="POST" action="{{ route('esbtp.admissions.workflow.finalize', $workflow) }}" class="mwf-actions">
+                @if($workflow->state === \App\Models\ESBTPCandidatureWorkflow::STATE_READY_TO_FINALIZE)
+                    <form method="POST" action="{{ route('esbtp.admissions.workflow.finalize', $workflow) }}" class="mt-2">
                         @csrf
-                        <button class="mwf-btn primary" type="submit">Finaliser l'inscription académique</button>
+                        <button class="mwf-btn primary" type="submit">Finaliser l'inscription</button>
                     </form>
-                @elseif(!$workflow->final_inscription_id)
-                    <p class="mwf-muted">La finalisation reste verrouillée tant que paiement, pièces, activation, profil et classe ne sont pas tous validés.</p>
+                @else
+                    <p class="mwf-muted mt-2">La finalisation s'ouvre quand paiement, pièces, activation, informations et classe sont tous faits.</p>
                 @endif
-            @endcan
+            @endif
         </section>
     </div>
 </div>

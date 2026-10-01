@@ -63,28 +63,33 @@ Route::prefix('esbtp/admissions/workflow')
                 ->middleware('throttle:20,1')
                 ->name('student.choose-class');
 
-            // La caisse et la scolarité doivent pouvoir ouvrir le même dossier
-            // sans qu'on leur donne les droits de l'autre métier.
+            // Lecture : la caisse, l'inscription et la scolarité ouvrent le
+            // même dossier, chacun n'agit que sur son étape.
+            Route::get('/', [ManagedInscriptionQueueController::class, 'index'])
+                ->middleware('permission:paiements.create|inscriptions.create|pieces_dossier.suivre')
+                ->name('index');
             Route::get('/candidatures/{candidature}', [ManagedInscriptionWorkflowController::class, 'show'])
-                ->middleware('permission:inscriptions.create|pieces_dossier.suivre')
+                ->middleware('permission:paiements.create|inscriptions.create|pieces_dossier.suivre')
                 ->name('show');
 
-            Route::middleware('permission:inscriptions.create')->group(function () {
-                Route::get('/', [ManagedInscriptionQueueController::class, 'index'])->name('index');
+            // Caisse : encaisser et valider un paiement. Rien d'académique.
+            // L'ordre choisi par le tenant est imposé dans le contrôleur
+            // d'étape : l'URL directe ne contourne rien.
+            Route::post('/candidatures/{candidature}/paiement', [ManagedInscriptionStepController::class, 'pay'])
+                ->middleware([
+                    'permission:paiements.create',
+                    'permission:paiements.validate',
+                    'throttle:20,1',
+                ])
+                ->name('pay');
 
-                // Le contrôleur d'étape impose l'ordre choisi par le tenant avant
-                // toute écriture financière : l'URL directe ne contourne rien.
-                Route::post('/candidatures/{candidature}/paiement', [ManagedInscriptionStepController::class, 'pay'])
-                    ->middleware([
-                        'permission:paiements.create',
-                        'permission:paiements.validate',
-                        'throttle:20,1',
-                    ])
-                    ->name('pay');
+            Route::post('/{workflow}/activation/renvoyer', [ManagedActivationController::class, 'resend'])
+                ->middleware(['permission:inscriptions.validate|pieces_dossier.suivre', 'throttle:10,1'])
+                ->name('activation.resend');
 
-                Route::post('/{workflow}/activation/renvoyer', [ManagedActivationController::class, 'resend'])
-                    ->middleware('throttle:10,1')
-                    ->name('activation.resend');
+            // Décisions académiques : affecter une classe, finaliser. Le droit
+            // existant « valider une inscription » — que la caisse n'a pas.
+            Route::middleware('permission:inscriptions.validate')->group(function () {
                 Route::post('/{workflow}/classe', [ManagedInscriptionWorkflowController::class, 'chooseClassAsAdmin'])
                     ->middleware('throttle:20,1')
                     ->name('class.choose-admin');

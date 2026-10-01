@@ -106,6 +106,10 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         $response = $this->from(route('esbtp.bulletins.configuration'))
             ->post(route('esbtp.bulletins.save-configuration'), [
                 'bulletin_save_display' => '1',
+                // Ce que le vrai formulaire envoie : un marqueur par case rendue,
+                // la case décochée elle-même n'étant jamais transmise.
+                'bulletin_show_subjects_table_present' => '1',
+                'bulletin_show_header_present' => '1',
                 'bulletin_show_header' => '1',
                 'bulletin_bts1_semester1_weight' => '1',
                 'bulletin_bts1_semester2_weight' => '2',
