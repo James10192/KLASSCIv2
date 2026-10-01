@@ -99,6 +99,12 @@ return [
             'libelle' => 'Préparation des nouvelles classes…',
             'suggestion' => 'Ajoute une classe de plus à chaque filière et niveau',
         ],
+        'proposer_modification_classes' => [
+            'enabled' => true,
+            'all_permissions' => ['classes.edit'],
+            'libelle' => 'Préparation de la modification des classes…',
+            'suggestion' => 'Passe les classes de 1re année à 60 places',
+        ],
         // La pièce appartient à qui l'a déposée (PiecesJointes::pour) : ces droits
         // ne disent que les métiers où lire un tableau joint a un sens.
         'chercher_dans_piece' => [

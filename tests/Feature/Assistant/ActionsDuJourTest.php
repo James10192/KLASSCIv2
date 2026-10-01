@@ -3,6 +3,7 @@
 namespace Tests\Feature\Assistant;
 
 use App\Domain\Assistant\Actions\Classes\AjouterClasses;
+use App\Domain\Assistant\Actions\Classes\ModifierClasses;
 use App\Domain\Assistant\Actions\ContexteDEchange;
 use App\Domain\Assistant\Actions\Lmd\LierUeAuxParcours;
 use App\Domain\Assistant\Flux\UiMessageStream;
@@ -54,7 +55,7 @@ class ActionsDuJourTest extends TestCase
         parent::setUp();
         $this->withoutMiddleware([PaywallMiddleware::class, EnsureInstalled::class, CheckInstalled::class]);
         Role::findOrCreate('superAdmin', 'web');
-        foreach (['classes.create', 'lmd.structure.manage', 'lmd.structure.view', 'inscriptions.view'] as $p) {
+        foreach (['classes.create', 'classes.edit', 'lmd.structure.manage', 'lmd.structure.view', 'inscriptions.view'] as $p) {
             Permission::findOrCreate($p, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -285,6 +286,42 @@ class ActionsDuJourTest extends TestCase
         $trop = app(AjouterClasses::class)->executeAuthorized(['places' => 40, 'filieres' => ['IDAT'], 'niveaux' => ['BTS1I'], 'nombre' => 30], $this->admin);
         $this->assertArrayNotHasKey('widget', $trop);
         $this->assertStringContainsString('26', implode(' ', $trop['manques']));
+    }
+
+    public function test_modifier_les_places_d_une_filiere_et_niveau(): void
+    {
+        $f = ESBTPFiliere::factory()->create(['code' => 'MODT']);
+        $n = ESBTPNiveauEtude::factory()->create(['code' => 'BTS1M', 'year' => 1, 'type' => 'BTS']);
+        $a = ESBTPClasse::factory()->create(['name' => 'MOD 1A', 'code' => 'MOD_1A', 'places_totales' => 40, 'filiere_id' => $f->id, 'niveau_etude_id' => $n->id]);
+        $b = ESBTPClasse::factory()->create(['name' => 'MOD 1B', 'code' => 'MOD_1B', 'places_totales' => 45, 'filiere_id' => $f->id, 'niveau_etude_id' => $n->id]);
+
+        $r = app(ModifierClasses::class)->executeAuthorized(['filieres' => ['MODT'], 'niveaux' => ['BTS1M'], 'places' => 60], $this->admin);
+        $this->assertSame(40, (int) $a->fresh()->places_totales, 'rien avant Valider');
+        $this->valider($r);
+
+        $this->assertSame(60, (int) $a->fresh()->places_totales);
+        $this->assertSame(60, (int) $b->fresh()->places_totales);
+    }
+
+    public function test_modifier_refuse_moins_de_places_que_d_inscrits_et_le_renommage_groupe(): void
+    {
+        $classe = ESBTPClasse::factory()->create(['name' => 'PLN 1A', 'code' => 'PLN_1A', 'places_totales' => 40]);
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
+        foreach (range(1, 3) as $i) {
+            \App\Models\ESBTPInscription::factory()->create(['classe_id' => $classe->id, 'annee_universitaire_id' => $annee, 'status' => 'active']);
+        }
+
+        $r = app(ModifierClasses::class)->executeAuthorized(['classes' => ['PLN_1A'], 'places' => 2], $this->admin);
+        $this->assertArrayNotHasKey('widget', $r);
+        $this->assertStringContainsString('3 inscrits', implode(' ', $r['manques']));
+
+        $autre = ESBTPClasse::factory()->create(['code' => 'PLN_1B']);
+        $r = app(ModifierClasses::class)->executeAuthorized(['classes' => ['PLN_1A', (string) $autre->id], 'nom' => 'X'], $this->admin);
+        $this->assertStringContainsString('une seule classe', implode(' ', $r['manques']));
+
+        $this->valider(app(ModifierClasses::class)->executeAuthorized(['classes' => ['pln_1a'], 'nom' => 'PLN 1 A', 'active' => false], $this->admin));
+        $this->assertSame('PLN 1 A', $classe->fresh()->name);
+        $this->assertFalse((bool) $classe->fresh()->is_active);
     }
 
     public function test_sans_nombre_de_places_nanan_doit_le_demander(): void
