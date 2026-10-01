@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API\Public;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Verification\VerifierContactRequest;
 use App\Services\Verification\ControleVerification;
+use App\Services\Verification\LienWhatsappVerification;
 use App\Services\Verification\RenvoiVerification;
 use App\Http\Requests\Verification\RenvoyerContactRequest;
 use Illuminate\Http\JsonResponse;
@@ -39,9 +40,34 @@ class VerificationContactPortalController extends Controller
         }
 
         $attente = $renvoi->renvoyer($request->demandeId(), $request->canal());
+        if ($attente !== null) {
+            return response()->json(['envoye' => false, 'retry_after' => $attente], 429);
+        }
 
-        return $attente === null
-            ? response()->json(['envoye' => true], 202)
-            : response()->json(['envoye' => false, 'retry_after' => $attente], 429);
+        // Verification inversee : le nouveau lien remplace l'ancien a l'ecran.
+        $lien = $request->canal() === 'telephone' ? LienWhatsappVerification::lire($request->demandeId()) : null;
+
+        return response()->json($lien === null ? ['envoye' => true] : ['envoye' => true, 'lien_whatsapp' => $lien], 202);
+    }
+
+    /**
+     * Ou en est une verification WhatsApp inversee. Le site l'appelle toutes
+     * les quelques secondes pendant que la famille envoie le code : 202 tant
+     * que le message n'est pas arrive (avec le lien, pour le reafficher apres
+     * un rechargement), 200 des que la demande est verifiee.
+     */
+    public function statut(RenvoyerContactRequest $request, ControleVerification $controle): JsonResponse
+    {
+        if ($request->demandeId() === null) {
+            return response()->json(['verifie' => false, 'motif' => ControleVerification::CODE_INVALIDE], 422);
+        }
+
+        $resultat = $controle->parStatut($request->demandeId(), $request->canal());
+        $corps = $resultat->corps();
+        if ($resultat->motif === ControleVerification::EN_ATTENTE && ($lien = LienWhatsappVerification::lire($request->demandeId())) !== null) {
+            $corps['lien_whatsapp'] = $lien;
+        }
+
+        return response()->json($corps, $resultat->statutHttp());
     }
 }

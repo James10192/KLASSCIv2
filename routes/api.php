@@ -568,6 +568,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // compte d'eleves reels, il n'a rien a faire dans le depot.
         Route::post('/reprise/inscriptions-annee-ecoulee', [App\Http\Controllers\API\CLI\CLIRepriseController::class, 'inscriptionsAnneeEcoulee'])->name('reprise.inscriptions-annee-ecoulee');
         Route::post('/frais/corriger-souscriptions', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'corrigerSouscriptions'])->name('frais.corriger-souscriptions');
+        // Ce qu'UN etudiant doit sur UN frais (exoneration, remise, dette reprise a tort).
+        Route::post('/frais/souscriptions/ajuster', [App\Http\Controllers\API\CLI\CLIAjustementSouscriptionController::class, 'ajuster'])->name('frais.souscriptions.ajuster');
         Route::post('/frais/repartir-trop-percu', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'repartirTropPercu'])->name('frais.repartir-trop-percu');
         Route::post('/frais/depot-nature/annuler', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'annulerDepotNature'])->name('frais.depot-nature.annuler');
         Route::get('/inscriptions/types', [App\Http\Controllers\API\CLI\CLIInscriptionTypeController::class, 'recenser'])->name('inscriptions.types');
