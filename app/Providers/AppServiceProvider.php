@@ -55,6 +55,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(\App\Domain\Assistant\Cles\CoffreDesCles::class);
         $this->app->scoped(\App\Domain\Assistant\Actions\ContexteDEchange::class);
 
+        // Le mailer par défaut suit le réglage « courriels par MailPulse » de
+        // l'école, lu à l'envoi. `extend` s'applique à la première résolution
+        // du gestionnaire (MailServiceProvider est différé), avant le
+        // `Mail::extend('mailpulse')` du boot, qui s'enregistre donc sur
+        // celui-ci. `depuis()` reporte malgré tout les mailers déjà confiés à
+        // l'original : rien ne se perd si un paquet en enregistre plus tôt.
+        $this->app->extend('mail.manager', fn ($gestionnaire, $app) => \App\Mail\Transport\MailManagerDeLEcole::depuis($gestionnaire, $app));
+
         // Singleton : le service memorise ses resolutions de chemin. Resolu a la
         // volee, le conteneur en reconstruisait une instance neuve a chaque acces
         // a photo_url — donc un memo toujours vide, et une liste de cinquante
@@ -208,7 +216,8 @@ class AppServiceProvider extends ServiceProvider
         // Logo, nom et coordonnées de l'école pour le gabarit commun.
         View::composer('esbtp.emails.*', \App\View\Composers\IdentiteDesCourriels::class);
 
-        // MAIL_MAILER=mailpulse : tout courriel de Laravel part par l'API MailPulse.
+        // Le mailer `mailpulse` : tout courriel de Laravel part par l'API MailPulse,
+        // dès que l'école le demande dans ses réglages (ou MAIL_MAILER=mailpulse).
         \Illuminate\Support\Facades\Mail::extend('mailpulse', fn () => new \App\Mail\Transport\MailPulseTransport(
             $this->app->make(\App\Services\MailPulse\MailPulseClient::class),
             $this->app->make(\App\Mail\Transport\EnvoiMailPulse::class),

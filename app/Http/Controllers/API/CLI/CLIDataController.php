@@ -543,6 +543,14 @@ class CLIDataController extends BaseApiController
             return $this->errorResponse('Missing required field: value', [], 422);
         }
 
+        if (in_array($key, \App\Mail\Transport\MailerDeLEcole::REGLAGES_RESERVES_A_L_ECRAN, true)) {
+            return $this->errorResponse(
+                sprintf("« %s » décide par où partent les e-mails de l'école : il se change depuis l'écran des paramètres (onglet MailPulse).", $key),
+                [],
+                422
+            );
+        }
+
         // Upsert : créer la ligne si elle n'existe pas (utile pour provisionner de
         // nouveaux settings via CLI sans avoir à faire un git deploy + UI visit
         // d'abord). Le type est inféré du request param ?type=float|int|bool|string
