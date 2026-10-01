@@ -52,7 +52,19 @@ return [
 
     'boite_envoi' => [
         'tentatives_max' => 20,
+        // Avis sur Nanan envoyes au plus par passage, APRES les signalements :
+        // ils partagent la limite d'ecriture du Master (30 par minute).
+        'avis_par_passage' => (int) env('SUPPORT_AVIS_PAR_PASSAGE', 10),
     ],
+
+    'suivi' => [
+        // Le Master refuse `mis_a_jour_depuis` au-dela de 30 jours (422). Un
+        // curseur plus ancien que cette valeur fait relire sans filtre.
+        'depuis_jours_max' => (int) env('SUPPORT_SUIVI_DEPUIS_JOURS_MAX', 29),
+    ],
+
+    // Tours de conversation guidee (/chatbot/support/tour) par personne et par jour.
+    'tours_par_jour' => (int) env('SUPPORT_TOURS_PAR_JOUR', 40),
 
     /*
     | Parametres de route reconnus comme « element concerne ». Le nom du

@@ -139,6 +139,22 @@ class BulletinBulkPdfExporter
         return $supprimes;
     }
 
+    /**
+     * Efface ce qu'une tranche aurait déjà écrit avant d'être interrompue.
+     *
+     * Une requête coupée par l'hébergement après le rendu mais avant que
+     * l'avancement soit enregistré fait rejouer la même tranche : sans ce
+     * ménage, ses bulletins sortiraient deux fois dans le document.
+     */
+    public function oublierLesRangs(string $dossier, int $depart, int $nombre): void
+    {
+        for ($rang = $depart; $rang < $depart + $nombre; $rang++) {
+            foreach (glob(sprintf('%s/blt_%06d_*.pdf', $dossier, $rang)) ?: [] as $f) {
+                @unlink($f);
+            }
+        }
+    }
+
     /** Supprime le dossier de session et tout ce qu'il contient encore. */
     public function oublierLaSession(string $dossier): void
     {

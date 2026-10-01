@@ -6,6 +6,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPCandidatureWorkflow;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFacture;
 use App\Models\ESBTPFactureDetail;
 use App\Models\ESBTPFraisSubscription;
@@ -15,6 +16,7 @@ use App\Models\ESBTPPaiement;
 use App\Models\ESBTPPieceDeposee;
 use App\Services\CataloguePiecesDossier;
 use App\Services\ESBTPInscriptionService;
+use App\Support\MatriculeGenerator;
 use App\Services\InscriptionWorkflowService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -38,6 +40,7 @@ final class FinalizeManagedInscription
 {
     public function __construct(
         private readonly ESBTPInscriptionService $inscriptions,
+        private readonly MatriculeGenerator $matricules,
         private readonly InscriptionWorkflowService $workflow,
         private readonly CataloguePiecesDossier $catalogue,
         private readonly ManagedInscriptionWorkflow $managed,
@@ -229,7 +232,7 @@ final class FinalizeManagedInscription
             'annee_universitaire_id' => $anneeId,
             'statut' => 'actif',
             'updated_by' => $userId,
-        ])->save();
+        ] + $this->matriculeDefinitif($etudiant, $classe, $anneeId))->save();
 
         // La conversion historique marque l'e-mail vérifié sans condition ;
         // une activation par WhatsApp ne prouve pas l'adresse.
@@ -266,6 +269,34 @@ final class FinalizeManagedInscription
         ])->save();
 
         return $inscription->fresh();
+    }
+
+    /**
+     * Le matricule PRE- posé à la préinscription est provisoire. À la
+     * finalisation, l'étudiant reçoit celui de l'école, par le même générateur
+     * que le formulaire d'inscription classique (format réglé par niveau).
+     * Un matricule déjà définitif n'est jamais réécrit.
+     *
+     * @return array<string, string>
+     */
+    private function matriculeDefinitif(ESBTPEtudiant $etudiant, ESBTPClasse $classe, int $anneeId): array
+    {
+        // Sexe ou date de naissance manquant : on garde le PRE-. Le contrôle de
+        // complétude de la conversion ne joue que sur un matricule PRE- ; le
+        // remplacer avant lui laisserait passer un dossier incomplet, avec un
+        // matricule numéroté sur un sexe deviné.
+        if (! str_starts_with((string) $etudiant->matricule, 'PRE-')
+            || ! $etudiant->sexe
+            || ! $etudiant->date_naissance) {
+            return [];
+        }
+
+        return ['matricule' => $this->matricules->generate([
+            'genre' => $etudiant->sexe,
+            'filiere_id' => $classe->filiere_id,
+            'niveau_id' => $classe->niveau_etude_id,
+            'annee_universitaire_id' => $anneeId,
+        ])];
     }
 
     private function anneeId(?ESBTPCandidature $candidature): int

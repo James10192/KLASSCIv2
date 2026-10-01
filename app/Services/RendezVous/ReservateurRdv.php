@@ -3,6 +3,7 @@
 namespace App\Services\RendezVous;
 
 use App\Contracts\PorteurDeRendezVous;
+use App\Domain\Notifications\PhoneNormalizer;
 use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutReservationRdv;
 use App\Models\ESBTPCandidature;
@@ -296,9 +297,19 @@ class ReservateurRdv
             return null;
         }
 
+        // La candidature stocke le numero sous sa forme canonique (+225…), la
+        // famille tape « 07 07 … ». Sans cette conversion, « Retrouver ma
+        // reference » ne retrouvait rien des qu'on ecrivait son numero comme on
+        // le dit, et la famille repartait vers le formulaire de contact.
+        $telephones = array_values(array_unique(array_filter([
+            $identifiant,
+            PhoneNormalizer::toE164($identifiant),
+        ])));
+
         $candidature = ESBTPCandidature::query()
-            ->where('telephone', $identifiant)
+            ->whereIn('telephone', $telephones)
             ->whereDate('date_naissance', $naissance)
+            ->latest('id')
             ->first();
 
         if ($candidature !== null) {
@@ -306,12 +317,13 @@ class ReservateurRdv
         }
 
         $demande = ESBTPReinscriptionDemande::query()
-            ->whereHas('etudiant', function ($q) use ($identifiant, $naissance) {
-                $q->where(function ($inner) use ($identifiant) {
+            ->whereHas('etudiant', function ($q) use ($identifiant, $telephones, $naissance) {
+                $q->where(function ($inner) use ($identifiant, $telephones) {
                     $inner->where('matricule', $identifiant)
-                        ->orWhere('telephone', $identifiant);
+                        ->orWhereIn('telephone', $telephones);
                 })->whereDate('date_naissance', $naissance);
             })
+            ->latest('id')
             ->first();
 
         return $demande?->assurerReferencePublique();

@@ -258,6 +258,34 @@ class EtudiantAccueilMobileTest extends TestCase
      * @param string[] $permissions
      * @return array{0: User, 1: ESBTPEtudiant}
      */
+    public function test_un_etudiant_inscrit_pour_l_annee_suivante_le_voit_sur_son_accueil(): void
+    {
+        // Campagne d'inscription de l'année suivante : rien sur l'année
+        // courante. L'accueil disait « Aucune inscription active ».
+        $suivante = ESBTPAnneeUniversitaire::factory()->create([
+            'name' => '2026-2027',
+            'is_current' => false,
+            'start_date' => '2026-10-01',
+            'end_date' => '2027-07-31',
+        ]);
+        $classe = $this->classe('BTS');
+        [$user, $etudiant] = $this->etudiantInscrit($classe, ['profile.view_own']);
+        ESBTPInscription::where('etudiant_id', $etudiant->id)->update(['annee_universitaire_id' => $suivante->id]);
+
+        // Les cours de cette classe tournent encore pour la promotion en
+        // cours : ce ne sont pas ceux du nouvel inscrit.
+        $this->seance($classe, 'mercredi', '10:00:00', '12:00:00');
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('Inscrit pour 2026-2027');
+        $accueil = $response->viewData('mobileAccueil');
+        $this->assertSame('2026-2027', $accueil['annee_a_venir']);
+        $this->assertSame($classe->name, $accueil['classe']);
+        $this->assertNull($accueil['prochain_cours']);
+    }
+
     private function etudiantInscrit(ESBTPClasse $classe, array $permissions): array
     {
         $user = User::factory()->create([

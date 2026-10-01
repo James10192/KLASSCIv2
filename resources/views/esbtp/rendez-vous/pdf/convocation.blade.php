@@ -66,6 +66,9 @@
                 <div style="font-size: 16px; margin-top: 4px;">
                     {{ $creneau ? ($creneau->heureDebutHi().' – '.$creneau->heureFinHi()) : '—' }}
                 </div>
+                @if(!empty($lieu))
+                    <div style="font-size: 13px; margin-top: 8px;">Lieu : <strong>{{ $lieu }}</strong></div>
+                @endif
             </td>
         </tr>
     </table>

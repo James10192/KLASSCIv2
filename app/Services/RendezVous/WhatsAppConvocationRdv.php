@@ -54,6 +54,7 @@ class WhatsAppConvocationRdv
         $donnees = $this->donnees->pour($reservation, $action);
         $texte = $donnees['intro']
             ."\n\n".$donnees['date'].' '.$donnees['heure']
+            .($donnees['lieu'] !== '' ? "\nLieu : ".$donnees['lieu'] : '')
             ."\nRéférence : ".$donnees['reference'];
 
         if ($donnees['lienPdf'] !== '') {

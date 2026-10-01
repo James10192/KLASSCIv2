@@ -42,7 +42,7 @@
             <div class="sp-head">
                 <div class="sp-head-icon"><i class="fas fa-life-ring"></i></div>
                 <div>
-                    <h2 id="sp-modal-titre">Aide &amp; signalement</h2>
+                    <h2 id="sp-modal-titre">Aide</h2>
                     <p>Expliquez-nous simplement : nous joignons le contexte technique pour vous.</p>
                 </div>
                 <button type="button" class="sp-fermer" data-bs-dismiss="modal" aria-label="Fermer"><i class="fas fa-xmark"></i></button>
@@ -133,6 +133,11 @@
                     <p class="sp-question" tabindex="-1" data-sp-focus data-sp-fin-titre>Demande reçue</p>
                     <p class="sp-fin-texte" data-sp-fin-texte></p>
                     <p class="sp-fin-capture" data-sp-fin-capture role="status" hidden></p>
+                    <div class="sp-verifier" data-sp-verifier hidden>
+                        <p><i class="fas fa-envelope-circle-check" aria-hidden="true"></i> <span data-sp-verifier-texte></span></p>
+                        <button type="button" class="sp-btn sp-btn--secondaire" data-sp-verifier-btn>Confirmer mon adresse</button>
+                        <p class="sp-verifier-message" data-sp-verifier-message role="status" hidden></p>
+                    </div>
                     <div class="sp-actions sp-actions--centre">
                         <a class="sp-btn sp-btn--secondaire" data-sp-suivi hidden>Suivre ma demande</a>
                         <button type="button" class="sp-btn sp-btn--primaire" data-bs-dismiss="modal">Fermer</button>
@@ -142,6 +147,9 @@
         </div>
     </div>
 </div>
+
+{{-- Nanan prend la main sur les entrées « Aide » ; le formulaire ci-dessus reste là pour la capture d'écran. --}}
+<x-support.nanan :prenom="trim((string) (auth()->user()->first_name ?: strtok((string) auth()->user()->name, ' ')))" />
 
 <style>
     .sp-modal .modal-content { border: 0; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 60px rgba(15,23,42,.18); }
@@ -221,6 +229,11 @@
     .sp-toile-texte { position: absolute; transform: translateY(-50%); min-width: 180px; padding: .3rem .5rem; font-size: .85rem;
         border: 1px solid #0453cb; border-radius: 6px; box-shadow: 0 4px 14px rgba(15,23,42,.15); }
     .sp-fin-capture { font-size: .84rem; color: #475569; }
+    .sp-verifier { margin: 1rem auto 0; max-width: 400px; padding: .85rem .95rem; border: 1px solid #bfd3f2; border-radius: 14px; background: #f8fbff; text-align: left; }
+    .sp-verifier p { margin: 0 0 .6rem; font-size: .86rem; color: #1e293b; }
+    .sp-verifier p i { color: #0453cb; }
+    .sp-verifier-message { margin: .6rem 0 0 !important; color: #475569 !important; }
+    .sp-verifier-message--erreur { color: #b91c1c !important; }
     .sp-capture-astuce { display: none; margin: .6rem 0 0; font-size: .76rem; color: #64748b; }
     @media (pointer: coarse) { .sp-capture-astuce { display: block; } .sp-capture-choix[hidden] + .sp-capture-astuce { display: none; } }
     @media (max-width: 576px) {
