@@ -65,6 +65,8 @@ class ESBTPRecouvrementController extends Controller
         try {
             $renderer->emailPdf($this->buildReport($request, $predictor), $to, $request->user()?->name);
             return response()->json(['success' => true, 'message' => "Rapport en cours d'envoi à {$to}"]);
+        } catch (\DomainException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         } catch (\Throwable $e) {
             Log::error('Recouvrement emailPdf failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Erreur lors de l\'envoi'], 500);

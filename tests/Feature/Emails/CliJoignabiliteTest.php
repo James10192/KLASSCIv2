@@ -67,6 +67,19 @@ class CliJoignabiliteTest extends TestCase
         $this->assertTrue(app(TenantScolariteSettings::class)->verificationContactActive());
     }
 
+    public function test_la_verification_inversee_se_cree_en_booleen(): void
+    {
+        $cle = TenantScolariteSettings::VERIFICATION_WHATSAPP_INVERSE;
+        \App\Models\Setting::query()->where('key', $cle)->delete();
+        Cache::flush();
+
+        $this->postJson('/api/cli/settings', ['key' => $cle, 'value' => 'peut-etre', 'apply' => true])->assertStatus(422);
+        $this->postJson('/api/cli/settings', ['key' => $cle, 'value' => '1', 'apply' => true])->assertOk();
+
+        $this->assertSame('1', (string) \App\Models\Setting::query()->where('key', $cle)->value('value'));
+        $this->assertTrue(app(TenantScolariteSettings::class)->verificationWhatsappInverse());
+    }
+
     public function test_le_nettoyage_simule_par_defaut_et_exige_un_vrai_booleen(): void
     {
         Storage::fake('local');

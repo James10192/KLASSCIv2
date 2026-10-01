@@ -23,6 +23,16 @@ class TenantScolariteSettings
      */
     public const VERIFICATION_CONTACT = 'inscriptions.portail.verification_contact';
 
+    /**
+     * Verification WhatsApp inversee : la famille envoie elle-meme le code au
+     * numero de l'ecole depuis un lien wa.me, au lieu de le recevoir. Ecrire a
+     * des inconnus est ce qui fait bloquer un numero WhatsApp Web ; ici la
+     * conversation part de la famille. Desactivee par defaut, comme toute
+     * politique d'ecole ; a defaut d'un numero propre a l'application, MailPulse
+     * refuse et le code repart dans l'autre sens.
+     */
+    public const VERIFICATION_WHATSAPP_INVERSE = 'inscriptions.portail.verification_whatsapp_inverse';
+
     public function splitRolesEnabled(): bool
     {
         return $this->flag(self::SPLIT_ROLES);
@@ -81,6 +91,11 @@ class TenantScolariteSettings
     public function verificationContactActive(): bool
     {
         return $this->flag(self::VERIFICATION_CONTACT);
+    }
+
+    public function verificationWhatsappInverse(): bool
+    {
+        return $this->flag(self::VERIFICATION_WHATSAPP_INVERSE);
     }
 
     private function flag(string $key, string $default = '0'): bool

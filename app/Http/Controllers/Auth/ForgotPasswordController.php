@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 // Commentons cette ligne car le trait n'est pas trouvé
 // use Illuminate\Foundation\Auth\SendsPasswordResetEmails;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class ForgotPasswordController extends Controller
 {
@@ -58,9 +60,19 @@ class ForgotPasswordController extends Controller
         // Nous enverrons le lien de réinitialisation du mot de passe à cet utilisateur. Une fois que nous
         // l'avons envoyé, nous informerons l'utilisateur que nous avons envoyé un e-mail. Ensuite, ils
         // peuvent utiliser le lien pour réinitialiser leur mot de passe.
-        $response = $this->broker()->sendResetLink(
-            $this->credentials($request)
-        );
+        try {
+            $response = $this->broker()->sendResetLink(
+                $this->credentials($request)
+            );
+        } catch (TransportExceptionInterface $e) {
+            // Le courriel n'est pas parti (messagerie refusée ou plafond atteint) :
+            // le dire à l'écran plutôt qu'une page d'erreur, et le garder au journal.
+            Log::warning('Réinitialisation du mot de passe : courriel non envoyé', ['erreur' => $e->getMessage()]);
+
+            throw ValidationException::withMessages([
+                'email' => ["Le courriel de réinitialisation n'a pas pu partir. Réessayez dans quelques minutes."],
+            ]);
+        }
 
         return $response == Password::RESET_LINK_SENT
                     ? $this->sendResetLinkResponse($request, $response)

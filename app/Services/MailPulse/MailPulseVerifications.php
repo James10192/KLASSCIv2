@@ -40,6 +40,53 @@ class MailPulseVerifications
         return $this->echec($reponse);
     }
 
+    /**
+     * Verification inversee : rien ne part, MailPulse rend le lien wa.me qui
+     * ouvre WhatsApp sur le numero de l'ecole avec le code deja saisi.
+     */
+    public function creerInverse(string $telephoneE164, string $reference): ResultatVerificationDistante
+    {
+        $reponse = $this->api->appeler('POST', '/api/v1/verifications', [
+            'channel' => 'whatsapp',
+            'to' => $telephoneE164,
+            'locale' => 'fr',
+            'reference' => $reference,
+            'mode' => 'reverse',
+        ], 'verification_create');
+
+        if (is_string($reponse)) {
+            return ResultatVerificationDistante::echec($reponse);
+        }
+
+        if ($reponse->status() === 201) {
+            $id = $reponse->json('id');
+            $lien = $reponse->json('wa_link');
+
+            return is_string($id) && $id !== '' && is_string($lien) && str_starts_with($lien, 'https://wa.me/')
+                ? ResultatVerificationDistante::okInverse($id, $lien)
+                : ResultatVerificationDistante::echec('invalid_contract');
+        }
+
+        return $this->echec($reponse);
+    }
+
+    /** Statut courant d'une verification : `approved`, `pending`, `expired`… */
+    public function statut(string $verificationId): ResultatVerificationDistante
+    {
+        $reponse = $this->api->appeler('GET', '/api/v1/verifications/'.rawurlencode($verificationId), null, 'verification_status');
+
+        if (is_string($reponse)) {
+            return ResultatVerificationDistante::echec($reponse);
+        }
+
+        $statut = $reponse->json('status');
+        if ($reponse->status() === 200 && is_string($statut) && $statut !== '') {
+            return ResultatVerificationDistante::ok($statut, $verificationId);
+        }
+
+        return $this->echec($reponse);
+    }
+
     public function controler(string $verificationId, string $code): ResultatVerificationDistante
     {
         $reponse = $this->api->appeler('POST', '/api/v1/verifications/'.rawurlencode($verificationId).'/check', ['code' => $code], 'verification_check');

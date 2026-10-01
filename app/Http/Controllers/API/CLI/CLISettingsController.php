@@ -33,7 +33,10 @@ class CLISettingsController extends BaseApiController
     private const SENSIBLES = ['token', 'secret', 'password', 'mot_de_passe', 'api_key', 'apikey', 'cle_api'];
 
     /** Reglages dont la valeur est validee comme booleen, puis ecrite en 1 / 0. */
-    private const BOOLEENS = [\App\Services\TenantScolariteSettings::VERIFICATION_CONTACT];
+    private const BOOLEENS = [
+        \App\Services\TenantScolariteSettings::VERIFICATION_CONTACT,
+        \App\Services\TenantScolariteSettings::VERIFICATION_WHATSAPP_INVERSE,
+    ];
 
     public function index(Request $request): JsonResponse
     {
@@ -159,6 +162,7 @@ class CLISettingsController extends BaseApiController
         if (! $reglage) {
             $creables = [
                 \App\Services\TenantScolariteSettings::VERIFICATION_CONTACT,
+                \App\Services\TenantScolariteSettings::VERIFICATION_WHATSAPP_INVERSE,
                 \App\Services\TenantScolariteSettings::CLERK_LMD_ACCESS,
                 \App\Services\TenantScolariteSettings::CLERK_PEDAGOGIE,
                 \App\Services\TenantScolariteSettings::MANAGE_TEACHERS,

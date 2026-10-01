@@ -37,7 +37,8 @@
                 <small>Données brutes (.xlsx)</small>
             </div>
         </a>
-        @if($emailUrl)
+        {{-- Le mailer mailpulse ne transporte pas de pièce jointe : ne pas proposer ce qu'il refuserait. --}}
+        @if($emailUrl && ! \App\Mail\Transport\MailPulseTransport::actif())
             <button type="button" @click="window.askEmailExport('{{ $emailUrl }}'); open = false" class="export-menu-item export-menu-item--button">
                 <i class="fas fa-envelope"></i>
                 <div>
