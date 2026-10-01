@@ -126,6 +126,34 @@ class CLISettingsController extends BaseApiController
             $valide['value'] = $booleen ? '1' : '0';
         }
 
+        // Le parcours d'inscription configurable : memes choix et memes refus
+        // que l'ecran des reglages, lus dans la meme classe.
+        $workflow = \App\Services\Admissions\InscriptionWorkflowSettings::class;
+        if (in_array($valide['key'], $workflow::booleens(), true)) {
+            $booleen = filter_var($valide['value'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($booleen === null) {
+                return $this->errorResponse(sprintf('« %s » attend un booléen (1/0, true/false).', $valide['key']), [], 422);
+            }
+            $valide['value'] = $booleen ? '1' : '0';
+        }
+        if (array_key_exists($valide['key'], $workflow::choix())
+            && ! array_key_exists((string) $valide['value'], $workflow::choix()[$valide['key']])) {
+            return $this->errorResponse(sprintf(
+                '« %s » attend une de ces valeurs : %s.',
+                $valide['key'],
+                implode(', ', array_keys($workflow::choix()[$valide['key']]))
+            ), [], 422);
+        }
+        if (in_array($valide['key'], array_merge($workflow::booleens(), array_keys($workflow::choix()), [\App\Services\RendezVous\RendezVousReglages::ENABLED]), true)) {
+            app($workflow)->ensureDefaults();
+            $incoherence = $workflow::incoherence(fn (string $cle): string => $cle === $valide['key']
+                ? (string) $valide['value']
+                : (string) Setting::get($cle, ''));
+            if ($incoherence !== null) {
+                return $this->errorResponse($incoherence, [], 422);
+            }
+        }
+
         $reglage = Setting::query()->where('key', $valide['key'])->first();
 
         if (! $reglage) {
