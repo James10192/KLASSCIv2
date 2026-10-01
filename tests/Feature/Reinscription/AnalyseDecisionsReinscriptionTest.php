@@ -158,6 +158,7 @@ class AnalyseDecisionsReinscriptionTest extends TestCase
             'etudiant_id' => $etudiant->id,
             'matiere_id' => $matiere->id,
             'evaluation_id' => null,
+            'classe_id' => ESBTPInscription::where('etudiant_id', $etudiant->id)->value('classe_id'),
             'annee_universitaire' => $anneeNom,
             'note' => $note,
             'is_absent' => false,

@@ -116,7 +116,7 @@ class ClassesProposeesAuPassageTest extends TestCase
         // Memes conditions que la liste de reinscription : un dossier encore en
         // cours n'est pas une annee suivie.
         $licence3 = $this->classe('Licence', 3);
-        $etudiant = $this->etudiantEn($licence3, '2025-09-01', null, 'paiement_en_attente');
+        $etudiant = $this->etudiantEn($licence3, '2025-09-01', null, 'en_validation');
 
         $this->assertNull(app(ClassesDeReinscription::class)->inscriptionQuittee($etudiant->id));
     }

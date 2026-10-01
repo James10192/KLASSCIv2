@@ -112,6 +112,14 @@ class CLISettingsController extends BaseApiController
             );
         }
 
+        if (in_array($valide['key'], \App\Mail\Transport\MailerDeLEcole::REGLAGES_RESERVES_A_L_ECRAN, true)) {
+            return $this->errorResponse(
+                sprintf("« %s » décide par où partent les e-mails de l'école : il se change depuis l'écran des paramètres (onglet MailPulse).", $valide['key']),
+                [],
+                422
+            );
+        }
+
         if ($this->estSensible($valide['key'])) {
             return $this->errorResponse(
                 "Cette cle evoque un secret : elle se change depuis l'ecran de configuration.",

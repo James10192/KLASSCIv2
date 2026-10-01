@@ -321,11 +321,18 @@ class ESBTPReinscriptionController extends Controller
         $existante = $eligibilite['inscription_annee_cible'];
         $reliquatAnneeCible = $existante && $existante->id !== $inscription->id ? $reliquatsVers((int) $existante->id) : 0.0;
 
+        // « Préparer N+1 » n'est offert que si N+1 se prépare vraiment : le même
+        // jugement que la finalisation (une année N non finalisée le bloque).
+        $preparerSuivante = $eligibilite['annee_suivante']
+            && app(\App\Services\Reinscription\EligibiliteReinscription::class)
+                ->pour((int) $etudiantId, auth()->user(), (int) $eligibilite['annee_suivante']->id)['etat']
+                !== \App\Services\Reinscription\EligibiliteReinscription::ANNEE_INTERMEDIAIRE;
+
         $voirFinances = auth()->user()->can('finances.etudiants.voir');
         $notesComptees = is_countable($analyse['notes'] ?? null) ? count($analyse['notes']) : 0;
 
         return view('esbtp.reinscription.show', compact(
-            'analyse', 'eligibilite', 'anneeAcademique', 'voirFinances', 'reliquatEntrant', 'reliquatAnneeCible', 'notesComptees'
+            'analyse', 'eligibilite', 'anneeAcademique', 'voirFinances', 'reliquatEntrant', 'reliquatAnneeCible', 'notesComptees', 'preparerSuivante'
         ));
     }
 
@@ -357,6 +364,10 @@ class ESBTPReinscriptionController extends Controller
             if ($eligibilite['etat'] === \App\Services\Reinscription\EligibiliteReinscription::IMPAYE && !$eligibilite['peut_deroger']) {
                 return redirect()->route('esbtp.reinscription.show', $etudiantId)
                     ->withErrors(['error' => 'La réinscription est bloquée par un reste à payer : voir le détail ci-dessous.']);
+            }
+            if ($eligibilite['etat'] === \App\Services\Reinscription\EligibiliteReinscription::ANNEE_INTERMEDIAIRE) {
+                return redirect()->route('esbtp.reinscription.show', $etudiantId)
+                    ->withErrors(['error' => $eligibilite['message_intermediaire']]);
             }
 
             $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
