@@ -16,6 +16,7 @@ class DonneesConvocationRdv
     public function __construct(
         private readonly IdentitePublique $identite,
         private readonly ConvocationRdvPdf $pdf,
+        private readonly RendezVousReglages $reglages,
     ) {}
 
     /** @return array<string, mixed> */
@@ -44,6 +45,7 @@ class DonneesConvocationRdv
             'date' => $creneau?->date?->translatedFormat('l j F Y') ?? '—',
             'heure' => $creneau ? ($creneau->heureDebutHi().' – '.$creneau->heureFinHi()) : '—',
             'reference' => $reference,
+            'lieu' => $this->reglages->lieu(),
             'lien' => $this->lienReservation($reference),
             'lienPdf' => $action === 'annule' ? '' : $this->pdf->url($reservation),
             'schoolName' => $nomEcole,

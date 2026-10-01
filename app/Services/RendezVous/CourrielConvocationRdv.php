@@ -38,7 +38,9 @@ class CourrielConvocationRdv
         ]);
 
         $donnees = $this->donnees->pour($reservation, $action);
-        $texte = $donnees['sujet']."\n\n".$donnees['date'].' '.$donnees['heure']."\nRéférence : ".$donnees['reference'];
+        $texte = $donnees['sujet']."\n\n".$donnees['date'].' '.$donnees['heure']
+            .($donnees['lieu'] !== '' ? "\nLieu : ".$donnees['lieu'] : '')
+            ."\nRéférence : ".$donnees['reference'];
         if ($donnees['lienPdf'] !== '') {
             $texte .= "\nPDF : ".$donnees['lienPdf'];
         }

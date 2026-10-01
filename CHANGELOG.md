@@ -10,6 +10,14 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ---
 
+## Octobre 2026
+
+### Ajouts
+- **Rendez-vous d'inscription — le lieu est enfin annoncé.** Nouveau réglage « Lieu du rendez-vous » (page Rendez-vous, bloc Accueil au guichet), repris sur la convocation PDF, l'e-mail, le WhatsApp et la page de rendez-vous de klassci.com. Laissé vide, l'adresse de l'établissement est reprise.
+
+### Corrections
+- **« Retrouver ma référence » accepte le numéro tel qu'on le dit.** Un « 07 07 … » saisi par la famille retrouve désormais la candidature enregistrée sous sa forme internationale ; à dossier multiple, le plus récent est rendu.
+
 ## Septembre 2026
 
 ### Ajouts

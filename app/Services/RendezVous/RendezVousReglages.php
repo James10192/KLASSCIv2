@@ -34,6 +34,14 @@ class RendezVousReglages
 
     public const DELAI_MODIF = 'inscriptions.rdv.delai_modif_heures';
 
+    /**
+     * Ou se presenter : « Scolarite, batiment A, rez-de-chaussee ». Texte libre,
+     * pose par l'ecole. Sans lui, la convocation donnait la date et l'heure mais
+     * jamais le lieu, et les familles appelaient l'ecole — ou ecrivaient a
+     * KLASSCI — pour le demander.
+     */
+    public const LIEU = 'inscriptions.rdv.lieu';
+
     /** Minutes apres le debut d'un creneau au-dela desquelles une famille attendue est « en retard ». */
     public const GRACE = 'inscriptions.rdv.grace_no_show_minutes';
 
@@ -53,6 +61,7 @@ class RendezVousReglages
             self::DELAI_MIN,
             self::DELAI_MODIF,
             self::GRACE,
+            self::LIEU,
         ];
     }
 
@@ -274,6 +283,23 @@ class RendezVousReglages
         $valeur = $this->valeur(self::GRACE, '15');
 
         return ctype_digit($valeur) ? (int) $valeur : 15;
+    }
+
+    /**
+     * Le lieu annonce sur la convocation, le portail et les messages.
+     *
+     * Repli sur l'adresse de l'etablissement : moins precise qu'un guichet, mais
+     * une adresse vaut mieux que rien. Vide si l'ecole n'a regle ni l'un ni
+     * l'autre — l'appelant n'affiche alors aucune ligne, plutot qu'un tiret.
+     */
+    public function lieu(): string
+    {
+        $lieu = $this->valeur(self::LIEU);
+        if ($lieu !== '') {
+            return $lieu;
+        }
+
+        return $this->valeur('school_address');
     }
 
     public function valeur(string $cle, string $defaut = ''): string

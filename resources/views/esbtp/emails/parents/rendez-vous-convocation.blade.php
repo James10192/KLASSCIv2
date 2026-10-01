@@ -21,6 +21,9 @@
             <p>Bonjour {{ $nom }},</p>
             <p>{{ $intro }}</p>
             <p style="font-size:18px;font-weight:bold;color:{{ $primaire }};">{{ $date }}<br>{{ $heure }}</p>
+            @if(!empty($lieu))
+                <p style="margin-top:-6px;">Lieu : <strong>{{ $lieu }}</strong></p>
+            @endif
             @if($reference)
                 <p>Référence : <strong>{{ $reference }}</strong></p>
             @endif
