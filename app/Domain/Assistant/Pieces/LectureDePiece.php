@@ -15,7 +15,10 @@ use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 /**
  * Un fichier joint à l'assistant → un tableau (en-têtes + lignes de texte).
  *
- *  - Excel (xlsx, xls) et CSV : la première feuille. Les en-têtes sont la première
+ *  - Excel (xlsx, xls) et CSV : la première feuille. Un classeur dont TOUTES les
+ *    feuilles portent les mêmes en-têtes (un état par classe, par exemple) est lu
+ *    en entier, une colonne « Feuille » en tête ; sinon la première seule, et
+ *    `autres_feuilles` nomme celles qui n'ont pas été lues. Les en-têtes sont la première
  *    ligne d'au moins deux cellules (un titre seul au-dessus du tableau est sauté).
  *    Un nombre est lu tel qu'il est STOCKÉ, jamais tel que le format l'affiche
  *    (12,5 formaté « 0 » s'afficherait 13). Une formule rend la dernière valeur
@@ -35,6 +38,8 @@ class LectureDePiece
 {
     public const MAX_LIGNES = 500;
     public const MAX_COLONNES = 30;
+    /** Feuilles lues au plus dans un classeur. */
+    private const MAX_FEUILLES = 30;
     private const MAX_CELLULE = 200;
     /** Taille décompressée maximale d'un xlsx ou d'un docx : une archive de 2 Mo peut en cacher des centaines. */
     private const MAX_DECOMPRESSE = 40 * 1024 * 1024;
@@ -61,7 +66,54 @@ class LectureDePiece
         $tableau = $this->normaliser($format === 'docx' ? $this->tableauWord($chemin) : $this->feuille($chemin, $format));
         $tableau['tronque'] = $tableau['tronque'] || $this->auDela;
 
-        return $tableau;
+        return in_array($format, ['xlsx', 'xls'], true) ? $this->autresFeuilles($chemin, $format, $tableau) : $tableau;
+    }
+
+    /**
+     * Les feuilles suivantes. Elles ne s'ajoutent que si leurs en-têtes sont
+     * EXACTEMENT ceux de la première : un classeur mêlant un tableau de notes et un
+     * récapitulatif ne doit pas fusionner des lignes qui ne disent pas la même chose.
+     */
+    private function autresFeuilles(string $chemin, string $format, array $premiere): array
+    {
+        try {
+            $noms = IOFactory::createReader(['xlsx' => 'Xlsx', 'xls' => 'Xls'][$format])->listWorksheetNames($chemin);
+        } catch (\Throwable $e) {
+            return $premiere;
+        }
+        if (count($noms) < 2) {
+            return $premiere;
+        }
+
+        $feuilles = [[$noms[0], $premiere]];
+        foreach (array_slice($noms, 1, self::MAX_FEUILLES - 1) as $nom) {
+            try {
+                $feuilles[] = [$nom, $this->normaliser($this->feuille($chemin, $format, $nom))];
+            } catch (PieceIllisible $e) {
+                continue; // feuille vide ou sans tableau
+            }
+        }
+        $memes = count($feuilles) > 1 && collect($feuilles)->every(fn ($f) => $f[1]['colonnes'] === $premiere['colonnes']);
+        if (! $memes) {
+            return $premiere + ['autres_feuilles' => array_slice($noms, 1)];
+        }
+
+        $entete = in_array('Feuille', $premiere['colonnes'], true) ? 'Onglet' : 'Feuille';
+        $lignes = [];
+        $tronque = count($noms) > self::MAX_FEUILLES;
+        foreach ($feuilles as [$nom, $tableau]) {
+            $tronque = $tronque || $tableau['tronque'];
+            foreach ($tableau['lignes'] as $ligne) {
+                $lignes[] = array_merge([mb_substr((string) $nom, 0, self::MAX_CELLULE)], $ligne);
+            }
+        }
+
+        return [
+            'colonnes' => array_merge([$entete], $premiere['colonnes']),
+            'lignes' => array_slice($lignes, 0, self::MAX_LIGNES),
+            'tronque' => $tronque || count($lignes) > self::MAX_LIGNES,
+            'feuilles' => array_column($feuilles, 0),
+        ];
     }
 
     private function format(UploadedFile $fichier): string
@@ -124,7 +176,7 @@ class LectureDePiece
     }
 
     /** @return array<int, array<int, string>> */
-    private function feuille(string $chemin, string $format): array
+    private function feuille(string $chemin, string $format, ?string $nomFeuille = null): array
     {
         $lecteur = IOFactory::createReader(['xlsx' => 'Xlsx', 'xls' => 'Xls', 'csv' => 'Csv'][$format]);
         $lecteur->setReadFilter(new class (self::MAX_LIGNES + 2, self::MAX_COLONNES + 1) implements IReadFilter {
@@ -142,10 +194,12 @@ class LectureDePiece
             if ($format === 'csv') {
                 $this->configurerCsv($lecteur, $chemin);
             } else {
-                // Seule la première feuille est chargée : les autres ne coûtent rien.
-                $lecteur->setLoadSheetsOnly([$lecteur->listWorksheetNames($chemin)[0] ?? '']);
+                // Une seule feuille est chargée à la fois : les autres ne coûtent rien.
+                $lecteur->setLoadSheetsOnly([$nomFeuille ?? ($lecteur->listWorksheetNames($chemin)[0] ?? '')]);
             }
-            $this->auDela = ($format === 'xlsx' ? $this->valeursAuDela($chemin) : null) ?? $this->dimensionAuDela($lecteur, $chemin);
+            if ($nomFeuille === null) {
+                $this->auDela = ($format === 'xlsx' ? $this->valeursAuDela($chemin) : null) ?? $this->dimensionAuDela($lecteur, $chemin);
+            }
             $feuille = $lecteur->load($chemin)->getSheet(0);
         } catch (\Throwable $e) {
             throw new PieceIllisible('Le fichier n\'a pas pu être lu.');

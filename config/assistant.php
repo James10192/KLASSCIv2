@@ -67,6 +67,8 @@ return [
             \App\Domain\Assistant\Actions\Evaluations\CreerEvaluation::class,
             \App\Domain\Assistant\Actions\Evaluations\PublierNotes::class,
             \App\Domain\Assistant\Actions\Frais\AjusterMontantSouscription::class,
+            \App\Domain\Assistant\Actions\Lmd\LierUeAuxParcours::class,
+            \App\Domain\Assistant\Actions\Classes\AjouterClasses::class,
         ],
     ],
 
