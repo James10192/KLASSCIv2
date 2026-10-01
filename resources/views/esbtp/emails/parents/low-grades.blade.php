@@ -14,7 +14,7 @@
         Le bulletin de {{ $studentName }} indique des résultats en dessous de la moyenne requise.
     </div>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Résultats du bulletin</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Résultats du bulletin</h3>
 
     <table class="info-table">
         <tr>
@@ -31,7 +31,7 @@
         </tr>
         <tr>
             <th>Moyenne générale</th>
-            <td><strong style="color: #dc3545; font-size: 16px;">{{ number_format($moyenneGenerale, 2) }}/20</strong></td>
+            <td><strong style="color: {{ $emailDangerColor }}; font-size: 16px;">{{ number_format($moyenneGenerale, 2) }}/20</strong></td>
         </tr>
         <tr>
             <th>Seuil de réussite</th>
@@ -50,7 +50,7 @@
     </table>
 
     @if(isset($matieresEnDifficulte) && count($matieresEnDifficulte) > 0)
-    <h3 style="color: #dc3545; margin-top: 30px;">Matières en difficulté</h3>
+    <h3 style="color: {{ $emailDangerColor }}; margin-top: 30px;">Matières en difficulté</h3>
 
     <table class="info-table">
         <thead>
@@ -65,7 +65,7 @@
             <tr>
                 <td>{{ $matiere['nom'] }}</td>
                 <td style="text-align: center;">
-                    <strong style="color: #dc3545;">{{ number_format($matiere['moyenne'], 2) }}/20</strong>
+                    <strong style="color: {{ $emailDangerColor }};">{{ number_format($matiere['moyenne'], 2) }}/20</strong>
                 </td>
                 <td style="text-align: center;">{{ $matiere['coefficient'] }}</td>
             </tr>
@@ -74,9 +74,9 @@
     </table>
     @endif
 
-    <h3 style="color: #007bff; margin-top: 30px;">Recommandations</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Recommandations</h3>
 
-    <div style="background: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0;">
+    <div style="background: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid {{ $emailWarningColor }}; margin: 20px 0;">
         <h4 style="margin-top: 0; color: #856404;">Actions suggérées</h4>
         <ul style="color: #856404; margin: 0; padding-left: 20px;">
             <li style="margin-bottom: 10px;">

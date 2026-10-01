@@ -23,7 +23,7 @@
         </tr>
         <tr>
             <th>Montant payé</th>
-            <td><strong style="color: #28a745; font-size: 16px;">{{ number_format($montant, 0, ',', ' ') }} FCFA</strong></td>
+            <td><strong style="color: {{ $emailSuccessText }}; font-size: 16px;">{{ number_format($montant, 0, ',', ' ') }} FCFA</strong></td>
         </tr>
         <tr>
             <th>Référence</th>
@@ -60,7 +60,7 @@
                 <div class="kpi-label">Montant total</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: #28a745;">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</div>
+                <div class="kpi-value" style="color: {{ $emailSuccessText }};">{{ number_format($montantPaye, 0, ',', ' ') }} FCFA</div>
                 <div class="kpi-label">Total payé</div>
             </div>
         </div>
@@ -69,13 +69,13 @@
     <div class="kpi-section" style="margin-top: 10px;">
         <div class="kpi-row">
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $resteDu > 0 ? '#dc3545' : '#28a745' }};">
+                <div class="kpi-value" style="color: {{ $resteDu > 0 ? $emailDangerColor : $emailSuccessText }};">
                     {{ number_format($resteDu, 0, ',', ' ') }} FCFA
                 </div>
                 <div class="kpi-label">Reste à payer</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: #17a2b8;">{{ $pourcentagePaye }}%</div>
+                <div class="kpi-value">{{ $pourcentagePaye }}%</div>
                 <div class="kpi-label">Progression</div>
             </div>
         </div>

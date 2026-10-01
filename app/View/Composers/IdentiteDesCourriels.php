@@ -9,8 +9,8 @@ use Illuminate\View\View;
 
 /**
  * Ce qu'un courriel doit porter de l'école : nom, logo, coordonnées, deux
- * nuances de sa couleur pour le gabarit `esbtp.emails.layout`, et le rouge
- * d'alerte, commun à toutes les écoles.
+ * nuances de sa couleur pour le gabarit `esbtp.emails.layout`, et les trois
+ * couleurs de sens (rouge, vert, orange), communes à toutes les écoles.
  *
  * Enregistré APRÈS `CouleursDesCourrielsParents`, dont il lit la couleur
  * primaire. Un appelant qui fournit une valeur garde la main.
@@ -26,6 +26,30 @@ class IdentiteDesCourriels
      * jamais de décoration — et la même pour toutes les écoles.
      */
     public const COULEUR_DANGER = '#dc2626';
+
+    /**
+     * Vert de succès des courriels (`--success` du design system) : paiement
+     * validé, montant réglé, moyenne suffisante. Même règle que le rouge : une
+     * couleur de sens, commune à toutes les écoles.
+     */
+    public const COULEUR_SUCCES = '#10b981';
+
+    /**
+     * Orange d'avertissement (`--warning` du design system) : reste à payer,
+     * absences justifiées, encadré de recommandations. À surveiller, sans être
+     * une alerte.
+     */
+    public const COULEUR_ALERTE = '#f59e0b';
+
+    /**
+     * Vert et orange de TEXTE. Écrits sur fond blanc, `#10b981` ne donne que
+     * 2,54:1 et `#f59e0b` 2,15:1 : illisibles pour un montant ou une note. Ces
+     * deux teintes foncées dépassent 4,5:1 (WCAG AA). Les couleurs de sens
+     * ci-dessus restent réservées aux fonds et aux bordures.
+     */
+    public const COULEUR_SUCCES_TEXTE = '#047857';
+
+    public const COULEUR_ALERTE_TEXTE = '#b45309';
 
     public function compose(View $view): void
     {
@@ -46,6 +70,10 @@ class IdentiteDesCourriels
             'emailPrimarySoft' => self::melanger($primaire, '#ffffff', 0.92),
             'emailPrimaryDark' => self::melanger($primaire, '#000000', 0.28),
             'emailDangerColor' => $donnees['emailDangerColor'] ?? self::COULEUR_DANGER,
+            'emailSuccessColor' => $donnees['emailSuccessColor'] ?? self::COULEUR_SUCCES,
+            'emailWarningColor' => $donnees['emailWarningColor'] ?? self::COULEUR_ALERTE,
+            'emailSuccessText' => $donnees['emailSuccessText'] ?? self::COULEUR_SUCCES_TEXTE,
+            'emailWarningText' => $donnees['emailWarningText'] ?? self::COULEUR_ALERTE_TEXTE,
             'emailGardeGmailSombre' => self::texteQuasiBlanc((string) ($donnees['emailHeaderTextColor'] ?? '#ffffff')),
         ]);
     }
