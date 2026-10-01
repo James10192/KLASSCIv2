@@ -15,6 +15,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ### Ajouts
 - **KLASSCI Care — avis sur Nanan transmis au support.** Chaque 👍 / 👎 sur une réponse de l'assistant part au Master (`POST /api/v1/support/retours-assistant`) par la boîte d'envoi, avec reprise, sans jamais faire attendre la personne. Un changement d'avis après envoi part sous une nouvelle clé (`uuid:N`).
 - **KLASSCI Care — avertissement quand le support répond.** Commande `support:suivre-demandes` (toutes les 5 min) : notification dans l'application quand le support répond ou résout/ferme une demande, et e-mail si l'adresse est confirmée. Le premier passage relève l'historique sans avertir.
+- **Confirmation d'adresse e-mail du personnel.** Après un signalement, la réponse indique `email_a_verifier` ; un lien de confirmation signé (48 h) peut être envoyé (`POST /support/courriel/lien`). Rien n'est bloqué sans confirmation.
 
 ## Septembre 2026
 
