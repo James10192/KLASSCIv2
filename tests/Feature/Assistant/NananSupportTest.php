@@ -219,4 +219,18 @@ class NananSupportTest extends TestCase
         $this->assertStringContainsString('corps.email_verification_url', $html);
         $this->assertStringContainsString('corps.email_masque', $html);
     }
+    /** @test */
+    public function les_tours_sont_limites_par_jour_et_par_personne(): void
+    {
+        config(['support.tours_par_jour' => 2]);
+        $user = $this->utilisateur();
+        $appel = fn () => $this->actingAs($user)->postJson(route('chatbot.support.tour'), ['intention' => 'probleme', 'fil' => []]);
+
+        $appel()->assertOk();
+        $appel()->assertOk();
+        $appel()->assertStatus(429)->assertJsonPath('message', fn ($m) => str_contains($m, "Mes demandes d'aide"));
+
+        // Une autre personne n'est pas comptée avec la première.
+        $this->tour(['intention' => 'probleme', 'fil' => []])->assertOk();
+    }
 }

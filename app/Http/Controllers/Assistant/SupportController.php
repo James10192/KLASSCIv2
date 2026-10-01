@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Services\Care\ClientMasterSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\Rule;
 
 /**
@@ -25,6 +26,16 @@ class SupportController extends Controller
     public function tour(Request $request, DisponibiliteSupport $disponibilite, ConversationDeSupport $conversation, ClientMasterSupport $master): JsonResponse
     {
         abort_unless($disponibilite->signalement(), 404);
+
+        // Chaque tour coûte un appel au modèle : la limite par minute de la
+        // route ne borne pas une journée entière.
+        $cle = 'support-tour:'.$request->user()->getKey().':'.now()->toDateString();
+        if (RateLimiter::tooManyAttempts($cle, (int) config('support.tours_par_jour', 40))) {
+            return response()->json([
+                'message' => "Vous avez beaucoup échangé avec Nanan aujourd'hui. Ouvrez « Mes demandes d'aide » pour écrire directement à l'équipe support.",
+            ], 429);
+        }
+        RateLimiter::hit($cle, (int) now()->diffInSeconds(now()->endOfDay()) + 1);
 
         $donnees = $request->validate([
             'intention' => ['required', Rule::in(array_column(Intention::cases(), 'value'))],
