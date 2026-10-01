@@ -19,6 +19,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Courriels aux couleurs de l'école.** Le lien d'activation de l'espace étudiant, la convocation au guichet, le code de confirmation d'e-mail et les avis aux parents partagent un même gabarit : logo et couleurs de l'établissement comme sur ses PDF, bouton d'action, coordonnées en pied. Le lien d'activation partait jusqu'ici en texte brut.
 
 ### Corrections
+- **Parcours d'inscription — un ancien lien d'activation ne tourne plus en boucle.** Un lien expiré, remplacé par un renvoi ou déjà utilisé affichait « trop de redirections ». La page explique désormais pourquoi et propose de se connecter.
 - **« Retrouver ma référence » accepte le numéro tel qu'on le dit.** Un « 07 07 … » saisi par la famille retrouve désormais la candidature enregistrée sous sa forme internationale ; à dossier multiple, le plus récent est rendu.
 
 ## Septembre 2026
