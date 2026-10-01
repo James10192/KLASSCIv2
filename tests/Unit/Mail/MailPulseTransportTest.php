@@ -2,8 +2,10 @@
 
 namespace Tests\Unit\Mail;
 
+use App\Mail\Transport\CadenceMailPulse;
 use App\Mail\Transport\CorpsPourMailPulse;
 use App\Mail\Transport\MailPulseTransport;
+use Carbon\Carbon;
 use Illuminate\Http\Client\Request;
 use Illuminate\Mail\Message;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -19,6 +21,9 @@ class MailPulseTransportTest extends TestCase
 {
     private const ENDPOINT = 'mailpulse.test/api/v1/messages';
 
+    /** @var list<int> secondes d'attente demandées par la cadence */
+    private array $pauses = [];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -31,7 +36,25 @@ class MailPulseTransportTest extends TestCase
         config()->set('services.mailpulse.base_url', 'https://mailpulse.test');
         config()->set('services.mailpulse.messages_endpoint', '/api/v1/messages');
         config()->set('services.mailpulse.sender_email', '');
-        config()->set('services.mailpulse.sender_name', 'KLASSCI');
+        config()->set('services.mailpulse.sender_name', '');
+        config()->set('services.mailpulse.mail_per_minute', 50);
+        $this->cadence(true);
+    }
+
+    /** La cadence du test : elle n'endort rien, elle avance l'horloge et note l'attente. */
+    private function cadence(bool $peutAttendre): void
+    {
+        $this->pauses = [];
+        $this->app->instance(CadenceMailPulse::class, new CadenceMailPulse(function (int $secondes) {
+            $this->pauses[] = $secondes;
+            Carbon::setTestNow(Carbon::now()->addSeconds($secondes + 1));
+        }, $peutAttendre));
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
     }
 
     private function accepte(): void
@@ -79,7 +102,131 @@ class MailPulseTransportTest extends TestCase
     }
 
     /** @test */
-    public function un_bloc_pre_line_garde_ses_sauts_de_ligne_et_ses_paragraphes(): void
+    public function la_cle_d_idempotence_survit_a_une_reprise_et_change_avec_l_heure_ou_le_contenu(): void
+    {
+        $charge = [
+            'channel' => 'email',
+            'recipient' => ['type' => 'email', 'value' => 'Parent@Example.com'],
+            'content' => ['type' => 'text', 'text' => 'Rappel'],
+            'metadata' => ['subject' => 'Rappel'],
+        ];
+        $t = 1_790_000_000 - (1_790_000_000 % 3600);
+
+        $this->assertSame(MailPulseTransport::cleIdempotence($charge, $t), MailPulseTransport::cleIdempotence($charge, $t + 3599));
+        $this->assertNotSame(MailPulseTransport::cleIdempotence($charge, $t), MailPulseTransport::cleIdempotence($charge, $t + 3600));
+
+        $autre = $charge;
+        $autre['content']['text'] = 'Autre rappel';
+        $this->assertNotSame(MailPulseTransport::cleIdempotence($charge, $t), MailPulseTransport::cleIdempotence($autre, $t));
+    }
+
+    /** @test */
+    public function deux_envois_du_meme_courriel_portent_la_meme_cle(): void
+    {
+        $this->accepte();
+
+        foreach ([1, 2] as $_) {
+            Mail::mailer('mailpulse')->raw('Rappel', fn (Message $m) => $m->to('a@example.com')->subject('Rappel'));
+        }
+
+        $cles = [];
+        Http::assertSent(function (Request $r) use (&$cles) {
+            $cles[] = $r->header('Idempotency-Key')[0];
+
+            return true;
+        });
+        $this->assertCount(2, $cles);
+        $this->assertSame($cles[0], $cles[1], 'Message-ID change à chaque tentative ; la clé, non.');
+    }
+
+    /** @test */
+    public function au_dela_du_plafond_la_console_attend_la_minute_suivante(): void
+    {
+        $this->accepte();
+        config()->set('services.mailpulse.mail_per_minute', 2);
+
+        foreach (['a', 'b', 'c'] as $qui) {
+            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to($qui.'@example.com')->subject('S'));
+        }
+
+        Http::assertSentCount(3);
+        $this->assertCount(1, $this->pauses, 'Le troisième courriel attend que la minute se libère.');
+    }
+
+    /** @test */
+    public function au_dela_du_plafond_une_requete_web_refuse_sans_appeler_mailpulse(): void
+    {
+        $this->accepte();
+        $this->cadence(false);
+        config()->set('services.mailpulse.mail_per_minute', 1);
+
+        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
+
+        try {
+            Mail::mailer('mailpulse')->raw('y', fn (Message $m) => $m->to('b@example.com')->subject('S'));
+            $this->fail('Le second courriel aurait dû être refusé.');
+        } catch (TransportException $e) {
+            $this->assertStringContainsString('Plafond', $e->getMessage());
+        }
+
+        Http::assertSentCount(1);
+        $this->assertSame([], $this->pauses);
+    }
+
+    /** @test */
+    public function un_429_de_mailpulse_est_rejoue_une_fois_en_console_avec_la_meme_cle(): void
+    {
+        Http::fake([self::ENDPOINT => Http::sequence()
+            ->push(['error' => 'Message rate limit exceeded'], 429)
+            ->push(['dispatch' => ['state' => 'accepted', 'sms_fallback_eligible' => false], 'message' => ['id' => 'm', 'status' => 'sent']], 202)]);
+
+        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
+
+        $cles = [];
+        Http::assertSent(function (Request $r) use (&$cles) {
+            $cles[] = $r->header('Idempotency-Key')[0];
+
+            return true;
+        });
+        $this->assertCount(2, $cles);
+        $this->assertSame($cles[0], $cles[1]);
+        $this->assertSame([60], $this->pauses);
+    }
+
+    /** @test */
+    public function un_quota_mensuel_epuise_n_est_pas_reessaye(): void
+    {
+        Http::fake([self::ENDPOINT => Http::response(['error' => 'Monthly email quota exceeded'], 429)]);
+
+        $this->expectException(TransportException::class);
+        $this->expectExceptionMessage('quota_exceeded');
+
+        try {
+            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
+        } finally {
+            Http::assertSentCount(1);
+            $this->assertSame([], $this->pauses);
+        }
+    }
+
+    /** @test */
+    public function un_429_dans_une_requete_web_leve_sans_attendre(): void
+    {
+        Http::fake([self::ENDPOINT => Http::response(['error' => 'Message rate limit exceeded'], 429)]);
+        $this->cadence(false);
+
+        $this->expectException(TransportException::class);
+        $this->expectExceptionMessage('rate_limited');
+
+        try {
+            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
+        } finally {
+            Http::assertSentCount(1);
+        }
+    }
+
+    /** @test */
+    public function le_resserrage_garde_sauts_de_ligne_et_lignes_vides(): void
     {
         $html = "<div style=\"white-space:pre-line;\">Bonjour,\n\n  Votre demande est traitée.\nCordialement</div>";
 
@@ -90,14 +237,16 @@ class MailPulseTransportTest extends TestCase
     }
 
     /** @test */
-    public function le_reglage_d_expediteur_mailpulse_prime_sur_l_adresse_du_courriel(): void
+    public function les_reglages_d_expediteur_mailpulse_priment_adresse_et_nom(): void
     {
         $this->accepte();
         config()->set('services.mailpulse.sender_email', 'ecole@klassci.com');
+        config()->set('services.mailpulse.sender_name', 'Lycée Réglé');
 
         Mail::mailer('mailpulse')->raw('Texte seul', fn (Message $m) => $m->to('a@example.com')->subject('S'));
 
         Http::assertSent(fn (Request $r) => $r->data()['metadata']['sender_email'] === 'ecole@klassci.com'
+            && $r->data()['metadata']['sender_name'] === 'Lycée Réglé'
             && ! isset($r->data()['metadata']['email_html'])
             && $r->data()['content']['text'] === 'Texte seul');
     }
@@ -283,5 +432,24 @@ class MailPulseTransportTest extends TestCase
 
         $this->expectException(\DomainException::class);
         app(\App\Services\ExportRenderer::class)->emailPdf($this->createMock(\App\Domain\Exports\ExportableReport::class), 'a@example.com');
+    }
+
+    /** @test */
+    public function sous_le_mailer_smtp_le_gabarit_commun_integre_toujours_le_logo(): void
+    {
+        config()->set('mail.default', 'smtp');
+        $logo = tempnam(sys_get_temp_dir(), 'logo').'.png';
+        file_put_contents($logo, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='));
+
+        $html = view('esbtp.emails.layout', [
+            'message' => new Message(new \Symfony\Component\Mime\Email()),
+            'schoolLogoPath' => $logo,
+            'schoolLogoUrl' => 'https://ecole.test/logo.png',
+            'schoolName' => 'École Test',
+        ])->render();
+
+        $this->assertStringContainsString('src="cid:', $html, 'Instance non basculée : le logo reste une pièce intégrée.');
+        $this->assertStringNotContainsString('https://ecole.test/logo.png', $html);
+        @unlink($logo);
     }
 }

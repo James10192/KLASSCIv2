@@ -37,9 +37,10 @@ final class CorpsPourMailPulse
      * Retire les commentaires HTML (sauf les conditionnels d'Outlook,
      * `<!--[if mso]>`, qui portent du rendu) et l'indentation des lignes.
      *
-     * Les sauts de ligne restent, lignes vides comprises : un bloc en
-     * `white-space: pre-line` les affiche — la réponse du support en est un. Les espaces de tête, eux,
-     * n'y comptent pas, et ce sont eux qui pèsent dans un gabarit indenté.
+     * Les sauts de ligne restent, lignes vides comprises : les garder ne
+     * coûte presque rien, et un bloc qui les affiche (`white-space: pre-line`
+     * ou `pre-wrap`) n'est pas trahi. Ce qui pèse dans un gabarit indenté,
+     * ce sont les espaces de tête, et ce sont eux qui partent.
      */
     public static function resserrer(string $html): string
     {

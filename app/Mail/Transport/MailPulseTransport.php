@@ -23,7 +23,8 @@ use Symfony\Component\Mime\MessageConverter;
  * - HTML qui dépasse le plafond de `metadata` : remplacé par la version texte,
  *   journalisé. Le contenu arrive, sans la mise en page ;
  * - Reply-To : non transmis, journalisé ;
- * - Cc / Cci : chacun reçoit son propre message.
+ * - Cc / Cci : chacun reçoit son propre message ;
+ * - plafond de 60 par minute et par organisation : voir `CadenceMailPulse`.
  *
  * Tout refus de MailPulse lève une `TransportException` : les appelants qui
  * affichent « le courriel n'a pas pu partir » continuent de le dire.
@@ -36,9 +37,32 @@ final class MailPulseTransport extends AbstractTransport
     /** Place laissée aux autres clés et à l'écart de mesure entre PHP et JavaScript. */
     private const MARGE = 512;
 
-    public function __construct(private readonly MailPulseClient $client)
-    {
+    public function __construct(
+        private readonly MailPulseClient $client,
+        private readonly CadenceMailPulse $cadence,
+    ) {
         parent::__construct();
+    }
+
+    /**
+     * Clé d'idempotence STABLE d'une tentative à l'autre : destinataire et
+     * contenu, rangés dans l'heure. Une file qui rejoue un courriel (ou un
+     * envoi en copie interrompu au deuxième destinataire) retombe sur la même
+     * clé, et MailPulse ne le renvoie pas. L'heure borne la conséquence
+     * inverse : MailPulse garde ses clés sans limite, donc sans elle un même
+     * texte au même destinataire ne repartirait JAMAIS. Prix assumé : deux
+     * courriels identiques au même destinataire dans la même heure n'en font
+     * qu'un, et une reprise qui franchit l'heure peut doubler.
+     */
+    public static function cleIdempotence(array $charge, ?int $instant = null): string
+    {
+        $heure = intdiv($instant ?? time(), 3600);
+
+        return 'klassci-mail-'.hash('sha256', $heure.'|'.json_encode([
+            strtolower((string) ($charge['recipient']['value'] ?? '')),
+            $charge['content'] ?? null,
+            $charge['metadata'] ?? null,
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
     /** Le mailer par défaut de l'instance est-il celui-ci ? Le gabarit en dépend pour son logo. */
@@ -63,11 +87,15 @@ final class MailPulseTransport extends AbstractTransport
         $corps = $this->corps($email, $contexte);
         $destinataires = $message->getEnvelope()->getRecipients();
         foreach ($destinataires as $rang => $destinataire) {
-            $requestId = 'klassci-mail-'.hash('sha256', $message->getMessageId().'|'.strtolower($destinataire->getAddress()));
-            $resultat = $this->client->sendEmailMessage(
-                ['channel' => 'email', 'recipient' => ['type' => 'email', 'value' => $destinataire->getAddress()]] + $corps,
-                $requestId
-            );
+            $charge = ['channel' => 'email', 'recipient' => ['type' => 'email', 'value' => $destinataire->getAddress()]] + $corps;
+            $requestId = self::cleIdempotence($charge);
+
+            $tentative = 0;
+            do {
+                $tentative++;
+                $this->cadence->avantEnvoi($contexte);
+                $resultat = $this->client->sendEmailMessage($charge, $requestId);
+            } while ($resultat->status === 'rate_limited' && $this->cadence->apresRefus($tentative));
 
             if (! $resultat->ok) {
                 Log::error('Courriel refusé par MailPulse', $contexte + [
@@ -159,9 +187,11 @@ final class MailPulseTransport extends AbstractTransport
     }
 
     /**
-     * L'adresse réglée pour MailPulse prime : c'est elle que l'école a fait
-     * vérifier. À défaut, celle du courriel ; MailPulse retombe sur
-     * l'expéditeur par défaut de l'organisation si son domaine n'est pas vérifié.
+     * Les réglages MailPulse de l'école priment, adresse comme nom : c'est
+     * elle qui les a posés. Le nom du courriel (`MAIL_FROM_NAME`, toujours
+     * renseigné, « Laravel » par défaut) ne sert qu'à défaut. MailPulse retombe
+     * sur l'expéditeur par défaut de l'organisation si le domaine de l'adresse
+     * n'est pas vérifié chez lui.
      *
      * @return array{adresse: string, nom: string}
      */
@@ -171,7 +201,7 @@ final class MailPulseTransport extends AbstractTransport
 
         return [
             'adresse' => $this->client->getSetting('mailpulse_sender_email', 'sender_email', '') ?: (string) $from?->getAddress(),
-            'nom' => trim((string) $from?->getName()) ?: $this->client->getSetting('mailpulse_sender_name', 'sender_name', ''),
+            'nom' => $this->client->getSetting('mailpulse_sender_name', 'sender_name', '') ?: trim((string) $from?->getName()),
         ];
     }
 

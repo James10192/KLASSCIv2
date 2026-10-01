@@ -329,7 +329,11 @@ class MailPulseClient
             404 => $this->failure('endpoint_not_found', $response->status(), $requestHeader, 'Endpoint MailPulse introuvable.', 'Vérifiez MAILPULSE_*_ENDPOINT dans .env.'),
             405 => $this->failure('endpoint_not_supported', $response->status(), $requestHeader, 'Méthode non acceptée par MailPulse.', 'Confirmez le vrai endpoint/méthode MailPulse pour ce canal.'),
             408 => $this->failure('request_timeout', $response->status(), $requestHeader, 'MailPulse a expiré la requête.', 'Réessayez plus tard.'),
-            429 => $this->failure('rate_limited', $response->status(), $requestHeader, 'MailPulse limite la requête.', 'Réessayez plus tard.'),
+            // Deux 429 distincts côté MailPulse : le débit par minute passe, le
+            // quota du mois non. Seul le premier vaut d'être réessayé.
+            429 => str_contains(strtolower($this->providerMessage(is_array($body) ? $body : [])), 'quota')
+                ? $this->failure('quota_exceeded', 429, $requestHeader, 'Quota mensuel MailPulse atteint.', "Vérifiez l'offre de l'organisation MailPulse.")
+                : $this->failure('rate_limited', 429, $requestHeader, 'MailPulse limite la requête.', 'Réessayez plus tard.'),
             500, 501, 502, 503, 504 => $this->failure('provider_unavailable', $response->status(), $requestHeader, 'MailPulse est temporairement indisponible.', 'Réessayez plus tard.'),
             default => $this->providerFailure($response, is_array($body) ? $body : [], $requestHeader),
         };

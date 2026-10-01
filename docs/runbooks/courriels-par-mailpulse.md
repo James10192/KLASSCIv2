@@ -23,12 +23,13 @@ dans `metadata.email_html` ; l'objet `metadata` entier est plafonné à
 
 | élément du courriel | conduite |
 |---|---|
-| À, Cc, Cci | un message MailPulse par adresse, chacun avec sa clé d'idempotence |
+| À, Cc, Cci | un message MailPulse par adresse |
+| Clé d'idempotence | tirée du destinataire et du contenu, rangée dans l'heure (`MailPulseTransport::cleIdempotence()`) : une reprise de file dans l'heure ne renvoie pas le courriel. Deux limites : deux courriels **identiques** au même destinataire dans la même heure n'en font qu'un, et une reprise qui franchit l'heure peut doubler |
 | Sujet | `metadata.subject` |
-| HTML | commentaires et indentation retirés (les sauts de ligne restent, un bloc `pre-line` en dépend), puis `metadata.email_html` |
+| HTML | commentaires et indentation retirés, sauts de ligne gardés, puis `metadata.email_html` |
 | HTML au-delà du plafond | **la version texte part seule**, avertissement au journal |
 | Texte | `content.text` ; tiré du HTML (liens conservés en clair) s'il manque |
-| Expéditeur | réglage `mailpulse_sender_email` s'il est posé, sinon `MAIL_FROM_ADDRESS` ; nom = nom du courriel, sinon `mailpulse_sender_name`. MailPulse ne retient l'adresse que si son domaine est vérifié chez lui, sinon il prend l'expéditeur par défaut de l'organisation |
+| Expéditeur | réglage `mailpulse_sender_email` s'il est posé, sinon `MAIL_FROM_ADDRESS` ; nom = réglage `mailpulse_sender_name` (défaut `KLASSCI`), sinon nom du courriel. MailPulse ne retient l'adresse que si son domaine est vérifié chez lui, sinon il prend l'expéditeur par défaut de l'organisation |
 | Image intégrée (`cid:`) | retirée du HTML, avertissement au journal. Le gabarit commun `esbtp.emails.layout` passe déjà par l'URL du logo quand ce mailer est actif |
 | Pièce jointe | **refus** : exception, rien ne part. Un « ci-joint votre export » sans l'export serait un succès mensonger |
 | Accepté mais remise à confirmer (`pending`, `pending_reconciliation`) | part sans exception, avertissement au journal (`remise à confirmer`) : MailPulse rejoue ou tranche |
@@ -38,6 +39,54 @@ Tout refus de MailPulse (désactivé, clé absente, injoignable, 4xx/5xx, envoi
 refusé par le fournisseur) **lève une exception** et s'écrit au journal
 (`Courriel refusé par MailPulse`, statut, code HTTP, request id). Les écrans qui
 disent « le courriel n'a pas pu partir » continuent donc de le dire.
+
+## Les limites de MailPulse — à lire avant de basculer
+
+Mesurées dans le code de MailPulse (dépôt `mailpulse`, branche `master`, 1er octobre 2026) :
+
+| limite | valeur | où | au-delà |
+|---|---|---|---|
+| débit e-mail | **60 par minute et par organisation** | `src/lib/mailpulse/api-rate-limits.ts`, appliqué par `delivery-limits.ts` | refus `429` |
+| quota mensuel | **5 000 e-mails** sur l'offre `FREE` (« Starter »), illimité sur `PRO` et `ENTERPRISE` | `src/lib/plan-catalog.ts` | refus `429` (« Monthly email quota exceeded ») jusqu'au mois suivant |
+
+Les deux comptent **par organisation MailPulse, pas par école**, et tous canaux
+API confondus pour l'e-mail : les notifications parents, les convocations de
+rendez-vous et les codes de vérification, qui passent déjà par MailPulse,
+consomment le même budget que les courriels du mailer. Si plusieurs écoles
+partagent une organisation, elles partagent ces 60 par minute.
+
+Ce que fait le mailer pour tenir le débit (`App\Mail\Transport\CadenceMailPulse`) :
+
+- il compte ses propres envois par minute (`MAILPULSE_MAIL_PER_MINUTE`, **50** par
+  défaut, sous les 60 pour laisser la marge aux autres flux) ;
+- **en console** (worker de file, planificateur, commande), au-delà il **attend**
+  la minute suivante : une rafale s'étale ; un `429` de débit est réessayé une
+  fois après 60 s (un `429` de **quota** ne l'est pas : il ne passera pas avant le
+  mois suivant, statut `quota_exceeded`) ;
+- **dans une requête web**, il n'attend pas (le temps d'exécution est borné) : au-delà
+  du plafond, ou sur un `429`, le courriel est **refusé et journalisé**, et
+  l'appelant le compte comme un échec.
+
+Ce compteur ne voit que son instance : il ne protège pas d'un dépassement
+cumulé entre écoles d'une même organisation, ni des autres flux MailPulse.
+
+**Ce qui reste exposé.** Deux flux déclenchés depuis un écran envoient en rafale
+dans la requête :
+
+- « Exécuter les relances en attente » (`ESBTPComptabiliteRelanceController::executerRelances()`
+  → `NotificationService::executerRelancesEnAttente()`) : au-delà de 50 relances par
+  minute, les suivantes sont marquées `echec` — **visibles et relançables**, pas
+  perdues en silence, mais non parties ;
+- les avis aux parents émis pendant une validation groupée.
+
+Tant que ces deux flux ne passent pas par la file (worker actif sur l'instance),
+**ne pas basculer les instances Élite (`esbtp-abidjan`, `esbtp-yakro`, plus de
+2 000 inscriptions)**. Les petites instances peuvent basculer d'abord.
+
+**Avant toute bascule, vérifier dans MailPulse** l'organisation à laquelle la clé
+de l'école appartient, son offre et le quota du mois restant. Une organisation
+en offre gratuite atteint 5 000 e-mails en une campagne de relances d'une grande
+école.
 
 ## Ce qu'il faut poser sur chaque instance
 
@@ -50,6 +99,8 @@ Prérequis : l'instance parle déjà à MailPulse.
 | `MAIL_MAILER` | `.env` | `mailpulse` |
 | `MAIL_FROM_ADDRESS` | `.env` | une adresse d'un domaine vérifié chez MailPulse (`noreply@klassci.com`) |
 | `mailpulse_sender_email` | réglage (facultatif) | prime sur `MAIL_FROM_ADDRESS` |
+| `mailpulse_sender_name` | réglage (facultatif) | nom affiché ; prime sur `MAIL_FROM_NAME` (défaut `KLASSCI`) |
+| `MAILPULSE_MAIL_PER_MINUTE` | `.env` (facultatif) | plafond par minute du mailer, `50` par défaut |
 
 Puis `php artisan config:clear` (ou `klassci cache:clear <instance>`).
 
@@ -57,12 +108,12 @@ Puis `php artisan config:clear` (ou `klassci cache:clear <instance>`).
 
 | instance | clé MailPulse | à faire |
 |---|---|---|
-| `esbtp-abidjan` | posée (relevé du 1er octobre, `activation-notifications-abidjan-yakro.md`) | `MAIL_MAILER`, `MAIL_FROM_ADDRESS` |
-| `esbtp-yakro` | posée (même relevé) | `MAIL_MAILER`, `MAIL_FROM_ADDRESS` |
+| `esbtp-abidjan` | posée (relevé du 1er octobre, `activation-notifications-abidjan-yakro.md`) | **attendre** : relances et avis parents encore en rafale dans la requête (voir les limites) ; vérifier offre et quota |
+| `esbtp-yakro` | posée (même relevé) | **attendre**, même raison |
 | `presentation`, `ephrata`, `hetec`, `rostan`, `usat`, `ucao-benin` | **non vérifiée** | vérifier la clé avant de basculer `MAIL_MAILER` : `GET /api/cli/rendez-vous/diagnostic` rend la ligne `messagerie` à `ok: true` (« Envoi des convocations par MailPulse actif » : MailPulse activé et clé présente) |
 
 Basculer une instance sans clé fait échouer **tous** ses courriels : vérifier
-d'abord, basculer ensuite.
+la clé, l'offre et le quota d'abord, basculer ensuite.
 
 ## Contrôle après bascule
 
@@ -81,8 +132,9 @@ d'abord, basculer ensuite.
   que d'annoncer un envoi qui finirait en job échoué. Le téléchargement reste la
   voie, tant que MailPulse n'accepte pas de pièce jointe.
 - Le plafond de 16 Ko oblige les gros gabarits à partir en texte.
+- Le débit de 60 par minute et par organisation (voir plus haut).
 
-Ces deux limites tiennent à l'API publique de MailPulse, produit distinct : elles
+Ces limites tiennent à l'API publique de MailPulse, produit distinct : elles
 sont des demandes d'évolution à lui adresser (pièces jointes, images intégrées,
 HTML hors `metadata`, Reply-To, Cc), pas des contournements à écrire ici.
 
