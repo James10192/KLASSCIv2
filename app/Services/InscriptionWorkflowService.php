@@ -25,6 +25,15 @@ class InscriptionWorkflowService
     public function validateInscription(ESBTPInscription $inscription)
     {
         try {
+            // Une inscription annulée ne se revalide jamais (réinscription comprise,
+            // que le test ci-dessous ne jugeait que sur le workflow_step).
+            if (\App\Domain\Inscriptions\ObstacleALaValidation::estAnnulee($inscription)) {
+                return [
+                    'success' => false,
+                    'message' => 'Cette inscription est annulée : elle ne peut pas être validée.'
+                ];
+            }
+
             // Pour les réinscriptions, vérifier le workflow_step au lieu du status
             if ($inscription->type_inscription === 'réinscription' || $inscription->type_inscription === 'reinscription') {
                 // Pour les réinscriptions, vérifier le workflow_step
@@ -170,9 +179,10 @@ class InscriptionWorkflowService
 
 // Vérifier si la classe a une limite définie
             if ($classe->places_totales && $inscriptionsActives >= $classe->places_totales) {
-                // Vérifier si l'utilisateur peut contourner (superadmin ou secrétaire)
+                // Qui peut dépasser la capacité : une permission que l'école attribue
+                // (rule customizable-roles), jamais un nom de rôle.
                 $user = auth()->user();
-                $canBypass = $user && ($user->role === 'superAdmin' || $user->role === 'secretaire');
+                $canBypass = $user && $user->can('inscriptions.override_capacity');
                 
                 // Log du dépassement de capacité
                 \Log::warning('Classe en surcapacité détectée', [

@@ -369,6 +369,15 @@ return [
             'icon' => 'fa-check-circle',
             'aliases' => ['valider inscriptions', 'approve_inscriptions'],
         ],
+        // Remplace le test codé en dur `$user->role === 'superAdmin'|'secretaire'`
+        // de InscriptionWorkflowService::checkClassAvailability() : l'école décide
+        // qui peut dépasser la capacité d'une classe.
+        'inscriptions.override_capacity' => [
+            'label' => 'Inscrire au-delà de la capacité d\'une classe',
+            'description' => 'Permet de valider une inscription dans une classe déjà pleine. Le dépassement reste signalé et journalisé.',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-users',
+        ],
         'inscriptions.cancel' => [
             'label' => 'Annuler une inscription',
             'group' => 'Inscriptions',
@@ -2240,7 +2249,7 @@ return [
             'dashboard.view', 'admin.access', 'parent_chatbot.manage',
             'students.view', 'students.create', 'students.edit', 'students.delete',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
-            'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
+            'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate', 'inscriptions.override_capacity',
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',

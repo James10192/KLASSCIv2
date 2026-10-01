@@ -68,7 +68,7 @@ class NananLotATest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware([PaywallMiddleware::class, EnsureInstalled::class, CheckInstalled::class]);
+        $this->withoutMiddleware([PaywallMiddleware::class, EnsureInstalled::class, CheckInstalled::class, \App\Http\Middleware\ForcePasswordChange::class]);
         Role::findOrCreate('superAdmin', 'web');
         foreach (self::DROITS as $p) {
             Permission::findOrCreate($p, 'web');
@@ -266,6 +266,69 @@ class NananLotATest extends TestCase
         $journal = \App\Models\ChatbotActionLog::findOrFail($resultat['proposition'] ?? 0);
 
         return app(ValiderInscriptions::class)->preparer((array) $journal->action_data['arguments'], $journal->user)->donnees['ids'] ?? [];
+    }
+
+    // --- L'écran ne revalide jamais une inscription annulée ----------------------
+
+    private function annuleeAvecVersement(string $code, array $attributs = []): ESBTPInscription
+    {
+        $i = $this->inscription($this->classe($code), $attributs + ['status' => 'annulée', 'workflow_step' => 'en_validation']);
+        $versement = $this->versement($i);
+        $i->update(['paiement_validation_id' => $versement->id]);
+
+        return $i;
+    }
+
+    public function test_la_validation_groupee_de_l_ecran_ne_revalide_pas_une_annulee(): void
+    {
+        // Réinscription en_validation : le workflow ne la jugeait que sur son étape.
+        $reinscription = $this->annuleeAvecVersement('LA_EC_G1', ['type_inscription' => 'réinscription']);
+        $premiere = $this->annuleeAvecVersement('LA_EC_G2');
+
+        $reponse = $this->actingAs($this->admin)->postJson(route('esbtp.inscriptions.bulk-valider'),
+            ['inscription_ids' => [$reinscription->id, $premiere->id]], ['X-Requested-With' => 'XMLHttpRequest'])->assertOk();
+
+        $this->assertSame(['annulée', 'annulée'], [$reinscription->fresh()->status, $premiere->fresh()->status]);
+        $this->assertSame(['Inscription annulée', 'Inscription annulée'], array_column($reponse->json('stats.ignorees'), 'raison'));
+    }
+
+    public function test_la_validation_unitaire_de_l_ecran_ne_revalide_pas_une_annulee(): void
+    {
+        $i = $this->annuleeAvecVersement('LA_EC_U1');
+
+        $this->actingAs($this->admin)->putJson(route('esbtp.inscriptions.valider', $i->id), [], ['X-Requested-With' => 'XMLHttpRequest']);
+        $this->assertSame('annulée', $i->fresh()->status);
+
+        $r = $this->annuleeAvecVersement('LA_EC_U2', ['type_inscription' => 'réinscription']);
+        $this->actingAs($this->admin)->postJson(route('esbtp.inscriptions.valider-definitivement', $r->id), [], ['X-Requested-With' => 'XMLHttpRequest']);
+        $this->assertSame('annulée', $r->fresh()->status);
+    }
+
+    // --- Dépasser la capacité : une permission, jamais un nom de rôle -------------
+
+    public function test_depasser_la_capacite_depend_de_la_permission_pas_du_role(): void
+    {
+        Permission::findOrCreate('inscriptions.override_capacity', 'web');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $classe = $this->classe('LA_CAP_1');
+        $classe->update(['places_totales' => 1]);
+        ESBTPInscription::factory()->create(['classe_id' => $classe->id, 'annee_universitaire_id' => $this->annee, 'status' => 'active', 'workflow_step' => 'etudiant_cree']);
+        $workflow = app(\App\Services\InscriptionWorkflowService::class);
+
+        $habilite = $this->utilisateur();
+        $habilite->givePermissionTo('inscriptions.override_capacity');
+        $this->actingAs($habilite);
+        $this->assertTrue($workflow->checkClassAvailability($classe->id)['available']);
+
+        // Le seul nom de rôle « secretaire » ne donne plus rien.
+        $secretaireSansDroit = $this->utilisateur();
+        $secretaireSansDroit->forceFill(['role' => 'secretaire'])->save();
+        $this->actingAs($secretaireSansDroit);
+        $this->assertFalse($workflow->checkClassAvailability($classe->id)['available']);
+
+        // Comportement inchangé après synchronisation : la secrétaire l'a par défaut.
+        $this->assertContains('inscriptions.override_capacity', config('permissions.role_defaults.secretaire'));
+        $this->assertArrayHasKey('inscriptions.override_capacity', config('permissions.permissions'));
     }
 
     // --- Changer de classe ---------------------------------------------------------

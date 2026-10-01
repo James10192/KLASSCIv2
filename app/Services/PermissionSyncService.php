@@ -192,6 +192,9 @@ class PermissionSyncService
             'mailpulse.send',
             'cash_session.manage',
             'inscriptions.in_kind.mark',
+            // Remplace le test `role === 'secretaire'` de checkClassAvailability :
+            // les secrétaires des instances en service doivent le recevoir.
+            'inscriptions.override_capacity',
             'inscriptions.rdv.view',
             'inscriptions.rdv.manage',
             'inscriptions.rdv.configure',

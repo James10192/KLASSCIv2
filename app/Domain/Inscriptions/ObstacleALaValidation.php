@@ -46,7 +46,7 @@ class ObstacleALaValidation
         if ($inscription->status === 'active' && $inscription->workflow_step === 'etudiant_cree') {
             return self::DEJA_VALIDEE;
         }
-        if (in_array($inscription->status, ESBTPInscription::STATUTS_ANNULES, true)) {
+        if (self::estAnnulee($inscription)) {
             return self::ANNULEE;
         }
 
@@ -83,6 +83,17 @@ class ObstacleALaValidation
         }
 
         return isset($dispo['places_restantes']) ? max(0, (int) $dispo['places_restantes']) : null;
+    }
+
+    /**
+     * La règle « une inscription annulée ne se revalide jamais », seule source :
+     * les deux goulots d'écriture de l'écran (ESBTPInscriptionService::
+     * validerInscription et InscriptionWorkflowService::validateInscription, par
+     * où passent la validation unitaire, groupée et avec paiement) la lisent ici.
+     */
+    public static function estAnnulee(ESBTPInscription $inscription): bool
+    {
+        return in_array($inscription->status, ESBTPInscription::STATUTS_ANNULES, true);
     }
 
     public static function libelle(string $obstacle): string
