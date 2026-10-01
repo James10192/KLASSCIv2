@@ -1667,14 +1667,13 @@ class ESBTPEtudiantController extends Controller
                 }
             }
 
-            // 3. Dernier recours : les notes saisies. Une annee terminee sans
-            // bulletin genere n'a ni bulletin ni moyenne enregistree, et
-            // `esbtp_resultats` n'est remplie qu'a la generation : sans ce
-            // repli, le certificat imprimait « — » alors que la fiche de
-            // resultats de l'etudiant affichait sa moyenne. Annees passees
-            // seulement : sur l'annee en cours, ce calcul donne une moyenne
-            // partielle, qu'un document officiel ne doit pas imprimer.
-            if ($mg === null && $anneeId && ! (optional($inscription->anneeUniversitaire)->is_current ?? false)) {
+            // 3. Dernier recours : les notes saisies, lues comme le Bilan de la
+            // fiche de resultats. Une annee passee peut n'avoir ni bulletin ni
+            // moyenne enregistree alors que ses notes existent (notes importees,
+            // recalcul jamais passe) : le certificat imprimait alors « — » la ou
+            // la fiche montrait la moyenne. Annees terminees seulement : sur
+            // l'annee en cours, ce calcul donne une moyenne partielle.
+            if ($mg === null && $anneeId && $this->anneeTerminee($inscription->anneeUniversitaire)) {
                 $mg = $this->moyenneAnnuelleDepuisLesNotes($inscription, $etudiantId, $anneeId);
             }
 
@@ -1696,10 +1695,40 @@ class ESBTPEtudiantController extends Controller
             return null;
         }
 
-        $total = app(\App\Services\ESBTP\BtsCurrentResultSnapshotService::class)
-            ->getAnnualSnapshot($etudiantId, (int) $classeId, $anneeId)['effective_total'] ?? null;
+        // Un repli ne doit jamais rendre le certificat impossible a tirer :
+        // en cas d'echec, la ligne reste « — » et l'echec est journalise.
+        try {
+            $total = app(\App\Services\ESBTP\BtsCurrentResultSnapshotService::class)
+                ->getAnnualSnapshot($etudiantId, (int) $classeId, $anneeId)['effective_total'] ?? null;
+        } catch (\Throwable $e) {
+            \Log::warning('Certificat : moyenne non calculee depuis les notes.', [
+                'etudiant_id' => $etudiantId,
+                'annee_universitaire_id' => $anneeId,
+                'erreur' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
 
         return $total !== null ? round((float) $total, 2) : null;
+    }
+
+    /**
+     * Annee terminee : sa date de fin est passee. Sans date de fin, toute annee
+     * autre que l'annee courante. La date ecarte aussi l'annee de la campagne
+     * suivante, qui n'est pas « courante » mais pas terminee non plus.
+     */
+    private function anneeTerminee($annee): bool
+    {
+        if (! $annee) {
+            return false;
+        }
+
+        if (! empty($annee->end_date)) {
+            return \Illuminate\Support\Carbon::parse($annee->end_date)->lt(today());
+        }
+
+        return ! ($annee->is_current ?? false);
     }
 
     /**

@@ -10,11 +10,11 @@ use Tests\TestCase;
 use Tests\Unit\Domain\Notes\SchemaDesMoyennes;
 
 /**
- * Une année terminée sans bulletin généré n'a ni bulletin ni moyenne
- * enregistrée : `esbtp_resultats` n'est remplie qu'à la génération. Le
- * certificat de scolarité imprimait alors « — » pour cette année, alors que la
- * fiche de résultats de l'étudiant affichait sa moyenne, calculée sur les notes.
- * Il se rabat désormais sur le même calcul.
+ * Une année passée peut n'avoir ni bulletin ni moyenne enregistrée alors que
+ * ses notes existent (notes importées, recalcul jamais passé). Le certificat de
+ * scolarité imprimait alors « — » pour cette année, alors que la fiche de
+ * résultats de l'étudiant affichait sa moyenne, calculée sur les notes. Il se
+ * rabat désormais sur le même calcul, pour une année terminée seulement.
  */
 class CertificatMoyenneDepuisLesNotesTest extends TestCase
 {
@@ -64,6 +64,29 @@ class CertificatMoyenneDepuisLesNotesTest extends TestCase
         $this->assertNull($this->moyenneDuCertificat(self::CLASSE, anneeEnCours: true));
     }
 
+    public function test_une_annee_dont_la_date_de_fin_n_est_pas_passee_n_est_pas_terminee(): void
+    {
+        $this->snapshotNeDoitPasEtreAppele();
+
+        $this->assertNull($this->moyenneDuCertificat(self::CLASSE, finAnnee: today()->addMonth()->toDateString()));
+    }
+
+    public function test_une_annee_dont_la_date_de_fin_est_passee_est_terminee(): void
+    {
+        $this->snapshotRend(11.0);
+
+        $this->assertSame(11.0, $this->moyenneDuCertificat(self::CLASSE, anneeEnCours: true, finAnnee: '2025-07-31'));
+    }
+
+    public function test_un_echec_du_calcul_laisse_la_ligne_vide_sans_bloquer_le_certificat(): void
+    {
+        $snapshot = Mockery::mock(BtsCurrentResultSnapshotService::class);
+        $snapshot->shouldReceive('getAnnualSnapshot')->once()->andThrow(new \RuntimeException('configuration absente'));
+        $this->app->instance(BtsCurrentResultSnapshotService::class, $snapshot);
+
+        $this->assertNull($this->moyenneDuCertificat(self::CLASSE));
+    }
+
     public function test_une_moyenne_enregistree_prime_sur_les_notes(): void
     {
         $this->snapshotNeDoitPasEtreAppele();
@@ -84,11 +107,11 @@ class CertificatMoyenneDepuisLesNotesTest extends TestCase
         $this->assertNull($this->moyenneDuCertificat(11));
     }
 
-    private function moyenneDuCertificat(int $classeId, bool $anneeEnCours = false): ?float
+    private function moyenneDuCertificat(int $classeId, bool $anneeEnCours = false, ?string $finAnnee = null): ?float
     {
         $inscription = new \App\Models\ESBTPInscription();
         $inscription->forceFill(['classe_id' => $classeId, 'annee_universitaire_id' => self::ANNEE]);
-        $inscription->setRelation('anneeUniversitaire', (object) ['id' => self::ANNEE, 'is_current' => $anneeEnCours]);
+        $inscription->setRelation('anneeUniversitaire', (object) ['id' => self::ANNEE, 'is_current' => $anneeEnCours, 'end_date' => $finAnnee]);
         $inscription->setRelation('classe', \App\Models\ESBTPClasse::find($classeId));
 
         $controleur = app(ESBTPEtudiantController::class);
