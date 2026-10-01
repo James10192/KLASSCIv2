@@ -291,6 +291,9 @@
                 </p>
                 <ul>
                     <li>Statut d'affectation : {{ $existante->affectation_status ? ucfirst(str_replace(['_', '-'], ' ', $existante->affectation_status)) : 'non renseigné' }}</li>
+                    @if($existante->workflow_step !== 'etudiant_cree')
+                        <li class="rsd-warn">Dossier d'inscription en attente : paiement et validation se terminent depuis l'inscription</li>
+                    @endif
                     @if($reliquatAnneeCible > 0)
                         <li class="rsd-warn">Reliquat reporté à régulariser{{ $voirFinances ? ' : ' . $fcfa($reliquatAnneeCible) : '' }}</li>
                     @endif
@@ -309,7 +312,8 @@
                         <a href="{{ $lienVers($eligibilite['annee_suivante']) }}" class="rsd-btn rsd-btn--outline">
                             <i class="fas fa-forward"></i>Préparer {{ $eligibilite['annee_suivante']->name }}
                         </a>
-                    @elseif($eligibilite['peut_rejouer'])
+                    @endif
+                    @if($eligibilite['peut_rejouer'])
                         <a href="{{ $lienFinalisation }}" class="rsd-btn rsd-btn--outline" title="Refaire la réinscription : l'inscription actuelle sera terminée et remplacée">
                             <i class="fas fa-pen"></i>Corriger la réinscription
                         </a>

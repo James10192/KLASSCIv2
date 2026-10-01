@@ -163,10 +163,13 @@ class FicheReinscriptionTest extends TestCase
             'annee_universitaire_id' => $this->courante->id,
             'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
             'status' => 'active',
+            'workflow_step' => 'documents_complets',
         ]);
         ESBTPAnneeUniversitaire::where('id', '!=', $this->courante->id)->where('start_date', '>', $this->courante->start_date)->update(['is_active' => false]);
 
-        $this->fiche($this->agent)->assertOk()->assertSee('Déjà inscrit pour 2026-2027')->assertDontSee('Corriger la réinscription');
+        // Réinscription faite, dossier pas encore validé : la fiche le dit.
+        $this->fiche($this->agent)->assertOk()->assertSee('Déjà inscrit pour 2026-2027')->assertDontSee('Corriger la réinscription')
+            ->assertSee("Dossier d'inscription en attente", false);
         $this->fiche($this->admin)->assertOk()->assertSee('Corriger la réinscription');
         // Pas de formulaire inerte : la finalisation s'ouvre (l'année se choisit à l'envoi).
         $this->actingAs($this->agent)->get(route('esbtp.reinscription.create', $this->inscription->etudiant_id))->assertOk();
@@ -191,7 +194,12 @@ class FicheReinscriptionTest extends TestCase
             'start_date' => $this->courante->start_date->copy()->addYear(), 'end_date' => $this->courante->end_date->copy()->addYear()]);
 
         $lien = route('esbtp.reinscription.create', ['etudiant' => $this->inscription->etudiant_id, 'annee_academique' => '2026-2027', 'annee_cible_id' => $suivante->id]);
-        $this->fiche($this->agent)->assertOk()->assertSee('Préparer 2027-2028')->assertSee(e($lien), false);
+        $this->fiche($this->agent)->assertOk()->assertSee('Préparer 2027-2028')->assertSee(e($lien), false)
+            ->assertDontSee('Corriger la réinscription');
+        // Une année suivante ouverte ne retire pas au superadministrateur la
+        // correction d'une réinscription faite par erreur.
+        $this->fiche($this->admin)->assertOk()->assertSee('Préparer 2027-2028')->assertSee('Corriger la réinscription')
+            ->assertDontSee("Dossier d'inscription en attente", false);
 
         $e = app(EligibiliteReinscription::class)->pour($this->inscription->etudiant_id, $this->agent, $suivante->id);
         $this->assertSame($enCours->id, $e['inscription']->id, 'on quitte N, pas N-1');
