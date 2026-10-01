@@ -37,7 +37,27 @@ class IdentiteDesCourriels
             'schoolLogoUrl' => $donnees['schoolLogoUrl'] ?? $this->logoPublic(),
             'emailPrimarySoft' => self::melanger($primaire, '#ffffff', 0.92),
             'emailPrimaryDark' => self::melanger($primaire, '#000000', 0.28),
+            'emailGardeGmailSombre' => self::texteQuasiBlanc((string) ($donnees['emailHeaderTextColor'] ?? '#ffffff')),
         ]);
+    }
+
+    /**
+     * Le texte posé sur la couleur de l'école (en-tête, bouton) est-il blanc ou
+     * presque ? C'est la seule condition où la garde contre l'inversion des
+     * applications Gmail (`gm-ecran` / `gm-diff`, dans le gabarit) rend juste.
+     *
+     * Ces applications, en mode sombre, foncent le texte clair et éclaircissent
+     * les fonds unis ; le gabarit défait l'inversion du texte par deux fondus
+     * (`difference` puis `screen`) sur un fond noir. Le calcul ne restitue que
+     * le BLANC : un texte sombre posé par une école à l'en-tête clair, passé par
+     * le même fondu, disparaîtrait dans Gmail même en mode clair. D'où ce seuil,
+     * et la garde omise en dessous.
+     */
+    public static function texteQuasiBlanc(string $couleur): bool
+    {
+        $luminance = SettingsHelper::relativeLuminance($couleur);
+
+        return $luminance !== null && $luminance >= 0.85;
     }
 
     /** `$couleur` rapprochée de `$vers` dans la proportion `$part` (0 à 1). */

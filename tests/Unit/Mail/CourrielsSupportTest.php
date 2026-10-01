@@ -104,6 +104,43 @@ class CourrielsSupportTest extends TestCase
         $this->assertStringContainsString('Message automatique du support KLASSCI', $html);
     }
 
+    /**
+     * Mode sombre des applications Gmail : elles inversent d'office le texte
+     * blanc posé sur la couleur de l'école (rendu illisible constaté sur Gmail
+     * iOS). La garde est le double fondu de Rémi Parmentier, visant Gmail seul
+     * par `u + .body`. Ce test vérifie le balisage, pas le rendu de Gmail : seul
+     * un envoi réel le prouve.
+     */
+    public function test_l_en_tete_et_le_bouton_portent_la_garde_contre_le_mode_sombre_de_gmail(): void
+    {
+        $html = $this->envoyer($this->verification())->getHtmlBody();
+
+        $this->assertStringContainsString('<body class="body"', $html, 'Le sélecteur `u + .body` exige cette classe.');
+        $this->assertStringContainsString('u + .body .gm-ecran { background: #000; mix-blend-mode: screen; }', $html);
+        $this->assertStringContainsString('u + .body .gm-diff { background: #000; mix-blend-mode: difference; }', $html);
+        // Nom de l'école, titre et sous-titre, bouton : trois enveloppes.
+        $this->assertSame(3, substr_count($html, '<div class="gm-ecran"'));
+        $this->assertSame(3, substr_count($html, '<div class="gm-diff"'));
+        // Un fond porté par une image n'est pas recoloré par Gmail : le bouton
+        // garde la couleur de l'école au lieu de virer au lavande.
+        $this->assertStringContainsString('background-image:linear-gradient(#0453cb,#0453cb)', $html);
+        // Le logo reste hors des enveloppes : le fondu inverserait ses couleurs.
+        $this->assertLessThan(strpos($html, '<div class="gm-ecran"'), strpos($html, '>I</span>'));
+    }
+
+    public function test_un_en_tete_a_texte_sombre_n_a_pas_de_garde(): void
+    {
+        // Le fondu ne restitue que le blanc : sur un texte sombre il l'effacerait,
+        // dans Gmail même en mode clair.
+        $this->regler('pdf_header_bg_color', '#f1f5f9');
+        $this->regler('pdf_header_text_color', '#111827');
+        $html = $this->envoyer($this->verification())->getHtmlBody();
+
+        $this->assertStringContainsString('color:#111827;">Institut Supérieur KLASSCI', $html);
+        $this->assertStringNotContainsString('class="gm-ecran"', $html);
+        $this->assertStringNotContainsString('class="gm-diff"', $html);
+    }
+
     public function test_la_reponse_du_support_cite_la_reference_le_message_et_le_statut(): void
     {
         $this->avecLogo();
