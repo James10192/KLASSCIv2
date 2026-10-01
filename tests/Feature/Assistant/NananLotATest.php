@@ -195,6 +195,79 @@ class NananLotATest extends TestCase
         $this->assertSame('active', $payee->fresh()->status);
     }
 
+    /** Une inscription annulée garde son versement validé (cas courant après un avoir) : jamais revalidée. */
+    public function test_une_inscription_annulee_avec_versement_valide_est_laissee(): void
+    {
+        $classe = $this->classe('LA_VAL_ANN');
+        $annulee = $this->inscription($classe, ['status' => 'annulée', 'workflow_step' => 'en_validation']);
+        $this->versement($annulee);
+        $payee = $this->inscription($classe, ['status' => 'en_attente', 'workflow_step' => 'en_validation']);
+        $this->versement($payee);
+
+        $r = app(ValiderInscriptions::class)->executeAuthorized(['classe' => 'LA_VAL_ANN'], $this->admin);
+        $this->assertSame([[(int) $payee->id]], [$this->idsProposes($r)]);
+        $this->valider($r);
+        $this->assertSame('annulée', $annulee->fresh()->status);
+        $this->assertSame('active', $payee->fresh()->status);
+
+        $this->refuse(app(ValiderInscriptions::class)->executeAuthorized(['inscriptions' => [$annulee->id]], $this->admin), 'inscription annulée');
+        Sanctum::actingAs($this->utilisateur(), ['cli:read', 'cli:write']);
+        $this->postJson("/api/cli/inscriptions/{$annulee->id}/validate")->assertStatus(422)->assertJsonPath('message', 'Cannot validate: inscription is cancelled');
+    }
+
+    /** Comme l'écran : pas de seconde inscription active la même année. */
+    public function test_un_eleve_deja_inscrit_ailleurs_cette_annee_est_laisse(): void
+    {
+        $i = $this->inscription($this->classe('LA_VAL_DBL'), ['status' => 'en_attente', 'workflow_step' => 'en_validation']);
+        $this->versement($i);
+        ESBTPInscription::factory()->create(['etudiant_id' => $i->etudiant_id, 'annee_universitaire_id' => $this->annee,
+            'classe_id' => $this->classe('LA_VAL_DBL2')->id, 'status' => 'active']);
+
+        $this->refuse(app(ValiderInscriptions::class)->executeAuthorized(['inscriptions' => [$i->id]], $this->admin), 'autre inscription active');
+    }
+
+    /** Comme l'écran, qui valide une à une : au-delà des places, la suite reste en attente. */
+    public function test_une_classe_a_une_place_ne_recoit_qu_une_inscription(): void
+    {
+        $classe = $this->classe('LA_VAL_PL');
+        $classe->update(['places_totales' => 2]);
+        ESBTPInscription::factory()->create(['classe_id' => $classe->id, 'annee_universitaire_id' => $this->annee, 'status' => 'active', 'workflow_step' => 'etudiant_cree']);
+        $premiere = $this->inscription($classe, ['status' => 'en_attente', 'workflow_step' => 'en_validation']);
+        $this->versement($premiere);
+        $seconde = $this->inscription($classe, ['status' => 'en_attente', 'workflow_step' => 'en_validation']);
+        $this->versement($seconde);
+        // L'écran laisse les rôles historiques déroger ; le compte « standard » de la caisse, non.
+        $agent = $this->utilisateur();
+        $agent->givePermissionTo('inscriptions.validate');
+        $this->actingAs($agent);
+
+        $r = app(ValiderInscriptions::class)->executeAuthorized(['classe' => 'LA_VAL_PL'], $agent);
+        $this->assertSame([(int) $premiere->id], $this->idsProposes($r));
+        $this->assertStringContainsString('classe pleine', implode(' ', $r['avertissements']));
+        $this->valider($r, $agent);
+        $this->assertSame(['active', 'en_attente'], [$premiere->fresh()->status, $seconde->fresh()->status]);
+    }
+
+    /** Même chemin que la validation groupée de l'écran : les rappels de l'inscription s'arrêtent. */
+    public function test_valider_arrete_les_rappels_comme_l_ecran(): void
+    {
+        $i = $this->inscription($this->classe('LA_VAL_RAP'), ['status' => 'en_attente', 'workflow_step' => 'en_validation']);
+        $this->versement($i);
+        $rappel = \App\Models\NotificationReminder::create(['remindable_type' => ESBTPInscription::class, 'remindable_id' => $i->id,
+            'reminder_count' => 0, 'next_reminder_at' => now()->addDay(), 'is_active' => true]);
+
+        $this->valider(app(ValiderInscriptions::class)->executeAuthorized(['inscriptions' => [$i->id]], $this->admin));
+        $this->assertFalse((bool) $rappel->fresh()->is_active);
+        $this->assertSame('etudiant_cree', $i->fresh()->workflow_step);
+    }
+
+    private function idsProposes(array $resultat): array
+    {
+        $journal = \App\Models\ChatbotActionLog::findOrFail($resultat['proposition'] ?? 0);
+
+        return app(ValiderInscriptions::class)->preparer((array) $journal->action_data['arguments'], $journal->user)->donnees['ids'] ?? [];
+    }
+
     // --- Changer de classe ---------------------------------------------------------
 
     public function test_deplacer_un_eleve_de_1a_en_1b(): void
@@ -374,6 +447,20 @@ class NananLotATest extends TestCase
         $this->refuse(app(RepartirTropPercu::class)->executeAuthorized(['inscription_id' => $i->id, 'motif' => 'Versement unique pour deux frais'], $comptable), 'verrouillée');
     }
 
+    /** Un avoir rapproché qui annule le versement à répartir bouge avec lui : refusé. */
+    public function test_repartir_refuse_si_un_avoir_du_versement_est_rapproche(): void
+    {
+        [$i, $v] = $this->tropVerse();
+        $v->update(['date_paiement' => now()->toDateString()]);
+        $avoir = app(\App\Services\AvoirService::class)->issue($v, 10000, 'credit', 'Avoir partiel pour le test', $this->admin->id);
+        $avoir->forceFill(['reconciliation_locked_at' => now()])->save();
+        $comptable = $this->utilisateur();
+        $comptable->givePermissionTo('paiements.reventiler');
+        $this->actingAs($comptable);
+
+        $this->refuse(app(RepartirTropPercu::class)->executeAuthorized(['inscription_id' => $i->id, 'motif' => 'Versement unique pour deux frais'], $comptable), $avoir->numero_recu);
+    }
+
     // --- Barème --------------------------------------------------------------------
 
     public function test_poser_un_bareme_par_codes_puis_valider(): void
@@ -416,6 +503,26 @@ class NananLotATest extends TestCase
         ESBTPFraisConfiguration::where('filiere_id', $filiere->id)->update(['amount' => 200000]);
         $this->valider($r, null, 'perimee');
         $this->assertSame(200000.0, (float) ESBTPFraisConfiguration::where('frais_category_id', $cat->id)->where('filiere_id', $filiere->id)->value('amount'));
+    }
+
+    /** Le cache des montants ne se vide qu'une fois le barème validé en base. */
+    public function test_le_cache_des_montants_se_vide_apres_le_commit(): void
+    {
+        $filiere = ESBTPFiliere::factory()->create(['code' => 'LACAC']);
+        $niveau = ESBTPNiveauEtude::factory()->create(['code' => 'LAN5', 'year' => 1, 'type' => 'BTS']);
+        $cle = 'frais_cache__class_configs_global_BTS_'.$filiere->id.'_null_'.$niveau->id.'_null';
+        \Illuminate\Support\Facades\Cache::put($cle, 'ancien', 600);
+        $bareme = ['categories' => [['code' => 'LACACS', 'name' => 'Scolarité cache']], 'confirmer_statut' => false,
+            'configurations' => [['category_code' => 'LACACS', 'systeme' => 'BTS', 'filiere_id' => $filiere->id, 'parcours_id' => null, 'niveau_id' => $niveau->id, 'amount' => 1000]]];
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        app(\App\Services\Frais\PoseDeBareme::class)->appliquer($bareme, $this->admin->id);
+        $this->assertSame('ancien', \Illuminate\Support\Facades\Cache::get($cle), 'pas avant la fin de la transaction');
+        \Illuminate\Support\Facades\DB::commit();
+        // Sous DatabaseTransactions (Laravel 9), la transaction du test ne se valide
+        // jamais : on joue ce que la vraie validation jouerait.
+        app('db.transactions')->getTransactions()->each->executeCallbacks();
+        $this->assertNull(\Illuminate\Support\Facades\Cache::get($cle));
     }
 
     /** La CLI écrit par le même service que Nanan. */

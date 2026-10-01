@@ -9,6 +9,7 @@ use App\Domain\Inscriptions\ObstacleALaValidation;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Services\ESBTPInscriptionService;
+use App\Services\InscriptionWorkflowService;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -17,11 +18,16 @@ use Illuminate\Support\Facades\DB;
  * Propose de valider des inscriptions : une, plusieurs (matricules ou
  * identifiants), ou toutes celles d'une classe qui attendent.
  *
- * La règle vit dans ObstacleALaValidation, partagée avec la CLI : une
- * inscription sans versement VALIDÉ n'est jamais validée, un versement en
- * attente ne compte pas (rule inscriptions.md). Celles-là sont montrées, et
- * laissées telles quelles. L'écriture passe par
- * ESBTPInscriptionService::validerInscription(), comme l'écran et la CLI.
+ * La règle vit dans ObstacleALaValidation, partagée avec la CLI et alignée sur
+ * l'écran : inscription annulée, autre inscription active la même année,
+ * versement en attente ou absent, classe pleine. Celles-là sont montrées, et
+ * laissées telles quelles. Les places se comptent en lot : dans une classe à
+ * trois places libres, seules les trois premières sont proposées.
+ *
+ * L'écriture passe par la validation groupée de l'écran
+ * (ESBTPInscriptionService::processBulkValidation, sans forçage) : même
+ * historique, même notification, mêmes rappels désactivés. Si l'écran en
+ * laisse une seule de côté, rien n'est écrit.
  */
 class ValiderInscriptions extends ActionAgent
 {
@@ -31,6 +37,7 @@ class ValiderInscriptions extends ActionAgent
         private DesignationDInscriptions $designation,
         private ObstacleALaValidation $obstacle,
         private ESBTPInscriptionService $service,
+        private InscriptionWorkflowService $workflow,
     ) {
     }
 
@@ -47,7 +54,8 @@ class ValiderInscriptions extends ActionAgent
     public function description(): string
     {
         return 'PROPOSE de valider des inscriptions de l’année en cours : par `matricules`, par `inscriptions` (identifiants), ou par `classe` (code : toutes celles qui attendent). '
-            . 'Une inscription sans versement validé, ou avec un versement encore en attente, n’est JAMAIS validée : elle est montrée et laissée en l’état. Rien n’est écrit avant « Valider ».';
+            . 'Mêmes règles que la validation groupée de l’écran : JAMAIS une inscription annulée, sans versement validé ou au versement en attente, ni un élève déjà inscrit ailleurs cette année, ni au-delà des places de la classe. '
+            . 'Celles-là sont montrées et laissées en l’état. Rien n’est écrit avant « Valider ».';
     }
 
     public function parameters(): array
@@ -73,8 +81,18 @@ class ValiderInscriptions extends ActionAgent
         $aValider = [];
         $laissees = [];
         $lignes = [];
+        $places = [];
         foreach ($inscriptions as $i) {
-            $obstacle = $this->obstacle->pour($i);
+            $obstacle = $this->obstacle->horsPlaces($i);
+            if ($obstacle === null) {
+                // Les places se comptent en lot, comme l'écran qui valide une à une.
+                $places[$i->classe_id] ??= $this->obstacle->placesRestantes($i);
+                if ($places[$i->classe_id] === 0) {
+                    $obstacle = ObstacleALaValidation::CLASSE_PLEINE;
+                } elseif ($places[$i->classe_id] !== null) {
+                    $places[$i->classe_id]--;
+                }
+            }
             $nom = trim(($i->etudiant->nom ?? '').' '.($i->etudiant->prenoms ?? ''));
             $lignes[] = [$nom, (string) ($i->etudiant->matricule ?? '—'), (string) ($i->classe->name ?? '—'),
                 $obstacle ? 'Laissée : '.ObstacleALaValidation::libelle($obstacle) : 'En attente → Validée'];
@@ -88,7 +106,7 @@ class ValiderInscriptions extends ActionAgent
         if ($aValider === []) {
             return new Proposition(titre: $titre, resume: '', manques: [
                 'Aucune de ces inscriptions ne peut être validée'.($laissees ? ' : '.implode(', ', $laissees) : ' (déjà validées)')
-                .'. Un versement doit d’abord être validé à la caisse.',
+                .'.',
             ]);
         }
 
@@ -116,11 +134,13 @@ class ValiderInscriptions extends ActionAgent
             if ($this->etat($ids) !== $proposition->etat['inscriptions']) {
                 throw new PropositionPerimee('Ces inscriptions ont changé depuis la proposition.');
             }
-            foreach ($ids as $id) {
-                $resultat = $this->service->validerInscription($id, (int) $user->id);
-                if (! ($resultat['success'] ?? false)) {
-                    throw new PropositionPerimee('Inscription #'.$id.' : '.($resultat['message'] ?? 'refusée').'.');
-                }
+            $stats = $this->service->processBulkValidation($ids, false, $this->workflow, (int) $user->id);
+            if (($stats['validees_direct'] ?? 0) !== count($ids)) {
+                $raisons = array_merge(
+                    array_map(fn ($r) => ($r['etudiant'] ?? '#'.$r['id']).' : '.$r['raison'], $stats['ignorees'] ?? []),
+                    array_map(fn ($r) => '#'.$r['id'].' : '.$r['erreur'], $stats['erreurs'] ?? []),
+                );
+                throw new PropositionPerimee('Validation refusée par l’écran — '.($raisons ? implode(' ; ', $raisons) : 'inscription déjà traitée').'.');
             }
         });
 
@@ -146,6 +166,7 @@ class ValiderInscriptions extends ActionAgent
             }
             $liste = ESBTPInscription::with($avec)->where('classe_id', $classe->id)
                 ->when($annee, fn ($q) => $q->where('annee_universitaire_id', $annee))
+                ->whereNotIn('status', ESBTPInscription::STATUTS_ANNULES)
                 ->where(fn ($q) => $q->where('status', '!=', 'active')->orWhere('workflow_step', '!=', 'etudiant_cree'))
                 ->orderBy('id')->get();
 

@@ -90,65 +90,23 @@ class DeplacerEtudiants extends ActionAgent
         $mouvements = [];
         $arrivees = [];
         foreach ($demandes as $d) {
-            $matricule = trim((string) ($d['matricule'] ?? ''));
-            if (empty($d['vers'])) {
-                $manques[] = "Vers quelle classe envoyer {$matricule} ? Donne son code.";
+            $examen = $this->examinerDemande($d, $annee);
+            if (isset($examen['manque'])) {
+                $manques[] = $examen['manque'];
                 continue;
             }
-            $vers = $this->classe((string) $d['vers']);
-            if (! $vers) {
-                $manques[] = "Classe {$d['vers']} introuvable : vérifie son code avec search_classes.";
-                continue;
+            if ($examen['avertissement']) {
+                $avertissements[] = $examen['avertissement'];
             }
-            [$inscription, $manque] = $this->designation->inscriptionCourante($matricule, null);
-            if ($manque) {
-                $manques[] = $manque;
-                continue;
-            }
-            if (! empty($d['depuis'])) {
-                $depuis = $this->classe((string) $d['depuis']);
-                if (! $depuis || (int) $depuis->id !== (int) $inscription->classe_id) {
-                    $manques[] = "{$matricule} n'est pas inscrit en {$d['depuis']} cette année : vérifie sa classe actuelle.";
-                    continue;
-                }
-            }
-
-            $examen = $this->examen->examiner((int) $inscription->etudiant_id, (int) $inscription->classe_id, (int) $vers->id, $annee);
-            if ($examen['saute']) {
-                $manques[] = "{$matricule} est déjà en {$vers->name}.";
-                continue;
-            }
-            if ($examen['erreur']) {
-                $manques[] = "{$matricule} : ".match ($examen['erreur']) {
-                    'inscription_not_active' => 'son inscription n’est pas active (statut « '.$examen['inscription']->status.' ») : elle se valide d’abord.',
-                    'classe_not_found' => 'sa classe actuelle est introuvable.',
-                    default => 'aucune inscription active trouvée cette année.',
-                };
-                continue;
-            }
-
-            $nom = trim(($inscription->etudiant->nom ?? '').' '.($inscription->etudiant->prenoms ?? ''));
-            $donnees = $examen['donnees'];
-            if ($donnees) {
-                $avertissements[] = sprintf('%s a déjà %d note(s), %d moyenne(s) et %d bulletin(s) en %s : ils restent rattachés à cette classe.',
-                    $nom, $donnees['notes_count'] ?? 0, $donnees['resultats_count'] ?? 0, $donnees['bulletins_count'] ?? 0, $examen['depuis']->name);
-            }
-            $mouvements[] = ['inscription_id' => (int) $inscription->id, 'etudiant_id' => (int) $inscription->etudiant_id, 'vers' => (int) $vers->id];
-            $arrivees[$vers->id] = ($arrivees[$vers->id] ?? 0) + 1;
-            $lignes[] = [$nom, $matricule, (string) $examen['depuis']->name, (string) $vers->name];
+            $mouvements[] = $examen['mouvement'];
+            $arrivees[$examen['mouvement']['vers']] = ($arrivees[$examen['mouvement']['vers']] ?? 0) + 1;
+            $lignes[] = $examen['ligne'];
         }
 
         if ($manques !== []) {
             return new Proposition(titre: $titre, resume: '', manques: array_values(array_unique($manques)));
         }
-
-        foreach ($arrivees as $classeId => $n) {
-            $classe = ESBTPClasse::find($classeId);
-            $inscrits = ESBTPInscription::where('classe_id', $classeId)->where('annee_universitaire_id', $annee)->where('status', 'active')->count();
-            if ($classe->places_totales && $inscrits + $n > (int) $classe->places_totales) {
-                $avertissements[] = "{$classe->name} passera à ".($inscrits + $n)." inscrits pour {$classe->places_totales} places.";
-            }
-        }
+        $avertissements = array_merge($avertissements, $this->avertissementsDePlaces($arrivees, $annee));
 
         usort($mouvements, fn ($a, $b) => $a['inscription_id'] <=> $b['inscription_id']);
 
@@ -190,6 +148,76 @@ class DeplacerEtudiants extends ActionAgent
             'model_id' => $ids[0] ?? null,
             'details' => ['mouvements' => $mouvements],
         ];
+    }
+
+    /**
+     * Une demande de déplacement, lue sans rien écrire.
+     *
+     * @return array{manque: string}|array{mouvement: array, ligne: string[], avertissement: ?string}
+     */
+    private function examinerDemande(array $d, int $annee): array
+    {
+        $matricule = trim((string) ($d['matricule'] ?? ''));
+        if (empty($d['vers'])) {
+            return ['manque' => "Vers quelle classe envoyer {$matricule} ? Donne son code."];
+        }
+        $vers = $this->classe((string) $d['vers']);
+        if (! $vers) {
+            return ['manque' => "Classe {$d['vers']} introuvable : vérifie son code avec search_classes."];
+        }
+        [$inscription, $manque] = $this->designation->inscriptionCourante($matricule, null);
+        if ($manque) {
+            return ['manque' => $manque];
+        }
+        if (! empty($d['depuis'])) {
+            $depuis = $this->classe((string) $d['depuis']);
+            if (! $depuis || (int) $depuis->id !== (int) $inscription->classe_id) {
+                return ['manque' => "{$matricule} n'est pas inscrit en {$d['depuis']} cette année : vérifie sa classe actuelle."];
+            }
+        }
+
+        $examen = $this->examen->examiner((int) $inscription->etudiant_id, (int) $inscription->classe_id, (int) $vers->id, $annee);
+        if ($examen['saute']) {
+            return ['manque' => "{$matricule} est déjà en {$vers->name}."];
+        }
+        if ($examen['erreur']) {
+            return ['manque' => "{$matricule} : ".match ($examen['erreur']) {
+                'inscription_not_active' => 'son inscription n’est pas active (statut « '.$examen['inscription']->status.' ») : elle se valide d’abord.',
+                'classe_not_found' => 'sa classe actuelle est introuvable.',
+                default => 'aucune inscription active trouvée cette année.',
+            }];
+        }
+
+        $nom = trim(($inscription->etudiant->nom ?? '').' '.($inscription->etudiant->prenoms ?? ''));
+        $donnees = $examen['donnees'];
+
+        return [
+            'mouvement' => ['inscription_id' => (int) $inscription->id, 'etudiant_id' => (int) $inscription->etudiant_id, 'vers' => (int) $vers->id],
+            'ligne' => [$nom, $matricule, (string) $examen['depuis']->name, (string) $vers->name],
+            'avertissement' => $donnees ? sprintf('%s a déjà %d note(s), %d moyenne(s) et %d bulletin(s) en %s : ils restent rattachés à cette classe.',
+                $nom, $donnees['notes_count'] ?? 0, $donnees['resultats_count'] ?? 0, $donnees['bulletins_count'] ?? 0, $examen['depuis']->name) : null,
+        ];
+    }
+
+    /**
+     * Une classe d'arrivée qui dépasse ses places est signalée, pas refusée :
+     * l'écran de la classe ne la refuse pas non plus.
+     *
+     * @param array<int, int> $arrivees nombre d'arrivées par classe
+     * @return string[]
+     */
+    private function avertissementsDePlaces(array $arrivees, int $annee): array
+    {
+        $avertissements = [];
+        foreach ($arrivees as $classeId => $n) {
+            $classe = ESBTPClasse::find($classeId);
+            $inscrits = ESBTPInscription::where('classe_id', $classeId)->where('annee_universitaire_id', $annee)->where('status', 'active')->count();
+            if ($classe->places_totales && $inscrits + $n > (int) $classe->places_totales) {
+                $avertissements[] = "{$classe->name} passera à ".($inscrits + $n)." inscrits pour {$classe->places_totales} places.";
+            }
+        }
+
+        return $avertissements;
     }
 
     private function classe(string $code): ?ESBTPClasse

@@ -280,6 +280,9 @@ class CLIStudentController extends BaseApiController
             return $this->errorResponse(match ($obstacle) {
                 ObstacleALaValidation::DEJA_VALIDEE => 'Inscription already validated',
                 ObstacleALaValidation::PAIEMENT_EN_ATTENTE => 'Cannot validate: payment is still pending (en_attente)',
+                ObstacleALaValidation::ANNULEE => 'Cannot validate: inscription is cancelled',
+                ObstacleALaValidation::AUTRE_INSCRIPTION_ACTIVE => 'Cannot validate: student already has another active inscription this year',
+                ObstacleALaValidation::CLASSE_PLEINE => 'Cannot validate: class is full',
                 default => 'Cannot validate: no payment found for this inscription',
             }, [], 422);
         }

@@ -74,75 +74,20 @@ class PoseDeBareme
     public function appliquer(array $bareme, int $auteur): array
     {
         return DB::transaction(function () use ($bareme, $auteur) {
-            $parCode = [];
-
-            foreach ($bareme['categories'] as $i => $cat) {
-                $code = strtoupper($cat['code']);
-                $modele = ESBTPFraisCategory::query()->where('code', $code)->first();
-                if (! $modele) {
-                    $modele = ESBTPFraisCategory::create([
-                        'name' => $cat['name'],
-                        'code' => $code,
-                        'is_mandatory' => (bool) ($cat['is_mandatory'] ?? true),
-                        'audience' => $cat['audience'] ?? ESBTPFraisCategory::AUDIENCE_TOUS,
-                        'category_type' => $cat['category_type'] ?? 'academic',
-                        'default_amount' => (float) ($cat['default_amount'] ?? 0),
-                        'payment_deadline_days' => 30,
-                        'is_active' => true,
-                        'sort_order' => $i + 1,
-                        'accepts_in_kind' => false,
-                    ]);
-                    ESBTPFraisOption::create([
-                        'configuration_id' => null,
-                        'name' => 'Standard',
-                        'description' => 'Option standard pour '.$modele->name,
-                        'additional_amount' => 0,
-                        'is_default' => true,
-                        'is_active' => true,
-                        'available_from' => now(),
-                        'sort_order' => 1,
-                    ]);
-                } else {
-                    $modele->fill([
-                        'name' => $cat['name'],
-                        'is_mandatory' => (bool) ($cat['is_mandatory'] ?? $modele->is_mandatory),
-                        'audience' => $cat['audience'] ?? $modele->audience,
-                        'category_type' => $cat['category_type'] ?? $modele->category_type,
-                        'default_amount' => $cat['default_amount'] ?? $modele->default_amount,
-                        'is_active' => true,
-                    ])->save();
-                }
-                $parCode[$code] = $modele;
-            }
-
-            $parPortee = [];
-            foreach ($bareme['configurations'] as $ligne) {
-                $portee = self::portee($ligne);
-                $cle = implode('|', [$portee['systeme'], $portee['parcours_id'] ?? '', $portee['filiere_id'] ?? '', $portee['niveau_id']]);
-                $parPortee[$cle]['scope'] = $portee;
-                $cat = $parCode[strtoupper($ligne['category_code'])];
-                $parPortee[$cle]['categories'][$cat->id] = [
-                    'amount' => $ligne['amount'],
-                    'amount_affecte' => $ligne['amount_affecte'] ?? $ligne['amount'],
-                    'amount_reaffecte' => $ligne['amount_reaffecte'] ?? $ligne['amount'],
-                    'amount_non_affecte' => $ligne['amount_non_affecte'] ?? $ligne['amount'],
-                    'deadline_days' => 30,
-                ];
-            }
+            $parCode = $this->poserCategories($bareme['categories']);
 
             $created = 0;
             $updated = 0;
-            foreach ($parPortee as $bloc) {
+            foreach ($this->montantsParPortee($bareme['configurations'], $parCode) as $bloc) {
                 $resultat = $this->writer->persistCategories($bloc['scope'], $bloc['categories'], 'global', null, $auteur, 'overwrite_all');
                 $created += $resultat['created'];
                 $updated += $resultat['updated'];
-                $this->cache->invalidateConfigurationCache(
-                    $bloc['scope']['filiere_id'],
-                    $bloc['scope']['niveau_id'],
-                    null,
-                    $bloc['scope']['systeme'],
-                    $bloc['scope']['parcours_id'],
-                );
+                // Après validation seulement : un cache vidé pendant la transaction
+                // se reremplirait des montants d'avant, et survivrait au commit.
+                $scope = $bloc['scope'];
+                DB::afterCommit(fn () => $this->cache->invalidateConfigurationCache(
+                    $scope['filiere_id'], $scope['niveau_id'], null, $scope['systeme'], $scope['parcours_id'],
+                ));
             }
 
             if ($bareme['confirmer_statut'] ?? false) {
@@ -151,11 +96,88 @@ class PoseDeBareme
                     ['value' => '1', 'type' => 'boolean', 'group' => 'scolarite', 'is_required' => false]
                 );
                 if (method_exists(Setting::class, 'clearCache')) {
-                    Setting::clearCache();
+                    DB::afterCommit(fn () => Setting::clearCache());
                 }
             }
 
             return ['categories' => count($parCode), 'configurations_creees' => $created, 'configurations_maj' => $updated];
         });
+    }
+
+    /**
+     * Crée les catégories inconnues, réécrit celles qui existent (nom, et ce qui
+     * est fourni) et les réactive.
+     *
+     * @return array<string, ESBTPFraisCategory> par code
+     */
+    private function poserCategories(array $categories): array
+    {
+        $parCode = [];
+        foreach ($categories as $i => $cat) {
+            $code = strtoupper($cat['code']);
+            $modele = ESBTPFraisCategory::query()->where('code', $code)->first();
+            if (! $modele) {
+                $modele = ESBTPFraisCategory::create([
+                    'name' => $cat['name'],
+                    'code' => $code,
+                    'is_mandatory' => (bool) ($cat['is_mandatory'] ?? true),
+                    'audience' => $cat['audience'] ?? ESBTPFraisCategory::AUDIENCE_TOUS,
+                    'category_type' => $cat['category_type'] ?? 'academic',
+                    'default_amount' => (float) ($cat['default_amount'] ?? 0),
+                    'payment_deadline_days' => 30,
+                    'is_active' => true,
+                    'sort_order' => $i + 1,
+                    'accepts_in_kind' => false,
+                ]);
+                ESBTPFraisOption::create([
+                    'configuration_id' => null,
+                    'name' => 'Standard',
+                    'description' => 'Option standard pour '.$modele->name,
+                    'additional_amount' => 0,
+                    'is_default' => true,
+                    'is_active' => true,
+                    'available_from' => now(),
+                    'sort_order' => 1,
+                ]);
+            } else {
+                $modele->fill([
+                    'name' => $cat['name'],
+                    'is_mandatory' => (bool) ($cat['is_mandatory'] ?? $modele->is_mandatory),
+                    'audience' => $cat['audience'] ?? $modele->audience,
+                    'category_type' => $cat['category_type'] ?? $modele->category_type,
+                    'default_amount' => $cat['default_amount'] ?? $modele->default_amount,
+                    'is_active' => true,
+                ])->save();
+            }
+            $parCode[$code] = $modele;
+        }
+
+        return $parCode;
+    }
+
+    /**
+     * Regroupe les lignes par portée, dans la forme que FraisConfigurationWriter attend.
+     *
+     * @param array<string, ESBTPFraisCategory> $parCode
+     * @return array<string, array{scope: array, categories: array}>
+     */
+    private function montantsParPortee(array $configurations, array $parCode): array
+    {
+        $parPortee = [];
+        foreach ($configurations as $ligne) {
+            $portee = self::portee($ligne);
+            $cle = implode('|', [$portee['systeme'], $portee['parcours_id'] ?? '', $portee['filiere_id'] ?? '', $portee['niveau_id']]);
+            $parPortee[$cle]['scope'] = $portee;
+            $cat = $parCode[strtoupper($ligne['category_code'])];
+            $parPortee[$cle]['categories'][$cat->id] = [
+                'amount' => $ligne['amount'],
+                'amount_affecte' => $ligne['amount_affecte'] ?? $ligne['amount'],
+                'amount_reaffecte' => $ligne['amount_reaffecte'] ?? $ligne['amount'],
+                'amount_non_affecte' => $ligne['amount_non_affecte'] ?? $ligne['amount'],
+                'deadline_days' => 30,
+            ];
+        }
+
+        return $parPortee;
     }
 }

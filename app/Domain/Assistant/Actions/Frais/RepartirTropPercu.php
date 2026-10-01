@@ -27,7 +27,11 @@ use Illuminate\Support\Facades\Log;
  *  - UNE inscription à la fois (la reprise d'une année entière reste au support) ;
  *  - le droit de corriger une ventilation (`paiements.reventiler`), comme l'écran
  *    qui réécrit l'imputation d'un versement, et un motif ;
- *  - jamais sur un versement d'une période close ou d'une caisse rapprochée.
+ *  - jamais sur un versement d'une période close ou d'une caisse rapprochée,
+ *    ni sur un AVOIR qui l'annule : RepartitionTropPercu réaligne les avoirs des
+ *    versements répartis (remettreLesAvoirsEnPhase), donc ils bougent aussi.
+ *    RepartitionTropPercu ne vérifie aucun verrou lui-même : c'est cette action
+ *    qui le fait, à la proposition puis sous verrou à la validation.
  */
 class RepartirTropPercu extends ActionAgent
 {
@@ -135,6 +139,9 @@ class RepartirTropPercu extends ActionAgent
             if ($this->etat((int) $d['inscription_id'], $plan) !== $proposition->etat) {
                 throw new PropositionPerimee('Les versements de cet élève ont changé depuis la proposition.');
             }
+            if ($verrou = $this->verrou($this->versementsTouches((int) $d['inscription_id'], $plan, (bool) $d['reset']))) {
+                throw new PropositionPerimee($verrou);
+            }
 
             return $this->repartition->executer(true, (int) $d['inscription_id'], null, (bool) $d['reset']);
         });
@@ -158,7 +165,7 @@ class RepartirTropPercu extends ActionAgent
         return $this->repartition->executer(false, $inscriptionId, null, $reset);
     }
 
-    /** Les versements dont l'imputation va bouger. */
+    /** Les versements dont l'imputation va bouger, et les avoirs qui les annulent (réalignés avec eux). */
     private function versementsTouches(int $inscriptionId, array $plan, bool $reset): array
     {
         $ids = array_column($plan['lignes'], 'paiement_id');
@@ -166,8 +173,9 @@ class RepartirTropPercu extends ActionAgent
             $ids = array_merge($ids, ESBTPPaiementAllocation::whereIn('paiement_id', ESBTPPaiement::where('inscription_id', $inscriptionId)->select('id'))
                 ->pluck('paiement_id')->all());
         }
+        $avoirs = $ids === [] ? [] : ESBTPPaiement::whereIn('parent_paiement_id', $ids)->pluck('id')->all();
 
-        return array_values(array_unique(array_map('intval', $ids)));
+        return array_values(array_unique(array_map('intval', array_merge($ids, $avoirs))));
     }
 
     private function verrou(array $paiementIds): ?string

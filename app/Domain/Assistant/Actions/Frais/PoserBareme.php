@@ -188,7 +188,9 @@ class PoserBareme extends ActionAgent
                     $manques[] = "Le frais « {$existante->name} » n'a pas de code : il se configure depuis l'écran des frais.";
                     continue;
                 }
-                // Cité sans être redéfini : il est repris tel quel, rien ne change sur lui.
+                // Cité sans être redéfini : il est passé avec son nom actuel, donc
+                // PoseDeBareme le réécrit à l'identique — mais le RÉACTIVE s'il était
+                // désactivé. Ce cas est annoncé dans les avertissements.
                 $code = strtoupper((string) $existante->code);
                 $categories[$code] ??= ['code' => $code, 'name' => (string) $existante->name];
             }
