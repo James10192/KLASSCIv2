@@ -75,7 +75,7 @@ class DetectAnalyticsAnomaliesJob implements ShouldQueue
 
     private function notificationsEnabled(): bool
     {
-        return (string) SettingsHelper::get('analytics.anomaly.notifications_enabled', '1') === '1';
+        return SettingsHelper::drapeau('analytics.anomaly.notifications_enabled', true);
     }
 
     /**

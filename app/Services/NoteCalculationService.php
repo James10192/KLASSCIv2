@@ -55,7 +55,7 @@ class NoteCalculationService
      */
     public function moyenneSansNoteComptable(): ?float
     {
-        return \App\Helpers\SettingsHelper::get(self::REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO, '1') === '1'
+        return \App\Helpers\SettingsHelper::drapeau(self::REGLAGE_ABSENCES_SEULES_COMPTENT_ZERO, true)
             ? 0.0
             : null;
     }

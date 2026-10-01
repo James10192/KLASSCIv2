@@ -87,7 +87,7 @@ class AvoirPaiementController extends Controller
             'school_address' => SettingsHelper::get('school_address', ''),
             'school_phone' => SettingsHelper::get('school_phone', ''),
             'school_email' => SettingsHelper::get('school_email', ''),
-            'show_logo' => SettingsHelper::get('receipt_show_logo', '1') === '1',
+            'show_logo' => SettingsHelper::drapeau('receipt_show_logo', true),
         ];
 
         if ($settings['show_logo']) {

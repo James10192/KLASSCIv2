@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ESBTP;
 
+use App\Domain\Reglages\ModificationDeReglages;
 use App\Helpers\SettingsHelper;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -195,7 +196,7 @@ class ESBTPSettingsController extends Controller
                     ['key' => $key],
                     [
                         'value' => $defaultValue,
-                        'type' => 'integer',
+                        'type' => 'float',
                         'group' => 'bulletin',
                         'category' => 'bulletin',
                         'description' => 'Ponderation des semestres',
@@ -686,12 +687,6 @@ class ESBTPSettingsController extends Controller
                             continue;
                         }
 
-                        // Lot 17b — Champs établissement nullable :
-                        // si la valeur est vide ET le champ n'est pas marqué `is_required`,
-                        // on skip la validation (sinon les règles legacy ['required', ...]
-                        // dans la DB rejettent les champs facultatifs laissés vides).
-                        $isEmpty = $value === null || $value === '';
-
                         // Idempotence : si la valeur soumise est identique à celle en DB,
                         // on ne valide pas (évite de pénaliser sur des seeds pourris où
                         // un setting est marqué is_required=1 mais a une value vide
@@ -707,49 +702,23 @@ class ESBTPSettingsController extends Controller
                         // en rollback muet. La donnee sale est reparee par
                         // migration (les integer vides valent '0') ; la garde
                         // n'a plus a la compenser.
-                        $currentValue = (string) ($setting->value ?? '');
-                        $newValue = $value === null ? '' : (string) $value;
-                        if ($currentValue === $newValue) {
+                        // Égalité numérique comprise (« 0.50 » = « 0.5 ») : un champ
+                        // non touché n'est ni réécrit ni rejugé, même hors bornes.
+                        if (ModificationDeReglages::inchange($setting, $value)) {
                             continue;
                         }
 
-                        if ($isEmpty && ! $setting->is_required) {
-                            // Permet d'écraser une valeur existante par '' (vidage volontaire).
-                            $setting->update([
-                                'value' => '',
-                                'updated_by' => auth()->id()
-                            ]);
-                            $updatedSettings[] = $settingKey;
+                        // Type, bornes (ModificationDeReglages::BORNES) et règles du
+                        // réglage : la même porte que le CLI et Nanan. Un champ
+                        // facultatif laissé vide est vidé ; un champ obligatoire, refusé.
+                        [$normalisee, $erreur] = app(ModificationDeReglages::class)->normaliserSelonLeReglage($setting, $value);
+                        if ($erreur !== null) {
+                            $errors[$settingKey] = $erreur;
                             continue;
                         }
-
-                        // Valider la valeur selon les règles définies
-                        if ($setting->validation_rules) {
-                            // Lot 17b — Forcer `nullable` en tête de liste sauf si le champ
-                            // est explicitement `is_required` (sinon Laravel évalue
-                            // `email|string|...` avant `nullable` et rejette '').
-                            $rules = $setting->validation_rules;
-                            if (! $setting->is_required && ! in_array('nullable', $rules, true)) {
-                                $rules = array_values(array_diff($rules, ['required']));
-                                array_unshift($rules, 'nullable');
-                            }
-
-                            $validator = Validator::make(
-                                [$settingKey => $value],
-                                [$settingKey => $rules]
-                            );
-
-                            if ($validator->fails()) {
-                                $errors[$settingKey] = $validator->errors()->first($settingKey);
-                                continue;
-                            }
-                        }
-
-                        // Traitement spécial selon le type
-                        $processedValue = $this->processSettingValue($value, $setting->type, $request);
 
                         $setting->update([
-                            'value' => $processedValue,
+                            'value' => $setting->type === 'json' ? $this->processSettingValue($normalisee, 'json', $request) : $normalisee,
                             'updated_by' => auth()->id()
                         ]);
 
@@ -1093,17 +1062,9 @@ class ESBTPSettingsController extends Controller
                 ? $this->valeurSoumise($rawInput, $cleTexte)
                 : Setting::get($cleTexte);
 
-            $fond = mb_strtolower(trim((string) $fond));
-            $texte = mb_strtolower(trim((string) $texte));
-
-            if ($fond === '' || $texte === '' || $fond !== $texte) {
-                continue;
+            if (($message = ModificationDeReglages::refusCouleurs($fond, $texte, $ou)) !== null) {
+                return $this->refus($request, $message);
             }
-
-            return $this->refus(
-                $request,
-                "Le texte et le fond de {$ou} ont la meme couleur ({$fond}) : le texte serait invisible a l'impression. Choisissez une couleur de texte contrastee."
-            );
         }
 
         foreach ($reglagesDate as $cle) {
@@ -1111,16 +1072,9 @@ class ESBTPSettingsController extends Controller
                 continue;
             }
 
-            $valeur = $this->valeurSoumise($rawInput, $cle);
-            $valeur = is_string($valeur) ? trim($valeur) : '';
-
-            if ($valeur === '' || PortailReinscriptionService::interpreterDateIso($valeur) !== null) {
-                continue;
+            if (($message = ModificationDeReglages::refusDate($this->valeurSoumise($rawInput, $cle))) !== null) {
+                return $this->refus($request, $message);
             }
-
-            $message = "La date « {$valeur} » est invalide. Format attendu : AAAA-MM-JJ.";
-
-            return $this->refus($request, $message);
         }
 
         if (($refus = $this->refuserAnneeCibleInconnue($request)) !== null) {
@@ -1169,10 +1123,6 @@ class ESBTPSettingsController extends Controller
             return null;
         }
 
-        if ((string) $this->valeurSoumise($rawInput, $cleCanal) !== '1') {
-            return null;
-        }
-
         $cleAnnee = PortailReinscriptionService::REGLAGE_ANNEE_CIBLE;
 
         // L'annee peut venir du formulaire courant OU d'un enregistrement
@@ -1181,14 +1131,9 @@ class ESBTPSettingsController extends Controller
             ? $this->valeurSoumise($rawInput, $cleAnnee)
             : SettingsHelper::get($cleAnnee, '');
 
-        if (trim((string) (is_scalar($annee) ? $annee : '')) !== '') {
-            return null;
-        }
+        $message = ModificationDeReglages::refusCandidaturesSansAnnee((string) $this->valeurSoumise($rawInput, $cleCanal), $annee);
 
-        return $this->refus(
-            $request,
-            "Choisissez l'année visée par les inscriptions avant d'ouvrir les candidatures des nouveaux étudiants : sans elle, le portail refuse toutes les candidatures."
-        );
+        return $message === null ? null : $this->refus($request, $message);
     }
 
     /**
@@ -1208,15 +1153,10 @@ class ESBTPSettingsController extends Controller
             return null;
         }
 
-        $valeur = $this->valeurSoumise($rawInput, $cle);
-        $valeur = is_scalar($valeur) ? trim((string) $valeur) : '';
-
         // Vide est le cas normal : « l'annee courante ».
-        if ($valeur === '' || ESBTPAnneeUniversitaire::whereKey((int) $valeur)->exists()) {
-            return null;
-        }
+        $message = ModificationDeReglages::refusAnneeCible($this->valeurSoumise($rawInput, $cle));
 
-        return $this->refus($request, "L'année universitaire choisie pour les inscriptions n'existe pas.");
+        return $message === null ? null : $this->refus($request, $message);
     }
 
     private function refus(Request $request, string $message)

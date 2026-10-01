@@ -2789,11 +2789,13 @@ class NotificationService
                 'matiere' => $attendance->matiere->nom ?? $attendance->commentaire ?? 'Cours',
                 'typeActivite' => $attendance->type_activite ?? 'Cours magistral',
                 'commentaire' => $attendance->commentaire,
-                'periodeStats' => now()->format('F Y'),
+                'periodeStats' => now()->translatedFormat('F Y'),
                 'absencesJustifiees' => $justifiees,
                 'absencesNonJustifiees' => $nonJustifiees,
                 'totalAbsences' => $absences->count(),
                 'tauxPresence' => $tauxPresence,
+                // Le seuil affiché au parent est celui qui décide l'alerte d'assiduité.
+                'seuilPresence' => (int) $preferences->attendance_rate_threshold,
                 'justificationUrl' => route('esbtp.mes-absences.index'),
 
                 'schoolName' => $schoolSettings['school_name'],
@@ -2817,13 +2819,8 @@ class NotificationService
                 Mail::to($tuteur->email)->send(new \App\Mail\Parents\AbsenceNotificationMail($data));
             }
 
-            // Alerte si taux de présence faible
+            // Pas de second courriel : l'avis d'absence porte déjà le seuil franchi.
             $lowAttendance = $tauxPresence < $preferences->attendance_rate_threshold;
-            if ($lowAttendance) {
-                if ($preferences->hasChannel('email') && $tuteur->email) {
-                    Mail::to($tuteur->email)->send(new \App\Mail\Parents\LowAttendanceMail($data));
-                }
-            }
 
             if ($attendance instanceof ESBTPAttendance) {
                 $this->notifyMailPulse(MailPulseWorkflowIntent::absenceReported($attendance));
@@ -2920,7 +2917,6 @@ class NotificationService
                     'effectifClasse' => $bulletin->classe->nombre_etudiants ?? 'N/A',
                     'decision' => $bulletin->decision,
                     'matieresEnDifficulte' => $matieresFaibles,
-                    'tauxPresence' => 85,  // À calculer depuis les absences si nécessaire
                     'coursDisponibles' => true,
                     'bulletinUrl' => route('esbtp.mes-notes.index'),
                     'contactUrl' => route('esbtp.mon-profil.index'),
