@@ -317,10 +317,10 @@ class ReservateurRdv
         }
 
         $demande = ESBTPReinscriptionDemande::query()
-            ->whereHas('etudiant', function ($q) use ($identifiant, $naissance) {
-                $q->where(function ($inner) use ($identifiant) {
+            ->whereHas('etudiant', function ($q) use ($identifiant, $telephones, $naissance) {
+                $q->where(function ($inner) use ($identifiant, $telephones) {
                     $inner->where('matricule', $identifiant)
-                        ->orWhere('telephone', $identifiant);
+                        ->orWhereIn('telephone', $telephones);
                 })->whereDate('date_naissance', $naissance);
             })
             ->latest('id')

@@ -80,7 +80,13 @@ class ESBTPRendezVousController extends Controller
                 continue;
             }
             $soumis = $brut[$cle] ?? $brut[$cleFormulaire] ?? '';
-            Setting::set($cle, is_string($soumis) ? trim($soumis) : '', $auteur);
+            $soumis = is_string($soumis) ? trim($soumis) : '';
+            // Le lieu part dans un WhatsApp et sur un PDF : borne cote serveur
+            // aussi, le maxlength du champ ne lie que le navigateur.
+            if ($cle === RendezVousReglages::LIEU) {
+                $soumis = mb_substr($soumis, 0, 160);
+            }
+            Setting::set($cle, $soumis, $auteur);
         }
 
         foreach (RendezVousReglages::clesBascules() as $cle) {
