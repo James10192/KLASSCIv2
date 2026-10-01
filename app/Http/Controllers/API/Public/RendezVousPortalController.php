@@ -11,6 +11,7 @@ use App\Services\RendezVous\CatalogueCreneaux;
 use App\Services\RendezVous\ConvocationRdvPdf;
 use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\Portail\ReferencePublique;
+use App\Services\RendezVous\RendezVousReglages;
 use App\Services\RendezVous\ReservateurRdv;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\RateLimiter;
@@ -23,6 +24,7 @@ class RendezVousPortalController extends Controller
         private readonly ReferencePublique $references,
         private readonly FileConvocationsRdv $convocations,
         private readonly ConvocationRdvPdf $pdf,
+        private readonly RendezVousReglages $reglages,
     ) {
     }
 
@@ -219,6 +221,7 @@ class RendezVousPortalController extends Controller
             'heure_debut' => $creneau?->heureDebutHi(),
             'heure_fin' => $creneau?->heureFinHi(),
             'statut' => $reservation->statut->value,
+            'lieu' => $this->reglages->lieu() ?: null,
             'convocation_url' => $this->pdf->url($reservation),
             'convocation' => [
                 'statut' => $reservation->convocation_statut?->value,

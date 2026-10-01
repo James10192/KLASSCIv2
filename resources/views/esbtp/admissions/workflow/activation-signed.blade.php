@@ -13,7 +13,7 @@
     <div class="mwa-card">
         <div class="mwa-head">
             <h1>Activez votre espace étudiant</h1>
-            <p>{{ $workflow->candidature?->prenoms }} {{ $workflow->candidature?->nom }} · {{ $workflow->candidature?->reference_publique }}</p>
+            <p>{{ $workflow->candidature?->prenoms }} {{ $workflow->candidature?->nom }} · {{ $workflow->candidature?->referencePubliqueAffichee() }}</p>
         </div>
         <div class="mwa-body">
             @if($errors->any())

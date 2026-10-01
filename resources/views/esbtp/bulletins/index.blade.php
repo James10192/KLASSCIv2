@@ -732,6 +732,7 @@ function bulIndex() {
         busy: false,
         exportEnCours: null,   // null | apercu | telechargement
         exportEtat: null,
+        courrielMessage: '',
         loading: false,
         toasts: [],
         toastSeq: 0,
@@ -843,8 +844,8 @@ function bulIndex() {
         async exportPdf() { await this.lancerExportGroupe('telechargement'); },
         async previewPdf() { await this.lancerExportGroupe('apercu'); },
 
-        // L'export d'une classe entière passe par le découpage en tranches :
-        // sept bulletins consomment déjà la limite d'exécution d'une requête.
+        // L'export d'une classe entière se fait en arrière-plan : la page le
+        // fait avancer tant qu'elle reste ouverte, le serveur le finit sinon.
         // Le panneau porte l'avancement, la confirmation et les erreurs.
         async lancerExportGroupe(mode) {
             this.exportEnCours = mode;
@@ -852,11 +853,7 @@ function bulIndex() {
                 await window.exportBulletinsParTranches({
                     params: this.buildExportParams(),
                     mode,
-                    urls: {
-                        ouvrir: @json(route('esbtp.bulletins.export-pdf.ouvrir')),
-                        tranche: @json(route('esbtp.bulletins.export-pdf.tranche')),
-                        assembler: @json(route('esbtp.bulletins.export-pdf.assembler')),
-                    },
+                    urlLancer: @json(route('esbtp.bulletins.export-pdf.lancer')),
                     csrf: document.querySelector('meta[name="csrf-token"]').content,
                     onEtat: (etat) => { this.exportEtat = etat; },
                 });

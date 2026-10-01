@@ -64,6 +64,8 @@ return [
             \App\Domain\Assistant\Actions\Notes\SaisirNotes::class,
             \App\Domain\Assistant\Actions\Bulletins\SupprimerMoyennesSansNote::class,
             \App\Domain\Assistant\Actions\Matieres\ConfigurerMaquetteBts::class,
+            \App\Domain\Assistant\Actions\Evaluations\CreerEvaluation::class,
+            \App\Domain\Assistant\Actions\Evaluations\PublierNotes::class,
         ],
     ],
 
@@ -77,6 +79,21 @@ return [
         'pause_ms' => (int) env('ASSISTANT_PAUSE_MS', 600),
         'max_tokens' => (int) env('ASSISTANT_MAX_TOKENS', env('ANTHROPIC_MAX_TOKENS', 2048)),
         'temperature' => (float) env('ASSISTANT_TEMPERATURE', env('ANTHROPIC_TEMPERATURE', 0.2)),
+    ],
+
+    /*
+    | Nanan dans « Aide & support » (App\Domain\Assistant\Support). Sans outil :
+    | elle aide à décrire une demande et répond seule quand elle est sûre. Sans
+    | modèle disponible (pas de clé, budget en pause, panne), des questions
+    | scriptées prennent le relais : le parcours reste le même.
+    */
+    'support' => [
+        'ia' => (bool) env('ASSISTANT_SUPPORT_IA', true),
+        // Questions au plus avant le récapitulatif (question d'ouverture comprise) :
+        // la personne ne doit pas s'épuiser. 7 = ouverture, page, urgence, élément,
+        // attendu, depuis quand, message d'erreur.
+        'questions_max' => (int) env('ASSISTANT_SUPPORT_QUESTIONS_MAX', 7),
+        'max_tokens' => (int) env('ASSISTANT_SUPPORT_MAX_TOKENS', 900),
     ],
 
     // Adaptateur = format d'API. Plusieurs fournisseurs partagent le format OpenAI.

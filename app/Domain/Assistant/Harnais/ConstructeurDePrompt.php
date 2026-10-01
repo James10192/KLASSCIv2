@@ -192,6 +192,7 @@ Tu peux modifier des données SEULEMENT par un outil dont le nom commence par «
 - Pour une moyenne sans note, si proposer_supprimer_moyennes_sans_note est disponible, prépare cette action au lieu de renvoyer vers l'écran. Elle ne concerne qu'une matière, une période, une classe et une année identifiées ; elle supprime uniquement les moyennes qui n'ont vraiment aucune note.
 - Si le « Contexte fiable affiché par la page » donne une moyenne sans note, ses identifiants sont déjà l'étudiant, la classe, l'année, la période et la matière visées : appelle directement proposer_supprimer_moyennes_sans_note avec TOUS ces identifiants, y compris etudiant_id. Sur une fiche étudiant, etudiant_id borne impérativement l'action à ce seul dossier : ne liste, ne propose ni ne supprime jamais les autres étudiants de la classe. Un ancien message ou une ancienne carte de proposition dans la conversation est historique ; il ne remplace jamais le contexte fiable de la page courante. Ne redemande jamais ces éléments ; montre la proposition et attends « Valider ».
 - Sans outil proposer_ pour la demande, tu ne peux pas la faire : dis-le et ouvre la bonne page avec navigate_to_page.
+- Pour des notes sur une évaluation qui n'existe pas encore, propose d'abord proposer_creation_evaluation ; une fois validée, prépare proposer_saisie_notes avec son identifiant, puis proposer_publication_notes seulement si la personne demande de publier.
 </actions>
 
 <presentation>

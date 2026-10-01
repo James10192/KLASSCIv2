@@ -2,690 +2,656 @@
 
 @section('title', 'Notifications')
 
+@php
+    $hasTimetableShortcut = ! empty($timetableShortcut) && ($timetableShortcut['show'] ?? false);
+    $hasEvaluationShortcut = ! empty($evaluationShortcut) && ($evaluationShortcut['show'] ?? false);
+    $hasEvaluationGradingShortcut = ! empty($evaluationGradingShortcut) && ($evaluationGradingShortcut['show'] ?? false);
+    $gradingCtaUrl = null;
+    if (auth()->user()?->can('exams.view') || auth()->user()?->can('evaluations.view')) {
+        $gradingCtaUrl = route('esbtp.evaluations.index');
+    } elseif (auth()->user()?->can('notes.view') || auth()->user()?->can('notes.create') || auth()->user()?->can('notes.edit') || auth()->user()?->can('notes.manage_own')) {
+        $gradingCtaUrl = route('esbtp.notes.index');
+    }
+    $ntfShowGrading = $hasEvaluationGradingShortcut && $gradingCtaUrl;
+    $ntfHasWork = $ntfShowGrading || $hasEvaluationShortcut || $hasTimetableShortcut;
+    $ntfCanCoordinate = auth()->user()?->can('identity.coordinate');
+
+    $ntfTypes = [
+        'info' => ['label' => 'Informations', 'icon' => 'fa-circle-info'],
+        'success' => ['label' => 'Succès', 'icon' => 'fa-circle-check'],
+        'warning' => ['label' => 'À surveiller', 'icon' => 'fa-triangle-exclamation'],
+        'alerte' => ['label' => 'Alertes', 'icon' => 'fa-circle-exclamation'],
+    ];
+    $ntfSujets = [
+        'émargement' => ['label' => 'Émargements', 'icon' => 'fa-signature'],
+        'appel' => ['label' => 'Appels', 'icon' => 'fa-users'],
+        'retard' => ['label' => 'Retards', 'icon' => 'fa-clock'],
+    ];
+
+    $ntfConfig = [
+        'base' => url()->current(),
+        'readUrl' => route('notifications.mark-as-read', ['id' => '__ID__']),
+        'deleteUrl' => route('notifications.delete', ['id' => '__ID__']),
+        'readAllUrl' => route('notifications.mark-all-as-read'),
+        'filters' => $filters,
+        'counts' => $counts,
+        'nextUrl' => $notifications->hasMorePages()
+            ? $notifications->appends(['fragment' => 1, 'after_group' => optional($notifications->getCollection()->last())->display_group])->nextPageUrl()
+            : null,
+    ];
+@endphp
+
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .notifications-panel {
-        background: #ffffff;
-        border-radius: var(--radius-large);
-        border: 1px solid rgba(0, 0, 0, 0.06);
-        box-shadow: 0 4px 20px rgba(15, 23, 42, 0.07);
-        overflow: hidden;
+    .ntf-page { max-width: 1080px; margin: 0 auto; }
+
+    /* ===== Hero (pattern planning-header) ===== */
+    .ntf-hero {
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        border-radius: 18px;
+        padding: 2rem 2.5rem 1.5rem;
+        color: #fff;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 8px 30px rgba(4, 83, 203, .18);
+    }
+    .ntf-hero-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+    .ntf-hero-left { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+    .ntf-hero-icon {
+        width: 52px; height: 52px; border-radius: 14px;
+        background: rgba(255, 255, 255, .12); border: 1px solid rgba(255, 255, 255, .15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.35rem; flex-shrink: 0; color: #fff;
+    }
+    .ntf-hero h1 { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; }
+    .ntf-hero p { color: rgba(255, 255, 255, .78); font-size: .88rem; margin: .2rem 0 0; }
+    .ntf-hero-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .ntf-btn-hero {
+        display: inline-flex; align-items: center; gap: .45rem;
+        border-radius: 10px; padding: .55rem 1rem; font-size: .82rem; font-weight: 600;
+        border: 1px solid rgba(255, 255, 255, .22); background: rgba(255, 255, 255, .15);
+        color: #fff; text-decoration: none; cursor: pointer; transition: all .2s ease;
+    }
+    .ntf-btn-hero:hover { background: rgba(255, 255, 255, .24); color: #fff; }
+    .ntf-btn-hero--white { background: #fff; color: #0453cb; border-color: transparent; }
+    .ntf-btn-hero--white:hover { background: #eef4ff; color: #033a8e; }
+    .ntf-btn-hero:disabled { opacity: .6; cursor: wait; }
+
+    .ntf-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: .75rem; margin-top: 1.5rem; }
+    .ntf-kpi {
+        background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .15);
+        border-radius: 12px; padding: .9rem 1rem; display: flex; align-items: center; gap: .75rem;
+        color: #fff; text-align: left; cursor: pointer; transition: background .2s ease, border-color .2s ease;
+        font: inherit; width: 100%;
+    }
+    .ntf-kpi:hover { background: rgba(255, 255, 255, .18); }
+    .ntf-kpi.is-active { background: #fff; color: #0453cb; border-color: #fff; }
+    .ntf-kpi.is-active .ntf-kpi-label, .ntf-kpi.is-active .ntf-kpi-hint { color: #475569; }
+    .ntf-kpi-ico { width: 38px; height: 38px; border-radius: 10px; background: rgba(255, 255, 255, .14); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ntf-kpi.is-active .ntf-kpi-ico { background: rgba(4, 83, 203, .1); }
+    .ntf-kpi-value { font-size: 1.35rem; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+    .ntf-kpi-label, .ntf-kpi-hint { display: block; }
+    .ntf-kpi-label { font-size: .74rem; color: rgba(255, 255, 255, .78); font-weight: 600; }
+    .ntf-kpi-hint { font-size: .68rem; color: rgba(255, 255, 255, .6); }
+
+    /* ===== File de travail ===== */
+    .ntf-work { margin-bottom: 1.25rem; }
+    .ntf-section-title { display: flex; align-items: center; gap: .6rem; font-size: .8rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #64748b; margin: 0 0 .6rem; }
+    .ntf-work-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .75rem; }
+    .ntf-work-card {
+        display: flex; gap: .85rem; align-items: flex-start; padding: 1rem 1.1rem;
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; text-decoration: none; color: #1e293b;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, .04), 0 1px 2px rgba(15, 23, 42, .06);
+        transition: box-shadow .2s ease, border-color .2s ease;
+    }
+    .ntf-work-card:hover { border-color: #b9cdf0; box-shadow: 0 8px 26px rgba(4, 83, 203, .1); color: #1e293b; }
+    .ntf-work-ico { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #0453cb, #3b7ddb); color: #fff; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .ntf-work-title { font-weight: 700; font-size: .92rem; }
+    .ntf-work-sub { font-size: .78rem; color: #64748b; margin-top: .1rem; }
+    .ntf-work-meta { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .5rem; }
+    .ntf-work-go { margin-left: auto; color: #0453cb; align-self: center; }
+
+    /* ===== Carte liste + chips ===== */
+    .ntf-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 1px 3px rgba(15, 23, 42, .04), 0 1px 2px rgba(15, 23, 42, .06); }
+    .ntf-toolbar { padding: .9rem 1.1rem; border-bottom: 1px solid #eef2f7; display: flex; flex-direction: column; gap: .6rem; }
+    .ntf-chips { display: flex; gap: .45rem; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+    .ntf-chip {
+        display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap;
+        border: 1px solid #dbe5f2; background: #f8fafc; color: #334155; border-radius: 999px;
+        padding: .42rem .85rem; font-size: .8rem; font-weight: 600; cursor: pointer; transition: all .2s ease;
+    }
+    .ntf-chip:hover { border-color: #0453cb; color: #0453cb; }
+    .ntf-chip.is-active { background: #0453cb; border-color: #0453cb; color: #fff; }
+    .ntf-chip-count { background: rgba(4, 83, 203, .1); color: #0453cb; border-radius: 999px; padding: 0 .45rem; font-size: .72rem; }
+    .ntf-chip.is-active .ntf-chip-count { background: rgba(255, 255, 255, .22); color: #fff; }
+    .ntf-chip--clear { background: #eef4ff; border-color: #c7d8f5; color: #0453cb; }
+
+    .ntf-new {
+        display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%;
+        border: 0; border-bottom: 1px solid #eef2f7; background: #eef4ff; color: #0453cb;
+        font-weight: 600; font-size: .85rem; padding: .65rem; cursor: pointer;
     }
 
-    .notifications-toolbar {
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-        background: rgba(4, 83, 203, 0.03);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 0.75rem;
+    /* ===== Lignes ===== */
+    .ntf-list { padding: .35rem 0 .5rem; transition: opacity .2s ease; }
+    .ntf-list.is-loading { opacity: .45; pointer-events: none; }
+    .ntf-group { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: #64748b; margin: 0; padding: .9rem 1.1rem .35rem; }
+    .ntf-row {
+        display: flex; gap: .85rem; align-items: flex-start; padding: .85rem 1.1rem; margin: 0 .5rem;
+        border-radius: 12px; cursor: pointer; position: relative; transition: background .2s ease, opacity .25s ease;
     }
-
-    .notifications-body {
-        padding: 0.75rem 0;
+    .ntf-row:hover { background: #f5f8fe; }
+    .ntf-row.is-unread { background: #f0f5ff; }
+    .ntf-row.is-unread::before { content: ''; position: absolute; left: 0; top: .9rem; bottom: .9rem; width: 3px; border-radius: 3px; background: #0453cb; }
+    .ntf-row.is-leaving { opacity: 0; }
+    .ntf-icon { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1rem; background: rgba(4, 83, 203, .09); color: #0453cb; }
+    .ntf-row--success .ntf-icon { background: rgba(16, 185, 129, .12); color: #047857; }
+    .ntf-row--warning .ntf-icon { background: rgba(245, 158, 11, .14); color: #b45309; }
+    .ntf-row--alerte .ntf-icon { background: rgba(220, 38, 38, .1); color: #b91c1c; }
+    .ntf-body { flex: 1; min-width: 0; }
+    .ntf-title-line { display: flex; align-items: center; gap: .5rem; }
+    .ntf-title { font-size: .92rem; font-weight: 600; color: #1e293b; margin: 0; overflow-wrap: anywhere; }
+    .ntf-row.is-unread .ntf-title { font-weight: 700; color: #0f172a; }
+    .ntf-dot { width: 8px; height: 8px; border-radius: 50%; background: #0453cb; flex-shrink: 0; }
+    .ntf-excerpt { font-size: .84rem; color: #475569; margin: .2rem 0 0; line-height: 1.45; overflow-wrap: anywhere; }
+    .ntf-pills { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .45rem; }
+    .ntf-pill { display: inline-flex; align-items: center; gap: .35rem; padding: .18rem .55rem; border-radius: 999px; font-size: .72rem; font-weight: 600; background: rgba(4, 83, 203, .07); color: #1e3a8a; border: 1px solid rgba(4, 83, 203, .14); }
+    .ntf-pill--success { background: rgba(16, 185, 129, .1); color: #047857; border-color: rgba(16, 185, 129, .22); }
+    .ntf-pill--warning { background: rgba(245, 158, 11, .12); color: #92400e; border-color: rgba(245, 158, 11, .25); }
+    .ntf-pill--danger { background: rgba(220, 38, 38, .08); color: #b91c1c; border-color: rgba(220, 38, 38, .2); }
+    .ntf-meta { font-size: .75rem; color: #64748b; margin-top: .4rem; display: flex; gap: .35rem; flex-wrap: wrap; }
+    .ntf-actions { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; }
+    .ntf-btn {
+        display: inline-flex; align-items: center; gap: .4rem; border-radius: 9px; padding: .45rem .8rem;
+        font-size: .78rem; font-weight: 600; border: 1px solid #dbe5f2; background: #fff; color: #0453cb;
+        text-decoration: none; cursor: pointer; white-space: nowrap; transition: all .2s ease;
     }
-
-    .notification-item {
-        padding: 1rem 1.25rem;
-        transition: background 0.15s ease, transform 0.15s ease;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        border-radius: var(--radius-medium);
-        margin: 0.5rem 1rem;
-        background: #fff;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
-        display: block;
+    .ntf-btn:hover { border-color: #0453cb; color: #033a8e; }
+    .ntf-btn--primary { background: #0453cb; border-color: #0453cb; color: #fff; }
+    .ntf-btn--primary:hover { background: #033a8e; border-color: #033a8e; color: #fff; }
+    .ntf-icon-btn {
+        display: inline-flex; align-items: center; gap: .35rem; height: 34px; min-width: 34px; justify-content: center;
+        border-radius: 9px; border: 1px solid transparent; background: transparent; color: #94a3b8;
+        cursor: pointer; padding: 0 .55rem; font-size: .78rem; font-weight: 600; transition: all .2s ease;
     }
+    .ntf-icon-btn:hover { color: #b91c1c; background: rgba(220, 38, 38, .07); }
+    .ntf-confirm-label { display: none; }
+    .ntf-icon-btn.is-confirming { color: #fff; background: #dc2626; border-color: #dc2626; }
+    .ntf-icon-btn.is-confirming .ntf-confirm-label { display: inline; }
 
-    .notification-item:hover {
-        background: rgba(4, 83, 203, 0.04);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(4, 83, 203, 0.1);
+    .ntf-more { display: flex; justify-content: center; padding: .5rem 1rem 1.1rem; }
+
+    /* ===== États vides ===== */
+    .ntf-empty { text-align: center; padding: 3rem 1.5rem; }
+    .ntf-empty-ico { width: 72px; height: 72px; margin: 0 auto 1rem; border-radius: 50%; background: rgba(16, 185, 129, .1); color: #047857; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; }
+    .ntf-empty h2 { font-size: 1.05rem; font-weight: 700; color: #1e293b; margin: 0 0 .35rem; }
+    .ntf-empty p { font-size: .86rem; color: #64748b; margin: 0 0 1rem; }
+
+    @media (max-width: 768px) {
+        .ntf-hero { padding: 1.4rem 1.2rem 1.2rem; border-radius: 16px; }
+        .ntf-hero h1 { font-size: 1.25rem; }
+        /* La grille des compteurs suit la règle commune du shell mobile. */
+        .ntf-kpi-ico { display: none; }
+        .ntf-row { margin: 0 .25rem; padding: .8rem .75rem; flex-wrap: wrap; }
+        .ntf-actions { width: 100%; padding-left: calc(40px + .85rem); }
+        .ntf-btn--primary { flex: 1; justify-content: center; }
     }
-
-    .notification-item.unread {
-        background: rgba(4, 83, 203, 0.06);
-        border-left: 3px solid var(--primary);
-    }
-
-    .notification-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        flex-shrink: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1rem;
-    }
-
-    .notification-row { width: 100%; }
-    .notification-title-row { gap: 0.6rem; }
-
-    /* Message body */
-    .notification-body-block {
-        background: var(--surface, #f8fafc);
-        border: 1px solid rgba(0, 0, 0, 0.06);
-        border-radius: var(--radius-small);
-        padding: 0.6rem 0.875rem;
-        margin-top: 0.4rem;
-    }
-
-    .notification-primary-line {
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-        line-height: 1.5;
-        margin-bottom: 0.4rem;
-    }
-
-    /* Pills */
-    .notification-meta-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.4rem;
-        margin-top: 0.25rem;
-    }
-
-    .notification-meta-pill {
-        background: rgba(4, 83, 203, 0.08);
-        color: var(--primary);
-        border: 1px solid rgba(4, 83, 203, 0.2);
-        border-radius: 999px;
-        padding: 0.2rem 0.65rem;
-        font-size: 0.8rem;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        white-space: nowrap;
-    }
-
-    .notification-meta-pill.meta-success { background: rgba(16,185,129,0.1); color: #047857; border-color: rgba(16,185,129,0.3); }
-    .notification-meta-pill.meta-warning { background: rgba(245,158,11,0.1); color: #b45309; border-color: rgba(245,158,11,0.3); }
-    .notification-meta-pill.meta-danger  { background: rgba(239,68,68,0.1);  color: #b91c1c; border-color: rgba(239,68,68,0.3); }
-    .notification-meta-pill.meta-info    { background: rgba(59,130,246,0.1); color: #1d4ed8; border-color: rgba(59,130,246,0.3); }
-    .notification-meta-pill.meta-primary { background: rgba(4,83,203,0.1);   color: #1e3a8a; border-color: rgba(4,83,203,0.3); }
-    .notification-meta-pill.meta-secondary { background: rgba(100,116,139,0.1); color: #475569; border-color: rgba(100,116,139,0.3); }
-    .notification-meta-pill.meta-neutral  { background: rgba(148,163,184,0.1); color: #475569; border-color: rgba(148,163,184,0.3); }
-
-    .notification-cta { color: var(--primary); font-weight: 600; font-size: 0.875rem; margin-top: 0.25rem; }
-
-    /* Shortcut cards */
-    .timetable-shortcut-item  { background: rgba(245,158,11,0.06);  border-left: 3px solid #f59e0b; }
-    .evaluation-shortcut-item { background: rgba(4,83,203,0.06);    border-left: 3px solid var(--primary); }
-    .evaluation-grading-shortcut-item { background: rgba(239,68,68,0.06); border-left: 3px solid #ef4444; }
-
-    /* Color helpers */
-    .bg-danger-light  { background: rgba(220,53,69,0.1); }
-    .bg-warning-light { background: rgba(255,193,7,0.1); }
-    .bg-success-light { background: rgba(40,167,69,0.1); }
-    .bg-info-light    { background: rgba(23,162,184,0.1); }
-
-    /* Empty state */
-    .empty-state-icon {
-        width: 80px; height: 80px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--surface), #e9ecef);
-        display: inline-flex; align-items: center; justify-content: center;
-    }
-
-    /* Responsive */
     @media (max-width: 576px) {
-        .notification-item { margin: 0.5rem 0.5rem; padding: 0.875rem 1rem; }
-        .notifications-toolbar { padding: 0.75rem 1rem; }
+        .ntf-hero-actions { width: 100%; }
+        .ntf-hero-actions .ntf-btn-hero { flex: 1; justify-content: center; }
     }
 </style>
 @endpush
 
 @section('content')
-<div class="dashboard-acasi">
-    <div class="main-content">
-        <!-- Header KLASSCI -->
-        <div class="student-header">
-            <div class="d-flex align-items-center justify-content-between">
+<div class="container-fluid py-3">
+<div class="ntf-page" x-data="ntfPage()" data-ntf-config='@json($ntfConfig)'>
+
+    {{-- ===== Hero ===== --}}
+    <section class="ntf-hero">
+        <div class="ntf-hero-top">
+            <div class="ntf-hero-left">
+                <div class="ntf-hero-icon"><i class="fas fa-bell" aria-hidden="true"></i></div>
                 <div>
-                    <h1>
-                        <i class="fas fa-bell me-3"></i>
-                        Notifications
-                    </h1>
-                    <p class="header-subtitle">
-                        Restez informé des événements récents
+                    <h1>Notifications</h1>
+                    <p x-text="counts.unread > 0
+                        ? (counts.unread === 1 ? 'Une notification attend votre lecture.' : counts.unread + ' notifications attendent votre lecture.')
+                        : 'Vous êtes à jour. Rien ne vous attend.'">
+                        {{ $counts['unread'] > 0 ? $counts['unread'].' notification(s) attendent votre lecture.' : 'Vous êtes à jour. Rien ne vous attend.' }}
                     </p>
                 </div>
-                <div class="text-end">
-                    <div class="badge" style="background: rgba(255,255,255,0.2); color: white; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-medium); font-size: var(--text-sm);">
-                        <i class="fas fa-calendar me-2"></i>
-                        {{ now()->format('d/m/Y') }}
-                    </div>
-                </div>
+            </div>
+            <div class="ntf-hero-actions">
+                @if($ntfCanCoordinate)
+                    <a href="{{ route('esbtp.attendances.index') }}" class="ntf-btn-hero">
+                        <i class="fas fa-chart-bar" aria-hidden="true"></i> Présences
+                    </a>
+                @endif
+                <button type="button" class="ntf-btn-hero ntf-btn-hero--white mark-all-read"
+                        x-show="counts.unread > 0" x-cloak
+                        @click="markAllRead()" :disabled="busyAll">
+                    <i class="fas fa-check-double" aria-hidden="true"></i>
+                    <span x-text="busyAll ? 'Un instant…' : 'Tout marquer comme lu'">Tout marquer comme lu</span>
+                </button>
             </div>
         </div>
 
-        <div class="notifications-panel">
-            <div class="notifications-toolbar">
-                <div class="d-flex flex-wrap gap-2 align-items-center">
-                    @can('identity.coordinate')
-                        {{-- Lien vers le tableau de bord des présences --}}
-                        <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-chart-bar me-1"></i> Présences & Tableau de Bord
-                        </a>
-                        {{-- Filtres rapides pour coordinateur --}}
-                        <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-outline-primary btn-sm filter-notifications" data-filter="all">
-                                Toutes
-                            </button>
-                            <button type="button" class="btn btn-outline-info btn-sm filter-notifications" data-filter="émargement">
-                                Émargements
-                            </button>
-                            <button type="button" class="btn btn-outline-success btn-sm filter-notifications" data-filter="appel">
-                                Appels
-                            </button>
-                            <button type="button" class="btn btn-outline-warning btn-sm filter-notifications" data-filter="retard">
-                                Retards
-                            </button>
-                        </div>
-                    @endcan
-                </div>
-                <div>
-                    @if($notifications->where('is_read', false)->isNotEmpty())
-                        <button class="btn btn-outline-secondary btn-sm mark-all-read">
-                            <i class="fas fa-check-double me-1"></i> Tout marquer comme lu
+        <div class="ntf-kpis">
+            <button type="button" class="ntf-kpi" :class="isActive('non_lues') ? 'is-active' : ''" @click="apply({ filtre: 'non_lues', type: null, periode: null, sujet: null })">
+                <span class="ntf-kpi-ico"><i class="fas fa-envelope" aria-hidden="true"></i></span>
+                <span>
+                    <span class="ntf-kpi-value" x-text="counts.unread">{{ $counts['unread'] }}</span>
+                    <span class="ntf-kpi-label">Non lues</span>
+                    <span class="ntf-kpi-hint" x-text="'sur ' + counts.total + ' au total'">sur {{ $counts['total'] }} au total</span>
+                </span>
+            </button>
+            <button type="button" class="ntf-kpi" :class="isActive('aujourdhui') ? 'is-active' : ''" @click="apply({ filtre: 'toutes', type: null, periode: 'aujourdhui', sujet: null })">
+                <span class="ntf-kpi-ico"><i class="fas fa-sun" aria-hidden="true"></i></span>
+                <span>
+                    <span class="ntf-kpi-value" x-text="counts.today">{{ $counts['today'] }}</span>
+                    <span class="ntf-kpi-label">Aujourd'hui</span>
+                    <span class="ntf-kpi-hint">reçues depuis ce matin</span>
+                </span>
+            </button>
+            <button type="button" class="ntf-kpi" :class="isActive('semaine') ? 'is-active' : ''" @click="apply({ filtre: 'toutes', type: null, periode: 'semaine', sujet: null })">
+                <span class="ntf-kpi-ico"><i class="fas fa-calendar-week" aria-hidden="true"></i></span>
+                <span>
+                    <span class="ntf-kpi-value" x-text="counts.week">{{ $counts['week'] }}</span>
+                    <span class="ntf-kpi-label">Cette semaine</span>
+                    <span class="ntf-kpi-hint">depuis lundi</span>
+                </span>
+            </button>
+        </div>
+    </section>
+
+    {{-- ===== À traiter maintenant (raccourcis existants) ===== --}}
+    @if($ntfHasWork)
+        <section class="ntf-work" aria-label="À traiter maintenant">
+            <h2 class="ntf-section-title"><i class="fas fa-list-check" aria-hidden="true"></i> À traiter maintenant</h2>
+            <div class="ntf-work-grid">
+                @if($ntfShowGrading)
+                    <a href="{{ $gradingCtaUrl }}" class="ntf-work-card evaluation-grading-shortcut-item">
+                        <span class="ntf-work-ico"><i class="fas fa-pen-to-square" aria-hidden="true"></i></span>
+                        <span>
+                            <span class="ntf-work-title d-block">Notes à saisir</span>
+                            <span class="ntf-work-sub d-block">Évaluations passées, saisie attendue</span>
+                            <span class="ntf-work-meta">
+                                <span class="ntf-pill ntf-pill--danger"><i class="fas fa-calendar-xmark" aria-hidden="true"></i>À noter : {{ $evaluationGradingShortcut['total'] ?? 0 }}</span>
+                                @if(($evaluationGradingShortcut['missing_notes'] ?? 0) > 0)
+                                    <span class="ntf-pill ntf-pill--danger"><i class="fas fa-clipboard-list" aria-hidden="true"></i>Sans notes : {{ $evaluationGradingShortcut['missing_notes'] }}</span>
+                                @endif
+                                @if(($evaluationGradingShortcut['notes_unpublished'] ?? 0) > 0)
+                                    <span class="ntf-pill ntf-pill--warning"><i class="fas fa-eye-slash" aria-hidden="true"></i>Non publiées : {{ $evaluationGradingShortcut['notes_unpublished'] }}</span>
+                                @endif
+                            </span>
+                        </span>
+                        <i class="fas fa-chevron-right ntf-work-go" aria-hidden="true"></i>
+                    </a>
+                @endif
+                @if($hasEvaluationShortcut)
+                    <a href="{{ route('esbtp.evaluations.index') }}" class="ntf-work-card evaluation-shortcut-item">
+                        <span class="ntf-work-ico"><i class="fas fa-clipboard-check" aria-hidden="true"></i></span>
+                        <span>
+                            <span class="ntf-work-title d-block">Évaluations à activer</span>
+                            <span class="ntf-work-sub d-block">Publiez-les pour ouvrir la saisie</span>
+                            <span class="ntf-work-meta">
+                                <span class="ntf-pill"><i class="fas fa-layer-group" aria-hidden="true"></i>Brouillons : {{ $evaluationShortcut['total'] ?? 0 }}</span>
+                                @if(($evaluationShortcut['overdue'] ?? 0) > 0)
+                                    <span class="ntf-pill ntf-pill--danger"><i class="fas fa-calendar-times" aria-hidden="true"></i>En retard : {{ $evaluationShortcut['overdue'] }}</span>
+                                @endif
+                                @if(($evaluationShortcut['soon'] ?? 0) > 0)
+                                    <span class="ntf-pill ntf-pill--warning"><i class="fas fa-hourglass-half" aria-hidden="true"></i>Bientôt : {{ $evaluationShortcut['soon'] }}</span>
+                                @endif
+                                @if(($evaluationShortcut['undated'] ?? 0) > 0)
+                                    <span class="ntf-pill"><i class="fas fa-question-circle" aria-hidden="true"></i>Sans date : {{ $evaluationShortcut['undated'] }}</span>
+                                @endif
+                            </span>
+                        </span>
+                        <i class="fas fa-chevron-right ntf-work-go" aria-hidden="true"></i>
+                    </a>
+                @endif
+                @if($hasTimetableShortcut)
+                    <a href="{{ route('esbtp.emploi-temps.index', ['quick_generate' => 1]) }}" class="ntf-work-card timetable-shortcut-item">
+                        <span class="ntf-work-ico"><i class="fas fa-calendar-days" aria-hidden="true"></i></span>
+                        <span>
+                            <span class="ntf-work-title d-block">Emplois du temps à renouveler</span>
+                            <span class="ntf-work-sub d-block">Génération rapide disponible</span>
+                            <span class="ntf-work-meta">
+                                @if(($timetableShortcut['missing'] ?? 0) > 0)
+                                    <span class="ntf-pill"><i class="fas fa-layer-group" aria-hidden="true"></i>Sans emploi du temps : {{ $timetableShortcut['missing'] }}</span>
+                                @endif
+                                @if(($timetableShortcut['expired'] ?? 0) > 0)
+                                    <span class="ntf-pill ntf-pill--danger"><i class="fas fa-calendar-times" aria-hidden="true"></i>Expirés : {{ $timetableShortcut['expired'] }}</span>
+                                @endif
+                                @if(($timetableShortcut['expiring_soon'] ?? 0) > 0)
+                                    <span class="ntf-pill ntf-pill--warning"><i class="fas fa-clock" aria-hidden="true"></i>Expirent bientôt : {{ $timetableShortcut['expiring_soon'] }}</span>
+                                @endif
+                            </span>
+                        </span>
+                        <i class="fas fa-chevron-right ntf-work-go" aria-hidden="true"></i>
+                    </a>
+                @endif
+            </div>
+        </section>
+    @endif
+
+    {{-- ===== Liste ===== --}}
+    <section class="ntf-card">
+        <div class="ntf-toolbar">
+            <div class="ntf-chips" role="toolbar" aria-label="Filtrer les notifications">
+                <button type="button" class="ntf-chip" :class="isActive('toutes') ? 'is-active' : ''" @click="apply({ filtre: 'toutes', type: null, periode: null, sujet: null })">
+                    Toutes <span class="ntf-chip-count" x-text="counts.total">{{ $counts['total'] }}</span>
+                </button>
+                {{-- « Non lues » vit dans la carte du bandeau, qui filtre déjà : pas de seconde porte. --}}
+                @foreach($ntfTypes as $typeKey => $type)
+                    <button type="button" class="ntf-chip"
+                            x-show="counts.types['{{ $typeKey }}'] > 0" @if(($counts['types'][$typeKey] ?? 0) === 0) x-cloak @endif
+                            :class="filters.type === '{{ $typeKey }}' ? 'is-active' : ''"
+                            @click="apply({ filtre: 'toutes', type: '{{ $typeKey }}', periode: null, sujet: null })">
+                        <i class="fas {{ $type['icon'] }}" aria-hidden="true"></i>{{ $type['label'] }}
+                        <span class="ntf-chip-count" x-text="counts.types['{{ $typeKey }}']">{{ $counts['types'][$typeKey] ?? 0 }}</span>
+                    </button>
+                @endforeach
+                @if($ntfCanCoordinate)
+                    @foreach($ntfSujets as $sujetKey => $sujet)
+                        <button type="button" class="ntf-chip filter-notifications" data-filter="{{ $sujetKey }}"
+                                :class="filters.sujet === '{{ $sujetKey }}' ? 'is-active' : ''"
+                                @click="apply({ filtre: 'toutes', type: null, periode: null, sujet: '{{ $sujetKey }}' })">
+                            <i class="fas {{ $sujet['icon'] }}" aria-hidden="true"></i>{{ $sujet['label'] }}
                         </button>
-                    @endif
-                </div>
-            </div>
-                <div class="notifications-body">
-                    @php
-                        $hasTimetableShortcut = !empty($timetableShortcut) && ($timetableShortcut['show'] ?? false);
-                        $hasEvaluationShortcut = !empty($evaluationShortcut) && ($evaluationShortcut['show'] ?? false);
-                        $hasEvaluationGradingShortcut = !empty($evaluationGradingShortcut) && ($evaluationGradingShortcut['show'] ?? false);
-                        $gradingCtaUrl = null;
-                        if (auth()->user()?->can('exams.view') || auth()->user()?->can('evaluations.view')) {
-                            $gradingCtaUrl = route('esbtp.evaluations.index');
-                        } elseif (auth()->user()?->can('notes.view') || auth()->user()?->can('notes.create') || auth()->user()?->can('notes.edit') || auth()->user()?->can('notes.manage_own')) {
-                            $gradingCtaUrl = route('esbtp.notes.index');
-                        }
-                    @endphp
-                    @if($notifications->isEmpty() && !$hasTimetableShortcut && !$hasEvaluationShortcut && !$hasEvaluationGradingShortcut)
-                        <div class="text-center p-5">
-                            <div class="empty-state mb-3">
-                                <i class="fas fa-bell-slash fa-3x text-muted"></i>
-                            </div>
-                            <h6 class="text-muted">Aucune notification</h6>
-                            <p class="small text-muted">Vous n'avez pas encore reçu de notifications</p>
-                        </div>
-                    @else
-                        <div class="list-group list-group-flush">
-                            @if($hasEvaluationGradingShortcut && $gradingCtaUrl)
-                                <div class="list-group-item notification-item evaluation-grading-shortcut-item"
-                                     onclick="window.location.href='{{ $gradingCtaUrl }}';"
-                                     style="cursor: pointer;">
-                                    <div class="d-flex align-items-start justify-content-between notification-row">
-                                        <div class="flex-grow-1 me-3">
-                                            <div class="d-flex align-items-center mb-2 notification-title-row">
-                                                <span class="notification-icon bg-danger-light text-danger me-2">
-                                                    <i class="fas fa-pen-to-square"></i>
-                                                </span>
-                                                <div>
-                                                    <h6 class="mb-0 fw-semibold">Notes a saisir</h6>
-                                                    <small class="text-muted">Evaluations passees, saisie attendue</small>
-                                                </div>
-                                            </div>
-                                            <div class="notification-meta-row">
-                                                <span class="notification-meta-pill meta-danger">
-                                                    <i class="fas fa-calendar-xmark"></i>
-                                                    a noter: {{ $evaluationGradingShortcut['total'] ?? 0 }}
-                                                </span>
-                                                @if(($evaluationGradingShortcut['missing_notes'] ?? 0) > 0)
-                                                    <span class="notification-meta-pill meta-danger">
-                                                        <i class="fas fa-clipboard-list"></i>
-                                                        sans notes: {{ $evaluationGradingShortcut['missing_notes'] }}
-                                                    </span>
-                                                @endif
-                                                @if(($evaluationGradingShortcut['notes_unpublished'] ?? 0) > 0)
-                                                    <span class="notification-meta-pill meta-warning">
-                                                        <i class="fas fa-eye-slash"></i>
-                                                        notes non publiees: {{ $evaluationGradingShortcut['notes_unpublished'] }}
-                                                    </span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                        <div class="d-flex align-items-center">
-                                            <span class="badge bg-danger text-white">Action rapide</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                            @if($hasEvaluationShortcut)
-                                <div class="list-group-item notification-item evaluation-shortcut-item"
-                                     onclick="window.location.href='{{ route('esbtp.evaluations.index') }}';"
-                                     style="cursor: pointer;">
-                                    <div class="d-flex align-items-start justify-content-between notification-row">
-                                        <div class="flex-grow-1 me-3">
-                                            <div class="d-flex align-items-center mb-2 notification-title-row">
-                                                <span class="notification-icon bg-info-light text-info me-2">
-                                                    <i class="fas fa-clipboard-check"></i>
-                                                </span>
-                                                <div>
-                                                    <h6 class="mb-0 fw-semibold">Évaluations à activer</h6>
-                                                    <small class="text-muted">Publiez-les pour rendre la saisie disponible</small>
-                                                </div>
-                                            </div>
-                                            <div class="notification-meta-row">
-                                                <span class="notification-meta-pill meta-info">
-                                                    <i class="fas fa-layer-group"></i>
-                                                    brouillons: {{ $evaluationShortcut['total'] ?? 0 }}
-                                                </span>
-                                                @if(($evaluationShortcut['overdue'] ?? 0) > 0)
-                                                    <span class="notification-meta-pill meta-danger">
-                                                        <i class="fas fa-calendar-times"></i>
-                                                        en retard: {{ $evaluationShortcut['overdue'] }}
-                                                    </span>
-                                                @endif
-                                                @if(($evaluationShortcut['soon'] ?? 0) > 0)
-                                                    <span class="notification-meta-pill meta-warning">
-                                                        <i class="fas fa-hourglass-half"></i>
-                                                        à publier bientôt: {{ $evaluationShortcut['soon'] }}
-                                                    </span>
-                                                @endif
-                                                @if(($evaluationShortcut['undated'] ?? 0) > 0)
-                                                    <span class="notification-meta-pill meta-neutral">
-                                                        <i class="fas fa-question-circle"></i>
-                                                        sans date: {{ $evaluationShortcut['undated'] }}
-                                                    </span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                        <div class="d-flex align-items-center">
-                                            <span class="badge bg-info text-white">Action rapide</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                            @if($hasTimetableShortcut)
-                                <div class="list-group-item notification-item timetable-shortcut-item"
-                                     onclick="window.location.href='{{ route('esbtp.emploi-temps.index', ['quick_generate' => 1]) }}';"
-                                     style="cursor: pointer;">
-                                    <div class="d-flex align-items-start justify-content-between notification-row">
-                                        <div class="flex-grow-1 me-3">
-                                            <div class="d-flex align-items-center mb-2 notification-title-row">
-                                                <span class="notification-icon bg-warning-light text-warning me-2">
-                                                    <i class="fas fa-calendar-exclamation"></i>
-                                                </span>
-                                                <div>
-                                                    <h6 class="mb-0 fw-semibold">Emplois du temps à renouveler</h6>
-                                                    <small class="text-muted">Génération rapide disponible</small>
-                                                </div>
-                                            </div>
-                                            <div class="notification-meta-row">
-                                                @if($timetableShortcut['missing'] > 0)
-                                                    <span class="notification-meta-pill meta-info">
-                                                        <i class="fas fa-layer-group"></i>
-                                                        classes sans emploi du temps: {{ $timetableShortcut['missing'] }}
-                                                    </span>
-                                                @endif
-                                                @if($timetableShortcut['expired'] > 0)
-                                                    <span class="notification-meta-pill meta-danger">
-                                                        <i class="fas fa-calendar-times"></i>
-                                                        classes avec emploi du temps expiré: {{ $timetableShortcut['expired'] }}
-                                                    </span>
-                                                @endif
-                                                @if($timetableShortcut['expiring_soon'] > 0)
-                                                    <span class="notification-meta-pill meta-warning">
-                                                        <i class="fas fa-clock"></i>
-                                                        classes expirant bientôt: {{ $timetableShortcut['expiring_soon'] }}
-                                                    </span>
-                                                @endif
-                                            </div>
-                                        </div>
-                                        <div class="d-flex align-items-center">
-                                            <span class="badge bg-warning text-dark">Action rapide</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endif
-                            @foreach($notifications as $notification)
-                                <div class="list-group-item notification-item {{ !$notification->is_read ? 'unread' : '' }}"
-                                     id="notification-{{ $notification->id }}"
-                                     @if($notification->link)
-                                         onclick="markAsReadAndNavigate('{{ $notification->id }}', '{{ $notification->link }}');"
-                                     @else
-                                         onclick="markAsRead('{{ $notification->id }}');"
-                                     @endif
-                                     style="cursor: pointer;">
-                                    <div class="d-flex align-items-start justify-content-between notification-row">
-                                        <div class="flex-grow-1 me-3">
-                                            <div class="d-flex align-items-center mb-2 notification-title-row">
-                                                @if($notification->type == 'danger' || $notification->type == 'error')
-                                                    <span class="notification-icon bg-danger-light text-danger me-2">
-                                                        <i class="fas fa-exclamation-circle"></i>
-                                                    </span>
-                                                @elseif($notification->type == 'warning')
-                                                    <span class="notification-icon bg-warning-light text-warning me-2">
-                                                        <i class="fas fa-exclamation-triangle"></i>
-                                                    </span>
-                                                @elseif($notification->type == 'success')
-                                                    <span class="notification-icon bg-success-light text-success me-2">
-                                                        <i class="fas fa-check-circle"></i>
-                                                    </span>
-                                                @else
-                                                    <span class="notification-icon bg-info-light text-info me-2">
-                                                        <i class="fas fa-info-circle"></i>
-                                                    </span>
-                                                @endif
-                                                <h6 class="mb-0 fw-semibold">{{ $notification->title ?? 'Notification' }}</h6>
-                                                @if(!$notification->is_read)
-                                                    <span class="ms-2 badge bg-warning">Nouveau</span>
-                                                @endif
-                                            </div>
-                                            @php
-                                                $labels = [];
-                                                $cta = null;
-                                                $primaryLine = $notification->display_primary;
-
-                                                if (!$primaryLine) {
-                                                    // Strip ALL tags for parsing (labels must be plain text)
-                                                    $safeMessage = strip_tags($notification->message ?? '');
-                                                    $primaryLine = trim(preg_split('/(Statut:|Étape:|Paiement:|Référence:|Numéro de reçu:|Cliquez)/i', $safeMessage)[0] ?? '');
-
-                                                    if (preg_match_all('/(Statut:|Étape:|Paiement:|Référence:|Numéro de reçu:)\s*((?:(?!Statut:|Étape:|Paiement:|Référence:|Numéro de reçu:|Cliquez)[^|\n])*)/iu', $safeMessage, $matches, PREG_SET_ORDER)) {
-                                                        foreach ($matches as $match) {
-                                                            $labels[] = trim($match[0]);
-                                                        }
-                                                    }
-
-                                                    if (preg_match('/Cliquez[^<]*/i', $safeMessage, $ctaMatch)) {
-                                                        $cta = trim($ctaMatch[0]);
-                                                    }
-                                                } else {
-                                                    $labels = $notification->display_labels ?? [];
-                                                    $cta = $notification->display_cta;
-                                                }
-                                            @endphp
-                                            <div class="notification-body-block">
-                                                @if($primaryLine !== '')
-                                                    <div class="notification-primary-line">{{ $primaryLine }}</div>
-                                                @endif
-                                                @if(!empty($labels))
-                                                    <div class="notification-meta-row">
-                                                        @foreach($labels as $label)
-                                                            @php
-                                                                $key = trim(Str::before($label, ':'));
-                                                                $value = trim(Str::after($label, ':'));
-                                                                $valueLower = Str::lower($value);
-                                                                $pillClass = 'meta-neutral';
-                                                                $icon = 'fas fa-tag';
-
-                                                                if (Str::lower($key) === 'classe') {
-                                                                    $icon = 'fas fa-school';
-                                                                    $pillClass = 'meta-info';
-                                                                } elseif (Str::lower($key) === 'statut') {
-                                                                    $icon = 'fas fa-info-circle';
-                                                                    if (Str::contains($valueLower, ['active', 'valid', 'valide'])) {
-                                                                        $pillClass = 'meta-success';
-                                                                    } elseif (Str::contains($valueLower, ['attente', 'pending'])) {
-                                                                        $pillClass = 'meta-warning';
-                                                                    } elseif (Str::contains($valueLower, ['rejet', 'refus', 'annul'])) {
-                                                                        $pillClass = 'meta-danger';
-                                                                    }
-                                                                } elseif (Str::lower($key) === 'étape' || Str::lower($key) === 'etape') {
-                                                                    $icon = 'fas fa-clipboard-check';
-                                                                    if (Str::contains($valueLower, ['prospect'])) {
-                                                                        $pillClass = 'meta-secondary';
-                                                                    } elseif (Str::contains($valueLower, ['document'])) {
-                                                                        $pillClass = 'meta-info';
-                                                                    } elseif (Str::contains($valueLower, ['validation'])) {
-                                                                        $pillClass = 'meta-warning';
-                                                                    } elseif (Str::contains($valueLower, ['valid', 'valide'])) {
-                                                                        $pillClass = 'meta-success';
-                                                                    } elseif (Str::contains($valueLower, ['étudiant', 'etudiant'])) {
-                                                                        $pillClass = 'meta-primary';
-                                                                    }
-                                                                } elseif (Str::lower($key) === 'paiement') {
-                                                                    $icon = 'fas fa-money-bill-wave';
-                                                                    if (Str::contains($valueLower, ['valid', 'payé', 'paye', 'réglé', 'regle'])) {
-                                                                        $pillClass = 'meta-success';
-                                                                    } elseif (Str::contains($valueLower, ['attente', 'pending'])) {
-                                                                        $pillClass = 'meta-warning';
-                                                                    } elseif (Str::contains($valueLower, ['rejet', 'refus'])) {
-                                                                        $pillClass = 'meta-danger';
-                                                                    }
-                                                                } elseif (Str::lower($key) === 'référence' || Str::lower($key) === 'reference') {
-                                                                    $icon = 'fas fa-hashtag';
-                                                                    $pillClass = 'meta-info';
-                                                                } elseif (Str::contains(Str::lower($key), ['numéro de reçu', 'numero de recu', 'numéro reçu'])) {
-                                                                    $icon = 'fas fa-receipt';
-                                                                    $pillClass = 'meta-primary';
-                                                                }
-                                                            @endphp
-                                                            <span class="notification-meta-pill {{ $pillClass }}">
-                                                                <i class="{{ $icon }}"></i>
-                                                                {{ $key }}: {{ $value }}
-                                                            </span>
-                                                        @endforeach
-                                                    </div>
-                                                @endif
-                                                @if($cta)
-                                                    <div class="notification-cta">{{ $cta }}</div>
-                                                @endif
-                                            </div>{{-- .notification-body-block --}}
-                                            <div class="d-flex align-items-center mt-2">
-                                                <small class="text-muted">{{ $notification->created_at->diffForHumans() }}</small>
-                                                @if($notification->sender)
-                                                    <small class="text-muted ms-2">• Par {{ $notification->sender->name }}</small>
-                                                @endif
-                                            </div>
-                                        </div>
-                                        <div class="d-flex align-items-start gap-2 flex-shrink-0">
-                                            {{-- Actions spécifiques selon le type de notification et le rôle --}}
-                                            @can('identity.coordinate')
-                                                {{-- Actions pour coordinateurs --}}
-                                                @if(str_contains(strtolower($notification->title ?? ''), 'émargement'))
-                                                    <a href="{{ $notification->link ?? route('esbtp.teacher-attendance.report') }}" class="btn btn-info btn-sm" onclick="event.stopPropagation();">
-                                                        <i class="fas fa-eye me-1"></i> Voir émargements
-                                                    </a>
-                                                @elseif(str_contains(strtolower($notification->title ?? ''), 'appel'))
-                                                    <a href="{{ $notification->link ?? route('esbtp.attendances.index') }}" class="btn btn-success btn-sm" onclick="event.stopPropagation();">
-                                                        <i class="fas fa-users me-1"></i> Voir présences
-                                                    </a>
-                                                @elseif(str_contains(strtolower($notification->title ?? ''), 'clôturé'))
-                                                    <a href="{{ $notification->link ?? route('esbtp.attendances.index') }}" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">
-                                                        <i class="fas fa-check me-1"></i> Voir séances
-                                                    </a>
-                                                @elseif(str_contains(strtolower($notification->title ?? ''), 'retard'))
-                                                    <a href="{{ $notification->link ?? route('esbtp.teacher-attendance.report') }}" class="btn btn-warning btn-sm" onclick="event.stopPropagation();">
-                                                        <i class="fas fa-clock me-1"></i> Vérifier retards
-                                                    </a>
-                                                @elseif(str_contains(strtolower($notification->title ?? ''), 'récapitulatif'))
-                                                    <a href="{{ $notification->link ?? route('esbtp.teacher-attendance.report') }}" class="btn btn-info btn-sm" onclick="event.stopPropagation();">
-                                                        <i class="fas fa-chart-line me-1"></i> Voir rapport
-                                                    </a>
-                                                @endif
-                                            @elsecan('identity.student')
-                                                {{-- Actions pour étudiants --}}
-                                                @if(str_contains(strtolower($notification->title ?? ''), 'absence'))
-                                                    <a href="{{ $notification->link ?? route('esbtp.mes-absences.index') }}" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">
-                                                        <i class="fas fa-file-alt me-1"></i> Justifier l'absence
-                                                    </a>
-                                                @endif
-                                            @endcan
-
-                                            {{-- Bouton de suppression pour tous les rôles --}}
-                                            <button class="btn btn-outline-danger btn-sm" onclick="deleteNotificationPage({{ $notification->id }})" title="Supprimer cette notification">
-                                                <i class="fas fa-trash-alt"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                        <div class="d-flex justify-content-center p-3">
-                            {{ $notifications->links() }}
-                        </div>
-                    @endif
-                </div>
+                    @endforeach
+                @endif
+                <button type="button" class="ntf-chip ntf-chip--clear" x-show="filters.periode" x-cloak @click="apply({ periode: null })">
+                    <span x-text="filters.periode === 'aujourdhui' ? 'Aujourd\'hui' : 'Cette semaine'"></span>
+                    <i class="fas fa-xmark" aria-hidden="true"></i><span class="visually-hidden">Retirer la période</span>
+                </button>
             </div>
         </div>
-    </div>
+
+        <button type="button" class="ntf-new" x-show="fresh > 0" x-cloak @click="apply({})">
+            <i class="fas fa-arrow-rotate-right" aria-hidden="true"></i>
+            <span x-text="fresh === 1 ? 'Une nouvelle notification, afficher' : fresh + ' nouvelles notifications, afficher'"></span>
+        </button>
+
+        <div class="ntf-list" :class="loading ? 'is-loading' : ''" x-ref="list" @click="onListClick($event)" aria-live="polite">
+            @include('notifications.partials.rows', ['notifications' => $notifications, 'previousGroup' => null])
+        </div>
+
+        <div class="ntf-empty" x-show="empty" @if($notifications->isNotEmpty()) x-cloak @endif>
+            <div class="ntf-empty-ico"><i class="fas fa-check" aria-hidden="true"></i></div>
+            <h2 x-text="filtered ? 'Rien ici pour ce filtre' : 'Vous êtes à jour'">
+                {{ $notifications->isEmpty() && $filters['filtre'] === 'toutes' && ! $filters['type'] && ! $filters['periode'] && ! $filters['sujet'] ? 'Vous êtes à jour' : 'Rien ici pour ce filtre' }}
+            </h2>
+            <p x-text="filtered ? 'Aucune notification ne correspond. Les autres restent consultables.' : 'Les nouvelles notifications apparaîtront ici dès leur arrivée.'">
+                Les nouvelles notifications apparaîtront ici dès leur arrivée.
+            </p>
+            <button type="button" class="ntf-btn" x-show="filtered" x-cloak @click="apply({ filtre: 'toutes', type: null, periode: null, sujet: null })">
+                <i class="fas fa-list" aria-hidden="true"></i> Voir toutes les notifications
+            </button>
+        </div>
+
+        <div class="ntf-more" x-show="nextUrl" @if(! $notifications->hasMorePages()) x-cloak @endif>
+            <button type="button" class="ntf-btn" @click="loadMore()" :disabled="loadingMore">
+                <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                <span x-text="loadingMore ? 'Chargement…' : 'Afficher les plus anciennes'">Afficher les plus anciennes</span>
+            </button>
+        </div>
+    </section>
 </div>
+</div>
+
+@include('partials._klassci_toast')
 @endsection
 
 @push('scripts')
 <script>
-function markAsRead(id) {
-    fetch(`{{ route('notifications.mark-as-read', '') }}/${id}`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(() => {
-        const item = document.querySelector(`#notification-${id}`);
-        if (item) {
-            item.classList.remove('unread');
-            const badge = item.querySelector('.badge');
-            if (badge) badge.remove();
-        }
-    });
-}
+if (typeof window.ntfPage !== 'function') {
+    window.ntfPage = function () {
+        return {
+            cfg: {},
+            filters: { filtre: 'toutes', type: null, periode: null, sujet: null },
+            counts: { total: 0, unread: 0, today: 0, week: 0, types: {} },
+            nextUrl: null,
+            lastGroup: null,
+            loading: false,
+            loadingMore: false,
+            busyAll: false,
+            empty: false,
+            fresh: 0,
+            _poll: null,
+            _visibility: null,
 
-function markAsReadAndNavigate(id, url) {
-    fetch(`{{ route('notifications.mark-as-read', '') }}/${id}`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Content-Type': 'application/json'
-        }
-    })
-    .finally(() => {
-        window.location.href = url;
-    });
-}
+            init() {
+                try { this.cfg = JSON.parse(this.$root.dataset.ntfConfig || '{}'); } catch (e) { this.cfg = {}; }
+                this.filters = Object.assign(this.filters, this.cfg.filters || {});
+                this.counts = this.cfg.counts || this.counts;
+                this.nextUrl = this.cfg.nextUrl || null;
+                this.syncListState();
 
-document.querySelector('.mark-all-read')?.addEventListener('click', function(e) {
-    e.preventDefault();
+                // Nouvelles notifications : on le dit, on ne recharge pas sous les yeux.
+                this._poll = setInterval(() => { if (!document.hidden) this.pollCounts(); }, 60000);
+                this._visibility = () => { if (!document.hidden) this.pollCounts(); };
+                document.addEventListener('visibilitychange', this._visibility);
+            },
 
-    fetch('{{ route("notifications.mark-all-as-read") }}', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(() => {
-        document.querySelectorAll('.notification-item.unread').forEach(item => {
-            item.classList.remove('unread');
-            const badge = item.querySelector('.badge');
-            if (badge) badge.remove();
-        });
+            destroy() {
+                clearInterval(this._poll);
+                if (this._visibility) document.removeEventListener('visibilitychange', this._visibility);
+            },
 
-        // Masquer le bouton "Tout marquer comme lu" s'il n'y a plus de notifications non lues
-        const unreadCount = document.querySelectorAll('.notification-item.unread').length;
-        if (unreadCount === 0) {
-            this.style.display = 'none';
-        }
-    });
-});
+            get filtered() {
+                return this.filters.filtre !== 'toutes' || !!this.filters.type || !!this.filters.periode || !!this.filters.sujet;
+            },
 
-// Filtres pour coordinateurs
-@if(auth()->user()->can('identity.coordinate'))
-document.querySelectorAll('.filter-notifications').forEach(button => {
-    button.addEventListener('click', function() {
-        // Réinitialiser l'état des boutons
-        document.querySelectorAll('.filter-notifications').forEach(btn => {
-            btn.classList.remove('active');
-            btn.classList.add('btn-outline-primary');
-            btn.classList.remove('btn-primary');
-        });
-        
-        // Marquer le bouton actuel comme actif
-        this.classList.add('active');
-        this.classList.remove('btn-outline-primary');
-        this.classList.add('btn-primary');
-        
-        const filter = this.dataset.filter;
-        const notifications = document.querySelectorAll('.notification-item');
-        
-        notifications.forEach(notification => {
-            const title = notification.querySelector('h6').textContent.toLowerCase();
-            
-            if (filter === 'all') {
-                notification.style.display = 'block';
-            } else {
-                if (title.includes(filter)) {
-                    notification.style.display = 'block';
-                } else {
-                    notification.style.display = 'none';
+            isActive(key) {
+                const f = this.filters;
+                if (key === 'non_lues') return f.filtre === 'non_lues' && !f.type && !f.periode && !f.sujet;
+                if (key === 'toutes') return f.filtre === 'toutes' && !f.type && !f.periode && !f.sujet;
+                return f.periode === key && !f.type && !f.sujet && f.filtre === 'toutes';
+            },
+
+            syncListState() {
+                const rows = this.$refs.list.querySelectorAll('.ntf-row');
+                this.empty = rows.length === 0;
+                const groups = this.$refs.list.querySelectorAll('[data-ntf-group]');
+                this.lastGroup = groups.length ? groups[groups.length - 1].dataset.ntfGroup : null;
+            },
+
+            query(extra) {
+                const params = new URLSearchParams();
+                const f = this.filters;
+                if (f.filtre === 'non_lues') params.set('filtre', 'non_lues');
+                if (f.type) params.set('type', f.type);
+                if (f.periode) params.set('periode', f.periode);
+                if (f.sujet) params.set('sujet', f.sujet);
+                Object.keys(extra || {}).forEach((k) => params.set(k, extra[k]));
+                return params.toString();
+            },
+
+            async request(url, options) {
+                const opts = Object.assign({ credentials: 'same-origin' }, options || {});
+                opts.headers = Object.assign({
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                }, opts.headers || {});
+                const res = await fetch(url, opts);
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.message || 'Une erreur est survenue. Réessayez.');
+                return data;
+            },
+
+            toast(message, type) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: type || 'success', message } }));
+            },
+
+            async apply(patch) {
+                this.filters = Object.assign({}, this.filters, patch);
+                this.loading = true;
+                try {
+                    const data = await this.request(this.cfg.base + '?' + this.query({ fragment: 1 }));
+                    this.$refs.list.innerHTML = data.html;
+                    this.counts = data.counts;
+                    this.nextUrl = data.next_url;
+                    this.fresh = 0;
+                    this.syncListState();
+                    const visible = this.query();
+                    window.history.replaceState({}, '', this.cfg.base + (visible ? '?' + visible : ''));
+                } catch (e) {
+                    this.toast(e.message, 'error');
+                } finally {
+                    this.loading = false;
                 }
-            }
-        });
-    });
-});
+            },
 
-// Auto-refresh pour les coordinateurs (toutes les 30 secondes)
-@if(auth()->user()->can('identity.coordinate'))
-setInterval(function() {
-    fetch('{{ route('notifications.unreadCount') }}')
-        .then(response => response.json())
-        .then(data => {
-            // Mettre à jour le compteur si nécessaire
-            const badge = document.querySelector('.notification-badge');
-            if (badge && data.count > 0) {
-                badge.textContent = data.count;
-                badge.style.display = 'inline';
-            }
-        })
-        .catch(console.error);
-}, 30000);
-@endif
-
-// Fonction pour supprimer une notification depuis la page
-function deleteNotificationPage(notificationId) {
-    event.stopPropagation();
-    
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette notification ?')) {
-        fetch(`/notifications/${notificationId}/delete`, {
-            method: 'DELETE',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Supprimer visuellement l'élément
-                const notificationElement = document.getElementById(`notification-${notificationId}`);
-                if (notificationElement) {
-                    notificationElement.style.transition = 'all 0.3s ease';
-                    notificationElement.style.opacity = '0';
-                    notificationElement.style.transform = 'translateX(-100%)';
-                    
-                    setTimeout(() => {
-                        notificationElement.remove();
-                        
-                        // Vérifier s'il ne reste plus de notifications
-                        const remainingNotifications = document.querySelectorAll('.notification-item');
-                        if (remainingNotifications.length === 0) {
-                            location.reload(); // Recharger pour afficher l'état vide
-                        }
-                    }, 300);
+            async loadMore() {
+                if (!this.nextUrl) return;
+                this.loadingMore = true;
+                try {
+                    const data = await this.request(this.nextUrl);
+                    this.$refs.list.insertAdjacentHTML('beforeend', data.html);
+                    this.nextUrl = data.next_url;
+                    this.syncListState();
+                } catch (e) {
+                    this.toast(e.message, 'error');
+                } finally {
+                    this.loadingMore = false;
                 }
-                
-                debugLog('✅ Notification supprimée:', notificationId);
-            } else {
-                alert('Erreur lors de la suppression de la notification.');
-            }
-        })
-        .catch(error => {
-            debugError('❌ Erreur suppression notification:', error);
-            alert('Erreur lors de la suppression de la notification.');
-        });
-    }
+            },
+
+            async pollCounts() {
+                try {
+                    const data = await this.request(this.cfg.base + '?fragment=1&counts_only=1');
+                    const diff = (data.counts.total || 0) - (this.counts.total || 0);
+                    if (diff > 0) this.fresh = diff;
+                    this.counts = data.counts;
+                } catch (e) { /* silencieux : une prochaine tentative suivra */ }
+            },
+
+            async refreshCounts() {
+                try {
+                    const data = await this.request(this.cfg.base + '?fragment=1&counts_only=1');
+                    this.counts = data.counts;
+                } catch (e) { /* les compteurs se remettront au prochain passage */ }
+            },
+
+            url(template, id) {
+                return template.replace('__ID__', encodeURIComponent(id));
+            },
+
+            markRowRead(row) {
+                row.classList.remove('is-unread');
+                row.dataset.ntfUnread = '0';
+                row.querySelector('[data-ntf-dot]')?.remove();
+                row.querySelector('[data-ntf-read]')?.remove();
+            },
+
+            onListClick(ev) {
+                const row = ev.target.closest('.ntf-row');
+                if (!row) return;
+                const id = row.dataset.ntfId;
+
+                const del = ev.target.closest('[data-ntf-delete]');
+                if (del) { ev.preventDefault(); this.remove(row, id, del); return; }
+
+                const read = ev.target.closest('[data-ntf-read]');
+                if (read) { ev.preventDefault(); this.read(row, id, true); return; }
+
+                const link = ev.target.closest('[data-ntf-open]');
+                const url = row.dataset.ntfUrl;
+                if (link) {
+                    // Ctrl/Cmd/clic milieu : nouvel onglet, on marque lu sans retenir la page.
+                    if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button === 1) { this.read(row, id, false); return; }
+                    ev.preventDefault();
+                    this.openAndRead(row, id, url);
+                    return;
+                }
+                if (ev.target.closest('a, button')) return;
+                if (url) { this.openAndRead(row, id, url); return; }
+                if (row.dataset.ntfUnread === '1') this.read(row, id, false);
+            },
+
+            openAndRead(row, id, url) {
+                if (row.dataset.ntfUnread === '1') {
+                    // keepalive : la requête part même si la page change tout de suite.
+                    fetch(this.url(this.cfg.readUrl, id), {
+                        method: 'POST', keepalive: true, credentials: 'same-origin',
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                    }).catch(() => {});
+                }
+                window.location.href = url;
+            },
+
+            async read(row, id, withToast) {
+                if (row.dataset.ntfUnread !== '1') return;
+                this.markRowRead(row);
+                this.counts.unread = Math.max(0, this.counts.unread - 1);
+                try {
+                    await this.request(this.url(this.cfg.readUrl, id), { method: 'POST' });
+                    if (withToast) this.toast('Notification marquée comme lue.');
+                    if (this.filters.filtre === 'non_lues') this.leave(row);
+                } catch (e) {
+                    this.toast(e.message, 'error');
+                    this.refreshCounts();
+                }
+            },
+
+            async remove(row, id, btn) {
+                // Deux temps, sans fenêtre : le premier appui arme, le second supprime.
+                if (!btn.classList.contains('is-confirming')) {
+                    btn.classList.add('is-confirming');
+                    btn.setAttribute('aria-label', 'Confirmer la suppression');
+                    clearTimeout(btn._ntfTimer);
+                    btn._ntfTimer = setTimeout(() => {
+                        btn.classList.remove('is-confirming');
+                        btn.setAttribute('aria-label', 'Supprimer cette notification');
+                    }, 3500);
+                    return;
+                }
+                clearTimeout(btn._ntfTimer);
+                btn.disabled = true;
+                try {
+                    await this.request(this.url(this.cfg.deleteUrl, id), { method: 'DELETE' });
+                    this.leave(row);
+                    this.toast('Notification supprimée.');
+                    this.refreshCounts();
+                } catch (e) {
+                    btn.disabled = false;
+                    btn.classList.remove('is-confirming');
+                    this.toast(e.message, 'error');
+                }
+            },
+
+            leave(row) {
+                row.classList.add('is-leaving');
+                setTimeout(() => {
+                    const header = row.previousElementSibling;
+                    const next = row.nextElementSibling;
+                    row.remove();
+                    // Un titre de groupe qui n'a plus de ligne disparaît avec elle.
+                    if (header && header.matches('[data-ntf-group]') && (!next || next.matches('[data-ntf-group]'))) header.remove();
+                    this.syncListState();
+                }, 250);
+            },
+
+            async markAllRead() {
+                this.busyAll = true;
+                try {
+                    await this.request(this.cfg.readAllUrl, { method: 'POST' });
+                    this.$refs.list.querySelectorAll('.ntf-row.is-unread').forEach((row) => this.markRowRead(row));
+                    this.toast('Toutes vos notifications sont lues.');
+                    if (this.filters.filtre === 'non_lues') {
+                        await this.apply({});
+                    } else {
+                        await this.refreshCounts();
+                    }
+                } catch (e) {
+                    this.toast(e.message, 'error');
+                } finally {
+                    this.busyAll = false;
+                }
+            },
+        };
+    };
 }
-@endif
 </script>
 @endpush

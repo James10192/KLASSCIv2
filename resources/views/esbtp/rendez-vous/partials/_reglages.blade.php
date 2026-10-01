@@ -88,6 +88,11 @@
                     <span class="rdv-suffixe"><input type="number" min="0" name="{{ $rdv::GRACE }}" value="{{ $rdv->graceMinutes() }}"><em>min</em></span>
                 </label>
             </div>
+            <label class="rdv-champ" style="margin-top:.75rem;">
+                <span>Lieu du rendez-vous</span>
+                <input type="text" maxlength="160" name="{{ $rdv::LIEU }}" value="{{ $rdv->valeur($rdv::LIEU) }}" placeholder="Ex. Scolarité, bâtiment A, rez-de-chaussée">
+                <small style="color:#64748b;">Affiché sur la convocation PDF, l'e-mail, le WhatsApp et klassci.com. Vide : l'adresse de l'établissement est reprise.</small>
+            </label>
         </fieldset>
 
         <label class="rdv-bascule">

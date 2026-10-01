@@ -1,10 +1,11 @@
 {{--
-    Export groupé par tranches — panneau et orchestration.
+    Export groupé en arrière-plan — panneau et suivi.
 
     Une classe entière ne s'exporte pas en une requête : sept bulletins
     consomment déjà trente secondes, pour une limite d'exécution du même ordre.
-    Le serveur découpe donc en quatre temps (ouvrir / tranche / assembler /
-    telecharger), et ce module enchaîne les tranches en montrant l'avancement.
+    Le serveur fige la liste et crée une tâche ; l'onglet la fait avancer
+    tranche par tranche tant qu'il reste ouvert, et la planification la finit
+    sinon. Le demandeur est prévenu à la fin (cloche, toast, e-mail).
 
     Le document n'est pas ouvert automatiquement : après plusieurs minutes
     d'attente, un `window.open` n'est plus rattaché au clic de l'utilisateur et
@@ -37,6 +38,15 @@
         <span x-show="exportEtat?.restant" x-text="`Il reste ${exportEtat?.restant}`"></span>
     </div>
 
+    <p class="bex__courriel" x-show="exportEtat?.courriel" x-cloak>
+        {{-- Le message vit sur la page : chaque état d'avancement remplace exportEtat. --}}
+        <button type="button" class="bex__courriel-lien" x-show="!courrielMessage"
+                @click="courrielMessage = await window.demanderConfirmationCourriel(exportEtat.courriel.url, document.querySelector('meta[name=csrf-token]').content)">
+            <i class="fas fa-envelope"></i> Recevoir aussi un e-mail : confirmer mon adresse
+        </button>
+        <span x-show="courrielMessage" x-text="courrielMessage"></span>
+    </p>
+
     {{-- Confirmation des bulletins absents : un vrai panneau, pas un confirm() --}}
     <div class="bex__actions" x-show="exportEtat?.phase === 'confirmation'">
         <button type="button" class="bul-btn bul-btn--sm bul-btn--ghost" @click="exportEtat.repondre(false)">
@@ -61,6 +71,10 @@
     <div class="bex__actions" x-show="exportEtat?.phase === 'erreur'">
         <button type="button" class="bul-btn bul-btn--sm bul-btn--ghost" @click="exportEtat = null">
             <i class="fas fa-xmark"></i> Fermer
+        </button>
+        <button type="button" class="bul-btn bul-btn--sm bul-btn--primary" x-show="exportEtat?.mode"
+                @click="lancerExportGroupe(exportEtat.mode)">
+            <i class="fas fa-rotate-right"></i> Réessayer
         </button>
     </div>
 </div>
@@ -101,6 +115,11 @@
         gap: .75rem; margin-top: .5rem;
         font-size: .72rem; color: #64748b;
     }
+    .bex__courriel { margin: .45rem 0 0; font-size: .74rem; color: #475569; }
+    .bex__courriel-lien {
+        border: none; background: none; padding: 0; cursor: pointer;
+        color: #0453cb; font-weight: 600; text-decoration: underline;
+    }
     .bex__actions {
         display: flex; align-items: center; justify-content: flex-end;
         gap: .5rem; margin-top: .7rem;
@@ -112,9 +131,10 @@
 @endpush
 
 @push('scripts')
+@include('esbtp.bulletins.partials.suivi-tache-script')
 <script>
 /**
- * Enchaîne ouvrir → tranches → assembler, en rendant compte de l'avancement.
+ * Lance l'export en arrière-plan et en rend compte dans le panneau.
  *
  * Le panneau est la seule surface de message : succès, attente, question et
  * erreur passent tous par `onEtat`, avec la même forme d'objet.
@@ -122,11 +142,11 @@
  * @param {object} o
  * @param {URLSearchParams} o.params  filtres de la vue (classe, période, tri…)
  * @param {'apercu'|'telechargement'} o.mode
- * @param o.urls   adresses des trois etapes : ouvrir, tranche, assembler
+ * @param {string} o.urlLancer
  * @param {string} o.csrf
  * @param {(etat:object|null)=>void} o.onEtat
  */
-window.exportBulletinsParTranches = async function ({ params, mode, urls, csrf, onEtat }) {
+window.exportBulletinsParTranches = async function ({ params, mode, urlLancer, csrf, onEtat }) {
     const entete = {
         'X-CSRF-TOKEN': csrf,
         'Accept': 'application/json',
@@ -134,8 +154,9 @@ window.exportBulletinsParTranches = async function ({ params, mode, urls, csrf, 
     };
 
     // Toujours la même forme : le gabarit n'a pas à deviner quels champs existent.
+    // `mode` voyage avec chaque état : « Réessayer » relance le même export.
     const etat = (phase, texte, extra = {}) => onEtat({
-        phase, texte, pourcent: null, detail: '', restant: null, ...extra,
+        phase, texte, pourcent: null, detail: '', restant: null, mode, courriel: null, ...extra,
     });
 
     const duree = (s) => s < 60
@@ -143,10 +164,14 @@ window.exportBulletinsParTranches = async function ({ params, mode, urls, csrf, 
         : `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, '0')} s`;
 
     /** Un POST JSON qui distingue vraiment les pannes des refus métier. */
-    const poster = async (url, corps) => {
+    const lancer = async (confirme) => {
+        const corps = new URLSearchParams(params);
+        corps.set('mode', mode);
+        if (confirme) corps.set('confirme', '1');
+
         let reponse;
         try {
-            reponse = await fetch(url, { method: 'POST', headers: entete, body: corps });
+            reponse = await fetch(urlLancer, { method: 'POST', headers: entete, body: corps });
         } catch {
             throw new Error('Connexion perdue. Vérifiez le réseau, puis réessayez.');
         }
@@ -162,16 +187,23 @@ window.exportBulletinsParTranches = async function ({ params, mode, urls, csrf, 
         if (!charge.success) {
             throw new Error(charge.message || `Export interrompu (code ${reponse.status}).`);
         }
-        return charge.data;
+        return charge;
     };
 
+    const quitter = 'Vous pouvez quitter la page. Une notification apparaîtra dans la cloche à la fin.';
+    // Adresse non confirmée : on propose de la confirmer pour recevoir aussi un e-mail.
+    const courriel = (t) => (t.email_a_verifier && t.email_verification_url)
+        ? { url: t.email_verification_url, message: '' }
+        : null;
+
     try {
-        // 1. Ouvrir : le serveur fige la liste des bulletins et rend un jeton.
+        // 1. Le serveur fige la liste des bulletins.
         etat('ouverture', 'Préparation de l\'export…', { pourcent: 0 });
-        const { jeton, total, absents, absents_noms: nomsAbsents, taille_tranche: taille } = await poster(urls.ouvrir, params);
+        let charge = await lancer(false);
 
         // 2. Prévenir avant de lancer cinq minutes de travail pour rien.
-        if (absents > 0) {
+        if (charge.confirmation) {
+            const { total, absents, absents_noms: nomsAbsents } = charge.confirmation;
             const qui = Array.isArray(nomsAbsents) && nomsAbsents.length
                 ? nomsAbsents.slice(0, 5).join(' · ') + (nomsAbsents.length > 5 ? '…' : '')
                 : '';
@@ -186,40 +218,36 @@ window.exportBulletinsParTranches = async function ({ params, mode, urls, csrf, 
                 }
             ));
             if (!suite) { onEtat(null); return; }
+            charge = await lancer(true);
         }
 
-        // 3. Les tranches, l'une après l'autre : chacune tient sous la limite.
-        const tranches = Math.ceil(total / taille);
-        const debut = Date.now();
-        let depart = 0;
-
-        for (let n = 1; ; n++) {
-            const corps = new URLSearchParams({ jeton, depart: String(depart) });
-            const t = await poster(urls.tranche, corps);
-
-            const ecoule = (Date.now() - debut) / 1000;
-            const reste = t.traites > 0 ? (ecoule / t.traites) * (t.total - t.traites) : 0;
-
-            etat('rendu', `${t.traites} / ${t.total} bulletins`, {
-                pourcent: Math.round((t.traites / t.total) * 100),
-                detail: `Tranche ${n} sur ${tranches}`,
-                restant: reste > 3 ? duree(reste) : null,
-            });
-
-            if (t.termine) break;      // le serveur est l'autorité sur la fin.
-            depart = t.traites;
-        }
-
-        // 4. Assembler : l'étape la plus coûteuse, donc celle dont les erreurs
-        //    doivent absolument revenir ici et pas dans un onglet perdu.
-        etat('assemblage', `Assemblage des ${total} bulletins…`, {
-            pourcent: 100,
-            detail: 'Cela peut prendre une minute ou deux.',
+        // 3. La tâche avance tant que la page reste ouverte ; sinon le serveur
+        //    la finit et prévient. Le serveur est l'autorité sur la fin.
+        const fin = await window.suivreTacheBulletins({
+            tache: charge.tache,
+            csrf,
+            onEtat: (t, extra) => {
+                if (t.position >= t.total && !t.finale) {
+                    etat('assemblage', `Assemblage des ${t.total} bulletins…`, { pourcent: 100, detail: quitter, courriel: courriel(t) });
+                    return;
+                }
+                etat('rendu', `${t.position} / ${t.total} bulletins`, {
+                    pourcent: t.pourcent,
+                    detail: t.en_pause
+                        ? 'Le travail est en pause, il reprendra automatiquement.'
+                        : (extra.relais ? 'L\'export continue, même si vous quittez la page.' : quitter),
+                    restant: extra.restant > 3 ? duree(extra.restant) : null,
+                    courriel: courriel(t),
+                });
+            },
         });
 
-        const { url } = await poster(urls.assembler, new URLSearchParams({ jeton, mode }));
+        if (fin.statut !== 'terminee') {
+            etat('erreur', fin.message || 'Export interrompu.');
+            return;
+        }
 
-        etat('pret', `PDF prêt — ${total} bulletins`, { url, mode });
+        etat('pret', fin.message || `PDF prêt — ${fin.total} bulletins`, { url: fin.url, mode });
     } catch (e) {
         etat('erreur', e.message || 'Export interrompu.');
     }

@@ -335,6 +335,10 @@ class ESBTPInscriptionController extends Controller
         // un mot, et la candidature garderait son bouton « Creer
         // l'inscription » — le doublon meme que tout ce dispositif empeche,
         // produit en silence.
+        if (($refus = $this->rattachement->refuserSiParcoursConfigurable($request)) !== null) {
+            return $refus;
+        }
+
         $idCandidature = (int) old("candidature_id", $request->integer("candidature"));
 
         $candidatureSource = PreRemplissageCandidature::aInscrire($idCandidature);
@@ -496,6 +500,9 @@ class ESBTPInscriptionController extends Controller
 
         // Avant la creation, tant que la decision est reversible : voir
         // RattachementCandidature::refuserSiNaissanceDivergente().
+        if (($refus = $this->rattachement->refuserSiParcoursConfigurable($request)) !== null) {
+            return $refus;
+        }
         if (($refus = $this->rattachement->refuserSiNaissanceDivergente($request)) !== null) {
             return $refus;
         }

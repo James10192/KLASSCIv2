@@ -6,7 +6,13 @@
     $u = auth()->user();
     $_nouvelle = $d->estNouvelle();
     $_traiter = $_nouvelle ? $u?->can('inscriptions.candidatures.process') : $u?->can('reinscriptions.demandes.process');
-    $_inscrire = $_nouvelle && $_traiter && $u?->can('inscriptions.ouvrir-formulaire');
+    // Parcours configurable actif : une candidature s'inscrit depuis son
+    // dossier en cours, jamais par le formulaire classique (refusé aussi côté
+    // serveur, voir RattachementCandidature::refuserSiParcoursConfigurable).
+    $_parcours = $_nouvelle && app(\App\Services\Admissions\InscriptionWorkflowSettings::class)->usesManagedWorkflow();
+    $_inscrire = $_nouvelle && ! $_parcours && $_traiter && $u?->can('inscriptions.ouvrir-formulaire');
+    $_ouvrirParcours = $_parcours && $d->estAcceptee()
+        && ($u?->can('paiements.create') || $u?->can('inscriptions.create') || $u?->can('pieces_dossier.suivre'));
     $_rdv = $d->rendezVous;
     $_honoree = $d->recueAuGuichet();
     $_rdvDuJour = $_rdv && ! $_honoree && $_rdv->creneau && ($_rdv->creneau->date->isToday() || ($_rdv->creneau->date->isPast() && $d->estOuverte()));
@@ -166,7 +172,9 @@
     <div class="dmi-p-actions">
         @if($d->estOuverte() && $_traiter)
             <div class="dmi-p-actions-rangee">
-                @if($_nouvelle && $_inscrire)
+                @if($_ouvrirParcours)
+                    <a class="dmi-btn dmi-btn--primary" href="{{ route('esbtp.admissions.workflow.show', $m) }}"><i class="fas fa-folder-open"></i>Ouvrir le dossier en cours</a>
+                @elseif($_nouvelle && $_inscrire)
                     <button type="button" class="dmi-btn dmi-btn--primary" data-dmi-agir="inscrire"><i class="fas fa-user-plus"></i>{{ $d->estAcceptee() ? 'Inscrire' : 'Accepter et inscrire' }}</button>
                 @elseif($_nouvelle && ! $d->estAcceptee())
                     <button type="button" class="dmi-btn dmi-btn--primary" data-dmi-agir="accepter"><i class="fas fa-check"></i>Accepter</button>
@@ -176,7 +184,7 @@
                 <button type="button" class="dmi-btn dmi-btn--danger" data-dmi-agir="rejeter">Rejeter{{ $d->obstacle ? ' la demande' : '' }}</button>
             </div>
             <span class="dmi-p-note">Rejeter libère aussi son créneau de rendez-vous, s'il en a un.</span>
-            @if(! $_inscrire && $d->estAcceptee())
+            @if(! $_inscrire && ! $_parcours && $d->estAcceptee())
                 <span class="dmi-p-note">Acceptée : le service des inscriptions la reprend. Vous n'avez pas le droit d'inscrire vous-même.</span>
             @endif
         @elseif($d->estOuverte())

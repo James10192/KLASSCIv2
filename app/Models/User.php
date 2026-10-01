@@ -160,6 +160,17 @@ class User extends Authenticatable implements Auditable
      */
     protected static function booted(): void
     {
+        // Une adresse confirmee ne l'est plus des qu'elle change : sinon un
+        // e-mail de support partirait vers une adresse que personne n'a
+        // prouvee (AdresseJoignable). Sauf si la meme sauvegarde pose
+        // elle-meme email_verified_at (activation par lien, saisie par
+        // l'administration).
+        static::saving(function (User $user) {
+            if ($user->exists && $user->isDirty('email') && ! $user->isDirty('email_verified_at')) {
+                $user->email_verified_at = null;
+            }
+        });
+
         static::updated(function (User $user) {
             if ($user->wasChanged('password')) {
                 // tokens() est défini par HasApiTokens (Laravel\Sanctum).

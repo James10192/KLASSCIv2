@@ -35,11 +35,24 @@ class Kernel extends ConsoleKernel
         $schedule->command('attendance:mark-unattended-teacher-sessions')->everyTenMinutes();
 
         // KLASSCI Care : signalements que le Master n'a pas pu recevoir.
-        $schedule->command('support:vider-boite-envoi')->everyMinute()->withoutOverlapping();
+        $schedule->command('support:vider-boite-envoi')->everyMinute()->withoutOverlapping(10);
+        // KLASSCI Care : avertir quand le support a répondu ou clôturé une demande.
+        $schedule->command('support:suivre-demandes')->everyFiveMinutes()->withoutOverlapping(10);
 
         // Restes des exports groupés abandonnés (dossiers de tranches, PDF
         // assemblés jamais récupérés). Sans ça, rien ne les reprenait.
         $schedule->command('bulletins:purger-exports')->hourly();
+
+        // Générations et PDF groupés de bulletins lancés en arrière-plan : c'est
+        // ce passage qui les finit quand l'utilisateur a quitté la page. En
+        // arrière-plan pour ne pas retenir les autres tâches de la minute ; le
+        // verrou expire en dix minutes si un passage est tué en route.
+        $schedule->command('bulletins:traiter-taches --budget=50')
+            ->everyMinute()
+            ->withoutOverlapping(10)
+            ->runInBackground()
+            ->name('bulletins-traiter-taches')
+            ->description('Fait avancer les générations et PDF groupés de bulletins lancés en arrière-plan');
 
         // Retention legale des proces-verbaux de deliberation. Le reglage
         // lmd_pv_retention_years annoncait une duree que rien ne mesurait : ce
