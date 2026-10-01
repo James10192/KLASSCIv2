@@ -70,7 +70,9 @@ Ce que fait le mailer pour tenir le débit (`App\Mail\Transport\CadenceMailPulse
   s'il est présent, 60 s sinon). La charge est chiffrée en file
   (`ShouldBeEncrypted`) : elle porte le corps du courriel, donc parfois un mot de
   passe initial ou un lien de réinitialisation, et `jobs` comme `failed_jobs`
-  partent dans les sauvegardes. L'appelant n'a rien à rattraper : pour
+  partent dans les sauvegardes. **Ne changez pas `APP_KEY` tant que la file
+  `jobs` contient des courriels différés** : Laravel 9 ne garde pas l'ancienne clé,
+  ces jobs deviendraient illisibles et seraient perdus sans trace. L'appelant n'a rien à rattraper : pour
   lui le courriel est parti (journal : `Courriel par MailPulse : envoi différé`) ;
 - il en va de même des **pannes passagères** de MailPulse
   (`RefusMailPulse::PASSAGERS` : service indisponible en 5xx, délai dépassé,

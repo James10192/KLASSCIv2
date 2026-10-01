@@ -47,7 +47,6 @@ final class EnvoiMailPulse
                 'http' => $resultat->httpStatus,
                 'request_id' => $resultat->requestId,
                 'code' => $resultat->errorCode,
-                'erreur' => $resultat->message,
                 'domaine_destinataire' => substr(strrchr((string) ($charge['recipient']['value'] ?? ''), '@') ?: '', 1),
             ];
 
@@ -60,11 +59,13 @@ final class EnvoiMailPulse
 
             Log::error('Courriel refusé par MailPulse', $journal);
 
+            // Le message brut de MailPulse peut citer l'adresse : ni au journal, ni dans
+            // l'exception, qui finit en clair dans `failed_jobs.exception`.
             throw new TransportException(sprintf(
-                'MailPulse n\'a pas accepté le courriel (%s%s) : %s',
+                'MailPulse n\'a pas accepté le courriel (%s%s%s).',
                 $resultat->status,
                 $resultat->httpStatus ? ', HTTP '.$resultat->httpStatus : '',
-                $resultat->message ?? 'aucun détail'
+                $resultat->errorCode ? ', code '.$resultat->errorCode : ''
             ), (int) ($resultat->httpStatus ?? 0));
         }
 
