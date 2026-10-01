@@ -2,10 +2,11 @@
 
 namespace Tests\Unit\Mail;
 
-use App\Mail\Transport\CadenceMailPulse;
+use App\Mail\Transport\DebitMailPulseAtteint;
 use App\Mail\Transport\CorpsPourMailPulse;
 use App\Mail\Transport\MailPulseTransport;
-use Carbon\Carbon;
+use Illuminate\Queue\Events\JobExceptionOccurred;
+use Mockery;
 use Illuminate\Http\Client\Request;
 use Illuminate\Mail\Message;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -21,9 +22,6 @@ class MailPulseTransportTest extends TestCase
 {
     private const ENDPOINT = 'mailpulse.test/api/v1/messages';
 
-    /** @var list<int> secondes d'attente demandées par la cadence */
-    private array $pauses = [];
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -36,24 +34,16 @@ class MailPulseTransportTest extends TestCase
         config()->set('services.mailpulse.base_url', 'https://mailpulse.test');
         config()->set('services.mailpulse.messages_endpoint', '/api/v1/messages');
         config()->set('services.mailpulse.sender_email', '');
-        config()->set('services.mailpulse.sender_name', '');
-        config()->set('services.mailpulse.mail_per_minute', 50);
-        $this->cadence(true);
-    }
-
-    /** La cadence du test : elle n'endort rien, elle avance l'horloge et note l'attente. */
-    private function cadence(bool $peutAttendre): void
-    {
-        $this->pauses = [];
-        $this->app->instance(CadenceMailPulse::class, new CadenceMailPulse(function (int $secondes) {
-            $this->pauses[] = $secondes;
-            Carbon::setTestNow(Carbon::now()->addSeconds($secondes + 1));
-        }, $peutAttendre));
+        config()->set('services.mailpulse.mail_per_minute', 30);
     }
 
     protected function tearDown(): void
     {
-        Carbon::setTestNow();
+        // Les attentes Mockery (Log::spy, jobs simulés) sont des assertions.
+        if ($conteneur = Mockery::getContainer()) {
+            $this->addToAssertionCount($conteneur->mockery_getExpectationCount());
+        }
+        Mockery::close();
         parent::tearDown();
     }
 
@@ -91,7 +81,7 @@ class MailPulseTransportTest extends TestCase
                 && $corps['metadata']['subject'] === 'Avis de paiement'
                 && $corps['metadata']['email_html'] === "<html>\n<body>\n<p>Bonjour</p>\n\n<a href=\"https://x.test/lien\">Ouvrir</a>\n</body>\n</html>"
                 && $corps['metadata']['sender_email'] === 'noreply@klassci.com'
-                && $corps['metadata']['sender_name'] === 'École Test'
+                && $corps['metadata']['sender_name'] === 'KLASSCI'
                 && $corps['metadata']['external_tenant_id'] === 'presentation'
                 && $corps['metadata']['source'] === 'klassci';
         });
@@ -140,89 +130,68 @@ class MailPulseTransportTest extends TestCase
     }
 
     /** @test */
-    public function au_dela_du_plafond_la_console_attend_la_minute_suivante(): void
+    public function au_dela_du_plafond_le_courriel_est_refuse_sans_appeler_mailpulse_et_sans_attendre(): void
     {
         $this->accepte();
         config()->set('services.mailpulse.mail_per_minute', 2);
+        $debut = microtime(true);
 
-        foreach (['a', 'b', 'c'] as $qui) {
-            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to($qui.'@example.com')->subject('S'));
+        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
+        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('b@example.com')->subject('S'));
+
+        try {
+            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('c@example.com')->subject('S'));
+            $this->fail('Le troisième courriel aurait dû être refusé.');
+        } catch (DebitMailPulseAtteint $e) {
+            $this->assertGreaterThan(0, $e->reessayerDans);
+            $this->assertLessThanOrEqual(60, $e->reessayerDans);
         }
 
-        Http::assertSentCount(3);
-        $this->assertCount(1, $this->pauses, 'Le troisième courriel attend que la minute se libère.');
+        Http::assertSentCount(2);
+        $this->assertLessThan(5, microtime(true) - $debut, 'La cadence ne dort jamais.');
     }
 
     /** @test */
-    public function au_dela_du_plafond_une_requete_web_refuse_sans_appeler_mailpulse(): void
+    public function un_429_de_debit_leve_un_refus_de_debit_rejouable(): void
     {
-        $this->accepte();
-        $this->cadence(false);
-        config()->set('services.mailpulse.mail_per_minute', 1);
-
-        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
+        Http::fake([self::ENDPOINT => Http::response(['error' => 'Message rate limit exceeded'], 429)]);
 
         try {
-            Mail::mailer('mailpulse')->raw('y', fn (Message $m) => $m->to('b@example.com')->subject('S'));
-            $this->fail('Le second courriel aurait dû être refusé.');
-        } catch (TransportException $e) {
-            $this->assertStringContainsString('Plafond', $e->getMessage());
+            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
+            $this->fail('Un 429 aurait dû lever.');
+        } catch (DebitMailPulseAtteint $e) {
+            $this->assertSame(60, $e->reessayerDans);
         }
 
         Http::assertSentCount(1);
-        $this->assertSame([], $this->pauses);
     }
 
     /** @test */
-    public function un_429_de_mailpulse_est_rejoue_une_fois_en_console_avec_la_meme_cle(): void
-    {
-        Http::fake([self::ENDPOINT => Http::sequence()
-            ->push(['error' => 'Message rate limit exceeded'], 429)
-            ->push(['dispatch' => ['state' => 'accepted', 'sms_fallback_eligible' => false], 'message' => ['id' => 'm', 'status' => 'sent']], 202)]);
-
-        Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
-
-        $cles = [];
-        Http::assertSent(function (Request $r) use (&$cles) {
-            $cles[] = $r->header('Idempotency-Key')[0];
-
-            return true;
-        });
-        $this->assertCount(2, $cles);
-        $this->assertSame($cles[0], $cles[1]);
-        $this->assertSame([60], $this->pauses);
-    }
-
-    /** @test */
-    public function un_quota_mensuel_epuise_n_est_pas_reessaye(): void
+    public function un_quota_mensuel_epuise_n_est_pas_un_refus_de_debit(): void
     {
         Http::fake([self::ENDPOINT => Http::response(['error' => 'Monthly email quota exceeded'], 429)]);
 
-        $this->expectException(TransportException::class);
-        $this->expectExceptionMessage('quota_exceeded');
-
         try {
             Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
-        } finally {
-            Http::assertSentCount(1);
-            $this->assertSame([], $this->pauses);
+            $this->fail('Le quota aurait dû lever.');
+        } catch (TransportException $e) {
+            $this->assertNotInstanceOf(DebitMailPulseAtteint::class, $e, 'Le quota ne passera pas avant le mois suivant : pas de remise en file.');
+            $this->assertStringContainsString('quota_exceeded', $e->getMessage());
         }
     }
 
     /** @test */
-    public function un_429_dans_une_requete_web_leve_sans_attendre(): void
+    public function un_job_refuse_pour_debit_repart_en_file_avec_le_delai_et_les_autres_non(): void
     {
-        Http::fake([self::ENDPOINT => Http::response(['error' => 'Message rate limit exceeded'], 429)]);
-        $this->cadence(false);
+        $job = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+        $job->shouldReceive('isDeleted', 'isReleased', 'hasFailed')->andReturn(false);
+        $job->shouldReceive('release')->once()->with(42);
+        event(new JobExceptionOccurred('database', $job, new DebitMailPulseAtteint('plafond', 42)));
 
-        $this->expectException(TransportException::class);
-        $this->expectExceptionMessage('rate_limited');
-
-        try {
-            Mail::mailer('mailpulse')->raw('x', fn (Message $m) => $m->to('a@example.com')->subject('S'));
-        } finally {
-            Http::assertSentCount(1);
-        }
+        $autre = Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+        $autre->shouldReceive('isDeleted', 'isReleased', 'hasFailed')->andReturn(false);
+        $autre->shouldNotReceive('release');
+        event(new JobExceptionOccurred('database', $autre, new TransportException('refus')));
     }
 
     /** @test */

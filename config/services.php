@@ -113,9 +113,10 @@ return [
         'parent_chatbot_invitation_template_language' => env('MAILPULSE_PARENT_CHATBOT_INVITATION_TEMPLATE_LANGUAGE', 'fr'),
         'sender_email' => env('MAILPULSE_SENDER_EMAIL'),
         'sender_name' => env('MAILPULSE_SENDER_NAME', 'KLASSCI'),
-        // Plafond du mailer `mailpulse` par minute et par instance. MailPulse
-        // refuse en 429 au-delà de 60 par organisation ; 50 laisse la marge.
-        'mail_per_minute' => (int) env('MAILPULSE_MAIL_PER_MINUTE', 50),
+        // Plafond du mailer `mailpulse` par minute et par instance, au mieux :
+        // MailPulse refuse en 429 au-delà de 60 par organisation, tous flux
+        // confondus. 30 laisse la place aux notifications et aux convocations.
+        'mail_per_minute' => (int) env('MAILPULSE_MAIL_PER_MINUTE', 30),
         'default_language' => env('MAILPULSE_DEFAULT_LANGUAGE', 'fr'),
         'real_workflows_enabled' => env('MAILPULSE_REAL_WORKFLOWS_ENABLED', false),
         'test_api_secret' => env('TEST_API_SECRET'),

@@ -24,7 +24,8 @@ use Symfony\Component\Mime\MessageConverter;
  *   journalisé. Le contenu arrive, sans la mise en page ;
  * - Reply-To : non transmis, journalisé ;
  * - Cc / Cci : chacun reçoit son propre message ;
- * - plafond de 60 par minute et par organisation : voir `CadenceMailPulse`.
+ * - plafond de 60 par minute et par organisation : voir `CadenceMailPulse` ;
+ *   un 429 de débit lève `DebitMailPulseAtteint`, qu'un job de file rejoue plus tard.
  *
  * Tout refus de MailPulse lève une `TransportException` : les appelants qui
  * affichent « le courriel n'a pas pu partir » continuent de le dire.
@@ -90,12 +91,8 @@ final class MailPulseTransport extends AbstractTransport
             $charge = ['channel' => 'email', 'recipient' => ['type' => 'email', 'value' => $destinataire->getAddress()]] + $corps;
             $requestId = self::cleIdempotence($charge);
 
-            $tentative = 0;
-            do {
-                $tentative++;
-                $this->cadence->avantEnvoi($contexte);
-                $resultat = $this->client->sendEmailMessage($charge, $requestId);
-            } while ($resultat->status === 'rate_limited' && $this->cadence->apresRefus($tentative));
+            $this->cadence->avantEnvoi($contexte);
+            $resultat = $this->client->sendEmailMessage($charge, $requestId);
 
             if (! $resultat->ok) {
                 Log::error('Courriel refusé par MailPulse', $contexte + [
@@ -108,6 +105,10 @@ final class MailPulseTransport extends AbstractTransport
                     'deja_partis' => $rang,
                     'destinataires' => count($destinataires),
                 ]);
+
+                if ($resultat->status === 'rate_limited') {
+                    throw new DebitMailPulseAtteint('MailPulse limite le débit (429) : le courriel n\'est pas parti, réessayez dans 60 s.', 60);
+                }
 
                 throw new TransportException(sprintf(
                     'MailPulse n\'a pas accepté le courriel (%s%s) : %s',
@@ -187,11 +188,13 @@ final class MailPulseTransport extends AbstractTransport
     }
 
     /**
-     * Les réglages MailPulse de l'école priment, adresse comme nom : c'est
-     * elle qui les a posés. Le nom du courriel (`MAIL_FROM_NAME`, toujours
-     * renseigné, « Laravel » par défaut) ne sert qu'à défaut. MailPulse retombe
-     * sur l'expéditeur par défaut de l'organisation si le domaine de l'adresse
-     * n'est pas vérifié chez lui.
+     * L'adresse : le réglage `mailpulse_sender_email` s'il est posé, sinon celle
+     * du courriel (`MAIL_FROM_ADDRESS`). MailPulse retombe sur l'expéditeur par
+     * défaut de l'organisation si son domaine n'est pas vérifié chez lui.
+     *
+     * Le nom : le réglage `mailpulse_sender_name`, et lui seul. Il vaut
+     * `KLASSCI` tant que l'école n'en pose pas un autre (config `services`) ;
+     * `MAIL_FROM_NAME` ne sert pas, il n'aurait jamais l'occasion de servir.
      *
      * @return array{adresse: string, nom: string}
      */
@@ -201,7 +204,7 @@ final class MailPulseTransport extends AbstractTransport
 
         return [
             'adresse' => $this->client->getSetting('mailpulse_sender_email', 'sender_email', '') ?: (string) $from?->getAddress(),
-            'nom' => $this->client->getSetting('mailpulse_sender_name', 'sender_name', '') ?: trim((string) $from?->getName()),
+            'nom' => $this->client->getSetting('mailpulse_sender_name', 'sender_name', ''),
         ];
     }
 

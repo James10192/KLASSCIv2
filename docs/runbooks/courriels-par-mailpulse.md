@@ -24,12 +24,12 @@ dans `metadata.email_html` ; l'objet `metadata` entier est plafonné à
 | élément du courriel | conduite |
 |---|---|
 | À, Cc, Cci | un message MailPulse par adresse |
-| Clé d'idempotence | tirée du destinataire et du contenu, rangée dans l'heure (`MailPulseTransport::cleIdempotence()`) : une reprise de file dans l'heure ne renvoie pas le courriel. Deux limites : deux courriels **identiques** au même destinataire dans la même heure n'en font qu'un, et une reprise qui franchit l'heure peut doubler |
+| Clé d'idempotence | tirée du destinataire et du contenu, rangée dans l'heure (`MailPulseTransport::cleIdempotence()`) : une reprise de file dans l'heure ne renvoie pas le courriel. Deux limites : deux courriels **identiques** au même destinataire dans la même heure n'en font qu'un, et une reprise qui franchit l'heure peut doubler. Et un message **refusé définitivement** par MailPulse ne peut pas être renvoyé à l'identique dans la même heure : la même clé rend le même refus. Modifier le contenu, ou attendre l'heure suivante |
 | Sujet | `metadata.subject` |
 | HTML | commentaires et indentation retirés, sauts de ligne gardés, puis `metadata.email_html` |
 | HTML au-delà du plafond | **la version texte part seule**, avertissement au journal |
 | Texte | `content.text` ; tiré du HTML (liens conservés en clair) s'il manque |
-| Expéditeur | réglage `mailpulse_sender_email` s'il est posé, sinon `MAIL_FROM_ADDRESS` ; nom = réglage `mailpulse_sender_name` (défaut `KLASSCI`), sinon nom du courriel. MailPulse ne retient l'adresse que si son domaine est vérifié chez lui, sinon il prend l'expéditeur par défaut de l'organisation |
+| Expéditeur | réglage `mailpulse_sender_email` s'il est posé, sinon `MAIL_FROM_ADDRESS` ; nom = réglage `mailpulse_sender_name` (`KLASSCI` tant que l'école n'en pose pas d'autre ; `MAIL_FROM_NAME` n'est pas lu). MailPulse ne retient l'adresse que si son domaine est vérifié chez lui, sinon il prend l'expéditeur par défaut de l'organisation |
 | Image intégrée (`cid:`) | retirée du HTML, avertissement au journal. Le gabarit commun `esbtp.emails.layout` passe déjà par l'URL du logo quand ce mailer est actif |
 | Pièce jointe | **refus** : exception, rien ne part. Un « ci-joint votre export » sans l'export serait un succès mensonger |
 | Accepté mais remise à confirmer (`pending`, `pending_reconciliation`) | part sans exception, avertissement au journal (`remise à confirmer`) : MailPulse rejoue ou tranche |
@@ -55,26 +55,35 @@ rendez-vous et les codes de vérification, qui passent déjà par MailPulse,
 consomment le même budget que les courriels du mailer. Si plusieurs écoles
 partagent une organisation, elles partagent ces 60 par minute.
 
-Ce que fait le mailer pour tenir le débit (`App\Mail\Transport\CadenceMailPulse`) :
+Ce que fait le mailer pour tenir le débit (`App\Mail\Transport\CadenceMailPulse`),
+**au mieux** :
 
-- il compte ses propres envois par minute (`MAILPULSE_MAIL_PER_MINUTE`, **50** par
-  défaut, sous les 60 pour laisser la marge aux autres flux) ;
-- **en console** (worker de file, planificateur, commande), au-delà il **attend**
-  la minute suivante : une rafale s'étale ; un `429` de débit est réessayé une
-  fois après 60 s (un `429` de **quota** ne l'est pas : il ne passera pas avant le
-  mois suivant, statut `quota_exceeded`) ;
-- **dans une requête web**, il n'attend pas (le temps d'exécution est borné) : au-delà
-  du plafond, ou sur un `429`, le courriel est **refusé et journalisé**, et
-  l'appelant le compte comme un échec.
+- il compte ses propres envois par minute (`MAILPULSE_MAIL_PER_MINUTE`, **30** par
+  défaut, pour laisser la place aux notifications et aux convocations qui passent
+  déjà par MailPulse) ;
+- au-delà, ou sur un `429` de débit de MailPulse, il **refuse** le courriel
+  (`DebitMailPulseAtteint`, journalisé) **sans jamais attendre** : un `sleep()`
+  ferait dépasser au worker son délai de 60 s ou le `retry_after` de 90 s, et le
+  job repartirait en double ;
+- **dans un job de file**, le refus remet le job en file avec le délai indiqué
+  (écouteur dans `AppServiceProvider`) ; les essais restent comptés (`--tries=3`),
+  au-delà le job échoue et se voit dans `failed_jobs` ;
+- **ailleurs** (requête web, commande, planificateur), c'est un échec d'envoi
+  ordinaire, que l'appelant affiche ou enregistre comme tel ;
+- un `429` de **quota** (`quota_exceeded`) n'est jamais réessayé : il ne passera
+  pas avant le mois suivant ou un changement d'offre.
 
-Ce compteur ne voit que son instance : il ne protège pas d'un dépassement
-cumulé entre écoles d'une même organisation, ni des autres flux MailPulse.
+« Au mieux » veut dire : pas de garantie. La fenêtre est fixe ici et glissante
+chez MailPulse, l'incrément du cache `file` n'est pas atomique entre deux
+processus, et le compteur ne voit que son instance — ni les autres écoles d'une
+même organisation, ni les autres flux MailPulse. Un `429` reste possible ; il
+prend alors le même chemin que le refus local.
 
 **Ce qui reste exposé.** Deux flux déclenchés depuis un écran envoient en rafale
 dans la requête :
 
 - « Exécuter les relances en attente » (`ESBTPComptabiliteRelanceController::executerRelances()`
-  → `NotificationService::executerRelancesEnAttente()`) : au-delà de 50 relances par
+  → `NotificationService::executerRelancesEnAttente()`) : au-delà du plafond par
   minute, les suivantes sont marquées `echec` — **visibles et relançables**, pas
   perdues en silence, mais non parties ;
 - les avis aux parents émis pendant une validation groupée.
@@ -99,8 +108,8 @@ Prérequis : l'instance parle déjà à MailPulse.
 | `MAIL_MAILER` | `.env` | `mailpulse` |
 | `MAIL_FROM_ADDRESS` | `.env` | une adresse d'un domaine vérifié chez MailPulse (`noreply@klassci.com`) |
 | `mailpulse_sender_email` | réglage (facultatif) | prime sur `MAIL_FROM_ADDRESS` |
-| `mailpulse_sender_name` | réglage (facultatif) | nom affiché ; prime sur `MAIL_FROM_NAME` (défaut `KLASSCI`) |
-| `MAILPULSE_MAIL_PER_MINUTE` | `.env` (facultatif) | plafond par minute du mailer, `50` par défaut |
+| `mailpulse_sender_name` | réglage (facultatif) | nom affiché, `KLASSCI` par défaut ; `MAIL_FROM_NAME` n'est pas lu |
+| `MAILPULSE_MAIL_PER_MINUTE` | `.env` (facultatif) | plafond par minute du mailer, `30` par défaut, au mieux |
 
 Puis `php artisan config:clear` (ou `klassci cache:clear <instance>`).
 

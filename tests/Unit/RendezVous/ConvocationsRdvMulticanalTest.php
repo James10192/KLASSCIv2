@@ -169,6 +169,37 @@ class ConvocationsRdvMulticanalTest extends TestCase
         $this->assertFalse($r->convocation_fallback_utilise);
     }
 
+    public function test_quota_mailpulse_epuise_garde_la_convocation_en_attente_et_arrete_la_file(): void
+    {
+        // quota_exceeded touche toute l'organisation, à l'identique pour la
+        // convocation suivante : c'est un refus de configuration, pas un échec
+        // de cette famille.
+        $courriel = Mockery::mock(CourrielConvocationRdv::class);
+        $courriel->shouldReceive('expedier')->once()->andReturn(new MailPulseResult(
+            false,
+            'quota_exceeded',
+            429,
+            null,
+            null,
+            'quota_exceeded',
+            'Quota mensuel MailPulse atteint.',
+        ));
+        $this->app->instance(CourrielConvocationRdv::class, $courriel);
+
+        $whatsapp = Mockery::mock(WhatsAppConvocationRdv::class);
+        $whatsapp->shouldNotReceive('expedier');
+        $this->app->instance(WhatsAppConvocationRdv::class, $whatsapp);
+
+        $r = $this->reservation();
+
+        $bloque = app(MessagerieRdv::class)->envoyer($r);
+
+        $this->assertNotNull($bloque, 'La file doit s\'arrêter : la suivante tomberait sur le même quota.');
+        $r->refresh();
+        $this->assertSame(StatutConvocationRdv::EnAttente, $r->convocation_statut);
+        $this->assertSame(0, (int) $r->convocation_tentatives);
+    }
+
     private function reservation(array $attributs = []): ReservationMulticanalTestDouble
     {
         $r = ReservationMulticanalTestDouble::create(array_merge([

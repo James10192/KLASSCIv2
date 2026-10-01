@@ -213,6 +213,7 @@ class AppServiceProvider extends ServiceProvider
             $this->app->make(\App\Services\MailPulse\MailPulseClient::class),
             $this->app->make(\App\Mail\Transport\CadenceMailPulse::class),
         ));
+        $this->relacherLesJobsRefusesParMailPulse();
 
         // Nom des rangs de la structure LMD, regle par etablissement (Domaine /
         // Mention / Parcours, ou Composante / Departement / Specialite).
@@ -319,5 +320,28 @@ class AppServiceProvider extends ServiceProvider
             $view->with('demandesATraiter', FileDesDemandes::aTraiter($agent));
             $view->with('accueilAttendues', FileDesDemandes::famillesAttenduesAujourdhui($agent));
         });
+    }
+
+    /**
+     * Un courriel en file refusé pour débit (`DebitMailPulseAtteint`) repart en
+     * file avec le délai que le refus indique, au lieu d'être rejoué aussitôt :
+     * sans `--backoff`, le worker brûlerait ses trois essais dans la seconde.
+     * Les essais restent comptés : au bout de `--tries`, le job échoue comme
+     * n'importe quel autre, et se voit dans `failed_jobs`.
+     */
+    private function relacherLesJobsRefusesParMailPulse(): void
+    {
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Queue\Events\JobExceptionOccurred::class,
+            static function (\Illuminate\Queue\Events\JobExceptionOccurred $evenement): void {
+                $job = $evenement->job;
+                if (! $evenement->exception instanceof \App\Mail\Transport\DebitMailPulseAtteint
+                    || $job->isDeleted() || $job->isReleased() || $job->hasFailed()) {
+                    return;
+                }
+
+                $job->release($evenement->exception->reessayerDans);
+            }
+        );
     }
 }
