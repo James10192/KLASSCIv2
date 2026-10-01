@@ -38,6 +38,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Courriels aux couleurs de l'école.** Le lien d'activation de l'espace étudiant, la convocation au guichet, le code de confirmation d'e-mail et les avis aux parents partagent un même gabarit : logo et couleurs de l'établissement comme sur ses PDF, bouton d'action, coordonnées en pied. Le lien d'activation partait jusqu'ici en texte brut.
 
 ### Corrections
+- Finalisation de la réinscription et filtres de la liste des étudiants : le texte « Sélectionner une classe… » s'affichait comme une barre grise illisible (conflit avec une classe de style de Bootstrap)
+- Une page d'erreur (403) devenait une erreur serveur sur une instance dont la table des préférences de Nanan n'était pas encore créée
+- Fiche de réinscription : l'en-tête du tableau précise qu'il ne liste que les matières sous la moyenne de passage
 - **Réinscription — corriger une réinscription vers la même classe n'affiche plus d'erreur technique.** Le refus est expliqué (« déjà inscrit dans cette classe »), et une erreur imprévue ne montre plus de requête SQL à l'écran : le détail part au journal.
 - **Unités d'enseignement — « Lier à des parcours » ne remet plus à zéro l'ordre ni le caractère optionnel des liens gardés.** Retirer un parcours à une UE réinitialisait ceux des autres parcours, sans le signaler.
 - **Nanan — un fichier joint n'est plus jamais lu à moitié en silence.** Chercher un matricule dans un état de vingt colonnes pouvait couper la réponse ; les verdicts « présent / absent » passent désormais en entier, et une feuille illisible du classeur est nommée.

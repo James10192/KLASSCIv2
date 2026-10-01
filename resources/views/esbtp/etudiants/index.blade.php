@@ -1676,7 +1676,7 @@
         white-space: nowrap;
     }
 
-    .searchable-select-trigger-text.placeholder {
+    .searchable-select-trigger-text.est-indicatif {
         color: #94a3b8;
     }
 
@@ -2917,7 +2917,7 @@
                                         })" class="searchable-select" :class="{ 'active': open }" @click.away="open = false">
                                             <input type="hidden" name="classe" :value="selectedValue" id="classe">
                                             <button type="button" class="searchable-select-trigger" @click="open = !open">
-                                                <span class="searchable-select-trigger-text" :class="{ 'placeholder': !selectedLabel }">
+                                                <span class="searchable-select-trigger-text" :class="{ 'est-indicatif': !selectedLabel }">
                                                     <span x-text="selectedLabel || placeholder">Rechercher une classe...</span>
                                                 </span>
                                                 <i class="fas fa-chevron-down searchable-select-icon"></i>
@@ -3129,7 +3129,7 @@
                         })" class="searchable-select" :class="{ 'active': open }" @click.away="open = false">
                             <input type="hidden" name="classe" :value="selectedValue" id="mobile-classe">
                             <button type="button" class="searchable-select-trigger" @click="open = !open">
-                                <span class="searchable-select-trigger-text" :class="{ 'placeholder': !selectedLabel }">
+                                <span class="searchable-select-trigger-text" :class="{ 'est-indicatif': !selectedLabel }">
                                     <span x-text="selectedLabel || placeholder">Rechercher une classe...</span>
                                 </span>
                                 <i class="fas fa-chevron-down searchable-select-icon"></i>
