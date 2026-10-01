@@ -1,38 +1,37 @@
-@extends('esbtp.emails.parents.layout', [
-    'emailTitle' => 'Paiement Rejeté',
-    'parentName' => $parentName,
-    'schoolName' => $schoolName ?? 'KLASSCI',
-    'schoolAddress' => $schoolAddress ?? \App\Helpers\SettingsHelper::get('school_address', ''),
-    'schoolPhone' => $schoolPhone ?? \App\Helpers\SettingsHelper::get('school_phone', ''),
-    'schoolEmail' => $schoolEmail ?? \App\Helpers\SettingsHelper::get('school_email', ''),
-    'schoolLogoPath' => $schoolLogoPath ?? null
-])
+@php
+    $emailTitle = 'Paiement rejeté';
+    $statutTon = 'danger';
+    $statutTexte = 'Paiement rejeté';
+    $service = 'Comptabilité';
+    $raison = "Message automatique envoyé au contact parent de l'élève {$studentName}. Pour toute question, contactez la comptabilité.";
+@endphp
+@extends('esbtp.emails.parents.recu')
+
+@section('preheader')Le paiement de {{ \App\Helpers\MontantFcfa::nombre($montant) }} FCFA pour {{ $studentName }} n'a pas été accepté. Motif : {{ $motifRejet }}
+@endsection
+
+@section('titre')Votre paiement de {{ \App\Helpers\MontantFcfa::html($montant) }} n'a pas été accepté
+@endsection
 
 @section('content')
-    <div class="alert alert-danger">
-        <strong>Paiement rejeté</strong><br>
-        Votre paiement pour {{ $studentName }} a été rejeté par l'administration.
-    </div>
-
-    <table class="info-table">
-        <tr><th style="width: 40%;">Étudiant</th><td><strong>{{ $studentName }}</strong></td></tr>
-        <tr><th>Montant</th><td><strong>{{ number_format($montant, 0, ',', ' ') }} FCFA</strong></td></tr>
-        <tr><th>Référence</th><td>{{ $reference }}</td></tr>
-        <tr><th>Date de soumission</th><td>{{ $dateSoumission }}</td></tr>
-        <tr><th>Date de rejet</th><td>{{ $dateRejet }}</td></tr>
-    </table>
-
-    <div style="background: #f8d7da; padding: 20px; border-radius: 5px; border-left: 4px solid {{ $emailDangerColor }}; margin: 20px 0;">
-        <h4 style="margin-top: 0; color: #721c24;">Motif du rejet</h4>
-        <p style="margin-bottom: 0; color: #721c24;">{{ $motifRejet }}</p>
-    </div>
-
-    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Que faire maintenant?</h3>
-    <ol style="color: #6c757d;">
-        <li>Vérifiez le motif du rejet ci-dessus</li>
-        <li>Corrigez les informations ou fournissez les documents manquants</li>
-        <li>Soumettez à nouveau votre paiement via la plateforme</li>
-    </ol>
-
-    @include('esbtp.emails.partials.bouton', ['url' => $paiementUrl, 'libelle' => 'Soumettre un nouveau paiement'])
+<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, le paiement pour {{ $studentName }} a été rejeté par l'administration le {{ $dateRejet }}. Le motif est indiqué ci-dessous.</p>
+@include('esbtp.emails.parents.partials.vedette', [
+    'libelle' => 'Montant rejeté',
+    'valeur' => \App\Helpers\MontantFcfa::nombre($montant),
+    'unite' => 'FCFA',
+    'lignes' => [
+        ['Élève', $studentName],
+        ['Référence', $reference],
+        ['Soumis le', $dateSoumission],
+        ['Rejeté le', $dateRejet],
+    ],
+])
+@include('esbtp.emails.parents.partials.citation', ['titre' => 'Motif du rejet', 'texte' => $motifRejet, 'ton' => $emailDangerColor])
+@include('esbtp.emails.parents.partials.intertitre', ['texte' => 'Que faire maintenant ?'])
+<ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.7;color:#334155;">
+<li>Lisez le motif ci-dessus.</li>
+<li>Corrigez les informations ou réunissez les pièces manquantes.</li>
+<li>Soumettez à nouveau le paiement sur la plateforme.</li>
+</ol>
+@include('esbtp.emails.partials.bouton', ['url' => $paiementUrl, 'libelle' => 'Soumettre un nouveau paiement', 'pleineLargeur' => true])
 @endsection
