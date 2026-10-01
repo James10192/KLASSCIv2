@@ -71,7 +71,7 @@ class FicheReinscriptionFinancesMasqueesTest extends TestCase
     {
         $html = $this->ficheVuePar(['identity.direct_studies']);
 
-        $this->assertStringNotContainsString('Situation Financière', $html);
+        $this->assertStringNotContainsString('Situation financière', $html);
         $this->assertStringNotContainsString('FCFA', $html);
     }
 
@@ -79,6 +79,6 @@ class FicheReinscriptionFinancesMasqueesTest extends TestCase
     {
         $html = $this->ficheVuePar(['identity.direct_studies', 'paiements.view']);
 
-        $this->assertStringContainsString('Situation Financière', $html);
+        $this->assertStringContainsString('Situation financière', $html);
     }
 }
