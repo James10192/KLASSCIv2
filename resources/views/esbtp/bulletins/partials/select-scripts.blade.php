@@ -798,130 +798,60 @@ window.busCard = function (cfg) {
                         return;
                     }
 
-                    // La generation coute O(N^2) et l'hebergement coupe a 30 s :
-                    // on envoie la classe par tranches et on cumule les
-                    // resultats. Le serveur recalcule les rangs sur la cohorte
-                    // entiere a chaque passe, l'etat final est donc identique.
-                    // Une tranche `null` veut dire « pas de filtre », donc la
-                    // CLASSE ENTIERE en une requete. Tant que `student_ids`
-                    // valait la cohorte complete, s'en remettre a null pour
-                    // les petites listes etait equivalent. Ce n'est plus vrai :
-                    // le serveur n'y met que les etudiants qu'il acceptera, et
-                    // une classe de soixante-dix dont soixante-sept sont deja
-                    // generes renvoie trois identifiants. La condition « plus
-                    // long qu'une tranche » retombait alors sur null et
-                    // relançait les soixante-dix d'un coup, dans la limite de
-                    // trente secondes que le decoupage existe pour eviter.
-                    //
-                    // Des que le serveur fournit une liste, on la respecte,
-                    // meme courte. `null` ne subsiste que pour une reponse
-                    // ancienne qui n'en fournirait aucune.
-                    const tousLesIds = Array.isArray(preflight.student_ids) ? preflight.student_ids : null;
-                    const taille = preflight.batch_size || 6;
-                    const tranches = [];
-                    if (tousLesIds === null) {
-                        tranches.push(null);
-                    } else {
-                        for (let i = 0; i < tousLesIds.length; i += taille) {
-                            tranches.push(tousLesIds.slice(i, i + taille));
-                        }
-                    }
+                    // La generation se fait en arriere-plan : le serveur fige la
+                    // liste des eleves et cree une tache. Tant que la page reste
+                    // ouverte, elle la fait avancer tranche par tranche (une
+                    // classe coute plusieurs minutes, et l'hebergement coupe une
+                    // requete a 30 s). Si on la quitte, la planification finit
+                    // le travail et previent le demandeur.
+                    const fd = new FormData();
+                    fd.append('classe_id', this.form.classe_id);
+                    fd.append('annee_universitaire_id', this.form.annee_universitaire_id);
+                    fd.append('periode', this.form.periode);
+                    if (this.form.recalculer) fd.append('recalculer', '1');
+                    if (this.form.incomplete_reason) fd.append('incomplete_reason', this.form.incomplete_reason.trim());
 
-                    if (tranches.length === 0) {
-                        this.notify('info', 'Aucun étudiant à générer pour cette période.');
+                    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+                    const lancement = await fetch(`{{ route('esbtp.bulletins.taches.generation') }}`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrf, 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                        body: fd,
+                    });
+                    const lance = await this.parseJsonResponse(lancement);
+                    if (!lancement.ok || !lance.tache) {
+                        const detail = Object.values(lance.errors || {}).flat().join(' - ');
+                        this.notify(lance.preflight ? 'error' : 'info', detail || lance.message || `Erreur HTTP ${lancement.status}`);
                         return;
                     }
 
-                    const envoyerTranche = async (ids) => {
-                        const fd = new FormData();
-                        fd.append('classe_id', this.form.classe_id);
-                        fd.append('annee_universitaire_id', this.form.annee_universitaire_id);
-                        fd.append('periode', this.form.periode);
-                        if (this.form.recalculer) fd.append('recalculer', '1');
-                        if (this.form.incomplete_reason) fd.append('incomplete_reason', this.form.incomplete_reason.trim());
-                        if (ids) ids.forEach((id) => fd.append('student_ids[]', id));
+                    this.notify('info', 'Génération lancée. Vous pouvez quitter la page : vous serez prévenu(e) à la fin.');
 
-                        const reponse = await fetch(`{{ route('esbtp.bulletins.generer-classe') }}`, {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json',
-                            },
-                            body: fd,
-                        });
-                        return { reponse, charge: await this.parseJsonResponse(reponse) };
-                    };
-
-                    let data = { created: 0, regenerated: 0, skipped: [], blocking_errors: [], errors: [] };
-                    let res = null;
-                    let echec = null;
-
-                    // Une classe entiere prend plusieurs minutes, decoupee en
-                    // tranches. Sans reperes, l'utilisateur croit que rien ne se
-                    // passe et relance : on montre donc l'avancee reelle et une
-                    // estimation du temps restant, calculee sur les tranches
-                    // deja faites plutot que sur une moyenne devinee.
-                    const debut = Date.now();
-
-                    for (let i = 0; i < tranches.length; i++) {
-                        if (tranches.length > 1) {
-                            const faits = Math.min(i * taille, tousLesIds.length);
-                            const ecoule = (Date.now() - debut) / 1000;
-                            const restant = i > 0
-                                ? Math.round((ecoule / i) * (tranches.length - i))
-                                : null;
-
+                    const tache = await window.suivreTacheBulletins({
+                        tache: lance.tache,
+                        csrf,
+                        onEtat: (etat, extra) => {
+                            const taille = 6;
                             this.progression = {
-                                faits,
-                                total: tousLesIds.length,
-                                tranche: i + 1,
-                                tranches: tranches.length,
-                                pourcent: Math.round((faits / tousLesIds.length) * 100),
-                                restant,
-                                restantTexte: this.dureeLisible(restant),
+                                faits: etat.position,
+                                total: etat.total,
+                                tranche: Math.min(Math.floor(etat.position / taille) + 1, Math.max(1, Math.ceil(etat.total / taille))),
+                                tranches: Math.max(1, Math.ceil(etat.total / taille)),
+                                pourcent: etat.pourcent,
+                                restant: extra.restant,
+                                restantTexte: this.dureeLisible(extra.restant),
+                                relais: !!extra.relais,
                             };
-                        }
-
-                        const { reponse, charge } = await envoyerTranche(tranches[i]);
-                        res = reponse;
-
-                        if (reponse.redirected) {
-                            this.progression = null;
-                            this.notify('error', 'Le serveur a redirigé la requête au lieu de renvoyer le résultat.');
-                            return;
-                        }
-                        if (!reponse.ok) {
-                            echec = Object.values(charge.errors || {}).flat().join(' - ')
-                                || charge.message
-                                || `Erreur HTTP ${reponse.status}`;
-                            break;
-                        }
-
-                        data.created += charge.created || 0;
-                        data.regenerated += charge.regenerated || 0;
-                        data.skipped = data.skipped.concat(charge.skipped || []);
-                        data.blocking_errors = data.blocking_errors.concat(charge.blocking_errors || []);
-                        data.errors = data.errors.concat(charge.errors || []);
-                        data.message = charge.message;
-                        data.ok = charge.ok;
-                    }
+                        },
+                    });
 
                     this.progression = null;
 
-                    if (echec) {
-                        const traites = data.created + data.regenerated;
-                        // N'afficher le panneau de resultat que si quelque chose
-                        // a reellement ete ecrit : sinon on affichait « 0 partout »,
-                        // ce qui laissait croire a une generation vide alors que
-                        // la requete avait echoue.
-                        this.lastGeneration = traites > 0 ? { ...data, ok: false } : null;
-                        this.notify('error', traites > 0
-                            ? `${echec} — ${traites} bulletin(s) deja traite(s), relancez pour reprendre.`
-                            : echec);
-                        return;
-                    }
-
+                    const data = {
+                        ...tache.resultat,
+                        ok: tache.statut === 'terminee'
+                            && !(tache.resultat.blocking_errors?.length || tache.resultat.errors?.length),
+                        message: tache.message,
+                    };
                     this.lastGeneration = data;
 
                     const writes = (data.created || 0) + (data.regenerated || 0);
@@ -930,15 +860,17 @@ window.busCard = function (cfg) {
                     if (writes > 0) {
                         this.notify(failures > 0 ? 'info' : 'success', data.message || 'Génération terminée.');
                         setTimeout(() => {
-                            window.location.href = `{{ route('esbtp.bulletins.index') }}?classe_id=${this.form.classe_id}&annee_universitaire_id=${this.form.annee_universitaire_id}&periode_id=${this.form.periode}`;
+                            window.location.href = tache.url
+                                || `{{ route('esbtp.bulletins.index') }}?classe_id=${this.form.classe_id}&annee_universitaire_id=${this.form.annee_universitaire_id}&periode_id=${this.form.periode}`;
                         }, 1200);
                         return;
                     }
 
-                    this.notify(failures > 0 ? 'error' : 'info', data.message || 'Aucun bulletin généré.');
+                    this.notify(failures > 0 || tache.statut === 'echouee' ? 'error' : 'info', data.message || 'Aucun bulletin généré.');
                     return;
                 }
             } catch (err) {
+                this.progression = null;
                 this.notify('error', err.message || 'Erreur inattendue.');
             } finally {
                 if (this.kind === 'generate') this.busy = false;

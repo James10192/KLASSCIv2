@@ -41,6 +41,17 @@ class Kernel extends ConsoleKernel
         // assemblés jamais récupérés). Sans ça, rien ne les reprenait.
         $schedule->command('bulletins:purger-exports')->hourly();
 
+        // Générations et PDF groupés de bulletins lancés en arrière-plan : c'est
+        // ce passage qui les finit quand l'utilisateur a quitté la page. En
+        // arrière-plan pour ne pas retenir les autres tâches de la minute ; le
+        // verrou expire en dix minutes si un passage est tué en route.
+        $schedule->command('bulletins:traiter-taches --budget=50')
+            ->everyMinute()
+            ->withoutOverlapping(10)
+            ->runInBackground()
+            ->name('bulletins-traiter-taches')
+            ->description('Fait avancer les générations et PDF groupés de bulletins lancés en arrière-plan');
+
         // Retention legale des proces-verbaux de deliberation. Le reglage
         // lmd_pv_retention_years annoncait une duree que rien ne mesurait : ce
         // recensement la mesure. Il ne PURGE PAS — pas de --purger ici : il liste,

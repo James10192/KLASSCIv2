@@ -10,6 +10,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ---
 
+## Octobre 2026
+
+### Améliorations
+- **Bulletins — la génération d'une classe et le PDF groupé continuent quand on quitte la page.** Le travail est suivi en base (`esbtp_bulletin_taches`) : la page le fait avancer tant qu'elle reste ouverte, la planification (`bulletins:traiter-taches`, chaque minute) le finit sinon. À la fin, le demandeur est prévenu par la cloche, par un toast où qu'il soit dans l'application, et par e-mail si son adresse est vérifiée ; un échec est annoncé avec sa raison. Le PDF groupé reste disponible 72 heures. Remplace les tranches pilotées par l'onglet (routes `export-pdf/ouvrir|tranche|assembler|telecharger` retirées).
+
 ## Septembre 2026
 
 ### Ajouts

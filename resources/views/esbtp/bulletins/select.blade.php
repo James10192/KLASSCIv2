@@ -679,6 +679,12 @@
         gap: .75rem;
         font-size: .72rem; color: #64748b; font-weight: 500;
     }
+    .bus-progress__quitter {
+        display: flex; align-items: center; gap: .45rem;
+        margin: .55rem 0 0; padding: .45rem .6rem;
+        border-radius: 8px; background: rgba(4,83,203,.06);
+        font-size: .74rem; color: #0453cb; font-weight: 600;
+    }
 
     @media (prefers-reduced-motion: reduce) {
         .bus-progress__fill { transition: none; }
@@ -1078,6 +1084,12 @@
                         <span x-text="`Tranche ${progression?.tranche ?? 0} sur ${progression?.tranches ?? 0}`"></span>
                         <span x-show="progression?.restantTexte" x-text="`Il reste ${progression?.restantTexte}`"></span>
                     </div>
+                    <p class="bus-progress__quitter">
+                        <i class="fas fa-bell"></i>
+                        <span x-text="progression?.relais
+                            ? 'Le serveur poursuit la génération. Vous pouvez quitter la page : vous serez prévenu(e) à la fin.'
+                            : 'Vous pouvez quitter la page : la génération continue, et vous serez prévenu(e) à la fin.'"></span>
+                    </p>
                 </div>
                 <div class="bus-inline-panel"
                      :class="lastGeneration?.ok ? 'bus-inline-panel--ok' : 'bus-inline-panel--danger'"
@@ -1118,4 +1130,7 @@
 </div>
 
 @include('esbtp.bulletins.partials.select-scripts')
+@push('scripts')
+@include('esbtp.bulletins.partials.suivi-tache-script')
+@endpush
 @endsection
