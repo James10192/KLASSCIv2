@@ -16,6 +16,9 @@ final class RefusMailPulse
     public const CONFIGURATION = [
         'disabled', 'missing_api_key', 'auth_failed',
         'endpoint_not_found', 'endpoint_not_supported', 'invalid_dispatch_contract',
+        // Quota mensuel de l'organisation MailPulse : il frappe tout envoi
+        // suivant jusqu'au mois prochain ou au changement d'offre.
+        'quota_exceeded',
     ];
 
     /** Pannes passageres du service : reessayer plus tard, pas maintenant. */

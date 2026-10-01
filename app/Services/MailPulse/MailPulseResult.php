@@ -15,6 +15,8 @@ final class MailPulseResult
         public readonly ?string $action = null,
         public readonly ?string $dispatchState = null,
         public readonly bool $smsFallbackEligible = false,
+        /** Secondes indiquées par l'en-tête Retry-After d'un refus, quand il y en a un. */
+        public readonly ?int $retryAfter = null,
     ) {}
 
     public static function dryRun(?string $requestId = null): self

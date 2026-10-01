@@ -8,9 +8,11 @@
      avis aux parents, qui gardent un rendu propre là où il est lu. --}}
 @php
     $logoSrc = null;
-    // Un courriel envoyé par le mailer porte le logo en pièce intégrée, que les
-    // messageries affichent sans demander. Par MailPulse, seule l'URL existe.
-    if (! empty($schoolLogoPath) && isset($message) && $message instanceof \Illuminate\Mail\Message && is_file($schoolLogoPath)) {
+    // Un courriel envoyé par SMTP porte le logo en pièce intégrée, que les
+    // messageries affichent sans demander. Par MailPulse (mailer comme API),
+    // seule l'URL existe : une pièce intégrée y serait retirée.
+    if (! empty($schoolLogoPath) && isset($message) && $message instanceof \Illuminate\Mail\Message && is_file($schoolLogoPath)
+        && ! \App\Mail\Transport\MailPulseTransport::actif()) {
         $logoSrc = $message->embed($schoolLogoPath);
     } elseif (! empty($schoolLogoUrl)) {
         $logoSrc = $schoolLogoUrl;
@@ -128,7 +130,11 @@
                                 </div>
                             @endif
                             <div style="font-size:12px;color:#94a3b8;margin-top:14px;line-height:1.5;">
-                                Message automatique, merci de ne pas y répondre. Pour toute question, contactez l'établissement.
+                                @hasSection('mention')
+                                    @yield('mention')
+                                @else
+                                    Message automatique, merci de ne pas y répondre. Pour toute question, contactez l'établissement.
+                                @endif
                             </div>
                         </td>
                     </tr>

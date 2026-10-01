@@ -2,6 +2,7 @@
 
 namespace App\Domain\Support\Services;
 
+use App\Domain\Support\TonDuStatut;
 use App\Mail\Support\ReponseDuSupportMail;
 use App\Models\User;
 use App\Services\NotificationService;
@@ -38,9 +39,28 @@ class AvertirDuRetourDuSupport
     {
         $objet = trim((string) ($resume['titre'] ?? ''));
         $objet = $objet !== '' ? '« '.mb_strimwidth($objet, 0, 90, '…').' »' : (string) ($resume['reference'] ?? '');
-        $statut = mb_strtolower((string) ($resume['statut']['libelle'] ?? 'mise à jour'), 'UTF-8');
 
-        return $aRepondu ? "Le support a répondu à {$objet}" : "Votre demande {$objet} est {$statut}";
+        return self::formuler($objet, (array) ($resume['statut'] ?? []), $aRepondu);
+    }
+
+    /**
+     * La phrase elle-même. Sans objet, elle parle de « votre demande » : c'est
+     * l'en-tête du courriel, dont la carte juste en dessous porte le titre.
+     *
+     * @param  array{libelle?: ?string, code?: ?string}  $statut
+     */
+    public static function formuler(?string $objet, array $statut, bool $aRepondu): string
+    {
+        if ($aRepondu) {
+            return 'Le support a répondu à '.($objet ?? 'votre demande');
+        }
+        $sujet = $objet === null ? 'Votre demande' : "Votre demande {$objet}";
+        // « est action requise » ne se lit pas : ce statut se dit autrement.
+        if (($statut['code'] ?? null) === TonDuStatut::ACTION_REQUISE) {
+            return "{$sujet} attend une action de votre part";
+        }
+
+        return "{$sujet} est ".mb_strtolower((string) ($statut['libelle'] ?? 'mise à jour'), 'UTF-8');
     }
 
     /** @param  array<string, mixed>  $resume  le resume d'une demande, tel que le Master le rend */
