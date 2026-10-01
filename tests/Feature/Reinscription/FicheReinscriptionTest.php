@@ -274,6 +274,43 @@ class FicheReinscriptionTest extends TestCase
         $this->assertSame($avant, ESBTPInscription::where('etudiant_id', $this->inscription->etudiant_id)->count());
     }
 
+    /**
+     * Après la bascule (courante = N+1), un dossier N en cours : la fiche, la
+     * finalisation, la garde et Nanan disent tous qu'une année reste à régler.
+     */
+    public function test_apres_la_bascule_un_dossier_intermediaire_bloque_partout(): void
+    {
+        $n = ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $this->courante->id,
+            'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+            'status' => 'active',
+            'workflow_step' => 'documents_complets',
+        ]);
+        $this->courante->update(['is_current' => false]);
+        ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => true, 'is_active' => true,
+            'start_date' => $this->courante->start_date->copy()->addYear(), 'end_date' => $this->courante->end_date->copy()->addYear()]);
+        ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->update(['amount' => 0]);
+
+        $e = app(EligibiliteReinscription::class)->pour($this->inscription->etudiant_id, $this->admin);
+        $this->assertSame(EligibiliteReinscription::ANNEE_INTERMEDIAIRE, $e['etat']);
+        $this->assertFalse($e['peut_poursuivre'], 'aucune dérogation ne saute une année');
+
+        $this->fiche($this->admin)->assertOk()->assertSee('Une année reste à régler')
+            ->assertSee("n'est pas finalisé")->assertDontSee('Réinscription autorisée');
+        $this->actingAs($this->agent)->get(route('esbtp.reinscription.create', $this->inscription->etudiant_id))
+            ->assertRedirect(route('esbtp.reinscription.show', $this->inscription->etudiant_id));
+
+        $nanan = app(DiagnostiquerReinscriptionTool::class)->executeAuthorized(['etudiant_id' => $this->inscription->etudiant_id], $this->agent);
+        $this->assertTrue($nanan['diagnostic']['bloquee']);
+        $this->assertSame('dossier_intermediaire', $nanan['diagnostic']['cause']);
+
+        // Une inscription « terminée » n'est pas un dossier à finaliser : le
+        // message le dit au lieu de conseiller une annulation.
+        $n->update(['status' => 'terminée', 'workflow_step' => 'etudiant_cree']);
+        $this->fiche($this->admin)->assertOk()->assertSee('est terminée sans être la dernière inscription suivie');
+    }
+
     public function test_une_finalisation_bloquee_renvoie_a_la_fiche(): void
     {
         $this->actingAs($this->agent)->get(route('esbtp.reinscription.create', $this->inscription->etudiant_id))

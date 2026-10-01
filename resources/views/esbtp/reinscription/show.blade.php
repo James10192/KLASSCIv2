@@ -240,6 +240,7 @@
             @php
                 $libelleEtat = match (true) {
                     $etat === Eligibilite::DEJA_INSCRIT => 'Déjà inscrit',
+                    $etat === Eligibilite::ANNEE_INTERMEDIAIRE => 'En attente',
                     $eligibilite['autorisee'] => 'Autorisée',
                     $eligibilite['peut_deroger'] => 'Par dérogation',
                     default => 'Bloquée',
@@ -308,8 +309,8 @@
                     <a href="{{ route('esbtp.inscriptions.index') }}" class="rsd-btn rsd-btn--outline">
                         <i class="fas fa-list"></i>Liste des inscriptions
                     </a>
-                    {{-- Tant que N n'est pas finalisée, préparer N+1 partirait de N-1 et sauterait N. --}}
-                    @if($eligibilite['annee_suivante'] && $existante->workflow_step === 'etudiant_cree')
+                    {{-- Le contrôleur juge N+1 comme la finalisation : une année N non finalisée le bloque. --}}
+                    @if($preparerSuivante ?? false)
                         <a href="{{ $lienVers($eligibilite['annee_suivante']) }}" class="rsd-btn rsd-btn--outline">
                             <i class="fas fa-forward"></i>Préparer {{ $eligibilite['annee_suivante']->name }}
                         </a>
@@ -319,6 +320,20 @@
                             <i class="fas fa-pen"></i>Corriger la réinscription
                         </a>
                     @endif
+                </div>
+            </div>
+        </section>
+    @elseif($etat === Eligibilite::ANNEE_INTERMEDIAIRE)
+        @php $intermediaire = $eligibilite['inscription_intermediaire']; @endphp
+        <section class="rsd-verdict rsd-verdict--warn">
+            <div class="rsd-verdict-icon"><i class="fas fa-hourglass-half"></i></div>
+            <div class="rsd-verdict-body">
+                <h2>Une année reste à régler</h2>
+                <p>{{ $eligibilite['message_intermediaire'] }}</p>
+                <div class="rsd-actions">
+                    <a href="{{ route('esbtp.inscriptions.show', $intermediaire->id) }}" class="rsd-btn rsd-btn--primary">
+                        <i class="fas fa-up-right-from-square"></i>Ouvrir l'inscription de {{ $intermediaire->anneeUniversitaire->name ?? 'cette année' }}
+                    </a>
                 </div>
             </div>
         </section>

@@ -89,6 +89,7 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
         // déroger. Mélanger les deux faisait dire « non bloquée » à Nanan
         // pendant que l'écran affichait « Réinscription bloquée ».
         $bloque = $eligibilite['etat'] === EligibiliteReinscription::IMPAYE;
+        $intermediaire = $eligibilite['etat'] === EligibiliteReinscription::ANNEE_INTERMEDIAIRE;
         $estSuperAdmin = $eligibilite['peut_deroger'];
 
         return [
@@ -98,7 +99,7 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
                 'initials' => $this->studentInitials($etudiant),
                 'classe' => $inscription->classe?->name ?? 'N/A',
                 'detail' => 'Inscription quittée : '.($inscription->anneeUniversitaire?->name ?? '?'),
-                'statut' => $dejaReinscrit ? 'Déjà inscrit cette année' : ($bloque ? ($estSuperAdmin ? 'Bloquée (impayé), dérogation possible' : 'Bloquée (impayé)') : 'Réinscription possible'),
+                'statut' => $dejaReinscrit ? 'Déjà inscrit cette année' : ($intermediaire ? 'Bloquée (dossier intermédiaire)' : ($bloque ? ($estSuperAdmin ? 'Bloquée (impayé), dérogation possible' : 'Bloquée (impayé)') : 'Réinscription possible')),
                 'reste' => $voirMontants ? $this->formatFCFA(max(0.0, $solde)) : null,
                 'lien' => Route::has('esbtp.reinscription.show') ? route('esbtp.reinscription.show', $etudiant->id, false) : null,
                 'lien_label' => 'Réinscription',
@@ -111,8 +112,9 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
                 'annee_quittee' => $inscription->anneeUniversitaire?->name,
                 'annee_quittee_id' => (int) $inscription->annee_universitaire_id,
                 'deja_reinscrit_cette_annee' => $dejaReinscrit,
-                'bloquee' => $bloque,
-                'cause' => $dejaReinscrit ? 'deja_reinscrit' : ($bloque ? 'solde_impaye' : null),
+                'bloquee' => $bloque || $intermediaire,
+                'cause' => $dejaReinscrit ? 'deja_reinscrit' : ($intermediaire ? 'dossier_intermediaire' : ($bloque ? 'solde_impaye' : null)),
+                'que_faire' => $eligibilite['message_intermediaire'],
                 'etat' => $eligibilite['etat'],
                 'tolerance_ecole' => $voirMontants ? $eligibilite['tolerance'] : null,
                 'annee_cible' => $eligibilite['annee_cible']?->name,
