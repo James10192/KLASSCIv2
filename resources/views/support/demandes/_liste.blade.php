@@ -7,13 +7,17 @@
     @elseif(empty($demandes))
         <div class="sd-vide">
             <i class="fas fa-inbox"></i>
-            <p><strong>Aucune demande pour l'instant.</strong><br>Un problème, une question ? Signalez-le depuis n'importe quelle page, menu de votre compte.</p>
+            <p><strong>Aucune demande pour l'instant.</strong><br>Un problème, une question ? Ouvrez « Aide » depuis le menu de votre compte, sur n'importe quelle page.</p>
         </div>
     @else
         @foreach($demandes as $d)
             <a class="sd-ligne" href="{{ route('support.demandes.show', $d['reference']) }}{{ $portee === 'school' ? '?portee=ecole' : '' }}">
                 <div class="sd-ligne-principal">
-                    <span class="sd-ref">{{ $d['reference'] }}</span>
+                    <span class="sd-ref">{{ $d['reference'] }}
+                        @if(in_array($d['reference'], $nonLues ?? [], true) && ($d['derniere_reponse']['auteur'] ?? null) === 'SUPPORT')
+                            <span class="sd-nouveau">Nouvelle réponse</span>
+                        @endif
+                    </span>
                     <span class="sd-titre">{{ $d['titre'] }}</span>
                     <span class="sd-meta">
                         {{ $d['categorie']['libelle'] ?? '' }}

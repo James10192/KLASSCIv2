@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Mes demandes de support')
+@section('title', "Mes demandes d'aide")
 
 @push('styles')
 <style>
@@ -29,6 +29,8 @@
     .sd-ligne:hover { background: #f8fafc; }
     .sd-ligne-principal { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
     .sd-ref { font-family: 'Courier New', monospace; font-size: .74rem; color: #0453cb; font-weight: 700; }
+    .sd-nouveau { display: inline-block; margin-left: .4rem; padding: .1rem .5rem; border-radius: 999px; background: #0453cb; color: #fff;
+        font-family: inherit; font-size: .68rem; font-weight: 700; vertical-align: middle; }
     .sd-titre { font-weight: 600; color: #1e293b; font-size: .92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .sd-meta { font-size: .76rem; color: #64748b; }
     .sd-reponse { font-size: .8rem; color: #475569; }
@@ -42,6 +44,9 @@
     .sd-vide i { font-size: 1.8rem; color: #94a3b8; margin-bottom: .6rem; }
     .sd-vide strong { color: #1e293b; }
     .sd-attente { list-style: none; margin-bottom: 1rem; padding: .85rem 1rem; border-radius: 12px; background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.25); color: #92400e; font-size: .84rem; }
+    .sd-bandeau { display: flex; align-items: center; gap: .6rem; margin-bottom: 1rem; padding: .85rem 1rem; border-radius: 12px;
+        background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.25); color: #065f46; font-size: .88rem; font-weight: 600; }
+    .sd-bandeau i { color: #10b981; }
     .sd-pagination { display: flex; gap: .3rem; justify-content: center; padding: .75rem; }
     .sd-page { min-width: 32px; text-align: center; padding: .3rem .5rem; border-radius: 8px; font-size: .82rem; color: #475569; text-decoration: none; border: 1px solid #e2e8f0; }
     .sd-page--active { background: #0453cb; color: #fff; border-color: #0453cb; }
@@ -60,13 +65,13 @@
             <div class="sd-hero-left">
                 <div class="sd-hero-icon"><i class="fas fa-life-ring"></i></div>
                 <div>
-                    <h1>Demandes de support</h1>
-                    <p>Suivez ce que vous avez signalé à l'équipe KLASSCI, et nos réponses.</p>
+                    <h1>Mes demandes d'aide</h1>
+                    <p>Suivez ce que vous avez demandé à l'équipe support, et ses réponses.</p>
                 </div>
             </div>
             @if($signalementOuvert)
                 <a href="mailto:{{ config('app.support_email') }}" class="sd-btn sd-btn--blanc" data-support-ouvrir>
-                    <i class="fas fa-plus"></i> Signaler un problème
+                    <i class="fas fa-plus"></i> Aide
                 </a>
             @endif
         </div>
@@ -75,6 +80,10 @@
             <div class="sd-kpi"><div class="sd-kpi-value">{{ $boiteEnvoi->whereNull('sent_at')->whereNull('abandoned_at')->count() }}</div><div class="sd-kpi-label">En attente d'envoi</div></div>
         </div>
     </div>
+
+    @if(session('success'))
+        <div class="sd-bandeau" role="status"><i class="fas fa-circle-check" aria-hidden="true"></i><span>{{ session('success') }}</span></div>
+    @endif
 
     @if($boiteEnvoi->isNotEmpty())
         <ul class="sd-attente">

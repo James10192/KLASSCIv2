@@ -123,7 +123,10 @@
             return true;
         });
         if (!list.length) {
-            box.innerHTML = '<div class="mh2-zero"><i class="fas fa-inbox"></i><strong>Aucune conversation</strong><span>Aucun résultat pour ces filtres.</span></div>';
+            // Boîte vide : on propose d'écrire. Filtre sans résultat : on propose de l'enlever.
+            box.innerHTML = state.conversations.length
+                ? '<div class="mh2-zero"><i class="fas fa-magnifying-glass"></i><strong>Aucun résultat</strong><span>Rien ne correspond à ce filtre ou à cette recherche.</span><button type="button" class="mh2-btn is-ghost" data-reset-filters>Tout afficher</button></div>'
+                : '<div class="mh2-zero"><i class="fas fa-inbox"></i><strong>Aucune conversation pour l’instant</strong><span>Écrivez à un collègue : la conversation apparaîtra ici.</span><button type="button" class="mh2-btn" data-new><i class="fas fa-pen"></i> Écrire un message</button></div>';
             return;
         }
         box.innerHTML = list.map(function(c){
@@ -131,7 +134,7 @@
             var badges = '';
             if (c.state && c.state.important) badges += '<i class="fas fa-star" title="Important"></i>';
             if (c.state && c.state.pinned) badges += '<i class="fas fa-thumbtack" title="Épinglé"></i>';
-            return '<button type="button" class="mh2-conversation ' + (state.conversation && String(state.conversation.id)===String(c.id)?'is-active':'') + '" data-conversation="'+c.id+'">' +
+            return '<button type="button" class="mh2-conversation ' + (state.conversation && String(state.conversation.id)===String(c.id)?'is-active':'') + (c.unread_count?' is-unread':'') + '" data-conversation="'+c.id+'">' +
                 '<span class="mh2-avatar '+(c.type==='group'?'is-group':'')+'">'+esc(c.initials||'K')+'</span>'+
                 '<span class="mh2-conversation-body"><span class="mh2-conversation-name">'+esc(c.title)+' '+badges+'</span>'+
                 '<span class="mh2-conversation-role">'+esc(c.subtitle || p.role_label || 'Personnel de l’école')+'</span>'+
@@ -141,9 +144,9 @@
     }
 
     function renderEmptyThread() {
-        $('[data-thread-title]').textContent = 'Sélectionnez une conversation';
-        $('[data-thread-sub]').textContent = 'Les personnes et les dossiers liés sont volontairement séparés.';
-        $('[data-thread]').innerHTML = '<div class="mh2-empty"><div class="mh2-empty-icon"><i class="fas fa-message"></i></div><h3>Boîte de réception</h3><p>Ouvrez un fil pour voir ses participants, ses dossiers liés et leur relation vérifiée — ou à vérifier.</p></div>';
+        $('[data-thread-title]').textContent = 'Vos messages';
+        $('[data-thread-sub]').textContent = 'Choisissez une conversation à gauche, ou écrivez à quelqu’un.';
+        $('[data-thread]').innerHTML = '<div class="mh2-empty"><div class="mh2-empty-icon"><i class="fas fa-message"></i></div><h3>Choisissez une conversation</h3><p>Elle s’ouvrira ici, avec les personnes et les dossiers partagés.</p><button type="button" class="mh2-btn" data-new><i class="fas fa-pen"></i> Écrire un message</button></div>';
         $('[data-composer]').hidden = true;
     }
 
@@ -329,7 +332,7 @@
         box.classList.add('is-open'); var sel=$('[data-action-status-edit]');if(sel)sel.value=a.status;
     }
 
-    function updateAction(id,status){api(cfg.actionBase+'/'+id,{method:'PATCH',body:JSON.stringify({status:status,comment:'Statut modifié depuis le Centre d’actions.'})}).then(function(){toast('Statut mis à jour.');bootstrap(true);if(state.activeAction)openAction('action:'+id);}).catch(function(e){toast(e.message,true);});}
+    function updateAction(id,status){api(cfg.actionBase+'/'+id,{method:'PATCH',body:JSON.stringify({status:status,comment:'Statut modifié depuis Demandes aux services.'})}).then(function(){toast('Statut mis à jour.');bootstrap(true);if(state.activeAction)openAction('action:'+id);}).catch(function(e){toast(e.message,true);});}
 
     function openModal(mode){var m=$('[data-modal]');m.classList.add('is-open');m.setAttribute('aria-hidden','false');document.body.classList.add('mh2-lock');showModalPanel(mode||'intents');}
     function closeModal(){var m=$('[data-modal]');m.classList.remove('is-open');m.setAttribute('aria-hidden','true');document.body.classList.remove('mh2-lock');}
@@ -358,6 +361,7 @@
     root.addEventListener('click',function(e){
         var el=e.target.closest('[data-space]');if(el){setSpace(el.dataset.space);return;}
         el=e.target.closest('[data-conversation]');if(el){loadConversation(el.dataset.conversation);return;}
+        el=e.target.closest('[data-reset-filters]');if(el){$$('.mh2-filter').forEach(function(x){x.classList.toggle('is-active',x.dataset.filter==='all');});var sq=$('[data-conversation-search]');if(sq)sq.value='';renderConversationList();return;}
         el=e.target.closest('.mh2-filter');if(el){$$('.mh2-filter').forEach(function(x){x.classList.remove('is-active');});el.classList.add('is-active');renderConversationList();return;}
         el=e.target.closest('[data-send]');if(el){sendMessage();return;}
         el=e.target.closest('[data-retry]');if(el){retryMessage(el.dataset.retry);return;}
@@ -372,7 +376,6 @@
         el=e.target.closest('[data-new]');if(el){openModal('intents');return;}
         el=e.target.closest('[data-modal-close]');if(el){closeModal();return;}
         el=e.target.closest('[data-intent-person]');if(el){showModalPanel('person');setTimeout(function(){$('[data-user-search]').focus();},30);return;}
-        el=e.target.closest('[data-intent-action]');if(el){showModalPanel('action');return;}
         el=e.target.closest('[data-intent-internal]');if(el){showModalPanel('action');setTimeout(function(){var f=$('[data-action-form]');f.elements.action_type.value='internal_request';},0);return;}
         el=e.target.closest('[data-back-intents]');if(el){showModalPanel('intents');return;}
         el=e.target.closest('[data-user]');if(el){startDm(el.dataset.user);return;}

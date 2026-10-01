@@ -187,17 +187,28 @@
                                             <div class="ast-retour-merci">
                                                 <span><i class="fas fa-check" aria-hidden="true"></i> Merci, c'est noté. La prochaine réponse sera plus poussée.</span>
                                                 <span class="ast-retour-care" x-show="msg.signalement.etat === 'envoye' && !msg.signalement.ouvert" x-text="msg.signalement.message"></span>
+                                                <template x-if="msg.signalement.etat === 'envoye' && !msg.signalement.ouvert && msg.signalement.suivi">
+                                                    <a class="ast-btn ast-btn--ghost" x-bind:href="msg.signalement.suivi"><i class="fas fa-inbox" aria-hidden="true"></i> Suivre ma demande</a>
+                                                </template>
+                                                <template x-if="msg.signalement.etat === 'envoye' && msg.signalement.verifier && msg.signalement.verification.etat !== 'ok'">
+                                                    <span class="ast-retour-care">
+                                                        <span x-text="'Confirmez votre adresse ' + (msg.signalement.emailMasque ? msg.signalement.emailMasque + ' ' : '') + 'pour être averti(e) par e-mail de la réponse.'"></span>
+                                                        <button type="button" class="ast-btn ast-btn--ghost" x-on:click="confirmerAdresse(msg)" x-bind:disabled="msg.signalement.verification.etat === 'envoi'"
+                                                                x-text="msg.signalement.verification.etat === 'envoi' ? 'Envoi…' : 'Confirmer mon adresse'"></button>
+                                                    </span>
+                                                </template>
+                                                <span class="ast-retour-care" role="status" x-show="msg.signalement.verification.message" x-text="msg.signalement.verification.message"></span>
                                                 <template x-if="cfg.care && !msg.signalement.ouvert && msg.signalement.etat !== 'envoye'">
                                                     <button type="button" class="ast-btn ast-btn--ghost" x-on:click="ouvrirSignalement(msg)">
-                                                        <i class="fas fa-life-ring" aria-hidden="true"></i> Signaler à KLASSCI Care
+                                                        <i class="fas fa-life-ring" aria-hidden="true"></i> Signaler à l'équipe support
                                                     </button>
                                                 </template>
                                             </div>
                                         </template>
                                         <template x-if="msg.signalement.ouvert">
                                             <div class="ast-retour-form">
-                                                <div class="ast-retour-titre">Signaler à KLASSCI Care</div>
-                                                <p class="ast-retour-aide">Relisez le texte et retirez ce que vous ne voulez pas transmettre. Le support le recevra avec des repères techniques : la page ouverte, le navigateur, le numéro de cette réponse et le modèle qui l'a écrite.</p>
+                                                <div class="ast-retour-titre">Signaler à l'équipe support</div>
+                                                <p class="ast-retour-aide">Relisez le texte et retirez ce que vous ne voulez pas transmettre. L'équipe support le recevra avec la page ouverte et la réponse de Nanan.</p>
                                                 <label class="ast-sr" x-bind:for="'ast-sig-' + msg.key">Description</label>
                                                 <textarea class="ast-input" rows="5" x-bind:maxlength="cfg.signalementMax" x-bind:id="'ast-sig-' + msg.key" x-model="msg.signalement.texte"
                                                           x-bind:disabled="msg.signalement.etat === 'envoi' || msg.signalement.etat === 'envoye'"></textarea>

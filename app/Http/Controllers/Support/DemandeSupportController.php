@@ -15,6 +15,7 @@ use App\Http\Controllers\Support\Concerns\PorteeDeLecture;
 use App\Http\Controllers\Support\Concerns\RepondAUnSignalement;
 use App\Http\Requests\Support\RepondreDemandeRequest;
 use App\Http\Requests\Support\SoumettreDemandeRequest;
+use App\Models\Notification;
 use App\Services\Care\ClientMasterSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -72,13 +73,14 @@ class DemandeSupportController extends Controller
             'meta' => $demandes['meta'] ?? ['page' => 1, 'pages' => 1, 'total' => 0],
             'portee' => $portee,
             'indisponible' => $indisponible,
+            'nonLues' => $this->reponsesNonLues($request->user()->getKey()),
         ];
         if ($request->ajax()) {
             return response()->json(['liste' => view('support.demandes._liste', $donnees)->render(), 'portee' => $portee]);
         }
 
         return view('support.demandes.index', $donnees + [
-            'boiteEnvoi' => SupportOutbox::aMontrer()->where('user_id', $request->user()->getKey())->latest()->get(),
+            'boiteEnvoi' => SupportOutbox::signalements()->aMontrer()->where('user_id', $request->user()->getKey())->latest()->get(),
             'peutVoirEcole' => $request->user()->can('support.tickets.view_school'),
             'signalementOuvert' => $this->disponibilite->signalement(),
         ]);
@@ -96,6 +98,11 @@ class DemandeSupportController extends Controller
         }
 
         abort_if($demande === null, 404);
+
+        // Ouvrir la demande vaut lecture de l'avertissement qui y menait.
+        Notification::where('user_id', $request->user()->getKey())->where('is_read', false)
+            ->where('link', route('support.demandes.show', $reference, false))
+            ->update(['is_read' => true]);
 
         return view('support.demandes.show', [
             'demande' => $demande,
@@ -149,6 +156,25 @@ class DemandeSupportController extends Controller
             'peut_repondre' => $this->peutRepondre($demande, $auteur),
             'peut_joindre' => $this->peutJoindre($demande, $auteur),
         ]);
+    }
+
+    /**
+     * Les demandes dont un avertissement « le support a répondu » n'est pas
+     * encore lu. C'est la seule trace de consultation disponible : la
+     * notification est créée par support:suivre-demandes et marquée lue à
+     * l'ouverture de la demande (ou depuis la cloche).
+     *
+     * @return list<string> références
+     */
+    private function reponsesNonLues(int $userId): array
+    {
+        $prefixe = route('support.demandes.index', [], false).'/';
+
+        return Notification::where('user_id', $userId)->where('is_read', false)
+            ->where('link', 'like', $prefixe.'KC-%')
+            ->pluck('link')
+            ->map(fn ($lien) => substr((string) $lien, strlen($prefixe)))
+            ->unique()->values()->all();
     }
 
     private function refusInattendu(MasterSupportRefus $e): JsonResponse

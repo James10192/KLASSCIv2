@@ -39,7 +39,11 @@
     $mabHeroLabel = 'Bonjour ' . $mabPrenom . ($mab['classe'] ? ' · ' . $mab['classe'] : '');
 
     $mabCours = $mab['prochain_cours'];
-    if (! $mab['classe']) {
+    if ($mab['annee_a_venir']) {
+        $mabHeroValeur = 'Inscrit pour ' . $mab['annee_a_venir'];
+        $mabHeroUnite = null;
+        $mabHeroCalme = true;
+    } elseif (! $mab['classe']) {
         $mabHeroValeur = 'Aucune inscription active';
         $mabHeroUnite = null;
         $mabHeroCalme = true;
@@ -217,6 +221,11 @@
                         <i class="fas fa-calendar me-1"></i>
                         {{ $anneeEnCours->name ?? 'Année non définie' }}
                     </div>
+                    @if(! empty($anneeInscriptionAVenir))
+                        <div class="year-selector" style="margin-left:.5rem;">
+                            <i class="fas fa-check-circle me-1"></i>Inscrit pour {{ $anneeInscriptionAVenir }}
+                        </div>
+                    @endif
                 @endif
             </div>
         </div>

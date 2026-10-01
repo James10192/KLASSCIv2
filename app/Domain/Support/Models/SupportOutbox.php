@@ -8,12 +8,22 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Log;
 
-/** Un signalement en attente d'envoi au Master. */
+/**
+ * Un envoi au Master en attente : un signalement, ou un avis 👍 / 👎 sur une
+ * reponse de l'assistant. Les deux partagent la reprise ; seul l'ecran
+ * « Mes demandes » ne montre que les signalements.
+ */
 class SupportOutbox extends Model
 {
+    public const SIGNALEMENT = 'ticket';
+
+    public const AVIS_ASSISTANT = 'assistant_feedback';
+
     protected $table = 'support_outbox';
 
-    protected $fillable = ['user_id', 'idempotency_key', 'payload', 'request_id', 'next_attempt_at'];
+    protected $fillable = ['user_id', 'kind', 'idempotency_key', 'payload', 'request_id', 'next_attempt_at'];
+
+    protected $attributes = ['kind' => self::SIGNALEMENT];
 
     protected $casts = [
         'payload' => 'array',
@@ -30,6 +40,11 @@ class SupportOutbox extends Model
     public function scopeEnAttente(Builder $query): Builder
     {
         return $query->whereNull('sent_at')->whereNull('abandoned_at');
+    }
+
+    public function scopeSignalements(Builder $query): Builder
+    {
+        return $query->where('kind', self::SIGNALEMENT);
     }
 
     public function scopeAEnvoyer(Builder $query): Builder
@@ -54,6 +69,26 @@ class SupportOutbox extends Model
         return mb_strimwidth((string) ($this->payload['report']['description'] ?? ''), 0, 90, '…');
     }
 
+    /**
+     * Reserve la ligne pour un envoi : pose `next_attempt_at` quelques minutes
+     * plus loin, de facon atomique. Une ligne reservee n'est plus remplacee
+     * par TransmettreRetour, et une seconde passe ne la reprend pas. Si
+     * l'appel n'aboutit pas, reporter() ou differer() reposent la date.
+     *
+     * Rend faux si une autre passe l'a deja prise.
+     */
+    public function reserver(int $minutes = 5): bool
+    {
+        $jusqua = now()->addMinutes($minutes);
+        $prise = static::whereKey($this->getKey())->aEnvoyer()->update(['next_attempt_at' => $jusqua]) === 1;
+        if ($prise) {
+            $this->next_attempt_at = $jusqua;
+            $this->syncOriginalAttribute('next_attempt_at');
+        }
+
+        return $prise;
+    }
+
     /** Recul progressif : 1, 2, 4… minutes, plafonne a une heure. */
     public function reporter(string $erreur): void
     {
@@ -61,8 +96,9 @@ class SupportOutbox extends Model
         $this->last_error = mb_substr($erreur, 0, 1000);
         if ($this->attempts >= (int) config('support.boite_envoi.tentatives_max', 20)) {
             $this->abandoned_at = now();
-            Log::error('KLASSCI Care : signalement abandonné après tous les essais', [
+            Log::error('KLASSCI Care : '.($this->kind === self::AVIS_ASSISTANT ? 'avis sur l\'assistant' : 'signalement').' abandonné après tous les essais', [
                 'outbox_id' => $this->id,
+                'nature' => $this->kind,
                 'tentatives' => $this->attempts,
                 'erreur' => $this->last_error,
             ]);
@@ -70,5 +106,18 @@ class SupportOutbox extends Model
             $this->next_attempt_at = now()->addMinutes(min(60, 2 ** ($this->attempts - 1)));
         }
         $this->save();
+    }
+
+    /**
+     * Remis a plus tard sans compter d'essai : la ligne n'est pas en cause
+     * (route ou portee pas encore ouverte au Master), elle ne doit pas
+     * s'approcher de l'abandon pendant qu'on attend.
+     */
+    public function differer(string $raison, int $minutes = 60): void
+    {
+        $this->forceFill([
+            'last_error' => mb_substr($raison, 0, 1000),
+            'next_attempt_at' => now()->addMinutes($minutes),
+        ])->save();
     }
 }

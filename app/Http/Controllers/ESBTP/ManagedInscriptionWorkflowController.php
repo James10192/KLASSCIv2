@@ -43,6 +43,8 @@ class ManagedInscriptionWorkflowController extends Controller
             'pieces' => $this->managed->provisionalPieces($workflow),
             'etapes' => $this->presenter->etapes($workflow),
             'prochaineEtape' => $this->presenter->prochaineEtape($workflow),
+            'contactJoignable' => $this->presenter->contactJoignable($workflow),
+            'emailEnAttente' => $this->presenter->emailEnAttente($workflow),
             'activationStep' => $this->settings->accountActivationStep(),
             'classChoiceActor' => $classChoiceActor,
             'eligibleClasses' => $workflow->final_inscription_id ? collect() : $this->managed->eligibleClasses($workflow),
@@ -54,7 +56,16 @@ class ManagedInscriptionWorkflowController extends Controller
     public function activationForm(string $token)
     {
         $this->guardManagedWorkflow();
-        $workflow = $this->managed->workflowForActivationToken($token);
+
+        // Un lien périmé ouvert depuis un e-mail n'a pas de page précédente :
+        // laisser remonter l'exception renvoyait vers la même URL, en boucle.
+        try {
+            $workflow = $this->managed->workflowForActivationToken($token);
+        } catch (ValidationException $e) {
+            return response()->view('esbtp.admissions.workflow.activation-indisponible', [
+                'motif' => collect($e->errors())->flatten()->first(),
+            ], 410);
+        }
 
         return view('esbtp.admissions.workflow.activation', [
             'workflow' => $workflow,

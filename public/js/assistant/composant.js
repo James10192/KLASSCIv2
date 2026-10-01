@@ -202,7 +202,7 @@
                     suites: { questions: [], actions: [] },
                     // Avis 👍 / 👎 et signalement KLASSCI Care
                     dbId: null, avis: null, retourOuvert: false, raison: '', commentaire: '', retourEnvoye: false,
-                    signalement: { ouvert: false, texte: '', etat: '', message: '', cle: null }
+                    signalement: { ouvert: false, texte: '', etat: '', message: '', cle: null, suivi: null, verifier: null, emailMasque: null, verification: { etat: '', message: '' } }
                 });
                 var msg = this.messages[this.messages.length - 1];
                 this.creerVue(msg);
@@ -656,8 +656,31 @@
                     sig.message = r.ok
                         ? (r.json.en_attente ? r.json.message : 'Signalement transmis au support' + (r.json.reference ? ' (' + r.json.reference + ')' : '') + '.')
                         : ((Array.isArray(detail) ? detail[0] : detail) || r.message || 'Envoi impossible.');
-                    if (r.ok) { sig.ouvert = false; }
+                    if (r.ok) {
+                        sig.ouvert = false;
+                        /* Où suivre la demande, et l'invitation à confirmer son adresse (contrat du support). */
+                        sig.suivi = typeof r.json.suivi_url === 'string' ? r.json.suivi_url : null;
+                        sig.verifier = r.json.email_a_verifier === true && typeof r.json.email_verification_url === 'string' ? r.json.email_verification_url : null;
+                        sig.emailMasque = typeof r.json.email_masque === 'string' ? r.json.email_masque : null;
+                    }
                 }).catch(function () { sig.etat = 'erreur'; sig.message = 'Connexion interrompue.'; });
+            },
+
+            /** 200 {envoye:true}, 422 {deja_verifiee}, 503 {envoye:false} : jamais bloquant. */
+            confirmerAdresse: function (msg) {
+                var sig = msg.signalement;
+                if (!sig.verifier || sig.verification.etat === 'envoi') { return; }
+                sig.verification = { etat: 'envoi', message: '' };
+                this.postJson(sig.verifier, {}).then(function (r) {
+                    var c = r.json || {};
+                    if (r.ok && c.envoye === true) {
+                        sig.verification = { etat: 'ok', message: c.message || 'Un lien de confirmation vous a été envoyé.' };
+                    } else if (c.deja_verifiee === true) {
+                        sig.verification = { etat: 'ok', message: c.message || 'Votre adresse est déjà confirmée.' };
+                    } else {
+                        sig.verification = { etat: 'erreur', message: c.message || "L'envoi du lien a échoué. Réessayez dans un instant." };
+                    }
+                }).catch(function () { sig.verification = { etat: 'erreur', message: 'Connexion interrompue.' }; });
             },
 
             // ─── Conversations ───

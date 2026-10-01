@@ -142,6 +142,7 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertSame('etudiant_cree', $inscription->workflow_step);
         $this->assertSame($this->anneeDossier->id, (int) $inscription->annee_universitaire_id);
         $this->assertSame(ESBTPCandidature::STATUT_CONVERTIE, $candidature->fresh()->statut);
+        $this->assertStringStartsNotWith('PRE-', $workflow->etudiant->fresh()->matricule, 'Inscrit : le matricule provisoire est remplacé.');
 
         // Finance : 500 000 dus, 50 000 versés à la préinscription → 450 000.
         $soldes = app(SoldesParSouscription::class)->pourInscription($inscription);
@@ -299,6 +300,25 @@ class ManagedInscriptionEndToEndTest extends TestCase
     }
 
     /** @test */
+    public function un_dossier_sans_sexe_n_est_pas_finalise_et_garde_son_matricule_provisoire(): void
+    {
+        // Le contrôle de complétude ne joue que sur un matricule PRE- : le
+        // remplacer d'abord laissait finaliser un dossier sans sexe, avec un
+        // matricule numéroté sur un sexe deviné.
+        $workflow = $this->dossierPretAChoisir();
+        $workflow->etudiant->forceFill(['sexe' => null])->save();
+        $this->actingAs($workflow->etudiant->user);
+
+        $this->assertRefus(
+            fn () => app(FinalizeManagedInscription::class)->chooseAndFinalize($workflow->fresh(), $this->classe->id, $workflow->etudiant->user_id),
+            'finalisation'
+        );
+
+        $this->assertStringStartsWith('PRE-', $workflow->etudiant->fresh()->matricule);
+        $this->assertNull($workflow->fresh()->final_inscription_id);
+    }
+
+    /** @test */
     public function un_etudiant_ne_voit_que_son_propre_dossier(): void
     {
         $a = $this->dossierPretAChoisir();
@@ -307,8 +327,8 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($a->etudiant->user)
             ->get(route('esbtp.admissions.workflow.student'))
             ->assertOk()
-            ->assertSee($a->candidature->reference_publique)
-            ->assertDontSee($b->candidature->reference_publique);
+            ->assertSee($a->candidature->referencePubliqueAffichee())
+            ->assertDontSee($b->candidature->referencePubliqueAffichee());
 
         // Un étudiant n'atteint pas les écrans des guichets.
         $this->actingAs($a->etudiant->user)
@@ -331,8 +351,8 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($caissier)
             ->get(route('esbtp.admissions.workflow.index'))
             ->assertOk()
-            ->assertSee($enAttente->reference_publique)
-            ->assertDontSee($workflow->candidature->reference_publique);
+            ->assertSee($enAttente->referencePubliqueAffichee())
+            ->assertDontSee($workflow->candidature->referencePubliqueAffichee());
 
         $this->actingAs($caissier)
             ->get(route('esbtp.admissions.workflow.show', $workflow->candidature))
@@ -359,6 +379,159 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertCount(0, $sequence->dossiers(ManagedInscriptionSequence::ETAPE_CAISSE)->items());
         $this->assertSame([$candidature->id], collect($sequence->dossiers(ManagedInscriptionSequence::ETAPE_PIECES)->items())->pluck('id')->all());
         $this->assertSame([$candidature->id], collect($sequence->dossiers(ManagedInscriptionSequence::ETAPE_TOUS)->items())->pluck('id')->all());
+    }
+
+    /** @test */
+    public function un_contact_non_prouve_est_annonce_et_se_confirme_au_guichet(): void
+    {
+        $this->reglage(\App\Services\TenantScolariteSettings::VERIFICATION_CONTACT, '1');
+        $this->reglage(InscriptionWorkflowSettings::ACCOUNT_ACTIVATION_STEP, InscriptionWorkflowSettings::ACTIVATION_AFTER_DOCUMENTS);
+
+        $managed = app(ManagedInscriptionWorkflow::class);
+        $candidature = $this->candidature(emailVerifie: false);
+        $workflow = $managed->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+        $managed->receivePiece($workflow, $this->piece->id, 2, $this->agent->id);
+        ESBTPPieceDeposee::where('etudiant_id', $workflow->etudiant_id)->update(['etat' => 'validee']);
+        $workflow = $managed->validateDocuments($workflow->fresh(), $this->agent->id);
+
+        // Rien n'est parti : l'écran le dit au lieu d'annoncer un lien reçu.
+        $this->assertSame(
+            "Lien d'activation non envoyé : aucun e-mail ni numéro vérifié. Confirmez le contact avec l'étudiant.",
+            app(\App\Services\Admissions\ManagedWorkflowPresenter::class)->prochaineEtape($workflow->fresh())
+        );
+
+        foreach (['pieces_dossier.suivre', 'admin.access'] as $nom) {
+            \Spatie\Permission\Models\Permission::findOrCreate($nom, 'web');
+        }
+        $secretariat = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
+        $secretariat->givePermissionTo(['pieces_dossier.suivre', 'admin.access']);
+
+        $this->actingAs($secretariat)
+            ->get(route('esbtp.admissions.workflow.show', $candidature))
+            ->assertOk()
+            ->assertSee("Le lien n'est pas parti.", false)
+            ->assertSee($candidature->email);
+
+        $this->actingAs($secretariat)
+            ->post(route('esbtp.admissions.workflow.activation.confirm-contact', $workflow), [
+                'empreinte' => 'perime',
+            ])
+            ->assertSessionHas('warning');
+        $this->assertNull($candidature->fresh()->contact_confirme_at, 'Une empreinte périmée ne confirme rien.');
+
+        $this->actingAs($secretariat)
+            ->post(route('esbtp.admissions.workflow.activation.confirm-contact', $workflow), [
+                'empreinte' => $candidature->fresh()->empreinteContact(),
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success', fn (string $m) => str_starts_with($m, 'Contact confirmé.'));
+
+        $candidature->refresh();
+        // Sous RefreshDatabase, l'e-mail part au commit : on vérifie l'état
+        // qui le rend possible plutôt que le message rendu.
+        $this->assertTrue(app(\App\Services\Admissions\AdmissionActivationNotifier::class)->emailUsable($workflow->fresh()));
+        $this->assertNotNull($candidature->contact_confirme_at);
+        $this->assertSame($secretariat->id, (int) $candidature->contact_confirme_par);
+        // Même confirmation que la file des demandes : le badge tombe aussi.
+        $this->assertFalse($candidature->contactMarque());
+    }
+
+    /** @test */
+    public function le_lien_par_e_mail_part_par_mailpulse_comme_les_convocations(): void
+    {
+        // Le mailer de l'application n'est pas configuré partout ; MailPulse,
+        // qui porte déjà les convocations, l'est. Le lien prend ce chemin.
+        $candidature = $this->candidature();
+        $mailpulse = Mockery::mock(MailPulseClient::class);
+        $mailpulse->shouldReceive('createOrUpdateContact')->andReturn(new \App\Services\MailPulse\MailPulseResult(true, 'ok'));
+        $mailpulse->shouldReceive('sendEmailMessage')->atLeast()->once()
+            ->withArgs(fn (array $message) => ($message['recipient']['value'] ?? null) === $candidature->email
+                && str_contains($message['content']['text'] ?? '', '/activation/')
+                // La version mise en page : gabarit commun, bouton vers le même lien.
+                && str_contains($message['metadata']['email_html'] ?? '', 'Activer mon espace')
+                && str_contains($message['metadata']['email_html'] ?? '', '/activation/'))
+            ->andReturn(new \App\Services\MailPulse\MailPulseResult(true, 'queued', 202, null, 'msg-1', null, null, null, 'accepted'));
+        $this->app->instance(MailPulseClient::class, $mailpulse);
+
+        $managed = app(ManagedInscriptionWorkflow::class);
+        $workflow = $managed->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+
+        // Hors transaction de test, l'envoi est immédiat : on le prouve sur
+        // le notificateur, qui est ce que la caisse et le guichet appellent.
+        $this->assertTrue(app(\App\Services\Admissions\AdmissionActivationNotifier::class)
+            ->sendEmail($workflow->fresh(), route('esbtp.admissions.workflow.activation.form', ['token' => 'x'])));
+    }
+
+    /** @test */
+    public function un_numero_verifie_n_empeche_pas_de_confirmer_l_email(): void
+    {
+        // Cas réel de recette : numéro prouvé, e-mail non. Le lien ne part
+        // que par WhatsApp ; si le message n'arrive pas, l'agent doit pouvoir
+        // confirmer l'e-mail au lieu de rester sans issue.
+        $this->reglage(\App\Services\TenantScolariteSettings::VERIFICATION_CONTACT, '1');
+        $this->reglage(InscriptionWorkflowSettings::NOTIFY_WHATSAPP, '1');
+        $this->reglage(InscriptionWorkflowSettings::ACCOUNT_ACTIVATION_STEP, InscriptionWorkflowSettings::ACTIVATION_AFTER_PAYMENT);
+
+        $candidature = $this->candidature(emailVerifie: false);
+        $candidature->forceFill(['telephone_verifie_at' => now()])->save();
+        $workflow = app(ManagedInscriptionWorkflow::class)->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+
+        $admin = User::role('superAdmin')->first();
+        $this->actingAs($admin)
+            ->get(route('esbtp.admissions.workflow.show', $candidature))
+            ->assertOk()
+            ->assertSee('Le lien ne part que par WhatsApp', false);
+
+        $this->actingAs($admin)
+            ->post(route('esbtp.admissions.workflow.activation.confirm-contact', $workflow), [
+                'empreinte' => $candidature->fresh()->empreinteContact(),
+            ])
+            ->assertSessionHas('success', fn (string $m) => str_starts_with($m, 'Contact confirmé.'));
+
+        $this->assertTrue(app(\App\Services\Admissions\AdmissionActivationNotifier::class)->emailUsable($workflow->fresh()));
+        $this->actingAs($admin)
+            ->get(route('esbtp.admissions.workflow.show', $candidature))
+            ->assertDontSee('Le lien ne part que par WhatsApp', false);
+    }
+
+    /** @test */
+    public function un_lien_d_activation_perime_affiche_une_page_et_ne_boucle_pas(): void
+    {
+        // Ouvert depuis un e-mail, le lien n'a pas de page précédente : l'erreur
+        // de validation renvoyait vers la même URL, jusqu'au « trop de redirections ».
+        $this->get(route('esbtp.admissions.workflow.activation.form', ['token' => 'inconnu']))
+            ->assertStatus(410)
+            ->assertSee('Ce lien ne peut plus servir', false)
+            ->assertSee("Ce lien d'activation est invalide ou expiré.");
+    }
+
+    /** @test */
+    public function le_formulaire_classique_refuse_une_candidature_du_parcours(): void
+    {
+        $candidature = $this->candidature();
+        $admin = User::role('superAdmin')->first();
+
+        $this->actingAs($admin)
+            ->get(route('esbtp.inscriptions.create', ['candidature' => $candidature->id]))
+            ->assertRedirect(route('esbtp.admissions.workflow.show', $candidature->id));
+
+        $this->actingAs($admin)
+            ->getJson(route('esbtp.demandes.preparer-inscription', $candidature))
+            ->assertStatus(422);
+
+        // En attente : pas encore de dossier en cours, donc pas de boucle vers
+        // lui ; la file des demandes, où l'on accepte.
+        $enAttente = $this->candidature();
+        $enAttente->forceFill(['statut' => ESBTPCandidature::STATUT_EN_ATTENTE])->save();
+        $this->actingAs($admin)
+            ->get(route('esbtp.inscriptions.create', ['candidature' => $enAttente->id]))
+            ->assertRedirect(route('esbtp.demandes.index', ['type' => 'nouvelle']));
+
+        // Parcours éteint : le formulaire classique reprend la candidature.
+        $this->reglage(InscriptionWorkflowSettings::ENABLED, '0');
+        $this->actingAs($admin)
+            ->get(route('esbtp.inscriptions.create', ['candidature' => $candidature->id]))
+            ->assertOk();
     }
 
     // ── Préparation ─────────────────────────────────────────────────────

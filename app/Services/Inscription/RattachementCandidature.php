@@ -25,6 +25,44 @@ final class RattachementCandidature
     public function __construct(private readonly PortailCandidatureService $candidatures) {}
 
     /**
+     * Quand l'école suit le parcours d'inscription configurable, une
+     * candidature s'inscrit par ce parcours, et par lui seul.
+     *
+     * Le formulaire classique pré-rempli depuis la candidature créerait
+     * l'inscription sans caisse ni contrôle des pièces, à côté du dossier en
+     * cours : deux inscriptions pour un même candidat, et une préinscription
+     * payée qui ne se rattache plus à rien.
+     *
+     * @return RedirectResponse|null null si l'on peut créer
+     */
+    public function refuserSiParcoursConfigurable(Request $request)
+    {
+        $id = (int) $request->input('candidature_id', $request->integer('candidature'));
+        if ($id <= 0 || ! app(\App\Services\Admissions\InscriptionWorkflowSettings::class)->usesManagedWorkflow()) {
+            return null;
+        }
+
+        // Une candidature close ne s'inscrit de toute façon plus par ce
+        // formulaire : rien à refuser, le formulaire l'ignore.
+        $candidature = \App\Models\ESBTPCandidature::find($id);
+        if ($candidature === null || $candidature->dossierClos()) {
+            return null;
+        }
+
+        // Le dossier en cours n'existe qu'une fois la candidature acceptée.
+        // Y envoyer une candidature en attente la renverrait ici : boucle.
+        if ($candidature->statut !== \App\Models\ESBTPCandidature::STATUT_ACCEPTEE && ! $candidature->managedWorkflow()->exists()) {
+            return redirect()
+                ->route('esbtp.demandes.index', ['type' => 'nouvelle'])
+                ->with('warning', "Le parcours d'inscription de l'établissement est actif : acceptez d'abord cette candidature ; elle s'inscrira ensuite depuis son dossier en cours.");
+        }
+
+        return redirect()
+            ->route('esbtp.admissions.workflow.show', $id)
+            ->with('warning', "Cette candidature suit le parcours d'inscription de l'établissement : elle s'inscrit depuis ce dossier, pas par le formulaire classique.");
+    }
+
+    /**
      * La date saisie correspond-elle a la candidature qu'on inscrit ?
      *
      * Posee AVANT la creation, et c'est tout l'interet. Le meme controle apres

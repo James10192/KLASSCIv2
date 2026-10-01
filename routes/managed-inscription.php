@@ -86,6 +86,9 @@ Route::prefix('esbtp/admissions/workflow')
             Route::post('/{workflow}/activation/renvoyer', [ManagedActivationController::class, 'resend'])
                 ->middleware(['permission:inscriptions.validate|pieces_dossier.suivre', 'throttle:10,1'])
                 ->name('activation.resend');
+            Route::post('/{workflow}/contact/confirmer', [ManagedActivationController::class, 'confirmContact'])
+                ->middleware(['permission:inscriptions.validate|pieces_dossier.suivre', 'throttle:10,1'])
+                ->name('activation.confirm-contact');
 
             // Décisions académiques : affecter une classe, finaliser. Le droit
             // existant « valider une inscription » — que la caisse n'a pas.

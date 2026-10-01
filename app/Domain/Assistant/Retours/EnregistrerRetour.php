@@ -11,10 +11,13 @@ use App\Models\User;
  * 👍 / 👎 sur une réponse. Un 👎 n'est pas qu'une statistique : la question
  * suivante de la conversation part un palier au-dessus, comme après un échec
  * (le routeur redescend seul après trois réussites).
+ *
+ * Chaque avis part aussi au Master (KLASSCI Care), pour que l'équipe le voie :
+ * voir TransmettreRetour.
  */
 class EnregistrerRetour
 {
-    public function __construct(private Routeur $routeur)
+    public function __construct(private Routeur $routeur, private TransmettreRetour $transmettre)
     {
     }
 
@@ -37,6 +40,9 @@ class EnregistrerRetour
         if ($avis === RetourDeReponse::PAS_UTILE) {
             $this->monterLaConversation($message, $ligne?->palier);
         }
+
+        // Vers KLASSCI Care, par la boite d'envoi : ne bloque ni ne leve jamais.
+        $this->transmettre->executer($retour, $message, $user);
 
         return $retour;
     }
