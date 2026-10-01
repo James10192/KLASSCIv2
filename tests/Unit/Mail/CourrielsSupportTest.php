@@ -124,6 +124,11 @@ class CourrielsSupportTest extends TestCase
         // Un fond porté par une image n'est pas recoloré par Gmail : le bouton
         // garde la couleur de l'école au lieu de virer au lavande.
         $this->assertStringContainsString('background-image:linear-gradient(#0453cb,#0453cb)', $html);
+        // Vrai envoi (Gmail iOS, mode sombre) : un `<a>` reçoit la couleur de lien
+        // de Gmail ; le libellé porte donc sa propre couleur dans un span.
+        $this->assertMatchesRegularExpression('/<a [^>]*><span style="color:#ffffff;">Confirmer mon adresse/', $html);
+        // La vignette blanche du logo virait au noir : son fond passe aussi par une image.
+        $this->assertStringContainsString('background:#ffffff;background-image:linear-gradient(#ffffff,#ffffff)', $html);
         // Le logo reste hors des enveloppes : le fondu inverserait ses couleurs.
         $this->assertLessThan(strpos($html, '<div class="gm-ecran"'), strpos($html, '>I</span>'));
     }
