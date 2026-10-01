@@ -5,6 +5,7 @@
     $service = 'Comptabilité';
     $raison = "Message automatique envoyé au contact parent de l'élève {$studentName}. Pour toute question, contactez la comptabilité.";
     $solde = (float) $resteDu <= 0;
+    $valideLe = \App\Helpers\ValeurConnue::ou($dateValidation ?? null);
 @endphp
 @extends('esbtp.emails.parents.recu')
 
@@ -15,7 +16,7 @@
 @endsection
 
 @section('content')
-<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, le paiement pour {{ $studentName }} a été validé le {{ $dateValidation }}. Merci.</p>
+<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, le paiement pour {{ $studentName }} a été validé{{ $valideLe ? ' le '.$valideLe : '' }}. Merci.</p>
 @include('esbtp.emails.parents.partials.vedette', [
     'libelle' => 'Montant reçu',
     'valeur' => \App\Helpers\MontantFcfa::nombre($montant),
@@ -33,7 +34,7 @@
 @include('esbtp.emails.parents.partials.progression', [
     'pct' => $pourcentagePaye,
     'couleurBarre' => $emailSuccessColor,
-    'gauche' => new \Illuminate\Support\HtmlString(\App\Helpers\MontantFcfa::nombre($montantPaye).' sur '.\App\Helpers\MontantFcfa::html($montantTotal)),
+    'gauche' => new \Illuminate\Support\HtmlString(\App\Helpers\MontantFcfa::nombre($montantPaye).' sur '.\App\Helpers\MontantFcfa::html($montantTotal).' · '.e($pourcentagePaye).'&nbsp;%'),
     'droite' => $solde ? 'Tout est réglé' : new \Illuminate\Support\HtmlString('Reste '.\App\Helpers\MontantFcfa::html($resteDu)),
     'fort' => true,
 ])

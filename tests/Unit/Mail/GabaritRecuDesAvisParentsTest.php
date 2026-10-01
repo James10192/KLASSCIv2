@@ -16,15 +16,18 @@ use Tests\TestCase;
  */
 class GabaritRecuDesAvisParentsTest extends TestCase
 {
+    /** Étiquette « info » : la nuance sombre de la couleur de l'école, calculée au test. */
+    private const PRIMAIRE_SOMBRE = 'primaire-sombre';
+
     /** Avis => [texte de l'étiquette, couleur attendue du texte de l'étiquette]. */
     private const STATUTS = [
         'absence-notification' => ['Absence', IdentiteDesCourriels::COULEUR_ALERTE_TEXTE],
-        'bulletin-published' => ['Bulletin disponible', '#0453cb'],
+        'bulletin-published' => ['Bulletin disponible', self::PRIMAIRE_SOMBRE],
         'inscription-confirmation' => ['Inscription confirmée', IdentiteDesCourriels::COULEUR_SUCCES_TEXTE],
         'low-attendance' => ['Assiduité insuffisante', IdentiteDesCourriels::COULEUR_DANGER],
         'low-grades' => ['Résultats insuffisants', IdentiteDesCourriels::COULEUR_DANGER],
-        'note-published' => ['Nouvelle note', '#0453cb'],
-        'paiement-created' => ['En attente de validation', '#0453cb'],
+        'note-published' => ['Nouvelle note', self::PRIMAIRE_SOMBRE],
+        'paiement-created' => ['En attente de validation', self::PRIMAIRE_SOMBRE],
         'paiement-rejete' => ['Paiement rejeté', IdentiteDesCourriels::COULEUR_DANGER],
         'paiement-relance' => ['Rappel · deuxième envoi', IdentiteDesCourriels::COULEUR_ALERTE_TEXTE],
         'paiement-valide' => ['Paiement validé', IdentiteDesCourriels::COULEUR_SUCCES_TEXTE],
@@ -69,6 +72,9 @@ class GabaritRecuDesAvisParentsTest extends TestCase
     {
         foreach (self::STATUTS as $gabarit => [$texte, $couleur]) {
             $html = $this->rendre($gabarit);
+            if ($couleur === self::PRIMAIRE_SOMBRE) {
+                $couleur = IdentiteDesCourriels::melanger('#0453cb', '#000000', 0.28);
+            }
 
             $this->assertStringContainsString(
                 'text-transform:uppercase;color:'.$couleur.';">'.e($texte).'</td>',
@@ -89,6 +95,7 @@ class GabaritRecuDesAvisParentsTest extends TestCase
             $this->assertStringContainsString('href="tel:+2252722000000"', $html, "$gabarit : téléphone cliquable.");
             $this->assertStringContainsString('href="mailto:scolarite@ecole.test"', $html, $gabarit);
             $this->assertStringContainsString("contact parent de l'élève Awa Koné", html_entity_decode($html, ENT_QUOTES), "$gabarit : la raison de l'envoi.");
+            $this->assertStringContainsString('Merci de ne pas répondre à ce courriel.', html_entity_decode($html, ENT_QUOTES), $gabarit);
         }
     }
 
@@ -161,6 +168,85 @@ class GabaritRecuDesAvisParentsTest extends TestCase
         $html = html_entity_decode($this->rendre('low-attendance'), ENT_QUOTES);
 
         $this->assertStringContainsString("seuil recommandé de 80\u{00A0}%", $html);
+    }
+
+    public function test_les_couleurs_de_texte_des_avis_sont_lisibles_sur_leur_fond(): void
+    {
+        // [texte, fond] : libellés, légendes, précisions et pied, sur la page
+        // blanche comme sur l'encadré vedette.
+        $paires = [
+            ['#64748b', '#ffffff'], ['#64748b', '#f8fafc'], ['#5b6b80', '#eef2f7'],
+            [IdentiteDesCourriels::COULEUR_DANGER, '#f8fafc'],
+            [IdentiteDesCourriels::COULEUR_ALERTE_TEXTE, '#f8fafc'],
+            [IdentiteDesCourriels::COULEUR_SUCCES_TEXTE, '#f8fafc'],
+            [IdentiteDesCourriels::melanger('#0453cb', '#000000', 0.28), '#ffffff'],
+        ];
+        foreach ($paires as [$texte, $fond]) {
+            $this->assertGreaterThanOrEqual(4.5, $this->contraste($texte, $fond), "$texte sur $fond");
+        }
+
+        $sources = array_merge(
+            glob(resource_path('views/esbtp/emails/parents/*.blade.php')),
+            glob(resource_path('views/esbtp/emails/parents/partials/*.blade.php')),
+            [resource_path('views/esbtp/emails/partials/bouton.blade.php')],
+        );
+        foreach ($sources as $source) {
+            $texte = (string) file_get_contents($source);
+            $this->assertStringNotContainsString('#94a3b8', $texte, basename($source).' : gris illisible (2,56:1).');
+            $this->assertStringNotContainsString('#f5f7fb', $texte, basename($source).' : fond qui fait tomber les libellés sous 4,5:1.');
+        }
+    }
+
+    public function test_aucune_donnee_inconnue_ne_s_ecrit_n_a_dans_une_phrase(): void
+    {
+        $inconnues = [
+            'classe' => 'N/A', 'anneeUniversitaire' => 'N/A', 'dateReinscription' => 'N/A',
+            'dateRejet' => 'N/A', 'dateSoumission' => 'N/A', 'dateValidation' => 'N/A', 'periode' => 'N/A',
+            'matieresEnDifficulte' => [['matiere' => 'N/A', 'moyenne' => 7]],
+        ];
+        foreach (AvisDExemple::noms() as $gabarit) {
+            $html = $this->rendre($gabarit, $inconnues);
+            $this->assertStringNotContainsString('N/A', $html, $gabarit);
+        }
+
+        $reinscription = html_entity_decode($this->rendre('reinscription-confirmation', $inconnues), ENT_QUOTES);
+        $this->assertStringContainsString('Awa Koné est réinscrit(e)'."\n", $reinscription);
+        $this->assertStringContainsString('Matière non précisée', $this->rendre('low-grades', $inconnues));
+    }
+
+    public function test_la_legende_du_paiement_valide_donne_le_pourcentage_paye(): void
+    {
+        $this->assertStringContainsString(' · 67&nbsp;%', $this->rendre('paiement-valide'));
+    }
+
+    public function test_le_taux_de_presence_s_ecrit_avec_une_virgule(): void
+    {
+        $html = $this->rendre('absence-notification', ['tauxPresence' => 78.57]);
+        $this->assertStringContainsString('78,6', $html);
+        $this->assertStringNotContainsString('78.57', $html);
+
+        $this->assertStringContainsString('>78<', $this->rendre('low-attendance'));
+    }
+
+    public function test_l_avis_d_absence_ne_double_plus_l_alerte_d_assiduite(): void
+    {
+        $methode = new \ReflectionMethod(\App\Services\NotificationService::class, 'notifyParentsAbsence');
+        $lignes = file($methode->getFileName());
+        $corps = implode('', array_slice($lignes, $methode->getStartLine() - 1, $methode->getEndLine() - $methode->getStartLine() + 1));
+
+        $this->assertStringContainsString('AbsenceNotificationMail', $corps);
+        $this->assertStringNotContainsString('LowAttendanceMail', $corps, "Le seuil franchi est porté par l'avis d'absence : pas de second courriel.");
+        $this->assertStringContainsString('MailPulseWorkflowIntent::absenceReported(', $corps);
+        $this->assertStringContainsString('MailPulseWorkflowIntent::lowAttendance(', $corps, "L'intention MailPulse d'assiduité continue de partir.");
+        $this->assertStringContainsString("'seuilPresence' => (int) \$preferences->attendance_rate_threshold", $corps);
+    }
+
+    private function contraste(string $texte, string $fond): float
+    {
+        $a = \App\Helpers\SettingsHelper::relativeLuminance($texte);
+        $b = \App\Helpers\SettingsHelper::relativeLuminance($fond);
+
+        return (max($a, $b) + 0.05) / (min($a, $b) + 0.05);
     }
 
     public function test_les_alertes_lisent_les_donnees_des_vrais_appelants(): void

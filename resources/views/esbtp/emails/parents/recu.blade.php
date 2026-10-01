@@ -20,21 +20,14 @@
      texte blanc n'est posé sur une couleur ici, sauf dans le bouton commun, qui
      porte sa propre garde. --}}
 @php
-    $logoSrc = null;
-    // Même règle que le gabarit commun : pièce intégrée par SMTP, URL publique
-    // par MailPulse, qui retirerait une pièce intégrée.
-    if (! empty($schoolLogoPath) && isset($message) && $message instanceof \Illuminate\Mail\Message && is_file($schoolLogoPath)
-        && ! \App\Mail\Transport\MailPulseTransport::actif()) {
-        $logoSrc = $message->embed($schoolLogoPath);
-    } elseif (! empty($schoolLogoUrl)) {
-        $logoSrc = $schoolLogoUrl;
-    }
+    // Pièce intégrée par SMTP, URL publique par MailPulse : voir SourceDuLogo.
+    $logoSrc = \App\Mail\Support\SourceDuLogo::pour($message ?? null, $schoolLogoPath ?? null, $schoolLogoUrl ?? null);
     $initiale = mb_strtoupper(mb_substr(trim((string) ($schoolName ?? 'K')), 0, 1, 'UTF-8'), 'UTF-8');
     [$pointStatut, $texteStatut] = match ($statutTon ?? 'info') {
         'succes' => [$emailSuccessColor, $emailSuccessText],
         'alerte' => [$emailWarningColor, $emailWarningText],
         'danger' => [$emailDangerColor, $emailDangerColor],
-        default => [$emailPrimaryColor, $emailPrimaryColor],
+        default => [$emailPrimaryColor, $emailPrimaryDark],
     };
     $telephone = preg_replace('/[^0-9+]/', '', (string) ($schoolPhone ?? ''));
 @endphp
@@ -84,11 +77,11 @@ u + .body .gm-diff { background: #000; mix-blend-mode: difference; }
 @if($telephone !== '')<a href="tel:{{ $telephone }}" style="color:{{ $emailPrimaryColor }};text-decoration:none;white-space:nowrap;">{{ $schoolPhone }}</a>@endif
 @if($telephone !== '' && ! empty($schoolEmail)) &middot; @endif
 @if(! empty($schoolEmail))<a href="mailto:{{ $schoolEmail }}" style="color:{{ $emailPrimaryColor }};text-decoration:none;">{{ $schoolEmail }}</a>@endif
-<div style="margin-top:12px;font-size:12px;color:#94a3b8;">{{ $raison ?? "Message automatique envoyé au contact parent. Pour toute question, contactez l'établissement." }}</div>
+<div style="margin-top:12px;font-size:12px;color:#64748b;">{{ $raison ?? "Message automatique envoyé au contact parent. Pour toute question, contactez l'établissement." }} Merci de ne pas répondre à ce courriel.</div>
 </td></tr></table>
 </td></tr>
 </table>
-<div style="font-size:11px;color:#94a3b8;margin-top:14px;">Envoyé avec KLASSCI</div>
+<div style="font-size:11px;color:#5b6b80;margin-top:14px;">Envoyé avec KLASSCI</div>
 </td></tr>
 </table>
 </body>

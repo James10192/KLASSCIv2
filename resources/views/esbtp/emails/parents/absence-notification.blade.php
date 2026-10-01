@@ -7,6 +7,7 @@
     // Seuil de l'école (préférence de notification), 80 pour les données d'exemple.
     $seuilPresence = (int) ($seuilPresence ?? 80);
     $sousLeSeuil = $tauxPresence < $seuilPresence;
+    $tauxTexte = number_format((float) $tauxPresence, fmod((float) $tauxPresence, 1.0) == 0.0 ? 0 : 1, ',', ' ');
 @endphp
 @extends('esbtp.emails.parents.recu')
 
@@ -20,7 +21,7 @@
 <p style="margin:0 0 22px;">Bonjour {{ $parentName }}, {{ $studentName }} a été marqué(e) absent(e) en {{ $matiere }}, de {{ $heureDebut }} à {{ $heureFin }}. Si l'absence est justifiée, vous pouvez transmettre un justificatif en ligne.</p>
 @include('esbtp.emails.parents.partials.vedette', [
     'libelle' => 'Taux de présence · '.$periodeStats,
-    'valeur' => $tauxPresence,
+    'valeur' => $tauxTexte,
     'unite' => '%',
     'precision' => $sousLeSeuil ? 'Sous le seuil recommandé de '.$seuilPresence.' %' : null,
     'tonPrecision' => $emailDangerColor,

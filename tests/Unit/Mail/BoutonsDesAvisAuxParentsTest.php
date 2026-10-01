@@ -64,8 +64,9 @@ class BoutonsDesAvisAuxParentsTest extends TestCase
             );
             $this->assertStringContainsString('background-image:linear-gradient(', $html, $gabarit);
             $this->assertStringContainsString('<div class="gm-ecran"', $html, $gabarit);
-            $this->assertStringContainsString('Ouvrir le lien</a>', $html, "$gabarit : le lien de secours reste offert.");
-            $this->assertMatchesRegularExpression('#<a href="'.preg_quote($url, '#').'" style="color:\#[0-9a-f]{6};">Ouvrir le lien</a>#i', $html, "$gabarit : le lien de secours mène au même endroit que le bouton.");
+            $this->assertStringContainsString('Copiez ce lien', $html, "$gabarit : le lien de secours reste offert.");
+            $this->assertStringContainsString('word-break:break-all;">'.e($url).'</p>', $html, "$gabarit : l'adresse est recopiée en clair, à copier.");
+            $this->assertStringNotContainsString('Ouvrir le lien', $html, "$gabarit : pas de second lien vers la même cible.");
             $this->assertStringContainsString('<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 8px;">', $html, "$gabarit : bouton en pleine largeur.");
         }
     }

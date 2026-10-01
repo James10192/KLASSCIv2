@@ -13,17 +13,20 @@
         ? new \Illuminate\Support\HtmlString('<span style="color:'.$couleurDecision.';">'.e(ucfirst($decision)).'</span>')
         : null;
     $reliquat = (float) ($reliquatMontant ?? 0);
+    $classeConnue = \App\Helpers\ValeurConnue::ou($classe ?? null);
+    $anneeConnue = \App\Helpers\ValeurConnue::ou($anneeUniversitaire ?? null);
+    $reinscritLe = \App\Helpers\ValeurConnue::ou($dateReinscription ?? null);
 @endphp
 @extends('esbtp.emails.parents.recu')
 
-@section('preheader'){{ $studentName }} est réinscrit(e) en {{ $classe }} pour {{ $anneeUniversitaire }}.
+@section('preheader'){{ $studentName }} est réinscrit(e){{ $classeConnue ? ' en '.$classeConnue : '' }}{{ $anneeConnue ? ' pour '.$anneeConnue : '' }}.
 @endsection
 
-@section('titre'){{ $studentName }} est réinscrit(e) en {{ $classe }}
+@section('titre'){{ $studentName }} est réinscrit(e){{ $classeConnue ? ' en '.$classeConnue : '' }}
 @endsection
 
 @section('content')
-<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, la réinscription pour l'année {{ $anneeUniversitaire }} a été enregistrée le {{ $dateReinscription }}. Vous continuez à suivre sa scolarité avec vos identifiants habituels.</p>
+<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, la réinscription{{ $anneeConnue ? " pour l'année ".$anneeConnue : '' }} a été enregistrée{{ $reinscritLe ? ' le '.$reinscritLe : '' }}. Vous continuez à suivre sa scolarité avec vos identifiants habituels.</p>
 @if($reliquat > 0)
 @include('esbtp.emails.parents.partials.vedette', [
     'libelle' => 'Reliquat reporté',

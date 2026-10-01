@@ -4,6 +4,7 @@
     $statutTexte = 'En attente de validation';
     $service = 'Comptabilité';
     $raison = "Message automatique envoyé au contact parent de l'élève {$studentName}. Pour toute question, contactez la comptabilité.";
+    $soumisLe = \App\Helpers\ValeurConnue::ou($dateSoumission ?? null);
 @endphp
 @extends('esbtp.emails.parents.recu')
 
@@ -14,7 +15,7 @@
 @endsection
 
 @section('content')
-<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, le paiement pour {{ $studentName }} a été enregistré le {{ $dateSoumission }}. L'administration le valide sous 24 à 48&nbsp;h&nbsp;; vous recevrez un message dès qu'il le sera.</p>
+<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, le paiement pour {{ $studentName }} a été enregistré{{ $soumisLe ? ' le '.$soumisLe : '' }}. L'administration le valide sous 24 à 48&nbsp;h&nbsp;; vous recevrez un message dès qu'il le sera.</p>
 @include('esbtp.emails.parents.partials.vedette', [
     'libelle' => 'Montant enregistré',
     'valeur' => \App\Helpers\MontantFcfa::nombre($montant),

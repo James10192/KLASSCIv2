@@ -10,8 +10,8 @@
      est posée quel que soit le réglage de l'en-tête de l'école.
 
      `pleineLargeur` (facultatif) : le bouton prend toute la largeur (cible
-     tactile large, avis aux parents) et le lien de secours se réduit à
-     « Ouvrir le lien ». Sans lui, le rendu des autres courriels ne change pas. --}}
+     tactile large, avis aux parents) ; l'adresse est recopiée en clair et en
+     petit dessous, à copier. Sans lui, le rendu des autres courriels ne change pas. --}}
 @php
     $fondBouton = $couleur ?? $emailPrimaryColor;
     $texteBouton = isset($couleur) ? '#ffffff' : $emailHeaderTextColor;
@@ -28,7 +28,8 @@
     </tr>
 </table>
 @if($afficherLien ?? true)
-    <p style="margin:0;font-size:12px;line-height:1.5;color:#94a3b8;text-align:center;">Le bouton ne s'ouvre pas&nbsp;? <a href="{{ $url }}" style="color:{{ $emailPrimaryColor }};">Ouvrir le lien</a></p>
+    <p style="margin:0 0 2px;font-size:12px;line-height:1.5;color:#64748b;">Le bouton ne s'ouvre pas&nbsp;? Copiez ce lien&nbsp;:</p>
+    <p style="margin:0;font-size:12px;line-height:1.5;color:#64748b;word-break:break-all;">{{ $url }}</p>
 @endif
 @else
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 10px;">
@@ -41,7 +42,7 @@
     </tr>
 </table>
 @if($afficherLien ?? true)
-    <p style="margin:0 0 4px;font-size:12px;color:#94a3b8;">Le bouton ne s'ouvre pas ? Copiez ce lien dans votre navigateur :</p>
+    <p style="margin:0 0 4px;font-size:12px;color:#64748b;">Le bouton ne s'ouvre pas ? Copiez ce lien dans votre navigateur :</p>
     <p style="margin:0;font-size:12px;word-break:break-all;"><a href="{{ $url }}" style="color:{{ $emailPrimaryColor }};">{{ $url }}</a></p>
 @endif
 @endif

@@ -53,7 +53,7 @@ final class AvisDExemple
             'appreciation' => 'Bon travail', 'moyenneGenerale' => 8.4, 'mention' => 'Passable',
             'mentionColor' => '#64748b', 'decision' => 'Admis', 'appreciationGenerale' => 'Peut mieux faire',
             'noteAssiduite' => 0.13, 'totalAbsences' => 5, 'absencesJustifiees' => 2, 'absencesNonJustifiees' => 3,
-            'tauxPresence' => 78, 'requiresSignature' => false, 'date' => '30/09/2026', 'heureDebut' => '08:00',
+            'tauxPresence' => 78, 'seuilPresence' => 80, 'requiresSignature' => false, 'date' => '30/09/2026', 'heureDebut' => '08:00',
             'heureFin' => '10:00', 'typeActivite' => 'Cours', 'commentaire' => null, 'coursDisponibles' => true,
             'matieresEnDifficulte' => [['nom' => 'Mathématiques', 'moyenne' => 7.5, 'coefficient' => 3]],
             'dateReinscription' => '30/09/2026',

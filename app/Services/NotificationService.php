@@ -2789,7 +2789,6 @@ class NotificationService
                 'matiere' => $attendance->matiere->nom ?? $attendance->commentaire ?? 'Cours',
                 'typeActivite' => $attendance->type_activite ?? 'Cours magistral',
                 'commentaire' => $attendance->commentaire,
-                // Mois en français (« octobre 2026 ») : `format()` l'écrivait en anglais.
                 'periodeStats' => now()->translatedFormat('F Y'),
                 'absencesJustifiees' => $justifiees,
                 'absencesNonJustifiees' => $nonJustifiees,
@@ -2820,13 +2819,8 @@ class NotificationService
                 Mail::to($tuteur->email)->send(new \App\Mail\Parents\AbsenceNotificationMail($data));
             }
 
-            // Alerte si taux de présence faible
+            // Pas de second courriel : l'avis d'absence porte déjà le seuil franchi.
             $lowAttendance = $tauxPresence < $preferences->attendance_rate_threshold;
-            if ($lowAttendance) {
-                if ($preferences->hasChannel('email') && $tuteur->email) {
-                    Mail::to($tuteur->email)->send(new \App\Mail\Parents\LowAttendanceMail($data));
-                }
-            }
 
             if ($attendance instanceof ESBTPAttendance) {
                 $this->notifyMailPulse(MailPulseWorkflowIntent::absenceReported($attendance));
@@ -2923,9 +2917,6 @@ class NotificationService
                     'effectifClasse' => $bulletin->classe->nombre_etudiants ?? 'N/A',
                     'decision' => $bulletin->decision,
                     'matieresEnDifficulte' => $matieresFaibles,
-                    // Pas de taux de présence : le service n'en calcule qu'un, mensuel,
-                    // pour l'avis d'absence, qui ne mesure pas la période du bulletin.
-                    // Un chiffre écrit ici en dur partait tel quel chez le parent.
                     'coursDisponibles' => true,
                     'bulletinUrl' => route('esbtp.mes-notes.index'),
                     'contactUrl' => route('esbtp.mon-profil.index'),

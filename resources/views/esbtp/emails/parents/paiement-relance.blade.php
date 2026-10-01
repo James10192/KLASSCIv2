@@ -34,5 +34,5 @@
     ['Année', $anneeUniversitaire ?? null],
 ], 'marge' => '8px 0 0'])
 @include('esbtp.emails.partials.bouton', ['url' => $paiementUrl, 'libelle' => 'Effectuer un paiement', 'pleineLargeur' => true])
-<p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#64748b;">Vous pouvez aussi payer à la caisse de l'établissement{{ ! empty($modesPaiement) ? ' ('.implode(', ', (array) $modesPaiement).')' : '' }}. Déjà réglé ou une difficulté&nbsp;? Contactez la comptabilité&nbsp;: la mise à jour peut prendre un jour ouvré.</p>
+<p style="margin:22px 0 0;font-size:13px;line-height:1.6;color:#64748b;">Vous pouvez aussi payer à la caisse de l'établissement{{ ! empty($modesPaiement) ? ' ('.implode(', ', (array) $modesPaiement).')' : '' }}. Déjà réglé ou une difficulté&nbsp;? Contactez la comptabilité.</p>
 @endsection

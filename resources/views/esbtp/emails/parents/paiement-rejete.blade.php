@@ -4,6 +4,7 @@
     $statutTexte = 'Paiement rejeté';
     $service = 'Comptabilité';
     $raison = "Message automatique envoyé au contact parent de l'élève {$studentName}. Pour toute question, contactez la comptabilité.";
+    $rejeteLe = \App\Helpers\ValeurConnue::ou($dateRejet ?? null);
 @endphp
 @extends('esbtp.emails.parents.recu')
 
@@ -14,7 +15,7 @@
 @endsection
 
 @section('content')
-<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, le paiement pour {{ $studentName }} a été rejeté par l'administration le {{ $dateRejet }}. Le motif est indiqué ci-dessous.</p>
+<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, le paiement pour {{ $studentName }} a été rejeté par l'administration{{ $rejeteLe ? ' le '.$rejeteLe : '' }}. Le motif est indiqué ci-dessous.</p>
 @include('esbtp.emails.parents.partials.vedette', [
     'libelle' => 'Montant rejeté',
     'valeur' => \App\Helpers\MontantFcfa::nombre($montant),

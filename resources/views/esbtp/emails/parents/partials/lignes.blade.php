@@ -7,7 +7,7 @@
     $_lignesVues = array_values(array_filter($lignes, function ($ligne) {
         $valeur = $ligne[1] ?? null;
 
-        return $valeur instanceof \Illuminate\Support\HtmlString || ! in_array(trim((string) $valeur), ['', 'N/A'], true);
+        return $valeur instanceof \Illuminate\Support\HtmlString || \App\Helpers\ValeurConnue::ou($valeur) !== null;
     }));
 @endphp
 @if($_lignesVues !== [])

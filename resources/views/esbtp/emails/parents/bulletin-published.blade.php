@@ -12,17 +12,18 @@
         ! empty($decision) ? $decision : null,
     ])) ?: ($reussite ? 'Au-dessus de la moyenne' : 'En dessous de la moyenne');
     $assiduite = isset($noteAssiduite) ? ($noteAssiduite >= 0 ? '+' : '').number_format((float) $noteAssiduite, 2, ',', ' ') : null;
+    $periodeConnue = \App\Helpers\ValeurConnue::ou($periode ?? null);
 @endphp
 @extends('esbtp.emails.parents.recu')
 
-@section('preheader')Bulletin « {{ $periode }} » : {{ $studentName }} obtient {{ $moyenne }}/20{{ $rangTexte ? ', rang '.$rangTexte : '' }}.
+@section('preheader')Bulletin{{ $periodeConnue ? ' « '.$periodeConnue.' »' : '' }} : {{ $studentName }} obtient {{ $moyenne }}/20{{ $rangTexte ? ', rang '.$rangTexte : '' }}.
 @endsection
 
 @section('titre')Nouveau bulletin pour {{ $studentName }}
 @endsection
 
 @section('content')
-<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, le bulletin «&nbsp;{{ $periode }}&nbsp;»{{ ! empty($anneeUniversitaire) && $anneeUniversitaire !== 'N/A' ? ' ('.$anneeUniversitaire.')' : '' }} vient d'être publié.@if(! $reussite) La moyenne est en dessous de 10/20&nbsp;: nous vous encourageons à suivre de près son travail et à le soutenir.@endif</p>
+<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, le bulletin{!! $periodeConnue ? ' «&nbsp;'.e($periodeConnue).'&nbsp;»' : '' !!}{{ ! empty($anneeUniversitaire) && $anneeUniversitaire !== 'N/A' ? ' ('.$anneeUniversitaire.')' : '' }} vient d'être publié.@if(! $reussite) La moyenne est en dessous de 10/20&nbsp;: nous vous encourageons à suivre de près son travail et à le soutenir.@endif</p>
 @include('esbtp.emails.parents.partials.vedette', [
     'libelle' => 'Moyenne générale',
     'valeur' => $moyenne,

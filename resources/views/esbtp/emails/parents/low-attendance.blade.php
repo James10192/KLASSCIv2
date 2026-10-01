@@ -10,20 +10,21 @@
     // s'appelle `periodeStats`, et le lien `justificationUrl`.
     $periodeVue = $periode ?? $periodeStats ?? null;
     $lienAbsences = $absencesUrl ?? $justificationUrl ?? null;
+    $tauxTexte = number_format((float) $tauxPresence, fmod((float) $tauxPresence, 1.0) == 0.0 ? 0 : 1, ',', ' ');
 @endphp
 @extends('esbtp.emails.parents.recu')
 
-@section('preheader')Taux de présence de {{ $tauxPresence }} % pour {{ $studentName }}, sous le seuil recommandé de {{ $seuilPresence }} %.
+@section('preheader')Taux de présence de {{ $tauxTexte }} % pour {{ $studentName }}, sous le seuil recommandé de {{ $seuilPresence }} %.
 @endsection
 
-@section('titre'){{ $studentName }} n'est présent(e) qu'à {{ $tauxPresence }}&nbsp;% des cours
+@section('titre'){{ $studentName }} n'est présent(e) qu'à {{ $tauxTexte }}&nbsp;% des cours
 @endsection
 
 @section('content')
 <p style="margin:0 0 22px;">Bonjour {{ $parentName }}, ce taux de présence est en dessous du seuil recommandé de {{ $seuilPresence }}&nbsp;%. Un taux faible peut peser sur les résultats et sur la note d'assiduité.</p>
 @include('esbtp.emails.parents.partials.vedette', [
     'libelle' => 'Taux de présence',
-    'valeur' => $tauxPresence,
+    'valeur' => $tauxTexte,
     'unite' => '%',
     'precision' => 'Seuil recommandé : '.$seuilPresence.' %',
     'tonPrecision' => $emailDangerColor,

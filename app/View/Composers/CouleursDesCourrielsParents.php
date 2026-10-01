@@ -10,7 +10,8 @@ use Illuminate\View\View;
  *
  * ## Le défaut que ce composeur corrige
  *
- * Le gabarit `esbtp.emails.parents.layout` résolvait ces quatre couleurs dans
+ * L'ancien gabarit `esbtp.emails.parents.layout` (supprimé depuis : les avis
+ * aux parents passent par `esbtp.emails.parents.recu`) résolvait ces couleurs dans
  * son propre `@php`. Or Blade évalue le corps d'un `@section` du modèle ENFANT
  * **avant** de rendre le gabarit : au moment où `paiement-valide.blade.php`
  * écrit `{{ $emailPrimaryColor }}`, la ligne qui la définit n'a pas encore
