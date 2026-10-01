@@ -138,6 +138,29 @@ class GabaritRecuDesAvisParentsTest extends TestCase
 
         $this->assertDoesNotMatchRegularExpression("/'tauxPresence'\s*=>\s*\d/", $source, 'Taux de présence écrit en dur.');
         $this->assertStringNotContainsString("now()->format('F Y')", $source, 'Mois en anglais : utiliser translatedFormat.');
+        $this->assertStringContainsString(
+            "'seuilPresence' => (int) \$preferences->attendance_rate_threshold",
+            $source,
+            "Le seuil affiché aux parents doit être celui qui décide l'envoi."
+        );
+    }
+
+    public function test_les_avis_d_assiduite_affichent_le_seuil_transmis(): void
+    {
+        foreach (['absence-notification', 'low-attendance'] as $gabarit) {
+            $html = html_entity_decode($this->rendre($gabarit, ['seuilPresence' => 75, 'tauxPresence' => 70]), ENT_QUOTES);
+
+            $this->assertStringContainsString("seuil recommandé de 75\u{00A0}%", mb_strtolower($html), $gabarit);
+            $this->assertStringNotContainsString("de 80\u{00A0}%", $html, "$gabarit : plus de seuil à 80.");
+            $this->assertStringNotContainsString("80\u{00A0}%", $html, "$gabarit : plus de seuil à 80.");
+        }
+    }
+
+    public function test_sans_seuil_transmis_les_avis_d_assiduite_retombent_sur_80(): void
+    {
+        $html = html_entity_decode($this->rendre('low-attendance'), ENT_QUOTES);
+
+        $this->assertStringContainsString("seuil recommandé de 80\u{00A0}%", $html);
     }
 
     public function test_les_alertes_lisent_les_donnees_des_vrais_appelants(): void

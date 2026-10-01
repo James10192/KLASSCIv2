@@ -4,8 +4,8 @@
     $statutTexte = 'Assiduité insuffisante';
     $service = 'Scolarité';
     $raison = "Message automatique envoyé au contact parent de l'élève {$studentName}. Pour toute question, contactez la scolarité.";
-    // Seuil repris de l'avis précédent ; le même que l'avis d'absence.
-    $seuilPresence = 80;
+    // Seuil de l'école (préférence de notification), 80 pour les données d'exemple.
+    $seuilPresence = (int) ($seuilPresence ?? 80);
     // L'appelant réel transmet les données de l'avis d'absence : la période y
     // s'appelle `periodeStats`, et le lien `justificationUrl`.
     $periodeVue = $periode ?? $periodeStats ?? null;

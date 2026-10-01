@@ -4,8 +4,8 @@
     $statutTexte = 'Absence';
     $service = 'Scolarité';
     $raison = "Message automatique envoyé au contact parent de l'élève {$studentName}. Pour toute question, contactez la scolarité.";
-    // Seuil repris de l'avis précédent ; le même que l'alerte d'assiduité.
-    $seuilPresence = 80;
+    // Seuil de l'école (préférence de notification), 80 pour les données d'exemple.
+    $seuilPresence = (int) ($seuilPresence ?? 80);
     $sousLeSeuil = $tauxPresence < $seuilPresence;
 @endphp
 @extends('esbtp.emails.parents.recu')

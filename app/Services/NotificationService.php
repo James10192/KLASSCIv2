@@ -2795,6 +2795,8 @@ class NotificationService
                 'absencesNonJustifiees' => $nonJustifiees,
                 'totalAbsences' => $absences->count(),
                 'tauxPresence' => $tauxPresence,
+                // Le seuil affiché au parent est celui qui décide l'alerte d'assiduité.
+                'seuilPresence' => (int) $preferences->attendance_rate_threshold,
                 'justificationUrl' => route('esbtp.mes-absences.index'),
 
                 'schoolName' => $schoolSettings['school_name'],
