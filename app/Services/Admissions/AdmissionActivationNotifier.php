@@ -8,6 +8,7 @@ use App\Models\ESBTPCandidatureWorkflow;
 use App\Services\MailPulse\MailPulseClient;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\View;
 
 /**
  * Livraison des accès d'activation sur les canaux activés par le tenant.
@@ -153,7 +154,7 @@ final class AdmissionActivationNotifier
                     'workflow_event' => 'admission_activation',
                     'subject' => $sujet,
                     'workflow_id' => $workflow->id,
-                ],
+                ] + array_filter(['email_html' => $this->html($workflow, $url)]),
             ], 'admission-activation-email-'.$workflow->id.'-'.substr(hash('sha256', $url), 0, 16));
 
             if (! $result->isDispatchAccepted()) {
@@ -175,6 +176,44 @@ final class AdmissionActivationNotifier
 
             return false;
         }
+    }
+
+    /**
+     * Le même message, mis en page aux couleurs et au logo de l'école. Une mise
+     * en page qui échoue ne doit pas retenir le lien : il part alors en texte.
+     */
+    private function html(ESBTPCandidatureWorkflow $workflow, string $url): ?string
+    {
+        try {
+            return $this->rendre($workflow, $url);
+        } catch (\Throwable $e) {
+            Log::warning('Activation KLASSCI : mise en page du courriel impossible, envoi en texte', [
+                'workflow_id' => $workflow->id,
+                'exception' => $e::class,
+            ]);
+
+            return null;
+        }
+    }
+
+    private function rendre(ESBTPCandidatureWorkflow $workflow, string $url): string
+    {
+        $c = $workflow->candidature;
+        $etapes = [
+            'Choisissez votre mot de passe',
+            'Vérifiez et complétez votre profil',
+            $this->settings->classChoiceActor() === InscriptionWorkflowSettings::CLASS_ACTOR_STUDENT
+                ? 'Choisissez votre classe'
+                : "L'établissement vous attribue votre classe",
+            'Votre inscription est finalisée',
+        ];
+
+        return View::make('esbtp.emails.admission-activation', [
+            'nom' => trim(($c->nom ?? '').' '.($c->prenoms ?? '')) ?: 'futur étudiant',
+            'url' => $url,
+            'heures' => 48,
+            'etapes' => $etapes,
+        ])->render();
     }
 
     private function contactProuve(ESBTPCandidature $c, mixed $verifieAt): bool
