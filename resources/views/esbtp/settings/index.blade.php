@@ -1689,7 +1689,7 @@
                         <label class="form-switch-modern">
                             <input type="hidden" name="setting_pdf_show_pagination" value="0">
                             <input type="checkbox" name="setting_pdf_show_pagination" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('pdf_show_pagination', '1') == '1' ? 'checked' : '' }}>
+                                   {{ \App\Helpers\SettingsHelper::drapeau('pdf_show_pagination', true) ? 'checked' : '' }}>
                             <span class="slider"></span>
                         </label>
                     </div>
@@ -1719,7 +1719,7 @@
                         <label class="form-switch-modern">
                             <input type="hidden" name="setting_pdf_show_director_signature" value="0">
                             <input type="checkbox" name="setting_pdf_show_director_signature" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('pdf_show_director_signature', '1') == '1' ? 'checked' : '' }}>
+                                   {{ \App\Helpers\SettingsHelper::drapeau('pdf_show_director_signature', true) ? 'checked' : '' }}>
                             <span class="slider"></span>
                         </label>
                     </div>
@@ -1731,7 +1731,7 @@
                         <label class="form-switch-modern">
                             <input type="hidden" name="setting_pdf_show_generator_name" value="0">
                             <input type="checkbox" name="setting_pdf_show_generator_name" value="1"
-                                   {{ \App\Helpers\SettingsHelper::get('pdf_show_generator_name', '1') == '1' ? 'checked' : '' }}>
+                                   {{ \App\Helpers\SettingsHelper::drapeau('pdf_show_generator_name', true) ? 'checked' : '' }}>
                             <span class="slider"></span>
                         </label>
                         <small class="text-muted"><i class="fas fa-info-circle"></i> Affiche le nom de l'utilisateur qui a cliqué sur "Télécharger PDF" dans l'en-tête de chaque document.</small>

@@ -196,7 +196,7 @@ class ESBTPSettingsController extends Controller
                     ['key' => $key],
                     [
                         'value' => $defaultValue,
-                        'type' => 'integer',
+                        'type' => 'float',
                         'group' => 'bulletin',
                         'category' => 'bulletin',
                         'description' => 'Ponderation des semestres',

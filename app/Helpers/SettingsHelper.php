@@ -279,6 +279,26 @@ class SettingsHelper
     }
 
     /**
+     * Une case à cocher d'instance, quelle que soit la façon dont elle a été
+     * enregistrée : Setting::get() rend un booléen pour un réglage de type
+     * `boolean`, une chaîne sinon. Comparer à '1' avec === faisait d'un
+     * réglage booléen une case toujours décochée. Un réglage absent ou vide
+     * vaut son défaut.
+     */
+    public static function drapeau(string $key, bool $defaut): bool
+    {
+        $valeur = self::get($key, null);
+        if (is_bool($valeur)) {
+            return $valeur;
+        }
+        if ($valeur === null || (is_string($valeur) && trim($valeur) === '')) {
+            return $defaut;
+        }
+
+        return filter_var($valeur, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? $defaut;
+    }
+
+    /**
      * Récupère les paramètres PDF
      *
      * @return array
@@ -289,15 +309,15 @@ class SettingsHelper
             'header_text' => self::get('pdf_header_text', ''),
             'footer_text' => self::get('pdf_footer_text', ''),
             'footer_custom_text' => self::get('pdf_footer_custom_text', ''),
-            'show_logo' => self::get('pdf_show_logo', '1') === '1',
+            'show_logo' => self::drapeau('pdf_show_logo', true),
             'logo_position' => self::get('pdf_logo_position', 'left'),
             'logo_size' => self::entierPose('pdf_logo_size', 60),
             'signature_director' => self::get('pdf_signature_director', ''),
             'signature_secretary' => self::get('pdf_signature_secretary', ''),
             'signature_height' => self::entierPose('pdf_signature_height', 80),
-            'show_director_signature' => self::get('pdf_show_director_signature', '1') === '1',
-            'show_generator_name' => self::get('pdf_show_generator_name', '1') === '1',
-            'show_pagination' => self::get('pdf_show_pagination', '1') === '1',
+            'show_director_signature' => self::drapeau('pdf_show_director_signature', true),
+            'show_generator_name' => self::drapeau('pdf_show_generator_name', true),
+            'show_pagination' => self::drapeau('pdf_show_pagination', true),
             'watermark' => self::get('pdf_watermark', ''),
             'watermark_opacity' => (float) self::get('pdf_watermark_opacity', '0.05'),
             'watermark_rotation' => (int) self::get('pdf_watermark_rotation', '-30'),

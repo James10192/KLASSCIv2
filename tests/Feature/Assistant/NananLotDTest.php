@@ -279,6 +279,64 @@ class NananLotDTest extends TestCase
         $this->assertSame('25', Setting::where('key', 'pdf_margin_top')->value('value'));
     }
 
+    private function migrerReglagesDecimaux(): void
+    {
+        (require base_path('database/migrations/2026_10_01_223046_convertir_reglages_decimaux_en_float.php'))->up();
+    }
+
+    /**
+     * Un coefficient ou un seuil que l'écran propose au pas de 0,1 / 0,5 est lu
+     * en décimal : il s'enregistre en décimal, il n'est ni tronqué ni refusé.
+     */
+    public function test_les_reglages_decimaux_proposes_par_l_ecran_sont_acceptes(): void
+    {
+        // Ligne ancienne, en `integer` : la migration la passe en float.
+        $this->reglage('bulletin_semester1_weight', '1', ['type' => 'integer', 'validation_rules' => ['nullable', 'numeric', 'min:0']]);
+        $this->reglage('lmd_validation_threshold', '10', ['type' => 'integer']);
+        $this->migrerReglagesDecimaux();
+
+        $this->actingAs($this->admin)->putJson(route('esbtp.settings.update'), ['setting_bulletin_semester1_weight' => '1.5'])->assertOk();
+        $this->assertSame('1.5', Setting::where('key', 'bulletin_semester1_weight')->value('value'));
+        $this->assertSame(1.5, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight'));
+
+        $r = app(ModifierReglages::class)->executeAuthorized(['reglages' => [['cle' => 'lmd_validation_threshold', 'valeur' => '10.5']]], $this->admin);
+        $this->valider($r);
+        $this->assertSame(10.5, app(\App\Services\LMD\LmdAcademicRuleProfile::class)->validationThreshold());
+
+        // Ligne absente : l'écran la crée directement en float.
+        Setting::where('key', 'bulletin_semester2_weight')->delete();
+        $this->actingAs($this->admin)->putJson(route('esbtp.settings.update'), ['setting_bulletin_semester2_weight' => '2.5'])->assertOk();
+        $this->assertSame('2.5', Setting::where('key', 'bulletin_semester2_weight')->value('value'));
+    }
+
+    /** Un réglage vraiment entier : l'écran n'offre que des entiers, la règle refuse une décimale. */
+    public function test_un_reglage_entier_reste_entier_et_l_ecran_ne_propose_pas_de_decimale(): void
+    {
+        $this->reglage('pdf_font_size', '12', ['type' => 'integer']);
+        $this->assertStringContainsString('entier', implode(' ', app(ModifierReglages::class)->executeAuthorized(['reglages' => [['cle' => 'pdf_font_size', 'valeur' => '12.5']]], $this->admin)['manques'] ?? []));
+
+        $vue = file_get_contents(resource_path('views/esbtp/settings/index.blade.php'));
+        foreach (['pdf_font_size', 'pdf_margin_top', 'pdf_logo_size', 'pdf_signature_height'] as $entier) {
+            $this->assertMatchesRegularExpression('/step="(1|5|10)"[^>]*name="setting_'.$entier.'"/s', $vue, $entier);
+        }
+    }
+
+    /** Une case PDF enregistrée en booléen, en chaîne ou absente se lit pareil. */
+    public function test_les_cases_pdf_se_lisent_quel_que_soit_leur_type(): void
+    {
+        foreach (['pdf_show_director_signature', 'pdf_show_logo', 'pdf_show_generator_name', 'pdf_show_pagination'] as $cle) {
+            $lu = fn () => \App\Helpers\SettingsHelper::getPdfSettings()[str_replace('pdf_', '', $cle)];
+            foreach ([['1', 'boolean', true], ['0', 'boolean', false], ['true', 'string', true], ['1', 'string', true], ['0', 'string', false]] as [$valeur, $type, $attendu]) {
+                $this->reglage($cle, $valeur, ['type' => $type]);
+                Cache::flush();
+                $this->assertSame($attendu, $lu(), "{$cle} = {$valeur} ({$type})");
+            }
+            Setting::where('key', $cle)->delete();
+            Cache::flush();
+            $this->assertTrue($lu(), "{$cle} absent : défaut");
+        }
+    }
+
     public function test_le_put_du_cli_garde_les_refus_et_cree_encore_une_cle_absente(): void
     {
         $this->reglage('pdf_header_bg_color', '#0453cb');
