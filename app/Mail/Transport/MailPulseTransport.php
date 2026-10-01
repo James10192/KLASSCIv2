@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Log;
 use Symfony\Component\Mailer\Exception\TransportException;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mailer\Transport\AbstractTransport;
-use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Mime\MessageConverter;
 
@@ -61,10 +60,14 @@ final class MailPulseTransport extends AbstractTransport
         $this->refuserLesPiecesJointes($email, $contexte);
         $this->signalerLeReplyTo($email, $contexte);
 
+        $corps = $this->corps($email, $contexte);
         $destinataires = $message->getEnvelope()->getRecipients();
         foreach ($destinataires as $rang => $destinataire) {
             $requestId = 'klassci-mail-'.hash('sha256', $message->getMessageId().'|'.strtolower($destinataire->getAddress()));
-            $resultat = $this->client->sendEmailMessage($this->charge($email, $destinataire, $contexte), $requestId);
+            $resultat = $this->client->sendEmailMessage(
+                ['channel' => 'email', 'recipient' => ['type' => 'email', 'value' => $destinataire->getAddress()]] + $corps,
+                $requestId
+            );
 
             if (! $resultat->ok) {
                 Log::error('Courriel refusé par MailPulse', $contexte + [
@@ -99,8 +102,12 @@ final class MailPulseTransport extends AbstractTransport
         }
     }
 
-    /** @return array<string, mixed> */
-    private function charge(Email $email, Address $destinataire, array $contexte): array
+    /**
+     * Ce qui est commun à tous les destinataires : calculé une fois, journalisé une fois.
+     *
+     * @return array{content: array<string, string>, metadata: array<string, string>}
+     */
+    private function corps(Email $email, array $contexte): array
     {
         $sujet = trim((string) $email->getSubject());
         $html = $email->getHtmlBody();
@@ -146,8 +153,6 @@ final class MailPulseTransport extends AbstractTransport
         }
 
         return [
-            'channel' => 'email',
-            'recipient' => ['type' => 'email', 'value' => $destinataire->getAddress()],
             'content' => ['type' => 'text', 'text' => $texte],
             'metadata' => $metadata,
         ];
