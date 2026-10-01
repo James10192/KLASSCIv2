@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Http\Controllers\Assistant;
+
+use App\Domain\Assistant\Support\ConversationDeSupport;
+use App\Domain\Assistant\Support\FilDeSupport;
+use App\Domain\Assistant\Support\Intention;
+use App\Domain\Support\Services\ContexteDePage;
+use App\Domain\Support\Services\DisponibiliteSupport;
+use App\Http\Controllers\Controller;
+use App\Services\Care\ClientMasterSupport;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+
+/**
+ * Nanan dans « Aide & support » : un tour de conversation par appel.
+ *
+ * Mince par construction : la conversation vit dans ConversationDeSupport,
+ * l'envoi de la demande reste celui du support (support.demandes.store), que
+ * l'écran appelle lui-même une fois le récapitulatif relu.
+ */
+class SupportController extends Controller
+{
+    public function tour(Request $request, DisponibiliteSupport $disponibilite, ConversationDeSupport $conversation, ClientMasterSupport $master): JsonResponse
+    {
+        abort_unless($disponibilite->signalement(), 404);
+
+        $donnees = $request->validate([
+            'intention' => ['required', Rule::in(array_column(Intention::cases(), 'value'))],
+            'fil' => ['nullable', 'array', 'max:' . FilDeSupport::MESSAGES_MAX],
+            'fil.*.role' => ['required', Rule::in(['nanan', 'personne'])],
+            'fil.*.texte' => ['required', 'string', 'max:' . FilDeSupport::LONGUEUR_MAX],
+            'page' => ['nullable', 'array'],
+            'page.titre' => ['nullable', 'string', 'max:200'],
+            'recapitulatif' => ['nullable', 'boolean'],
+        ]);
+
+        $intention = Intention::from($donnees['intention']);
+        $fil = FilDeSupport::depuis($donnees['fil'] ?? []);
+        $verifie = ContexteDePage::assainir((array) $request->input('page', []), $request);
+        $page = [
+            // Le titre de l'onglet ne sert qu'à Nanan pour situer la personne :
+            // il ne part jamais au Master (il porte souvent un nom d'élève).
+            'titre' => isset($donnees['page']['titre']) ? mb_substr(trim($donnees['page']['titre']), 0, 120) : null,
+            'route' => $verifie['route_name'] ?? null,
+            'module' => $verifie['module'] ?? null,
+            'entite' => $verifie['entity'] ?? null,
+        ];
+
+        $tour = $conversation->tour($request->user(), $intention, $fil, $page, (bool) ($donnees['recapitulatif'] ?? false));
+
+        $reponse = $tour->versTableau();
+        if ($tour->recap !== null) {
+            // L'échange accompagne la demande : la moitié de la place au plus,
+            // le reste revient au récapitulatif que la personne peut allonger.
+            $reponse['transcription'] = $fil->transcription(intdiv((int) $master->limites()['description_max'], 2));
+        }
+
+        return response()->json($reponse);
+    }
+}

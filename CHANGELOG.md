@@ -10,6 +10,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ---
 
+## Octobre 2026
+
+### Ajouts
+- **Aide & support guidé par Nanan.** Le bouton « Aide » ouvre une conversation avec Nanan : quatre gros choix (« J'ai un problème », « Comment faire… ? », « Une idée », « Suivre mes demandes ») ou une saisie libre. Pour un problème, Nanan pose une question à la fois (page, élève ou classe concerné, attendu et obtenu, depuis quand, message d'erreur), puis prépare une demande modifiable envoyée au support avec l'échange joint. Quand elle sait répondre, elle répond directement et demande si c'est résolu. Sans modèle d'IA disponible, des questions scriptées prennent le relais. Le formulaire avec capture d'écran reste accessible depuis l'accueil (`App\Domain\Assistant\Support`, route `chatbot.support.tour`, composant `support.nanan`, namespace CSS `nsp-*`).
+
 ## Septembre 2026
 
 ### Ajouts

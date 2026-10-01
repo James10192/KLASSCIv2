@@ -183,6 +183,7 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | émargements côté administration | `aem-*` | `aem-code`, `aem-btn` |
 | prolongations de cours | `pli-*` (liste), `plg-*` (carte enseignant) | `pli-btn`, `plg-form`, `plg-etat` |
 | assistant IA (panneau, chatbot) | `ast-*` | `ast-panel`, `ast-launcher`, `ast-thread`, `ast-composer`, `ast-tool`, `ast-card` |
+| Aide & support guidé par Nanan (`components/support/nanan`) | `nsp-*` | `nsp-fenetre`, `nsp-grand`, `nsp-bulle`, `nsp-pastille`, `nsp-verifier` |
 | palette de recherche Ctrl K / ⌘ K (layout) | `spl-*` | `spl-root`, `spl-panneau`, `spl-champ`, `spl-option`, `spl-declencheur` |
 | page de résultats de recherche | `srp-*` | `srp-card`, `srp-item`, `srp-chip` |
 
