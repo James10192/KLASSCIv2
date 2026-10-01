@@ -101,9 +101,7 @@
         Si cette absence est justifiée (maladie, raison familiale, etc.), vous pouvez soumettre un justificatif via la plateforme.
     </p>
 
-    <div class="button-container">
-        <a href="{{ $justificationUrl }}" class="button">Soumettre un justificatif</a>
-    </div>
+    @include('esbtp.emails.partials.bouton', ['url' => $justificationUrl, 'libelle' => 'Soumettre un justificatif'])
 
     <div class="divider"></div>
 

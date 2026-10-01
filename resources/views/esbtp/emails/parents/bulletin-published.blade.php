@@ -100,9 +100,7 @@
 
     <h3 style="color: #007bff; margin-top: 30px;">Actions</h3>
 
-    <div class="button-container">
-        <a href="{{ $bulletinUrl }}" class="button">Télécharger le bulletin</a>
-    </div>
+    @include('esbtp.emails.partials.bouton', ['url' => $bulletinUrl, 'libelle' => 'Télécharger le bulletin'])
 
     @if(isset($requiresSignature) && $requiresSignature)
     <div class="alert alert-info" style="margin-top: 20px;">

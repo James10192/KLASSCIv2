@@ -74,9 +74,7 @@
         </div>
     </div>
 
-    <div class="button-container">
-        <a href="{{ $platformUrl }}" class="button">Accéder à la plateforme</a>
-    </div>
+    @include('esbtp.emails.partials.bouton', ['url' => $platformUrl, 'libelle' => 'Accéder à la plateforme'])
 
     <h3 style="color: #007bff; margin-top: 35px; margin-bottom: 15px; font-size: 18px;">Que faire ensuite?</h3>
 

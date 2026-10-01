@@ -58,7 +58,5 @@
         <li>Contactez le coordinateur en cas de difficultés persistantes</li>
     </ul>
 
-    <div class="button-container">
-        <a href="{{ $absencesUrl }}" class="button">Voir les détails des absences</a>
-    </div>
+    @include('esbtp.emails.partials.bouton', ['url' => $absencesUrl, 'libelle' => 'Voir les détails des absences'])
 @endsection
