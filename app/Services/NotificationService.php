@@ -2789,7 +2789,8 @@ class NotificationService
                 'matiere' => $attendance->matiere->nom ?? $attendance->commentaire ?? 'Cours',
                 'typeActivite' => $attendance->type_activite ?? 'Cours magistral',
                 'commentaire' => $attendance->commentaire,
-                'periodeStats' => now()->format('F Y'),
+                // Mois en français (« octobre 2026 ») : `format()` l'écrivait en anglais.
+                'periodeStats' => now()->translatedFormat('F Y'),
                 'absencesJustifiees' => $justifiees,
                 'absencesNonJustifiees' => $nonJustifiees,
                 'totalAbsences' => $absences->count(),
@@ -2920,7 +2921,9 @@ class NotificationService
                     'effectifClasse' => $bulletin->classe->nombre_etudiants ?? 'N/A',
                     'decision' => $bulletin->decision,
                     'matieresEnDifficulte' => $matieresFaibles,
-                    'tauxPresence' => 85,  // À calculer depuis les absences si nécessaire
+                    // Pas de taux de présence : le service n'en calcule qu'un, mensuel,
+                    // pour l'avis d'absence, qui ne mesure pas la période du bulletin.
+                    // Un chiffre écrit ici en dur partait tel quel chez le parent.
                     'coursDisponibles' => true,
                     'bulletinUrl' => route('esbtp.mes-notes.index'),
                     'contactUrl' => route('esbtp.mon-profil.index'),

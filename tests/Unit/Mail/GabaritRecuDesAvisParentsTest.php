@@ -120,6 +120,26 @@ class GabaritRecuDesAvisParentsTest extends TestCase
         $this->assertStringNotContainsString('>Classe<', $html);
     }
 
+    public function test_l_alerte_de_resultats_ne_cite_aucun_taux_de_presence_sans_la_donnee(): void
+    {
+        // Son appelant réel ne transmet plus de taux : il en écrivait un en dur (85).
+        $donnees = AvisDExemple::donnees();
+        unset($donnees['tauxPresence']);
+
+        $html = view('esbtp.emails.parents.low-grades', $donnees)->render();
+
+        $this->assertStringNotContainsString('taux de présence', mb_strtolower(html_entity_decode($html, ENT_QUOTES)));
+        $this->assertStringContainsString('Veillez à son assiduité.', html_entity_decode($html, ENT_QUOTES));
+    }
+
+    public function test_aucun_appelant_n_ecrit_de_taux_de_presence_ni_de_mois_en_anglais(): void
+    {
+        $source = (string) file_get_contents(app_path('Services/NotificationService.php'));
+
+        $this->assertDoesNotMatchRegularExpression("/'tauxPresence'\s*=>\s*\d/", $source, 'Taux de présence écrit en dur.');
+        $this->assertStringNotContainsString("now()->format('F Y')", $source, 'Mois en anglais : utiliser translatedFormat.');
+    }
+
     public function test_les_alertes_lisent_les_donnees_des_vrais_appelants(): void
     {
         // L'alerte d'assiduité reçoit les données de l'avis d'absence : ni
