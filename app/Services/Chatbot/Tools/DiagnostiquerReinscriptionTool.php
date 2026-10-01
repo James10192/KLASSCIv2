@@ -105,7 +105,7 @@ class DiagnostiquerReinscriptionTool extends ChatbotTool
                 'initials' => $this->studentInitials($etudiant),
                 'classe' => $inscription->classe?->name ?? 'N/A',
                 'detail' => 'Inscription quittée : '.($inscription->anneeUniversitaire?->name ?? '?'),
-                'statut' => $dejaReinscrit ? 'Déjà réinscrit' : ($bloque ? 'Bloquée (impayé)' : 'Réinscription possible'),
+                'statut' => $dejaReinscrit ? 'Déjà réinscrit' : ($bloque ? 'Bloquée (impayé)' : ($solde > 0 ? 'Impayé, report possible' : 'Réinscription possible')),
                 'reste' => $voirMontants ? $this->formatFCFA(max(0.0, $solde)) : null,
                 'lien' => Route::has('esbtp.reinscription.show') ? route('esbtp.reinscription.show', $etudiant->id, false) : null,
                 'lien_label' => 'Réinscription',

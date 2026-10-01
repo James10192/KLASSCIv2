@@ -4,6 +4,14 @@ namespace Tests\Feature\Assistant;
 
 use App\Domain\Assistant\Actions\ContexteDEchange;
 use App\Domain\Assistant\Actions\Frais\AjusterMontantSouscription;
+use App\Domain\Assistant\Flux\UiMessageStream;
+use App\Domain\Assistant\Fournisseurs\RequeteModele;
+use App\Domain\Assistant\Harnais\BoucleAgent;
+use App\Domain\Assistant\Harnais\ConstructeurDePrompt;
+use App\Domain\Assistant\Modeles\ModeleIa;
+use App\Domain\Assistant\Outils\CatalogueOutils;
+use App\Models\ChatbotActionLog;
+use Tests\Unit\Domain\Assistant\FauxFournisseur;
 use App\Domain\Comptabilite\Souscriptions\AjustementMontantSouscription;
 use App\Domain\Comptabilite\Souscriptions\AjustementRefuse;
 use App\Http\Middleware\CheckInstalled;
@@ -234,5 +242,59 @@ class ReinscriptionBloqueeTest extends TestCase
 
         $this->assertFalse($d['deja_reinscrit_cette_annee']);
         $this->assertSame('solde_impaye', $d['cause']);
+    }
+
+    /**
+     * Séance d'entraînement : la vraie boucle d'agent, le vrai catalogue et le
+     * vrai prompt, avec un modèle scripté qui suit le mode opératoire
+     * « réinscription bloquée ». Elle prouve le câblage de bout en bout : le
+     * diagnostic remonte au modèle avec l'inscription_id dont l'action a
+     * besoin, et rien n'est écrit avant « Valider ».
+     */
+    public function test_seance_d_entrainement_diagnostic_puis_proposition_sans_ecriture(): void
+    {
+        $faux = new FauxFournisseur();
+        $this->app->instance(FauxFournisseur::class, $faux);
+        config([
+            'assistant.adaptateurs.faux' => FauxFournisseur::class,
+            'assistant.limites.tours' => 4,
+            'assistant.limites.budget_tokens' => 0,
+        ]);
+        $matricule = (string) $this->inscription->etudiant->matricule;
+        $faux->scripts['m'] = [
+            FauxFournisseur::outil('t1', 'diagnostiquer_reinscription', ['matricule' => $matricule]),
+            FauxFournisseur::outil('t2', 'proposer_ajustement_souscription', [
+                'inscription_id' => $this->inscription->id,
+                'montant' => 0,
+                'motif' => "Absente de l'état des arriérés 2025-2026 confirmé complet par la comptabilité",
+            ]),
+            FauxFournisseur::texte('Je propose de ramener son dû à 0 : relisez puis validez.'),
+        ];
+
+        $catalogue = app(CatalogueOutils::class);
+        $noms = array_column($catalogue->schemas($this->admin), 'nom');
+        $this->assertContains('diagnostiquer_reinscription', $noms);
+        $this->assertContains('proposer_ajustement_souscription', $noms);
+
+        $systeme = app(ConstructeurDePrompt::class)->systeme($this->admin, null, null);
+        $this->assertStringContainsString('Réinscription bloquée : appelle d\'abord diagnostiquer_reinscription', $systeme);
+        $this->assertStringContainsString('Cherche-le par MATRICULE', $systeme);
+
+        $resultat = (new BoucleAgent($catalogue))->executer(
+            [new ModeleIa('m', 'faux', 'faux', 'm', 'M', true, true, 'cle', 'https://faux.test/')],
+            new RequeteModele($systeme, [['role' => 'user', 'texte' => 'Pourquoi la réinscription de '.$matricule.' est bloquée ?']], $catalogue->schemas($this->admin)),
+            $this->admin,
+            new UiMessageStream(fn () => null),
+        );
+
+        $this->assertSame(['diagnostiquer_reinscription', 'proposer_ajustement_souscription'], array_column($resultat->appels, 'tool'));
+        // Ce que le modèle relit du diagnostic : la cause et l'inscription à viser.
+        $diagnostic = json_decode($faux->recues[1]['requete']->messages[2]['resultat'], true)['diagnostic'];
+        $this->assertSame('solde_impaye', $diagnostic['cause']);
+        $this->assertSame((int) $this->inscription->id, $diagnostic['inscription_id']);
+        $this->assertFalse($diagnostic['decision_fiable']);
+
+        $this->assertSame('proposed', ChatbotActionLog::sole()->status);
+        $this->assertEquals(220000, (float) $this->souscription->fresh()->amount);
     }
 }
