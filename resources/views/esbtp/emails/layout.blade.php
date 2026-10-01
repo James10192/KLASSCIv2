@@ -22,8 +22,8 @@
      inverserait ses couleurs. Garde posée seulement si ce texte est blanc
      (`emailGardeGmailSombre`, composeur `IdentiteDesCourriels`).
      Prouvée par son auteur sur Gmail iOS ; sur Gmail Android, qu'il dit
-     différent, NON vérifiée ici. Les boutons historiques `.button` des avis aux
-     parents n'en profitent pas : seul `partials/bouton` la porte. --}}
+     différent, NON vérifiée ici. Tout bouton passe par `partials/bouton`, qui
+     seul porte cette garde : n'écrivez pas de `<a>` stylé en bouton. --}}
 @php
     $logoSrc = null;
     // Un courriel envoyé par SMTP porte le logo en pièce intégrée, que les
@@ -64,12 +64,10 @@
         .badge-warning { background: #fef3c7; color: #92400e; }
         .badge-danger { background: #fee2e2; color: #991b1b; }
         .badge-info { background: {{ $emailPrimarySoft }}; color: {{ $emailPrimaryColor }}; }
-        .button-container { text-align: center; margin: 28px 0; }
-        .button { display: inline-block; padding: 14px 32px; background: {{ $emailPrimaryColor }}; color: {{ $emailHeaderTextColor }} !important; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 15px; }
         .alert { padding: 14px 16px; margin: 18px 0; border-radius: 10px; border-left: 4px solid; font-size: 14px; }
         .alert-success { background: #f0fdf4; border-color: #16a34a; color: #166534; }
         .alert-warning { background: #fffbeb; border-color: #f59e0b; color: #92400e; }
-        .alert-danger { background: #fef2f2; border-color: #dc2626; color: #991b1b; }
+        .alert-danger { background: #fef2f2; border-color: {{ $emailDangerColor }}; color: #991b1b; }
         .alert-info { background: {{ $emailPrimarySoft }}; border-color: {{ $emailPrimaryColor }}; color: #1e293b; }
         .message-intro { background: {{ $emailPrimarySoft }}; border-left: 4px solid {{ $emailPrimaryColor }}; padding: 14px 16px; margin: 20px 0; border-radius: 10px; }
         .message-intro p { margin: 0; color: #1e293b; font-weight: 600; }

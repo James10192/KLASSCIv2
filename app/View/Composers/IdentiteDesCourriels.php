@@ -19,6 +19,13 @@ use Illuminate\View\View;
  */
 class IdentiteDesCourriels
 {
+    /**
+     * Rouge d'alerte des courriels (`--danger` du design system) : bordure des
+     * alertes, bouton de l'avis de résultats insuffisants. Une couleur de sens,
+     * jamais de décoration — et la même pour toutes les écoles.
+     */
+    public const COULEUR_DANGER = '#dc2626';
+
     public function compose(View $view): void
     {
         $donnees = $view->getData();
@@ -37,6 +44,7 @@ class IdentiteDesCourriels
             'schoolLogoUrl' => $donnees['schoolLogoUrl'] ?? $this->logoPublic(),
             'emailPrimarySoft' => self::melanger($primaire, '#ffffff', 0.92),
             'emailPrimaryDark' => self::melanger($primaire, '#000000', 0.28),
+            'emailDangerColor' => self::COULEUR_DANGER,
             'emailGardeGmailSombre' => self::texteQuasiBlanc((string) ($donnees['emailHeaderTextColor'] ?? '#ffffff')),
         ]);
     }

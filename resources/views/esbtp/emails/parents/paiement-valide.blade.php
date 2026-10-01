@@ -93,9 +93,7 @@
     </div>
     @endif
 
-    <div class="button-container">
-        <a href="{{ $recuUrl }}" class="button">Télécharger le reçu</a>
-    </div>
+    @include('esbtp.emails.partials.bouton', ['url' => $recuUrl, 'libelle' => 'Télécharger le reçu'])
 
     <div class="divider"></div>
 

@@ -79,9 +79,7 @@
         Vous pouvez effectuer votre paiement directement via la plateforme en ligne ou vous rendre à l'administration de l'établissement.
     </p>
 
-    <div class="button-container">
-        <a href="{{ $paiementUrl }}" class="button">Effectuer un paiement</a>
-    </div>
+    @include('esbtp.emails.partials.bouton', ['url' => $paiementUrl, 'libelle' => 'Effectuer un paiement'])
 
     @if(isset($modesPaiement) && count($modesPaiement) > 0)
     <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Modes de paiement acceptés</h3>

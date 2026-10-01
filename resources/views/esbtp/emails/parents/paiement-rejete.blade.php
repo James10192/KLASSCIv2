@@ -34,7 +34,5 @@
         <li>Soumettez à nouveau votre paiement via la plateforme</li>
     </ol>
 
-    <div class="button-container">
-        <a href="{{ $paiementUrl }}" class="button">Soumettre un nouveau paiement</a>
-    </div>
+    @include('esbtp.emails.partials.bouton', ['url' => $paiementUrl, 'libelle' => 'Soumettre un nouveau paiement'])
 @endsection

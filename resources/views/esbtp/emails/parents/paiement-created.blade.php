@@ -27,7 +27,5 @@
         Votre paiement sera validé par l'administration sous 24-48h. Vous recevrez une notification une fois validé.
     </div>
 
-    <div class="button-container">
-        <a href="{{ $suiviUrl }}" class="button">Suivre mon paiement</a>
-    </div>
+    @include('esbtp.emails.partials.bouton', ['url' => $suiviUrl, 'libelle' => 'Suivre mon paiement'])
 @endsection

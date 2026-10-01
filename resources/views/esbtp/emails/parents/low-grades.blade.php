@@ -105,10 +105,10 @@
     </div>
     @endif
 
-    <div class="button-container">
-        <a href="{{ $bulletinUrl }}" class="button" style="background: #dc3545;">Consulter le bulletin complet</a>
-        <a href="{{ $contactUrl }}" class="button" style="background: #6c757d; margin-left: 10px;">Contacter le coordinateur</a>
-    </div>
+    {{-- Rouge : une alerte de résultats, pas une décoration. Le second geste
+         reste un lien simple — un deuxième bouton plein lui disputerait l'œil. --}}
+    @include('esbtp.emails.partials.bouton', ['url' => $bulletinUrl, 'libelle' => 'Consulter le bulletin complet', 'couleur' => $emailDangerColor])
+    <p style="margin:18px 0 0;font-size:14px;color:#475569;">Besoin d'en parler ? <a href="{{ $contactUrl }}" style="color:{{ $emailPrimaryColor }};font-weight:600;">Contacter le coordinateur</a></p>
 
     <div class="divider"></div>
 

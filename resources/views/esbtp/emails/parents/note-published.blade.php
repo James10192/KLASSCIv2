@@ -60,7 +60,5 @@
     </div>
     @endif
 
-    <div class="button-container">
-        <a href="{{ $noteUrl }}" class="button">Voir les détails</a>
-    </div>
+    @include('esbtp.emails.partials.bouton', ['url' => $noteUrl, 'libelle' => 'Voir les détails'])
 @endsection
