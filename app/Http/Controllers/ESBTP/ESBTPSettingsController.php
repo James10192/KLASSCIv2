@@ -1127,6 +1127,10 @@ class ESBTPSettingsController extends Controller
             return $refus;
         }
 
+        if (($incoherence = app(\App\Mail\Transport\MailerDeLEcole::class)->refusDeBascule($request)) !== null) {
+            return $this->refus($request, $incoherence);
+        }
+
         if (($refus = $this->refuserParcoursInscriptionIncoherent($request)) !== null) {
             return $refus;
         }
@@ -1751,6 +1755,7 @@ class ESBTPSettingsController extends Controller
             'setting_mailpulse_test_email_enabled' => ['nullable', 'in:0,1'],
             'setting_mailpulse_test_whatsapp_enabled' => ['nullable', 'in:0,1'],
             'setting_mailpulse_real_workflows_enabled' => ['nullable', 'in:0,1'],
+            'setting_mailpulse_courriels_enabled' => ['nullable', 'in:0,1'],
         ]);
 
         $validator->after(function ($validator) use ($request) {
@@ -1768,6 +1773,11 @@ class ESBTPSettingsController extends Controller
             );
             if ($phoneError !== null) {
                 $validator->errors()->add('setting_mailpulse_test_phone_recipients', $phoneError);
+            }
+
+            $courrielsError = app(\App\Mail\Transport\MailerDeLEcole::class)->refusDeBascule($request);
+            if ($courrielsError !== null) {
+                $validator->errors()->add('setting_mailpulse_courriels_enabled', $courrielsError);
             }
         });
 
@@ -1797,6 +1807,7 @@ class ESBTPSettingsController extends Controller
             'mailpulse_test_email_enabled',
             'mailpulse_test_whatsapp_enabled',
             'mailpulse_real_workflows_enabled',
+            'mailpulse_courriels_enabled',
         ];
 
         try {
@@ -1848,7 +1859,7 @@ class ESBTPSettingsController extends Controller
             DB::commit();
 
             Setting::clearCache();
-            $apiKeyState = $this->mailPulseApiKeyState();
+            $apiKeyState = app(\App\Services\MailPulse\MailPulseClient::class)->apiKeyDiagnostics();
             if ($apiKeyReceived && ! $apiKeyState['configured']) {
                 Log::error('MailPulse API key received but not persisted', [
                     'user_id' => auth()->id(),
@@ -1879,6 +1890,7 @@ class ESBTPSettingsController extends Controller
                 'api_key_received_length' => $apiKeyReceivedLength,
                 'api_key_configured' => $apiKeyState['configured'],
                 'api_key_source' => $apiKeyState['source'],
+                'courriels_par_mailpulse' => \App\Mail\Transport\MailPulseTransport::actif(),
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -1895,32 +1907,6 @@ class ESBTPSettingsController extends Controller
         }
     }
 
-    private function mailPulseApiKeyState(): array
-    {
-        $value = Setting::where('key', 'mailpulse_api_key')
-            ->where('is_active', true)
-            ->value('value');
-
-        if (is_string($value) && trim($value) !== '') {
-            return [
-                'configured' => true,
-                'source' => 'settings',
-            ];
-        }
-
-        $configValue = config('services.mailpulse.api_key', '');
-        if (is_string($configValue) && trim($configValue) !== '') {
-            return [
-                'configured' => true,
-                'source' => 'env',
-            ];
-        }
-
-        return [
-            'configured' => false,
-            'source' => 'none',
-        ];
-    }
 
     private function mailPulseRecipientValidationError(?string $json, string $type): ?string
     {
@@ -1961,7 +1947,8 @@ class ESBTPSettingsController extends Controller
             'mailpulse_enabled',
             'mailpulse_test_email_enabled',
             'mailpulse_test_whatsapp_enabled',
-            'mailpulse_real_workflows_enabled' => 'boolean',
+            'mailpulse_real_workflows_enabled',
+            'mailpulse_courriels_enabled' => 'boolean',
             'mailpulse_timeout' => 'integer',
             default => 'string',
         };
@@ -1987,6 +1974,7 @@ class ESBTPSettingsController extends Controller
             'mailpulse_test_email_enabled' => 'Activer les tests email MailPulse',
             'mailpulse_test_whatsapp_enabled' => 'Activer les tests WhatsApp MailPulse',
             'mailpulse_real_workflows_enabled' => 'Activer MailPulse sur les workflows parents réels',
+            'mailpulse_courriels_enabled' => "Envoyer tous les e-mails de l'école par MailPulse",
             default => $settingKey,
         };
     }
@@ -2261,6 +2249,7 @@ class ESBTPSettingsController extends Controller
             'mailpulse_test_email_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests email MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 314],
             'mailpulse_test_whatsapp_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests WhatsApp MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 315],
             'mailpulse_real_workflows_enabled' => ['value' => '0', 'type' => 'boolean', 'description' => 'Activer MailPulse sur les workflows parents reels', 'rules' => ['nullable', 'in:0,1'], 'sort' => 316],
+            \App\Mail\Transport\MailerDeLEcole::REGLAGE => ['value' => '0', 'type' => 'boolean', 'description' => "Envoyer tous les e-mails de l'ecole par MailPulse", 'rules' => ['nullable', 'in:0,1'], 'sort' => 317],
         ];
 
         foreach ($mailPulseSettings as $key => $attrs) {

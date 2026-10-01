@@ -39,7 +39,21 @@ while read -r _ sha_local ref_distante sha_distant; do
             echec=1
         fi
     done
+
+    # Une route CLI touchee : chaque operation d'ecriture doit etre declaree pour
+    # Nanan (faite par lui, a lui apprendre, ou hors de sa portee avec la raison).
+    if git diff --name-only "$plage" 2>/dev/null | grep -qE '^(routes/|app/Http/Controllers/API/CLI/|resources/data/nanan-couverture\.php|config/chatbot\.php)'; then
+        couverture_a_verifier=1
+    fi
 done
+
+if [ "${couverture_a_verifier:-0}" -eq 1 ] && [ -f vendor/autoload.php ] && command -v php > /dev/null 2>&1; then
+    if ! php bin/verifier-couverture-nanan.php; then
+        echo "  PUSH REFUSE — couverture Nanan incomplete (voir ci-dessus)."
+        echo ""
+        echec=1
+    fi
+fi
 
 if [ "$echec" -ne 0 ]; then
     echo "  (Le controle serveur rejouera la meme regle sur la PR.)"

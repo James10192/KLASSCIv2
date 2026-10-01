@@ -116,6 +116,18 @@ Avant de mettre une PR en review, l'auteur DOIT auditer mentalement :
 
 Et le critic catch les phantom problems (G2 du feat/385 = conditional validation sur un set vide).
 
+### 7. Une opération d'école faite à la main finit chez Nanan
+
+Une demande d'école réglée en CLI, en SQL ou en tinker n'est terminée que quand
+Nanan sait la refaire : outil de lecture, action « proposer puis Valider »,
+droits, mode opératoire, séance d'entraînement. Le parcours complet est dans le
+skill `.claude/skills/nanan-autonomie`.
+
+Chaque route d'écriture de `/api/cli` est déclarée dans
+`resources/data/nanan-couverture.php` (`nanan`, `a_apprendre` ou `hors_nanan`
+avec la raison). `php bin/verifier-couverture-nanan.php` le contrôle ; il tourne
+avant chaque push qui touche `routes/` ou la CLI, et en CI.
+
 ## Anti-patterns à BLOQUER en review
 
 1. ❌ PR qui ajoute un Model field utilisé en agrégat sans test du chemin Service → Vue

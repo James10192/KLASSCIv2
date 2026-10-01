@@ -72,14 +72,17 @@ class ESBTPLMDUEController extends Controller
         }
 
         // Le parcours, par le pivot : la seule voie qui sache dire qu'une unite
-        // sert plusieurs maquettes. La colonne heritee est reconnue en plus,
-        // sinon une unite importee dont le pivot n'a jamais ete ecrit
-        // disparaitrait de la liste de son propre parcours.
+        // sert plusieurs maquettes. La colonne heritee ne compte que pour une
+        // unite qui n'a AUCUN lien dans le pivot (importee avant lui) : la
+        // reconnaitre toujours gardait dans la liste d'un parcours une unite
+        // qu'on venait d'en retirer, et le retrait semblait avoir echoue.
         if ($request->filled('parcours_id')) {
             $pId = (int) $request->parcours_id;
             $query->where(function ($q) use ($pId) {
                 $q->whereHas('parcoursMultiple', fn ($sub) => $sub->where('esbtp_lmd_parcours.id', $pId))
-                    ->orWhere('esbtp_unites_enseignement.parcours_id', $pId);
+                    ->orWhere(fn ($legacy) => $legacy
+                        ->where('esbtp_unites_enseignement.parcours_id', $pId)
+                        ->whereDoesntHave('parcoursMultiple'));
             });
         }
 
@@ -943,7 +946,9 @@ class ESBTPLMDUEController extends Controller
         // les recréer. Trois conséquences, aucune signalée : le crédit propre à
         // une maquette, le caractère optionnel et l'ordre étaient reposés à leur
         // valeur par défaut à chaque enregistrement — donc perdus. Le service de
-        // synchronisation ne touche que ce qui change réellement.
+        // synchronisation ne touche que ce qui change réellement, et garde
+        // l'ordre et le caractère optionnel d'un lien conservé : l'écran ne les
+        // envoie pas, le service les reprend sur le lien existant.
         $count = DB::transaction(function () use ($request, $ue) {
             $liens = [];
             foreach ($request->input('parcours', []) as $item) {
