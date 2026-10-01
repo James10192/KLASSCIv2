@@ -157,11 +157,62 @@ return [
             'all_permissions' => ['matieres.edit'],
             'libelle' => 'Préparation du retrait de la maquette…',
         ],
+        // Lot C : les permissions sont celles de l'écran qui fait la même chose.
+        'proposer_correction_notes' => [
+            'enabled' => true,
+            'all_permissions' => ['notes.edit'],
+            'libelle' => 'Préparation de la correction des notes…',
+            'suggestion' => 'Corrige la note de cet étudiant suite à sa réclamation',
+        ],
+        'proposer_saisie_moyennes' => [
+            'enabled' => true,
+            'all_permissions' => ['bulletins.edit'],
+            'libelle' => 'Préparation des moyennes à enregistrer…',
+        ],
+        'proposer_deplacement_periode' => [
+            'enabled' => true,
+            'all_permissions' => ['evaluations.edit'],
+            'libelle' => 'Préparation du changement de semestre…',
+            'suggestion' => 'Range ces devoirs au semestre 2',
+        ],
+        'proposer_changement_matiere_evaluation' => [
+            'enabled' => true,
+            'all_permissions' => ['evaluations.edit'],
+            'libelle' => 'Préparation du changement de matière…',
+        ],
+        // Même garde que la route de lancement de l'écran Bulletins.
+        'proposer_generation_bulletins' => [
+            'enabled' => true,
+            'any_permissions' => ['admin.access', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk'],
+            'libelle' => 'Pré-contrôle de la génération des bulletins…',
+            'suggestion' => 'Génère les bulletins manquants de cette classe',
+        ],
+        'proposer_hierarchie_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.structure.manage'],
+            'libelle' => 'Préparation de la structure LMD…',
+        ],
+        'proposer_import_maquette_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.structure.manage'],
+            'libelle' => 'Lecture de la maquette LMD…',
+            'suggestion' => 'Importe la maquette LMD que je joins',
+        ],
+        'proposer_rattachement_classes_parcours' => [
+            'enabled' => true,
+            'all_permissions' => ['classes.edit'],
+            'libelle' => 'Préparation du rattachement des classes…',
+        ],
+        'proposer_affectation_enseignants_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.planning.edit'],
+            'libelle' => 'Préparation des affectations d’enseignants…',
+        ],
         // La pièce appartient à qui l'a déposée (PiecesJointes::pour) : ces droits
         // ne disent que les métiers où lire un tableau joint a un sens.
         'chercher_dans_piece' => [
             'enabled' => true,
-            'any_permissions' => ['notes.create', 'notes.edit', 'notes.manage_own', 'inscriptions.view', 'students.view', 'paiements.view', 'frais.view'],
+            'any_permissions' => ['notes.create', 'notes.edit', 'notes.manage_own', 'inscriptions.view', 'students.view', 'paiements.view', 'frais.view', 'lmd.structure.manage', 'lmd.planning.edit'],
             'libelle' => 'Recherche dans le fichier joint…',
         ],
         'proposer_ajustement_souscription' => [

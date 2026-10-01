@@ -25,6 +25,15 @@ return [
     'POST api/cli/classes' => ['nanan' => 'proposer_creation_classes'],
     'POST api/cli/frais/souscriptions/ajuster' => ['nanan' => 'proposer_ajustement_souscription'],
     'POST api/cli/lmd/parcours/{parcours}/link-ues' => ['nanan' => 'proposer_liaison_ue_parcours'],
+    'POST api/cli/bulletins/generate-missing' => ['nanan' => 'proposer_generation_bulletins'],
+    'POST api/cli/evaluations/deplacer-periode' => ['nanan' => 'proposer_deplacement_periode'],
+    'POST api/cli/evaluations/{id}/matiere' => ['nanan' => 'proposer_changement_matiere_evaluation'],
+    'POST api/cli/notes/corriger' => ['nanan' => 'proposer_correction_notes'],
+    'POST api/cli/resultats/moyennes' => ['nanan' => 'proposer_saisie_moyennes'],
+    'POST api/cli/lmd/import' => ['nanan' => 'proposer_import_maquette_lmd'],
+    'POST api/cli/lmd/import-enseignants' => ['nanan' => 'proposer_affectation_enseignants_lmd'],
+    'POST api/cli/lmd/link-classes' => ['nanan' => 'proposer_rattachement_classes_parcours'],
+    'POST api/cli/lmd/setup' => ['nanan' => 'proposer_hierarchie_lmd'],
 
     // --- À apprendre à Nanan ---
     'POST api/cli/annee/create' => ['nanan' => 'proposer_creation_annee'],
@@ -57,7 +66,6 @@ return [
     'POST api/cli/rendez-vous/convocations/renvoyer' => ['a_apprendre' => 'Opération d\'école faite à la main en CLI : à apprendre à Nanan.'],
     'POST api/cli/rendez-vous/generer' => ['a_apprendre' => 'Opération d\'école faite à la main en CLI : à apprendre à Nanan.'],
     'POST api/cli/rendez-vous/placer' => ['a_apprendre' => 'Opération d\'école faite à la main en CLI : à apprendre à Nanan.'],
-    'POST api/cli/resultats/moyennes' => ['a_apprendre' => 'Opération d\'école faite à la main en CLI : à apprendre à Nanan.'],
     'POST api/cli/settings' => ['a_apprendre' => 'Opération d\'école faite à la main en CLI : à apprendre à Nanan.'],
     'PUT api/cli/settings/{key}' => ['a_apprendre' => 'Opération d\'école faite à la main en CLI : à apprendre à Nanan.'],
     'POST api/cli/settings/{key}/image' => ['a_apprendre' => 'Opération d\'école faite à la main en CLI : à apprendre à Nanan.'],

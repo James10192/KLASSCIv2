@@ -2,37 +2,35 @@
 
 namespace App\Http\Controllers\API\CLI;
 
-use App\Domain\Academique\CoherenceSystemeAcademique;
-use App\Domain\Notes\RecalculApresDeplacement;
+use App\Domain\Notes\RebasculeDeMatiere;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Rebasculer une evaluation vers la matiere du bon systeme academique.
  *
  * Contrôleur à lui seul, comme {@see CLIEvaluationDeplacementController} et
- * {@see CLINotesRecomputeController} : cette action vivait dans
- * `CLIMaintenanceController`, qui passait déjà 1500 lignes, et le recalcul
- * des agrégats l'aurait fait grossir encore.
+ * {@see CLINotesRecomputeController}. Le garde et l'écriture vivent dans
+ * {@see RebasculeDeMatiere}, partagé avec Nanan.
  */
 class CLIEvaluationMatiereController extends BaseApiController
 {
+    public function __construct(private RebasculeDeMatiere $rebascule)
+    {
+        parent::__construct();
+    }
+
     /**
      * POST /api/cli/evaluations/{id}/matiere — rebascule une evaluation.
      *
      * Sert a reparer une fuite de selecteur : une evaluation posee sur une
      * matiere du mauvais systeme academique. Le mouvement n'est autorise que
      * s'il RETABLIT la coherence, jamais s'il la rompt.
-     *
-     * esbtp_notes porte une copie denormalisee de matiere_id : la deplacer en
-     * meme temps est obligatoire, sinon les notes restent rattachees a
-     * l'ancienne matiere et le bulletin continue de l'afficher.
      *
      * Body: { matiere_id: int, dry_run?: bool }
      */
@@ -54,43 +52,15 @@ class CLIEvaluationMatiereController extends BaseApiController
 
         $cible = ESBTPMatiere::find($validated['matiere_id']);
 
-        if ($refus = $this->refuserUneCibleIncoherente($evaluation, $cible)) {
-            return $refus;
+        if ($refus = $this->rebascule->refus($evaluation, $cible)) {
+            return $this->errorResponse($refus, [], 422);
         }
-
-        $notes = ESBTPNote::where('evaluation_id', $evaluation->id)->count();
 
         if ((bool) ($validated['dry_run'] ?? false)) {
-            return $this->apercuDeRebascule($evaluation, $cible, $notes);
+            return $this->apercuDeRebascule($evaluation, $cible, ESBTPNote::where('evaluation_id', $evaluation->id)->count());
         }
 
-        $avant = ['matiere_id' => $evaluation->matiere_id, 'matiere' => $evaluation->matiere?->name];
-
-        // Coordonnees completes d'AVANT : le recalcul doit rafraichir les deux
-        // cotes du deplacement, celui qu'on quitte comme celui qu'on rejoint.
-        $coordonneesAvant = [
-            'classe_id' => $evaluation->classe_id,
-            'matiere_id' => $evaluation->matiere_id,
-            'periode' => $evaluation->periode,
-            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
-        ];
-
-        DB::transaction(function () use ($evaluation, $cible) {
-            $evaluation->matiere_id = $cible->id;
-            $evaluation->save();
-
-            // Colonne denormalisee : sans cette mise a jour, les notes
-            // resteraient rattachees a l'ancienne matiere.
-            ESBTPNote::where('evaluation_id', $evaluation->id)
-                ->update(['matiere_id' => $cible->id]);
-        });
-
-        // Cet `update()` de query builder n'emet aucun evenement Eloquent :
-        // sans l'appel qui suit, `esbtp_resultats` garderait des deux cotes la
-        // moyenne d'avant, et cette moyenne perimee l'emporte sur les notes a
-        // l'affichage comme au bulletin. Hors transaction a dessein : le
-        // deplacement est acquis meme si un recalcul echoue.
-        $recalcul = RecalculApresDeplacement::pour($evaluation, $coordonneesAvant, $request->user()->id);
+        ['avant' => $avant, 'notes' => $notes, 'recalcul' => $recalcul] = $this->rebascule->appliquer($evaluation, $cible, $request->user()->id);
 
         Log::warning('CLI: evaluation rebasculee', [
             'evaluation_id' => $evaluation->id,
@@ -126,33 +96,6 @@ class CLIEvaluationMatiereController extends BaseApiController
             'matiere_cible' => $cible->name,
             'notes_a_deplacer' => $notes,
         ], 'Aucune ecriture : previsualisation seulement.');
-    }
-
-    /**
-     * Refuse un mouvement qui ROMPRAIT la coherence au lieu de la retablir :
-     * une ECUE du LMD vers une classe BTS, ou l'inverse. Le garde vit dans
-     * {@see CoherenceSystemeAcademique}, partage avec les deux modeles qui
-     * refusent a l'ecriture.
-     */
-    private function refuserUneCibleIncoherente(ESBTPEvaluation $evaluation, ESBTPMatiere $cible): ?JsonResponse
-    {
-        if (CoherenceSystemeAcademique::estCoherente(
-            $evaluation->classe?->systeme_academique,
-            $cible->unite_enseignement_id
-        )) {
-            return null;
-        }
-
-        $classeEstLmd = CoherenceSystemeAcademique::classeEstLmd($evaluation->classe?->systeme_academique);
-        $cibleEstEcue = CoherenceSystemeAcademique::matiereEstEcue($cible->unite_enseignement_id);
-
-        return $this->errorResponse(
-            'Refus : la matiere cible ne correspond pas au systeme de la classe. '
-            .'Classe '.($classeEstLmd ? 'LMD' : 'BTS').', matiere cible '
-            .($cibleEstEcue ? 'ECUE LMD' : 'BTS').'.',
-            [],
-            422
-        );
     }
 
     /**

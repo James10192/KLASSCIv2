@@ -75,9 +75,20 @@ class LMDEnseignantsImporter
      */
     private array $stats;
 
+    /**
+     * @param  bool  $creerLesComptes  false : un enseignant inconnu n'est PAS cree
+     *                                  (pas de compte ni de mot de passe temporaire) ;
+     *                                  l'ECUE reste sans affectation, et c'est dit.
+     * @param  bool  $correspondanceStricte  true : aucun rattrapage par prefixe de
+     *                                  code, et un nom ne designe qu'un compte
+     *                                  enseignant unique. Ce que Nanan exige : elle
+     *                                  ne devine ni un code, ni une personne.
+     */
     public function __construct(
         private readonly bool $dryRun = true,
         private readonly bool $includeInferredResponsableUe = false,
+        private readonly bool $creerLesComptes = true,
+        private readonly bool $correspondanceStricte = false,
     ) {
         $this->stats = $this->emptyStats();
     }
@@ -103,10 +114,27 @@ class LMDEnseignantsImporter
             throw new \RuntimeException("Structure JSON invalide (clé 'ues' manquante) : {$jsonPath}");
         }
 
+        return $this->importDonnees($data, $jsonPath);
+    }
+
+    /**
+     * Le meme import, sur des donnees deja lues (un fichier joint a Nanan).
+     * `ues` (UE → ECUE) comme dans les JSON, et/ou `ecues` a plat quand la
+     * source ne donne pas l'UE.
+     *
+     * @return array<string, mixed>
+     */
+    public function importDonnees(array $data, string $source = 'donnees'): array
+    {
+        $jsonPath = $source;
+
         DB::beginTransaction();
         try {
-            foreach ($data['ues'] as $ueData) {
+            foreach ((array) ($data['ues'] ?? []) as $ueData) {
                 $this->processUe($ueData);
+            }
+            foreach ((array) ($data['ecues'] ?? []) as $ecueData) {
+                $this->processEcue((array) $ecueData, '—');
             }
 
             if ($this->dryRun) {
@@ -163,7 +191,7 @@ class LMDEnseignantsImporter
         // PDF à partir du préfixe d'un ECUE (ex: JSON ue_code=ACN5001 alors que
         // la vraie UE-mère est COG5001 contenant ECUE ACN5001.1). On retrouve
         // l'UE réelle en cherchant un ECUE dont le code commence par {ueCode}.
-        if (!$ue && !$ueAmbigue) {
+        if (!$ue && !$ueAmbigue && !$this->correspondanceStricte) {
             $matiere = ESBTPMatiere::where('code', 'LIKE', $ueCode.'.%')
                 ->orWhere('code', 'LIKE', $ueCode.'-%')
                 ->whereNotNull('unite_enseignement_id')
@@ -249,7 +277,7 @@ class LMDEnseignantsImporter
         // On cherche donc `{ecueCode}.%` (suffixe `.1/.2`) ou `{ecueCode}-%`
         // (suffixe parcours `-AGRO/-ECO/-GES`) avant de warner.
         // Rattrape ~15 cas par tenant (cf agent PDF re-extraction 16/05/2026).
-        if (!$ecue && !str_contains($ecueCode, '.')) {
+        if (!$ecue && !str_contains($ecueCode, '.') && !$this->correspondanceStricte) {
             $ecue = ESBTPMatiere::where('code', 'LIKE', $ecueCode.'.%')
                 ->orWhere('code', 'LIKE', $ecueCode.'-%')
                 ->orderBy('id')
@@ -264,6 +292,11 @@ class LMDEnseignantsImporter
             $this->stats['warnings'][] = "ECUE introuvable: code={$ecueCode} (UE={$ueCodeForContext})";
             return;
         }
+        if ($this->correspondanceStricte && ! $this->estUnEcue($ecue)) {
+            $this->stats['warnings'][] = "Code {$ecueCode} : code d'une matière BTS, ignoré.";
+
+            return;
+        }
 
         $enseignants = $ecueData['enseignants'] ?? [];
         if (!is_array($enseignants) || count($enseignants) === 0) {
@@ -276,21 +309,48 @@ class LMDEnseignantsImporter
             return;
         }
 
-        // Update toutes les planifications de cet ECUE (multi filière/niveau).
-        // On ne touche QUE les rows où enseignant_principal_id est null OU différent,
-        // pour éviter les updated events inutiles + préserver les assignations
-        // manuelles existantes (cf. ues_assigned_responsable défensif).
+        $this->noterAffectation($ecue, $primaryTeacher);
+    }
+
+    /**
+     * Pose l'enseignant principal sur toutes les planifications de l'ECUE
+     * (multi filiere/niveau), et garde le detail ECUE par ECUE : c'est ce que
+     * relit la personne avant de valider (Nanan), et ce qui rend une
+     * proposition perimee s'il bouge. Seules les lignes sans enseignant ou
+     * avec un autre sont touchees : pas d'evenement `updated` inutile.
+     */
+    private function noterAffectation(ESBTPMatiere $ecue, User $enseignant): void
+    {
+        $avant = ESBTPPlanificationAcademique::where('matiere_id', $ecue->id)
+            ->with('enseignantPrincipal:id,name')->get(['id', 'enseignant_principal_id'])
+            ->map(fn ($p) => $p->enseignantPrincipal?->name ?? '—')->unique()->sort()->values()->all();
         $count = ESBTPPlanificationAcademique::where('matiere_id', $ecue->id)
-            ->where(function ($q) use ($primaryTeacher) {
-                $q->whereNull('enseignant_principal_id')
-                  ->orWhere('enseignant_principal_id', '!=', $primaryTeacher->id);
-            })
+            ->where(fn ($q) => $q->whereNull('enseignant_principal_id')->orWhere('enseignant_principal_id', '!=', $enseignant->id))
             ->update([
-                'enseignant_principal_id' => $primaryTeacher->id,
+                'enseignant_principal_id' => $enseignant->id,
                 'updated_by' => $this->resolveSystemUserId(),
             ]);
 
         $this->stats['ecues_assigned'] += $count;
+        $this->stats['affectations'][] = [
+            'ecue' => (string) CodeDeMaquette::affiche($ecue->code),
+            'ecue_nom' => (string) $ecue->name,
+            'enseignant' => (string) $enseignant->name,
+            'enseignant_id' => (int) $enseignant->id,
+            'avant' => $avant,
+            'planifications' => $count,
+        ];
+    }
+
+    /**
+     * Un ECUE, et pas une matiere BTS qui imprimerait le meme code : son
+     * unite, ou une ligne du pivot UE ↔ matiere. Sans ce controle, le mode
+     * strict pouvait ecraser l'enseignant d'une planification BTS.
+     */
+    private function estUnEcue(ESBTPMatiere $matiere): bool
+    {
+        return $matiere->unite_enseignement_id !== null
+            || DB::table('esbtp_ue_matiere')->where('matiere_id', $matiere->id)->exists();
     }
 
     /**
@@ -310,13 +370,32 @@ class LMDEnseignantsImporter
 
         // Dédup par normalisation case-insensitive (UTF-8 safe)
         $normalized = mb_strtolower($name, 'UTF-8');
-        $existingUser = User::query()
-            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
-            ->first();
+        if ($this->correspondanceStricte) {
+            // Un compte ENSEIGNANT, et un seul : un etudiant homonyme ne doit
+            // jamais recevoir un cours, et entre deux homonymes on ne choisit pas.
+            $candidats = User::role('enseignant')->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])->get();
+            if ($candidats->count() > 1) {
+                $this->stats['warnings'][] = "Enseignant ambigu : {$name} désigne {$candidats->count()} comptes enseignants. Affectez depuis l'écran de l'ECUE.";
+
+                return null;
+            }
+            $existingUser = $candidats->first();
+        } else {
+            $existingUser = User::query()
+                ->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
+                ->first();
+        }
 
         if ($existingUser) {
             $this->stats['users_matched']++;
             return $existingUser;
+        }
+
+        if (! $this->creerLesComptes) {
+            $this->stats['enseignants_inconnus'][] = $name;
+            $this->stats['warnings'][] = "Enseignant inconnu : {$name}. Aucun compte n'est créé ici : créez-le depuis l'écran Enseignants, puis relancez.";
+
+            return null;
         }
 
         // Création
@@ -412,13 +491,14 @@ class LMDEnseignantsImporter
             return auth()->id();
         }
 
-        // Fallback CLI/seed standalone : premier superAdmin actif
-        static $systemUserId = null;
-        if ($systemUserId === null) {
-            $systemUserId = User::role('superAdmin')->where('is_active', true)->value('id');
-        }
-        return $systemUserId;
+        // Fallback CLI/seed standalone : premier superAdmin actif. Memorise par
+        // instance, pas en `static` : un worker long (ou une serie de tests)
+        // gardait l'identifiant d'un compte depuis supprime, et la cle
+        // etrangere `updated_by` refusait l'ecriture.
+        return $this->systemUserId ??= User::role('superAdmin')->where('is_active', true)->value('id');
     }
+
+    private ?int $systemUserId = null;
 
     /**
      * @return array{users_created:int, users_matched:int, ecues_assigned:int, ecues_not_found:int, ues_assigned_responsable:int, ues_not_found:int, warnings:array<int,string>}
@@ -433,6 +513,8 @@ class LMDEnseignantsImporter
             'ues_assigned_responsable' => 0,
             'ues_not_found' => 0,
             'warnings' => [],
+            'affectations' => [],
+            'enseignants_inconnus' => [],
         ];
     }
 }
