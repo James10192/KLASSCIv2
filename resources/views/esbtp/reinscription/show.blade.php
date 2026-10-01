@@ -33,7 +33,13 @@
     [$decisionLabel, $decisionAide, $decisionIcone, $decisionTon] = $decisions[$decision] ?? [ucfirst((string) $decision), '', 'fa-circle-question', 'neutre'];
     $tonMoyenne = $moyenne >= (float) $regle->moyenne_passage ? 'ok' : ($moyenne >= (float) $regle->moyenne_rattrapage ? 'warn' : 'ko');
 
-    $lienFinalisation = route('esbtp.reinscription.create', $etudiant->id) . '?annee_academique=' . urlencode((string) $anneeAcademique);
+    // Le lien porte l'année visée : la finalisation calcule pour CETTE année.
+    $lienVers = fn ($annee) => route('esbtp.reinscription.create', array_filter([
+        'etudiant' => $etudiant->id,
+        'annee_academique' => $anneeAcademique,
+        'annee_cible_id' => $annee?->id,
+    ]));
+    $lienFinalisation = $lienVers($eligibilite['annee_cible']);
     $initiales = mb_strtoupper(mb_substr((string) $etudiant->nom, 0, 1, 'UTF-8') . mb_substr((string) $etudiant->prenoms, 0, 1, 'UTF-8'), 'UTF-8');
 @endphp
 
@@ -300,7 +306,7 @@
                         <i class="fas fa-list"></i>Liste des inscriptions
                     </a>
                     @if($eligibilite['annee_suivante'])
-                        <a href="{{ $lienFinalisation }}" class="rsd-btn rsd-btn--outline">
+                        <a href="{{ $lienVers($eligibilite['annee_suivante']) }}" class="rsd-btn rsd-btn--outline">
                             <i class="fas fa-forward"></i>Préparer {{ $eligibilite['annee_suivante']->name }}
                         </a>
                     @elseif($eligibilite['peut_rejouer'])

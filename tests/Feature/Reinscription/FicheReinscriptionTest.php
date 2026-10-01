@@ -172,6 +172,46 @@ class FicheReinscriptionTest extends TestCase
         $this->actingAs($this->agent)->get(route('esbtp.reinscription.create', $this->inscription->etudiant_id))->assertOk();
     }
 
+    /**
+     * Avant la bascule : courante = N, l'élève est déjà réinscrit en N, l'école
+     * prépare N+1. « Préparer N+1 » part de la classe de N, présélectionne N+1,
+     * et ne touche pas l'inscription de N. Viser N lui-même est refusé.
+     */
+    public function test_preparer_l_annee_suivante_part_de_l_annee_en_cours_sans_la_defaire(): void
+    {
+        $enCours = ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $this->courante->id,
+            'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+            'status' => 'active',
+            'workflow_step' => 'etudiant_cree',
+        ]);
+        ESBTPAnneeUniversitaire::where('start_date', '>', $this->courante->start_date)->update(['is_active' => false]);
+        $suivante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => false, 'is_active' => true,
+            'start_date' => $this->courante->start_date->copy()->addYear(), 'end_date' => $this->courante->end_date->copy()->addYear()]);
+
+        $lien = route('esbtp.reinscription.create', ['etudiant' => $this->inscription->etudiant_id, 'annee_academique' => '2026-2027', 'annee_cible_id' => $suivante->id]);
+        $this->fiche($this->agent)->assertOk()->assertSee('Préparer 2027-2028')->assertSee(e($lien), false);
+
+        $e = app(EligibiliteReinscription::class)->pour($this->inscription->etudiant_id, $this->agent, $suivante->id);
+        $this->assertSame($enCours->id, $e['inscription']->id, 'on quitte N, pas N-1');
+
+        $this->actingAs($this->admin)->get($lien)->assertOk()
+            ->assertSee('<option value="'.$suivante->id.'" selected', false)
+            ->assertDontSee('<option value="'.$this->courante->id.'" selected', false);
+
+        // Dette soldée : c'est bien la garde « déjà inscrit » qui doit refuser.
+        ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->update(['amount' => 0]);
+        $this->actingAs($this->agent);
+        try {
+            app(ReeinscriptionService::class)->effectuerReinscription($this->inscription->etudiant_id, $enCours->classe_id, 'passage', null, [], null, $this->courante->id, null, false, false);
+            $this->fail("Un agent ne doit pas pouvoir remplacer l'inscription en cours.");
+        } catch (\App\Exceptions\ReinscriptionRefuseeException $ex) {
+            $this->assertStringContainsString('déjà inscrit pour 2026-2027', $ex->getMessage());
+        }
+        $this->assertSame('active', $enCours->fresh()->status);
+    }
+
     public function test_une_finalisation_bloquee_renvoie_a_la_fiche(): void
     {
         $this->actingAs($this->agent)->get(route('esbtp.reinscription.create', $this->inscription->etudiant_id))

@@ -58,6 +58,12 @@ final class EligibiliteReinscription
         // ne compte pas comme « déjà inscrit ».
         $inscription = ($anneeCible ? $this->classes->inscriptionQuitteeAvant($etudiantId, $anneeCible) : null)
             ?? $this->classes->inscriptionQuittee($etudiantId);
+        // On ne se réinscrit jamais dans l'année qu'on quitte : un élève dont la
+        // seule inscription est sur l'année courante vise la suivante (s'il n'y
+        // en a pas encore, il n'y a pas d'année où le réinscrire).
+        if (! $anneeCibleId && $inscription && $anneeCible && (int) $inscription->annee_universitaire_id === (int) $anneeCible->id) {
+            $anneeCible = $this->anneeApres($anneeCible);
+        }
         $existante = $anneeCible && $inscription
             ? $this->inscriptionDeLAnnee($etudiantId, (int) $anneeCible->id, (int) $inscription->id)
             : null;
@@ -80,9 +86,7 @@ final class EligibiliteReinscription
         return [
             'inscription' => $inscription,
             'annee_cible' => $anneeCible,
-            'annee_suivante' => $anneeCible
-                ? ESBTPAnneeUniversitaire::where('is_active', true)->where('start_date', '>', $anneeCible->start_date)->orderBy('start_date')->first()
-                : null,
+            'annee_suivante' => $anneeCible ? $this->anneeApres($anneeCible) : null,
             'inscription_annee_cible' => $existante,
             'du' => $du,
             'paye' => $paye,
@@ -96,6 +100,14 @@ final class EligibiliteReinscription
             // effectuerReinscription la gère, la fiche l'offre à qui peut déroger.
             'peut_rejouer' => $etat === self::DEJA_INSCRIT && $deroge,
         ];
+    }
+
+    private function anneeApres(ESBTPAnneeUniversitaire $annee): ?ESBTPAnneeUniversitaire
+    {
+        return ESBTPAnneeUniversitaire::where('is_active', true)
+            ->where('start_date', '>', $annee->start_date)
+            ->orderBy('start_date')
+            ->first();
     }
 
     /** Reste dû jusqu'auquel une réinscription reste permise (réglage d'école, 0 par défaut). */

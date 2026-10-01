@@ -409,6 +409,28 @@ class ReeinscriptionService
                 }
             }
 
+            // On ne se réinscrit jamais dans l'année qu'on quitte : l'étape
+            // suivante terminerait l'inscription en cours de l'élève et la
+            // remplacerait, sans retour possible.
+            if ((int) $inscriptionActuelle->annee_universitaire_id === (int) $nouvelleAnnee->id) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException(
+                    "L'année de destination ({$nouvelleAnnee->name}) est celle que l'étudiant quitte : choisissez l'année suivante."
+                );
+            }
+
+            // Une inscription existe déjà sur l'année visée : la refaire la
+            // termine et la remplace (correction de classe). Réservé à qui peut
+            // déroger — la fiche ne propose « Corriger » qu'à ce compte-là.
+            $dejaInscrit = \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
+                ->where('annee_universitaire_id', $nouvelleAnnee->id)
+                ->where('status', '!=', 'annulée')
+                ->exists();
+            if ($dejaInscrit && !$isSuperAdmin) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException(
+                    "L'étudiant est déjà inscrit pour {$nouvelleAnnee->name}. Pour corriger cette inscription, demandez à un superadministrateur."
+                );
+            }
+
             // 4. Vérifier et désactiver toute inscription active existante pour cet étudiant dans cette année
             $inscriptionExistante = \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
                 ->where('annee_universitaire_id', $nouvelleAnnee->id)

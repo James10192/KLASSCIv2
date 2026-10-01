@@ -137,7 +137,7 @@ class ESBTPReinscriptionController extends Controller
                             // Déterminer si l'étudiant peut se réinscrire
                             // (seulement si tout est soldé - solde restant = 0 ou négatif)
                             // Le seuil de l'école, comme la fiche et la garde.
-            $etudiant->peut_reinscrire = $soldeRestant <= \App\Services\Reinscription\EligibiliteReinscription::tolerance();
+                            $etudiant->peut_reinscrire = $soldeRestant <= \App\Services\Reinscription\EligibiliteReinscription::tolerance();
                         } else {
                             // Pas d'inscription active, utiliser les anciennes valeurs par défaut
                             $etudiant->montant_attendu = 0;
@@ -340,7 +340,11 @@ class ESBTPReinscriptionController extends Controller
             // La meme decision que la fiche : meme inscription quittee, meme
             // annee visee. Un dossier qui ne peut pas avancer revient a la fiche,
             // qui dit pourquoi, au lieu d'un formulaire inerte.
-            $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)->pour((int) $etudiantId, auth()->user());
+            // L'année visée vient du lien de la fiche (« Préparer 2027-2028 »,
+            // « Corriger ») : sans elle, l'inscription quittée et les classes
+            // proposées seraient calculées pour une autre année.
+            $anneeCibleId = $request->integer('annee_cible_id') ?: null;
+            $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)->pour((int) $etudiantId, auth()->user(), $anneeCibleId);
             $inscription = $eligibilite['inscription'];
 
             if (!$inscription) {
@@ -390,8 +394,11 @@ class ESBTPReinscriptionController extends Controller
 
             // Déterminer les années pour l'affichage cohérent
             $anneeEtudiantActuelle = $inscription->anneeUniversitaire->name ?? 'N/A'; // Année de l'inscription actuelle de l'étudiant
-            $anneeDestination = $eligibilite['annee_cible'] ?? \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-            $anneeDestinationName = $anneeDestination ? $anneeDestination->name : $anneeAcademique;
+            // Présélectionnée seulement quand la fiche l'a dit explicitement :
+            // sinon le sélecteur reste vide et obligatoire, comme avant.
+            $anneeDestination = $anneeCibleId ? $eligibilite['annee_cible'] : null;
+            $anneeAffichee = $eligibilite['annee_cible'] ?? \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeDestinationName = $anneeAffichee ? $anneeAffichee->name : $anneeAcademique;
 
             return view('esbtp.reinscription.create', compact(
                 'analyse',
