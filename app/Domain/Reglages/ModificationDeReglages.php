@@ -120,7 +120,13 @@ class ModificationDeReglages
         return trim((string) ($avant ?? '')) === trim((string) ($apres ?? ''));
     }
 
-    /** Même nombre (virgule ou point, zéros de tête ou de fin), sinon même texte. */
+    /**
+     * Même nombre (zéros de tête ou de fin), sinon même texte.
+     *
+     * La virgule n'est lue que dans la valeur saisie : en base, « 1,5 » est lu
+     * 1 par `Setting::castValue()`, et le traiter comme 1,5 empêcherait l'école
+     * de corriger la valeur que les bulletins utilisent réellement.
+     */
     public static function memeNombre(mixed $avant, mixed $apres): bool
     {
         if (self::memeTexte($avant, $apres)) {
@@ -129,7 +135,7 @@ class ModificationDeReglages
         if (! is_scalar($avant) || ! is_scalar($apres)) {
             return false;
         }
-        $a = str_replace(',', '.', trim((string) $avant));
+        $a = trim((string) $avant);
         $b = str_replace(',', '.', trim((string) $apres));
 
         return is_numeric($a) && is_numeric($b) && (float) $a === (float) $b;

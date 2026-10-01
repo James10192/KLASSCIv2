@@ -51,6 +51,9 @@ return new class extends Migration
         }
 
         $auteur = DB::table('users')->min('id');
+        if ($auteur === null) {
+            Log::warning('[reglages] aucun utilisateur : conversion en float sans trace, down() ne pourra rien remettre', ['migration' => self::SAUVEGARDE]);
+        }
         if ($auteur !== null) {
             DB::table('settings_backups')->insert([
                 'backup_name' => self::SAUVEGARDE,
