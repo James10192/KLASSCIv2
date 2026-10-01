@@ -1,52 +1,43 @@
-# Documentation ESBTP - Système de Suivi des Présences
+# Documentation technique de KLASSCI
 
-Cette documentation couvre l'ensemble du système de suivi des présences ESBTP. Elle est organisée en trois sections principales :
+Présentation du produit, modules et démarrage en local : voir le [README à la racine](../README.md).
+Documentation utilisateur publique : [klassci.com/docs](https://klassci.com/docs).
 
-## 1. Guides Utilisateurs
+Ce dossier rassemble la documentation destinée à l'équipe qui développe et exploite KLASSCI.
 
--   [Guide Administrateur](user-guides/admin/README.md)
--   [Guide Secrétaire](user-guides/secretary/README.md)
--   [Guide Enseignant](user-guides/teacher/README.md)
--   [Guide Étudiant](user-guides/student/README.md)
+## API
 
-## 2. Documentation Technique
+- [`api/`](api/) — une fiche par API, REST ou CLI d'exploitation, avec son historique ; point d'entrée : [`api/README.md`](api/README.md)
+- Utilisation du CLI : [`api/CLI_USAGE.md`](api/CLI_USAGE.md)
+- Intégration LMS : [`LMS_API_README.md`](LMS_API_README.md), [`LMS_INTEGRATION_GUIDE.md`](LMS_INTEGRATION_GUIDE.md), [`LMS_ARCHITECTURE_GUIDE.md`](LMS_ARCHITECTURE_GUIDE.md)
 
--   [Documentation API](technical/api/README.md)
--   [Schéma de Base de Données](technical/database/README.md)
--   [Architecture du Système](technical/architecture/README.md)
+## Architecture et exploitation
 
-## 3. Guides de Déploiement
+- [`SAAS_ARCHITECTURE.md`](SAAS_ARCHITECTURE.md) — architecture multi-instance, base centrale
+- [`SAAS_DEPLOYMENT_PLAN.md`](SAAS_DEPLOYMENT_PLAN.md) — déploiement des instances
+- [`VERSIONING.md`](VERSIONING.md) — conventions de version et production des notes de version
+- [`runbooks/`](runbooks/) — procédures d'exploitation (mise en service d'une instance hors Côte d'Ivoire, sécurité, pilotage académique, rattrapages de bulletins)
+- [`architecture/`](architecture/) — notes de conception ciblées
+- [`support/KLASSCI_CARE.md`](support/KLASSCI_CARE.md) — support intégré aux instances
 
--   [Guide d'Installation](deployment/installation/README.md)
--   [Guide de Maintenance](deployment/maintenance/README.md)
+## Produit
 
-## Structure de la Documentation
+- [`PRD_KLASSCI.md`](PRD_KLASSCI.md) — document de cadrage produit (décembre 2024)
+- [`product/`](product/) — études produit (LMD)
+- [`MASTER-PLAN-emploi-temps-lmd-unification.md`](MASTER-PLAN-emploi-temps-lmd-unification.md) — chantier emploi du temps et LMD
+- [`tutoriels/`](tutoriels/) — tutoriels utilisateur illustrés
 
-```
-docs/
-  ├── user-guides/          # Guides utilisateurs par rôle
-  │   ├── admin/           # Documentation administrateur
-  │   ├── secretary/       # Documentation secrétaire
-  │   ├── teacher/         # Documentation enseignant
-  │   └── student/         # Documentation étudiant
-  ├── technical/           # Documentation technique
-  │   ├── api/             # Documentation API
-  │   ├── database/        # Documentation base de données
-  │   └── architecture/    # Documentation architecture
-  └── deployment/          # Guides de déploiement
-      ├── installation/    # Guide d'installation
-      └── maintenance/     # Guide de maintenance
-```
+## Audits
 
-## Contribution
+- [`audits/`](audits/) — audits datés (comptabilité, parcours LMD, rendez-vous)
+- [`SECURITY_AUDIT_2026-05-21.md`](SECURITY_AUDIT_2026-05-21.md) — audit de sécurité
 
-Pour contribuer à la documentation :
+## Ailleurs dans le dépôt
 
-1. Créez une branche pour vos modifications
-2. Suivez les conventions de formatage Markdown
-3. Incluez des captures d'écran si nécessaire
-4. Soumettez une pull request pour révision
+- [`../CHANGELOG.md`](../CHANGELOG.md) — historique des changements
+- [`../.claude/rules/`](../.claude/rules/) — règles de développement : permissions, design, pièges connus
+- [`../CLAUDE.md`](../CLAUDE.md) — consignes générales du dépôt
 
-## Maintenance
+## Documents anciens
 
-La documentation est maintenue par l'équipe de développement ESBTP. Pour signaler des erreurs ou suggérer des améliorations, veuillez créer une issue dans le dépôt du projet.
+Les autres fichiers à la racine de ce dossier (correctifs de frais, reliquats, affectation, inscriptions…) sont des notes de chantiers passés. Ils décrivent l'état du code au moment où ils ont été écrits : vérifiez dans le code avant de vous y fier.

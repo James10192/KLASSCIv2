@@ -8,8 +8,10 @@ use App\Http\Requests\RendezVous\PortailRdvRequest;
 use App\Http\Requests\RendezVous\PortailRdvRetrouverRequest;
 use App\Models\ESBTPRdvReservation;
 use App\Services\RendezVous\CatalogueCreneaux;
+use App\Services\RendezVous\ConvocationRdvPdf;
 use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\Portail\ReferencePublique;
+use App\Services\RendezVous\RendezVousReglages;
 use App\Services\RendezVous\ReservateurRdv;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\RateLimiter;
@@ -21,6 +23,8 @@ class RendezVousPortalController extends Controller
         private readonly ReservateurRdv $reservateur,
         private readonly ReferencePublique $references,
         private readonly FileConvocationsRdv $convocations,
+        private readonly ConvocationRdvPdf $pdf,
+        private readonly RendezVousReglages $reglages,
     ) {
     }
 
@@ -70,6 +74,37 @@ class RendezVousPortalController extends Controller
             'reservation' => $reservation === null ? null : $this->presenter($reservation),
             'peut_modifier' => $reservation !== null && $this->reservateur->peutModifier($reservation),
         ]);
+    }
+
+    /**
+     * Reprogramme la convocation d'un rendez-vous deja existant sans creer de
+     * nouvelle reservation. La reference publique + date de naissance restent
+     * le seul couple d'authentification expose au portail.
+     */
+    public function renvoyer(PortailRdvRequest $request): JsonResponse
+    {
+        $donnees = $request->validated();
+        if (($refus = $this->seauPlein($donnees['reference'])) !== null) {
+            return $refus;
+        }
+
+        $lecture = $this->reservateur->consulter($donnees['reference'], $donnees['date_naissance']);
+        if (! $lecture['trouve'] || $lecture['reservation'] === null) {
+            return $this->introuvable($donnees['reference']);
+        }
+
+        RateLimiter::clear(ReservateurRdv::seauParReference($donnees['reference'])->cle);
+
+        /** @var ESBTPRdvReservation $reservation */
+        $reservation = $lecture['reservation'];
+        $this->convocations->confirmer($reservation, $reservation->convocation_action ?: 'confirme');
+        $reservation->refresh()->loadMissing('creneau');
+
+        return response()->json([
+            'enregistre' => true,
+            'message' => 'La convocation a ete reprogrammee pour envoi.',
+            'reservation' => $this->presenter($reservation),
+        ], 202);
     }
 
     public function deplacer(PortailRdvCreneauRequest $request): JsonResponse
@@ -171,10 +206,14 @@ class RendezVousPortalController extends Controller
     }
 
     /**
-     * @return array{date: string, heure_debut: string, heure_fin: string, statut: string}
+     * Ne publie jamais le contact brut : seule la destination deja masquee par
+     * la messagerie sort du tenant. L'URL PDF contient un jeton HMAC opaque.
+     *
+     * @return array<string, mixed>
      */
     private function presenter(ESBTPRdvReservation $reservation): array
     {
+        $reservation->loadMissing('creneau');
         $creneau = $reservation->creneau;
 
         return [
@@ -182,6 +221,19 @@ class RendezVousPortalController extends Controller
             'heure_debut' => $creneau?->heureDebutHi(),
             'heure_fin' => $creneau?->heureFinHi(),
             'statut' => $reservation->statut->value,
+            'lieu' => $this->reglages->lieu() ?: null,
+            'convocation_url' => $this->pdf->url($reservation),
+            'convocation' => [
+                'statut' => $reservation->convocation_statut?->value,
+                'canal' => $reservation->convocation_canal?->value,
+                'destination' => $reservation->convocation_destination_masquee,
+                'message_id' => $reservation->convocation_message_id,
+                'tentatives' => $reservation->convocation_tentatives,
+                'fallback_utilise' => (bool) $reservation->convocation_fallback_utilise,
+                'envoyee_at' => $reservation->convocation_envoyee_at?->toIso8601String(),
+                'delivree_at' => $reservation->convocation_delivree_at?->toIso8601String(),
+                'erreur' => $reservation->convocation_erreur,
+            ],
         ];
     }
 }

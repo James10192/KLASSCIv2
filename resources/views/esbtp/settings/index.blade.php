@@ -1613,8 +1613,12 @@
                 </div>
 
                 <h4 style="margin-top: 24px; font-size: 0.95rem; color: #64748b; font-weight: 600;">
-                    <i class="fas fa-arrows-alt text-primary"></i> Marges (mm)
+                    <i class="fas fa-arrows-alt text-primary"></i> Marges générales des PDF (mm)
                 </h4>
+                <div class="alert alert-info py-2 px-3 mb-3" style="font-size:.8rem;">
+                    Ces marges concernent les documents PDF généraux. Les bulletins BTS utilisent leurs marges dédiées dans
+                    <a href="{{ route('esbtp.bulletins.configuration') }}" class="fw-semibold">Configuration des bulletins</a>.
+                </div>
                 <p style="font-size: .78rem; color: #64748b; margin: 4px 0 0;">Une imprimante n'imprime pas au bord de la feuille : les documents gardent au moins 10 mm, et 20 mm en bas pour laisser la place au pied de page.</p>
                 <div class="settings-grid-4" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px;">
                     <div class="form-group">
@@ -2958,11 +2962,7 @@
                     @php
                         $mailpulseEnabled = \App\Helpers\SettingsHelper::get('mailpulse_enabled', '0');
                         $mailpulseWorkflowsEnabled = \App\Helpers\SettingsHelper::get('mailpulse_real_workflows_enabled', '0');
-                        $mailpulseApiKeyConfigured = \App\Models\Setting::where('key', 'mailpulse_api_key')
-                            ->where('is_active', true)
-                            ->whereNotNull('value')
-                            ->where('value', '<>', '')
-                            ->exists() || trim((string) config('services.mailpulse.api_key', '')) !== '';
+                        $mailpulseApiKeyConfigured = (bool) app(\App\Services\MailPulse\MailPulseClient::class)->apiKeyDiagnostics()['configured'];
                     @endphp
 
                     <div class="mailpulse-brand-card">
@@ -2984,6 +2984,7 @@
                             <i class="fas {{ $mailpulseWorkflowsEnabled == '1' ? 'fa-bolt' : 'fa-pause' }}"></i>
                             {{ $mailpulseWorkflowsEnabled == '1' ? 'Workflows parents actifs' : 'Workflows parents inactifs' }}
                         </span>
+                        @include('esbtp.settings.partials.mailpulse-courriels-etat')
                     </div>
 
                     <div class="settings-section">
@@ -3024,6 +3025,8 @@
                             </label>
                             <small class="text-muted d-block mt-2">Sans cette case, MailPulse envoie les tests mais pas les messages aux vrais parents (paiements, absences, notes, inscriptions).</small>
                         </div>
+
+                        @include('esbtp.settings.partials.mailpulse-courriels')
 
                         <div class="settings-grid">
                             <div class="form-group">
@@ -4445,9 +4448,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }));
 
         if (!response.ok || payload.success === false) {
-            throw new Error(payload.message || 'Enregistrement MailPulse impossible.');
+            throw new Error((payload.errors && Object.values(payload.errors).flat()[0]) || payload.message || 'Enregistrement MailPulse impossible.');
         }
 
+        window.dispatchEvent(new CustomEvent('mailpulse:enregistre', { detail: payload }));
         const submittedApiKey = String(formData.get('setting_mailpulse_api_key') || '').trim();
         if (submittedApiKey !== '' && payload.api_key_received === false) {
             throw new Error("La clé API saisie n'a pas été reçue par le serveur. Rechargez la page puis réessayez.");

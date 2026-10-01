@@ -107,8 +107,13 @@ class ParcoursUeSyncService
                 'parcours_id' => $parcoursId,
                 'ue_id' => (int) $ue->id,
                 'semestre' => $semestre,
-                'is_optional' => (bool) ($lien['is_optional'] ?? false),
-                'ordre' => (int) ($lien['ordre'] ?? 0),
+                // null = « non précisé » : résolu plus bas sur la valeur actuelle
+                // du lien s'il existe déjà. L'écran et Nanan n'envoient que le
+                // couple parcours × semestre ; sans ce repli, enregistrer pour
+                // retirer un parcours remettait l'ordre et le caractère optionnel
+                // des liens CONSERVÉS à leurs valeurs par défaut.
+                'is_optional' => array_key_exists('is_optional', $lien) ? (bool) $lien['is_optional'] : null,
+                'ordre' => array_key_exists('ordre', $lien) ? (int) $lien['ordre'] : null,
             ];
         }
 
@@ -126,7 +131,13 @@ class ParcoursUeSyncService
                 DB::table('esbtp_lmd_parcours_ue')->where('parcours_id', $parcoursId)->lockForUpdate()->get(['id']);
             }
 
-            $diff = $this->computeDiff($this->liensActuelsDeLUnite($ue), $voulus, detachMissing: true);
+            $actuels = $this->liensActuelsDeLUnite($ue);
+            foreach ($voulus as $cle => $lien) {
+                $voulus[$cle]['is_optional'] ??= $actuels[$cle]['is_optional'] ?? false;
+                $voulus[$cle]['ordre'] ??= $actuels[$cle]['ordre'] ?? 0;
+            }
+
+            $diff = $this->computeDiff($actuels, $voulus, detachMissing: true);
             collect($diff['attach'])->pluck('parcours_id')->unique()
                 ->each(fn ($parcoursId) => $this->refuserCodeImprimeEnDouble((int) $parcoursId, collect([(int) $ue->id])));
 

@@ -9,6 +9,7 @@ use App\Models\Setting;
 use App\Models\SettingsBackup;
 use App\Http\Middleware\CheckRequiredSettings;
 use App\Domain\Notifications\PhoneNormalizer;
+use App\Services\Admissions\InscriptionWorkflowSettings;
 use App\Services\AppreciationScaleSettingsService;
 use App\Services\BulletinMentionResolver;
 use App\Services\BtsBulletinPolicy;
@@ -119,6 +120,9 @@ class ESBTPSettingsController extends Controller
             $telephoneSettings = app(TelephoneSettingsService::class);
             $telephoneSettings->ensureDefaults();
             app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->ensureDefaults();
+            // Le bloc du parcours d'inscription : sans ses lignes en base, rien
+            // de ce que l'ecole coche ne serait enregistre.
+            app(InscriptionWorkflowSettings::class)->ensureDefaults();
 
             $pdfColorDefaults = [
                 'pdf_primary_color' => '#0453cb',
@@ -531,7 +535,7 @@ class ESBTPSettingsController extends Controller
                 // migration, lu par MobileProfileResolver, sans cette ligne
                 // la case de la page n'aurait jamais ete enregistree.
                 MobileProfileResolver::REGLAGE_ACTIF,
-            ], array_keys($troncCommunDefaults));
+            ], InscriptionWorkflowSettings::booleens(), array_keys($troncCommunDefaults));
 
             // Reglages a cle pointee qui ne sont PAS des cases a cocher. La
             // distinction ne peut PAS se lire sur la colonne `type` : plusieurs
@@ -563,6 +567,9 @@ class ESBTPSettingsController extends Controller
             // bascules, ou une valeur absente se lit comme un « non » — ce qui
             // aurait remis « inactif » a chaque enregistrement de la page.
             $reglagesTexte = array_merge($reglagesTexte, SeparationOfDutiesService::clesDeReglage());
+            // Les choix fermes du parcours d'inscription, valides par
+            // refuserParcoursInscriptionIncoherent() avant toute ecriture.
+            $reglagesTexte = array_merge($reglagesTexte, array_keys(InscriptionWorkflowSettings::choix()));
 
             $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();
 
@@ -904,18 +911,114 @@ class ESBTPSettingsController extends Controller
      * une requete JSON peut envoyer un champ a null, et le confondre avec une
      * absence remettrait silencieusement une bascule a zero.
      */
+    /**
+     * Une cle pointee arrive telle quelle ou avec ses points devenus
+     * underscores (ce que fait PHP dans $_POST). Le bloc du parcours
+     * d'inscription, lui, prefixe ses champs de `setting_` : sans ces formes,
+     * il n'etait jamais lu.
+     *
+     * Le prefixe est reserve a ces cles. L'etendre a toutes aurait reveille
+     * des controles qui ne voient aujourd'hui que les noms nus (le contraste
+     * des couleurs PDF, poste en `setting_pdf_header_*`) et change sans le dire
+     * ce que la page accepte sur huit instances.
+     *
+     * @return list<string>
+     */
+    private function formesSoumises(string $cle): array
+    {
+        $souligne = str_replace('.', '_', $cle);
+        $formes = [$cle, $souligne];
+
+        if (in_array($cle, InscriptionWorkflowSettings::cles(), true)) {
+            $formes[] = 'setting_'.$cle;
+            $formes[] = 'setting_'.$souligne;
+        }
+
+        return $formes;
+    }
+
     private function valeurSoumise(array $rawInput, string $cle): mixed
     {
-        $cleFormulaire = str_replace('.', '_', $cle);
+        foreach ($this->formesSoumises($cle) as $forme) {
+            if (array_key_exists($forme, $rawInput)) {
+                return $rawInput[$forme];
+            }
+        }
 
-        return $rawInput[$cle] ?? $rawInput[$cleFormulaire] ?? null;
+        return null;
     }
 
     /** Le champ figurait-il dans la requete, quelle que soit sa valeur ? */
     private function estSoumis(array $rawInput, string $cle): bool
     {
-        return array_key_exists($cle, $rawInput)
-            || array_key_exists(str_replace('.', '_', $cle), $rawInput);
+        foreach ($this->formesSoumises($cle) as $forme) {
+            if (array_key_exists($forme, $rawInput)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Un choix hors liste, ou un parcours qui bloquerait chaque dossier, est
+     * refuse avant d'ecrire : relu, il retomberait en silence sur le defaut.
+     */
+    private function refuserParcoursInscriptionIncoherent(Request $request)
+    {
+        $rawInput = $request->all();
+
+        foreach (InscriptionWorkflowSettings::choix() as $cle => $options) {
+            if (! $this->estSoumis($rawInput, $cle)) {
+                continue;
+            }
+
+            $soumis = $this->valeurSoumise($rawInput, $cle);
+            $choisi = is_string($soumis) ? trim($soumis) : '';
+            if (! array_key_exists($choisi, $options)) {
+                return $this->refus($request, "Valeur « {$choisi} » non reconnue pour le parcours d'inscription.");
+            }
+        }
+
+        // Valeur effective apres enregistrement : soumise, sinon une case du
+        // bloc absente d'un formulaire soumis vaut « non », sinon la base. La
+        // prise de rendez-vous ne se regle pas sur cette page : lue en base.
+        $casesAbsentesValentNon = $request->boolean('settings_save_display');
+        $valeur = function (string $cle) use ($rawInput, $casesAbsentesValentNon): string {
+            if ($this->estSoumis($rawInput, $cle)) {
+                return (string) $this->valeurSoumise($rawInput, $cle);
+            }
+            if ($casesAbsentesValentNon && in_array($cle, InscriptionWorkflowSettings::booleens(), true)) {
+                return '0';
+            }
+
+            return (string) Setting::get($cle, '');
+        };
+
+        // Le formulaire renvoie ce bloc a chaque enregistrement. On ne juge donc
+        // que ce que l'ecole est en train de changer : un etat deja incoherent
+        // en base (prise de rendez-vous fermee ailleurs) ne doit pas bloquer
+        // l'enregistrement d'un logo ou d'un reglage de bulletin.
+        $change = false;
+        foreach (InscriptionWorkflowSettings::cles() as $cle) {
+            $avant = (string) Setting::get($cle, '');
+            $apres = $valeur($cle);
+            if (in_array($cle, InscriptionWorkflowSettings::booleens(), true)) {
+                $avant = filter_var($avant, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+                $apres = filter_var($apres, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+            }
+            if (trim($avant) !== trim($apres)) {
+                $change = true;
+                break;
+            }
+        }
+        if (! $change) {
+            return null;
+        }
+
+        $message = InscriptionWorkflowSettings::incoherence($valeur);
+
+        return $message === null ? null : $this->refus($request, $message);
     }
 
     /**
@@ -1021,6 +1124,14 @@ class ESBTPSettingsController extends Controller
         }
 
         if (($refus = $this->refuserAnneeCibleInconnue($request)) !== null) {
+            return $refus;
+        }
+
+        if (($incoherence = app(\App\Mail\Transport\MailerDeLEcole::class)->refusDeBascule($request)) !== null) {
+            return $this->refus($request, $incoherence);
+        }
+
+        if (($refus = $this->refuserParcoursInscriptionIncoherent($request)) !== null) {
             return $refus;
         }
 
@@ -1644,6 +1755,7 @@ class ESBTPSettingsController extends Controller
             'setting_mailpulse_test_email_enabled' => ['nullable', 'in:0,1'],
             'setting_mailpulse_test_whatsapp_enabled' => ['nullable', 'in:0,1'],
             'setting_mailpulse_real_workflows_enabled' => ['nullable', 'in:0,1'],
+            'setting_mailpulse_courriels_enabled' => ['nullable', 'in:0,1'],
         ]);
 
         $validator->after(function ($validator) use ($request) {
@@ -1661,6 +1773,11 @@ class ESBTPSettingsController extends Controller
             );
             if ($phoneError !== null) {
                 $validator->errors()->add('setting_mailpulse_test_phone_recipients', $phoneError);
+            }
+
+            $courrielsError = app(\App\Mail\Transport\MailerDeLEcole::class)->refusDeBascule($request);
+            if ($courrielsError !== null) {
+                $validator->errors()->add('setting_mailpulse_courriels_enabled', $courrielsError);
             }
         });
 
@@ -1690,6 +1807,7 @@ class ESBTPSettingsController extends Controller
             'mailpulse_test_email_enabled',
             'mailpulse_test_whatsapp_enabled',
             'mailpulse_real_workflows_enabled',
+            'mailpulse_courriels_enabled',
         ];
 
         try {
@@ -1741,7 +1859,7 @@ class ESBTPSettingsController extends Controller
             DB::commit();
 
             Setting::clearCache();
-            $apiKeyState = $this->mailPulseApiKeyState();
+            $apiKeyState = app(\App\Services\MailPulse\MailPulseClient::class)->apiKeyDiagnostics();
             if ($apiKeyReceived && ! $apiKeyState['configured']) {
                 Log::error('MailPulse API key received but not persisted', [
                     'user_id' => auth()->id(),
@@ -1772,6 +1890,7 @@ class ESBTPSettingsController extends Controller
                 'api_key_received_length' => $apiKeyReceivedLength,
                 'api_key_configured' => $apiKeyState['configured'],
                 'api_key_source' => $apiKeyState['source'],
+                'courriels_par_mailpulse' => \App\Mail\Transport\MailPulseTransport::actif(),
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -1788,32 +1907,6 @@ class ESBTPSettingsController extends Controller
         }
     }
 
-    private function mailPulseApiKeyState(): array
-    {
-        $value = Setting::where('key', 'mailpulse_api_key')
-            ->where('is_active', true)
-            ->value('value');
-
-        if (is_string($value) && trim($value) !== '') {
-            return [
-                'configured' => true,
-                'source' => 'settings',
-            ];
-        }
-
-        $configValue = config('services.mailpulse.api_key', '');
-        if (is_string($configValue) && trim($configValue) !== '') {
-            return [
-                'configured' => true,
-                'source' => 'env',
-            ];
-        }
-
-        return [
-            'configured' => false,
-            'source' => 'none',
-        ];
-    }
 
     private function mailPulseRecipientValidationError(?string $json, string $type): ?string
     {
@@ -1854,7 +1947,8 @@ class ESBTPSettingsController extends Controller
             'mailpulse_enabled',
             'mailpulse_test_email_enabled',
             'mailpulse_test_whatsapp_enabled',
-            'mailpulse_real_workflows_enabled' => 'boolean',
+            'mailpulse_real_workflows_enabled',
+            'mailpulse_courriels_enabled' => 'boolean',
             'mailpulse_timeout' => 'integer',
             default => 'string',
         };
@@ -1880,6 +1974,7 @@ class ESBTPSettingsController extends Controller
             'mailpulse_test_email_enabled' => 'Activer les tests email MailPulse',
             'mailpulse_test_whatsapp_enabled' => 'Activer les tests WhatsApp MailPulse',
             'mailpulse_real_workflows_enabled' => 'Activer MailPulse sur les workflows parents réels',
+            'mailpulse_courriels_enabled' => "Envoyer tous les e-mails de l'école par MailPulse",
             default => $settingKey,
         };
     }
@@ -2154,6 +2249,7 @@ class ESBTPSettingsController extends Controller
             'mailpulse_test_email_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests email MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 314],
             'mailpulse_test_whatsapp_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests WhatsApp MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 315],
             'mailpulse_real_workflows_enabled' => ['value' => '0', 'type' => 'boolean', 'description' => 'Activer MailPulse sur les workflows parents reels', 'rules' => ['nullable', 'in:0,1'], 'sort' => 316],
+            \App\Mail\Transport\MailerDeLEcole::REGLAGE => ['value' => '0', 'type' => 'boolean', 'description' => "Envoyer tous les e-mails de l'ecole par MailPulse", 'rules' => ['nullable', 'in:0,1'], 'sort' => 317],
         ];
 
         foreach ($mailPulseSettings as $key => $attrs) {

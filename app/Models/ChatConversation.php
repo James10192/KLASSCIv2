@@ -21,7 +21,7 @@ class ChatConversation extends Model
     public function participants(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'chat_conversation_participants', 'chat_conversation_id', 'user_id')
-            ->withPivot('last_read_at')
+            ->withPivot('last_read_at', 'important_at', 'archived_at', 'pinned_at')
             ->withTimestamps();
     }
 
@@ -33,6 +33,11 @@ class ChatConversation extends Model
     public function lastMessage(): HasOne
     {
         return $this->hasOne(ChatMessage::class, 'chat_conversation_id')->latestOfMany();
+    }
+
+    public function entityLinks(): HasMany
+    {
+        return $this->hasMany(ChatConversationEntityLink::class, 'chat_conversation_id')->orderBy('created_at');
     }
 
     public function unreadCountFor(User $user): int

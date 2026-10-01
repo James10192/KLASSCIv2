@@ -728,6 +728,15 @@ function ueManager() {
     };
 }
 
+// ── Le gestionnaire de la page, par sa racine ──
+// « le premier [x-data] du document » designait autrefois cette page. Depuis
+// que le layout rend la fenetre « Nouveautes » (son propre x-data) avant le
+// contenu, il designe celle-ci : l'identifiant de l'UE valait undefined et
+// l'enregistrement partait vers /ue/undefined/sync-parcours.
+function ueManagerData() {
+    return Alpine.$data(document.querySelector('.lu-page'));
+}
+
 // ── Build parcours checkbox with sem chips ──
 function buildParcoursCheckbox(p, checked) {
     const activeSems = p.semestres || [];
@@ -747,7 +756,7 @@ function buildParcoursCheckbox(p, checked) {
 
 // ── Save Link Parcours (global, called by button onclick) ──
 document.getElementById('lp_submit').addEventListener('click', async function() {
-    const mgr = Alpine.$data(document.querySelector('[x-data]'));
+    const mgr = ueManagerData();
     const btn = this;
     btn.disabled = true;
     document.getElementById('lp_submit_text').textContent = 'Enregistrement...';
@@ -764,11 +773,16 @@ document.getElementById('lp_submit').addEventListener('click', async function() 
             headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/json' },
             body: JSON.stringify({ parcours })
         });
-        const data = await resp.json();
-        if (data.success) {
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok && data.success) {
             bootstrap.Modal.getInstance(document.getElementById('modalLinkParcours')).hide();
             mgr.loadUes(mgr.pagination.current_page);
             mgr.showToast('Parcours liés');
+        } else {
+            // Un refus (422) se taisait : le bouton se rearmait, la fenetre
+            // restait ouverte, et rien ne disait pourquoi.
+            const msgs = data.errors ? Object.values(data.errors).flat().join(' ') : (data.message || ('Erreur ' + resp.status));
+            mgr.showToast(msgs, 'error');
         }
     } catch (e) { document.getElementById('lp_error').style.display = 'block'; }
     btn.disabled = false;
@@ -800,7 +814,7 @@ document.getElementById('formUE').addEventListener('submit', async function(e) {
             return;
         }
         bootstrap.Modal.getInstance(document.getElementById('modalUE')).hide();
-        const mgr = Alpine.$data(document.querySelector('[x-data]'));
+        const mgr = ueManagerData();
         mgr.loadUes(mgr.pagination.current_page);
         mgr.showToast(data.message || 'UE enregistrée');
     } catch (err) {
@@ -1102,7 +1116,7 @@ document.getElementById('ecue_form').addEventListener('submit', async function(e
         const data = await resp.json();
         if (resp.ok && data.success !== false) {
             bootstrap.Modal.getInstance(document.getElementById('modalECUE')).hide();
-            const mgr = Alpine.$data(document.querySelector('[x-data]'));
+            const mgr = ueManagerData();
             mgr.loadUes(mgr.pagination.current_page);
             mgr.showToast(data.message || 'ECUE enregistré');
         } else {

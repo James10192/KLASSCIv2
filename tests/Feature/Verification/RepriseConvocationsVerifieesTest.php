@@ -9,8 +9,12 @@ use App\Models\ESBTPCandidature;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\ESBTPRdvReservation;
 use App\Models\ESBTPVerificationContact;
+use App\Models\Setting;
 use App\Models\User;
+use App\Services\Inscription\PortailCandidaturePublication;
 use App\Services\RendezVous\FileConvocationsRdv;
+use App\Services\RendezVous\RendezVousReglages as ReglagesRdv;
+use App\Services\Reinscription\PortailReinscriptionService;
 use App\Services\Verification\ConfirmationContactEcole;
 use App\Services\Verification\ControleVerification;
 use App\Services\Verification\DemarrageVerification;
@@ -95,6 +99,41 @@ class RepriseConvocationsVerifieesTest extends TestCase
 
         $this->assertSame(ControleVerification::EXPIRE, $resultat->motif);
         $this->assertSame(0, ESBTPVerificationContact::query()->sole()->tentatives, 'Un code expire n\'est pas un essai.');
+    }
+
+    public function test_le_code_valide_attribue_un_creneau_au_seul_dossier_verifie_et_pose_sa_convocation(): void
+    {
+        $annee = ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
+        foreach ([
+            ReglagesRdv::ENABLED => '1', ReglagesRdv::OUVERTURE => now()->toDateString(), ReglagesRdv::FERMETURE => now()->addDays(10)->toDateString(),
+            ReglagesRdv::HEURE_DEBUT => '08:00', ReglagesRdv::HEURE_FIN => '12:00', ReglagesRdv::DUREE => '30', ReglagesRdv::CAPACITE => '5', ReglagesRdv::JOURS => '1,2,3,4,5,6,7',
+            PortailCandidaturePublication::REGLAGE_PHYSIQUES => now()->toDateString(),
+            PortailReinscriptionService::REGLAGE_ANNEE_CIBLE => (string) $annee->id,
+        ] as $cle => $valeur) {
+            Setting::setOrCreate($cle, $valeur);
+        }
+        Cache::flush();
+        ESBTPRdvCreneau::create([
+            'annee_universitaire_id' => $annee->id, 'date' => now()->addDays(2)->toDateString(),
+            'heure_debut' => '09:00:00', 'heure_fin' => '09:30:00', 'capacite' => 5, 'ouvert' => true,
+        ]);
+        Http::fake(['mailpulse.test/api/v1/messages' => Http::response([
+            'dispatch' => ['state' => 'accepted', 'sms_fallback_eligible' => false],
+            'message' => ['id' => 'msg_1', 'status' => 'queued'],
+        ], 202)]);
+        $candidature = ESBTPCandidature::create([
+            'nom' => 'KONE', 'prenoms' => 'Awa', 'date_naissance' => '2007-01-01', 'telephone' => '+2250701020304',
+            'email' => 'awa@gmail.com', 'annee_universitaire_id' => $annee->id,
+            'consentement_at' => now(), 'statut' => ESBTPCandidature::STATUT_EN_ATTENTE,
+        ]);
+        $verification = app(DemarrageVerification::class)->apresDepot($candidature);
+
+        $resultat = app(ControleVerification::class)->parCode($verification->demandeId, $this->codeEnvoye(), 'email');
+
+        $this->assertTrue($resultat->verifie);
+        $reservation = ESBTPRdvReservation::query()->sole();
+        $this->assertSame($candidature->id, $reservation->candidature_id);
+        $this->assertSame(StatutConvocationRdv::EnAttente, $reservation->convocation_statut);
     }
 
     private function badge(ESBTPCandidature $candidature): string

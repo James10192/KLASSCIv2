@@ -33,13 +33,40 @@ class ConfirmationContactEcole
     /** @return array{0: string, 1: int} le resultat, et le nombre de convocations replanifiees */
     public function confirmer(Model $demande, string $empreinte, int $agentId): array
     {
-        return DB::transaction(function () use ($demande, $empreinte, $agentId) {
+        return $this->poser($demande, $empreinte, $agentId, fn (Model $ligne): bool => $ligne->contactMarque());
+    }
+
+    /**
+     * La meme confirmation, faite au guichet du parcours d'inscription, devant
+     * l'etudiant : elle vaut pour tout contact encore non prouve, et pas
+     * seulement pour un contact marque. Un dossier dont le code n'a jamais ete
+     * demande (depose avant l'activation de la verification, ou repris d'un
+     * depot anterieur) n'avait sinon aucune issue pour recevoir son lien
+     * d'activation.
+     *
+     * @return array{0: string, 1: int}
+     */
+    public function confirmerAuGuichet(Model $demande, string $empreinte, int $agentId): array
+    {
+        // Seule une confirmation au guichet deja posee rend l'acte inutile :
+        // un e-mail prouve par code ne suffit pas si l'ecole n'envoie que par
+        // WhatsApp, et confirmer n'efface aucune preuve deja acquise.
+        return $this->poser($demande, $empreinte, $agentId, fn (Model $ligne): bool => $ligne->contact_confirme_at === null);
+    }
+
+    /**
+     * @param  callable(Model): bool  $aConfirmer
+     * @return array{0: string, 1: int}
+     */
+    private function poser(Model $demande, string $empreinte, int $agentId, callable $aConfirmer): array
+    {
+        return DB::transaction(function () use ($demande, $empreinte, $agentId, $aConfirmer) {
             $ligne = $demande::query()->whereKey($demande->getKey())->lockForUpdate()->first();
 
             if ($ligne === null || ! hash_equals($ligne->empreinteContact(), $empreinte)) {
                 return [self::MODIFIE_ENTRE_TEMPS, 0];
             }
-            if (! $ligne->contactMarque()) {
+            if (! $aConfirmer($ligne)) {
                 return [self::PAS_A_CONFIRMER, 0];
             }
 

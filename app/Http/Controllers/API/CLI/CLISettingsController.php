@@ -33,7 +33,10 @@ class CLISettingsController extends BaseApiController
     private const SENSIBLES = ['token', 'secret', 'password', 'mot_de_passe', 'api_key', 'apikey', 'cle_api'];
 
     /** Reglages dont la valeur est validee comme booleen, puis ecrite en 1 / 0. */
-    private const BOOLEENS = [\App\Services\TenantScolariteSettings::VERIFICATION_CONTACT];
+    private const BOOLEENS = [
+        \App\Services\TenantScolariteSettings::VERIFICATION_CONTACT,
+        \App\Services\TenantScolariteSettings::VERIFICATION_WHATSAPP_INVERSE,
+    ];
 
     public function index(Request $request): JsonResponse
     {
@@ -109,6 +112,14 @@ class CLISettingsController extends BaseApiController
             );
         }
 
+        if (in_array($valide['key'], \App\Mail\Transport\MailerDeLEcole::REGLAGES_RESERVES_A_L_ECRAN, true)) {
+            return $this->errorResponse(
+                sprintf("« %s » décide par où partent les e-mails de l'école : il se change depuis l'écran des paramètres (onglet MailPulse).", $valide['key']),
+                [],
+                422
+            );
+        }
+
         if ($this->estSensible($valide['key'])) {
             return $this->errorResponse(
                 "Cette cle evoque un secret : elle se change depuis l'ecran de configuration.",
@@ -126,11 +137,40 @@ class CLISettingsController extends BaseApiController
             $valide['value'] = $booleen ? '1' : '0';
         }
 
+        // Le parcours d'inscription configurable : memes choix et memes refus
+        // que l'ecran des reglages, lus dans la meme classe.
+        $workflow = \App\Services\Admissions\InscriptionWorkflowSettings::class;
+        if (in_array($valide['key'], $workflow::booleens(), true)) {
+            $booleen = filter_var($valide['value'], FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($booleen === null) {
+                return $this->errorResponse(sprintf('« %s » attend un booléen (1/0, true/false).', $valide['key']), [], 422);
+            }
+            $valide['value'] = $booleen ? '1' : '0';
+        }
+        if (array_key_exists($valide['key'], $workflow::choix())
+            && ! array_key_exists((string) $valide['value'], $workflow::choix()[$valide['key']])) {
+            return $this->errorResponse(sprintf(
+                '« %s » attend une de ces valeurs : %s.',
+                $valide['key'],
+                implode(', ', array_keys($workflow::choix()[$valide['key']]))
+            ), [], 422);
+        }
+        if (in_array($valide['key'], array_merge($workflow::booleens(), array_keys($workflow::choix()), [\App\Services\RendezVous\RendezVousReglages::ENABLED]), true)) {
+            app($workflow)->ensureDefaults();
+            $incoherence = $workflow::incoherence(fn (string $cle): string => $cle === $valide['key']
+                ? (string) $valide['value']
+                : (string) Setting::get($cle, ''));
+            if ($incoherence !== null) {
+                return $this->errorResponse($incoherence, [], 422);
+            }
+        }
+
         $reglage = Setting::query()->where('key', $valide['key'])->first();
 
         if (! $reglage) {
             $creables = [
                 \App\Services\TenantScolariteSettings::VERIFICATION_CONTACT,
+                \App\Services\TenantScolariteSettings::VERIFICATION_WHATSAPP_INVERSE,
                 \App\Services\TenantScolariteSettings::CLERK_LMD_ACCESS,
                 \App\Services\TenantScolariteSettings::CLERK_PEDAGOGIE,
                 \App\Services\TenantScolariteSettings::MANAGE_TEACHERS,

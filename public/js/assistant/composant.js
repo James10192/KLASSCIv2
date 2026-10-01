@@ -58,6 +58,7 @@
             prefsEtat: '',
             _mq: null,
             _onMq: null,
+            _onDemande: null,
 
             init: function () {
                 var noeud = this.$root.querySelector('script[data-ast-config]');
@@ -74,10 +75,22 @@
                 this._onMq = function () { self.verrouillerDefilement(); };
                 if (this._mq.addEventListener) { this._mq.addEventListener('change', this._onMq); }
                 this.$nextTick(function () { self.brancherDefileur(); });
+
+                // Une page peut confier une question à Nanan :
+                // window.dispatchEvent(new CustomEvent('nanan:demander', { detail: { question: '…' } }))
+                // Le panneau s'ouvre et la question part, comme si elle avait été tapée.
+                this._onDemande = function (ev) {
+                    var question = ev && ev.detail && ev.detail.question;
+                    if (!question) { return; }
+                    self.ouvrir();
+                    self.$nextTick(function () { self.envoyer(String(question)); });
+                };
+                window.addEventListener('nanan:demander', this._onDemande);
             },
 
             destroy: function () {
                 if (this._mq && this._mq.removeEventListener) { this._mq.removeEventListener('change', this._onMq); }
+                if (this._onDemande) { window.removeEventListener('nanan:demander', this._onDemande); }
                 if (this.controleur) { this.controleur.abort(); }
                 if (defileur) { defileur.detruire(); defileur = null; }
                 vues.forEach(function (v) { v.detruire(); });
@@ -202,7 +215,7 @@
                     suites: { questions: [], actions: [] },
                     // Avis 👍 / 👎 et signalement KLASSCI Care
                     dbId: null, avis: null, retourOuvert: false, raison: '', commentaire: '', retourEnvoye: false,
-                    signalement: { ouvert: false, texte: '', etat: '', message: '', cle: null }
+                    signalement: { ouvert: false, texte: '', etat: '', message: '', cle: null, suivi: null, verifier: null, emailMasque: null, verification: { etat: '', message: '' } }
                 });
                 var msg = this.messages[this.messages.length - 1];
                 this.creerVue(msg);
@@ -337,6 +350,14 @@
             corpsRequete: function (texte) {
                 // Le modèle n'est envoyé que si le sélecteur est proposé (permission assistant.model.choose).
                 var avecChoix = this.cfg.modeles && this.cfg.modeles.liste && this.modeleChoisi;
+                // Certaines pages exposent un contexte métier précis (ex. une
+                // moyenne sans note visible). Il est relu à chaque envoi, et
+                // non mémorisé : un changement AJAX de période reste juste.
+                var contextePage;
+                var noeudContexte = document.querySelector('[data-ast-page-context]');
+                if (noeudContexte && noeudContexte.dataset.astPageContext) {
+                    try { contextePage = JSON.parse(noeudContexte.dataset.astPageContext); } catch (e) { contextePage = undefined; }
+                }
                 return JSON.stringify({
                     modele: avecChoix ? this.modeleChoisi : undefined,
                     message: texte,
@@ -344,6 +365,7 @@
                     current_url: window.location.href.slice(0, 2048),
                     current_path: window.location.pathname.slice(0, 1024),
                     page_title: document.title.slice(0, 255),
+                    page_context: contextePage,
                     // Réessai : le serveur remplace la réponse ratée au lieu d'ajouter un tour.
                     relance: this.relanceEnCours || undefined,
                     pieces: this.piecesPretes().map(function (p) { return p.id; })
@@ -647,8 +669,31 @@
                     sig.message = r.ok
                         ? (r.json.en_attente ? r.json.message : 'Signalement transmis au support' + (r.json.reference ? ' (' + r.json.reference + ')' : '') + '.')
                         : ((Array.isArray(detail) ? detail[0] : detail) || r.message || 'Envoi impossible.');
-                    if (r.ok) { sig.ouvert = false; }
+                    if (r.ok) {
+                        sig.ouvert = false;
+                        /* Où suivre la demande, et l'invitation à confirmer son adresse (contrat du support). */
+                        sig.suivi = typeof r.json.suivi_url === 'string' ? r.json.suivi_url : null;
+                        sig.verifier = r.json.email_a_verifier === true && typeof r.json.email_verification_url === 'string' ? r.json.email_verification_url : null;
+                        sig.emailMasque = typeof r.json.email_masque === 'string' ? r.json.email_masque : null;
+                    }
                 }).catch(function () { sig.etat = 'erreur'; sig.message = 'Connexion interrompue.'; });
+            },
+
+            /** 200 {envoye:true}, 422 {deja_verifiee}, 503 {envoye:false} : jamais bloquant. */
+            confirmerAdresse: function (msg) {
+                var sig = msg.signalement;
+                if (!sig.verifier || sig.verification.etat === 'envoi') { return; }
+                sig.verification = { etat: 'envoi', message: '' };
+                this.postJson(sig.verifier, {}).then(function (r) {
+                    var c = r.json || {};
+                    if (r.ok && c.envoye === true) {
+                        sig.verification = { etat: 'ok', message: c.message || 'Un lien de confirmation vous a été envoyé.' };
+                    } else if (c.deja_verifiee === true) {
+                        sig.verification = { etat: 'ok', message: c.message || 'Votre adresse est déjà confirmée.' };
+                    } else {
+                        sig.verification = { etat: 'erreur', message: c.message || "L'envoi du lien a échoué. Réessayez dans un instant." };
+                    }
+                }).catch(function () { sig.verification = { etat: 'erreur', message: 'Connexion interrompue.' }; });
             },
 
             // ─── Conversations ───

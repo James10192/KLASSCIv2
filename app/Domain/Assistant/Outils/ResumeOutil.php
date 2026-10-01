@@ -50,6 +50,8 @@ class ResumeOutil
         'get_financial_summary' => 'Synthèse financière calculée',
         'navigate_to_page' => 'Page trouvée',
         'get_setup_guide' => 'Guide préparé',
+        'diagnostiquer_reinscription' => 'Dossier de réinscription lu',
+        'chercher_dans_piece' => 'Recherche faite dans le fichier',
         'afficher_graphique' => 'Graphique affiché',
         'afficher_tableau' => 'Tableau affiché',
         'afficher_diagramme' => 'Diagramme affiché',
@@ -121,7 +123,10 @@ class ResumeOutil
             }
         }
 
-        foreach (['kpis', 'resume', 'totaux', 'periode', 'annee', 'classe', 'page_guide', 'url', 'deep_link', 'message', 'suggestion'] as $cle) {
+        // `diagnostic` : ce qu'un outil donne au raisonnement et pas à l'écran
+        // (cause, identifiants pour l'action suivante). Sans lui, Nanan voyait
+        // la carte mais pas l'inscription à corriger.
+        foreach (['kpis', 'resume', 'totaux', 'periode', 'annee', 'classe', 'page_guide', 'url', 'deep_link', 'message', 'suggestion', 'candidats', 'diagnostic'] as $cle) {
             if (isset($resultat[$cle]) && $resultat[$cle] !== '' && $resultat[$cle] !== []) {
                 $compact[$cle === 'deep_link' ? 'lien_liste' : $cle] = $resultat[$cle];
             }

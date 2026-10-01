@@ -9,6 +9,7 @@ use App\Services\Chatbot\ChatbotSetupGuideService;
 use App\Services\Chatbot\Tools\EvolutionEncaissementsTool;
 use App\Services\Chatbot\Tools\RepartitionEffectifsTool;
 use App\Services\Chatbot\Tools\ChatbotTool;
+use App\Services\Chatbot\Tools\DiagnostiquerReinscriptionTool;
 use App\Services\Chatbot\Tools\GetDashboardKpisTool;
 use App\Services\Chatbot\Tools\GetFinancialSummaryTool;
 use App\Services\Chatbot\Tools\GetSetupGuideTool;
@@ -64,6 +65,8 @@ class CatalogueOutils
             new SearchSubjectsTool(),
             new GetFinancialSummaryTool(),
             new SearchDebtorsTool(),
+            new DiagnostiquerReinscriptionTool(),
+            new ChercherDansPiece(),
             new SearchBulletinsTool(),
             new SearchAbsencesSummaryTool(),
             new EvolutionEncaissementsTool(),

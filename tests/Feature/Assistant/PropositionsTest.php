@@ -5,6 +5,7 @@ namespace Tests\Feature\Assistant;
 use App\Domain\Assistant\Actions\ContexteDEchange;
 use App\Domain\Assistant\Actions\ExecutionDesPropositions;
 use App\Domain\Assistant\Actions\Notes\SaisirNotes;
+use App\Domain\Assistant\Actions\Bulletins\SupprimerMoyennesSansNote;
 use App\Domain\Assistant\Outils\ResumeOutil;
 use App\Http\Middleware\CheckInstalled;
 use App\Http\Middleware\EnsureInstalled;
@@ -19,10 +20,12 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPResultat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -163,6 +166,84 @@ class PropositionsTest extends TestCase
             ->postJson($widget['valider_url'], ['jeton' => $widget['jeton']])
             ->assertStatus(409)->assertJson(['statut' => 'traitee']);
         $this->assertSame(2, ESBTPNote::where('evaluation_id', $this->evaluation->id)->count());
+    }
+
+    public function test_nanan_peut_supprimer_une_moyenne_historique_apres_retrait_de_la_maquette(): void
+    {
+        Permission::findOrCreate('bulletins.delete', 'web');
+        $this->user->givePermissionTo('bulletins.delete');
+        $this->evaluation->classe->matieres()->syncWithoutDetaching([$this->evaluation->matiere_id]);
+        $resultat = ESBTPResultat::create([
+            'etudiant_id' => $this->etudiants[0]->id,
+            'classe_id' => $this->evaluation->classe_id,
+            'matiere_id' => $this->evaluation->matiere_id,
+            'annee_universitaire_id' => $this->evaluation->annee_universitaire_id,
+            'periode' => 'semestre1',
+            'moyenne' => 16,
+            'coefficient' => 1,
+        ]);
+
+        // Cas réel : le bulletin avait été généré quand la matière appartenait
+        // à la maquette, puis celle-ci a été déplacée ou retirée. La moyenne
+        // historique ne doit pas survivre seulement parce que la relation
+        // courante classe -> matières ne la contient plus.
+        $this->evaluation->classe->matieres()->detach($this->evaluation->matiere_id);
+
+        $proposition = app(SupprimerMoyennesSansNote::class)->executeAuthorized([
+            'classe_id' => $this->evaluation->classe_id,
+            'annee_universitaire_id' => $this->evaluation->annee_universitaire_id,
+            'matiere_id' => $this->evaluation->matiere_id,
+            'periode' => 'S1',
+        ], $this->user);
+
+        $this->assertSame('approbation', $proposition['widget']['kind']);
+        $this->assertDatabaseHas('esbtp_resultats', ['id' => $resultat->id, 'deleted_at' => null]);
+        $this->actingAs($this->user)->postJson($proposition['widget']['valider_url'], ['jeton' => $proposition['widget']['jeton']])
+            ->assertOk()->assertJson(['statut' => 'executee']);
+        $this->assertSoftDeleted('esbtp_resultats', ['id' => $resultat->id]);
+    }
+
+
+    public function test_nanan_borne_le_nettoyage_a_l_etudiant_de_la_fiche_affichee(): void
+    {
+        Permission::findOrCreate('bulletins.delete', 'web');
+        $this->user->givePermissionTo('bulletins.delete');
+        $this->evaluation->classe->matieres()->syncWithoutDetaching([$this->evaluation->matiere_id]);
+
+        $cible = ESBTPResultat::create([
+            'etudiant_id' => $this->etudiants[0]->id,
+            'classe_id' => $this->evaluation->classe_id,
+            'matiere_id' => $this->evaluation->matiere_id,
+            'annee_universitaire_id' => $this->evaluation->annee_universitaire_id,
+            'periode' => 'semestre1',
+            'moyenne' => 16,
+            'coefficient' => 1,
+        ]);
+        $autre = ESBTPResultat::create([
+            'etudiant_id' => $this->etudiants[1]->id,
+            'classe_id' => $this->evaluation->classe_id,
+            'matiere_id' => $this->evaluation->matiere_id,
+            'annee_universitaire_id' => $this->evaluation->annee_universitaire_id,
+            'periode' => 'semestre1',
+            'moyenne' => 15,
+            'coefficient' => 1,
+        ]);
+
+        $proposition = app(SupprimerMoyennesSansNote::class)->executeAuthorized([
+            'etudiant_id' => $this->etudiants[0]->id,
+            'classe_id' => $this->evaluation->classe_id,
+            'annee_universitaire_id' => $this->evaluation->annee_universitaire_id,
+            'matiere_id' => $this->evaluation->matiere_id,
+            'periode' => 'S1',
+        ], $this->user);
+
+        $this->assertSame('approbation', $proposition['widget']['kind']);
+        $this->assertCount(1, $proposition['widget']['lignes']);
+        $this->actingAs($this->user)->postJson($proposition['widget']['valider_url'], ['jeton' => $proposition['widget']['jeton']])
+            ->assertOk()->assertJson(['statut' => 'executee']);
+
+        $this->assertSoftDeleted('esbtp_resultats', ['id' => $cible->id]);
+        $this->assertDatabaseHas('esbtp_resultats', ['id' => $autre->id, 'deleted_at' => null]);
     }
 
     public function test_un_jeton_faux_ou_une_autre_personne_ne_valident_pas(): void
@@ -310,8 +391,14 @@ class PropositionsTest extends TestCase
         $this->assertStringContainsString('piece_id: ' . $reponse->json('id'), $systeme);
         $this->assertStringContainsString("n'en recopie JAMAIS les valeurs", $systeme);
 
-        $this->actingAs($this->user)->post(route('chatbot.pieces.deposer'), ['fichier' => \Illuminate\Http\UploadedFile::fake()->create('photo.png', 10)], ['Accept' => 'application/json'])
-            ->assertStatus(422);
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9J0H8AAAAASUVORK5CYII=');
+        $image = \Illuminate\Http\UploadedFile::fake()->createWithContent('notes.png', $png);
+        $imageReponse = $this->actingAs($this->user)->post(route('chatbot.pieces.deposer'), ['fichier' => $image], ['Accept' => 'application/json'])
+            ->assertCreated()->assertJson(['nom' => 'notes.png', 'type' => 'image']);
+
+        $images = app(\App\Domain\Assistant\Pieces\PiecesJointes::class)->imagesPour($this->user->id, [$imageReponse->json('id')]);
+        $this->assertCount(1, $images);
+        $this->assertSame('image/png', $images[0]['mime']);
 
         // Un vrai classeur passe la règle de type et arrive lu.
         $classeur = new \PhpOffice\PhpSpreadsheet\Spreadsheet();

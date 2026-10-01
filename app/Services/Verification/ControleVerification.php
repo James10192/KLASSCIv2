@@ -29,6 +29,9 @@ class ControleVerification
 
     public const INDISPONIBLE = 'indisponible';
 
+    /** Verification inversee : le message WhatsApp de la famille n'est pas encore arrive. */
+    public const EN_ATTENTE = 'en_attente';
+
     /** Code d'erreur MailPulse (404) d'une verification inconnue ou purgee. */
     private const VERIFICATION_INTROUVABLE = 'verification_introuvable';
 
@@ -91,9 +94,57 @@ class ControleVerification
                 // MailPulse ne connait plus cette verification (purgee apres
                 // expiration) : pour la famille, c'est un code expire, a renvoyer.
                 self::VERIFICATION_INTROUVABLE, 'introuvable' => $this->echouer($v, self::EXPIRE),
+                // Verification inversee : aucun code n'est a saisir ici (il part
+                // par WhatsApp). On refuse sans compter de tentative, et sans
+                // annoncer une panne qui n'existe pas.
+                'verification_inverse' => ResultatControle::refus(self::CODE_INVALIDE),
                 default => ResultatControle::refus(self::INDISPONIBLE),
             };
         });
+    }
+
+    /**
+     * Ou en est une verification inversee : le site la consulte toutes les
+     * quelques secondes pendant que la famille envoie le code depuis WhatsApp.
+     * MailPulse est seul a voir le message ; des qu'il l'a approuve, la
+     * demande est validee ici, sous verrou, comme apres un code saisi.
+     */
+    public function parStatut(string $demandeId, ?string $canal): ResultatControle
+    {
+        $apercu = ESBTPVerificationContact::query()->where('demande_id', $demandeId)->first();
+        if ($apercu === null || ! $this->canalConcorde($apercu, $canal) || $apercu->canal !== CanalVerification::Telephone) {
+            return ResultatControle::refus(self::CODE_INVALIDE);
+        }
+        if ($apercu->estVerifiee()) {
+            return $this->sousVerrou($apercu->id, fn (ESBTPVerificationContact $v) => $this->reussite($v));
+        }
+        if (($blocage = $this->blocage($apercu)) !== null) {
+            return ResultatControle::refus($blocage);
+        }
+
+        $distant = $this->whatsapp->statut((string) $apercu->mailpulse_verification_id);
+        if (! $distant->ok) {
+            return in_array($distant->code, [self::VERIFICATION_INTROUVABLE, 'introuvable'], true)
+                ? ResultatControle::refus(self::EXPIRE)
+                : ResultatControle::refus(self::INDISPONIBLE);
+        }
+
+        return match ($distant->code) {
+            'approved' => $this->sousVerrou($apercu->id, function (ESBTPVerificationContact $v) use ($apercu) {
+                if ($v->estVerifiee()) {
+                    return $this->reussite($v);
+                }
+                // Une nouvelle verification est partie entre-temps : ce verdict ne vaut plus.
+                if ($v->destination !== $apercu->destination || $v->mailpulse_verification_id !== $apercu->mailpulse_verification_id) {
+                    return ResultatControle::refus(self::EXPIRE);
+                }
+
+                return $this->finalisation->valider($v);
+            }),
+            'pending' => ResultatControle::refus(self::EN_ATTENTE),
+            'max_attempts' => ResultatControle::refus(self::TROP_DE_TENTATIVES),
+            default => ResultatControle::refus(self::EXPIRE),
+        };
     }
 
     /** Tout ce qui se decide sans MailPulse : code e-mail, ligne deja verifiee ou bloquee. */

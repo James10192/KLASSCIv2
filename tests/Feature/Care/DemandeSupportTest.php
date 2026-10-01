@@ -469,4 +469,27 @@ class DemandeSupportTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors(['corps', 'cle']);
         Http::assertNotSent(fn (Request $req) => str_contains($req->url(), '/messages'));
     }
+    /** @test */
+    public function une_reponse_du_support_non_lue_porte_un_badge_jusqu_a_l_ouverture_de_la_demande(): void
+    {
+        $user = $this->utilisateur();
+        $resume = array_merge($this->detail(rapporteurId: $user->id), [
+            'derniere_reponse' => ['auteur' => 'SUPPORT', 'nom' => 'Support', 'corps' => 'Corrigé.', 'le' => now()->toIso8601String()],
+        ]);
+        \App\Models\Notification::create([
+            'user_id' => $user->id, 'title' => 'Le support a répondu', 'message' => 'Corrigé.', 'type' => 'info',
+            'is_read' => false, 'link' => route('support.demandes.show', 'KC-2026-000042', false),
+        ]);
+        Http::fake([
+            'master.test/api/v1/support/bootstrap' => Http::response(['fonctionnalites' => ['support_widget' => true, 'support_customer_portal' => true], 'portees' => ['support:read']]),
+            'master.test/api/v1/support/tickets/KC-2026-000042*' => Http::response($resume),
+            'master.test/api/v1/support/tickets*' => Http::response(['data' => [$resume], 'meta' => ['page' => 1, 'pages' => 1, 'total' => 1]]),
+        ]);
+
+        $this->actingAs($user)->get(route('support.demandes.index'))->assertOk()->assertSee('Nouvelle réponse');
+
+        $this->actingAs($user)->get(route('support.demandes.show', 'KC-2026-000042'))->assertOk();
+
+        $this->actingAs($user)->get(route('support.demandes.index'))->assertOk()->assertDontSee('Nouvelle réponse');
+    }
 }

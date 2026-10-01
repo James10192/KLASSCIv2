@@ -178,13 +178,19 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | rendez-vous d'inscription | `rdv-*` | `rdv-hero`, `rdv-kpi`, `rdv-slot`, `rdv-jauge`, `rdv-resas`, `rdv-switch`, `rdv-reglages` |
 | retrouver un rendez-vous | `rdr-*` (sur la base `rdv-*`) | `rdr-ligne`, `rdr-quand`, `rdr-groupe`, `rdr-recherche` |
 | étudiants sur téléphone (shell m-*) | `eim-*` (liste), `etm-*` (carte hors shell) | `eim-row`, `eim-av`, `eim-seg`, `etm-card` |
+| réinscription, fiche d'un élève (`/esbtp/reinscription/{id}`) | `rsd-*` | `rsd-hero`, `rsd-verdict`, `rsd-kpi`, `rsd-jauge`, `rsd-nanan` |
 | années universitaires | `auy-*` | `auy-hero`, `auy-card`, `auy-progress`, `auy-act` |
 | émargement enseignant (cours du jour) | `tae-*` | `tae-cours`, `tae-form`, `tae-demande` |
 | émargements côté administration | `aem-*` | `aem-code`, `aem-btn` |
 | prolongations de cours | `pli-*` (liste), `plg-*` (carte enseignant) | `pli-btn`, `plg-form`, `plg-etat` |
 | assistant IA (panneau, chatbot) | `ast-*` | `ast-panel`, `ast-launcher`, `ast-thread`, `ast-composer`, `ast-tool`, `ast-card` |
+| Aide & support guidé par Nanan (`components/support/nanan`) | `nsp-*` | `nsp-fenetre`, `nsp-grand`, `nsp-bulle`, `nsp-pastille`, `nsp-verifier` |
+| travaux en arrière-plan (toast global, `components/taches-arriere-plan`) | `tap-*` | `tap-pile`, `tap-toast`, `tap-toast--ok`, `tap-toast--ko` |
 | palette de recherche Ctrl K / ⌘ K (layout) | `spl-*` | `spl-root`, `spl-panneau`, `spl-champ`, `spl-option`, `spl-declencheur` |
 | page de résultats de recherche | `srp-*` | `srp-card`, `srp-item`, `srp-chip` |
+| lien de confirmation d'adresse expiré | `clx-*` | `clx-carte`, `clx-btn`, `clx-message` |
+| notifications (`/notifications`) | `ntf-*` | `ntf-hero`, `ntf-kpi`, `ntf-chip`, `ntf-row`, `ntf-group`, `ntf-work-card` |
+| messages (`/messages`, centre de messages v2) | `mh2-*` (feuilles `public/css/messages-hub-v2*.css`) | `mh2-conversation`, `mh2-thread`, `mh2-composer`, `mh2-modal` |
 
 Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 

@@ -195,7 +195,7 @@ class ChatActionResolver
 
     private function ctaForInscription(int $inscriptionId, User $viewer, ?array $maps): ?array
     {
-        $inscription = $maps['inscriptions']->get($inscriptionId)
+        $inscription = ($maps['inscriptions'] ?? null)?->get($inscriptionId)
             ?? ESBTPInscription::query()
                 ->select(['id', 'workflow_step', 'status', 'paiement_validation_id'])
                 ->find($inscriptionId);
@@ -222,7 +222,7 @@ class ChatActionResolver
 
     private function ctaForPaiement(int $paiementId, User $viewer, ?array $maps): ?array
     {
-        $paiement = $maps['paiements']->get($paiementId)
+        $paiement = ($maps['paiements'] ?? null)?->get($paiementId)
             ?? ESBTPPaiement::query()
                 ->select(['id', 'inscription_id', 'status', 'validateur_id'])
                 ->find($paiementId);
@@ -234,7 +234,7 @@ class ChatActionResolver
         $isValidated = $paiement->status === 'validé';
 
         if ($isValidated && $paiement->inscription_id) {
-            $inscription = $maps['inscriptions']->get($paiement->inscription_id)
+            $inscription = ($maps['inscriptions'] ?? null)?->get($paiement->inscription_id)
                 ?? ESBTPInscription::query()
                     ->select(['id', 'workflow_step'])
                     ->find($paiement->inscription_id);

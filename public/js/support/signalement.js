@@ -260,6 +260,7 @@
         } else {
             suivi.hidden = true;
         }
+        inviterAConfirmer(corps);
         if (typeof window.mToast === 'function') { window.mToast(titre.textContent, 'success'); }
         document.dispatchEvent(new CustomEvent('support:demande-envoyee', { detail: corps }));
         etat.categorie = null;
@@ -267,6 +268,44 @@
         etat.cle = null;
         etat.capture = null;
         oublierEditeur();
+    }
+
+    /* L'adresse n'est pas confirmee : proposer le lien, sans jamais bloquer.
+       Contrat : 200 {envoye:true}, 422 {deja_verifiee}, 503 {envoye:false}. */
+    function inviterAConfirmer(corps) {
+        var bloc = $('[data-sp-verifier]');
+        if (!bloc) { return; }
+        var url = corps.email_a_verifier === true && typeof corps.email_verification_url === 'string' ? corps.email_verification_url : null;
+        bloc.hidden = !url;
+        if (!url) { return; }
+        var masque = typeof corps.email_masque === 'string' ? corps.email_masque + ' ' : '';
+        $('[data-sp-verifier-texte]').textContent = 'Confirmez votre adresse ' + masque + 'pour être averti(e) par e-mail des réponses du support.';
+        var bouton = $('[data-sp-verifier-btn]');
+        var message = $('[data-sp-verifier-message]');
+        bouton.hidden = false;
+        bouton.disabled = false;
+        message.hidden = true;
+        bouton.onclick = function () {
+            bouton.disabled = true;
+            var jeton = document.querySelector('meta[name="csrf-token"]');
+            fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': jeton ? jeton.getAttribute('content') : '' }
+            }).then(function (r) {
+                return r.json().catch(function () { return {}; }).then(function (c) { return { ok: r.ok, c: c }; });
+            }).then(function (r) {
+                var reussi = (r.ok && r.c.envoye === true) || r.c.deja_verifiee === true;
+                message.textContent = r.c.message || (reussi ? 'Un lien de confirmation vous a été envoyé.' : "L'envoi du lien a échoué. Réessayez dans un instant.");
+                message.classList.toggle('sp-verifier-message--erreur', !reussi);
+                bouton.hidden = reussi;
+                bouton.disabled = false;
+            }).catch(function () {
+                message.textContent = 'Connexion perdue. Réessayez dans un instant.';
+                message.classList.add('sp-verifier-message--erreur');
+                bouton.disabled = false;
+            }).then(function () { message.hidden = false; });
+        };
     }
 
     /* ------------------------------------------------ Capture d'ecran (facultative) */

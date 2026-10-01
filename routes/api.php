@@ -568,6 +568,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // compte d'eleves reels, il n'a rien a faire dans le depot.
         Route::post('/reprise/inscriptions-annee-ecoulee', [App\Http\Controllers\API\CLI\CLIRepriseController::class, 'inscriptionsAnneeEcoulee'])->name('reprise.inscriptions-annee-ecoulee');
         Route::post('/frais/corriger-souscriptions', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'corrigerSouscriptions'])->name('frais.corriger-souscriptions');
+        // Ce qu'UN etudiant doit sur UN frais (exoneration, remise, dette reprise a tort).
+        Route::post('/frais/souscriptions/ajuster', [App\Http\Controllers\API\CLI\CLIAjustementSouscriptionController::class, 'ajuster'])->name('frais.souscriptions.ajuster');
         Route::post('/frais/repartir-trop-percu', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'repartirTropPercu'])->name('frais.repartir-trop-percu');
         Route::post('/frais/depot-nature/annuler', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'annulerDepotNature'])->name('frais.depot-nature.annuler');
         Route::get('/inscriptions/types', [App\Http\Controllers\API\CLI\CLIInscriptionTypeController::class, 'recenser'])->name('inscriptions.types');
@@ -610,6 +612,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // oublies, pour que la matiere cesse de disparaitre de leur bulletin.
         Route::post('/evaluations/noter-les-non-notes', [App\Http\Controllers\API\CLI\CLINotesZeroController::class, 'noter'])
             ->name('evaluations.noter-les-non-notes');
+        // Saisie exceptionnelle de notes LMD venant d'une fiche officielle :
+        // crée d'abord une évaluation tracée, puis la note, jamais de note orpheline.
+        Route::post('/lmd/evaluations/regulariser-notes', [App\Http\Controllers\API\CLI\CLILmdRegularisationNotesController::class, 'enregistrer'])
+            ->name('lmd.evaluations.regulariser-notes');
         Route::post('/academic-pilotage/backfill', [App\Http\Controllers\API\CLI\CLIAcademicPilotageController::class, 'backfill'])
             ->name('academic-pilotage.backfill');
         Route::post('/academic-pilotage/refresh', [App\Http\Controllers\API\CLI\CLIAcademicPilotageController::class, 'refresh'])

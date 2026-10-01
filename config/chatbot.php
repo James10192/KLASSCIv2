@@ -59,6 +59,64 @@ return [
             'any_permissions' => ['notes.create', 'notes.edit', 'notes.manage_own'],
             'libelle' => 'Préparation des notes à enregistrer…',
         ],
+        'proposer_supprimer_moyennes_sans_note' => [
+            'enabled' => true,
+            'any_permissions' => ['bulletins.delete'],
+            'libelle' => 'Préparation du nettoyage des moyennes sans note…',
+        ],
+        'proposer_configuration_maquette_bts' => [
+            'enabled' => true,
+            'all_permissions' => ['matieres.edit', 'bulletins.configure'],
+            'libelle' => 'Préparation de la maquette BTS…',
+            'suggestion' => 'Configure la maquette BTS de cette filière et de ce niveau',
+        ],
+        'proposer_creation_evaluation' => [
+            'enabled' => true,
+            'all_permissions' => ['evaluations.create'],
+            'libelle' => 'Préparation de l\'évaluation…',
+            'suggestion' => 'Crée un devoir pour une classe et une matière',
+        ],
+        'proposer_publication_notes' => [
+            'enabled' => true,
+            'all_permissions' => ['evaluations.edit'],
+            'libelle' => 'Préparation de la publication des notes…',
+            'suggestion' => 'Publie les notes des évaluations terminées de ma classe',
+        ],
+        'diagnostiquer_reinscription' => [
+            'enabled' => true,
+            'any_permissions' => ['inscriptions.view', 'students.view'],
+            'libelle' => 'Lecture du dossier de réinscription…',
+            'suggestion' => 'Pourquoi la réinscription de cet étudiant est bloquée ?',
+        ],
+        'proposer_liaison_ue_parcours' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.structure.manage'],
+            'libelle' => 'Préparation de la liaison UE ↔ parcours…',
+        ],
+        'proposer_creation_classes' => [
+            'enabled' => true,
+            'all_permissions' => ['classes.create'],
+            'libelle' => 'Préparation des nouvelles classes…',
+            'suggestion' => 'Ajoute une classe de plus à chaque filière et niveau',
+        ],
+        'proposer_modification_classes' => [
+            'enabled' => true,
+            'all_permissions' => ['classes.edit'],
+            'libelle' => 'Préparation de la modification des classes…',
+            'suggestion' => 'Passe les classes de 1re année à 60 places',
+        ],
+        // La pièce appartient à qui l'a déposée (PiecesJointes::pour) : ces droits
+        // ne disent que les métiers où lire un tableau joint a un sens.
+        'chercher_dans_piece' => [
+            'enabled' => true,
+            'any_permissions' => ['notes.create', 'notes.edit', 'notes.manage_own', 'inscriptions.view', 'students.view', 'paiements.view', 'frais.view'],
+            'libelle' => 'Recherche dans le fichier joint…',
+        ],
+        'proposer_ajustement_souscription' => [
+            'enabled' => true,
+            'all_permissions' => ['frais.souscriptions.ajuster'],
+            'libelle' => 'Préparation de l’ajustement du montant dû…',
+        ],
         'search_attendances' => [
             'enabled' => true,
             'any_permissions' => ['attendances.view'],

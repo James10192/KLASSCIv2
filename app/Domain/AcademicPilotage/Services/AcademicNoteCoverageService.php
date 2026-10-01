@@ -366,7 +366,7 @@ final class AcademicNoteCoverageService
                     ->orWhereDate('date_evaluation', '<=', now());
             })
             ->with([
-                'matiere:id,name,code',
+                'matiere' => fn ($query) => $query->withTrashed()->select('id', 'name', 'code'),
                 'notes' => fn ($query) => $query
                     ->whereNull('archived_at')
                     ->with(['createdBy:id,name', 'updatedBy:id,name']),
@@ -397,7 +397,7 @@ final class AcademicNoteCoverageService
                 }),
             )
             ->whereDate('date_evaluation', '>', now())
-            ->with('matiere:id,name,code')
+            ->with(['matiere' => fn ($query) => $query->withTrashed()->select('id', 'name', 'code')])
             ->orderBy('date_evaluation')
             ->get();
     }
@@ -477,10 +477,36 @@ final class AcademicNoteCoverageService
         $orphanRows = $evaluations
             ->filter(fn (ESBTPEvaluation $evaluation) => ! $subjects->contains('id', (int) $evaluation->matiere_id))
             ->groupBy(fn (ESBTPEvaluation $evaluation) => (int) $evaluation->matiere_id)
-            ->map(fn (Collection $items): array => $this->subjectRow($items->first()->matiere ?? null, $items, collect(), $indexPour, $entries, true, $enseignants))
+            ->map(function (Collection $items) use ($indexPour, $entries, $enseignants): array {
+                $evaluation = $items->first();
+                $matiere = $evaluation?->matiere;
+                // Relation absente (ancienne matière soft-deleted ou donnée
+                // historique) : on tente encore le vrai libellé avant un ID.
+                if (! $matiere && $evaluation?->matiere_id) {
+                    $matiere = ESBTPMatiere::withTrashed()->find((int) $evaluation->matiere_id);
+                }
+
+                return $this->subjectRow($matiere, $items, collect(), $indexPour, $entries, true, $enseignants);
+            })
             ->values();
 
         $subjectRows = $subjectRows->concat($orphanRows)->values();
+
+        // Une classe BTS peut n'exister que sur un semestre : TC au S1 puis
+        // specialite au S2. Quand la cohorte canonique est vide sur la periode,
+        // le referentiel reste utile au diagnostic mais il n'y a AUCUNE action
+        // de saisie a reclamer. Marquer ces lignes « non_evaluee » fabriquait
+        // precisement les faux « matieres sans evaluation » vus a Yakro.
+        if ($studentIndex->isEmpty()) {
+            $subjectRows = $subjectRows->map(static function (array $row): array {
+                if (! ($row['is_orphan'] ?? false)) {
+                    $row['statut'] = 'non_applicable';
+                }
+
+                return $row;
+            });
+        }
+
         $incompleteStudents = $this->incompleteStudents($studentIndex, $subjectRows);
         $catalogSubjectRows = $subjectRows->where('is_orphan', false);
 
@@ -573,9 +599,11 @@ final class AcademicNoteCoverageService
             default => 'complete',
         };
 
+        $matiereId = $subject?->id ?? ($evaluations->first()?->matiere_id ? (int) $evaluations->first()->matiere_id : null);
+
         return [
-            'id' => $subject?->id,
-            'name' => $subject?->name ?? 'Matière hors référentiel',
+            'id' => $matiereId,
+            'name' => $subject?->name ?? ($matiereId ? 'Matière #'.$matiereId : 'Matière hors référentiel'),
             'code' => $subject?->code,
             'is_orphan' => $orphan,
             'statut' => $statut,

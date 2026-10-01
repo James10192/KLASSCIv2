@@ -45,6 +45,7 @@ class ConvocationRdvPdf
             'reservation' => $reservation,
             'creneau' => $creneau,
             'reference' => $reservation->porteur()?->referencePubliqueAffichee(),
+            'lieu' => app(RendezVousReglages::class)->lieu(),
             'settings' => $settings,
             'logo' => $logo,
             'ecole' => $ecole,

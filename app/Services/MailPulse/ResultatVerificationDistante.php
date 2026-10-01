@@ -20,11 +20,18 @@ final class ResultatVerificationDistante
         public readonly ?string $id = null,
         public readonly ?int $httpStatus = null,
         public readonly ?int $retryAfter = null,
+        public readonly ?string $lienWhatsapp = null,
     ) {}
 
     public static function ok(string $code, string $id): self
     {
         return new self(true, $code, $id);
+    }
+
+    /** Verification inversee : la famille enverra le code depuis ce lien wa.me. */
+    public static function okInverse(string $id, string $lienWhatsapp): self
+    {
+        return new self(true, 'pending', $id, null, null, $lienWhatsapp);
     }
 
     public static function echec(string $code, ?int $httpStatus = null, ?int $retryAfter = null): self

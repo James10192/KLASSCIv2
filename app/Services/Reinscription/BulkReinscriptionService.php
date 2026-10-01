@@ -213,8 +213,10 @@ class BulkReinscriptionService
             $row['observations'] = null;
 
             $row['solde_restant'] = (float) $this->reeinscriptionService->calculerSoldeInscription($inscription);
-            $row['peut_reinscrire'] = $row['solde_restant'] <= 0
-                || (auth()->check() && auth()->user()->hasRole('superAdmin'));
+            // Le seuil de l'école et la même dérogation que la fiche et la garde
+            // (`admin.access`), plus le seul rôle superAdmin.
+            $row['peut_reinscrire'] = $row['solde_restant'] <= EligibiliteReinscription::tolerance()
+                || (auth()->check() && auth()->user()->isSuperAdmin());
 
             if (!$row['peut_reinscrire']) {
                 $stats['blocked']['solde']++;

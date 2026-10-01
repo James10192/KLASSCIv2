@@ -160,9 +160,16 @@ class MatriculeGenerator
         $existing = ESBTPEtudiant::withTrashed()
             ->where('matricule', 'like', "{$matriculePrefix}%")
             ->pluck('matricule')
-            ->map(function ($m) {
-                // Récupérer la partie après le tiret
-                return (int) Str::afterLast($m, '-');
+            ->map(function ($m) use ($matriculePrefix) {
+                // Le matricule de repli s'écrit PRÉFIXE + six chiffres, sans
+                // tiret. Lire « après le dernier tiret » rendait toujours 0 :
+                // chaque appel reproposait 000001, et le second étudiant d'un
+                // même préfixe heurtait l'index unique.
+                $suite = Str::after($m, $matriculePrefix);
+
+                // Six chiffres exactement : un préfixe plus long (GC12… pour
+                // GC1…) ne doit pas prêter sa numérotation.
+                return strlen($suite) === 6 && ctype_digit($suite) ? (int) $suite : 0;
             })
             ->filter(fn($seq) => $seq > 0)
             ->sort()
@@ -189,11 +196,9 @@ class MatriculeGenerator
         $matricule = $matriculePrefix . $seqFormatted;
 
         // 🔒 Double vérification finale pour éviter toute collision (inclut soft deleted)
-        if (ESBTPEtudiant::withTrashed()->where('matricule', $matricule)->exists()) {
-            // Si collision, on incrémente automatiquement
-            $seq = $existing->isNotEmpty() ? $existing->last() + 1 : 1;
-            $seqFormatted = str_pad($seq, 6, '0', STR_PAD_LEFT);
-            $matricule = $matriculePrefix . $seqFormatted;
+        while (ESBTPEtudiant::withTrashed()->where('matricule', $matricule)->exists()) {
+            $seq++;
+            $matricule = $matriculePrefix . str_pad($seq, 6, '0', STR_PAD_LEFT);
         }
 
         return $matricule;

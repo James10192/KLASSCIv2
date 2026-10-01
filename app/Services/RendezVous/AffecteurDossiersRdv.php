@@ -13,7 +13,7 @@ class AffecteurDossiersRdv
         private readonly RendezVousReglages $reglages,
         private readonly CatalogueCreneaux $catalogue,
         private readonly ReservateurRdv $reservateur,
-        private readonly MessagerieRdv $mails,
+        private readonly FileConvocationsRdv $convocations,
     ) {
     }
 
@@ -41,6 +41,48 @@ class AffecteurDossiersRdv
         $this->convoquer($porteur, $resultat['reservation']);
 
         return true;
+    }
+
+    /**
+     * Place un seul dossier dont le contact vient d'etre verifie.
+     *
+     * Ce n'est volontairement pas un alias de placer() : appeler le placement
+     * par lot a la validation d'un code attribuerait des rendez-vous a tous les
+     * dossiers en attente. Ici, le verrou de ReservateurRdv protege la place du
+     * seul porteur concerne et la convocation est envoyee apres la reponse.
+     */
+    public function placerPorteur(PorteurDeRendezVous $porteur): ?ESBTPRdvReservation
+    {
+        if (! $this->reglages->enabled()) {
+            return null;
+        }
+
+        $existante = $this->reservateur->reservationActive($porteur);
+        if ($existante !== null) {
+            // Les anciennes reservations sans suivi n'avaient jamais ete
+            // convoquees. Une convocation deja suivie ne doit jamais etre
+            // remise a zero par une seconde validation du meme code.
+            if ($existante->convocation_statut === null) {
+                $this->confirmer($porteur, $existante);
+            }
+
+            return $existante;
+        }
+
+        $creneauId = $this->prochainCreneau($this->catalogue->placesLibres());
+        if ($creneauId === null) {
+            return null;
+        }
+
+        $resultat = $this->reservateur->placer($porteur, $creneauId);
+        if (! $resultat['ok'] || ! isset($resultat['reservation'])) {
+            return null;
+        }
+
+        $reservation = $resultat['reservation'];
+        $this->confirmer($porteur, $reservation);
+
+        return $reservation;
     }
 
     /**
@@ -129,7 +171,13 @@ class AffecteurDossiersRdv
     private function convoquer(PorteurDeRendezVous $porteur, ESBTPRdvReservation $reservation): void
     {
         $porteur->assurerReferencePublique();
-        $this->mails->planifier($reservation, 'confirme');
+        $this->convocations->poser($reservation, 'confirme');
+    }
+
+    private function confirmer(PorteurDeRendezVous $porteur, ESBTPRdvReservation $reservation): void
+    {
+        $porteur->assurerReferencePublique();
+        $this->convocations->confirmer($reservation, 'confirme');
     }
 
     private function emailValide(PorteurDeRendezVous $porteur): bool

@@ -35,9 +35,23 @@ Le corps est rendu tel quel (pas d'enveloppe `success/data`).
 - `?details=1` ajoute `exemples` : au plus 20 `{"email_masque":"k***@gmail.con","table":"…","motif":"…"}`.
   Aucune adresse complète n'est jamais rendue.
 
+## Réglages refusés à distance
+
+`mailpulse_courriels_enabled` (« Envoyer tous les e-mails de l'école par MailPulse »)
+et `mailpulse_base_url` ne s'écrivent pas par la CLI : `POST /api/cli/settings` et
+`PUT /api/cli/settings/{key}` rendent **422**. Ils décident par où partent les
+e-mails de l'école : un choix de l'école, fait depuis `/esbtp/settings`, onglet
+MailPulse. C'est une défense en profondeur, pas une barrière : `cli:admin` écrit
+toujours `mailpulse_api_key` et réinitialise un mot de passe
+(`/api/cli/user/{id}/reset-password`). Leur lecture reste possible
+(`GET /api/cli/settings`). `mailpulse_enabled` reste écrivable : c'est la sortie de
+secours qui renvoie les e-mails au serveur de messagerie.
+
 ## Historique
 
 - 2026-09-23 : création.
+- 2026-10-01 : `mailpulse_courriels_enabled` et `mailpulse_base_url` refusés en écriture
+  (**changement cassant** pour qui écrivait `mailpulse_base_url` par la CLI).
 
 ---
 

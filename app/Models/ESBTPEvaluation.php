@@ -107,6 +107,19 @@ class ESBTPEvaluation extends Model implements Auditable
     const TYPE_RATTRAPAGE = 'rattrapage';
 
     /**
+     * Bornes du barème et du coefficient d'une évaluation. L'écran (store,
+     * update) et l'assistant (CreerEvaluation) les lisent ici : un barème nul
+     * divise par zéro dans ESBTPNote::getNoteVingtAttribute.
+     */
+    public const BAREME_MIN = 0.1;
+
+    public const BAREME_MAX = 100;
+
+    public const COEFFICIENT_MIN = 0.1;
+
+    public const COEFFICIENT_MAX = 10;
+
+    /**
      * Relation avec la matière associée à cette évaluation.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -206,19 +219,68 @@ class ESBTPEvaluation extends Model implements Auditable
     }
 
     /**
-     * Types d'évaluation disponibles
+     * Les types qu'une personne peut choisir, avec leur libellé. C'est la
+     * seule liste : le sélecteur de l'écran l'affiche, la validation de
+     * store()/update() et l'assistant n'acceptent que ses clés.
      *
-     * @return array
+     * « controle », « quiz » et « cc » étaient acceptés par la validation sans
+     * être proposés à l'écran : des évaluations de ces types existent donc, et
+     * les retirer les rendrait impossibles à modifier. La colonne `type` est
+     * une chaîne libre, aucune contrainte de base ne les refuse.
+     *
+     * @return array<string, string>
      */
-    public static function getTypes()
+    public static function getTypes(): array
     {
         return [
             'examen' => 'Examen',
             'devoir' => 'Devoir',
+            'controle' => 'Contrôle',
+            'cc' => 'Contrôle continu',
+            'quiz' => 'Quiz',
             'tp' => 'Travaux Pratiques',
             'projet' => 'Projet',
-            'oral' => 'Évaluation Orale'
+            'oral' => 'Évaluation Orale',
         ];
+    }
+
+    /** @return list<string> */
+    public static function typesSaisissables(): array
+    {
+        return array_keys(self::getTypes());
+    }
+
+    /**
+     * Les périodes que l'écran propose, avec leur libellé. L'assistant ne
+     * propose que celles-ci : une évaluation qu'il créerait ailleurs ne
+     * pourrait plus être choisie dans le sélecteur de modification.
+     *
+     * @return array<string, string>
+     */
+    public static function getPeriodes(): array
+    {
+        return [
+            'semestre1' => 'Semestre 1',
+            'semestre2' => 'Semestre 2',
+        ];
+    }
+
+    /**
+     * Périodes à proposer pour modifier CETTE évaluation : la liste de
+     * l'écran, plus sa période actuelle si elle n'y figure pas (évaluation
+     * créée avant, ou par un autre chemin) — sinon le sélecteur l'effacerait.
+     *
+     * @return array<string, string>
+     */
+    public function periodesProposables(): array
+    {
+        $periodes = self::getPeriodes();
+        $actuelle = (string) $this->periode;
+        if ($actuelle !== '' && ! isset($periodes[$actuelle])) {
+            $periodes[$actuelle] = preg_match('/(\d+)/', $actuelle, $m) === 1 ? 'Semestre '.$m[1] : $actuelle;
+        }
+
+        return $periodes;
     }
 
     public function scopeDraft($query)

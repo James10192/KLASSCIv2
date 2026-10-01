@@ -6,8 +6,11 @@
 @php
     /** @var \App\Domain\Admissions\DemandeDInscription $d */
     [$_rdv, $_rdvDetail, $_rdvTon] = $d->rendezVousResume();
+    // Parcours configurable actif : pas de bouton « Inscrire » ; le panneau
+    // mène au dossier en cours.
     $_peutInscrire = $d->estNouvelle()
-        ? (auth()->user()?->can('inscriptions.candidatures.process') && auth()->user()?->can('inscriptions.ouvrir-formulaire'))
+        ? (! app(\App\Services\Admissions\InscriptionWorkflowSettings::class)->usesManagedWorkflow()
+            && auth()->user()?->can('inscriptions.candidatures.process') && auth()->user()?->can('inscriptions.ouvrir-formulaire'))
         : auth()->user()?->can('reinscriptions.demandes.process');
     [$_libelle, $_agir, $_primaire] = match (true) {
         $d->etape === \App\Domain\Admissions\DemandeDInscription::ETAPE_INSCRIRE && $_peutInscrire => ['Inscrire', 'inscrire', true],

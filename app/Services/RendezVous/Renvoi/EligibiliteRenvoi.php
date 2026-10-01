@@ -5,7 +5,7 @@ namespace App\Services\RendezVous\Renvoi;
 use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutReservationRdv;
 use App\Models\ESBTPRdvReservation;
-use App\Services\Emails\AnalyseurEmail;
+use App\Services\RendezVous\CanalConvocationDisponible;
 
 /**
  * Une reservation precise peut-elle recevoir de nouveau sa convocation ?
@@ -13,9 +13,9 @@ use App\Services\Emails\AnalyseurEmail;
  * Oui seulement si : elle est confirmee (active), son dossier est encore
  * ouvert (un candidat deja inscrit garde sa reservation, il ne doit pas etre
  * reconvoque), son creneau existe et n'a pas commence, sa convocation n'est
- * pas un avis d'annulation, son adresse est joignable, le contact du dossier
- * n'attend pas de confirmation, et sa convocation n'est pas deja en file (en
- * attente, donc aussi pendant qu'un lot l'envoie).
+ * pas un avis d'annulation, au moins un canal numerique est joignable, le
+ * contact du dossier n'attend pas de confirmation, et sa convocation n'est pas
+ * deja en file (en attente, donc aussi pendant qu'un lot l'envoie).
  */
 class EligibiliteRenvoi
 {
@@ -31,13 +31,14 @@ class EligibiliteRenvoi
 
     public const ANNULATION = 'avis_d_annulation';
 
+    /** Valeur historique gardee pour compatibilite CLI/API. */
     public const ADRESSE = 'adresse_non_joignable';
 
     public const CONTACT = 'contact_a_confirmer';
 
     public const DEJA_EN_FILE = 'deja_en_file';
 
-    public function __construct(private readonly AnalyseurEmail $emails) {}
+    public function __construct(private readonly CanalConvocationDisponible $canaux) {}
 
     /** @return string|null la raison du refus, null si eligible */
     public function raison(?ESBTPRdvReservation $reservation): ?string
@@ -53,8 +54,8 @@ class EligibiliteRenvoi
             $reservation->creneau === null => self::SANS_CRENEAU,
             $reservation->creneau->aCommence() => self::CRENEAU_PASSE,
             $reservation->convocation_action === 'annule' => self::ANNULATION,
-            ! $this->emails->analyser($reservation->email)->joignable() => self::ADRESSE,
             $porteur !== null && method_exists($porteur, 'contactAConfirmer') && $porteur->contactAConfirmer() => self::CONTACT,
+            $this->canaux->pour($reservation) === null => self::ADRESSE,
             $reservation->convocation_statut === StatutConvocationRdv::EnAttente => self::DEJA_EN_FILE,
             default => null,
         };

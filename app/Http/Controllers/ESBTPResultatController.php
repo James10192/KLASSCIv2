@@ -2536,9 +2536,10 @@ class ESBTPResultatController extends Controller
             $classe = ESBTPClasse::with('matieres')->findOrFail($classeId);
             $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
 
-            // CET ECRAN EST BTS, COMME LES QUATRE POINTS D'ENTREE FRERES de
-            // `ESBTPBulletinController` (`store`, `genererClasseBulletins`,
-            // `preflightClasseBulletins`, `previewBulletin`). Il ecrit dans
+            // CET ECRAN EST BTS, COMME LES POINTS D'ENTREE FRERES de
+            // `ESBTPBulletinController` (`store`, `preflightClasseBulletins`,
+            // `previewBulletin`) et la generation en arriere-plan
+            // (`ESBTPBulletinTacheController::lancerGeneration`). Il ecrit dans
             // `esbtp_resultats`, qui est la table du bulletin BTS.
             //
             // Une premiere version rendait cet ecran BILINGUE — `lmdOnly()` sur

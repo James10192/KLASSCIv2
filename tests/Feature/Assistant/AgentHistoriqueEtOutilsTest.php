@@ -119,6 +119,26 @@ class AgentHistoriqueEtOutilsTest extends TestCase
         $this->assertStringNotContainsString('Ne génère JAMAIS de tableaux', $systeme);
     }
 
+    public function test_le_prompt_porte_le_contexte_de_moyenne_sans_note_affiche_par_la_page(): void
+    {
+        $user = User::factory()->create(['name' => 'Awa Koné']);
+        $systeme = app(ConstructeurDePrompt::class)->systeme($user, null, ['page_context' => [
+            'kind' => 'bulletin_moyennes_sans_note',
+            'etudiant_id' => 2743,
+            'classe_id' => 12,
+            'annee_universitaire_id' => 4,
+            'periode' => 'semestre1',
+            'moyennes_sans_note' => [['matiere_id' => 63, 'matiere' => 'Algorithme', 'moyenne' => 16]],
+        ]]);
+
+        $this->assertStringContainsString('etudiant_id 2743', $systeme);
+        $this->assertStringContainsString('classe_id 12', $systeme);
+        $this->assertStringContainsString('annee_universitaire_id 4', $systeme);
+        $this->assertStringContainsString('Algorithme (matiere_id 63)', $systeme);
+        $this->assertStringContainsString('etudiant_id borne impérativement l\'action', $systeme);
+        $this->assertStringContainsString('Ne redemande jamais ces éléments', $systeme);
+    }
+
     public function test_nanan_se_presente_une_fois_puis_salue_les_caps_sans_insister(): void
     {
         $user = User::factory()->create(['username' => 'u_' . Str::lower(Str::random(8))]);

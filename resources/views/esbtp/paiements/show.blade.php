@@ -553,17 +553,17 @@
                     <div class="ps-info">
                         <span class="ps-info-lbl">Filière</span>
                         <span class="ps-info-val">
-                            <span class="ps-badge blue">{{ $paiement->inscription->filiere->name ?? '—' }}</span>
+                            <span class="ps-badge blue">{{ $paiement->inscription?->filiere?->name ?? '—' }}</span>
                         </span>
                     </div>
                     <div class="ps-info">
                         <span class="ps-info-lbl">Niveau</span>
-                        <span class="ps-info-val">{{ $paiement->inscription->niveauEtude->name ?? '—' }}</span>
+                        <span class="ps-info-val">{{ $paiement->inscription?->niveauEtude?->name ?? '—' }}</span>
                     </div>
                     <div class="ps-info">
                         <span class="ps-info-lbl">Année universitaire</span>
                         <span class="ps-info-val">
-                            @if($paiement->inscription->anneeUniversitaire)
+                            @if($paiement->inscription?->anneeUniversitaire)
                                 <span class="ps-badge amber"><i class="fas fa-calendar-alt"></i> {{ $paiement->inscription->anneeUniversitaire->display_name ?: ($paiement->inscription->anneeUniversitaire->annee_debut . '-' . $paiement->inscription->anneeUniversitaire->annee_fin) }}</span>
                             @else <span style="color:var(--k-muted);">—</span> @endif
                         </span>

@@ -190,31 +190,25 @@ class ESBTPBulletinConfigController extends Controller
             $config = $configsMatieres->get($matiere->id);
 
             // Si une configuration existe pour cette matière
-            if ($config && isset($config->config) && is_string($config->config)) {
-                $configData = json_decode($config->config, true);
-                // Utiliser la clé 'type' au lieu de 'type_formation'
+            if ($config && isset($config->config)) {
+                $configData = is_array($config->config)
+                    ? $config->config
+                    : (json_decode((string) $config->config, true) ?: []);
                 $typeFormation = $configData['type'] ?? $configData['type_formation'] ?? null;
-
-                if ($typeFormation === 'general' || $typeFormation === 'generale') {
-                    $general[] = $matiere->id;
-                } elseif ($typeFormation === 'technique' || $typeFormation === 'technologique_professionnelle') {
-                    $technique[] = $matiere->id;
-                }
             } else {
-                // Classification automatique basée sur le nom
-                $nomMatiere = strtolower($matiere->nom ?? $matiere->name ?? '');
+                $typeCanonique = $this->bulletinService->resolveMatiereTypeFormation(
+                    (int) $matiere->id,
+                    (int) $classe_id,
+                    (string) $periode,
+                    (int) $annee_universitaire_id,
+                );
+                $typeFormation = $typeCanonique === 'technologique_professionnelle' ? 'technique' : 'general';
+            }
 
-                if (
-                    str_contains($nomMatiere, 'math') ||
-                    str_contains($nomMatiere, 'anglais') ||
-                    str_contains($nomMatiere, 'français') ||
-                    str_contains($nomMatiere, 'francais') ||
-                    str_contains($nomMatiere, 'communication')
-                ) {
-                    $general[] = $matiere->id;
-                } else {
-                    $technique[] = $matiere->id;
-                }
+            if ($typeFormation === 'general' || $typeFormation === 'generale') {
+                $general[] = $matiere->id;
+            } elseif ($typeFormation === 'technique' || $typeFormation === 'technologique_professionnelle') {
+                $technique[] = $matiere->id;
             }
         }
 
@@ -223,10 +217,19 @@ class ESBTPBulletinConfigController extends Controller
         foreach ($matieres as $matiere) {
             $config = $configsMatieres->get($matiere->id);
             $typeFormation = null;
-            if ($config && isset($config->config) && is_string($config->config)) {
-                $configData = json_decode($config->config, true);
-                // Utiliser la clé 'type' au lieu de 'type_formation'
+            if ($config && isset($config->config)) {
+                $configData = is_array($config->config)
+                    ? $config->config
+                    : (json_decode((string) $config->config, true) ?: []);
                 $typeFormation = $configData['type'] ?? $configData['type_formation'] ?? null;
+            } else {
+                $typeCanonique = $this->bulletinService->resolveMatiereTypeFormation(
+                    (int) $matiere->id,
+                    (int) $classe_id,
+                    (string) $periode,
+                    (int) $annee_universitaire_id,
+                );
+                $typeFormation = $typeCanonique === 'technologique_professionnelle' ? 'technique' : 'general';
             }
 
             // Transformer en objet stdClass au lieu d'un tableau associatif
