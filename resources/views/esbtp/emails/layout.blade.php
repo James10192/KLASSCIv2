@@ -128,7 +128,11 @@
                                 </div>
                             @endif
                             <div style="font-size:12px;color:#94a3b8;margin-top:14px;line-height:1.5;">
-                                Message automatique, merci de ne pas y répondre. Pour toute question, contactez l'établissement.
+                                @hasSection('mention')
+                                    @yield('mention')
+                                @else
+                                    Message automatique, merci de ne pas y répondre. Pour toute question, contactez l'établissement.
+                                @endif
                             </div>
                         </td>
                     </tr>
