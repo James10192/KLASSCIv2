@@ -8,6 +8,7 @@ use App\Services\Admissions\AdmissionAccountActivator;
 use App\Services\Admissions\AdmissionWhatsappActivationLink;
 use App\Services\Admissions\InscriptionWorkflowSettings;
 use App\Services\Admissions\ManagedInscriptionWorkflow;
+use App\Services\Verification\ConfirmationContactEcole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\URL;
@@ -64,6 +65,37 @@ final class ManagedActivationController extends Controller
         $this->guardManagedWorkflow();
         $this->assertMilestoneReached($workflow);
 
+        return back()->with('success', $this->envoyerLiens($workflow));
+    }
+
+    /**
+     * L'étudiant est au guichet : l'agent relit avec lui l'e-mail et le numéro
+     * affichés, les confirme, et le lien part dans la foulée. L'empreinte
+     * garantit que l'agent confirme bien le contact qu'il avait sous les yeux.
+     */
+    public function confirmContact(Request $request, ESBTPCandidatureWorkflow $workflow, ConfirmationContactEcole $confirmation)
+    {
+        $this->guardManagedWorkflow();
+        $this->assertMilestoneReached($workflow);
+        if ($workflow->accessActivated()) {
+            throw ValidationException::withMessages(['activation' => 'Cet espace étudiant est déjà activé.']);
+        }
+
+        $empreinte = (string) $request->validate(['empreinte' => ['required', 'string', 'max:128']])['empreinte'];
+        [$resultat] = $confirmation->confirmerAuGuichet($workflow->candidature, $empreinte, (int) $request->user()->id);
+
+        if ($resultat === ConfirmationContactEcole::MODIFIE_ENTRE_TEMPS) {
+            return back()->with('warning', "Le contact de ce dossier a changé depuis l'affichage de la page. Rechargez-la et relisez-le avec l'étudiant.");
+        }
+
+        $prefixe = $resultat === ConfirmationContactEcole::CONFIRME ? 'Contact confirmé. ' : '';
+
+        return back()->with('success', $prefixe.$this->envoyerLiens($workflow->fresh(['candidature', 'etudiant.user'])));
+    }
+
+    /** Émet un nouveau lien et dit, sans l'arrondir, par où il est parti. */
+    private function envoyerLiens(ESBTPCandidatureWorkflow $workflow): string
+    {
         if ($workflow->accessActivated()) {
             throw ValidationException::withMessages(['activation' => 'Cet espace étudiant est déjà activé.']);
         }
@@ -82,12 +114,9 @@ final class ManagedActivationController extends Controller
             $channels[] = 'WhatsApp';
         }
 
-        return back()->with(
-            'success',
-            $channels
-                ? 'Nouveau lien d’activation envoyé par '.implode(' et ', $channels).'.'
-                : "Lien régénéré, mais aucun contact vérifié ne permet de l'envoyer. Vérifiez l'e-mail ou le numéro du candidat, puis renvoyez.",
-        );
+        return $channels
+            ? 'Nouveau lien d’activation envoyé par '.implode(' et ', $channels).'.'
+            : "Lien régénéré, mais aucun contact vérifié ne permet de l'envoyer. Confirmez l'e-mail ou le numéro avec l'étudiant.";
     }
 
     private function assertMilestoneReached(ESBTPCandidatureWorkflow $workflow): void

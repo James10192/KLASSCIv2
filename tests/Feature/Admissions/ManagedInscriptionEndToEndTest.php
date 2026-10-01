@@ -361,6 +361,90 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertSame([$candidature->id], collect($sequence->dossiers(ManagedInscriptionSequence::ETAPE_TOUS)->items())->pluck('id')->all());
     }
 
+    /** @test */
+    public function un_contact_non_prouve_est_annonce_et_se_confirme_au_guichet(): void
+    {
+        $this->reglage(\App\Services\TenantScolariteSettings::VERIFICATION_CONTACT, '1');
+        $this->reglage(InscriptionWorkflowSettings::ACCOUNT_ACTIVATION_STEP, InscriptionWorkflowSettings::ACTIVATION_AFTER_DOCUMENTS);
+
+        $managed = app(ManagedInscriptionWorkflow::class);
+        $candidature = $this->candidature(emailVerifie: false);
+        $workflow = $managed->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+        $managed->receivePiece($workflow, $this->piece->id, 2, $this->agent->id);
+        ESBTPPieceDeposee::where('etudiant_id', $workflow->etudiant_id)->update(['etat' => 'validee']);
+        $workflow = $managed->validateDocuments($workflow->fresh(), $this->agent->id);
+
+        // Rien n'est parti : l'écran le dit au lieu d'annoncer un lien reçu.
+        $this->assertSame(
+            "Lien d'activation non envoyé : aucun e-mail ni numéro vérifié. Confirmez le contact avec l'étudiant.",
+            app(\App\Services\Admissions\ManagedWorkflowPresenter::class)->prochaineEtape($workflow->fresh())
+        );
+
+        foreach (['pieces_dossier.suivre', 'admin.access'] as $nom) {
+            \Spatie\Permission\Models\Permission::findOrCreate($nom, 'web');
+        }
+        $secretariat = User::factory()->create(['must_change_password' => false, 'password_changed_at' => now()]);
+        $secretariat->givePermissionTo(['pieces_dossier.suivre', 'admin.access']);
+
+        $this->actingAs($secretariat)
+            ->get(route('esbtp.admissions.workflow.show', $candidature))
+            ->assertOk()
+            ->assertSee("Le lien n'est pas parti.", false)
+            ->assertSee($candidature->email);
+
+        $this->actingAs($secretariat)
+            ->post(route('esbtp.admissions.workflow.activation.confirm-contact', $workflow), [
+                'empreinte' => 'perime',
+            ])
+            ->assertSessionHas('warning');
+        $this->assertNull($candidature->fresh()->contact_confirme_at, 'Une empreinte périmée ne confirme rien.');
+
+        $this->actingAs($secretariat)
+            ->post(route('esbtp.admissions.workflow.activation.confirm-contact', $workflow), [
+                'empreinte' => $candidature->fresh()->empreinteContact(),
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success', fn (string $m) => str_starts_with($m, 'Contact confirmé.'));
+
+        $candidature->refresh();
+        // Sous RefreshDatabase, l'e-mail part au commit : on vérifie l'état
+        // qui le rend possible plutôt que le message rendu.
+        $this->assertTrue(app(\App\Services\Admissions\AdmissionActivationNotifier::class)->emailUsable($workflow->fresh()));
+        $this->assertNotNull($candidature->contact_confirme_at);
+        $this->assertSame($secretariat->id, (int) $candidature->contact_confirme_par);
+        // Même confirmation que la file des demandes : le badge tombe aussi.
+        $this->assertFalse($candidature->contactMarque());
+    }
+
+    /** @test */
+    public function le_formulaire_classique_refuse_une_candidature_du_parcours(): void
+    {
+        $candidature = $this->candidature();
+        $admin = User::role('superAdmin')->first();
+
+        $this->actingAs($admin)
+            ->get(route('esbtp.inscriptions.create', ['candidature' => $candidature->id]))
+            ->assertRedirect(route('esbtp.admissions.workflow.show', $candidature->id));
+
+        $this->actingAs($admin)
+            ->getJson(route('esbtp.demandes.preparer-inscription', $candidature))
+            ->assertStatus(422);
+
+        // En attente : pas encore de dossier en cours, donc pas de boucle vers
+        // lui ; la file des demandes, où l'on accepte.
+        $enAttente = $this->candidature();
+        $enAttente->forceFill(['statut' => ESBTPCandidature::STATUT_EN_ATTENTE])->save();
+        $this->actingAs($admin)
+            ->get(route('esbtp.inscriptions.create', ['candidature' => $enAttente->id]))
+            ->assertRedirect(route('esbtp.demandes.index', ['type' => 'nouvelle']));
+
+        // Parcours éteint : le formulaire classique reprend la candidature.
+        $this->reglage(InscriptionWorkflowSettings::ENABLED, '0');
+        $this->actingAs($admin)
+            ->get(route('esbtp.inscriptions.create', ['candidature' => $candidature->id]))
+            ->assertOk();
+    }
+
     // ── Préparation ─────────────────────────────────────────────────────
 
     private function dossierPretAChoisir(): ESBTPCandidatureWorkflow
