@@ -143,6 +143,9 @@
     </div>
 </div>
 
+{{-- Nanan prend la main sur les entrées « Aide » ; le formulaire ci-dessus reste là pour la capture d'écran. --}}
+<x-support.nanan :prenom="trim((string) (auth()->user()->first_name ?: strtok((string) auth()->user()->name, ' ')))" />
+
 <style>
     .sp-modal .modal-content { border: 0; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 60px rgba(15,23,42,.18); }
     /* La barre basse du shell mobile (z 1080) passe au-dessus du fond Bootstrap (1050) et

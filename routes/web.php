@@ -3240,6 +3240,9 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('chatbot')->name('chatbot.'
         ->middleware('throttle:30,1')->name('messages.retour');
     Route::post('/messages/{message}/signaler', [App\Http\Controllers\Assistant\RetourController::class, 'signaler'])
         ->middleware('throttle:5,1')->name('messages.signaler');
+    // Nanan dans « Aide & support » : un tour de conversation, sans outil ni écriture.
+    Route::post('/support/tour', [App\Http\Controllers\Assistant\SupportController::class, 'tour'])
+        ->middleware('throttle:30,1')->name('support.tour');
     Route::get('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'getMandatoryFraisCategoryForm'])->name('forms.frais-category');
     Route::post('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'storeMandatoryFraisCategory'])->name('forms.frais-category.store');
     Route::get('/forms/frais-config', [App\Http\Controllers\ChatbotController::class, 'getFraisConfigForm'])->name('forms.frais-config');

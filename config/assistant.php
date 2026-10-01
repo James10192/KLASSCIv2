@@ -81,6 +81,19 @@ return [
         'temperature' => (float) env('ASSISTANT_TEMPERATURE', env('ANTHROPIC_TEMPERATURE', 0.2)),
     ],
 
+    /*
+    | Nanan dans « Aide & support » (App\Domain\Assistant\Support). Sans outil :
+    | elle aide à décrire une demande et répond seule quand elle est sûre. Sans
+    | modèle disponible (pas de clé, budget en pause, panne), des questions
+    | scriptées prennent le relais : le parcours reste le même.
+    */
+    'support' => [
+        'ia' => (bool) env('ASSISTANT_SUPPORT_IA', true),
+        // Questions au plus avant le récapitulatif : la personne ne doit pas s'épuiser.
+        'questions_max' => (int) env('ASSISTANT_SUPPORT_QUESTIONS_MAX', 6),
+        'max_tokens' => (int) env('ASSISTANT_SUPPORT_MAX_TOKENS', 900),
+    ],
+
     // Adaptateur = format d'API. Plusieurs fournisseurs partagent le format OpenAI.
     'adaptateurs' => [
         'anthropic' => App\Domain\Assistant\Fournisseurs\Anthropic::class,
