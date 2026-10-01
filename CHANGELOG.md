@@ -18,6 +18,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 - **Notifications — le bouton de suppression marchait seulement pour les coordinateurs** : la fonction était définie dans un bloc réservé à ce rôle, les autres obtenaient une erreur JavaScript. Supprimer ne recharge plus la page, et le dernier élément supprimé affiche l'état vide.
+- **Notifications — « Rappel » ne propose plus « Voir les présences »** : les raccourcis par rôle lisent des mots entiers (« Rappel » contenait « appel »).
 - **Notifications — un lien hors de l'application n'est plus proposé** (adresse `javascript:` ou autre domaine) ; seuls les chemins internes s'ouvrent.
 
 ---

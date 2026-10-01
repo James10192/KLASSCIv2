@@ -89,6 +89,7 @@
     .ntf-kpi-ico { width: 38px; height: 38px; border-radius: 10px; background: rgba(255, 255, 255, .14); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .ntf-kpi.is-active .ntf-kpi-ico { background: rgba(4, 83, 203, .1); }
     .ntf-kpi-value { font-size: 1.35rem; font-weight: 700; line-height: 1.1; white-space: nowrap; }
+    .ntf-kpi-label, .ntf-kpi-hint { display: block; }
     .ntf-kpi-label { font-size: .74rem; color: rgba(255, 255, 255, .78); font-weight: 600; }
     .ntf-kpi-hint { font-size: .68rem; color: rgba(255, 255, 255, .6); }
 
@@ -188,10 +189,8 @@
     @media (max-width: 768px) {
         .ntf-hero { padding: 1.4rem 1.2rem 1.2rem; border-radius: 16px; }
         .ntf-hero h1 { font-size: 1.25rem; }
-        .ntf-kpis { grid-template-columns: repeat(3, 1fr); gap: .5rem; }
-        .ntf-kpi { flex-direction: column; align-items: flex-start; gap: .35rem; padding: .7rem; }
-        .ntf-kpi-ico, .ntf-kpi-hint { display: none; }
-        .ntf-kpi-value { font-size: 1.2rem; }
+        /* La grille des compteurs suit la règle commune du shell mobile. */
+        .ntf-kpi-ico { display: none; }
         .ntf-row { margin: 0 .25rem; padding: .8rem .75rem; flex-wrap: wrap; }
         .ntf-actions { width: 100%; padding-left: calc(40px + .85rem); }
         .ntf-btn--primary { flex: 1; justify-content: center; }
@@ -241,24 +240,24 @@
                 <span class="ntf-kpi-ico"><i class="fas fa-envelope" aria-hidden="true"></i></span>
                 <span>
                     <span class="ntf-kpi-value" x-text="counts.unread">{{ $counts['unread'] }}</span>
-                    <span class="ntf-kpi-label d-block">Non lues</span>
-                    <span class="ntf-kpi-hint d-block" x-text="'sur ' + counts.total + ' au total'">sur {{ $counts['total'] }} au total</span>
+                    <span class="ntf-kpi-label">Non lues</span>
+                    <span class="ntf-kpi-hint" x-text="'sur ' + counts.total + ' au total'">sur {{ $counts['total'] }} au total</span>
                 </span>
             </button>
             <button type="button" class="ntf-kpi" :class="isActive('aujourdhui') ? 'is-active' : ''" @click="apply({ filtre: 'toutes', type: null, periode: 'aujourdhui', sujet: null })">
                 <span class="ntf-kpi-ico"><i class="fas fa-sun" aria-hidden="true"></i></span>
                 <span>
                     <span class="ntf-kpi-value" x-text="counts.today">{{ $counts['today'] }}</span>
-                    <span class="ntf-kpi-label d-block">Aujourd'hui</span>
-                    <span class="ntf-kpi-hint d-block">reçues depuis ce matin</span>
+                    <span class="ntf-kpi-label">Aujourd'hui</span>
+                    <span class="ntf-kpi-hint">reçues depuis ce matin</span>
                 </span>
             </button>
             <button type="button" class="ntf-kpi" :class="isActive('semaine') ? 'is-active' : ''" @click="apply({ filtre: 'toutes', type: null, periode: 'semaine', sujet: null })">
                 <span class="ntf-kpi-ico"><i class="fas fa-calendar-week" aria-hidden="true"></i></span>
                 <span>
                     <span class="ntf-kpi-value" x-text="counts.week">{{ $counts['week'] }}</span>
-                    <span class="ntf-kpi-label d-block">Cette semaine</span>
-                    <span class="ntf-kpi-hint d-block">depuis lundi</span>
+                    <span class="ntf-kpi-label">Cette semaine</span>
+                    <span class="ntf-kpi-hint">depuis lundi</span>
                 </span>
             </button>
         </div>

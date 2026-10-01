@@ -208,7 +208,8 @@ class NotificationPresenter
         }
 
         foreach ($regles as [$mot, $label, $icon, $route]) {
-            if (Str::contains($titre, $mot)) {
+            // Mot entier : « Rappel » ne doit pas se lire comme un « appel ».
+            if (preg_match('/(?<![\p{L}])'.preg_quote($mot, '/').'(?![\p{L}])/u', $titre)) {
                 $cible = $url ?? (Route::has($route) ? route($route) : null);
 
                 return $cible ? ['label' => $label, 'icon' => $icon, 'url' => $cible] : null;

@@ -5,6 +5,7 @@ namespace Tests\Feature\Notifications;
 use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
@@ -181,5 +182,21 @@ class NotificationsPageTest extends TestCase
         $this->actingAs($this->user)
             ->getJson(route('notifications.index', ['fragment' => 1]))
             ->assertJsonPath('counts.total', 0);
+    }
+    public function test_le_raccourci_coordinateur_lit_des_mots_entiers(): void
+    {
+        Permission::findOrCreate('identity.coordinate', 'web');
+        $this->user->givePermissionTo('identity.coordinate');
+
+        $this->notif(['title' => 'Rappel : conseil de classe', 'type' => 'info']);
+        $this->notif(['title' => 'Appel clôturé en BTS 1', 'type' => 'info']);
+
+        $html = $this->actingAs($this->user)
+            ->getJson(route('notifications.index', ['fragment' => 1]))
+            ->assertOk()
+            ->json('html');
+
+        // Un seul bouton « Voir les présences » : celui de l'appel, pas du rappel.
+        $this->assertSame(1, substr_count($html, 'Voir les présences'));
     }
 }
