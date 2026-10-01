@@ -20,14 +20,15 @@ final class ManagedWorkflowPresenter
      * Le lien d'activation peut-il partir ? Il ne part que par un canal activé
      * et vers un contact prouvé : sinon rien n'est envoyé, et l'écran le dit.
      */
-    public function emailEnAttente(ESBTPCandidatureWorkflow $w): bool
-    {
-        return $this->notifier->emailEnAttente($w);
-    }
-
     public function contactJoignable(ESBTPCandidatureWorkflow $w): bool
     {
         return $this->notifier->peutEnvoyer($w);
+    }
+
+    /** L'e-mail est attendu mais non prouvé : le lien n'y part pas. */
+    public function emailEnAttente(ESBTPCandidatureWorkflow $w): bool
+    {
+        return $this->notifier->emailEnAttente($w);
     }
 
     /**
