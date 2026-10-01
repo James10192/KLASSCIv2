@@ -423,6 +423,111 @@ class NananLotDTest extends TestCase
         $this->putJson('/api/cli/settings/reglage_provisionne_lot_d', ['value' => 'oui'])->assertOk()->assertJsonPath('data.created', true);
     }
 
+    /** Un PUT qui renvoie la valeur déjà en base répond 200 sans rien écrire (il créait un doublon : 500). */
+    public function test_un_put_inchange_repond_sans_rien_ecrire(): void
+    {
+        $this->reglage('school_postal_code', '01 BP 123');
+        $this->reglage('pdf_font_size', '12', ['type' => 'integer']);
+        \Laravel\Sanctum\Sanctum::actingAs($this->admin, ['cli:admin']);
+
+        $this->putJson('/api/cli/settings/school_postal_code', ['value' => '01 BP 123'])
+            ->assertOk()->assertJsonPath('data.changed', false)->assertJsonPath('data.created', false);
+        $this->putJson('/api/cli/settings/pdf_font_size', ['value' => '12.0'])->assertOk()->assertJsonPath('data.changed', false);
+        $this->assertSame(1, Setting::where('key', 'school_postal_code')->count());
+        $this->assertSame('12', Setting::where('key', 'pdf_font_size')->value('value'));
+    }
+
+    /** L'égalité numérique ne vaut que pour un réglage numérique : « 0123 » n'est pas « 123 » pour un texte. */
+    public function test_un_texte_garde_ses_zeros_de_tete(): void
+    {
+        $this->reglage('school_postal_code', '123');
+        $this->actingAs($this->admin)->putJson(route('esbtp.settings.update'), ['setting_school_postal_code' => '0123'])->assertOk();
+        $this->assertSame('0123', Setting::where('key', 'school_postal_code')->value('value'), 'écran');
+
+        \Laravel\Sanctum\Sanctum::actingAs($this->admin, ['cli:admin']);
+        $this->putJson('/api/cli/settings/school_postal_code', ['value' => '00123'])->assertOk()->assertJsonPath('data.changed', true);
+        $this->assertSame('00123', Setting::where('key', 'school_postal_code')->value('value'), 'PUT du CLI');
+        $this->postJson('/api/cli/settings', ['key' => 'school_postal_code', 'value' => '123', 'apply' => true])->assertOk();
+        $this->assertSame('123', Setting::where('key', 'school_postal_code')->value('value'), 'POST du CLI');
+
+        $r = app(ModifierReglages::class)->executeAuthorized(['reglages' => [['cle' => 'school_postal_code', 'valeur' => '000123']]], $this->admin);
+        $this->valider($r);
+        $this->assertSame('000123', Setting::where('key', 'school_postal_code')->value('value'), 'Nanan');
+
+        // Un entier, lui, reste comparé en nombre : « 08 » est « 8 », rien n'est réécrit.
+        $this->reglage('pdf_font_size', '8', ['type' => 'integer']);
+        $this->actingAs($this->admin)->putJson(route('esbtp.settings.update'), ['setting_pdf_font_size' => '08'])->assertOk();
+        $this->assertSame('8', Setting::where('key', 'pdf_font_size')->value('value'));
+    }
+
+    /** La base ignore la casse des clés : les refus aussi. */
+    public function test_la_casse_de_la_cle_ne_contourne_pas_les_refus(): void
+    {
+        $this->reglage('pdf_signature_director', 'signatures/d.png');
+        $this->reglage('pdf_signature_secretary', 'signatures/s.png');
+        $this->reglage('school_logo', 'logos/a.png');
+        $this->reglage('pdf_cachet_ecole', 'cachets/c.png');
+        $this->reglage('mailpulse_base_url', 'https://mailpulse.example');
+        \Laravel\Sanctum\Sanctum::actingAs($this->admin, ['cli:admin']);
+
+        $this->putJson('/api/cli/settings/PDF_SIGNATURE_DIRECTOR', ['value' => '../../.env'])->assertStatus(422);
+        $this->putJson('/api/cli/settings/Pdf_Signature_Secretary', ['value' => '../../.env'])->assertStatus(422);
+        $this->postJson('/api/cli/settings', ['key' => 'SCHOOL_LOGO', 'value' => '../../.env', 'apply' => true])->assertStatus(422);
+        $this->putJson('/api/cli/settings/MAILPULSE_BASE_URL', ['value' => 'https://ailleurs.example'])->assertStatus(422);
+        // Une clé qui évoque une image sans être dans la liste : pas de remontée de dossier.
+        $this->putJson('/api/cli/settings/pdf_cachet_ecole', ['value' => '../../.env'])->assertStatus(422);
+
+        $this->assertSame('signatures/d.png', Setting::where('key', 'pdf_signature_director')->value('value'));
+        $this->assertSame('signatures/s.png', Setting::where('key', 'pdf_signature_secretary')->value('value'));
+        $this->assertSame('logos/a.png', Setting::where('key', 'school_logo')->value('value'));
+        $this->assertSame('cachets/c.png', Setting::where('key', 'pdf_cachet_ecole')->value('value'));
+        $this->assertSame('https://mailpulse.example', Setting::where('key', 'mailpulse_base_url')->value('value'));
+
+        $r = app(ModifierReglages::class)->executeAuthorized(['reglages' => [['cle' => 'PDF_SIGNATURE_DIRECTOR', 'valeur' => '../../.env']]], $this->admin);
+        $this->assertNotSame('approbation', $r['widget']['kind'] ?? null, json_encode($r, JSON_UNESCAPED_UNICODE));
+        $this->assertSame('signatures/d.png', Setting::where('key', 'pdf_signature_director')->value('value'));
+    }
+
+    /** Une case vide est décochée ; seule une case absente prend son défaut. */
+    public function test_une_case_vide_vaut_non_une_case_absente_son_defaut(): void
+    {
+        $this->reglage('case_vide_lot_d', '');
+        Cache::flush();
+        $this->assertFalse(\App\Helpers\SettingsHelper::drapeau('case_vide_lot_d', true));
+
+        Setting::where('key', 'case_vide_lot_d')->delete();
+        Cache::flush();
+        $this->assertTrue(\App\Helpers\SettingsHelper::drapeau('case_vide_lot_d', true));
+    }
+
+    /** La trace de migration ne se restaure pas comme une sauvegarde d'école (elle viderait la table). */
+    public function test_la_trace_de_migration_ne_se_restaure_pas(): void
+    {
+        $journal = [];
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Log\Events\MessageLogged::class, function ($e) use (&$journal) {
+            $journal[] = $e;
+        });
+        $this->reglage('lmd_validation_threshold', '10', ['type' => 'integer']);
+        $this->reglage('school_name', 'Mon école');
+        $migration = require base_path('database/migrations/2026_10_01_223046_convertir_reglages_decimaux_en_float.php');
+        $migration->up();
+
+        $trace = \App\Models\SettingsBackup::where('backup_type', 'migration')->latest('id')->first();
+        $this->assertNotNull($trace);
+        $this->assertSame('archived', $trace->status, 'absente de la liste des sauvegardes actives');
+        try {
+            $trace->restore($this->admin->id);
+            $this->fail('une trace de migration ne doit pas se restaurer');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString("ne se restaure pas", $e->getMessage());
+        }
+        $this->assertSame('Mon école', Setting::where('key', 'school_name')->value('value'), 'la table est intacte');
+
+        \App\Models\SettingsBackup::where('backup_type', 'migration')->delete();
+        $migration->down();
+        $this->assertNotEmpty(array_filter($journal, fn ($e) => $e->level === 'warning' && str_contains($e->message, 'sans trace')), 'down() sans trace le dit');
+    }
+
     public function test_le_cli_dit_de_poser_les_prefixes_avant_l_indicatif(): void
     {
         $this->reglage(PhoneNormalizer::CLE_INDICATIF, '225');

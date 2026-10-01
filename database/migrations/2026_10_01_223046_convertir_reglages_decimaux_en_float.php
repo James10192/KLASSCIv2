@@ -57,7 +57,9 @@ return new class extends Migration
                 'description' => 'Lignes passées de integer à float, avec leur valeur d\'origine (pour down()).',
                 'settings_data' => json_encode($lignes->map(fn ($l) => (array) $l)->values()->all()),
                 'backup_type' => 'migration',
-                'status' => 'active',
+                // Archivée : jamais proposée comme une sauvegarde d'école, et
+                // SettingsBackup::restore() refuse le type `migration`.
+                'status' => 'archived',
                 'backup_date' => now(),
                 'created_by' => $auteur,
                 'created_at' => now(),
@@ -89,6 +91,8 @@ return new class extends Migration
         $sauvegarde = DB::table('settings_backups')->where('backup_type', 'migration')
             ->where('backup_name', self::SAUVEGARDE)->orderByDesc('id')->first();
         if ($sauvegarde === null) {
+            Log::warning('[reglages] down() sans trace de migration : aucune ligne remise en integer', ['migration' => self::SAUVEGARDE]);
+
             return;
         }
 

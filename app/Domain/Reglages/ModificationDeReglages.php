@@ -95,25 +95,50 @@ class ModificationDeReglages
     ];
 
     /**
-     * Une valeur soumise est-elle celle déjà en base ? « 0.50 » et « 0.5 »,
-     * « 08 » et « 8 » le sont : un champ que personne n'a touché ne doit ni
-     * être réécrit ni être rejugé (une valeur ancienne hors bornes bloquerait
-     * sinon tout l'enregistrement de la page).
+     * La valeur soumise est-elle celle déjà en base ? Un champ que personne n'a
+     * touché ne doit ni être réécrit ni être rejugé (une valeur ancienne hors
+     * bornes bloquerait sinon tout l'enregistrement de la page).
+     *
+     * L'égalité numérique (« 0.50 » = « 0.5 », « 08 » = « 8 ») ne vaut que
+     * pour un réglage numérique : pour un texte, « 0123 » n'est pas « 123 »
+     * (un code d'établissement, des préfixes téléphoniques).
      */
-    public static function memeValeur(mixed $avant, mixed $apres): bool
+    public static function inchange(Setting $reglage, mixed $apres): bool
+    {
+        return in_array($reglage->type, ['integer', 'float'], true)
+            ? self::memeNombre($reglage->value, $apres)
+            : self::memeTexte($reglage->value, $apres);
+    }
+
+    /** Même texte, aux espaces de bord près. */
+    public static function memeTexte(mixed $avant, mixed $apres): bool
     {
         if (($apres !== null && ! is_scalar($apres)) || ($avant !== null && ! is_scalar($avant))) {
             return false;
         }
-        $a = trim((string) ($avant ?? ''));
-        $b = trim((string) ($apres ?? ''));
-        if ($a === $b) {
+
+        return trim((string) ($avant ?? '')) === trim((string) ($apres ?? ''));
+    }
+
+    /** Même nombre (virgule ou point, zéros de tête ou de fin), sinon même texte. */
+    public static function memeNombre(mixed $avant, mixed $apres): bool
+    {
+        if (self::memeTexte($avant, $apres)) {
             return true;
         }
-        $a = str_replace(',', '.', $a);
-        $b = str_replace(',', '.', $b);
+        if (! is_scalar($avant) || ! is_scalar($apres)) {
+            return false;
+        }
+        $a = str_replace(',', '.', trim((string) $avant));
+        $b = str_replace(',', '.', trim((string) $apres));
 
         return is_numeric($a) && is_numeric($b) && (float) $a === (float) $b;
+    }
+
+    /** Une clé telle que la base la compare : sans casse, sans espaces de bord. */
+    public static function cleNormalisee(string $cle): string
+    {
+        return mb_strtolower(trim($cle));
     }
 
     public static function estSensible(string $cle): bool
@@ -131,7 +156,9 @@ class ModificationDeReglages
     /** Refus de toute écriture à distance (CLI comme Nanan). */
     public function refusDistant(string $cle): ?string
     {
-        if (in_array($cle, MailerDeLEcole::REGLAGES_RESERVES_A_L_ECRAN, true)) {
+        // La collation de la table (utf8mb4_unicode_ci) ignore la casse :
+        // « MAIL_MAILER » atteint la ligne « mail_mailer ». Le refus aussi.
+        if (in_array(self::cleNormalisee($cle), array_map([self::class, 'cleNormalisee'], MailerDeLEcole::REGLAGES_RESERVES_A_L_ECRAN), true)) {
             return sprintf("« %s » décide par où partent les e-mails de l'école : il se change depuis l'écran des paramètres (onglet MailPulse).", $cle);
         }
         if (self::estSensible($cle)) {
@@ -145,10 +172,27 @@ class ModificationDeReglages
      * Un réglage d'image (ou de type fichier) ne s'écrit jamais en texte : un
      * chemin libre pourrait viser n'importe quel fichier (« ../.env »). Il passe
      * par ImageDeReglage, qui écrit le fichier lui-même. CLI comme Nanan.
+     *
+     * La clé se compare sans casse : la collation de la table l'ignore, donc
+     * « PDF_SIGNATURE_DIRECTOR » écrit la ligne « pdf_signature_director ».
+     * Une valeur portant « .. » est refusée aussi pour toute clé qui évoque une
+     * image sans figurer dans la liste (un réglage d'image ajouté plus tard).
      */
-    public function refusCheminEnTexte(string $cle, ?Setting $reglage): ?string
+    public function refusCheminEnTexte(string $cle, ?Setting $reglage, mixed $valeur = null): ?string
     {
-        if (array_key_exists($cle, ImageDeReglage::DOSSIERS) || $cle === 'pdf_signature_secretary' || $reglage?->type === 'file') {
+        $cles = array_unique(array_filter([
+            self::cleNormalisee($cle),
+            $reglage ? self::cleNormalisee((string) $reglage->key) : null,
+        ]));
+        $estImage = $reglage?->type === 'file';
+        $evoqueImage = false;
+        foreach ($cles as $c) {
+            $estImage = $estImage || array_key_exists($c, ImageDeReglage::DOSSIERS) || $c === 'pdf_signature_secretary';
+            $evoqueImage = $evoqueImage || preg_match('/logo|signature|image|photo|cachet|tampon/', $c) === 1;
+        }
+        $remonte = is_scalar($valeur) && str_contains((string) $valeur, '..');
+
+        if ($estImage || ($evoqueImage && $remonte)) {
             return "« {$cle} » est une image : elle ne s'écrit pas en texte. Envoyez le fichier (POST /api/cli/settings/{$cle}/image, ou proposer_image_reglage).";
         }
 
@@ -165,7 +209,9 @@ class ModificationDeReglages
             return "« {$cle} » touche l'envoi des messages ou l'assistant : il se règle sur son onglet de l'écran des paramètres.";
         }
         // Un chemin d'image ne s'écrit jamais en texte : il passe par le fichier.
-        if (array_key_exists($cle, ImageDeReglage::DOSSIERS) || $cle === 'pdf_signature_secretary') {
+        // Sans casse, comme la base (la liste blanche ci-dessous, elle, exige la
+        // casse exacte : une clé en majuscules n'y figure pas et reste refusée).
+        if (array_key_exists(self::cleNormalisee($cle), ImageDeReglage::DOSSIERS) || self::cleNormalisee($cle) === 'pdf_signature_secretary') {
             return array_key_exists($cle, ImageDeReglage::NANAN)
                 ? "« {$cle} » est une image : joignez-la et utilisez proposer_image_reglage."
                 : "« {$cle} » est une image : elle se change sur l'écran des paramètres.";
@@ -269,7 +315,7 @@ class ModificationDeReglages
             }
         }
 
-        return [$valeur, self::memeValeur($reglage->value, $valeur) ? null : $this->refusDesRegles($reglage, $valeur)];
+        return [$valeur, self::inchange($reglage, $valeur) ? null : $this->refusDesRegles($reglage, $valeur)];
     }
 
     /** Les règles enregistrées sur le réglage ; un champ facultatif reste facultatif. */
@@ -424,7 +470,7 @@ class ModificationDeReglages
             $avant = (string) ($reglage->value ?? '');
             $examen['etat'][$cle] = $reglage->value === null ? null : $avant;
             // Inchangé (égalité numérique comprise) : ni rejugé ni réécrit.
-            if (self::memeValeur($reglage->value, $valeur)) {
+            if (self::inchange($reglage, $valeur)) {
                 $examen['inchangees'][] = $cle;
 
                 continue;
@@ -435,7 +481,7 @@ class ModificationDeReglages
 
                 continue;
             }
-            if (self::memeValeur($avant, $normalisee)) {
+            if (self::inchange($reglage, $normalisee)) {
                 $examen['inchangees'][] = $cle;
 
                 continue;

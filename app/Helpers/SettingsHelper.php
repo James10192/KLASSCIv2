@@ -282,8 +282,8 @@ class SettingsHelper
      * Une case à cocher d'instance, quelle que soit la façon dont elle a été
      * enregistrée : Setting::get() rend un booléen pour un réglage de type
      * `boolean`, une chaîne sinon. Comparer à '1' avec === faisait d'un
-     * réglage booléen une case toujours décochée. Un réglage absent ou vide
-     * vaut son défaut.
+     * réglage booléen une case toujours décochée. Un réglage absent vaut son
+     * défaut ; une valeur vide est une case décochée (« non »), pas une absence.
      */
     public static function drapeau(string $key, bool $defaut): bool
     {
@@ -291,8 +291,11 @@ class SettingsHelper
         if (is_bool($valeur)) {
             return $valeur;
         }
-        if ($valeur === null || (is_string($valeur) && trim($valeur) === '')) {
+        if ($valeur === null) {
             return $defaut;
+        }
+        if (is_string($valeur) && trim($valeur) === '') {
+            return false;
         }
 
         return filter_var($valeur, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? $defaut;

@@ -548,7 +548,7 @@ class CLIDataController extends BaseApiController
         // assume : elle CREE une cle absente, pour le provisionnement.
         $modification = app(\App\Domain\Reglages\ModificationDeReglages::class);
         $refus = $modification->refusDistant((string) $key)
-            ?? $modification->refusCheminEnTexte((string) $key, Setting::where('key', $key)->first())
+            ?? $modification->refusCheminEnTexte((string) $key, Setting::where('key', $key)->first(), $request->input('value'))
             ?? $modification->refusCroise([(string) $key => (string) $request->input('value')]);
         if ($refus !== null) {
             return $this->errorResponse($refus, [], 422);
@@ -561,8 +561,18 @@ class CLIDataController extends BaseApiController
         $setting = Setting::where('key', $key)->first();
         $created = false;
         $valeur = $request->input('value');
-        if ($setting && ! \App\Domain\Reglages\ModificationDeReglages::memeValeur($setting->value, $valeur)) {
-            // Type, bornes et regles du reglage existant, comme l'ecran (inchange : pas rejuge).
+        if ($setting && \App\Domain\Reglages\ModificationDeReglages::inchange($setting, $valeur)) {
+            // Deja cette valeur : rien a ecrire, rien a rejuger.
+            return $this->successResponse([
+                'key' => $key,
+                'value' => $setting->value,
+                'previous_value' => $setting->value,
+                'created' => false,
+                'changed' => false,
+            ], "Setting '{$key}' already has this value: nothing to do");
+        }
+        if ($setting) {
+            // Type, bornes et regles du reglage existant, comme l'ecran.
             [$valeur, $refus] = $modification->normaliserSelonLeReglage($setting, $valeur);
             if ($refus !== null) {
                 return $this->errorResponse($refus, [], 422);
@@ -590,6 +600,7 @@ class CLIDataController extends BaseApiController
                 'value' => $request->input('value'),
                 'previous_value' => $previousValue,
                 'created' => $created,
+                'changed' => true,
             ], $created
                 ? "Setting '{$key}' created with value"
                 : "Setting '{$key}' updated successfully"

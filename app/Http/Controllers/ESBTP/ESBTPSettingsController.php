@@ -704,7 +704,7 @@ class ESBTPSettingsController extends Controller
                         // n'a plus a la compenser.
                         // Égalité numérique comprise (« 0.50 » = « 0.5 ») : un champ
                         // non touché n'est ni réécrit ni rejugé, même hors bornes.
-                        if (ModificationDeReglages::memeValeur($setting->value, $value)) {
+                        if (ModificationDeReglages::inchange($setting, $value)) {
                             continue;
                         }
 
