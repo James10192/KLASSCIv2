@@ -9,6 +9,7 @@ use App\Models\Setting;
 use App\Models\SettingsBackup;
 use App\Http\Middleware\CheckRequiredSettings;
 use App\Domain\Notifications\PhoneNormalizer;
+use App\Services\Admissions\InscriptionWorkflowSettings;
 use App\Services\AppreciationScaleSettingsService;
 use App\Services\BulletinMentionResolver;
 use App\Services\BtsBulletinPolicy;
@@ -119,6 +120,9 @@ class ESBTPSettingsController extends Controller
             $telephoneSettings = app(TelephoneSettingsService::class);
             $telephoneSettings->ensureDefaults();
             app(\App\Domain\EmploiTemps\FenetresDEmargement::class)->ensureDefaults();
+            // Le bloc du parcours d'inscription : sans ses lignes en base, rien
+            // de ce que l'ecole coche ne serait enregistre.
+            app(InscriptionWorkflowSettings::class)->ensureDefaults();
 
             $pdfColorDefaults = [
                 'pdf_primary_color' => '#0453cb',
@@ -531,7 +535,7 @@ class ESBTPSettingsController extends Controller
                 // migration, lu par MobileProfileResolver, sans cette ligne
                 // la case de la page n'aurait jamais ete enregistree.
                 MobileProfileResolver::REGLAGE_ACTIF,
-            ], array_keys($troncCommunDefaults));
+            ], InscriptionWorkflowSettings::booleens(), array_keys($troncCommunDefaults));
 
             // Reglages a cle pointee qui ne sont PAS des cases a cocher. La
             // distinction ne peut PAS se lire sur la colonne `type` : plusieurs
@@ -563,6 +567,9 @@ class ESBTPSettingsController extends Controller
             // bascules, ou une valeur absente se lit comme un « non » — ce qui
             // aurait remis « inactif » a chaque enregistrement de la page.
             $reglagesTexte = array_merge($reglagesTexte, SeparationOfDutiesService::clesDeReglage());
+            // Les choix fermes du parcours d'inscription, valides par
+            // refuserParcoursInscriptionIncoherent() avant toute ecriture.
+            $reglagesTexte = array_merge($reglagesTexte, array_keys(InscriptionWorkflowSettings::choix()));
 
             $reglagesPointes = Setting::whereIn('key', array_merge($basculesGerees, $reglagesTexte))->get();
 
@@ -904,18 +911,81 @@ class ESBTPSettingsController extends Controller
      * une requete JSON peut envoyer un champ a null, et le confondre avec une
      * absence remettrait silencieusement une bascule a zero.
      */
+    /**
+     * Une cle pointee peut arriver sous quatre formes : telle quelle, avec les
+     * points devenus underscores (ce que fait PHP dans $_POST), et chacune
+     * prefixee de `setting_` (le prefixe du formulaire principal). Sans la
+     * forme prefixee, le bloc du parcours d'inscription n'etait jamais lu.
+     *
+     * @return list<string>
+     */
+    private function formesSoumises(string $cle): array
+    {
+        $souligne = str_replace('.', '_', $cle);
+
+        return [$cle, $souligne, 'setting_'.$cle, 'setting_'.$souligne];
+    }
+
     private function valeurSoumise(array $rawInput, string $cle): mixed
     {
-        $cleFormulaire = str_replace('.', '_', $cle);
+        foreach ($this->formesSoumises($cle) as $forme) {
+            if (array_key_exists($forme, $rawInput)) {
+                return $rawInput[$forme];
+            }
+        }
 
-        return $rawInput[$cle] ?? $rawInput[$cleFormulaire] ?? null;
+        return null;
     }
 
     /** Le champ figurait-il dans la requete, quelle que soit sa valeur ? */
     private function estSoumis(array $rawInput, string $cle): bool
     {
-        return array_key_exists($cle, $rawInput)
-            || array_key_exists(str_replace('.', '_', $cle), $rawInput);
+        foreach ($this->formesSoumises($cle) as $forme) {
+            if (array_key_exists($forme, $rawInput)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Un choix hors liste, ou un parcours qui bloquerait chaque dossier, est
+     * refuse avant d'ecrire : relu, il retomberait en silence sur le defaut.
+     */
+    private function refuserParcoursInscriptionIncoherent(Request $request)
+    {
+        $rawInput = $request->all();
+
+        foreach (InscriptionWorkflowSettings::choix() as $cle => $options) {
+            if (! $this->estSoumis($rawInput, $cle)) {
+                continue;
+            }
+
+            $choisi = trim((string) $this->valeurSoumise($rawInput, $cle));
+            if (! array_key_exists($choisi, $options)) {
+                return $this->refus($request, "Valeur « {$choisi} » non reconnue pour le parcours d'inscription.");
+            }
+        }
+
+        // Valeur effective apres enregistrement : soumise, sinon une case du
+        // bloc absente d'un formulaire soumis vaut « non », sinon la base. La
+        // prise de rendez-vous ne se regle pas sur cette page : lue en base.
+        $casesAbsentesValentNon = $request->boolean('settings_save_display');
+        $valeur = function (string $cle) use ($rawInput, $casesAbsentesValentNon): string {
+            if ($this->estSoumis($rawInput, $cle)) {
+                return (string) $this->valeurSoumise($rawInput, $cle);
+            }
+            if ($casesAbsentesValentNon && in_array($cle, InscriptionWorkflowSettings::booleens(), true)) {
+                return '0';
+            }
+
+            return (string) Setting::get($cle, '');
+        };
+
+        $message = InscriptionWorkflowSettings::incoherence($valeur);
+
+        return $message === null ? null : $this->refus($request, $message);
     }
 
     /**
@@ -1021,6 +1091,10 @@ class ESBTPSettingsController extends Controller
         }
 
         if (($refus = $this->refuserAnneeCibleInconnue($request)) !== null) {
+            return $refus;
+        }
+
+        if (($refus = $this->refuserParcoursInscriptionIncoherent($request)) !== null) {
             return $refus;
         }
 

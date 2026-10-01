@@ -31,8 +31,8 @@
     <div class="bc-body">
         <div class="bc-label">Workflow d'inscription</div>
         <div class="bc-desc">
-            Configure l'ordre du parcours propre à cet établissement. Le comportement historique reste le défaut :
-            une évolution déployée depuis <strong>presentation</strong> ne change donc aucun autre tenant tant que cette option n'est pas activée.
+            L'ordre du parcours d'inscription propre à votre établissement. Tant que la case n'est pas cochée,
+            l'inscription se passe exactement comme avant.
         </div>
 
         <div class="row g-2" style="margin-top:.75rem;max-width:760px;">
@@ -59,7 +59,7 @@
                     @endforeach
                 </select>
                 <div class="bc-desc" style="margin-top:.25rem;">
-                    Pour ESBTP Yamoussoukro : candidature en ligne → rendez-vous → caisse → contrôle physique des pièces → finalisation en ligne.
+                    Exemple « Caisse puis contrôle physique des pièces » : candidature en ligne → rendez-vous → caisse → contrôle des pièces au secrétariat → l'étudiant active son espace, complète ses informations et l'inscription est finalisée.
                 </div>
             </div>
 
@@ -103,7 +103,7 @@
 
             <div class="col-12" style="margin-top:.65rem;">
                 <div class="bc-desc" style="padding:.65rem .8rem;border:1px solid #dbe4f0;border-radius:10px;background:#f8fafc;">
-                    <strong>Principe multi-tenant :</strong> ce bloc configure le tenant courant uniquement. Le code commun peut être propagé à toutes les instances sans imposer le workflow de Yamoussoukro à Abidjan, USAT, ISTLG ou à un futur établissement.
+                    <strong>Ces réglages ne concernent que votre établissement.</strong> Ils s'appliquent aux dossiers déjà en cours : changez-les entre deux campagnes d'inscription, pas au milieu.
                 </div>
             </div>
         </div>
