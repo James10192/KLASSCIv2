@@ -304,6 +304,11 @@ class FicheReinscriptionTest extends TestCase
         $nanan = app(DiagnostiquerReinscriptionTool::class)->executeAuthorized(['etudiant_id' => $this->inscription->etudiant_id], $this->agent);
         $this->assertTrue($nanan['diagnostic']['bloquee']);
         $this->assertSame('dossier_intermediaire', $nanan['diagnostic']['cause']);
+        $this->assertStringContainsString("n'est pas finalisé", $nanan['diagnostic']['que_faire']);
+        // Le mode opératoire lui dit quoi faire de cette cause, et ce qu'il ne faut pas proposer.
+        $prompt = app(\App\Domain\Assistant\Harnais\ConstructeurDePrompt::class)->systeme($this->agent, null, null);
+        $this->assertStringContainsString('Cause « dossier_intermediaire »', $prompt);
+        $this->assertStringContainsString('ne propose aucun ajustement de frais', $prompt);
 
         // Une inscription « terminée » n'est pas un dossier à finaliser : le
         // message le dit au lieu de conseiller une annulation.
