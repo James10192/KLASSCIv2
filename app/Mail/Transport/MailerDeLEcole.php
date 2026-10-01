@@ -2,7 +2,6 @@
 
 namespace App\Mail\Transport;
 
-use App\Models\Setting;
 use App\Services\MailPulse\MailPulseClient;
 use Illuminate\Http\Request;
 
@@ -38,10 +37,16 @@ final class MailerDeLEcole
     public const MAILER = 'mailpulse';
 
     /**
-     * Réglages qui décident par où partent les courriels de l'école, donc qui
-     * lit un lien de réinitialisation de mot de passe. Ils ne s'écrivent que
-     * depuis l'écran des paramètres (`system.manage`), jamais par la CLI : la
-     * même raison qui tient MAIL_* hors de `CleEnvAutorisee`.
+     * Réglages qui décident par où partent les courriels de l'école. Ils ne
+     * s'écrivent que depuis l'écran des paramètres (`system.manage`), pas par
+     * la CLI : basculer les e-mails est un choix de l'école, fait à l'écran où
+     * elle voit les avertissements qui l'accompagnent.
+     *
+     * Ce n'est PAS une barrière de sécurité, seulement une défense en
+     * profondeur : un jeton `cli:admin` écrit déjà `mailpulse_api_key` (chemin
+     * voulu, gardé) et réinitialise un mot de passe par
+     * `users/{id}/reset-password`. `mailpulse_enabled` reste écrivable à
+     * distance : c'est la sortie de secours (voir le runbook).
      */
     public const REGLAGES_RESERVES_A_L_ECRAN = [self::REGLAGE, 'mailpulse_base_url'];
 
@@ -52,7 +57,7 @@ final class MailerDeLEcole
     /** Le nom du mailer qui doit servir quand l'appelant n'en désigne aucun. */
     public function parDefaut(?string $duServeur = null): string
     {
-        $duServeur ??= (string) (config('mail.driver') ?? config('mail.default'));
+        $duServeur ??= $this->duServeur();
 
         if ($duServeur === self::MAILER || ! $this->demandeParLEcole()) {
             return $duServeur;
@@ -71,7 +76,13 @@ final class MailerDeLEcole
     /** `MAIL_MAILER=mailpulse` : le serveur impose MailPulse, le réglage n'y peut rien. */
     public function imposeParLeServeur(): bool
     {
-        return config('mail.default') === self::MAILER;
+        return $this->duServeur() === self::MAILER;
+    }
+
+    /** Le mailer du `.env`, lu comme le lit `MailManager::getDefaultDriver()`. */
+    private function duServeur(): string
+    {
+        return (string) (config('mail.driver') ?? config('mail.default'));
     }
 
     /**
@@ -86,7 +97,10 @@ final class MailerDeLEcole
      */
     public function refusDeBascule(Request $requete): ?string
     {
-        $enBase = fn (string $cle) => filter_var(Setting::get($cle, '0'), FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+        // Même lecture, mêmes défauts que demandeParLEcole().
+        $enBase = fn (string $cle) => $cle === self::REGLAGE
+            ? ($this->oui(self::REGLAGE, 'courriels_enabled', '0') ? '1' : '0')
+            : ($this->oui('mailpulse_enabled', 'enabled', '1') ? '1' : '0');
         $soumis = fn (string $cle) => $requete->has('setting_'.$cle)
             ? (filter_var($requete->input('setting_'.$cle), FILTER_VALIDATE_BOOLEAN) ? '1' : '0')
             : null;

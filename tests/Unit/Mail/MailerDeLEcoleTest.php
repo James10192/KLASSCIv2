@@ -10,7 +10,9 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -258,9 +260,82 @@ class MailerDeLEcoleTest extends TestCase
 
             $requete = Request::create("/api/cli/settings/{$cle}", 'PUT', ['value' => '1']);
             $requete->setUserResolver(fn () => $admin);
-            $this->assertSame(422, app(\App\Http\Controllers\API\CLI\CLIDataController::class)->settingsUpdate($requete, $cle)->getStatusCode(), $cle);
+            $reponse = app(\App\Http\Controllers\API\CLI\CLIDataController::class)->settingsUpdate($requete, $cle);
+            $this->assertSame(422, $reponse->getStatusCode(), $cle);
         }
 
-        $this->assertNull(Setting::where('key', MailerDeLEcole::REGLAGE)->value('value'));
+        foreach (MailerDeLEcole::REGLAGES_RESERVES_A_L_ECRAN as $cle) {
+            $this->assertNull(Setting::where('key', $cle)->value('value'), $cle);
+        }
+        $this->assertStringContainsString("depuis l'écran des paramètres", $reponse->getData(true)['message']);
+    }
+
+    private function mailpulseAccepte(): void
+    {
+        config()->set('services.mailpulse.api_key', 'test-key');
+        config()->set('services.mailpulse.base_url', 'https://mailpulse.test');
+        config()->set('services.mailpulse.messages_endpoint', '/api/v1/messages');
+        config()->set('services.mailpulse.mail_per_minute', 30);
+        config()->set('mail.from', ['address' => 'noreply@klassci.com', 'name' => 'Ecole Test']);
+        Http::fake(['mailpulse.test/api/v1/messages' => Http::response([
+            'dispatch' => ['state' => 'accepted', 'sms_fallback_eligible' => false],
+            'message' => ['id' => 'msg-1', 'status' => 'sent'],
+        ], 202)]);
+    }
+
+    /** @test */
+    public function un_mailable_en_file_et_une_notification_suivent_la_case(): void
+    {
+        $this->mailpulseAccepte();
+        config()->set('queue.default', 'sync');
+        $this->poser('mailpulse_enabled', '1');
+        $this->poser(MailerDeLEcole::REGLAGE, '1');
+
+        Mail::to('parent@exemple.ci')->queue(new MailableDeTestEnFile());
+        NotificationFacade::route('mail', 'tuteur@exemple.ci')->notify(new NotificationDeTestEnFile());
+
+        Http::assertSentCount(2);
+        foreach (['parent@exemple.ci', 'tuteur@exemple.ci'] as $destinataire) {
+            Http::assertSent(fn ($r) => str_contains($r->url(), 'mailpulse.test/api/v1/messages')
+                && ($r->data()['recipient']['value'] ?? null) === $destinataire);
+        }
+    }
+
+    /** @test */
+    public function case_decochee_le_mailable_en_file_ne_passe_pas_par_mailpulse(): void
+    {
+        $this->mailpulseAccepte();
+        config()->set('queue.default', 'sync');
+        config()->set('mail.default', 'array');
+        $this->poser('mailpulse_enabled', '1');
+        $this->poser(MailerDeLEcole::REGLAGE, '0');
+
+        Mail::to('parent@exemple.ci')->queue(new MailableDeTestEnFile());
+
+        Http::assertNothingSent();
+        $this->assertCount(1, app('mail.manager')->mailer('array')->getSymfonyTransport()->messages());
+    }
+}
+
+class MailableDeTestEnFile extends \Illuminate\Mail\Mailable implements \Illuminate\Contracts\Queue\ShouldQueue
+{
+    public function build()
+    {
+        return $this->subject('Rappel')->html('<p>Bonjour</p>');
+    }
+}
+
+class NotificationDeTestEnFile extends \Illuminate\Notifications\Notification implements \Illuminate\Contracts\Queue\ShouldQueue
+{
+    use \Illuminate\Bus\Queueable;
+
+    public function via($notifiable): array
+    {
+        return ['mail'];
+    }
+
+    public function toMail($notifiable): \Illuminate\Notifications\Messages\MailMessage
+    {
+        return (new \Illuminate\Notifications\Messages\MailMessage())->subject('Avis')->line('Bonjour');
     }
 }

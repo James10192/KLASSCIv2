@@ -32,11 +32,14 @@ serveur** : il impose MailPulse quelle que soit la case, et l'écran le dit. Ne
 l'utilisez plus pour basculer une école ; laissez `MAIL_MAILER=smtp`, qui sert de
 repli quand la case est décochée.
 
-**La CLI ne peut pas basculer une école.** `mailpulse_courriels_enabled` et
+**La bascule se fait à l'écran, pas par la CLI.** `mailpulse_courriels_enabled` et
 `mailpulse_base_url` sont refusés par `POST /api/cli/settings` comme par
-`PUT /api/cli/settings/{key}` : avec la case cochée, ces réglages décident qui lit
-un lien de réinitialisation de mot de passe — la raison même qui tient `MAIL_*`
-hors de `CleEnvAutorisee`. Ils se changent depuis l'écran (`system.manage`).
+`PUT /api/cli/settings/{key}` (422). C'est un choix de l'école, fait là où elle
+voit les avertissements qui l'accompagnent (`system.manage`). Ce n'est **pas** une
+barrière de sécurité, seulement une défense en profondeur : un jeton `cli:admin`
+écrit déjà `mailpulse_api_key` (chemin voulu, gardé) et réinitialise un mot de
+passe par `POST /api/cli/user/{id}/reset-password`. `mailpulse_enabled`, lui,
+reste écrivable à distance : c'est la sortie de secours (voir « Revenir en arrière »).
 
 ## Ce que MailPulse transporte, et ce que le mailer en fait
 
@@ -202,7 +205,7 @@ Une instance Élite, elle, ne bascule qu'avec une file et un worker (voir plus h
 
 | clé | où | valeur |
 |---|---|---|
-| `QUEUE_CONNECTION` | `.env` | `database` (ou `redis`), **pas `sync`** ; et un worker actif |
+| `QUEUE_CONNECTION` | `.env` | `database` (ou `redis`) avec un worker actif, recommandé et exigé pour les Élite ; `sync` accepté, avec l'avertissement de l'écran : rien n'est différé |
 | `MAILPULSE_API_KEY` | `.env`, ou réglage `mailpulse_api_key` | clé API v1 de l'organisation MailPulse (déjà posée là où les notifications parents partent) |
 | `mailpulse_enabled` | réglage, ou `.env` `MAILPULSE_ENABLED` | `1` — **à `0`, plus aucun courriel ne part**, y compris les liens de confirmation |
 | `mailpulse_courriels_enabled` | réglage, écran `/esbtp/settings` onglet MailPulse | coché — **c'est la bascule** |
@@ -260,3 +263,20 @@ les e-mails repartent aussitôt par le serveur de messagerie du `.env`
 (`MAIL_MAILER=smtp`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`,
 `MAIL_ENCRYPTION`). Si le `.env` porte `MAIL_MAILER=mailpulse`, le remettre à
 `smtp`, puis `config:clear`.
+
+**En urgence, quand MailPulse casse et que plus personne ne peut se connecter**
+(liens de réinitialisation et de confirmation qui ne partent plus) : couper
+MailPulse à distance, ce que la CLI autorise.
+
+```bash
+curl -X POST "$URL/api/cli/settings" -H "Authorization: Bearer $JETON_CLI_ADMIN" \
+     -d key=mailpulse_enabled -d value=0 -d apply=true
+```
+
+Les e-mails repartent aussitôt par le serveur de messagerie du `.env` : la case
+« Envoyer tous les e-mails… » reste cochée mais sans effet tant que MailPulse est
+coupé. **Ce geste coupe aussi tout le reste de MailPulse** : notifications
+WhatsApp et e-mail aux parents, convocations de rendez-vous, codes de
+vérification. Le rétablir (`value=1`, ou l'écran) dès que MailPulse répond. Une
+instance en `MAIL_MAILER=mailpulse` n'a pas cette sortie : remettre `smtp` dans le
+`.env`.

@@ -56,10 +56,12 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(\App\Domain\Assistant\Actions\ContexteDEchange::class);
 
         // Le mailer par défaut suit le réglage « courriels par MailPulse » de
-        // l'école, lu à l'envoi. `extend` s'applique à la première résolution,
-        // avant le `Mail::extend('mailpulse')` du boot qui s'enregistre donc
-        // sur ce gestionnaire-ci.
-        $this->app->extend('mail.manager', fn ($gestionnaire, $app) => new \App\Mail\Transport\MailManagerDeLEcole($app));
+        // l'école, lu à l'envoi. `extend` s'applique à la première résolution
+        // du gestionnaire (MailServiceProvider est différé), avant le
+        // `Mail::extend('mailpulse')` du boot, qui s'enregistre donc sur
+        // celui-ci. `depuis()` reporte malgré tout les mailers déjà confiés à
+        // l'original : rien ne se perd si un paquet en enregistre plus tôt.
+        $this->app->extend('mail.manager', fn ($gestionnaire, $app) => \App\Mail\Transport\MailManagerDeLEcole::depuis($gestionnaire, $app));
 
         // Singleton : le service memorise ses resolutions de chemin. Resolu a la
         // volee, le conteneur en reconstruisait une instance neuve a chaque acces
