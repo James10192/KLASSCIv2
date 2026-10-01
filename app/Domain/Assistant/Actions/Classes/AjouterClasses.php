@@ -24,6 +24,18 @@ use Illuminate\Support\Facades\DB;
  *
  * LMD exclu : une classe LMD se range sous un parcours et s'ancre par un reflet
  * de filière (classe-lmd-filiere-as-mention) — elle passe par l'écran.
+ *
+ * Les matières : la source canonique est la maquette du couple filière × niveau
+ * (esbtp_matiere_filiere_niveau), que la nouvelle classe lit d'elle-même. Le
+ * pivot plat esbtp_classe_matiere, lu en repli par les bulletins et les
+ * présences, est recopié depuis la classe sœur la plus ancienne du couple :
+ * la nouvelle classe a ainsi exactement les matières de ses sœurs. On ne
+ * reprend PAS le rattachement de l'écran (toutes les matières du niveau, toutes
+ * filières confondues), qui en ajoute d'autres filières.
+ *
+ * Sans filière ni niveau précisés, seuls les couples qui ont déjà une classe
+ * sont proposés : « une classe de plus partout » ne veut pas dire ouvrir des
+ * couples que l'école n'a jamais ouverts.
  */
 class AjouterClasses extends ActionAgent
 {
@@ -55,6 +67,7 @@ class AjouterClasses extends ActionAgent
                 'filieres' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Codes de filières ; vide = toutes les filières BTS actives.'],
                 'niveaux' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Codes de niveaux (BTS1, BTS2…) ; vide = tous les niveaux BTS actifs.'],
                 'nombre' => ['type' => 'integer', 'description' => 'Classes à ajouter par couple (défaut 1).'],
+                'inclure_couples_vides' => ['type' => 'boolean', 'description' => "Ouvrir aussi les couples filière × niveau qui n'ont encore aucune classe (défaut : seulement si filières ET niveaux sont nommés)."],
             ],
             'required' => ['places'],
         ];
@@ -92,22 +105,60 @@ class AjouterClasses extends ActionAgent
             ->get(['id', 'name', 'code', 'filiere_id', 'niveau_etude_id']);
         $codesPris = ESBTPClasse::withTrashed()->pluck('code')->map(fn ($c) => mb_strtoupper((string) $c))->flip();
 
+        $inclureVides = array_key_exists('inclure_couples_vides', $args)
+            ? (bool) $args['inclure_couples_vides']
+            : ((array) ($args['filieres'] ?? []) !== [] && (array) ($args['niveaux'] ?? []) !== []);
+
         $nouvelles = [];
         $sansModele = [];
+        $nonReconnus = [];
+        $ignores = 0;
+        $debordements = [];
         foreach ($filieres as $f) {
             foreach ($niveaux as $n) {
                 $soeurs = $existantes->where('filiere_id', $f->id)->where('niveau_etude_id', $n->id);
-                foreach ($this->suivantes($f, $n, $soeurs, $nombre, $codesPris) as $c) {
+                if ($soeurs->isEmpty() && ! $inclureVides) {
+                    $ignores++;
+                    continue;
+                }
+                $suite = $this->suivantes($f, $n, $soeurs, $nombre, $codesPris);
+                if ($suite === null) {
+                    $debordements[] = $f->code.' / '.$n->code;
+                    continue;
+                }
+                foreach ($suite['classes'] as $c) {
                     $nouvelles[] = $c + ['filiere_id' => (int) $f->id, 'niveau_etude_id' => (int) $n->id, 'places' => $places,
+                        'modele_id' => $suite['modele_id'],
                         'filiere' => (string) $f->name, 'niveau' => (string) $n->name, 'existantes' => $soeurs->pluck('name')->implode(', ') ?: '—'];
                 }
                 if ($soeurs->isEmpty()) {
                     $sansModele[] = $f->code.' / '.$n->code;
+                } elseif (! $suite['reconnu']) {
+                    $nonReconnus[] = $f->code.' / '.$n->code.' ('.$soeurs->pluck('name')->implode(', ').')';
                 }
             }
         }
+        if ($debordements !== []) {
+            return new Proposition(titre: $titre, resume: '', manques: ['Plus de 26 classes (A à Z) dans : '.implode(', ', $debordements).'. Réduis le nombre ou renomme à l\'écran.']);
+        }
+        if ($nouvelles === []) {
+            return new Proposition(titre: $titre, resume: '', manques: [
+                "Aucun des couples filière × niveau demandés n'a encore de classe. Nomme les filières et les niveaux à ouvrir, ou demande d'inclure les couples vides.",
+            ]);
+        }
         if (count($nouvelles) > self::MAX_CLASSES) {
             return new Proposition(titre: $titre, resume: '', manques: ['Plus de '.self::MAX_CLASSES.' classes : précise les filières ou les niveaux.']);
+        }
+
+        $avertissements = [];
+        if ($sansModele !== []) {
+            $avertissements[] = 'Sans classe existante, le nom part du code de la filière (à renommer si l\'école en utilise un autre) : '.implode(', ', $sansModele).'.';
+        }
+        if ($nonReconnus !== []) {
+            $avertissements[] = 'Noms existants non reconnus, nom déduit du code de la filière (à vérifier) : '.implode(' ; ', $nonReconnus).'.';
+        }
+        if ($ignores > 0) {
+            $avertissements[] = "{$ignores} couple(s) filière × niveau sans aucune classe laissé(s) de côté.";
         }
 
         return new Proposition(
@@ -117,10 +168,8 @@ class AjouterClasses extends ActionAgent
                 'colonnes' => ['Filière', 'Niveau', 'Classes existantes', 'Nouvelle classe', 'Code', 'Places'],
                 'lignes' => array_map(fn ($c) => [$c['filiere'], $c['niveau'], $c['existantes'], $c['name'], $c['code'], (string) $c['places']], $nouvelles),
             ],
-            avertissements: $sansModele === [] ? [] : [
-                'Sans classe existante, le nom part du code de la filière (à renommer si l\'école en utilise un autre) : '.implode(', ', $sansModele).'.',
-            ],
-            donnees: ['classes' => array_map(fn ($c) => array_intersect_key($c, array_flip(['name', 'code', 'filiere_id', 'niveau_etude_id', 'places'])), $nouvelles)],
+            avertissements: $avertissements,
+            donnees: ['classes' => array_map(fn ($c) => array_intersect_key($c, array_flip(['name', 'code', 'filiere_id', 'niveau_etude_id', 'places', 'modele_id'])), $nouvelles)],
             etat: ['existantes' => $existantes->pluck('id')->sort()->values()->all()],
         );
     }
@@ -137,13 +186,15 @@ class AjouterClasses extends ActionAgent
             }
             $ids = [];
             foreach ($classes as $c) {
-                $ids[] = ESBTPClasse::create([
+                $id = ESBTPClasse::create([
                     'name' => $c['name'], 'code' => $c['code'],
                     'filiere_id' => $c['filiere_id'], 'niveau_etude_id' => $c['niveau_etude_id'],
                     'annee_universitaire_id' => $anneeId, 'places_totales' => $c['places'],
                     'systeme_academique' => 'BTS', 'is_active' => true,
                     'created_by' => $user->id, 'updated_by' => $user->id,
                 ])->id;
+                $this->recopierMatieres((int) ($c['modele_id'] ?? 0), $id);
+                $ids[] = $id;
             }
 
             return $ids;
@@ -170,22 +221,48 @@ class AjouterClasses extends ActionAgent
         return [$choisis, array_values(array_diff($codes, $choisis->map(fn ($x) => mb_strtoupper((string) $x->code))->all()))];
     }
 
-    /** @return array<int, array{name: string, code: string}> */
-    private function suivantes(ESBTPFiliere $f, ESBTPNiveauEtude $n, Collection $soeurs, int $nombre, Collection $codesPris): array
+    /** Matières du pivot plat de la sœur modèle, à l'identique (coefficients compris). */
+    private function recopierMatieres(int $modeleId, int $classeId): void
+    {
+        if ($modeleId < 1) {
+            return;
+        }
+        $lignes = DB::table('esbtp_classe_matiere')->where('classe_id', $modeleId)->whereNull('deleted_at')
+            ->get(['matiere_id', 'coefficient', 'total_heures', 'is_active']);
+        $maintenant = now();
+        DB::table('esbtp_classe_matiere')->insert($lignes->map(fn ($l) => [
+            'classe_id' => $classeId, 'matiere_id' => $l->matiere_id, 'coefficient' => $l->coefficient,
+            'total_heures' => $l->total_heures, 'is_active' => $l->is_active,
+            'created_at' => $maintenant, 'updated_at' => $maintenant,
+        ])->all());
+    }
+
+    /**
+     * Les classes suivantes du couple, ou null si l'alphabet déborde (Z dépassé).
+     *
+     * @return array{classes: array<int, array{name: string, code: string}>, reconnu: bool, modele_id: ?int}|null
+     */
+    private function suivantes(ESBTPFiliere $f, ESBTPNiveauEtude $n, Collection $soeurs, int $nombre, Collection $codesPris): ?array
     {
         $annee = (int) ($n->year ?? 0) ?: 1;
         $lettres = [];
         $prefixe = null;
         $modele = null;
         foreach ($soeurs->sortBy('id') as $s) {
-            if (preg_match('/^(.*?)\s*'.$annee.'([A-Z])?$/u', trim((string) $s->name), $m)) {
+            // « GBAT 1C », « TP 1 » (= A). Le chiffre de l'année doit être isolé :
+            // « TP 11 » n'est pas « TP 1 » + rien.
+            if (preg_match('/^(.*?\D)\s*'.$annee.'([A-Z])?$/u', trim((string) $s->name), $m)) {
                 $lettres[] = isset($m[2]) && $m[2] !== '' ? ord($m[2]) - 64 : 1;
                 $prefixe = trim($m[1]) ?: $prefixe;
                 $modele = ($m[2] ?? '') !== '' ? $s : ($modele ?? $s);
             }
         }
+        $reconnu = $soeurs->isEmpty() || $lettres !== [];
         $prefixe ??= mb_strtoupper((string) $f->code);
         $rang = $lettres === [] ? max(0, $soeurs->count()) : max($lettres);
+        if ($rang + $nombre > 26) {
+            return null;
+        }
 
         $sortie = [];
         for ($i = 1; $i <= $nombre; $i++) {
@@ -202,6 +279,6 @@ class AjouterClasses extends ActionAgent
             $sortie[] = ['name' => $nom, 'code' => $code];
         }
 
-        return $sortie;
+        return ['classes' => $sortie, 'reconnu' => $reconnu, 'modele_id' => $soeurs->sortBy('id')->first()?->id];
     }
 }

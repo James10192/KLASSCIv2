@@ -86,16 +86,20 @@ class LectureDePiece
         }
 
         $feuilles = [[$noms[0], $premiere]];
+        $illisibles = [];
         foreach (array_slice($noms, 1, self::MAX_FEUILLES - 1) as $nom) {
             try {
                 $feuilles[] = [$nom, $this->normaliser($this->feuille($chemin, $format, $nom))];
             } catch (PieceIllisible $e) {
-                continue; // feuille vide ou sans tableau
+                // Feuille vide ou sans tableau. Elle est NOMMÉE : « absent du
+                // fichier » ne doit pas taire une feuille qu'on n'a pas su lire.
+                $illisibles[] = $nom;
             }
         }
+        $illisibles = $illisibles === [] ? [] : ['feuilles_illisibles' => $illisibles];
         $memes = count($feuilles) > 1 && collect($feuilles)->every(fn ($f) => $f[1]['colonnes'] === $premiere['colonnes']);
         if (! $memes) {
-            return $premiere + ['autres_feuilles' => array_slice($noms, 1)];
+            return $premiere + ['autres_feuilles' => array_values(array_diff(array_slice($noms, 1), $illisibles['feuilles_illisibles'] ?? []))] + $illisibles;
         }
 
         $entete = in_array('Feuille', $premiere['colonnes'], true) ? 'Onglet' : 'Feuille';
@@ -113,7 +117,7 @@ class LectureDePiece
             'lignes' => array_slice($lignes, 0, self::MAX_LIGNES),
             'tronque' => $tronque || count($lignes) > self::MAX_LIGNES,
             'feuilles' => array_column($feuilles, 0),
-        ];
+        ] + $illisibles + (count($noms) > self::MAX_FEUILLES ? ['autres_feuilles' => array_slice($noms, self::MAX_FEUILLES)] : []);
     }
 
     private function format(UploadedFile $fichier): string

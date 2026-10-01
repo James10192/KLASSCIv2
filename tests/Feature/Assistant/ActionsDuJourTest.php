@@ -128,11 +128,38 @@ class ActionsDuJourTest extends TestCase
 
         $r = app(ChercherDansPiece::class)->executeAuthorized([
             'piece_id' => $id, 'colonne' => 'MATRICULE', 'valeurs' => ['brob 1703050001', 'BR001309060001'],
-        ], $this->admin)['diagnostic']['resultats'];
+        ], $this->admin)['diagnostic'];
 
-        $this->assertTrue($r[0]['trouvee']);
-        $this->assertSame('DPP L1', $r[0]['lignes'][0]['Feuille']);
-        $this->assertFalse($r[1]['trouvee']);
+        $this->assertSame(['brob 1703050001'], $r['trouvees']);
+        $this->assertSame('DPP L1', $r['lignes']['brob 1703050001']['Feuille']);
+        $this->assertSame(['BR001309060001'], $r['absentes']);
+    }
+
+    /**
+     * Un état large et vingt matricules trouvés : le résumé transmis au modèle
+     * tient sous son plafond SANS couper le JSON, et les verdicts arrivent
+     * entiers — un résultat tronqué ne doit jamais se lire comme une absence.
+     */
+    public function test_vingt_lignes_larges_tiennent_sous_le_plafond_sans_perdre_les_verdicts(): void
+    {
+        $colonnes = array_merge(['MATRICULE'], array_map(fn ($i) => 'COLONNE_'.$i, range(1, 29)));
+        $lignes = [];
+        foreach (range(1, 20) as $i) {
+            $lignes[] = array_merge(['MAT'.$i], array_fill(0, 29, str_repeat('x', 200)));
+        }
+        $id = app(PiecesJointes::class)->garder($this->admin->id, 'large.xlsx', ['colonnes' => $colonnes, 'lignes' => $lignes, 'tronque' => false]);
+        $valeurs = array_map(fn ($i) => 'MAT'.$i, range(1, 19));
+        $valeurs[] = 'ABSENT1';
+
+        $resultat = app(ChercherDansPiece::class)->executeAuthorized(['piece_id' => $id, 'colonne' => 'MATRICULE', 'valeurs' => $valeurs], $this->admin);
+        $resume = \App\Domain\Assistant\Outils\ResumeOutil::pourModele('chercher_dans_piece', $resultat, false);
+
+        $this->assertLessThanOrEqual(6000, strlen($resume));
+        $decode = json_decode($resume, true);
+        $this->assertIsArray($decode, 'le JSON transmis doit rester entier');
+        $this->assertCount(19, $decode['diagnostic']['trouvees']);
+        $this->assertSame(['ABSENT1'], $decode['diagnostic']['absentes']);
+        $this->assertGreaterThan(0, $decode['diagnostic']['lignes_non_transmises']);
     }
 
     public function test_une_piece_ne_se_lit_que_par_qui_l_a_deposee(): void
@@ -183,6 +210,21 @@ class ActionsDuJourTest extends TestCase
         $this->assertContains('AGRT2103', $codesSous($lpv));
     }
 
+    /** L'écran et Nanan n'envoient que parcours × semestre : un lien gardé garde son ordre. */
+    public function test_retirer_un_parcours_garde_l_ordre_et_l_option_de_l_autre(): void
+    {
+        $ue = $this->uePartagee();
+        $lpv = ESBTPLMDParcours::where('code', 'LPVT')->value('id');
+        DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $ue->id)->where('parcours_id', $lpv)
+            ->update(['is_optional' => true, 'ordre' => 3]);
+
+        $this->valider(app(LierUeAuxParcours::class)->executeAuthorized(['ue_code' => 'AGRT2103', 'retirer' => ['LPAT']], $this->admin));
+
+        $lien = DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $ue->id)->sole();
+        $this->assertSame(1, (int) $lien->is_optional);
+        $this->assertSame(3, (int) $lien->ordre);
+    }
+
     public function test_retirer_un_parcours_non_lie_demande_une_precision(): void
     {
         $this->uePartagee();
@@ -212,6 +254,37 @@ class ActionsDuJourTest extends TestCase
         $this->assertSame('GBAT 1D', $nouvelle->name);
         $this->assertSame(60, (int) $nouvelle->places_totales);
         $this->assertSame('SEIT 1A', ESBTPClasse::where('filiere_id', $seit->id)->sole()->name);
+    }
+
+    public function test_la_nouvelle_classe_reprend_les_matieres_de_sa_soeur(): void
+    {
+        $f = ESBTPFiliere::factory()->create(['code' => 'RHCT']);
+        $n = ESBTPNiveauEtude::factory()->create(['code' => 'BTS2R', 'year' => 2, 'type' => 'BTS']);
+        $soeur = ESBTPClasse::factory()->create(['name' => 'RHCOM 2A', 'code' => '2BTS_RHC_2A', 'filiere_id' => $f->id, 'niveau_etude_id' => $n->id]);
+        $matiere = \App\Models\ESBTPMatiere::factory()->create();
+        DB::table('esbtp_classe_matiere')->insert(['classe_id' => $soeur->id, 'matiere_id' => $matiere->id, 'coefficient' => 3, 'total_heures' => 40, 'is_active' => true]);
+
+        // Ni filière ni niveau : seuls les couples qui ont déjà une classe.
+        $resultat = app(AjouterClasses::class)->executeAuthorized(['places' => 40, 'filieres' => ['RHCT']], $this->admin);
+        $this->valider($resultat);
+
+        $nouvelle = ESBTPClasse::where('code', '2BTS_RHC_2B')->sole();
+        $this->assertSame('RHCOM 2B', $nouvelle->name);
+        $this->assertSame(3.0, (float) DB::table('esbtp_classe_matiere')->where('classe_id', $nouvelle->id)->value('coefficient'));
+    }
+
+    public function test_des_noms_non_reconnus_sont_signales_et_l_alphabet_ne_deborde_pas(): void
+    {
+        $f = ESBTPFiliere::factory()->create(['code' => 'IDAT']);
+        $n = ESBTPNiveauEtude::factory()->create(['code' => 'BTS1I', 'year' => 1, 'type' => 'BTS']);
+        ESBTPClasse::factory()->create(['name' => 'IDA premiere annee', 'code' => '1BTS_IDA', 'filiere_id' => $f->id, 'niveau_etude_id' => $n->id]);
+
+        $r = app(AjouterClasses::class)->executeAuthorized(['places' => 40, 'filieres' => ['IDAT'], 'niveaux' => ['BTS1I']], $this->admin);
+        $this->assertStringContainsString('non reconnus', implode(' ', $r['widget']['avertissements'] ?? $r['avertissements'] ?? []));
+
+        $trop = app(AjouterClasses::class)->executeAuthorized(['places' => 40, 'filieres' => ['IDAT'], 'niveaux' => ['BTS1I'], 'nombre' => 30], $this->admin);
+        $this->assertArrayNotHasKey('widget', $trop);
+        $this->assertStringContainsString('26', implode(' ', $trop['manques']));
     }
 
     public function test_sans_nombre_de_places_nanan_doit_le_demander(): void

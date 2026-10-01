@@ -88,8 +88,6 @@ return [
             'libelle' => 'Lecture du dossier de réinscription…',
             'suggestion' => 'Pourquoi la réinscription de cet étudiant est bloquée ?',
         ],
-        // La pièce appartient à qui l'a déposée (PiecesJointes::pour) : ces droits
-        // ne disent que les métiers où lire un tableau joint a un sens.
         'proposer_liaison_ue_parcours' => [
             'enabled' => true,
             'all_permissions' => ['lmd.structure.manage'],
@@ -101,6 +99,8 @@ return [
             'libelle' => 'Préparation des nouvelles classes…',
             'suggestion' => 'Ajoute une classe de plus à chaque filière et niveau',
         ],
+        // La pièce appartient à qui l'a déposée (PiecesJointes::pour) : ces droits
+        // ne disent que les métiers où lire un tableau joint a un sens.
         'chercher_dans_piece' => [
             'enabled' => true,
             'any_permissions' => ['notes.create', 'notes.edit', 'notes.manage_own', 'inscriptions.view', 'students.view', 'paiements.view', 'frais.view'],

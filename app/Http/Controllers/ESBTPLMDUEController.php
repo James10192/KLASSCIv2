@@ -946,7 +946,9 @@ class ESBTPLMDUEController extends Controller
         // les recréer. Trois conséquences, aucune signalée : le crédit propre à
         // une maquette, le caractère optionnel et l'ordre étaient reposés à leur
         // valeur par défaut à chaque enregistrement — donc perdus. Le service de
-        // synchronisation ne touche que ce qui change réellement.
+        // synchronisation ne touche que ce qui change réellement, et garde
+        // l'ordre et le caractère optionnel d'un lien conservé : l'écran ne les
+        // envoie pas, le service les reprend sur le lien existant.
         $count = DB::transaction(function () use ($request, $ue) {
             $liens = [];
             foreach ($request->input('parcours', []) as $item) {
