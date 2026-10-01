@@ -13,6 +13,13 @@ final class GuideDeSupport
 {
     public const TEXTE_RECAP = 'Voici votre demande. Relisez-la, corrigez si besoin, puis envoyez-la au support.';
 
+    /** La question d'urgence : posée par le guide ET demandée au modèle, mot pour mot. */
+    public const QUESTION_URGENCE = 'Est-ce que cela vous empêche de travailler ?';
+
+    public const CHOIX_BLOQUE = 'Oui, je suis bloqué(e)';
+
+    public const CHOIX_NON_BLOQUE = 'Non, je peux continuer';
+
     /**
      * @param array{titre?:?string,route?:?string,chemin?:?string} $page
      */
@@ -57,13 +64,16 @@ final class GuideDeSupport
     private function etapes(Intention $intention, FilDeSupport $fil, array $page): array
     {
         $ouverture = ($fil->messages()[0]['role'] ?? null) === 'nanan' ? [['', []]] : [];
-        $titre = $this->titrePage($page);
+        // Le titre de l'onglet n'est jamais cité : la question part dans
+        // l'échange transmis au support, et le titre porte souvent un nom d'élève.
+        $pageConnue = self::titrePage($page) !== null || ! empty($page['route']);
 
         $suite = match ($intention) {
             Intention::PROBLEME => [
-                $titre !== null
-                    ? ["Cela se passe-t-il sur la page « {$titre} » ?", ['Oui, sur cette page', 'Non, sur une autre page']]
+                $pageConnue
+                    ? ['Cela se passe-t-il sur la page que vous aviez ouverte en demandant de l\'aide ?', ['Oui, sur cette page', 'Non, sur une autre page']]
                     : ['Sur quelle page ou quel écran cela se passe-t-il ?', []],
+                [self::QUESTION_URGENCE, [self::CHOIX_BLOQUE, self::CHOIX_NON_BLOQUE]],
                 ['Qui ou quoi est concerné ? Par exemple un élève, une classe ou un paiement : donnez son nom ou son numéro.', ['Plusieurs élèves', 'Toute une classe', 'Rien de précis']],
                 ["Qu'attendiez-vous, et qu'avez-vous obtenu à la place ?", []],
                 ['Depuis quand cela arrive-t-il ?', ["Aujourd'hui", 'Depuis quelques jours', 'Depuis toujours', 'Je ne sais pas']],
@@ -97,16 +107,32 @@ final class GuideDeSupport
             }
             $lignes[] = '- ' . $m['texte'] . ' ' . $reponse['texte'];
         }
-        $titrePage = $this->titrePage($page);
-        if ($titrePage !== null) {
-            $lignes[] = "Page ouverte : {$titrePage}";
-        }
+        // Pas de « Page ouverte : <titre> » : la page part au support par son
+        // nom technique (route), jamais par le titre de l'onglet.
 
         return [
             'titre' => self::titreCourt($premier),
             'description' => trim(implode("\n", array_filter($lignes, fn ($l) => trim($l) !== ''))),
-            'categorie' => $intention->categorieParDefaut(),
+            'categorie' => self::estBloque($fil) ? 'BLOQUE' : $intention->categorieParDefaut(),
         ];
+    }
+
+    /** La personne a répondu « oui » à la question d'urgence. */
+    public static function estBloque(FilDeSupport $fil): bool
+    {
+        $messages = $fil->messages();
+        foreach ($messages as $i => $m) {
+            if ($m['role'] !== 'nanan' || ! str_contains(mb_strtolower($m['texte']), 'empêche de travailler')) {
+                continue;
+            }
+            $reponse = $messages[$i + 1] ?? null;
+            if ($reponse !== null && $reponse['role'] === 'personne'
+                && preg_match('/^\s*(oui|je suis bloqu)/iu', $reponse['texte']) === 1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** La première phrase, coupée sur un mot, sans dépasser 80 caractères. */
@@ -125,11 +151,11 @@ final class GuideDeSupport
         return rtrim($espace !== false && $espace > 40 ? mb_substr($coupe, 0, $espace) : $coupe, ' ,;:.') . '…';
     }
 
-    private function titrePage(array $page): ?string
+    /** Le titre de l'onglet, sans « - KLASSCI » (tiret, demi-cadratin, cadratin ou barre). */
+    public static function titrePage(array $page): ?string
     {
         $titre = trim((string) ($page['titre'] ?? ''));
-        // Le titre de l'onglet porte souvent « - KLASSCI » : on le retire.
-        $titre = trim((string) preg_replace('/\s*[-–|]\s*KLASSCI.*$/iu', '', $titre));
+        $titre = trim((string) preg_replace('/\s*[-–—|]\s*KLASSCI.*$/iu', '', $titre));
 
         return $titre !== '' ? mb_substr($titre, 0, 80) : null;
     }

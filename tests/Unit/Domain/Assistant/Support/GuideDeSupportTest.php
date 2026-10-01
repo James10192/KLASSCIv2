@@ -23,7 +23,7 @@ class GuideDeSupportTest extends TestCase
 
     public function test_un_probleme_parcourt_toutes_les_questions_puis_recapitule(): void
     {
-        $page = ['titre' => 'Bulletins - KLASSCI'];
+        $page = ['titre' => 'Bulletin de Koné Awa — KLASSCI'];
         $messages = [
             ['role' => 'nanan', 'texte' => 'Que se passe-t-il ?'],
             ['role' => 'personne', 'texte' => 'Le bulletin de Koné ne sort pas.'],
@@ -31,7 +31,7 @@ class GuideDeSupportTest extends TestCase
 
         $questions = [];
         for ($i = 0; $i < 10; $i++) {
-            $tour = $this->guide->tour(Intention::PROBLEME, FilDeSupport::depuis($messages), $page, 6);
+            $tour = $this->guide->tour(Intention::PROBLEME, FilDeSupport::depuis($messages), $page, 7);
             if ($tour->action !== TourDeSupport::QUESTION) {
                 break;
             }
@@ -40,14 +40,37 @@ class GuideDeSupportTest extends TestCase
             $messages[] = ['role' => 'personne', 'texte' => "réponse $i"];
         }
 
-        $this->assertCount(5, $questions);
-        $this->assertSame('Cela se passe-t-il sur la page « Bulletins » ?', $questions[0]);
-        $this->assertStringContainsString("message d'erreur", $questions[4]);
+        $this->assertCount(6, $questions);
+        $this->assertSame("Cela se passe-t-il sur la page que vous aviez ouverte en demandant de l'aide ?", $questions[0]);
+        $this->assertSame(GuideDeSupport::QUESTION_URGENCE, $questions[1]);
+        $this->assertStringContainsString("message d'erreur", $questions[5]);
         $this->assertSame(TourDeSupport::RECAPITULATIF, $tour->action);
         $this->assertSame('Le bulletin de Koné ne sort pas.', $tour->recap['titre']);
         $this->assertSame('PROBLEME', $tour->recap['categorie']);
-        $this->assertStringContainsString('réponse 4', $tour->recap['description']);
-        $this->assertStringContainsString('Page ouverte : Bulletins', $tour->recap['description']);
+        $this->assertStringContainsString('réponse 5', $tour->recap['description']);
+        // Le titre de l'onglet (souvent un nom d'élève) ne part jamais au support.
+        foreach ($questions as $question) {
+            $this->assertStringNotContainsString('Bulletin de Koné', $question);
+        }
+        $this->assertStringNotContainsString('Bulletin de Koné', $tour->recap['description']);
+    }
+
+    public function test_une_personne_bloquee_est_classee_bloque(): void
+    {
+        $tour = $this->guide->tour(Intention::PROBLEME, FilDeSupport::depuis([
+            ['role' => 'personne', 'texte' => 'Je ne peux plus encaisser.'],
+            ['role' => 'nanan', 'texte' => GuideDeSupport::QUESTION_URGENCE],
+            ['role' => 'personne', 'texte' => GuideDeSupport::CHOIX_BLOQUE],
+        ]), [], 7, true);
+
+        $this->assertSame('BLOQUE', $tour->recap['categorie']);
+    }
+
+    public function test_le_titre_de_page_perd_son_suffixe_klassci_quel_que_soit_le_tiret(): void
+    {
+        foreach (['Bulletins - KLASSCI', 'Bulletins – KLASSCI', 'Bulletins — KLASSCI', 'Bulletins | KLASSCI'] as $titre) {
+            $this->assertSame('Bulletins', GuideDeSupport::titrePage(['titre' => $titre]));
+        }
     }
 
     public function test_sans_titre_de_page_la_question_est_ouverte(): void

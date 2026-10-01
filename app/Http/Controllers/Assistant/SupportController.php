@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Assistant;
 
 use App\Domain\Assistant\Support\ConversationDeSupport;
 use App\Domain\Assistant\Support\FilDeSupport;
+use App\Domain\Assistant\Support\GuideDeSupport;
 use App\Domain\Assistant\Support\Intention;
 use App\Domain\Support\Services\ContexteDePage;
 use App\Domain\Support\Services\DisponibiliteSupport;
@@ -52,7 +53,8 @@ class SupportController extends Controller
         $verifie = ContexteDePage::assainir((array) $request->input('page', []), $request);
         $page = [
             // Le titre de l'onglet ne sert qu'à Nanan pour situer la personne :
-            // il ne part jamais au Master (il porte souvent un nom d'élève).
+            // ConversationDeSupport le retire de chaque tour, et la transcription
+            // ci-dessous aussi. Au Master ne partent que la route et le module.
             'titre' => isset($donnees['page']['titre']) ? mb_substr(trim($donnees['page']['titre']), 0, 120) : null,
             'route' => $verifie['route_name'] ?? null,
             'module' => $verifie['module'] ?? null,
@@ -65,7 +67,10 @@ class SupportController extends Controller
         if ($tour->recap !== null) {
             // L'échange accompagne la demande : la moitié de la place au plus,
             // le reste revient au récapitulatif que la personne peut allonger.
-            $reponse['transcription'] = $fil->transcription(intdiv((int) $master->limites()['description_max'], 2));
+            $reponse['transcription'] = ConversationDeSupport::sansTitre(
+                $fil->transcription(intdiv((int) $master->limites()['description_max'], 2)),
+                array_filter([(string) $page['titre'], (string) GuideDeSupport::titrePage($page)])
+            );
         }
 
         return response()->json($reponse);
