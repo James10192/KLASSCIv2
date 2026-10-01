@@ -20,7 +20,10 @@
      `<u></u>` : Apple Mail (qui respecte `color-scheme`), Outlook et
      Outlook.com ne le voient pas. Le logo reste HORS des enveloppes : le fondu
      inverserait ses couleurs. Garde posée seulement si ce texte est blanc
-     (`emailGardeGmailSombre`, composeur `IdentiteDesCourriels`). --}}
+     (`emailGardeGmailSombre`, composeur `IdentiteDesCourriels`).
+     Prouvée par son auteur sur Gmail iOS ; sur Gmail Android, qu'il dit
+     différent, NON vérifiée ici. Les boutons historiques `.button` des avis aux
+     parents n'en profitent pas : seul `partials/bouton` la porte. --}}
 @php
     $logoSrc = null;
     // Un courriel envoyé par SMTP porte le logo en pièce intégrée, que les
