@@ -18,6 +18,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Confirmation d'adresse e-mail du personnel.** Après un signalement, la réponse indique `email_a_verifier` ; un lien de confirmation signé (48 h) peut être envoyé (`POST /support/courriel/lien`). Rien n'est bloqué sans confirmation.
 - **Nanan — créer une évaluation et publier ses notes.** Nanan prépare désormais une nouvelle évaluation (classe, matière, type, date et horaires, barème, coefficient, semestre) et la publication des notes d'une ou plusieurs évaluations terminées. Rien n'est créé ni publié avant le clic « Valider » ; le barème et le coefficient sont toujours demandés, jamais supposés ; une évaluation identique n'est pas créée deux fois ; un enseignant n'agit que sur ses matières et ses évaluations. Chaque création et publication figure au journal d'audit.
 
+### Améliorations
+- **Bulletins — la génération d'une classe et le PDF groupé continuent quand on quitte la page.** Le travail est suivi en base (`esbtp_bulletin_taches`) : la page le fait avancer tant qu'elle reste ouverte, la planification (`bulletins:traiter-taches`, chaque minute) le finit sinon. À la fin, le demandeur est prévenu par la cloche, par un toast où qu'il soit dans l'application, et par e-mail si son adresse est vérifiée ; un échec est annoncé avec sa raison. Le PDF groupé reste disponible 72 heures. Remplace les tranches pilotées par l'onglet (routes `export-pdf/ouvrir|tranche|assembler|telecharger` retirées).
+
 ---
 
 ## Septembre 2026

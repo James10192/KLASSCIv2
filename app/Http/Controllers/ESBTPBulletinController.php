@@ -27,7 +27,6 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Models\ESBTPResultatMatiere;
-use App\Services\BulletinBulkPdfExporter;
 use App\Services\BulletinService;
 use App\Services\DocumentPrintGuard;
 use App\Services\BtsBulletinPolicy;
@@ -1226,26 +1225,6 @@ class ESBTPBulletinController extends Controller
     }
 
     /**
-     * Exporte en UN seul PDF tous les bulletins du jeu filtré courant, dans
-     * l'ordre choisi. Snapshot-only (bulletins déjà générés uniquement) : aucun
-     * recalcul n'est déclenché depuis ce GET. Borné par un plafond configurable
-     * (bulletins_bulk_export_cap) pour protéger mémoire/temps d'exécution.
-     *
-     * Le plafond par defaut est de 6, mesure sur esbtp-yakro le 22/08/2026 :
-     * sept bulletins prennent 32 secondes en telechargement et 26 en apercu,
-     * pour une limite d execution de l hebergeur autour de 30. Au-dela, la
-     * requete est tuee et l utilisateur ne voit rien d exploitable.
-     *
-     * C est le meme nombre que la tranche de generation, qui repond a la meme
-     * contrainte. Exporter une classe entiere demandera un decoupage en
-     * plusieurs requetes, comme la generation le fait deja.
-     */
-    private function bulkExportFilename(): string
-    {
-        return 'bulletins_'.now()->format('Ymd_His').'.pdf';
-    }
-
-    /**
      * Page de garde d'avertissement : listée en tête du PDF groupé lorsqu'au moins
      * un bulletin du filtre est ABSENT (non généré, ou échec de rendu). Retourne
      * null si tout le filtre est inclus (aucun avertissement nécessaire).
@@ -1263,7 +1242,7 @@ class ESBTPBulletinController extends Controller
      *
      * @param  array{annee: ?string, classe: ?string, periode: ?string}  $entete
      */
-    protected function buildExportCoverPdf(\Illuminate\Support\Collection $ungenerated, array $failed, array $entete, int $includedCount): ?\Barryvdh\DomPDF\PDF
+    public function buildExportCoverPdf(\Illuminate\Support\Collection $ungenerated, array $failed, array $entete, int $includedCount): ?\Barryvdh\DomPDF\PDF
     {
         $failedIds = collect($failed)->pluck('id')->filter();
         $failedBulletins = $failedIds->isNotEmpty()

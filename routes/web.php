@@ -2202,18 +2202,31 @@ Route::get('/esbtp/bulletins/select', [ESBTPBulletinController::class, 'select']
     ->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk']);
 
 // Export groupÃ© : tous les bulletins filtrÃ©s en un seul PDF, dans l'ordre choisi
-    Route::post('/esbtp/bulletins/export-pdf/ouvrir', [ESBTPBulletinController::class, 'ouvrirExportParTranches'])
-        ->name('esbtp.bulletins.export-pdf.ouvrir')
-        ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:60,1']);
-    Route::post('/esbtp/bulletins/export-pdf/tranche', [ESBTPBulletinController::class, 'rendreTrancheExport'])
-        ->name('esbtp.bulletins.export-pdf.tranche')
-        ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:60,1']);
-    Route::post('/esbtp/bulletins/export-pdf/assembler', [ESBTPBulletinController::class, 'assemblerExportParTranches'])
-        ->name('esbtp.bulletins.export-pdf.assembler')
-        ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:60,1']);
-    Route::get('/esbtp/bulletins/export-pdf/telecharger', [ESBTPBulletinController::class, 'telechargerExportParTranches'])
-        ->name('esbtp.bulletins.export-pdf.telecharger')
-        ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:60,1']);
+// La liste est figée au lancement ; la tâche avance tant que l'onglet est
+// ouvert, et la planification (bulletins:traiter-taches) la finit sinon.
+Route::post('/esbtp/bulletins/export-pdf/lancer', [ESBTPBulletinController::class, 'lancerExportEnArrierePlan'])
+    ->name('esbtp.bulletins.export-pdf.lancer')
+    ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:30,1']);
+
+// Travaux longs sur les bulletins (génération d'une classe, PDF groupé).
+// /esbtp-special et non /esbtp/bulletins/... : `esbtp/bulletins/{bulletin}`
+// capturerait le segment. Suivi, avancée et document sont réservés au
+// demandeur (contrôle dans le contrôleur).
+Route::post('/esbtp-special/bulletins-taches/generation', [\App\Http\Controllers\ESBTPBulletinTacheController::class, 'lancerGeneration'])
+    ->name('esbtp.bulletins.taches.generation')
+    ->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'throttle:30,1']);
+Route::middleware(['auth', 'throttle:60,1'])->group(function () {
+    Route::get('/esbtp-special/bulletins-taches', [\App\Http\Controllers\ESBTPBulletinTacheController::class, 'suivi'])
+        ->name('esbtp.bulletins.taches.suivi');
+    Route::get('/esbtp-special/bulletins-taches/{tache}', [\App\Http\Controllers\ESBTPBulletinTacheController::class, 'etat'])
+        ->whereNumber('tache')->name('esbtp.bulletins.taches.etat');
+    Route::post('/esbtp-special/bulletins-taches/{tache}/avancer', [\App\Http\Controllers\ESBTPBulletinTacheController::class, 'avancer'])
+        ->whereNumber('tache')->name('esbtp.bulletins.taches.avancer');
+    Route::post('/esbtp-special/bulletins-taches/{tache}/vue', [\App\Http\Controllers\ESBTPBulletinTacheController::class, 'marquerVue'])
+        ->whereNumber('tache')->name('esbtp.bulletins.taches.vue');
+    Route::get('/esbtp-special/bulletins-taches/{tache}/fichier', [\App\Http\Controllers\ESBTPBulletinTacheController::class, 'fichier'])
+        ->whereNumber('tache')->name('esbtp.bulletins.taches.fichier');
+});
 
 // Route pour tÃ©lÃ©charger un bulletin au format PDF
 Route::get('/esbtp/bulletins/{bulletin}/download', [ESBTPBulletinController::class, 'genererPDF'])->name('esbtp.bulletins.download')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk']);
