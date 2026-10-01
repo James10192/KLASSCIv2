@@ -201,7 +201,6 @@ class InscriptionWorkflowService
             }
             $classe = $etat['classe'];
             $inscriptionsActives = $etat['inscrits'];
-            $anneeUniversitaireCourante = (object) ['id' => $etat['annee_id']];
 
 // Vérifier si la classe a une limite définie
             if ($etat['pleine']) {
@@ -231,12 +230,17 @@ class InscriptionWorkflowService
                     ];
                 } else {
                     // Utilisateur normal : Bloquer avec alternatives
+                    // Une classe est universelle : on ne filtre jamais sur sa colonne
+                    // héritée annee_universitaire_id (rule classes-universelles-pas-annee).
+                    // Ses places se comptent sur les inscriptions de l'année visée.
                     $alternatives = ESBTPClasse::where('filiere_id', $classe->filiere_id)
                         ->where('niveau_etude_id', $classe->niveau_etude_id)
-                        ->where('annee_universitaire_id', $classe->annee_universitaire_id)
                         ->where('id', '!=', $classeId)
                         ->where('is_active', true)
-                        ->whereRaw('(places_totales IS NULL OR places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE classe_id = esbtp_classes.id AND status = "active" AND workflow_step = "etudiant_cree" AND annee_universitaire_id = ?))', [$anneeUniversitaireCourante->id])
+                        ->where(function ($q) use ($etat) {
+                            $q->whereNull('places_totales')
+                                ->orWhereRaw('places_totales > (SELECT COUNT(*) FROM esbtp_inscriptions WHERE esbtp_inscriptions.classe_id = esbtp_classes.id AND esbtp_inscriptions.status = ? AND esbtp_inscriptions.workflow_step = ? AND esbtp_inscriptions.annee_universitaire_id = ? AND esbtp_inscriptions.deleted_at IS NULL)', ['active', 'etudiant_cree', $etat['annee_id']]);
+                        })
                         ->get();
 
                     return [

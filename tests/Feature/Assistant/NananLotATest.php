@@ -357,6 +357,23 @@ class NananLotATest extends TestCase
         $this->assertTrue($workflow->checkClassAvailability($classe->id)['available']);
     }
 
+    /** Une classe est universelle : l'alternative proposée ne dépend pas de sa colonne héritée d'année. */
+    public function test_une_classe_pleine_propose_une_soeur_d_une_autre_annee_heritee(): void
+    {
+        $pleine = $this->classePleine('LA_ALT_1');
+        $autreAnnee = ESBTPAnneeUniversitaire::factory()->create(['is_current' => false]);
+        $soeur = ESBTPClasse::factory()->create(['code' => 'LA_ALT_2', 'filiere_id' => $pleine->filiere_id, 'niveau_etude_id' => $pleine->niveau_etude_id,
+            'annee_universitaire_id' => $autreAnnee->id, 'places_totales' => 30, 'is_active' => true]);
+        $soeurPleine = ESBTPClasse::factory()->create(['code' => 'LA_ALT_3', 'filiere_id' => $pleine->filiere_id, 'niveau_etude_id' => $pleine->niveau_etude_id,
+            'annee_universitaire_id' => $autreAnnee->id, 'places_totales' => 1, 'is_active' => true]);
+        ESBTPInscription::factory()->create(['classe_id' => $soeurPleine->id, 'annee_universitaire_id' => $this->annee, 'status' => 'active', 'workflow_step' => 'etudiant_cree']);
+        $this->actingAs($this->utilisateur());
+
+        $dispo = app(\App\Services\InscriptionWorkflowService::class)->checkClassAvailability($pleine->id);
+        $this->assertFalse($dispo['available']);
+        $this->assertSame([(int) $soeur->id], $dispo['alternatives']->pluck('id')->map(fn ($id) => (int) $id)->all());
+    }
+
     /** Avec la dérogation, Nanan propose quand même, et annonce le dépassement. */
     public function test_la_derogation_est_annoncee_dans_la_proposition(): void
     {
