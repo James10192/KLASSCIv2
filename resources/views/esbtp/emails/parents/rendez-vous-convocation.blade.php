@@ -5,7 +5,7 @@
 
 @section('content')
     <p style="margin:0 0 16px;font-size:16px;color:#0f172a;font-weight:600;">Bonjour {{ $nom }},</p>
-    <p style="margin:0 0 20px;">{{ $intro }} Voici le récapitulatif de votre passage au guichet.</p>
+    <p style="margin:0 0 20px;">Voici le récapitulatif de votre passage au guichet.</p>
 
     {{-- Le rendez-vous, en grand : c'est ce que l'on cherche en ouvrant le message. --}}
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{{ $emailPrimarySoft }};border-radius:14px;">

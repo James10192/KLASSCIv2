@@ -8,10 +8,12 @@
      avis aux parents, qui gardent un rendu propre là où il est lu. --}}
 @php
     $logoSrc = null;
-    if (! empty($schoolLogoUrl)) {
-        $logoSrc = $schoolLogoUrl;
-    } elseif (! empty($schoolLogoPath) && isset($message) && method_exists($message, 'embed')) {
+    // Un courriel envoyé par le mailer porte le logo en pièce intégrée, que les
+    // messageries affichent sans demander. Par MailPulse, seule l'URL existe.
+    if (! empty($schoolLogoPath) && isset($message) && $message instanceof \Illuminate\Mail\Message && is_file($schoolLogoPath)) {
         $logoSrc = $message->embed($schoolLogoPath);
+    } elseif (! empty($schoolLogoUrl)) {
+        $logoSrc = $schoolLogoUrl;
     }
     $initiale = mb_strtoupper(mb_substr(trim((string) ($schoolName ?? 'K')), 0, 1, 'UTF-8'), 'UTF-8');
 @endphp

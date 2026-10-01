@@ -209,7 +209,7 @@ final class AdmissionActivationNotifier
         ];
 
         return View::make('esbtp.emails.admission-activation', [
-            'nom' => trim(($c->prenoms ?? '').' '.($c->nom ?? '')) ?: 'futur étudiant',
+            'nom' => trim(($c->nom ?? '').' '.($c->prenoms ?? '')) ?: 'futur étudiant',
             'url' => $url,
             'heures' => 48,
             'etapes' => $etapes,
