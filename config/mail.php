@@ -28,12 +28,19 @@ return [
     | sending an e-mail. You will specify which one you are using for your
     | mailers below. You are free to add additional mailers as required.
     |
-    | Supported: "smtp", "sendmail", "mailgun", "ses",
+    | Supported: "mailpulse", "smtp", "sendmail", "mailgun", "ses",
     |            "postmark", "log", "array", "failover"
     |
     */
 
     'mailers' => [
+        // Le mailer des instances : tout courriel part par l'API MailPulse
+        // (App\Mail\Transport\MailPulseTransport). Voir
+        // docs/runbooks/courriels-par-mailpulse.md.
+        'mailpulse' => [
+            'transport' => 'mailpulse',
+        ],
+
         'smtp' => [
             'transport' => 'smtp',
             'host' => env('MAIL_HOST', 'smtp.mailgun.org'),

@@ -82,6 +82,17 @@ return [
             'libelle' => 'Préparation de la publication des notes…',
             'suggestion' => 'Publie les notes des évaluations terminées de ma classe',
         ],
+        'diagnostiquer_reinscription' => [
+            'enabled' => true,
+            'any_permissions' => ['inscriptions.view', 'students.view'],
+            'libelle' => 'Lecture du dossier de réinscription…',
+            'suggestion' => 'Pourquoi la réinscription de cet étudiant est bloquée ?',
+        ],
+        'proposer_ajustement_souscription' => [
+            'enabled' => true,
+            'all_permissions' => ['frais.souscriptions.ajuster'],
+            'libelle' => 'Préparation de l’ajustement du montant dû…',
+        ],
         'search_attendances' => [
             'enabled' => true,
             'any_permissions' => ['attendances.view'],

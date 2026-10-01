@@ -208,6 +208,12 @@ class AppServiceProvider extends ServiceProvider
         // Logo, nom et coordonnées de l'école pour le gabarit commun.
         View::composer('esbtp.emails.*', \App\View\Composers\IdentiteDesCourriels::class);
 
+        // MAIL_MAILER=mailpulse : tout courriel de Laravel part par l'API MailPulse.
+        \Illuminate\Support\Facades\Mail::extend('mailpulse', fn () => new \App\Mail\Transport\MailPulseTransport(
+            $this->app->make(\App\Services\MailPulse\MailPulseClient::class),
+            $this->app->make(\App\Mail\Transport\EnvoiMailPulse::class),
+        ));
+
         // Nom des rangs de la structure LMD, regle par etablissement (Domaine /
         // Mention / Parcours, ou Composante / Departement / Specialite).
         // @rang('mention') → « Mention » ; @rangs('mention') → « Mentions ».
