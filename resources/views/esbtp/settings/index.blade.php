@@ -537,6 +537,15 @@
     .mailpulse-field-card {
         padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff;
     }
+    .mailpulse-courriels-note,
+    .mailpulse-courriels-alerte {
+        display: flex; align-items: flex-start; gap: 8px;
+        padding: 10px 12px; border-radius: 10px; font-size: .82rem; line-height: 1.45;
+    }
+    .mailpulse-courriels-note { background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; }
+    .mailpulse-courriels-alerte { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+    .mailpulse-courriels-note i,
+    .mailpulse-courriels-alerte i { margin-top: 2px; flex-shrink: 0; }
     .mailpulse-toggle {
         display: flex; align-items: center; gap: 10px; min-height: 44px; color: #334155; font-weight: 600;
     }
@@ -2962,6 +2971,7 @@
                     @php
                         $mailpulseEnabled = \App\Helpers\SettingsHelper::get('mailpulse_enabled', '0');
                         $mailpulseWorkflowsEnabled = \App\Helpers\SettingsHelper::get('mailpulse_real_workflows_enabled', '0');
+                        $mailpulseCourrielsActifs = \App\Mail\Transport\MailPulseTransport::actif();
                         $mailpulseApiKeyConfigured = \App\Models\Setting::where('key', 'mailpulse_api_key')
                             ->where('is_active', true)
                             ->whereNotNull('value')
@@ -2987,6 +2997,10 @@
                         <span class="mailpulse-status-badge {{ $mailpulseWorkflowsEnabled == '1' ? 'configured' : '' }}">
                             <i class="fas {{ $mailpulseWorkflowsEnabled == '1' ? 'fa-bolt' : 'fa-pause' }}"></i>
                             {{ $mailpulseWorkflowsEnabled == '1' ? 'Workflows parents actifs' : 'Workflows parents inactifs' }}
+                        </span>
+                        <span class="mailpulse-status-badge {{ $mailpulseCourrielsActifs ? 'configured' : '' }}" data-mailpulse-courriels-etat>
+                            <i class="fas {{ $mailpulseCourrielsActifs ? 'fa-circle-check' : 'fa-envelope' }}"></i>
+                            {{ $mailpulseCourrielsActifs ? 'E-mails de l\'école par MailPulse' : 'E-mails par le serveur de messagerie' }}
                         </span>
                     </div>
 
@@ -3028,6 +3042,8 @@
                             </label>
                             <small class="text-muted d-block mt-2">Sans cette case, MailPulse envoie les tests mais pas les messages aux vrais parents (paiements, absences, notes, inscriptions).</small>
                         </div>
+
+                        @include('esbtp.settings.partials.mailpulse-courriels')
 
                         <div class="settings-grid">
                             <div class="form-group">
@@ -4449,7 +4465,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }));
 
         if (!response.ok || payload.success === false) {
-            throw new Error(payload.message || 'Enregistrement MailPulse impossible.');
+            const premiereErreur = payload.errors ? Object.values(payload.errors).flat()[0] : null;
+            throw new Error(premiereErreur || payload.message || 'Enregistrement MailPulse impossible.');
+        }
+
+        const etatCourriels = document.querySelector('[data-mailpulse-courriels-etat]');
+        if (etatCourriels && typeof payload.courriels_par_mailpulse === 'boolean') {
+            const actif = payload.courriels_par_mailpulse;
+            etatCourriels.classList.toggle('configured', actif);
+            etatCourriels.innerHTML = '<i class="fas ' + (actif ? 'fa-circle-check' : 'fa-envelope') + '"></i> '
+                + (actif ? "E-mails de l'école par MailPulse" : 'E-mails par le serveur de messagerie');
         }
 
         const submittedApiKey = String(formData.get('setting_mailpulse_api_key') || '').trim();

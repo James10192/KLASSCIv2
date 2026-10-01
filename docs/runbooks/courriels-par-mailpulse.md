@@ -12,8 +12,31 @@ de MailPulse (`POST /api/v1/messages`, via `MailPulseClient::sendEmailMessage()`
 notifications. Aucun appelant n'est modifié : c'est le mailer par défaut qui
 change.
 
-Il ne s'active que par `MAIL_MAILER=mailpulse`. Tant qu'une instance reste en
-`MAIL_MAILER=smtp`, rien ne bouge pour elle.
+**La bascule est un réglage de l'école**, pas une ligne du `.env` : écran
+`/esbtp/settings`, onglet **MailPulse**, case « Envoyer tous les e-mails de
+l'école par MailPulse » (réglage `mailpulse_courriels_enabled`), puis
+« Enregistrer MailPulse ». Il faut aussi « Activer MailPulse pour cette
+instance » : sans lui, la case reste sans effet et les e-mails continuent de
+partir par le serveur de messagerie. L'enregistrement refuse de cocher la case
+si MailPulse est coupé ou si aucune clé API n'est posée : sans eux, **plus aucun**
+e-mail ne partirait.
+
+Le mailer est relu **à chaque envoi** (`App\Mail\Transport\MailerDeLEcole`, via
+`MailManagerDeLEcole::getDefaultDriver()`), pas au démarrage : un worker de file
+qui tourne suit la case dès son enregistrement, sans `queue:restart`. Rien n'est
+lu en base au démarrage de l'application, donc `migrate` sur une installation
+neuve ou une base injoignable ne plantent pas : le mailer du serveur reste en place.
+
+`MAIL_MAILER=mailpulse` dans le `.env` reste accepté comme **dérogation du
+serveur** : il impose MailPulse quelle que soit la case, et l'écran le dit. Ne
+l'utilisez plus pour basculer une école ; laissez `MAIL_MAILER=smtp`, qui sert de
+repli quand la case est décochée.
+
+**La CLI ne peut pas basculer une école.** `mailpulse_courriels_enabled` et
+`mailpulse_base_url` sont refusés par `POST /api/cli/settings` comme par
+`PUT /api/cli/settings/{key}` : avec la case cochée, ces réglages décident qui lit
+un lien de réinitialisation de mot de passe — la raison même qui tient `MAIL_*`
+hors de `CleEnvAutorisee`. Ils se changent depuis l'écran (`system.manage`).
 
 ## Ce que MailPulse transporte, et ce que le mailer en fait
 
@@ -96,7 +119,7 @@ Ce que fait le mailer pour tenir le débit (`App\Mail\Transport\CadenceMailPulse
   ordinaire, et il arrête la file des convocations ;
 - **sans file** (`QUEUE_CONNECTION=sync`), différer est impossible : le refus de
   débit ou la panne passagère redevient un échec d'envoi, journalisé, que l'appelant traite comme
-  toute panne. D'où le prérequis plus bas.
+  toute panne. L'écran des paramètres l'annonce à côté de la case (voir plus bas).
 
 « Au mieux » veut dire : pas de garantie. La fenêtre est fixe ici et glissante
 chez MailPulse, l'incrément du cache `file` n'est pas atomique entre deux
@@ -154,25 +177,44 @@ en offre gratuite atteint 5 000 e-mails en une campagne de relances d'une grande
 
 ## Ce qu'il faut poser sur chaque instance
 
-Prérequis : l'instance parle déjà à MailPulse, **et elle a une file qui tourne**.
-Vérifier, instance par instance, `QUEUE_CONNECTION` dans le `.env` (il doit valoir
-`database` ou `redis`, pas `sync`) et qu'un worker (`php artisan queue:work`) est
-lancé en permanence (cron ou superviseur). Sans worker, les courriels différés
-s'accumulent dans `jobs` et ne partent jamais ; avec `sync`, un pic de débit fait
-échouer les courriels au lieu de les différer.
+Prérequis : l'instance parle déjà à MailPulse. **Une file qui tourne est
+recommandée**, et exigée pour les grandes instances : `QUEUE_CONNECTION` à
+`database` ou `redis` et un worker (`php artisan queue:work`) lancé en permanence
+(cron ou superviseur). Sans worker, les courriels différés s'accumulent dans
+`jobs` et ne partent jamais.
+
+### Et sous `QUEUE_CONNECTION=sync` ?
+
+La case **reste activable** sous `sync`, et c'est voulu. Une petite instance
+(`presentation`, les instances en test) envoie quelques courriels par heure, loin
+du plafond de 30 par minute ; lui refuser MailPulse faute de worker la laisserait
+sur un SMTP qu'on cherche justement à quitter. Ce qu'elle perd est borné et
+visible :
+
+- un courriel refusé pour débit ou panne passagère **n'est pas différé** : il est
+  refusé comme toute panne (exception `TransportException`, ligne
+  `refus passager et aucune file pour différer` au journal) ;
+- l'écran des paramètres l'annonce **à côté de la case**, tant que l'instance
+  est en `sync` : « Les e-mails ne pourront pas être différés si MailPulse est
+  saturé : les tâches en arrière-plan ne tournent pas sur cette instance. »
+
+Une instance Élite, elle, ne bascule qu'avec une file et un worker (voir plus haut).
 
 | clé | où | valeur |
 |---|---|---|
 | `QUEUE_CONNECTION` | `.env` | `database` (ou `redis`), **pas `sync`** ; et un worker actif |
 | `MAILPULSE_API_KEY` | `.env`, ou réglage `mailpulse_api_key` | clé API v1 de l'organisation MailPulse (déjà posée là où les notifications parents partent) |
 | `mailpulse_enabled` | réglage, ou `.env` `MAILPULSE_ENABLED` | `1` — **à `0`, plus aucun courriel ne part**, y compris les liens de confirmation |
-| `MAIL_MAILER` | `.env` | `mailpulse` |
-| `MAIL_FROM_ADDRESS` | `.env` | une adresse d'un domaine vérifié chez MailPulse (`noreply@klassci.com`) |
+| `mailpulse_courriels_enabled` | réglage, écran `/esbtp/settings` onglet MailPulse | coché — **c'est la bascule** |
+| `MAIL_MAILER` | `.env` | laisser `smtp` (repli quand la case est décochée) ; `mailpulse` force MailPulse quelle que soit la case |
+| `MAIL_FROM_ADDRESS` | `.env` | une adresse d'un domaine vérifié chez MailPulse (`noreply@klassci.com`), utilisée si `mailpulse_sender_email` est vide |
 | `mailpulse_sender_email` | réglage (facultatif) | prime sur `MAIL_FROM_ADDRESS` |
 | `mailpulse_sender_name` | réglage (facultatif) | nom affiché, `KLASSCI` par défaut ; `MAIL_FROM_NAME` n'est pas lu |
 | `MAILPULSE_MAIL_PER_MINUTE` | `.env` (facultatif) | plafond par minute du mailer, `30` par défaut, au mieux |
 
-Puis `php artisan config:clear` (ou `klassci cache:clear <instance>`).
+Les réglages s'enregistrent depuis l'écran et prennent effet tout de suite.
+Seul un changement du `.env` demande `php artisan config:clear` (ou
+`klassci cache:clear <instance>`).
 
 ### Instances
 
@@ -180,7 +222,7 @@ Puis `php artisan config:clear` (ou `klassci cache:clear <instance>`).
 |---|---|---|
 | `esbtp-abidjan` | posée (relevé du 1er octobre, `activation-notifications-abidjan-yakro.md`) | vérifier `QUEUE_CONNECTION` et le worker, puis offre et quota ; basculer après une petite instance |
 | `esbtp-yakro` | posée (même relevé) | idem |
-| `presentation`, `ephrata`, `hetec`, `rostan`, `usat`, `ucao-benin` | **non vérifiée** | vérifier la clé avant de basculer `MAIL_MAILER` : `GET /api/cli/rendez-vous/diagnostic` rend la ligne `messagerie` à `ok: true` (« Envoi des convocations par MailPulse actif » : MailPulse activé et clé présente) ; puis `QUEUE_CONNECTION` et le worker |
+| `presentation`, `ephrata`, `hetec`, `rostan`, `usat`, `ucao-benin` | **non vérifiée** | vérifier la clé avant de cocher la case : `GET /api/cli/rendez-vous/diagnostic` rend la ligne `messagerie` à `ok: true` (« Envoi des convocations par MailPulse actif » : MailPulse activé et clé présente) ; puis `QUEUE_CONNECTION` et le worker |
 
 Basculer une instance sans clé fait échouer **tous** ses courriels : vérifier
 la clé, la file, l'offre et le quota d'abord, basculer ensuite.
@@ -213,5 +255,8 @@ HTML hors `metadata`, Reply-To, Cc), pas des contournements à écrire ici.
 
 ## Revenir en arrière
 
-`MAIL_MAILER=smtp` et les anciennes variables `MAIL_HOST`, `MAIL_PORT`,
-`MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_ENCRYPTION`, puis `config:clear`.
+Décocher « Envoyer tous les e-mails de l'école par MailPulse » et enregistrer :
+les e-mails repartent aussitôt par le serveur de messagerie du `.env`
+(`MAIL_MAILER=smtp`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`,
+`MAIL_ENCRYPTION`). Si le `.env` porte `MAIL_MAILER=mailpulse`, le remettre à
+`smtp`, puis `config:clear`.

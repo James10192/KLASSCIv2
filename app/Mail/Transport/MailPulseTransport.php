@@ -70,10 +70,14 @@ final class MailPulseTransport extends AbstractTransport
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
-    /** Le mailer par défaut de l'instance est-il celui-ci ? Le gabarit en dépend pour son logo. */
+    /**
+     * Le mailer par défaut de l'instance est-il celui-ci ? Le gabarit en dépend
+     * pour son logo, le menu d'export pour l'envoi par courriel. Même réponse
+     * que celle du gestionnaire de mailers : réglage de l'école, ou `MAIL_MAILER`.
+     */
     public static function actif(): bool
     {
-        return config('mail.default') === 'mailpulse';
+        return app(MailerDeLEcole::class)->parDefaut() === MailerDeLEcole::MAILER;
     }
 
     public function __toString(): string

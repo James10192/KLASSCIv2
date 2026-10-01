@@ -1127,6 +1127,10 @@ class ESBTPSettingsController extends Controller
             return $refus;
         }
 
+        if (($incoherence = $this->incoherenceCourrielsParMailPulse($request)) !== null) {
+            return $this->refus($request, $incoherence);
+        }
+
         if (($refus = $this->refuserParcoursInscriptionIncoherent($request)) !== null) {
             return $refus;
         }
@@ -1751,6 +1755,7 @@ class ESBTPSettingsController extends Controller
             'setting_mailpulse_test_email_enabled' => ['nullable', 'in:0,1'],
             'setting_mailpulse_test_whatsapp_enabled' => ['nullable', 'in:0,1'],
             'setting_mailpulse_real_workflows_enabled' => ['nullable', 'in:0,1'],
+            'setting_mailpulse_courriels_enabled' => ['nullable', 'in:0,1'],
         ]);
 
         $validator->after(function ($validator) use ($request) {
@@ -1768,6 +1773,11 @@ class ESBTPSettingsController extends Controller
             );
             if ($phoneError !== null) {
                 $validator->errors()->add('setting_mailpulse_test_phone_recipients', $phoneError);
+            }
+
+            $courrielsError = $this->incoherenceCourrielsParMailPulse($request);
+            if ($courrielsError !== null) {
+                $validator->errors()->add('setting_mailpulse_courriels_enabled', $courrielsError);
             }
         });
 
@@ -1797,6 +1807,7 @@ class ESBTPSettingsController extends Controller
             'mailpulse_test_email_enabled',
             'mailpulse_test_whatsapp_enabled',
             'mailpulse_real_workflows_enabled',
+            'mailpulse_courriels_enabled',
         ];
 
         try {
@@ -1879,6 +1890,7 @@ class ESBTPSettingsController extends Controller
                 'api_key_received_length' => $apiKeyReceivedLength,
                 'api_key_configured' => $apiKeyState['configured'],
                 'api_key_source' => $apiKeyState['source'],
+                'courriels_par_mailpulse' => \App\Mail\Transport\MailPulseTransport::actif(),
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -1893,6 +1905,49 @@ class ESBTPSettingsController extends Controller
                 'message' => "Erreur pendant l'enregistrement MailPulse.",
             ], 500);
         }
+    }
+
+    /**
+     * Basculer les courriels de l'école sur MailPulse alors que MailPulse est
+     * coupé ou n'a pas de clé : AUCUN courriel ne partirait plus, liens de
+     * confirmation et mots de passe oubliés compris. On le refuse au moment où
+     * l'école le demande, plutôt que de le découvrir au premier courriel perdu.
+     *
+     * On ne juge que ce qui change : un état déjà en base (clé retirée depuis
+     * par la ligne de commande, par exemple) ne bloque pas l'enregistrement
+     * d'un logo. Les deux écrans d'enregistrement (page entière, bouton
+     * MailPulse) passent par ici.
+     */
+    private function incoherenceCourrielsParMailPulse(Request $request): ?string
+    {
+        $cle = \App\Mail\Transport\MailerDeLEcole::REGLAGE;
+        $enBase = fn (string $reglage, string $defaut) => filter_var(Setting::get($reglage, $defaut), FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+        $soumis = fn (string $reglage) => $request->has('setting_'.$reglage)
+            ? (filter_var($request->input('setting_'.$reglage), FILTER_VALIDATE_BOOLEAN) ? '1' : '0')
+            : null;
+
+        $courriels = $soumis($cle) ?? $enBase($cle, '0');
+        if ($courriels !== '1') {
+            return null;
+        }
+
+        $activeAvant = $enBase('mailpulse_enabled', '0');
+        $active = $soumis('mailpulse_enabled') ?? $activeAvant;
+        $change = $enBase($cle, '0') !== '1' || $active !== $activeAvant;
+        if (! $change) {
+            return null;
+        }
+
+        if ($active !== '1') {
+            return "Pour envoyer les e-mails de l'école par MailPulse, activez d'abord MailPulse pour cette instance : sans lui, plus aucun e-mail ne partirait.";
+        }
+
+        $cleSoumise = trim((string) $request->input('setting_mailpulse_api_key', ''));
+        if ($cleSoumise === '' && ! $this->mailPulseApiKeyState()['configured']) {
+            return "Pour envoyer les e-mails de l'école par MailPulse, enregistrez d'abord la clé API MailPulse : sans elle, plus aucun e-mail ne partirait.";
+        }
+
+        return null;
     }
 
     private function mailPulseApiKeyState(): array
@@ -1961,7 +2016,8 @@ class ESBTPSettingsController extends Controller
             'mailpulse_enabled',
             'mailpulse_test_email_enabled',
             'mailpulse_test_whatsapp_enabled',
-            'mailpulse_real_workflows_enabled' => 'boolean',
+            'mailpulse_real_workflows_enabled',
+            'mailpulse_courriels_enabled' => 'boolean',
             'mailpulse_timeout' => 'integer',
             default => 'string',
         };
@@ -1987,6 +2043,7 @@ class ESBTPSettingsController extends Controller
             'mailpulse_test_email_enabled' => 'Activer les tests email MailPulse',
             'mailpulse_test_whatsapp_enabled' => 'Activer les tests WhatsApp MailPulse',
             'mailpulse_real_workflows_enabled' => 'Activer MailPulse sur les workflows parents réels',
+            'mailpulse_courriels_enabled' => "Envoyer tous les e-mails de l'école par MailPulse",
             default => $settingKey,
         };
     }
@@ -2261,6 +2318,7 @@ class ESBTPSettingsController extends Controller
             'mailpulse_test_email_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests email MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 314],
             'mailpulse_test_whatsapp_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests WhatsApp MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 315],
             'mailpulse_real_workflows_enabled' => ['value' => '0', 'type' => 'boolean', 'description' => 'Activer MailPulse sur les workflows parents reels', 'rules' => ['nullable', 'in:0,1'], 'sort' => 316],
+            \App\Mail\Transport\MailerDeLEcole::REGLAGE => ['value' => '0', 'type' => 'boolean', 'description' => "Envoyer tous les e-mails de l'ecole par MailPulse", 'rules' => ['nullable', 'in:0,1'], 'sort' => 317],
         ];
 
         foreach ($mailPulseSettings as $key => $attrs) {
