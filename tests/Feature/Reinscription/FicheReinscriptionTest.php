@@ -309,6 +309,20 @@ class FicheReinscriptionTest extends TestCase
         // message le dit au lieu de conseiller une annulation.
         $n->update(['status' => 'terminée', 'workflow_step' => 'etudiant_cree']);
         $this->fiche($this->admin)->assertOk()->assertSee('est terminée sans être la dernière inscription suivie');
+
+        // Déjà une inscription sur l'année visée : la correction non plus ne
+        // saute pas l'année restée en suspens.
+        $n->update(['status' => 'active', 'workflow_step' => 'documents_complets']);
+        $visee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $visee->id,
+            'status' => 'active',
+        ]);
+        $e = app(EligibiliteReinscription::class)->pour($this->inscription->etudiant_id, $this->admin);
+        $this->assertSame(EligibiliteReinscription::DEJA_INSCRIT, $e['etat']);
+        $this->assertFalse($e['peut_rejouer']);
+        $this->fiche($this->admin)->assertOk()->assertDontSee('Corriger la réinscription');
     }
 
     public function test_une_finalisation_bloquee_renvoie_a_la_fiche(): void

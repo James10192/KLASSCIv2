@@ -371,9 +371,9 @@ class ReeinscriptionService
 
             $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)
                 ->pour((int) $etudiantId, null, $anneeUniversitaireId ? (int) $anneeUniversitaireId : null);
-            // Un dossier non finalisé sur une année intermédiaire : aucune
-            // dérogation ne la saute, la fiche et Nanan disent la même chose.
-            if ($eligibilite['etat'] === \App\Services\Reinscription\EligibiliteReinscription::ANNEE_INTERMEDIAIRE) {
+            // Un dossier sur une année intermédiaire : aucune dérogation ne la
+            // saute, pas même une correction ; la fiche et Nanan disent pareil.
+            if ($eligibilite['inscription_intermediaire'] !== null) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException($eligibilite['message_intermediaire']);
             }
             if (!$this->peutSeReinscrire($etudiantId, $anneeUniversitaireId) && !$isSuperAdmin) {

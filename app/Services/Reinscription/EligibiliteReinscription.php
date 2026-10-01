@@ -69,7 +69,9 @@ final class EligibiliteReinscription
         $existante = $anneeCible && $inscription
             ? $this->inscriptionDeLAnnee($etudiantId, (int) $anneeCible->id, (int) $inscription->id)
             : null;
-        $intermediaire = $anneeCible && $inscription && $existante === null
+        // Calculée même quand l'année visée porte déjà une inscription : une
+        // correction (rejeu) repartirait elle aussi de l'année d'avant.
+        $intermediaire = $anneeCible && $inscription
             ? $this->inscriptionIntermediaire($etudiantId, $inscription, $anneeCible)
             : null;
 
@@ -108,7 +110,7 @@ final class EligibiliteReinscription
             'peut_poursuivre' => $autorisee || ($etat === self::IMPAYE && $deroge),
             // Rejouer une réinscription déjà faite (correction de classe) :
             // effectuerReinscription la gère, la fiche l'offre à qui peut déroger.
-            'peut_rejouer' => $etat === self::DEJA_INSCRIT && $deroge,
+            'peut_rejouer' => $etat === self::DEJA_INSCRIT && $deroge && $intermediaire === null,
         ];
     }
 
