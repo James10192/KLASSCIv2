@@ -14,7 +14,7 @@
         Le bulletin de {{ $studentName }} pour {{ $periode }} est maintenant disponible.
     </div>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Informations du bulletin</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Informations du bulletin</h3>
 
     <table class="info-table">
         <tr>
@@ -35,12 +35,12 @@
         </tr>
     </table>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Résultats académiques</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Résultats académiques</h3>
 
     <div class="kpi-section">
         <div class="kpi-row">
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $moyenneGenerale >= 10 ? '#28a745' : '#dc3545' }};">
+                <div class="kpi-value" style="color: {{ $moyenneGenerale >= 10 ? $emailSuccessColor : $emailDangerColor }};">
                     {{ number_format($moyenneGenerale, 2) }}/20
                 </div>
                 <div class="kpi-label">Moyenne générale</div>
@@ -59,7 +59,7 @@
                 <div class="kpi-label">Total absences</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ isset($noteAssiduite) && $noteAssiduite >= 0 ? '#28a745' : '#dc3545' }};">
+                <div class="kpi-value" style="color: {{ isset($noteAssiduite) && $noteAssiduite >= 0 ? $emailSuccessColor : $emailDangerColor }};">
                     {{ isset($noteAssiduite) ? ($noteAssiduite >= 0 ? '+' : '') . number_format($noteAssiduite, 2) : 'N/A' }}
                 </div>
                 <div class="kpi-label">Note d'assiduité</div>
@@ -76,7 +76,7 @@
     @endif
 
     @if(isset($appreciationGenerale) && $appreciationGenerale)
-    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff;">
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid {{ $emailPrimaryColor }};">
         <h4 style="margin-top: 0; color: #333;">Appréciation générale</h4>
         <p style="margin-bottom: 0; color: #6c757d;">{{ $appreciationGenerale }}</p>
     </div>
@@ -98,7 +98,7 @@
     </div>
     @endif
 
-    <h3 style="color: #007bff; margin-top: 30px;">Actions</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Actions</h3>
 
     @include('esbtp.emails.partials.bouton', ['url' => $bulletinUrl, 'libelle' => 'Télécharger le bulletin'])
 

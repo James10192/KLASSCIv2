@@ -16,7 +16,7 @@
 
     <table class="info-table">
         <tr><th style="width: 40%;">Étudiant</th><td><strong>{{ $studentName }}</strong></td></tr>
-        <tr><th>Montant</th><td><strong style="color: #007bff;">{{ number_format($montant, 0, ',', ' ') }} FCFA</strong></td></tr>
+        <tr><th>Montant</th><td><strong style="color: {{ $emailPrimaryColor }};">{{ number_format($montant, 0, ',', ' ') }} FCFA</strong></td></tr>
         <tr><th>Référence</th><td>{{ $reference }}</td></tr>
         <tr><th>Mode de paiement</th><td><span class="badge badge-info">{{ $modePaiement }}</span></td></tr>
         <tr><th>Date de soumission</th><td>{{ $dateSoumission }}</td></tr>

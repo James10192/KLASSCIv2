@@ -27,7 +27,7 @@
         </tr>
         <tr>
             <th>Date</th>
-            <td><strong style="color: #dc3545;">{{ $date }}</strong></td>
+            <td><strong style="color: {{ $emailDangerColor }};">{{ $date }}</strong></td>
         </tr>
         <tr>
             <th>Heure</th>
@@ -54,11 +54,11 @@
     <div class="kpi-section">
         <div class="kpi-row">
             <div class="kpi-card">
-                <div class="kpi-value" style="color: #ffc107;">{{ $absencesJustifiees }}</div>
+                <div class="kpi-value" style="color: {{ $emailWarningColor }};">{{ $absencesJustifiees }}</div>
                 <div class="kpi-label">Absences justifiées</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: #dc3545;">{{ $absencesNonJustifiees }}</div>
+                <div class="kpi-value" style="color: {{ $emailDangerColor }};">{{ $absencesNonJustifiees }}</div>
                 <div class="kpi-label">Absences non justifiées</div>
             </div>
         </div>
@@ -71,7 +71,7 @@
                 <div class="kpi-label">Total absences</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $tauxPresence >= 80 ? '#28a745' : '#dc3545' }};">
+                <div class="kpi-value" style="color: {{ $tauxPresence >= 80 ? $emailSuccessColor : $emailDangerColor }};">
                     {{ $tauxPresence }}%
                 </div>
                 <div class="kpi-label">Taux de présence</div>
