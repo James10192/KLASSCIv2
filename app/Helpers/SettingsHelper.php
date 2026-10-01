@@ -566,11 +566,11 @@ class SettingsHelper
     public static function getNotificationSettings()
     {
         return [
-            'email' => self::get('email_notifications', '1') === '1',
-            'sms' => self::get('sms_notifications', '0') === '1',
-            'parents' => self::get('parent_notifications', '1') === '1',
-            'teachers' => self::get('teacher_notifications', '1') === '1',
-            'admins' => self::get('admin_notifications', '1') === '1',
+            'email' => self::drapeau('email_notifications', true),
+            'sms' => self::drapeau('sms_notifications', false),
+            'parents' => self::drapeau('parent_notifications', true),
+            'teachers' => self::drapeau('teacher_notifications', true),
+            'admins' => self::drapeau('admin_notifications', true),
         ];
     }
 
@@ -611,13 +611,13 @@ class SettingsHelper
                 'recouvrement_gap_warning_pct'    => (float) self::get('analytics.anomaly.recouvrement_gap_warning_pct', 30.0),
                 'recouvrement_gap_critical_pct'   => (float) self::get('analytics.anomaly.recouvrement_gap_critical_pct', 50.0),
                 'recouvrement_gap_min_expected'   => (float) self::get('analytics.anomaly.recouvrement_gap_min_expected', 100000.0),
-                'notifications_enabled'           => (string) self::get('analytics.anomaly.notifications_enabled', '1') === '1',
+                'notifications_enabled'           => self::drapeau('analytics.anomaly.notifications_enabled', true),
             ],
             // Mémorisation des balayages lourds (écart de recouvrement,
             // projection d'encaissement). Voir App\Services\Analytics\AnalyticsScanCache :
             // mettre `enabled` à 0 rétablit le recalcul intégral à chaque affichage.
             'scan_cache' => [
-                'enabled'     => (string) self::get('analytics.scan_cache.enabled', '0') === '1',
+                'enabled'     => self::drapeau('analytics.scan_cache.enabled', false),
                 'ttl_seconds' => (int)    self::get('analytics.scan_cache.ttl_seconds', \App\Services\Analytics\AnalyticsScanCache::DEFAULT_TTL_SECONDS),
             ],
             // Fiabilite des donnees : avant toute prevision, on verifie que les

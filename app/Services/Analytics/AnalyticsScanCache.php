@@ -48,7 +48,7 @@ class AnalyticsScanCache
      */
     public function enabled(): bool
     {
-        return (string) SettingsHelper::get('analytics.scan_cache.enabled', '0') === '1'
+        return SettingsHelper::drapeau('analytics.scan_cache.enabled', false)
             && $this->ttlSeconds() > 0;
     }
 

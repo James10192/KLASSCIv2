@@ -309,6 +309,78 @@ class NananLotDTest extends TestCase
         $this->assertSame('2.5', Setting::where('key', 'bulletin_semester2_weight')->value('value'));
     }
 
+    /**
+     * Passer en float ne change pas la valeur qu'une école utilisait : « 10.5 »
+     * stocké en integer était lu 10, il reste 10 (journalisé). down() ne défait
+     * que les lignes converties, jamais une ligne déjà en float.
+     */
+    public function test_la_migration_garde_la_valeur_lue_et_ne_defait_que_ses_lignes(): void
+    {
+        $journal = [];
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Log\Events\MessageLogged::class, function ($e) use (&$journal) {
+            $journal[] = $e;
+        });
+        $this->reglage('lmd_validation_threshold', '10.5', ['type' => 'integer']);
+        $this->reglage('bulletin_semester1_weight', '1', ['type' => 'integer']);
+        $this->reglage('bulletin_bts1_semester1_weight', '1.5', ['type' => 'float']);
+        $this->assertSame(10, Setting::get('lmd_validation_threshold'), 'témoin : lu 10 avant');
+
+        $migration = require base_path('database/migrations/2026_10_01_223046_convertir_reglages_decimaux_en_float.php');
+        $migration->up();
+
+        $this->assertSame(['10', 'float'], [Setting::where('key', 'lmd_validation_threshold')->value('value'), Setting::where('key', 'lmd_validation_threshold')->value('type')]);
+        $this->assertSame(10.0, Setting::get('lmd_validation_threshold'), 'toujours lu 10 après');
+        $this->assertNotEmpty(array_filter($journal, fn ($e) => $e->level === 'warning' && ($e->context['key'] ?? null) === 'lmd_validation_threshold'
+            && ($e->context['avant'] ?? null) === '10.5' && ($e->context['apres'] ?? null) === '10'), 'chaque réécriture est journalisée');
+
+        $migration->down();
+        $this->assertSame(['10.5', 'integer'], [Setting::where('key', 'lmd_validation_threshold')->value('value'), Setting::where('key', 'lmd_validation_threshold')->value('type')]);
+        $this->assertSame('integer', Setting::where('key', 'bulletin_semester1_weight')->value('type'));
+        $this->assertSame(['1.5', 'float'], [Setting::where('key', 'bulletin_bts1_semester1_weight')->value('value'), Setting::where('key', 'bulletin_bts1_semester1_weight')->value('type')], 'une ligne déjà en float ne redescend jamais');
+    }
+
+    /** Un champ non touché ne bloque pas l'enregistrement, même hors bornes en base. */
+    public function test_un_champ_inchange_hors_bornes_ne_bloque_pas_la_page(): void
+    {
+        $this->reglage('pdf_watermark_opacity', '0.50', ['type' => 'float']);
+        $this->reglage('pdf_margin_top', '20', ['type' => 'integer']);
+        $this->reglage('pdf_font_size', '12', ['type' => 'integer']);
+
+        $this->actingAs($this->admin)->putJson(route('esbtp.settings.update'), [
+            'setting_pdf_watermark_opacity' => '0.5',   // inchangé (même nombre), hors bornes en base
+            'setting_pdf_margin_top' => '30',
+            'setting_pdf_font_size' => '08',            // zéro de tête : un entier
+        ])->assertOk();
+
+        $this->assertSame('0.50', Setting::where('key', 'pdf_watermark_opacity')->value('value'));
+        $this->assertSame('30', Setting::where('key', 'pdf_margin_top')->value('value'));
+        $this->assertSame('8', Setting::where('key', 'pdf_font_size')->value('value'));
+    }
+
+    /** Un réglage d'image ne s'écrit jamais en texte par le CLI : un chemin libre viserait n'importe quel fichier. */
+    public function test_le_cli_refuse_un_chemin_d_image_ecrit_en_texte(): void
+    {
+        $this->reglage('school_logo', 'logos/a.png', ['type' => 'file']);
+        \Laravel\Sanctum\Sanctum::actingAs($this->admin, ['cli:admin']);
+
+        $this->putJson('/api/cli/settings/school_logo', ['value' => '../../.env'])->assertStatus(422);
+        $this->putJson('/api/cli/settings/pdf_signature_director', ['value' => '/etc/passwd'])->assertStatus(422);
+        $this->postJson('/api/cli/settings', ['key' => 'school_logo', 'value' => '../../.env', 'apply' => true])->assertStatus(422);
+        $this->assertSame('logos/a.png', Setting::where('key', 'school_logo')->value('value'));
+        $this->assertNull(Setting::where('key', 'pdf_signature_director')->value('value'));
+    }
+
+    /** Toutes les cases d'instance se lisent par drapeau() : plus aucune comparaison stricte à '1'. */
+    public function test_aucune_case_n_est_comparee_strictement_a_1(): void
+    {
+        $sortie = shell_exec('grep -rnE "SettingsHelper::get\(\'[a-zA-Z0-9_.]+\', \'[01]\'\) === \'1\'|self::get\(\'[a-zA-Z0-9_.]+\', \'[01]\'\) === \'1\'" '.base_path('app').' '.base_path('resources/views'));
+        $this->assertSame('', trim((string) $sortie));
+
+        $this->reglage('receipt_show_logo', '1', ['type' => 'boolean']);
+        Cache::flush();
+        $this->assertTrue(\App\Helpers\SettingsHelper::drapeau('receipt_show_logo', false));
+    }
+
     /** Un réglage vraiment entier : l'écran n'offre que des entiers, la règle refuse une décimale. */
     public function test_un_reglage_entier_reste_entier_et_l_ecran_ne_propose_pas_de_decimale(): void
     {

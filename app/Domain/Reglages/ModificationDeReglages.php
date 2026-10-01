@@ -94,6 +94,28 @@ class ModificationDeReglages
         TenantScolariteSettings::VERIFICATION_WHATSAPP_INVERSE,
     ];
 
+    /**
+     * Une valeur soumise est-elle celle déjà en base ? « 0.50 » et « 0.5 »,
+     * « 08 » et « 8 » le sont : un champ que personne n'a touché ne doit ni
+     * être réécrit ni être rejugé (une valeur ancienne hors bornes bloquerait
+     * sinon tout l'enregistrement de la page).
+     */
+    public static function memeValeur(mixed $avant, mixed $apres): bool
+    {
+        if (($apres !== null && ! is_scalar($apres)) || ($avant !== null && ! is_scalar($avant))) {
+            return false;
+        }
+        $a = trim((string) ($avant ?? ''));
+        $b = trim((string) ($apres ?? ''));
+        if ($a === $b) {
+            return true;
+        }
+        $a = str_replace(',', '.', $a);
+        $b = str_replace(',', '.', $b);
+
+        return is_numeric($a) && is_numeric($b) && (float) $a === (float) $b;
+    }
+
     public static function estSensible(string $cle): bool
     {
         $cle = mb_strtolower($cle);
@@ -114,6 +136,20 @@ class ModificationDeReglages
         }
         if (self::estSensible($cle)) {
             return "Cette clé évoque un secret : elle se change depuis l'écran de configuration.";
+        }
+
+        return null;
+    }
+
+    /**
+     * Un réglage d'image (ou de type fichier) ne s'écrit jamais en texte : un
+     * chemin libre pourrait viser n'importe quel fichier (« ../.env »). Il passe
+     * par ImageDeReglage, qui écrit le fichier lui-même. CLI comme Nanan.
+     */
+    public function refusCheminEnTexte(string $cle, ?Setting $reglage): ?string
+    {
+        if (array_key_exists($cle, ImageDeReglage::DOSSIERS) || $cle === 'pdf_signature_secretary' || $reglage?->type === 'file') {
+            return "« {$cle} » est une image : elle ne s'écrit pas en texte. Envoyez le fichier (POST /api/cli/settings/{$cle}/image, ou proposer_image_reglage).";
         }
 
         return null;
@@ -207,6 +243,10 @@ class ModificationDeReglages
                 $valeur = $booleen ? '1' : '0';
                 break;
             case 'integer':
+                // « 08 » est un entier : zéros de tête retirés avant de juger.
+                if (preg_match('/^-?\d+$/', $valeur)) {
+                    $valeur = (string) (int) $valeur;
+                }
                 if (filter_var($valeur, FILTER_VALIDATE_INT) === false) {
                     return [$valeur, "« {$reglage->key} » attend un nombre entier."];
                 }
@@ -229,7 +269,7 @@ class ModificationDeReglages
             }
         }
 
-        return [$valeur, (string) ($reglage->value ?? '') === $valeur ? null : $this->refusDesRegles($reglage, $valeur)];
+        return [$valeur, self::memeValeur($reglage->value, $valeur) ? null : $this->refusDesRegles($reglage, $valeur)];
     }
 
     /** Les règles enregistrées sur le réglage ; un champ facultatif reste facultatif. */
@@ -381,15 +421,21 @@ class ModificationDeReglages
 
                 continue;
             }
+            $avant = (string) ($reglage->value ?? '');
+            $examen['etat'][$cle] = $reglage->value === null ? null : $avant;
+            // Inchangé (égalité numérique comprise) : ni rejugé ni réécrit.
+            if (self::memeValeur($reglage->value, $valeur)) {
+                $examen['inchangees'][] = $cle;
+
+                continue;
+            }
             [$normalisee, $refus] = $this->normaliserSelonLeReglage($reglage, $valeur);
             if ($refus !== null) {
                 $examen['refus'][] = $refus;
 
                 continue;
             }
-            $avant = (string) ($reglage->value ?? '');
-            $examen['etat'][$cle] = $reglage->value === null ? null : $avant;
-            if ($avant === $normalisee) {
+            if (self::memeValeur($avant, $normalisee)) {
                 $examen['inchangees'][] = $cle;
 
                 continue;

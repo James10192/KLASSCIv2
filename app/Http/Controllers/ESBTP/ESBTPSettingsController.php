@@ -702,9 +702,9 @@ class ESBTPSettingsController extends Controller
                         // en rollback muet. La donnee sale est reparee par
                         // migration (les integer vides valent '0') ; la garde
                         // n'a plus a la compenser.
-                        $currentValue = (string) ($setting->value ?? '');
-                        $newValue = $value === null ? '' : (string) $value;
-                        if ($currentValue === $newValue) {
+                        // Égalité numérique comprise (« 0.50 » = « 0.5 ») : un champ
+                        // non touché n'est ni réécrit ni rejugé, même hors bornes.
+                        if (ModificationDeReglages::memeValeur($setting->value, $value)) {
                             continue;
                         }
 

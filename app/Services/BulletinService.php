@@ -109,7 +109,7 @@ class BulletinService
 
     public function isAttendanceNoteEnabled(): bool
     {
-        return SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+        return SettingsHelper::drapeau('bulletin_show_attendance_note', true);
     }
 
     public function getAttendanceNoteSettings(): array
@@ -609,7 +609,7 @@ class BulletinService
             $periode
         );
         // Calculer la note d'assiduité seulement si l'affichage est activé
-        $afficherNoteAssiduite = SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+        $afficherNoteAssiduite = SettingsHelper::drapeau('bulletin_show_attendance_note', true);
         $noteAssiduite = $afficherNoteAssiduite ? $this->calculerNoteAssiduite($absences['justifiees'], $absences['non_justifiees']) : 0;
         $moyenneAvecAssiduite = $moyenneGlobale + $noteAssiduite;
 
@@ -787,7 +787,7 @@ class BulletinService
         $photoEtudiantBase64 = $this->preparePhotoEtudiantBase64($etudiant);
 
         // Note de conduite (absences par matière)
-        $conduiteEnabled = SettingsHelper::get('bulletin_conduite_enabled', '0') === '1';
+        $conduiteEnabled = SettingsHelper::drapeau('bulletin_conduite_enabled', false);
         $absencesParMatiere = [];
         $noteConduite = null;
         $mentionConduite = '';
@@ -1819,7 +1819,7 @@ class BulletinService
         }
 
         $moyennes = [];
-        $afficherNoteAssiduite = SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+        $afficherNoteAssiduite = SettingsHelper::drapeau('bulletin_show_attendance_note', true);
         $anneeUniv = $afficherNoteAssiduite ? \App\Models\ESBTPAnneeUniversitaire::find($anneeUniversitaireId) : null;
 
         foreach ($etudiants as $etudiant) {

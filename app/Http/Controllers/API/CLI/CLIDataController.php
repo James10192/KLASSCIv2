@@ -548,6 +548,7 @@ class CLIDataController extends BaseApiController
         // assume : elle CREE une cle absente, pour le provisionnement.
         $modification = app(\App\Domain\Reglages\ModificationDeReglages::class);
         $refus = $modification->refusDistant((string) $key)
+            ?? $modification->refusCheminEnTexte((string) $key, Setting::where('key', $key)->first())
             ?? $modification->refusCroise([(string) $key => (string) $request->input('value')]);
         if ($refus !== null) {
             return $this->errorResponse($refus, [], 422);
@@ -560,8 +561,8 @@ class CLIDataController extends BaseApiController
         $setting = Setting::where('key', $key)->first();
         $created = false;
         $valeur = $request->input('value');
-        if ($setting) {
-            // Type, bornes et regles du reglage existant, comme l'ecran.
+        if ($setting && ! \App\Domain\Reglages\ModificationDeReglages::memeValeur($setting->value, $valeur)) {
+            // Type, bornes et regles du reglage existant, comme l'ecran (inchange : pas rejuge).
             [$valeur, $refus] = $modification->normaliserSelonLeReglage($setting, $valeur);
             if ($refus !== null) {
                 return $this->errorResponse($refus, [], 422);

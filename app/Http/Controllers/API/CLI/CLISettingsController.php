@@ -104,7 +104,8 @@ class CLISettingsController extends BaseApiController
 
         // Memes refus que l'ecran et que Nanan : une seule classe les porte.
         $modification = app(ModificationDeReglages::class);
-        if (($refus = $modification->refusDistant($valide['key'])) !== null) {
+        if (($refus = $modification->refusDistant($valide['key'])
+            ?? $modification->refusCheminEnTexte($valide['key'], Setting::query()->where('key', $valide['key'])->first())) !== null) {
             return $this->errorResponse($refus, [], 422);
         }
 
@@ -126,8 +127,8 @@ class CLISettingsController extends BaseApiController
         }
 
         $reglage = Setting::query()->where('key', $valide['key'])->first();
-        if ($reglage) {
-            // Type, bornes et regles du reglage, comme l'ecran.
+        if ($reglage && ! ModificationDeReglages::memeValeur($reglage->value, $valide['value'])) {
+            // Type, bornes et regles du reglage, comme l'ecran (une valeur inchangee n'est pas rejugee).
             [$valide['value'], $refus] = $modification->normaliserSelonLeReglage($reglage, $valide['value']);
             if ($refus !== null) {
                 return $this->errorResponse($refus, [], 422);
@@ -155,7 +156,7 @@ class CLISettingsController extends BaseApiController
         $apres = $valide['value'];
         $applique = (bool) ($valide['apply'] ?? false);
 
-        if ((string) $avant === (string) $apres) {
+        if (ModificationDeReglages::memeValeur($avant, $apres)) {
             return $this->successResponse(
                 ['key' => $reglage->key, 'avant' => $avant, 'apres' => $apres, 'applique' => false],
                 "La valeur est déjà celle-là. Rien à faire."
