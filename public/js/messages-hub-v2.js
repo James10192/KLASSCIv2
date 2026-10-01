@@ -332,7 +332,7 @@
         box.classList.add('is-open'); var sel=$('[data-action-status-edit]');if(sel)sel.value=a.status;
     }
 
-    function updateAction(id,status){api(cfg.actionBase+'/'+id,{method:'PATCH',body:JSON.stringify({status:status,comment:'Statut modifié depuis le Centre d’actions.'})}).then(function(){toast('Statut mis à jour.');bootstrap(true);if(state.activeAction)openAction('action:'+id);}).catch(function(e){toast(e.message,true);});}
+    function updateAction(id,status){api(cfg.actionBase+'/'+id,{method:'PATCH',body:JSON.stringify({status:status,comment:'Statut modifié depuis Demandes aux services.'})}).then(function(){toast('Statut mis à jour.');bootstrap(true);if(state.activeAction)openAction('action:'+id);}).catch(function(e){toast(e.message,true);});}
 
     function openModal(mode){var m=$('[data-modal]');m.classList.add('is-open');m.setAttribute('aria-hidden','false');document.body.classList.add('mh2-lock');showModalPanel(mode||'intents');}
     function closeModal(){var m=$('[data-modal]');m.classList.remove('is-open');m.setAttribute('aria-hidden','true');document.body.classList.remove('mh2-lock');}
@@ -376,7 +376,6 @@
         el=e.target.closest('[data-new]');if(el){openModal('intents');return;}
         el=e.target.closest('[data-modal-close]');if(el){closeModal();return;}
         el=e.target.closest('[data-intent-person]');if(el){showModalPanel('person');setTimeout(function(){$('[data-user-search]').focus();},30);return;}
-        el=e.target.closest('[data-intent-action]');if(el){showModalPanel('action');return;}
         el=e.target.closest('[data-intent-internal]');if(el){showModalPanel('action');setTimeout(function(){var f=$('[data-action-form]');f.elements.action_type.value='internal_request';},0);return;}
         el=e.target.closest('[data-back-intents]');if(el){showModalPanel('intents');return;}
         el=e.target.closest('[data-user]');if(el){startDm(el.dataset.user);return;}
