@@ -55,7 +55,7 @@ class NotificationsPageTest extends TestCase
         $this->notif(['title' => 'Ancienne', 'is_read' => true, 'created_at' => now()->subMonth()]);
 
         $this->actingAs($this->user)
-            ->get(route('notifications.page'))
+            ->get(route('notifications.index'))
             ->assertOk()
             ->assertSee('ntf-hero', false)
             ->assertSee("Aujourd'hui", false)
@@ -70,7 +70,7 @@ class NotificationsPageTest extends TestCase
         $this->notif(['link' => 'https://exemple.invalid/piege']);
 
         $this->actingAs($this->user)
-            ->get(route('notifications.page'))
+            ->get(route('notifications.index'))
             ->assertOk()
             ->assertDontSee('javascript:alert', false)
             ->assertDontSee('exemple.invalid', false);
@@ -79,7 +79,7 @@ class NotificationsPageTest extends TestCase
     public function test_l_etat_vide_dit_que_tout_est_a_jour(): void
     {
         $this->actingAs($this->user)
-            ->get(route('notifications.page'))
+            ->get(route('notifications.index'))
             ->assertOk()
             ->assertSee('Vous êtes à jour');
     }
@@ -90,7 +90,7 @@ class NotificationsPageTest extends TestCase
         $this->notif(['title' => 'Lue B', 'is_read' => true]);
 
         $response = $this->actingAs($this->user)
-            ->getJson(route('notifications.page', ['fragment' => 1, 'filtre' => 'non_lues']))
+            ->getJson(route('notifications.index', ['fragment' => 1, 'filtre' => 'non_lues']))
             ->assertOk()
             ->assertJsonPath('counts.unread', 1)
             ->assertJsonPath('counts.total', 2)
@@ -107,7 +107,7 @@ class NotificationsPageTest extends TestCase
         $this->notif(['title' => 'Tout va bien', 'type' => 'success']);
 
         $response = $this->actingAs($this->user)
-            ->getJson(route('notifications.page', ['fragment' => 1, 'type' => 'alerte']))
+            ->getJson(route('notifications.index', ['fragment' => 1, 'type' => 'alerte']))
             ->assertOk()
             ->assertJsonPath('counts.types.alerte', 1);
 
@@ -122,7 +122,7 @@ class NotificationsPageTest extends TestCase
         }
 
         $first = $this->actingAs($this->user)
-            ->getJson(route('notifications.page', ['fragment' => 1]))
+            ->getJson(route('notifications.index', ['fragment' => 1]))
             ->assertOk();
 
         $next = $first->json('next_url');
@@ -139,7 +139,7 @@ class NotificationsPageTest extends TestCase
         $this->notif();
 
         $this->actingAs($this->user)
-            ->getJson(route('notifications.page', ['fragment' => 1, 'counts_only' => 1]))
+            ->getJson(route('notifications.index', ['fragment' => 1, 'counts_only' => 1]))
             ->assertOk()
             ->assertJsonPath('counts.unread', 1)
             ->assertJsonMissingPath('html');
@@ -179,7 +179,7 @@ class NotificationsPageTest extends TestCase
         $this->assertNotNull($n->fresh());
 
         $this->actingAs($this->user)
-            ->getJson(route('notifications.page', ['fragment' => 1]))
+            ->getJson(route('notifications.index', ['fragment' => 1]))
             ->assertJsonPath('counts.total', 0);
     }
 }
