@@ -75,21 +75,25 @@ class EssaiDesAvisAuxParents
 
     private function envoyerUn(string $nom, string $adresse, bool $dryRun): array
     {
-        $classe = AvisDExemple::MAILABLES[$nom];
-        $sujet = self::PREFIXE_SUJET . $this->sujetDe($classe);
-        $ligne = ['avis' => $nom, 'destinataire' => $adresse, 'sujet' => $sujet];
+        $ligne = ['avis' => $nom, 'destinataire' => $adresse];
 
-        if ($dryRun) {
-            return $ligne + ['statut' => 'simulé'];
-        }
-
-        /** @var Mailable $courriel */
-        $courriel = new $classe(AvisDExemple::donnees());
-        // Le sujet est posé par build() à l'envoi : le rappel des messages Symfony
-        // passe après, c'est le seul endroit où le préfixe tient.
-        $courriel->withSymfonyMessage(fn (Email $message) => $message->subject($sujet));
-
+        // Tout le corps sous le même try : un build() qui lève ne doit coûter
+        // que sa propre ligne, pas le lot entier.
         try {
+            $classe = AvisDExemple::MAILABLES[$nom];
+            $sujet = self::PREFIXE_SUJET . $this->sujetDe($classe);
+            $ligne['sujet'] = $sujet;
+
+            if ($dryRun) {
+                return $ligne + ['statut' => 'simulé'];
+            }
+
+            /** @var Mailable $courriel */
+            $courriel = new $classe(AvisDExemple::donnees());
+            // Le sujet est posé par build() à l'envoi : le rappel des messages Symfony
+            // passe après, c'est le seul endroit où le préfixe tient.
+            $courriel->withSymfonyMessage(fn (Email $message) => $message->subject($sujet));
+
             Mail::to($adresse)->send($courriel);
         } catch (\Throwable $e) {
             Log::warning('Essai avis parents : envoi échoué', ['avis' => $nom, 'erreur' => $e->getMessage()]);

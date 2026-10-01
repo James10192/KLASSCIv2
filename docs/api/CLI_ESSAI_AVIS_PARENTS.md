@@ -46,6 +46,16 @@ Le sujet est celui que pose la classe Mailable, préfixé de `[Essai] `.
 }
 ```
 
+« envoyé » signifie que le mailer de l'école a accepté le courriel, pas qu'un
+nouveau message arrivera forcément :
+
+- MailPulse ignore un envoi identique au même destinataire dans l'heure (clé
+  d'idempotence). Les données d'exemple étant fixes, un second essai du même
+  avis dans l'heure ne produit pas de nouveau courriel.
+- Au-delà de la cadence MailPulse (avec `tous` et beaucoup d'adresses de test),
+  l'envoi est différé par la file d'attente : la ligne dit « envoyé » mais le
+  courriel part plus tard.
+
 - Une ligne par avis **et** par adresse de test (un courriel par destinataire).
 - `statut` : `simulé` (`dryRun`), `envoyé`, ou `erreur` avec le message du transport.
   Une erreur est aussi journalisée (`Log::warning`).
