@@ -10,9 +10,17 @@ use App\Models\ESBTPFiliere;
  * Configurer le tronc commun BTS : marquer une filière, ouvrir une sortie
  * (classe de spécialité vers laquelle une classe de tronc commun oriente).
  *
- * Un seul chemin pour l'écran de la classe, la CLI et Nanan. La CLI acceptait
- * jusqu'ici une sortie depuis une classe qui n'est pas de tronc commun, ou vers
- * elle-même : l'écran les refusait, la CLI les écrivait.
+ * Un seul chemin pour les écrans (fiche de la classe, fiche de la filière,
+ * administration des sorties), la CLI et Nanan. La CLI et la fiche filière
+ * acceptaient une sortie qu'un autre écran refusait (source hors tronc commun,
+ * vers elle-même, autre niveau).
+ *
+ * Écrivent encore ESBTPClasseOrientationTarget sans passer par ici, à dessein
+ * pour l'instant : BtsOrientationTargetController::bulkCopy() et la commande
+ * SeedOrientationTargets RECOPIENT ou dérivent des sorties déjà validées sur
+ * une autre classe (même filière, même niveau), et
+ * BtsOrientationPolicySupport::validateTarget() crée la sortie par hiérarchie
+ * de filières au moment d'orienter. Les migrer est la prochaine étape.
  */
 class ConfigurationTroncCommun
 {
@@ -69,14 +77,17 @@ class ConfigurationTroncCommun
             throw new \InvalidArgumentException($refus);
         }
 
-        return ESBTPClasseOrientationTarget::updateOrCreate(
-            ['source_classe_id' => $source->id, 'target_classe_id' => $cible->id],
-            [
-                'semestre_activation' => $semestreActivation ?? 2,
-                'is_active' => $active,
-                'sort_order' => $ordre ?? ESBTPClasseOrientationTarget::where('source_classe_id', $source->id)->count(),
-                'notes' => $notes,
-            ]
-        );
+        // Rouvrir une sortie existante ne doit rien effacer : les notes, le rang
+        // et le semestre déjà posés restent tant qu'on n'en donne pas d'autres.
+        $sortie = ESBTPClasseOrientationTarget::firstOrNew(['source_classe_id' => $source->id, 'target_classe_id' => $cible->id]);
+        $existe = $sortie->exists;
+        $sortie->fill([
+            'semestre_activation' => $semestreActivation ?? ($existe ? $sortie->semestre_activation : 2),
+            'is_active' => $active,
+            'sort_order' => $ordre ?? ($existe ? $sortie->sort_order : ESBTPClasseOrientationTarget::where('source_classe_id', $source->id)->count()),
+            'notes' => $notes ?? ($existe ? $sortie->notes : null),
+        ])->save();
+
+        return $sortie;
     }
 }

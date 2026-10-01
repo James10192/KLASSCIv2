@@ -9,6 +9,7 @@ use App\Domain\BtsTroncCommun\BtsOrientationPolicySupport;
 use App\Domain\BtsTroncCommun\BtsOrientationService;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
+use App\Services\TroncCommunService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -50,6 +51,11 @@ class OrienterInscription extends ActionAgent
     public function preparer(array $args, $user): Proposition
     {
         $titre = 'Orientation BTS';
+        // Le même réglage que l'écran de spécialisation (ESBTPSpecialisationController::show) :
+        // tronc commun désactivé dans l'établissement, l'écran refuse d'orienter.
+        if (! app(TroncCommunService::class)->isTroncCommunEnabled()) {
+            return new Proposition(titre: $titre, resume: '', manques: ["Le tronc commun n'est pas activé dans les paramètres de l'établissement : l'orientation n'est pas ouverte."]);
+        }
         $inscription = ESBTPInscription::with(['etudiant', 'filiere', 'classe.filiere', 'classe.orientationTargets', 'phases'])
             ->find((int) ($args['inscription_id'] ?? 0));
         $designation = trim((string) ($args['classe'] ?? ''));

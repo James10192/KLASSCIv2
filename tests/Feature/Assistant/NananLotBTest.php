@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Assistant;
 
+use App\Domain\Academique\AnneesUniversitaires;
 use App\Domain\Assistant\Actions\Academique\CorrigerAnneeNiveau;
 use App\Domain\Assistant\Actions\Academique\CreerAnneeUniversitaire;
 use App\Domain\Assistant\Actions\Academique\DefinirAnneeCourante;
@@ -21,6 +22,7 @@ use App\Domain\Assistant\Modeles\ModeleIa;
 use App\Domain\Assistant\Outils\CatalogueOutils;
 use App\Domain\Assistant\Outils\LireStructureAcademique;
 use App\Domain\BtsTroncCommun\LiaisonsDeMatiere;
+use App\Helpers\SettingsHelper;
 use App\Http\Middleware\CheckInstalled;
 use App\Http\Middleware\EnsureInstalled;
 use App\Http\Middleware\PaywallMiddleware;
@@ -36,6 +38,7 @@ use App\Models\ESBTPMatiereFilierNiveau;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
@@ -301,6 +304,7 @@ class NananLotBTest extends TestCase
     public function test_orienter_un_etudiant_ne_cree_rien_avant_valider_meme_par_la_hierarchie(): void
     {
         [$tc, $n, $classeTc, , $classeSpe] = $this->troncCommun();
+        SettingsHelper::setOrCreate('tronc_commun_enabled', '1', 'general', 'boolean');
         $inscription = ESBTPInscription::factory()->create([
             'filiere_id' => $tc->id, 'niveau_id' => $n->id, 'classe_id' => $classeTc->id, 'annee_universitaire_id' => $this->courante->id,
         ]);
@@ -322,6 +326,7 @@ class NananLotBTest extends TestCase
     public function test_orienter_vers_une_classe_qui_n_est_pas_une_sortie_est_refuse(): void
     {
         [$tc, $n, $classeTc] = $this->troncCommun();
+        SettingsHelper::setOrCreate('tronc_commun_enabled', '1', 'general', 'boolean');
         $etrangere = ESBTPClasse::factory()->create(['code' => 'LB_ETR_1A', 'niveau_etude_id' => $n->id]);
         $inscription = ESBTPInscription::factory()->create(['filiere_id' => $tc->id, 'niveau_id' => $n->id, 'classe_id' => $classeTc->id]);
 
@@ -418,5 +423,116 @@ class NananLotBTest extends TestCase
         $this->assertSame(['lire_structure_academique', 'proposer_annee_courante'], array_column($r->appels, 'tool'));
         $this->assertTrue((bool) $this->courante->fresh()->is_current, 'rien avant Valider');
         $this->assertSame(1, DB::table('chatbot_actions_log')->where('action_type', 'annee_courante')->where('status', 'proposed')->count());
+    }
+
+    // --- Retours de revue (thermo-review) ------------------------------------------
+
+    /** B1 : ce que dit l'avertissement est vrai — un encaissement suit son inscription. */
+    public function test_la_bascule_ne_promet_pas_de_deplacer_les_encaissements(): void
+    {
+        ESBTPAnneeUniversitaire::factory()->create(['name' => 'LB-B1', 'is_current' => false]);
+        $texte = implode(' ', app(DefinirAnneeCourante::class)->executeAuthorized(['annee' => 'LB-B1'], $this->admin)['widget']['avertissements']);
+
+        $this->assertStringNotContainsString('encaissements se rattacheront', $texte);
+        $this->assertStringContainsString("l'année de l'inscription", $texte);
+        $this->assertStringContainsString('reste modifiable', $texte);
+    }
+
+    /**
+     * S1 : le cache est vidé APRÈS le commit de la bascule, jamais pendant.
+     * On relève le niveau de transaction au moment du vidage : celui d'avant
+     * l'appel (la transaction du test) et non celui de la bascule.
+     */
+    public function test_le_cache_n_est_vide_qu_apres_le_commit(): void
+    {
+        $suivante = ESBTPAnneeUniversitaire::factory()->create(['name' => 'LB-S1', 'is_current' => false]);
+        $avant = DB::transactionLevel();
+        $niveaux = [];
+        Cache::partialMock()->shouldReceive('flush')->andReturnUsing(function () use (&$niveaux) {
+            $niveaux[] = DB::transactionLevel();
+
+            return true;
+        });
+
+        app(AnneesUniversitaires::class)->definirCourante($suivante);
+
+        $this->assertSame([$avant], $niveaux, 'le cache doit être vidé une fois, après le commit de la bascule');
+        $this->assertTrue((bool) $suivante->fresh()->is_current);
+    }
+
+    /** S2 : la fiche filière et l'administration passent par les mêmes règles. */
+    public function test_tous_les_ecrans_refusent_une_sortie_d_un_autre_niveau(): void
+    {
+        [$tc, , $classeTc, $spe] = $this->troncCommun();
+        $autreNiveau = ESBTPClasse::factory()->create(['code' => 'LB_SPE_XN', 'filiere_id' => $spe->id]);
+
+        $this->actingAs($this->admin)->postJson("/esbtp/filieres/{$tc->id}/sorties-tc", [
+            'source_classe_id' => $classeTc->id, 'target_classe_id' => $autreNiveau->id,
+        ])->assertStatus(422);
+        $this->actingAs($this->admin)->postJson('/esbtp/admin/orientation-targets', [
+            'source_classe_id' => $classeTc->id, 'target_classe_id' => $autreNiveau->id,
+        ])->assertStatus(422);
+
+        $this->assertSame(0, ESBTPClasseOrientationTarget::where('source_classe_id', $classeTc->id)->count());
+    }
+
+    /** S2 : l'écran de modification d'une filière ne marque pas une option tronc commun. */
+    public function test_l_ecran_filiere_refuse_une_option_tronc_commun(): void
+    {
+        $parent = ESBTPFiliere::factory()->create(['code' => 'LBPAR']);
+        $option = ESBTPFiliere::factory()->create(['code' => 'LBOPX', 'parent_id' => $parent->id]);
+
+        $this->actingAs($this->admin)->put("/esbtp/filieres/{$option->id}", [
+            'name' => $option->name, 'code' => 'LBOPX', 'is_active' => 1, 'parent_id' => $parent->id, 'is_tronc_commun' => 1,
+        ])->assertSessionHas('error');
+
+        $this->assertFalse((bool) $option->fresh()->is_tronc_commun);
+
+        // Et à la création, par le même refus.
+        $this->actingAs($this->admin)->post('/esbtp/filieres', [
+            'name' => 'Option neuve', 'code' => 'LBOPN', 'is_active' => 1, 'parent_id' => $parent->id, 'is_tronc_commun' => 1,
+        ])->assertSessionHas('error');
+        $this->assertSame(0, ESBTPFiliere::where('code', 'LBOPN')->count());
+    }
+
+    /** S3 : le libellé non donné reste ; le type LMD se reconnaît sans la casse. */
+    public function test_niveaux_libelle_conserve_et_type_sans_casse(): void
+    {
+        $n = ESBTPNiveauEtude::factory()->create(['type' => 'Licence', 'year' => 1, 'name' => 'L1', 'libelle' => 'Licence première année', 'code' => 'LBL1']);
+        $this->valider(app(EnregistrerNiveaux::class)->executeAuthorized(['niveaux' => [['nom' => 'Licence 1', 'type' => 'licence', 'annee' => 1]]], $this->admin));
+
+        $this->assertSame('Licence 1', $n->fresh()->name);
+        $this->assertSame('Licence première année', $n->fresh()->libelle, 'un libellé non donné n\'est pas écrasé');
+        $this->assertStringContainsString('Master', $this->manques(app(EnregistrerNiveaux::class)->executeAuthorized(['niveaux' => [['nom' => 'M1', 'type' => 'master', 'annee' => 1]]], $this->admin)));
+    }
+
+    /** S4 : tronc commun désactivé dans l'établissement : pas d'orientation, comme l'écran. */
+    public function test_orientation_refusee_si_le_tronc_commun_est_desactive(): void
+    {
+        [$tc, $n, $classeTc] = $this->troncCommun();
+        SettingsHelper::setOrCreate('tronc_commun_enabled', '0', 'general', 'boolean');
+        $inscription = ESBTPInscription::factory()->create(['filiere_id' => $tc->id, 'niveau_id' => $n->id, 'classe_id' => $classeTc->id]);
+
+        $this->assertStringContainsString("n'est pas activé", $this->manques(app(OrienterInscription::class)->executeAuthorized(['inscription_id' => $inscription->id, 'classe' => 'LB_SPE_1A'], $this->admin)));
+    }
+
+    /** S5 : rouvrir une sortie garde ses notes et son semestre ; le tableau dit le vrai semestre. */
+    public function test_rouvrir_une_sortie_garde_notes_et_semestre(): void
+    {
+        [, $n, $classeTc, $spe, $classeSpe] = $this->troncCommun();
+        $ouverte = ESBTPClasse::factory()->create(['code' => 'LB_SPE_1B', 'filiere_id' => $spe->id, 'niveau_etude_id' => $n->id]);
+        ESBTPClasseOrientationTarget::create(['source_classe_id' => $classeTc->id, 'target_classe_id' => $classeSpe->id, 'semestre_activation' => 3, 'is_active' => false, 'sort_order' => 0, 'notes' => 'Décision du conseil']);
+        ESBTPClasseOrientationTarget::create(['source_classe_id' => $classeTc->id, 'target_classe_id' => $ouverte->id, 'semestre_activation' => 4, 'is_active' => true, 'sort_order' => 1]);
+
+        $r = app(AjouterSortiesTroncCommun::class)->executeAuthorized(['classe' => 'LB_TC_1A', 'cibles' => ['LB_SPE_1A', 'LB_SPE_1B']], $this->admin);
+        $lignes = collect($r['widget']['lignes'])->keyBy(1);
+        $this->assertSame('S4', $lignes['LB_SPE_1B'][4], 'une sortie déjà ouverte montre son vrai semestre');
+        $this->assertSame('S3', $lignes['LB_SPE_1A'][4]);
+        $this->valider($r);
+
+        $rouverte = ESBTPClasseOrientationTarget::where('target_classe_id', $classeSpe->id)->sole();
+        $this->assertTrue((bool) $rouverte->is_active);
+        $this->assertSame('Décision du conseil', $rouverte->notes);
+        $this->assertSame(3, (int) $rouverte->semestre_activation);
     }
 }

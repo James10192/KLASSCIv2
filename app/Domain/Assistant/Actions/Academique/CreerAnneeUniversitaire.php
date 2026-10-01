@@ -8,7 +8,6 @@ use App\Domain\Assistant\Actions\Proposition;
 use App\Domain\Assistant\Actions\PropositionPerimee;
 use App\Models\ESBTPAnneeUniversitaire;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Propose de créer une année universitaire (« ouvre l'année 2026-2027 du
@@ -99,13 +98,12 @@ class CreerAnneeUniversitaire extends ActionAgent
         $d = $proposition->donnees;
         $service = app(AnneesUniversitaires::class);
 
-        $annee = DB::transaction(function () use ($d, $proposition, $service) {
-            $courante = ESBTPAnneeUniversitaire::where('is_current', true)->lockForUpdate()->value('id');
-            if ($service->nomPris($d['name']) || ($courante === null ? null : (int) $courante) !== $proposition->etat['courante_id']) {
+        // La revérification se fait DANS la transaction du service, sous
+        // verrou : une seule transaction (voir AnneesUniversitaires).
+        $annee = $service->creer($d, (bool) $d['courante'], function () use ($d, $proposition, $service) {
+            if ($service->nomPris($d['name']) || $service->idCourante() !== $proposition->etat['courante_id']) {
                 throw new PropositionPerimee('Les années universitaires ont changé depuis la proposition.');
             }
-
-            return $service->creer($d, (bool) $d['courante']);
         });
 
         return [

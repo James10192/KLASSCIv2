@@ -100,6 +100,7 @@ class EnregistrerNiveaux extends ActionAgent
         $lignes = array_map(fn ($l) => [
             $l['type'].' · année '.$l['year'],
             $l['nom_actuel'] && $l['nom_actuel'] !== $l['name'] ? $l['nom_actuel'].' → '.$l['name'] : $l['name'],
+            $l['libelle'] ?? ($l['action'] === 'creation' ? $l['name'] : 'inchangé'),
             $l['code'] ?? '—',
             $l['action'] === 'creation' ? 'Création' : 'Mise à jour',
         ], $plan['lignes']);
@@ -107,7 +108,7 @@ class EnregistrerNiveaux extends ActionAgent
         return new Proposition(
             titre: $titre,
             resume: sprintf('%d niveau(x) créé(s), %d mis à jour.', count($plan['lignes']) - count($misesAJour), count($misesAJour)),
-            tableau: ['colonnes' => ['Type et année', 'Nom', 'Code', 'Action'], 'lignes' => $lignes],
+            tableau: ['colonnes' => ['Type et année', 'Nom', 'Libellé', 'Code', 'Action'], 'lignes' => $lignes],
             donnees: ['lignes' => $plan['lignes']],
             etat: ['existants' => $this->etat($plan['lignes'])],
         );

@@ -31,7 +31,7 @@ class AjouterSortiesTroncCommun extends ActionAgent
 
     public function description(): string
     {
-        return "PROPOSE d'ouvrir des sorties à une classe de tronc commun BTS : `classe` = code ou identifiant de la classe TC, `cibles` = codes ou identifiants des classes de spécialité (même niveau), `semestre` = semestre à partir duquel l'orientation vaut (défaut de l'écran : 2). "
+        return "PROPOSE d'ouvrir des sorties à une classe de tronc commun BTS : `classe` = code ou identifiant de la classe TC, `cibles` = codes ou identifiants des classes de spécialité (même niveau), `semestre` = semestre à partir duquel l'orientation vaut (sans lui : 2 pour une nouvelle sortie, inchangé pour une sortie rouverte). "
             . 'Les classes cibles sont celles que la personne nomme (vérifie-les avec search_classes). Rien n\'est écrit avant « Valider ».';
     }
 
@@ -63,8 +63,10 @@ class AjouterSortiesTroncCommun extends ActionAgent
         if (count($designations) > self::MAX) {
             $manques[] = 'Plus de '.self::MAX.' classes cibles : découpe la demande.';
         }
-        $semestre = isset($args['semestre']) ? (int) $args['semestre'] : 2;
-        if ($semestre < 1 || $semestre > 8) {
+        // null : non donné — 2 pour une nouvelle sortie (défaut de l'écran),
+        // inchangé pour une sortie rouverte.
+        $semestre = isset($args['semestre']) ? (int) $args['semestre'] : null;
+        if ($semestre !== null && ($semestre < 1 || $semestre > 8)) {
             $manques[] = 'Le semestre d\'activation va de 1 à 8.';
         }
         if ($manques !== []) {
@@ -102,7 +104,8 @@ class AjouterSortiesTroncCommun extends ActionAgent
                 $avertissements[] = "{$cible->name} est inactive : elle ne sera proposée à l'orientation qu'une fois réactivée.";
             }
             $lignes[] = [(string) $cible->name, (string) $cible->code, (string) ($cible->filiere?->name ?? '—'),
-                $existante ? ($existante['active'] ? 'Déjà ouverte' : 'Réactivée') : 'Nouvelle', 'S'.$semestre];
+                $existante ? ($existante['active'] ? 'Déjà ouverte' : 'Réactivée') : 'Nouvelle',
+                'S'.($existante && $existante['active'] ? $existante['semestre'] : ($semestre ?? $existante['semestre'] ?? 2))];
         }
         if ($nouvelles === []) {
             return new Proposition(titre: $titre, resume: '', manques: ['Toutes ces sorties sont déjà ouvertes : rien à changer.']);
@@ -110,7 +113,7 @@ class AjouterSortiesTroncCommun extends ActionAgent
 
         return new Proposition(
             titre: $titre.' · '.$source->name,
-            resume: count($nouvelles)." sortie(s) ouverte(s) depuis {$source->name}, à partir du semestre {$semestre}.",
+            resume: count($nouvelles)." sortie(s) ouverte(s) depuis {$source->name}.",
             tableau: ['colonnes' => ['Classe cible', 'Code', 'Filière', 'Sortie', 'À partir de'], 'lignes' => $lignes],
             avertissements: $avertissements,
             donnees: ['source_id' => (int) $source->id, 'cibles' => $nouvelles, 'semestre' => $semestre],

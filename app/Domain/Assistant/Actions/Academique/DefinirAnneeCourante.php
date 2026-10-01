@@ -7,7 +7,6 @@ use App\Domain\Assistant\Actions\ActionAgent;
 use App\Domain\Assistant\Actions\Proposition;
 use App\Domain\Assistant\Actions\PropositionPerimee;
 use App\Models\ESBTPAnneeUniversitaire;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Propose de changer l'année universitaire en cours. Le geste le plus lourd du
@@ -46,9 +45,16 @@ class DefinirAnneeCourante extends ActionAgent
     /** Ce que la bascule change, dit avant de valider. Partagé avec la création. */
     public static function consequences(?string $avant, string $apres): array
     {
+        // Chaque phrase est vérifiable dans le code :
+        //  - les écrans lisent l'année marquée is_current (getCurrent(), anneeCourante()) ;
+        //  - le formulaire d'inscription la PRÉSÉLECTIONNE (inscriptions/create,
+        //    old('annee_universitaire_id', $anneeEnCours->id)), sans l'imposer ;
+        //  - un encaissement prend l'année de son INSCRIPTION
+        //    (ESBTPPaiementController::store), jamais l'année en cours.
         return [
-            "Tous les utilisateurs passeront de l'année ".($avant ?? '(aucune)')." à {$apres} : tableaux de bord, listes d'étudiants, inscriptions, paiements, notes, emplois du temps et bulletins affichent l'année en cours.",
-            "Les nouvelles inscriptions et les encaissements se rattacheront par défaut à {$apres}.",
+            "Tous les utilisateurs passeront de l'année ".($avant ?? '(aucune)')." à {$apres} sur les écrans qui affichent l'année en cours par défaut (tableaux de bord, listes).",
+            "Le formulaire d'inscription proposera {$apres} par défaut ; l'année reste modifiable au moment d'inscrire.",
+            "Un encaissement reste rattaché à l'année de l'inscription qu'il règle : la bascule ne déplace aucun paiement.",
             'Les données de l\'année précédente restent en base et consultables en la choisissant : rien n\'est supprimé.',
         ];
     }
@@ -104,15 +110,13 @@ class DefinirAnneeCourante extends ActionAgent
 
     public function executer(Proposition $proposition, $user): array
     {
-        $annee = DB::transaction(function () use ($proposition) {
-            $courante = ESBTPAnneeUniversitaire::where('is_current', true)->lockForUpdate()->value('id');
-            if (($courante === null ? null : (int) $courante) !== $proposition->etat['courante_id']) {
+        $annee = ESBTPAnneeUniversitaire::findOrFail($proposition->donnees['annee_id']);
+        $service = app(AnneesUniversitaires::class);
+        // La revérification se fait DANS la transaction du service, sous verrou.
+        $service->definirCourante($annee, function () use ($proposition, $service) {
+            if ($service->idCourante() !== $proposition->etat['courante_id']) {
                 throw new PropositionPerimee("L'année en cours a changé depuis la proposition.");
             }
-            $annee = ESBTPAnneeUniversitaire::findOrFail($proposition->donnees['annee_id']);
-            app(AnneesUniversitaires::class)->definirCourante($annee);
-
-            return $annee;
         });
 
         return [

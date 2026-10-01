@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\BtsTroncCommun\ConfigurationTroncCommun;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPClasseOrientationTarget;
 use App\Models\ESBTPFiliere;
@@ -98,6 +99,11 @@ class ESBTPFiliereController extends Controller
         $filiere->parent_id = $request->parent_id;
         $filiere->is_tronc_commun = $request->boolean('is_tronc_commun');
         $filiere->semestres_tronc_commun = $request->input('semestres_tronc_commun', 1);
+        // Une option ne peut pas être un tronc commun : la case serait cochée
+        // en base et sans effet (isTroncCommun() exige une filière principale).
+        if ($refus = app(ConfigurationTroncCommun::class)->refusMarquage($filiere, (bool) $filiere->is_tronc_commun)) {
+            return redirect()->back()->with('error', $refus)->withInput();
+        }
         $filiere->save();
 
         // Handle relations
@@ -224,18 +230,18 @@ class ESBTPFiliereController extends Controller
         $sourceClasse = ESBTPClasse::findOrFail($data['source_classe_id']);
         abort_unless($sourceClasse->filiere_id === $filiere->id, 422, 'La classe source n\'appartient pas à cette filière.');
 
-        $target = ESBTPClasseOrientationTarget::updateOrCreate(
-            [
-                'source_classe_id' => $data['source_classe_id'],
-                'target_classe_id' => $data['target_classe_id'],
-            ],
-            [
-                'semestre_activation' => $data['semestre_activation'] ?? 2,
-                'is_active' => true,
-                'sort_order' => ESBTPClasseOrientationTarget::where('source_classe_id', $data['source_classe_id'])->count(),
-                'notes' => $data['notes'] ?? null,
-            ]
-        );
+        // Mêmes règles que l'écran de la classe, la CLI et Nanan (tronc
+        // commun, même niveau, pas elle-même) : ConfigurationTroncCommun.
+        try {
+            $target = app(ConfigurationTroncCommun::class)->ajouterSortie(
+                $sourceClasse,
+                ESBTPClasse::findOrFail($data['target_classe_id']),
+                isset($data['semestre_activation']) ? (int) $data['semestre_activation'] : null,
+                $data['notes'] ?? null,
+            );
+        } catch (\InvalidArgumentException $e) {
+            abort(422, $e->getMessage());
+        }
 
         $target->load('targetClasse.filiere:id,name,code', 'targetClasse.niveauEtude:id,name');
 
@@ -351,6 +357,11 @@ class ESBTPFiliereController extends Controller
         $filiere->parent_id = $request->parent_id;
         $filiere->is_tronc_commun = $request->boolean('is_tronc_commun');
         $filiere->semestres_tronc_commun = $request->input('semestres_tronc_commun', 1);
+        // Une option ne peut pas être un tronc commun : la case serait cochée
+        // en base et sans effet (isTroncCommun() exige une filière principale).
+        if ($refus = app(ConfigurationTroncCommun::class)->refusMarquage($filiere, (bool) $filiere->is_tronc_commun)) {
+            return redirect()->back()->with('error', $refus)->withInput();
+        }
         $filiere->save();
 
         // Update relations

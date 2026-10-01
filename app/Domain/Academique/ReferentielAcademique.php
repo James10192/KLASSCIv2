@@ -99,14 +99,15 @@ class ReferentielAcademique
     public function planNiveaux(array $lot): array
     {
         $refus = [];
-        $couples = array_map(fn (array $n) => trim((string) $n['type']).'#'.(int) $n['year'], $lot);
+        $lot = array_map(fn (array $n) => ['type' => $this->typeNiveau((string) $n['type'])] + $n, $lot);
+        $couples = array_map(fn (array $n) => mb_strtolower($n['type']).'#'.(int) $n['year'], $lot);
         if (count($couples) !== count(array_unique($couples))) {
             $refus[] = 'Le lot contient deux fois le même couple type + année.';
         }
 
         $lignes = [];
         foreach ($lot as $n) {
-            $type = trim((string) $n['type']);
+            $type = $n['type'];
             $annee = (int) $n['year'];
             $attendues = ESBTPNiveauEtude::ANNEES_PAR_CYCLE_LMD[$type] ?? null;
             if ($attendues !== null && ! in_array($annee, $attendues, true)) {
@@ -121,7 +122,8 @@ class ReferentielAcademique
                 'type' => $type,
                 'year' => $annee,
                 'name' => trim((string) $n['name']),
-                'libelle' => isset($n['libelle']) && $n['libelle'] !== '' ? (string) $n['libelle'] : trim((string) $n['name']),
+                // null : non donné — le nom à la création, inchangé à la mise à jour.
+                'libelle' => isset($n['libelle']) && trim((string) $n['libelle']) !== '' ? trim((string) $n['libelle']) : null,
                 'code' => $code,
                 'is_active' => isset($n['is_active']) ? (bool) $n['is_active'] : null,
                 'action' => $existant ? 'mise a jour' : 'creation',
@@ -143,7 +145,10 @@ class ReferentielAcademique
             $crees = 0;
             $misAJour = 0;
             foreach ($lignes as $l) {
-                $donnees = ['name' => $l['name'], 'libelle' => $l['libelle'], 'type' => $l['type'], 'year' => $l['year']];
+                $donnees = ['name' => $l['name'], 'type' => $l['type'], 'year' => $l['year']];
+                if ($l['libelle'] !== null) {
+                    $donnees['libelle'] = $l['libelle'];
+                }
                 if ($l['is_active'] !== null) {
                     $donnees['is_active'] = $l['is_active'];
                 }
@@ -157,13 +162,30 @@ class ReferentielAcademique
                     $niveau->update($donnees);
                     $misAJour++;
                 } else {
-                    ESBTPNiveauEtude::create($donnees + ['is_active' => true]);
+                    ESBTPNiveauEtude::create($donnees + ['libelle' => $l['name'], 'is_active' => true]);
                     $crees++;
                 }
             }
 
             return ['crees' => $crees, 'mis_a_jour' => $misAJour];
         });
+    }
+
+    /**
+     * « master », « MASTER » et « Master » sont le même cycle : le nom canonique
+     * est rendu, sinon estUnCycleLmd() (comparaison exacte) ne le reconnaîtrait
+     * pas et le contrôle d'année ne s'appliquerait pas.
+     */
+    private function typeNiveau(string $type): string
+    {
+        $type = trim($type);
+        foreach (array_keys(ESBTPNiveauEtude::ANNEES_PAR_CYCLE_LMD) as $cycle) {
+            if (mb_strtolower($cycle) === mb_strtolower($type)) {
+                return $cycle;
+            }
+        }
+
+        return $type;
     }
 
     private function codeFiliere(string $code): string
