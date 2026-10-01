@@ -10,6 +10,7 @@ use App\Services\Admissions\InscriptionWorkflowSettings;
 use App\Services\Admissions\ManagedInscriptionWorkflow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
@@ -64,6 +65,26 @@ final class ManagedActivationController extends Controller
         $this->guardManagedWorkflow();
         $this->assertMilestoneReached($workflow);
 
+        return back()->with('success', $this->envoyerLiens($workflow));
+    }
+
+    /**
+     * L'étudiant est au guichet : l'agent relit avec lui l'e-mail et le numéro,
+     * les confirme, et le lien part dans la foulée.
+     */
+    public function confirmContact(Request $request, ESBTPCandidatureWorkflow $workflow)
+    {
+        $this->guardManagedWorkflow();
+        $this->assertMilestoneReached($workflow);
+
+        DB::transaction(fn () => $this->managed->confirmContactAtDesk($workflow, (int) $request->user()->id));
+
+        return back()->with('success', 'Contact confirmé. '.$this->envoyerLiens($workflow->fresh(['candidature', 'etudiant.user'])));
+    }
+
+    /** Émet un nouveau lien et dit, sans l'arrondir, par où il est parti. */
+    private function envoyerLiens(ESBTPCandidatureWorkflow $workflow): string
+    {
         if ($workflow->accessActivated()) {
             throw ValidationException::withMessages(['activation' => 'Cet espace étudiant est déjà activé.']);
         }
@@ -82,12 +103,9 @@ final class ManagedActivationController extends Controller
             $channels[] = 'WhatsApp';
         }
 
-        return back()->with(
-            'success',
-            $channels
-                ? 'Nouveau lien d’activation envoyé par '.implode(' et ', $channels).'.'
-                : "Lien régénéré, mais aucun contact vérifié ne permet de l'envoyer. Vérifiez l'e-mail ou le numéro du candidat, puis renvoyez.",
-        );
+        return $channels
+            ? 'Nouveau lien d’activation envoyé par '.implode(' et ', $channels).'.'
+            : "Lien régénéré, mais aucun contact vérifié ne permet de l'envoyer. Confirmez l'e-mail ou le numéro avec l'étudiant.";
     }
 
     private function assertMilestoneReached(ESBTPCandidatureWorkflow $workflow): void

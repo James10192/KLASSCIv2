@@ -106,6 +106,11 @@ class ESBTPDemandesInscriptionController extends Controller
     public function preparerInscription(ESBTPCandidature $candidature, PreparationDInscription $preparation): JsonResponse
     {
         abort_if($candidature->dossierClos(), 422, 'Cette candidature est déjà traitée.');
+        abort_if(
+            app(\App\Services\Admissions\InscriptionWorkflowSettings::class)->usesManagedWorkflow(),
+            422,
+            "Cette candidature suit le parcours d'inscription de l'établissement : ouvrez-la dans « Dossiers en cours »."
+        );
 
         return response()->json($preparation->pour($candidature));
     }

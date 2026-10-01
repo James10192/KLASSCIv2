@@ -31,6 +31,7 @@
 .mwf-btn.soft{background:#eef4ff;color:#0453cb}
 .mwf-btn.success{background:#10b981;color:#fff}
 .mwf-btn.danger{background:#fff;color:#dc2626;border:1px solid #fecaca}
+.mwf-alerte{border:1px solid #fcd9a6;background:#fff8ed;color:#7c4a03;border-radius:12px;padding:12px 14px;font-size:.9rem}
 .mwf-ok{display:inline-flex;gap:6px;align-items:center;font-size:.8rem;font-weight:600;color:#14763d;background:#ecfdf5;border-radius:999px;padding:5px 10px}
 .mwf-wait{display:inline-flex;gap:6px;align-items:center;font-size:.8rem;font-weight:600;color:#a35c00;background:#fffbeb;border-radius:999px;padding:5px 10px}
 .mwf-progress{font-size:.86rem;color:#0f172a;margin-bottom:10px}
@@ -196,6 +197,19 @@
             <div class="mwf-kv"><span>Compte</span><strong>{{ $workflow->accessActivated() ? 'Activé' : 'En attente d\'activation' }}</strong></div>
             <div class="mwf-kv"><span>Informations</span><strong>{{ $workflow->profileCompleted() ? 'Complétées' : 'À compléter par l\'étudiant' }}</strong></div>
             @if($workflow->etudiant_id && !$workflow->accessActivated() && ($user?->can('inscriptions.validate') || $user?->can('pieces_dossier.suivre')))
+                @if(! $contactJoignable)
+                    <div class="mwf-alerte mt-2" role="status">
+                        <strong>Le lien n'est pas parti.</strong>
+                        Il ne part que vers un contact vérifié, et celui de ce dossier ne l'est pas.
+                        Relisez-les avec l'étudiant :
+                        <div class="mwf-kv"><span>E-mail</span><strong>{{ $candidature->email ?: '—' }}</strong></div>
+                        <div class="mwf-kv"><span>Téléphone</span><strong>{{ $candidature->telephone ?: '—' }}</strong></div>
+                        <form method="POST" action="{{ route('esbtp.admissions.workflow.activation.confirm-contact', $workflow) }}" class="mt-2">
+                            @csrf
+                            <button class="mwf-btn primary" type="submit">Contact confirmé avec l'étudiant : envoyer le lien</button>
+                        </form>
+                    </div>
+                @endif
                 <form method="POST" action="{{ route('esbtp.admissions.workflow.activation.resend', $workflow) }}" class="mt-2">
                     @csrf
                     <button class="mwf-btn soft" type="submit">Renvoyer le lien d'activation</button>
