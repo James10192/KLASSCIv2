@@ -135,7 +135,8 @@ if (typeof window.klassciNananSupport !== 'function') {
                     });
                 }
                 var feuille = declencheur && declencheur.closest ? declencheur.closest('.m-sheet-root') : null;
-                /* La feuille rend, en se fermant, le focus à son ouvreur : c'est lui qu'on retient. */
+                /* La feuille rend, en se fermant, le focus à ce qui l'avait avant elle (son
+                   bouton au clavier ; au doigt, souvent le corps de page) : c'est lui qu'on retient. */
                 window.dispatchEvent(new CustomEvent('m-sheet:close'));
                 if (feuille) { retour = document.activeElement; }
                 /* x-trap rendra le focus à l'élément actif au moment où Nanan s'ouvre :
