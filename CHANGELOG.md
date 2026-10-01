@@ -10,6 +10,17 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ---
 
+## Octobre 2026
+
+### Améliorations
+- **Notifications — refonte premium sans rechargement (`/notifications`).** Bandeau avec trois compteurs cliquables (non lues, aujourd'hui, cette semaine), filtres en pastilles (toutes, non lues, par type, et par sujet pour les coordinateurs), lignes regroupées Aujourd'hui / Hier / Cette semaine / Plus ancien, bouton « Ouvrir » qui mène à l'objet et marque lu au passage, suppression en deux appuis sans fenêtre, « Tout marquer comme lu » et « Afficher les plus anciennes » en AJAX, alerte quand de nouvelles notifications arrivent. Les raccourcis (notes à saisir, évaluations à activer, emplois du temps) forment une file « À traiter maintenant ». Logique de lecture déplacée dans `App\Services\Notifications\NotificationPresenter` (une requête pour toutes les inscriptions citées au lieu d'une par ligne). Namespace CSS `ntf-*`. (captures à prendre sur presentation : `notifications-avant/apres.webp`)
+
+### Corrections
+- **Notifications — le bouton de suppression marchait seulement pour les coordinateurs** : la fonction était définie dans un bloc réservé à ce rôle, les autres obtenaient une erreur JavaScript. Supprimer ne recharge plus la page, et le dernier élément supprimé affiche l'état vide.
+- **Notifications — un lien hors de l'application n'est plus proposé** (adresse `javascript:` ou autre domaine) ; seuls les chemins internes s'ouvrent.
+
+---
+
 ## Septembre 2026
 
 ### Ajouts
