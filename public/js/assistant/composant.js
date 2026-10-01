@@ -58,6 +58,7 @@
             prefsEtat: '',
             _mq: null,
             _onMq: null,
+            _onDemande: null,
 
             init: function () {
                 var noeud = this.$root.querySelector('script[data-ast-config]');
@@ -74,10 +75,22 @@
                 this._onMq = function () { self.verrouillerDefilement(); };
                 if (this._mq.addEventListener) { this._mq.addEventListener('change', this._onMq); }
                 this.$nextTick(function () { self.brancherDefileur(); });
+
+                // Une page peut confier une question à Nanan :
+                // window.dispatchEvent(new CustomEvent('nanan:demander', { detail: { question: '…' } }))
+                // Le panneau s'ouvre et la question part, comme si elle avait été tapée.
+                this._onDemande = function (ev) {
+                    var question = ev && ev.detail && ev.detail.question;
+                    if (!question) { return; }
+                    self.ouvrir();
+                    self.$nextTick(function () { self.envoyer(String(question)); });
+                };
+                window.addEventListener('nanan:demander', this._onDemande);
             },
 
             destroy: function () {
                 if (this._mq && this._mq.removeEventListener) { this._mq.removeEventListener('change', this._onMq); }
+                if (this._onDemande) { window.removeEventListener('nanan:demander', this._onDemande); }
                 if (this.controleur) { this.controleur.abort(); }
                 if (defileur) { defileur.detruire(); defileur = null; }
                 vues.forEach(function (v) { v.detruire(); });

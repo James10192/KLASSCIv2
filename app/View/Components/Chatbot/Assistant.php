@@ -83,7 +83,15 @@ class Assistant extends Component
 
     private function prenom($user): string
     {
-        $prefere = ChatbotUserPreference::where('user_id', $user->id)->value('preferred_name');
+        // Le composant est dans le gabarit de toutes les pages, pages d'erreur
+        // comprises : une table de préférences absente (instance pas encore
+        // migrée) ne doit pas changer un 403 en 500.
+        try {
+            $prefere = ChatbotUserPreference::where('user_id', $user->id)->value('preferred_name');
+        } catch (\Throwable $e) {
+            Log::warning('assistant.preferences_indisponibles', ['erreur' => $e->getMessage()]);
+            $prefere = null;
+        }
         $nom = $prefere ?: ($user->first_name ?: strtok((string) $user->name, ' '));
 
         return trim((string) $nom);

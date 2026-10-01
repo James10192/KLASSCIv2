@@ -80,6 +80,7 @@ class SaisirNotes extends ActionAgent
                         'colonnes_etudiant' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Colonne(s) qui désignent l\'étudiant : le matricule, ou le nom et les prénoms (plusieurs colonnes sont réunies).'],
                         'colonne_note' => ['type' => 'string', 'description' => 'Nom exact de la colonne des notes.'],
                         'colonne_absent' => ['type' => 'string', 'description' => 'Facultatif : colonne qui marque les absents.'],
+                        'feuille' => ['type' => 'string', 'description' => 'Facultatif : nom de la feuille à lire quand le classeur en réunit plusieurs (une par classe, un devoir par feuille).'],
                     ],
                     'required' => ['piece_id', 'colonnes_etudiant', 'colonne_note'],
                 ],
@@ -179,9 +180,23 @@ class SaisirNotes extends ActionAgent
             return [[], ['Colonne introuvable dans « ' . $piece['nom'] . ' ». Colonnes disponibles : ' . implode(', ', $piece['colonnes']) . '.'], []];
         }
 
+        // Un classeur à plusieurs feuilles aux mêmes en-têtes arrive fusionné, avec
+        // une colonne « Feuille ». Sans filtre, les élèves d'une autre classe
+        // deviennent des manques et un même élève « apparaît deux fois » : sûr
+        // (rien de faux n'est écrit) mais bruyant. `feuille` trie à la source.
+        $feuilles = $piece['feuilles'] ?? [];
+        $colFeuille = $feuilles !== [] ? ($index['feuille'] ?? $index['onglet'] ?? null) : null;
+        $feuilleVoulue = trim((string) ($source['feuille'] ?? ''));
+        if ($feuilleVoulue !== '' && $colFeuille !== null && ! in_array($feuilleVoulue, $feuilles, true)) {
+            return [[], ['Feuille inconnue « ' . $feuilleVoulue . ' ». Feuilles lues : ' . implode(', ', $feuilles) . '.'], []];
+        }
+
         $lignes = [];
         $vides = 0;
         foreach ($piece['lignes'] as $l) {
+            if ($feuilleVoulue !== '' && $colFeuille !== null && (string) ($l[$colFeuille] ?? '') !== $feuilleVoulue) {
+                continue;
+            }
             $etudiant = trim(implode(' ', array_map(fn ($i) => $l[$i] ?? '', $colsEtudiant)));
             $valeur = trim((string) ($l[$colNote] ?? ''));
             $absent = preg_match('/^(abs|absent|absente)\.?$/iu', $valeur)
@@ -198,6 +213,12 @@ class SaisirNotes extends ActionAgent
         }
 
         $avertissements = $vides > 0 ? ["{$vides} ligne(s) du fichier sans note sont ignorées (rien n'est écrit pour elles)."] : [];
+        if ($colFeuille !== null && $feuilleVoulue === '' && count($feuilles) > 1) {
+            $avertissements[] = 'Feuilles lues ensemble : ' . implode(', ', $feuilles) . '. Précise la feuille si une seule concerne cette évaluation.';
+        }
+        if (! empty($piece['feuilles_illisibles'])) {
+            $avertissements[] = 'Feuilles illisibles, non lues : ' . implode(', ', $piece['feuilles_illisibles']) . '.';
+        }
         if (! empty($piece['tronque'])) {
             $avertissements[] = 'Le fichier dépasse ' . LectureDePiece::MAX_LIGNES . ' lignes ou ' . LectureDePiece::MAX_COLONNES . ' colonnes : la suite n\'a pas été lue.';
         }

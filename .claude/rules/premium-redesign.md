@@ -178,6 +178,7 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | rendez-vous d'inscription | `rdv-*` | `rdv-hero`, `rdv-kpi`, `rdv-slot`, `rdv-jauge`, `rdv-resas`, `rdv-switch`, `rdv-reglages` |
 | retrouver un rendez-vous | `rdr-*` (sur la base `rdv-*`) | `rdr-ligne`, `rdr-quand`, `rdr-groupe`, `rdr-recherche` |
 | étudiants sur téléphone (shell m-*) | `eim-*` (liste), `etm-*` (carte hors shell) | `eim-row`, `eim-av`, `eim-seg`, `etm-card` |
+| réinscription, fiche d'un élève (`/esbtp/reinscription/{id}`) | `rsd-*` | `rsd-hero`, `rsd-verdict`, `rsd-kpi`, `rsd-jauge`, `rsd-nanan` |
 | années universitaires | `auy-*` | `auy-hero`, `auy-card`, `auy-progress`, `auy-act` |
 | émargement enseignant (cours du jour) | `tae-*` | `tae-cours`, `tae-form`, `tae-demande` |
 | émargements côté administration | `aem-*` | `aem-code`, `aem-btn` |

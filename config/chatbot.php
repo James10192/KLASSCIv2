@@ -88,6 +88,30 @@ return [
             'libelle' => 'Lecture du dossier de réinscription…',
             'suggestion' => 'Pourquoi la réinscription de cet étudiant est bloquée ?',
         ],
+        'proposer_liaison_ue_parcours' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.structure.manage'],
+            'libelle' => 'Préparation de la liaison UE ↔ parcours…',
+        ],
+        'proposer_creation_classes' => [
+            'enabled' => true,
+            'all_permissions' => ['classes.create'],
+            'libelle' => 'Préparation des nouvelles classes…',
+            'suggestion' => 'Ajoute une classe de plus à chaque filière et niveau',
+        ],
+        'proposer_modification_classes' => [
+            'enabled' => true,
+            'all_permissions' => ['classes.edit'],
+            'libelle' => 'Préparation de la modification des classes…',
+            'suggestion' => 'Passe les classes de 1re année à 60 places',
+        ],
+        // La pièce appartient à qui l'a déposée (PiecesJointes::pour) : ces droits
+        // ne disent que les métiers où lire un tableau joint a un sens.
+        'chercher_dans_piece' => [
+            'enabled' => true,
+            'any_permissions' => ['notes.create', 'notes.edit', 'notes.manage_own', 'inscriptions.view', 'students.view', 'paiements.view', 'frais.view'],
+            'libelle' => 'Recherche dans le fichier joint…',
+        ],
         'proposer_ajustement_souscription' => [
             'enabled' => true,
             'all_permissions' => ['frais.souscriptions.ajuster'],
