@@ -213,6 +213,61 @@ final class InscriptionWorkflowSettings
         ];
     }
 
+    /**
+     * Les réglages qui sont des cases à cocher. L'écran des réglages et le CLI
+     * lisent cette liste : une seule source, pas deux qui divergent.
+     *
+     * @return list<string>
+     */
+    public static function booleens(): array
+    {
+        return [self::ENABLED, self::REQUIRE_RDV, self::CLASS_CHOICE_ONCE, self::NOTIFY_EMAIL, self::NOTIFY_WHATSAPP];
+    }
+
+    /** @return list<string> toutes les clés du parcours, cases et choix. */
+    public static function cles(): array
+    {
+        return array_merge(self::booleens(), array_keys(self::choix()));
+    }
+
+    /**
+     * Les réglages à choix fermé, avec leurs choix possibles. Une valeur hors
+     * liste est refusée à l'écriture : la relire en retombant sur le défaut
+     * ferait croire à l'école qu'elle a choisi ce qu'elle n'a pas choisi.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public static function choix(): array
+    {
+        return [
+            self::MODE => self::modeOptions(),
+            self::ACCOUNT_ACTIVATION_STEP => self::activationOptions(),
+            self::CLASS_CHOICE_ACTOR => self::classActorOptions(),
+        ];
+    }
+
+    /**
+     * Ce qui rendrait le parcours impraticable, ou null.
+     *
+     * Exiger un rendez-vous alors que la prise de rendez-vous est fermée
+     * bloquerait chaque dossier au guichet, sans qu'aucun écran ne dise pourquoi.
+     *
+     * @param callable(string): string $valeur lit la valeur effective d'une clé
+     */
+    public static function incoherence(callable $valeur): ?string
+    {
+        $actif = in_array(strtolower(trim($valeur(self::ENABLED))), ['1', 'true', 'on', 'yes', 'oui'], true);
+        $gere = $actif && $valeur(self::MODE) !== self::MODE_LEGACY;
+        $rdvExige = in_array(strtolower(trim($valeur(self::REQUIRE_RDV))), ['1', 'true', 'on', 'yes', 'oui'], true);
+        $rdvOuvert = in_array(strtolower(trim($valeur(\App\Services\RendezVous\RendezVousReglages::ENABLED))), ['1', 'true', 'on', 'yes', 'oui'], true);
+
+        if ($gere && $rdvExige && ! $rdvOuvert) {
+            return "Le parcours d'inscription exige un rendez-vous, mais la prise de rendez-vous est fermée : aucun dossier ne pourrait passer à la caisse. Ouvrez la prise de rendez-vous, ou n'exigez pas de rendez-vous.";
+        }
+
+        return null;
+    }
+
     private function boolean(string $key, bool $default): bool
     {
         $value = SettingsHelper::get($key, $default ? '1' : '0');

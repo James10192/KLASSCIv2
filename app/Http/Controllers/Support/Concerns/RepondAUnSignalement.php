@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Support\Concerns;
 
 use App\Domain\Support\Exceptions\MasterSupportRefus;
+use App\Domain\Support\Services\AdresseJoignable;
 use App\Domain\Support\Services\DisponibiliteSupport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -34,11 +35,15 @@ trait RepondAUnSignalement
             ], 422);
         }
 
+        // Le support repondra : l'interface propose de confirmer l'adresse pour
+        // en etre averti par e-mail aussi. Jamais bloquant.
+        $courriel = AdresseJoignable::etat(request()->user());
+
         if ($resultat['en_attente'] ?? false) {
             return response()->json([
                 'en_attente' => true,
                 'message' => 'Votre demande est enregistrée. Elle sera transmise au support dès que la connexion sera rétablie.',
-            ], 202);
+            ] + $courriel, 202);
         }
 
         return response()->json([
@@ -46,6 +51,6 @@ trait RepondAUnSignalement
             'statut' => $resultat['statut']['libelle'] ?? null,
             'suivi_url' => $disponibilite->suivi() && isset($resultat['reference'])
                 ? route('support.demandes.show', $resultat['reference']) : null,
-        ], 201);
+        ] + $courriel, 201);
     }
 }

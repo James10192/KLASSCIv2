@@ -172,6 +172,32 @@ class ClientMasterSupport
     }
 
     /**
+     * Un avis 👍 / 👎 sur une reponse de l'assistant. Ne part jamais depuis la
+     * requete de la personne : seulement depuis la boite d'envoi
+     * (support:vider-boite-envoi), pour qu'un Master lent ne la fasse pas attendre.
+     */
+    public function transmettreRetourAssistant(array $retour, string $cle): array
+    {
+        return $this->requete('POST', 'retours-assistant', $retour, ['Idempotency-Key' => $cle]);
+    }
+
+    /**
+     * Les demandes de toute l'ecole modifiees depuis une date (resume : statut,
+     * rapporteur, derniere reponse). `reporter` est exige par la validation du
+     * Master mais ignore en `scope=school` : c'est l'instance, pas une personne,
+     * qui interroge ici.
+     */
+    public function demandesModifiees(?string $depuis, int $page = 1): array
+    {
+        return $this->requete('GET', 'tickets', array_filter([
+            'reporter' => 1,
+            'scope' => 'school',
+            'mis_a_jour_depuis' => $depuis,
+            'page' => $page,
+        ], fn ($v) => $v !== null));
+    }
+
+    /**
      * Une reponse de l'ecole dans la conversation. La cle d'idempotence vient
      * du navigateur : un double clic ou un renvoi apres coupure ne publie
      * pas deux fois le meme message.

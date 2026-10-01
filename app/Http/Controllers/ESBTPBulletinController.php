@@ -27,7 +27,6 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Models\ESBTPResultatMatiere;
-use App\Services\BulletinBulkPdfExporter;
 use App\Services\BulletinService;
 use App\Services\DocumentPrintGuard;
 use App\Services\BtsBulletinPolicy;
@@ -1226,26 +1225,6 @@ class ESBTPBulletinController extends Controller
     }
 
     /**
-     * Exporte en UN seul PDF tous les bulletins du jeu filtré courant, dans
-     * l'ordre choisi. Snapshot-only (bulletins déjà générés uniquement) : aucun
-     * recalcul n'est déclenché depuis ce GET. Borné par un plafond configurable
-     * (bulletins_bulk_export_cap) pour protéger mémoire/temps d'exécution.
-     *
-     * Le plafond par defaut est de 6, mesure sur esbtp-yakro le 22/08/2026 :
-     * sept bulletins prennent 32 secondes en telechargement et 26 en apercu,
-     * pour une limite d execution de l hebergeur autour de 30. Au-dela, la
-     * requete est tuee et l utilisateur ne voit rien d exploitable.
-     *
-     * C est le meme nombre que la tranche de generation, qui repond a la meme
-     * contrainte. Exporter une classe entiere demandera un decoupage en
-     * plusieurs requetes, comme la generation le fait deja.
-     */
-    private function bulkExportFilename(): string
-    {
-        return 'bulletins_'.now()->format('Ymd_His').'.pdf';
-    }
-
-    /**
      * Page de garde d'avertissement : listée en tête du PDF groupé lorsqu'au moins
      * un bulletin du filtre est ABSENT (non généré, ou échec de rendu). Retourne
      * null si tout le filtre est inclus (aucun avertissement nécessaire).
@@ -1263,7 +1242,7 @@ class ESBTPBulletinController extends Controller
      *
      * @param  array{annee: ?string, classe: ?string, periode: ?string}  $entete
      */
-    protected function buildExportCoverPdf(\Illuminate\Support\Collection $ungenerated, array $failed, array $entete, int $includedCount): ?\Barryvdh\DomPDF\PDF
+    public function buildExportCoverPdf(\Illuminate\Support\Collection $ungenerated, array $failed, array $entete, int $includedCount): ?\Barryvdh\DomPDF\PDF
     {
         $failedIds = collect($failed)->pluck('id')->filter();
         $failedBulletins = $failedIds->isNotEmpty()
@@ -1305,73 +1284,6 @@ class ESBTPBulletinController extends Controller
      * @return array
      */
     // ///////////////////
-    /**
-     * Genere les bulletins pour une classe entiere via le contrat bulk BTS.
-     *
-     * @return Response
-     */
-    public function genererClasseBulletins(GenerateClasseBulletinsRequest $request)
-    {
-        $classe = ESBTPClasse::findOrFail($request->integer('classe_id'));
-
-        abort_if(
-            ($classe->systeme_academique ?? '') === 'LMD',
-            422,
-            'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour generer des bulletins LMD en masse.'
-        );
-
-        // Traitement par tranches : la generation coute O(N^2) et l'hebergement
-        // coupe a 30 secondes. Le front envoie une tranche a la fois et affiche
-        // la progression. Le recalcul des rangs porte sur la cohorte entiere a
-        // chaque passe, l'etat final est donc identique a une passe unique.
-        $studentIds = $request->filled('student_ids')
-            ? array_map('intval', (array) $request->input('student_ids'))
-            : null;
-
-        $result = $this->bulkBulletinGeneration->generate(
-            $classe,
-            $request->integer('annee_universitaire_id'),
-            (string) $request->input('periode'),
-            $request->user(),
-            $request->boolean('recalculer'),
-            $request->input('incomplete_reason'),
-            $studentIds
-        );
-
-        if ($request->expectsJson()) {
-            return response()->json($result->toArray(), $result->statusCode());
-        }
-
-        $redirect = redirect()->route('esbtp.bulletins.index', [
-            'classe_id' => $classe->id,
-            'annee_universitaire_id' => $request->integer('annee_universitaire_id'),
-            'periode_id' => $this->bulletinService->normalizePeriode((string) $request->input('periode')),
-        ]);
-
-        if ($result->hasWrites() && $result->hasFailures()) {
-            return $redirect
-                ->with('warning', $result->message())
-                ->with('bulk_bulletin_generation', $result->toArray());
-        }
-
-        if ($result->hasWrites()) {
-            return $redirect
-                ->with('success', $result->message())
-                ->with('bulk_bulletin_generation', $result->toArray());
-        }
-
-        if ($result->hasFailures()) {
-            return back()
-                ->with('error', $result->message())
-                ->with('bulk_bulletin_generation', $result->toArray())
-                ->withInput();
-        }
-
-        return $redirect
-            ->with('info', $result->message())
-            ->with('bulk_bulletin_generation', $result->toArray());
-    }
-
     /**
      * Supprime les moyennes enregistrees pour une matiere qui n'a plus aucune
      * note sur la periode, dans une classe.
