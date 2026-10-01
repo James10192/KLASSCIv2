@@ -4213,7 +4213,7 @@
                             @php
                                 /* P-E : fusion matières annuel (opt-in setting). Affiche les matières
                                    avec moyenne pondérée S1×w1 + S2×w2, badge si présent dans un seul semestre. */
-                                $_fusionEnabled = \App\Helpers\SettingsHelper::get('bulletin_annuel_fusion_matieres', '0') === '1';
+                                $_fusionEnabled = \App\Helpers\SettingsHelper::drapeau('bulletin_annuel_fusion_matieres', false);
                                 $_fusedRows = collect();
                                 if ($_fusionEnabled && $acadRef) {
                                     $_anneeIdFuse = (int) $acadRef->annee_universitaire_id;

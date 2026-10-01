@@ -68,6 +68,8 @@ class CatalogueOutils
             new DiagnostiquerReinscriptionTool(),
             new ChercherDansPiece(),
             new LireStructureAcademique(),
+            new LireRendezVous(),
+            new LireReglages(),
             new SearchBulletinsTool(),
             new SearchAbsencesSummaryTool(),
             new EvolutionEncaissementsTool(),

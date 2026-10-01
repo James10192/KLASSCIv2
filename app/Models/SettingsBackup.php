@@ -84,6 +84,12 @@ class SettingsBackup extends Model
     // Restaurer une sauvegarde
     public function restore($userId = null, $notes = null)
     {
+        // Une trace de migration ne porte que quelques lignes : la restaurer
+        // viderait toute la table des réglages (truncate ci-dessous).
+        if ($this->backup_type === 'migration') {
+            throw new \RuntimeException('Une trace de migration ne se restaure pas comme une sauvegarde d\'établissement.');
+        }
+
         try {
             DB::beginTransaction();
 
