@@ -187,6 +187,7 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | travaux en arrière-plan (toast global, `components/taches-arriere-plan`) | `tap-*` | `tap-pile`, `tap-toast`, `tap-toast--ok`, `tap-toast--ko` |
 | palette de recherche Ctrl K / ⌘ K (layout) | `spl-*` | `spl-root`, `spl-panneau`, `spl-champ`, `spl-option`, `spl-declencheur` |
 | page de résultats de recherche | `srp-*` | `srp-card`, `srp-item`, `srp-chip` |
+| lien de confirmation d'adresse expiré | `clx-*` | `clx-carte`, `clx-btn`, `clx-message` |
 | notifications (`/notifications`) | `ntf-*` | `ntf-hero`, `ntf-kpi`, `ntf-chip`, `ntf-row`, `ntf-group`, `ntf-work-card` |
 | messages (`/messages`, centre de messages v2) | `mh2-*` (feuilles `public/css/messages-hub-v2*.css`) | `mh2-conversation`, `mh2-thread`, `mh2-composer`, `mh2-modal` |
 

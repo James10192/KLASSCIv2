@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 /**
- * Avertit le rapporteur d'une demande KLASSCI Care : le support a repondu, ou
+ * Avertit le rapporteur d'une demande d'aide : le support a repondu, ou
  * la demande est resolue / fermee.
  *
  * Toujours dans l'application (cloche). Par e-mail en plus, seulement vers une
@@ -28,6 +28,21 @@ class AvertirDuRetourDuSupport
     {
     }
 
+    /**
+     * « Le support a répondu à « titre » », ou « Votre demande « titre » est
+     * résolue ». Sans titre, la référence le remplace. Partagé avec l'e-mail.
+     *
+     * @param  array<string, mixed>  $resume
+     */
+    public static function titre(array $resume, bool $aRepondu): string
+    {
+        $objet = trim((string) ($resume['titre'] ?? ''));
+        $objet = $objet !== '' ? '« '.mb_strimwidth($objet, 0, 90, '…').' »' : (string) ($resume['reference'] ?? '');
+        $statut = mb_strtolower((string) ($resume['statut']['libelle'] ?? 'mise à jour'), 'UTF-8');
+
+        return $aRepondu ? "Le support a répondu à {$objet}" : "Votre demande {$objet} est {$statut}";
+    }
+
     /** @param  array<string, mixed>  $resume  le resume d'une demande, tel que le Master le rend */
     public function executer(User $user, array $resume, bool $aRepondu, bool $cloturee): void
     {
@@ -37,13 +52,16 @@ class AvertirDuRetourDuSupport
             ? trim((string) ($resume['derniere_reponse']['corps'] ?? ''))
             : '';
 
-        $titre = $aRepondu ? "Le support a répondu · {$reference}" : "Demande ".mb_strtolower((string) $statut, 'UTF-8')." · {$reference}";
+        $titre = self::titre($resume, $aRepondu);
         $message = $corps !== '' && $aRepondu
             ? mb_strimwidth($corps, 0, self::EXTRAIT_CLOCHE, '…')
-            : (string) ($resume['titre'] ?? 'Votre demande au support KLASSCI a été mise à jour.');
+            : 'Votre demande a été mise à jour.';
         if ($cloturee && $aRepondu && $statut) {
             $message .= "\nStatut : {$statut}.";
         }
+        // La personne reconnait sa demande a son titre ; la reference reste
+        // dans le corps, pour l'echange avec l'equipe support.
+        $message .= "\nRéférence : {$reference}";
 
         $this->notifications->createNotification(
             $user,

@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use Illuminate\View\View;
 use Throwable;
 
 /**
@@ -59,16 +60,29 @@ class VerificationCourrielController extends Controller
         ]);
     }
 
-    public function confirmer(Request $request, int $id, string $hash): RedirectResponse
+    /**
+     * Le lien est controle ici plutot que par le middleware `signed` : un
+     * lien expire ou deja depasse doit dire quoi faire, pas rendre un 403.
+     */
+    public function confirmer(Request $request, int $id, string $hash): RedirectResponse|View
     {
         $user = $request->user();
-        abort_unless((int) $user->getKey() === $id && hash_equals(sha1((string) $user->email), $hash), 403);
+        $valide = $request->hasValidSignature()
+            && (int) $user->getKey() === $id
+            && hash_equals(sha1((string) $user->email), $hash);
+
+        if (! $valide) {
+            return view('support.courriel.lien-expire', [
+                'peutRenvoyer' => AdresseJoignable::aVerifier($user),
+                'dejaConfirmee' => AdresseJoignable::estJoignable($user),
+            ]);
+        }
 
         if ($user->email_verified_at === null) {
             $user->forceFill(['email_verified_at' => now()])->save();
         }
 
-        return redirect()->route('dashboard')
-            ->with('success', 'Votre adresse e-mail est confirmée : vous serez averti par e-mail des réponses du support.');
+        return redirect()->route('support.demandes.index')
+            ->with('success', 'Votre adresse e-mail est confirmée. Vous recevrez un e-mail quand le support vous répond.');
     }
 }

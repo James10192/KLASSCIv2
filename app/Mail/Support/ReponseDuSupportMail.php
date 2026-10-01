@@ -2,6 +2,7 @@
 
 namespace App\Mail\Support;
 
+use App\Domain\Support\Services\AvertirDuRetourDuSupport;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -24,8 +25,11 @@ class ReponseDuSupportMail extends Mailable
     public function build()
     {
         $ecole = IdentiteDeLEcole::donnees();
-        $sujet = ($this->donnees['a_repondu'] ? 'Le support a répondu' : 'Votre demande est '.mb_strtolower((string) $this->donnees['statut_libelle']))
-            .' · '.$this->donnees['reference'].' · '.$ecole['schoolName'];
+        $sujet = AvertirDuRetourDuSupport::titre([
+            'reference' => $this->donnees['reference'],
+            'titre' => $this->donnees['titre'],
+            'statut' => ['libelle' => $this->donnees['statut_libelle']],
+        ], (bool) $this->donnees['a_repondu']).' · '.$ecole['schoolName'];
 
         return $this->subject($sujet)
             ->view('esbtp.emails.support.reponse-du-support')

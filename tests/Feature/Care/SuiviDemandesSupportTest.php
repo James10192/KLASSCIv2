@@ -92,11 +92,13 @@ class SuiviDemandesSupportTest extends TestCase
 
         $notification = Notification::sole();
         $this->assertSame($user->id, (int) $notification->user_id);
-        $this->assertStringContainsString('KC-2026-000042', $notification->title);
+        $this->assertSame('Le support a répondu à « Le bouton Valider ne répond plus »', $notification->title);
+        $this->assertStringContainsString('Référence : KC-2026-000042', $notification->message);
         $this->assertStringContainsString('Corrigé, rechargez la page.', $notification->message);
         $this->assertSame(route('support.demandes.show', 'KC-2026-000042', false), $notification->link);
         Mail::assertSent(ReponseDuSupportMail::class, 1);
-        Mail::assertSent(ReponseDuSupportMail::class, fn ($m) => $m->hasTo($user->email));
+        Mail::assertSent(ReponseDuSupportMail::class, fn ($m) => $m->hasTo($user->email)
+            && str_starts_with($m->build()->subject, 'Le support a répondu à « Le bouton Valider ne répond plus »'));
 
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'mis_a_jour_depuis='));
     }

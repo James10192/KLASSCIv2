@@ -87,7 +87,8 @@ class VerificationCourrielSupportTest extends TestCase
             return $mail->hasTo($user->email);
         });
 
-        $this->actingAs($user)->get($lien)->assertRedirect(route('dashboard'));
+        $this->actingAs($user)->get($lien)->assertRedirect(route('support.demandes.index'))
+            ->assertSessionHas('success', 'Votre adresse e-mail est confirmée. Vous recevrez un e-mail quand le support vous répond.');
         $this->assertNotNull($user->fresh()->email_verified_at);
     }
 
@@ -96,8 +97,15 @@ class VerificationCourrielSupportTest extends TestCase
         $user = $this->utilisateur(false);
         $autreAdresse = URL::temporarySignedRoute('support.courriel.confirmer', now()->addHour(), ['id' => $user->id, 'hash' => sha1('autre@ecole.test')]);
 
-        $this->actingAs($user)->get($autreAdresse)->assertForbidden();
-        $this->actingAs($user)->get(route('support.courriel.confirmer', ['id' => $user->id, 'hash' => sha1($user->email)]))->assertForbidden();
+        $this->actingAs($user)->get($autreAdresse)->assertOk()->assertSee('Ce lien a expiré.');
+        $this->actingAs($user)->get(route('support.courriel.confirmer', ['id' => $user->id, 'hash' => sha1($user->email)]))
+            ->assertOk()->assertSee('Ce lien a expiré.')->assertSee('Recevoir un nouveau lien');
+        $this->assertNull($user->fresh()->email_verified_at);
+
+        // Un lien expiré : la même page, pas un 403.
+        $expire = URL::temporarySignedRoute('support.courriel.confirmer', now()->addHour(), ['id' => $user->id, 'hash' => sha1($user->email)]);
+        $this->travel(2)->hours();
+        $this->actingAs($user)->get($expire)->assertOk()->assertSee('Ce lien a expiré.');
         $this->assertNull($user->fresh()->email_verified_at);
     }
 
