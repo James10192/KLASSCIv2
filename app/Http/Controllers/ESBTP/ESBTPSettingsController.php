@@ -912,18 +912,29 @@ class ESBTPSettingsController extends Controller
      * absence remettrait silencieusement une bascule a zero.
      */
     /**
-     * Une cle pointee peut arriver sous quatre formes : telle quelle, avec les
-     * points devenus underscores (ce que fait PHP dans $_POST), et chacune
-     * prefixee de `setting_` (le prefixe du formulaire principal). Sans la
-     * forme prefixee, le bloc du parcours d'inscription n'etait jamais lu.
+     * Une cle pointee arrive telle quelle ou avec ses points devenus
+     * underscores (ce que fait PHP dans $_POST). Le bloc du parcours
+     * d'inscription, lui, prefixe ses champs de `setting_` : sans ces formes,
+     * il n'etait jamais lu.
+     *
+     * Le prefixe est reserve a ces cles. L'etendre a toutes aurait reveille
+     * des controles qui ne voient aujourd'hui que les noms nus (le contraste
+     * des couleurs PDF, poste en `setting_pdf_header_*`) et change sans le dire
+     * ce que la page accepte sur huit instances.
      *
      * @return list<string>
      */
     private function formesSoumises(string $cle): array
     {
         $souligne = str_replace('.', '_', $cle);
+        $formes = [$cle, $souligne];
 
-        return [$cle, $souligne, 'setting_'.$cle, 'setting_'.$souligne];
+        if (in_array($cle, InscriptionWorkflowSettings::cles(), true)) {
+            $formes[] = 'setting_'.$cle;
+            $formes[] = 'setting_'.$souligne;
+        }
+
+        return $formes;
     }
 
     private function valeurSoumise(array $rawInput, string $cle): mixed
@@ -962,7 +973,8 @@ class ESBTPSettingsController extends Controller
                 continue;
             }
 
-            $choisi = trim((string) $this->valeurSoumise($rawInput, $cle));
+            $soumis = $this->valeurSoumise($rawInput, $cle);
+            $choisi = is_string($soumis) ? trim($soumis) : '';
             if (! array_key_exists($choisi, $options)) {
                 return $this->refus($request, "Valeur « {$choisi} » non reconnue pour le parcours d'inscription.");
             }
@@ -982,6 +994,27 @@ class ESBTPSettingsController extends Controller
 
             return (string) Setting::get($cle, '');
         };
+
+        // Le formulaire renvoie ce bloc a chaque enregistrement. On ne juge donc
+        // que ce que l'ecole est en train de changer : un etat deja incoherent
+        // en base (prise de rendez-vous fermee ailleurs) ne doit pas bloquer
+        // l'enregistrement d'un logo ou d'un reglage de bulletin.
+        $change = false;
+        foreach (InscriptionWorkflowSettings::cles() as $cle) {
+            $avant = (string) Setting::get($cle, '');
+            $apres = $valeur($cle);
+            if (in_array($cle, InscriptionWorkflowSettings::booleens(), true)) {
+                $avant = filter_var($avant, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+                $apres = filter_var($apres, FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+            }
+            if (trim($avant) !== trim($apres)) {
+                $change = true;
+                break;
+            }
+        }
+        if (! $change) {
+            return null;
+        }
 
         $message = InscriptionWorkflowSettings::incoherence($valeur);
 

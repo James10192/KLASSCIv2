@@ -133,4 +133,75 @@ class WorkflowInscriptionSettingsSaveTest extends TestCase
         $this->assertSame('1', Setting::where('key', W::ENABLED)->value('value'));
         $this->assertSame(W::MODE_CAISSE_AVANT_PIECES, Setting::where('key', W::MODE)->value('value'));
     }
+
+    public function test_un_etat_deja_incoherent_ne_bloque_pas_l_enregistrement_du_reste(): void
+    {
+        // Parcours actif exigeant un rendez-vous, prise de rendez-vous fermée
+        // ailleurs : l'école enregistre autre chose, la page doit l'accepter.
+        $this->ouvrirRendezVous(false);
+        app(W::class)->ensureDefaults();
+        Setting::where('key', W::ENABLED)->update(['value' => '1']);
+        Setting::where('key', W::MODE)->update(['value' => W::MODE_CAISSE_AVANT_PIECES]);
+        Setting::updateOrCreate(['key' => 'school_name'], ['value' => 'Avant', 'type' => 'string', 'group' => 'general', 'is_required' => false]);
+
+        $this->actingAs($this->superAdmin())
+            ->put(route('esbtp.settings.update'), $this->formulaire([
+                W::ENABLED => '1',
+                W::MODE => W::MODE_CAISSE_AVANT_PIECES,
+                W::ACCOUNT_ACTIVATION_STEP => W::ACTIVATION_AFTER_PAYMENT,
+                W::CLASS_CHOICE_ACTOR => W::CLASS_ACTOR_ADMIN,
+                W::REQUIRE_RDV => '1',
+                W::CLASS_CHOICE_ONCE => '1',
+                W::NOTIFY_EMAIL => '1',
+                W::NOTIFY_WHATSAPP => '1',
+            ]) + ['setting_school_name' => 'Après'])
+            ->assertSessionHasNoErrors()
+            ->assertSessionMissing('error');
+
+        $this->assertSame('Après', Setting::where('key', 'school_name')->value('value'));
+    }
+
+    public function test_un_choix_poste_en_liste_est_refuse_sans_erreur_serveur(): void
+    {
+        $this->ouvrirRendezVous(true);
+        app(W::class)->ensureDefaults();
+
+        $reponse = $this->actingAs($this->superAdmin())
+            ->put(route('esbtp.settings.update'), ['settings_save_display' => '1', 'setting_inscriptions_workflow_mode' => ['x']]);
+
+        $this->assertLessThan(500, $reponse->getStatusCode());
+        $this->assertSame(W::MODE_LEGACY, Setting::where('key', W::MODE)->value('value'));
+    }
+
+    public function test_la_page_rendez_vous_refuse_de_fermer_la_prise_sous_un_parcours_qui_l_exige(): void
+    {
+        $this->withoutMiddleware([
+            \App\Http\Middleware\CheckInstalled::class,
+            \App\Http\Middleware\EnsureInstalled::class,
+            \App\Http\Middleware\PaywallMiddleware::class,
+        ]);
+        foreach (['admin.access', 'inscriptions.rdv.view', 'inscriptions.rdv.configure'] as $p) {
+            Permission::findOrCreate($p, 'web');
+        }
+        $gestionnaire = User::factory()->create();
+        $gestionnaire->givePermissionTo(['admin.access', 'inscriptions.rdv.view', 'inscriptions.rdv.configure']);
+
+        $this->ouvrirRendezVous(true);
+        app(W::class)->ensureDefaults();
+        Setting::where('key', W::ENABLED)->update(['value' => '1']);
+        Setting::where('key', W::MODE)->update(['value' => W::MODE_CAISSE_AVANT_PIECES]);
+
+        // Case décochée : absente de la requête.
+        $this->actingAs($gestionnaire)
+            ->postJson(route('esbtp.rendez-vous.reglages'), ['inscriptions_rdv_duree_minutes' => '30'])
+            ->assertStatus(422);
+        $this->assertSame('1', Setting::where('key', RendezVousReglages::ENABLED)->value('value'));
+
+        // Sans parcours qui l'exige, la fermeture reste possible.
+        Setting::where('key', W::REQUIRE_RDV)->first()->update(['value' => '0']);
+        $this->actingAs($gestionnaire)
+            ->postJson(route('esbtp.rendez-vous.reglages'), ['inscriptions_rdv_duree_minutes' => '30'])
+            ->assertOk();
+        $this->assertSame('0', Setting::where('key', RendezVousReglages::ENABLED)->value('value'));
+    }
 }

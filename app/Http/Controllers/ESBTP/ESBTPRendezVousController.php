@@ -53,6 +53,17 @@ class ESBTPRendezVousController extends Controller
         $brut = $request->all();
         $auteur = auth()->id();
 
+        // Fermer la prise de rendez-vous sous un parcours d'inscription qui
+        // l'exige bloquerait chaque dossier au guichet : meme refus qu'a
+        // l'ecran des parametres et au CLI, lu dans la meme classe.
+        $rdvOuvert = filter_var($brut[RendezVousReglages::ENABLED] ?? $brut[str_replace('.', '_', RendezVousReglages::ENABLED)] ?? false, FILTER_VALIDATE_BOOLEAN);
+        $incoherence = \App\Services\Admissions\InscriptionWorkflowSettings::incoherence(
+            fn (string $cle): string => $cle === RendezVousReglages::ENABLED ? ($rdvOuvert ? '1' : '0') : (string) Setting::get($cle, '')
+        );
+        if ($incoherence !== null) {
+            return response()->json(['message' => $incoherence], 422);
+        }
+
         // Une tolerance illisible retomberait en silence sur 15 minutes.
         $grace = $brut[RendezVousReglages::GRACE] ?? $brut[str_replace('.', '_', RendezVousReglages::GRACE)] ?? null;
         if (is_string($grace) && trim($grace) !== '' && ! ctype_digit(trim($grace))) {

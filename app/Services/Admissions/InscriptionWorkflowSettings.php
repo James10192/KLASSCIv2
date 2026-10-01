@@ -224,6 +224,12 @@ final class InscriptionWorkflowSettings
         return [self::ENABLED, self::REQUIRE_RDV, self::CLASS_CHOICE_ONCE, self::NOTIFY_EMAIL, self::NOTIFY_WHATSAPP];
     }
 
+    /** @return list<string> toutes les clés du parcours, cases et choix. */
+    public static function cles(): array
+    {
+        return array_merge(self::booleens(), array_keys(self::choix()));
+    }
+
     /**
      * Les réglages à choix fermé, avec leurs choix possibles. Une valeur hors
      * liste est refusée à l'écriture : la relire en retombant sur le défaut
