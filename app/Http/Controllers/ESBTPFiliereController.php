@@ -99,11 +99,6 @@ class ESBTPFiliereController extends Controller
         $filiere->parent_id = $request->parent_id;
         $filiere->is_tronc_commun = $request->boolean('is_tronc_commun');
         $filiere->semestres_tronc_commun = $request->input('semestres_tronc_commun', 1);
-        // Une option ne peut pas être un tronc commun : la case serait cochée
-        // en base et sans effet (isTroncCommun() exige une filière principale).
-        if ($refus = app(ConfigurationTroncCommun::class)->refusMarquage($filiere, (bool) $filiere->is_tronc_commun)) {
-            return redirect()->back()->with('error', $refus)->withInput();
-        }
         $filiere->save();
 
         // Handle relations
@@ -357,11 +352,6 @@ class ESBTPFiliereController extends Controller
         $filiere->parent_id = $request->parent_id;
         $filiere->is_tronc_commun = $request->boolean('is_tronc_commun');
         $filiere->semestres_tronc_commun = $request->input('semestres_tronc_commun', 1);
-        // Une option ne peut pas être un tronc commun : la case serait cochée
-        // en base et sans effet (isTroncCommun() exige une filière principale).
-        if ($refus = app(ConfigurationTroncCommun::class)->refusMarquage($filiere, (bool) $filiere->is_tronc_commun)) {
-            return redirect()->back()->with('error', $refus)->withInput();
-        }
         $filiere->save();
 
         // Update relations

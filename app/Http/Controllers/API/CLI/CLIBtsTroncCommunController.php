@@ -343,9 +343,9 @@ class CLIBtsTroncCommunController extends BaseApiController
 
         $configuration = app(ConfigurationTroncCommun::class);
         $troncCommun = (bool) ($validated['is_tronc_commun'] ?? true);
-        if ($refus = $configuration->refusMarquage($filiere, $troncCommun)) {
-            return $this->errorResponse($refus, [], 422);
-        }
+        // Une option peut être un tronc commun secondaire (décision enregistrée) :
+        // on prévient, on ne refuse pas.
+        $avertissements = $configuration->avertissementsMarquage($filiere, $troncCommun);
         $configuration->marquerFiliere($filiere, $troncCommun, isset($validated['semestres_tronc_commun']) ? (int) $validated['semestres_tronc_commun'] : null);
 
         return $this->successResponse([
@@ -355,6 +355,7 @@ class CLIBtsTroncCommunController extends BaseApiController
                 'is_tronc_commun' => (bool) $filiere->is_tronc_commun,
                 'semestres_tronc_commun' => (int) $filiere->semestres_tronc_commun,
             ],
+            'avertissements' => $avertissements,
         ], 'BTS TC filiere updated');
     }
 

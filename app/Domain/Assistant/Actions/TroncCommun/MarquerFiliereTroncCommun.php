@@ -69,9 +69,6 @@ class MarquerFiliereTroncCommun extends ActionAgent
         if ($semestres !== null && ($semestres < 1 || $semestres > 6)) {
             $manques[] = 'Le nombre de semestres communs va de 1 à 6.';
         }
-        if ($refus = app(ConfigurationTroncCommun::class)->refusMarquage($filiere, $troncCommun)) {
-            $manques[] = $refus;
-        }
         $semestresApres = $semestres ?? ((int) $filiere->semestres_tronc_commun ?: 1);
         if ($manques === [] && (bool) $filiere->is_tronc_commun === $troncCommun && (int) $filiere->semestres_tronc_commun === $semestresApres) {
             $manques[] = "{$filiere->name} est déjà dans cet état : rien à changer.";
@@ -80,8 +77,9 @@ class MarquerFiliereTroncCommun extends ActionAgent
             return new Proposition(titre: $titre, resume: '', manques: $manques);
         }
 
-        $avertissements = [];
-        if (! $troncCommun && $filiere->is_tronc_commun) {
+        // Une option peut être un tronc commun secondaire : prévenu, pas refusé.
+        $avertissements = app(ConfigurationTroncCommun::class)->avertissementsMarquage($filiere, $troncCommun);
+        if (! $troncCommun && $filiere->is_tronc_commun && $filiere->parent_id === null) {
             $classes = ESBTPClasse::where('filiere_id', $filiere->id)->pluck('id');
             $phases = ESBTPInscriptionPhase::whereIn('classe_id', $classes)->where('type_phase', ESBTPInscriptionPhase::TYPE_TRONC_COMMUN)->where('is_active', true)->count();
             $avertissements[] = "Ses classes ne proposeront plus d'orientation vers une spécialité.".($phases > 0 ? " {$phases} étudiant(s) y sont encore en phase de tronc commun." : '');

@@ -268,7 +268,6 @@ class NananLotBTest extends TestCase
 
         $this->assertStringContainsString('marquer', $this->manques(app(MarquerFiliereTroncCommun::class)->executeAuthorized(['filiere' => 'LBMK'], $this->admin)));
         $this->assertStringContainsString('semestres', $this->manques(app(MarquerFiliereTroncCommun::class)->executeAuthorized(['filiere' => 'LBMK', 'tronc_commun' => true], $this->admin)));
-        $this->assertStringContainsString('option', $this->manques(app(MarquerFiliereTroncCommun::class)->executeAuthorized(['filiere' => 'LBOPT', 'tronc_commun' => true, 'semestres' => 2], $this->admin)));
 
         $r = app(MarquerFiliereTroncCommun::class)->executeAuthorized(['filiere' => 'LBMK', 'tronc_commun' => true, 'semestres' => 2], $this->admin);
         $this->assertFalse((bool) $f->fresh()->is_tronc_commun, 'rien avant Valider');
@@ -277,7 +276,26 @@ class NananLotBTest extends TestCase
         $this->assertSame(2, (int) $f->fresh()->semestres_tronc_commun);
 
         Sanctum::actingAs($this->admin, ['cli:admin']);
-        $this->postJson("/api/cli/bts-tc/filieres/{$option->id}/mark-tronc-commun", ['is_tronc_commun' => true])->assertStatus(422);
+        $this->postJson("/api/cli/bts-tc/filieres/{$option->id}/mark-tronc-commun", ['is_tronc_commun' => true])
+            ->assertOk()->assertJsonPath('data.avertissements.0', fn ($t) => str_contains($t, 'tronc commun secondaire'));
+        $this->assertTrue((bool) $option->fresh()->is_tronc_commun);
+    }
+
+    /**
+     * Tronc commun secondaire (décision enregistrée, edit.blade.php) : Nanan ne
+     * refuse pas de marquer une option, elle prévient de ce qui change.
+     */
+    public function test_marquer_une_option_previent_du_tronc_commun_secondaire(): void
+    {
+        $parent = ESBTPFiliere::factory()->create(['code' => 'LBSEP', 'name' => 'Génie civil']);
+        $option = ESBTPFiliere::factory()->create(['code' => 'LBSEO', 'parent_id' => $parent->id]);
+
+        $r = app(MarquerFiliereTroncCommun::class)->executeAuthorized(['filiere' => 'LBSEO', 'tronc_commun' => true, 'semestres' => 2], $this->admin);
+        $avertissements = implode(' ', $r['widget']['avertissements'] ?? []);
+        $this->assertStringContainsString('tronc commun secondaire rattaché à Génie civil', $avertissements);
+        $this->assertStringContainsString('à orienter', $avertissements);
+        $this->valider($r);
+        $this->assertTrue((bool) $option->fresh()->is_tronc_commun);
     }
 
     public function test_ouvrir_des_sorties_depuis_une_classe_de_tronc_commun(): void
@@ -476,23 +494,21 @@ class NananLotBTest extends TestCase
         $this->assertSame(0, ESBTPClasseOrientationTarget::where('source_classe_id', $classeTc->id)->count());
     }
 
-    /** S2 : l'écran de modification d'une filière ne marque pas une option tronc commun. */
-    public function test_l_ecran_filiere_refuse_une_option_tronc_commun(): void
+    /**
+     * Une option déjà marquée tronc commun (cas réel : GBAT à l'ESBTP Yakro) se
+     * modifie normalement : l'écran ne refuse pas le tronc commun secondaire.
+     */
+    public function test_l_ecran_modifie_une_option_deja_tronc_commun(): void
     {
         $parent = ESBTPFiliere::factory()->create(['code' => 'LBPAR']);
-        $option = ESBTPFiliere::factory()->create(['code' => 'LBOPX', 'parent_id' => $parent->id]);
+        $option = ESBTPFiliere::factory()->create(['code' => 'LBOPX', 'parent_id' => $parent->id, 'is_tronc_commun' => true]);
 
         $this->actingAs($this->admin)->put("/esbtp/filieres/{$option->id}", [
-            'name' => $option->name, 'code' => 'LBOPX', 'is_active' => 1, 'parent_id' => $parent->id, 'is_tronc_commun' => 1,
-        ])->assertSessionHas('error');
+            'name' => 'Nom corrigé', 'code' => 'LBOPX', 'is_active' => 1, 'parent_id' => $parent->id, 'is_tronc_commun' => 1,
+        ])->assertSessionHasNoErrors()->assertSessionMissing('error')->assertRedirect(route('esbtp.filieres.index'));
 
-        $this->assertFalse((bool) $option->fresh()->is_tronc_commun);
-
-        // Et à la création, par le même refus.
-        $this->actingAs($this->admin)->post('/esbtp/filieres', [
-            'name' => 'Option neuve', 'code' => 'LBOPN', 'is_active' => 1, 'parent_id' => $parent->id, 'is_tronc_commun' => 1,
-        ])->assertSessionHas('error');
-        $this->assertSame(0, ESBTPFiliere::where('code', 'LBOPN')->count());
+        $this->assertSame('Nom corrigé', $option->fresh()->name);
+        $this->assertTrue((bool) $option->fresh()->is_tronc_commun);
     }
 
     /** S3 : le libellé non donné reste ; le type LMD se reconnaît sans la casse. */

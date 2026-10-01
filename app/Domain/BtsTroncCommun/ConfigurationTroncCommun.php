@@ -24,16 +24,36 @@ use App\Models\ESBTPFiliere;
  */
 class ConfigurationTroncCommun
 {
-    /** Pourquoi une filière ne peut pas être marquée tronc commun, ou null. */
-    public function refusMarquage(ESBTPFiliere $filiere, bool $troncCommun): ?string
+    /**
+     * Ce qu'il faut dire avant de marquer (ou démarquer) une OPTION comme tronc
+     * commun. Ce n'est PAS un refus : c'est une décision enregistrée (Marcel,
+     * juin 2026, commentaire de esbtp/filieres/edit.blade.php « tronc commun
+     * secondaire ») qu'une filière rattachée à un parent puisse être un tronc
+     * commun secondaire, et des écoles en ont en production (ESBTP Yakro, GBAT,
+     * cité dans BtsOrientationTargetController::index).
+     *
+     * Pas « sans effet » non plus : isTroncCommun() exige une filière
+     * principale, mais plusieurs lecteurs lisent la colonne brute
+     * is_tronc_commun — ESBTPClasse (classe tronc commun du parent),
+     * TroncCommunService (étudiants à orienter), BtsOrientationService
+     * (resynchronisation des phases) et la CLI des matières.
+     *
+     * @return string[]
+     */
+    public function avertissementsMarquage(ESBTPFiliere $filiere, bool $troncCommun): array
     {
-        // isTroncCommun() exige une filière principale : marquée sur une option,
-        // la case serait cochée en base et sans aucun effet.
-        if ($troncCommun && $filiere->parent_id !== null) {
-            return "{$filiere->name} est une option d'une autre filière : seule une filière principale peut être un tronc commun.";
+        if ($filiere->parent_id === null || $troncCommun === (bool) $filiere->is_tronc_commun) {
+            return [];
+        }
+        $parent = $filiere->parent()->value('name') ?? ('#'.$filiere->parent_id);
+        if (! $troncCommun) {
+            return ["{$filiere->name} est un tronc commun secondaire rattaché à {$parent} : en retirant la marque, ses étudiants ne seront plus listés parmi ceux à orienter, ses classes ne seront plus vues comme classes de tronc commun du parent, et la CLI des matières la refusera comme tronc commun."];
         }
 
-        return null;
+        return [
+            "{$filiere->name} deviendra un tronc commun secondaire rattaché à {$parent}.",
+            "Ce qui change : ses étudiants apparaîtront parmi ceux à orienter, ses classes pourront être reprises comme classes de tronc commun du parent, la resynchronisation des phases et la CLI des matières la traiteront comme tronc commun. L'écran d'orientation, lui, ne la propose pas comme tronc commun principal.",
+        ];
     }
 
     public function marquerFiliere(ESBTPFiliere $filiere, bool $troncCommun, ?int $semestres = null): ESBTPFiliere
