@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ESBTP;
 
+use App\Domain\Reglages\ModificationDeReglages;
 use App\Helpers\SettingsHelper;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -1093,17 +1094,9 @@ class ESBTPSettingsController extends Controller
                 ? $this->valeurSoumise($rawInput, $cleTexte)
                 : Setting::get($cleTexte);
 
-            $fond = mb_strtolower(trim((string) $fond));
-            $texte = mb_strtolower(trim((string) $texte));
-
-            if ($fond === '' || $texte === '' || $fond !== $texte) {
-                continue;
+            if (($message = ModificationDeReglages::refusCouleurs($fond, $texte, $ou)) !== null) {
+                return $this->refus($request, $message);
             }
-
-            return $this->refus(
-                $request,
-                "Le texte et le fond de {$ou} ont la meme couleur ({$fond}) : le texte serait invisible a l'impression. Choisissez une couleur de texte contrastee."
-            );
         }
 
         foreach ($reglagesDate as $cle) {
@@ -1111,16 +1104,9 @@ class ESBTPSettingsController extends Controller
                 continue;
             }
 
-            $valeur = $this->valeurSoumise($rawInput, $cle);
-            $valeur = is_string($valeur) ? trim($valeur) : '';
-
-            if ($valeur === '' || PortailReinscriptionService::interpreterDateIso($valeur) !== null) {
-                continue;
+            if (($message = ModificationDeReglages::refusDate($this->valeurSoumise($rawInput, $cle))) !== null) {
+                return $this->refus($request, $message);
             }
-
-            $message = "La date « {$valeur} » est invalide. Format attendu : AAAA-MM-JJ.";
-
-            return $this->refus($request, $message);
         }
 
         if (($refus = $this->refuserAnneeCibleInconnue($request)) !== null) {
@@ -1169,10 +1155,6 @@ class ESBTPSettingsController extends Controller
             return null;
         }
 
-        if ((string) $this->valeurSoumise($rawInput, $cleCanal) !== '1') {
-            return null;
-        }
-
         $cleAnnee = PortailReinscriptionService::REGLAGE_ANNEE_CIBLE;
 
         // L'annee peut venir du formulaire courant OU d'un enregistrement
@@ -1181,14 +1163,9 @@ class ESBTPSettingsController extends Controller
             ? $this->valeurSoumise($rawInput, $cleAnnee)
             : SettingsHelper::get($cleAnnee, '');
 
-        if (trim((string) (is_scalar($annee) ? $annee : '')) !== '') {
-            return null;
-        }
+        $message = ModificationDeReglages::refusCandidaturesSansAnnee((string) $this->valeurSoumise($rawInput, $cleCanal), $annee);
 
-        return $this->refus(
-            $request,
-            "Choisissez l'année visée par les inscriptions avant d'ouvrir les candidatures des nouveaux étudiants : sans elle, le portail refuse toutes les candidatures."
-        );
+        return $message === null ? null : $this->refus($request, $message);
     }
 
     /**
@@ -1208,15 +1185,10 @@ class ESBTPSettingsController extends Controller
             return null;
         }
 
-        $valeur = $this->valeurSoumise($rawInput, $cle);
-        $valeur = is_scalar($valeur) ? trim((string) $valeur) : '';
-
         // Vide est le cas normal : « l'annee courante ».
-        if ($valeur === '' || ESBTPAnneeUniversitaire::whereKey((int) $valeur)->exists()) {
-            return null;
-        }
+        $message = ModificationDeReglages::refusAnneeCible($this->valeurSoumise($rawInput, $cle));
 
-        return $this->refus($request, "L'année universitaire choisie pour les inscriptions n'existe pas.");
+        return $message === null ? null : $this->refus($request, $message);
     }
 
     private function refus(Request $request, string $message)

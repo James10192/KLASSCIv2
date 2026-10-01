@@ -7,6 +7,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPRdvCreneau;
 use App\Services\Reinscription\PortailReinscriptionService;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class GenerateurCreneaux
@@ -19,80 +20,120 @@ class GenerateurCreneaux
 
     public function generer(?Carbon $maintenant = null): RapportGeneration
     {
-        $regle = $this->reglages->pourGeneration();
-        $maintenant = $maintenant?->copy() ?? Carbon::now();
-        $annee = $this->anneeCible();
+        [$regle, $annee, $clesTheoriques] = $this->cadre($maintenant);
+        $rapport = null;
 
-        $theoriques = self::theoriques($regle, $maintenant);
-        $clesTheoriques = [];
-        foreach ($theoriques as $slot) {
-            $clesTheoriques[$slot['date'].'|'.$slot['heure_debut']] = $slot;
-        }
+        DB::transaction(function () use ($annee, $clesTheoriques, $regle, &$rapport) {
+            $plan = $this->plan($this->existants($annee, $regle, true), $clesTheoriques, $regle->capacite);
 
-        $crees = 0;
-        $misAJour = 0;
-        $fermes = 0;
-        $conserves = 0;
-
-        DB::transaction(function () use ($annee, $clesTheoriques, $regle, &$crees, &$misAJour, &$fermes, &$conserves) {
-            $existants = ESBTPRdvCreneau::query()
-                ->where('annee_universitaire_id', $annee->id)
-                ->whereDate('date', '>=', $regle->plancher->toDateString())
-                ->whereDate('date', '<=', $regle->fermeture->toDateString())
-                ->lockForUpdate()
-                ->get()
-                ->keyBy(fn (ESBTPRdvCreneau $c) => $c->date->toDateString().'|'.$c->heureDebutHi());
-
-            foreach ($clesTheoriques as $cle => $slot) {
-                $existant = $existants->get($cle);
-
-                if ($existant === null) {
-                    ESBTPRdvCreneau::create([
-                        'annee_universitaire_id' => $annee->id,
-                        'date' => $slot['date'],
-                        'heure_debut' => $slot['heure_debut'],
-                        'heure_fin' => $slot['heure_fin'],
-                        'capacite' => $regle->capacite,
-                        'ouvert' => true,
-                    ]);
-                    $crees++;
-
-                    continue;
-                }
-
-                if ($existant->estOccupe()) {
-                    $conserves++;
-
-                    continue;
-                }
-
+            foreach ($plan['a_creer'] as $slot) {
+                ESBTPRdvCreneau::create([
+                    'annee_universitaire_id' => $annee->id,
+                    'date' => $slot['date'],
+                    'heure_debut' => $slot['heure_debut'],
+                    'heure_fin' => $slot['heure_fin'],
+                    'capacite' => $regle->capacite,
+                    'ouvert' => true,
+                ]);
+            }
+            foreach ($plan['a_mettre_a_jour'] as [$existant, $slot]) {
                 $existant->update([
                     'heure_fin' => $slot['heure_fin'],
                     'capacite' => $regle->capacite,
                     'ouvert' => true,
                 ]);
-                $misAJour++;
+            }
+            foreach ($plan['a_fermer'] as $creneau) {
+                $creneau->update(['ouvert' => false]);
             }
 
-            foreach ($existants as $cle => $creneau) {
-                if (isset($clesTheoriques[$cle])) {
-                    continue;
-                }
-
-                if ($creneau->estOccupe()) {
-                    $conserves++;
-
-                    continue;
-                }
-
-                if ($creneau->ouvert) {
-                    $creneau->update(['ouvert' => false]);
-                    $fermes++;
-                }
-            }
+            $rapport = $this->rapport($plan);
         });
 
-        return new RapportGeneration($crees, $misAJour, $fermes, $conserves);
+        return $rapport;
+    }
+
+    /**
+     * Ce que generer() ferait, sans rien ecrire : le meme plan, lu sans verrou.
+     * Sert a montrer la generation avant de la faire (Nanan, « proposer puis
+     * Valider ») ; generer() refait le plan sous verrou au moment d'ecrire.
+     */
+    public function simuler(?Carbon $maintenant = null): RapportGeneration
+    {
+        [$regle, $annee, $clesTheoriques] = $this->cadre($maintenant);
+
+        return $this->rapport($this->plan($this->existants($annee, $regle, false), $clesTheoriques, $regle->capacite));
+    }
+
+    /** @return array{0: CreneauRegle, 1: ESBTPAnneeUniversitaire, 2: array<string, array{date: string, heure_debut: string, heure_fin: string}>} */
+    private function cadre(?Carbon $maintenant): array
+    {
+        $regle = $this->reglages->pourGeneration();
+        $maintenant = $maintenant?->copy() ?? Carbon::now();
+        $annee = $this->anneeCible();
+
+        $clesTheoriques = [];
+        foreach (self::theoriques($regle, $maintenant) as $slot) {
+            $clesTheoriques[$slot['date'].'|'.$slot['heure_debut']] = $slot;
+        }
+
+        return [$regle, $annee, $clesTheoriques];
+    }
+
+    private function existants(ESBTPAnneeUniversitaire $annee, CreneauRegle $regle, bool $verrou): Collection
+    {
+        return ESBTPRdvCreneau::query()
+            ->where('annee_universitaire_id', $annee->id)
+            ->whereDate('date', '>=', $regle->plancher->toDateString())
+            ->whereDate('date', '<=', $regle->fermeture->toDateString())
+            ->when($verrou, fn ($q) => $q->lockForUpdate())
+            ->get()
+            ->keyBy(fn (ESBTPRdvCreneau $c) => $c->date->toDateString().'|'.$c->heureDebutHi());
+    }
+
+    /**
+     * Un creneau deja reserve n'est jamais retouche ; un creneau libre hors de la
+     * regle est ferme, jamais supprime.
+     *
+     * @return array{a_creer: list<array>, a_mettre_a_jour: list<array{0: ESBTPRdvCreneau, 1: array}>, a_fermer: list<ESBTPRdvCreneau>, conserves: int, inchanges: int}
+     */
+    private function plan(Collection $existants, array $clesTheoriques, int $capacite): array
+    {
+        $plan = ['a_creer' => [], 'a_mettre_a_jour' => [], 'a_fermer' => [], 'conserves' => 0, 'inchanges' => 0];
+
+        foreach ($clesTheoriques as $cle => $slot) {
+            $existant = $existants->get($cle);
+            if ($existant === null) {
+                $plan['a_creer'][] = $slot;
+            } elseif ($existant->estOccupe()) {
+                $plan['conserves']++;
+            } else {
+                $plan['a_mettre_a_jour'][] = [$existant, $slot];
+                // Deja conforme : « mis a jour » sans que rien change. Compte a
+                // part, pour qu'un apercu puisse dire « deja a jour ».
+                if ($existant->ouvert && (int) $existant->capacite === $capacite && $existant->heureFinHi() === $slot['heure_fin']) {
+                    $plan['inchanges']++;
+                }
+            }
+        }
+
+        foreach ($existants as $cle => $creneau) {
+            if (isset($clesTheoriques[$cle])) {
+                continue;
+            }
+            if ($creneau->estOccupe()) {
+                $plan['conserves']++;
+            } elseif ($creneau->ouvert) {
+                $plan['a_fermer'][] = $creneau;
+            }
+        }
+
+        return $plan;
+    }
+
+    private function rapport(array $plan): RapportGeneration
+    {
+        return new RapportGeneration(count($plan['a_creer']), count($plan['a_mettre_a_jour']), count($plan['a_fermer']), $plan['conserves'], $plan['inchanges']);
     }
 
     /**

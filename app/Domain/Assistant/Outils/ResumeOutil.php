@@ -52,6 +52,8 @@ class ResumeOutil
         'get_setup_guide' => 'Guide préparé',
         'diagnostiquer_reinscription' => 'Dossier de réinscription lu',
         'chercher_dans_piece' => 'Recherche faite dans le fichier',
+        'lire_rendez_vous' => 'État des rendez-vous lu',
+        'lire_reglages' => 'Réglages lus',
         'afficher_graphique' => 'Graphique affiché',
         'afficher_tableau' => 'Tableau affiché',
         'afficher_diagramme' => 'Diagramme affiché',

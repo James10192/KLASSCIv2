@@ -117,6 +117,45 @@ return [
             'all_permissions' => ['frais.souscriptions.ajuster'],
             'libelle' => 'Préparation de l’ajustement du montant dû…',
         ],
+        // Réglages : les droits de l'écran des paramètres (/esbtp/settings).
+        'lire_reglages' => [
+            'enabled' => true,
+            'all_permissions' => ['system.manage'],
+            'libelle' => 'Lecture des réglages…',
+        ],
+        'proposer_modification_reglages' => [
+            'enabled' => true,
+            'all_permissions' => ['system.manage'],
+            'libelle' => 'Préparation de la modification des réglages…',
+            'suggestion' => 'Change le nom du directeur sur les documents',
+        ],
+        'proposer_image_reglage' => [
+            'enabled' => true,
+            'all_permissions' => ['system.manage'],
+            'libelle' => 'Préparation de la nouvelle image…',
+        ],
+        // Rendez-vous d'inscription : les droits de l'écran des rendez-vous.
+        'lire_rendez_vous' => [
+            'enabled' => true,
+            'any_permissions' => ['inscriptions.rdv.view', 'inscriptions.rdv.manage'],
+            'libelle' => 'Lecture des rendez-vous…',
+            'suggestion' => 'Où en sont les rendez-vous d’inscription ?',
+        ],
+        'proposer_generation_creneaux_rdv' => [
+            'enabled' => true,
+            'all_permissions' => ['inscriptions.rdv.manage'],
+            'libelle' => 'Préparation des créneaux de rendez-vous…',
+        ],
+        'proposer_placement_dossiers_rdv' => [
+            'enabled' => true,
+            'all_permissions' => ['inscriptions.rdv.manage'],
+            'libelle' => 'Préparation du placement des dossiers…',
+        ],
+        'proposer_convocations_rdv' => [
+            'enabled' => true,
+            'all_permissions' => ['inscriptions.rdv.manage'],
+            'libelle' => 'Préparation des convocations…',
+        ],
         'search_attendances' => [
             'enabled' => true,
             'any_permissions' => ['attendances.view'],

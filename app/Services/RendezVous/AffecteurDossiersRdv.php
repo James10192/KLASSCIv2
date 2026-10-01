@@ -157,6 +157,61 @@ class AffecteurDossiersRdv
     }
 
     /**
+     * Ce que placer() ferait, sans rien ecrire : memes refus, memes dossiers,
+     * meme ordre, memes places libres consommees une a une. Sert a montrer le
+     * placement avant de le faire (Nanan) ; placer() relit tout sous ses verrous.
+     *
+     * `dossiers` liste, dans l'ordre, les dossiers qui seraient places (cle
+     * stable « candidature:12 » / « reinscription:7 ») : c'est l'etat que la
+     * validation compare.
+     *
+     * @return array{places: int, a_prevenir: int, sans_creneau: int, deja: int, refus: ?string, places_libres: int, dossiers: list<string>}
+     */
+    public function apercu(): array
+    {
+        $rapport = ['places' => 0, 'a_prevenir' => 0, 'sans_creneau' => 0, 'deja' => 0, 'refus' => null, 'places_libres' => 0, 'dossiers' => []];
+
+        if (! $this->reglages->enabled()) {
+            $rapport['refus'] = 'La prise de rendez-vous est fermée. Ouvrez-la dans les réglages avant de placer les dossiers.';
+
+            return $rapport;
+        }
+
+        $libres = array_sum($this->catalogue->placesLibres());
+        $rapport['places_libres'] = $libres;
+        if ($libres <= 0) {
+            $rapport['refus'] = 'Aucune place libre sur les créneaux à venir. Générez ou ouvrez des créneaux d\'abord.';
+
+            return $rapport;
+        }
+
+        $this->chaquePorteur(function (PorteurDeRendezVous $porteur) use (&$rapport, &$libres) {
+            $existante = $this->reservateur->reservationActive($porteur);
+            if ($existante !== null && $this->dejaTraitee($porteur, $existante)) {
+                $rapport['deja']++;
+
+                return;
+            }
+            if ($existante === null) {
+                if ($libres <= 0) {
+                    $rapport['sans_creneau']++;
+
+                    return;
+                }
+                $libres--;
+            }
+
+            $rapport['places']++;
+            $rapport['dossiers'][] = ($porteur instanceof ESBTPCandidature ? 'candidature:' : 'reinscription:').$porteur->getKey();
+            if (! $this->emailValide($porteur)) {
+                $rapport['a_prevenir']++;
+            }
+        });
+
+        return $rapport;
+    }
+
+    /**
      * La reservation dit elle-meme ou en est sa convocation. `rdv_invite_at`, pose
      * seulement apres un envoi REUSSI, ne suffisait pas : une convocation en
      * attente ou en echec etait reprise a chaque clic, remise a zero de ses

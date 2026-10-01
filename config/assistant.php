@@ -70,6 +70,11 @@ return [
             \App\Domain\Assistant\Actions\Lmd\LierUeAuxParcours::class,
             \App\Domain\Assistant\Actions\Classes\AjouterClasses::class,
             \App\Domain\Assistant\Actions\Classes\ModifierClasses::class,
+            \App\Domain\Assistant\Actions\Reglages\ModifierReglages::class,
+            \App\Domain\Assistant\Actions\Reglages\PoserImageReglage::class,
+            \App\Domain\Assistant\Actions\RendezVous\GenererCreneaux::class,
+            \App\Domain\Assistant\Actions\RendezVous\PlacerDossiers::class,
+            \App\Domain\Assistant\Actions\RendezVous\ConvocationsRdv::class,
         ],
     ],
 
