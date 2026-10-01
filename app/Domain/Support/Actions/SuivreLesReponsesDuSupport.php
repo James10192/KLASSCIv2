@@ -27,6 +27,13 @@ use Throwable;
  *
  * Une erreur du Master remonte avant que le curseur ne bouge : le passage
  * suivant reprend au meme endroit.
+ *
+ * Curseur trop ancien (instance arretee, Master injoignable des semaines) :
+ * le Master refuse un `mis_a_jour_depuis` au-dela de sa limite (30 jours) et
+ * repondrait 422 a chaque passage, pour toujours. Au-dela de
+ * `support.suivi.depuis_jours_max`, on relit donc sans filtre, en s'arretant
+ * a l'ancien curseur cote instance ; rien n'est reinitialise, et ce qui est
+ * deja connu dans DemandeSuivie n'est pas renotifie.
  */
 class SuivreLesReponsesDuSupport
 {
@@ -48,13 +55,17 @@ class SuivreLesReponsesDuSupport
         $initialisation = ! CurseurSupport::existe(CurseurSupport::SUIVI_DEMANDES);
         $curseur = CurseurSupport::lire(CurseurSupport::SUIVI_DEMANDES);
         $depuis = $initialisation || $curseur === null ? null : $curseur->copy()->subMinutes(self::RECOUVREMENT_MINUTES);
+        // Le filtre envoye au Master ; l'arret de lecture, lui, reste $depuis.
+        $filtre = $depuis !== null && $depuis->gte(now()->subDays((int) config('support.suivi.depuis_jours_max', 29)))
+            ? $depuis
+            : null;
 
         $plusRecente = $curseur;
         $lues = 0;
         $averties = 0;
 
         for ($page = 1; $page <= self::PAGES_MAX; $page++) {
-            $reponse = $this->master->demandesModifiees($depuis?->toIso8601String(), $page);
+            $reponse = $this->master->demandesModifiees($filtre?->toIso8601String(), $page);
             $resumes = (array) ($reponse['data'] ?? []);
             $plusAnciennePage = null;
 
@@ -109,12 +120,10 @@ class SuivreLesReponsesDuSupport
             && ! in_array($suivie->statut_code, self::STATUTS_CLOTURES, true);
 
         $rapporteur = User::find((int) ($resume['rapporteur']['id'] ?? 0));
-        $averti = false;
-        if ($avertir && $rapporteur !== null && ($aRepondu || $cloturee)) {
-            $this->avertir->executer($rapporteur, $resume, $aRepondu, $cloturee);
-            $averti = true;
-        }
+        $averti = $avertir && $rapporteur !== null && ($aRepondu || $cloturee);
 
+        // L'etat vu s'enregistre AVANT d'avertir : si l'avertissement leve,
+        // le passage suivant ne renvoie pas une notification deja partie.
         $suivie->fill([
             'user_id' => $rapporteur?->getKey(),
             'statut_code' => $statut,
@@ -122,6 +131,10 @@ class SuivreLesReponsesDuSupport
             'mis_a_jour_le' => self::date($resume['mis_a_jour_le'] ?? null),
             'averti_le' => $averti ? now() : $suivie->averti_le,
         ])->save();
+
+        if ($averti) {
+            $this->avertir->executer($rapporteur, $resume, $aRepondu, $cloturee);
+        }
 
         return $averti;
     }

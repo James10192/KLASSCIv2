@@ -133,4 +133,23 @@ class SuiviDemandesSupportTest extends TestCase
 
         Http::assertNotSent(fn (Request $r) => str_contains($r->url(), '/tickets'));
     }
+    public function test_un_curseur_trop_ancien_relit_sans_filtre_et_n_avertit_que_le_nouveau(): void
+    {
+        $user = $this->utilisateur(true);
+        CurseurSupport::poser(CurseurSupport::SUIVI_DEMANDES, now()->subDays(40));
+        \App\Domain\Support\Models\DemandeSuivie::create([
+            'reference' => 'KC-2026-000042', 'user_id' => $user->id, 'statut_code' => 'EN_ANALYSE',
+            'derniere_reponse_support_le' => '2026-09-20 10:00:00',
+        ]);
+        $connue = $this->resume($user, 'EN_ANALYSE', '2026-09-20T10:00:00+00:00');
+        $nouvelle = array_merge($this->resume($user, 'EN_ANALYSE', now()->subHour()->toIso8601String(), now()->subHour()->toIso8601String()), ['reference' => 'KC-2026-000043']);
+        $this->master([$nouvelle, $connue]);
+
+        $this->artisan('support:suivre-demandes')->assertSuccessful();
+
+        // Le Master refuse un filtre de plus de 30 jours : on n'en envoie pas.
+        Http::assertNotSent(fn (Request $r) => str_contains($r->url(), 'mis_a_jour_depuis'));
+        $this->assertStringContainsString('KC-2026-000043', Notification::sole()->title . Notification::sole()->message);
+        $this->assertTrue(CurseurSupport::lire(CurseurSupport::SUIVI_DEMANDES)->gt(now()->subDays(1)));
+    }
 }

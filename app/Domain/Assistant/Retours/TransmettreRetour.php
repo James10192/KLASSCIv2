@@ -76,11 +76,19 @@ class TransmettreRetour
             return;
         }
 
-        // Jamais essayee : on la remplace, la personne n'a fait que se raviser.
-        if ($courante !== null && $courante->sent_at === null && $courante->abandoned_at === null && (int) $courante->attempts === 0) {
-            $courante->forceFill(['payload' => $charge])->save();
-
-            return;
+        // Jamais essayee ni reservee par un envoi en cours : on la remplace,
+        // la personne n'a fait que se raviser. Mise a jour conditionnelle et
+        // atomique : si la boite d'envoi vient de la reserver
+        // (ViderBoiteEnvoiSupport pose next_attempt_at avant d'appeler le
+        // Master), rien n'est ecrase et une nouvelle version part.
+        if ($courante !== null) {
+            $remplacee = SupportOutbox::whereKey($courante->getKey())
+                ->whereNull('sent_at')->whereNull('abandoned_at')
+                ->where('attempts', 0)->whereNull('next_attempt_at')
+                ->update(['payload' => json_encode($charge), 'updated_at' => now()]);
+            if ($remplacee === 1) {
+                return;
+            }
         }
 
         $retour->care_version++;
@@ -120,8 +128,11 @@ class TransmettreRetour
             'avis' => $retour->avis,
             'raison' => $retour->raison,
             'commentaire' => $retour->commentaire,
-            'question' => mb_substr((string) $question, 0, self::QUESTION_MAX),
-            'reponse' => mb_substr((string) $message->content, 0, self::REPONSE_MAX),
+            // Le Master exige les deux : une reponse reduite a une carte de
+            // proposition, ou sans question avant, partirait vide et serait
+            // refusee (422), donc l'avis abandonne.
+            'question' => mb_substr(self::ouRepli($question, '[sans question]'), 0, self::QUESTION_MAX),
+            'reponse' => mb_substr(self::ouRepli($message->content, self::repliReponse($message)), 0, self::REPONSE_MAX),
             'modele' => $retour->modele,
             // Le chemin seul, sans requete : jamais d'identifiant ni de recherche saisie.
             'page' => $this->page($conversation?->context['last_page_path'] ?? null),
@@ -134,6 +145,39 @@ class TransmettreRetour
             'message_ref' => (string) $message->id,
             'donne_le' => ($retour->updated_at ?? now())->toIso8601String(),
         ];
+    }
+
+    private static function ouRepli(mixed $texte, string $repli): string
+    {
+        $texte = trim((string) $texte);
+
+        return $texte !== '' ? $texte : $repli;
+    }
+
+    /** « [proposition : <titre>] » quand la reponse n'est qu'une carte. */
+    private static function repliReponse(ChatbotMessage $message): string
+    {
+        $titre = self::titreDeCarte($message->display_data);
+
+        return $titre !== null ? '[proposition : '.$titre.']' : '[proposition]';
+    }
+
+    private static function titreDeCarte(mixed $donnees, int $profondeur = 0): ?string
+    {
+        if (! is_array($donnees) || $profondeur > 4) {
+            return null;
+        }
+        if (isset($donnees['titre']) && is_string($donnees['titre']) && trim($donnees['titre']) !== '') {
+            return mb_substr(trim($donnees['titre']), 0, 200);
+        }
+        foreach ($donnees as $valeur) {
+            $titre = self::titreDeCarte($valeur, $profondeur + 1);
+            if ($titre !== null) {
+                return $titre;
+            }
+        }
+
+        return null;
     }
 
     private function page(?string $chemin): ?string

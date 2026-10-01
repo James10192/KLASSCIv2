@@ -176,4 +176,48 @@ class RetourAssistantVersMasterTest extends TestCase
 
         $this->assertSame(0, SupportOutbox::signalements()->count());
     }
+    public function test_une_reponse_reduite_a_une_carte_part_avec_un_repli_et_non_vide(): void
+    {
+        $this->master();
+        ChatbotMessage::where('conversation_id', $this->conversation->id)->where('role', 'user')->delete();
+        $this->reponse->forceFill(['content' => '', 'display_data' => ['widget' => ['kind' => 'approbation', 'titre' => 'Nouvelle évaluation · 1BTS A']]])->save();
+
+        $this->avis(['avis' => 'pas_utile', 'raison' => 'faux']);
+        $this->artisan('support:vider-boite-envoi')->assertSuccessful();
+
+        Http::assertSent(fn (Request $r) => str_ends_with($r->url(), '/retours-assistant')
+            && $r->data()['question'] === '[sans question]'
+            && $r->data()['reponse'] === '[proposition : Nouvelle évaluation · 1BTS A]');
+    }
+
+    public function test_les_signalements_passent_avant_les_avis_et_les_avis_sont_plafonnes(): void
+    {
+        config(['support.boite_envoi.avis_par_passage' => 2]);
+        $this->master();
+        foreach (range(1, 3) as $i) {
+            SupportOutbox::create(['kind' => SupportOutbox::AVIS_ASSISTANT, 'idempotency_key' => (string) Str::uuid(), 'payload' => ['avis' => 'utile']]);
+        }
+        $ticket = SupportOutbox::create(['idempotency_key' => (string) Str::uuid(), 'payload' => ['report' => []]]);
+
+        $this->artisan('support:vider-boite-envoi')->assertSuccessful();
+
+        $this->assertNotNull($ticket->fresh()->sent_at);
+        $this->assertSame(2, SupportOutbox::where('kind', SupportOutbox::AVIS_ASSISTANT)->whereNotNull('sent_at')->count());
+        $envois = collect(Http::recorded())->map(fn ($p) => $p[0]->url())->filter(fn ($u) => ! str_contains($u, 'bootstrap'))->values();
+        $this->assertStringContainsString('/tickets', $envois->first(), 'Le signalement part le premier.');
+    }
+
+    public function test_une_ligne_reservee_par_un_envoi_n_est_pas_remplacee(): void
+    {
+        $this->master();
+        $this->avis(['avis' => 'utile']);
+        $this->assertTrue(SupportOutbox::sole()->reserver());
+
+        $this->avis(['avis' => 'pas_utile', 'raison' => 'faux']);
+
+        $lignes = SupportOutbox::orderBy('id')->get();
+        $this->assertCount(2, $lignes, 'Une nouvelle version part au lieu d\'écraser la charge en route.');
+        $this->assertSame('utile', $lignes[0]->payload['avis']);
+        $this->assertSame('pas_utile', $lignes[1]->payload['avis']);
+    }
 }
