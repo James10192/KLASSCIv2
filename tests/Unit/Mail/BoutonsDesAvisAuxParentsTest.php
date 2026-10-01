@@ -64,7 +64,10 @@ class BoutonsDesAvisAuxParentsTest extends TestCase
             );
             $this->assertStringContainsString('background-image:linear-gradient(', $html, $gabarit);
             $this->assertStringContainsString('<div class="gm-ecran"', $html, $gabarit);
-            $this->assertStringContainsString('Copiez ce lien', $html, "$gabarit : le lien en clair reste offert.");
+            $this->assertStringContainsString('Copiez ce lien', $html, "$gabarit : le lien de secours reste offert.");
+            $this->assertStringContainsString('word-break:break-all;">'.e($url).'</p>', $html, "$gabarit : l'adresse est recopiée en clair, à copier.");
+            $this->assertStringNotContainsString('Ouvrir le lien', $html, "$gabarit : pas de second lien vers la même cible.");
+            $this->assertStringContainsString('<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 8px;">', $html, "$gabarit : bouton en pleine largeur.");
         }
     }
 
@@ -84,7 +87,7 @@ class BoutonsDesAvisAuxParentsTest extends TestCase
         $this->assertStringContainsString("bgcolor=\"$rouge\" style=\"background:$rouge;background-image:linear-gradient($rouge,$rouge)", $html);
         $this->assertStringContainsString('href="https://ecole.test/contact"', $html);
         $this->assertStringContainsString('Contacter le coordinateur', $html);
-        $this->assertSame(1, substr_count($html, 'style="margin:26px 0 10px;"'), 'Un seul bouton plein : le contact est un lien simple.');
+        $this->assertSame(1, substr_count($html, 'style="margin:24px 0 8px;"'), 'Un seul bouton plein : le contact est un lien simple.');
     }
 
     public function test_un_en_tete_a_texte_sombre_retire_la_garde_sauf_sur_le_bouton_rouge(): void

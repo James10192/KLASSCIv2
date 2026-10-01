@@ -25,16 +25,8 @@
      différent, NON vérifiée ici. Tout bouton passe par `partials/bouton`, qui
      seul porte cette garde : n'écrivez pas de `<a>` stylé en bouton. --}}
 @php
-    $logoSrc = null;
-    // Un courriel envoyé par SMTP porte le logo en pièce intégrée, que les
-    // messageries affichent sans demander. Par MailPulse (mailer comme API),
-    // seule l'URL existe : une pièce intégrée y serait retirée.
-    if (! empty($schoolLogoPath) && isset($message) && $message instanceof \Illuminate\Mail\Message && is_file($schoolLogoPath)
-        && ! \App\Mail\Transport\MailPulseTransport::actif()) {
-        $logoSrc = $message->embed($schoolLogoPath);
-    } elseif (! empty($schoolLogoUrl)) {
-        $logoSrc = $schoolLogoUrl;
-    }
+    // Pièce intégrée par SMTP, URL publique par MailPulse : voir SourceDuLogo.
+    $logoSrc = \App\Mail\Support\SourceDuLogo::pour($message ?? null, $schoolLogoPath ?? null, $schoolLogoUrl ?? null);
     $initiale = mb_strtoupper(mb_substr(trim((string) ($schoolName ?? 'K')), 0, 1, 'UTF-8'), 'UTF-8');
 @endphp
 <!DOCTYPE html>
