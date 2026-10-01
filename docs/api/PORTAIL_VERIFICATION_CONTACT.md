@@ -97,6 +97,45 @@ Codes gérés : `201`, `409 whatsapp_indisponible`, `429 retry_after`, `502 envo
 `503 verification_indisponible`. L'identifiant MailPulse est conservé dans
 `esbtp_verifications_contact.mailpulse_verification_id`.
 
+### Vérification inversée
+
+Réglage `inscriptions.portail.verification_whatsapp_inverse`
+(`TenantScolariteSettings::VERIFICATION_WHATSAPP_INVERSE`), **désactivé par défaut**,
+non semé : à poser par l'école. Activé, KLASSCI demande à MailPulse
+`POST /api/v1/verifications` avec `"mode":"reverse"` : rien ne part, MailPulse rend
+`wa_link`, le lien qui ouvre WhatsApp sur le numéro de l'école avec le code déjà saisi.
+La famille l'envoie ; MailPulse approuve sur son message et lui répond.
+
+- Si MailPulse répond `409 inverse_indisponible` (pas de numéro propre à
+  l'application), le code part dans l'autre sens, comme avant.
+- Le lien n'est rendu qu'une fois par MailPulse ; KLASSCI le garde en cache
+  (clé `verif-lien-wa:` + sha256 de la demande) le temps de vie du code. Il
+  contient le code : jamais journalisé.
+- Dépôt et renvoi rendent en plus `lien_whatsapp` quand il existe. Un renvoi
+  refusé (`429`, quota) ne touche pas au lien en cache : la vérification
+  précédente reste utilisable.
+- **Ordre de mise en service** : n'activer le réglage qu'une fois le site public
+  déployé avec l'écran de suivi (bouton WhatsApp et attente). Avant, la famille
+  ne verrait qu'un champ de code qu'aucun message ne remplit.
+
+### `POST /api/portail/email/statut`
+
+Corps : `{"canal":"telephone","demande_id","ip_client"?}`. `canal` est obligatoire
+et vaut `telephone` (toute autre valeur : `422`). `ip_client` est posé par le relais
+du site, jamais par le navigateur : il sert au seau de débit. Seau `catalogue` et non
+`identite` : le site l'appelle toutes les cinq secondes.
+
+| HTTP | Corps | Sens |
+| --- | --- | --- |
+| `202` | `{"verifie":false,"motif":"en_attente","lien_whatsapp"?}` | Le message n'est pas encore arrivé. |
+| `200` | `{"verifie":true,"type"}` | Vérifiée ; la demande est validée comme après un code saisi. |
+| `422` | `{"verifie":false,"motif":"expire"\|"trop_de_tentatives"\|"code_invalide"}` | Code périmé, trop de mauvais codes, ou demande inconnue. |
+| `503` | `{"verifie":false,"motif":"indisponible"}` | MailPulse injoignable : réessayer. |
+
+`POST /api/portail/email/verifier` n'approuve pas une vérification inversée : MailPulse
+refuse de contrôler un code qu'il a laissé afficher (`409 verification_inverse`).
+KLASSCI le rend en `422 code_invalide` sans compter de tentative.
+
 ## Familles déjà en base
 
 `php artisan inscriptions:verifier-familles-sans-email` (simulation par défaut) liste
@@ -112,3 +151,4 @@ de vérification pour un envoi échoué.
 - 2026-09-23 : `contact_a_reconfirmer`, « Confirmer le contact », `retry_after` MailPulse, code WhatsApp de 10 min.
 - 2026-09-23 : une demande visible n'est jamais masquée ; masquage après envoi seulement ; expiration à 48 h ; plafond cumulé de 15 tentatives.
 - 2026-09-24 : **changement de comportement** : vérification derrière le réglage `inscriptions.portail.verification_contact` (désactivé par défaut) ; plus aucun masquage (ni portée globale, ni expiration à 48 h, ni `verification_expiree`) : la demande reste visible, marquée, filtrable.
+- 2026-10-01 : vérification WhatsApp inversée (réglage `verification_whatsapp_inverse`), champ `lien_whatsapp`, route `statut`.
