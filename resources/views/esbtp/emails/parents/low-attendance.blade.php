@@ -23,11 +23,11 @@
     <div class="kpi-section" style="margin-top: 20px;">
         <div class="kpi-row">
             <div class="kpi-card">
-                <div class="kpi-value" style="color: #dc3545; font-size: 32px;">{{ $tauxPresence }}%</div>
+                <div class="kpi-value" style="color: {{ $emailDangerColor }}; font-size: 32px;">{{ $tauxPresence }}%</div>
                 <div class="kpi-label">Taux de présence</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: #28a745;">80%</div>
+                <div class="kpi-value" style="color: {{ $emailSuccessText }};">80%</div>
                 <div class="kpi-label">Seuil recommandé</div>
             </div>
         </div>
@@ -40,7 +40,7 @@
                 <div class="kpi-label">Total absences</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" style="color: #dc3545;">{{ $absencesNonJustifiees }}h</div>
+                <div class="kpi-value" style="color: {{ $emailDangerColor }};">{{ $absencesNonJustifiees }}h</div>
                 <div class="kpi-label">Non justifiées</div>
             </div>
         </div>
@@ -51,7 +51,7 @@
         Un taux de présence faible peut affecter négativement les résultats académiques et la note d'assiduité de votre enfant.
     </div>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Recommandations</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Recommandations</h3>
     <ul style="color: #6c757d;">
         <li>Assurez-vous que votre enfant assiste régulièrement aux cours</li>
         <li>Justifiez les absences inévitables dans les 48h</li>

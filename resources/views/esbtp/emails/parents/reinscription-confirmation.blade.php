@@ -14,7 +14,7 @@
         Votre enfant {{ $studentName }} a été réinscrit(e) avec succès pour l'année universitaire {{ $anneeUniversitaire }}.
     </div>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Informations de la réinscription</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Informations de la réinscription</h3>
 
     <table class="info-table">
         <tr>
@@ -48,19 +48,21 @@
         <tr>
             <th>Décision</th>
             <td>
-                <span style="padding: 5px 10px; border-radius: 3px; background:
-                    @if($decision === 'passage') #28a745
-                    @elseif($decision === 'redoublement') #ffc107
-                    @else #17a2b8
-                    @endif;
-                    color: white; font-weight: 600;">
+                @php
+                    [$fondDecision, $texteDecision] = match ($decision) {
+                        'passage' => [$emailSuccessText, '#ffffff'],
+                        'redoublement' => [$emailWarningColor, '#451a03'],
+                        default => [$emailPrimaryColor, $emailHeaderTextColor],
+                    };
+                @endphp
+                <span style="padding: 5px 10px; border-radius: 3px; background: {{ $fondDecision }}; color: {{ $texteDecision }}; font-weight: 600;">
                     {{ ucfirst($decision) }}
                 </span>
             </td>
         </tr>
     </table>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Accès à la plateforme {{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }}</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Accès à la plateforme {{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }}</h3>
 
     <p class="message">
         Vous pouvez continuer à suivre la scolarité de votre enfant sur la plateforme en ligne avec vos identifiants habituels.
@@ -69,7 +71,7 @@
     @include('esbtp.emails.partials.bouton', ['url' => $platformUrl, 'libelle' => 'Accéder à la plateforme'])
 
     @if(isset($reliquatMontant) && $reliquatMontant > 0)
-    <div style="background: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid #ffc107; margin: 20px 0;">
+    <div style="background: #fff3cd; padding: 20px; border-radius: 5px; border-left: 4px solid {{ $emailWarningColor }}; margin: 20px 0;">
         <h4 style="margin-top: 0; color: #856404;">Information reliquat</h4>
         <p style="margin: 10px 0; color: #856404;">
             Un reliquat de <strong>{{ number_format($reliquatMontant, 0, ',', ' ') }} FCFA</strong>

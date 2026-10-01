@@ -22,12 +22,12 @@
         <tr><th>Date de rejet</th><td>{{ $dateRejet }}</td></tr>
     </table>
 
-    <div style="background: #f8d7da; padding: 20px; border-radius: 5px; border-left: 4px solid #dc3545; margin: 20px 0;">
+    <div style="background: #f8d7da; padding: 20px; border-radius: 5px; border-left: 4px solid {{ $emailDangerColor }}; margin: 20px 0;">
         <h4 style="margin-top: 0; color: #721c24;">Motif du rejet</h4>
         <p style="margin-bottom: 0; color: #721c24;">{{ $motifRejet }}</p>
     </div>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Que faire maintenant?</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Que faire maintenant?</h3>
     <ol style="color: #6c757d;">
         <li>Vérifiez le motif du rejet ci-dessus</li>
         <li>Corrigez les informations ou fournissez les documents manquants</li>
