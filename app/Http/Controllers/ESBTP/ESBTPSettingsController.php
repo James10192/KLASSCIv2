@@ -1127,7 +1127,7 @@ class ESBTPSettingsController extends Controller
             return $refus;
         }
 
-        if (($incoherence = $this->incoherenceCourrielsParMailPulse($request)) !== null) {
+        if (($incoherence = app(\App\Mail\Transport\MailerDeLEcole::class)->refusDeBascule($request)) !== null) {
             return $this->refus($request, $incoherence);
         }
 
@@ -1775,7 +1775,7 @@ class ESBTPSettingsController extends Controller
                 $validator->errors()->add('setting_mailpulse_test_phone_recipients', $phoneError);
             }
 
-            $courrielsError = $this->incoherenceCourrielsParMailPulse($request);
+            $courrielsError = app(\App\Mail\Transport\MailerDeLEcole::class)->refusDeBascule($request);
             if ($courrielsError !== null) {
                 $validator->errors()->add('setting_mailpulse_courriels_enabled', $courrielsError);
             }
@@ -1859,7 +1859,7 @@ class ESBTPSettingsController extends Controller
             DB::commit();
 
             Setting::clearCache();
-            $apiKeyState = $this->mailPulseApiKeyState();
+            $apiKeyState = app(\App\Services\MailPulse\MailPulseClient::class)->apiKeyDiagnostics();
             if ($apiKeyReceived && ! $apiKeyState['configured']) {
                 Log::error('MailPulse API key received but not persisted', [
                     'user_id' => auth()->id(),
@@ -1907,75 +1907,6 @@ class ESBTPSettingsController extends Controller
         }
     }
 
-    /**
-     * Basculer les courriels de l'école sur MailPulse alors que MailPulse est
-     * coupé ou n'a pas de clé : AUCUN courriel ne partirait plus, liens de
-     * confirmation et mots de passe oubliés compris. On le refuse au moment où
-     * l'école le demande, plutôt que de le découvrir au premier courriel perdu.
-     *
-     * On ne juge que ce qui change : un état déjà en base (clé retirée depuis
-     * par la ligne de commande, par exemple) ne bloque pas l'enregistrement
-     * d'un logo. Les deux écrans d'enregistrement (page entière, bouton
-     * MailPulse) passent par ici.
-     */
-    private function incoherenceCourrielsParMailPulse(Request $request): ?string
-    {
-        $cle = \App\Mail\Transport\MailerDeLEcole::REGLAGE;
-        $enBase = fn (string $reglage, string $defaut) => filter_var(Setting::get($reglage, $defaut), FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
-        $soumis = fn (string $reglage) => $request->has('setting_'.$reglage)
-            ? (filter_var($request->input('setting_'.$reglage), FILTER_VALIDATE_BOOLEAN) ? '1' : '0')
-            : null;
-
-        $courriels = $soumis($cle) ?? $enBase($cle, '0');
-        if ($courriels !== '1') {
-            return null;
-        }
-
-        $activeAvant = $enBase('mailpulse_enabled', '0');
-        $active = $soumis('mailpulse_enabled') ?? $activeAvant;
-        $change = $enBase($cle, '0') !== '1' || $active !== $activeAvant;
-        if (! $change) {
-            return null;
-        }
-
-        if ($active !== '1') {
-            return "Pour envoyer les e-mails de l'école par MailPulse, activez d'abord MailPulse pour cette instance : sans lui, plus aucun e-mail ne partirait.";
-        }
-
-        $cleSoumise = trim((string) $request->input('setting_mailpulse_api_key', ''));
-        if ($cleSoumise === '' && ! $this->mailPulseApiKeyState()['configured']) {
-            return "Pour envoyer les e-mails de l'école par MailPulse, enregistrez d'abord la clé API MailPulse : sans elle, plus aucun e-mail ne partirait.";
-        }
-
-        return null;
-    }
-
-    private function mailPulseApiKeyState(): array
-    {
-        $value = Setting::where('key', 'mailpulse_api_key')
-            ->where('is_active', true)
-            ->value('value');
-
-        if (is_string($value) && trim($value) !== '') {
-            return [
-                'configured' => true,
-                'source' => 'settings',
-            ];
-        }
-
-        $configValue = config('services.mailpulse.api_key', '');
-        if (is_string($configValue) && trim($configValue) !== '') {
-            return [
-                'configured' => true,
-                'source' => 'env',
-            ];
-        }
-
-        return [
-            'configured' => false,
-            'source' => 'none',
-        ];
-    }
 
     private function mailPulseRecipientValidationError(?string $json, string $type): ?string
     {

@@ -2,7 +2,9 @@
 
 namespace App\Mail\Transport;
 
+use App\Models\Setting;
 use App\Services\MailPulse\MailPulseClient;
+use Illuminate\Http\Request;
 
 /**
  * Le mailer par défaut de l'instance : celui du serveur (`MAIL_MAILER`), sauf
@@ -70,6 +72,42 @@ final class MailerDeLEcole
     public function imposeParLeServeur(): bool
     {
         return config('mail.default') === self::MAILER;
+    }
+
+    /**
+     * Cocher la case alors que MailPulse est coupé ou sans clé : AUCUN courriel
+     * ne partirait plus, liens de confirmation et mots de passe oubliés compris.
+     * On le refuse au moment où l'école le demande, plutôt que de le découvrir
+     * au premier courriel perdu.
+     *
+     * On ne juge que ce qui change : un état déjà en base (clé retirée depuis,
+     * par exemple) ne bloque pas l'enregistrement d'un logo. Les deux
+     * enregistrements de l'écran (page entière, bouton MailPulse) passent ici.
+     */
+    public function refusDeBascule(Request $requete): ?string
+    {
+        $enBase = fn (string $cle) => filter_var(Setting::get($cle, '0'), FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+        $soumis = fn (string $cle) => $requete->has('setting_'.$cle)
+            ? (filter_var($requete->input('setting_'.$cle), FILTER_VALIDATE_BOOLEAN) ? '1' : '0')
+            : null;
+
+        $activeAvant = $enBase('mailpulse_enabled');
+        $active = $soumis('mailpulse_enabled') ?? $activeAvant;
+        $coche = ($soumis(self::REGLAGE) ?? $enBase(self::REGLAGE)) === '1';
+        if (! $coche || ($enBase(self::REGLAGE) === '1' && $active === $activeAvant)) {
+            return null;
+        }
+
+        if ($active !== '1') {
+            return "Pour envoyer les e-mails de l'école par MailPulse, activez d'abord MailPulse pour cette instance : sans lui, plus aucun e-mail ne partirait.";
+        }
+
+        $cleSoumise = trim((string) $requete->input('setting_mailpulse_api_key', ''));
+        if ($cleSoumise === '' && ! $this->client->apiKeyDiagnostics()['configured']) {
+            return "Pour envoyer les e-mails de l'école par MailPulse, enregistrez d'abord la clé API MailPulse : sans elle, plus aucun e-mail ne partirait.";
+        }
+
+        return null;
     }
 
     private function oui(string $reglage, string $cleConfig, string $defaut): bool

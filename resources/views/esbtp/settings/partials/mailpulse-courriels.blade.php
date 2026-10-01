@@ -5,6 +5,17 @@
     $mailpulseCourrielsImposes = app(\App\Mail\Transport\MailerDeLEcole::class)->imposeParLeServeur();
     $mailpulseSansFile = config('queue.default') === 'sync';
 @endphp
+<style>
+    .mailpulse-courriels-note,
+    .mailpulse-courriels-alerte {
+        display: flex; align-items: flex-start; gap: 8px;
+        padding: 10px 12px; border-radius: 10px; font-size: .82rem; line-height: 1.45;
+    }
+    .mailpulse-courriels-note { background: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; }
+    .mailpulse-courriels-alerte { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+    .mailpulse-courriels-note i,
+    .mailpulse-courriels-alerte i { margin-top: 2px; flex-shrink: 0; }
+</style>
 <input type="hidden" name="setting_mailpulse_courriels_enabled" value="0">
 <div class="mailpulse-field-card mb-3" data-mailpulse-courriels>
     <label class="form-label-modern">
