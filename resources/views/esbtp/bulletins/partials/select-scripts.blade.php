@@ -275,9 +275,10 @@ window.busCard = function (cfg) {
         previewIssue: null,
         lastGeneration: null,
         // Avancee d'une generation decoupee en tranches. Null tant qu'aucune
-        // n'est en cours ; sinon un objet { faits, total, tranche, tranches,
-        // pourcent, restant, restantTexte }.
+        // n'est en cours ; sinon un objet { faits, total, pause, courrielUrl,
+        // pourcent, restant, restantTexte, relais }.
         progression: null,
+        courrielMessage: '',
 
         /**
          * Annonce au bandeau de couverture ce que cette carte regarde.
@@ -352,6 +353,7 @@ window.busCard = function (cfg) {
                 this.fetchStudents();
                 this.queuePreflight();
                 this.annoncerCouverture();
+                this.reprendreLaGenerationEnCours();
             }
 
             this.$watch('form.classe_id', () => {
@@ -824,50 +826,9 @@ window.busCard = function (cfg) {
                         return;
                     }
 
-                    this.notify('info', 'Génération lancée. Vous pouvez quitter la page : vous serez prévenu(e) à la fin.');
+                    this.notify('info', 'Génération lancée. Vous pouvez quitter la page. Une notification apparaîtra dans la cloche à la fin.');
 
-                    const tache = await window.suivreTacheBulletins({
-                        tache: lance.tache,
-                        csrf,
-                        onEtat: (etat, extra) => {
-                            this.progression = {
-                                faits: etat.position,
-                                total: etat.total,
-                                // Le serveur connaît la taille des tranches : on ne la recopie pas.
-                                tranche: etat.tranche,
-                                tranches: etat.tranches,
-                                pause: !!etat.en_pause,
-                                pourcent: etat.pourcent,
-                                restant: extra.restant,
-                                restantTexte: this.dureeLisible(extra.restant),
-                                relais: !!extra.relais,
-                            };
-                        },
-                    });
-
-                    this.progression = null;
-
-                    const data = {
-                        ...tache.resultat,
-                        ok: tache.statut === 'terminee'
-                            && !(tache.resultat.blocking_errors?.length || tache.resultat.errors?.length),
-                        message: tache.message,
-                    };
-                    this.lastGeneration = data;
-
-                    const writes = (data.created || 0) + (data.regenerated || 0);
-                    const failures = (data.blocking_errors?.length || 0) + (data.errors?.length || 0);
-
-                    if (writes > 0) {
-                        this.notify(failures > 0 ? 'info' : 'success', data.message || 'Génération terminée.');
-                        setTimeout(() => {
-                            window.location.href = tache.url
-                                || `{{ route('esbtp.bulletins.index') }}?classe_id=${this.form.classe_id}&annee_universitaire_id=${this.form.annee_universitaire_id}&periode_id=${this.form.periode}`;
-                        }, 1200);
-                        return;
-                    }
-
-                    this.notify(failures > 0 || tache.statut === 'echouee' ? 'error' : 'info', data.message || 'Aucun bulletin généré.');
+                    await this.suivreLaGeneration(lance.tache, csrf);
                     return;
                 }
             } catch (err) {
@@ -876,6 +837,76 @@ window.busCard = function (cfg) {
             } finally {
                 if (this.kind === 'generate') this.busy = false;
                 else setTimeout(() => { this.busy = false; }, 400);
+            }
+        },
+
+        /**
+         * Suit une génération jusqu'à sa fin et en rend compte. Sert au
+         * lancement, et au retour sur l'écran quand une génération du
+         * périmètre affiché tourne encore.
+         */
+        async suivreLaGeneration(tacheLancee, csrf) {
+            const tache = await window.suivreTacheBulletins({
+                tache: tacheLancee,
+                csrf,
+                onEtat: (etat, extra) => {
+                    this.progression = {
+                        faits: etat.position,
+                        total: etat.total,
+                        pause: !!etat.en_pause,
+                        // Adresse non confirmée : la page propose de la confirmer.
+                        courrielUrl: etat.email_a_verifier ? etat.email_verification_url : null,
+                        pourcent: etat.pourcent,
+                        restant: extra.restant,
+                        restantTexte: this.dureeLisible(extra.restant),
+                        relais: !!extra.relais,
+                    };
+                },
+            });
+
+            this.progression = null;
+
+            const data = {
+                ...tache.resultat,
+                ok: tache.statut === 'terminee'
+                    && !(tache.resultat.blocking_errors?.length || tache.resultat.errors?.length),
+                message: tache.message,
+            };
+            this.lastGeneration = data;
+
+            const writes = (data.created || 0) + (data.regenerated || 0);
+            const failures = (data.blocking_errors?.length || 0) + (data.errors?.length || 0);
+
+            if (writes > 0) {
+                this.notify(failures > 0 ? 'info' : 'success', data.message || 'Génération terminée.');
+                setTimeout(() => {
+                    window.location.href = tache.url
+                        || `{{ route('esbtp.bulletins.index') }}?classe_id=${this.form.classe_id}&annee_universitaire_id=${this.form.annee_universitaire_id}&periode_id=${this.form.periode}`;
+                }, 1200);
+                return;
+            }
+
+            this.notify(failures > 0 || tache.statut === 'echouee' ? 'error' : 'info', data.message || 'Aucun bulletin généré.');
+        },
+
+        /** Une génération du périmètre affiché tourne encore : on rebranche son suivi. */
+        async reprendreLaGenerationEnCours() {
+            if (this.kind !== 'generate') return;
+            const enCours = (@json(\App\Domain\Bulletins\Taches\SuiviTachesBulletins::pourUtilisateur(auth()->user())) || [])
+                .find((t) => t.type === 'generation' && !t.finale
+                    && String(t.classe_id) === String(this.form.classe_id)
+                    && String(t.annee_universitaire_id) === String(this.form.annee_universitaire_id)
+                    && (!this.form.periode || t.periode === this.form.periode));
+            if (!enCours || this.busy) return;
+
+            this.busy = true;
+            try {
+                await this.suivreLaGeneration(enCours, document.querySelector('meta[name="csrf-token"]').content);
+            } catch (err) {
+                this.progression = null;
+                this.notify('error', err.message || 'Erreur inattendue.');
+            } finally {
+                this.busy = false;
             }
         },
 

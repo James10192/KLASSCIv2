@@ -22,11 +22,19 @@
         'avancer' => route('esbtp.bulletins.taches.avancer', ['tache' => '__ID__'], false),
         'vue' => route('esbtp.bulletins.taches.vue', ['tache' => '__ID__'], false),
         'bulletins' => route('esbtp.bulletins.select', [], false),
+        'liste' => route('esbtp.bulletins.index', [], false),
     ];
 @endphp
 @auth
 <div class="tap-pile" x-data="tachesArrierePlan()" data-taches='@json($tapEtatInitial)' data-urls='@json($tapUrls)'
      aria-live="polite" role="status">
+    {{-- Pendant le travail : une pastille discrète, sans bouger la page. --}}
+    <template x-for="t in enCours()" :key="'p' + t.id">
+        <a class="tap-pastille" :href="lienEcran(t)" x-transition.opacity>
+            <i class="fas" :class="t.en_pause ? 'fa-circle-pause' : 'fa-spinner fa-spin'"></i>
+            <span x-text="pastille(t)"></span>
+        </a>
+    </template>
     <template x-for="toast in toasts" :key="toast.id">
         <div class="tap-toast" :class="toast.pause ? 'tap-toast--pause' : (toast.reussie ? 'tap-toast--ok' : 'tap-toast--ko')" x-transition.opacity>
             <span class="tap-toast__icone">
@@ -63,6 +71,16 @@
         border-radius: 12px;
         box-shadow: 0 8px 30px rgba(4,83,203,.12), 0 2px 8px rgba(15,23,42,.06);
     }
+    .tap-pastille {
+        pointer-events: auto; align-self: flex-end;
+        display: inline-flex; align-items: center; gap: .45rem;
+        padding: .4rem .75rem; border-radius: 999px;
+        background: #fff; border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 16px rgba(4,83,203,.10);
+        font-size: .76rem; font-weight: 600; color: #0453cb;
+        text-decoration: none; font-variant-numeric: tabular-nums;
+    }
+    .tap-pastille:hover { border-color: #0453cb; color: #033a8e; }
     .tap-toast--ok { border-left-color: #10b981; }
     .tap-toast--ko { border-left-color: #dc2626; }
     .tap-toast--pause { border-left-color: #f59e0b; }
@@ -87,6 +105,10 @@
     .tap-toast__fermer:hover { background: #f1f5f9; color: #0f172a; }
     @@media (max-width: 576px) {
         .tap-pile { right: .5rem; left: .5rem; bottom: .5rem; width: auto; }
+    }
+    /* Sur téléphone, le shell mobile a une barre basse : on se pose au-dessus. */
+    @@media (max-width: 767.98px) {
+        body.has-m-shell .tap-pile { bottom: calc(var(--m-nav-h, 78px) + var(--m-safe-b, 0px) + 8px); }
     }
 </style>
 
@@ -133,6 +155,27 @@ window.tachesArrierePlan = function () {
 
         actives() {
             return this.taches.some((t) => !t.finale);
+        },
+
+        // Les tâches que la page ne montre pas déjà elle-même.
+        enCours() {
+            return this.taches.filter((t) => !t.finale && !this.suiviesParLaPage[t.id]);
+        },
+
+        pastille(t) {
+            const quoi = t.type === 'export' ? 'PDF' : 'Bulletins';
+            const qui = t.libelle && t.libelle.includes(' · ') ? ' ' + t.libelle.split(' · ').pop() : '';
+            return `${quoi}${qui} · ${t.position} / ${t.total}`;
+        },
+
+        // L'écran d'où la tâche est partie, sur son périmètre.
+        lienEcran(t) {
+            const p = new URLSearchParams();
+            if (t.classe_id) p.set('classe_id', t.classe_id);
+            if (t.annee_universitaire_id) p.set('annee_universitaire_id', t.annee_universitaire_id);
+            if (t.periode) p.set(t.type === 'export' ? 'periode_id' : 'periode', t.periode);
+            const base = t.type === 'export' ? this.urls.liste : this.urls.bulletins;
+            return base + (p.toString() ? '?' + p.toString() : '');
         },
 
         // Aucune requête tant que rien ne tourne.
@@ -189,7 +232,7 @@ window.tachesArrierePlan = function () {
                 reussie: false,
                 titre: 'En pause · ' + t.libelle,
                 texte: 'Le travail est en pause, il reprendra automatiquement. Vous pouvez aussi rouvrir la page des bulletins.',
-                url: this.urls.bulletins,
+                url: this.lienEcran(t),
                 nouvelOnglet: false,
                 libelleLien: 'Ouvrir les bulletins',
             });
@@ -212,6 +255,10 @@ window.tachesArrierePlan = function () {
                 // Le serveur nomme le lien, comme dans la cloche et l'e-mail.
                 libelleLien: t.libelle_lien,
             });
+            // Un succès se ferme seul ; un échec reste jusqu'à ce qu'on le lise.
+            if (reussie) {
+                setTimeout(() => this.fermer(t.id), 12000);
+            }
             this.marquerVue(t.id);
         },
 

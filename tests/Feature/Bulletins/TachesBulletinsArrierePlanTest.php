@@ -356,6 +356,14 @@ class TachesBulletinsArrierePlanTest extends TestCase
         $this->assertCount(1, $controleur->suivi($this->requetePour(1))->getData(true)['taches']);
     }
 
+    public function test_l_etat_propose_de_confirmer_une_adresse_non_verifiee(): void
+    {
+        $tache = $this->generation(userId: 2, eleves: 2);
+
+        $this->assertTrue(SuiviTachesBulletins::etat($tache, User::findOrFail(2))['email_a_verifier']);
+        $this->assertFalse(SuiviTachesBulletins::etat($tache, User::findOrFail(1))['email_a_verifier']);
+    }
+
     public function test_une_generation_echouee_ramene_sur_l_ecran_pre_rempli(): void
     {
         $tache = $this->generation(classeId: 2);

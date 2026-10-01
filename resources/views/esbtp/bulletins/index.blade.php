@@ -732,6 +732,7 @@ function bulIndex() {
         busy: false,
         exportEnCours: null,   // null | apercu | telechargement
         exportEtat: null,
+        courrielMessage: '',
         loading: false,
         toasts: [],
         toastSeq: 0,

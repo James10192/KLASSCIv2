@@ -128,7 +128,7 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString("if (p.status === 'ready') return false;", $view);
         $this->assertStringContainsString("if (p.status === 'needs_reason') return !this.hasIncompleteReason();", $view);
         // Motif : hint minimum 8 caractères + compteur live.
-        $this->assertStringContainsString('Minimum 8 caracteres requis pour debloquer.', $view);
+        $this->assertStringContainsString('Minimum 8 caractères requis pour débloquer.', $view);
         $this->assertStringContainsString("preflight?.existing_empty_count > 0 && !preflight?.recalculer", $view);
     }
 

@@ -96,4 +96,26 @@ if (typeof window.suivreTacheBulletins !== 'function') {
         return etat;
     };
 }
+
+if (typeof window.demanderConfirmationCourriel !== 'function') {
+    /**
+     * Demande l'envoi du lien de confirmation d'adresse (route du support).
+     * Rend le message à afficher : le serveur le formule, succès ou refus.
+     */
+    window.demanderConfirmationCourriel = async function (url, csrf) {
+        try {
+            const reponse = await fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (reponse.status === 429) {
+                return 'Un lien vient déjà de partir. Réessayez dans quelques minutes.';
+            }
+            const charge = await reponse.json().catch(() => null);
+            return charge?.message || `Le lien n'a pas pu partir (code ${reponse.status}).`;
+        } catch {
+            return 'Connexion perdue. Vérifiez le réseau, puis réessayez.';
+        }
+    };
+}
 </script>

@@ -674,10 +674,10 @@
         transition: width .45s cubic-bezier(.4, 0, .2, 1);
     }
 
-    .bus-progress__foot {
-        display: flex; align-items: center; justify-content: space-between;
-        gap: .75rem;
-        font-size: .72rem; color: #64748b; font-weight: 500;
+    .bus-progress__courriel { margin: .45rem 0 0; font-size: .74rem; color: #475569; }
+    .bus-progress__courriel-lien {
+        border: none; background: none; padding: 0; cursor: pointer;
+        color: #0453cb; font-weight: 600; text-decoration: underline;
     }
     .bus-progress__quitter {
         display: flex; align-items: center; gap: .45rem;
@@ -1060,9 +1060,9 @@
                                   x-model="form.incomplete_reason"
                                   minlength="8"
                                   maxlength="1000"
-                                  placeholder="Expliquez pourquoi la generation incomplete est autorisee (8 caracteres minimum)."></textarea>
+                                  placeholder="Expliquez pourquoi la génération incomplète est autorisée (8 caractères minimum)."></textarea>
                         <div class="bus-field-hint" :class="hasIncompleteReason() ? '' : 'bus-field-hint--warn'">
-                            <span x-text="hasIncompleteReason() ? 'Motif valide.' : 'Minimum 8 caracteres requis pour debloquer.'"></span>
+                            <span x-text="hasIncompleteReason() ? 'Motif valide.' : 'Minimum 8 caractères requis pour débloquer.'"></span>
                             <span x-text="(form.incomplete_reason || '').trim().length + ' / 1000'"></span>
                         </div>
                     </div>
@@ -1072,7 +1072,8 @@
                     <div class="bus-progress__head">
                         <span class="bus-progress__label">
                             <i class="fas fa-spinner fa-spin"></i>
-                            <span x-text="`${progression?.faits ?? 0} / ${progression?.total ?? 0} étudiants`"></span>
+                            <span x-text="`${progression?.faits ?? 0} / ${progression?.total ?? 0} étudiants`
+                                + (progression?.restantTexte ? ` · Il reste ${progression.restantTexte}` : '')"></span>
                         </span>
                         <span class="bus-progress__pct" x-text="`${progression?.pourcent ?? 0} %`"></span>
                     </div>
@@ -1080,15 +1081,20 @@
                          :aria-valuenow="progression?.pourcent ?? 0" aria-valuemin="0" aria-valuemax="100">
                         <div class="bus-progress__fill" :style="`width:${progression?.pourcent ?? 0}%`"></div>
                     </div>
-                    <div class="bus-progress__foot">
-                        <span x-text="`Tranche ${progression?.tranche ?? 0} sur ${progression?.tranches ?? 0}`"></span>
-                        <span x-show="progression?.restantTexte" x-text="`Il reste ${progression?.restantTexte}`"></span>
-                    </div>
                     <p class="bus-progress__quitter">
-                        <i class="fas fa-bell"></i>
-                        <span x-text="progression?.relais
-                            ? 'Le serveur poursuit la génération. Vous pouvez quitter la page : vous serez prévenu(e) à la fin.'
-                            : 'Vous pouvez quitter la page : la génération continue, et vous serez prévenu(e) à la fin.'"></span>
+                        <i class="fas" :class="progression?.pause ? 'fa-circle-pause' : 'fa-bell'"></i>
+                        <span x-text="progression?.pause
+                            ? 'Le travail est en pause, il reprendra automatiquement.'
+                            : (progression?.relais
+                                ? 'La génération continue, même si vous quittez la page.'
+                                : 'Vous pouvez quitter la page. Une notification apparaîtra dans la cloche à la fin.')"></span>
+                    </p>
+                    <p class="bus-progress__courriel" x-show="progression?.courrielUrl" x-cloak>
+                        <button type="button" class="bus-progress__courriel-lien" x-show="!courrielMessage"
+                                @click="courrielMessage = await window.demanderConfirmationCourriel(progression.courrielUrl, document.querySelector('meta[name=csrf-token]').content)">
+                            <i class="fas fa-envelope"></i> Recevoir aussi un e-mail : confirmer mon adresse
+                        </button>
+                        <span x-show="courrielMessage" x-text="courrielMessage"></span>
                     </p>
                 </div>
                 <div class="bus-inline-panel"
@@ -1097,7 +1103,7 @@
                      x-cloak>
                     <div class="bus-inline-panel__title">
                         <i class="fas" :class="lastGeneration?.ok ? 'fa-circle-check' : 'fa-circle-exclamation'"></i>
-                        <span>Resultat generation</span>
+                        <span>Résultat de la génération</span>
                     </div>
                     <p class="bus-inline-panel__body" x-text="lastGeneration?.message"></p>
                     <p class="bus-inline-panel__body" x-text="generationSummary()"></p>

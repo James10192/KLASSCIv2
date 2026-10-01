@@ -38,6 +38,15 @@
         <span x-show="exportEtat?.restant" x-text="`Il reste ${exportEtat?.restant}`"></span>
     </div>
 
+    <p class="bex__courriel" x-show="exportEtat?.courriel" x-cloak>
+        {{-- Le message vit sur la page : chaque état d'avancement remplace exportEtat. --}}
+        <button type="button" class="bex__courriel-lien" x-show="!courrielMessage"
+                @click="courrielMessage = await window.demanderConfirmationCourriel(exportEtat.courriel.url, document.querySelector('meta[name=csrf-token]').content)">
+            <i class="fas fa-envelope"></i> Recevoir aussi un e-mail : confirmer mon adresse
+        </button>
+        <span x-show="courrielMessage" x-text="courrielMessage"></span>
+    </p>
+
     {{-- Confirmation des bulletins absents : un vrai panneau, pas un confirm() --}}
     <div class="bex__actions" x-show="exportEtat?.phase === 'confirmation'">
         <button type="button" class="bul-btn bul-btn--sm bul-btn--ghost" @click="exportEtat.repondre(false)">
@@ -62,6 +71,10 @@
     <div class="bex__actions" x-show="exportEtat?.phase === 'erreur'">
         <button type="button" class="bul-btn bul-btn--sm bul-btn--ghost" @click="exportEtat = null">
             <i class="fas fa-xmark"></i> Fermer
+        </button>
+        <button type="button" class="bul-btn bul-btn--sm bul-btn--primary" x-show="exportEtat?.mode"
+                @click="lancerExportGroupe(exportEtat.mode)">
+            <i class="fas fa-rotate-right"></i> Réessayer
         </button>
     </div>
 </div>
@@ -102,6 +115,11 @@
         gap: .75rem; margin-top: .5rem;
         font-size: .72rem; color: #64748b;
     }
+    .bex__courriel { margin: .45rem 0 0; font-size: .74rem; color: #475569; }
+    .bex__courriel-lien {
+        border: none; background: none; padding: 0; cursor: pointer;
+        color: #0453cb; font-weight: 600; text-decoration: underline;
+    }
     .bex__actions {
         display: flex; align-items: center; justify-content: flex-end;
         gap: .5rem; margin-top: .7rem;
@@ -136,8 +154,9 @@ window.exportBulletinsParTranches = async function ({ params, mode, urlLancer, c
     };
 
     // Toujours la même forme : le gabarit n'a pas à deviner quels champs existent.
+    // `mode` voyage avec chaque état : « Réessayer » relance le même export.
     const etat = (phase, texte, extra = {}) => onEtat({
-        phase, texte, pourcent: null, detail: '', restant: null, ...extra,
+        phase, texte, pourcent: null, detail: '', restant: null, mode, courriel: null, ...extra,
     });
 
     const duree = (s) => s < 60
@@ -171,7 +190,11 @@ window.exportBulletinsParTranches = async function ({ params, mode, urlLancer, c
         return charge;
     };
 
-    const quitter = 'Vous pouvez quitter la page : l\'export continue, et vous serez prévenu(e) à la fin.';
+    const quitter = 'Vous pouvez quitter la page. Une notification apparaîtra dans la cloche à la fin.';
+    // Adresse non confirmée : on propose de la confirmer pour recevoir aussi un e-mail.
+    const courriel = (t) => (t.email_a_verifier && t.email_verification_url)
+        ? { url: t.email_verification_url, message: '' }
+        : null;
 
     try {
         // 1. Le serveur fige la liste des bulletins.
@@ -205,13 +228,16 @@ window.exportBulletinsParTranches = async function ({ params, mode, urlLancer, c
             csrf,
             onEtat: (t, extra) => {
                 if (t.position >= t.total && !t.finale) {
-                    etat('assemblage', `Assemblage des ${t.total} bulletins…`, { pourcent: 100, detail: quitter });
+                    etat('assemblage', `Assemblage des ${t.total} bulletins…`, { pourcent: 100, detail: quitter, courriel: courriel(t) });
                     return;
                 }
                 etat('rendu', `${t.position} / ${t.total} bulletins`, {
                     pourcent: t.pourcent,
-                    detail: extra.relais ? 'Le serveur poursuit l\'export. ' + quitter : quitter,
+                    detail: t.en_pause
+                        ? 'Le travail est en pause, il reprendra automatiquement.'
+                        : (extra.relais ? 'L\'export continue, même si vous quittez la page.' : quitter),
                     restant: extra.restant > 3 ? duree(extra.restant) : null,
+                    courriel: courriel(t),
                 });
             },
         });
