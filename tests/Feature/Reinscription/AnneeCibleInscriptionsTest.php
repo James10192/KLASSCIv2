@@ -162,7 +162,7 @@ class AnneeCibleInscriptionsTest extends TestCase
         $avant = (string) Setting::where('key', PortailReinscriptionService::REGLAGE_ANNEE_CIBLE)->value('value');
 
         $this->actingAs(User::find(1))
-            ->post(route('esbtp.settings.update'), [
+            ->put(route('esbtp.settings.update'), [
                 'settings_save_display' => '1',
                 'inscriptions_annee_cible' => '999999',
             ])
@@ -178,7 +178,7 @@ class AnneeCibleInscriptionsTest extends TestCase
     public function test_l_ecran_des_reglages_accepte_une_annee_existante(): void
     {
         $this->actingAs(User::find(1))
-            ->post(route('esbtp.settings.update'), [
+            ->put(route('esbtp.settings.update'), [
                 'settings_save_display' => '1',
                 'inscriptions_annee_cible' => (string) $this->anneeProchaine->id,
             ])

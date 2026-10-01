@@ -163,10 +163,13 @@ class FicheReinscriptionTest extends TestCase
             'annee_universitaire_id' => $this->courante->id,
             'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
             'status' => 'active',
+            'workflow_step' => 'documents_complets',
         ]);
         ESBTPAnneeUniversitaire::where('id', '!=', $this->courante->id)->where('start_date', '>', $this->courante->start_date)->update(['is_active' => false]);
 
-        $this->fiche($this->agent)->assertOk()->assertSee('Déjà inscrit pour 2026-2027')->assertDontSee('Corriger la réinscription');
+        // Réinscription faite, dossier pas encore validé : la fiche le dit.
+        $this->fiche($this->agent)->assertOk()->assertSee('Déjà inscrit pour 2026-2027')->assertDontSee('Corriger la réinscription')
+            ->assertSee("Dossier d'inscription en attente", false);
         $this->fiche($this->admin)->assertOk()->assertSee('Corriger la réinscription');
         // Pas de formulaire inerte : la finalisation s'ouvre (l'année se choisit à l'envoi).
         $this->actingAs($this->agent)->get(route('esbtp.reinscription.create', $this->inscription->etudiant_id))->assertOk();
@@ -191,7 +194,18 @@ class FicheReinscriptionTest extends TestCase
             'start_date' => $this->courante->start_date->copy()->addYear(), 'end_date' => $this->courante->end_date->copy()->addYear()]);
 
         $lien = route('esbtp.reinscription.create', ['etudiant' => $this->inscription->etudiant_id, 'annee_academique' => '2026-2027', 'annee_cible_id' => $suivante->id]);
-        $this->fiche($this->agent)->assertOk()->assertSee('Préparer 2027-2028')->assertSee(e($lien), false);
+        $this->fiche($this->agent)->assertOk()->assertSee('Préparer 2027-2028')->assertSee(e($lien), false)
+            ->assertDontSee('Corriger la réinscription');
+        // Une année suivante ouverte ne retire pas au superadministrateur la
+        // correction d'une réinscription faite par erreur.
+        $this->fiche($this->admin)->assertOk()->assertSee('Préparer 2027-2028')->assertSee('Corriger la réinscription')
+            ->assertDontSee("Dossier d'inscription en attente", false);
+
+        // N pas encore finalisée : préparer N+1 partirait de N-1 et sauterait N.
+        $enCours->update(['workflow_step' => 'documents_complets']);
+        $this->fiche($this->admin)->assertOk()->assertDontSee('Préparer 2027-2028')
+            ->assertSee("Dossier d'inscription en attente", false);
+        $enCours->update(['workflow_step' => 'etudiant_cree']);
 
         $e = app(EligibiliteReinscription::class)->pour($this->inscription->etudiant_id, $this->agent, $suivante->id);
         $this->assertSame($enCours->id, $e['inscription']->id, 'on quitte N, pas N-1');
@@ -232,6 +246,83 @@ class FicheReinscriptionTest extends TestCase
         $this->assertStringContainsString('déjà inscrit dans cette classe', session('errors')->first('error'));
         $this->assertStringNotContainsString('SQLSTATE', session('errors')->first('error'));
         $this->assertSame('active', $enCours->fresh()->status);
+    }
+
+    public function test_on_ne_saute_pas_une_annee_dont_le_dossier_est_en_cours(): void
+    {
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $this->courante->id,
+            'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+            'status' => 'active',
+            'workflow_step' => 'documents_complets',
+        ]);
+        ESBTPAnneeUniversitaire::where('start_date', '>', $this->courante->start_date)->update(['is_active' => false]);
+        $suivante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => false, 'is_active' => true,
+            'start_date' => $this->courante->start_date->copy()->addYear(), 'end_date' => $this->courante->end_date->copy()->addYear()]);
+        ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->update(['amount' => 0]);
+        $avant = ESBTPInscription::where('etudiant_id', $this->inscription->etudiant_id)->count();
+
+        $this->actingAs($this->admin)
+            ->from(route('esbtp.reinscription.create', $this->inscription->etudiant_id))
+            ->put(route('esbtp.reinscription.update', $this->inscription->etudiant_id), [
+                'nouvelle_classe_id' => $this->inscription->classe_id, 'decision' => 'passage', 'annee_universitaire_id' => $suivante->id,
+            ])
+            ->assertSessionHasErrors('error');
+
+        $this->assertStringContainsString("n'est pas finalisé", session('errors')->first('error'));
+        $this->assertSame($avant, ESBTPInscription::where('etudiant_id', $this->inscription->etudiant_id)->count());
+    }
+
+    /**
+     * Après la bascule (courante = N+1), un dossier N en cours : la fiche, la
+     * finalisation, la garde et Nanan disent tous qu'une année reste à régler.
+     */
+    public function test_apres_la_bascule_un_dossier_intermediaire_bloque_partout(): void
+    {
+        $n = ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $this->courante->id,
+            'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+            'status' => 'active',
+            'workflow_step' => 'documents_complets',
+        ]);
+        $this->courante->update(['is_current' => false]);
+        ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => true, 'is_active' => true,
+            'start_date' => $this->courante->start_date->copy()->addYear(), 'end_date' => $this->courante->end_date->copy()->addYear()]);
+        ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->update(['amount' => 0]);
+
+        $e = app(EligibiliteReinscription::class)->pour($this->inscription->etudiant_id, $this->admin);
+        $this->assertSame(EligibiliteReinscription::ANNEE_INTERMEDIAIRE, $e['etat']);
+        $this->assertFalse($e['peut_poursuivre'], 'aucune dérogation ne saute une année');
+
+        $this->fiche($this->admin)->assertOk()->assertSee('Une année reste à régler')
+            ->assertSee("n'est pas finalisé")->assertDontSee('Réinscription autorisée');
+        $this->actingAs($this->agent)->get(route('esbtp.reinscription.create', $this->inscription->etudiant_id))
+            ->assertRedirect(route('esbtp.reinscription.show', $this->inscription->etudiant_id));
+
+        $nanan = app(DiagnostiquerReinscriptionTool::class)->executeAuthorized(['etudiant_id' => $this->inscription->etudiant_id], $this->agent);
+        $this->assertTrue($nanan['diagnostic']['bloquee']);
+        $this->assertSame('dossier_intermediaire', $nanan['diagnostic']['cause']);
+
+        // Une inscription « terminée » n'est pas un dossier à finaliser : le
+        // message le dit au lieu de conseiller une annulation.
+        $n->update(['status' => 'terminée', 'workflow_step' => 'etudiant_cree']);
+        $this->fiche($this->admin)->assertOk()->assertSee('est terminée sans être la dernière inscription suivie');
+
+        // Déjà une inscription sur l'année visée : la correction non plus ne
+        // saute pas l'année restée en suspens.
+        $n->update(['status' => 'active', 'workflow_step' => 'documents_complets']);
+        $visee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $visee->id,
+            'status' => 'active',
+        ]);
+        $e = app(EligibiliteReinscription::class)->pour($this->inscription->etudiant_id, $this->admin);
+        $this->assertSame(EligibiliteReinscription::DEJA_INSCRIT, $e['etat']);
+        $this->assertFalse($e['peut_rejouer']);
+        $this->fiche($this->admin)->assertOk()->assertDontSee('Corriger la réinscription');
     }
 
     public function test_une_finalisation_bloquee_renvoie_a_la_fiche(): void

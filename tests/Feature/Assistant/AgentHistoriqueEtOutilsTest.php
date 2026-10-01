@@ -135,7 +135,7 @@ class AgentHistoriqueEtOutilsTest extends TestCase
         $this->assertStringContainsString('classe_id 12', $systeme);
         $this->assertStringContainsString('annee_universitaire_id 4', $systeme);
         $this->assertStringContainsString('Algorithme (matiere_id 63)', $systeme);
-        $this->assertStringContainsString('etudiant_id borne impérativement l’action', $systeme);
+        $this->assertStringContainsString('etudiant_id borne impérativement l\'action', $systeme);
         $this->assertStringContainsString('Ne redemande jamais ces éléments', $systeme);
     }
 

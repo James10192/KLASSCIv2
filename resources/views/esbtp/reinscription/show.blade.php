@@ -240,6 +240,7 @@
             @php
                 $libelleEtat = match (true) {
                     $etat === Eligibilite::DEJA_INSCRIT => 'Déjà inscrit',
+                    $etat === Eligibilite::ANNEE_INTERMEDIAIRE => 'En attente',
                     $eligibilite['autorisee'] => 'Autorisée',
                     $eligibilite['peut_deroger'] => 'Par dérogation',
                     default => 'Bloquée',
@@ -291,6 +292,9 @@
                 </p>
                 <ul>
                     <li>Statut d'affectation : {{ $existante->affectation_status ? ucfirst(str_replace(['_', '-'], ' ', $existante->affectation_status)) : 'non renseigné' }}</li>
+                    @if($existante->workflow_step !== 'etudiant_cree')
+                        <li class="rsd-warn">Dossier d'inscription en attente : paiement et validation se terminent depuis l'inscription</li>
+                    @endif
                     @if($reliquatAnneeCible > 0)
                         <li class="rsd-warn">Reliquat reporté à régulariser{{ $voirFinances ? ' : ' . $fcfa($reliquatAnneeCible) : '' }}</li>
                     @endif
@@ -305,15 +309,31 @@
                     <a href="{{ route('esbtp.inscriptions.index') }}" class="rsd-btn rsd-btn--outline">
                         <i class="fas fa-list"></i>Liste des inscriptions
                     </a>
-                    @if($eligibilite['annee_suivante'])
+                    {{-- Le contrôleur juge N+1 comme la finalisation : une année N non finalisée le bloque. --}}
+                    @if($preparerSuivante ?? false)
                         <a href="{{ $lienVers($eligibilite['annee_suivante']) }}" class="rsd-btn rsd-btn--outline">
                             <i class="fas fa-forward"></i>Préparer {{ $eligibilite['annee_suivante']->name }}
                         </a>
-                    @elseif($eligibilite['peut_rejouer'])
+                    @endif
+                    @if($eligibilite['peut_rejouer'])
                         <a href="{{ $lienFinalisation }}" class="rsd-btn rsd-btn--outline" title="Refaire la réinscription : l'inscription actuelle sera terminée et remplacée">
                             <i class="fas fa-pen"></i>Corriger la réinscription
                         </a>
                     @endif
+                </div>
+            </div>
+        </section>
+    @elseif($etat === Eligibilite::ANNEE_INTERMEDIAIRE)
+        @php $intermediaire = $eligibilite['inscription_intermediaire']; @endphp
+        <section class="rsd-verdict rsd-verdict--warn">
+            <div class="rsd-verdict-icon"><i class="fas fa-hourglass-half"></i></div>
+            <div class="rsd-verdict-body">
+                <h2>Une année reste à régler</h2>
+                <p>{{ $eligibilite['message_intermediaire'] }}</p>
+                <div class="rsd-actions">
+                    <a href="{{ route('esbtp.inscriptions.show', $intermediaire->id) }}" class="rsd-btn rsd-btn--primary">
+                        <i class="fas fa-up-right-from-square"></i>Ouvrir l'inscription de {{ $intermediaire->anneeUniversitaire->name ?? 'cette année' }}
+                    </a>
                 </div>
             </div>
         </section>
@@ -503,7 +523,7 @@
 
             @if(count($analyse['matieres_echouees']) > 0)
                 <table class="rsd-table" aria-label="Matières sous la moyenne de passage">
-                    <thead><tr><th>Matière</th><th>Moyenne</th></tr></thead>
+                    <thead><tr><th>Matière sous la moyenne de passage</th><th>Moyenne</th></tr></thead>
                     <tbody>
                         @foreach($analyse['matieres_echouees'] as $matiere)
                             <tr>
