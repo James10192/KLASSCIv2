@@ -3,6 +3,7 @@
 namespace App\Domain\Assistant\Actions\Bulletins;
 
 use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Domain\Assistant\Actions\ActionAgent;
 use App\Domain\Assistant\Actions\Designations;
 use App\Domain\Assistant\Actions\Proposition;
@@ -77,7 +78,7 @@ class GenererBulletinsManquants extends ActionAgent
         if ($manques !== []) {
             return new Proposition(titre: $titre, resume: '', manques: $manques);
         }
-        if (($classe->systeme_academique ?? '') === 'LMD') {
+        if (CoherenceSystemeAcademique::classeEstLmd($classe->systeme_academique)) {
             return $this->seulManque($titre, 'Cette classe est LMD : ses bulletins se génèrent depuis /esbtp/lmd/bulletins.');
         }
 

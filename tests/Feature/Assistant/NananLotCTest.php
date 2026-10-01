@@ -410,6 +410,85 @@ class NananLotCTest extends TestCase
         $this->assertNull(ESBTPPlanificationAcademique::where('matiere_id', ESBTPMatiere::where('code', 'ZEC2')->value('id'))->value('enseignant_principal_id'));
     }
 
+    // --- Correctifs de la revue -----------------------------------------------------
+
+    /** Une évaluation déjà cohérente n'a rien à réparer : Maths → Physique passe par l'écran. */
+    public function test_une_evaluation_deja_coherente_ne_change_pas_de_matiere(): void
+    {
+        $maths = $this->matiereConfiguree();
+        $physique = ESBTPMatiere::factory()->create(['unite_enseignement_id' => null]);
+        $evaluation = $this->evaluationDe($maths);
+
+        $this->assertStringContainsString('son systeme', $this->manques(app(ChangerMatiereEvaluation::class)
+            ->executeAuthorized(['evaluation_id' => $evaluation->id, 'matiere_id' => $physique->id], $this->admin)));
+        $this->assertNotNull(app(\App\Domain\Notes\RebasculeDeMatiere::class)->refus($evaluation, $physique), 'la CLI hérite du même refus');
+        $this->assertSame($maths->id, (int) $evaluation->fresh()->matiere_id);
+    }
+
+    /** En mode strict, un code de matière BTS n'est jamais un ECUE : son enseignant ne bouge pas. */
+    public function test_un_code_de_matiere_bts_n_est_pas_affecte(): void
+    {
+        $this->importer('ZPAR', [['ZUE1', 'Unité test', 30, [['ZEC1', 'Élément test', 30]]]]);
+        $bts = ESBTPMatiere::factory()->create(['code' => 'ZBTS1', 'unite_enseignement_id' => null]);
+        $planif = ESBTPPlanificationAcademique::where('matiere_id', ESBTPMatiere::where('code', 'ZEC1')->value('id'))->firstOrFail()
+            ->replicate()->fill(['matiere_id' => $bts->id, 'enseignant_principal_id' => null]);
+        $planif->save();
+        $prof = User::withoutEvents(fn () => User::factory()->create(['name' => 'KONE Awa', 'username' => 'u_'.Str::lower(Str::random(8))]));
+        $prof->assignRole('enseignant');
+
+        $r = app(AffecterEnseignantsLmd::class)->executeAuthorized(['piece' => [
+            'piece_id' => $this->piece(['ECUE', 'Enseignant'], [['ZBTS1', 'Kone Awa'], ['ZEC1', 'Kone Awa']]),
+            'colonne_ecue' => 'ECUE', 'colonne_enseignant' => 'Enseignant']], $this->admin);
+        $this->assertStringContainsString('matière BTS', implode(' ', $r['widget']['avertissements'] ?? []));
+        $this->valider($r);
+
+        $this->assertNull($planif->fresh()->enseignant_principal_id);
+    }
+
+    /** Un code d'élément déjà pris (refus de CodeDeMatiere) est une question, jamais une erreur serveur. */
+    public function test_un_refus_de_validation_de_l_import_devient_un_manque(): void
+    {
+        $this->mock(LMDImportService::class, fn ($m) => $m->shouldReceive('simuler')
+            ->andThrow(\Illuminate\Validation\ValidationException::withMessages(['code' => 'Le code « WMAT111 » est déjà celui de la matière « Analyse ».'])));
+        $piece = $this->piece(self::COLONNES_MAQUETTE, [['S1', 'WMAT11', 'Maths', 'Fondamentale', '30', 'WMAT111', 'Analyse', '30', '30']]);
+
+        $this->assertStringContainsString('WMAT111', $this->manques(app(ImporterMaquetteLmd::class)->executeAuthorized($this->argsMaquette($piece), $this->admin)));
+    }
+
+    /** Réimporter sans filière ni crédits ne détache pas le parcours ; un code déduit retrouve la fiche de lmd/setup. */
+    public function test_un_import_sans_filiere_garde_celle_du_parcours_et_les_codes_restent_stables(): void
+    {
+        $this->importer('ZPAR', [['ZUE1', 'Unité test', 30, [['ZEC1', 'Élément test', 30]]]]);
+        $parcours = ESBTPLMDParcours::where('code', 'ZPAR')->sole();
+        $parcours->update(['credits_licence' => 240]);
+        app(LMDImportService::class)->import([
+            'domaine' => ['name' => 'Sciences Z', 'code' => 'ZST'], 'mention' => ['name' => 'Génie Z', 'code' => 'ZGC'],
+            'parcours' => ['name' => 'Parcours ZPAR', 'code' => 'ZPAR'], 'filiere' => ['name' => 'Filière ZPAR', 'code' => 'FZPAR'],
+            'niveaux' => [['name' => 'Licence 1', 'year' => 1]],
+            'ues' => [['code' => 'ZUE1', 'name' => 'Unité test', 'type_ue' => 'fondamentale', 'credit' => 30, 'niveau_year' => 1, 'semestre' => 1,
+                'ecues' => [['code' => 'ZEC1', 'name' => 'Élément test', 'credit_ecue' => 30]]]],
+        ], $this->admin->id);
+        $this->assertSame(240, (int) $parcours->fresh()->credits_licence, "l'import sans crédits ne remet pas le total par défaut");
+
+        // lmd/setup sans filière : le parcours garde la sienne.
+        $filiere = $parcours->fresh()->filiere_id;
+        app(\App\Services\LMD\HierarchieLmd::class)->installer(['domaine' => ['name' => 'Sciences Z', 'code' => 'ZST'],
+            'mention' => ['name' => 'Génie Z', 'code' => 'ZGC'], 'parcours' => ['name' => 'Parcours ZPAR', 'code' => 'ZPAR']], $this->admin->id);
+        $this->assertSame((int) $filiere, (int) $parcours->fresh()->filiere_id);
+        $this->assertSame(240, (int) $parcours->fresh()->credits_licence);
+
+        // lmd/setup a posé « GENIEQ » ; l'import, sans code, ne crée pas « genie-q » à côté.
+        app(\App\Services\LMD\HierarchieLmd::class)->installer(['domaine' => ['name' => 'Sciences Q', 'code' => 'QST'],
+            'mention' => ['name' => 'Genie Q'], 'parcours' => ['name' => 'Parcours Q', 'code' => 'QPA']], $this->admin->id);
+        $this->assertSame('GENIEQ', \App\Services\LMD\HierarchieLmd::codeDeduit(ESBTPLMDMention::class, ['name' => 'Genie Q'], \App\Services\LMD\HierarchieLmd::FORME_IMPORT));
+    }
+
+    /** Un recalcul en échec se dit : la moyenne d'avant l'emporterait sur les notes. */
+    public function test_un_recalcul_en_echec_est_annonce(): void
+    {
+        $this->assertStringContainsString('en echec', \App\Domain\Notes\RecalculApresDeplacement::motDeLaFin(['recalculs_tentes' => 2, 'orphelins' => [], 'echecs' => 1]));
+    }
+
     // --- Droits et séance ----------------------------------------------------------
 
     public function test_sans_le_droit_de_l_ecran_l_action_n_est_pas_proposee(): void

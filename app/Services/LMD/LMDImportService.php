@@ -153,17 +153,17 @@ class LMDImportService
     private function upsertDomaine(array $data, ?int $userId): ESBTPLMDDomaine
     {
         $valeurs = $this->deplacement->preserver(
-            ['name' => $data['name'], 'description' => $data['description'] ?? null, 'created_by' => $userId, 'is_active' => true],
+            $this->deplacement->preserver(['name' => $data['name'], 'created_by' => $userId, 'is_active' => true], $data, 'description'),
             $data,
             'nature',
         );
 
-        return ESBTPLMDDomaine::updateOrCreate(['code' => $data['code'] ?? Str::slug($data['name'])], $valeurs);
+        return ESBTPLMDDomaine::updateOrCreate(['code' => HierarchieLmd::codeDeduit(ESBTPLMDDomaine::class, $data, HierarchieLmd::FORME_IMPORT)], $valeurs);
     }
 
     private function upsertMention(array $data, ESBTPLMDDomaine $domaine, ?int $userId): ESBTPLMDMention
     {
-        $code = $data['code'] ?? Str::slug($data['name']);
+        $code = HierarchieLmd::codeDeduit(ESBTPLMDMention::class, $data, HierarchieLmd::FORME_IMPORT);
         $existante = ESBTPLMDMention::where('code', $code)->first();
         if ($conflit = $this->deplacement->siAutreParent(
             $existante,
@@ -192,7 +192,7 @@ class LMDImportService
 
     private function upsertParcours(array $data, ESBTPLMDMention $mention, ?ESBTPFiliere $filiere, ?int $userId): ESBTPLMDParcours
     {
-        $code = $data['code'] ?? Str::slug($data['name']);
+        $code = HierarchieLmd::codeDeduit(ESBTPLMDParcours::class, $data, HierarchieLmd::FORME_IMPORT);
         $existant = ESBTPLMDParcours::where('code', $code)->first();
         if ($conflit = $this->deplacement->siAutreParent(
             $existant,
@@ -213,25 +213,28 @@ class LMDImportService
             return $existant;
         }
 
-        return ESBTPLMDParcours::updateOrCreate(
-            ['code' => $code],
-            [
-                'name' => $data['name'],
-                'mention_id' => $mention->id,
-                'filiere_id' => $filiere?->id,
-                // Totaux par defaut lus dans les reglages de l'ecole, pas ecrits en dur.
-                'credits_licence' => (int) ($data['credits_licence'] ?? $this->rules->diplomaCreditTotal('licence')),
-                'credits_master' => (int) ($data['credits_master'] ?? $this->rules->diplomaCreditTotal('master')),
-                'created_by' => $userId,
-                'is_active' => true,
-            ]
-        );
+        $valeurs = [
+            'name' => $data['name'],
+            'mention_id' => $mention->id,
+            // Une omission n'efface rien : sans filiere ni credits dans la
+            // maquette, le parcours garde les siens. Totaux par defaut lus
+            // dans les reglages de l'ecole, seulement a la creation.
+            'credits_licence' => (int) ($data['credits_licence'] ?? $existant?->credits_licence ?? $this->rules->diplomaCreditTotal('licence')),
+            'credits_master' => (int) ($data['credits_master'] ?? $existant?->credits_master ?? $this->rules->diplomaCreditTotal('master')),
+            'created_by' => $existant?->created_by ?? $userId,
+            'is_active' => true,
+        ];
+        if ($filiere !== null || $existant === null) {
+            $valeurs['filiere_id'] = $filiere?->id;
+        }
+
+        return ESBTPLMDParcours::updateOrCreate(['code' => $code], $valeurs);
     }
 
     private function upsertFiliere(array $data, ?int $userId): ESBTPFiliere
     {
         return ESBTPFiliere::updateOrCreate(
-            ['code' => $data['code'] ?? Str::slug($data['name'])],
+            ['code' => HierarchieLmd::codeDeduit(ESBTPFiliere::class, $data, HierarchieLmd::FORME_IMPORT)],
             ['name' => $data['name'], 'description' => $data['description'] ?? null, 'is_active' => true]
         );
     }

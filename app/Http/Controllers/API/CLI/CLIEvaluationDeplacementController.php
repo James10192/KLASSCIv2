@@ -29,10 +29,15 @@ use Illuminate\Support\Facades\Log;
  */
 class CLIEvaluationDeplacementController extends BaseApiController
 {
+    public function __construct(private DeplacementDePeriode $deplacement)
+    {
+        parent::__construct();
+    }
+
     /**
      * POST /api/cli/evaluations/deplacer-periode
      */
-    public function deplacer(Request $request, ?DeplacementDePeriode $deplacement = null): JsonResponse
+    public function deplacer(Request $request): JsonResponse
     {
         if (! $request->user()->tokenCan('cli:admin')) {
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
@@ -47,9 +52,8 @@ class CLIEvaluationDeplacementController extends BaseApiController
 
         $simulation = $request->boolean('dry_run', true);
         $cible = $valide['periode'];
-        $deplacement ??= app(DeplacementDePeriode::class);
 
-        [$aDeplacer, $deja, $introuvables] = $deplacement->apercu($valide['evaluation_ids'], $cible);
+        [$aDeplacer, $deja, $introuvables] = $this->deplacement->apercu($valide['evaluation_ids'], $cible);
 
         if ($simulation) {
             return $this->successResponse([
@@ -62,7 +66,7 @@ class CLIEvaluationDeplacementController extends BaseApiController
             ], 'Simulation : rien n a ete ecrit. Relancer avec dry_run=false pour appliquer.');
         }
 
-        ['traitees' => $traitees, 'recalcul' => $recalcul] = $deplacement->appliquer($aDeplacer, $cible, $request->user()->id);
+        ['traitees' => $traitees, 'recalcul' => $recalcul] = $this->deplacement->appliquer($aDeplacer, $cible, $request->user()->id);
 
         Log::warning('CLI: evaluations deplacees de semestre sur decision humaine', [
             'periode_cible' => $cible,

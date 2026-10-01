@@ -7,6 +7,7 @@ use App\Domain\Assistant\Actions\Designations;
 use App\Domain\Assistant\Actions\Proposition;
 use App\Domain\Assistant\Actions\PropositionPerimee;
 use App\Domain\Notes\RebasculeDeMatiere;
+use App\Domain\Notes\RecalculApresDeplacement;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
@@ -113,7 +114,7 @@ class ChangerMatiereEvaluation extends ActionAgent
         ]);
 
         return [
-            'message' => "Évaluation rattachée à {$cible->name} ({$r['notes']} note(s) suivie(s), {$r['recalcul']['recalculs_tentes']} moyenne(s) recalculée(s)).",
+            'message' => "Évaluation rattachée à {$cible->name} ({$r['notes']} note(s) suivie(s))." . RecalculApresDeplacement::motDeLaFin($r['recalcul']),
             'lien' => route('esbtp.evaluations.index', [], false),
             'model_type' => ESBTPEvaluation::class,
             'model_id' => (int) $evaluation->id,

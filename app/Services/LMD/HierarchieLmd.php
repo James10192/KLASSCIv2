@@ -14,13 +14,21 @@ use Illuminate\Support\Str;
  * filiere, si on la donne). Reutilise ce qui existe sous le meme code.
  *
  * Partage par la CLI (`POST /api/cli/lmd/setup`) et par Nanan
- * (`proposer_hierarchie_lmd`). Deux gardes que la CLI n'avait pas :
+ * (`proposer_hierarchie_lmd`). Deux gardes que `lmd/setup` n'avait pas
+ * (l'import de maquette, lui, refusait deja le deplacement) :
  *
  *  - un code est unique dans l'ecole. Une mention dont le code existe deja
  *    sous un AUTRE domaine (ou un parcours sous une autre mention) n'est pas
- *    deplacee : c'est un conflit, la base l'aurait refuse d'une erreur 500 ;
- *  - sans filiere dans la demande, le parcours garde la sienne. L'ancien
- *    upsert ecrivait null et detachait le parcours de sa filiere en silence.
+ *    deplacee : c'est un conflit. `lmd/setup` cherchait par (code, parent),
+ *    ne trouvait rien, et l'insertion butait sur l'index unique (500) ;
+ *  - sans filiere dans la demande, le parcours garde la sienne, et ses
+ *    credits s'ils ne sont pas donnes. L'ancien upsert ecrivait null et les
+ *    totaux par defaut.
+ *
+ * Un code absent se deduit du nom (codeDeduit) en retrouvant d'abord une
+ * fiche existante sous l'une ou l'autre des deux formes historiques : celle de
+ * `lmd/setup` (« GENIECIVIL ») et celle de `lmd/import` (« genie-civil »).
+ * Nanan, elle, exige toujours le code.
  */
 class HierarchieLmd
 {
@@ -117,19 +125,47 @@ class HierarchieLmd
         });
     }
 
+    public const FORME_SETUP = 'setup';
+
+    public const FORME_IMPORT = 'import';
+
     /** @return array{domaine: string, mention: string, parcours: string, filiere: ?string} */
     public function codes(array $spec): array
     {
-        $code = fn (array $niveau) => trim((string) ($niveau['code'] ?? '')) !== ''
-            ? trim((string) $niveau['code'])
-            : Str::upper(Str::slug((string) $niveau['name'], ''));
-
         return [
-            'domaine' => $code($spec['domaine']),
-            'mention' => $code($spec['mention']),
-            'parcours' => $code($spec['parcours']),
-            'filiere' => isset($spec['filiere']['name']) && $spec['filiere']['name'] !== '' ? $code($spec['filiere']) : null,
+            'domaine' => self::codeDeduit(ESBTPLMDDomaine::class, $spec['domaine'], self::FORME_SETUP),
+            'mention' => self::codeDeduit(ESBTPLMDMention::class, $spec['mention'], self::FORME_SETUP),
+            'parcours' => self::codeDeduit(ESBTPLMDParcours::class, $spec['parcours'], self::FORME_SETUP),
+            'filiere' => isset($spec['filiere']['name']) && $spec['filiere']['name'] !== ''
+                ? self::codeDeduit(ESBTPFiliere::class, $spec['filiere'], self::FORME_SETUP)
+                : null,
         ];
+    }
+
+    /**
+     * Le code donne, sinon celui d'une fiche existante sous l'une des deux formes
+     * deduites du nom, sinon la forme propre a l'appelant. Les codes deja en base
+     * restent stables : aucun des deux chemins ne cree le double de l'autre.
+     *
+     * @param  class-string<\Illuminate\Database\Eloquent\Model>  $modele
+     */
+    public static function codeDeduit(string $modele, array $niveau, string $forme): string
+    {
+        $donne = trim((string) ($niveau['code'] ?? ''));
+        if ($donne !== '') {
+            return $donne;
+        }
+        $formes = [
+            self::FORME_SETUP => Str::upper(Str::slug((string) $niveau['name'], '')),
+            self::FORME_IMPORT => Str::slug((string) $niveau['name']),
+        ];
+        foreach ($formes as $candidat) {
+            if ($modele::where('code', $candidat)->exists()) {
+                return $candidat;
+            }
+        }
+
+        return $formes[$forme];
     }
 
     private function upsertDomaine(array $data, string $code, ?int $userId): ESBTPLMDDomaine

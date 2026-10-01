@@ -24,6 +24,14 @@ final class RebasculeDeMatiere
      */
     public function refus(ESBTPEvaluation $evaluation, ESBTPMatiere $cible): ?string
     {
+        // Une evaluation deja sur une matiere de son systeme n'a rien a
+        // reparer : la deplacer vers une autre matiere du meme systeme (Maths →
+        // Physique, hors maquette eventuellement) n'est pas une reparation de
+        // fuite, c'est une modification que seul l'ecran de l'evaluation porte.
+        if (CoherenceSystemeAcademique::estCoherente($evaluation->classe?->systeme_academique, $evaluation->matiere?->unite_enseignement_id)) {
+            return 'Refus : cette evaluation est deja sur une matiere de son systeme : passez par l\'ecran de l\'evaluation.';
+        }
+
         if (CoherenceSystemeAcademique::estCoherente($evaluation->classe?->systeme_academique, $cible->unite_enseignement_id)) {
             return null;
         }

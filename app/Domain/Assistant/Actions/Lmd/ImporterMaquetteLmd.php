@@ -16,6 +16,7 @@ use App\Services\LMD\ReglesDeMaquette;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Importer la maquette d'un parcours LMD (UE, ECUE, crédits, heures) depuis un
@@ -136,6 +137,10 @@ class ImporterMaquetteLmd extends ActionAgent
 
         try {
             $simulation = $this->import->simuler($spec, (int) $user->id);
+        } catch (ValidationException $e) {
+            // Un code d'element deja pris ailleurs (CodeDeMatiere::sousUnicite) :
+            // une question pour l'ecole, pas une panne.
+            return new Proposition(titre: $titre, resume: '', manques: collect($e->errors())->flatten()->all());
         } catch (\RuntimeException|\InvalidArgumentException $e) {
             return new Proposition(titre: $titre, resume: '', manques: [$e->getMessage()]);
         }
@@ -179,6 +184,8 @@ class ImporterMaquetteLmd extends ActionAgent
             });
         } catch (ConflitDeMaquette $e) {
             throw new PropositionPerimee(implode(' ', array_column($e->conflits(), 'detail')));
+        } catch (ValidationException $e) {
+            throw new PropositionPerimee(collect($e->errors())->flatten()->implode(' '));
         }
         $s = $resultat['stats'];
 

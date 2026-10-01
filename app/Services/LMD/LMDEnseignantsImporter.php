@@ -292,6 +292,11 @@ class LMDEnseignantsImporter
             $this->stats['warnings'][] = "ECUE introuvable: code={$ecueCode} (UE={$ueCodeForContext})";
             return;
         }
+        if ($this->correspondanceStricte && ! $this->estUnEcue($ecue)) {
+            $this->stats['warnings'][] = "Code {$ecueCode} : code d'une matière BTS, ignoré.";
+
+            return;
+        }
 
         $enseignants = $ecueData['enseignants'] ?? [];
         if (!is_array($enseignants) || count($enseignants) === 0) {
@@ -304,34 +309,48 @@ class LMDEnseignantsImporter
             return;
         }
 
-        // Update toutes les planifications de cet ECUE (multi filière/niveau).
-        // On ne touche QUE les rows où enseignant_principal_id est null OU différent,
-        // pour éviter les updated events inutiles + préserver les assignations
-        // manuelles existantes (cf. ues_assigned_responsable défensif).
+        $this->noterAffectation($ecue, $primaryTeacher);
+    }
+
+    /**
+     * Pose l'enseignant principal sur toutes les planifications de l'ECUE
+     * (multi filiere/niveau), et garde le detail ECUE par ECUE : c'est ce que
+     * relit la personne avant de valider (Nanan), et ce qui rend une
+     * proposition perimee s'il bouge. Seules les lignes sans enseignant ou
+     * avec un autre sont touchees : pas d'evenement `updated` inutile.
+     */
+    private function noterAffectation(ESBTPMatiere $ecue, User $enseignant): void
+    {
         $avant = ESBTPPlanificationAcademique::where('matiere_id', $ecue->id)
             ->with('enseignantPrincipal:id,name')->get(['id', 'enseignant_principal_id'])
             ->map(fn ($p) => $p->enseignantPrincipal?->name ?? '—')->unique()->sort()->values()->all();
         $count = ESBTPPlanificationAcademique::where('matiere_id', $ecue->id)
-            ->where(function ($q) use ($primaryTeacher) {
-                $q->whereNull('enseignant_principal_id')
-                  ->orWhere('enseignant_principal_id', '!=', $primaryTeacher->id);
-            })
+            ->where(fn ($q) => $q->whereNull('enseignant_principal_id')->orWhere('enseignant_principal_id', '!=', $enseignant->id))
             ->update([
-                'enseignant_principal_id' => $primaryTeacher->id,
+                'enseignant_principal_id' => $enseignant->id,
                 'updated_by' => $this->resolveSystemUserId(),
             ]);
 
         $this->stats['ecues_assigned'] += $count;
-        // Le detail, ECUE par ECUE : c'est ce que relit la personne avant de
-        // valider (Nanan), et ce qui rend une proposition perimee s'il bouge.
         $this->stats['affectations'][] = [
-            'ecue' => (string) \App\Services\LMD\CodeDeMaquette::affiche($ecue->code),
+            'ecue' => (string) CodeDeMaquette::affiche($ecue->code),
             'ecue_nom' => (string) $ecue->name,
-            'enseignant' => (string) $primaryTeacher->name,
-            'enseignant_id' => (int) $primaryTeacher->id,
+            'enseignant' => (string) $enseignant->name,
+            'enseignant_id' => (int) $enseignant->id,
             'avant' => $avant,
             'planifications' => $count,
         ];
+    }
+
+    /**
+     * Un ECUE, et pas une matiere BTS qui imprimerait le meme code : son
+     * unite, ou une ligne du pivot UE ↔ matiere. Sans ce controle, le mode
+     * strict pouvait ecraser l'enseignant d'une planification BTS.
+     */
+    private function estUnEcue(ESBTPMatiere $matiere): bool
+    {
+        return $matiere->unite_enseignement_id !== null
+            || DB::table('esbtp_ue_matiere')->where('matiere_id', $matiere->id)->exists();
     }
 
     /**
@@ -472,13 +491,14 @@ class LMDEnseignantsImporter
             return auth()->id();
         }
 
-        // Fallback CLI/seed standalone : premier superAdmin actif
-        static $systemUserId = null;
-        if ($systemUserId === null) {
-            $systemUserId = User::role('superAdmin')->where('is_active', true)->value('id');
-        }
-        return $systemUserId;
+        // Fallback CLI/seed standalone : premier superAdmin actif. Memorise par
+        // instance, pas en `static` : un worker long (ou une serie de tests)
+        // gardait l'identifiant d'un compte depuis supprime, et la cle
+        // etrangere `updated_by` refusait l'ecriture.
+        return $this->systemUserId ??= User::role('superAdmin')->where('is_active', true)->value('id');
     }
+
+    private ?int $systemUserId = null;
 
     /**
      * @return array{users_created:int, users_matched:int, ecues_assigned:int, ecues_not_found:int, ues_assigned_responsable:int, ues_not_found:int, warnings:array<int,string>}

@@ -20,6 +20,11 @@ use Illuminate\Support\Facades\Log;
  */
 class CLIEvaluationMatiereController extends BaseApiController
 {
+    public function __construct(private RebasculeDeMatiere $rebascule)
+    {
+        parent::__construct();
+    }
+
     /**
      * POST /api/cli/evaluations/{id}/matiere — rebascule une evaluation.
      *
@@ -29,7 +34,7 @@ class CLIEvaluationMatiereController extends BaseApiController
      *
      * Body: { matiere_id: int, dry_run?: bool }
      */
-    public function evaluationChangeMatiere(Request $request, $id, ?RebasculeDeMatiere $rebascule = null): JsonResponse
+    public function evaluationChangeMatiere(Request $request, $id): JsonResponse
     {
         if (! $request->user()->tokenCan('cli:admin')) {
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
@@ -46,9 +51,8 @@ class CLIEvaluationMatiereController extends BaseApiController
         }
 
         $cible = ESBTPMatiere::find($validated['matiere_id']);
-        $rebascule ??= app(RebasculeDeMatiere::class);
 
-        if ($refus = $rebascule->refus($evaluation, $cible)) {
+        if ($refus = $this->rebascule->refus($evaluation, $cible)) {
             return $this->errorResponse($refus, [], 422);
         }
 
@@ -56,7 +60,7 @@ class CLIEvaluationMatiereController extends BaseApiController
             return $this->apercuDeRebascule($evaluation, $cible, ESBTPNote::where('evaluation_id', $evaluation->id)->count());
         }
 
-        ['avant' => $avant, 'notes' => $notes, 'recalcul' => $recalcul] = $rebascule->appliquer($evaluation, $cible, $request->user()->id);
+        ['avant' => $avant, 'notes' => $notes, 'recalcul' => $recalcul] = $this->rebascule->appliquer($evaluation, $cible, $request->user()->id);
 
         Log::warning('CLI: evaluation rebasculee', [
             'evaluation_id' => $evaluation->id,
