@@ -235,7 +235,8 @@ class LMDImportService
     {
         return ESBTPFiliere::updateOrCreate(
             ['code' => HierarchieLmd::codeDeduit(ESBTPFiliere::class, $data, HierarchieLmd::FORME_IMPORT)],
-            ['name' => $data['name'], 'description' => $data['description'] ?? null, 'is_active' => true]
+            // Une omission n'efface pas la description posee depuis l'ecran.
+            $this->deplacement->preserver(['name' => $data['name'], 'is_active' => true], $data, 'description')
         );
     }
 

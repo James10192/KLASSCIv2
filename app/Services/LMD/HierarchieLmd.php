@@ -25,10 +25,10 @@ use Illuminate\Support\Str;
  *    credits s'ils ne sont pas donnes. L'ancien upsert ecrivait null et les
  *    totaux par defaut.
  *
- * Un code absent se deduit du nom (codeDeduit) en retrouvant d'abord une
- * fiche existante sous l'une ou l'autre des deux formes historiques : celle de
- * `lmd/setup` (« GENIECIVIL ») et celle de `lmd/import` (« genie-civil »).
- * Nanan, elle, exige toujours le code.
+ * Un code absent se deduit du nom (codeDeduit) : la forme propre a l'appelant
+ * (`lmd/setup` : « GENIECIVIL », `lmd/import` : « genie-civil »), sinon une
+ * fiche deja posee sous l'autre forme — jamais pour une filiere. Nanan, elle,
+ * exige toujours le code.
  */
 class HierarchieLmd
 {
@@ -143,9 +143,10 @@ class HierarchieLmd
     }
 
     /**
-     * Le code donne, sinon celui d'une fiche existante sous l'une des deux formes
-     * deduites du nom, sinon la forme propre a l'appelant. Les codes deja en base
-     * restent stables : aucun des deux chemins ne cree le double de l'autre.
+     * Le code donne ; sinon la forme propre a l'appelant ; sinon, si seule
+     * l'autre forme existe deja, celle-la (jamais pour une filiere). Les codes
+     * deja en base restent stables : aucun chemin ne cree le double d'une fiche
+     * de l'autre, ni ne bascule vers l'autre quand les deux coexistent.
      *
      * @param  class-string<\Illuminate\Database\Eloquent\Model>  $modele
      */
@@ -159,13 +160,17 @@ class HierarchieLmd
             self::FORME_SETUP => Str::upper(Str::slug((string) $niveau['name'], '')),
             self::FORME_IMPORT => Str::slug((string) $niveau['name']),
         ];
-        foreach ($formes as $candidat) {
-            if ($modele::where('code', $candidat)->exists()) {
-                return $candidat;
-            }
+        $propre = $formes[$forme];
+        // Sa propre forme d'abord : quand les deux fiches coexistent, chaque
+        // chemin garde la sienne. L'autre forme n'est qu'un repli, et jamais
+        // pour une filiere : une filiere BTS au code fortuitement egal ne doit
+        // pas etre adoptee par un import LMD.
+        if ($modele::where('code', $propre)->exists() || $modele === ESBTPFiliere::class) {
+            return $propre;
         }
+        $autre = $formes[$forme === self::FORME_SETUP ? self::FORME_IMPORT : self::FORME_SETUP];
 
-        return $formes[$forme];
+        return $modele::where('code', $autre)->exists() ? $autre : $propre;
     }
 
     private function upsertDomaine(array $data, string $code, ?int $userId): ESBTPLMDDomaine

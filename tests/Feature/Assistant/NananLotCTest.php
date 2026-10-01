@@ -483,6 +483,69 @@ class NananLotCTest extends TestCase
         $this->assertSame('GENIEQ', \App\Services\LMD\HierarchieLmd::codeDeduit(ESBTPLMDMention::class, ['name' => 'Genie Q'], \App\Services\LMD\HierarchieLmd::FORME_IMPORT));
     }
 
+    /** Les deux fiches coexistent : chaque chemin garde la sienne ; une filière n'adopte jamais l'autre forme. */
+    public function test_un_code_deduit_garde_la_forme_de_son_chemin(): void
+    {
+        $domaine = ESBTPLMDDomaine::create(['name' => 'Sciences R', 'code' => 'RST', 'is_active' => true]);
+        ESBTPLMDMention::create(['name' => 'Genie R', 'code' => 'GENIER', 'domaine_id' => $domaine->id, 'is_active' => true]);
+        ESBTPLMDMention::create(['name' => 'Genie R', 'code' => 'genie-r', 'domaine_id' => $domaine->id, 'is_active' => true]);
+        $h = \App\Services\LMD\HierarchieLmd::class;
+
+        $this->assertSame('genie-r', $h::codeDeduit(ESBTPLMDMention::class, ['name' => 'Genie R'], $h::FORME_IMPORT));
+        $this->assertSame('GENIER', $h::codeDeduit(ESBTPLMDMention::class, ['name' => 'Genie R'], $h::FORME_SETUP));
+
+        \App\Models\ESBTPFiliere::factory()->create(['code' => 'GENIES']);
+        $this->assertSame('genie-s', $h::codeDeduit(\App\Models\ESBTPFiliere::class, ['name' => 'Genie S'], $h::FORME_IMPORT));
+    }
+
+    /** Réimporter sans description de filière n'efface pas celle posée à l'écran. */
+    public function test_un_import_garde_la_description_de_la_filiere(): void
+    {
+        $this->uniteLmd();
+        \App\Models\ESBTPFiliere::where('code', 'FZPAR')->update(['description' => 'Posée à l\'écran']);
+        $this->importer('ZPAR', [['ZUE1', 'Unité test', 30, [['ZEC1', 'Élément test', 30]]]]);
+
+        $this->assertSame('Posée à l\'écran', \App\Models\ESBTPFiliere::where('code', 'FZPAR')->value('description'));
+    }
+
+    /**
+     * Le chemin réel de la CLI, par la route HTTP : une ECUE évaluée dans une
+     * classe BTS passe sur la matière BTS. La simulation n'écrit rien ; le vrai
+     * passage réaligne les notes et recalcule les deux côtés.
+     */
+    public function test_la_cli_rebascule_une_ecue_vers_la_matiere_bts(): void
+    {
+        $bts = $this->matiereConfiguree();
+        $ecue = ESBTPMatiere::factory()->create(['unite_enseignement_id' => $this->uniteLmd()->id]);
+        $eleve = $this->etudiantInscrit();
+        $this->noter($eleve, $this->evaluationDe($bts), 20);
+        $evaluation = ESBTPEvaluation::withoutEvents(fn () => ESBTPEvaluation::factory()->create([
+            'matiere_id' => $ecue->id, 'classe_id' => $this->classe->id, 'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1', 'status' => 'published', 'bareme' => 20, 'coefficient' => 1,
+        ]));
+        $this->noter($eleve, $evaluation, 10);
+        // L'agrégat hérité du côté ECUE (posé avant le garde d'écriture).
+        ESBTPResultat::withoutEvents(fn () => ESBTPResultat::create(['etudiant_id' => $eleve->id, 'classe_id' => $this->classe->id,
+            'matiere_id' => $ecue->id, 'periode' => 'semestre1', 'annee_universitaire_id' => $this->annee->id, 'moyenne' => 10, 'coefficient' => 1]));
+        \Laravel\Sanctum\Sanctum::actingAs($this->admin, ['cli:admin']);
+        $url = "/api/cli/evaluations/{$evaluation->id}/matiere";
+
+        $apercu = $this->postJson($url, ['matiere_id' => $bts->id, 'dry_run' => true])->assertOk()->json('data');
+        $this->assertTrue($apercu['dry_run']);
+        $this->assertSame(1, $apercu['notes_a_deplacer']);
+        $this->assertSame($ecue->id, (int) $evaluation->fresh()->matiere_id);
+
+        $reel = $this->postJson($url, ['matiere_id' => $bts->id])->assertOk()->json('data');
+        $this->assertSame($bts->id, (int) $evaluation->fresh()->matiere_id);
+        $this->assertSame([$bts->id], ESBTPNote::where('evaluation_id', $evaluation->id)->pluck('matiere_id')->map(fn ($v) => (int) $v)->all());
+        // Côté BTS : recalculé (20 et 10). Côté ECUE : plus aucune note, l'agrégat
+        // est rendu comme orphelin, jamais remis à zéro.
+        $this->assertSame(1, $reel['recalculs_tentes']);
+        $this->assertCount(1, $reel['agregats_orphelins']);
+        $this->assertSame(10.0, (float) ESBTPResultat::where(['etudiant_id' => $eleve->id, 'matiere_id' => $ecue->id])->value('moyenne'));
+        $this->assertSame(15.0, (float) ESBTPResultat::where(['etudiant_id' => $eleve->id, 'matiere_id' => $bts->id])->value('moyenne'));
+    }
+
     /** Un recalcul en échec se dit : la moyenne d'avant l'emporterait sur les notes. */
     public function test_un_recalcul_en_echec_est_annonce(): void
     {
