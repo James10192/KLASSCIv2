@@ -8,7 +8,7 @@ use App\Models\ESBTPCandidatureWorkflow;
 use App\Services\MailPulse\MailPulseClient;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\View;
 
 /**
  * Livraison des accès d'activation sur les canaux activés par le tenant.
@@ -124,28 +124,96 @@ final class AdmissionActivationNotifier
             return false;
         }
 
-        $email = $workflow->candidature->email;
+        $email = trim((string) $workflow->candidature->email);
         $ecole = $this->ecole();
+        $sujet = "Activation de votre espace étudiant — {$ecole}";
+        $texte = "Votre dossier d'inscription à {$ecole} a franchi l'étape de préinscription.\n\n"
+            ."Activez votre espace étudiant et choisissez votre mot de passe : {$url}\n\n"
+            ."Ce lien expire dans 48 heures et ne fonctionne qu'une fois.";
 
+        // Même chemin que les convocations de rendez-vous : MailPulse. L'envoi
+        // direct par le mailer de l'application échouait sans bruit là où il
+        // n'est pas configuré, alors que les convocations, elles, arrivaient.
         try {
-            Mail::raw(
-                "Votre dossier d'inscription à {$ecole} a franchi l'étape de préinscription.\n\n"
-                ."Activez votre espace étudiant et choisissez votre mot de passe : {$url}\n\n"
-                ."Ce lien expire dans 48 heures et ne fonctionne qu'une fois.",
-                function ($message) use ($email, $ecole) {
-                    $message->to($email)->subject("Activation de votre espace étudiant — {$ecole}");
-                },
-            );
+            $this->mailPulse->createOrUpdateContact([
+                'email' => $email,
+                'first_name' => $workflow->candidature->prenoms ?: $workflow->candidature->nom,
+                'last_name' => $workflow->candidature->nom,
+                'language' => 'fr',
+                'preferred_channel' => 'email',
+                'subscribed' => true,
+                'metadata' => ['source' => 'klassci-admission', 'channel_opt_in' => ['email' => true]],
+            ]);
+
+            $result = $this->mailPulse->sendEmailMessage([
+                'channel' => 'email',
+                'recipient' => ['type' => 'email', 'value' => $email],
+                'content' => ['type' => 'text', 'text' => $texte],
+                'metadata' => [
+                    'source' => 'klassci',
+                    'workflow_event' => 'admission_activation',
+                    'subject' => $sujet,
+                    'workflow_id' => $workflow->id,
+                ] + array_filter(['email_html' => $this->html($workflow, $url)]),
+            ], 'admission-activation-email-'.$workflow->id.'-'.substr(hash('sha256', $url), 0, 16));
+
+            if (! $result->isDispatchAccepted()) {
+                Log::warning('Activation KLASSCI : échec envoi e-mail', [
+                    'workflow_id' => $workflow->id,
+                    'status' => $result->status,
+                    'request_id' => $result->requestId,
+                ]);
+
+                return false;
+            }
 
             return true;
         } catch (\Throwable $e) {
-            Log::warning('Activation KLASSCI : échec envoi e-mail', [
+            Log::warning('Activation KLASSCI : exception envoi e-mail', [
                 'workflow_id' => $workflow->id,
                 'exception' => $e::class,
             ]);
 
             return false;
         }
+    }
+
+    /**
+     * Le même message, mis en page aux couleurs et au logo de l'école. Une mise
+     * en page qui échoue ne doit pas retenir le lien : il part alors en texte.
+     */
+    private function html(ESBTPCandidatureWorkflow $workflow, string $url): ?string
+    {
+        try {
+            return $this->rendre($workflow, $url);
+        } catch (\Throwable $e) {
+            Log::warning('Activation KLASSCI : mise en page du courriel impossible, envoi en texte', [
+                'workflow_id' => $workflow->id,
+                'exception' => $e::class,
+            ]);
+
+            return null;
+        }
+    }
+
+    private function rendre(ESBTPCandidatureWorkflow $workflow, string $url): string
+    {
+        $c = $workflow->candidature;
+        $etapes = [
+            'Choisissez votre mot de passe',
+            'Vérifiez et complétez votre profil',
+            $this->settings->classChoiceActor() === InscriptionWorkflowSettings::CLASS_ACTOR_STUDENT
+                ? 'Choisissez votre classe'
+                : "L'établissement vous attribue votre classe",
+            'Votre inscription est finalisée',
+        ];
+
+        return View::make('esbtp.emails.admission-activation', [
+            'nom' => trim(($c->nom ?? '').' '.($c->prenoms ?? '')) ?: 'futur étudiant',
+            'url' => $url,
+            'heures' => 48,
+            'etapes' => $etapes,
+        ])->render();
     }
 
     private function contactProuve(ESBTPCandidature $c, mixed $verifieAt): bool

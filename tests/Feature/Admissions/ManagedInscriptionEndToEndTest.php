@@ -417,6 +417,32 @@ class ManagedInscriptionEndToEndTest extends TestCase
     }
 
     /** @test */
+    public function le_lien_par_e_mail_part_par_mailpulse_comme_les_convocations(): void
+    {
+        // Le mailer de l'application n'est pas configuré partout ; MailPulse,
+        // qui porte déjà les convocations, l'est. Le lien prend ce chemin.
+        $candidature = $this->candidature();
+        $mailpulse = Mockery::mock(MailPulseClient::class);
+        $mailpulse->shouldReceive('createOrUpdateContact')->andReturn(new \App\Services\MailPulse\MailPulseResult(true, 'ok'));
+        $mailpulse->shouldReceive('sendEmailMessage')->atLeast()->once()
+            ->withArgs(fn (array $message) => ($message['recipient']['value'] ?? null) === $candidature->email
+                && str_contains($message['content']['text'] ?? '', '/activation/')
+                // La version mise en page : gabarit commun, bouton vers le même lien.
+                && str_contains($message['metadata']['email_html'] ?? '', 'Activer mon espace')
+                && str_contains($message['metadata']['email_html'] ?? '', '/activation/'))
+            ->andReturn(new \App\Services\MailPulse\MailPulseResult(true, 'queued', 202, null, 'msg-1', null, null, null, 'accepted'));
+        $this->app->instance(MailPulseClient::class, $mailpulse);
+
+        $managed = app(ManagedInscriptionWorkflow::class);
+        $workflow = $managed->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+
+        // Hors transaction de test, l'envoi est immédiat : on le prouve sur
+        // le notificateur, qui est ce que la caisse et le guichet appellent.
+        $this->assertTrue(app(\App\Services\Admissions\AdmissionActivationNotifier::class)
+            ->sendEmail($workflow->fresh(), route('esbtp.admissions.workflow.activation.form', ['token' => 'x'])));
+    }
+
+    /** @test */
     public function un_numero_verifie_n_empeche_pas_de_confirmer_l_email(): void
     {
         // Cas réel de recette : numéro prouvé, e-mail non. Le lien ne part
@@ -446,6 +472,17 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($admin)
             ->get(route('esbtp.admissions.workflow.show', $candidature))
             ->assertDontSee('Le lien ne part que par WhatsApp', false);
+    }
+
+    /** @test */
+    public function un_lien_d_activation_perime_affiche_une_page_et_ne_boucle_pas(): void
+    {
+        // Ouvert depuis un e-mail, le lien n'a pas de page précédente : l'erreur
+        // de validation renvoyait vers la même URL, jusqu'au « trop de redirections ».
+        $this->get(route('esbtp.admissions.workflow.activation.form', ['token' => 'inconnu']))
+            ->assertStatus(410)
+            ->assertSee('Ce lien ne peut plus servir', false)
+            ->assertSee("Ce lien d'activation est invalide ou expiré.");
     }
 
     /** @test */

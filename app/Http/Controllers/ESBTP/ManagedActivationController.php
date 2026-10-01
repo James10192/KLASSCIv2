@@ -28,7 +28,15 @@ final class ManagedActivationController extends Controller
     {
         $this->guardManagedWorkflow();
         $workflow->loadMissing(['candidature', 'etudiant.user']);
-        $this->assertActivatable($workflow, $request->query('v'));
+
+        // Même raison que pour le lien par e-mail : pas de page précédente.
+        try {
+            $this->assertActivatable($workflow, $request->query('v'));
+        } catch (ValidationException $e) {
+            return response()->view('esbtp.admissions.workflow.activation-indisponible', [
+                'motif' => collect($e->errors())->flatten()->first(),
+            ], 410);
+        }
 
         $submitUrl = URL::temporarySignedRoute(
             'esbtp.admissions.workflow.activation.signed.submit',
