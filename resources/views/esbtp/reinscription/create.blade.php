@@ -61,6 +61,7 @@
     }
 
     .searchable-select-trigger-text {
+        text-align: left;
         flex: 1;
         overflow: hidden;
         text-overflow: ellipsis;

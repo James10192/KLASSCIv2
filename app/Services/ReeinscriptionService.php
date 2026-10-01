@@ -369,6 +369,13 @@ class ReeinscriptionService
             // Vérifier permissions SuperAdmin pour outrepasser
             $isSuperAdmin = auth()->user() && auth()->user()->can('admin.access');
 
+            $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)
+                ->pour((int) $etudiantId, null, $anneeUniversitaireId ? (int) $anneeUniversitaireId : null);
+            // Un dossier sur une année intermédiaire : aucune dérogation ne la
+            // saute, pas même une correction ; la fiche et Nanan disent pareil.
+            if ($eligibilite['inscription_intermediaire'] !== null) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException($eligibilite['message_intermediaire']);
+            }
             if (!$this->peutSeReinscrire($etudiantId, $anneeUniversitaireId) && !$isSuperAdmin) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException("L'étudiant doit solder tous ses frais avant la réinscription");
             }
@@ -379,8 +386,7 @@ class ReeinscriptionService
             // vient de juger, et dont le reste dû part en reliquat. La dernière
             // inscription active (`latest()`) pouvait être une autre — celle de
             // l'année visée elle-même, quand la réinscription est rejouée.
-            $inscriptionActuelle = app(\App\Services\Reinscription\EligibiliteReinscription::class)
-                ->pour((int) $etudiantId, null, $anneeUniversitaireId ? (int) $anneeUniversitaireId : null)['inscription']
+            $inscriptionActuelle = $eligibilite['inscription']
                 ?? $etudiant->inscriptions()->where('status', 'active')->latest()->first();
 
             if (!$inscriptionActuelle) {
@@ -748,7 +754,7 @@ class ReeinscriptionService
         // une autre que celle affichée, donc un autre verdict que l'écran.
         $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)
             ->pour((int) $etudiantId, null, $anneeCibleId ? (int) $anneeCibleId : null);
-        if (!$eligibilite['inscription']) {
+        if (!$eligibilite['inscription'] || $eligibilite['etat'] === \App\Services\Reinscription\EligibiliteReinscription::ANNEE_INTERMEDIAIRE) {
             return false;
         }
 

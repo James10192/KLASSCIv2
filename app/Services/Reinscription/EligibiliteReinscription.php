@@ -28,6 +28,8 @@ final class EligibiliteReinscription
     public const SOLDEE = 'soldee';
     public const DANS_TOLERANCE = 'dans_tolerance';
     public const IMPAYE = 'impaye';
+    /** Une inscription non annulée existe entre l'année quittée et l'année visée. */
+    public const ANNEE_INTERMEDIAIRE = 'annee_intermediaire';
 
     public function __construct(private ClassesDeReinscription $classes)
     {
@@ -67,6 +69,11 @@ final class EligibiliteReinscription
         $existante = $anneeCible && $inscription
             ? $this->inscriptionDeLAnnee($etudiantId, (int) $anneeCible->id, (int) $inscription->id)
             : null;
+        // Calculée même quand l'année visée porte déjà une inscription : une
+        // correction (rejeu) repartirait elle aussi de l'année d'avant.
+        $intermediaire = $anneeCible && $inscription
+            ? $this->inscriptionIntermediaire($etudiantId, $inscription, $anneeCible)
+            : null;
 
         $du = $inscription ? SoldeDeReinscription::du((int) $inscription->id) : 0.0;
         $paye = $inscription ? SoldeDeReinscription::paye((int) $inscription->id) : 0.0;
@@ -76,6 +83,9 @@ final class EligibiliteReinscription
         $etat = match (true) {
             $inscription === null => null,
             $existante !== null => self::DEJA_INSCRIT,
+            // Viser plus loin partirait de l'année d'avant et laisserait ce
+            // dossier à côté : aucun solde, aucune dérogation n'y change rien.
+            $intermediaire !== null => self::ANNEE_INTERMEDIAIRE,
             $solde <= 0 => self::SOLDEE,
             $solde <= $tolerance => self::DANS_TOLERANCE,
             default => self::IMPAYE,
@@ -88,6 +98,8 @@ final class EligibiliteReinscription
             'annee_cible' => $anneeCible,
             'annee_suivante' => $anneeCible ? $this->anneeApres($anneeCible) : null,
             'inscription_annee_cible' => $existante,
+            'inscription_intermediaire' => $intermediaire,
+            'message_intermediaire' => $intermediaire ? self::messageIntermediaire($intermediaire, $anneeCible) : null,
             'du' => $du,
             'paye' => $paye,
             'solde' => $solde,
@@ -98,7 +110,7 @@ final class EligibiliteReinscription
             'peut_poursuivre' => $autorisee || ($etat === self::IMPAYE && $deroge),
             // Rejouer une réinscription déjà faite (correction de classe) :
             // effectuerReinscription la gère, la fiche l'offre à qui peut déroger.
-            'peut_rejouer' => $etat === self::DEJA_INSCRIT && $deroge,
+            'peut_rejouer' => $etat === self::DEJA_INSCRIT && $deroge && $intermediaire === null,
         ];
     }
 
@@ -108,6 +120,43 @@ final class EligibiliteReinscription
             ->where('start_date', '>', $annee->start_date)
             ->orderBy('start_date')
             ->first();
+    }
+
+    /**
+     * L'inscription posée sur une année entre celle qu'on quitte et celle
+     * qu'on vise, hors annulées. Une inscription « terminée » compte aussi :
+     * la laisser de côté ferait repartir la réinscription de l'année d'avant,
+     * avec ses soldes, sans que personne ne l'ait décidé.
+     */
+    private function inscriptionIntermediaire(int $etudiantId, ESBTPInscription $quittee, ESBTPAnneeUniversitaire $anneeCible): ?ESBTPInscription
+    {
+        $anneeQuittee = $quittee->anneeUniversitaire;
+        if (! $anneeQuittee) {
+            return null;
+        }
+
+        return ESBTPInscription::query()
+            ->select('esbtp_inscriptions.*')
+            ->join('esbtp_annee_universitaires as annee', 'annee.id', '=', 'esbtp_inscriptions.annee_universitaire_id')
+            ->where('esbtp_inscriptions.etudiant_id', $etudiantId)
+            ->where('esbtp_inscriptions.id', '!=', $quittee->id)
+            ->where('esbtp_inscriptions.status', '!=', 'annulée')
+            ->where('annee.start_date', '>', $anneeQuittee->start_date)
+            ->where('annee.start_date', '<', $anneeCible->start_date)
+            ->orderBy('annee.start_date')
+            ->with(['anneeUniversitaire', 'classe'])
+            ->first();
+    }
+
+    /** Ce qu'il faut faire, selon l'état du dossier qui bloque. */
+    public static function messageIntermediaire(ESBTPInscription $inscription, ?ESBTPAnneeUniversitaire $anneeCible): string
+    {
+        $annee = $inscription->anneeUniversitaire->name ?? 'l\'année précédente';
+        $visee = $anneeCible->name ?? 'l\'année visée';
+
+        return $inscription->status === 'terminée'
+            ? "L'inscription de {$annee} est terminée sans être la dernière inscription suivie : réinscrire en {$visee} partirait de l'année d'avant. Corrigez d'abord l'inscription de {$annee}."
+            : "Le dossier de {$annee} n'est pas finalisé : terminez-le ou annulez-le avant de préparer {$visee}.";
     }
 
     /** Reste dû jusqu'auquel une réinscription reste permise (réglage d'école, 0 par défaut). */
