@@ -97,7 +97,8 @@ class ExpediteurVerification
     private function parWhatsapp(ESBTPVerificationContact $verification): ResultatVerificationDistante
     {
         $resultat = $this->creerWhatsapp($verification);
-        LienWhatsappVerification::oublier($verification->demande_id);
+        // Un renvoi refuse (pacing, quota) laisse la verification precedente
+        // valable : son lien reste en cache, la famille peut encore l'utiliser.
         if (! $resultat->ok) {
             return $resultat;
         }
@@ -114,6 +115,10 @@ class ExpediteurVerification
         }
         if ($resultat->lienWhatsapp !== null) {
             LienWhatsappVerification::poser($verification->demande_id, $resultat->lienWhatsapp);
+        } else {
+            // Repli sur l'envoi classique : l'ancien lien designe une
+            // verification que MailPulse vient de remplacer.
+            LienWhatsappVerification::oublier($verification->demande_id);
         }
 
         return $resultat;

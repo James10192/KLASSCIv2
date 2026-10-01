@@ -111,12 +111,19 @@ La famille l'envoie ; MailPulse approuve sur son message et lui répond.
 - Le lien n'est rendu qu'une fois par MailPulse ; KLASSCI le garde en cache
   (clé `verif-lien-wa:` + sha256 de la demande) le temps de vie du code. Il
   contient le code : jamais journalisé.
-- Dépôt et renvoi rendent en plus `lien_whatsapp` quand il existe.
+- Dépôt et renvoi rendent en plus `lien_whatsapp` quand il existe. Un renvoi
+  refusé (`429`, quota) ne touche pas au lien en cache : la vérification
+  précédente reste utilisable.
+- **Ordre de mise en service** : n'activer le réglage qu'une fois le site public
+  déployé avec l'écran de suivi (bouton WhatsApp et attente). Avant, la famille
+  ne verrait qu'un champ de code qu'aucun message ne remplit.
 
 ### `POST /api/portail/email/statut`
 
-Corps : `{"canal":"telephone","demande_id"}`. Seau `catalogue` (30 par minute et
-par adresse) et non `identite` : le site l'appelle toutes les cinq secondes.
+Corps : `{"canal":"telephone","demande_id","ip_client"?}`. `canal` est obligatoire
+et vaut `telephone` (toute autre valeur : `422`). `ip_client` est posé par le relais
+du site, jamais par le navigateur : il sert au seau de débit. Seau `catalogue` et non
+`identite` : le site l'appelle toutes les cinq secondes.
 
 | HTTP | Corps | Sens |
 | --- | --- | --- |
@@ -126,7 +133,8 @@ par adresse) et non `identite` : le site l'appelle toutes les cinq secondes.
 | `503` | `{"verifie":false,"motif":"indisponible"}` | MailPulse injoignable : réessayer. |
 
 `POST /api/portail/email/verifier` n'approuve pas une vérification inversée : MailPulse
-refuse de contrôler un code qu'il a laissé afficher.
+refuse de contrôler un code qu'il a laissé afficher (`409 verification_inverse`).
+KLASSCI le rend en `422 code_invalide` sans compter de tentative.
 
 ## Familles déjà en base
 

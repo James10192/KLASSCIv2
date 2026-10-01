@@ -94,6 +94,10 @@ class ControleVerification
                 // MailPulse ne connait plus cette verification (purgee apres
                 // expiration) : pour la famille, c'est un code expire, a renvoyer.
                 self::VERIFICATION_INTROUVABLE, 'introuvable' => $this->echouer($v, self::EXPIRE),
+                // Verification inversee : aucun code n'est a saisir ici (il part
+                // par WhatsApp). On refuse sans compter de tentative, et sans
+                // annoncer une panne qui n'existe pas.
+                'verification_inverse' => ResultatControle::refus(self::CODE_INVALIDE),
                 default => ResultatControle::refus(self::INDISPONIBLE),
             };
         });

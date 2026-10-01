@@ -8,7 +8,9 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\Reinscription\PortailSignatureVerifier;
 use App\Services\TenantScolariteSettings;
+use App\Models\ESBTPVerificationContact;
 use App\Services\Verification\DemarrageVerification;
+use App\Services\Verification\ExpediteurVerification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as RequeteHttp;
 use Illuminate\Support\Facades\Cache;
@@ -111,6 +113,29 @@ class VerificationWhatsappInverseTest extends TestCase
 
         $this->assertArrayNotHasKey('lien_whatsapp', $verification->reponse());
         Http::assertNotSent(fn (RequeteHttp $r) => isset($r['mode']));
+    }
+
+    public function test_un_renvoi_refuse_garde_le_lien_de_la_verification_en_cours(): void
+    {
+        $this->reglerInverse(true);
+        $refuser = false;
+        Http::fake(function (RequeteHttp $r) use (&$refuser) {
+            if ($r->method() === 'POST') {
+                return $refuser
+                    ? Http::response(['error' => 'rate_limited', 'retry_after' => 60], 429)
+                    : Http::response(['id' => 'ver_4', 'status' => 'pending', 'mode' => 'reverse', 'wa_link' => self::LIEN, 'message' => 'Code : 123456'], 201);
+            }
+
+            return Http::response(['id' => 'ver_4', 'status' => 'pending'], 200);
+        });
+        $verification = app(DemarrageVerification::class)->apresDepot($this->candidature());
+
+        $refuser = true;
+        $ligne = ESBTPVerificationContact::where('demande_id', $verification->demandeId)->firstOrFail();
+        $this->assertFalse(app(ExpediteurVerification::class)->expedier($ligne)->ok);
+
+        $this->statut(['canal' => 'telephone', 'demande_id' => $verification->demandeId])
+            ->assertStatus(202)->assertJsonPath('lien_whatsapp', self::LIEN);
     }
 
     public function test_une_demande_inconnue_au_statut_repond_comme_un_code_faux(): void
