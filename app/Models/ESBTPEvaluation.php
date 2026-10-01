@@ -107,6 +107,12 @@ class ESBTPEvaluation extends Model implements Auditable
     const TYPE_RATTRAPAGE = 'rattrapage';
 
     /**
+     * Les types qu'une personne peut choisir à la création ou à la
+     * modification. Une seule liste : l'écran et l'assistant la lisent ici.
+     */
+    public const TYPES_SAISISSABLES = ['devoir', 'examen', 'projet', 'tp', 'controle', 'quiz', 'oral', 'cc'];
+
+    /**
      * Relation avec la matière associée à cette évaluation.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

@@ -70,6 +70,18 @@ return [
             'libelle' => 'Préparation de la maquette BTS…',
             'suggestion' => 'Configure la maquette BTS de cette filière et de ce niveau',
         ],
+        'proposer_creation_evaluation' => [
+            'enabled' => true,
+            'all_permissions' => ['evaluations.create'],
+            'libelle' => 'Préparation de l\'évaluation…',
+            'suggestion' => 'Crée un devoir pour une classe et une matière',
+        ],
+        'proposer_publication_notes' => [
+            'enabled' => true,
+            'all_permissions' => ['evaluations.edit'],
+            'libelle' => 'Préparation de la publication des notes…',
+            'suggestion' => 'Publie les notes des évaluations terminées de ma classe',
+        ],
         'search_attendances' => [
             'enabled' => true,
             'any_permissions' => ['attendances.view'],

@@ -16,6 +16,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **KLASSCI Care — avis sur Nanan transmis au support.** Chaque 👍 / 👎 sur une réponse de l'assistant part au Master (`POST /api/v1/support/retours-assistant`) par la boîte d'envoi, avec reprise, sans jamais faire attendre la personne. Un changement d'avis après envoi part sous une nouvelle clé (`uuid:N`).
 - **KLASSCI Care — avertissement quand le support répond.** Commande `support:suivre-demandes` (toutes les 5 min) : notification dans l'application quand le support répond ou résout/ferme une demande, et e-mail si l'adresse est confirmée. Le premier passage relève l'historique sans avertir.
 - **Confirmation d'adresse e-mail du personnel.** Après un signalement, la réponse indique `email_a_verifier` ; un lien de confirmation signé (48 h) peut être envoyé (`POST /support/courriel/lien`). Rien n'est bloqué sans confirmation.
+- **Nanan — créer une évaluation et publier ses notes.** Nanan prépare désormais une nouvelle évaluation (classe, matière, type, date et horaires, barème, coefficient, semestre) et la publication des notes d'une ou plusieurs évaluations terminées. Rien n'est créé ni publié avant le clic « Valider » ; le barème et le coefficient sont toujours demandés, jamais supposés ; une évaluation identique n'est pas créée deux fois ; un enseignant n'agit que sur ses matières et ses évaluations. Chaque création et publication figure au journal d'audit.
+
+---
 
 ## Septembre 2026
 
