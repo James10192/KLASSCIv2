@@ -946,9 +946,9 @@ class DashboardController extends Controller
         // courante, mais une inscription bien réelle à venir. L'accueil disait
         // « Aucune inscription active » à un étudiant qui venait de s'inscrire.
         $data['anneeInscriptionAVenir'] = null;
-        if (! $inscription) {
-            $inscription = $this->inscriptionAVenir($student, $data['anneeEnCours']);
-            $data['anneeInscriptionAVenir'] = $inscription?->anneeUniversitaire?->name;
+        if (! $inscription && ($aVenir = $this->inscriptionAVenir($student, $data['anneeEnCours']))) {
+            $inscription = $aVenir;
+            $data['anneeInscriptionAVenir'] = $aVenir->anneeUniversitaire?->name ?: "l'année suivante";
         }
 
         // L'année à venir n'a pas commencé : pas de cours du jour à afficher.

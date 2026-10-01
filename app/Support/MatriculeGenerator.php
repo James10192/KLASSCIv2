@@ -167,7 +167,9 @@ class MatriculeGenerator
                 // même préfixe heurtait l'index unique.
                 $suite = Str::after($m, $matriculePrefix);
 
-                return ctype_digit($suite) ? (int) $suite : 0;
+                // Six chiffres exactement : un préfixe plus long (GC12… pour
+                // GC1…) ne doit pas prêter sa numérotation.
+                return strlen($suite) === 6 && ctype_digit($suite) ? (int) $suite : 0;
             })
             ->filter(fn($seq) => $seq > 0)
             ->sort()

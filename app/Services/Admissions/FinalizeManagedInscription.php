@@ -281,12 +281,18 @@ final class FinalizeManagedInscription
      */
     private function matriculeDefinitif(ESBTPEtudiant $etudiant, ESBTPClasse $classe, int $anneeId): array
     {
-        if (! str_starts_with((string) $etudiant->matricule, 'PRE-')) {
+        // Sexe ou date de naissance manquant : on garde le PRE-. Le contrôle de
+        // complétude de la conversion ne joue que sur un matricule PRE- ; le
+        // remplacer avant lui laisserait passer un dossier incomplet, avec un
+        // matricule numéroté sur un sexe deviné.
+        if (! str_starts_with((string) $etudiant->matricule, 'PRE-')
+            || ! $etudiant->sexe
+            || ! $etudiant->date_naissance) {
             return [];
         }
 
         return ['matricule' => $this->matricules->generate([
-            'genre' => $etudiant->sexe ?: 'M',
+            'genre' => $etudiant->sexe,
             'filiere_id' => $classe->filiere_id,
             'niveau_id' => $classe->niveau_etude_id,
             'annee_universitaire_id' => $anneeId,

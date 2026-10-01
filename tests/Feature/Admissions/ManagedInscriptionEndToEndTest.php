@@ -300,6 +300,25 @@ class ManagedInscriptionEndToEndTest extends TestCase
     }
 
     /** @test */
+    public function un_dossier_sans_sexe_n_est_pas_finalise_et_garde_son_matricule_provisoire(): void
+    {
+        // Le contrôle de complétude ne joue que sur un matricule PRE- : le
+        // remplacer d'abord laissait finaliser un dossier sans sexe, avec un
+        // matricule numéroté sur un sexe deviné.
+        $workflow = $this->dossierPretAChoisir();
+        $workflow->etudiant->forceFill(['sexe' => null])->save();
+        $this->actingAs($workflow->etudiant->user);
+
+        $this->assertRefus(
+            fn () => app(FinalizeManagedInscription::class)->chooseAndFinalize($workflow->fresh(), $this->classe->id, $workflow->etudiant->user_id),
+            'finalisation'
+        );
+
+        $this->assertStringStartsWith('PRE-', $workflow->etudiant->fresh()->matricule);
+        $this->assertNull($workflow->fresh()->final_inscription_id);
+    }
+
+    /** @test */
     public function un_etudiant_ne_voit_que_son_propre_dossier(): void
     {
         $a = $this->dossierPretAChoisir();
