@@ -102,7 +102,7 @@
                             <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                                 <tr>
                                     <td width="64" valign="middle" style="width:64px;">
-                                        <div style="width:64px;height:64px;background:#ffffff;border-radius:16px;text-align:center;line-height:64px;box-shadow:0 4px 12px rgba(0,0,0,.12);">
+                                        <div style="width:64px;height:64px;background:#ffffff;background-image:linear-gradient(#ffffff,#ffffff);border-radius:16px;text-align:center;line-height:64px;box-shadow:0 4px 12px rgba(0,0,0,.12);">
                                             @if($logoSrc)
                                                 <img src="{{ $logoSrc }}" alt="{{ $schoolName }}" width="52" height="52" style="width:52px;height:52px;object-fit:contain;vertical-align:middle;border:0;">
                                             @else
