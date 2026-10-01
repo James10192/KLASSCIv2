@@ -306,29 +306,93 @@ class NananLotATest extends TestCase
 
     // --- Dépasser la capacité : une permission, jamais un nom de rôle -------------
 
-    public function test_depasser_la_capacite_depend_de_la_permission_pas_du_role(): void
+    private function classePleine(string $code): ESBTPClasse
     {
         Permission::findOrCreate('inscriptions.override_capacity', 'web');
         app(PermissionRegistrar::class)->forgetCachedPermissions();
-        $classe = $this->classe('LA_CAP_1');
+        $classe = $this->classe($code);
         $classe->update(['places_totales' => 1]);
         ESBTPInscription::factory()->create(['classe_id' => $classe->id, 'annee_universitaire_id' => $this->annee, 'status' => 'active', 'workflow_step' => 'etudiant_cree']);
-        $workflow = app(\App\Services\InscriptionWorkflowService::class);
 
-        $habilite = $this->utilisateur();
-        $habilite->givePermissionTo('inscriptions.override_capacity');
-        $this->actingAs($habilite);
-        $this->assertTrue($workflow->checkClassAvailability($classe->id)['available']);
+        return $classe;
+    }
 
-        // Le seul nom de rôle « secretaire » ne donne plus rien.
-        $secretaireSansDroit = $this->utilisateur();
-        $secretaireSansDroit->forceFill(['role' => 'secretaire'])->save();
-        $this->actingAs($secretaireSansDroit);
-        $this->assertFalse($workflow->checkClassAvailability($classe->id)['available']);
+    /** Un rôle Spatie « secretaire » ne donne rien : seule la permission compte. */
+    public function test_une_secretaire_spatie_sans_la_permission_ne_depasse_pas(): void
+    {
+        $classe = $this->classePleine('LA_CAP_1');
+        Role::findOrCreate('secretaire', 'web');
+        $secretaire = $this->utilisateur();
+        $secretaire->assignRole('secretaire');
+        $this->assertSame('etudiant', $secretaire->fresh()->role, 'colonne héritée laissée à sa valeur par défaut');
+        $this->actingAs($secretaire);
 
-        // Comportement inchangé après synchronisation : la secrétaire l'a par défaut.
-        $this->assertContains('inscriptions.override_capacity', config('permissions.role_defaults.secretaire'));
+        $this->assertFalse(app(\App\Services\InscriptionWorkflowService::class)->checkClassAvailability($classe->id)['available']);
+        $this->assertNotContains('inscriptions.override_capacity', config('permissions.role_defaults.secretaire'));
         $this->assertArrayHasKey('inscriptions.override_capacity', config('permissions.permissions'));
+
+        $this->actingAs($this->admin);
+        $this->assertTrue(app(\App\Services\InscriptionWorkflowService::class)->checkClassAvailability($classe->id)['available'], 'superAdmin passe');
+    }
+
+    /** Les comptes dont la colonne héritée autorisait le dépassement le gardent, par la migration. */
+    public function test_la_migration_donne_la_permission_aux_comptes_qui_l_avaient(): void
+    {
+        $classe = $this->classePleine('LA_CAP_2');
+        $legacy = $this->utilisateur();
+        $legacy->forceFill(['role' => 'secretaire'])->save();
+        $etudiant = $this->utilisateur();
+        $this->actingAs($legacy);
+        $workflow = app(\App\Services\InscriptionWorkflowService::class);
+        $this->assertFalse($workflow->checkClassAvailability($classe->id)['available'], 'la colonne seule ne suffit plus');
+
+        $migration = require base_path('database/migrations/2026_10_01_223307_grant_override_capacity_to_legacy_role_accounts.php');
+        $migration->up();
+        $migration->up();
+
+        $this->assertTrue($legacy->fresh()->hasDirectPermission('inscriptions.override_capacity'));
+        $this->assertFalse($etudiant->fresh()->hasDirectPermission('inscriptions.override_capacity'));
+        $this->assertSame(1, \Illuminate\Support\Facades\DB::table('heritage_droit_depassement_capacite')->where('user_id', $legacy->id)->count());
+        $this->actingAs($legacy->fresh());
+        $this->assertTrue($workflow->checkClassAvailability($classe->id)['available']);
+    }
+
+    /** Avec la dérogation, Nanan propose quand même, et annonce le dépassement. */
+    public function test_la_derogation_est_annoncee_dans_la_proposition(): void
+    {
+        $this->classePleine('LA_CAP_3');
+        $i = $this->inscription(ESBTPClasse::where('code', 'LA_CAP_3')->sole(), ['status' => 'en_attente', 'workflow_step' => 'en_validation']);
+        $this->versement($i);
+        $agent = $this->utilisateur();
+        $agent->givePermissionTo(['inscriptions.validate', 'inscriptions.override_capacity']);
+        $this->actingAs($agent);
+
+        $r = app(ValiderInscriptions::class)->executeAuthorized(['inscriptions' => [$i->id]], $agent);
+        $this->assertContains('LA CAP 3 passera à 2 inscrits pour 1 places (dérogation).', $r['avertissements']);
+    }
+
+    /** Les places se comptent sur l'année de l'inscription, et la lecture ne journalise rien. */
+    public function test_les_places_se_comptent_sur_l_annee_de_l_inscription_sans_journal(): void
+    {
+        $classe = $this->classePleine('LA_CAP_4');
+        $ancienne = ESBTPAnneeUniversitaire::factory()->create(['is_current' => false]);
+        $i = $this->inscription($classe, ['annee_universitaire_id' => $ancienne->id, 'status' => 'en_attente', 'workflow_step' => 'en_validation']);
+        $this->versement($i);
+        $agent = $this->utilisateur();
+        $agent->givePermissionTo('inscriptions.validate');
+        $this->actingAs($agent);
+
+        $this->assertSame(1, app(\App\Domain\Inscriptions\ObstacleALaValidation::class)->placesRestantes($i), 'pleine cette année, libre l’an passé');
+
+        $courante = $this->inscription($classe, ['status' => 'en_attente', 'workflow_step' => 'en_validation']);
+        $this->versement($courante);
+        $journal = [];
+        \Illuminate\Support\Facades\Event::listen(\Illuminate\Log\Events\MessageLogged::class, function ($e) use (&$journal) {
+            $journal[] = $e->message;
+        });
+        $r = app(ValiderInscriptions::class)->executeAuthorized(['inscriptions' => [$courante->id]], $agent);
+        $this->assertStringContainsString('classe pleine', implode(' ', $r['manques'] ?? []));
+        $this->assertNotContains('Classe en surcapacité détectée', $journal, 'une proposition ne journalise pas de dépassement');
     }
 
     // --- Changer de classe ---------------------------------------------------------

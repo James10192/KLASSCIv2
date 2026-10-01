@@ -1200,7 +1200,7 @@ class ESBTPInscriptionService
     ): ?array {
         // Vérifier disponibilité classe
         if (!$forceValidation) {
-            $classAvailability = $workflowService->checkClassAvailability($inscription->classe_id);
+            $classAvailability = $workflowService->checkClassAvailability($inscription->classe_id, $inscription->annee_universitaire_id);
             if (!$classAvailability['available']) {
                 return [
                     'id' => $inscription->id,

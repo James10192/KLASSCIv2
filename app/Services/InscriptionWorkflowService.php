@@ -137,6 +137,47 @@ class InscriptionWorkflowService
     }
 
     /**
+     * L'état des places d'une classe pour une année, sans rien journaliser :
+     * ce que lit une proposition (Nanan) avant toute écriture.
+     *
+     * @return array{classe: ESBTPClasse, annee_id: int, inscrits: int, places: ?int, pleine: bool, derogation: bool}|null
+     *         null si la classe ou l'année est introuvable
+     */
+    public function etatDesPlaces($classeId, $anneeUniversitaireId = null): ?array
+    {
+        $classe = ESBTPClasse::find($classeId);
+        // Les places se comptent sur l'année de l'inscription quand elle est
+        // connue : une classe est universelle, c'est l'inscription qui porte
+        // l'année. Sans année explicite, comportement historique (année courante).
+        $annee = $anneeUniversitaireId
+            ? \App\Models\ESBTPAnneeUniversitaire::find($anneeUniversitaireId)
+            : \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $classe || ! $annee) {
+            return null;
+        }
+
+        // Inscriptions validées (active + workflow complet) pour cette classe
+        $inscrits = ESBTPInscription::where('classe_id', $classeId)
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->where('annee_universitaire_id', $annee->id)
+            ->count();
+        $pleine = $classe->places_totales && $inscrits >= $classe->places_totales;
+        $user = auth()->user();
+
+        return [
+            'classe' => $classe,
+            'annee_id' => (int) $annee->id,
+            'inscrits' => $inscrits,
+            'places' => $classe->places_totales ? (int) $classe->places_totales : null,
+            'pleine' => (bool) $pleine,
+            // Qui peut dépasser la capacité : une permission que l'école attribue
+            // (rule customizable-roles), jamais un nom de rôle.
+            'derogation' => (bool) ($user && $user->can('inscriptions.override_capacity')),
+        ];
+    }
+
+    /**
      * Vérifier la disponibilité d'une classe.
      *
      * @param  int  $classeId
@@ -145,44 +186,27 @@ class InscriptionWorkflowService
     public function checkClassAvailability($classeId, $anneeUniversitaireId = null)
     {
         try {
-            $classe = ESBTPClasse::find($classeId);
-            if (!$classe) {
+            $etat = $this->etatDesPlaces($classeId, $anneeUniversitaireId);
+            if (! $etat) {
+                $sansClasse = ! ESBTPClasse::whereKey($classeId)->exists();
+                if (! $sansClasse) {
+                    Log::warning('Aucune année universitaire courante définie');
+                }
+
                 return [
                     'available' => false,
-                    'message' => 'Classe non trouvée.',
+                    'message' => $sansClasse ? 'Classe non trouvée.' : 'Aucune année universitaire courante définie.',
                     'alternatives' => []
                 ];
             }
-
-            // Les places se comptent sur l'année de l'inscription quand elle est
-            // connue : une classe est universelle, c'est l'inscription qui porte
-            // l'année. Sans année explicite, comportement historique (année courante).
-            $anneeUniversitaireCourante = $anneeUniversitaireId
-                ? \App\Models\ESBTPAnneeUniversitaire::find($anneeUniversitaireId)
-                : \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-
-            if (!$anneeUniversitaireCourante) {
-                Log::warning('Aucune année universitaire courante définie');
-                return [
-                    'available' => false,
-                    'message' => 'Aucune année universitaire courante définie.',
-                    'alternatives' => []
-                ];
-            }
-
-            // Compter les inscriptions validées (active + workflow complet) pour cette classe
-            $inscriptionsActives = ESBTPInscription::where('classe_id', $classeId)
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree')
-                ->where('annee_universitaire_id', $anneeUniversitaireCourante->id)
-                ->count();
+            $classe = $etat['classe'];
+            $inscriptionsActives = $etat['inscrits'];
+            $anneeUniversitaireCourante = (object) ['id' => $etat['annee_id']];
 
 // Vérifier si la classe a une limite définie
-            if ($classe->places_totales && $inscriptionsActives >= $classe->places_totales) {
-                // Qui peut dépasser la capacité : une permission que l'école attribue
-                // (rule customizable-roles), jamais un nom de rôle.
+            if ($etat['pleine']) {
                 $user = auth()->user();
-                $canBypass = $user && $user->can('inscriptions.override_capacity');
+                $canBypass = $etat['derogation'];
                 
                 // Log du dépassement de capacité
                 \Log::warning('Classe en surcapacité détectée', [
@@ -196,7 +220,7 @@ class InscriptionWorkflowService
                 ]);
 
                 if ($canBypass) {
-                    // Superadmin/Secrétaire : Warning mais autorisation
+                    // Permission inscriptions.override_capacity : avertissement, mais autorisation
                     return [
                         'available' => true,
                         'warning' => true,

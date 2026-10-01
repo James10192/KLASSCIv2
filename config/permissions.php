@@ -369,9 +369,10 @@ return [
             'icon' => 'fa-check-circle',
             'aliases' => ['valider inscriptions', 'approve_inscriptions'],
         ],
-        // Remplace le test codé en dur `$user->role === 'superAdmin'|'secretaire'`
-        // de InscriptionWorkflowService::checkClassAvailability() : l'école décide
-        // qui peut dépasser la capacité d'une classe.
+        // Remplace le test codé en dur sur la colonne HÉRITÉE users.role
+        // (« superAdmin » / « secretaire ») de checkClassAvailability(). Aucun
+        // rôle par défaut : la migration 2026_10_01_223307 la donne directement
+        // aux comptes qui l'avaient ; l'école l'attribue ensuite à qui elle veut.
         'inscriptions.override_capacity' => [
             'label' => 'Inscrire au-delà de la capacité d\'une classe',
             'description' => 'Permet de valider une inscription dans une classe déjà pleine. Le dépassement reste signalé et journalisé.',
@@ -2249,7 +2250,7 @@ return [
             'dashboard.view', 'admin.access', 'parent_chatbot.manage',
             'students.view', 'students.create', 'students.edit', 'students.delete',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
-            'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate', 'inscriptions.override_capacity',
+            'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
             'inscriptions.fiche.print', 'inscriptions.in_kind.mark',
             'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
             'inscriptions.candidatures.view', 'inscriptions.candidatures.process',

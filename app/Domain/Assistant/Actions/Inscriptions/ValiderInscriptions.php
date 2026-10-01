@@ -81,17 +81,11 @@ class ValiderInscriptions extends ActionAgent
         $aValider = [];
         $laissees = [];
         $lignes = [];
-        $places = [];
+        $classes = [];
         foreach ($inscriptions as $i) {
             $obstacle = $this->obstacle->horsPlaces($i);
-            if ($obstacle === null) {
-                // Les places se comptent en lot, comme l'écran qui valide une à une.
-                $places[$i->classe_id] ??= $this->obstacle->placesRestantes($i);
-                if ($places[$i->classe_id] === 0) {
-                    $obstacle = ObstacleALaValidation::CLASSE_PLEINE;
-                } elseif ($places[$i->classe_id] !== null) {
-                    $places[$i->classe_id]--;
-                }
+            if ($obstacle === null && ! $this->prendUnePlace($i, $classes)) {
+                $obstacle = ObstacleALaValidation::CLASSE_PLEINE;
             }
             $nom = trim(($i->etudiant->nom ?? '').' '.($i->etudiant->prenoms ?? ''));
             $lignes[] = [$nom, (string) ($i->etudiant->matricule ?? '—'), (string) ($i->classe->name ?? '—'),
@@ -116,7 +110,10 @@ class ValiderInscriptions extends ActionAgent
             titre: $titre,
             resume: sprintf('%d inscription(s) validée(s), le compte étudiant activé.', count($aValider)),
             tableau: ['colonnes' => ['Étudiant', 'Matricule', 'Classe', 'Effet'], 'lignes' => $lignes],
-            avertissements: $laissees === [] ? [] : [count($laissees).' inscription(s) laissée(s) sans validation : '.implode(', ', $laissees).'.'],
+            avertissements: array_merge(
+                $laissees === [] ? [] : [count($laissees).' inscription(s) laissée(s) sans validation : '.implode(', ', $laissees).'.'],
+                $this->depassements($classes),
+            ),
             donnees: ['ids' => $aValider],
             etat: ['inscriptions' => $this->etat($aValider)],
         );
@@ -151,6 +148,39 @@ class ValiderInscriptions extends ActionAgent
             'model_id' => $ids[0] ?? null,
             'details' => ['ids' => $ids],
         ];
+    }
+
+    /**
+     * Les places se comptent en lot, comme l'écran qui valide une à une : sans
+     * dérogation, une classe pleine refuse la suite ; avec la permission
+     * inscriptions.override_capacity, elle l'accepte et le dépassement est annoncé.
+     *
+     * @param array<int, array> $classes état par classe, tenu d'une inscription à l'autre
+     */
+    private function prendUnePlace(ESBTPInscription $i, array &$classes): bool
+    {
+        $etat = $classes[$i->classe_id] ??= ($this->obstacle->capacite($i) ?? ['places' => 0, 'inscrits' => 0, 'derogation' => false]) + ['acceptees' => 0];
+        $libre = $etat['places'] === null || $etat['inscrits'] + $etat['acceptees'] < $etat['places'];
+        if (! $libre && ! $etat['derogation']) {
+            return false;
+        }
+        $classes[$i->classe_id]['acceptees']++;
+
+        return true;
+    }
+
+    /** @return string[] */
+    private function depassements(array $classes): array
+    {
+        $avertissements = [];
+        foreach ($classes as $etat) {
+            $total = $etat['inscrits'] + $etat['acceptees'];
+            if ($etat['places'] !== null && $etat['acceptees'] > 0 && $total > $etat['places']) {
+                $avertissements[] = sprintf('%s passera à %d inscrits pour %d places (dérogation).', $etat['classe']->name, $total, $etat['places']);
+            }
+        }
+
+        return $avertissements;
     }
 
     /** @return array{0: Collection, 1: string[]} */

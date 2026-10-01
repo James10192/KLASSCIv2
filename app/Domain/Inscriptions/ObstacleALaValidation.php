@@ -69,20 +69,27 @@ class ObstacleALaValidation
     }
 
     /**
-     * Places encore libres dans la classe de l'inscription, au sens de l'écran :
-     * null = pas de limite (ou dérogation accordée), 0 = classe pleine.
+     * Places encore libres dans la classe de l'inscription, sur SON année :
+     * null = pas de limite ou dérogation (permission inscriptions.override_capacity),
+     * 0 = classe pleine. Lu sans journaliser : seule l'écriture journalise.
      */
     public function placesRestantes(ESBTPInscription $inscription): ?int
     {
-        $dispo = $this->workflow->checkClassAvailability($inscription->classe_id);
-        if (! ($dispo['available'] ?? false)) {
+        $etat = $this->capacite($inscription);
+        if ($etat === null) {
             return 0;
         }
-        if ($dispo['warning'] ?? false) {
+        if ($etat['places'] === null || ($etat['pleine'] && $etat['derogation'])) {
             return null;
         }
 
-        return isset($dispo['places_restantes']) ? max(0, (int) $dispo['places_restantes']) : null;
+        return max(0, $etat['places'] - $etat['inscrits']);
+    }
+
+    /** @return array{classe: \App\Models\ESBTPClasse, inscrits: int, places: ?int, pleine: bool, derogation: bool}|null */
+    public function capacite(ESBTPInscription $inscription): ?array
+    {
+        return $this->workflow->etatDesPlaces($inscription->classe_id, $inscription->annee_universitaire_id);
     }
 
     /**
