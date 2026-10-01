@@ -292,6 +292,7 @@ if (typeof window.couvertureNotes !== 'function') {
             aUneBarre() { return this.pourcentage() !== null; },
 
             categorie(matiere) {
+                if (matiere.statut === 'non_applicable') return 'non_applicable';
                 if (matiere.is_orphan || matiere.statut === 'hors_maquette') return 'hors_maquette';
                 if (matiere.statut === 'programmee') return 'programmee';
                 if (matiere.statut === 'non_evaluee') return 'sans_evaluation';
@@ -301,7 +302,8 @@ if (typeof window.couvertureNotes !== 'function') {
             },
 
             matieresParCategorie(categorie) {
-                var subjects = (this.donnees && this.donnees.subjects) || [];
+                var subjects = ((this.donnees && this.donnees.subjects) || [])
+                    .filter((matiere) => this.categorie(matiere) !== 'non_applicable');
                 // « Toutes » est la vue globale, pas une catégorie métier.
                 return categorie === 'tout'
                     ? subjects
@@ -313,7 +315,8 @@ if (typeof window.couvertureNotes !== 'function') {
             },
 
             matieresAffichees() {
-                var subjects = (this.donnees && this.donnees.subjects) || [];
+                var subjects = ((this.donnees && this.donnees.subjects) || [])
+                    .filter((matiere) => this.categorie(matiere) !== 'non_applicable');
                 var filtre = this.filtre;
                 return subjects
                     .filter((matiere) => filtre === 'tout' || this.categorie(matiere) === filtre)
@@ -349,7 +352,7 @@ if (typeof window.couvertureNotes !== 'function') {
                     case 'non_evaluee': return 'Aucune évaluation';
                     case 'programmee': return 'Programmée le ' + (matiere.prochaine_evaluation_at || 'date à confirmer');
                     case 'partielle': return matiere.missing_count + ' note(s) manquante(s) sur ' + matiere.evaluations_count + ' évaluation(s)';
-                    case 'hors_maquette': return 'Matière absente de la maquette';
+                    case 'hors_maquette': return 'Hors maquette';
                     default: return 'Complète';
                 }
             },

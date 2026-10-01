@@ -112,6 +112,46 @@ class AcademicNoteCoverageServiceTest extends AcademicPilotageDatabaseTestCase
         $this->assertSame([501, 503], collect($result['subjects'])->pluck('id')->sort()->values()->all());
     }
 
+    public function test_le_s2_d_une_specialite_bts1_n_herite_pas_des_matieres_du_tronc_commun(): void
+    {
+        $this->createReferenceTables();
+
+        DB::table('esbtp_filieres')->insert([
+            ['id' => 90, 'name' => 'Tronc commun', 'code' => 'TC', 'is_tronc_commun' => true, 'parent_id' => null, 'is_active' => true],
+            ['id' => 100, 'name' => 'Batiment', 'code' => 'BAT', 'is_tronc_commun' => false, 'parent_id' => 90, 'is_active' => true],
+        ]);
+        $this->monterUneClasse(10, 100);
+
+        DB::table('esbtp_matieres')->insert([
+            ['id' => 501, 'name' => 'Socle TC', 'code' => 'SOC', 'is_active' => true],
+            ['id' => 502, 'name' => 'Specialite S2', 'code' => 'SPE', 'is_active' => true],
+        ]);
+        DB::table('esbtp_matiere_filiere_niveau')->insert([
+            // Maquette volontairement NON semestrialisee : c'est le cas de
+            // production qui faisait remonter le S1 dans le suivi du S2.
+            ['matiere_id' => 501, 'filiere_id' => 90, 'niveau_etude_id' => 200],
+            ['matiere_id' => 502, 'filiere_id' => 100, 'niveau_etude_id' => 200],
+        ]);
+        DB::table('esbtp_etudiants')->insert([
+            ['id' => 301, 'nom' => 'Kouadio', 'prenoms' => 'Awa', 'matricule' => 'M301'],
+        ]);
+        DB::table('esbtp_inscriptions')->insert([
+            ['id' => 1, 'etudiant_id' => 301, 'classe_id' => 10, 'annee_universitaire_id' => 20, 'status' => 'active', 'workflow_step' => 'etudiant_cree', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        DB::table('esbtp_evaluations')->insert([
+            ['id' => 702, 'titre' => 'Devoir S2', 'classe_id' => 10, 'matiere_id' => 502, 'annee_universitaire_id' => 20, 'periode' => 'semestre2', 'status' => 'completed', 'type' => 'devoir', 'date_evaluation' => now()],
+        ]);
+        DB::table('esbtp_notes')->insert([
+            ['evaluation_id' => 702, 'etudiant_id' => 301, 'matiere_id' => 502, 'note' => 14, 'is_absent' => false, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $result = app(AcademicNoteCoverageService::class)->summarize(20, 'semestre2', 'BTS', 10);
+
+        $this->assertSame([502], collect($result['subjects'])->pluck('id')->all());
+        $this->assertSame('complete', collect($result['subjects'])->firstWhere('id', 502)['statut']);
+        $this->assertSame(0, collect($result['subjects'])->where('statut', 'non_evaluee')->count());
+    }
+
     public function test_une_matiere_de_specialite_est_exclue_du_combo_de_tronc_commun(): void
     {
         $this->createReferenceTables();
@@ -197,6 +237,8 @@ class AcademicNoteCoverageServiceTest extends AcademicPilotageDatabaseTestCase
         // Zero manquant, mais zero etudiant : ce n'est pas « tout est note ».
         $this->assertSame(0, $result['summary']['missing_results']);
         $this->assertSame('cohorte_vide', $result['summary']['state']);
+        $this->assertSame('non_applicable', collect($result['subjects'])->firstWhere('id', 501)['statut']);
+        $this->assertSame(0, collect($result['subjects'])->where('statut', 'non_evaluee')->count());
     }
 
     public function test_les_matieres_hors_referentiel_ne_gonflent_pas_le_prevu(): void

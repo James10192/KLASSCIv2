@@ -76,18 +76,28 @@ class BtsCurrentResultSnapshotService
 
     private function buildSemesterSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
     {
+        // Le controle "Courant" doit lire exactement les memes classes que la
+        // generation officielle. C'est particulierement important en BTS 1 :
+        // TC au S1 puis specialite au S2.
+        $evaluationClassIds = $this->bulletinService->evaluationClassIdsForSnapshot(
+            $etudiantId,
+            $classeId,
+            $anneeUniversitaireId,
+            $periode
+        );
+
         $notes = ESBTPNote::query()
             ->where('etudiant_id', $etudiantId)
             // `withTrashed()` sur la matiere, pour la meme raison qu'au chemin
             // des moyennes enregistrees : effacee en douceur, elle rendait le
             // filtre aveugle au lieu de le rendre prudent.
             ->with(['evaluation.matiere' => fn ($q) => $q->withTrashed()])
-            ->whereHas('evaluation', function ($query) use ($anneeUniversitaireId, $classeId, $periode) {
+            ->whereHas('evaluation', function ($query) use ($anneeUniversitaireId, $evaluationClassIds, $periode) {
                 // Aligné sur la génération réelle (buildDonneesBulletin) : mêmes
-                // aliases de période ET exclusion des évaluations annulées, sinon
-                // le pré-contrôle voit des notes que la génération ignore.
+                // aliases de période, mêmes classes TC/spécialité, et exclusion
+                // des évaluations annulées.
                 $query->where('annee_universitaire_id', $anneeUniversitaireId)
-                    ->where('classe_id', $classeId)
+                    ->whereIn('classe_id', $evaluationClassIds)
                     ->where('status', '!=', 'cancelled')
                     ->whereIn('periode', $this->bulletinService->periodeAliases($periode));
             })
@@ -226,6 +236,12 @@ class BtsCurrentResultSnapshotService
             }
 
             $subjects[$matiereId]['coefficient'] = $coefficient !== null ? round((float) $coefficient, 2) : null;
+            $subjects[$matiereId]['type_formation'] = $this->bulletinService->resolveMatiereTypeFormation(
+                (int) $matiereId,
+                $classeId,
+                $periode,
+                $anneeUniversitaireId
+            );
 
             if ($subject['moyenne'] !== null && $coefficient !== null) {
                 $weightedPoints += (float) $subject['moyenne'] * (float) $coefficient;
@@ -235,7 +251,30 @@ class BtsCurrentResultSnapshotService
 
         $coefficientsMissing = false;
         if ($weightedCoefficients > 0) {
-            $rawTotal = round($weightedPoints / $weightedCoefficients, 2);
+            // Ne pas recalculer une moyenne "parallele" ici. Le bulletin officiel
+            // peut etre configure en composition par blocs General / Technique.
+            // Une moyenne ponderee globale donne alors un autre chiffre et cree
+            // un faux ecart permanent apres regeneration.
+            $lignes = collect($subjects)
+                ->filter(fn (array $subject) => $subject['moyenne'] !== null && $subject['coefficient'] !== null)
+                ->map(fn (array $subject) => (object) [
+                    'moyenne' => (float) $subject['moyenne'],
+                    'coefficient' => (float) $subject['coefficient'],
+                    'type_formation' => $subject['type_formation'] ?? null,
+                    'statut' => 'note',
+                ]);
+            $generales = $lignes->filter(fn ($ligne) => $ligne->type_formation === 'generale');
+            $techniques = $lignes->filter(fn ($ligne) => $ligne->type_formation === 'technologique_professionnelle');
+            $moyenneGenerale = $this->bulletinService->calculerMoyennePonderee($generales);
+            $moyenneTechnique = $this->bulletinService->calculerMoyennePonderee($techniques);
+
+            $rawTotal = round($this->bulletinService->composerLaMoyenneDuSemestre(
+                $lignes,
+                $generales,
+                $techniques,
+                $moyenneGenerale,
+                $moyenneTechnique
+            ), 2);
             $state = 'semester_complete';
         } else {
             // Lot 3 fix: fallback moyenne arithmétique simple quand AUCUN coefficient n'est

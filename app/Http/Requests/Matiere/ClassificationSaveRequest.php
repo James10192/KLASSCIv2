@@ -37,6 +37,10 @@ class ClassificationSaveRequest extends FormRequest
                 'nullable',
                 Rule::in([ESBTPMatiereFilierNiveau::TRONC_COMMUN, ESBTPMatiereFilierNiveau::SPECIALITE]),
             ],
+            'classifications.*.type_formation' => [
+                'nullable',
+                Rule::in([ESBTPMatiereFilierNiveau::TYPE_GENERAL, ESBTPMatiereFilierNiveau::TYPE_TECHNIQUE]),
+            ],
             // Borne haute alignee sur le stockage (unsignedSmallInteger) : un rang
             // hors bornes serait tronque en silence par MySQL.
             'classifications.*.ordre_bulletin' => ['nullable', 'integer', 'min:1', 'max:'.BulletinSubjectOrder::RANG_MAX],
@@ -53,6 +57,7 @@ class ClassificationSaveRequest extends FormRequest
     {
         return [
             'classifications.*.semestre.in' => 'Le semestre doit valoir 1 ou 2, ou rester vide pour « les deux semestres ».',
+            'classifications.*.type_formation.in' => 'Le bloc du bulletin doit être Général ou Technique.',
             'classifications.*.ordre_bulletin.min' => 'La place sur le bulletin commence a 1.',
             'classifications.*.ordre_bulletin.max' => 'La place sur le bulletin ne peut pas depasser :max.',
         ];
