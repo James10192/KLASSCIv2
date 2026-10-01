@@ -42,6 +42,21 @@ final class RattachementCandidature
             return null;
         }
 
+        // Une candidature close ne s'inscrit de toute façon plus par ce
+        // formulaire : rien à refuser, le formulaire l'ignore.
+        $candidature = \App\Models\ESBTPCandidature::find($id);
+        if ($candidature === null || $candidature->dossierClos()) {
+            return null;
+        }
+
+        // Le dossier en cours n'existe qu'une fois la candidature acceptée.
+        // Y envoyer une candidature en attente la renverrait ici : boucle.
+        if ($candidature->statut !== \App\Models\ESBTPCandidature::STATUT_ACCEPTEE && ! $candidature->managedWorkflow()->exists()) {
+            return redirect()
+                ->route('esbtp.demandes.index', ['type' => 'nouvelle'])
+                ->with('warning', "Le parcours d'inscription de l'établissement est actif : acceptez d'abord cette candidature ; elle s'inscrira ensuite depuis son dossier en cours.");
+        }
+
         return redirect()
             ->route('esbtp.admissions.workflow.show', $id)
             ->with('warning', "Cette candidature suit le parcours d'inscription de l'établissement : elle s'inscrit depuis ce dossier, pas par le formulaire classique.");

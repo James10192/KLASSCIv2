@@ -44,6 +44,16 @@ final class AdmissionActivationNotifier
         return $c !== null && (bool) $c->telephone && $this->contactProuve($c, $c->telephone_verifie_at);
     }
 
+    /**
+     * Le lien d'activation peut-il partir par au moins un canal ? Même
+     * condition que l'envoi : canal activé par l'école ET contact utilisable.
+     */
+    public function peutEnvoyer(ESBTPCandidatureWorkflow $workflow): bool
+    {
+        return ($this->settings->notifyEmail() && $this->emailUsable($workflow))
+            || ($this->settings->notifyWhatsapp() && $this->whatsappUsable($workflow));
+    }
+
     public function sendWhatsAppLink(ESBTPCandidatureWorkflow $workflow, string $url): bool
     {
         $workflow->loadMissing('candidature', 'etudiant.user');

@@ -545,37 +545,6 @@ final class ManagedInscriptionWorkflow
      * L'activation sert soit après le paiement, soit après les pièces, selon le
      * réglage du tenant. Appelée par les deux transitions.
      */
-    /**
-     * Un agent confirme au guichet l'e-mail et le numéro de l'étudiant.
-     *
-     * Le lien d'activation ne part que vers un contact prouvé. Un dossier dont
-     * le code de vérification n'a jamais été demandé (déposé avant que l'école
-     * active la vérification, ou repris d'un dépôt antérieur) n'avait sinon
-     * aucune issue : aucun lien, et la confirmation de la file des demandes le
-     * déclarait « pas à confirmer ». L'étudiant est devant l'agent : c'est le
-     * moment où le contact se vérifie de vive voix.
-     */
-    public function confirmContactAtDesk(ESBTPCandidatureWorkflow $workflow, int $agentId): void
-    {
-        $candidature = $workflow->candidature()->lockForUpdate()->firstOrFail();
-        if ($candidature->contact_confirme_at !== null) {
-            return;
-        }
-
-        $candidature->forceFill([
-            'contact_confirme_at' => now(),
-            'contact_confirme_par' => $agentId,
-        ])->save();
-
-        \Illuminate\Support\Facades\Log::info('Parcours d\'inscription : contact confirmé au guichet', [
-            'candidature_id' => $candidature->id,
-            'workflow_id' => $workflow->id,
-            'agent_id' => $agentId,
-        ]);
-
-        $workflow->setRelation('candidature', $candidature);
-    }
-
     public function maybeIssueActivation(ESBTPCandidatureWorkflow $workflow): void
     {
         if (! $this->activationMilestoneReached($workflow) || $workflow->accessActivated()) {

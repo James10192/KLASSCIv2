@@ -8,9 +8,9 @@ use App\Services\Admissions\AdmissionAccountActivator;
 use App\Services\Admissions\AdmissionWhatsappActivationLink;
 use App\Services\Admissions\InscriptionWorkflowSettings;
 use App\Services\Admissions\ManagedInscriptionWorkflow;
+use App\Services\Verification\ConfirmationContactEcole;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
@@ -69,17 +69,28 @@ final class ManagedActivationController extends Controller
     }
 
     /**
-     * L'étudiant est au guichet : l'agent relit avec lui l'e-mail et le numéro,
-     * les confirme, et le lien part dans la foulée.
+     * L'étudiant est au guichet : l'agent relit avec lui l'e-mail et le numéro
+     * affichés, les confirme, et le lien part dans la foulée. L'empreinte
+     * garantit que l'agent confirme bien le contact qu'il avait sous les yeux.
      */
-    public function confirmContact(Request $request, ESBTPCandidatureWorkflow $workflow)
+    public function confirmContact(Request $request, ESBTPCandidatureWorkflow $workflow, ConfirmationContactEcole $confirmation)
     {
         $this->guardManagedWorkflow();
         $this->assertMilestoneReached($workflow);
+        if ($workflow->accessActivated()) {
+            throw ValidationException::withMessages(['activation' => 'Cet espace étudiant est déjà activé.']);
+        }
 
-        DB::transaction(fn () => $this->managed->confirmContactAtDesk($workflow, (int) $request->user()->id));
+        $empreinte = (string) $request->validate(['empreinte' => ['required', 'string', 'max:128']])['empreinte'];
+        [$resultat] = $confirmation->confirmerAuGuichet($workflow->candidature, $empreinte, (int) $request->user()->id);
 
-        return back()->with('success', 'Contact confirmé. '.$this->envoyerLiens($workflow->fresh(['candidature', 'etudiant.user'])));
+        if ($resultat === ConfirmationContactEcole::MODIFIE_ENTRE_TEMPS) {
+            return back()->with('warning', "Le contact de ce dossier a changé depuis l'affichage de la page. Rechargez-la et relisez-le avec l'étudiant.");
+        }
+
+        $prefixe = $resultat === ConfirmationContactEcole::CONFIRME ? 'Contact confirmé. ' : '';
+
+        return back()->with('success', $prefixe.$this->envoyerLiens($workflow->fresh(['candidature', 'etudiant.user'])));
     }
 
     /** Émet un nouveau lien et dit, sans l'arrondir, par où il est parti. */

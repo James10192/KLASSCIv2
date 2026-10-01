@@ -17,12 +17,12 @@ final class ManagedWorkflowPresenter
     }
 
     /**
-     * Le lien d'activation peut-il partir ? Il ne part que vers un contact
-     * prouvé : sans lui, rien n'est envoyé, et l'écran doit le dire.
+     * Le lien d'activation peut-il partir ? Il ne part que par un canal activé
+     * et vers un contact prouvé : sinon rien n'est envoyé, et l'écran le dit.
      */
     public function contactJoignable(ESBTPCandidatureWorkflow $w): bool
     {
-        return $this->notifier->emailUsable($w) || $this->notifier->whatsappUsable($w);
+        return $this->notifier->peutEnvoyer($w);
     }
 
     /**

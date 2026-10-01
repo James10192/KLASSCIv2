@@ -206,6 +206,7 @@
                         <div class="mwf-kv"><span>Téléphone</span><strong>{{ $candidature->telephone ?: '—' }}</strong></div>
                         <form method="POST" action="{{ route('esbtp.admissions.workflow.activation.confirm-contact', $workflow) }}" class="mt-2">
                             @csrf
+                            <input type="hidden" name="empreinte" value="{{ $candidature->empreinteContact() }}">
                             <button class="mwf-btn primary" type="submit">Contact confirmé avec l'étudiant : envoyer le lien</button>
                         </form>
                     </div>

@@ -393,7 +393,16 @@ class ManagedInscriptionEndToEndTest extends TestCase
             ->assertSee($candidature->email);
 
         $this->actingAs($secretariat)
-            ->post(route('esbtp.admissions.workflow.activation.confirm-contact', $workflow))
+            ->post(route('esbtp.admissions.workflow.activation.confirm-contact', $workflow), [
+                'empreinte' => 'perime',
+            ])
+            ->assertSessionHas('warning');
+        $this->assertNull($candidature->fresh()->contact_confirme_at, 'Une empreinte périmée ne confirme rien.');
+
+        $this->actingAs($secretariat)
+            ->post(route('esbtp.admissions.workflow.activation.confirm-contact', $workflow), [
+                'empreinte' => $candidature->fresh()->empreinteContact(),
+            ])
             ->assertRedirect()
             ->assertSessionHas('success', fn (string $m) => str_starts_with($m, 'Contact confirmé.'));
 
@@ -403,6 +412,8 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertTrue(app(\App\Services\Admissions\AdmissionActivationNotifier::class)->emailUsable($workflow->fresh()));
         $this->assertNotNull($candidature->contact_confirme_at);
         $this->assertSame($secretariat->id, (int) $candidature->contact_confirme_par);
+        // Même confirmation que la file des demandes : le badge tombe aussi.
+        $this->assertFalse($candidature->contactMarque());
     }
 
     /** @test */
@@ -418,6 +429,14 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($admin)
             ->getJson(route('esbtp.demandes.preparer-inscription', $candidature))
             ->assertStatus(422);
+
+        // En attente : pas encore de dossier en cours, donc pas de boucle vers
+        // lui ; la file des demandes, où l'on accepte.
+        $enAttente = $this->candidature();
+        $enAttente->forceFill(['statut' => ESBTPCandidature::STATUT_EN_ATTENTE])->save();
+        $this->actingAs($admin)
+            ->get(route('esbtp.inscriptions.create', ['candidature' => $enAttente->id]))
+            ->assertRedirect(route('esbtp.demandes.index', ['type' => 'nouvelle']));
 
         // Parcours éteint : le formulaire classique reprend la candidature.
         $this->reglage(InscriptionWorkflowSettings::ENABLED, '0');
