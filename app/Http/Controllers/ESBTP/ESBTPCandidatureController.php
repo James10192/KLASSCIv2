@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPCandidature;
+use App\Services\Admissions\InscriptionWorkflowSettings;
 use App\Services\RendezVous\ReservateurRdv;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -58,7 +59,10 @@ class ESBTPCandidatureController extends Controller
      *
      * Ne cree rien : c'est un accuse de decision, qui sort le dossier de la
      * file d'attente et le range dans « a inscrire ». L'inscription elle-meme
-     * se fait par le flux habituel, avec les pieces sous les yeux.
+     * se fait par le flux habituel, avec les pieces sous les yeux — sauf quand
+     * le tenant a explicitement active le workflow d'inscription configurable.
+     * Dans ce cas, l'acceptation s'arrete a la prochaine etape declaree par le
+     * tenant (caisse ou controle physique) et NE convertit pas encore le dossier.
      */
     public function accepter(Request $request, ESBTPCandidature $candidature): RedirectResponse|JsonResponse
     {
@@ -71,8 +75,30 @@ class ESBTPCandidatureController extends Controller
             'traite_par' => auth()->id(),
         ]);
 
-        // Qui peut inscrire est EMMENE au formulaire, on ne lui decrit pas ou
-        // trouver un bouton.
+        $workflow = app(InscriptionWorkflowSettings::class);
+        $workflow->ensureDefaults();
+
+        // Le code de presentation est propage a tous les tenants. Aucun tenant
+        // ne doit donc recevoir le parcours de Yamoussoukro par effet de bord :
+        // ce chemin n'est pris que si l'etablissement l'a active explicitement.
+        if ($workflow->usesManagedWorkflow()) {
+            $message = $workflow->acceptanceMessage();
+
+            Log::info('Candidature orientee par le workflow configurable', [
+                'candidature_id' => $candidature->id,
+                'workflow_mode' => $workflow->mode(),
+                'premiere_etape_physique' => $workflow->firstPhysicalStep(),
+            ]);
+
+            if ($request->expectsJson()) {
+                return $this->repondre($request, true, $message);
+            }
+
+            return back()->with('success', $message);
+        }
+
+        // Flux historique : qui peut inscrire est EMMENE au formulaire, on ne
+        // lui decrit pas ou trouver un bouton.
         //
         // La phrase precedente le nommait — « le bouton Créer l'inscription
         // ouvre le formulaire pré-rempli » — et elle etait fausse pour

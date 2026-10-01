@@ -151,6 +151,8 @@ class ESBTPMatiereClassificationController extends Controller
                 'tronc_commun' => $rows->where('classification', ESBTPMatiereFilierNiveau::TRONC_COMMUN)->count(),
                 'specialite' => $rows->where('classification', ESBTPMatiereFilierNiveau::SPECIALITE)->count(),
                 'non_classe' => $rows->whereNull('classification')->count(),
+                'general' => $rows->where('type_formation', ESBTPMatiereFilierNiveau::TYPE_GENERAL)->count(),
+                'technique' => $rows->where('type_formation', ESBTPMatiereFilierNiveau::TYPE_TECHNIQUE)->count(),
             ],
         ]);
     }
@@ -250,6 +252,7 @@ class ESBTPMatiereClassificationController extends Controller
                     'code' => $row->matiere->code,
                     'is_active' => (bool) $row->matiere->is_active,
                     'classification' => $row->classification,
+                    'type_formation' => $row->type_formation,
                     'suggested' => $row->classification === null
                         ? ($suggestions[(int) $row->matiere_id]['valeur'] ?? null)
                         : null,
@@ -430,6 +433,17 @@ class ESBTPMatiereClassificationController extends Controller
         // Valider les semestres est un geste EXPLICITE. Enregistrer un ordre ou
         // une classification ne doit jamais activer une maquette au passage.
         $validerSemestres = (bool) ($validated['valider_semestres'] ?? false);
+        $modifieTypeFormation = collect($validated['classifications'])
+            ->contains(fn (array $item): bool => array_key_exists('type_formation', $item));
+
+        // La partie TC/Spécialité/Semestre relève de matieres.edit. Le bloc
+        // Général/Technique pilote le bulletin : il garde donc son droit propre.
+        if ($modifieTypeFormation && ! ($request->user()?->can('bulletins.configure') ?? false)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous n’avez pas la permission de configurer les blocs Général / Technique du bulletin.',
+            ], 403);
+        }
 
         try {
             $updated = 0;
@@ -441,6 +455,9 @@ class ESBTPMatiereClassificationController extends Controller
 
                     if (array_key_exists('classification', $item)) {
                         $changements['classification'] = $item['classification'];
+                    }
+                    if (array_key_exists('type_formation', $item)) {
+                        $changements['type_formation'] = $item['type_formation'];
                     }
                     if (array_key_exists('ordre_bulletin', $item)) {
                         $changements['ordre_bulletin'] = $item['ordre_bulletin'];

@@ -969,6 +969,37 @@ class LMDBulletinService
             ['key' => 'parcours', 'show' => $this->getSetting('lmd_bulletin_show_parcours', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_parcours', $this->vocabulaire->parcours()), 'value' => $bulletin->parcours_label],
         ];
 
+        // Un bulletin est un snapshot, mais son ordre doit rester celui de la
+        // maquette officielle : ni l'ordre d'insertion des résultats, ni le nom
+        // alphabétique des UE ne constituent un ordre pédagogique.
+        $ordreUes = $bulletin->parcours_id
+            ? DB::table('esbtp_lmd_parcours_ue')
+                ->where('parcours_id', $bulletin->parcours_id)
+                ->where('semestre', $bulletin->semestre)
+                ->pluck('ordre', 'unite_enseignement_id')
+                ->all()
+            : [];
+        $ordreEcues = DB::table('esbtp_ue_matiere')
+            ->whereIn('unite_enseignement_id', $bulletin->resultatsUEs->pluck('unite_enseignement_id')->filter())
+            ->get(['unite_enseignement_id', 'matiere_id', 'ordre_bulletin'])
+            ->mapWithKeys(fn ($ligne) => [$ligne->unite_enseignement_id . ':' . $ligne->matiere_id => $ligne->ordre_bulletin])
+            ->all();
+
+        $resultatsUes = $bulletin->resultatsUEs
+            ->sortBy(fn ($resultat) => $ordreUes[$resultat->unite_enseignement_id] ?? $resultat->uniteEnseignement?->ordre ?? PHP_INT_MAX)
+            ->values()
+            ->map(function ($resultat) use ($ordreEcues) {
+                // Les résultats ECUE ont été créés dans l'ordre de calcul ; les
+                // snapshots historiques peuvent toutefois avoir un autre ordre.
+                // La relation matière porte le code, qui est le repli stable si
+                // la maquette n'a pas encore renseigné ordre_bulletin.
+                $resultat->setRelation('resultatsECUEs', $resultat->resultatsECUEs
+                    ->sortBy(fn ($ecue) => sprintf('%08d:%s', $ordreEcues[$resultat->unite_enseignement_id . ':' . $ecue->matiere_id] ?? PHP_INT_MAX, $ecue->matiere?->code ?? ''))
+                    ->values());
+
+                return $resultat;
+            });
+
         return [
             'bulletin' => $bulletin,
             'etudiant' => $bulletin->etudiant,
@@ -980,7 +1011,7 @@ class LMDBulletinService
             'parcours_label' => $bulletin->parcours_label,
             'niveau' => $bulletin->niveau,
             'semestre' => $bulletin->semestre,
-            'resultats_ues' => $bulletin->resultatsUEs,
+            'resultats_ues' => $resultatsUes,
             'moyenne_generale' => $bulletin->moyenne_generale,
             'mention_generale' => $bulletin->mention_generale,
             'credits_capitalises' => $bulletin->credits_capitalises,

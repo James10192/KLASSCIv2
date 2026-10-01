@@ -85,6 +85,13 @@ class BulletinYakroTypographyContractTest extends TestCase
         self::assertStringContainsString("font-size: {{ \$typeScale['body'] }}px", $view);
         self::assertStringContainsString("font-size: {{ \$typeScale['table'] }}px", $view);
         self::assertStringContainsString("font-size: {{ \$typeScale['decision'] }}px", $view);
-        self::assertStringContainsString("font-size: {{ \$typeScale['signature'] }}px", $view);
+        self::assertStringContainsString('bulletin_header_left_font_size', $view);
+        self::assertStringContainsString('bulletin_header_school_name_font_size', $view);
+        self::assertStringContainsString('bulletin_header_logo_height', $view);
+        self::assertStringContainsString("height: {{ \$signatureHeight }}px", $view);
+        self::assertStringContainsString("width: {{ \$signatureWidth }}px", $view);
+        self::assertStringContainsString("font-size: {{ \$signatureFontSize }}px", $view);
+        self::assertStringContainsString("font-size: {{ \$authenticityFontSize }}px", $view);
+        self::assertStringContainsString("opacity: {{ \$authenticityOpacity }}", $view);
     }
 }

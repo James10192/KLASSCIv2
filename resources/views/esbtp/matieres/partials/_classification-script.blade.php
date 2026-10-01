@@ -23,7 +23,8 @@ function matiereClassification() {
         // `matieres` : elles ne sont ni classables ni ordonnables, la seule
         // action qui a du sens sur elles est le retrait.
         intrusLmd: [],
-        kpis: { total: 0, tronc_commun: 0, specialite: 0, non_classe: 0 },
+        kpis: { total: 0, tronc_commun: 0, specialite: 0, non_classe: 0, general: 0, technique: 0 },
+        canConfigureBulletins: @json(auth()->user()?->can('bulletins.configure') ?? false),
         maquette: { renseignee: false, semestre_1: 0, semestre_2: 0 },
         planning: null,
         apercuOuvert: false,
@@ -121,6 +122,16 @@ function matiereClassification() {
             this.recomputeKpis();
         },
 
+        setFormationType(m, val) {
+            m.type_formation = (m.type_formation === val) ? null : val;
+            this.recomputeKpis();
+        },
+
+        bulkFormationType(val) {
+            this.matieres.forEach(m => { m.type_formation = val; });
+            this.recomputeKpis();
+        },
+
         applySuggestions() {
             this.matieres.forEach(m => { if (m.suggested && !m.classification) m.classification = m.suggested; });
             this.recomputeKpis();
@@ -132,6 +143,8 @@ function matiereClassification() {
                 tronc_commun: this.matieres.filter(m => m.classification === 'tronc_commun').length,
                 specialite: this.matieres.filter(m => m.classification === 'specialite').length,
                 non_classe: this.matieres.filter(m => !m.classification).length,
+                general: this.matieres.filter(m => m.type_formation === 'general').length,
+                technique: this.matieres.filter(m => m.type_formation === 'technique').length,
             };
         },
 
@@ -464,6 +477,7 @@ function matiereClassification() {
                         classifications: this.matieres.map(m => ({
                             matiere_id: m.matiere_id,
                             classification: m.classification,
+                            ...(this.canConfigureBulletins ? { type_formation: m.type_formation ?? null } : {}),
                             // Une place héritée n'est pas renvoyée comme propre :
                             // sinon le simple fait d'enregistrer figerait l'héritage.
                             ordre_bulletin: m.ordre_source === 'combo' ? m.ordre_effectif : null,

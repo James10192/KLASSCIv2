@@ -106,7 +106,7 @@ class Gemini extends AdaptateurHttp
     {
         $corps = [
             'systemInstruction' => ['parts' => [['text' => $requete->systeme]]],
-            'contents' => $this->contenus($requete->messages),
+            'contents' => $this->contenus($requete->messages, $requete->images),
             'generationConfig' => [
                 'maxOutputTokens' => $requete->maxTokens,
                 'temperature' => $requete->temperature,
@@ -129,11 +129,13 @@ class Gemini extends AdaptateurHttp
         return $corps;
     }
 
-    private function contenus(array $messages): array
+    private function contenus(array $messages, array $images = []): array
     {
         $sortie = [];
+        $dernierUtilisateur = null;
+        foreach ($messages as $i => $message) { if (($message['role'] ?? null) === 'user') { $dernierUtilisateur = $i; } }
 
-        foreach ($messages as $m) {
+        foreach ($messages as $i => $m) {
             if ($m['role'] === 'outil') {
                 $decode = json_decode((string) $m['resultat'], true);
                 $part = ['functionResponse' => [
@@ -161,7 +163,13 @@ class Gemini extends AdaptateurHttp
                 continue;
             }
 
-            $sortie[] = ['role' => 'user', 'parts' => [['text' => (string) ($m['texte'] ?? '')]]];
+            $parts = [['text' => (string) ($m['texte'] ?? '')]];
+            if ($i === $dernierUtilisateur) {
+                foreach ($images as $image) {
+                    $parts[] = ['inlineData' => ['mimeType' => $image['mime'], 'data' => $image['base64']]];
+                }
+            }
+            $sortie[] = ['role' => 'user', 'parts' => $parts];
         }
 
         return $sortie;

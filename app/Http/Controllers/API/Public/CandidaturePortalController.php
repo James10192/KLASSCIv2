@@ -111,7 +111,21 @@ class CandidaturePortalController extends Controller
         //
         // Si l'ecole l'a active, un code part pour verifier le contact ; la
         // candidature est transmise dans tous les cas (voir DemarrageVerification).
-        $verification = app(DemarrageVerification::class)->apresDepot($candidature);
+        $demarrage = app(DemarrageVerification::class);
+        $verification = $demarrage->apresDepot($candidature);
+
+        // Un depot reste conserve, mais il ne faut jamais faire croire qu'un
+        // code WhatsApp est parti lorsqu'un fournisseur le refuse. Le site
+        // vitrine peut alors proposer de corriger le numero, de reessayer ou
+        // de basculer vers l'e-mail, au lieu d'afficher une fausse confirmation.
+        if ($verification === null && $demarrage->active() && $candidature->fresh()->contactMarque()) {
+            return response()->json([
+                'enregistre' => true,
+                'statut' => 'verification_indisponible',
+                'message' => 'Votre candidature est enregistrée, mais le code de vérification n’a pas pu être envoyé. Vérifiez votre contact, puis réessayez ou utilisez une adresse e-mail.',
+                'reference_publique' => $candidature->referencePubliqueAffichee(),
+            ], 503);
+        }
 
         return response()->json(array_merge([
             'enregistre' => true,

@@ -18,3 +18,14 @@ Route::prefix('portail/email')
         Route::post('/renvoyer', [\App\Http\Controllers\API\Public\VerificationContactPortalController::class, 'renvoyer'])
             ->name('api.portail.email.renvoyer');
     });
+
+/*
+ * Renvoi d'une convocation existante. Cette route reste separee de la creation
+ * ou du deplacement du rendez-vous : elle ne peut donc jamais reserver un
+ * second creneau. Le couple reference + date de naissance est reverifie avant
+ * de remettre la convocation dans la file multicanale.
+ */
+Route::post('public/rendez-vous/renvoyer', [\App\Http\Controllers\API\Public\RendezVousPortalController::class, 'renvoyer'])
+    ->withoutMiddleware(['throttle:api'])
+    ->middleware(['portail.public:rendezvous', 'reinscription.plancher'])
+    ->name('api.public.rendez-vous.renvoyer');

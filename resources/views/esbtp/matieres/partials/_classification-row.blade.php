@@ -57,6 +57,17 @@
                 @click="setClass(m, 'specialite')">Spécialité</button>
         </div>
 
+        @can('bulletins.configure')
+        <div class="mtc-seg" title="Bloc du bulletin pour toutes les classes de cette filière et de ce niveau">
+            <button type="button" class="mtc-seg-btn mtc-seg-btn--general"
+                :class="m.type_formation === 'general' ? 'mtc-seg-btn--active' : ''"
+                @click="setFormationType(m, 'general')">Général</button>
+            <button type="button" class="mtc-seg-btn mtc-seg-btn--technique"
+                :class="m.type_formation === 'technique' ? 'mtc-seg-btn--active' : ''"
+                @click="setFormationType(m, 'technique')">Technique</button>
+        </div>
+        @endcan
+
         {{-- Retirer de la maquette. Le retrait n'existait nulle part sur cet
              écran : il fallait passer par les liaisons de la matière, qui
              effaçaient les réglages de ses autres filières et niveaux. --}}

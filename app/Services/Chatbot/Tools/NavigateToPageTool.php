@@ -23,7 +23,7 @@ class NavigateToPageTool extends ChatbotTool
             'properties' => [
                 'page' => [
                     'type' => 'string',
-                    'description' => 'Nom de la page cible. Valeurs possibles: "dashboard", "etudiants", "etudiants.show", "inscriptions", "inscriptions.create", "inscriptions.show", "paiements", "classes", "frais", "evaluations", "notes", "attendances", "emploi_temps", "emploi_temps.create", "emploi_temps.show", "planning", "bulletins", "resultats", "comptabilite"',
+                    'description' => 'Nom de la page cible. Valeurs possibles: "dashboard", "etudiants", "etudiants.show", "inscriptions", "inscriptions.create", "inscriptions.show", "paiements", "classes", "frais", "evaluations", "notes", "attendances", "emploi_temps", "emploi_temps.create", "emploi_temps.show", "planning", "bulletins", "resultats", "comptabilite", "etudiants.certificat.preview", "etudiants.attestation.preview"',
                 ],
                 'id' => [
                     'type' => 'integer',
@@ -59,6 +59,8 @@ class NavigateToPageTool extends ChatbotTool
             'bulletins' => 'esbtp.bulletins.index',
             'resultats' => 'esbtp.resultats.index',
             'comptabilite' => 'esbtp.comptabilite.dashboard',
+            'etudiants.certificat.preview' => 'esbtp.etudiants.certificat.preview',
+            'etudiants.attestation.preview' => 'esbtp.etudiants.attestation-frequentation.preview',
         ];
 
         // Guides détaillés par page pour enrichir la réponse de Claude
@@ -84,6 +86,14 @@ class NavigateToPageTool extends ChatbotTool
                 . "3. **Définir le statut d'affectation** : affecté, réaffecté ou non affecté\n"
                 . "4. **Ajouter les parents/tuteurs** (optionnel)\n"
                 . "5. Les **frais obligatoires** se chargent automatiquement avec les pré-sélectionnés",
+            'etudiants.certificat.preview' => "Sur la prévisualisation du certificat de scolarité :\n"
+                . "- Vérifie l'identité et les informations scolaires affichées\n"
+                . "- Utilise **Aperçu PDF** pour contrôler le document puis **Imprimer** pour l'éditer\n"
+                . "- Si l'impression est soumise à validation, utilise **Demander l'approbation** ; ne promets jamais une impression immédiate",
+            'etudiants.attestation.preview' => "Sur la prévisualisation de l'attestation de fréquentation :\n"
+                . "- Vérifie l'identité et les informations affichées\n"
+                . "- Utilise **Aperçu PDF** puis **Imprimer** pour éditer le document\n"
+                . "- Si l'impression est soumise à validation, utilise **Demander l'approbation** ; ne promets jamais une impression immédiate",
         ];
 
         $routeName = $routeMap[$page] ?? null;
@@ -97,7 +107,7 @@ class NavigateToPageTool extends ChatbotTool
         }
 
         // Vérifier si la route nécessite un ID
-        $needsId = str_contains($page, '.show');
+        $needsId = in_array($page, ['etudiants.show', 'inscriptions.show', 'emploi_temps.show', 'etudiants.certificat.preview', 'etudiants.attestation.preview'], true);
         if ($needsId && !$id) {
             return [
                 'url' => null,

@@ -59,6 +59,17 @@ return [
             'any_permissions' => ['notes.create', 'notes.edit', 'notes.manage_own'],
             'libelle' => 'Préparation des notes à enregistrer…',
         ],
+        'proposer_supprimer_moyennes_sans_note' => [
+            'enabled' => true,
+            'any_permissions' => ['bulletins.delete'],
+            'libelle' => 'Préparation du nettoyage des moyennes sans note…',
+        ],
+        'proposer_configuration_maquette_bts' => [
+            'enabled' => true,
+            'all_permissions' => ['matieres.edit', 'bulletins.configure'],
+            'libelle' => 'Préparation de la maquette BTS…',
+            'suggestion' => 'Configure la maquette BTS de cette filière et de ce niveau',
+        ],
         'search_attendances' => [
             'enabled' => true,
             'any_permissions' => ['attendances.view'],
