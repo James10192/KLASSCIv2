@@ -65,6 +65,21 @@ class AvoirService
         });
     }
 
+    /**
+     * Pourquoi cet avoir serait refusé, sans rien écrire : la même règle
+     * qu'issue(), lue d'avance (Nanan la montre avant « Valider »).
+     */
+    public function refus(ESBTPPaiement $parent, float $montant, string $kind, string $motif): ?string
+    {
+        try {
+            $this->assertCanIssue($parent, $montant, $kind, $motif);
+        } catch (AvoirForbiddenException $e) {
+            return $e->getMessage();
+        }
+
+        return null;
+    }
+
     private function assertCanIssue(ESBTPPaiement $parent, float $montant, string $kind, string $motif): void
     {
         if ($parent->isAvoir()) {

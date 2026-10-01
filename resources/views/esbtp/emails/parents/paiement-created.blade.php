@@ -1,33 +1,31 @@
-@extends('esbtp.emails.parents.layout', [
-    'emailTitle' => 'Paiement en Attente',
-    'parentName' => $parentName,
-    'schoolName' => $schoolName ?? 'KLASSCI',
-    'schoolAddress' => $schoolAddress ?? \App\Helpers\SettingsHelper::get('school_address', ''),
-    'schoolPhone' => $schoolPhone ?? \App\Helpers\SettingsHelper::get('school_phone', ''),
-    'schoolEmail' => $schoolEmail ?? \App\Helpers\SettingsHelper::get('school_email', ''),
-    'schoolLogoPath' => $schoolLogoPath ?? null
-])
+@php
+    $emailTitle = 'Paiement en attente de validation';
+    $statutTon = 'info';
+    $statutTexte = 'En attente de validation';
+    $service = 'Comptabilité';
+    $raison = "Message automatique envoyé au contact parent de l'élève {$studentName}. Pour toute question, contactez la comptabilité.";
+    $soumisLe = \App\Helpers\ValeurConnue::ou($dateSoumission ?? null);
+@endphp
+@extends('esbtp.emails.parents.recu')
+
+@section('preheader')Votre paiement de {{ \App\Helpers\MontantFcfa::nombre($montant) }} FCFA pour {{ $studentName }} est enregistré : validation sous 24 à 48 h.
+@endsection
+
+@section('titre')Votre paiement de {{ \App\Helpers\MontantFcfa::html($montant) }} est enregistré
+@endsection
 
 @section('content')
-    <div class="alert alert-info">
-        <strong>Paiement enregistré</strong><br>
-        Votre paiement pour {{ $studentName }} a été enregistré et est en attente de validation.
-    </div>
-
-    <table class="info-table">
-        <tr><th style="width: 40%;">Étudiant</th><td><strong>{{ $studentName }}</strong></td></tr>
-        <tr><th>Montant</th><td><strong style="color: #007bff;">{{ number_format($montant, 0, ',', ' ') }} FCFA</strong></td></tr>
-        <tr><th>Référence</th><td>{{ $reference }}</td></tr>
-        <tr><th>Mode de paiement</th><td><span class="badge badge-info">{{ $modePaiement }}</span></td></tr>
-        <tr><th>Date de soumission</th><td>{{ $dateSoumission }}</td></tr>
-    </table>
-
-    <div class="alert alert-warning" style="margin-top: 20px;">
-        <strong>En attente de validation</strong><br>
-        Votre paiement sera validé par l'administration sous 24-48h. Vous recevrez une notification une fois validé.
-    </div>
-
-    <div class="button-container">
-        <a href="{{ $suiviUrl }}" class="button">Suivre mon paiement</a>
-    </div>
+<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, le paiement pour {{ $studentName }} a été enregistré{{ $soumisLe ? ' le '.$soumisLe : '' }}. L'administration le valide sous 24 à 48&nbsp;h&nbsp;; vous recevrez un message dès qu'il le sera.</p>
+@include('esbtp.emails.parents.partials.vedette', [
+    'libelle' => 'Montant enregistré',
+    'valeur' => \App\Helpers\MontantFcfa::nombre($montant),
+    'unite' => 'FCFA',
+    'lignes' => [
+        ['Élève', $studentName],
+        ['Mode', $modePaiement],
+        ['Référence', $reference],
+        ['Soumis le', $dateSoumission],
+    ],
+])
+@include('esbtp.emails.partials.bouton', ['url' => $suiviUrl, 'libelle' => 'Suivre mon paiement', 'pleineLargeur' => true])
 @endsection

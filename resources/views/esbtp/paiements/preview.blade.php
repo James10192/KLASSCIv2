@@ -492,7 +492,7 @@
                         $schoolAddress = SettingsHelper::get('school_address', '');
                         $schoolEmail = SettingsHelper::get('school_email', '');
                         $schoolPhone = SettingsHelper::get('school_phone', '');
-                        $showLogo = SettingsHelper::get('receipt_show_logo', '1') === '1';
+                        $showLogo = SettingsHelper::drapeau('receipt_show_logo', true);
                         $logoPath = SettingsHelper::get('school_logo');
 
                         $logoUrl = null;

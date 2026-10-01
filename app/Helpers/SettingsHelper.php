@@ -279,6 +279,29 @@ class SettingsHelper
     }
 
     /**
+     * Une case à cocher d'instance, quelle que soit la façon dont elle a été
+     * enregistrée : Setting::get() rend un booléen pour un réglage de type
+     * `boolean`, une chaîne sinon. Comparer à '1' avec === faisait d'un
+     * réglage booléen une case toujours décochée. Un réglage absent vaut son
+     * défaut ; une valeur vide est une case décochée (« non »), pas une absence.
+     */
+    public static function drapeau(string $key, bool $defaut): bool
+    {
+        $valeur = self::get($key, null);
+        if (is_bool($valeur)) {
+            return $valeur;
+        }
+        if ($valeur === null) {
+            return $defaut;
+        }
+        if (is_string($valeur) && trim($valeur) === '') {
+            return false;
+        }
+
+        return filter_var($valeur, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? $defaut;
+    }
+
+    /**
      * Récupère les paramètres PDF
      *
      * @return array
@@ -289,15 +312,15 @@ class SettingsHelper
             'header_text' => self::get('pdf_header_text', ''),
             'footer_text' => self::get('pdf_footer_text', ''),
             'footer_custom_text' => self::get('pdf_footer_custom_text', ''),
-            'show_logo' => self::get('pdf_show_logo', '1') === '1',
+            'show_logo' => self::drapeau('pdf_show_logo', true),
             'logo_position' => self::get('pdf_logo_position', 'left'),
             'logo_size' => self::entierPose('pdf_logo_size', 60),
             'signature_director' => self::get('pdf_signature_director', ''),
             'signature_secretary' => self::get('pdf_signature_secretary', ''),
             'signature_height' => self::entierPose('pdf_signature_height', 80),
-            'show_director_signature' => self::get('pdf_show_director_signature', '1') === '1',
-            'show_generator_name' => self::get('pdf_show_generator_name', '1') === '1',
-            'show_pagination' => self::get('pdf_show_pagination', '1') === '1',
+            'show_director_signature' => self::drapeau('pdf_show_director_signature', true),
+            'show_generator_name' => self::drapeau('pdf_show_generator_name', true),
+            'show_pagination' => self::drapeau('pdf_show_pagination', true),
             'watermark' => self::get('pdf_watermark', ''),
             'watermark_opacity' => (float) self::get('pdf_watermark_opacity', '0.05'),
             'watermark_rotation' => (int) self::get('pdf_watermark_rotation', '-30'),
@@ -546,11 +569,11 @@ class SettingsHelper
     public static function getNotificationSettings()
     {
         return [
-            'email' => self::get('email_notifications', '1') === '1',
-            'sms' => self::get('sms_notifications', '0') === '1',
-            'parents' => self::get('parent_notifications', '1') === '1',
-            'teachers' => self::get('teacher_notifications', '1') === '1',
-            'admins' => self::get('admin_notifications', '1') === '1',
+            'email' => self::drapeau('email_notifications', true),
+            'sms' => self::drapeau('sms_notifications', false),
+            'parents' => self::drapeau('parent_notifications', true),
+            'teachers' => self::drapeau('teacher_notifications', true),
+            'admins' => self::drapeau('admin_notifications', true),
         ];
     }
 
@@ -591,13 +614,13 @@ class SettingsHelper
                 'recouvrement_gap_warning_pct'    => (float) self::get('analytics.anomaly.recouvrement_gap_warning_pct', 30.0),
                 'recouvrement_gap_critical_pct'   => (float) self::get('analytics.anomaly.recouvrement_gap_critical_pct', 50.0),
                 'recouvrement_gap_min_expected'   => (float) self::get('analytics.anomaly.recouvrement_gap_min_expected', 100000.0),
-                'notifications_enabled'           => (string) self::get('analytics.anomaly.notifications_enabled', '1') === '1',
+                'notifications_enabled'           => self::drapeau('analytics.anomaly.notifications_enabled', true),
             ],
             // Mémorisation des balayages lourds (écart de recouvrement,
             // projection d'encaissement). Voir App\Services\Analytics\AnalyticsScanCache :
             // mettre `enabled` à 0 rétablit le recalcul intégral à chaque affichage.
             'scan_cache' => [
-                'enabled'     => (string) self::get('analytics.scan_cache.enabled', '0') === '1',
+                'enabled'     => self::drapeau('analytics.scan_cache.enabled', false),
                 'ttl_seconds' => (int)    self::get('analytics.scan_cache.ttl_seconds', \App\Services\Analytics\AnalyticsScanCache::DEFAULT_TTL_SECONDS),
             ],
             // Fiabilite des donnees : avant toute prevision, on verifie que les

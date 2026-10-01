@@ -1,0 +1,174 @@
+<?php
+
+namespace App\Domain\Assistant\Actions\Notes;
+
+use App\Domain\Assistant\Actions\ActionAgent;
+use App\Domain\Assistant\Actions\Designations;
+use App\Domain\Assistant\Actions\Proposition;
+use App\Domain\Assistant\Actions\PropositionPerimee;
+use App\Domain\Notes\CorrectionDeNotes;
+use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPNote;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * Corriger des notes DÉJÀ saisies d'un étudiant (réclamation), puis recalculer
+ * ses moyennes : CorrectionDeNotes, le même chemin que `POST /api/cli/notes/corriger`.
+ * Une note est désignée par l'étudiant et l'évaluation ; une note absente se
+ * saisit avec proposer_saisie_notes, jamais ici. Motif obligatoire.
+ */
+class CorrigerNotes extends ActionAgent
+{
+    use Designations;
+
+    private const MAX = 60;
+
+    public function __construct(private CorrectionDeNotes $correction)
+    {
+    }
+
+    public function cle(): string
+    {
+        return 'correction_notes';
+    }
+
+    public function libelle(): string
+    {
+        return 'Préparation de la correction des notes…';
+    }
+
+    public function description(): string
+    {
+        return "PROPOSE de corriger des notes DÉJÀ saisies d'un étudiant (réclamation), puis recalcule ses moyennes. "
+            . "Étudiant par matricule ou identifiant ; chaque note par l'identifiant de son évaluation (search_evaluations) et la nouvelle valeur sur le barème. "
+            . "Motif obligatoire (la réclamation, la copie revue). Une note jamais saisie passe par proposer_saisie_notes.";
+    }
+
+    public function parameters(): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [
+                'etudiant_id' => ['type' => 'integer'],
+                'matricule' => ['type' => 'string', 'description' => "Matricule exact de l'étudiant, si l'identifiant est inconnu."],
+                'motif' => ['type' => 'string', 'description' => 'Pourquoi la note change, tel que dit par la personne (10 caractères au moins).'],
+                'notes' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'object', 'properties' => [
+                        'evaluation_id' => ['type' => 'integer'],
+                        'note' => ['type' => 'number', 'description' => "Nouvelle note sur le barème de l'évaluation."],
+                    ], 'required' => ['evaluation_id', 'note']],
+                ],
+            ],
+            'required' => ['motif', 'notes'],
+        ];
+    }
+
+    public function preparer(array $args, $user): Proposition
+    {
+        $titre = 'Correction de notes';
+        if (! $user->can('notes.edit')) {
+            return $this->seulManque($titre, "Cet utilisateur n'a pas le droit de modifier des notes.");
+        }
+        [$etudiant, $manque] = $this->designerEtudiant($args);
+        if (! $etudiant) {
+            return $this->seulManque($titre, $manque);
+        }
+        $motif = trim((string) ($args['motif'] ?? ''));
+        $lignes = array_values(array_filter((array) ($args['notes'] ?? []), 'is_array'));
+        $manques = [];
+        if (mb_strlen($motif) < 10) {
+            $manques[] = 'Quel est le motif de la correction (réclamation, copie revue…) ? Il est journalisé.';
+        }
+        if ($lignes === [] || count($lignes) > self::MAX) {
+            $manques[] = $lignes === [] ? 'Quelles notes corriger ?' : 'Trop de notes en une fois (' . self::MAX . ' au plus).';
+        }
+
+        $cibles = [];
+        foreach ($lignes as $l) {
+            $evaluationId = (int) ($l['evaluation_id'] ?? 0);
+            if (! is_numeric($l['note'] ?? null)) {
+                $manques[] = "Évaluation #{$evaluationId} : quelle note ?";
+                continue;
+            }
+            $notes = ESBTPNote::where('etudiant_id', $etudiant->id)->where('evaluation_id', $evaluationId)->get(['id']);
+            if ($notes->count() !== 1) {
+                $manques[] = $notes->isEmpty()
+                    ? "Aucune note de {$this->nom($etudiant)} sur l'évaluation #{$evaluationId} : une note jamais saisie se saisit avec proposer_saisie_notes."
+                    : "L'évaluation #{$evaluationId} porte {$notes->count()} notes pour {$this->nom($etudiant)} : à dédoublonner avant toute correction.";
+                continue;
+            }
+            $cibles[] = ['note_id' => (int) $notes->first()->id, 'note' => round((float) $l['note'], 2)];
+        }
+        if ($manques !== []) {
+            return new Proposition(titre: $titre, resume: '', manques: $manques);
+        }
+
+        try {
+            $rapport = $this->correction->appliquer((int) $etudiant->id, $cibles, true, (int) $user->id)['lignes'];
+        } catch (ValidationException $e) {
+            return $this->seulManque($titre, collect($e->errors())->flatten()->implode(' '));
+        }
+
+        $changees = array_values(array_filter($rapport, fn ($r) => $r['avant'] !== $r['apres']));
+        if ($changees === []) {
+            return $this->seulManque($titre, 'Rien à changer : ces notes ont déjà ces valeurs.');
+        }
+        $retenues = array_values(array_filter($cibles, fn ($c) => in_array($c['note_id'], array_column($changees, 'note_id'), true)));
+        $absents = count(array_filter($changees, fn ($r) => $r['avant'] === 'absent'));
+
+        return new Proposition(
+            titre: 'Corriger les notes de ' . $this->nom($etudiant),
+            resume: count($changees) . ' note(s) corrigée(s) pour ' . $this->nom($etudiant) . ' (' . $etudiant->matricule . '), puis moyennes recalculées. Motif : ' . $motif,
+            tableau: [
+                'colonnes' => ['Matière', 'Évaluation', 'Période', 'Avant', 'Après'],
+                'lignes' => array_map(fn ($r) => [
+                    (string) $r['matiere'], (string) $r['evaluation'], $this->libelleSemestre($r['periode']),
+                    $r['avant'] === 'absent' ? 'Absent' : $this->nombre($r['avant']), $this->nombre($r['apres']),
+                ], $changees),
+            ],
+            avertissements: array_values(array_filter([
+                $absents > 0 ? "{$absents} note(s) marquée(s) absent deviendront des notes : l'absence est levée." : null,
+                'Les moyennes de ces matières sont recalculées tout de suite ; un bulletin déjà généré garde sa moyenne tant qu\'il n\'est pas régénéré.',
+            ])),
+            donnees: ['etudiant_id' => (int) $etudiant->id, 'notes' => $retenues, 'motif' => $motif],
+            etat: ['lignes' => $changees],
+            risque: 'eleve',
+        );
+    }
+
+    public function executer(Proposition $proposition, $user): array
+    {
+        if (! $user->can('notes.edit')) {
+            throw new PropositionPerimee("Vous n'avez plus le droit de modifier des notes.");
+        }
+        $d = $proposition->donnees;
+        try {
+            if ($this->correction->appliquer((int) $d['etudiant_id'], $d['notes'], true, (int) $user->id)['lignes'] !== $proposition->etat['lignes']) {
+                throw new PropositionPerimee('Ces notes ont changé depuis la proposition.');
+            }
+            $resultat = $this->correction->appliquer((int) $d['etudiant_id'], $d['notes'], false, (int) $user->id);
+        } catch (ValidationException $e) {
+            throw new PropositionPerimee(collect($e->errors())->flatten()->implode(' '));
+        }
+
+        Log::warning('assistant: notes corrigees', [
+            'etudiant_id' => $d['etudiant_id'], 'motif' => $d['motif'],
+            'lignes' => $resultat['lignes'], 'moyennes' => $resultat['moyennes'], 'user_id' => $user->id,
+        ]);
+
+        return [
+            'message' => count($resultat['lignes']) . ' note(s) corrigée(s) et moyennes recalculées. Régénérez le bulletin pour qu\'il en tienne compte.',
+            'lien' => route('esbtp.etudiants.show', $d['etudiant_id'], false),
+            'model_type' => ESBTPEtudiant::class,
+            'model_id' => (int) $d['etudiant_id'],
+            'details' => ['moyennes' => $resultat['moyennes']],
+        ];
+    }
+
+    private function nom(ESBTPEtudiant $e): string
+    {
+        return trim(mb_strtoupper((string) $e->nom, 'UTF-8') . ' ' . $e->prenoms);
+    }
+}

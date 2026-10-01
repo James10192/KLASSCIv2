@@ -19,7 +19,7 @@
     $normalizedLogoPath = str_replace('\\', '/', $normalizedLogoPath);
     $storageRelativeLogoPath = preg_replace('#^storage/#', '', $normalizedLogoPath);
     $logoBasename = basename($storageRelativeLogoPath);
-    $shouldShowLogo = !empty($pdf['show_logo']) || \App\Helpers\SettingsHelper::get('bulletin_show_logo', '1') === '1';
+    $shouldShowLogo = !empty($pdf['show_logo']) || \App\Helpers\SettingsHelper::drapeau('bulletin_show_logo', true);
 
     if ($shouldShowLogo) {
         $candidates = [];

@@ -193,7 +193,7 @@ class BulletinMentionResolver
             $moyenne,
             $conduite,
             self::loadRules(),
-            (string) SettingsHelper::get('bulletin_auto_calculate_mention', '1') === '1'
+            SettingsHelper::drapeau('bulletin_auto_calculate_mention', true)
         );
     }
 

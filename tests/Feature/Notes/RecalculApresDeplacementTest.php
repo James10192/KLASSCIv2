@@ -3,6 +3,7 @@
 namespace Tests\Feature\Notes;
 
 use App\Domain\Notes\MoyennesLaissees;
+use App\Domain\Notes\RebasculeDeMatiere;
 use App\Http\Controllers\API\CLI\CLIEvaluationMatiereController;
 use App\Http\Controllers\API\CLI\CLINotesRecomputeController;
 use App\Http\Controllers\ESBTPEvaluationController;
@@ -33,9 +34,11 @@ use Tests\TestCase;
  * trace d audit ». Les cinq autres couvrent le point d'entree CLI et ne
  * dependent pas de cet appel.
  *
- * Le quatrieme, « la simulation ne recalcule rien », reste vert sans le
- * correctif — et c'est juste : il verifie qu'on n'ecrit RIEN, ce qui est aussi
- * vrai quand le recalcul n'existe pas. Il garde le `dry_run`, pas le recalcul.
+ * « La cli refuse un deplacement qui ne repare rien » (qui a remplace « la
+ * simulation ne recalcule rien », octobre 2026) reste vert sans le correctif :
+ * il garde le refus d'entree de la CLI, pas le recalcul. Depuis ce refus, les
+ * tests de recalcul passent par RebasculeDeMatiere::appliquer(), l'ecriture
+ * que la CLI et Nanan partagent. Compte a remesurer avant de le citer.
  *
  * **Ce compte a ete faux deux fois de suite.** Il a d'abord dit « les neuf »,
  * puis « les QUATRE premiers » — or ni le nombre ni l'ensemble n'etaient bons,
@@ -377,8 +380,14 @@ class RecalculApresDeplacementTest extends TestCase
         $this->assertSame([], $reponse['agregats_orphelins']);
     }
 
-    /** @test */
-    public function la_simulation_ne_recalcule_rien(): void
+    /**
+     * La CLI ne deplace qu'une evaluation posee sur une matiere de l'AUTRE
+     * systeme. Entre deux matieres BTS, elle refuse, simulation comprise, et
+     * n'ecrit ni l'evaluation ni les agregats.
+     *
+     * @test
+     */
+    public function la_cli_refuse_un_deplacement_qui_ne_repare_rien(): void
     {
         $this->monterLaClasse();
         $depart = $this->matiereConfiguree();
@@ -388,12 +397,14 @@ class RecalculApresDeplacementTest extends TestCase
         $deplacee = $this->evaluationDe($depart);
         $this->noter($etudiant, $deplacee, 10);
 
-        $reponse = $this->appeler('evaluationChangeMatiere', ['cli:admin'], [
-            'matiere_id' => $arrivee->id,
-            'dry_run' => true,
-        ], $deplacee->id);
-
-        $this->assertTrue($reponse['dry_run']);
+        foreach ([true, false] as $simulation) {
+            $reponse = app(CLIEvaluationMatiereController::class)->evaluationChangeMatiere(
+                $this->requete(['cli:admin'], ['matiere_id' => $arrivee->id, 'dry_run' => $simulation]),
+                $deplacee->id
+            );
+            $this->assertSame(422, $reponse->getStatusCode());
+        }
+        $this->assertSame($depart->id, (int) $deplacee->fresh()->matiere_id);
         $this->assertSame(10.0, $this->moyenne($etudiant->id, $depart->id));
         $this->assertNull($this->moyenne($etudiant->id, $arrivee->id));
     }
@@ -721,12 +732,24 @@ class RecalculApresDeplacementTest extends TestCase
         $this->assertTrue($uris->contains('api/cli/notes/recompute'));
     }
 
-    /** @return array<string,mixed> */
+    /**
+     * Le chemin d'ecriture partage par la CLI et Nanan. Un deplacement entre
+     * deux matieres BTS n'est plus accepte par `POST /api/cli/evaluations/{id}/matiere`
+     * (il ne repare aucune fuite : voir `la_cli_refuse_...`), mais c'est le
+     * decor le plus simple pour mesurer le recalcul : on appelle donc
+     * l'ecriture elle-meme, sans le garde d'entree.
+     *
+     * @return array<string,mixed>
+     */
     private function deplacer(int $evaluationId, int $matiereCible): array
     {
-        return $this->appeler('evaluationChangeMatiere', ['cli:admin'], [
-            'matiere_id' => $matiereCible,
-        ], $evaluationId);
+        $r = app(RebasculeDeMatiere::class)->appliquer(
+            \App\Models\ESBTPEvaluation::with(['classe', 'matiere'])->findOrFail($evaluationId),
+            \App\Models\ESBTPMatiere::findOrFail($matiereCible),
+            1
+        );
+
+        return ['agregats_orphelins' => $r['recalcul']['orphelins'], 'recalculs_tentes' => $r['recalcul']['recalculs_tentes']];
     }
 
     /**

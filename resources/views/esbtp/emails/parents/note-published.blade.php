@@ -1,66 +1,40 @@
-@extends('esbtp.emails.parents.layout', [
-    'emailTitle' => 'Nouvelle Note Disponible',
-    'parentName' => $parentName,
-    'schoolName' => $schoolName ?? 'KLASSCI',
-    'schoolAddress' => $schoolAddress ?? \App\Helpers\SettingsHelper::get('school_address', ''),
-    'schoolPhone' => $schoolPhone ?? \App\Helpers\SettingsHelper::get('school_phone', ''),
-    'schoolEmail' => $schoolEmail ?? \App\Helpers\SettingsHelper::get('school_email', ''),
-    'schoolLogoPath' => $schoolLogoPath ?? null
-])
+@php
+    $emailTitle = 'Nouvelle note disponible';
+    $statutTon = 'info';
+    $statutTexte = 'Nouvelle note';
+    $service = 'Scolarité';
+    $raison = "Message automatique envoyé au contact parent de l'élève {$studentName}. Pour toute question, contactez la scolarité.";
+    $noteTexte = number_format((float) $note, 2, ',', ' ');
+    $moyenneClasseTexte = number_format((float) $moyenneClasse, 2, ',', ' ');
+    $auDessus = (float) $note >= (float) $moyenneClasse;
+    $rangTexte = ! empty($rang) && $rang !== 'N/A' ? $rang.(! empty($effectifClasse) && $effectifClasse !== 'N/A' ? ' / '.$effectifClasse : '') : null;
+@endphp
+@extends('esbtp.emails.parents.recu')
+
+@section('preheader'){{ $studentName }} a obtenu {{ $noteTexte }}/{{ $bareme }} en {{ $matiere }} ({{ $typeEvaluation }} du {{ $dateEvaluation }}).
+@endsection
+
+@section('titre'){{ $studentName }} a obtenu {{ $noteTexte }}/{{ $bareme }} en {{ $matiere }}
+@endsection
 
 @section('content')
-    <div class="alert alert-info">
-        <strong>Nouvelle note publiée</strong><br>
-        Une nouvelle note a été publiée pour {{ $studentName }}.
-    </div>
-
-    <table class="info-table">
-        <tr><th style="width: 40%;">Étudiant</th><td><strong>{{ $studentName }}</strong></td></tr>
-        <tr><th>Matière</th><td>{{ $matiere }}</td></tr>
-        <tr><th>Type d'évaluation</th><td><span class="badge badge-info">{{ $typeEvaluation }}</span></td></tr>
-        <tr><th>Date de l'évaluation</th><td>{{ $dateEvaluation }}</td></tr>
-    </table>
-
-    <div class="kpi-section" style="margin-top: 20px;">
-        <div class="kpi-row">
-            <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $note >= 10 ? '#28a745' : '#dc3545' }}; font-size: 32px;">
-                    {{ number_format($note, 2) }}/{{ $bareme }}
-                </div>
-                <div class="kpi-label">Note obtenue</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value">{{ number_format($moyenneClasse, 2) }}/{{ $bareme }}</div>
-                <div class="kpi-label">Moyenne de la classe</div>
-            </div>
-        </div>
-    </div>
-
-    @if(isset($rang) && $rang)
-    <div class="kpi-section" style="margin-top: 10px;">
-        <div class="kpi-row">
-            <div class="kpi-card">
-                <div class="kpi-value">{{ $rang }}/{{ $effectifClasse }}</div>
-                <div class="kpi-label">Rang</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value" style="color: {{ $note >= $moyenneClasse ? '#28a745' : '#dc3545' }};">
-                    {{ $note >= $moyenneClasse ? 'Au-dessus' : 'En-dessous' }}
-                </div>
-                <div class="kpi-label">Par rapport à la classe</div>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    @if(isset($appreciation) && $appreciation)
-    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid {{ $emailPrimaryColor }}; margin: 20px 0;">
-        <h4 style="margin-top: 0; color: #333;">Appréciation</h4>
-        <p style="margin-bottom: 0; color: #6c757d;">{{ $appreciation }}</p>
-    </div>
-    @endif
-
-    <div class="button-container">
-        <a href="{{ $noteUrl }}" class="button">Voir les détails</a>
-    </div>
+<p style="margin:0 0 22px;">Bonjour {{ $parentName }}, la note de l'évaluation «&nbsp;{{ $typeEvaluation }}&nbsp;» du {{ $dateEvaluation }} vient d'être publiée.</p>
+@include('esbtp.emails.parents.partials.vedette', [
+    'libelle' => 'Note obtenue',
+    'valeur' => $noteTexte,
+    'unite' => '/'.$bareme,
+    'precision' => ($auDessus ? 'Au-dessus' : 'En dessous').' de la moyenne de la classe ('.$moyenneClasseTexte.'/'.$bareme.')',
+    'tonPrecision' => $auDessus ? $emailSuccessText : $emailDangerColor,
+])
+@include('esbtp.emails.parents.partials.lignes', ['lignes' => [
+    ['Élève', $studentName],
+    ['Matière', $matiere],
+    ['Évaluation', $typeEvaluation],
+    ['Date', $dateEvaluation],
+    ['Rang', $rangTexte],
+], 'marge' => '8px 0 0'])
+@if(! empty($appreciation))
+@include('esbtp.emails.parents.partials.citation', ['titre' => 'Appréciation', 'texte' => $appreciation])
+@endif
+@include('esbtp.emails.partials.bouton', ['url' => $noteUrl, 'libelle' => 'Voir les détails', 'pleineLargeur' => true])
 @endsection

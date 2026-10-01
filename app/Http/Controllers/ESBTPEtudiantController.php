@@ -1628,7 +1628,7 @@ class ESBTPEtudiantController extends Controller
                     ->get();
                 if ($buls->count()) {
                     $mg = round($buls->avg(function ($b) {
-                        $attendanceNote = \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') === '1'
+                        $attendanceNote = \App\Helpers\SettingsHelper::drapeau('bulletin_show_attendance_note', true)
                             ? ($b->note_assiduite ?? 0)
                             : 0;
 
@@ -1752,7 +1752,7 @@ class ESBTPEtudiantController extends Controller
             'director_title' => \App\Helpers\SettingsHelper::get('director_title', 'Le Directeur'),
             
             // Logo
-            'show_logo' => \App\Helpers\SettingsHelper::get('certificat_show_logo', '1') === '1',
+            'show_logo' => \App\Helpers\SettingsHelper::drapeau('certificat_show_logo', true),
             'school_logo' => \App\Helpers\SettingsHelper::get('school_logo'),
         ];
 
@@ -1768,7 +1768,7 @@ class ESBTPEtudiantController extends Controller
     {
         $settings = \App\Helpers\SettingsHelper::getSchoolInfo();
 
-        $showLogo = \App\Helpers\SettingsHelper::get('certificat_show_logo', '1') === '1';
+        $showLogo = \App\Helpers\SettingsHelper::drapeau('certificat_show_logo', true);
         $logoPath = \App\Helpers\SettingsHelper::get('school_logo');
         $logoBase64 = ($showLogo && $logoPath) ? $this->prepareLogoBase64($logoPath) : null;
 

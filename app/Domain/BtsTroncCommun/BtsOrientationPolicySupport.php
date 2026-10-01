@@ -15,17 +15,35 @@ class BtsOrientationPolicySupport
             && ! $inscription->phases->contains(fn ($phase) => $phase->type_phase === 'specialisation' && $phase->is_active);
     }
 
+    /**
+     * La même décision que validateTarget(), SANS rien écrire : le repli par
+     * hiérarchie de filières crée la sortie, ce qu'une simple lecture (une
+     * proposition de Nanan, par exemple) ne doit jamais faire.
+     */
+    public function cibleAdmissible(ESBTPInscription $inscription, ESBTPClasse $targetClasse): bool
+    {
+        return $this->resoudre($inscription, $targetClasse, false) !== false;
+    }
+
     public function validateTarget(ESBTPInscription $inscription, ESBTPClasse $targetClasse): ?ESBTPClasseOrientationTarget
+    {
+        $target = $this->resoudre($inscription, $targetClasse, true);
+
+        return $target instanceof ESBTPClasseOrientationTarget ? $target : null;
+    }
+
+    /** @return ESBTPClasseOrientationTarget|bool cible (ou true en lecture seule), false si refusée */
+    private function resoudre(ESBTPInscription $inscription, ESBTPClasse $targetClasse, bool $creer): ESBTPClasseOrientationTarget|bool
     {
         // Garde-fous communs : niveau + classe active.
         // Les classes KLASSCI sont universelles (cf rule classes-universelles-pas-annee.md) :
         // on ne compare PAS annee_universitaire_id entre la classe et l'inscription —
         // une même classe peut accueillir des étudiants sur plusieurs années.
         if ((int) $targetClasse->niveau_etude_id !== (int) $inscription->niveau_id) {
-            return null;
+            return false;
         }
         if (! $targetClasse->is_active) {
-            return null;
+            return false;
         }
 
         // 1. Cible canonique : ClasseOrientationTarget configuré explicitement
@@ -49,6 +67,10 @@ class BtsOrientationPolicySupport
             && $targetFiliere->parent_id !== null
             && (int) $targetFiliere->parent_id === (int) $sourceFiliere->id) {
 
+            if (! $creer) {
+                return true;
+            }
+
             return ESBTPClasseOrientationTarget::firstOrCreate(
                 [
                     'source_classe_id' => $inscription->classe->id,
@@ -63,6 +85,6 @@ class BtsOrientationPolicySupport
             );
         }
 
-        return null;
+        return false;
     }
 }
