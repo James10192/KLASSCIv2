@@ -414,7 +414,12 @@ class NananLotCTest extends TestCase
 
     public function test_sans_le_droit_de_l_ecran_l_action_n_est_pas_proposee(): void
     {
+        // Lire n'est pas écrire : les droits de consultation ne suffisent pas.
         $simple = User::withoutEvents(fn () => User::factory()->create(['username' => 'u_'.Str::lower(Str::random(8))]));
+        foreach (['dashboard.view', 'notes.view', 'classes.view', 'lmd.structure.view', 'bulletins.view'] as $p) {
+            $simple->givePermissionTo(Permission::findOrCreate($p, 'web'));
+        }
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
         $noms = array_column(app(CatalogueOutils::class)->schemas($simple), 'name');
 
         foreach ([CorrigerNotes::class, EnregistrerMoyennes::class, DeplacerEvaluationsDePeriode::class, ChangerMatiereEvaluation::class,
