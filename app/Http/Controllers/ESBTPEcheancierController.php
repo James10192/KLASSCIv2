@@ -312,6 +312,10 @@ class ESBTPEcheancierController extends Controller
             $echeancierAdmin->forgetAffectedCache($scopeType, (int) $scopeId, $validated['affectation_status']);
         }
 
+        // Bascule par requete brute : aucun evenement de modele, donc on vide
+        // nous-memes la memoire du resolveur.
+        \App\Services\EcheancierResolverService::oublierRegles();
+
         return redirect()->back()->with('success', "{$updated} regle(s) mise(s) a jour.");
     }
 

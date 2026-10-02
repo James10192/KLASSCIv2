@@ -2,7 +2,9 @@
 
 namespace App\Domain\Assistant\Harnais;
 
+use App\Domain\Assistant\Actions\ExecutionDesPropositions;
 use App\Helpers\SettingsHelper;
+use App\Models\ChatbotActionLog;
 use App\Models\ChatbotConversation;
 use App\Models\ChatbotSystemPrompt;
 use App\Models\ChatbotUserPreference;
@@ -53,8 +55,15 @@ class ConstructeurDePrompt
             ->orderBy('id', 'desc')
             ->limit($this->fenetreHistorique)
             ->get()
+            // Les lignes « ✓ … » et « Proposition refusée » des versions
+            // antérieures : l'issue est désormais rendue à la place du résultat
+            // de l'outil, elles feraient doublon (et passaient pour du texte de
+            // Nanan, qu'il imitait).
+            ->reject(fn ($m) => isset($m->metadata['action_executee']) || isset($m->metadata['action_refusee']))
             ->reverse()
             ->values();
+
+        $issues = $this->issuesDesPropositions($conversation, $messages);
 
         // Les traces rejouées, de la plus récente à la plus ancienne, dans la limite du plafond.
         $avecOutils = [];
@@ -79,12 +88,20 @@ class ConstructeurDePrompt
             $texte = (string) ($msg->content ?? '');
 
             if ($role === 'assistant') {
-                $final = in_array($msg->id, $avecOutils, true) ? $this->texteFinal($msg) : null;
+                $sesIssues = $issues[$msg->id] ?? [];
+                $complete = in_array($msg->id, $avecOutils, true);
+                // Réponse récente : la trace entière, puis le texte écrit après elle.
+                // Réponse plus ancienne : seuls les appels de proposition, avec leur
+                // issue, puis TOUT son texte (rien de ce qu'elle disait avant la
+                // carte ne se perd). Sinon Nanan oubliait qu'une proposition avait
+                // été validée dès qu'elle sortait des trois dernières réponses.
+                $trace = $complete ? $msg->metadata['trace'] : $this->appelsDePropositions((array) ($msg->metadata['trace'] ?? []), $sesIssues);
+                $final = $complete ? $this->texteFinal($msg) : ($trace !== [] ? $texte : null);
                 // Une trace ne se rejoue que suivie de sa réponse : une réponse coupée
                 // après ses outils (limite, erreur) n'en a pas, et un repère inventé
                 // à sa place finirait recopié à l'écran, comme l'ancien.
-                if ($final !== null && trim($final) !== '') {
-                    foreach ($this->renumeroter($msg->metadata['trace'], $numero) as $etape) {
+                if ($final !== null && trim($final) !== '' && $trace !== []) {
+                    foreach ($this->renumeroter($this->avecIssues($trace, $sesIssues), $numero) as $etape) {
                         $neutres[] = $etape;
                     }
                     $texte = $final;
@@ -185,7 +202,8 @@ Tu t'appelles Nanan, l'agent IA de KLASSCI, le logiciel de gestion de l'établis
 
 <actions>
 Tu peux modifier des données SEULEMENT par un outil dont le nom commence par « proposer_ ». Il n'enregistre rien : il montre à la personne ce qui sera écrit, et c'est elle qui clique « Valider ».
-- Ne dis jamais qu'une modification est faite, enregistrée ou validée : dis ce que tu proposes et invite à relire puis valider. Tant que la personne n'a pas cliqué « Valider », les mots « saisie », « enregistrée », « ajoutée », « modifiée » sont faux : écris « Je propose… » ou « prête à être enregistrée ».
+- Ne dis jamais qu'une modification est faite, enregistrée ou validée : dis ce que tu proposes. La carte s'affiche sous ta réponse avec ses boutons ; ne dis pas sur quoi cliquer. Tant que la personne n'a pas validé, les mots « saisie », « enregistrée », « ajoutée », « modifiée » sont faux : écris « Je propose… » ou « prête à être enregistrée ».
+- Dans l'historique, le résultat d'un outil « proposer_ » donne l'issue RÉELLE de la proposition (validée et enregistrée, refusée, expirée, données changées, échec). C'est la seule source pour dire si c'est fait : ne repropose pas une proposition validée, et n'annonce pas comme faite une proposition refusée ou expirée.
 - Transmets les noms, matricules et valeurs EXACTEMENT comme la personne les a donnés. Ne complète jamais une donnée manquante, n'arrondis pas une note, ne choisis pas entre deux étudiants au nom proche.
 - Si l'outil répond par des manques, pose la question correspondante et attends la réponse : une proposition incomplète n'est pas présentée.
 - Avant de proposer, identifie l'élément visé avec l'outil de recherche (ex. search_evaluations pour l'identifiant d'une évaluation). En cas de doute entre deux évaluations, demande laquelle.
@@ -217,7 +235,7 @@ Tu peux modifier des données SEULEMENT par un outil dont le nom commence par «
 - Tronc commun BTS : marquer une filière → proposer_tronc_commun_filiere (demande le nombre de semestres communs) ; ouvrir des sorties d'une classe TC → proposer_sortie_tronc_commun avec les classes cibles nommées ; orienter un étudiant → proposer_orientation_bts avec son inscription et la classe choisie par la personne, jamais choisie à sa place.
 - Retirer une matière d'une maquette BTS → proposer_retrait_maquette_bts. Si elle porte des évaluations, dis-le et attends la confirmation explicite avant de repasser confirme_malgre_les_notes=true.
 - Note déjà saisie à corriger (réclamation, copie revue) → proposer_correction_notes : étudiant par matricule, évaluation par son id (search_evaluations), nouvelle note exactement comme donnée, et le motif de la personne. Une note jamais saisie passe par proposer_saisie_notes. Si la personne donne la note actuelle (« 12,50 au lieu de… ») ou le semestre, passe-les en note_annoncee et periode_annoncee : un écart avec la base suspend la proposition, dis-le et demande confirmation ; après sa confirmation, rappelle sans ces deux champs. Dans ta réponse, cite toujours la note actuelle lue en base, jamais celle que la personne a supposée.
-- Relevé de notes d'une classe LMD (souvent une année passée) dont les évaluations n'existent pas → proposer_releve_notes_lmd : classe, année, semestre numéroté comme la maquette (S3 ou S4 pour une L2), motif (qui a transmis le relevé), une ligne par étudiant avec chaque colonne telle qu'écrite sur le relevé. Appelle l'outil AVANT toute question, même si tu vois déjà un 0 ou une colonne douteuse : il contrôle d'un coup les colonnes (élément introuvable, nom d'UE, plusieurs éléments), les 0, les étudiants et le semestre. Relaie alors TOUTES ses questions dans une seule réponse, sans en garder ni en trancher aucune : ne rattache jamais toi-même une colonne à un élément, ne saisis pas un 0 sans que la personne ait dit si c'est une vraie note ou une épreuve non composée, et ne remplace pas un étudiant introuvable par un homonyme.
+- Relevé de notes d'une classe LMD (souvent une année passée) dont les évaluations n'existent pas → proposer_releve_notes_lmd : classe, année, semestre numéroté comme la maquette (S3 ou S4 pour une L2), motif (qui a transmis le relevé, dit par la personne : s'il n'a pas été donné, laisse motif vide pour que l'outil le demande, ne le rédige jamais toi-même), une ligne par étudiant avec chaque colonne telle qu'écrite sur le relevé. Appelle l'outil AVANT toute question, même si tu vois déjà un 0 ou une colonne douteuse : il contrôle d'un coup les colonnes (élément introuvable, nom d'UE, plusieurs éléments), les 0, les étudiants et le semestre. Relaie alors TOUTES ses questions dans une seule réponse, sans en garder ni en trancher aucune, et signale les notes que l'outil dit déjà enregistrées : ne rattache jamais toi-même une colonne à un élément, ne saisis pas un 0 sans que la personne ait dit si c'est une vraie note ou une épreuve non composée, et ne remplace pas un étudiant introuvable par un homonyme.
 - Moyenne de matière d'un étudiant BTS à poser ou retirer (décision du conseil, réclamation sans note à corriger) → proposer_saisie_moyennes, avec le motif. Si la matière a des notes, préfère corriger la note : la moyenne posée l'emporte sur les notes.
 - Évaluations rangées sur le mauvais semestre → proposer_deplacement_periode avec leurs ids ; c'est la personne qui dit lesquelles, jamais leur date. Évaluation posée sur une matière de l'autre système (ECUE LMD dans une classe BTS, ou l'inverse) → proposer_changement_matiere_evaluation.
 - Bulletins BTS manquants d'une classe → proposer_generation_bulletins (classe, S1/S2). Si le pré-contrôle bloque, dis ce qui bloque ; un motif de bulletin incomplet vient de la personne, jamais de toi. Classe LMD : ses bulletins passent par l'écran LMD.
@@ -442,6 +460,97 @@ PROMPT;
                 }
             } else {
                 $trace[$i]['id'] = $ids[$message['id']] ?? ('h' . str_pad((string) ++$numero, 8, '0', STR_PAD_LEFT));
+            }
+        }
+
+        return $trace;
+    }
+
+    /**
+     * Pour chaque réponse qui portait une carte de proposition : l'identifiant de
+     * l'appel (celui du widget, celui de la trace) → l'issue réelle à rendre au modèle.
+     *
+     * @return array<int, array<string, string>>
+     */
+    private function issuesDesPropositions(ChatbotConversation $conversation, $messages): array
+    {
+        $parAppel = [];
+        foreach ($messages as $msg) {
+            foreach ((array) ($msg->metadata['parties'] ?? []) as $partie) {
+                $kind = $partie['kind'] ?? ($partie['data']['kind'] ?? null);
+                if (($partie['type'] ?? null) === 'widget' && $kind === 'approbation' && isset($partie['id'], $partie['data']['id'])) {
+                    $parAppel[$msg->id][(string) $partie['id']] = (int) $partie['data']['id'];
+                }
+            }
+        }
+        if ($parAppel === []) {
+            return [];
+        }
+
+        $journaux = ChatbotActionLog::where('conversation_id', $conversation->id)
+            ->whereIn('id', array_merge(...array_values(array_map('array_values', $parAppel))))
+            ->get()->keyBy('id');
+
+        $issues = [];
+        foreach ($parAppel as $messageId => $appels) {
+            foreach ($appels as $appel => $journalId) {
+                $journal = $journaux->get($journalId);
+                $issues[$messageId][$appel] = json_encode(
+                    $journal ? ExecutionDesPropositions::issuePourModele($journal) : ['proposition' => $journalId, 'statut' => 'expiree', 'issue' => 'Introuvable : rien n\'a été enregistré.'],
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+                );
+            }
+        }
+
+        return $issues;
+    }
+
+    /** Les seuls appels de proposition d'une trace, et leurs résultats. */
+    private function appelsDePropositions(array $trace, array $issues): array
+    {
+        if ($issues === [] || !$this->traceValide($trace)) {
+            return [];
+        }
+        $reduite = [];
+        foreach ($trace as $message) {
+            if ($message['role'] === 'assistant') {
+                $appels = array_values(array_filter($message['appels'] ?? [], fn ($a) => isset($issues[(string) ($a['id'] ?? '')])));
+                if ($appels !== []) {
+                    $reduite[] = ['role' => 'assistant', 'texte' => '', 'appels' => $appels];
+                }
+            } elseif (isset($issues[(string) ($message['id'] ?? '')])) {
+                $reduite[] = $message;
+            }
+        }
+
+        return $this->traceValide($reduite) ? $reduite : [];
+    }
+
+    /**
+     * Le résultat enregistré d'une proposition remplacé par son issue réelle.
+     *
+     * Par l'identifiant de l'appel (celui de la carte), et aussi par le numéro
+     * de proposition lu dans le résultat : un second appel identique dans le
+     * même échange reçoit le résultat déjà obtenu, sans carte, et garderait
+     * sinon « en attente » à côté de l'issue réelle.
+     */
+    private function avecIssues(array $trace, array $issues): array
+    {
+        $parProposition = [];
+        foreach ($issues as $issue) {
+            $parProposition[(int) (json_decode($issue, true)['proposition'] ?? 0)] = $issue;
+        }
+        foreach ($trace as $i => $message) {
+            if ($message['role'] !== 'outil') {
+                continue;
+            }
+            $issue = $issues[(string) ($message['id'] ?? '')] ?? null;
+            if ($issue === null && is_string($message['resultat'] ?? null)) {
+                $numero = (int) (json_decode(strtok($message['resultat'], "\n"), true)['proposition'] ?? 0);
+                $issue = $parProposition[$numero] ?? null;
+            }
+            if ($issue !== null) {
+                $trace[$i]['resultat'] = $issue;
             }
         }
 

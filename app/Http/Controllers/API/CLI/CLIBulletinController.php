@@ -92,9 +92,9 @@ class CLIBulletinController extends BaseApiController
                 $request->boolean('recalculer'),
                 $request->input('incomplete_reason'),
                 $request->user(),
-                // Lot optionnel : l'hebergement coupe a 30 s et la generation
-                // coute O(N^2). Traiter la classe par tranches permet de tenir
-                // dans le budget, les rangs restant recalcules sur la cohorte.
+                // Lot optionnel : l'hebergement coupe a 30 s. Traiter la classe
+                // par tranches permet de tenir dans le budget, les rangs restant
+                // recalcules sur la cohorte.
                 $request->filled('student_ids') ? (array) $request->input('student_ids') : null
             );
         } catch (\InvalidArgumentException $exception) {

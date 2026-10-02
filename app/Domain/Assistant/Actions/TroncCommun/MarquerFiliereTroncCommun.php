@@ -71,7 +71,7 @@ class MarquerFiliereTroncCommun extends ActionAgent
         }
         $semestresApres = $semestres ?? ((int) $filiere->semestres_tronc_commun ?: 1);
         if ($manques === [] && (bool) $filiere->is_tronc_commun === $troncCommun && (int) $filiere->semestres_tronc_commun === $semestresApres) {
-            $manques[] = "{$filiere->name} est déjà dans cet état : rien à changer.";
+            return Proposition::sansObjet($titre, "{$filiere->name} est déjà dans cet état.");
         }
         if ($manques !== []) {
             return new Proposition(titre: $titre, resume: '', manques: $manques);

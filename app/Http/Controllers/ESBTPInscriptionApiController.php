@@ -135,16 +135,15 @@ class ESBTPInscriptionApiController extends Controller
             ],
         );
 
-        // Année courante pour le calcul des places
-        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        // Annee des places : celle choisie dans le formulaire (annee_places),
+        // sinon la courante. Distincte du filtre annee_id ci-dessus.
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::find($request->integer('annee_places') ?: null)
+            ?? \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        $classes = $query->get()->map(function ($classe) use ($anneeCourante) {
-            $nombreEtudiants = \App\Models\ESBTPInscription::where('classe_id', $classe->id)
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree')
-                ->when($anneeCourante, fn($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
-                ->count();
-            $classe->places_disponibles = max(0, ($classe->places_totales ?? 0) - $nombreEtudiants);
+        // Une requete pour toutes les classes, la regle de ESBTPClasse.
+        $prises = ESBTPClasse::placesPrisesParClasse($anneeCourante?->id);
+        $classes = $query->get()->map(function ($classe) use ($prises) {
+            $classe->places_disponibles = max(0, ($classe->places_totales ?? 0) - (int) ($prises[$classe->id] ?? 0));
             return $classe;
         });
 
