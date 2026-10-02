@@ -186,6 +186,24 @@ Les mêmes deux fichiers servent aux trois surfaces : on les produit une fois.
 La légende dit **ce qui a changé**, pas ce que montre l'image (« Le montant
 tapé remplace le montant proposé », pas « Écran d'encaissement »).
 
+### Ce qui le garantit — `bin/garde-nouveautes.sh`
+
+La règle a été oubliée plusieurs fois (octobre 2026 : deux corrections
+d'affichage parties dans les écoles sans entrée Nouveautés ni changelog
+public). Elle est donc tenue par un contrôle, au commit, sur la PR et au push :
+
+| Moment | Ce qui est exigé |
+|---|---|
+| commit / PR `feat` ou `fix` touchant `resources/views` (e-mails et PDF compris), `resources/css`, `resources/js`, `public/css`, `public/js` | `nouveautes.php` modifié, **ou** une ligne `- …` **ajoutée** à `docs/nouveautes-en-attente.md`, **ou** `[sans-nouveaute] <raison>` |
+| commit / PR modifiant `nouveautes.php` | `Changelog-public: <sha klassci-landing>` **et** une nouvelle clé `whatsNew.v…` dans le layout — sans elle, qui a fermé la fenêtre ne revoit pas l'entrée (ou `Changelog-public: sans-objet <raison>` pour une retouche) |
+| `git push origin presentation:<école>` (liste : `bin/garde-nouveautes.sh ecoles`) | registre vide (urgence : `KLASSCI_PROPAGER_SANS_NOUVEAUTES="raison"`) |
+
+L'ordre de travail qui en découle : la PR de la fonctionnalité ajoute sa ligne
+au registre ; après déploiement sur presentation, la PR « Nouveautés » écrit
+l'entrée avec ses captures, publie le changelog public, retire la ligne ; alors
+seulement on propage. Les fusions (`MERGE_HEAD`) ne sont pas contrôlées : leurs
+commits l'ont été un par un, et la CI relit chaque commit séparément.
+
 ### Anti-patterns à BLOQUER
 
 1. ❌ Entrée « refonte » ou « redesign » sans captures
