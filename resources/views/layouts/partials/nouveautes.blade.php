@@ -118,19 +118,22 @@
                         <p class="nvx-entree-texte">{{ $entree['texte'] }}</p>
 
                         @if(!empty($entree['captures']))
-                            @php $cap = $entree['captures']; @endphp
-                            <figure class="nvx-comparer {{ ($cap['format'] ?? '') === 'telephone' ? 'nvx-comparer--telephone' : '' }}" x-data="{ pos: 50 }">
+                            {{-- Sans « avant » (ecran nouveau), la capture s'affiche seule : un avant reconstitue est interdit. --}}
+                            @php $cap = $entree['captures']; $capAvant = !empty($cap['avant']); @endphp
+                            <figure class="nvx-comparer {{ ($cap['format'] ?? '') === 'telephone' ? 'nvx-comparer--telephone' : '' }}" @if($capAvant) x-data="{ pos: 50 }" @endif>
                                 <div class="nvx-cadre">
-                                    <img src="{{ asset($cap['apres']) }}" alt="{{ $entree['titre'] }} : après" loading="lazy" draggable="false">
-                                    <img class="nvx-avant" src="{{ asset($cap['avant']) }}" alt="{{ $entree['titre'] }} : avant" loading="lazy" draggable="false"
-                                         :style="'clip-path: inset(0 ' + (100 - pos) + '% 0 0)'" style="clip-path: inset(0 50% 0 0)">
-                                    <span class="nvx-etiquette nvx-etiquette--avant">Avant</span>
-                                    <span class="nvx-etiquette nvx-etiquette--apres">Après</span>
-                                    <input type="range" min="0" max="100" step="1" class="nvx-curseur" x-model.number="pos"
-                                           x-on:keydown.arrow-left.stop x-on:keydown.arrow-right.stop aria-label="Comparer avant et après">
-                                    <div class="nvx-trait" :style="'left: ' + pos + '%'" style="left: 50%">
-                                        <span class="nvx-poignee"><i class="fas fa-arrows-left-right"></i></span>
-                                    </div>
+                                    <img src="{{ asset($cap['apres']) }}" alt="{{ $entree['titre'] }}{{ $capAvant ? ' : après' : '' }}" loading="lazy" draggable="false">
+                                    @if($capAvant)
+                                        <img class="nvx-avant" src="{{ asset($cap['avant']) }}" alt="{{ $entree['titre'] }} : avant" loading="lazy" draggable="false"
+                                             :style="'clip-path: inset(0 ' + (100 - pos) + '% 0 0)'" style="clip-path: inset(0 50% 0 0)">
+                                        <span class="nvx-etiquette nvx-etiquette--avant">Avant</span>
+                                        <span class="nvx-etiquette nvx-etiquette--apres">Après</span>
+                                        <input type="range" min="0" max="100" step="1" class="nvx-curseur" x-model.number="pos"
+                                               x-on:keydown.arrow-left.stop x-on:keydown.arrow-right.stop aria-label="Comparer avant et après">
+                                        <div class="nvx-trait" :style="'left: ' + pos + '%'" style="left: 50%">
+                                            <span class="nvx-poignee"><i class="fas fa-arrows-left-right"></i></span>
+                                        </div>
+                                    @endif
                                 </div>
                                 @if(!empty($cap['legende']))
                                     <figcaption class="nvx-legende">{{ $cap['legende'] }}</figcaption>

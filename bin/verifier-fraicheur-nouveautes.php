@@ -22,8 +22,9 @@
 $racine = dirname(__DIR__);
 $strict = in_array('--strict', $argv, true);
 
-$layout = $racine.'/resources/views/layouts/app.blade.php';
-$changelog = $racine.'/CHANGELOG.md';
+// Surchargeables pour le test (tests/Unit/Deployment/FraicheurNouveautesTest.php).
+$layout = getenv('NVX_LAYOUT') ?: $racine.'/resources/views/layouts/app.blade.php';
+$changelog = getenv('NVX_CHANGELOG') ?: $racine.'/CHANGELOG.md';
 
 foreach ([$layout, $changelog] as $fichier) {
     if (! is_file($fichier)) {
@@ -57,9 +58,13 @@ if ($moisChangelog === null) {
 }
 $versionChangelog = sprintf('%s-%s', $c[2], $moisChangelog);
 
-$ecart = (int) ((strtotime($versionChangelog.'-01') - strtotime($versionModal.'-01')) / 2629800);
+// En mois, sans passer par les secondes : septembre fait trente jours, et une
+// division arrondie a l'unite inferieure donnait 0 de septembre a octobre.
+$ecart = ((int) $c[2] * 12 + (int) $moisChangelog) - ((int) $m[1] * 12 + (int) $m[2]);
 
-if ($ecart <= 1) {
+// Un seul mois de retard suffit a avertir : octobre 2026 est passe une
+// semaine sans entree, le seuil tolerant un mois et le calcul arrondissant.
+if ($ecart < 1) {
     echo "Modal Nouveautés à jour (modal {$versionModal}, changelog {$versionChangelog}).\n";
     exit(0);
 }
