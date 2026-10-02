@@ -59,7 +59,7 @@ class OutilsDeRechercheNananTest extends TestCase
         // Capture du 2 octobre : « 12,50 au premier semestre » demandé, une
         // seule note de 15 au second en base, et Nanan proposait sans le dire.
         $this->assertNotNull($ligne);
-        $this->assertStringContainsString('demande confirmation sans proposer', $ligne);
+        $this->assertStringContainsString('note_annoncee et periode_annoncee', $ligne);
         $this->assertStringContainsString('cite toujours la note actuelle lue en base', $ligne);
     }
 
