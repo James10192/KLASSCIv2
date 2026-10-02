@@ -346,6 +346,11 @@ class PortailCandidatureService
                 'traite_at' => now(),
             ]);
 
+            // Le transfere qui declare recommencer son annee change la
+            // proposition « Redoublant ? » : elle se lit sur la candidature,
+            // liee a l'etudiant seulement maintenant.
+            app(\App\Domain\Inscriptions\StatutRedoublant::class)->rafraichirLEtudiant((int) $inscription->etudiant_id);
+
             return ClotureCandidature::Fermee;
         });
     }
