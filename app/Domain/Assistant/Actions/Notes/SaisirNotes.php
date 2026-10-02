@@ -123,7 +123,7 @@ class SaisirNotes extends ActionAgent
                 $compte['creation'], $compte['modification'], $compte['validation'], $compte['inchange'],
                 $this->nombre($evaluation->bareme), $valider ? 'Validation finale' : 'Brouillon'),
             tableau: ['colonnes' => ['Étudiant', 'Matricule', 'Avant', 'Après', 'Effet'], 'lignes' => $tableau],
-            manques: array_merge($manques, $refus, $retenues === [] && $refus === [] && $manques === [] ? ['Rien à changer : ces notes sont déjà enregistrées.'] : []),
+            manques: array_merge($manques, $refus),
             avertissements: array_merge($avertissementsPiece, $this->avertissements($etudiants, $vus, $evaluation, $compte, $valider)),
             donnees: ['evaluation_id' => (int) $evaluation->id, 'entrees' => $retenues, 'valider' => $valider],
             // Tout ce qui, en changeant, rendrait la proposition trompeuse : les notes
@@ -134,6 +134,7 @@ class SaisirNotes extends ActionAgent
                 'periode' => (string) $evaluation->periode,
             ]],
             risque: $compte['modification'] > 0 || $valider ? 'eleve' : 'moyen',
+            sansObjet: $retenues === [] && $refus === [] && $manques === [] ? 'Ces notes sont déjà enregistrées.' : null,
         );
     }
 

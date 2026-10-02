@@ -156,7 +156,10 @@ class NananLotBTest extends TestCase
     {
         $this->assertStringContainsString('Quelle année', $this->manques(app(DefinirAnneeCourante::class)->executeAuthorized([], $this->admin)));
         $this->assertStringContainsString('Aucune année', $this->manques(app(DefinirAnneeCourante::class)->executeAuthorized(['annee' => 'la prochaine'], $this->admin)));
-        $this->assertStringContainsString('déjà', $this->manques(app(DefinirAnneeCourante::class)->executeAuthorized(['annee' => (string) $this->courante->id], $this->admin)));
+        // Déjà l'année en cours : rien à proposer, et ce n'est pas une question.
+        $deja = app(DefinirAnneeCourante::class)->executeAuthorized(['annee' => (string) $this->courante->id], $this->admin);
+        $this->assertTrue($deja['sans_objet'] ?? false);
+        $this->assertStringContainsString('déjà', $deja['message']);
     }
 
     public function test_une_annee_en_cours_changee_entre_temps_rend_la_proposition_perimee(): void
