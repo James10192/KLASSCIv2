@@ -51,9 +51,18 @@ class MobileProfileResolverTest extends TestCase
         $this->assertSame(MobileProfileResolver::COMPTABLE, $this->resolver()->resolve($user));
     }
 
+    public function test_service_technique_recoit_son_profil_et_non_la_caisse(): void
+    {
+        // Il porte toutes les permissions : la cascade le rangeait en caisse.
+        $user = $this->utilisateur(superAdmin: false, permissions: ['module.caisse.access', 'comptabilite.access', 'students.view'], serviceTechnique: true);
+        $user->shouldNotReceive('can');
+
+        $this->assertSame(MobileProfileResolver::TECHNIQUE, $this->resolver()->resolve($user));
+    }
+
     public function test_super_admin_suit_le_profil_pose_en_session(): void
     {
-        foreach (MobileProfileResolver::PROFILS as $profil) {
+        foreach (MobileProfileResolver::PROFILS_DECLARABLES as $profil) {
             MobileProfileResolver::oublier();
             $user = $this->utilisateur(superAdmin: true);
 
@@ -149,9 +158,26 @@ class MobileProfileResolverTest extends TestCase
         $this->assertSame('/dashboard?profil=caissier', MobileProfileResolver::startUrl('caissier'));
     }
 
-    public function test_les_libelles_couvrent_exactement_les_profils(): void
+    public function test_les_libelles_couvrent_exactement_les_profils_declarables(): void
     {
-        $this->assertSame(MobileProfileResolver::PROFILS, array_keys(MobileProfileResolver::libelles()));
+        $this->assertSame(MobileProfileResolver::PROFILS_DECLARABLES, array_keys(MobileProfileResolver::libelles()));
+        $this->assertNotContains(MobileProfileResolver::TECHNIQUE, MobileProfileResolver::PROFILS_DECLARABLES);
+    }
+
+    public function test_un_role_d_ecole_declarant_technique_est_ignore(): void
+    {
+        // Le profil technique se lit sur le role serviceTechnique : declare par
+        // un role d'ecole, il lui donnerait une barre vide au lieu du repli.
+        $user = $this->utilisateur(superAdmin: false, permissions: ['students.view'], roles: [MobileProfileResolver::TECHNIQUE]);
+
+        $this->assertSame(MobileProfileResolver::SCOLARITE, $this->resolver()->resolve($user));
+    }
+
+    public function test_le_super_admin_ne_peut_pas_forcer_le_profil_technique(): void
+    {
+        $user = $this->utilisateur(superAdmin: true);
+
+        $this->assertSame(MobileProfileResolver::COMPTABLE, $this->resolver(session: MobileProfileResolver::TECHNIQUE)->resolve($user));
     }
 
     /**
@@ -181,10 +207,11 @@ class MobileProfileResolverTest extends TestCase
      * @param array<int, ?string> $roles       mobile_profile de chaque role, dans l'ordre
      * @param int|null            $appelsCan   nombre exact d'appels a can() attendus, null = libre
      */
-    private function utilisateur(bool $superAdmin, array $permissions = [], array $roles = [], ?int $appelsCan = null): MockInterface
+    private function utilisateur(bool $superAdmin, array $permissions = [], array $roles = [], ?int $appelsCan = null, bool $serviceTechnique = false): MockInterface
     {
         $user = Mockery::mock(User::class);
         $user->shouldReceive('hasRole')->with('superAdmin')->andReturn($superAdmin);
+        $user->shouldReceive('hasRole')->with('serviceTechnique')->andReturn($serviceTechnique);
         $can = $user->shouldReceive('can')->andReturnUsing(
             fn (string $permission): bool => in_array($permission, $permissions, true)
         );
