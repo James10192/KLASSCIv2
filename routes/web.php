@@ -156,6 +156,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/search', [SearchController::class, 'globalSearch'])->middleware('throttle:120,1')->name('search.global');
     Route::get('/search/results', [SearchController::class, 'searchResults'])->middleware('throttle:60,1')->name('search.results');
 
+    // Fenêtre de rappel du gabarit, demandée par le navigateur quand l'heure est passée.
+    Route::get('/gabarit/rappel-du-moment', \App\Http\Controllers\Gabarit\RappelDuMomentController::class)
+        ->middleware('throttle:60,1')->name('gabarit.rappel-du-moment');
+
     // Routes pour les fonctionnalitÃ©s de la navbar
     Route::prefix('navbar')->name('navbar.')->group(function () {
         Route::get('/notifications', [NavbarController::class, 'getNotifications'])->name('notifications');
