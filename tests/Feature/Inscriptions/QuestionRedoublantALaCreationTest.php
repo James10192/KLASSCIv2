@@ -155,6 +155,35 @@ class QuestionRedoublantALaCreationTest extends TestCase
         $this->assertSame(StatutRedoublant::SOURCE_CONFIRME, $inscription->redoublant_source);
     }
 
+    public function test_une_inscription_d_avant_non_finalisee_compte_comme_a_l_enregistrement(): void
+    {
+        // Pas encore finalisee : la fenetre ne la voit pas comme « quittee »,
+        // mais l'enregistrement la compte. L'ecran doit proposer la meme chose.
+        $demande = $this->demandeAvecAnneePassee(['workflow_step' => 'valide']);
+
+        $this->actingAs($this->agent)
+            ->getJson(route('esbtp.reinscription-demandes.proposition', ['demande' => $demande, 'annee' => $this->annee->id]))
+            ->assertOk()->assertJsonPath('niveau_avant', $this->niveau->id);
+
+        // « Oui » est la proposition : aucun motif n'est demande.
+        $this->actingAs($this->agent)->postJson(route('esbtp.reinscription-demandes.convertir', $demande), [
+            'classe_id' => $this->classe('1A BTS bis')->id, 'decision' => 'redoublement', 'redoublant' => '1',
+        ])->assertOk();
+    }
+
+    public function test_sans_inscription_d_avant_la_proposition_est_non(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create(['nom' => 'BAMBA', 'prenoms' => 'Ali', 'matricule' => 'MAT-X']);
+        $demande = ESBTPReinscriptionDemande::forceCreate([
+            'etudiant_id' => $etudiant->id, 'annee_universitaire_id' => $this->annee->id,
+            'statut' => 'en_attente', 'consentement_at' => now(),
+        ]);
+
+        $this->actingAs($this->agent)
+            ->getJson(route('esbtp.reinscription-demandes.proposition', ['demande' => $demande, 'annee' => $this->annee->id]))
+            ->assertOk()->assertJsonPath('niveau_avant', null);
+    }
+
     public function test_les_fenetres_posent_la_question_a_qui_peut_confirmer(): void
     {
         $this->actingAs($this->agent)->get(route('esbtp.demandes.index'))
@@ -174,16 +203,16 @@ class QuestionRedoublantALaCreationTest extends TestCase
         ], $valeurs);
     }
 
-    private function demandeAvecAnneePassee(): ESBTPReinscriptionDemande
+    private function demandeAvecAnneePassee(array $inscriptionPassee = []): ESBTPReinscriptionDemande
     {
         $passee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false,
             'start_date' => '2025-09-01', 'end_date' => '2026-07-31']);
         $etudiant = ESBTPEtudiant::factory()->create(['nom' => 'YAO', 'prenoms' => 'Serge', 'matricule' => 'MAT-'.(++$this->numero)]);
-        ESBTPInscription::factory()->create([
+        ESBTPInscription::factory()->create(array_merge([
             'etudiant_id' => $etudiant->id, 'classe_id' => $this->classe('1A BTS')->id,
             'filiere_id' => $this->filiere->id, 'niveau_id' => $this->niveau->id,
             'annee_universitaire_id' => $passee->id, 'status' => 'active',
-        ]);
+        ], $inscriptionPassee));
 
         return ESBTPReinscriptionDemande::forceCreate([
             'etudiant_id' => $etudiant->id, 'annee_universitaire_id' => $this->annee->id,

@@ -263,6 +263,9 @@ window.demandesInscription = function () {
          */
         redoPropose(ctx) {
             if (ctx === 'ins') return '0';
+            // Sans proposition chargee (en cours, ou echec), la question ne se pose
+            // pas : rien n'est envoye, la valeur reste deduite et se confirmera.
+            if (!this.reins.proposition) return null;
             const c = this.classeChoisie(this.reins.classes || this.classes, this.reins.classe_id);
             if (!c) return null;
             const avant = this.reins.proposition?.niveau_avant;
@@ -292,13 +295,15 @@ window.demandesInscription = function () {
         redoChamps(ctx) {
             const valeur = this.cfg.redoublant ? this.redoValeur(ctx) : '';
             if (!valeur) return {};
-            const motif = this[ctx].redo.motif.trim();
+            const motif = this.redoMotifRequis(ctx) || this[ctx].erreurs.redoublant_motif ? this[ctx].redo.motif.trim() : '';
             return motif ? { redoublant: valeur, redoublant_motif: motif } : { redoublant: valeur };
         },
         choisirAnneeReins(annee) {
             if (this.reins.annee_id === annee.id) return;
             this.reins.annee_id = annee.id;
             this.reins.annee_echue_confirmee = false;
+            // La proposition de l'ancienne annee ne vaut plus : la question attend la nouvelle.
+            this.reins.proposition = null;
             // La liste reste affichee pendant le recomptage ; l'envoi attend
             // les places de la nouvelle annee (reinsPret).
             this.chargerClassesReins(annee.id);

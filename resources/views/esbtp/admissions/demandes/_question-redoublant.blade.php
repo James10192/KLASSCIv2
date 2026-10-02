@@ -8,7 +8,7 @@
     </div>
     <span class="dmi-champ-aide" x-text="redoAide('{{ $ctx }}')"></span>
     <span class="dmi-champ-aide dmi-champ-aide--alerte" x-show="redoContradiction('{{ $ctx }}')" x-cloak><i class="fas fa-triangle-exclamation"></i> <span x-text="redoContradiction('{{ $ctx }}')"></span></span>
-    <label class="dmi-champ" style="margin-top:.5rem" x-show="redoMotifRequis('{{ $ctx }}')" x-cloak>Pourquoi ? <span class="dmi-champ-aide">Obligatoire quand vous changez la réponse proposée (10 caractères au moins).</span>
+    <label class="dmi-champ" style="margin-top:.5rem" x-show="redoMotifRequis('{{ $ctx }}') || {{ $ctx }}.erreurs.redoublant_motif" x-cloak>Pourquoi ? <span class="dmi-champ-aide">Obligatoire quand vous changez la réponse proposée (10 caractères au moins).</span>
         <textarea x-model="{{ $ctx }}.redo.motif" maxlength="500" placeholder="Exemple : redouble sa 1re année, venu d'un autre établissement"></textarea>
     </label>
     <span class="dmi-champ-erreur" x-text="{{ $ctx }}.erreurs.redoublant_motif" x-show="{{ $ctx }}.erreurs.redoublant_motif"></span>

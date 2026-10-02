@@ -54,8 +54,14 @@ class ESBTPReinscriptionDemandeController extends Controller
         $quittee = ($cible ? $classes->inscriptionQuitteeAvant($demande->etudiant_id, $cible) : null)
             ?? $classes->inscriptionQuittee($demande->etudiant_id);
 
+        // Pour proposer « Redoublant ? » d'apres la classe choisie : la meme regle
+        // que l'enregistrement (StatutRedoublant), qui ne regarde pas si
+        // l'inscription d'avant est finalisee. Present dans TOUTES les reponses,
+        // sinon l'ecran proposerait « non » la ou le serveur exige un motif.
+        $niveauAvant = $cible ? (StatutRedoublant::niveauxDeLAnneePrecedente($demande->etudiant_id, [$cible])[(string) $cible->id] ?? null) : null;
+
         if ($quittee === null) {
-            return response()->json(['decision' => null, 'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS, 'moyenne' => null, 'annee_quittee' => null]);
+            return response()->json(['decision' => null, 'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS, 'moyenne' => null, 'annee_quittee' => null, 'niveau_avant' => $niveauAvant]);
         }
 
         $quittee->loadMissing('anneeUniversitaire', 'classe');
@@ -75,8 +81,7 @@ class ESBTPReinscriptionDemandeController extends Controller
             'affectation_status' => $statut === ESBTPEcheancierRule::STATUS_ALL ? ESBTPInscription::DEFAULT_AFFECTATION_STATUS : $statut,
             'annee_quittee' => (string) $quittee->anneeUniversitaire?->name,
             'classe_quittee' => (string) $quittee->classe?->name,
-            // Pour proposer « Redoublant ? » d'apres la classe choisie.
-            'niveau_avant' => $cible ? (StatutRedoublant::niveauxDeLAnneePrecedente($demande->etudiant_id, [$cible])[(string) $cible->id] ?? null) : null,
+            'niveau_avant' => $niveauAvant,
         ]);
     }
 

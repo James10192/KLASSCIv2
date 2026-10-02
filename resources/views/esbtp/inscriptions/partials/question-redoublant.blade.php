@@ -26,7 +26,7 @@
         <div x-show="valeur === '1'" x-cloak>
             <label class="rsr-note" for="redoublant_motif"><i class="fas fa-pen"></i> Dites pourquoi (obligatoire, 10 caractères au moins).</label>
             <textarea id="redoublant_motif" name="redoublant_motif" class="rsr-motif" rows="2" maxlength="500"
-                      :required="valeur === '1'" minlength="10"
+                      :required="valeur === '1'" :disabled="valeur !== '1'" minlength="10"
                       placeholder="Exemple : redouble sa 1re année, venu d'un autre établissement">{{ old('redoublant_motif') }}</textarea>
         </div>
         @error('redoublant_motif')
