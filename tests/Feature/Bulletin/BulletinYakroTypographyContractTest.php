@@ -80,7 +80,9 @@ class BulletinYakroTypographyContractTest extends TestCase
         self::assertGreaterThanOrEqual(14, $scale['body']);
         self::assertGreaterThanOrEqual(13, $scale['table']);
 
-        $view = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable.blade.php'));
+        $view = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable.blade.php'))
+            // Décision et signature vivent dans un partiel inclus par le gabarit.
+            .file_get_contents(resource_path('views/esbtp/bulletins/partials/conseil-signature.blade.php'));
         self::assertStringContainsString('BulletinTypography::scale', $view);
         self::assertStringContainsString("font-size: {{ \$typeScale['body'] }}px", $view);
         self::assertStringContainsString("font-size: {{ \$typeScale['table'] }}px", $view);

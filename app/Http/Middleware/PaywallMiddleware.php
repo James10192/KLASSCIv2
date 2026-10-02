@@ -5,9 +5,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use App\Models\ESBTPSystemSetting;
-use App\Models\User;
-use App\Models\ESBTPEtudiant;
-use Carbon\Carbon;
 
 class PaywallMiddleware
 {
@@ -167,187 +164,14 @@ class PaywallMiddleware
     }
 
     /**
-     * Vérifier le statut du paywall
-     * Nouvelle version : Appelle l'API Master avec cache + fallback local
+     * Le statut de blocage : la fiche adminKlassci d'abord, les reglages
+     * locaux en secours. Le calcul vit dans AbonnementDeLInstance, que lit
+     * aussi l'ecran du service technique — ce que l'ecran annonce est ce que
+     * ce middleware applique.
      */
     protected function checkPaywallStatus()
     {
-        // Essayer d'obtenir les limites depuis l'API Master (avec cache 5 min)
-        $limitsFromMaster = $this->getLimitsFromMaster();
-
-        if ($limitsFromMaster) {
-            return $this->buildStatusFromMasterApi($limitsFromMaster);
-        }
-
-        // Fallback : Utiliser le système local
-        \Log::debug('PaywallMiddleware: API Master indisponible, fallback vers système local');
-        return $this->checkPaywallStatusLocal();
-    }
-
-    /**
-     * Les limites lues chez adminKlassci (réponse 5 min, échec 1 min, délai 3 s).
-     */
-    protected function getLimitsFromMaster()
-    {
-        return app(\App\Services\Master\LimitesDuMaster::class)->lire();
-    }
-
-    /**
-     * Construire le statut depuis la réponse de l'API Master
-     */
-    protected function buildStatusFromMasterApi($apiData)
-    {
-        $status = [
-            'is_blocked' => false,
-            'reasons' => [],
-            'warnings' => [],
-        ];
-
-        // Vérifier l'expiration de l'abonnement
-        if ($apiData['subscription']['is_expired'] ?? false) {
-            $status['is_blocked'] = true;
-            $endDate = $apiData['subscription']['end_date'] ?? 'date inconnue';
-            $status['reasons'][] = 'Abonnement expiré le ' . Carbon::parse($endDate)->format('d/m/Y');
-        } elseif (isset($apiData['subscription']['days_remaining'])) {
-            $daysRemaining = (int) $apiData['subscription']['days_remaining'];
-            if ($daysRemaining <= 7 && $daysRemaining > 0) {
-                $status['warnings'][] = 'Abonnement expire dans ' . $daysRemaining . ' jour(s)';
-            }
-        }
-
-        // Vérifier si le quota est dépassé (is_over_quota)
-        if ($apiData['quota_status']['is_over_quota'] ?? false) {
-            $status['is_blocked'] = true;
-
-            // Ajouter des raisons détaillées selon les limites dépassées
-            if ($apiData['quota_status']['users_over_limit'] ?? false) {
-                $current = $apiData['current_usage']['users'] ?? 0;
-                $max = $apiData['limits']['max_users'] ?? 0;
-                $status['reasons'][] = "Limite d'utilisateurs dépassée ($current/$max)";
-            }
-
-            if ($apiData['quota_status']['staff_over_limit'] ?? false) {
-                $current = $apiData['current_usage']['staff'] ?? 0;
-                $max = $apiData['limits']['max_staff'] ?? 0;
-                $status['reasons'][] = "Limite de personnel dépassée ($current/$max)";
-            }
-
-            if ($apiData['quota_status']['students_over_limit'] ?? false) {
-                $current = $apiData['current_usage']['students'] ?? 0;
-                $max = $apiData['limits']['max_students'] ?? 0;
-                $status['reasons'][] = "Limite d'étudiants dépassée ($current/$max)";
-            }
-
-            if ($apiData['quota_status']['inscriptions_over_limit'] ?? false) {
-                $current = $apiData['current_usage']['inscriptions_per_year'] ?? 0;
-                $max = $apiData['limits']['max_inscriptions_per_year'] ?? 0;
-                $status['reasons'][] = "Limite d'inscriptions pour l'année dépassée ($current/$max)";
-            }
-
-            if ($apiData['quota_status']['storage_over_limit'] ?? false) {
-                $current = $apiData['current_usage']['storage_mb'] ?? 0;
-                $max = $apiData['limits']['max_storage_mb'] ?? 0;
-                $status['reasons'][] = "Limite de stockage dépassée ($current/$max Mo)";
-            }
-        }
-
-        // Ajouter des avertissements si proche des limites (>= 90%)
-        foreach (['users', 'staff', 'students', 'inscriptions', 'storage'] as $type) {
-            $usagePercent = $apiData['usage_percentage'][$type] ?? 0;
-            if ($usagePercent >= 90 && $usagePercent < 100) {
-                $limitKey = $type === 'inscriptions' ? 'max_inscriptions_per_year' : 'max_' . $type;
-                $usageKey = $type === 'inscriptions' ? 'inscriptions_per_year' : $type;
-
-                $current = $apiData['current_usage'][$usageKey] ?? 0;
-                $max = $apiData['limits'][$limitKey] ?? 0;
-
-                $status['warnings'][] = "Proche de la limite de $type ($current/$max - {$usagePercent}%)";
-            }
-        }
-
-        return $status;
-    }
-
-    /**
-     * Vérifier le statut du paywall (ancien système local - fallback)
-     */
-    protected function checkPaywallStatusLocal()
-    {
-        $status = [
-            'is_blocked' => false,
-            'reasons' => [],
-            'warnings' => [],
-        ];
-
-        // Récupérer la configuration
-        $config = [
-            'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
-            'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
-            'max_inscriptions_per_year' => ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500),
-        ];
-
-        // Obtenir les statistiques actuelles
-        $stats = $this->getCurrentStats();
-
-        // Vérifier l'expiration de l'abonnement
-        if ($config['subscription_end']) {
-            $endDate = Carbon::parse($config['subscription_end']);
-            $now = Carbon::now();
-
-            if ($now->gt($endDate)) {
-                $status['is_blocked'] = true;
-                $status['reasons'][] = 'Abonnement expiré le ' . $endDate->format('d/m/Y');
-            } else {
-                $daysRemaining = $now->diffInDays($endDate);
-                if ($daysRemaining <= 7) {
-                    $status['warnings'][] = 'Abonnement expire dans ' . $daysRemaining . ' jour(s)';
-                }
-            }
-        }
-
-        // Vérifier les limites d'utilisateurs
-        if ($stats['total_users'] > $config['max_users']) {
-            $status['is_blocked'] = true;
-            $status['reasons'][] = 'Limite d\'utilisateurs dépassée (' . $stats['total_users'] . '/' . $config['max_users'] . ')';
-        } elseif ($stats['total_users'] >= $config['max_users'] * 0.9) {
-            $status['warnings'][] = 'Proche de la limite d\'utilisateurs (' . $stats['total_users'] . '/' . $config['max_users'] . ')';
-        }
-
-        // Vérifier les limites d'inscriptions par année
-        if ($stats['total_inscriptions_current_year'] > $config['max_inscriptions_per_year']) {
-            $status['is_blocked'] = true;
-            $status['reasons'][] = 'Limite d\'inscriptions dépassée pour l\'année (' . $stats['total_inscriptions_current_year'] . '/' . $config['max_inscriptions_per_year'] . ')';
-        } elseif ($stats['total_inscriptions_current_year'] >= $config['max_inscriptions_per_year'] * 0.9) {
-            $status['warnings'][] = 'Proche de la limite d\'inscriptions pour l\'année (' . $stats['total_inscriptions_current_year'] . '/' . $config['max_inscriptions_per_year'] . ')';
-        }
-
-        return $status;
-    }
-
-    /**
-     * Obtenir les statistiques actuelles
-     */
-    protected function getCurrentStats()
-    {
-        // Compter les utilisateurs (enseignants, coordinateurs, secrétaires)
-        $totalUsers = User::whereHas('roles', function($query) {
-            $query->whereIn('name', ['enseignant', 'coordinateur', 'secretaire']);
-        })->count();
-
-        // Compter les inscriptions de l'année universitaire courante
-        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', 1)->first();
-        $totalInscriptionsAnnee = 0;
-
-        if ($anneeCourante) {
-            $totalInscriptionsAnnee = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeCourante->id)
-                ->where('status', 'active')
-                ->count();
-        }
-
-        return [
-            'total_users' => $totalUsers,
-            'total_inscriptions_current_year' => $totalInscriptionsAnnee,
-        ];
+        return app(\App\Services\Master\AbonnementDeLInstance::class)->statutDeBlocage();
     }
 
     /**

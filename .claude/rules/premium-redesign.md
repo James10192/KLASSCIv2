@@ -191,6 +191,10 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | lien de confirmation d'adresse expiré | `clx-*` | `clx-carte`, `clx-btn`, `clx-message` |
 | notifications (`/notifications`) | `ntf-*` | `ntf-hero`, `ntf-kpi`, `ntf-chip`, `ntf-row`, `ntf-group`, `ntf-work-card` |
 | messages (`/messages`, centre de messages v2) | `mh2-*` (feuilles `public/css/messages-hub-v2*.css`) | `mh2-conversation`, `mh2-thread`, `mh2-composer`, `mh2-modal` |
+| abonnement de l'instance, paywall (`/esbtp/paywall-config`, `blocked`, `upgrade`) | `pwc-*` (feuille partagée `paywall-config/partials/_styles`) | `pwc-hero`, `pwc-kpi`, `pwc-card`, `pwc-gauge`, `pwc-source`, `pwc-switch` |
+| tableau de bord du service technique | `dst-*` | `dst-hero`, `dst-kpi`, `dst-queue`, `dst-trend`, `dst-usage`, `dst-quick` |
+| matricules (`/esbtp/matricule-config`) | `mcf-*` | `mcf-hero`, `mcf-kpi`, `mcf-field`, `mcf-niveau`, `mcf-note` |
+| réclamations de notes (`/esbtp/mes-reclamations`, `/esbtp/reclamations-notes`) | `rcl-*` (feuille partagée `reclamations-notes/partials/_styles`) | `rcl-hero`, `rcl-card`, `rcl-item`, `rcl-badge`, `rcl-voile`, `rcl-fenetre` |
 | résultats des étudiants (`/esbtp/resultats`, liste à défilement infini) | `rsl-*` | `rsl-hero`, `rsl-kpi`, `rsl-row`, `rsl-action-main`, `rsl-more`, `rsl-sentinel` |
 
 Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.

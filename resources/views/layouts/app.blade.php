@@ -1740,7 +1740,7 @@
                                 <div class="menu-text">Notes & Bulletins</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.notes.*') || Request::routeIs('esbtp.bulletins.*') || Request::routeIs('esbtp.resultats.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.notes.*') || Request::routeIs('esbtp.bulletins.*') || Request::routeIs('esbtp.resultats.*') || Request::routeIs('esbtp.reclamations-notes.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.notes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Gestion des notes</span>
@@ -1749,6 +1749,12 @@
                                     <span class="menu-dot"></span>
                                     <span>Résultats & Classements</span>
                                 </a>
+                                @can('notes.reclamations.traiter')
+                                <a href="{{ route('esbtp.reclamations-notes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reclamations-notes.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Réclamations de notes</span>
+                                </a>
+                                @endcan
                                 @can('bulletins.view')
                                 <a href="{{ route('esbtp.bulletins.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.bulletins.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
@@ -1987,6 +1993,14 @@
                             </a>
                         </div>
                         @endcan
+
+                        {{-- Les réclamations sur ses propres évaluations : l'enseignant y donne son avis. --}}
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.reclamations-notes.index') }}" class="menu-link {{ Request::routeIs('esbtp.reclamations-notes.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-flag"></i></div>
+                                <div class="menu-text">Réclamations de notes</div>
+                            </a>
+                        </div>
 
                         @can('notes.view')
                         <div class="menu-item">
@@ -2364,6 +2378,15 @@
                             <div class="menu-text">Mes notes</div>
                         </a>
                     </div>
+
+                    @can('notes.reclamations.create_own')
+                    <div class="menu-item">
+                        <a href="{{ route('esbtp.mes-reclamations.index') }}" class="menu-link {{ request()->routeIs('esbtp.mes-reclamations.*') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-flag"></i></div>
+                            <div class="menu-text">Mes réclamations</div>
+                        </a>
+                    </div>
+                    @endcan
 
                     <div class="menu-item">
                         <a href="{{ route('esbtp.mes-absences.index') }}" class="menu-link {{ request()->routeIs('esbtp.mes-absences.*') ? 'active' : '' }}">

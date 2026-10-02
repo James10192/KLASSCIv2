@@ -67,17 +67,65 @@ class LimitesDuMaster
 
             if ($reponse->successful() && is_array($donnees = $reponse->json())) {
                 Cache::put(self::cle($code), $donnees, self::DUREE_REPONSE);
+                Cache::put(self::cle($code) . '_lu_a', now()->toIso8601String(), self::DUREE_REPONSE);
+                Cache::forget($cleEchec);
 
                 return $donnees;
             }
 
+            $erreur = 'adminKlassci a répondu ' . $reponse->status();
             Log::warning('master.limites_illisibles', ['statut' => $reponse->status()]);
         } catch (\Throwable $e) {
+            $erreur = 'adminKlassci injoignable';
             Log::warning('master.limites_injoignables', ['erreur' => $e->getMessage()]);
         }
 
-        Cache::put($cleEchec, true, self::DUREE_ECHEC);
+        // L'echec garde sa raison et son heure : la page du paywall les montre
+        // au service technique au lieu d'afficher des valeurs sans dire d'ou
+        // elles viennent.
+        Cache::put($cleEchec, ['erreur' => $erreur, 'a' => now()->toIso8601String()], self::DUREE_ECHEC);
 
         return null;
+    }
+
+    /** Le master est-il configure sur cette instance (adresse, jeton, code) ? */
+    public function estConfigure(): bool
+    {
+        return filled(config('services.master.api_url'))
+            && filled(config('services.master.api_token'))
+            && filled(config('app.tenant_code'));
+    }
+
+    /** L'heure de la derniere lecture reussie encore en cache, ou null. */
+    public function derniereLecture(): ?string
+    {
+        $code = config('app.tenant_code');
+
+        return $code ? (Cache::get(self::cle($code) . '_lu_a') ?: null) : null;
+    }
+
+    /** Le dernier echec encore retenu : ['erreur' => ..., 'a' => iso], ou null. */
+    public function dernierEchec(): ?array
+    {
+        $code = config('app.tenant_code');
+        $echec = $code ? Cache::get(self::cle($code) . '_echec') : null;
+
+        return is_array($echec) ? $echec : null;
+    }
+
+    /**
+     * Oublie la reponse et l'echec gardes, pour que la lecture suivante
+     * interroge adminKlassci sur-le-champ. Bouton « Actualiser ».
+     */
+    public function oublier(): void
+    {
+        $code = config('app.tenant_code');
+        if (! $code) {
+            return;
+        }
+
+        Cache::forget(self::cle($code));
+        Cache::forget(self::cle($code) . '_lu_a');
+        Cache::forget(self::cle($code) . '_echec');
     }
 }

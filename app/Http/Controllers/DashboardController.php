@@ -1703,17 +1703,6 @@ class DashboardController extends Controller
             abort(403, 'Accès refusé : Cette section est réservée au Service Technique d\'African Digit Consulting');
         }
 
-        // Récupérer tous les établissements (simule multi-tenant via git branches)
-        $etablissements = collect([
-            (object)[
-                'id' => 1,
-                'nom' => 'École Actuelle',
-                'branch' => 'presentation', // Current branch
-                'status' => 'active',
-                'created_at' => Carbon::now()->subMonths(6)
-            ]
-        ]);
-
         // Statistiques globales de l'établissement actuel
         $studentCountsST = app(StudentCountService::class)->counts();
         $stats = [
@@ -1729,96 +1718,39 @@ class DashboardController extends Controller
             })->count(),
         ];
 
-        // Configuration paywall actuelle
-        $paywallConfig = [
-            'is_active' => ESBTPSystemSetting::getValue('paywall_active', false),
-            'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
-            'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
-            'max_inscriptions_per_year' => ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500),
-            'plan_name' => ESBTPSystemSetting::getValue('paywall_plan_name', 'Non configuré'),
-            'plan_price' => ESBTPSystemSetting::getValue('paywall_plan_price', 0),
-        ];
-
-        // Statut paywall
-        $paywallStatus = $this->checkPaywallStatusForDashboard($paywallConfig, $stats);
+        // L'abonnement vient d'adminKlassci (secours local dit), par le meme
+        // service que le paywall : ce tableau de bord ne recalcule plus rien
+        // depuis des reglages locaux qui divergeaient de la fiche du tenant.
+        $abonnement = app(\App\Services\Master\AbonnementDeLInstance::class)->etat();
 
         // Activité récente
         $recentActivity = [
-            'new_users_this_month' => User::whereMonth('created_at', now()->month)->count(),
-            'new_students_this_month' => ESBTPEtudiant::whereMonth('created_at', now()->month)->count(),
-            'total_active_users' => User::where('created_at', '>=', now()->subDays(30))->count()
+            'new_users_this_month' => User::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
+            'new_users_last_month' => User::whereMonth('created_at', now()->subMonthNoOverflow()->month)->whereYear('created_at', now()->subMonthNoOverflow()->year)->count(),
+            'new_students_this_month' => ESBTPEtudiant::whereMonth('created_at', now()->month)->whereYear('created_at', now()->year)->count(),
+            'new_students_last_month' => ESBTPEtudiant::whereMonth('created_at', now()->subMonthNoOverflow()->month)->whereYear('created_at', now()->subMonthNoOverflow()->year)->count(),
         ];
 
-        // Codes d'urgence actifs
-        $activeCodes = collect();
-        $allSettings = ESBTPSystemSetting::where('key', 'LIKE', 'emergency_code_%')->get();
-        foreach ($allSettings as $setting) {
-            $codeData = json_decode($setting->value, true);
-            if ($codeData && !$codeData['used'] && time() <= $codeData['expires_at']) {
-                $activeCodes->push((object)[
-                    'code' => str_replace('emergency_code_', '', $setting->key),
-                    'expires_at' => Carbon::createFromTimestamp($codeData['expires_at']),
-                    'created_by' => $codeData['created_by']
-                ]);
-            }
-        }
+        $activeCodes = app(\App\Services\Paywall\CodesDUrgence::class)->actifs();
+
+        // Tendance : inscriptions creees sur les six derniers mois, un COUNT
+        // par mois (six requetes agregees, aucune liste chargee).
+        $tendanceInscriptions = collect(range(5, 0))->map(function ($recul) {
+            $mois = now()->startOfMonth()->subMonthsNoOverflow($recul);
+
+            return [
+                'mois' => $mois,
+                'total' => ESBTPInscription::whereBetween('created_at', [$mois, $mois->copy()->endOfMonth()])->count(),
+            ];
+        })->values();
 
         return view('dashboard.service-technique', compact(
-            'etablissements',
             'stats',
-            'paywallConfig',
-            'paywallStatus',
+            'abonnement',
             'recentActivity',
-            'activeCodes'
+            'activeCodes',
+            'tendanceInscriptions'
         ));
-    }
-
-    /**
-     * Vérifier le statut paywall pour le dashboard
-     */
-    private function checkPaywallStatusForDashboard($config, $stats)
-    {
-        $status = [
-            'is_blocked' => false,
-            'is_warning' => false,
-            'message' => 'Système opérationnel',
-            'level' => 'success'
-        ];
-
-        if (!$config['is_active']) {
-            return $status;
-        }
-
-        // Vérifier expiration
-        if ($config['subscription_end']) {
-            $endDate = Carbon::parse($config['subscription_end']);
-            $now = Carbon::now();
-
-            if ($now->gt($endDate)) {
-                $status['is_blocked'] = true;
-                $status['message'] = 'Abonnement expiré';
-                $status['level'] = 'danger';
-            } elseif ($now->diffInDays($endDate) <= 7) {
-                $status['is_warning'] = true;
-                $status['message'] = 'Expiration proche (' . $now->diffInDays($endDate) . ' jours)';
-                $status['level'] = 'warning';
-            }
-        }
-
-        // Vérifier limites
-        if ($stats['total_users'] >= $config['max_users'] * 0.9) {
-            $status['is_warning'] = true;
-            $status['message'] = 'Limite utilisateurs bientôt atteinte';
-            $status['level'] = 'warning';
-        }
-
-        if ($stats['total_inscriptions_year'] >= $config['max_inscriptions_per_year'] * 0.9) {
-            $status['is_warning'] = true;
-            $status['message'] = 'Limite inscriptions bientôt atteinte';
-            $status['level'] = 'warning';
-        }
-
-        return $status;
     }
 
     /**
