@@ -140,13 +140,10 @@ class ESBTPInscriptionApiController extends Controller
         $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::find($request->integer('annee_places') ?: null)
             ?? \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        $classes = $query->get()->map(function ($classe) use ($anneeCourante) {
-            $nombreEtudiants = \App\Models\ESBTPInscription::where('classe_id', $classe->id)
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree')
-                ->when($anneeCourante, fn($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
-                ->count();
-            $classe->places_disponibles = max(0, ($classe->places_totales ?? 0) - $nombreEtudiants);
+        // Une requete pour toutes les classes, la regle de ESBTPClasse.
+        $prises = ESBTPClasse::placesPrisesParClasse($anneeCourante?->id);
+        $classes = $query->get()->map(function ($classe) use ($prises) {
+            $classe->places_disponibles = max(0, ($classe->places_totales ?? 0) - (int) ($prises[$classe->id] ?? 0));
             return $classe;
         });
 
@@ -211,6 +208,15 @@ class ESBTPInscriptionApiController extends Controller
     {
         try {
             $search = $request->input("search", "");
+
+            // Une saisie : la recherche tolerante des demandes d'inscription
+            // (ordre des mots, accents, format du telephone).
+            if (trim((string) $search) !== "") {
+                return response()->json([
+                    "success" => true,
+                    "parents" => app(\App\Domain\Admissions\RechercheParents::class)->chercher((string) $search, 50),
+                ]);
+            }
 
             $query = ESBTPParent::query();
 

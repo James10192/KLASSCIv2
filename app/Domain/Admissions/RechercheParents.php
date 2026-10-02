@@ -20,7 +20,13 @@ class RechercheParents
 {
     public const MAX = 8;
 
-    /** Huit chiffres distinguent un numero, avec ou sans indicatif ni zero initial. */
+    /**
+     * Huit chiffres distinguent un numero, avec ou sans indicatif ni prefixe.
+     * La Cote d'Ivoire (2021, prefixes « 01 », « 05 », « 07 » selon l'operateur)
+     * puis le Benin (30 novembre 2024, prefixe « 01 ») sont passes a dix
+     * chiffres en prefixant l'ancien numero a huit chiffres : ces huit derniers
+     * chiffres restent ceux saisis sur les fiches anciennes. Voir adminklassci-tenant-management.md.
+     */
     private const CHIFFRES_COMPARES = 8;
 
     /** @return list<array<string, mixed>> */

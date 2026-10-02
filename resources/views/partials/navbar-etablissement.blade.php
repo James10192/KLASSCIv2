@@ -42,7 +42,7 @@
     // L'annee courante, pour que chacun sache sur quelle annee il travaille.
     // Terminee (date de fin passee) : signalee, l'ecole doit en ouvrir une autre.
     $etbAnnee = \App\Models\ESBTPAnneeUniversitaire::getCurrent();
-    $etbAnneeEchue = $etbAnnee?->end_date !== null && $etbAnnee->end_date->lt(today());
+    $etbAnneeEchue = (bool) $etbAnnee?->estTerminee();
     $etbAnneeTitre = $etbAnnee === null ? null : 'Année universitaire courante : ' . $etbAnnee->name
         . ($etbAnneeEchue ? ' — terminée le ' . $etbAnnee->end_date->translatedFormat('j F Y') : '');
 

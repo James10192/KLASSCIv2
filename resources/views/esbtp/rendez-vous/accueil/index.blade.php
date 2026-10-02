@@ -273,9 +273,11 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
     const poster = (url, corps) => appeler(url, { method: 'POST', body: JSON.stringify(corps || {}) });
 
     // Meme regle que ContactsFamilleRdv::normaliser() : sans accents, apostrophes
-    // retirees, tirets et blancs reduits a une espace.
+    // retirees, tirets et blancs reduits a une espace. Les ligatures, que NFD ne
+    // decompose pas, sont traduites comme le fait Str::ascii cote serveur.
     function normaliser(texte) {
         return (texte || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+            .replace(/\u0153/g, 'oe').replace(/\u00e6/g, 'ae').replace(/\u00f8/g, 'o').replace(/\u00df/g, 'ss')
             .replace(/['\u2019`]/g, '').replace(/[\s-]+/g, ' ').trim();
     }
 

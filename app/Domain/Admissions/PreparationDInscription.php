@@ -42,7 +42,8 @@ class PreparationDInscription
                 'statut' => (string) $c->statut,
                 'reference' => (string) ($c->referencePubliqueAffichee() ?? ''),
                 'voeu' => $c->voeu(),
-                'annee_universitaire_id' => $c->annee_universitaire_id,
+                // Entier : l'ecran compare avec ===, contre des identifiants d'annee entiers.
+                'annee_universitaire_id' => $c->annee_universitaire_id !== null ? (int) $c->annee_universitaire_id : null,
                 'annee' => (string) $c->anneeUniversitaire?->name,
                 'affectation_status' => $c->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
             ],
@@ -105,7 +106,7 @@ class PreparationDInscription
                 'id' => (int) $a->id,
                 'nom' => (string) $a->name,
                 'courante' => (bool) $a->is_current,
-                'echue' => $a->end_date !== null && $a->end_date->lt(today()),
+                'echue' => $a->estTerminee(),
                 'fin' => $a->end_date?->translatedFormat('j F Y'),
             ])
             ->values()->all();

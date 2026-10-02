@@ -1725,7 +1725,7 @@ class ESBTPEtudiantController extends Controller
         }
 
         if (! empty($annee->end_date)) {
-            return \Illuminate\Support\Carbon::parse($annee->end_date)->lt(today());
+            return $annee->estTerminee();
         }
 
         return ! ($annee->is_current ?? false);
@@ -1992,7 +1992,7 @@ class ESBTPEtudiantController extends Controller
         $annee = \App\Models\ESBTPAnneeUniversitaire::find(request()->integer('annee_universitaire_id') ?: null);
 
         return response()->json([
-            'available_places' => $annee ? $classe->placesDisponiblesPour((int) $annee->id) : $this->classeManagementService->getAvailablePlaces($id),
+            'available_places' => $classe->placesDisponiblesPour($annee?->id),
             'capacity' => $classe->places_totales ?? 0,
             'annee_universitaire_id' => $annee?->id,
         ]);

@@ -408,7 +408,7 @@ window.demandesInscription = function () {
             if (serveur) return this.ins.erreurs[serveur];
             if (!this.tuteurPartiel()) return '';
             if (this.ins.modeTuteur === 'existant') return this.ins.parentExistant ? 'Indiquez le lien avec l\'étudiant.' : 'Choisissez le parent dans la liste, ou passez à « Nouveau parent ».';
-            return 'Complétez nom, prénoms, téléphone et lien, ou cochez « Ne pas enregistrer de tuteur maintenant ».';
+            return 'Complétez nom, prénoms, téléphone et lien, ou choisissez « Plus tard ».';
         },
         insIdentiteOk() {
             const f = this.ins.f;
@@ -430,7 +430,7 @@ window.demandesInscription = function () {
             if (this.doublonsBloquants().length && !f.duplicate_override) return 'Tranchez les doublons : ouvrez la fiche proche, ou confirmez que c\'est une autre personne.';
             if (!f.classe_id) return 'Choisissez la classe.';
             if (!this.insAffectationOk()) return this.ins.prep?.statut_etablissement_requis && !f.statut_etablissement ? "Indiquez s'il est déjà inscrit dans l'établissement." : 'Saisissez le matricule.';
-            return this.tuteurPartiel() ? 'Complétez le tuteur ou cochez « Ne pas enregistrer de tuteur ».' : '';
+            return this.tuteurPartiel() ? 'Complétez le tuteur ou choisissez « Plus tard ».' : '';
         },
         formulaire() {
             const fd = new FormData();

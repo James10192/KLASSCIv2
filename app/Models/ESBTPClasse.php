@@ -389,10 +389,9 @@ class ESBTPClasse extends Model implements Auditable
      */
     public function placesDisponiblesPour(?int $anneeId = null): int
     {
-        if (! $anneeId) {
-            return $this->places_disponibles;
-        }
-        $prises = $this->inscriptions()->occupeUnePlace($anneeId)->count();
+        $anneeId = $anneeId ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
+        // Sans annee courante, rien n'est compte (meme regle que nombre_etudiants).
+        $prises = $anneeId ? $this->inscriptions()->occupeUnePlace((int) $anneeId)->count() : 0;
 
         return max(0, (int) ($this->places_totales ?? 0) - $prises);
     }
@@ -404,16 +403,7 @@ class ESBTPClasse extends Model implements Auditable
      */
     public function getPlacesDisponiblesAttribute()
     {
-        $nombreEtudiants = $this->nombre_etudiants;
-        $placesTotales = $this->places_totales ?? 0;
-        $placesDisponibles = max(0, $placesTotales - $nombreEtudiants);
-
-        // Log pour debugging (à retirer en production)
-        if (config('app.debug')) {
-            \Log::debug("Classe {$this->id} ({$this->name}): Capacité={$placesTotales}, Inscrits={$nombreEtudiants}, Disponibles={$placesDisponibles}");
-        }
-
-        return $placesDisponibles;
+        return $this->placesDisponiblesPour();
     }
 
     /**
