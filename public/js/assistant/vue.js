@@ -69,16 +69,36 @@
         if (!this.segments.length && !this.pensee.parentNode) { this.root.appendChild(this.pensee); }
     };
 
+    /** Dernier segment du fil hors cartes à valider, qui restent en bas. */
     Vue.prototype.dernier = function () {
-        return this.segments[this.segments.length - 1] || null;
+        for (var i = this.segments.length - 1; i >= 0; i -= 1) {
+            if (!this.segments[i].epingle) { return this.segments[i]; }
+        }
+        return null;
     };
 
+    /**
+     * Une carte à valider (proposition) reste en bas de la réponse : la phrase
+     * de Nanan qui la présente vient au-dessus, et les boutons tombent là où le
+     * fil se termine, sous les yeux. Avant, la carte arrivait à l'appel de
+     * l'outil et la fin de la réponse s'écrivait dessous : Valider remontait
+     * hors de l'écran. L'ordre est le même en direct et à la réouverture.
+     */
     Vue.prototype.ajouterSegment = function (seg) {
         if (this.pensee.parentNode) { this.pensee.remove(); }
         var precedent = this.dernier();
-        this.segments.push(seg);
         seg.el.classList.add('ast-part');
-        this.root.appendChild(seg.el);
+        var premiereEpinglee = null;
+        for (var i = 0; i < this.segments.length; i += 1) {
+            if (this.segments[i].epingle) { premiereEpinglee = this.segments[i]; break; }
+        }
+        if (!seg.epingle && premiereEpinglee) {
+            this.segments.splice(this.segments.indexOf(premiereEpinglee), 0, seg);
+            this.root.insertBefore(seg.el, premiereEpinglee.el);
+        } else {
+            this.segments.push(seg);
+            this.root.appendChild(seg.el);
+        }
         if (precedent && precedent.type === 'etapes') { this.replierSiFini(precedent); }
     };
 
@@ -252,7 +272,7 @@
             existant.el = hote;
             existant.nettoyer = this.nettoyageEnAttente;
         } else {
-            var seg = { type: 'widget', id: id, el: hote, nettoyer: this.nettoyageEnAttente };
+            var seg = { type: 'widget', id: id, el: hote, nettoyer: this.nettoyageEnAttente, epingle: k === 'approbation' };
             if (id) { this.widgets[id] = seg; }
             this.ajouterSegment(seg);
         }

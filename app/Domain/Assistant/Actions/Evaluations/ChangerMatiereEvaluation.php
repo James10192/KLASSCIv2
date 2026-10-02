@@ -73,7 +73,7 @@ class ChangerMatiereEvaluation extends ActionAgent
             return $this->seulManque($titre, $manque);
         }
         if ((int) $cible->id === (int) $evaluation->matiere_id) {
-            return $this->seulManque($titre, "L'évaluation est déjà sur {$cible->name} : rien à changer.");
+            return Proposition::sansObjet($titre, "L'évaluation est déjà sur {$cible->name}.");
         }
         if ($refus = $this->rebascule->refus($evaluation, $cible)) {
             return $this->seulManque($titre, $refus . ' Ce changement ne sert qu\'à rétablir la cohérence ; pour une autre erreur de matière, passez par l\'écran de l\'évaluation.');

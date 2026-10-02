@@ -109,7 +109,7 @@ class EnregistrerMoyennes extends ActionAgent
         }
         $effectives = array_values(array_filter($rapport['lignes'], fn ($l) => in_array($l['action'], ['creee', 'modifiee', 'retiree'], true)));
         if ($effectives === []) {
-            return $this->seulManque($titre, 'Rien à changer : ces moyennes sont déjà enregistrées (ou déjà absentes).');
+            return Proposition::sansObjet($titre, 'Ces moyennes sont déjà enregistrées (ou déjà absentes).');
         }
         $effets = ['creee' => 'Enregistrée', 'modifiee' => 'Remplacée', 'retiree' => 'Retirée (les notes reprennent la main)'];
 
