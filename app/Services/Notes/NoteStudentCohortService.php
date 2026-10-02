@@ -25,6 +25,21 @@ class NoteStudentCohortService
     }
 
     /**
+     * Relations dont la résolution d'éligibilité a besoin (parcours, phases,
+     * origine, spécialisation). Le comptage s'arrête là ; la liste d'étudiants
+     * y ajoute l'étudiant lui-même.
+     */
+    private const ELIGIBILITY_RELATIONS = [
+        'classe.filiere',
+        'filiere',
+        'phases.classe.filiere',
+        'inscriptionOrigine.classe.filiere',
+        'inscriptionOrigine.filiere',
+        'inscriptionOrigine.phases.classe.filiere',
+        'inscriptionSpecialisation.classe.filiere',
+    ];
+
+    /**
      * Compte la cohorte éligible d'une classe pour les semestres donnés, sans
      * matérialiser les modèles étudiants (ni eager-load d'accessibilité, ni tri).
      * Utilisé par les boucles de statistiques par classe (assiduité) où seul le
@@ -35,26 +50,7 @@ class NoteStudentCohortService
         ESBTPAnneeUniversitaire $annee,
         array $semesters = []
     ): int {
-        $requestedSemesters = $this->normalizeSemesters($semesters);
-        $eligibleIds = [];
-
-        foreach ($this->candidateInscriptions($classe, $annee, forCounting: true) as $inscription) {
-            if (! $inscription->etudiant_id) {
-                continue;
-            }
-
-            $eligibility = $this->resolveEligibilityForClass(
-                $inscription,
-                (int) $classe->id,
-                $requestedSemesters
-            );
-
-            if (! empty($eligibility['semesters'])) {
-                $eligibleIds[(int) $inscription->etudiant_id] = true;
-            }
-        }
-
-        return count($eligibleIds);
+        return $this->countStudentsForClasses([$classe], $annee, $semesters)[(int) $classe->id] ?? 0;
     }
 
     /**
@@ -79,15 +75,7 @@ class NoteStudentCohortService
         }
 
         $requestedSemesters = $this->normalizeSemesters($semesters);
-        $inscriptions = $this->candidatesQuery($classeIds, $annee)->with([
-            'classe.filiere',
-            'filiere',
-            'phases.classe.filiere',
-            'inscriptionOrigine.classe.filiere',
-            'inscriptionOrigine.filiere',
-            'inscriptionOrigine.phases.classe.filiere',
-            'inscriptionSpecialisation.classe.filiere',
-        ])->get();
+        $inscriptions = $this->candidatesQuery($classeIds, $annee)->with(self::ELIGIBILITY_RELATIONS)->get();
 
         // Toutes les spécialisations, pas seulement celle que porte le hasOne :
         // le orWhereHas de la requête par classe les considère toutes.
@@ -202,32 +190,11 @@ class NoteStudentCohortService
         return $this->normalizeSemester($evaluation->periode ?? null) ?? 1;
     }
 
-    private function candidateInscriptions(ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee, bool $forCounting = false): Collection
+    private function candidateInscriptions(ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee): Collection
     {
-        // Le comptage n'a besoin que des phases (résolution d'éligibilité) : on
-        // évite l'eager-load étudiant.accessibilityProfile, inutile pour un count.
-        $relations = $forCounting
-            ? [
-                'classe.filiere',
-                'filiere',
-                'phases.classe.filiere',
-                'inscriptionOrigine.classe.filiere',
-                'inscriptionOrigine.filiere',
-                'inscriptionOrigine.phases.classe.filiere',
-                'inscriptionSpecialisation.classe.filiere',
-            ]
-            : [
-                'etudiant.accessibilityProfile',
-                'classe.filiere',
-                'filiere',
-                'phases.classe.filiere',
-                'inscriptionOrigine.classe.filiere',
-                'inscriptionOrigine.filiere',
-                'inscriptionOrigine.phases.classe.filiere',
-                'inscriptionSpecialisation.classe.filiere',
-            ];
-
-        return $this->candidatesQuery([(int) $classe->id], $annee)->with($relations)->get();
+        return $this->candidatesQuery([(int) $classe->id], $annee)
+            ->with(array_merge(['etudiant.accessibilityProfile'], self::ELIGIBILITY_RELATIONS))
+            ->get();
     }
 
     /**

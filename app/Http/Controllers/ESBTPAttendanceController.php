@@ -31,6 +31,7 @@ use App\Http\Requests\Attendance\JustifyAbsenceRequest;
 use App\Http\Requests\Attendance\ProcessJustificationRequest;
 use App\Services\AbsenceJustificationService;
 use App\Services\Attendance\AttendanceStudentCohortService;
+use App\Services\Attendance\ComptesDePresence;
 use App\Support\ListeInfinie;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Gate;
@@ -48,7 +49,8 @@ class ESBTPAttendanceController extends Controller
         MatiereService $matiereService,
         NotificationService $notificationService,
         AbsenceJustificationService $justificationService,
-        AttendanceStudentCohortService $attendanceStudentCohortService
+        AttendanceStudentCohortService $attendanceStudentCohortService,
+        private readonly ComptesDePresence $comptesDePresence
     ) {
         $this->matiereService = $matiereService;
         $this->notificationService = $notificationService;
@@ -250,7 +252,7 @@ class ESBTPAttendanceController extends Controller
         // deux requêtes identiques n'apportaient rien, et l'ordre alphabétique rend
         // l'affichage déterministe alors que l'ordre naturel de MySQL ne l'est pas.
         $classeStats = [];
-        $comptesParClasse = $this->comptesDePresenceParClasse($anneeUniversitaire);
+        $comptesParClasse = $this->comptesDePresence->comptesParClasse($anneeUniversitaire);
         // La cohorte annuelle inclut les phases BTS tronc commun orientées, tout
         // en conservant le comportement des inscriptions directes et LMD.
         $effectifs = $this->attendanceStudentCohortService
@@ -1737,44 +1739,6 @@ class ESBTPAttendanceController extends Controller
     /**
      * Calculate coordinator-specific statistics for today
      */
-    /**
-     * Présences finales de l'année par classe (celle de l'emploi du temps de la
-     * séance) et par statut, en deux requêtes quel que soit le nombre de classes.
-     * « late » est compté comme « retard ».
-     *
-     * @return array<int, array<string, int>> classe_id => [statut => nombre]
-     */
-    private function comptesDePresenceParClasse(ESBTPAnneeUniversitaire $annee): array
-    {
-        $parSeance = ESBTPAttendance::finalOnly()
-            ->where('annee_universitaire_id', $annee->id)
-            ->toBase()
-            ->selectRaw('seance_cours_id, statut, COUNT(*) as n')
-            ->groupBy('seance_cours_id', 'statut')
-            ->get();
-
-        // Classe de chaque séance par son emploi du temps (même un emploi du temps
-        // supprimé, comme la relation seanceCours.emploiTemps ; pas une séance supprimée).
-        $classeDeLaSeance = ESBTPSeanceCours::query()
-            ->whereIn('esbtp_seance_cours.id', ESBTPAttendance::query()
-                ->select('seance_cours_id')
-                ->where('annee_universitaire_id', $annee->id))
-            ->join('esbtp_emploi_temps', 'esbtp_emploi_temps.id', '=', 'esbtp_seance_cours.emploi_temps_id')
-            ->pluck('esbtp_emploi_temps.classe_id', 'esbtp_seance_cours.id');
-
-        $comptes = [];
-        foreach ($parSeance as $ligne) {
-            $classeId = $classeDeLaSeance[$ligne->seance_cours_id] ?? null;
-            if ($classeId === null) {
-                continue;
-            }
-            $statut = $ligne->statut === 'late' ? 'retard' : $ligne->statut;
-            $comptes[$classeId][$statut] = ($comptes[$classeId][$statut] ?? 0) + (int) $ligne->n;
-        }
-
-        return $comptes;
-    }
-
     private function calculateCoordinatorStats($date)
     {
         try {

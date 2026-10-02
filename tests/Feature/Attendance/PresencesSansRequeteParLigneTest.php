@@ -112,7 +112,13 @@ class PresencesSansRequeteParLigneTest extends TestCase
         $this->assertCount(5, $reponse->viewData('etudiants'));
     }
 
-    public function test_la_cohorte_groupee_egale_la_cohorte_classe_par_classe(): void
+    /**
+     * Les effectifs attendus sont ceux que rendait l'implementation classe par
+     * classe d'avant le regroupement (origin/presentation, une requete par
+     * classe) : countStudentsForClass() passe desormais par le chemin groupe,
+     * donc comparer les deux ne prouverait plus rien.
+     */
+    public function test_la_cohorte_groupee_rend_les_effectifs_d_avant(): void
     {
         $tronc = ESBTPFiliere::factory()->create(['is_tronc_commun' => true, 'semestres_tronc_commun' => 1]);
         $specialite = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => $tronc->id]);
@@ -137,12 +143,45 @@ class PresencesSansRequeteParLigneTest extends TestCase
             'classe_id' => $directe->id, 'annee_universitaire_id' => $this->annee->id, 'workflow_step' => 'prospect',
         ]);
 
-        $service = app(NoteStudentCohortService::class);
-        $classes = collect([$classeTronc, $classeSpe, $classeVide, $directe]);
-        foreach ([[1], [2], [1, 2]] as $semestres) {
-            $attendu = $classes->mapWithKeys(fn ($c) => [$c->id => $service->countStudentsForClass($c, $this->annee, $semestres)])->all();
-            $this->assertSame($attendu, $service->countStudentsForClasses($classes, $this->annee, $semestres));
+        $this->assertEffectifs([$classeTronc, $classeSpe, $classeVide, $directe], [
+            '1' => [1, 1, 0, 3],
+            '2' => [0, 1, 0, 3],
+            '1,2' => [1, 1, 0, 3],
+        ]);
+    }
+
+    /**
+     * Parcours legacy « inscription d'origine / specialisation » (pas de phase) :
+     * l'eleve A a ses deux inscriptions dans l'annee, l'eleve B n'a que sa
+     * specialisation (origine l'an passe). Valeurs relevees sur l'implementation
+     * d'avant le regroupement.
+     */
+    public function test_la_cohorte_groupee_rend_les_effectifs_d_avant_en_parcours_legacy(): void
+    {
+        $tronc = ESBTPFiliere::factory()->create(['is_tronc_commun' => true, 'semestres_tronc_commun' => 1]);
+        $specialite = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'parent_id' => $tronc->id]);
+        $classeTronc = $this->classe($tronc);
+        $classeSpe = $this->classe($specialite);
+        $anneePassee = ESBTPAnneeUniversitaire::factory()->create(['is_current' => false]);
+
+        foreach ([$this->annee, $anneePassee] as $anneeOrigine) {
+            $etudiant = ESBTPEtudiant::factory()->create();
+            $origine = ESBTPInscription::factory()->create([
+                'etudiant_id' => $etudiant->id, 'classe_id' => $classeTronc->id,
+                'filiere_id' => $tronc->id, 'annee_universitaire_id' => $anneeOrigine->id,
+            ]);
+            ESBTPInscription::factory()->create([
+                'etudiant_id' => $etudiant->id, 'classe_id' => $classeSpe->id, 'filiere_id' => $specialite->id,
+                'annee_universitaire_id' => $this->annee->id,
+                'type_changement' => 'specialisation', 'inscription_origine_id' => $origine->id,
+            ]);
         }
+
+        $this->assertEffectifs([$classeTronc, $classeSpe], [
+            '1' => [2, 2],
+            '2' => [1, 2],
+            '1,2' => [2, 2],
+        ]);
     }
 
     // ---- /coordinateur/attendance-dashboard ---------------------------------
@@ -209,6 +248,25 @@ class PresencesSansRequeteParLigneTest extends TestCase
     }
 
     // ---- fabriques ------------------------------------------------------------
+
+    /**
+     * @param  array<int, ESBTPClasse>  $classes
+     * @param  array<string, array<int, int>>  $attendus  semestres => effectifs dans l'ordre des classes
+     */
+    private function assertEffectifs(array $classes, array $attendus): void
+    {
+        $service = app(NoteStudentCohortService::class);
+        foreach ($attendus as $semestres => $effectifs) {
+            $semestres = array_map('intval', explode(',', (string) $semestres));
+            $attendu = array_combine(array_map(fn ($c) => (int) $c->id, $classes), $effectifs);
+            $parClasse = [];
+            foreach ($classes as $classe) {
+                $parClasse[(int) $classe->id] = $service->countStudentsForClass($classe, $this->annee, $semestres);
+            }
+            $this->assertSame($attendu, $parClasse, 'Classe par classe, semestres '.implode(',', $semestres));
+            $this->assertSame($attendu, $service->countStudentsForClasses($classes, $this->annee, $semestres), 'Groupe, semestres '.implode(',', $semestres));
+        }
+    }
 
     private function requetes(string $url): int
     {

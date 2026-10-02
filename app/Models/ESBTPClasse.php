@@ -291,10 +291,15 @@ class ESBTPClasse extends Model implements Auditable
         if ($classes->isEmpty()) {
             return;
         }
-        $places = static::placesPrisesParClasse();
+        // Sans annee courante, l'effectif reste a l'accesseur, qui le journalise.
+        $places = ESBTPAnneeUniversitaire::where('is_current', true)->exists()
+            ? static::placesPrisesParClasse()
+            : null;
         $parents = static::parentsTroncCommun($classes);
         foreach ($classes as $classe) {
-            $classe->nombreEtudiantsConnu = (int) $places->get($classe->id, 0);
+            if ($places !== null) {
+                $classe->nombreEtudiantsConnu = (int) $places->get($classe->id, 0);
+            }
             $classe->parentTroncCommun = $parents->get($classe->id);
             $classe->parentTroncCommunConnu = true;
         }
