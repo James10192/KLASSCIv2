@@ -90,7 +90,10 @@ ce sont alors les traces **les plus récentes** qui sont lues.
 Une commande qui lève avant sa fin est notée avec `code` 1 et
 `details.resultat` = `interrompue` (`ok` et `echec` pour une fin normale).
 Les traces d'un PDF ou d'un envoi produits pendant une page sont écrites avec
-celle de la page, après la réponse, ou à l'arrêt du processus si la page tombe.
+celle de la page, après la réponse. Si la page tombe (temps d'exécution ou
+mémoire dépassés), seules les mesures imbriquées déjà terminées sont écrites,
+au mieux, à l'arrêt du processus : ni la page ni l'action en cours au moment
+de la chute ne laissent de trace.
 Cette route ne se trace pas elle-même : la console la lit chaque heure.
 
 ## Historique
