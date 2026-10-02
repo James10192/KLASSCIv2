@@ -15,7 +15,13 @@ final class FilDeSupport
     public const MESSAGES_MAX = 30;
     public const LONGUEUR_MAX = 1500;
 
-    /** @param list<array{role:string,texte:string}> $messages */
+    /** Ce que l'écran envoie quand la réponse de Nanan n'a pas suffi. */
+    public const PAS_RESOLU = "Non, ça n'a pas résolu mon problème.";
+
+    /** Les types d'un message de Nanan, tels que l'écran les a reçus (TourDeSupport::action). */
+    private const TYPES = [TourDeSupport::QUESTION, TourDeSupport::REPONSE, TourDeSupport::RECAPITULATIF];
+
+    /** @param list<array{role:string,texte:string,type?:string}> $messages */
     private function __construct(private readonly array $messages)
     {
     }
@@ -33,13 +39,17 @@ final class FilDeSupport
             if ($texte === '') {
                 continue;
             }
-            $messages[] = ['role' => $role, 'texte' => mb_substr($texte, 0, self::LONGUEUR_MAX)];
+            $message = ['role' => $role, 'texte' => mb_substr($texte, 0, self::LONGUEUR_MAX)];
+            if ($role === 'nanan' && in_array($m['type'] ?? null, self::TYPES, true)) {
+                $message['type'] = $m['type'];
+            }
+            $messages[] = $message;
         }
 
         return new self($messages);
     }
 
-    /** @return list<array{role:string,texte:string}> */
+    /** @return list<array{role:string,texte:string,type?:string}> */
     public function messages(): array
     {
         return $this->messages;
@@ -63,6 +73,75 @@ final class FilDeSupport
             fn ($m) => $m['texte'],
             array_filter($this->messages, fn ($m) => $m['role'] === 'personne')
         ));
+    }
+
+    /**
+     * Le message de Nanan au rang `$i` est-il une réponse (une marche à suivre)
+     * plutôt qu'une question ? L'écran le dit depuis octobre 2026 ; un brouillon
+     * plus ancien ne le dit pas, et c'est alors la suite qui tranche : une
+     * réponse est suivie de « ça n'a pas résolu », une question ne l'est jamais.
+     */
+    public function estUneReponseDeNanan(int $i): bool
+    {
+        $m = $this->messages[$i] ?? null;
+        if ($m === null || $m['role'] !== 'nanan') {
+            return false;
+        }
+        if (isset($m['type'])) {
+            return $m['type'] === TourDeSupport::REPONSE;
+        }
+
+        return ($this->messages[$i + 1]['texte'] ?? null) === self::PAS_RESOLU;
+    }
+
+    /** La personne a dit que la réponse de Nanan ne l'avait pas aidée. */
+    public function reponseInsuffisante(): bool
+    {
+        foreach ($this->messages as $i => $m) {
+            if ($this->estUneReponseDeNanan($i) && ($this->messages[$i + 1]['texte'] ?? null) === self::PAS_RESOLU) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Le texte recopie-t-il une réponse de Nanan ? C'est le défaut que la
+     * demande ne doit jamais avoir : le support y lirait la marche que Nanan a
+     * proposée à la place de ce que la personne a demandé. Une réponse est
+     * découpée en phrases ou en étapes ; deux d'entre elles retrouvées telles
+     * quelles (une seule, si la réponse n'en a qu'une) suffisent.
+     */
+    public function recopieUneReponseDeNanan(string $texte): bool
+    {
+        $cible = self::normaliser($texte);
+        foreach ($this->messages as $i => $m) {
+            if (! $this->estUneReponseDeNanan($i)) {
+                continue;
+            }
+            $morceaux = array_values(array_filter(
+                array_map(fn ($p) => self::normaliser($p), preg_split('/(?<=[.!?:;])\s+|\R+/u', $m['texte']) ?: []),
+                fn ($p) => mb_strlen($p) >= 25
+            ));
+            if ($morceaux === []) {
+                continue;
+            }
+            $retrouves = count(array_filter($morceaux, fn ($p) => str_contains($cible, $p)));
+            if ($retrouves >= min(2, count($morceaux))) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Minuscules, puces et numéros d'étape retirés, espaces resserrés. */
+    private static function normaliser(string $texte): string
+    {
+        $texte = mb_strtolower((string) preg_replace('/^\s*(?:\d+[.)]|[-•*])\s*/mu', '', $texte));
+
+        return trim((string) preg_replace('/\s+/u', ' ', $texte));
     }
 
     public function premierMessage(): string

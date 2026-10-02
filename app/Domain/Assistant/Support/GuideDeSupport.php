@@ -89,23 +89,41 @@ final class GuideDeSupport
         return array_merge($ouverture, $suite);
     }
 
-    /** @return array{titre:string,description:string,categorie:string} */
+    /**
+     * La demande, écrite avec les mots de la personne. Une question de Nanan
+     * est reprise devant la réponse qu'elle a reçue ; une RÉPONSE de Nanan ne
+     * l'est jamais : recopiée, elle prenait la place de ce que la personne
+     * demandait, et le support lisait la marche à suivre qu'elle venait de
+     * rejeter. Qu'elle n'ait pas suffi se dit en une phrase.
+     *
+     * @return array{titre:string,description:string,categorie:string}
+     */
     public function recap(Intention $intention, FilDeSupport $fil, array $page): array
     {
-        $reponses = $fil->reponsesDeLaPersonne();
-        $premier = $reponses[0] ?? '';
+        $premier = $fil->premierMessage();
+        $messages = $fil->messages();
+        $premierVu = false;
 
         $lignes = [$premier];
-        $messages = $fil->messages();
         foreach ($messages as $i => $m) {
-            if ($m['role'] !== 'nanan') {
+            if ($m['role'] !== 'personne') {
                 continue;
             }
-            $reponse = $messages[$i + 1] ?? null;
-            if ($reponse === null || $reponse['role'] !== 'personne' || $reponse['texte'] === $premier) {
+            if (! $premierVu && $m['texte'] === $premier) {
+                $premierVu = true;
                 continue;
             }
-            $lignes[] = '- ' . $m['texte'] . ' ' . $reponse['texte'];
+            if ($m['texte'] === FilDeSupport::PAS_RESOLU) {
+                continue;
+            }
+            $avant = $messages[$i - 1] ?? null;
+            $question = $avant !== null && $avant['role'] === 'nanan' && ! $fil->estUneReponseDeNanan($i - 1);
+            $lignes[] = '- ' . ($question ? $avant['texte'] . ' ' : '') . $m['texte'];
+        }
+        if ($fil->reponseInsuffisante()) {
+            $lignes[] = $intention === Intention::COMMENT
+                ? "Nanan m'a proposé une marche à suivre, mais elle ne m'a pas suffi."
+                : "Nanan m'a proposé une solution, mais elle n'a pas résolu mon problème.";
         }
         // Pas de « Page ouverte : <titre> » : la page part au support par son
         // nom technique (route), jamais par le titre de l'onglet.

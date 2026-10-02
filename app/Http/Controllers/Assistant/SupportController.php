@@ -6,6 +6,7 @@ use App\Domain\Assistant\Support\ConversationDeSupport;
 use App\Domain\Assistant\Support\FilDeSupport;
 use App\Domain\Assistant\Support\GuideDeSupport;
 use App\Domain\Assistant\Support\Intention;
+use App\Domain\Assistant\Support\TourDeSupport;
 use App\Domain\Support\Services\ContexteDePage;
 use App\Domain\Support\Services\DisponibiliteSupport;
 use App\Http\Controllers\Controller;
@@ -43,6 +44,7 @@ class SupportController extends Controller
             'fil' => ['nullable', 'array', 'max:' . FilDeSupport::MESSAGES_MAX],
             'fil.*.role' => ['required', Rule::in(['nanan', 'personne'])],
             'fil.*.texte' => ['required', 'string', 'max:' . FilDeSupport::LONGUEUR_MAX],
+            'fil.*.type' => ['nullable', Rule::in([TourDeSupport::QUESTION, TourDeSupport::REPONSE, TourDeSupport::RECAPITULATIF])],
             'page' => ['nullable', 'array'],
             'page.titre' => ['nullable', 'string', 'max:200'],
             'recapitulatif' => ['nullable', 'boolean'],
