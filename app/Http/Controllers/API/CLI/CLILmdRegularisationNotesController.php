@@ -10,10 +10,12 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -69,18 +71,15 @@ final class CLILmdRegularisationNotesController extends BaseApiController
         }
 
         $semestre = (int) substr((string) $v['periode'], -1);
-        $lignes = collect($v['notes'])->map(function (array $ligne) use ($classe, $semestre): array {
+        $maquette = $this->ecuesDeLaMaquette($classe, $semestre);
+
+        $lignes = collect($v['notes'])->map(function (array $ligne) use ($classe, $semestre, $maquette): array {
             $matiere = ESBTPMatiere::findOrFail($ligne['matiere_id']);
             if (! CoherenceSystemeAcademique::estCoherente($classe->systeme_academique, $matiere->unite_enseignement_id)) {
                 throw ValidationException::withMessages(['notes' => ["La matière {$matiere->name} n'est pas une ECUE LMD de cette classe."]]);
             }
 
-            $estDansMaquette = DB::table('esbtp_lmd_parcours_ue as pue')
-                ->join('esbtp_ue_matiere as eum', 'eum.unite_enseignement_id', '=', 'pue.unite_enseignement_id')
-                ->where('pue.parcours_id', $classe->parcours_id)
-                ->where('pue.semestre', $semestre)
-                ->where('eum.matiere_id', $matiere->id)
-                ->exists();
+            $estDansMaquette = $maquette->contains('id', $matiere->id);
             if (! $estDansMaquette) {
                 throw ValidationException::withMessages(['notes' => ["La matière {$matiere->name} ne figure pas dans la maquette S{$semestre} de cette classe."]]);
             }
@@ -160,5 +159,23 @@ final class CLILmdRegularisationNotesController extends BaseApiController
         ]);
 
         return $this->successResponse(['dry_run' => false, 'evaluations_et_notes' => $resultat], 'Évaluations de régularisation et notes enregistrées.');
+    }
+
+    /**
+     * La maquette telle que la classe la voit : la meme lecture que le planning
+     * et les bulletins. Le pivot esbtp_ue_matiere seul ne suffit pas : une
+     * maquette importee par cle etrangere n'y a aucune ligne, et toutes ses
+     * notes etaient refusees (ESBTP Abidjan, octobre 2026).
+     */
+    private function ecuesDeLaMaquette(ESBTPClasse $classe, int $semestre): Collection
+    {
+        return ESBTPLMDParcours::find($classe->parcours_id)
+            ?->unitesEnseignement()
+            ->wherePivot('semestre', $semestre)
+            ->where('esbtp_unites_enseignement.is_active', true)
+            ->with(['ecues', 'matieres'])
+            ->get()
+            ->flatMap(fn ($ue) => $ue->getEcuesEffectifs((int) $classe->parcours_id))
+            ?? collect();
     }
 }
