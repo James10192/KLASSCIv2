@@ -9,6 +9,7 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPInscriptionPhase;
 use App\Models\ESBTPResultat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -58,10 +59,10 @@ class ChargementDesResultatsTest extends TestCase
 
     public function test_la_reponse_est_celle_d_avant_le_chantier(): void
     {
-        [$notee, $sansNote] = $this->decor();
+        [$notee, $sansNote, $repli] = $this->decor();
 
         $obtenu = [];
-        foreach (['notee' => $notee->id, 'sans_note' => $sansNote->id, 'toutes' => ''] as $nomClasse => $classeId) {
+        foreach (['notee' => $notee->id, 'sans_note' => $sansNote->id, 'repli' => $repli->id, 'toutes' => ''] as $nomClasse => $classeId) {
             foreach (['annuel' => '', 's1' => '1', 's2' => '2'] as $nomPeriode => $semestre) {
                 foreach ([1, 0] as $tous) {
                     $page = 1;
@@ -98,6 +99,12 @@ class ChargementDesResultatsTest extends TestCase
         $attendu = json_decode((string) file_get_contents(self::REFERENCE), true);
         $this->assertNotEmpty($attendu, 'Reference absente.');
         foreach ($attendu as $cas => $valeur) {
+            // Depuis le chantier, les KPI ne sont calcules qu'en page 1 : les pages
+            // suivantes rendent la cle a null (l'ecran les ignore). La reference,
+            // capturee avant, les portait a chaque page.
+            if (! str_ends_with($cas, '|page=1')) {
+                $valeur['kpis'] = null;
+            }
             $this->assertSame($valeur, $obtenu[$cas] ?? null, "Reponse differente pour {$cas}.");
         }
         $this->assertSame(array_keys($attendu), array_keys($obtenu));
@@ -203,7 +210,7 @@ class ChargementDesResultatsTest extends TestCase
     private const REQUETES_PAR_ELEVE_TOLEREES = 6;
 
     /**
-     * @return array{0: ESBTPClasse, 1: ESBTPClasse}
+     * @return array{0: ESBTPClasse, 1: ESBTPClasse, 2: ESBTPClasse}
      */
     private function decor(): array
     {
@@ -266,7 +273,56 @@ class ChargementDesResultatsTest extends TestCase
             }
         }
 
-        return [$notee, $sansNote];
+        // Les deux cas ou le calcul historique reste VISIBLE (voir
+        // `MoyennesDeLaListe::besoinDuCalculHistorique()`). Sans eux, toute page
+        // qui l'emprunte rendrait une sortie vide et le test ne prouverait rien.
+        $repli = $this->classeBts();
+        $repli->update(['name' => '1BTS REPLI']);
+
+        // (a) Seule note du semestre posee sur une evaluation annulee : le snapshot
+        // l'ecarte, l'ancien calcul des notes non. Moyenne et rang historiques au
+        // semestre, classe choisie ou non.
+        $annulee = $this->eleve('REPLI1', 'Zran1', 'Moussa');
+        $this->inscrire($annulee, $repli, $this->annee)->update(['date_inscription' => '2025-09-25']);
+        $evaluationAnnulee = ESBTPEvaluation::factory()->create([
+            'matiere_id' => $matieres[0]->id, 'classe_id' => $repli->id,
+            'annee_universitaire_id' => $this->annee->id, 'periode' => 'semestre1',
+            'coefficient' => 1, 'bareme' => 20, 'status' => 'cancelled',
+        ]);
+        $this->noter($annulee, $evaluationAnnulee, 13);
+
+        // (b) Aucune note, mais un bulletin a moyenne enregistree : sans classe
+        // choisie, en annuel, l'ancien calcul (par le bulletin) donne un RANG sans
+        // moyenne affichee.
+        $bulletinSeul = $this->eleve('REPLI2', 'Zran2', 'Fatou');
+        $this->inscrire($bulletinSeul, $repli, $this->annee)->update(['date_inscription' => '2025-09-26']);
+        ESBTPBulletin::factory()->create([
+            'etudiant_id' => $bulletinSeul->id, 'classe_id' => $repli->id, 'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre1', 'moyenne_generale' => 13.0, 'rang' => 1, 'mention' => 'Assez Bien',
+        ]);
+
+        // Un eleve oriente : semestre 1 en tronc commun, semestre 2 dans la classe
+        // notee. Sa carte des classes passe par le prechargement de la cohorte.
+        $troncCommun = $this->classeBts();
+        $troncCommun->update(['name' => '1BTS TC']);
+        $oriente = $this->eleve('ORIENT1', 'Yao', 'Serge');
+        $inscription = $this->inscrire($oriente, $notee, $this->annee);
+        $inscription->update(['date_inscription' => '2025-09-27']);
+        foreach ([[$troncCommun, 'tronc_commun', 1, 1, false], [$notee, 'specialisation', 2, null, true]] as [$c, $type, $debut, $fin, $actif]) {
+            ESBTPInscriptionPhase::create([
+                'inscription_id' => $inscription->id, 'type_phase' => $type, 'classe_id' => $c->id,
+                'filiere_id' => $c->filiere_id, 'semestre_debut' => $debut, 'semestre_fin' => $fin, 'is_active' => $actif,
+            ]);
+        }
+        $evaluationTc = ESBTPEvaluation::factory()->create([
+            'matiere_id' => $matieres[0]->id, 'classe_id' => $troncCommun->id,
+            'annee_universitaire_id' => $this->annee->id, 'periode' => 'semestre1',
+            'coefficient' => 1, 'bareme' => 20, 'status' => 'completed',
+        ]);
+        $this->noter($oriente, $evaluationTc, 15);
+        $this->noter($oriente, $evaluations['semestre2'][0], 9);
+
+        return [$notee, $sansNote, $repli];
     }
 
     private function eleve(string $matricule, string $nom, string $prenoms): ESBTPEtudiant
