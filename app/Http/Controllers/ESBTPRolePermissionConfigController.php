@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Services\PermissionRegistry;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -125,78 +127,30 @@ class ESBTPRolePermissionConfigController extends Controller
         return response()->json(json_decode(file_get_contents($path), true));
     }
 
-    private function debugLog(string $message): void
-    {
-        file_put_contents(
-            storage_path('logs/permissions-debug.log'),
-            '[' . date('Y-m-d H:i:s') . '] ' . $message . "\n",
-            FILE_APPEND
-        );
-    }
-
     public function update(Request $request)
     {
-        $this->debugLog('=== UPDATE CALLED ===');
-        $this->debugLog('Role: ' . $request->input('role'));
-        $this->debugLog('Permissions count: ' . count($request->input('permissions', [])));
-
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
-        $this->debugLog('Cache Spatie vidé (avant)');
-
         $validated = $request->validate([
             'role' => 'required|exists:roles,name',
             'permissions' => 'array',
             'permissions.*' => 'exists:permissions,name',
         ]);
-        $this->debugLog('Validation passée');
 
         $roleName = $validated['role'];
-        $permissionNames = $validated['permissions'] ?? [];
-
-        \DB::beginTransaction();
+        $permissionNames = array_values(array_unique($validated['permissions'] ?? []));
 
         try {
-            $role = Role::findByName($roleName);
-            $countBefore = \DB::table('role_has_permissions')->where('role_id', $role->id)->count();
-            $this->debugLog("Role trouvé: {$role->name} (id={$role->id})");
-            $this->debugLog("Permissions AVANT en DB: {$countBefore}");
+            [$avant, $apres] = $this->appliquer($roleName, $permissionNames, 'Accordé depuis la configuration des rôles.');
+        } catch (\Throwable $e) {
+            Log::error('Configuration des rôles : enregistrement refusé', ['role' => $roleName, 'erreur' => $e->getMessage()]);
 
-            $role->syncPermissions($permissionNames);
-            $this->debugLog('syncPermissions() exécuté');
-
-            // Ce qui sort des defauts a ete voulu par l'etablissement : on
-            // l'inscrit, sinon la synchronisation des permissions le prendrait
-            // pour de la derive et l'effacerait au prochain deploiement.
-            app(\App\Services\ExtensionsDeRole::class)->enregistrer(
-                $role->name,
-                $permissionNames,
-                'Accordé depuis la configuration des rôles.',
-                auth()->id()
-            );
-
-            \DB::commit();
-            $this->debugLog('DB COMMIT effectué');
-
-            app()[PermissionRegistrar::class]->forgetCachedPermissions();
-            $this->debugLog('Cache Spatie vidé (après)');
-
-            $countAfter = \DB::table('role_has_permissions')->where('role_id', $role->id)->count();
-            $this->debugLog("Permissions APRÈS en DB: {$countAfter}");
-            $this->debugLog('=== UPDATE SUCCESS ===');
-
-            return redirect()
-                ->route('esbtp.roles-permissions.index', ['role' => $roleName])
-                ->with('success', "Permissions mises à jour pour {$roleName}: {$countAfter} permissions (avant: {$countBefore}).");
-
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            $this->debugLog('❌ ERREUR: ' . $e->getMessage());
-            $this->debugLog('=== UPDATE FAILED ===');
-
-            return redirect()
-                ->back()
-                ->with('error', 'Erreur lors de la mise à jour: ' . $e->getMessage());
+            return $this->repondre($request, false, 'Les permissions n\'ont pas été enregistrées : ' . $e->getMessage(), $roleName, null, 500);
         }
+
+        Log::info('Configuration des rôles : permissions enregistrées', [
+            'role' => $roleName, 'avant' => $avant, 'apres' => count($apres), 'par' => auth()->id(),
+        ]);
+
+        return $this->repondre($request, true, "Permissions enregistrées : {$roleName} en a désormais " . count($apres) . " (avant : {$avant}).", $roleName, $apres);
     }
 
     /**
@@ -220,19 +174,64 @@ class ESBTPRolePermissionConfigController extends Controller
         // Filtrer pour ne garder que les permissions qui existent en DB
         $existing = Permission::whereIn('name', $expanded)->pluck('name')->all();
 
-        \DB::beginTransaction();
         try {
-            $role = Role::findByName($roleName);
-            $role->syncPermissions($existing);
-            \DB::commit();
-            app()[PermissionRegistrar::class]->forgetCachedPermissions();
+            // Revenir aux défauts vide aussi les ajouts inscrits pour ce rôle :
+            // sans cela, la synchronisation du prochain déploiement remettrait
+            // ce que l'école vient de retirer.
+            [, $apres] = $this->appliquer($roleName, $existing, 'Défauts restaurés depuis la configuration des rôles.');
+        } catch (\Throwable $e) {
+            Log::error('Configuration des rôles : restauration refusée', ['role' => $roleName, 'erreur' => $e->getMessage()]);
 
-            return redirect()
-                ->route('esbtp.roles-permissions.index', ['role' => $roleName])
-                ->with('success', 'Permissions par défaut restaurées pour ' . $roleName . ' (' . count($existing) . ' permissions).');
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            return redirect()->back()->with('error', 'Erreur: ' . $e->getMessage());
+            return $this->repondre($request, false, 'Les défauts n\'ont pas été restaurés : ' . $e->getMessage(), $roleName, null, 500);
         }
+
+        return $this->repondre($request, true, "Permissions par défaut restaurées pour {$roleName} (" . count($apres) . ' permissions).', $roleName, $apres);
+    }
+
+    /**
+     * Pose l'ensemble complet des permissions d'un rôle, et inscrit ce qui sort
+     * des défauts pour que la synchronisation des déploiements le respecte.
+     *
+     * @return array{0:int, 1:list<string>} nombre avant, permissions après
+     */
+    private function appliquer(string $roleName, array $permissionNames, string $motif): array
+    {
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        $resultat = DB::transaction(function () use ($roleName, $permissionNames, $motif) {
+            $role = Role::findByName($roleName);
+            $avant = DB::table('role_has_permissions')->where('role_id', $role->id)->count();
+
+            $role->syncPermissions($permissionNames);
+            app(\App\Services\ExtensionsDeRole::class)->enregistrer($role->name, $permissionNames, $motif, auth()->id());
+
+            return [$avant, $role->id];
+        });
+
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+
+        $apres = Permission::whereIn('id', DB::table('role_has_permissions')->where('role_id', $resultat[1])->pluck('permission_id'))
+            ->orderBy('name')->pluck('name')->values()->all();
+
+        return [$resultat[0], $apres];
+    }
+
+    /**
+     * JSON pour l'écran (aucun rechargement), redirection pour un envoi classique.
+     */
+    private function repondre(Request $request, bool $ok, string $message, string $roleName, ?array $permissions, int $statutErreur = 422)
+    {
+        if ($request->expectsJson()) {
+            return response()->json(array_filter([
+                'success' => $ok,
+                'message' => $message,
+                'role' => $roleName,
+                'permissions' => $permissions,
+            ], fn ($v) => $v !== null), $ok ? 200 : $statutErreur);
+        }
+
+        return $ok
+            ? redirect()->route('esbtp.roles-permissions.index', ['role' => $roleName])->with('success', $message)
+            : redirect()->back()->with('error', $message);
     }
 }
