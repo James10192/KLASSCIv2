@@ -2,6 +2,7 @@
 
 namespace App\Services\MailPulse;
 
+use App\Domain\Exploitation\TracesLentes\EnregistreurDeTraces;
 use App\Models\Setting;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
@@ -177,6 +178,17 @@ class MailPulseClient
     }
 
     private function post(string $endpoint, array $payload, string $operation, ?string $requestId = null): MailPulseResult
+    {
+        // Désactivé ou sans clé n'est pas une panne : seul un envoi tenté et raté compte en échec.
+        return app(EnregistreurDeTraces::class)->mesurer(
+            EnregistreurDeTraces::TRAVAIL,
+            'mailpulse:' . $operation,
+            fn () => $this->envoyer($endpoint, $payload, $operation, $requestId),
+            echoue: fn (MailPulseResult $r) => ! $r->ok && ! in_array($r->status, ['disabled', 'missing_api_key'], true),
+        );
+    }
+
+    private function envoyer(string $endpoint, array $payload, string $operation, ?string $requestId): MailPulseResult
     {
         $requestId ??= 'klassci-' . (string) Str::uuid();
 

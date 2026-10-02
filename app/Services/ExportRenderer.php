@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Exploitation\TracesLentes\EnregistreurDeTraces;
 use App\Domain\Exports\ExportableReport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
@@ -26,8 +27,8 @@ class ExportRenderer
      */
     public function pdfPreview(ExportableReport $report): Response
     {
-        $pdf = $this->buildPdf($report);
-        return new Response($pdf->output(), 200, [
+        $binary = $this->pdfBinaire($report);
+        return new Response($binary, 200, [
             'Content-Type' => 'application/pdf',
             'Content-Disposition' => 'inline; filename="' . $report->filename() . '.pdf"',
         ]);
@@ -40,8 +41,8 @@ class ExportRenderer
     {
         $cacheKey = 'exports:pdf:' . $report->cacheKey();
         $binary = $this->cacheEnabled()
-            ? Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, fn () => $this->buildPdf($report)->output())
-            : $this->buildPdf($report)->output();
+            ? Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, fn () => $this->pdfBinaire($report))
+            : $this->pdfBinaire($report);
 
         return new Response($binary, 200, [
             'Content-Type' => 'application/pdf',
@@ -54,7 +55,11 @@ class ExportRenderer
      */
     public function excelDownload(ExportableReport $report): BinaryFileResponse
     {
-        return Excel::download($report->excelExport(), $report->filename() . '.xlsx');
+        return app(EnregistreurDeTraces::class)->mesurer(
+            EnregistreurDeTraces::TRAVAIL,
+            'export.excel:' . class_basename($report),
+            fn () => Excel::download($report->excelExport(), $report->filename() . '.xlsx'),
+        );
     }
 
     /**
@@ -79,7 +84,7 @@ class ExportRenderer
             throw new \DomainException("L'envoi d'un PDF par e-mail n'est pas disponible : la messagerie de l'établissement ne transporte pas les pièces jointes. Téléchargez le PDF.");
         }
 
-        $binary = $this->buildPdf($report)->output();
+        $binary = $this->pdfBinaire($report);
         $mailable = new \App\Mail\ExportableReportMail(
             reportTitle: $report->title(),
             reportSubtitle: $report->subtitle() ?? '',
@@ -94,6 +99,16 @@ class ExportRenderer
         } else {
             $pendingMail->queue($mailable);
         }
+    }
+
+    /** Le rendu DomPDF, mesuré : c'est lui qui coûte, pas la réponse qui l'emporte. */
+    private function pdfBinaire(ExportableReport $report): string
+    {
+        return app(EnregistreurDeTraces::class)->mesurer(
+            EnregistreurDeTraces::TRAVAIL,
+            'export.pdf:' . class_basename($report),
+            fn () => $this->buildPdf($report)->output(),
+        );
     }
 
     private function buildPdf(ExportableReport $report)

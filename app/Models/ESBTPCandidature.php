@@ -54,6 +54,7 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         'etablissement_sup_origine',
         'formation_origine',
         'niveau_atteint_origine',
+        'redouble_niveau_origine',
         'annee_derniere_inscription',
         'motif_transfert',
     ];
@@ -211,7 +212,7 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         // ne s'y substitue pas, il decrit d'ou vient celui qui n'arrive pas
         // du lycee.
         'est_transfert', 'etablissement_sup_origine', 'formation_origine',
-        'niveau_atteint_origine', 'annee_derniere_inscription', 'motif_transfert',
+        'niveau_atteint_origine', 'redouble_niveau_origine', 'annee_derniere_inscription', 'motif_transfert',
         'tuteur_nom', 'tuteur_telephone', 'tuteur_lien', 'tuteur_profession',
         'message', 'statut', 'consentement_at', 'ip_hash',
         'motif_rejet', 'traite_par', 'traite_at',
@@ -232,6 +233,7 @@ class ESBTPCandidature extends Model implements Auditable, PorteurDeRendezVous
         'contact_confirme_at' => 'datetime',
         'annee_bac' => 'integer',
         'est_transfert' => 'boolean',
+        'redouble_niveau_origine' => 'boolean',
         'annee_derniere_inscription' => 'integer',
     ];
 
