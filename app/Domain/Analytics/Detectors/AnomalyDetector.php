@@ -103,6 +103,7 @@ class AnomalyDetector
                     'year' => $point['year'],
                     'month' => $point['month'],
                     'value' => $point['value'],
+                    'mean' => Statistics::mean($values),
                     'z_score' => $z,
                 ],
             );

@@ -3,9 +3,9 @@
 namespace App\Notifications;
 
 use App\Domain\Analytics\DTOs\AnomalyAlert;
+use App\Mail\Equipe\AlerteEncaissementsMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class AnalyticsAnomalyNotification extends Notification implements ShouldQueue
@@ -24,27 +24,18 @@ class AnalyticsAnomalyNotification extends Notification implements ShouldQueue
         return ['mail', 'database'];
     }
 
-    public function toMail($notifiable): MailMessage
+    /**
+     * Le courriel passe par le gabarit des avis (`AlerteEncaissementsMail`),
+     * pas par le `MailMessage` de Laravel, qui affichait le nom d'application
+     * en tête et des lignes « [CRITICAL] » brutes.
+     */
+    public function toMail($notifiable): AlerteEncaissementsMail
     {
-        $criticalCount = count(array_filter($this->alerts, fn ($a) => $a->isCritical()));
-        $totalCount = count($this->alerts);
-
-        $mail = (new MailMessage)
-            ->subject(sprintf('[KLASSCI Analytics] %d anomalie(s) détectée(s)%s', $totalCount, $criticalCount > 0 ? ' (dont '.$criticalCount.' critique(s))' : ''))
-            ->greeting('Bonjour ' . ($notifiable->name ?? ''))
-            ->line('Le moteur Analytics a détecté des anomalies dans vos flux financiers.');
-
-        foreach (array_slice($this->alerts, 0, 10) as $alert) {
-            $mail->line(sprintf('• [%s] %s', strtoupper($alert->severity), $alert->message));
-        }
-
-        if ($totalCount > 10) {
-            $mail->line(sprintf('... et %d autres anomalies. Voir le détail dans le tableau de bord.', $totalCount - 10));
-        }
-
-        return $mail
-            ->action('Voir les analytics', route('esbtp.comptabilite.analytics.index'))
-            ->line('Cette notification est envoyée automatiquement aux administrateurs et comptables. Configurez les seuils via les paramètres Analytics.');
+        return (new AlerteEncaissementsMail(
+            $this->alerts,
+            trim((string) ($notifiable->name ?? '')),
+            route('esbtp.comptabilite.analytics.index'),
+        ))->to($notifiable->email);
     }
 
     public function toArray($notifiable): array
