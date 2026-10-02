@@ -125,6 +125,7 @@ class PortailCandidatureRulesTest extends TestCase
             'etablissement_sup_origine' => 'Université Félix Houphouët-Boigny',
             'formation_origine' => 'Licence Génie Civil',
             'niveau_atteint_origine' => 'Licence 1 validée',
+            'redouble_niveau_origine' => true,
             'annee_derniere_inscription' => 2025,
             'motif_transfert' => 'Déménagement familial vers Abidjan.',
         ]));
@@ -171,6 +172,7 @@ class PortailCandidatureRulesTest extends TestCase
             'etablissement_sup_origine' => 'Université fantôme',
             'formation_origine' => 'Licence inventée',
             'niveau_atteint_origine' => 'Master 2',
+            'redouble_niveau_origine' => true,
             'annee_derniere_inscription' => 2024,
             'motif_transfert' => 'Motif qui ne devrait pas survivre.',
         ]));
@@ -179,6 +181,7 @@ class PortailCandidatureRulesTest extends TestCase
         $this->assertNull($prepare['etablissement_sup_origine']);
         $this->assertNull($prepare['formation_origine']);
         $this->assertNull($prepare['niveau_atteint_origine']);
+        $this->assertNull($prepare['redouble_niveau_origine']);
         $this->assertNull($prepare['annee_derniere_inscription']);
         $this->assertNull($prepare['motif_transfert']);
     }

@@ -2,6 +2,8 @@
 
 namespace App\Domain\Bulletins\Taches;
 
+use App\Domain\Exploitation\TracesLentes\EnregistreurDeTraces;
+use App\Domain\Exploitation\TracesLentes\Mesure;
 use App\Domain\AcademicPilotage\DTO\BulkBulletinGenerationResult;
 use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
 use App\Http\Controllers\ESBTPBulletinController;
@@ -140,7 +142,12 @@ class ExecuteurTachesBulletins
                 }
 
                 try {
-                    $aConclure ? $this->conclure($tache) : $this->traiterUneTranche($tache);
+                    app(EnregistreurDeTraces::class)->mesurer(
+                        EnregistreurDeTraces::TRAVAIL,
+                        'bulletins.'.$tache->type.($aConclure ? '.conclusion' : '.tranche'),
+                        fn () => $aConclure ? $this->conclure($tache) : $this->traiterUneTranche($tache),
+                        ['tache' => $tache->id, 'position' => $tache->position, 'total' => $tache->total],
+                    );
                 } catch (TacheBulletinsImpossible $e) {
                     throw $e;
                 } catch (\Throwable $e) {
@@ -487,7 +494,31 @@ class ExecuteurTachesBulletins
             'terminee_at' => now(),
         ])->save();
 
+        $this->tracerLeTotal($tache, $statut);
         $this->notification->notifier($tache);
+    }
+
+    /**
+     * La durée de bout en bout, du démarrage à la fin, à travers toutes les
+     * requêtes et passages du planificateur qui l'ont fait avancer. Ses
+     * requêtes SQL sont celles des tranches, déjà tracées une à une.
+     */
+    private function tracerLeTotal(BulletinTache $tache, string $statut): void
+    {
+        if ($tache->demarree_at === null) {
+            return;
+        }
+
+        $echec = $statut === BulletinTache::ECHOUEE;
+        app(EnregistreurDeTraces::class)->consigner(
+            EnregistreurDeTraces::TRAVAIL,
+            'bulletins.'.$tache->type.'.total',
+            Mesure::deDuree((float) $tache->demarree_at->diffInMilliseconds(now())),
+            $echec ? 1 : 0,
+            ['tache' => $tache->id, 'total' => $tache->total, 'statut' => $statut],
+            $echec,
+            $tache->user_id,
+        );
     }
 
     /**

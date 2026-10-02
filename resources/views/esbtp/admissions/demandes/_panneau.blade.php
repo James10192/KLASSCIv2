@@ -89,6 +89,7 @@
                 'Baccalauréat' => collect([$m->serie_bac ? 'série '.$m->serie_bac : null, $m->annee_bac, $m->etablissement_origine])->filter()->join(' · '),
                 'Affectation déclarée' => $m->affectation_status ? (\App\Models\ESBTPCandidature::affectationsDeclarables()[$m->affectation_status] ?? $m->affectation_status) : null,
                 'Formation d\'origine' => $m->est_transfert ? collect([$m->formation_origine, $m->niveau_atteint_origine])->filter()->join(' · ') : null,
+                'Recommence son année' => $m->est_transfert && $m->redouble_niveau_origine !== null ? ($m->redouble_niveau_origine ? 'Oui, déclaré par le candidat' : 'Non') : null,
                 'Dernière inscription' => $m->est_transfert ? $m->annee_derniere_inscription : null,
                 'Motif du transfert' => $m->est_transfert ? $m->motif_transfert : null,
                 'Profession du tuteur' => $m->tuteur_profession,
