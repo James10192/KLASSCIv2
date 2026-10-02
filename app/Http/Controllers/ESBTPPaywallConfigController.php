@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\ESBTPSystemSetting;
 use App\Models\ESBTPEtablissement;
-use App\Models\User;
-use App\Models\ESBTPEtudiant;
+use App\Services\Master\AbonnementDeLInstance;
+use App\Services\Paywall\CodesDUrgence;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -23,24 +23,9 @@ class ESBTPPaywallConfigController extends Controller
             abort(401, 'Non authentifié');
         }
 
-        // Debug: Logger les informations de l'utilisateur
-        \Log::info('PaywallConfig Access Check', [
-            'user_id' => $user->id,
-            'user_email' => $user->email,
-            'user_roles' => $user->roles->pluck('name')->toArray(),
-            'has_paywall_manage' => $user->can('paywall.manage'),
-            'can_paywall_configure' => $user->can('paywall.configure'),
-            'can_system_technical_access' => $user->can('system.technical_access'),
-        ]);
-
         // ACCÈS RÉSERVÉ EXCLUSIVEMENT AU SERVICE TECHNIQUE D'AFRICAN DIGIT CONSULTING
         // Seul le rôle serviceTechnique est autorisé, pas les superAdmin
         $hasAccess = $user->can('paywall.manage');
-
-        \Log::info('PaywallConfig Access Result', [
-            'hasAccess' => $hasAccess,
-            'will_block' => !$hasAccess
-        ]);
 
         if (!$hasAccess) {
             // Rediriger vers la page de blocage avec message d'erreur
@@ -53,121 +38,95 @@ class ESBTPPaywallConfigController extends Controller
     }
 
     /**
-     * Afficher la page de configuration du paywall
+     * L'abonnement de l'instance, lu chez adminKlassci (secours local dit).
      */
-    public function index()
+    public function index(AbonnementDeLInstance $abonnement, CodesDUrgence $codes)
     {
-        // Debug: Logger l'accès au contrôleur
-        \Log::error('🚨 ACCÈS AU CONTRÔLEUR PAYWALL-CONFIG', [
-            'user_email' => auth()->user() ? auth()->user()->email : 'guest',
-            'user_id' => auth()->user() ? auth()->user()->id : null,
-            'user_roles' => auth()->user() ? auth()->user()->roles->pluck('name')->toArray() : [],
-            'has_paywall_manage' => auth()->user() ? auth()->user()->can('paywall.manage') : false,
-            'can_paywall_configure' => auth()->user() ? auth()->user()->can('paywall.configure') : false,
-            'can_system_technical_access' => auth()->user() ? auth()->user()->can('system.technical_access') : false,
-            'request_ip' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-        ]);
-
-        // Vérifier l'accès service technique
         $accessCheck = $this->checkServiceTechniqueAccess();
         if ($accessCheck) {
-            \Log::error('🚨 ACCÈS REFUSÉ PAR checkServiceTechniqueAccess()');
-            return $accessCheck; // Redirection si accès refusé
+            return $accessCheck;
         }
 
-        \Log::error('🚨 ACCÈS AUTORISÉ - CHARGEMENT DE LA PAGE PAYWALL-CONFIG');
-
-        $currentEtablissementId = ESBTPSystemSetting::getCurrentEtablissementId();
-        $etablissement = ESBTPEtablissement::find($currentEtablissementId);
-
-        // Récupérer les paramètres du paywall
-        $paywallConfig = [
-            'is_active' => ESBTPSystemSetting::getValue('paywall_active', false),
-            'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
-            'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
-            'max_inscriptions_per_year' => ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500),
-            'plan_name' => ESBTPSystemSetting::getValue('paywall_plan_name', 'Plan Standard'),
-            'plan_price' => ESBTPSystemSetting::getValue('paywall_plan_price', 0),
-            'features' => json_decode(ESBTPSystemSetting::getValue('paywall_features', '[]'), true),
-        ];
-
-        // Calculer les statistiques actuelles
-        $currentStats = $this->getCurrentStats($currentEtablissementId);
-
-        // Vérifier le statut
-        $status = $this->checkPaywallStatus($paywallConfig, $currentStats);
-
-        return view('esbtp.paywall-config.index', compact(
-            'paywallConfig',
-            'currentStats',
-            'status',
-            'etablissement'
-        ));
-    }
-
-    /**
-     * Afficher la page d'upgrade pour les établissements
-     */
-    public function upgrade()
-    {
-        $currentEtablissementId = ESBTPSystemSetting::getCurrentEtablissementId();
-        $etablissement = ESBTPEtablissement::find($currentEtablissementId);
-
-        // Récupérer les paramètres du paywall
-        $paywallConfig = [
-            'is_active' => ESBTPSystemSetting::getValue('paywall_active', false),
-            'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
-            'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
-            'max_inscriptions_per_year' => ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500),
-            'plan_name' => ESBTPSystemSetting::getValue('paywall_plan_name', 'Plan Standard'),
-            'plan_price' => ESBTPSystemSetting::getValue('paywall_plan_price', 0),
-        ];
-
-        // Calculer les statistiques actuelles
-        $currentStats = $this->getCurrentStats($currentEtablissementId);
-
-        // Vérifier le statut
-        $status = $this->checkPaywallStatus($paywallConfig, $currentStats);
-
-        return view('esbtp.paywall-config.upgrade', [
-            'config' => $paywallConfig,
-            'stats' => $currentStats,
-            'reasons' => $status['reasons'],
-            'etablissement' => $etablissement
+        return view('esbtp.paywall-config.index', [
+            'etat' => $abonnement->etat(),
+            'codesActifs' => $codes->actifs(),
+            'reglagesLocaux' => $this->reglagesLocaux(),
+            'etablissement' => ESBTPEtablissement::find(ESBTPSystemSetting::getCurrentEtablissementId()),
         ]);
     }
 
     /**
-     * Afficher la page de blocage d'accès
+     * « Actualiser depuis adminKlassci » : oublie le cache, relit le master
+     * et rend le bloc d'etat a jour. Aucun rechargement de page.
      */
-    public function blocked()
+    public function refresh(AbonnementDeLInstance $abonnement)
     {
-        $currentEtablissementId = ESBTPSystemSetting::getCurrentEtablissementId();
-        $etablissement = ESBTPEtablissement::find($currentEtablissementId);
+        $accessCheck = $this->checkServiceTechniqueAccess();
+        if ($accessCheck) {
+            return response()->json(['success' => false, 'message' => 'Accès refusé'], 403);
+        }
 
-        // Récupérer les paramètres du paywall pour affichage
-        $paywallConfig = [
-            'is_active' => ESBTPSystemSetting::getValue('paywall_active', false),
+        $etat = $abonnement->rafraichir();
+
+        return response()->json([
+            'success' => true,
+            'source' => $etat['source'],
+            'master_joignable' => $etat['master_joignable'],
+            'message' => $etat['source'] === 'master'
+                ? 'Valeurs relues dans adminKlassci.'
+                : ($etat['master_configure']
+                    ? 'adminKlassci ne répond pas : valeurs locales de secours affichées.'
+                    : 'adminKlassci n\'est pas configuré sur cette instance.'),
+            'html' => view('esbtp.paywall-config.partials._etat', ['etat' => $etat])->render(),
+        ]);
+    }
+
+    /**
+     * Page vue par une ecole bloquee par le paywall.
+     */
+    public function upgrade(AbonnementDeLInstance $abonnement)
+    {
+        return view('esbtp.paywall-config.upgrade', $this->donneesEcole($abonnement));
+    }
+
+    /**
+     * Page de blocage d'acces (y compris l'acces refuse aux pages du service technique).
+     */
+    public function blocked(AbonnementDeLInstance $abonnement)
+    {
+        return view('esbtp.paywall-config.blocked', $this->donneesEcole($abonnement));
+    }
+
+    private function donneesEcole(AbonnementDeLInstance $abonnement): array
+    {
+        $etat = $abonnement->etat();
+
+        return [
+            'etat' => $etat,
+            'reasons' => $etat['statut']['reasons'],
+            'etablissement' => ESBTPEtablissement::find(ESBTPSystemSetting::getCurrentEtablissementId()),
+            'contactEmail' => config('app.support_email'),
+            'contactTelephone' => AbonnementDeLInstance::TELEPHONE_EDITEUR,
+        ];
+    }
+
+    /** Les reglages locaux de secours, pour le formulaire quand le master n'est pas configure. */
+    private function reglagesLocaux(): array
+    {
+        return [
+            'is_active' => (bool) ESBTPSystemSetting::getValue('paywall_active', false),
             'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
             'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
             'max_inscriptions_per_year' => ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500),
             'plan_name' => ESBTPSystemSetting::getValue('paywall_plan_name', 'Plan Standard'),
             'plan_price' => ESBTPSystemSetting::getValue('paywall_plan_price', 0),
         ];
+    }
 
-        // Calculer les statistiques actuelles
-        $currentStats = $this->getCurrentStats($currentEtablissementId);
-
-        // Vérifier le statut
-        $status = $this->checkPaywallStatus($paywallConfig, $currentStats);
-
-        return view('esbtp.paywall-config.blocked', [
-            'config' => $paywallConfig,
-            'stats' => $currentStats,
-            'reasons' => $status['reasons'],
-            'etablissement' => $etablissement
-        ]);
+    /** Le master porte la verite des limites : on ne les ecrit plus en local. */
+    private function masterConfigure(): bool
+    {
+        return app(\App\Services\Master\LimitesDuMaster::class)->estConfigure();
     }
 
     /**
@@ -184,6 +143,27 @@ class ESBTPPaywallConfigController extends Controller
             ], 403);
         }
 
+        // Le master configure, seul l'interrupteur d'application reste local :
+        // plan, echeance et limites se modifient dans la fiche adminKlassci.
+        // Les ecrire ici recreait la divergence que cet ecran a supprimee.
+        if ($this->masterConfigure()) {
+            $request->validate(['is_active' => 'required|boolean']);
+
+            if ($request->hasAny(['subscription_end', 'max_users', 'max_inscriptions_per_year', 'plan_name', 'plan_price', 'features'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Le plan, l\'échéance et les limites se modifient dans adminKlassci.',
+                ], 409);
+            }
+
+            ESBTPSystemSetting::setValue('paywall_active', $request->boolean('is_active') ? '1' : '0');
+
+            return response()->json([
+                'success' => true,
+                'message' => $request->boolean('is_active') ? 'Paywall appliqué sur cette instance.' : 'Paywall suspendu sur cette instance.',
+            ]);
+        }
+
         $request->validate([
             'is_active' => 'required|boolean',
             'subscription_end' => 'nullable|date',
@@ -198,7 +178,7 @@ class ESBTPPaywallConfigController extends Controller
             DB::beginTransaction();
 
             // Sauvegarder les paramètres
-            ESBTPSystemSetting::setValue('paywall_active', $request->is_active ? '1' : '0');
+            ESBTPSystemSetting::setValue('paywall_active', $request->boolean('is_active') ? '1' : '0');
             ESBTPSystemSetting::setValue('subscription_end_date', $request->subscription_end ?: '');
             ESBTPSystemSetting::setValue('paywall_max_users', $request->max_users);
             ESBTPSystemSetting::setValue('paywall_max_inscriptions_per_year', $request->max_inscriptions_per_year);
@@ -223,108 +203,16 @@ class ESBTPPaywallConfigController extends Controller
     }
 
     /**
-     * Obtenir les statistiques actuelles de l'école
+     * Statut JSON (meme calcul que le middleware).
      */
-    private function getCurrentStats($etablissementId)
+    public function checkStatus(AbonnementDeLInstance $abonnement)
     {
-        // Compter les utilisateurs (enseignants, coordinateurs, secrétaires)
-        $totalUsers = User::whereHas('roles', function($query) {
-            $query->whereIn('name', ['enseignant', 'coordinateur', 'secretaire']);
-        })->count();
-
-        // Compter les inscriptions de l'année universitaire courante
-        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', 1)->first();
-        $totalInscriptionsAnnee = 0;
-
-        if ($anneeCourante) {
-            $totalInscriptionsAnnee = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeCourante->id)
-                ->where('status', 'active')
-                ->count();
-        }
-
-        return [
-            'total_users' => $totalUsers,
-            'total_inscriptions_current_year' => $totalInscriptionsAnnee,
-            'current_year_name' => $anneeCourante ? $anneeCourante->nom : 'Aucune année courante',
-        ];
-    }
-
-    /**
-     * Vérifier le statut du paywall
-     */
-    private function checkPaywallStatus($config, $stats)
-    {
-        $status = [
-            'is_blocked' => false,
-            'reasons' => [],
-            'warnings' => [],
-            'is_expired' => false,
-            'days_remaining' => null,
-        ];
-
-        // Vérifier si le paywall est actif
-        if (!$config['is_active']) {
-            return $status;
-        }
-
-        // Vérifier l'expiration de l'abonnement
-        if ($config['subscription_end']) {
-            $endDate = Carbon::parse($config['subscription_end']);
-            $now = Carbon::now();
-
-            if ($now->gt($endDate)) {
-                $status['is_blocked'] = true;
-                $status['is_expired'] = true;
-                $status['reasons'][] = 'Abonnement expiré le ' . $endDate->format('d/m/Y');
-            } else {
-                $status['days_remaining'] = $now->diffInDays($endDate);
-
-                if ($status['days_remaining'] <= 7) {
-                    $status['warnings'][] = 'Abonnement expire dans ' . $status['days_remaining'] . ' jour(s)';
-                }
-            }
-        }
-
-        // Vérifier les limites d'utilisateurs
-        if ($stats['total_users'] > $config['max_users']) {
-            $status['is_blocked'] = true;
-            $status['reasons'][] = 'Limite d\'utilisateurs dépassée (' . $stats['total_users'] . '/' . $config['max_users'] . ')';
-        } elseif ($stats['total_users'] >= $config['max_users'] * 0.9) {
-            $status['warnings'][] = 'Proche de la limite d\'utilisateurs (' . $stats['total_users'] . '/' . $config['max_users'] . ')';
-        }
-
-        // Vérifier les limites d'inscriptions par année
-        if ($stats['total_inscriptions_current_year'] > $config['max_inscriptions_per_year']) {
-            $status['is_blocked'] = true;
-            $status['reasons'][] = 'Limite d\'inscriptions dépassée pour l\'année (' . $stats['total_inscriptions_current_year'] . '/' . $config['max_inscriptions_per_year'] . ')';
-        } elseif ($stats['total_inscriptions_current_year'] >= $config['max_inscriptions_per_year'] * 0.9) {
-            $status['warnings'][] = 'Proche de la limite d\'inscriptions pour l\'année (' . $stats['total_inscriptions_current_year'] . '/' . $config['max_inscriptions_per_year'] . ')';
-        }
-
-        return $status;
-    }
-
-    /**
-     * API pour vérifier le statut (utilisé par le middleware)
-     */
-    public function checkStatus()
-    {
-        $currentEtablissementId = ESBTPSystemSetting::getCurrentEtablissementId();
-
-        $paywallConfig = [
-            'is_active' => ESBTPSystemSetting::getValue('paywall_active', false),
-            'subscription_end' => ESBTPSystemSetting::getValue('subscription_end_date', null),
-            'max_users' => ESBTPSystemSetting::getValue('paywall_max_users', 50),
-            'max_inscriptions_per_year' => ESBTPSystemSetting::getValue('paywall_max_inscriptions_per_year', 500),
-        ];
-
-        $currentStats = $this->getCurrentStats($currentEtablissementId);
-        $status = $this->checkPaywallStatus($paywallConfig, $currentStats);
+        $statut = $abonnement->statutDeBlocage();
 
         return response()->json([
-            'is_blocked' => $status['is_blocked'],
-            'reasons' => $status['reasons'],
-            'warnings' => $status['warnings'],
+            'is_blocked' => $statut['is_blocked'],
+            'reasons' => $statut['reasons'],
+            'warnings' => $statut['warnings'],
         ]);
     }
 
@@ -341,6 +229,13 @@ class ESBTPPaywallConfigController extends Controller
         $accessCheck = $this->checkServiceTechniqueAccess();
         if ($accessCheck) {
             return $accessCheck; // Redirection si accès refusé
+        }
+
+        if ($this->masterConfigure()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'L\'échéance se prolonge dans adminKlassci.',
+            ], 409);
         }
 
         $request->validate([

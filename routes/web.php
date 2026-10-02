@@ -2010,9 +2010,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     //
     // Deux exceptions à la garde #1 : `blocked` et `upgrade` sont dans
     // `PaywallMiddleware::$excludedRoutes`, testé AVANT la détection des routes
-    // d'abonnement. Un superAdmin y accède donc, et ni l'une ni l'autre
-    // n'appelle la garde #3 — sans conséquence, les deux ne font que rendre une
-    // vue. Mais ce sont bien deux pages de ce groupe qui n'ont qu'une garde.
+    // d'abonnement, et vivent dans un groupe à part (voir plus bas).
     //
     // La route exigeait `system.manage` — celle qui ouvre AUSSI `/esbtp/settings`,
     // donc une troisième permission, plus large que les deux autres. Aucune
@@ -2021,8 +2019,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     // croire l'une en ayant lu l'autre.
     //
     // Le lien de la barre latérale est réservé au rôle, lui aussi.
-    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:paywall.manage'])->group(function () {
-        Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
+    //
+    // `blocked` et `upgrade` sont vues par les ecoles BLOQUEES, quel que soit
+    // leur role : le middleware y redirige une secretaire dont l'abonnement a
+    // expire. Sous `permission:paywall.manage`, elle recevait un 403 au lieu de
+    // la page qui lui dit pourquoi et qui contacter. Elles vivent donc dans
+    // leur propre groupe, `auth` seul ; elles ne font que lire.
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall'])->group(function () {
         Route::get('/paywall-config/blocked', [ESBTPPaywallConfigController::class, 'blocked'])->name('paywall-config.blocked');
         Route::get('/paywall-config/upgrade', [ESBTPPaywallConfigController::class, 'upgrade'])->name('paywall-config.upgrade');
         Route::post('/paywall-config', [ESBTPPaywallConfigController::class, 'store'])->name('paywall-config.store');
@@ -2037,6 +2040,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::post('/generate-code', [App\Http\Controllers\ESBTP\Admin\AttendanceController::class, 'generateCode'])->name('generate-code');
         Route::get('/settings', [App\Http\Controllers\ESBTP\Admin\ESBTPAttendanceSettingsController::class, 'index'])->name('settings');
         Route::put('/settings', [App\Http\Controllers\ESBTP\Admin\ESBTPAttendanceSettingsController::class, 'update'])->name('settings.update');
+    });
+
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:paywall.manage'])->group(function () {
+        Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
+        Route::post('/paywall-config/refresh', [ESBTPPaywallConfigController::class, 'refresh'])->middleware('throttle:20,1')->name('paywall-config.refresh');
         Route::get('/report', [App\Http\Controllers\ESBTP\Admin\AttendanceController::class, 'report'])->name('report');
         Route::get('/export', [App\Http\Controllers\ESBTP\Admin\AttendanceController::class, 'export'])->name('export');
         Route::get('/{attendance}/details', [App\Http\Controllers\ESBTP\Admin\AttendanceController::class, 'details'])->name('details');
