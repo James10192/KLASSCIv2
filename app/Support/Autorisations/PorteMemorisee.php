@@ -20,9 +20,12 @@ use Illuminate\Support\Arr;
  *  - pendant une requête GET ou HEAD, ouverte par le middleware
  *    {@see OuvreLaMemoireDesAutorisations}. Une requête qui écrit peut changer
  *    les rôles de la personne qui la fait ; une lecture, non ;
- *  - pour la personne qui pose la question, identifiée par son id.
+ *  - pour la personne qui pose la question, identifiée par son id (une
+ *    personne pas encore enregistrée, sans id, n'a pas de mémoire).
  *
- * Hors requête (console, files d'attente, tests unitaires), rien n'est retenu.
+ * La mémoire se referme avec la réponse de la requête qui l'a ouverte. Hors
+ * d'elle (console, files d'attente, tâches de fin de requête), rien n'est
+ * retenu.
  */
 class PorteMemorisee extends Gate
 {
@@ -44,7 +47,13 @@ class PorteMemorisee extends Gate
             return parent::raw($ability, $arguments);
         }
 
-        $cle = $utilisateur->getAuthIdentifier().'|'.$ability;
+        $identifiant = $utilisateur->getAuthIdentifier();
+
+        if ($identifiant === null) {
+            return parent::raw($ability, $arguments);
+        }
+
+        $cle = $identifiant.'|'.$ability;
 
         if (array_key_exists($cle, $memoire)) {
             return $memoire[$cle];

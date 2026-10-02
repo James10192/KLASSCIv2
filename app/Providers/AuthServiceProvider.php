@@ -66,11 +66,6 @@ class AuthServiceProvider extends ServiceProvider
     ];
 
     /**
-     * Register any authentication / authorization services.
-     *
-     * @return void
-     */
-    /**
      * La porte d'autorisation qui retient ses réponses le temps d'une lecture
      * (voir PorteMemorisee). Liée ici, avant toute résolution : Spatie y
      * accroche son contrôle au démarrage des fournisseurs.
@@ -85,6 +80,11 @@ class AuthServiceProvider extends ServiceProvider
         });
     }
 
+    /**
+     * Register any authentication / authorization services.
+     *
+     * @return void
+     */
     public function boot()
     {
         $this->registerPolicies();

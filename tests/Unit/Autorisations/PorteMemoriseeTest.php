@@ -113,14 +113,50 @@ class PorteMemoriseeTest extends TestCase
         $this->assertSame(2, $this->appels);
     }
 
+    public function test_la_memoire_se_referme_avec_la_reponse(): void
+    {
+        $requete = Request::create('/sonde', 'GET');
+        $this->app->instance('request', $requete);
+        $porte = $this->porte->forUser($this->personne(1));
+
+        (new OuvreLaMemoireDesAutorisations())->handle($requete, function () use ($porte) {
+            $porte->check('sonde.memoire');
+            $porte->check('sonde.memoire');
+        });
+
+        $this->assertSame(1, $this->appels, 'pendant la requête, une seule évaluation');
+        $this->assertFalse($requete->attributes->has(PorteMemorisee::ATTRIBUT));
+
+        // Après la réponse (tâche de fin, file synchrone) : la question est reposée.
+        $porte->check('sonde.memoire');
+        $this->assertSame(2, $this->appels);
+    }
+
+    public function test_une_personne_sans_identifiant_n_a_pas_de_memoire(): void
+    {
+        $requete = Request::create('/sonde', 'GET');
+        $this->app->instance('request', $requete);
+        $requete->attributes->set(PorteMemorisee::ATTRIBUT, []);
+        $porte = $this->porte->forUser($this->personne(null));
+
+        $porte->check('sonde.memoire');
+        $porte->check('sonde.memoire');
+
+        $this->assertSame(2, $this->appels);
+    }
+
     private function ouvrirUneRequete(string $methode): void
     {
         $requete = Request::create('/sonde', $methode);
         $this->app->instance('request', $requete);
-        (new OuvreLaMemoireDesAutorisations())->handle($requete, fn () => null);
+        // Ce que fait le middleware à l'entrée d'une requête, sans la refermer :
+        // les tests interrogent la porte comme le ferait la page en cours de rendu.
+        if (in_array($methode, ['GET', 'HEAD'], true)) {
+            $requete->attributes->set(PorteMemorisee::ATTRIBUT, []);
+        }
     }
 
-    private function personne(int $id): GenericUser
+    private function personne(?int $id): GenericUser
     {
         return new class(['id' => $id]) extends GenericUser implements Authorizable {
             public function can($abilities, $arguments = [])

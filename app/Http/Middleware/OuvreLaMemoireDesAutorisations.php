@@ -10,6 +10,10 @@ use Illuminate\Http\Request;
  * Ouvre, pour une requête de lecture seulement, la mémoire où
  * {@see PorteMemorisee} range ses réponses. Une requête qui écrit n'en a pas :
  * elle peut modifier les droits de celui qui la fait.
+ *
+ * La mémoire se referme avec la réponse : ce qui tourne encore dans le même
+ * processus après elle (tâches de fin, files synchrones, requêtes suivantes
+ * d'un test) repose ses questions.
  */
 class OuvreLaMemoireDesAutorisations
 {
@@ -19,6 +23,10 @@ class OuvreLaMemoireDesAutorisations
             $request->attributes->set(PorteMemorisee::ATTRIBUT, []);
         }
 
-        return $next($request);
+        try {
+            return $next($request);
+        } finally {
+            $request->attributes->remove(PorteMemorisee::ATTRIBUT);
+        }
     }
 }
