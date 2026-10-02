@@ -30,6 +30,9 @@ class ExecutionDesPropositions
 {
     private const DUREE_MINUTES = 30;
 
+    /** Lignes de la carte gardées pour le modèle : assez pour citer, pas pour recopier. */
+    private const LIGNES_APERCU = 12;
+
     public function __construct(private ContexteDEchange $contexte)
     {
     }
@@ -71,6 +74,16 @@ class ExecutionDesPropositions
                 'empreinte' => $proposition->empreinte(),
                 'titre' => $proposition->titre,
                 'resume' => $proposition->resume,
+                // Ce que la carte montrait, en abrégé : l'issue relue au tour
+                // suivant en a besoin pour dire ce qui a changé (avant → après).
+                'apercu' => [
+                    'colonnes' => $proposition->tableau['colonnes'] ?? [],
+                    'lignes' => array_map(
+                        fn (array $ligne) => array_map(fn ($cellule) => mb_strimwidth((string) $cellule, 0, 80, '…', 'UTF-8'), $ligne),
+                        array_slice($proposition->tableau['lignes'] ?? [], 0, self::LIGNES_APERCU),
+                    ),
+                    'total' => count($proposition->tableau['lignes'] ?? []),
+                ],
             ],
         ]);
 
@@ -223,7 +236,13 @@ class ExecutionDesPropositions
                 'a_verifier' => 'Validation interrompue pendant l\'écriture : vérifier l\'état réel avant de la refaire.',
                 default => 'Expirée sans validation : rien n\'a été enregistré ; il faut la refaire si elle est toujours voulue.',
             },
-        ];
+        ] + array_filter([
+            'titre' => $journal->action_data['titre'] ?? null,
+            'resume' => $journal->action_data['resume'] ?? null,
+            // Les lignes de la carte telles que proposées (colonne « Avant » comprise) :
+            // sans elles, une note remplacée passait pour une note qui n'existait pas.
+            'proposait' => !empty($journal->action_data['apercu']['lignes']) ? $journal->action_data['apercu'] : null,
+        ]);
     }
 
     private function refusAvantExecution(ChatbotActionLog $journal, $user, string $jeton): ?array
