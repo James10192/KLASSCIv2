@@ -58,6 +58,8 @@ class CorrigerNotes extends ActionAgent
                     'items' => ['type' => 'object', 'properties' => [
                         'evaluation_id' => ['type' => 'integer'],
                         'note' => ['type' => 'number', 'description' => "Nouvelle note sur le barème de l'évaluation."],
+                        'note_annoncee' => ['type' => 'number', 'description' => "Note actuelle telle que la personne l'a donnée (« 12,50 au lieu de… »). Omettre si elle n'en a pas donné, ou après qu'elle a confirmé l'écart."],
+                        'periode_annoncee' => ['type' => 'string', 'enum' => ['semestre1', 'semestre2'], 'description' => "Semestre nommé par la personne. Omettre s'il n'a pas été nommé, ou après confirmation de l'écart."],
                     ], 'required' => ['evaluation_id', 'note']],
                 ],
             ],
@@ -86,6 +88,7 @@ class CorrigerNotes extends ActionAgent
         }
 
         $cibles = [];
+        $annonces = [];
         foreach ($lignes as $l) {
             $evaluationId = (int) ($l['evaluation_id'] ?? 0);
             if (! is_numeric($l['note'] ?? null)) {
@@ -100,6 +103,10 @@ class CorrigerNotes extends ActionAgent
                 continue;
             }
             $cibles[] = ['note_id' => (int) $notes->first()->id, 'note' => round((float) $l['note'], 2)];
+            $annonces[(int) $notes->first()->id] = [
+                'note' => is_numeric($l['note_annoncee'] ?? null) ? round((float) $l['note_annoncee'], 2) : null,
+                'periode' => in_array($l['periode_annoncee'] ?? null, ['semestre1', 'semestre2'], true) ? $l['periode_annoncee'] : null,
+            ];
         }
         if ($manques !== []) {
             return new Proposition(titre: $titre, resume: '', manques: $manques);
@@ -109,6 +116,11 @@ class CorrigerNotes extends ActionAgent
             $rapport = $this->correction->appliquer((int) $etudiant->id, $cibles, true, (int) $user->id)['lignes'];
         } catch (ValidationException $e) {
             return $this->seulManque($titre, collect($e->errors())->flatten()->implode(' '));
+        }
+
+        $ecarts = $this->ecartsAvecLAnnonce($rapport, $annonces);
+        if ($ecarts !== []) {
+            return new Proposition(titre: $titre, resume: '', manques: $ecarts);
         }
 
         $changees = array_values(array_filter($rapport, fn ($r) => $r['avant'] !== $r['apres']));
@@ -171,4 +183,39 @@ class CorrigerNotes extends ActionAgent
     {
         return trim(mb_strtoupper((string) $e->nom, 'UTF-8') . ' ' . $e->prenoms);
     }
+
+    /**
+     * Ce que la personne a annoncé (« 12,50 au premier semestre ») contre ce
+     * que la base porte. Un écart n'empêche pas la correction : il la suspend
+     * jusqu'à ce que la personne le confirme. Constat du 2 octobre 2026 sur
+     * presentation : seule une note de 15 au second semestre existait, et la
+     * correction partait sur elle sans que personne le remarque.
+     *
+     * @param  array<int, array<string, mixed>>  $rapport
+     * @param  array<int, array{note: ?float, periode: ?string}>  $annonces
+     * @return list<string>
+     */
+    private function ecartsAvecLAnnonce(array $rapport, array $annonces): array
+    {
+        $ecarts = [];
+        foreach ($rapport as $r) {
+            $annonce = $annonces[(int) $r['note_id']] ?? null;
+            if (! $annonce) {
+                continue;
+            }
+            $quoi = "{$r['matiere']} ({$r['evaluation']})";
+            $periode = \App\Models\ESBTPEvaluation::periodeCanonique((string) $r['periode']);
+            if ($annonce['periode'] !== null && $annonce['periode'] !== $periode) {
+                $ecarts[] = "{$quoi} est au {$this->libelleSemestre($r['periode'])}, pas au {$this->libelleSemestre($annonce['periode'])} annoncé. Est-ce bien cette note-là ?";
+            }
+            $actuelle = $r['avant'] === 'absent' ? null : round((float) $r['avant'], 2);
+            if ($annonce['note'] !== null && $actuelle !== $annonce['note']) {
+                $lue = $actuelle === null ? 'absent' : $this->nombre($actuelle);
+                $ecarts[] = "{$quoi} : la note actuelle en base est {$lue}, pas {$this->nombre($annonce['note'])} comme annoncé. Confirme avant de corriger.";
+            }
+        }
+
+        return $ecarts;
+    }
+
 }
