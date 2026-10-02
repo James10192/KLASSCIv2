@@ -162,6 +162,7 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
         'donnees' => [
             'totalDue' => $totalDue, 'countDue' => $countDue, 'totalPaid' => $totalPaid,
             'totalOverdue' => $totalOverdue, 'countOverdueTotal' => $countOverdueTotal,
+            'countARelancer' => $countARelancer, 'totalARelancer' => $totalARelancer,
             'countToValidate' => $countToValidate, 'totalPending' => $totalPending,
             'countValidatedToday' => $countValidatedToday, 'totalValidatedToday' => $totalValidatedToday,
             'totalPaidYesterday' => $totalPaidYesterday, 'totalPaidMonth' => $totalPaidMonth,
@@ -291,11 +292,11 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
             <template x-if="droits.valider && d.countToValidate > 0">
                 <a class="af-todo" :href="liens.aValider"><span class="af-dot af-dot--bad"></span><span class="af-todo-t">Versements à valider<small x-text="fmt(d.totalPending) + ' FCFA en attente'"></small></span><span class="af-todo-n" x-text="d.countToValidate"></span></a>
             </template>
-            <template x-if="droits.relancer && d.countOverdueTotal > 0">
-                <a class="af-todo" :href="liens.relances"><span class="af-dot af-dot--warn"></span><span class="af-todo-t">Étudiants à relancer<small x-text="fmt(d.totalOverdue) + ' FCFA échus'"></small></span><span class="af-todo-n" x-text="d.countOverdueTotal"></span></a>
+            <template x-if="droits.relancer && d.countARelancer > 0">
+                <a class="af-todo" :href="liens.relances"><span class="af-dot af-dot--warn"></span><span class="af-todo-t">Étudiants à relancer<small x-text="fmt(d.totalARelancer) + ' FCFA échus'"></small></span><span class="af-todo-n" x-text="d.countARelancer"></span></a>
             </template>
             <a class="af-todo" :href="droits.voir ? liens.duJour : null"><span class="af-dot af-dot--ok"></span><span class="af-todo-t">Validés aujourd'hui<small x-text="fmt(d.totalValidatedToday) + ' FCFA'"></small></span><span class="af-todo-n" x-text="d.countValidatedToday"></span></a>
-            <template x-if="!(droits.valider && d.countToValidate > 0) && !(droits.relancer && d.countOverdueTotal > 0)">
+            <template x-if="!(droits.valider && d.countToValidate > 0) && !(droits.relancer && d.countARelancer > 0)">
                 <div class="af-clear"><i class="fas fa-circle-check"></i> Rien d’urgent sur ce périmètre.</div>
             </template>
         </div>
@@ -496,6 +497,8 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
             'countOverdue' => (int) $countOverdue,
             'countToValidate' => (int) ($countToValidate ?? 0),
             'countOverdueTotal' => (int) ($countOverdueTotal ?? 0),
+            'countARelancer' => (int) ($countARelancer ?? 0),
+            'totalARelancer' => (float) ($totalARelancer ?? 0),
             'countValidatedToday' => (int) ($countValidatedToday ?? 0),
             'totalValidatedToday' => (float) ($totalValidatedToday ?? 0),
             'anneeLabel' => $dmAnneeLabel,

@@ -164,24 +164,98 @@ class RelancesInscriptionsInactivesTest extends TestCase
         $this->assertStringContainsString('data-li-cle="'.$this->annulee->id.'"', $suite->json('rows_html'));
     }
 
-    public function test_une_relance_deja_planifiee_ne_part_pas_si_l_eleve_est_parti_depuis(): void
+    private function relance(string $statut, ?int $inscriptionId, int $etudiantId): ESBTPRelance
     {
-        Mail::fake();
-        $relance = ESBTPRelance::create([
-            'etudiant_id' => $this->annulee->etudiant_id,
-            'inscription_id' => $this->annulee->id,
+        return ESBTPRelance::create([
+            'etudiant_id' => $etudiantId,
+            'inscription_id' => $inscriptionId,
             'type' => 'email',
             'niveau' => 1,
             'template_utilise' => 'relance_niveau_1',
-            'date_envoi' => now()->subHour(),
-            'statut' => 'planifiee',
+            'date_envoi' => now()->subHours(3),
+            'statut' => $statut,
         ]);
+    }
+
+    /** Une relance envoyee prend le statut « envoyee » et garde son texte (Mail::raw n'est pas enregistre par le faux). */
+    private function assertNonEnvoyee(ESBTPRelance $relance): void
+    {
+        $relance->refresh();
+        $this->assertSame(ESBTPRelance::STATUT_ECARTEE, $relance->statut);
+        $this->assertNull($relance->contenu_message);
+        $this->assertFalse($relance->peutEtreRenvoyee());
+    }
+
+    public function test_une_relance_deja_planifiee_est_ecartee_et_comptee_a_part(): void
+    {
+        Mail::fake();
+        $partie = $this->relance('planifiee', $this->annulee->id, $this->annulee->etudiant_id);
+        $valable = $this->relance('planifiee', $this->active->id, $this->active->etudiant_id);
 
         $resultats = app(NotificationService::class)->executerRelancesEnAttente();
 
-        $this->assertSame('echec', $relance->fresh()->statut);
-        $this->assertGreaterThanOrEqual(1, $resultats['echecs']);
-        Mail::assertNothingSent();
+        $this->assertNonEnvoyee($partie);
+        $this->assertSame('envoyee', $valable->fresh()->statut);
+        $this->assertSame(1, $resultats['ecartees']);
+        $this->assertSame(0, $resultats['echecs']);
+    }
+
+    public function test_renvoyer_ne_contourne_pas_la_garde(): void
+    {
+        Mail::fake();
+        Permission::findOrCreate('comptabilite.relances.send', 'web');
+        auth()->user()->givePermissionTo('comptabilite.relances.send');
+
+        // Une relance en echec d'avant ce changement, pour un eleve parti :
+        // le renvoi passe par le meme point d'envoi, donc elle est ecartee.
+        $ancienEchec = $this->relance('echec', $this->annulee->id, $this->annulee->etudiant_id);
+        $this->postJson(route('esbtp.comptabilite.relances.renvoyer', $ancienEchec->id))
+            ->assertOk()->assertJsonPath('success', true);
+        $this->assertNonEnvoyee($ancienEchec);
+
+        // Une fois ecartee, elle ne se renvoie plus.
+        $this->postJson(route('esbtp.comptabilite.relances.renvoyer', $ancienEchec->id))
+            ->assertOk()->assertJsonPath('success', false);
+        \App\Jobs\EnvoyerRelanceJob::dispatchSync($ancienEchec->fresh());
+        $this->assertNonEnvoyee($ancienEchec);
+    }
+
+    public function test_une_relance_sans_inscription_se_resout_par_l_eleve_sur_l_annee_courante(): void
+    {
+        Mail::fake();
+        $deLActive = $this->relance('planifiee', null, $this->active->etudiant_id);
+        $deLAnnulee = $this->relance('planifiee', null, $this->annulee->etudiant_id);
+        $sansInscription = $this->relance('planifiee', null, \App\Models\ESBTPEtudiant::factory()->create()->id);
+
+        app(NotificationService::class)->executerRelancesEnAttente();
+
+        $this->assertSame('envoyee', $deLActive->fresh()->statut);
+        $this->assertNonEnvoyee($deLAnnulee);
+        $this->assertNonEnvoyee($sansInscription);
+    }
+
+    public function test_le_compteur_a_relancer_du_tableau_de_bord_suit_la_liste(): void
+    {
+        $build = app(\App\Actions\Comptabilite\BuildDashboardDataAction::class);
+
+        $parDefaut = $build->pourAnnee($this->annee);
+        $this->assertSame(1, $parDefaut['countARelancer']);
+        $this->assertSame(2, $parDefaut['countOverdueTotal'], 'La balance agee, elle, compte toujours tous les retards.');
+
+        $this->reglerInclusion(true);
+        $this->assertSame(2, $build->pourAnnee($this->annee)['countARelancer'], 'Le reglage est dans la cle du cache.');
+        $this->assertSame(count($this->liste()['ids']), $build->pourAnnee($this->annee)['countARelancer']);
+    }
+
+    public function test_la_regle_en_memoire_et_la_requete_disent_la_meme_chose(): void
+    {
+        foreach ([false, true] as $inclure) {
+            $parRequete = PopulationDesRelances::restreindre(ESBTPInscription::query(), $inclure)
+                ->whereIn('id', [$this->active->id, $this->annulee->id])->pluck('id')->sort()->values()->all();
+            $enMemoire = collect([$this->active, $this->annulee])
+                ->filter(fn ($i) => PopulationDesRelances::admet($i, $inclure))->pluck('id')->sort()->values()->all();
+            $this->assertSame($parRequete, $enMemoire);
+        }
     }
 
     public function test_l_ecran_de_configuration_enregistre_le_reglage(): void
@@ -204,12 +278,5 @@ class RelancesInscriptionsInactivesTest extends TestCase
         $this->postJson(route('esbtp.comptabilite.relances.config.parametres'), $parametres + ['inclure_inscriptions_inactives' => false])
             ->assertOk();
         $this->assertFalse(PopulationDesRelances::inclutLesInactives());
-    }
-
-    public function test_un_statut_absent_compte_comme_actif(): void
-    {
-        $requete = PopulationDesRelances::restreindre(ESBTPInscription::query(), false)->toSql();
-
-        $this->assertStringContainsString('`esbtp_inscriptions`.`status` is null', $requete);
     }
 }

@@ -386,6 +386,13 @@
                                 <small class="text-muted">{{ $relance->date_envoi ? $relance->date_envoi->format('d/m/Y H:i') : 'N/A' }}</small>
                             </div>
                         </div>
+                        @elseif($relance->statut === \App\Models\ESBTPRelance::STATUT_ECARTEE)
+                        <div class="timeline-item">
+                            <div>
+                                <h6 class="mb-1">Relance écartée, non envoyée</h6>
+                                <p class="text-muted mb-0">{{ $relance->response_data['ecartee'] ?? "L'inscription de l'élève n'est plus active." }}</p>
+                            </div>
+                        </div>
                         @elseif($relance->statut === 'echec')
                         <div class="timeline-item danger">
                             <div class="d-flex justify-content-between align-items-start">

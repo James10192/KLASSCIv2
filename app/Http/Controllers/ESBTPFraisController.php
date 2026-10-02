@@ -1328,6 +1328,7 @@ class ESBTPFraisController extends Controller
                 if (!$existingRelance) {
                     \App\Models\ESBTPRelance::create([
                         'etudiant_id' => $student->id,
+                        'inscription_id' => $student->inscription_id,
                         'type' => $request->type,
                         'niveau' => $request->niveau,
                         'contenu_message' => $this->generateReminderMessage($category, $student, $request->niveau),

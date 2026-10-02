@@ -869,7 +869,7 @@ class ESBTPComptabiliteRelanceController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "Exécution terminée: {$resultats['reussies']} réussies, {$resultats['echecs']} échecs sur {$resultats['total']} relances."
+                'message' => "Exécution terminée : {$resultats['reussies']} envoyées, {$resultats['echecs']} échecs, {$resultats['ecartees']} écartées (inscription plus active) sur {$resultats['total']} relances."
             ]);
 
         } catch (\Exception $e) {
