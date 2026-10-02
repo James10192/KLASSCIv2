@@ -1198,7 +1198,9 @@ class ESBTPResultatController extends Controller
 
         $studentIds = (clone $studentsQuery)->pluck('id');
 
-        return [$studentIds->count(), $this->bulletinService->computeResultatsKpis($studentIds, $classeId, $anneeId, $semestre)];
+        $kpis = $this->bulletinService->computeResultatsKpis($studentIds, $classeId, $anneeId, $semestre);
+
+        return [$studentIds->count(), app(\App\Domain\Bulletins\EtatDesResultats::class)->completer($kpis)];
     }
 
     /**

@@ -32,6 +32,7 @@
 .pwc-kpi-sub { font-size:.74rem; color:rgba(255,255,255,.72); margin-top:.15rem; line-height:1.35; }
 .pwc-alert { display:flex; gap:.75rem; align-items:flex-start; border-radius:12px; padding:.9rem 1rem; margin-bottom:1rem; border:1px solid var(--pwc-border); background:#fff; font-size:.86rem; line-height:1.45; }
 .pwc-alert i { margin-top:.15rem; flex-shrink:0; }
+.pwc-alert > div { min-width:0; overflow-wrap:anywhere; }
 .pwc-alert ul { margin:.35rem 0 0; padding-left:1.1rem; }
 .pwc-alert strong { color:var(--pwc-dark); }
 .pwc-alert--info { border-color:rgba(4,83,203,.22); background:rgba(4,83,203,.04); }
