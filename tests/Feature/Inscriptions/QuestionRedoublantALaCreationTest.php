@@ -202,7 +202,8 @@ class QuestionRedoublantALaCreationTest extends TestCase
         $inscription = ESBTPInscription::sole();
         $this->assertTrue((bool) $inscription->is_redoublant);
         $this->assertSame($this->agent->id, (int) $inscription->redoublant_confirme_par);
-        $this->assertStringContainsString('candidature', (string) $inscription->redoublant_motif);
+        // Garder la déclaration est une confirmation, comme par le parcours configurable.
+        $this->assertSame(StatutRedoublant::SOURCE_CONFIRME, $inscription->redoublant_source);
     }
 
     public function test_contredire_la_declaration_du_transfere_exige_un_motif(): void
