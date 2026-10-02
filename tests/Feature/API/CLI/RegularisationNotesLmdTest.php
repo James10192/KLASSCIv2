@@ -112,6 +112,8 @@ class RegularisationNotesLmdTest extends TestCase
 
         $this->poster('ANUM', false)->assertOk();
         $this->assertSame(14.0, (float) ESBTPNote::where('etudiant_id', $this->eleve->id)->value('note'));
+        // Le libellé de l'année est lu par la réinscription : il ne doit pas rester vide.
+        $this->assertSame($this->annee->name, ESBTPNote::where('etudiant_id', $this->eleve->id)->value('annee_universitaire'));
     }
 
     public function test_une_ecue_d_un_autre_parcours_reste_refusee(): void
@@ -143,5 +145,21 @@ class RegularisationNotesLmdTest extends TestCase
         DB::table('esbtp_ue_matiere')->where('matiere_id', $ecue)->update(['parcours_id' => $bu->id]);
 
         $this->poster('ANUM')->assertStatus(422);
+    }
+
+    public function test_une_regularisation_restee_en_brouillon_est_terminee_au_passage(): void
+    {
+        DB::table('esbtp_ue_matiere')->delete();
+        $this->poster('ANUM', false)->assertOk();
+        \App\Models\ESBTPEvaluation::query()->update(['status' => \App\Models\ESBTPEvaluation::STATUS_DRAFT]);
+
+        $this->poster('ANUM', false)->assertOk();
+
+        $this->assertSame([\App\Models\ESBTPEvaluation::STATUS_COMPLETED], \App\Models\ESBTPEvaluation::pluck('status')->all());
+    }
+
+    public function test_un_refus_garde_la_forme_de_reponse_de_la_cli(): void
+    {
+        $this->poster('BUNUM')->assertStatus(422)->assertJsonPath('success', false);
     }
 }

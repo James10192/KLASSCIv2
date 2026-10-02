@@ -109,7 +109,7 @@ return [
     'POST api/cli/frais/souscriptions-manquantes' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
     'POST api/cli/inscriptions/normaliser-type' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
     'POST api/cli/lmd/cleanup' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
-    'POST api/cli/lmd/evaluations/regulariser-notes' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
+    'POST api/cli/lmd/evaluations/regulariser-notes' => ['nanan' => 'proposer_releve_notes_lmd'],
     'POST api/cli/lmd/jury-e2e/prepare' => ['hors_nanan' => 'Données de démonstration ou de recette : jamais sur une école en service.'],
     'POST api/cli/lmd/planifications/reparer-credits' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
     'POST api/cli/lms/jeton-serveur' => ['hors_nanan' => 'Comptes, rôles et accès : jamais confiés à un agent (escalade de privilèges).'],
