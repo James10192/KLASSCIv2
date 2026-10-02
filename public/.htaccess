@@ -8,7 +8,7 @@
     # Fichiers versionnés (?v=...) : l'URL change a chaque modification, le
     # navigateur peut donc les garder un an sans jamais redemander.
     RewriteCond %{QUERY_STRING} (^|&)v= [NC]
-    RewriteRule \.(css|js|woff2?|ttf|svg|png|jpe?g|webp|gif|ico)$ - [E=ASSET_VERSIONNE:1]
+    RewriteRule \.(css|js|woff2?|ttf|eot|svg|png|jpe?g|webp|gif|ico)$ - [E=ASSET_VERSIONNE:1]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -53,7 +53,8 @@
 # FilesMatch est applique apres les directives du dossier : il l'emporte sur
 # la regle generale des pages.
 #
-# L'ordre des deux lignes de chaque bloc est voulu. LiteSpeed ignore en silence
+# L'ordre des deux lignes de chaque bloc est voulu. Hypothese non verifiee sur
+# LWS : LiteSpeed ignorerait en silence
 # ce qu'il ne reconnait pas. S'il ignorait la condition « env= », la DERNIERE
 # ligne l'emporterait : c'est donc la prudente (revalidation), jamais
 # l'« immutable », qui aurait fige un an tous les fichiers non versionnes.
