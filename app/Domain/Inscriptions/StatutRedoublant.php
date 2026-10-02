@@ -56,7 +56,9 @@ class StatutRedoublant
             ? $inscription->anneeUniversitaire
             : ESBTPAnneeUniversitaire::find($inscription->annee_universitaire_id);
 
-        if ($annee === null) {
+        // Sans date de début, on ne sait pas quelle année précède : indéterminé,
+        // comme au recensement — ni déduction, ni déclaration.
+        if ($annee === null || $annee->start_date === null) {
             return false;
         }
 
@@ -203,10 +205,10 @@ class StatutRedoublant
      *
      * @throws ValidationException
      */
-    public function etablir(ESBTPInscription $inscription, User $personne, bool $valeur, ?string $motif = null): void
+    public function etablir(ESBTPInscription $inscription, User $personne, bool $valeur, ?string $motif = null, ?bool $proposition = null): void
     {
         $motif = trim((string) $motif);
-        $deduction = $this->deduire($inscription);
+        $deduction = $proposition ?? $this->deduire($inscription);
         $reference = $this->estEtabliParUnePersonne($inscription) ? (bool) $inscription->is_redoublant : $deduction;
         $change = $reference !== $valeur;
 
@@ -257,9 +259,14 @@ class StatutRedoublant
      * (caisse, agent d'inscription), la valeur reste déduite et la scolarité la
      * confirmera. Voir {@see QuestionRedoublant}.
      *
+     * `$proposition` : celle que l'écran a montrée, quand elle ne se lit pas
+     * encore en base (la candidature n'est liée à l'étudiant qu'après
+     * l'inscription). Sans elle, garder le « oui » d'un transféré passerait
+     * pour une correction.
+     *
      * @throws ValidationException si elle change la valeur sans motif
      */
-    public function etablirALaCreation(ESBTPInscription $inscription, ?bool $choix, ?string $motif): void
+    public function etablirALaCreation(ESBTPInscription $inscription, ?bool $choix, ?string $motif, ?bool $proposition = null): void
     {
         $personne = auth()->user();
 
@@ -267,7 +274,7 @@ class StatutRedoublant
             return;
         }
 
-        $this->etablir($inscription->loadMissing('anneeUniversitaire'), $personne, $choix, $motif);
+        $this->etablir($inscription->loadMissing('anneeUniversitaire'), $personne, $choix, $motif, $proposition);
     }
 
     /** Même niveau, même année : passer en spécialité ne change rien au statut. */

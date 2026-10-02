@@ -355,7 +355,6 @@ class StatutRedoublantTest extends TestCase
         $this->assertFalse((bool) $cetteAnnee->fresh()->is_redoublant);
     }
 
-    /** L'état d'une inscription créée avant ce statut : colonne à non, jamais recensée. */
     public function test_le_transfere_qui_declare_recommencer_est_propose_redoublant_partout(): void
     {
         $etudiant = ESBTPEtudiant::factory()->create();
@@ -426,6 +425,25 @@ class StatutRedoublantTest extends TestCase
         $this->assertFalse((bool) $inscription->is_redoublant);
     }
 
+    public function test_une_annee_sans_date_de_debut_reste_indeterminee_meme_declaree(): void
+    {
+        $sansDate = ESBTPAnneeUniversitaire::factory()->create([
+            'name' => '2093-2094', 'start_date' => null, 'end_date' => null, 'is_current' => false,
+        ]);
+        $etudiant = ESBTPEtudiant::factory()->create();
+        \App\Models\ESBTPCandidature::create([
+            'nom' => 'SANSDATE', 'prenoms' => 'Test', 'date_naissance' => '2006-01-01', 'sexe' => 'M',
+            'telephone' => '+2250709'.sprintf('%06d', $etudiant->id), 'annee_universitaire_id' => $sansDate->id,
+            'consentement_at' => now(), 'statut' => \App\Models\ESBTPCandidature::STATUT_CONVERTIE, 'etudiant_id' => $etudiant->id,
+            'est_transfert' => true, 'etablissement_sup_origine' => 'Université de Bouaké', 'redouble_niveau_origine' => true,
+        ]);
+
+        $inscription = $this->inscrire($etudiant, $this->bts1, $sansDate, ['est_transfert' => true]);
+
+        // Comme au recensement : on ne sait pas quelle année précède, on ne propose rien.
+        $this->assertFalse(app(StatutRedoublant::class)->deduire($inscription->fresh()));
+    }
+
     private function declarer(ESBTPEtudiant $etudiant, ?bool $recommence, string $statut = \App\Models\ESBTPCandidature::STATUT_CONVERTIE): void
     {
         \App\Models\ESBTPCandidature::create([
@@ -437,6 +455,7 @@ class StatutRedoublantTest extends TestCase
         ]);
     }
 
+    /** L'état d'une inscription créée avant ce statut : colonne à non, jamais recensée. */
     private function commeAvantLeStatut(ESBTPInscription $inscription): void
     {
         \Illuminate\Support\Facades\DB::table('esbtp_inscriptions')->where('id', $inscription->id)

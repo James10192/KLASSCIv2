@@ -19,19 +19,23 @@ use App\Models\ESBTPCandidature;
  */
 class DeclarationDuTransfere
 {
-    /** Le motif enregistré quand une personne garde ce « oui » sans en écrire. */
-    public const MOTIF = 'Déclaré par le candidat dans sa candidature : il recommence l\'année qu\'il suivait dans un autre établissement.';
-
+    /**
+     * Une candidature sans année vaut pour l'année où l'école l'inscrit (le
+     * parcours configurable retombe alors sur l'année courante). Deux
+     * candidatures la même année : un seul « oui » suffit, l'école tranche en
+     * confirmant.
+     */
     public function declareRecommencer(int $etudiantId, int $anneeId): bool
     {
         return $this->requete()
             ->where('etudiant_id', $etudiantId)
-            ->where('annee_universitaire_id', $anneeId)
+            ->where(fn ($q) => $q->where('annee_universitaire_id', $anneeId)->orWhereNull('annee_universitaire_id'))
             ->exists();
     }
 
     /**
      * Tous les couples « étudiant:année » déclarés, en une requête (recensement).
+     * Une candidature sans année donne « étudiant:* ».
      *
      * @return array<string, true>
      */
@@ -39,7 +43,7 @@ class DeclarationDuTransfere
     {
         return $this->requete()
             ->get(['etudiant_id', 'annee_universitaire_id'])
-            ->mapWithKeys(fn ($c) => [$c->etudiant_id.':'.$c->annee_universitaire_id => true])
+            ->mapWithKeys(fn ($c) => [$c->etudiant_id.':'.($c->annee_universitaire_id ?? '*') => true])
             ->all();
     }
 

@@ -108,7 +108,8 @@ class RecensementDesRedoublants
             ->first();
 
         if ($precedente === null) {
-            return isset($this->declares[$ligne->etudiant_id.':'.$ligne->annee_universitaire_id]);
+            return isset($this->declares[$ligne->etudiant_id.':'.$ligne->annee_universitaire_id])
+                || isset($this->declares[$ligne->etudiant_id.':*']);
         }
 
         if ($precedente->niveau_id === null || $ligne->niveau_id === null) {
