@@ -5,7 +5,6 @@ namespace App\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
-use App\Jobs\CalculerKPIsJob;
 use App\Jobs\EnvoyerRelanceJob;
 use App\Jobs\GenererRapportJob;
 use App\Jobs\PlanifierRelancesJob;
@@ -79,14 +78,6 @@ class QueueManagementService
             $job = null;
 
             switch ($jobClass) {
-                case 'CalculerKPIsJob':
-                    $job = new CalculerKPIsJob(
-                        $parameters['periode'] ?? 'journalier',
-                        $parameters['annee_id'] ?? null,
-                        $parameters['date_calcul'] ?? null
-                    );
-                    break;
-
                 case 'SauvegardeDataJob':
                     $job = new SauvegardeDataJob(
                         $parameters['type'] ?? 'complet',

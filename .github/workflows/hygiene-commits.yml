@@ -35,6 +35,7 @@ on:
       - hetec
       - rostan
       - usat
+      - ucao-benin
     # Un fichier de documentation ne peut pas casser un test. Sans ce filtre,
     # une simple entree de journal declenchait la matrice MySQL + MariaDB.
     paths-ignore:
@@ -175,6 +176,49 @@ jobs:
           fi
 
           exit 0
+
+  annonce:
+    name: Annonce aux écoles d'un changement visible
+    # `github.base_ref` n'existe que sur une pull request.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Même règle que le hook commit-msg, sur toute la branche : le hook se
+      # saute avec --no-verify, pas ce contrôle. Détail : bin/garde-nouveautes.sh.
+      - name: Vue ou style touchés → Nouveautés, registre, ou [sans-nouveaute]
+        run: |
+          base="origin/${{ github.base_ref }}"
+          echec=0
+          # Commit par commit, comme le hook : le type d'un commit ne doit pas
+          # se marier aux fichiers d'un autre. Les fusions sont sautées.
+          for sha in $(git rev-list --no-merges "$base..HEAD"); do
+            sujet=$(git log -1 --format='%s' "$sha")
+            type=$(printf '%s\n' "$sujet" | sed -E 's/^([a-z]+).*/\1/')
+            ajouts=$(git show -U0 --format= "$sha" -- docs/nouveautes-en-attente.md | sed -n 's/^+\(- \)/\1/p')
+            if ! sortie=$(git show --name-only --format= "$sha" \
+                | TYPE="$type" MESSAGE="$(git log -1 --format='%B' "$sha")" REGISTRE_AJOUTS="$ajouts" \
+                  sh bin/garde-nouveautes.sh trace); then
+              echo "::error::$(git log -1 --format='%h' "$sha") — $sujet"
+              printf '%s\n' "$sortie"
+              echec=1
+            fi
+          done
+          exit $echec
+
+  propagation:
+    name: Annonces dues avant propagation
+    # Une branche d'école ne doit pas recevoir un changement visible encore
+    # absent de la fenêtre Nouveautés. Le pre-push le refuse ; ce contrôle le
+    # rend visible quand le hook a été sauté.
+    if: github.event_name == 'push' && github.ref_name != 'presentation'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh bin/garde-nouveautes.sh registre HEAD || { echo "::error::Propagé vers une école avec des annonces dues."; exit 1; }
 
   nouveautes:
     name: Fraîcheur du modal Nouveautés

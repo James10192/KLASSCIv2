@@ -7,7 +7,6 @@ use App\Console\Commands\MarkUnattendedTeacherSessions;
 use App\Console\Commands\QueueMonitorCommand;
 use App\Console\Commands\RunQueueWorker;
 use App\Console\Commands\SendInscriptionPaiementReminders;
-use App\Jobs\CalculerKPIsJob;
 use App\Jobs\ComputeAnalyticsPredictionsJob;
 use App\Jobs\DetectAnalyticsAnomaliesJob;
 use App\Jobs\EvaluateAnalyticsAccuracyJob;
@@ -86,28 +85,10 @@ class Kernel extends ConsoleKernel
         // NOUVELLES TÂCHES ASYNCHRONES - TASK #7
         // =====================================================================
 
-        // Calcul des KPIs quotidiens (23h00 chaque jour)
-        $schedule->job(new CalculerKPIsJob('journalier'))
-            ->dailyAt('23:00')
-            ->name('kpis-quotidiens')
-            ->description('Calcul automatique des KPIs quotidiens')
-            ->onOneServer(); // Éviter la duplication si plusieurs serveurs
-
-        // Calcul des KPIs hebdomadaires (lundi 01h00)
-        $schedule->job(new CalculerKPIsJob('hebdomadaire'))
-            ->weekly()
-            ->mondays()
-            ->at('01:00')
-            ->name('kpis-hebdomadaires')
-            ->description('Calcul automatique des KPIs hebdomadaires')
-            ->onOneServer();
-
-        // Calcul des KPIs mensuels (1er du mois à 02h00)
-        $schedule->job(new CalculerKPIsJob('mensuel'))
-            ->monthlyOn(1, '02:00')
-            ->name('kpis-mensuels')
-            ->description('Calcul automatique des KPIs mensuels')
-            ->onOneServer();
+        // Plus de calcul d'indicateurs stockés (CalculerKPIsJob, supprimé en
+        // octobre 2026) : il échouait à chaque passage et rien ne lisait
+        // esbtp_kpis. Les chiffres comptables se calculent en direct
+        // (BuildDashboardDataAction).
 
         // Sauvegarde complète quotidienne (03h00 chaque jour)
         $schedule->job(new SauvegardeDataJob('complet', [
@@ -213,13 +194,6 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->name('mailpulse-prune-parent-chatbot-inbound-responses')
             ->description('Supprime les reponses chiffrees expirees du chatbot parent MailPulse');
-
-        // Calcul des KPIs temps réel (toutes les heures)
-        $schedule->job(new CalculerKPIsJob('horaire'))
-            ->hourly()
-            ->name('kpis-temps-reel')
-            ->description('Mise à jour des indicateurs temps réel')
-            ->onOneServer();
 
         // Nettoyage des logs et fichiers temporaires (chaque dimanche à 04h00)
         $schedule->command('queue:prune-batches --hours=168') // 7 jours
