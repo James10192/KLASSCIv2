@@ -2633,6 +2633,7 @@
                     @include('esbtp.settings.partials.rendez-vous-reglages')
                     @include('esbtp.settings.partials.pieces-dossier-reglages')
                     @include('esbtp.settings.partials.pilotage-reglages')
+                    @include('esbtp.settings.partials.reclamations-notes-reglages')
                 </div>
             </div>
 

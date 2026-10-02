@@ -194,6 +194,7 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | abonnement de l'instance, paywall (`/esbtp/paywall-config`, `blocked`, `upgrade`) | `pwc-*` (feuille partagée `paywall-config/partials/_styles`) | `pwc-hero`, `pwc-kpi`, `pwc-card`, `pwc-gauge`, `pwc-source`, `pwc-switch` |
 | tableau de bord du service technique | `dst-*` | `dst-hero`, `dst-kpi`, `dst-queue`, `dst-trend`, `dst-usage`, `dst-quick` |
 | matricules (`/esbtp/matricule-config`) | `mcf-*` | `mcf-hero`, `mcf-kpi`, `mcf-field`, `mcf-niveau`, `mcf-note` |
+| réclamations de notes (`/esbtp/mes-reclamations`, `/esbtp/reclamations-notes`) | `rcl-*` (feuille partagée `reclamations-notes/partials/_styles`) | `rcl-hero`, `rcl-card`, `rcl-item`, `rcl-badge`, `rcl-voile`, `rcl-fenetre` |
 
 Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 

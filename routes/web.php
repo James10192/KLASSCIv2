@@ -1714,6 +1714,18 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('mes-notes.index')
                 ->middleware(['permission:notes.view_own|notes.view']);
 
+            // Réclamations de notes : l'élève conteste, avec la photo de sa copie.
+            Route::get('/mes-reclamations', [\App\Http\Controllers\Notes\MesReclamationsController::class, 'index'])
+                ->name('mes-reclamations.index')
+                ->middleware(['permission:notes.reclamations.create_own']);
+            Route::post('/mes-reclamations', [\App\Http\Controllers\Notes\MesReclamationsController::class, 'store'])
+                ->name('mes-reclamations.store')
+                ->middleware(['permission:notes.reclamations.create_own', 'throttle:6,1']);
+            Route::get('/mes-reclamations/{id}/photo', [\App\Http\Controllers\Notes\MesReclamationsController::class, 'photo'])
+                ->whereNumber('id')
+                ->name('mes-reclamations.photo')
+                ->middleware(['permission:notes.reclamations.create_own']);
+
             Route::get('/mon-emploi-temps', [ESBTPEmploiTempsController::class, 'studentTimetable'])
                 ->name('mon-emploi-temps.index')
                 ->middleware(['permission:timetables.view_own|timetables.view']);
@@ -2028,6 +2040,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall'])->group(function () {
         Route::get('/paywall-config/blocked', [ESBTPPaywallConfigController::class, 'blocked'])->name('paywall-config.blocked');
         Route::get('/paywall-config/upgrade', [ESBTPPaywallConfigController::class, 'upgrade'])->name('paywall-config.upgrade');
+    });
+
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:paywall.manage'])->group(function () {
+        Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
+        Route::post('/paywall-config/refresh', [ESBTPPaywallConfigController::class, 'refresh'])->middleware('throttle:20,1')->name('paywall-config.refresh');
         Route::post('/paywall-config', [ESBTPPaywallConfigController::class, 'store'])->name('paywall-config.store');
         Route::post('/paywall-config/extend', [ESBTPPaywallConfigController::class, 'extendSubscription'])->name('paywall-config.extend');
         Route::post('/paywall-config/generate-emergency', [ESBTPPaywallConfigController::class, 'generateEmergencyCode'])->name('paywall-config.generate-emergency');
@@ -2040,11 +2057,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::post('/generate-code', [App\Http\Controllers\ESBTP\Admin\AttendanceController::class, 'generateCode'])->name('generate-code');
         Route::get('/settings', [App\Http\Controllers\ESBTP\Admin\ESBTPAttendanceSettingsController::class, 'index'])->name('settings');
         Route::put('/settings', [App\Http\Controllers\ESBTP\Admin\ESBTPAttendanceSettingsController::class, 'update'])->name('settings.update');
-    });
-
-    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:paywall.manage'])->group(function () {
-        Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
-        Route::post('/paywall-config/refresh', [ESBTPPaywallConfigController::class, 'refresh'])->middleware('throttle:20,1')->name('paywall-config.refresh');
         Route::get('/report', [App\Http\Controllers\ESBTP\Admin\AttendanceController::class, 'report'])->name('report');
         Route::get('/export', [App\Http\Controllers\ESBTP\Admin\AttendanceController::class, 'export'])->name('export');
         Route::get('/{attendance}/details', [App\Http\Controllers\ESBTP\Admin\AttendanceController::class, 'details'])->name('details');
@@ -2549,6 +2561,20 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
 
 // Routes pour le systÃ¨me d'Ã©margement
 Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () {
+    // Réclamations de notes, côté personnel : l'enseignant de l'évaluation
+    // donne son avis, le porteur de notes.reclamations.traiter tranche. Le
+    // contrôleur filtre (un enseignant ne voit que ses évaluations).
+    Route::middleware(['paywall', 'permission:notes.reclamations.traiter|identity.teach'])->group(function () {
+        Route::get('/reclamations-notes', [\App\Http\Controllers\Notes\ReclamationNoteController::class, 'index'])
+            ->name('reclamations-notes.index');
+        Route::post('/reclamations-notes/{id}/avis', [\App\Http\Controllers\Notes\ReclamationNoteController::class, 'avis'])
+            ->whereNumber('id')->name('reclamations-notes.avis')->middleware('throttle:30,1');
+        Route::post('/reclamations-notes/{id}/decision', [\App\Http\Controllers\Notes\ReclamationNoteController::class, 'decision'])
+            ->whereNumber('id')->name('reclamations-notes.decision')->middleware('throttle:30,1');
+        Route::get('/reclamations-notes/{id}/photo', [\App\Http\Controllers\Notes\ReclamationNoteController::class, 'photo'])
+            ->whereNumber('id')->name('reclamations-notes.photo');
+    });
+
     // Routes pour l'administration des codes (accÃ¨s restreint aux administrateurs et secrÃ©taires)
     Route::middleware(['permission:attendances.generate_codes', 'paywall'])->group(function () {
         Route::get('/attendance-codes', [ESBTPAttendanceCodeController::class, 'index'])

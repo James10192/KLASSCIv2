@@ -205,6 +205,10 @@ class PermissionSyncService
             'documents.approve',
             'documents.print',
             'notes.window.manage',
+            // Réclamations de notes : l'élève conteste depuis son espace. Sans
+            // cette ligne, les instances en service ne la donneraient jamais aux
+            // élèves (la synchronisation saute les rôles déjà garnis).
+            'notes.reclamations.create_own',
             'paiements.create.mobile_money',
             'paiements.create.non_cash',
             'finance.unpaid_count.view',
