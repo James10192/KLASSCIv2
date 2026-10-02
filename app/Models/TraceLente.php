@@ -16,7 +16,7 @@ class TraceLente extends Model
     protected $table = 'traces_lentes';
 
     protected $fillable = [
-        'type', 'nom', 'duree_ms', 'requetes_sql', 'temps_sql_ms', 'memoire_mo', 'code', 'user_id', 'details',
+        'type', 'nom', 'duree_ms', 'requetes_sql', 'temps_sql_ms', 'memoire_mo', 'code', 'user_id', 'details', 'created_at',
     ];
 
     protected $casts = [

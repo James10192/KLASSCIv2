@@ -11,12 +11,19 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Mesure chaque requête ; n'écrit une trace qu'au-dessus du seuil de l'école,
- * et seulement après l'envoi de la réponse (terminate). L'utilisateur
- * n'attend jamais l'écriture.
+ * et seulement après l'envoi de la réponse (terminate). Les traces des mesures
+ * imbriquées (PDF, envois) sont retenues pendant la requête et écrites ici avec
+ * la sienne : l'utilisateur n'attend jamais l'écriture.
  */
 class MesureLesRequetesLentes
 {
     private const ATTRIBUT = 'traces_lentes.mesure';
+
+    /**
+     * La lecture des traces par la console ne se trace pas elle-même : appelée
+     * chaque heure, elle deviendrait « l'action lente habituelle » de l'école.
+     */
+    private const ROUTES_IGNOREES = ['api.cli.traces.lentes'];
 
     public function __construct(
         private readonly MesuresEnCours $mesures,
@@ -27,6 +34,7 @@ class MesureLesRequetesLentes
     {
         if (EnregistreurDeTraces::actif()) {
             $request->attributes->set(self::ATTRIBUT, $this->mesures->ouvrir());
+            $this->enregistreur->retenir();
         }
 
         return $next($request);
@@ -43,6 +51,11 @@ class MesureLesRequetesLentes
         $request->attributes->remove(self::ATTRIBUT);
 
         $route = $request->route();
+        if (in_array($route?->getName(), self::ROUTES_IGNOREES, true)) {
+            $this->enregistreur->vider();
+
+            return;
+        }
         $nom = $route?->getName() ?: ($route ? $request->method().' '.$route->uri() : $request->method().' (sans route)');
         $statut = $response->getStatusCode();
 
@@ -59,5 +72,6 @@ class MesureLesRequetesLentes
             ],
             $statut >= 500,
         );
+        $this->enregistreur->vider();
     }
 }

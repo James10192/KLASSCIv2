@@ -47,5 +47,13 @@ class TracesLentesServiceProvider extends ServiceProvider
         Event::listen(CommandFinished::class, [$o, 'commandeTerminee']);
         Event::listen(MessageSending::class, [$o, 'courrielPart']);
         Event::listen(MessageSent::class, [$o, 'courrielParti']);
+
+        // Seulement si l'observateur a servi : sinon aucune commande n'est ouverte,
+        // et le conteneur peut déjà être vidé à cet instant (fin des tests).
+        $app->terminating(static function () use ($app) {
+            if ($app->resolved(ObservateurDesTravaux::class)) {
+                $app->make(ObservateurDesTravaux::class)->fermerLesCommandesInterrompues();
+            }
+        });
     }
 }
