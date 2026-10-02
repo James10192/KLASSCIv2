@@ -1,0 +1,908 @@
+{
+    "notee|annuel|tous=1|page=1": {
+        "total": 9,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 9,
+            "moyenne_generale": 11.19,
+            "taux_reussite": 87.5,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-primary fs-6 | 11.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-info fs-6 | 14.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-primary fs-6 | 10.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-primary fs-6 | 10.13\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 5 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|annuel|tous=1|page=2": {
+        "total": 9,
+        "current_page": 2,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 9,
+            "moyenne_generale": 11.19,
+            "taux_reussite": 87.5,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-danger fs-6 | 8.63\/20 | class=badge bg-warning text-dark ms-1 | Partiel · S1 seulement | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 6 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-warning text-dark | class=fas fa-clock me-1 | Partiel | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=mt-1 | class=badge text-bg-warning | Inscription non validée | class=badge bg-warning fs-6 | 12.13\/20 | class=badge bg-secondary | N\/A | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE8 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone8 Awa8 | class=text-muted | note8@exemple.test | class=badge bg-primary fs-6 | 11.63\/20 | class=badge bg-secondary | N\/A | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|annuel|tous=1|page=3": {
+        "total": 9,
+        "current_page": 3,
+        "has_more": false,
+        "loaded_count": 1,
+        "kpis": {
+            "total_etudiants": 9,
+            "moyenne_generale": 11.19,
+            "taux_reussite": 87.5,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-primary fs-6 | 11.13\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|annuel|tous=0|page=1": {
+        "total": 8,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 8,
+            "moyenne_generale": 11.14,
+            "taux_reussite": 85.7,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-primary fs-6 | 11.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-info fs-6 | 14.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-primary fs-6 | 10.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-primary fs-6 | 10.13\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 5 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|annuel|tous=0|page=2": {
+        "total": 8,
+        "current_page": 2,
+        "has_more": false,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 8,
+            "moyenne_generale": 11.14,
+            "taux_reussite": 85.7,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-danger fs-6 | 8.63\/20 | class=badge bg-warning text-dark ms-1 | Partiel · S1 seulement | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 6 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-warning text-dark | class=fas fa-clock me-1 | Partiel | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=badge bg-warning fs-6 | 12.13\/20 | class=badge bg-secondary | N\/A | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-primary fs-6 | 11.13\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|s1|tous=1|page=1": {
+        "total": 9,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 9,
+            "moyenne_generale": 11.63,
+            "taux_reussite": 75,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-primary fs-6 | 10.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-warning fs-6 | 13.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-danger fs-6 | 9.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 5 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-warning fs-6 | 12.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|s1|tous=1|page=2": {
+        "total": 9,
+        "current_page": 2,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 9,
+            "moyenne_generale": 11.63,
+            "taux_reussite": 75,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-danger fs-6 | 8.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 6 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=mt-1 | class=badge text-bg-warning | Inscription non validée | class=badge bg-info fs-6 | 14.63\/20 | class=badge bg-secondary | N\/A | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE8 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone8 Awa8 | class=text-muted | note8@exemple.test | class=badge bg-primary fs-6 | 10.63\/20 | class=badge bg-secondary | N\/A | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|s1|tous=1|page=3": {
+        "total": 9,
+        "current_page": 3,
+        "has_more": false,
+        "loaded_count": 1,
+        "kpis": {
+            "total_etudiants": 9,
+            "moyenne_generale": 11.63,
+            "taux_reussite": 75,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-warning fs-6 | 13.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|s1|tous=0|page=1": {
+        "total": 8,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 8,
+            "moyenne_generale": 11.79,
+            "taux_reussite": 71.4,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-primary fs-6 | 10.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-warning fs-6 | 13.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-danger fs-6 | 9.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 5 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-warning fs-6 | 12.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|s1|tous=0|page=2": {
+        "total": 8,
+        "current_page": 2,
+        "has_more": false,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 8,
+            "moyenne_generale": 11.79,
+            "taux_reussite": 71.4,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-danger fs-6 | 8.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 6 | ème | class=text-muted ms-1 | \/ 6 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=badge bg-info fs-6 | 14.63\/20 | class=badge bg-secondary | N\/A | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-warning fs-6 | 13.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 6 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|s2|tous=1|page=1": {
+        "total": 9,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 9,
+            "moyenne_generale": 11.07,
+            "taux_reussite": 57.1,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-warning fs-6 | 12.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 5 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-info fs-6 | 15.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 5 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-primary fs-6 | 11.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 5 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-danger fs-6 | 7.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 5 | ème | class=text-muted ms-1 | \/ 5 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|s2|tous=1|page=2": {
+        "total": 9,
+        "current_page": 2,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 9,
+            "moyenne_generale": 11.07,
+            "taux_reussite": 57.1,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=mt-1 | class=badge text-bg-warning | Inscription non validée | class=badge bg-danger fs-6 | 9.63\/20 | class=badge bg-secondary | N\/A | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE8 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone8 Awa8 | class=text-muted | note8@exemple.test | class=badge bg-warning fs-6 | 12.63\/20 | class=badge bg-secondary | N\/A | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|s2|tous=1|page=3": {
+        "total": 9,
+        "current_page": 3,
+        "has_more": false,
+        "loaded_count": 1,
+        "kpis": {
+            "total_etudiants": 9,
+            "moyenne_generale": 11.07,
+            "taux_reussite": 57.1,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-danger fs-6 | 8.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 5 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|s2|tous=0|page=1": {
+        "total": 8,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 8,
+            "moyenne_generale": 10.83,
+            "taux_reussite": 50,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-warning fs-6 | 12.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 5 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-info fs-6 | 15.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 5 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-primary fs-6 | 11.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 5 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-danger fs-6 | 7.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 5 | ème | class=text-muted ms-1 | \/ 5 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "notee|s2|tous=0|page=2": {
+        "total": 8,
+        "current_page": 2,
+        "has_more": false,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 8,
+            "moyenne_generale": 10.83,
+            "taux_reussite": 50,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=badge bg-danger fs-6 | 9.63\/20 | class=badge bg-secondary | N\/A | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-danger fs-6 | 8.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 5 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|annuel|tous=1|page=1": {
+        "total": 6,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": 11.75,
+            "taux_reussite": 100,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-primary fs-6 | 11.88\/20 | class=badge bg-warning text-dark ms-1 | Partiel · S1 seulement | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 1 | class=badge bg-warning text-dark | class=fas fa-clock me-1 | Partiel | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|annuel|tous=1|page=2": {
+        "total": 6,
+        "current_page": 2,
+        "has_more": false,
+        "loaded_count": 2,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": 11.75,
+            "taux_reussite": 100,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|annuel|tous=0|page=1": {
+        "total": 6,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": 11.75,
+            "taux_reussite": 100,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-primary fs-6 | 11.88\/20 | class=badge bg-warning text-dark ms-1 | Partiel · S1 seulement | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 1 | class=badge bg-warning text-dark | class=fas fa-clock me-1 | Partiel | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|annuel|tous=0|page=2": {
+        "total": 6,
+        "current_page": 2,
+        "has_more": false,
+        "loaded_count": 2,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": 11.75,
+            "taux_reussite": 100,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|s1|tous=1|page=1": {
+        "total": 6,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": 11.75,
+            "taux_reussite": 100,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-primary fs-6 | 11.88\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 1 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|s1|tous=1|page=2": {
+        "total": 6,
+        "current_page": 2,
+        "has_more": false,
+        "loaded_count": 2,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": 11.75,
+            "taux_reussite": 100,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|s1|tous=0|page=1": {
+        "total": 6,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": 11.75,
+            "taux_reussite": 100,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-primary fs-6 | 11.88\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 1 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|s1|tous=0|page=2": {
+        "total": 6,
+        "current_page": 2,
+        "has_more": false,
+        "loaded_count": 2,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": 11.75,
+            "taux_reussite": 100,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|s2|tous=1|page=1": {
+        "total": 6,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": null,
+            "taux_reussite": null,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|s2|tous=1|page=2": {
+        "total": 6,
+        "current_page": 2,
+        "has_more": false,
+        "loaded_count": 2,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": null,
+            "taux_reussite": null,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|s2|tous=0|page=1": {
+        "total": 6,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": null,
+            "taux_reussite": null,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "sans_note|s2|tous=0|page=2": {
+        "total": 6,
+        "current_page": 2,
+        "has_more": false,
+        "loaded_count": 2,
+        "kpis": {
+            "total_etudiants": 6,
+            "moyenne_generale": null,
+            "taux_reussite": null,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|annuel|tous=1|page=1": {
+        "total": 15,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.25,
+            "taux_reussite": 88.9,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Classe | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 11.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-info fs-6 | 14.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 10.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 10.13\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|annuel|tous=1|page=2": {
+        "total": 15,
+        "current_page": 2,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.25,
+            "taux_reussite": 88.9,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 8.63\/20 | class=badge bg-warning text-dark ms-1 | Partiel · S1 seulement | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 3 | class=badge bg-warning text-dark | class=fas fa-clock me-1 | Partiel | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=mt-1 | class=badge text-bg-warning | Inscription non validée | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-warning fs-6 | 12.13\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 3 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE8 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone8 Awa8 | class=text-muted | note8@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 11.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 3 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|annuel|tous=1|page=3": {
+        "total": 15,
+        "current_page": 3,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.25,
+            "taux_reussite": 88.9,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 11.13\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 2 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-primary fs-6 | 11.88\/20 | class=badge bg-warning text-dark ms-1 | Partiel · S1 seulement | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 2 | class=badge bg-warning text-dark | class=fas fa-clock me-1 | Partiel | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|annuel|tous=1|page=4": {
+        "total": 15,
+        "current_page": 4,
+        "has_more": false,
+        "loaded_count": 3,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.25,
+            "taux_reussite": 88.9,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|annuel|tous=0|page=1": {
+        "total": 14,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 11.22,
+            "taux_reussite": 87.5,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Classe | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 11.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-info fs-6 | 14.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 10.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 10.13\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|annuel|tous=0|page=2": {
+        "total": 14,
+        "current_page": 2,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 11.22,
+            "taux_reussite": 87.5,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 8.63\/20 | class=badge bg-warning text-dark ms-1 | Partiel · S1 seulement | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 3 | class=badge bg-warning text-dark | class=fas fa-clock me-1 | Partiel | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-warning fs-6 | 12.13\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 3 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 11.13\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 3 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|annuel|tous=0|page=3": {
+        "total": 14,
+        "current_page": 3,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 11.22,
+            "taux_reussite": 87.5,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-primary fs-6 | 11.88\/20 | class=badge bg-warning text-dark ms-1 | Partiel · S1 seulement | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 1 | class=badge bg-warning text-dark | class=fas fa-clock me-1 | Partiel | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|annuel|tous=0|page=4": {
+        "total": 14,
+        "current_page": 4,
+        "has_more": false,
+        "loaded_count": 2,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 11.22,
+            "taux_reussite": 87.5,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | class=fas fa-ban me-1 | Aucune note | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Annuel) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Annuel) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s1|tous=1|page=1": {
+        "total": 15,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.64,
+            "taux_reussite": 77.8,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Classe | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 10.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-warning fs-6 | 13.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 9.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-warning fs-6 | 12.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s1|tous=1|page=2": {
+        "total": 15,
+        "current_page": 2,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.64,
+            "taux_reussite": 77.8,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 8.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 3 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=mt-1 | class=badge text-bg-warning | Inscription non validée | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-info fs-6 | 14.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 3 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE8 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone8 Awa8 | class=text-muted | note8@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 10.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 3 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s1|tous=1|page=3": {
+        "total": 15,
+        "current_page": 3,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.64,
+            "taux_reussite": 77.8,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-warning fs-6 | 13.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 2 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-primary fs-6 | 11.88\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 2 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s1|tous=1|page=4": {
+        "total": 15,
+        "current_page": 4,
+        "has_more": false,
+        "loaded_count": 3,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.64,
+            "taux_reussite": 77.8,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s1|tous=0|page=1": {
+        "total": 14,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 11.78,
+            "taux_reussite": 75,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Classe | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 10.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-warning fs-6 | 13.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 9.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-warning fs-6 | 12.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s1|tous=0|page=2": {
+        "total": 14,
+        "current_page": 2,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 11.78,
+            "taux_reussite": 75,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 8.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 3 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-info fs-6 | 14.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 3 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-warning fs-6 | 13.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 3 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s1|tous=0|page=3": {
+        "total": 14,
+        "current_page": 3,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 11.78,
+            "taux_reussite": 75,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-primary fs-6 | 11.88\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 1 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s1|tous=0|page=4": {
+        "total": 14,
+        "current_page": 4,
+        "has_more": false,
+        "loaded_count": 2,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 11.78,
+            "taux_reussite": 75,
+            "bulletins_count": 1
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 1) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 1) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s2|tous=1|page=1": {
+        "total": 15,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.07,
+            "taux_reussite": 57.1,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Classe | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-warning fs-6 | 12.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-info fs-6 | 15.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 11.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 7.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s2|tous=1|page=2": {
+        "total": 15,
+        "current_page": 2,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.07,
+            "taux_reussite": 57.1,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=mt-1 | class=badge text-bg-warning | Inscription non validée | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 9.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 2 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE8 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone8 Awa8 | class=text-muted | note8@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-warning fs-6 | 12.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 2 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s2|tous=1|page=3": {
+        "total": 15,
+        "current_page": 3,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.07,
+            "taux_reussite": 57.1,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 8.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 1 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s2|tous=1|page=4": {
+        "total": 15,
+        "current_page": 4,
+        "has_more": false,
+        "loaded_count": 3,
+        "kpis": {
+            "total_etudiants": 15,
+            "moyenne_generale": 11.07,
+            "taux_reussite": 57.1,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s2|tous=0|page=1": {
+        "total": 14,
+        "current_page": 1,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 10.83,
+            "taux_reussite": 50,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input | Matricule | Nom et prénom | Classe | Moyenne | Rang | Statut | Actions",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone1 Awa1 | class=text-muted | note1@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-warning fs-6 | 12.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone2 Awa2 | class=text-muted | note2@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-info fs-6 | 15.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone3 Awa3 | class=text-muted | note3@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-primary fs-6 | 11.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 3 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-success | class=fas fa-check me-1 | Admis | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone4 Awa4 | class=text-muted | note4@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 7.63\/20 | class=d-flex align-items-center | class=fas fa-hashtag text-muted me-2 | class=fw-bold | 4 | ème | class=text-muted ms-1 | \/ 4 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s2|tous=0|page=2": {
+        "total": 14,
+        "current_page": 2,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 10.83,
+            "taux_reussite": 50,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone5 Awa5 | class=text-muted | note5@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone6 Awa6 | class=text-muted | note6@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE7 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone7 Awa7 | class=text-muted | note7@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 9.63\/20 | class=d-flex align-items-center | class=fas fa-trophy text-warning me-2 | class=fw-bold | 1 | er | class=text-muted ms-1 | \/ 2 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | NOTE9 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Kone9 Awa9 | class=text-muted | note9@exemple.test | class=badge bg-light text-dark border | 2BTS GC A | class=badge bg-danger fs-6 | 8.63\/20 | class=d-flex align-items-center | class=fas fa-medal text-info me-2 | class=fw-bold | 2 | ème | class=text-muted ms-1 | \/ 2 | class=badge bg-danger | class=fas fa-times me-1 | Échec | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s2|tous=0|page=3": {
+        "total": 14,
+        "current_page": 3,
+        "has_more": true,
+        "loaded_count": 4,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 10.83,
+            "taux_reussite": 50,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE1 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore1 Ibrahim1 | class=text-muted | vide1@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE2 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore2 Ibrahim2 | class=text-muted | vide2@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE3 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore3 Ibrahim3 | class=text-muted | vide3@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE4 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore4 Ibrahim4 | class=text-muted | vide4@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    },
+    "toutes|s2|tous=0|page=4": {
+        "total": 14,
+        "current_page": 4,
+        "has_more": false,
+        "loaded_count": 2,
+        "kpis": {
+            "total_etudiants": 14,
+            "moyenne_generale": 10.83,
+            "taux_reussite": 50,
+            "bulletins_count": 0
+        },
+        "lignes": [
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE5 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore5 Ibrahim5 | class=text-muted | vide5@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf",
+            "class=form-check | class=form-check-input student-checkbox | class=fw-medium | VIDE6 | class=d-flex align-items-center | class=user-avatar me-2 | class=fas fa-user-graduate | class=fw-semibold | Traore6 Ibrahim6 | class=text-muted | vide6@exemple.test | class=badge bg-light text-dark border | 2BTS CG A | class=badge bg-secondary | N\/A | class=badge bg-secondary | N\/A | class=badge bg-secondary | class=fas fa-question me-1 | Non évalué | class=btn-group btn-group-sm | class=btn btn-sm btn-info | title=Voir détails | class=fas fa-chart-line | class=btn btn-sm btn-secondary | title=Voir bulletin (Semestre 2) | class=fas fa-file-alt | class=btn btn-sm btn-danger | title=Télécharger PDF (Semestre 2) | class=fas fa-file-pdf"
+        ]
+    }
+}
