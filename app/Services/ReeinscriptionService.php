@@ -33,9 +33,26 @@ class ReeinscriptionService
      */
     private array $notesPrechargees = [];
 
+    /**
+     * Moyennes annuelles du bulletin deja calculees pour un lot, par
+     * identifiant d'inscription. Vide hors d'un classement.
+     *
+     * @var array<int, array{moyenne: float|null, semestre1: float|null, semestre2: float|null, poids: array}>
+     */
+    private array $moyennesAnnuellesPrechargees = [];
+
+    /**
+     * Classes dont le repli sur les notes brutes a deja ete journalise : une
+     * ligne par classe, pas une par eleve sur une promotion de 2000.
+     *
+     * @var array<string, true>
+     */
+    private array $replisJournalises = [];
+
     public function __construct(
         private readonly \App\Services\Reinscription\ClassesDeReinscription $classes,
         private readonly \App\Services\Reinscription\NotesDeLaPromotion $notesDeLaPromotion,
+        private readonly \App\Services\Reinscription\MoyennesAnnuellesDuBulletin $moyennesAnnuelles,
     ) {}
 
     public function analyserSituationEtudiant($etudiantId, $anneeAcademique)
@@ -43,7 +60,8 @@ class ReeinscriptionService
         $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
 
         // La regle de passage se choisit sur la classe quittee (ClassesDeReinscription).
-        $classe = $this->classes->inscriptionQuittee((int) $etudiantId)?->classe;
+        $inscriptionQuittee = $this->classes->inscriptionQuittee((int) $etudiantId);
+        $classe = $inscriptionQuittee?->classe;
 
         if (!$classe) {
             throw new \Exception("Étudiant non assigné à une classe");
@@ -55,13 +73,16 @@ class ReeinscriptionService
         $regle = $this->regleApplicable($niveauNom, $filiereNom);
 
         $notes = $this->getNotesEtudiant($etudiantId, $anneeAcademique, $classe);
-        $moyenneGenerale = $this->calculerMoyenneGenerale($notes);
+        $moyenne = $this->moyennePourDecision($inscriptionQuittee, $classe, $notes);
+        $moyenneGenerale = $moyenne['moyenne'];
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
-        
+
         return [
             'etudiant' => $etudiant,
             'regle' => $regle,
             'moyenne_generale' => $moyenneGenerale,
+            'moyenne_source' => $moyenne['source'],
+            'moyennes_semestres' => $moyenne['semestres'],
             'notes' => $notes,
             'matieres_echouees' => $matieresEchouees,
             'decision' => $this->determinerDecision($moyenneGenerale, $matieresEchouees, $regle),
@@ -104,7 +125,8 @@ class ReeinscriptionService
         $anneeDesResultats = $inscription->anneeUniversitaire->name ?? $anneeAcademique;
 
         $notes = $this->getNotesEtudiant($etudiant->id, $anneeDesResultats, $classe);
-        $moyenneGenerale = $this->calculerMoyenneGenerale($notes);
+        $moyenne = $this->moyennePourDecision($inscription, $classe, $notes);
+        $moyenneGenerale = $moyenne['moyenne'];
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
 
         // TEMPORAIRE: Désactiver l'enrichissement financier pour éviter timeout (optimisation à faire plus tard)
@@ -131,6 +153,8 @@ class ReeinscriptionService
             'inscription' => $inscription,
             'regle' => $regle,
             'moyenne_generale' => $moyenneGenerale,
+            'moyenne_source' => $moyenne['source'],
+            'moyennes_semestres' => $moyenne['semestres'],
             'notes' => $notes,
             'matieres_echouees' => $matieresEchouees,
             'decision' => $this->determinerDecision($moyenneGenerale, $matieresEchouees, $regle),
@@ -232,6 +256,7 @@ class ReeinscriptionService
         try {
             foreach ($inscriptions->chunk(200) as $lot) {
                 $this->prechargerNotes($lot, $anneeAcademique);
+                $this->moyennesAnnuellesPrechargees = $this->moyennesAnnuelles->pour($lot);
 
                 foreach ($lot as $inscription) {
                     if ($inscription->etudiant && $inscription->classe) {
@@ -240,10 +265,12 @@ class ReeinscriptionService
                 }
 
                 $this->notesPrechargees = [];
+                $this->moyennesAnnuellesPrechargees = [];
             }
         } finally {
             $this->reglesMemo = null;
             $this->notesPrechargees = [];
+            $this->moyennesAnnuellesPrechargees = [];
         }
 
         return $resultat;
@@ -715,6 +742,60 @@ class ReeinscriptionService
                 'reinscription/note'
             );
         })->values();
+    }
+
+    /**
+     * La moyenne sur laquelle la reinscription decide.
+     *
+     * BTS : la moyenne annuelle PONDEREE que le bulletin imprime
+     * (`MoyennesAnnuellesDuBulletin`). Avant, la reinscription decidait sur sa
+     * propre moyenne simple des matieres, sans coefficient ni poids de
+     * semestre, et pouvait proposer un passage la ou le bulletin disait
+     * « Redouble » — et l'inverse.
+     *
+     * Quand le bulletin n'a pas de moyenne annuelle (un semestre sans aucune
+     * note, ou des notes saisies hors evaluation), il n'imprime pas de decision.
+     * La reinscription, elle, doit en proposer une : elle retombe sur l'ancien
+     * calcul, le DIT dans `source` (`notes_brutes`, ou `aucune_note` quand le
+     * zero vient de l'absence de toute note) et le journalise une fois par
+     * classe. Ce repli n'est jamais silencieux.
+     *
+     * LMD : inchange (rule `lmd-bts-bulletin-separation`) — le bulletin LMD
+     * decide par credits et compensation, pas sur cette moyenne.
+     *
+     * @return array{moyenne: float|int, source: string, semestres: array|null}
+     */
+    private function moyennePourDecision(?ESBTPInscription $inscription, ESBTPClasse $classe, Collection $notes): array
+    {
+        if (! $classe->isBTS()) {
+            return ['moyenne' => $this->calculerMoyenneGenerale($notes), 'source' => 'lmd_notes_brutes', 'semestres' => null];
+        }
+
+        $annuelle = null;
+        if ($inscription) {
+            $annuelle = $this->moyennesAnnuellesPrechargees[(int) $inscription->id]
+                ?? ($this->moyennesAnnuelles->pour([$inscription])[(int) $inscription->id] ?? null);
+        }
+
+        if ($annuelle !== null && $annuelle['moyenne'] !== null) {
+            return ['moyenne' => $annuelle['moyenne'], 'source' => 'bulletin_annuel', 'semestres' => $annuelle];
+        }
+
+        $source = $notes->isEmpty() ? 'aucune_note' : 'notes_brutes';
+        $cle = $classe->id.':'.($inscription->annee_universitaire_id ?? '?').':'.$source;
+        if (! isset($this->replisJournalises[$cle])) {
+            $this->replisJournalises[$cle] = true;
+            \Log::warning('Reinscription : pas de moyenne annuelle de bulletin, repli sur les notes brutes', [
+                'classe_id' => $classe->id,
+                'annee_universitaire_id' => $inscription->annee_universitaire_id ?? null,
+                'inscription_id' => $inscription->id ?? null,
+                'source' => $source,
+                'semestre1' => $annuelle['semestre1'] ?? null,
+                'semestre2' => $annuelle['semestre2'] ?? null,
+            ]);
+        }
+
+        return ['moyenne' => $this->calculerMoyenneGenerale($notes), 'source' => $source, 'semestres' => $annuelle];
     }
 
     private function calculerMoyenneGenerale($notes)

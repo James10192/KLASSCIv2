@@ -26,8 +26,10 @@ use Illuminate\Support\Facades\Log;
  */
 final class ReinscriptionDashboardStats
 {
-    public function __construct(private readonly NotesDeLaPromotion $notes)
-    {
+    public function __construct(
+        private readonly NotesDeLaPromotion $notes,
+        private readonly MoyennesAnnuellesDuBulletin $moyennesAnnuelles,
+    ) {
     }
 
     /**
@@ -94,6 +96,9 @@ final class ReinscriptionDashboardStats
 
                 // Lignes brutes, sans un modele par note : voir NotesDeLaPromotion.
                 $notesParEtudiant = $this->notes->pour($ids->all(), $precedente->name);
+                // Meme moyenne que les onglets : l'annuelle du bulletin en BTS
+                // (voir ReeinscriptionService::moyennePourDecision()).
+                $annuelles = $this->moyennesAnnuelles->pour($inscriptions);
 
                 foreach ($inscriptions as $inscription) {
                     try {
@@ -130,6 +135,10 @@ final class ReinscriptionDashboardStats
                             ->values();
 
                         [$moyenne, $nbEchecs] = $this->moyenneEtEchecs($notes, (float) $regle->moyenne_passage);
+                        $annuelle = $annuelles[(int) $inscription->id]['moyenne'] ?? null;
+                        if ($annuelle !== null) {
+                            $moyenne = $annuelle;
+                        }
 
                         if ($regle->peutPasser($moyenne)) {
                             $stats['passages']++;

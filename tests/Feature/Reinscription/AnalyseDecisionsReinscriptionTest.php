@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Reinscription;
 
+use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPBulletin;
+use App\Models\ESBTPRegleAcademique;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
@@ -145,6 +148,84 @@ class AnalyseDecisionsReinscriptionTest extends TestCase
             collect($resultat['passages'])->pluck('etudiant.id')->all(),
             'Des notes portant l\'annee vers laquelle on reinscrit ne doivent pas fonder la decision.'
         );
+    }
+
+    /**
+     * La reinscription decide sur la moyenne annuelle PONDEREE que le bulletin
+     * imprime, pas sur sa moyenne simple des matieres. Cas mesure sur
+     * esbtp-abidjan (FESBTP25-0433, BTS1, poids S1 x1 + S2 x2) : bulletins
+     * S1 10,97 et S2 9,89, annuelle imprimee 10,25, « Admis ». Ses notes
+     * brutes, elles, donnaient une moyenne simple sous 10.
+     */
+    public function test_la_decision_suit_la_moyenne_annuelle_ponderee_du_bulletin(): void
+    {
+        [$etudiant, $inscription] = $this->eleveAvecBulletins(10.97, 9.89, noteBrute: 8.0);
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+
+        $this->assertSame('bulletin_annuel', $analyse['moyenne_source']);
+        $this->assertEqualsWithDelta(10.25, (float) $analyse['moyenne_generale'], 0.005);
+        $this->assertSame('passage', $analyse['decision'], 'Le bulletin dit « Admis » : la reinscription doit proposer le passage.');
+
+        $resultat = app(ReeinscriptionService::class)->getEtudiantsParDecision('2025-2026');
+        $this->assertContains($etudiant->id, collect($resultat['passages'])->pluck('etudiant.id')->all());
+    }
+
+    public function test_un_bon_s2_ne_fait_pas_passer_un_eleve_que_le_bulletin_fait_redoubler(): void
+    {
+        // Moyenne simple des notes brutes : 14, l'ancien calcul proposait le
+        // passage. Annuelle du bulletin : (7,41 + 2 x 10,24) / 3 = 9,30.
+        [$etudiant, $inscription] = $this->eleveAvecBulletins(7.41, 10.24, noteBrute: 14.0);
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+
+        $this->assertEqualsWithDelta(9.30, (float) $analyse['moyenne_generale'], 0.005);
+        $this->assertNotSame('passage', $analyse['decision']);
+
+        $resultat = app(ReeinscriptionService::class)->getEtudiantsParDecision('2025-2026');
+        $this->assertNotContains($etudiant->id, collect($resultat['passages'])->pluck('etudiant.id')->all());
+    }
+
+    /**
+     * @return array{0: ESBTPEtudiant, 1: ESBTPInscription}
+     */
+    private function eleveAvecBulletins(float $s1, float $s2, float $noteBrute): array
+    {
+        $anneePrecedente = $this->annee('2024-2025', '2024-09-01', '2025-07-31');
+        $this->annee('2025-2026', '2025-09-01', '2026-07-31', courante: true);
+
+        SettingsHelper::setOrCreate('bulletin_semester1_weight', '1');
+        SettingsHelper::setOrCreate('bulletin_semester2_weight', '2');
+        SettingsHelper::setOrCreate('bulletin_show_attendance_note', '0');
+
+        $etudiant = $this->etudiantInscritEn($anneePrecedente);
+        $inscription = ESBTPInscription::where('etudiant_id', $etudiant->id)->with(['classe.niveau', 'classe.filiere', 'anneeUniversitaire', 'etudiant'])->firstOrFail();
+
+        ESBTPRegleAcademique::create([
+            'niveau' => $inscription->classe->niveau?->name ?? '',
+            'filiere' => $inscription->classe->filiere?->name ?? '',
+            'moyenne_passage' => 10,
+            'moyenne_rattrapage' => 7,
+            'max_matieres_rattrapage' => 0,
+            'autoriser_redoublement' => true,
+            'max_redoublements' => 2,
+            'actif' => true,
+        ]);
+
+        foreach (['semestre1' => $s1, 'semestre2' => $s2] as $periode => $moyenne) {
+            ESBTPBulletin::factory()->create([
+                'etudiant_id' => $etudiant->id,
+                'classe_id' => $inscription->classe_id,
+                'annee_universitaire_id' => $anneePrecedente->id,
+                'periode' => $periode,
+                'moyenne_generale' => $moyenne,
+                'note_assiduite' => 0,
+            ]);
+        }
+
+        $this->noterEn($etudiant, $anneePrecedente->name, $noteBrute);
+
+        return [$etudiant, $inscription];
     }
 
     private function noterEn(ESBTPEtudiant $etudiant, string $anneeNom, float $note): void
