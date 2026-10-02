@@ -438,6 +438,12 @@
             padding: 0;
             border: none;
         }
+        @else
+        body .container {
+            width: 100%;
+            max-width: none;
+            padding: {{ $marginVertical }}mm {{ $marginHorizontal }}mm;
+        }
         @endif
 
         @media print {
