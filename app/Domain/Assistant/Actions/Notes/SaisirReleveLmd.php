@@ -66,7 +66,7 @@ class SaisirReleveLmd extends ActionAgent
                 'classe' => ['type' => 'string', 'description' => 'Code, nom exact ou identifiant de la classe LMD.'],
                 'annee' => ['type' => 'string', 'description' => "Année universitaire du relevé, ex. « 2025-2026 ». Par défaut l'année en cours."],
                 'semestre' => ['type' => 'string', 'description' => 'Semestre de la maquette, numéroté en continu : S1-S2 en L1, S3-S4 en L2, S5-S6 en L3.'],
-                'motif' => ['type' => 'string', 'description' => "D'où viennent ces notes (relevé officiel transmis par…), 20 caractères au moins."],
+                'motif' => ['type' => 'string', 'description' => "D'où viennent ces notes (relevé officiel transmis par…), 20 caractères au moins, tel que dit par la personne. Vide s'il n'a pas été donné : l'outil le demandera."],
                 'date' => ['type' => 'string', 'description' => 'Date du relevé ou de la session (AAAA-MM-JJ). Par défaut aujourd\'hui.'],
                 'zeros_confirmes' => ['type' => 'boolean', 'description' => 'true seulement si la personne a confirmé que les 0 sont de vraies notes et non des épreuves non composées.'],
                 'etudiants' => [
@@ -139,7 +139,7 @@ class SaisirReleveLmd extends ActionAgent
             return $this->seulManque($titre, collect($e->errors())->flatten()->implode(' '));
         }
 
-        $changees = array_values(array_filter($rapport, fn ($r) => $r['avant'] !== $r['apres']));
+        [$memes, $changees] = collect($rapport)->partition(fn ($r) => $r['avant'] === $r['apres'])->map(fn ($c) => $c->values()->all())->all();
         if ($changees === []) {
             return $this->seulManque($titre, 'Rien à changer : ce relevé est déjà enregistré.');
         }
@@ -154,6 +154,7 @@ class SaisirReleveLmd extends ActionAgent
                 'lignes' => array_map(fn ($r) => [$r['etudiant'], $r['matiere'], $r['avant'] === null ? '—' : $this->nombre($r['avant']), $this->nombre($r['apres'])], $changees),
             ],
             avertissements: array_values(array_filter([
+                $this->dejaEnregistrees($memes),
                 count(array_filter($changees, fn ($r) => $r['avant'] !== null)) > 0 ? 'Des notes déjà saisies par régularisation seront remplacées (colonne « Avant »).' : null,
                 'Ces notes comptent au bulletin LMD dès la validation ; les étudiants ne les voient qu\'une fois les évaluations publiées.',
             ])),
@@ -292,6 +293,20 @@ class SaisirReleveLmd extends ActionAgent
         $liste = $unites->map(fn (array $u) => $u['ue']->name . ' : ' . $u['ecues']->map(fn ($m) => "{$m->code_affiche} {$m->name}")->implode(', '))->implode(' ; ');
 
         return [null, "« {$designation} » n'est pas un élément de la maquette {$s} de cette classe. Éléments par UE — {$liste}. Lequel ?"];
+    }
+
+    /**
+     * Les lignes du relevé déjà en base à l'identique ne sont pas reproposées :
+     * on le dit, pour que personne ne les croie oubliées.
+     */
+    private function dejaEnregistrees(array $memes): ?string
+    {
+        if ($memes === []) {
+            return null;
+        }
+        $liste = implode(', ', array_map(fn ($r) => "{$r['etudiant']} — {$r['matiere']} ({$this->nombre($r['apres'])})", array_slice($memes, 0, 5)));
+
+        return count($memes) . " note(s) du relevé sont déjà enregistrées avec la même valeur et ne changent pas : {$liste}" . (count($memes) > 5 ? '…' : '') . '.';
     }
 
     /**

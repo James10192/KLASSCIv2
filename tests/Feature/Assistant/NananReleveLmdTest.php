@@ -159,6 +159,13 @@ class NananReleveLmdTest extends TestCase
         $this->assertStringContainsString('déjà enregistré', $this->manques($this->proposer($this->args([
             ['etudiant' => 'FL25-001', 'notes' => [['element' => 'BMIB111', 'note' => 12.5]]],
         ]))));
+
+        // Une ligne inchangée à côté d'une nouvelle : elle n'est pas reproposée, mais elle est dite.
+        $r = $this->proposer($this->args([
+            ['etudiant' => 'FL25-001', 'notes' => [['element' => 'BMIB111', 'note' => 12.5], ['element' => 'BMIB112', 'note' => 10]]],
+        ]));
+        $this->assertCount(1, $r['widget']['lignes'] ?? [], json_encode($r, JSON_UNESCAPED_UNICODE));
+        $this->assertStringContainsString('1 note(s) du relevé sont déjà enregistrées avec la même valeur', json_encode($r, JSON_UNESCAPED_UNICODE));
     }
 
     public function test_une_colonne_qui_ne_designe_pas_un_seul_element_est_une_question(): void
@@ -324,6 +331,7 @@ class NananReleveLmdTest extends TestCase
         $this->assertStringContainsString('épreuve non composée', $systeme);
         $this->assertStringContainsString('Appelle l\'outil AVANT toute question', $systeme);
         $this->assertStringContainsString('Relaie alors TOUTES ses questions', $systeme);
+        $this->assertStringContainsString('ne le rédige jamais toi-même', $systeme);
 
         $r = (new BoucleAgent($catalogue))->executer(
             [new ModeleIa('m', 'faux', 'faux', 'm', 'M', true, true, 'cle', 'https://faux.test/')],
