@@ -238,6 +238,13 @@ return [
             'all_permissions' => ['students.edit'],
             'libelle' => 'Préparation du changement de classe…',
         ],
+        // Même droit que la fiche et la liste (route esbtp.inscriptions.redoublant.*).
+        'proposer_statut_redoublant' => [
+            'enabled' => true,
+            'all_permissions' => ['inscriptions.redoublant.confirm'],
+            'libelle' => 'Préparation du statut redoublant…',
+            'suggestion' => 'Quels statuts redoublant restent à confirmer dans cette classe ?',
+        ],
         'proposer_annulation_versement' => [
             'enabled' => true,
             'all_permissions' => ['paiements.avoir'],

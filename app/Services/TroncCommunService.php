@@ -118,6 +118,14 @@ class TroncCommunService
                     ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
                 'date_inscription' => now(),
                 'type_inscription' => $inscriptionOrigine->type_inscription,
+                // Même niveau, même année : sortir du tronc commun ne change
+                // rien au redoublement, ni à qui l'a confirmé.
+                'is_redoublant' => (bool) $inscriptionOrigine->is_redoublant,
+                'redoublant_source' => $inscriptionOrigine->redoublant_source,
+                'redoublant_confirme_par' => $inscriptionOrigine->redoublant_confirme_par,
+                'redoublant_confirme_le' => $inscriptionOrigine->redoublant_confirme_le,
+                'redoublant_motif' => $inscriptionOrigine->redoublant_motif,
+                'decision_reinscription' => $inscriptionOrigine->decision_reinscription,
                 'status' => 'active',
                 'workflow_step' => 'etudiant_cree',
                 'montant_scolarite' => $inscriptionOrigine->montant_scolarite,

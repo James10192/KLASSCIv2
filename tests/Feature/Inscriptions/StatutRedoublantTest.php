@@ -1,0 +1,318 @@
+<?php
+
+namespace Tests\Feature\Inscriptions;
+
+use App\Domain\Inscriptions\StatutRedoublant;
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPInscription;
+use App\Models\ESBTPNiveauEtude;
+use App\Models\User;
+use App\Services\ReeinscriptionService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+/**
+ * Le statut redoublant : déduit par le logiciel, confirmé ou corrigé par une
+ * personne habilitée, jamais réécrit après qu'une personne a tranché.
+ */
+class StatutRedoublantTest extends TestCase
+{
+    use DatabaseTransactions;
+
+    private ESBTPFiliere $filiere;
+
+    private ESBTPNiveauEtude $bts1;
+
+    private ESBTPNiveauEtude $bts2;
+
+    private ESBTPAnneeUniversitaire $anDernier;
+
+    private ESBTPAnneeUniversitaire $cetteAnnee;
+
+    private User $scolarite;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Role::findOrCreate('superAdmin', 'web');
+        $this->withoutMiddleware([
+            \App\Http\Middleware\CheckInstalled::class,
+            \App\Http\Middleware\EnsureInstalled::class,
+            \App\Http\Middleware\PaywallMiddleware::class,
+        ]);
+        foreach (['admin.access', 'inscriptions.view', StatutRedoublant::PERMISSION] as $p) {
+            Permission::findOrCreate($p, 'web');
+        }
+        Cache::flush();
+
+        $this->scolarite = User::factory()->create(['name' => 'Agent Scolarité']);
+        $this->scolarite->givePermissionTo(['admin.access', 'inscriptions.view', StatutRedoublant::PERMISSION]);
+
+        $this->filiere = ESBTPFiliere::factory()->create();
+        $this->bts1 = ESBTPNiveauEtude::factory()->create(['name' => 'BTS 1', 'year' => 1]);
+        $this->bts2 = ESBTPNiveauEtude::factory()->create(['name' => 'BTS 2', 'year' => 2]);
+        $this->anDernier = ESBTPAnneeUniversitaire::factory()->create([
+            'name' => '2090-2091', 'start_date' => '2090-09-01', 'end_date' => '2091-07-31', 'is_current' => false,
+        ]);
+        $this->cetteAnnee = ESBTPAnneeUniversitaire::factory()->create([
+            'name' => '2091-2092', 'start_date' => '2091-09-01', 'end_date' => '2092-07-31', 'is_current' => false,
+        ]);
+    }
+
+    public function test_le_recensement_deduit_toutes_les_annees_et_reprend_la_decision(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->inscrire($etudiant, $this->bts2, $this->anDernier);
+        $repetee = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, [
+            'type_inscription' => 'réinscription',
+            'reinscription_observations' => "Redoublement - moyenne insuffisante\n[BATCH abc]",
+        ]);
+
+        $aBlanc = app(StatutRedoublant::class)->recenser(false);
+        $this->assertFalse((bool) $repetee->fresh()->is_redoublant, 'À blanc, rien n\'est écrit.');
+        $this->assertGreaterThanOrEqual(1, $aBlanc['a_poser']);
+
+        app(StatutRedoublant::class)->recenser(true);
+        $repetee->refresh();
+
+        $this->assertTrue((bool) $repetee->is_redoublant);
+        $this->assertSame(StatutRedoublant::SOURCE_DEDUIT, $repetee->redoublant_source);
+        $this->assertSame('redoublement', $repetee->decision_reinscription);
+        $this->assertTrue(app(StatutRedoublant::class)->aConfirmer($repetee));
+    }
+
+    public function test_le_recensement_ne_reecrit_jamais_ce_qu_une_personne_a_tranche(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->inscrire($etudiant, $this->bts2, $this->anDernier);
+        $corrigee = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, [
+            'is_redoublant' => false,
+            'redoublant_source' => StatutRedoublant::SOURCE_CORRIGE,
+            'redoublant_motif' => 'Redoublement validé ailleurs, dérogation du conseil',
+        ]);
+
+        app(StatutRedoublant::class)->recenser(true);
+
+        $this->assertFalse((bool) $corrigee->fresh()->is_redoublant);
+        $this->assertSame(StatutRedoublant::SOURCE_CORRIGE, $corrigee->fresh()->redoublant_source);
+    }
+
+    public function test_confirmer_garde_la_valeur_et_corriger_exige_un_motif(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->inscrire($etudiant, $this->bts1, $this->anDernier);
+        $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
+        $statut = app(StatutRedoublant::class);
+        $statut->poserDeduit($inscription);
+
+        $statut->etablir($inscription, $this->scolarite, false);
+        $this->assertSame(StatutRedoublant::SOURCE_CONFIRME, $inscription->fresh()->redoublant_source);
+        $this->assertSame($this->scolarite->id, (int) $inscription->fresh()->redoublant_confirme_par);
+
+        try {
+            $statut->etablir($inscription->fresh(), $this->scolarite, true, 'court');
+            $this->fail('Changer la valeur sans motif suffisant doit être refusé.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('motif', $e->errors());
+        }
+
+        $statut->etablir($inscription->fresh(), $this->scolarite, true, 'Redouble suite au conseil de classe de juin');
+        $this->assertTrue((bool) $inscription->fresh()->is_redoublant);
+        $this->assertSame(StatutRedoublant::SOURCE_CORRIGE, $inscription->fresh()->redoublant_source);
+
+        $statut->poserDeduit($inscription->fresh(), false);
+        $this->assertTrue((bool) $inscription->fresh()->is_redoublant, 'Une déduction ne réécrit pas une correction.');
+    }
+
+    public function test_changer_de_niveau_rouvre_la_confirmation(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->inscrire($etudiant, $this->bts2, $this->anDernier);
+        $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
+        $statut = app(StatutRedoublant::class);
+        $statut->poserDeduit($inscription);
+        $statut->etablir($inscription->fresh('anneeUniversitaire'), $this->scolarite, true);
+        $this->assertSame(StatutRedoublant::SOURCE_CONFIRME, $inscription->fresh()->redoublant_source);
+
+        $inscription->forceFill(['niveau_id' => $this->bts1->id])->save();
+        $statut->reouvrir($inscription->fresh('anneeUniversitaire'));
+
+        $inscription->refresh();
+        $this->assertFalse((bool) $inscription->is_redoublant);
+        $this->assertSame(StatutRedoublant::SOURCE_DEDUIT, $inscription->redoublant_source);
+        $this->assertNull($inscription->redoublant_confirme_par);
+    }
+
+    public function test_la_reinscription_par_une_personne_habilitee_vaut_confirmation(): void
+    {
+        User::factory()->create(['id' => 1]);
+        $this->actingAs($this->scolarite);
+        [$etudiant] = $this->etudiantEnClasse($this->bts2, $this->anDernier);
+        $classeMemeNiveau = $this->classe($this->bts2, 'BTS2 R');
+
+        app(ReeinscriptionService::class)->effectuerReinscription(
+            etudiantId: $etudiant->id,
+            nouvelleClasseId: $classeMemeNiveau->id,
+            decision: 'redoublement',
+            anneeUniversitaireId: $this->cetteAnnee->id,
+            sendNotification: false,
+            redoublant: true,
+        );
+
+        $nouvelle = ESBTPInscription::where('etudiant_id', $etudiant->id)->where('annee_universitaire_id', $this->cetteAnnee->id)->first();
+        $this->assertTrue((bool) $nouvelle->is_redoublant);
+        $this->assertSame(StatutRedoublant::SOURCE_CONFIRME, $nouvelle->redoublant_source);
+        $this->assertSame('redoublement', $nouvelle->decision_reinscription);
+    }
+
+    public function test_sans_le_droit_la_reinscription_laisse_la_valeur_deduite(): void
+    {
+        User::factory()->create(['id' => 1]);
+        $sansDroit = User::factory()->create();
+        $this->actingAs($sansDroit);
+        [$etudiant] = $this->etudiantEnClasse($this->bts1, $this->anDernier);
+
+        app(ReeinscriptionService::class)->effectuerReinscription(
+            etudiantId: $etudiant->id,
+            nouvelleClasseId: $this->classe($this->bts2, 'BTS2 P')->id,
+            decision: 'passage',
+            anneeUniversitaireId: $this->cetteAnnee->id,
+            sendNotification: false,
+            redoublant: true,
+        );
+
+        $nouvelle = ESBTPInscription::where('etudiant_id', $etudiant->id)->where('annee_universitaire_id', $this->cetteAnnee->id)->first();
+        $this->assertFalse((bool) $nouvelle->is_redoublant);
+        $this->assertSame(StatutRedoublant::SOURCE_DEDUIT, $nouvelle->redoublant_source);
+    }
+
+    public function test_la_fiche_confirme_par_ajax_et_refuse_sans_le_droit(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->inscrire($etudiant, $this->bts2, $this->anDernier);
+        $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
+        app(StatutRedoublant::class)->poserDeduit($inscription);
+
+        $sansDroit = User::factory()->create();
+        $sansDroit->givePermissionTo(['admin.access', 'inscriptions.view']);
+        $this->actingAs($sansDroit)
+            ->postJson(route('esbtp.inscriptions.redoublant.etablir', $inscription), ['valeur' => 1])
+            ->assertForbidden();
+
+        $this->actingAs($this->scolarite)
+            ->postJson(route('esbtp.inscriptions.redoublant.etablir', $inscription), ['valeur' => 1])
+            ->assertOk()
+            ->assertJsonPath('statut.etat', 'confirme')
+            ->assertJsonPath('statut.valeur', true);
+
+        $this->actingAs($this->scolarite)
+            ->postJson(route('esbtp.inscriptions.redoublant.etablir', $inscription), ['valeur' => 0])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('motif');
+    }
+
+    public function test_la_confirmation_en_masse_ne_touche_que_ce_qui_attendait(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->inscrire($etudiant, $this->bts2, $this->anDernier);
+        $aConfirmer = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
+        app(StatutRedoublant::class)->poserDeduit($aConfirmer);
+        $nouvelArrivant = $this->inscrire(ESBTPEtudiant::factory()->create(), $this->bts1, $this->cetteAnnee);
+
+        $this->actingAs($this->scolarite)
+            ->postJson(route('esbtp.inscriptions.redoublant.confirmer-en-masse'), [
+                'inscription_ids' => [$aConfirmer->id, $nouvelArrivant->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('confirmees', 1)
+            ->assertJsonPath('ignorees', 1);
+
+        $this->assertSame(StatutRedoublant::SOURCE_CONFIRME, $aConfirmer->fresh()->redoublant_source);
+        $this->assertTrue((bool) $aConfirmer->fresh()->is_redoublant);
+        $this->assertNull($nouvelArrivant->fresh()->redoublant_source);
+    }
+
+    public function test_la_liste_filtre_les_statuts_a_confirmer(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create(['nom' => 'ZZREDOUBLE']);
+        $this->inscrire($etudiant, $this->bts2, $this->anDernier);
+        $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
+        app(StatutRedoublant::class)->poserDeduit($inscription);
+        $autre = ESBTPEtudiant::factory()->create(['nom' => 'ZZNOUVEAU']);
+        $this->inscrire($autre, $this->bts1, $this->cetteAnnee);
+
+        $this->actingAs($this->scolarite)
+            ->get(route('esbtp.inscriptions.index', ['annee' => $this->cetteAnnee->id, 'status' => 'all', 'redoublant' => 'a_confirmer']))
+            ->assertOk()
+            ->assertSee('ZZREDOUBLE')
+            ->assertSee('Redoublant ?')
+            ->assertDontSee('ZZNOUVEAU');
+    }
+
+    public function test_la_fiche_montre_le_statut_et_les_boutons_au_seul_habilite(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->inscrire($etudiant, $this->bts2, $this->anDernier);
+        $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
+        app(StatutRedoublant::class)->poserDeduit($inscription);
+
+        $this->actingAs($this->scolarite)
+            ->get(route('esbtp.inscriptions.show', $inscription))
+            ->assertOk()
+            ->assertSee('statutRedoublantFiche', false)
+            ->assertSee('Corriger');
+
+        $lecteur = User::factory()->create();
+        $lecteur->givePermissionTo(['admin.access', 'inscriptions.view']);
+        $this->actingAs($lecteur)
+            ->get(route('esbtp.inscriptions.show', $inscription))
+            ->assertOk()
+            ->assertSee('statutRedoublantFiche', false)
+            ->assertDontSee('<i class="fas fa-pen"></i> Corriger', false);
+    }
+
+    private function inscrire(ESBTPEtudiant $etudiant, ESBTPNiveauEtude $niveau, ESBTPAnneeUniversitaire $annee, array $plus = []): ESBTPInscription
+    {
+        $classe = $this->classe($niveau, 'C'.$niveau->id.'-'.$annee->id.'-'.$etudiant->id);
+
+        return ESBTPInscription::factory()->create(array_merge([
+            'etudiant_id' => $etudiant->id,
+            'filiere_id' => $this->filiere->id,
+            'niveau_id' => $niveau->id,
+            'classe_id' => $classe->id,
+            'annee_universitaire_id' => $annee->id,
+            'status' => 'active',
+            'type_inscription' => 'première_inscription',
+            'est_transfert' => false,
+            'is_redoublant' => false,
+            'redoublant_source' => null,
+        ], $plus));
+    }
+
+    /** @return array{0: ESBTPEtudiant, 1: ESBTPClasse} */
+    private function etudiantEnClasse(ESBTPNiveauEtude $niveau, ESBTPAnneeUniversitaire $annee): array
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $inscription = $this->inscrire($etudiant, $niveau, $annee);
+
+        return [$etudiant, $inscription->classe];
+    }
+
+    private function classe(ESBTPNiveauEtude $niveau, string $nom): ESBTPClasse
+    {
+        return ESBTPClasse::factory()->create([
+            'name' => $nom,
+            'filiere_id' => $this->filiere->id,
+            'niveau_etude_id' => $niveau->id,
+            'is_active' => true,
+        ]);
+    }
+}

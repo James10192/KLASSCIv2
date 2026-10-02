@@ -298,6 +298,13 @@
     display: flex; align-items: center; gap: .3rem;
     font-size: .72rem; color: var(--ii-muted); margin-top: .15rem;
 }
+.ii-redoublant {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: .66rem; font-weight: 700; color: #0453cb;
+    background: rgba(4,83,203,.08); border: 1px solid rgba(4,83,203,.22);
+    padding: 1px 7px; border-radius: 999px; white-space: nowrap; margin-left: 4px;
+}
+.ii-redoublant--a-confirmer { background: transparent; border-style: dashed; }
 .ii-matricule {
     font-family: 'Courier New', monospace;
     background: var(--ii-surface); padding: .1rem .35rem;
@@ -863,6 +870,13 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                     <option value="terminée" @selected(request('status') == 'terminée')>Terminées</option>
                 </select>
 
+                <select name="redoublant" id="redoublant" class="ii-filter-select" aria-label="Redoublants">
+                    <option value="">Redoublants et autres</option>
+                    <option value="oui" @selected(request('redoublant') === 'oui')>Redoublants</option>
+                    <option value="non" @selected(request('redoublant') === 'non')>Non redoublants</option>
+                    <option value="a_confirmer" @selected(request('redoublant') === 'a_confirmer')>Statut redoublant à confirmer</option>
+                </select>
+
                 {{-- Periode : bornes sur la date d'inscription, incluses toutes les deux. --}}
                 <div class="ii-filter-periode">
                     <i class="fas fa-calendar-day" aria-hidden="true"></i>
@@ -965,6 +979,11 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
             @can('inscriptions.cancel')
                 <button type="button" class="ii-bulk-btn" onclick="iiBulkAnnuler()">
                     <i class="fas fa-times"></i>Annuler
+                </button>
+            @endcan
+            @can(\App\Domain\Inscriptions\StatutRedoublant::PERMISSION)
+                <button type="button" class="ii-bulk-btn" onclick="iiBulkConfirmerRedoublant()">
+                    <i class="fas fa-redo-alt"></i>Confirmer le statut redoublant
                 </button>
             @endcan
             @can('inscriptions.view')
@@ -1272,6 +1291,7 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
         bulkValider: "{{ route('esbtp.inscriptions.bulk-valider') }}",
         bulkAnnuler: "{{ route('esbtp.inscriptions.bulk-annuler') }}",
         bulkExport: "{{ route('esbtp.inscriptions.bulk-export') }}",
+        confirmerRedoublant: "{{ route('esbtp.inscriptions.redoublant.confirmer-en-masse') }}",
         refreshLigne: "/esbtp/inscriptions/:id/refresh-ligne",
         valider: "/esbtp/inscriptions/:id/valider",
         annuler: "/esbtp/inscriptions/:id/annuler",

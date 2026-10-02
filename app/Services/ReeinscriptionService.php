@@ -421,7 +421,8 @@ class ReeinscriptionService
         $anneeUniversitaireId = null,
         $actionReliquat = null,
         bool $skipTransaction = false,
-        bool $sendNotification = true
+        bool $sendNotification = true,
+        ?bool $redoublant = null
     ): ESBTPInscription {
         if (!$skipTransaction) {
             \DB::beginTransaction();
@@ -590,6 +591,10 @@ class ReeinscriptionService
                 // avait deja ete creee et payee.
                 'statut_etablissement' => \App\Models\ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN,
                 'is_redoublant' => $estRedoublement,
+                'redoublant_source' => \App\Domain\Inscriptions\StatutRedoublant::SOURCE_DEDUIT,
+                'decision_reinscription' => in_array(strtolower((string) $decision), \App\Domain\Inscriptions\StatutRedoublant::DECISIONS, true)
+                    ? strtolower((string) $decision)
+                    : null,
                 'date_inscription' => now(),
                 'status' => 'active',
                 'workflow_step' => 'documents_complets',
@@ -609,6 +614,12 @@ class ReeinscriptionService
             'reinscription_observations' => $reinscriptionNote,
             'updated_by' => auth()->id(),
         ]);
+
+        // La personne qui réinscrit a vu le statut proposé et l'a gardé ou
+        // changé : c'est sa confirmation, si elle en a le droit. Sans ce droit
+        // (caisse, agent d'inscription), la valeur reste déduite et la
+        // scolarité la confirmera.
+        $this->etablirLeStatutRedoublant($nouvelleInscription, $redoublant, (string) $decision);
 
 
             // 5. Générer nouveaux frais via service existant
@@ -1007,4 +1018,20 @@ class ReeinscriptionService
         }
     }
 
+
+    private function etablirLeStatutRedoublant(ESBTPInscription $inscription, ?bool $redoublant, string $decision): void
+    {
+        $personne = auth()->user();
+
+        if ($redoublant === null || ! $personne || ! $personne->can(\App\Domain\Inscriptions\StatutRedoublant::PERMISSION)) {
+            return;
+        }
+
+        app(\App\Domain\Inscriptions\StatutRedoublant::class)->etablir(
+            $inscription->loadMissing('anneeUniversitaire'),
+            $personne,
+            $redoublant,
+            'Établi à la réinscription (décision : '.strtolower($decision).').'
+        );
+    }
 }

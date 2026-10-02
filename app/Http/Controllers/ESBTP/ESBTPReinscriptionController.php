@@ -844,6 +844,7 @@ class ESBTPReinscriptionController extends Controller
             'affectation_status' => 'nullable|string|in:affecté,réaffecté,non_affecté',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'action_reliquat' => 'nullable|string|in:reporter,abandonner', // Gestion des reliquats pour superAdmin
+            'redoublant' => 'nullable|in:0,1',
         ]);
 
         try {
@@ -877,7 +878,8 @@ class ESBTPReinscriptionController extends Controller
                 $selectedOptionals,
                 $affectationStatus,
                 $request->annee_universitaire_id,
-                $request->action_reliquat // Gestion des reliquats pour superAdmin
+                $request->action_reliquat, // Gestion des reliquats pour superAdmin
+                redoublant: $request->filled('redoublant') ? $request->boolean('redoublant') : null
             );
 
             // Envoyer notification aux parents

@@ -5,6 +5,18 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
+    /* Statut redoublant, confirmé à la réinscription (namespace rsr-*) */
+    .rsr-carte { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:1rem 1.25rem; box-shadow:0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06); }
+    .rsr-tete { display:flex; align-items:center; gap:.75rem; margin-bottom:.85rem; }
+    .rsr-icone { width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#0453cb,#3b7ddb); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .rsr-titre { font-weight:700; color:#1e293b; }
+    .rsr-aide { font-size:.82rem; color:#64748b; }
+    .rsr-choix { display:flex; gap:.6rem; flex-wrap:wrap; }
+    .rsr-option { display:flex; align-items:center; gap:.5rem; padding:.55rem .95rem; border:1px solid #cbd5e1; border-radius:10px; cursor:pointer; font-weight:600; color:#334155; transition:all .2s ease; }
+    .rsr-option input { accent-color:#0453cb; }
+    .rsr-option--actif { border-color:#0453cb; background:rgba(4,83,203,.06); color:#0453cb; }
+    .rsr-option--inactif { opacity:.55; cursor:not-allowed; }
+    .rsr-note { margin-top:.65rem; font-size:.8rem; color:#0453cb; }
     .form-group-disabled {
         opacity: 0.7;
         pointer-events: none;
@@ -577,6 +589,41 @@
                         </div>
                     </div>
 
+                    @can(\App\Domain\Inscriptions\StatutRedoublant::PERMISSION)
+                    @php
+                        $_niveauParClasse = collect($classesParDecision ?? [])->flatten(1)
+                            ->mapWithKeys(fn ($c) => [(string) data_get($c, 'id') => data_get($c, 'niveau_etude_id')])
+                            ->all();
+                        $_niveauQuitte = $analyse['inscription']->niveau_id ?? null;
+                    @endphp
+                    <div class="rsr-carte mb-lg"
+                         x-data="statutRedoublantReinscription()"
+                         data-niveaux='@json($_niveauParClasse)'
+                         data-niveau-quitte="{{ $_niveauQuitte }}"
+                         x-effect="suivreLaClasse()">
+                        <div class="rsr-tete">
+                            <span class="rsr-icone"><i class="fas fa-redo-alt"></i></span>
+                            <div>
+                                <div class="rsr-titre">Redoublant en {{ $anneeDestinationName }} ?</div>
+                                <div class="rsr-aide" x-text="aide"></div>
+                            </div>
+                        </div>
+                        <div class="rsr-choix" role="radiogroup" aria-label="Statut redoublant">
+                            <label class="rsr-option" :class="{ 'rsr-option--actif': valeur === '1', 'rsr-option--inactif': !classeChoisie }">
+                                <input type="radio" name="redoublant" value="1" x-model="valeur" x-on:change="touche = true" :disabled="!classeChoisie">
+                                <span>Oui, il redouble</span>
+                            </label>
+                            <label class="rsr-option" :class="{ 'rsr-option--actif': valeur === '0', 'rsr-option--inactif': !classeChoisie }">
+                                <input type="radio" name="redoublant" value="0" x-model="valeur" x-on:change="touche = true" :disabled="!classeChoisie">
+                                <span>Non</span>
+                            </label>
+                        </div>
+                        <div class="rsr-note" x-show="touche && valeur !== propose" x-cloak>
+                            <i class="fas fa-pen"></i> Vous changez la valeur proposée : la fiche l'indiquera comme corrigée.
+                        </div>
+                    </div>
+                    @endcan
+
                     <!-- Configuration des nouveaux frais -->
                     @if($analyse['etudiant']->peut_reinscrire)
                     <div class="card-moderne mb-lg">
@@ -635,6 +682,49 @@
 
 @push('scripts')
 <script>
+    // Statut redoublant : proposé d'après le niveau de la classe choisie,
+    // comparé à celui de l'année quittée. Tant que la personne n'a rien
+    // touché, la proposition suit la classe ; ensuite, son choix reste.
+    window.statutRedoublantReinscription = function () {
+        return {
+            niveaux: {},
+            niveauQuitte: null,
+            valeur: '',
+            propose: '',
+            touche: false,
+            classeChoisie: false,
+            aide: 'Choisissez d\'abord la classe : la réponse sera proposée d\'après son niveau.',
+            init() {
+                try { this.niveaux = JSON.parse(this.$root.dataset.niveaux || '{}'); } catch (e) { this.niveaux = {}; }
+                this.niveauQuitte = this.$root.dataset.niveauQuitte || null;
+            },
+            suivreLaClasse() {
+                const autre = window.autreClasseSelector ? String(window.autreClasseSelector.selectedValue || '') : '';
+                const meme = window.nouvelleClasseSelector ? String(window.nouvelleClasseSelector.selectedValue || '') : '';
+                const classe = autre || meme;
+                let niveau = null;
+                if (autre) {
+                    const choixNiveau = document.getElementById('autre_niveau_id');
+                    niveau = choixNiveau ? choixNiveau.value : null;
+                } else if (meme) {
+                    niveau = this.niveaux[meme] ?? null;
+                }
+                this.classeChoisie = classe !== '';
+                if (!this.classeChoisie) {
+                    this.aide = 'Choisissez d\'abord la classe : la réponse sera proposée d\'après son niveau.';
+                    return;
+                }
+                const redouble = niveau !== null && this.niveauQuitte !== null && String(niveau) === String(this.niveauQuitte);
+                this.propose = redouble ? '1' : '0';
+                this.aide = redouble
+                    ? 'Proposé : oui. La classe choisie est du même niveau que cette année.'
+                    : 'Proposé : non. La classe choisie n\'est pas du même niveau que cette année.';
+                if (!this.touche) {
+                    this.valeur = this.propose;
+                }
+            },
+        };
+    };
     // ========================================
     // SEARCHABLE SELECT COMPONENT (from etudiants.index)
     // ========================================

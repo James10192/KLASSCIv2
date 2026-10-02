@@ -994,6 +994,13 @@
                             bulletin(s) existant(s) sans moyenne : ils seront repris par cette génération.
                         </p>
                     </template>
+                    <template x-if="preflight?.redoublants_a_confirmer > 0">
+                        <p class="bus-inline-panel__body">
+                            <span x-text="preflight.redoublants_a_confirmer"></span>
+                            élève(s) au statut redoublant non confirmé : le bulletin imprimera la valeur déduite.
+                            <a :href="preflight.redoublants_url" target="_blank" rel="noopener">Confirmer dans la liste des inscriptions</a>
+                        </p>
+                    </template>
                     <template x-if="preflight?.existing_empty_locked_count > 0">
                         <p class="bus-inline-panel__body">
                             <span x-text="preflight.existing_empty_locked_count"></span>
