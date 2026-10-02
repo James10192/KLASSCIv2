@@ -26,7 +26,8 @@
     $_mention = $_parcours?->mention?->name;
     $_domaine = $_parcours?->mention?->domaine?->name;
 
-    $_type = $inscription->type_inscription === 'reinscription' ? 'Réinscription' : 'Inscription';
+    // La valeur canonique est accentuée (« réinscription ») ; l'ancienne, sans accent, existe encore.
+    $_type = in_array($inscription->type_inscription, [\App\Services\Inscriptions\NormalisationTypeInscription::REINSCRIPTION, 'reinscription'], true) ? 'Réinscription' : 'Inscription';
     $_affectation = $inscription->affectation_status
         ? $inscription->affectationStatusLabel()
         : null;
