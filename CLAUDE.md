@@ -25,6 +25,13 @@ Sans ça, aucun garde-fou : git ne versionne pas `.git/hooks`, et un poste neuf 
 `fix` touchant `app/` `resources/` `routes/` `database/` sans entrée dans `CHANGELOG.md`
 (échappatoire assumée : `[sans-changelog]` dans le corps).
 
+**Ce que l'école voit lui est annoncé** (`bin/garde-nouveautes.sh`, commit et PR) : un `feat` ou
+`fix` qui touche une vue ou une feuille de style modifie `resources/data/nouveautes.php`, ou
+ajoute une ligne à `docs/nouveautes-en-attente.md`, ou déclare `[sans-nouveaute] <raison>`. Un
+commit qui modifie `nouveautes.php` porte `Changelog-public: <sha klassci-landing>` et change la
+clé `whatsNew.v…` du layout. Et
+`git push origin presentation:<école>` est **refusé** tant que le registre a une ligne ouverte.
+
 **Refusé localement seulement, par `pre-commit` :** les quatre pièges Blade silencieux
 (`@php(...)` court avalé par un `@endphp` plus bas, directive dans un commentaire JS/HTML,
 `<x-composant>` dans un commentaire CSS/JS, `@json([...])` multiligne). Ils compilent sans
