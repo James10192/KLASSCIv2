@@ -1,6 +1,6 @@
 {{-- Actions sur un versement, là où il est listé hors de la liste des
      paiements (fiche d'inscription, accueil caisse et comptable). Chaque bouton
-     suit le droit ou l'état qui le permet ; les modales sont incluses à côté.
+     suit le droit ou l'état qui le permet ; les modales partent en fin de page.
 
      Deux gestes à ne pas confondre :
      - « Annuler le versement » émet un AVOIR : le versement reste visible,
@@ -53,5 +53,10 @@
         @endunless
     @endcan
 </div>
+{{-- Les modales vont en fin de page (pile « modals » du gabarit), jamais dans
+     la cellule : elles y héritaient de « nowrap » et de l'alignement à droite
+     de la colonne Actions — texte coupé, champs décalés. --}}
+@push('modals')
 @include('esbtp.paiements.partials.supprimer-modal', ['paiement' => $paiement, 'modalId' => $avSupprimer, 'retour' => $retour])
 @include('esbtp.paiements.partials.avoir-modal', ['paiement' => $paiement, 'modalId' => $avAnnuler, 'retour' => $retour])
+@endpush
