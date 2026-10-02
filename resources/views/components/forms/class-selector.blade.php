@@ -322,6 +322,12 @@ body.modal-open * {
 </style>
 
 <script>
+    // Les places se comptent sur l'année choisie dans le formulaire, quand il en a une.
+    function anneeDesPlaces() {
+        const champ = document.getElementById('annee_universitaire_id');
+        return champ && champ.value ? champ.value : '';
+    }
+
     // Vérifier les places disponibles (debounced, seuils Vert/Jaune/Orange/Rouge)
     let fetchPlacesTimer = null;
     let lastFetchedClasseId = null;
@@ -329,8 +335,9 @@ body.modal-open * {
         if (!classeId || !targetDiv) return;
         clearTimeout(fetchPlacesTimer);
         fetchPlacesTimer = setTimeout(() => {
-            lastFetchedClasseId = classeId;
-            fetch(`/esbtp/classes/${classeId}/available-places`, {
+            const annee = anneeDesPlaces();
+            lastFetchedClasseId = classeId + '|' + annee;
+            fetch(`/esbtp/classes/${classeId}/available-places` + (annee ? `?annee_universitaire_id=${encodeURIComponent(annee)}` : ''), {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
             })
                 .then(response => {
@@ -339,7 +346,7 @@ body.modal-open * {
                 })
                 .then(data => {
                     // Ignorer une réponse obsolète si l'utilisateur a re-sélectionné une autre classe
-                    if (classeId !== lastFetchedClasseId) return;
+                    if (classeId + '|' + annee !== lastFetchedClasseId) return;
                     debugLog('Places disponibles:', data);
                     if (data.available_places === undefined) {
                         targetDiv.innerHTML = `<div class="alert alert-warning p-2 mt-2 mb-0" role="alert"><i class="fas fa-exclamation-circle me-1"></i>Réponse invalide du serveur.</div>`;
@@ -433,6 +440,14 @@ body.modal-open * {
         const classeField = document.getElementById('classe_id');
         const availablePlacesDiv = document.getElementById('available-places-info');
 
+        // Changer d'année recompte les places de la classe déjà choisie.
+        const anneeField = document.getElementById('annee_universitaire_id');
+        if (anneeField && classeField) {
+            anneeField.addEventListener('change', function () {
+                if (classeField.value && availablePlacesDiv) fetchAvailablePlaces(classeField.value, availablePlacesDiv);
+            });
+        }
+
         if (classeField) {
             classeField.addEventListener('change', function() {
                 const classeId = this.value;
@@ -457,7 +472,8 @@ body.modal-open * {
         tableBody.innerHTML = '<tr><td colspan="5">Chargement...</td></tr>';
 
         // Load classes using the existing API
-        fetch('/esbtp/inscriptions/getClasses')
+        const anneePlaces = anneeDesPlaces();
+        fetch('/esbtp/inscriptions/getClasses' + (anneePlaces ? '?annee_places=' + encodeURIComponent(anneePlaces) : ''))
             .then(response => {
                 debugLog('Response status:', response.status);
                 if (!response.ok) {
