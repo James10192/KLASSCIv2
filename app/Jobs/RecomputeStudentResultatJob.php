@@ -248,19 +248,21 @@ class RecomputeStudentResultatJob implements ShouldQueue
     /**
      * Touche updated_at du bulletin associé (s'il existe) pour signaler
      * "données sources modifiées → bulletin à régénérer".
+     *
+     * Par une requête, pas par `$bulletin->touch()` : `touch()` passe par
+     * l'événement `updated`, et comme `updated_at` n'est pas dans la liste
+     * blanche d'audit du bulletin, chaque note enregistrée écrivait une ligne
+     * « Bulletin updated » vide dans le journal (62 099 en 30 jours sur
+     * esbtp-abidjan). Aucun écouteur ne lit cet événement sur le bulletin.
      */
     private function touchBulletinIfExists(string $periode): void
     {
-        $bulletin = ESBTPBulletin::query()
+        ESBTPBulletin::query()
             ->where('etudiant_id', $this->etudiantId)
             ->where('classe_id', $this->classeId)
             ->where('annee_universitaire_id', $this->anneeUniversitaireId)
             ->where('periode', $periode)
-            ->first();
-
-        if ($bulletin) {
-            $bulletin->touch();
-        }
+            ->update(['updated_at' => now()]);
     }
 
     /**

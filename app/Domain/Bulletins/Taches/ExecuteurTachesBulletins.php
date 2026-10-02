@@ -384,6 +384,13 @@ class ExecuteurTachesBulletins
             errors: $cumul['errors'] ?? [],
         );
 
+        // Les tranches ne reclassent pas la classe (chacune réécrivait tous les
+        // bulletins de la classe) : le classement se fait ici, une fois, sur
+        // toutes les moyennes posées.
+        if ($bilan->hasWrites()) {
+            $this->reclasserLaClasse($tache);
+        }
+
         // Rien d'écrit et des erreurs : c'est un échec, pas une réussite vide.
         $statut = ! $bilan->hasWrites() && $bilan->hasFailures()
             ? BulletinTache::ECHOUEE
@@ -457,6 +464,18 @@ class ExecuteurTachesBulletins
             $this->exporter->oublierLaSession($this->dossier($tache));
         }
 
+        // Une génération arrêtée en route garde les tranches déjà écrites :
+        // leurs bulletins doivent quand même porter un rang juste.
+        if ($tache->type === BulletinTache::TYPE_GENERATION && $this->aEcritDesBulletins($tache)) {
+            try {
+                $this->reclasserLaClasse($tache);
+            } catch (\Throwable $e) {
+                Log::error('Tâche bulletins #'.$tache->id.' : reclassement de la classe impossible après échec', [
+                    'exception' => $e,
+                ]);
+            }
+        }
+
         $this->finir($tache, BulletinTache::ECHOUEE, $message);
     }
 
@@ -488,8 +507,25 @@ class ExecuteurTachesBulletins
             $tache->user,
             (bool) $tache->parametre('recalculer', false),
             $tache->parametre('incomplete_reason'),
-            $ids
+            $ids,
+            reclasserLaClasse: false,
         );
+    }
+
+    protected function reclasserLaClasse(BulletinTache $tache): void
+    {
+        $this->generation->reclasserLaClasse(
+            (int) $tache->classe_id,
+            (int) $tache->annee_universitaire_id,
+            (string) $tache->periode
+        );
+    }
+
+    private function aEcritDesBulletins(BulletinTache $tache): bool
+    {
+        $cumul = $tache->resultat ?? [];
+
+        return (int) ($cumul['created'] ?? 0) + (int) ($cumul['regenerated'] ?? 0) > 0;
     }
 
     protected function rendreUnBulletin(ESBTPBulletin $bulletin): PDF

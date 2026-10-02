@@ -84,6 +84,13 @@ class BulletinService
 
     private array $effectifCache = [];
 
+    /**
+     * Profondeur des générations en masse en cours ({@see sansReclasserLaClasse()}).
+     * Tant qu'elle est positive, chaque bulletin généré ne reclasse plus toute
+     * la classe : c'est l'appelant qui reclasse une fois, à la fin.
+     */
+    private int $reclassementDiffere = 0;
+
     public function __construct(
         ESBTPAbsenceService $absenceService,
         BtsAnnualClassMapResolver $classMapResolver,
@@ -635,10 +642,17 @@ class BulletinService
             $bulletin->save();
 
             // Recalculer toute la classe: un rang séquentiel contre un set incomplet
-            // donnait 1 à tout le monde.
-            $this->calculerRangsPourClasse($classe->id, $anneeUniversitaire->id, $periode);
-            $bulletin->refresh();
-            $rang = $bulletin->rang;
+            // donnait 1 à tout le monde. En génération de masse, ce reclassement
+            // par élève réécrivait la classe entière N fois (≈ N²/2 bulletins
+            // sauvés et audités) : il est alors différé, et l'appelant reclasse
+            // une seule fois quand toutes les moyennes sont posées. Le rang rendu
+            // ici n'a pas de lecteur dans ce cas ; on le laisse vide plutôt que
+            // de rendre l'ancien, qui serait faux.
+            if ($this->reclassementDiffere === 0) {
+                $this->calculerRangsPourClasse($classe->id, $anneeUniversitaire->id, $periode);
+                $bulletin->refresh();
+                $rang = $bulletin->rang;
+            }
         } else {
             $rang = $this->rankAmongAverages($this->collectSemesterAveragesForClasse(
                 (int) $classe->id,
@@ -1505,24 +1519,33 @@ class BulletinService
             // updateOrCreate par defaut, qui tentait alors un INSERT sur le
             // meme quintuple -- `Duplicate entry`, 500 definitif sur cet
             // etudiant des qu'une note revenait apres une suppression.
+            //
+            // Pas d'`updateOrCreate` : il réécrivait `created_by` et `updated_by`
+            // à chaque génération, donc la ligne était sauvée (et auditée) même
+            // quand ni la moyenne, ni le coefficient, ni l'appréciation ne
+            // bougeaient. L'auteur de la création reste celui de la création, et
+            // `updated_by` ne change qu'avec une vraie modification.
             $ligne = ESBTPResultat::withTrashed()
                 ->withoutGlobalScope('not_archived')
-                ->updateOrCreate(
-                    [
-                        'etudiant_id' => $etudiantId,
-                        'classe_id' => $classeId,
-                        'matiere_id' => $resultat->matiere_id,
-                        'periode' => $periode,
-                        'annee_universitaire_id' => $anneeUniversitaireId,
-                    ],
-                    [
-                        'moyenne' => $resultat->moyenne,
-                        'coefficient' => $resultat->coefficient ?? 1,
-                        'appreciation' => $resultat->appreciation ?? $this->getAppreciation($resultat->moyenne),
-                        'updated_by' => $userId,
-                        'created_by' => $userId,
-                    ]
-                );
+                ->firstOrNew([
+                    'etudiant_id' => $etudiantId,
+                    'classe_id' => $classeId,
+                    'matiere_id' => $resultat->matiere_id,
+                    'periode' => $periode,
+                    'annee_universitaire_id' => $anneeUniversitaireId,
+                ]);
+            $ligne->fill([
+                'moyenne' => $resultat->moyenne,
+                'coefficient' => $resultat->coefficient ?? 1,
+                'appreciation' => $resultat->appreciation ?? $this->getAppreciation($resultat->moyenne),
+            ]);
+            if (! $ligne->exists) {
+                $ligne->created_by = $userId;
+            }
+            if (! $ligne->exists || $ligne->isDirty()) {
+                $ligne->updated_by = $userId;
+                $ligne->save();
+            }
 
             // Une note qui revient rend la moyenne legitime : la ligne revit.
             if ($ligne->trashed()) {
@@ -2837,6 +2860,30 @@ class BulletinService
             (string) $bulletin->periode
         );
         $bulletin->refresh();
+    }
+
+    /**
+     * Exécute une génération de masse sans reclasser la classe à chaque élève.
+     *
+     * L'appelant DOIT ensuite appeler {@see calculerRangsPourClasse()} une fois
+     * pour la classe : les rangs persistés sont alors ceux qu'aurait laissés le
+     * reclassement élève par élève, puisque le dernier reclassement de l'ancienne
+     * boucle portait déjà sur toutes les moyennes finales.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $generation
+     * @return T
+     */
+    public function sansReclasserLaClasse(callable $generation): mixed
+    {
+        $this->reclassementDiffere++;
+
+        try {
+            return $generation();
+        } finally {
+            $this->reclassementDiffere--;
+        }
     }
 
     public function calculerRangsPourClasse(int $classeId, int $anneeUniversitaireId, string $periode): void

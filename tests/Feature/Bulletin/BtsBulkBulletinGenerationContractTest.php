@@ -203,8 +203,12 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $bulkService = $this->bulkServiceSource();
         $bulletinService = file_get_contents(app_path('Services/BulletinService.php'));
 
+        // Un seul classement, apres la boucle : le reclassement par eleve
+        // reecrivait la classe entiere a chaque bulletin (N²/2 ecritures).
+        $this->assertStringContainsString('$this->bulletinService->sansReclasserLaClasse(', $bulkService);
+        $this->assertStringContainsString('$this->reclasserLaClasse($classe->id, $academicYearId, $period);', $bulkService);
         $this->assertStringContainsString(
-            '$this->bulletinService->calculerRangsPourClasse($classe->id, $academicYearId, $period);',
+            '$this->bulletinService->calculerRangsPourClasse($classeId, $academicYearId, $period);',
             $bulkService
         );
         $this->assertStringContainsString('public function recalculerRangsClasse(', $bulletinService);
