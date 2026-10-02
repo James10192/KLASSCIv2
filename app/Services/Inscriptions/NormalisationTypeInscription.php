@@ -32,6 +32,28 @@ class NormalisationTypeInscription
     public const REINSCRIPTION = 'réinscription';
 
     /**
+     * Ce que l'écran affiche pour un type. La colonne garde sa valeur d'enum
+     * (« première_inscription ») : la montrer telle quelle laissait passer le
+     * tiret bas à l'écran. Une valeur hors enum s'affiche lisible, sans être
+     * devinée.
+     */
+    public static function libelle(?string $type): string
+    {
+        return match ($type) {
+            self::PREMIERE => 'Première inscription',
+            self::REINSCRIPTION, 'reinscription' => 'Réinscription',
+            'transfert' => 'Transfert',
+            null, '' => 'Non renseigné',
+            default => self::capitaliser(str_replace('_', ' ', $type)),
+        };
+    }
+
+    private static function capitaliser(string $texte): string
+    {
+        return mb_strtoupper(mb_substr($texte, 0, 1, 'UTF-8'), 'UTF-8').mb_substr($texte, 1, null, 'UTF-8');
+    }
+
+    /**
      * Ce que la colonne contient reellement, et ce que les faits en disent.
      *
      * Lecture seule.
