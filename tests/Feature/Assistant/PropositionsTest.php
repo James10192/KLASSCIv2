@@ -519,6 +519,9 @@ class PropositionsTest extends TestCase
         $this->assertStringContainsString('Liste des élèves sans note', collect($messages)->where('role', 'assistant')->pluck('texte')->implode("\n"));
         $this->assertSame('executee', $resultats[$ancienne['id']]['statut']);
         $this->assertStringContainsString('Validée', $resultats[$ancienne['id']]['issue']);
+        // Ce que la carte proposait (colonnes Avant et Après) repart avec l'issue.
+        $this->assertContains('Avant', $resultats[$ancienne['id']]['proposait']['colonnes']);
+        $this->assertSame('11', $resultats[$ancienne['id']]['proposait']['lignes'][0][3]);
         $this->assertSame('refusee', $resultats[$refusee['id']]['statut']);
         $this->assertSame('expiree', $resultats[$expiree['id']]['statut']);
         $this->assertSame('en_attente', $resultats[$enAttente['id']]['statut']);
