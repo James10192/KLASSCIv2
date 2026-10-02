@@ -3,7 +3,7 @@
 @section('title', 'Inscriptions sous réserve')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/inscriptions-common.css') }}">
+<link rel="stylesheet" href="{{ asset('css/inscriptions-common.css') }}?v={{ @filemtime(public_path('css/inscriptions-common.css')) ?: '1' }}">
 <style>
     .isr-hero-icon { background: rgba(255, 255, 255, 0.14); }
     .isr-condition-badge {
@@ -158,6 +158,6 @@
         csrf: '{{ csrf_token() }}',
     };
 </script>
-<script src="{{ asset('js/inscriptions/common.js') }}"></script>
-<script src="{{ asset('js/inscriptions/sous-reserve.js') }}"></script>
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
+<script src="{{ asset('js/inscriptions/sous-reserve.js') }}?v={{ @filemtime(public_path('js/inscriptions/sous-reserve.js')) ?: '1' }}"></script>
 @endpush

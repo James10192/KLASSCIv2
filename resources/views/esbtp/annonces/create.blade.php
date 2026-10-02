@@ -3,7 +3,7 @@
 @section('title', 'Créer une annonce — KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
 {{-- Shared CSS partial — namespace ac-* (~600 lignes) extrait pour DRY avec edit.blade.php --}}

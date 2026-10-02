@@ -3,7 +3,7 @@
 @section('title', 'Pré-inscription | KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* ── Page layout ── */
     .pi-page { max-width: 820px; margin: 0 auto; padding: 24px 16px; }

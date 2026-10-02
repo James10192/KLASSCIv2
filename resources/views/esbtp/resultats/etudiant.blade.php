@@ -3,8 +3,8 @@
 @section('title', 'Résultats de ' . $etudiant->nom . ' ' . $etudiant->prenoms . ' - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="{{ asset('css/student-results.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/student-results.css') }}?v={{ @filemtime(public_path('css/student-results.css')) ?: '1' }}">
 @endsection
 
 @php

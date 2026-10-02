@@ -3,7 +3,7 @@
 @section('title', 'Liste d\'appel - ' . $classe->name . ' - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 @include('pdf.partials.theme')
 <style>
     .preview-keep-klassci,

@@ -3,7 +3,7 @@
 @section('title', 'Rapports d\'émargement')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* En-tête à la charte KLASSCI (bleu), comme les autres écrans d'émargement.
        Le dégradé violet et la bande oblique décorative sont retirés. */

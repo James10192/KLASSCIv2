@@ -3,7 +3,7 @@
 @section('title', 'Tableau de bord Comptable')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* ═══════════ Accueil comptable — namespace cb- — maquette A (claire, façon Stripe)
        Rule premium-dashboard : repère sur chaque chiffre, lien filtré, file de travail,
