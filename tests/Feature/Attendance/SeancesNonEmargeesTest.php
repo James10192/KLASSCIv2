@@ -100,6 +100,27 @@ class SeancesNonEmargeesTest extends TestCase
         $this->assertSame(2, DB::table('esbtp_teacher_attendances')->count());
     }
 
+    /**
+     * La tâche corrigée tourne entre le pull et la migration : elle crée la ligne
+     * juste à côté de la fausse. La fausse ne doit pas survivre chez un autre compte.
+     */
+    public function test_la_tache_passee_avant_la_migration_ne_fige_pas_la_ligne_fausse(): void
+    {
+        Carbon::setTestNow(Carbon::today()->setTime(12, 30));
+        $etudiant = User::factory()->create();
+        $enseignant = User::factory()->create();
+        $profil = $this->insertTeacherProfile((int) $etudiant->id, (int) $enseignant->id);
+        $seance = $this->makeSeance(ESBTPTeacher::findOrFail($profil), Carbon::today(), '08:00:00', '10:00:00');
+        $fausse = $this->ligne((int) $etudiant->id, $seance->id, 'not_signed', 'start');
+
+        $this->artisan('attendance:mark-unattended-teacher-sessions')->assertExitCode(0);
+        $this->migrer();
+
+        $this->assertDatabaseMissing('esbtp_teacher_attendances', ['id' => $fausse]);
+        $this->assertSame(0, DB::table('esbtp_teacher_attendances')->where('teacher_id', $etudiant->id)->count());
+        $this->assertSame(1, DB::table('esbtp_teacher_attendances')->where('course_id', $seance->id)->where('teacher_id', $enseignant->id)->count());
+    }
+
     private function ligne(int $teacherId, int $seanceId, string $statut, string $type): int
     {
         return (int) DB::table('esbtp_teacher_attendances')->insertGetId([

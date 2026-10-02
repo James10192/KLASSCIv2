@@ -17,9 +17,12 @@ use Illuminate\Support\Facades\Schema;
  *
  * Repérage exact, sans deviner : une ligne « not_signed » dont teacher_id est
  * l'id du profil de SA séance, alors que ce profil appartient à un autre
- * compte. On la passe sur ce compte, sauf si la ligne juste existe déjà
- * (contrainte unique) : elle est alors comptée et laissée. Rien n'est supprimé.
- * Idempotente : une ligne réalignée ne répond plus au critère.
+ * compte. On la passe sur ce compte. Si la ligne juste existe déjà (la tâche
+ * corrigée a pu repasser entre le déploiement du code et cette migration), la
+ * ligne fausse est un doublon écrit par la tâche, sans saisie humaine : elle
+ * est supprimée, sinon elle resterait à jamais chez quelqu'un d'autre.
+ * Chaque ligne touchée est journalisée (id, ancien et nouveau compte).
+ * Idempotente : une ligne réalignée ou supprimée ne répond plus au critère.
  */
 return new class extends Migration
 {
@@ -40,10 +43,10 @@ return new class extends Migration
             ->whereColumn('t.user_id', '!=', 'ta.teacher_id')
             ->whereExists(fn ($q) => $q->select(DB::raw(1))->from('users')->whereColumn('users.id', 't.user_id'))
             ->orderBy('ta.id')
-            ->get(['ta.id', 'ta.course_id', 'ta.date', 'ta.type', 't.user_id']);
+            ->get(['ta.id', 'ta.teacher_id', 'ta.course_id', 'ta.date', 'ta.type', 't.user_id']);
 
-        $realignees = 0;
-        $conflits = [];
+        $realignees = [];
+        $doublonsSupprimes = [];
         foreach ($lignes as $ligne) {
             $doublon = DB::table(self::TABLE)
                 ->where('teacher_id', $ligne->user_id)
@@ -53,21 +56,24 @@ return new class extends Migration
                 ->where('id', '!=', $ligne->id)
                 ->exists();
             if ($doublon) {
-                $conflits[] = $ligne->id;
+                DB::table(self::TABLE)->where('id', $ligne->id)->delete();
+                $doublonsSupprimes[] = [$ligne->id, $ligne->teacher_id, $ligne->user_id];
                 continue;
             }
             DB::table(self::TABLE)->where('id', $ligne->id)->update(['teacher_id' => $ligne->user_id]);
-            $realignees++;
+            $realignees[] = [$ligne->id, $ligne->teacher_id, $ligne->user_id];
         }
 
-        Log::info('[realign_not_signed_teacher_attendances_on_user_id] Non émargés réattribués au compte de l\'enseignant', [
-            'realignees' => $realignees,
-            'conflits' => count($conflits),
-            'conflits_ids' => array_slice($conflits, 0, 50),
+        Log::warning('[realign_not_signed_teacher_attendances_on_user_id] Non émargés réattribués au compte de l\'enseignant', [
+            'realignees' => count($realignees),
+            'doublons_supprimes' => count($doublonsSupprimes),
+            // [id, ancien teacher_id, compte] : de quoi défaire un faux positif à la main.
+            'detail_realignees' => array_slice($realignees, 0, 200),
+            'detail_doublons_supprimes' => array_slice($doublonsSupprimes, 0, 200),
         ]);
     }
 
-    /** Non réversible : l'ancienne valeur désignait le mauvais compte. Rien à défaire. */
+    /** Non réversible : l'ancienne valeur désignait le mauvais compte. Le journal de up() garde le détail. */
     public function down(): void
     {
     }

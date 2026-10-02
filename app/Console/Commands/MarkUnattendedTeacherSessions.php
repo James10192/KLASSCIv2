@@ -28,7 +28,7 @@ class MarkUnattendedTeacherSessions extends Command
     {
         $now = Carbon::now();
         $windowLateMinutes = config('esbtp.attendance.allowed_late_minutes', 15);
-        $sessions = ESBTPSeanceCours::with('teacher:id,user_id')
+        $sessions = ESBTPSeanceCours::with('teacher.user:id')
             ->whereNotNull('teacher_id')
             ->where('date_seance', '<=', $now->toDateString())
             ->whereRaw('ADDTIME(heure_fin, SEC_TO_TIME(? * 60)) < ?', [$windowLateMinutes, $now->toTimeString()])
@@ -37,7 +37,8 @@ class MarkUnattendedTeacherSessions extends Command
         $count = 0;
         $sansCompte = [];
         foreach ($sessions as $session) {
-            $userId = $session->teacher?->user_id;
+            // Profil dont le compte n'existe plus : la clé étrangère refuserait la ligne à chaque passage.
+            $userId = $session->teacher?->user?->id;
             if (! $userId) {
                 $sansCompte[] = $session->id;
                 continue;
