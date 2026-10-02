@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Bulletins;
 
+use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Domain\BtsTroncCommun\BtsMaquette;
 use App\Domain\BtsTroncCommun\BulletinSubjectRowsCompleter;
-use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;

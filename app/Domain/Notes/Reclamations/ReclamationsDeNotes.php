@@ -49,12 +49,6 @@ final class ReclamationsDeNotes
     }
 
     /**
-     * La fin du delai de recours. Il court depuis la SAISIE de la note
-     * (`created_at`), pas depuis sa derniere ecriture : une correction, un
-     * recalcul ou la decision d'une reclamation reecrivent `updated_at`, et
-     * rouvriraient des notes closes depuis des mois.
-     */
-    /**
      * Une note sans date de saisie (insertion directe, import ancien) est
      * traitee comme close : on ne sait pas quand son delai a commence.
      */
@@ -72,6 +66,12 @@ final class ReclamationsDeNotes
             ->pluck('note_id')->map(fn ($id) => (int) $id)->flip()->all();
     }
 
+    /**
+     * La fin du delai de recours. Il court depuis la SAISIE de la note
+     * (`created_at`), pas depuis sa derniere ecriture : une correction, un
+     * recalcul ou la decision d'une reclamation reecrivent `updated_at`, et
+     * rouvriraient des notes closes depuis des mois.
+     */
     public static function fermeLe(ESBTPNote $note, int $delaiJours): ?\Illuminate\Support\Carbon
     {
         return $note->created_at?->copy()->addDays($delaiJours);

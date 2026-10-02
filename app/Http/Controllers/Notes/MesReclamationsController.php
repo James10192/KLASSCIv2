@@ -94,8 +94,10 @@ class MesReclamationsController extends Controller
             return [];
         }
 
-        // Un seul recours par note : toute note deja reclamee sort de la liste.
-        $dejaReclamees = ESBTPReclamationNote::withTrashed()->where('etudiant_id', $etudiant->id)->pluck('note_id')->all();
+        // Memes regles que le depot (ReclamationsDeNotes) : un seul recours par
+        // note, et le delai de dansLeDelai() traduit en SQL — created_at nul
+        // exclu par le >=, comme une note sans date y est close.
+        $dejaReclamees = array_keys($this->reclamations->notesDejaReclamees((int) $etudiant->id));
         $limite = now()->subDays($this->reglages->delaiJours());
 
         return ESBTPNote::with(['evaluation:id,titre,type,bareme,date_evaluation,annee_universitaire_id,matiere_id', 'evaluation.matiere:id,name'])

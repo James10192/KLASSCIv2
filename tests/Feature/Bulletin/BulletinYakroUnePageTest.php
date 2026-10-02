@@ -40,6 +40,13 @@ class BulletinYakroUnePageTest extends TestCase
         foreach (['semestre1', 'semestre2'] as $periode) {
             $this->assertSame(1, $this->pages($etudiant, $classe, $annee, $periode), "Bulletin du {$periode} sur deux pages.");
         }
+
+        // Une decision de trois lignes, desormais en demi-colonne, gagne en
+        // hauteur : la garantie « une page » doit la couvrir aussi.
+        $longue = 'Admis en classe superieure sous reserve de reprendre Beton arme et Mecanique des sols ; '
+            .'le conseil releve des absences non justifiees repetees au second semestre et demande '
+            .'un entretien avec la direction des etudes avant la reinscription.';
+        $this->assertSame(1, $this->pages($etudiant, $classe, $annee, 'semestre2', $longue), 'Decision longue : deux pages.');
     }
 
     public function test_sans_statistiques_la_decision_garde_sa_place_pleine_largeur(): void
@@ -53,9 +60,13 @@ class BulletinYakroUnePageTest extends TestCase
         $this->assertStringContainsString('decision-container', $html);
     }
 
-    private function pages(int $etudiant, ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee, string $periode): int
+    private function pages(int $etudiant, ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee, string $periode, ?string $decision = null): int
     {
-        $pdf = Pdf::loadView(app(BulletinService::class)->getBulletinTemplateView(), $this->donnees($etudiant, $classe, $annee, $periode))
+        $donnees = $this->donnees($etudiant, $classe, $annee, $periode);
+        if ($decision !== null) {
+            $donnees['decisionConseil'] = $decision;
+        }
+        $pdf = Pdf::loadView(app(BulletinService::class)->getBulletinTemplateView(), $donnees)
             ->setPaper('a4', 'portrait')
             ->setOptions(['dpi' => 150, 'defaultFont' => 'DejaVu Sans', 'isPhpEnabled' => true, 'isRemoteEnabled' => false, 'isHtml5ParserEnabled' => true]);
         $pdf->render();
