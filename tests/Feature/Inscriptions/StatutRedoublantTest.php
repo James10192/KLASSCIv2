@@ -355,6 +355,106 @@ class StatutRedoublantTest extends TestCase
         $this->assertFalse((bool) $cetteAnnee->fresh()->is_redoublant);
     }
 
+    public function test_le_transfere_qui_declare_recommencer_est_propose_redoublant_partout(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->declarer($etudiant, true);
+
+        // Le parcours configurable crée l'inscription sans poser la question.
+        $inscription = $this->inscrire($etudiant, $this->bts1, $this->cetteAnnee, ['est_transfert' => true])->fresh();
+        $statut = app(StatutRedoublant::class);
+
+        $this->assertTrue((bool) $inscription->is_redoublant, 'La déclaration du transféré doit être la proposition.');
+        $this->assertSame(StatutRedoublant::SOURCE_DEDUIT, $inscription->redoublant_source);
+        $this->assertTrue($statut->aConfirmer($inscription));
+        $this->assertSame('Déclaré par le candidat dans sa candidature de transfert, à confirmer.', $statut->pourAffichage($inscription)['detail']);
+
+        // Le recensement du déploiement ne la remet pas à « non ».
+        app(RecensementDesRedoublants::class)->executer(true);
+        $this->assertTrue((bool) $inscription->fresh()->is_redoublant);
+
+        // Garder ce « oui » est une confirmation : aucun motif à écrire.
+        $statut->confirmer($inscription->fresh(), $this->scolarite);
+        $this->assertSame(StatutRedoublant::SOURCE_CONFIRME, $inscription->fresh()->redoublant_source);
+        $this->assertTrue((bool) $inscription->fresh()->is_redoublant);
+    }
+
+    public function test_la_candidature_liee_apres_l_inscription_met_la_proposition_a_jour(): void
+    {
+        // Formulaire classique : l'inscription naît, puis la candidature est fermée et liée.
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $inscription = $this->inscrire($etudiant, $this->bts1, $this->cetteAnnee, ['est_transfert' => true])->fresh();
+        $this->assertFalse((bool) $inscription->is_redoublant);
+
+        $candidature = \App\Models\ESBTPCandidature::create([
+            'nom' => 'LIEE', 'prenoms' => 'Plus tard', 'date_naissance' => '2006-01-01', 'sexe' => 'M',
+            'telephone' => '+2250708'.sprintf('%06d', $etudiant->id), 'annee_universitaire_id' => $this->cetteAnnee->id,
+            'consentement_at' => now(), 'statut' => \App\Models\ESBTPCandidature::STATUT_EN_ATTENTE,
+            'est_transfert' => true, 'etablissement_sup_origine' => 'Université de Bouaké', 'redouble_niveau_origine' => true,
+        ]);
+
+        app(\App\Services\Inscription\PortailCandidatureService::class)->fermerApresInscription($candidature->id, $inscription, $this->scolarite->id);
+
+        $this->assertTrue((bool) $inscription->fresh()->is_redoublant);
+    }
+
+    public function test_sans_declaration_ou_candidature_rejetee_le_transfere_reste_propose_non(): void
+    {
+        $sansReponse = ESBTPEtudiant::factory()->create();
+        $this->declarer($sansReponse, null);
+        $rejete = ESBTPEtudiant::factory()->create();
+        $this->declarer($rejete, true, \App\Models\ESBTPCandidature::STATUT_REJETEE);
+
+        foreach ([$sansReponse, $rejete] as $etudiant) {
+            $inscription = $this->inscrire($etudiant, $this->bts1, $this->cetteAnnee, ['est_transfert' => true])->fresh();
+            $this->assertFalse((bool) $inscription->is_redoublant);
+        }
+
+        app(RecensementDesRedoublants::class)->executer(true);
+        $this->assertSame(0, ESBTPInscription::whereIn('etudiant_id', [$sansReponse->id, $rejete->id])->where('is_redoublant', true)->count());
+    }
+
+    public function test_une_annee_passee_dans_klassci_prime_sur_la_declaration(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->declarer($etudiant, true);
+        $this->inscrire($etudiant, $this->bts1, $this->anDernier);
+
+        // L'an dernier en BTS 1, cette année en BTS 2 : c'est un passage, quoi qu'il ait déclaré.
+        $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['est_transfert' => true])->fresh();
+        $this->assertFalse((bool) $inscription->is_redoublant);
+    }
+
+    public function test_une_annee_sans_date_de_debut_reste_indeterminee_meme_declaree(): void
+    {
+        $sansDate = ESBTPAnneeUniversitaire::factory()->create([
+            'name' => '2093-2094', 'start_date' => null, 'end_date' => null, 'is_current' => false,
+        ]);
+        $etudiant = ESBTPEtudiant::factory()->create();
+        \App\Models\ESBTPCandidature::create([
+            'nom' => 'SANSDATE', 'prenoms' => 'Test', 'date_naissance' => '2006-01-01', 'sexe' => 'M',
+            'telephone' => '+2250709'.sprintf('%06d', $etudiant->id), 'annee_universitaire_id' => $sansDate->id,
+            'consentement_at' => now(), 'statut' => \App\Models\ESBTPCandidature::STATUT_CONVERTIE, 'etudiant_id' => $etudiant->id,
+            'est_transfert' => true, 'etablissement_sup_origine' => 'Université de Bouaké', 'redouble_niveau_origine' => true,
+        ]);
+
+        $inscription = $this->inscrire($etudiant, $this->bts1, $sansDate, ['est_transfert' => true]);
+
+        // Comme au recensement : on ne sait pas quelle année précède, on ne propose rien.
+        $this->assertFalse(app(StatutRedoublant::class)->deduire($inscription->fresh()));
+    }
+
+    private function declarer(ESBTPEtudiant $etudiant, ?bool $recommence, string $statut = \App\Models\ESBTPCandidature::STATUT_CONVERTIE): void
+    {
+        \App\Models\ESBTPCandidature::create([
+            'nom' => 'TRANSFERT'.$etudiant->id, 'prenoms' => 'Test', 'date_naissance' => '2006-01-01', 'sexe' => 'M',
+            'telephone' => '+2250707'.sprintf('%06d', $etudiant->id), 'annee_universitaire_id' => $this->cetteAnnee->id,
+            'consentement_at' => now(), 'statut' => $statut, 'etudiant_id' => $etudiant->id,
+            'est_transfert' => true, 'etablissement_sup_origine' => 'Université de Bouaké',
+            'redouble_niveau_origine' => $recommence,
+        ]);
+    }
+
     /** L'état d'une inscription créée avant ce statut : colonne à non, jamais recensée. */
     private function commeAvantLeStatut(ESBTPInscription $inscription): void
     {

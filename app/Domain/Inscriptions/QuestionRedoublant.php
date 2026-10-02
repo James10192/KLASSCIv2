@@ -16,9 +16,8 @@ use Illuminate\Validation\ValidationException;
  *
  * Le logiciel propose une réponse (même niveau que l'année d'avant) ; la
  * personne la garde ou la change, et dit pourquoi si elle la change. Pour un
- * élève qui n'a pas d'année précédente dans KLASSCI, la proposition est « non »
- * et seule l'école sait s'il redouble — un élève venu d'un autre établissement,
- * par exemple.
+ * élève qui n'a pas d'année précédente dans KLASSCI, la proposition est ce que
+ * le transféré a déclaré, sinon « non » ({@see DeclarationDuTransfere}).
  *
  * Le motif se vérifie AVANT toute écriture : une inscription ne doit pas être
  * créée puis refusée à cause de la question.
@@ -80,20 +79,6 @@ class QuestionRedoublant
     public static function propositionDeLaRequete(Request $request): bool
     {
         return self::propositionDeCandidature(PreRemplissageCandidature::aInscrire($request->integer('candidature_id')));
-    }
-
-    /**
-     * Le motif à enregistrer. Garder le « oui » déclaré par le candidat s'écarte
-     * de la déduction (pas d'année précédente ici, donc « non ») : sa
-     * déclaration en tient lieu quand la personne n'en écrit pas.
-     */
-    public static function motifRetenu(?bool $reponse, bool $proposition, ?string $motif): ?string
-    {
-        if (trim((string) $motif) === '' && $reponse === true && $proposition) {
-            return 'Déclaré par le candidat dans sa candidature : il recommence l\'année qu\'il suivait dans un autre établissement.';
-        }
-
-        return $motif;
     }
 
     /** @throws ValidationException quand la réponse change la proposition sans motif */
