@@ -2,6 +2,7 @@
 
 namespace App\Actions\Comptabilite;
 
+use App\Domain\Comptabilite\Relances\PopulationDesRelances;
 use App\DTOs\Comptabilite\ComptabiliteFilters;
 use App\Models\ESBTPInscription;
 use App\Services\RelanceCalculationService;
@@ -39,7 +40,7 @@ class GetImpayesAgingAction
      * Le dû ne compte que les inscriptions actives (ACTIVE_INSCRIPTION_STATUSES),
      * comme avant ; l'ancienneté les compte toutes, comme avant.
      *
-     * @return array{buckets: array<string, array{count:int, amount:float, students:array}>, top: array<int, array>, totalDue: float, countDue: int, parClasse: array<int, float>, inscriptionsActives: array<int, int>}
+     * @return array{buckets: array<string, array{count:int, amount:float, students:array}>, top: array<int, array>, totalDue: float, countDue: int, parClasse: array<int, float>, inscriptionsActives: array<int, int>, aRelancer: array{count: int, amount: float}}
      */
     public function analyse(ComptabiliteFilters $filters): array
     {
@@ -55,10 +56,15 @@ class GetImpayesAgingAction
             ->get();
 
         if ($inscriptions->isEmpty()) {
-            return ['buckets' => $this->emptyBuckets(), 'top' => [], 'totalDue' => 0.0, 'countDue' => 0, 'parClasse' => [], 'inscriptionsActives' => []];
+            return ['buckets' => $this->emptyBuckets(), 'top' => [], 'totalDue' => 0.0, 'countDue' => 0, 'parClasse' => [], 'inscriptionsActives' => [], 'aRelancer' => ['count' => 0, 'amount' => 0.0]];
         }
 
         $this->relanceCalc->preloadForInscriptions($inscriptions);
+
+        // Le sous-ensemble que la liste des relances montre : le compteur
+        // « a relancer » du tableau de bord doit dire ce que la liste affiche.
+        $inclureInactives = PopulationDesRelances::inclutLesInactives();
+        $aRelancer = ['count' => 0, 'amount' => 0.0];
 
         $buckets = $this->emptyBuckets();
         $echus = [];
@@ -84,6 +90,11 @@ class GetImpayesAgingAction
 
             if ($soldeRestant <= 0) {
                 continue;
+            }
+
+            if (PopulationDesRelances::admet($inscription, $inclureInactives)) {
+                $aRelancer['count']++;
+                $aRelancer['amount'] += $soldeRestant;
             }
 
             $joursRetard = (int) ($state['overdue_days'] ?? 0);
@@ -115,6 +126,7 @@ class GetImpayesAgingAction
             'countDue' => $countDue,
             'parClasse' => $parClasse,
             'inscriptionsActives' => $actives,
+            'aRelancer' => $aRelancer,
         ];
     }
 

@@ -46,12 +46,16 @@ class ListeDesRelances
 
     /**
      * @param  array{search: string, risk: string, filiere_id: string, classe_id: string, annee_id: mixed}  $filtres
+     *         (le reglage « inclure les inscriptions inactives » est ajoute ici, jamais par l'appelant)
      * @param  array<string, mixed>  $query
      * @param  bool  $arrivee  true a l'arrivee sur la page, false pour une tranche suivante
      * @return array{paginated: LengthAwarePaginator, kpis: array<string, mixed>}
      */
     public function tranche(array $filtres, int $page, string $path, array $query, int $utilisateurId, bool $arrivee): array
     {
+        // Le reglage de l'ecole entre dans les filtres, donc dans la cle du
+        // cache : le changer donne un autre index, jamais l'ancien.
+        $filtres['inclure_inactives'] = PopulationDesRelances::inclutLesInactives();
         $cle = $this->cle($filtres, $utilisateurId);
         if ($arrivee) {
             $index = $this->indexer($filtres);
@@ -108,14 +112,13 @@ class ListeDesRelances
     {
         $search = $filtres['search'];
 
-        return ESBTPInscription::with([
+        return PopulationDesRelances::restreindre(ESBTPInscription::with([
             'etudiant',
             'classe.filiere',
             'anneeUniversitaire',
             'fraisSubscriptions',
             'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
-        ])
-            ->where('workflow_step', 'etudiant_cree')
+        ]), (bool) $filtres['inclure_inactives'])
             ->when($filtres['annee_id'], fn ($q) => $q->where('annee_universitaire_id', $filtres['annee_id']))
             ->when($filtres['classe_id'], fn ($q) => $q->where('classe_id', $filtres['classe_id']))
             ->when($filtres['filiere_id'], fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filtres['filiere_id'])))

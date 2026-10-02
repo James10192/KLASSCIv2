@@ -40,6 +40,13 @@ class ESBTPRelance extends Model
     public const STATUT_ECHEC = 'echec';
 
     /**
+     * Relance retiree avant envoi : l'eleve n'est plus dans la population des
+     * relances (inscription plus active, ou introuvable). Ce n'est pas un
+     * echec d'envoi, et elle ne se renvoie pas.
+     */
+    public const STATUT_ECARTEE = 'ecartee';
+
+    /**
      * Relations
      */
     public function etudiant()
@@ -55,6 +62,16 @@ class ESBTPRelance extends Model
     /**
      * Scopes
      */
+    /**
+     * Les relances qui comptent dans la progression des niveaux : une relance
+     * ecartee n'a jamais ete envoyee, elle ne fait pas monter l'eleve au
+     * niveau suivant.
+     */
+    public function scopeComptePourLeNiveau($query)
+    {
+        return $query->where('statut', '!=', self::STATUT_ECARTEE);
+    }
+
     public function scopePlanifiee($query)
     {
         return $query->where('statut', 'planifiee');
@@ -108,6 +125,7 @@ class ESBTPRelance extends Model
             'planifiee' => 'Planifiée',
             'envoyee' => 'Envoyée',
             'echec' => 'Échec',
+            'ecartee' => 'Écartée',
             'intent' => 'Intent',
         ];
 
@@ -166,9 +184,17 @@ class ESBTPRelance extends Model
         ]);
     }
 
+    public function marquerCommeEcartee(string $motif): void
+    {
+        $this->update([
+            'statut' => self::STATUT_ECARTEE,
+            'response_data' => ['ecartee' => $motif],
+        ]);
+    }
+
     public function peutEtreRenvoyee()
     {
-        return $this->statut === 'echec' || 
+        return $this->statut === self::STATUT_ECHEC ||
                ($this->statut === 'planifiee' && $this->date_envoi < now()->subHours(2));
     }
 

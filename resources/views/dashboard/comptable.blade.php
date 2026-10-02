@@ -203,9 +203,11 @@
                 'd' => $cbFmt($c['totalPending']).' FCFA'.($age ? ' · le plus ancien '.$age : ''),
                 'cta' => 'Valider', 'href' => route('esbtp.paiements.index', ['status' => 'en_attente'])];
         }
-        if ($c['countOverdueTotal'] > 0 && $cbPeutRelancer) {
-            $todo[] = ['ton' => 'warn', 'n' => $c['countOverdueTotal'], 't' => 'Étudiant'.($c['countOverdueTotal'] > 1 ? 's' : '').' en retard de paiement',
-                'd' => $cbFmt($c['totalOverdue']).' FCFA échus à relancer',
+        // Ceux que la liste des relances montre, pas tous les retards : le
+        // nombre affiché doit être celui qu'on trouve en cliquant.
+        if ($c['countARelancer'] > 0 && $cbPeutRelancer) {
+            $todo[] = ['ton' => 'warn', 'n' => $c['countARelancer'], 't' => 'Étudiant'.($c['countARelancer'] > 1 ? 's' : '').' en retard de paiement',
+                'd' => $cbFmt($c['totalARelancer']).' FCFA échus à relancer',
                 'cta' => 'Relancer', 'href' => route('esbtp.comptabilite.relances.index')];
         }
         if ($u?->can('comptabilite.reconciliation.view')) {
