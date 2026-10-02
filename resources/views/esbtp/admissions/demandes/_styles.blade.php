@@ -260,4 +260,5 @@
     /* Une fenetre ouverte occupe l'ecran : la barre du bas masquerait ses derniers boutons. */
     body:has(.dmi-voile:not([x-cloak]):not([style*="none"])) :is(.m-bottomnav, .ast-launcher) { display: none !important; }
 }
+.dmi-champ-aide--alerte { color: #b45309; }
 </style>

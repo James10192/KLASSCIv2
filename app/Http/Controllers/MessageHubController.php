@@ -26,6 +26,9 @@ class MessageHubController extends Controller
     public function bootstrap(Request $request): JsonResponse
     {
         $viewer = $request->user();
+        // Une etape deja faite (par n'importe quel chemin, par n'importe qui)
+        // ne reste pas « a faire » : l'avis est clos avant d'etre liste.
+        app(\App\Services\WorkflowNextStepResolver::class)->clotureLesEtapesFaites($viewer);
         $conversations = $this->conversationQuery($viewer)->get();
 
         $inbox = $conversations
