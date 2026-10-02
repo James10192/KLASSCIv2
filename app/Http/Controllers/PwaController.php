@@ -92,7 +92,7 @@ class PwaController extends Controller
         abort_unless($request->user()->hasRole('superAdmin'), 403);
 
         $valide = $request->validate([
-            'profil' => ['nullable', 'string', Rule::in(MobileProfileResolver::PROFILS)],
+            'profil' => ['nullable', 'string', Rule::in(MobileProfileResolver::PROFILS_DECLARABLES)],
         ], [
             'profil.in' => 'Ce profil mobile n\'existe pas.',
         ]);

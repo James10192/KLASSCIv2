@@ -110,7 +110,7 @@ class ESBTPCustomRoleController extends Controller
     {
         $profile = trim((string) $profile);
 
-        return MobileProfileResolver::estUnProfil($profile) ? $profile : null;
+        return MobileProfileResolver::estDeclarable($profile) ? $profile : null;
     }
 
     /**
@@ -188,7 +188,7 @@ class ESBTPCustomRoleController extends Controller
             'label_fr' => ['required', 'string', 'max:255'],
             'icon' => ['nullable', 'string', 'max:64', Rule::in(self::ALLOWED_ICONS)],
             'description' => ['nullable', 'string', 'max:1000'],
-            'mobile_profile' => ['nullable', 'string', Rule::in(array_merge(MobileProfileResolver::PROFILS, ['']))],
+            'mobile_profile' => ['nullable', 'string', Rule::in(array_merge(MobileProfileResolver::PROFILS_DECLARABLES, ['']))],
             'permissions' => ['array'],
             'permissions.*' => ['string', 'exists:permissions,name'],
         ], [
@@ -284,7 +284,7 @@ class ESBTPCustomRoleController extends Controller
             'label_fr' => ['required', 'string', 'max:255'],
             'icon' => ['nullable', 'string', 'max:64', Rule::in(self::ALLOWED_ICONS)],
             'description' => ['nullable', 'string', 'max:1000'],
-            'mobile_profile' => ['nullable', 'string', Rule::in(array_merge(MobileProfileResolver::PROFILS, ['']))],
+            'mobile_profile' => ['nullable', 'string', Rule::in(array_merge(MobileProfileResolver::PROFILS_DECLARABLES, ['']))],
             'permissions' => ['array'],
             'permissions.*' => ['string', 'exists:permissions,name'],
         ], [
