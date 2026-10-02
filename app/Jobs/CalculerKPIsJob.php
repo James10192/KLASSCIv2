@@ -261,7 +261,7 @@ class CalculerKPIsJob implements ShouldQueue
             'periode' => $this->periode,
             'annee_id' => $this->anneeId,
             'date_calcul' => $this->dateCalcul,
-            'attempts' => $this->attempts,
+            'attempts' => $this->attempts(),
             'error' => $exception->getMessage(),
             'trace' => $exception->getTraceAsString()
         ]);
