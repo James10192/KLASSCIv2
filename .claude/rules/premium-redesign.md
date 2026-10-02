@@ -191,6 +191,7 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | lien de confirmation d'adresse expiré | `clx-*` | `clx-carte`, `clx-btn`, `clx-message` |
 | notifications (`/notifications`) | `ntf-*` | `ntf-hero`, `ntf-kpi`, `ntf-chip`, `ntf-row`, `ntf-group`, `ntf-work-card` |
 | messages (`/messages`, centre de messages v2) | `mh2-*` (feuilles `public/css/messages-hub-v2*.css`) | `mh2-conversation`, `mh2-thread`, `mh2-composer`, `mh2-modal` |
+| résultats des étudiants (`/esbtp/resultats`, liste à défilement infini) | `rsl-*` | `rsl-hero`, `rsl-kpi`, `rsl-row`, `rsl-action-main`, `rsl-more`, `rsl-sentinel` |
 
 Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 
