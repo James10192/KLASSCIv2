@@ -13,6 +13,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -56,12 +57,12 @@ final class RegularisationDeNotesLmd
             $this->refuser('etudiant_id', "L'étudiant n'est pas inscrit activement dans cette classe pour cette année.");
         }
 
-        // La période d'une évaluation LMD est le semestre ABSOLU (semestre3 pour
-        // une L2) : c'est ce que le bulletin LMD lit, et ce que porte la maquette.
-        if (\Illuminate\Support\Carbon::parse((string) $e['date_regularisation'])->isAfter(today())) {
+        if (Carbon::parse((string) $e['date_regularisation'])->isAfter(today())) {
             $this->refuser('date_regularisation', 'La date du relevé ne peut pas être dans le futur : une épreuve à venir ne se régularise pas.');
         }
 
+        // La période d'une évaluation LMD est le semestre ABSOLU (semestre3 pour
+        // une L2) : c'est ce que le bulletin LMD lit, et ce que porte la maquette.
         $periode = (string) $e['periode'];
         $semestre = (int) preg_replace('/\D/', '', $periode);
         if (! in_array($semestre, $classe->getSemestresLMD(), true)) {
@@ -138,7 +139,10 @@ final class RegularisationDeNotesLmd
      * notes étaient refusées (ESBTP Abidjan, octobre 2026).
      *
      * Une ligne par UE, avec ses éléments : un relevé nomme parfois une UE là
-     * où la maquette attend un élément. Lue une fois par classe et semestre.
+     * où la maquette attend un élément. Lue une fois par classe et semestre,
+     * pour la durée de vie de l'instance : le service n'est pas un singleton.
+     * S'il le devenait dans un worker long, cette mémoire servirait une
+     * maquette périmée.
      *
      * @return Collection<int, array{ue: \App\Models\ESBTPUniteEnseignement, ecues: Collection}>
      */

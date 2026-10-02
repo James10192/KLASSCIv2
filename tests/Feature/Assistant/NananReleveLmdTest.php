@@ -274,6 +274,30 @@ class NananReleveLmdTest extends TestCase
         $this->assertStringContainsString('épreuves non composées', $manques);
     }
 
+    public function test_un_motif_manquant_ne_cache_pas_les_questions_du_releve(): void
+    {
+        // Premier appel typique : la personne n'a pas encore dit qui a transmis le relevé.
+        $manques = $this->manques($this->proposer($this->args([
+            ['etudiant' => 'FL25-001', 'notes' => [['element' => 'BMIB111', 'note' => 0], ['element' => 'Mathematiques', 'note' => 11]]],
+        ], ['motif' => 'Relevé'])));
+
+        $this->assertStringContainsString("D'où viennent ces notes", $manques);
+        $this->assertStringContainsString('est une UE (BMIB1)', $manques);
+        $this->assertStringContainsString('épreuves non composées', $manques);
+    }
+
+    public function test_sans_semestre_les_etudiants_et_les_zeros_sont_quand_meme_controles(): void
+    {
+        $manques = $this->manques($this->proposer($this->args([
+            ['etudiant' => 'YESSOTCHE Grace', 'notes' => [['element' => 'BMIB111', 'note' => 12]]],
+            ['etudiant' => 'FL25-001', 'notes' => [['element' => 'BMIB111', 'note' => 0]]],
+        ], ['semestre' => ''])));
+
+        $this->assertStringContainsString('Quel semestre', $manques);
+        $this->assertStringContainsString('« YESSOTCHE Grace » : aucun étudiant', $manques);
+        $this->assertStringContainsString('épreuves non composées', $manques);
+    }
+
     public function test_une_date_future_est_une_question(): void
     {
         $this->assertStringContainsString('dans le futur', $this->manques($this->proposer($this->args(
