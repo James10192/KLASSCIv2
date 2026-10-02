@@ -3620,6 +3620,13 @@ class BulletinService
     }
 
 
+    /**
+     * La liste de `/esbtp/resultats`, triee par nom puis prenoms, et departagee
+     * par l'identifiant : la page se decoupe par `skip()`/`take()`, et deux
+     * homonymes a cheval sur une limite de page pouvaient sans lui etre
+     * repetes sur l'une et sautes sur l'autre (MySQL ne garantit aucun ordre
+     * entre deux lignes egales).
+     */
     public function buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses, string $periode)
     {
         if ($classe_id) {
@@ -3669,7 +3676,8 @@ class BulletinService
             return ESBTPEtudiant::whereIn('id', $allEtudiantIds)
                 ->with(['user', 'inscriptions.classe.filiere', 'inscriptions.classe.niveau'])
                 ->orderBy('nom')
-                ->orderBy('prenoms');
+                ->orderBy('prenoms')
+                ->orderBy('esbtp_etudiants.id');
 
         } elseif ($annee_universitaire_id) {
             // If no class selected but academic year is set, get all students enrolled in that year
@@ -3684,7 +3692,8 @@ class BulletinService
                     $query->where('annee_universitaire_id', $annee_universitaire_id);
                 }])
                 ->orderBy('nom')
-                ->orderBy('prenoms');
+                ->orderBy('prenoms')
+                ->orderBy('esbtp_etudiants.id');
 
         } else {
             // If no filters are applied, get all students
@@ -3695,7 +3704,8 @@ class BulletinService
             })
                 ->with(['user', 'inscriptions'])
                 ->orderBy('nom')
-                ->orderBy('prenoms');
+                ->orderBy('prenoms')
+                ->orderBy('esbtp_etudiants.id');
         }
     }
 

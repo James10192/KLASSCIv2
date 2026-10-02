@@ -138,6 +138,32 @@ class ChargementDesResultatsTest extends TestCase
     }
 
     /**
+     * Des homonymes a cheval sur une limite de page : chacun paraît une fois,
+     * dans l'ordre de son identifiant.
+     */
+    public function test_les_homonymes_ne_sont_ni_repetes_ni_sautes_d_une_page_a_l_autre(): void
+    {
+        $classe = $this->classeBts();
+        $attendus = [];
+        foreach (range(1, 5) as $n) {
+            $this->inscrire($this->eleve("HOMO{$n}", 'Kouassi', 'Jean'), $classe, $this->annee);
+            $attendus[] = "HOMO{$n}";
+        }
+
+        $vus = [];
+        foreach ([1, 2, 3] as $page) {
+            $html = $this->getJson(route('esbtp.resultats.load-etudiants', [
+                'page' => $page, 'per_page' => 2, 'classe_id' => $classe->id,
+                'semestre' => '1', 'annee_universitaire_id' => $this->annee->id, 'include_all_statuses' => 1,
+            ]))->assertOk()->json('html');
+            preg_match_all('/HOMO\d/', $html, $trouves);
+            array_push($vus, ...array_values(array_unique($trouves[0])));
+        }
+
+        $this->assertSame($attendus, $vus);
+    }
+
+    /**
      * Une classe n'appartient a aucune annee : sans annee demandee, l'ecran
      * s'ouvre sur l'annee courante, pas sur l'annee que porte encore la colonne
      * historique `esbtp_classes.annee_universitaire_id`.
