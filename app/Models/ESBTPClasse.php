@@ -106,6 +106,17 @@ class ESBTPClasse extends Model implements Auditable
     protected $with = ['filiere', 'niveau', 'annee'];
 
     /**
+     * Valeurs posees par preparerPourListe() pour une liste de classes : elles
+     * evitent les requetes que les accesseurs relanceraient a chaque lecture.
+     * Hors liste, elles restent vides et le calcul habituel s'applique.
+     */
+    protected ?int $nombreEtudiantsConnu = null;
+
+    protected ?ESBTPClasse $parentTroncCommun = null;
+
+    protected bool $parentTroncCommunConnu = false;
+
+    /**
      * Relation avec la filière.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -208,37 +219,90 @@ class ESBTPClasse extends Model implements Auditable
      */
     public function classeTroncCommunParent(): ?ESBTPClasse
     {
-        if ($this->isTroncCommun() || !$this->isSpecialite()) {
-            return null;
+        if ($this->parentTroncCommunConnu) {
+            return $this->parentTroncCommun;
         }
 
-        // 1. Override manuel : la classe est target dans un mapping actif → la source est le TC parent
-        $manual = \Illuminate\Support\Facades\DB::table('esbtp_classe_orientation_targets')
-            ->where('target_classe_id', $this->id)
+        return static::parentsTroncCommun(collect([$this]))->get($this->id);
+    }
+
+    /**
+     * Le TC parent de chaque classe d'une liste, en un nombre constant de requetes quel que soit
+     * le nombre de classes : la meme regle que classeTroncCommunParent(), qui la
+     * delegue ici. Les classes doivent avoir leur filiere chargee.
+     *
+     * @param  \Illuminate\Support\Collection<int, ESBTPClasse>  $classes
+     * @return \Illuminate\Support\Collection<int, ESBTPClasse|null> classe_id => TC parent
+     */
+    public static function parentsTroncCommun(\Illuminate\Support\Collection $classes): \Illuminate\Support\Collection
+    {
+        $specialites = $classes->filter(fn (self $c) => ! $c->isTroncCommun() && $c->isSpecialite());
+        $parents = $classes->mapWithKeys(fn (self $c) => [$c->id => null]);
+        if ($specialites->isEmpty()) {
+            return $parents;
+        }
+
+        // 1. Override manuel : la classe est target dans un mapping actif, le plus
+        // ancien (orderBy id) l'emporte.
+        $manuels = \Illuminate\Support\Facades\DB::table('esbtp_classe_orientation_targets')
+            ->whereIn('target_classe_id', $specialites->pluck('id'))
             ->where('is_active', true)
             ->orderBy('id')
-            ->value('source_classe_id');
+            ->get(['target_classe_id', 'source_classe_id'])
+            ->unique('target_classe_id')
+            ->pluck('source_classe_id', 'target_classe_id');
+        $sources = $manuels->isEmpty() ? collect()
+            : static::whereIn('id', $manuels->unique()->values())->get()->keyBy('id');
 
-        if ($manual) {
-            $source = static::find($manual);
+        // 2. Fallback hierarchie filiere : la classe TC du meme niveau dans la
+        // filiere parent. La premiere trouvee l'emporte, comme le first() d'origine.
+        $filieresParent = $specialites->map(fn (self $c) => optional($c->filiere)->parent_id)->filter()->unique();
+        $candidats = $filieresParent->isEmpty() ? collect()
+            : static::query()
+                ->whereIn('filiere_id', $filieresParent->values())
+                ->where('is_active', true)
+                ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', true))
+                ->get();
+
+        foreach ($specialites as $classe) {
+            $source = $sources->get($manuels->get($classe->id));
             if ($source && $source->isTroncCommun()) {
-                return $source;
+                $parents[$classe->id] = $source;
+                continue;
             }
+            $filiereParentId = optional($classe->filiere)->parent_id;
+            $parents[$classe->id] = $filiereParentId ? $candidats->first(
+                fn (self $c) => (int) $c->filiere_id === (int) $filiereParentId
+                    && (int) $c->niveau_etude_id === (int) $classe->niveau_etude_id
+            ) : null;
         }
 
-        // 2. Fallback hiérarchie filière : on cherche la classe TC du même niveau
-        // dans la filière parent (la filière TC mère de la spécialité courante).
-        $filiereParentId = optional($this->filiere)->parent_id;
-        if (!$filiereParentId) {
-            return null;
-        }
+        return $parents;
+    }
 
-        return static::query()
-            ->where('filiere_id', $filiereParentId)
-            ->where('niveau_etude_id', $this->niveau_etude_id)
-            ->where('is_active', true)
-            ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', true))
-            ->first();
+    /**
+     * Pose sur chaque carte d'une liste ses places prises et son TC parent,
+     * pour que l'affichage ne lance plus aucune requete par carte.
+     *
+     * @param  \Illuminate\Support\Collection<int, ESBTPClasse>  $classes
+     */
+    public static function preparerPourListe(\Illuminate\Support\Collection $classes): void
+    {
+        if ($classes->isEmpty()) {
+            return;
+        }
+        // Sans annee courante, l'effectif reste a l'accesseur, qui le journalise.
+        $places = ESBTPAnneeUniversitaire::where('is_current', true)->exists()
+            ? static::placesPrisesParClasse()
+            : null;
+        $parents = static::parentsTroncCommun($classes);
+        foreach ($classes as $classe) {
+            if ($places !== null) {
+                $classe->nombreEtudiantsConnu = (int) $places->get($classe->id, 0);
+            }
+            $classe->parentTroncCommun = $parents->get($classe->id);
+            $classe->parentTroncCommunConnu = true;
+        }
     }
 
     /**
@@ -346,6 +410,10 @@ class ESBTPClasse extends Model implements Auditable
      */
     public function getNombreEtudiantsAttribute()
     {
+        if ($this->nombreEtudiantsConnu !== null) {
+            return $this->nombreEtudiantsConnu;
+        }
+
         // Récupérer l'année universitaire courante
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 

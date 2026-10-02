@@ -2249,15 +2249,17 @@ class NotificationService
 
                 $link = route('coordinateur.attendance-dashboard');
 
+                // Destinataires deja notifies ce jour de cette alerte : une requete
+                // pour tous, au lieu d'une par destinataire a chaque affichage.
+                $dejaNotifies = Notification::whereIn('user_id', $recipients->pluck('id'))
+                    ->where('title', $title)
+                    ->whereDate('created_at', $date)
+                    ->pluck('user_id')
+                    ->flip();
+
                 // Envoyer à tous les destinataires
                 foreach ($recipients as $recipient) {
-                    // Vérifier si une notification identique n'a pas déjà été envoyée aujourd'hui
-                    $existingNotification = Notification::where('user_id', $recipient->id)
-                        ->where('title', $title)
-                        ->whereDate('created_at', $date)
-                        ->first();
-
-                    if (!$existingNotification) {
+                    if (!$dejaNotifies->has($recipient->id)) {
                         $this->createNotification(
                             $recipient,
                             $title,
