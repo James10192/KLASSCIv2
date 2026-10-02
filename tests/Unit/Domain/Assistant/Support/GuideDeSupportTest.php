@@ -110,6 +110,46 @@ class GuideDeSupportTest extends TestCase
         }
     }
 
+    /**
+     * Le défaut signalé en octobre 2026 : après « Non, ça n'a pas résolu », la
+     * demande recopiait la marche à suivre de Nanan au lieu de la question.
+     */
+    public function test_la_reponse_de_nanan_n_entre_jamais_dans_la_demande(): void
+    {
+        $reponse = "1. Ouvrez le menu Bulletins.\n2. Choisissez la classe et la période.\n3. Cliquez sur Imprimer en bas de la liste.";
+        foreach ([['type' => TourDeSupport::REPONSE], []] as $type) {
+            $tour = $this->guide->tour(Intention::COMMENT, FilDeSupport::depuis([
+                ['role' => 'personne', 'texte' => 'Je ne sais pas comment imprimer les bulletins de la classe 2A.'],
+                ['role' => 'nanan', 'texte' => $reponse] + $type,
+                ['role' => 'personne', 'texte' => FilDeSupport::PAS_RESOLU],
+            ]), [], 6, true);
+
+            $this->assertSame(TourDeSupport::RECAPITULATIF, $tour->action);
+            $this->assertSame('Je ne sais pas comment imprimer les bulletins de la classe 2A.', $tour->recap['titre']);
+            $this->assertStringNotContainsString('Ouvrez le menu Bulletins', $tour->recap['description']);
+            $this->assertStringNotContainsString(FilDeSupport::PAS_RESOLU, $tour->recap['description']);
+            $this->assertStringContainsString('ne m\'a pas suffi', $tour->recap['description']);
+            $this->assertStringStartsWith('Je ne sais pas comment imprimer', $tour->recap['description']);
+        }
+    }
+
+    public function test_ce_que_la_personne_ajoute_apres_une_reponse_est_garde(): void
+    {
+        $tour = $this->guide->tour(Intention::PROBLEME, FilDeSupport::depuis([
+            ['role' => 'personne', 'texte' => 'Le reçu de Koné ne sort pas.'],
+            ['role' => 'nanan', 'texte' => 'Videz le cache du navigateur puis rechargez la page des paiements.', 'type' => TourDeSupport::REPONSE],
+            ['role' => 'personne', 'texte' => "J'ai essayé, le bouton Imprimer reste gris."],
+            ['role' => 'nanan', 'texte' => GuideDeSupport::QUESTION_URGENCE, 'type' => TourDeSupport::QUESTION],
+            ['role' => 'personne', 'texte' => GuideDeSupport::CHOIX_BLOQUE],
+        ]), [], 6, true);
+
+        $description = $tour->recap['description'];
+        $this->assertStringContainsString("- J'ai essayé, le bouton Imprimer reste gris.", $description);
+        $this->assertStringContainsString('- ' . GuideDeSupport::QUESTION_URGENCE . ' ' . GuideDeSupport::CHOIX_BLOQUE, $description);
+        $this->assertStringNotContainsString('Videz le cache', $description);
+        $this->assertSame('BLOQUE', $tour->recap['categorie']);
+    }
+
     public function test_titre_court_coupe_sur_un_mot(): void
     {
         $titre = GuideDeSupport::titreCourt(str_repeat('bulletin ', 30));

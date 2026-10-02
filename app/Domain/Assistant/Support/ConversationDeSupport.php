@@ -50,8 +50,27 @@ class ConversationDeSupport
         if ($tour === null || ($forcer && $tour->action !== TourDeSupport::RECAPITULATIF)) {
             $tour = $this->guide->tour($intention, $fil, $page, $questionsMax, $forcer);
         }
+        $tour = $this->sansReponseRecopiee($tour, $intention, $fil, $page);
 
         return $this->finaliser($tour, $fil, $page);
+    }
+
+    /**
+     * Un récapitulatif du modèle qui recopie sa propre réponse est remplacé
+     * par celui du guide, écrit avec les seuls mots de la personne. La
+     * consigne l'interdit déjà ; c'est la lecture qui le garantit, comme pour
+     * les promesses de délai. La catégorie choisie par le modèle est gardée.
+     */
+    private function sansReponseRecopiee(TourDeSupport $tour, Intention $intention, FilDeSupport $fil, array $page): TourDeSupport
+    {
+        if ($tour->recap === null || $tour->source !== 'ia'
+            || ! $fil->recopieUneReponseDeNanan($tour->recap['titre'] . "\n" . $tour->recap['description'])) {
+            return $tour;
+        }
+        Log::info('assistant.support.recap_recopie_la_reponse');
+        $recap = ['categorie' => $tour->recap['categorie']] + $this->guide->recap($intention, $fil, $page);
+
+        return TourDeSupport::recapitulatif($tour->texte, $recap, 'ia');
     }
 
     /**
