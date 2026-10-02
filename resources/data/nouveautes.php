@@ -35,6 +35,18 @@ return [
             ],
         ],
         [
+            'titre' => 'Le statut redoublant, confirmé par une personne',
+            'icone' => 'fa-redo-alt',
+            'texte' => 'KLASSCI déduit toujours si un élève redouble, d’après son niveau de l’an dernier, mais une personne le confirme désormais : à la réinscription, sur la fiche d’inscription, ou en masse depuis la liste filtrée « Statut redoublant à confirmer ». Changer la valeur proposée demande un motif, et une contradiction avec la décision de réinscription est signalée.',
+            'permissions' => ['inscriptions.redoublant.confirm'],
+            'captures' => [
+                'avant' => 'images/nouveautes/2026-10/redoublant-fiche-avant.webp',
+                'apres' => 'images/nouveautes/2026-10/redoublant-fiche-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'La fiche dit d’où vient le statut, signale la contradiction, et se confirme ou se corrige en un clic.',
+            ],
+        ],
+        [
             'titre' => 'Aide : Nanan vous guide',
             'icone' => 'fa-life-ring',
             'si' => 'aide',
