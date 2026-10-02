@@ -16,7 +16,8 @@ use Illuminate\Validation\ValidationException;
  * ce qu'une personne en a confirmé.
  *
  * Le logiciel déduit (même niveau d'étude que l'année d'avant, règle unique de
- * {@see ESBTPInscription::estUnRedoublement()}). Une personne habilitée confirme
+ * {@see ESBTPInscription::estUnRedoublement()}) ; sans année d'avant dans
+ * KLASSCI, il reprend la déclaration du transféré ({@see DeclarationDuTransfere}). Une personne habilitée confirme
  * la valeur, ou la corrige en disant pourquoi.
  *
  * La colonne `is_redoublant` est la SEULE valeur lue partout (écrans, listes,
@@ -55,12 +56,21 @@ class StatutRedoublant
             ? $inscription->anneeUniversitaire
             : ESBTPAnneeUniversitaire::find($inscription->annee_universitaire_id);
 
-        if ($annee === null) {
+        // Sans date de début, on ne sait pas quelle année précède : indéterminé,
+        // comme au recensement — ni déduction, ni déclaration.
+        if ($annee === null || $annee->start_date === null) {
             return false;
         }
 
+        $precedente = ESBTPInscription::precedantAnnee((int) $inscription->etudiant_id, $annee);
+
+        // Pas d'année précédente ici : seul un transféré peut dire qu'il recommence.
+        if ($precedente === null) {
+            return app(DeclarationDuTransfere::class)->declareRecommencer((int) $inscription->etudiant_id, (int) $annee->id);
+        }
+
         return ESBTPInscription::estUnRedoublement(
-            ESBTPInscription::precedantAnnee((int) $inscription->etudiant_id, $annee),
+            $precedente,
             $inscription->niveau_id !== null ? (int) $inscription->niveau_id : null,
         );
     }
@@ -195,10 +205,10 @@ class StatutRedoublant
      *
      * @throws ValidationException
      */
-    public function etablir(ESBTPInscription $inscription, User $personne, bool $valeur, ?string $motif = null): void
+    public function etablir(ESBTPInscription $inscription, User $personne, bool $valeur, ?string $motif = null, ?bool $proposition = null): void
     {
         $motif = trim((string) $motif);
-        $deduction = $this->deduire($inscription);
+        $deduction = $proposition ?? $this->deduire($inscription);
         $reference = $this->estEtabliParUnePersonne($inscription) ? (bool) $inscription->is_redoublant : $deduction;
         $change = $reference !== $valeur;
 
@@ -249,9 +259,14 @@ class StatutRedoublant
      * (caisse, agent d'inscription), la valeur reste déduite et la scolarité la
      * confirmera. Voir {@see QuestionRedoublant}.
      *
+     * `$proposition` : celle que l'écran a montrée, quand elle ne se lit pas
+     * encore en base (la candidature n'est liée à l'étudiant qu'après
+     * l'inscription). Sans elle, garder le « oui » d'un transféré passerait
+     * pour une correction.
+     *
      * @throws ValidationException si elle change la valeur sans motif
      */
-    public function etablirALaCreation(ESBTPInscription $inscription, ?bool $choix, ?string $motif): void
+    public function etablirALaCreation(ESBTPInscription $inscription, ?bool $choix, ?string $motif, ?bool $proposition = null): void
     {
         $personne = auth()->user();
 
@@ -259,7 +274,7 @@ class StatutRedoublant
             return;
         }
 
-        $this->etablir($inscription->loadMissing('anneeUniversitaire'), $personne, $choix, $motif);
+        $this->etablir($inscription->loadMissing('anneeUniversitaire'), $personne, $choix, $motif, $proposition);
     }
 
     /** Même niveau, même année : passer en spécialité ne change rien au statut. */
@@ -378,7 +393,10 @@ class StatutRedoublant
         $detail = match ($etat) {
             'confirme' => trim('Confirmé'.($qui ? ' par '.$qui : '').($quand ? ' le '.$quand : '')),
             'corrige' => trim('Corrigé'.($qui ? ' par '.$qui : '').($quand ? ' le '.$quand : '')),
-            'a_confirmer' => 'Déduit du niveau de l\'an dernier, à confirmer.',
+            'a_confirmer' => $valeur && $inscription->anneeUniversitaire?->start_date !== null
+                    && ESBTPInscription::precedantAnnee((int) $inscription->etudiant_id, $inscription->anneeUniversitaire) === null
+                ? 'Déclaré par le candidat dans sa candidature de transfert, à confirmer.'
+                : 'Déduit du niveau de l\'an dernier, à confirmer.',
             default => 'Première inscription dans l\'établissement.',
         };
 
