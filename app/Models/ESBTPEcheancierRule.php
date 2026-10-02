@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Services\EcheancierResolverService;
 use Illuminate\Database\Eloquent\Model;
 
 class ESBTPEcheancierRule extends Model
@@ -38,6 +39,13 @@ class ESBTPEcheancierRule extends Model
         'effective_from' => 'date',
         'effective_to' => 'date',
     ];
+
+    protected static function booted(): void
+    {
+        // Le resolveur retient les regles le temps d'une page : toute ecriture l'en vide.
+        static::saved(fn () => EcheancierResolverService::oublierRegles());
+        static::deleted(fn () => EcheancierResolverService::oublierRegles());
+    }
 
     public function lines()
     {
