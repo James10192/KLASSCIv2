@@ -119,7 +119,7 @@
                         <i class="fas fa-info-circle"></i>
                     </span>
                 @endif
-                <h6 class="notification-title mb-0">{{ $notification->title ?? 'Notification' }}</h6>
+                <h6 class="notification-title mb-0">{{ \App\Services\Notifications\NotificationPresenter::titreLisible($notification->title) }}</h6>
                 @if(!$notification->is_read)
                     <span class="ms-auto badge bg-warning">Nouveau</span>
                 @endif

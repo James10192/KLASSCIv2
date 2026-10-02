@@ -59,6 +59,13 @@ class NotificationPresenter
         );
     }
 
+    public static function titreLisible(?string $titre): string
+    {
+        $titre = trim(preg_replace('/\s+/u', ' ', strip_tags((string) $titre)));
+
+        return $titre !== '' ? $titre : 'Notification';
+    }
+
     public static function groupKey(?Carbon $date): string
     {
         if (! $date) {
@@ -98,6 +105,9 @@ class NotificationPresenter
         $notification->display_type = $type;
         $notification->display_group = self::groupKey($notification->created_at);
         $notification->display_url = $this->safeUrl($notification->link);
+        // Des rappels anciens portent une icone HTML dans leur titre : affichee
+        // echappee, elle sortait en texte brut (« <i class='fas fa-clock'></i> »).
+        $notification->display_title = self::titreLisible($notification->title);
 
         [$primary, $labels] = $this->readMessage($notification, $inscriptions);
         $notification->display_primary = $primary;
