@@ -106,20 +106,14 @@ return [
     | Should Audit records be stored when the recorded old_values & new_values
     | are both empty?
     |
-    | Non : une mise a jour qui ne change aucune colonne auditee (touch(),
-    | updated_by seul, colonne hors liste blanche) n'apprend rien et
-    | encombrait le journal — 62 099 lignes « Bulletin updated » vides en
-    | 30 jours sur esbtp-abidjan, et la lecture du journal sur 30 jours
-    | prenait 12 s. Creation, suppression et restauration restent toujours
-    | tracees, meme vides : elles disent qu'un objet a existe ou disparu.
+    | For security, we keep all audit records even if empty
     |
     */
 
-    'empty_values' => false,
+    'empty_values' => true,
     'allowed_empty_values' => [
-        'created',
-        'deleted',
-        'restored',
+        'retrieved',
+        'created', // Allow empty values for creation events
     ],
 
     /*

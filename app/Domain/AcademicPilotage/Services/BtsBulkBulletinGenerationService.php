@@ -253,6 +253,7 @@ final class BtsBulkBulletinGenerationService
         return 'ready';
     }
 
+    /** Genere puis reclasse la classe une fois, si un bulletin a ete ecrit. */
     public function generate(
         ESBTPClasse $classe,
         int $academicYearId,
@@ -261,7 +262,29 @@ final class BtsBulkBulletinGenerationService
         bool $recalculate = false,
         ?string $incompleteReason = null,
         ?array $studentIds = null,
-        bool $reclasserLaClasse = true,
+    ): BulkBulletinGenerationResult {
+        $resultat = $this->genererSansClasser($classe, $academicYearId, $period, $actor, $recalculate, $incompleteReason, $studentIds);
+
+        if ($resultat->hasWrites()) {
+            $this->reclasserLaClasse($classe->id, $academicYearId, $this->bulletinService->normalizePeriode($period));
+        }
+
+        return $resultat;
+    }
+
+    /**
+     * Genere sans reclasser la classe. Pour une generation par tranches : le
+     * moteur des taches reclasse une seule fois, a la conclusion
+     * (reclasserLaClasse()).
+     */
+    public function genererSansClasser(
+        ESBTPClasse $classe,
+        int $academicYearId,
+        string $period,
+        ?User $actor,
+        bool $recalculate = false,
+        ?string $incompleteReason = null,
+        ?array $studentIds = null,
     ): BulkBulletinGenerationResult {
         $period = $this->bulletinService->normalizePeriode($period);
         $preflight = $this->preflight($classe, $academicYearId, $period, $actor, $recalculate, $studentIds);
@@ -297,15 +320,11 @@ final class BtsBulkBulletinGenerationService
 
         // Chaque bulletin genere ne reclasse plus la classe : sinon la classe
         // entiere etait reecrite a chaque eleve (≈ N²/2 sauvegardes et autant
-        // de lignes d'audit). On reclasse une fois, ci-dessous, ou a la fin de
-        // la tache quand la generation avance par tranches.
+        // de lignes d'audit). On reclasse une fois, dans generate(), ou a la fin
+        // de la tache quand la generation avance par tranches.
         [$created, $regenerated, $skipped, $blockingErrors, $errors] = $this->bulletinService->sansReclasserLaClasse(
             fn (): array => $this->genererChaqueEleve($students, $classe, $academicYearId, $period, $actor, $recalculate, $incompleteReason)
         );
-
-        if ($reclasserLaClasse && ($created > 0 || $regenerated > 0)) {
-            $this->reclasserLaClasse($classe->id, $academicYearId, $period);
-        }
 
         return new BulkBulletinGenerationResult(
             created: $created,
@@ -446,7 +465,7 @@ final class BtsBulkBulletinGenerationService
      * Le classement de la classe, une fois toutes les moyennes posees.
      *
      * Appele par {@see generate()} en fin de lot, ou par le moteur des taches
-     * quand la generation avance par tranches et a passe `reclasserLaClasse: false`.
+     * quand la generation avance par tranches (genererSansClasser()).
      */
     public function reclasserLaClasse(int $classeId, int $academicYearId, string $period): void
     {

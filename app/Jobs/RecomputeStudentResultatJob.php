@@ -252,8 +252,10 @@ class RecomputeStudentResultatJob implements ShouldQueue
      * Par une requête, pas par `$bulletin->touch()` : `touch()` passe par
      * l'événement `updated`, et comme `updated_at` n'est pas dans la liste
      * blanche d'audit du bulletin, chaque note enregistrée écrivait une ligne
-     * « Bulletin updated » vide dans le journal (62 099 en 30 jours sur
-     * esbtp-abidjan). Aucun écouteur ne lit cet événement sur le bulletin.
+     * « Bulletin updated » vide dans le journal (`empty_values` vaut true).
+     * C'est l'une des deux causes des 62 099 « Bulletin updated » relevés en
+     * 30 jours sur esbtp-abidjan, avec le reclassement en cascade ; la part
+     * de chacune n'est pas mesurée. Aucun écouteur ne lit cet événement.
      */
     private function touchBulletinIfExists(string $periode): void
     {

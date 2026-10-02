@@ -17,8 +17,9 @@ use Tests\TestCase;
 /**
  * La génération de masse ne reclasse plus la classe à chaque élève.
  *
- * Mesuré sur esbtp-abidjan (30 jours) : 62 099 audits « Bulletin updated ».
- * Chaque bulletin généré reclassait toute la classe, et un élève classé
+ * Mesuré sur esbtp-abidjan (30 jours) : 62 099 audits « Bulletin updated »,
+ * sans que la part de chaque cause soit mesurée. Celle-ci en est une :
+ * chaque bulletin généré reclassait toute la classe, et un élève classé
  * premier décale tous les autres : la classe entière était réécrite à
  * chaque élève, ≈ N²/2 sauvegardes et autant de lignes d'audit.
  *
@@ -108,21 +109,6 @@ class ReclassementDeMasseTest extends TestCase
             $bulletin->fresh()->updated_at->greaterThan(now()->subHour()),
             'Témoin : le bulletin est bien marqué comme modifié.'
         );
-    }
-
-    public function test_une_sauvegarde_sans_changement_audite_n_ecrit_plus_rien(): void
-    {
-        [$etudiants] = $this->uneClasseNotee();
-        $bulletin = $this->bulletinDe($etudiants[0]);
-        $avant = $this->auditsDeBulletin();
-
-        $bulletin->updated_by = \App\Models\User::factory()->create()->id; // hors liste blanche d'audit
-        $bulletin->save();
-        $this->assertSame($avant, $this->auditsDeBulletin(), 'Aucune colonne auditée ne change : pas de ligne.');
-
-        $bulletin->decision_conseil = 'Admis';
-        $bulletin->save();
-        $this->assertSame($avant + 1, $this->auditsDeBulletin(), 'Témoin : un vrai changement reste audité.');
     }
 
     public function test_regenerer_sans_changement_ne_reecrit_pas_les_moyennes_par_matiere(): void

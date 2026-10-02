@@ -500,7 +500,7 @@ class ExecuteurTachesBulletins
      */
     protected function genererLaTranche(ESBTPClasse $classe, BulletinTache $tache, array $ids): BulkBulletinGenerationResult
     {
-        return $this->generation->generate(
+        return $this->generation->genererSansClasser(
             $classe,
             (int) $tache->annee_universitaire_id,
             (string) $tache->periode,
@@ -508,7 +508,6 @@ class ExecuteurTachesBulletins
             (bool) $tache->parametre('recalculer', false),
             $tache->parametre('incomplete_reason'),
             $ids,
-            reclasserLaClasse: false,
         );
     }
 

@@ -206,7 +206,8 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         // Un seul classement, apres la boucle : le reclassement par eleve
         // reecrivait la classe entiere a chaque bulletin (N²/2 ecritures).
         $this->assertStringContainsString('$this->bulletinService->sansReclasserLaClasse(', $bulkService);
-        $this->assertStringContainsString('$this->reclasserLaClasse($classe->id, $academicYearId, $period);', $bulkService);
+        $this->assertStringContainsString('if ($resultat->hasWrites()) {', $bulkService);
+        $this->assertStringContainsString('public function genererSansClasser(', $bulkService);
         $this->assertStringContainsString(
             '$this->bulletinService->calculerRangsPourClasse($classeId, $academicYearId, $period);',
             $bulkService
