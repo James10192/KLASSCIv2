@@ -71,74 +71,22 @@ class CoordinateurDashboardController extends Controller
     }
 
     /**
-     * Calcule les statistiques de présence pour le tableau de bord
+     * Calcule les statistiques de présence pour le tableau de bord.
+     *
+     * Les séances du jour sont lues UNE fois, avec leurs émargements du jour et
+     * le compte de leurs appels : les KPI, la répartition par matière et les
+     * alertes en dérivent sans relancer de requête par séance. Les filtres de
+     * jour sont des intervalles (whereBetween) et non des whereDate, qui
+     * empêchent MySQL d'utiliser un index sur la colonne.
      */
     private function calculateAttendanceStats($date)
     {
         try {
-            $stats = [];
+            $jour = [$date->copy()->startOfDay(), $date->copy()->endOfDay()];
+            $seances = $this->seancesDuJour($jour);
+            $workflows = $this->workflowsDesSeances($seances);
+            $stats = array_merge($this->statsEmargements($seances), $this->statsAppels($jour));
 
-            // 1. Séances programmées aujourd'hui
-            $stats['scheduled_courses_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->count();
-
-            // 2. Émargements enseignants effectués (COMPLETS = début + fin)
-            // Compter les cours avec DEUX émargements (start ET end)
-            $dailyCode = \App\Models\ESBTPDailyCode::where('status', 'active')
-                ->where('is_active', true)
-                ->whereDate('created_at', $date->toDateString())
-                ->first();
-
-            // Compter les cours qui ont à la fois émargement début ET fin
-            $stats['teacher_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->whereHas('teacherAttendances', function($q) use ($date) {
-                    $q->whereDate('date', $date)
-                      ->where('type', 'start');
-                })
-                ->whereHas('teacherAttendances', function($q) use ($date) {
-                    $q->whereDate('date', $date)
-                      ->where('type', 'end');
-                })
-                ->count();
-
-            // Compter aussi les émargements de début seulement (pour statistiques)
-            $stats['teacher_start_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->whereHas('teacherAttendances', function($q) use ($date) {
-                    $q->whereDate('date', $date)
-                      ->where('type', 'start');
-                })
-                ->count();
-
-            // Compter émargements FIN seulement
-            $stats['teacher_end_attendances_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->whereHas('teacherAttendances', function($q) use ($date) {
-                    $q->whereDate('date', $date)
-                      ->where('type', 'end');
-                })
-                ->count();
-
-            // 3. Taux d'émargement (basé sur émargements COMPLETS)
-            $stats['teacher_attendance_rate'] = $stats['scheduled_courses_today'] > 0
-                ? round(($stats['teacher_attendances_today'] / $stats['scheduled_courses_today']) * 100, 1)
-                : 0;
-
-            // 4. Appels de DÉBUT terminés (séances avec workflow call_start_done)
-            $stats['call_start_done_today'] = \App\Models\ESBTPSessionWorkflow::whereDate('call_start_done_at', $date)
-                ->where('call_start_done', true)
-                ->count();
-
-            // 5. Appels de FIN terminés (séances avec workflow call_end_done)
-            $stats['call_end_done_today'] = \App\Models\ESBTPSessionWorkflow::whereDate('call_end_done_at', $date)
-                ->where('call_end_done', true)
-                ->count();
-
-            // 6. Appels TOTAUX terminés (les DEUX appels - début ET fin)
-            $stats['roll_calls_completed_today'] = \App\Models\ESBTPSessionWorkflow::whereDate('call_start_done_at', $date)
-                ->where('call_start_done', true)
-                ->where('call_end_done', true)
-                ->count();
-
-            // Récupérer l'année universitaire en cours
             $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
             if (! $anneeUniversitaire) {
@@ -148,99 +96,42 @@ class CoordinateurDashboardController extends Controller
                 throw new \RuntimeException('Aucune année universitaire courante : statistiques de présence indisponibles.');
             }
 
-            // 5. PRÉSENCES finales aujourd'hui (pas étudiants uniques, mais nombre de présences)
-            // IMPORTANT: Utiliser finalOnly() pour ne compter que les statuts fusionnés
-            // Filtré par année universitaire en cours et inscriptions active
-            // Un retard est une présence (statut « retard » ; la valeur anglaise « late » n'a jamais été écrite).
-            $stats['presences_today'] = \App\Models\ESBTPAttendance::finalOnly()
-                ->whereDate('date', $date)
-                ->where('annee_universitaire_id', $anneeUniversitaire->id)
-                ->whereIn('statut', ['present', 'retard'])
-                ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
-                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                      ->where('status', 'active');
-                })
-                ->count();
-
-            // 6. ABSENCES finales aujourd'hui
-            $stats['absences_today'] = \App\Models\ESBTPAttendance::finalOnly()
-                ->whereDate('date', $date)
-                ->where('annee_universitaire_id', $anneeUniversitaire->id)
-                ->where('statut', 'absent')
-                ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
-                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                      ->where('status', 'active');
-                })
-                ->count();
-
-            // 7. RETARDS finaux aujourd'hui
-            $stats['retards_today'] = \App\Models\ESBTPAttendance::finalOnly()
-                ->whereDate('date', $date)
-                ->where('annee_universitaire_id', $anneeUniversitaire->id)
-                ->where('statut', 'retard')
-                ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
-                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                      ->where('status', 'active');
-                })
-                ->count();
-
-            // 8. TOTAL des appels faits (toutes présences finales)
-            $stats['total_calls_today'] = \App\Models\ESBTPAttendance::finalOnly()
-                ->whereDate('date', $date)
-                ->where('annee_universitaire_id', $anneeUniversitaire->id)
-                ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
-                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                      ->where('status', 'active');
-                })
-                ->count();
+            // PRÉSENCES / ABSENCES / RETARDS / TOTAL finaux du jour, en une requête
+            // (finalOnly() : statuts fusionnés seulement ; un retard est une présence).
+            $finaux = $this->presencesDuJour($jour, $anneeUniversitaire->id)->finalOnly()
+                ->selectRaw('COUNT(*) as total')
+                ->selectRaw("COALESCE(SUM(CASE WHEN statut IN ('present', 'retard') THEN 1 ELSE 0 END), 0) as presences")
+                ->selectRaw("COALESCE(SUM(CASE WHEN statut = 'absent' THEN 1 ELSE 0 END), 0) as absences")
+                ->selectRaw("COALESCE(SUM(CASE WHEN statut = 'retard' THEN 1 ELSE 0 END), 0) as retards")
+                ->toBase()->first();
+            $stats['presences_today'] = (int) $finaux->presences;
+            $stats['absences_today'] = (int) $finaux->absences;
+            $stats['retards_today'] = (int) $finaux->retards;
+            $stats['total_calls_today'] = (int) $finaux->total;
 
             // Garder aussi students_present_today et students_total_today pour compatibilité
             $stats['students_present_today'] = $stats['presences_today'];
             $stats['students_total_today'] = $stats['total_calls_today'];
 
-            // 7. Taux de présence étudiants
             $stats['student_attendance_rate'] = $stats['students_total_today'] > 0
                 ? round(($stats['students_present_today'] / $stats['students_total_today']) * 100, 1)
                 : 0;
 
-            // 8. Retards d'émargement (cours sans émargement enseignant)
+            // Retards d'émargement (cours sans émargement enseignant complet)
             $stats['delays_today'] = max(0, $stats['scheduled_courses_today'] - $stats['teacher_attendances_today']);
 
-            // 9. Cours avec workflow complet (2 émargements + 2 appels)
-            // Un cours est complet si:
-            // - Émargement début ET fin (les deux types)
-            // - Appels d'étudiants effectués
-            $stats['courses_completed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                // Vérifier émargement DÉBUT
-                ->whereHas('teacherAttendances', function($q) use ($date) {
-                    $q->whereDate('date', $date)
-                      ->where('type', 'start');
-                })
-                // Vérifier émargement FIN
-                ->whereHas('teacherAttendances', function($q) use ($date) {
-                    $q->whereDate('date', $date)
-                      ->where('type', 'end');
-                })
-                // Vérifier qu'il y a des appels d'étudiants
-                ->whereHas('attendances')
-                ->count();
-
-            // 10. Enseignants actifs aujourd'hui
-            $stats['active_teachers_today'] = ESBTPTeacherAttendance::whereDate('created_at', $date)
+            $stats['active_teachers_today'] = ESBTPTeacherAttendance::whereBetween('created_at', $jour)
                 ->distinct('teacher_id')
                 ->count();
 
-            // 11. Statistiques par matière
-            $stats['subjects_stats'] = $this->getSubjectStats($date);
-
-            // 12. Alertes importantes
-            $stats['alerts'] = $this->getAttendanceAlerts($date);
+            $stats['subjects_stats'] = $this->getSubjectStats($seances, $workflows, $jour);
+            $stats['alerts'] = $this->getAttendanceAlerts($seances, $jour, $anneeUniversitaire);
 
             return $stats;
 
         } catch (\Exception $e) {
             \Log::error('Erreur calcul statistiques coordinateur: ' . $e->getMessage());
-            
+
             // Retourner des statistiques par défaut en cas d'erreur
             return [
                 'scheduled_courses_today' => 0,
@@ -262,90 +153,135 @@ class CoordinateurDashboardController extends Controller
     }
 
     /**
-     * Calcule les statistiques par matière
+     * Les séances du jour, avec matière, classe, émargements DU JOUR (début/fin),
+     * nombre d'appels d'étudiants et nombre d'émargements toutes dates.
      */
-    private function getSubjectStats($date)
+    private function seancesDuJour(array $jour)
+    {
+        return ESBTPSeanceCours::whereBetween('date_seance', $jour)
+            ->with([
+                'matiere', 'classe',
+                'teacherAttendances' => fn ($q) => $q->whereBetween('date', $jour)->whereIn('type', ['start', 'end']),
+            ])
+            ->withCount(['attendances', 'teacherAttendances as emargements_toutes_dates'])
+            ->get();
+    }
+
+    /**
+     * Le workflow de chaque séance : le premier enregistré l'emporte, comme le
+     * ->first() lancé auparavant séance par séance.
+     */
+    private function workflowsDesSeances($seances)
+    {
+        return \App\Models\ESBTPSessionWorkflow::whereIn('seance_cours_id', $seances->pluck('id'))
+            ->orderBy('id')->get()->unique('seance_cours_id')->keyBy('seance_cours_id');
+    }
+
+    /**
+     * Séances programmées et émargements (début, fin, complets) du jour.
+     */
+    private function statsEmargements($seances): array
+    {
+        $aEmarge = fn ($seance, string $type) => $seance->teacherAttendances->contains('type', $type);
+        $completes = $seances->filter(fn ($s) => $aEmarge($s, 'start') && $aEmarge($s, 'end'));
+
+        $stats = [
+            'scheduled_courses_today' => $seances->count(),
+            'teacher_attendances_today' => $completes->count(),
+            'teacher_start_attendances_today' => $seances->filter(fn ($s) => $aEmarge($s, 'start'))->count(),
+            'teacher_end_attendances_today' => $seances->filter(fn ($s) => $aEmarge($s, 'end'))->count(),
+            // Cours complet : émargement début ET fin, et des appels d'étudiants
+            'courses_completed_today' => $completes->filter(fn ($s) => $s->attendances_count > 0)->count(),
+        ];
+        $stats['teacher_attendance_rate'] = $stats['scheduled_courses_today'] > 0
+            ? round(($stats['teacher_attendances_today'] / $stats['scheduled_courses_today']) * 100, 1)
+            : 0;
+
+        return $stats;
+    }
+
+    /**
+     * Appels de DÉBUT, de FIN et des DEUX terminés ce jour-là, en une requête.
+     */
+    private function statsAppels(array $jour): array
+    {
+        $appels = \App\Models\ESBTPSessionWorkflow::query()
+            ->where(fn ($q) => $q->whereBetween('call_start_done_at', $jour)->orWhereBetween('call_end_done_at', $jour))
+            ->get(['call_start_done', 'call_start_done_at', 'call_end_done', 'call_end_done_at']);
+        $debutFait = fn ($w) => $w->call_start_done && $this->dansLeJour($w->call_start_done_at, $jour);
+
+        return [
+            'call_start_done_today' => $appels->filter($debutFait)->count(),
+            'call_end_done_today' => $appels->filter(
+                fn ($w) => $w->call_end_done && $this->dansLeJour($w->call_end_done_at, $jour)
+            )->count(),
+            // Les DEUX appels, la journée étant celle de l'appel de début
+            'roll_calls_completed_today' => $appels->filter(fn ($w) => $debutFait($w) && $w->call_end_done)->count(),
+        ];
+    }
+
+    private function dansLeJour($instant, array $jour): bool
+    {
+        return $instant !== null && Carbon::parse($instant)->between($jour[0], $jour[1]);
+    }
+
+    /**
+     * Présences du jour de l'année courante, limitées aux étudiants inscrits
+     * (inscription active) cette année.
+     */
+    private function presencesDuJour(array $jour, int $anneeId)
+    {
+        return \App\Models\ESBTPAttendance::whereBetween('date', $jour)
+            ->where('annee_universitaire_id', $anneeId)
+            ->whereHas('etudiant.inscriptions', function ($q) use ($anneeId) {
+                $q->where('annee_universitaire_id', $anneeId)->where('status', 'active');
+            });
+    }
+
+    /**
+     * Calcule les statistiques par matière, à partir des séances déjà chargées.
+     *
+     * Un appel compte s'il a été fait le jour AFFICHÉ. Avant, le test était
+     * isToday() : consulter une journée passée affichait toujours 0 appel.
+     */
+    private function getSubjectStats($seances, $workflows, array $jour)
     {
         try {
-            return ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->with(['matiere', 'teacherAttendances', 'attendances'])
-                ->get()
+            return $seances
                 ->groupBy('matiere_id')
-                ->map(function ($seances, $matiereId) use ($date) {
-                    $matiere = $seances->first()->matiere;
-                    $totalSeances = $seances->count();
+                ->map(function ($seancesMatiere) use ($workflows, $jour) {
+                    $totalSeances = $seancesMatiere->count();
+                    $emargementDebutCount = $seancesMatiere->filter(fn ($s) => $s->teacherAttendances->contains('type', 'start'))->count();
+                    $emargementFinCount = $seancesMatiere->filter(fn ($s) => $s->teacherAttendances->contains('type', 'end'))->count();
 
-                    // Compter les émargements DÉBUT et FIN séparément
-                    $emargementDebutCount = 0;
-                    $emargementFinCount = 0;
+                    // Appels via ESBTPSessionWorkflow (plus fiable que compter les attendances)
+                    $workflowsMatiere = $seancesMatiere->map(fn ($s) => $workflows->get($s->id))->filter();
+                    $appelDebutCount = $workflowsMatiere->filter(
+                        fn ($w) => $w->call_start_done && $this->dansLeJour($w->call_start_done_at, $jour)
+                    )->count();
+                    $appelFinCount = $workflowsMatiere->filter(
+                        fn ($w) => $w->call_end_done && $this->dansLeJour($w->call_end_done_at, $jour)
+                    )->count();
 
-                    // Compter les appels DÉBUT et FIN séparément
-                    $appelDebutCount = 0;
-                    $appelFinCount = 0;
-
-                    foreach ($seances as $seance) {
-                        // Vérifier émargements
-                        $hasEmargementDebut = $seance->teacherAttendances()
-                            ->whereDate('date', $date)
-                            ->where('type', 'start')
-                            ->exists();
-
-                        $hasEmargementFin = $seance->teacherAttendances()
-                            ->whereDate('date', $date)
-                            ->where('type', 'end')
-                            ->exists();
-
-                        if ($hasEmargementDebut) $emargementDebutCount++;
-                        if ($hasEmargementFin) $emargementFinCount++;
-
-                        // Vérifier appels via ESBTPSessionWorkflow (plus fiable que compter les attendances)
-                        $workflow = \App\Models\ESBTPSessionWorkflow::where('seance_cours_id', $seance->id)
-                            ->first();
-
-                        if ($workflow) {
-                            // Appel début fait si call_start_done = true et call_start_done_at est aujourd'hui
-                            if ($workflow->call_start_done && $workflow->call_start_done_at &&
-                                \Carbon\Carbon::parse($workflow->call_start_done_at)->isToday()) {
-                                $appelDebutCount++;
-                            }
-
-                            // Appel fin fait si call_end_done = true et call_end_done_at est aujourd'hui
-                            if ($workflow->call_end_done && $workflow->call_end_done_at &&
-                                \Carbon\Carbon::parse($workflow->call_end_done_at)->isToday()) {
-                                $appelFinCount++;
-                            }
-                        }
-                    }
-
-                    // Total émargements possibles = 2 par séance (début + fin)
-                    $totalEmargementsPossibles = $totalSeances * 2;
+                    // 2 émargements et 2 appels possibles par séance.
                     $totalEmargementsEffectues = $emargementDebutCount + $emargementFinCount;
-
-                    // Total appels possibles = 2 par séance (début + fin)
-                    $totalAppelsPossibles = $totalSeances * 2;
                     $totalAppelsEffectues = $appelDebutCount + $appelFinCount;
-
-                    // Taux de complétion basé sur émargements ET appels
-                    // Total opérations = 4 par séance (2 émargements + 2 appels)
-                    $totalOperationsPossibles = ($totalEmargementsPossibles + $totalAppelsPossibles);
-                    $totalOperationsEffectuees = ($totalEmargementsEffectues + $totalAppelsEffectues);
-
-                    $tauxCompletion = $totalOperationsPossibles > 0
-                        ? round(($totalOperationsEffectuees / $totalOperationsPossibles) * 100, 1)
-                        : 0;
+                    $totalOperationsPossibles = $totalSeances * 4;
 
                     return [
-                        'matiere_name' => $matiere->name ?? 'Non défini',
+                        'matiere_name' => $seancesMatiere->first()->matiere->name ?? 'Non défini',
                         'total_seances' => $totalSeances,
                         'emargements_debut' => $emargementDebutCount,
                         'emargements_fin' => $emargementFinCount,
                         'emargements_effectues' => $totalEmargementsEffectues,
-                        'emargements_possibles' => $totalEmargementsPossibles,
+                        'emargements_possibles' => $totalSeances * 2,
                         'appels_debut' => $appelDebutCount,
                         'appels_fin' => $appelFinCount,
                         'appels_effectues' => $totalAppelsEffectues,
-                        'appels_possibles' => $totalAppelsPossibles,
-                        'taux_completion' => $tauxCompletion
+                        'appels_possibles' => $totalSeances * 2,
+                        'taux_completion' => $totalOperationsPossibles > 0
+                            ? round((($totalEmargementsEffectues + $totalAppelsEffectues) / $totalOperationsPossibles) * 100, 1)
+                            : 0,
                     ];
                 })
                 ->sortByDesc('total_seances')
@@ -358,86 +294,64 @@ class CoordinateurDashboardController extends Controller
     }
 
     /**
-     * Génère les alertes importantes
+     * Génère les alertes importantes, à partir des séances déjà chargées.
      */
-    private function getAttendanceAlerts($date)
+    private function getAttendanceAlerts($seances, array $jour, $anneeUniversitaire)
     {
         $alerts = [];
-        
+        $libelle = fn ($c) => ($c->matiere->name ?? 'Matière') . ' - ' . ($c->classe->name ?? 'Classe');
+
         try {
-            // Alerte retards d'émargement
-            $courssSansEmargement = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->whereDoesntHave('teacherAttendance')
-                ->with(['matiere', 'classe'])
-                ->get();
-            
+            // Alerte retards d'émargement : aucun émargement, toutes dates confondues
+            $courssSansEmargement = $seances->filter(fn ($s) => (int) $s->emargements_toutes_dates === 0);
+
             if ($courssSansEmargement->count() > 0) {
                 $alerts[] = [
                     'type' => 'warning',
                     'title' => 'Émargements manquants',
                     'message' => $courssSansEmargement->count() . ' cours sans émargement enseignant',
-                    'details' => $courssSansEmargement->take(3)->map(fn($c) => 
-                        ($c->matiere->name ?? 'Matière') . ' - ' . ($c->classe->name ?? 'Classe')
-                    )->toArray()
+                    'details' => $courssSansEmargement->take(3)->map($libelle)->values()->toArray()
                 ];
             }
 
             // Alerte cours sans appel
-            $coursSansAppel = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->whereHas('teacherAttendance')
-                ->whereDoesntHave('attendances')
-                ->with(['matiere', 'classe'])
-                ->get();
-                
+            $coursSansAppel = $seances->filter(
+                fn ($s) => (int) $s->emargements_toutes_dates > 0 && (int) $s->attendances_count === 0
+            );
+
             if ($coursSansAppel->count() > 0) {
                 $alerts[] = [
                     'type' => 'info',
                     'title' => 'Appels en attente',
                     'message' => $coursSansAppel->count() . ' cours émargés sans appel d\'étudiants',
-                    'details' => $coursSansAppel->take(3)->map(fn($c) => 
-                        ($c->matiere->name ?? 'Matière') . ' - ' . ($c->classe->name ?? 'Classe')
-                    )->toArray()
+                    'details' => $coursSansAppel->take(3)->map($libelle)->values()->toArray()
                 ];
             }
 
-            // Alerte taux de présence faible
-            // IMPORTANT: Filtrer par année universitaire en cours + inscriptions actives
-            $anneeUniversitaire = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            // Alerte taux de présence faible, sur toutes les présences du jour (pas
+            // seulement les finales) ; les retards comptent comme présence.
+            $presence = $this->presencesDuJour($jour, $anneeUniversitaire->id)
+                ->selectRaw('COUNT(*) as total')
+                ->selectRaw("COALESCE(SUM(CASE WHEN statut IN ('present', 'late', 'retard') THEN 1 ELSE 0 END), 0) as presents")
+                ->toBase()->first();
+            $totalEtudiants = (int) $presence->total;
+            $presents = (int) $presence->presents;
 
-            if ($anneeUniversitaire) {
-                $totalEtudiants = \App\Models\ESBTPAttendance::whereDate('date', $date)
-                    ->where('annee_universitaire_id', $anneeUniversitaire->id)
-                    ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
-                        $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                          ->where('status', 'active');
-                    })
-                    ->count();
+            if ($totalEtudiants > 0) {
+                $tauxPresence = round(($presents / $totalEtudiants) * 100, 1);
 
-                if ($totalEtudiants > 0) {
-                    // IMPORTANT: Les retards comptent comme présence
-                    $presents = \App\Models\ESBTPAttendance::whereDate('date', $date)
-                        ->where('annee_universitaire_id', $anneeUniversitaire->id)
-                        ->whereIn('statut', ['present', 'late', 'retard'])
-                        ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
-                            $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                              ->where('status', 'active');
-                        })
-                        ->count();
-                    $tauxPresence = round(($presents / $totalEtudiants) * 100, 1);
-
-                    if ($tauxPresence < 70) {
-                        $alerts[] = [
-                            'type' => 'danger',
-                            'title' => 'Taux de présence critique',
-                            'message' => "Seulement {$tauxPresence}% de présence étudiants aujourd'hui",
-                            'details' => ["{$presents} présents sur {$totalEtudiants} étudiants"]
-                        ];
-                    }
+                if ($tauxPresence < 70) {
+                    $alerts[] = [
+                        'type' => 'danger',
+                        'title' => 'Taux de présence critique',
+                        'message' => "Seulement {$tauxPresence}% de présence étudiants aujourd'hui",
+                        'details' => ["{$presents} présents sur {$totalEtudiants} étudiants"]
+                    ];
                 }
             }
 
             // Alerte : Enseignants présents mais workflow incomplet (séance non clôturée)
-            $enseignantsNonClotures = \App\Models\ESBTPSessionWorkflow::whereDate('attendance_start_signed_at', $date)
+            $enseignantsNonClotures = \App\Models\ESBTPSessionWorkflow::whereBetween('attendance_start_signed_at', $jour)
                 ->where('attendance_start_signed', true)
                 ->where('current_step', 'closed_incomplete')
                 ->with(['seanceCours.teacher.user', 'seanceCours.matiere', 'seanceCours.classe'])

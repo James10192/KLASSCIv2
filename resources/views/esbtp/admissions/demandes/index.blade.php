@@ -14,6 +14,8 @@
         'frais' => route('esbtp.inscriptions.frais-by-classe', ['classeId' => '__ID__']),
         'etudiant' => auth()->user()->can('students.view') ? route('esbtp.etudiants.show', ['etudiant' => '__ID__']) : null,
         'parents' => auth()->user()->can('inscriptions.candidatures.process') ? route('esbtp.demandes.parents') : null,
+        'classesParAnnee' => auth()->user()->can('reinscriptions.demandes.process') ? route('esbtp.demandes.classes-par-annee') : null,
+        'annees' => $annees ?? [],
         'creneaux' => auth()->user()->can('inscriptions.rdv.manage') ? route('esbtp.demandes.creneaux') : null,
         'filtres' => $filtres,
         'compteurs' => $compteurs,
@@ -22,6 +24,7 @@
         // Les deux listes fermees des fenetres, lues a leur source.
         'liensTuteur' => array_keys(\App\Models\ESBTPCandidature::liensTuteurDeclarables()),
         'decisions' => \App\Models\ESBTPReinscriptionDemande::DECISIONS,
+        'affectations' => \App\Models\ESBTPEcheancierRule::STATUTS_INSCRIPTION,
     ];
 @endphp
 <div class="dmi" x-data="demandesInscription()" data-dmi-config='@json($_config)' data-dmi-classes='@json($classes)'>

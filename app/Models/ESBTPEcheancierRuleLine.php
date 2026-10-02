@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Services\EcheancierResolverService;
 use Illuminate\Database\Eloquent\Model;
 
 class ESBTPEcheancierRuleLine extends Model
@@ -35,6 +36,13 @@ class ESBTPEcheancierRuleLine extends Model
         'grace_days' => 'integer',
         'is_active' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        // Le resolveur retient les regles le temps d'une page : toute ecriture l'en vide.
+        static::saved(fn () => EcheancierResolverService::oublierRegles());
+        static::deleted(fn () => EcheancierResolverService::oublierRegles());
+    }
 
     public function rule()
     {

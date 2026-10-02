@@ -16,8 +16,26 @@ use App\Services\Inscriptions\NormalisationTypeInscription;
 
 class ReeinscriptionService
 {
+    /**
+     * Regles academiques deja lues, par « niveau|filiere ». Nul hors d'un
+     * classement : chaque analyse isolee relit alors la base.
+     *
+     * @var array<string, ESBTPRegleAcademique>|null
+     */
+    private ?array $reglesMemo = null;
+
+    /**
+     * Notes deja lues pour un lot, par annee de resultats puis par etudiant :
+     * lignes legeres de `NotesDeLaPromotion`, pas des modeles `ESBTPNote`.
+     * Vide hors d'un classement.
+     *
+     * @var array<string, array<int, Collection<int, object>>>
+     */
+    private array $notesPrechargees = [];
+
     public function __construct(
         private readonly \App\Services\Reinscription\ClassesDeReinscription $classes,
+        private readonly \App\Services\Reinscription\NotesDeLaPromotion $notesDeLaPromotion,
     ) {}
 
     public function analyserSituationEtudiant($etudiantId, $anneeAcademique)
@@ -34,17 +52,7 @@ class ReeinscriptionService
         $niveauNom = $classe->niveau ? $classe->niveau->name : '';
         $filiereNom = $classe->filiere ? $classe->filiere->name : '';
         
-        $regle = ESBTPRegleAcademique::getRegleForNiveauFiliere($niveauNom, $filiereNom);
-
-        // Si pas de règle trouvée, chercher une règle par défaut
-        if (!$regle) {
-            $regle = ESBTPRegleAcademique::where('niveau', '')->where('filiere', '')->where('actif', true)->first();
-        }
-        
-        // Si toujours pas de règle, créer une règle par défaut
-        if (!$regle) {
-            $regle = $this->regleDeRepli($niveauNom, $filiereNom);
-        }
+        $regle = $this->regleApplicable($niveauNom, $filiereNom);
 
         $notes = $this->getNotesEtudiant($etudiantId, $anneeAcademique, $classe);
         $moyenneGenerale = $this->calculerMoyenneGenerale($notes);
@@ -91,17 +99,7 @@ class ReeinscriptionService
         $niveauNom = $classe->niveau ? $classe->niveau->name : '';
         $filiereNom = $classe->filiere ? $classe->filiere->name : '';
 
-        $regle = ESBTPRegleAcademique::getRegleForNiveauFiliere($niveauNom, $filiereNom);
-
-        // Si pas de règle trouvée, chercher une règle par défaut
-        if (!$regle) {
-            $regle = ESBTPRegleAcademique::where('niveau', '')->where('filiere', '')->where('actif', true)->first();
-        }
-
-        // Si toujours pas de règle, créer une règle par défaut
-        if (!$regle) {
-            $regle = $this->regleDeRepli($niveauNom, $filiereNom);
-        }
+        $regle = $this->regleApplicable($niveauNom, $filiereNom);
 
         $anneeDesResultats = $inscription->anneeUniversitaire->name ?? $anneeAcademique;
 
@@ -187,46 +185,7 @@ class ReeinscriptionService
             })
             ->get();
         
-        $resultat = [
-            'passages' => [],
-            'rattrapages' => [],
-            'redoublements' => [],
-            'errors' => []
-        ];
-
-        foreach ($inscriptions as $inscription) {
-            if ($inscription->etudiant && $inscription->classe) {
-                try {
-                    $analyse = $this->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
-
-                    // CORRECTION: Vérifier que l'analyse n'est pas null
-                    if ($analyse === null) {
-                        \Log::warning("Analyse null ignorée", [
-                            'inscription_id' => $inscription->id,
-                            'etudiant_id' => $inscription->etudiant_id
-                        ]);
-                        continue;
-                    }
-
-                    switch ($analyse['decision']) {
-                        case 'passage':
-                            $resultat['passages'][] = $analyse;
-                            break;
-                        case 'rattrapage':
-                            $resultat['rattrapages'][] = $analyse;
-                            break;
-                        case 'redoublement':
-                            $resultat['redoublements'][] = $analyse;
-                            break;
-                    }
-                } catch (\Exception $e) {
-                    $resultat['errors'][] = [
-                        'etudiant' => $inscription->etudiant,
-                        'error' => $e->getMessage()
-                    ];
-                }
-            }
-        }
+        $resultat = $this->classerParDecision($inscriptions, $anneeAcademique);
 
         // CORRECTION: Pour les "non validés", chercher les étudiants de l'année précédente qui n'ont pas
         // encore été réinscrits dans l'année courante (et non pas TOUS les étudiants sans inscription courante)
@@ -254,6 +213,95 @@ class ReeinscriptionService
         }
 
         return $resultat;
+    }
+
+    /**
+     * Range chaque inscription dans sa decision.
+     *
+     * Les notes sont lues par lots de 200 etudiants, en une requete par lot,
+     * et la regle academique une fois par couple niveau / filiere. Avant, la
+     * liste de reinscription relisait notes et regles etudiant par etudiant :
+     * six requetes par etudiant, et autant de fois que d'onglets ouverts. La
+     * decision, elle, ne change pas : memes notes, meme filtre, meme regle.
+     */
+    private function classerParDecision(Collection $inscriptions, $anneeAcademique): array
+    {
+        $resultat = $this->emptyDecisionResult();
+        $this->reglesMemo = [];
+
+        try {
+            foreach ($inscriptions->chunk(200) as $lot) {
+                $this->prechargerNotes($lot, $anneeAcademique);
+
+                foreach ($lot as $inscription) {
+                    if ($inscription->etudiant && $inscription->classe) {
+                        $this->classerUneInscription($resultat, $inscription, $anneeAcademique);
+                    }
+                }
+
+                $this->notesPrechargees = [];
+            }
+        } finally {
+            $this->reglesMemo = null;
+            $this->notesPrechargees = [];
+        }
+
+        return $resultat;
+    }
+
+    private function classerUneInscription(array &$resultat, $inscription, $anneeAcademique): void
+    {
+        try {
+            $analyse = $this->analyserSituationEtudiantParInscription($inscription, $anneeAcademique);
+
+            // CORRECTION: Vérifier que l'analyse n'est pas null
+            if ($analyse === null) {
+                \Log::warning("Analyse null ignorée", [
+                    'inscription_id' => $inscription->id,
+                    'etudiant_id' => $inscription->etudiant_id
+                ]);
+                return;
+            }
+
+            switch ($analyse['decision']) {
+                case 'passage':
+                    $resultat['passages'][] = $analyse;
+                    break;
+                case 'rattrapage':
+                    $resultat['rattrapages'][] = $analyse;
+                    break;
+                case 'redoublement':
+                    $resultat['redoublements'][] = $analyse;
+                    break;
+            }
+        } catch (\Exception $e) {
+            $resultat['errors'][] = [
+                'etudiant' => $inscription->etudiant,
+                'error' => $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Les notes de tout un lot d'inscriptions, lues en une requete par annee de
+     * resultats, sous la cle que `getNotesEtudiant()` interrogera.
+     *
+     * Lignes brutes et non modeles (`NotesDeLaPromotion`) : la decision ne lit
+     * que la valeur, la matiere et la matiere de l'evaluation, et hydrater un
+     * modele par note coutait plus que tout le reste du calcul.
+     */
+    private function prechargerNotes(Collection $lot, $anneeAcademique): void
+    {
+        $parAnnee = $lot->groupBy(fn ($inscription) => $inscription->anneeUniversitaire->name ?? $anneeAcademique);
+
+        foreach ($parAnnee as $annee => $inscriptions) {
+            $ids = $inscriptions->pluck('etudiant_id')->filter()->unique()->values();
+            $notes = $this->notesDeLaPromotion->pour($ids->all(), $annee);
+
+            foreach ($ids as $etudiantId) {
+                $this->notesPrechargees[$annee][(int) $etudiantId] = $notes->get($etudiantId) ?? collect();
+            }
+        }
     }
 
     /**
@@ -424,6 +472,25 @@ class ReeinscriptionService
                 );
             }
 
+            // On ne se réinscrit jamais à rebours : l'année visée doit commencer
+            // après celle qu'on quitte, et aucune inscription vivante ne doit
+            // exister plus tard. Sinon le reste dû partirait en reliquat vers le
+            // passé, et l'élève aurait deux inscriptions actives.
+            $debutQuitte = $inscriptionActuelle->anneeUniversitaire?->start_date;
+            if ($debutQuitte && $nouvelleAnnee->start_date && $debutQuitte->gte($nouvelleAnnee->start_date)) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException(
+                    "L'année de destination ({$nouvelleAnnee->name}) précède l'année que l'étudiant quitte ({$inscriptionActuelle->anneeUniversitaire->name})."
+                );
+            }
+            if ($nouvelleAnnee->start_date && \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
+                ->whereIn('status', ['en_attente', 'active'])
+                ->whereHas('anneeUniversitaire', fn ($a) => $a->where('start_date', '>', $nouvelleAnnee->start_date))
+                ->exists()) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException(
+                    "L'étudiant a déjà une inscription sur une année postérieure à {$nouvelleAnnee->name}."
+                );
+            }
+
             // Une inscription existe déjà sur l'année visée : la refaire la
             // termine et la remplace (correction de classe). Réservé à qui peut
             // déroger — la fiche ne propose « Corriger » qu'à ce compte-là.
@@ -583,20 +650,47 @@ class ReeinscriptionService
         }
     }
 
+    /**
+     * La regle de passage d'un couple niveau / filiere : la sienne, sinon la
+     * regle par defaut de l'ecole, sinon les valeurs de repli.
+     *
+     * Memorisee le temps d'un classement (`classerParDecision()`) : la meme
+     * regle servait a des centaines d'etudiants et se relisait pour chacun.
+     * Hors classement, elle se relit a chaque appel, comme avant.
+     */
+    private function regleApplicable(string $niveauNom, string $filiereNom): ESBTPRegleAcademique
+    {
+        $cle = $niveauNom.'|'.$filiereNom;
+        if ($this->reglesMemo !== null && array_key_exists($cle, $this->reglesMemo)) {
+            return $this->reglesMemo[$cle];
+        }
+
+        $regle = ESBTPRegleAcademique::getRegleForNiveauFiliere($niveauNom, $filiereNom)
+            ?? ESBTPRegleAcademique::where('niveau', '')->where('filiere', '')->where('actif', true)->first()
+            ?? $this->regleDeRepli($niveauNom, $filiereNom);
+
+        if ($this->reglesMemo !== null) {
+            $this->reglesMemo[$cle] = $regle;
+        }
+
+        return $regle;
+    }
+
     private function getNotesEtudiant($etudiantId, $anneeAcademique, ESBTPClasse $classe)
     {
         // Récupérer les notes filtrées par année académique (utilise le champ STRING annee_universitaire)
-        $notes = ESBTPNote::where('etudiant_id', $etudiantId)
-            ->where('annee_universitaire', $anneeAcademique)
-            // `withTrashed()` : `ESBTPMatiere` est en `SoftDeletes`. Sans lui, une
-            // matiere effacee depuis `/esbtp/matieres` rend `null`, le `! $matiere ||`
-            // ci-dessous court-circuite, et la note etrangere revient peser — sur une
-            // DECISION de passage, pas sur un affichage.
-            ->with([
-                'evaluation.matiere' => fn ($q) => $q->withTrashed(),
-                'matiere' => fn ($q) => $q->withTrashed(),
-            ])
-            ->get();
+        $notes = $this->notesPrechargees[$anneeAcademique][(int) $etudiantId]
+            ?? ESBTPNote::where('etudiant_id', $etudiantId)
+                ->where('annee_universitaire', $anneeAcademique)
+                // `withTrashed()` : `ESBTPMatiere` est en `SoftDeletes`. Sans lui, une
+                // matiere effacee depuis `/esbtp/matieres` rend `null`, le `! $matiere ||`
+                // ci-dessous court-circuite, et la note etrangere revient peser — sur une
+                // DECISION de passage, pas sur un affichage.
+                ->with([
+                    'evaluation.matiere' => fn ($q) => $q->withTrashed(),
+                    'matiere' => fn ($q) => $q->withTrashed(),
+                ])
+                ->get();
 
         // POURQUOI LE FILTRE EST ICI, ET NON DANS LES TROIS CONSOMMATEURS.
         // Ces notes alimentent la moyenne (`calculerMoyenneGenerale()`), la
@@ -609,7 +703,10 @@ class ReeinscriptionService
         // classe BTS tire la moyenne vers le bas et compte comme une matiere
         // echouee : elle peut faire basculer un passage en redoublement, pour
         // toute une promotion via la reinscription groupee.
-        return $notes->filter(function (ESBTPNote $note) use ($classe) {
+        // Modele `ESBTPNote` sur une analyse isolee, ligne legere de
+        // `NotesDeLaPromotion` dans une liste : les deux repondent a `matiere`
+        // et `evaluation->matiere` de la meme facon.
+        return $notes->filter(function (object $note) use ($classe) {
             $matiere = $note->matiere ?? $note->evaluation?->matiere;
 
             return ! $matiere || CoherenceSystemeAcademique::matiereRetenue(

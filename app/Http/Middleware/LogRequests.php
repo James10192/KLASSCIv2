@@ -24,12 +24,20 @@ class LogRequests
 
     public function handle(Request $request, Closure $next)
     {
-        Log::info('Incoming request', [
+        // Une ligne courte par requête suffit à suivre le trafic. Le corps n'est
+        // recopié que sur demande (LOG_REQUESTS_BODY=true) : une saisie de notes
+        // en masse écrivait sinon des kilo-octets par requête dans le journal,
+        // et l'audit l'enregistre déjà. Le nom de route n'y figure pas : ce
+        // middleware est global, il passe avant le routage, il était toujours nul.
+        $contexte = [
             'method' => $request->method(),
             'url' => $request->fullUrl(),
-            'input' => $this->corpsJournalisable($request),
-            'route' => $request->route() ? $request->route()->getName() : null,
-        ]);
+        ];
+        if (config('logging.corps_des_requetes')) {
+            $contexte['input'] = $this->corpsJournalisable($request);
+        }
+
+        Log::info('Incoming request', $contexte);
 
         return $next($request);
     }

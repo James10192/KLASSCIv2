@@ -6,7 +6,6 @@ use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
-use App\Models\ESBTPNote;
 use App\Models\ESBTPRegleAcademique;
 use App\Services\Inscriptions\NormalisationTypeInscription;
 use Illuminate\Support\Collection;
@@ -27,6 +26,10 @@ use Illuminate\Support\Facades\Log;
  */
 final class ReinscriptionDashboardStats
 {
+    public function __construct(private readonly NotesDeLaPromotion $notes)
+    {
+    }
+
     /**
      * @return array{passages:int,rattrapages:int,redoublements:int,valides:int,abandons_annee:int,abandons_ecole:int,errors:int}
      */
@@ -89,14 +92,8 @@ final class ReinscriptionDashboardStats
             ->chunkById(200, function ($inscriptions) use (&$stats, &$decisionsReussies, &$regles, $precedente) {
                 $ids = $inscriptions->pluck('etudiant_id')->filter()->unique()->values();
 
-                $notesParEtudiant = ESBTPNote::whereIn('etudiant_id', $ids)
-                    ->where('annee_universitaire', $precedente->name)
-                    ->with([
-                        'evaluation.matiere' => fn ($q) => $q->withTrashed(),
-                        'matiere' => fn ($q) => $q->withTrashed(),
-                    ])
-                    ->get()
-                    ->groupBy('etudiant_id');
+                // Lignes brutes, sans un modele par note : voir NotesDeLaPromotion.
+                $notesParEtudiant = $this->notes->pour($ids->all(), $precedente->name);
 
                 foreach ($inscriptions as $inscription) {
                     try {
@@ -162,7 +159,7 @@ final class ReinscriptionDashboardStats
     }
 
     /**
-     * @param Collection<int, ESBTPNote> $notes
+     * @param Collection<int, object> $notes lignes de NotesDeLaPromotion
      * @return array{0:float,1:int}
      */
     private function moyenneEtEchecs(Collection $notes, float $moyennePassage): array

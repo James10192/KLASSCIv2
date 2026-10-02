@@ -73,7 +73,7 @@ class BudgetAssistant
             return null;
         }
 
-        $limites = Cache::get('paywall_limits_' . $code) ?? $this->limitesDuMaster($code);
+        $limites = app(\App\Services\Master\LimitesDuMaster::class)->lire();
         $connu = 'assistant.budget_master.' . $code;
         if (is_array($limites)) {
             // Une réponse du master fait foi, y compris quand elle ne fixe rien.
@@ -84,37 +84,6 @@ class BudgetAssistant
         $retenu = Cache::get($connu);
 
         return is_array($retenu) && is_numeric($retenu['valeur'] ?? null) ? (float) $retenu['valeur'] : null;
-    }
-
-    /**
-     * Cache froid : on interroge le master comme PaywallMiddleware, et on remplit
-     * la même clé, sous la même forme brute. Un échec est retenu une minute pour ne
-     * pas ralentir chaque échange. Second lecteur de /limits, assumé pour l'instant :
-     * délai de 3 s ici (une réponse attend), 10 s pour le paywall ; les réunir touche
-     * le middleware de toutes les requêtes et mérite son propre changement.
-     */
-    private function limitesDuMaster(string $code): ?array
-    {
-        $url = config('services.master.api_url');
-        $jeton = config('services.master.api_token');
-        if (! $url || ! $jeton || Cache::has('assistant.master_injoignable')) {
-            return null;
-        }
-
-        try {
-            $reponse = \Illuminate\Support\Facades\Http::withToken($jeton)->timeout(3)->get(rtrim($url, '/') . '/tenants/' . $code . '/limits');
-            if ($reponse->successful() && is_array($donnees = $reponse->json())) {
-                Cache::put('paywall_limits_' . $code, $donnees, 300);
-
-                return $donnees;
-            }
-            Log::warning('assistant.budget_master_illisible', ['statut' => $reponse->status()]);
-        } catch (\Throwable $e) {
-            Log::warning('assistant.budget_master_injoignable', ['erreur' => $e->getMessage()]);
-        }
-        Cache::put('assistant.master_injoignable', true, 60);
-
-        return null;
     }
 
     public function depenseDuMois(): float
