@@ -12,6 +12,9 @@ namespace App\Domain\Assistant\Actions;
  *  - donnees        : ce que l'exécution écrira, déjà résolu (identifiants).
  *  - etat           : ce qu'il y a en base au moment de la proposition ; l'empreinte
  *                     le couvre, donc un changement entre-temps annule la validation.
+ *  - sansObjet      : la demande est déjà satisfaite (notes déjà à ces valeurs,
+ *                     année déjà courante). Ce n'est pas une question à poser :
+ *                     l'assistant le dit, et ne propose rien.
  */
 final class Proposition
 {
@@ -29,12 +32,19 @@ final class Proposition
         public readonly array $donnees = [],
         public readonly array $etat = [],
         public readonly string $risque = 'moyen',
+        public readonly ?string $sansObjet = null,
     ) {
+    }
+
+    /** La demande est déjà satisfaite : il n'y a rien à proposer. */
+    public static function sansObjet(string $titre, string $raison): self
+    {
+        return new self(titre: $titre, resume: '', sansObjet: $raison);
     }
 
     public function estComplete(): bool
     {
-        return $this->manques === [];
+        return $this->manques === [] && $this->sansObjet === null;
     }
 
     public function empreinte(): string

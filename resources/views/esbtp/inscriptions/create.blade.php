@@ -506,26 +506,7 @@
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="annee_universitaire_id">
-                                <i class="fas fa-calendar-alt me-1"></i> Année universitaire <span class="text-danger">*</span>
-                            </label>
-                            <select class="form-select @error('annee_universitaire_id') is-invalid @enderror"
-                                    name="annee_universitaire_id"
-                                    id="annee_universitaire_id"
-                                    required>
-                                @foreach($academicYears->sortByDesc('start_date') as $annee)
-                                    <option value="{{ $annee->id }}"
-                                        {{ (old('annee_universitaire_id', $anneeEnCours->id ?? '') == $annee->id) ? 'selected' : '' }}
-                                        data-is-current="{{ $annee->is_current ? '1' : '0' }}"
-                                        data-start-date="{{ $annee->start_date?->format('Y-m-d') ?? '' }}">
-                                        {{ $annee->name }}
-                                        @if($annee->is_current) (Année courante) @endif
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('annee_universitaire_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
+                            @include('esbtp.inscriptions.partials.annee-inscription')
                         </div>
                     </div>
                 </div>

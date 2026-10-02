@@ -4,8 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
 use App\Models\ESBTPSystemSetting;
 use App\Models\User;
 use App\Models\ESBTPEtudiant;
@@ -35,20 +33,8 @@ class PaywallMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
-        // Debug: Logger la route actuelle avec tous les détails
-        \Log::warning('🔥 PAYWALL MIDDLEWARE DÉMARRÉ', [
-            'route_name' => $request->route() ? $request->route()->getName() : 'NO_ROUTE',
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'user_email' => $request->user() ? $request->user()->email : 'guest',
-            'user_id' => $request->user() ? $request->user()->id : null,
-            'user_roles' => $request->user() ? $request->user()->roles->pluck('name')->toArray() : [],
-            'middleware_stack' => $request->route() ? $request->route()->gatherMiddleware() : [],
-        ]);
-
         // Vérifier si la route est exclue
         if ($this->shouldExclude($request)) {
-            \Log::info('PaywallMiddleware: Route exclue, passage autorisé');
             return $next($request);
         }
 
@@ -190,70 +176,20 @@ class PaywallMiddleware
         $limitsFromMaster = $this->getLimitsFromMaster();
 
         if ($limitsFromMaster) {
-            \Log::info('PaywallMiddleware: Utilisation des limites depuis API Master');
             return $this->buildStatusFromMasterApi($limitsFromMaster);
         }
 
         // Fallback : Utiliser le système local
-        \Log::warning('PaywallMiddleware: API Master indisponible, fallback vers système local');
+        \Log::debug('PaywallMiddleware: API Master indisponible, fallback vers système local');
         return $this->checkPaywallStatusLocal();
     }
 
     /**
-     * Récupérer les limites depuis l'API Master (avec cache 5min)
+     * Les limites lues chez adminKlassci (réponse 5 min, échec 1 min, délai 3 s).
      */
     protected function getLimitsFromMaster()
     {
-        // Vérifier si l'API Master est configurée
-        $masterApiUrl = config('services.master.api_url');
-        $masterApiToken = config('services.master.api_token');
-        $tenantCode = config('app.tenant_code');
-
-        if (!$masterApiUrl || !$masterApiToken || !$tenantCode) {
-            \Log::warning('PaywallMiddleware: Configuration API Master manquante', [
-                'has_url' => !empty($masterApiUrl),
-                'has_token' => !empty($masterApiToken),
-                'has_code' => !empty($tenantCode),
-            ]);
-            return null;
-        }
-
-        // Utiliser le cache pour éviter trop d'appels API (5 minutes)
-        $cacheKey = 'paywall_limits_' . $tenantCode;
-
-        return Cache::remember($cacheKey, 300, function () use ($masterApiUrl, $masterApiToken, $tenantCode) {
-            try {
-                \Log::info('PaywallMiddleware: Appel API Master', [
-                    'url' => $masterApiUrl . '/tenants/' . $tenantCode . '/limits',
-                ]);
-
-                $response = Http::withToken($masterApiToken)
-                    ->timeout(10)
-                    ->get($masterApiUrl . '/tenants/' . $tenantCode . '/limits');
-
-                if ($response->successful()) {
-                    $data = $response->json();
-                    \Log::info('PaywallMiddleware: API Master réponse OK', [
-                        'is_over_quota' => $data['quota_status']['is_over_quota'] ?? null,
-                        'blocked_features' => $data['blocked_features'] ?? [],
-                    ]);
-                    return $data;
-                }
-
-                \Log::error('PaywallMiddleware: API Master erreur HTTP', [
-                    'status' => $response->status(),
-                    'body' => $response->body(),
-                ]);
-
-                return null;
-            } catch (\Exception $e) {
-                \Log::error('PaywallMiddleware: Erreur appel API Master', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-                return null;
-            }
-        });
+        return app(\App\Services\Master\LimitesDuMaster::class)->lire();
     }
 
     /**

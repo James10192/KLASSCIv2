@@ -108,7 +108,7 @@ class AjouterSortiesTroncCommun extends ActionAgent
                 'S'.($existante && $existante['active'] ? $existante['semestre'] : ($semestre ?? $existante['semestre'] ?? 2))];
         }
         if ($nouvelles === []) {
-            return new Proposition(titre: $titre, resume: '', manques: ['Toutes ces sorties sont déjà ouvertes : rien à changer.']);
+            return Proposition::sansObjet($titre, 'Toutes ces sorties sont déjà ouvertes.');
         }
 
         return new Proposition(

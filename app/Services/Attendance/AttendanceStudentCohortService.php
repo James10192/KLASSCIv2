@@ -54,6 +54,24 @@ class AttendanceStudentCohortService
         );
     }
 
+    /**
+     * countForClassPeriod() pour plusieurs classes, en requêtes groupées.
+     *
+     * @param  iterable<int, ESBTPClasse>  $classes
+     * @return array<int, int> classe_id => effectif
+     */
+    public function countForClassesPeriod(
+        iterable $classes,
+        ESBTPAnneeUniversitaire $annee,
+        string $periode
+    ): array {
+        return $this->noteCohortService->countStudentsForClasses(
+            $classes,
+            $annee,
+            $this->semestresForPeriode($periode)
+        );
+    }
+
     /** @return array<int, int> */
     private function semestresForPeriode(string $periode): array
     {

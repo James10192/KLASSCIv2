@@ -9,6 +9,8 @@ use App\Models\ESBTPResultat;
 use App\Models\ESBTPClasse;
 use App\Services\BulletinService;
 use App\Services\NoteCalculationService;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class BtsCurrentResultSnapshotService
 {
@@ -46,6 +48,34 @@ class BtsCurrentResultSnapshotService
     }
 
     /**
+     * Notes et moyennes enregistrees deja lues pour toute une cohorte, par
+     * « etudiant:classe:annee:periode ». Vides hors de
+     * `getPeriodeSnapshotsPourCohorte()`.
+     *
+     * @var array<string, Collection>
+     */
+    private array $notesPrechargees = [];
+
+    /** @var array<string, Collection> */
+    private array $moyennesPrechargees = [];
+
+    /**
+     * Memoire pour la vie de l'instance, comme `classesChargees` : une
+     * ESBTPConfigMatiere modifiee puis relue par la meme instance rendrait l'ancien type.
+     *
+     * @var array<string, string>
+     */
+    private array $typesFormation = [];
+
+    /**
+     * Memoire pour la vie de l'instance, meme limite que `typesFormation` :
+     * une classe modifiee puis relue par la meme instance rendrait l'ancienne.
+     *
+     * @var array<int, ESBTPClasse|null>
+     */
+    private array $classesAvecCycle = [];
+
+    /**
      * Classes deja chargees, par identifiant.
      *
      * @var array<int, \App\Models\ESBTPClasse|null>
@@ -74,8 +104,100 @@ class BtsCurrentResultSnapshotService
         return $this->classesChargees[$classeId];
     }
 
-    private function buildSemesterSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
+    /**
+     * Le snapshot de chaque eleve d'une cohorte, notes et moyennes enregistrees
+     * lues en une requete par semestre pour toute la cohorte.
+     *
+     * Le classement d'une classe (`RankingService`) appelait `getPeriodeSnapshot()`
+     * eleve par eleve : deux lectures de notes, deux de moyennes et leurs
+     * relations, par eleve et par semestre. Sur la fiche d'un etudiant, ce
+     * classement seul coutait une quarantaine de requetes par camarade de
+     * classe. Le resultat est le meme : memes lignes, memes filtres, meme calcul
+     * — seul le moment ou elles sont lues change.
+     *
+     * @param  list<int>  $etudiantIds
+     * @return array<int, array> snapshot par identifiant d'etudiant
+     */
+    public function getPeriodeSnapshotsPourCohorte(array $etudiantIds, int $classeId, int $anneeUniversitaireId, string $periode): array
     {
+        $etudiantIds = array_map('intval', $etudiantIds);
+        $normalizedPeriode = $this->bulletinService->normalizePeriode($periode);
+        $annuel = $normalizedPeriode === 'annuel';
+
+        foreach ($annuel ? ['semestre1', 'semestre2'] : [$normalizedPeriode] as $semestre) {
+            $this->prechargerSemestre($etudiantIds, $classeId, $anneeUniversitaireId, $semestre, $annuel);
+        }
+
+        try {
+            $snapshots = [];
+            foreach ($etudiantIds as $etudiantId) {
+                $snapshots[$etudiantId] = $this->getPeriodeSnapshot($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+            }
+
+            return $snapshots;
+        } finally {
+            // Hors d'un calcul de cohorte, chaque snapshot relit la base : une
+            // note saisie entre deux appels doit compter.
+            $this->notesPrechargees = [];
+            $this->moyennesPrechargees = [];
+        }
+    }
+
+    /**
+     * Lit en deux requetes ce que `buildSemesterSnapshot()` lirait en deux
+     * requetes PAR ELEVE, et le range sous la cle que ce dernier interrogera.
+     *
+     * La classe du semestre et le perimetre des evaluations restent resolus
+     * eleve par eleve, par les memes appels que le chemin unitaire : un eleve
+     * oriente du tronc commun ne lit pas les memes classes que ses camarades.
+     *
+     * @param  list<int>  $etudiantIds
+     */
+    private function prechargerSemestre(array $etudiantIds, int $classeId, int $anneeUniversitaireId, string $semestre, bool $annuel): void
+    {
+        $perimetres = [];
+        foreach ($etudiantIds as $etudiantId) {
+            // Meme classe du semestre que `buildAnnualSnapshot()`, meme perimetre
+            // d'evaluations que `notesDuSemestre()`.
+            $classeDuSemestre = $annuel
+                ? (int) ($this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId)[$semestre.'_classe_id'] ?? $classeId)
+                : $classeId;
+            $perimetres[$etudiantId] = [
+                $classeDuSemestre,
+                array_map('intval', $this->bulletinService->evaluationClassIdsForSnapshot($etudiantId, $classeDuSemestre, $anneeUniversitaireId, $semestre)),
+            ];
+        }
+
+        if ($perimetres === []) {
+            return;
+        }
+
+        $ids = array_keys($perimetres);
+        $classesEvaluees = array_values(array_unique(array_merge(...array_column($perimetres, 1))));
+        $classesDesSemestres = array_values(array_unique(array_column($perimetres, 0)));
+        $notes = $this->requeteNotes($ids, $anneeUniversitaireId, $semestre, $classesEvaluees)
+            ->orderBy('id')->get()->groupBy('etudiant_id');
+        $moyennes = $this->requeteMoyennes($ids, $classesDesSemestres, $anneeUniversitaireId, $semestre)
+            ->orderBy('id')->get()->groupBy('etudiant_id');
+
+        foreach ($perimetres as $etudiantId => [$classeDuSemestre, $classesDeLEleve]) {
+            $cle = $this->clePrechargement($etudiantId, $classeDuSemestre, $anneeUniversitaireId, $semestre);
+            $this->notesPrechargees[$cle] = ($notes->get($etudiantId) ?? collect())
+                ->filter(fn (ESBTPNote $note) => in_array((int) $note->evaluation?->classe_id, $classesDeLEleve, true))
+                ->values();
+            $this->moyennesPrechargees[$cle] = ($moyennes->get($etudiantId) ?? collect())
+                ->filter(fn (ESBTPResultat $resultat) => (int) $resultat->classe_id === $classeDuSemestre)
+                ->values();
+        }
+    }
+
+    private function notesDuSemestre(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): Collection
+    {
+        $cle = $this->clePrechargement($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+        if (array_key_exists($cle, $this->notesPrechargees)) {
+            return $this->notesPrechargees[$cle];
+        }
+
         // Le controle "Courant" doit lire exactement les memes classes que la
         // generation officielle. C'est particulierement important en BTS 1 :
         // TC au S1 puis specialite au S2.
@@ -86,8 +208,27 @@ class BtsCurrentResultSnapshotService
             $periode
         );
 
-        $notes = ESBTPNote::query()
-            ->where('etudiant_id', $etudiantId)
+        return $this->requeteNotes([$etudiantId], $anneeUniversitaireId, $periode, $evaluationClassIds)->get();
+    }
+
+    private function moyennesManuelles(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): Collection
+    {
+        $cle = $this->clePrechargement($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+        if (array_key_exists($cle, $this->moyennesPrechargees)) {
+            return $this->moyennesPrechargees[$cle];
+        }
+
+        return $this->requeteMoyennes([$etudiantId], [$classeId], $anneeUniversitaireId, $periode)->get();
+    }
+
+    /**
+     * @param  list<int>  $etudiantIds
+     * @param  array<int|string>  $evaluationClassIds
+     */
+    private function requeteNotes(array $etudiantIds, int $anneeUniversitaireId, string $periode, array $evaluationClassIds): Builder
+    {
+        return ESBTPNote::query()
+            ->whereIn('etudiant_id', $etudiantIds)
             // `withTrashed()` sur la matiere, pour la meme raison qu'au chemin
             // des moyennes enregistrees : effacee en douceur, elle rendait le
             // filtre aveugle au lieu de le rendre prudent.
@@ -100,20 +241,59 @@ class BtsCurrentResultSnapshotService
                     ->whereIn('classe_id', $evaluationClassIds)
                     ->where('status', '!=', 'cancelled')
                     ->whereIn('periode', $this->bulletinService->periodeAliases($periode));
-            })
-            ->get();
+            });
+    }
 
-        $manualResultats = ESBTPResultat::query()
-            ->where('etudiant_id', $etudiantId)
-            ->where('classe_id', $classeId)
+    /**
+     * @param  list<int>  $etudiantIds
+     * @param  list<int>  $classeIds
+     */
+    private function requeteMoyennes(array $etudiantIds, array $classeIds, int $anneeUniversitaireId, string $periode): Builder
+    {
+        return ESBTPResultat::query()
+            ->whereIn('etudiant_id', $etudiantIds)
+            ->whereIn('classe_id', $classeIds)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->where('periode', $periode)
             // `withTrashed()` : `ESBTPMatiere` est en `SoftDeletes`. Sans lui, une
             // matiere effacee en douceur rendait `$resultat->matiere` nul, le
             // `&&` du filtre court-circuitait, et la ligne incoherente rentrait
             // dans le « Courant » — exactement ce que ce filtre protege.
-            ->with(['matiere' => fn ($q) => $q->withTrashed()])
-            ->get();
+            ->with(['matiere' => fn ($q) => $q->withTrashed()]);
+    }
+
+    private function clePrechargement(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): string
+    {
+        return $etudiantId.':'.$classeId.':'.$anneeUniversitaireId.':'.$periode;
+    }
+
+    /**
+     * Le type de formation ne depend que de la matiere, de la classe, de la
+     * periode et de l'annee — pas de l'eleve. Le relire pour chaque eleve d'une
+     * classe coutait deux requetes par matiere et par eleve.
+     */
+    private function typeFormation(int $matiereId, int $classeId, string $periode, int $anneeUniversitaireId): string
+    {
+        return $this->typesFormation[$matiereId.':'.$classeId.':'.$periode.':'.$anneeUniversitaireId]
+            ??= $this->bulletinService->resolveMatiereTypeFormation($matiereId, $classeId, $periode, $anneeUniversitaireId);
+    }
+
+    /** La classe et son cycle, lus une fois par instance, comme `classe()`. */
+    private function classeAvecCycle(int $classeId): ?ESBTPClasse
+    {
+        if (! array_key_exists($classeId, $this->classesAvecCycle)) {
+            $this->classesAvecCycle[$classeId] = ESBTPClasse::withTrashed()
+                ->with(['filiere', 'niveau', 'niveauEtude'])
+                ->find($classeId);
+        }
+
+        return $this->classesAvecCycle[$classeId];
+    }
+
+    private function buildSemesterSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $notes = $this->notesDuSemestre($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+        $manualResultats = $this->moyennesManuelles($etudiantId, $classeId, $anneeUniversitaireId, $periode);
 
         $subjects = [];
 
@@ -236,7 +416,7 @@ class BtsCurrentResultSnapshotService
             }
 
             $subjects[$matiereId]['coefficient'] = $coefficient !== null ? round((float) $coefficient, 2) : null;
-            $subjects[$matiereId]['type_formation'] = $this->bulletinService->resolveMatiereTypeFormation(
+            $subjects[$matiereId]['type_formation'] = $this->typeFormation(
                 (int) $matiereId,
                 $classeId,
                 $periode,
@@ -338,7 +518,7 @@ class BtsCurrentResultSnapshotService
             $anneeUniversitaireId,
             'semestre2'
         );
-        $classe = ESBTPClasse::withTrashed()->with(['filiere', 'niveau', 'niveauEtude'])->find($classeId);
+        $classe = $this->classeAvecCycle($classeId);
         $weights = $this->bulletinService->getSemesterWeights($classe);
 
         $annualEffective = $this->bulletinService->calculateAnnualAverage(
