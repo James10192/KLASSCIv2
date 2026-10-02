@@ -164,6 +164,12 @@ return [
             'libelle' => 'Préparation de la correction des notes…',
             'suggestion' => 'Corrige la note de cet étudiant suite à sa réclamation',
         ],
+        'proposer_releve_notes_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['notes.edit', 'evaluations.create'],
+            'libelle' => 'Préparation de la saisie du relevé…',
+            'suggestion' => 'Saisis le relevé de notes du semestre 1 de cette classe pour 2025-2026',
+        ],
         'proposer_saisie_moyennes' => [
             'enabled' => true,
             'all_permissions' => ['bulletins.edit'],

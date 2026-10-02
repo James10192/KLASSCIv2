@@ -112,6 +112,8 @@ class RegularisationNotesLmdTest extends TestCase
 
         $this->poster('ANUM', false)->assertOk();
         $this->assertSame(14.0, (float) ESBTPNote::where('etudiant_id', $this->eleve->id)->value('note'));
+        // Le libellé de l'année est lu par la réinscription : il ne doit pas rester vide.
+        $this->assertSame($this->annee->name, ESBTPNote::where('etudiant_id', $this->eleve->id)->value('annee_universitaire'));
     }
 
     public function test_une_ecue_d_un_autre_parcours_reste_refusee(): void
