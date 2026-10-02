@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\Log;
  * suivantes restaient alors non marquées), et rattachait l'émargement à un
  * AUTRE compte quand il existait. Comme MarkTeacherAbsences, on passe par le
  * profil pour trouver le compte.
+ *
+ * Un compte supprimé (même en douceur) n'est plus marqué : la séance passe dans
+ * l'avertissement quotidien « séances sans compte », à corriger dans le planning.
  */
 class MarkUnattendedTeacherSessions extends Command
 {
