@@ -138,6 +138,28 @@ class PermissionRegistry
     }
 
     /**
+     * Les noms donnés, chacun suivi de ses anciens noms (aliases).
+     *
+     * Un rôle doit porter les deux tant que du code teste encore l'ancien nom :
+     * accorder le seul nom canonique retirerait l'accès à ces écrans-là.
+     *
+     * @param  list<string>  $noms
+     * @return list<string>
+     */
+    public function avecAlias(array $noms): array
+    {
+        $etendus = [];
+        foreach ($noms as $nom) {
+            $etendus[] = $nom;
+            foreach ($this->aliasesOf($nom) as $alias) {
+                $etendus[] = $alias;
+            }
+        }
+
+        return array_values(array_unique($etendus));
+    }
+
+    /**
      * Tous les noms (canoniques + aliases) qui doivent exister en DB.
      */
     public function allNames(): Collection
