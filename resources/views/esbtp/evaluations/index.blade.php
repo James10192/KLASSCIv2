@@ -3,7 +3,7 @@
 @section('title', 'Liste des évaluations - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 @endsection
 
 <div class="modal fade coeff-modal" id="coefficientsModal" tabindex="-1" aria-hidden="true">

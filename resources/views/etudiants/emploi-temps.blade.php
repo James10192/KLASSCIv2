@@ -3,7 +3,7 @@
 @section('title', 'Mon Emploi du Temps')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* Styles spécifiques pour l'emploi du temps */
     .timetable-container {

@@ -36,12 +36,16 @@ class EnvoyerRelanceJob implements ShouldQueue
         try {
             Log::info("Début envoi relance ID: {$this->relance->id}");
 
-            $resultat = match($this->relance->type) {
-                'email' => $notificationService->envoyerRelanceEmail($this->relance),
-                'sms' => $notificationService->envoyerRelanceSMS($this->relance),
-                'courrier' => $notificationService->genererCourrierRelance($this->relance),
-                default => ['success' => false, 'message' => 'Type de relance non supporté']
-            };
+            $resultat = $notificationService->envoyerRelance($this->relance);
+
+            // Ecartee (eleve hors des relances) : rien a envoyer, rien a
+            // retenter, et surtout pas de passage en echec, qui la rendrait
+            // de nouveau renvoyable.
+            if ($resultat['ecartee'] ?? false) {
+                Log::info("Relance ID: {$this->relance->id} écartée : {$resultat['message']}");
+
+                return;
+            }
 
             if ($resultat['success']) {
                 Log::info("Relance envoyée avec succès ID: {$this->relance->id}");

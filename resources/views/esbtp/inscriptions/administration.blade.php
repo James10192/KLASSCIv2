@@ -3,8 +3,8 @@
 @section('title', 'Administration des Inscriptions')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="{{ asset('css/inscriptions-common.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/inscriptions-common.css') }}?v={{ @filemtime(public_path('css/inscriptions-common.css')) ?: '1' }}">
 <style>
     .kpi-card {
         border-radius: var(--radius-medium);
@@ -960,7 +960,7 @@
         csrf: '{{ csrf_token() }}',
     };
 </script>
-<script src="{{ asset('js/inscriptions/common.js') }}"></script>
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <script>
     const ADMIN_REFRESH_CONTEXT = 'administration';
     const ADMIN_BASE_URL = "{{ route('esbtp.inscriptions.administration') }}";
@@ -1970,5 +1970,5 @@
         }
     });
 </script>
-<script src="{{ asset('js/inscriptions/administration.js') }}"></script>
+<script src="{{ asset('js/inscriptions/administration.js') }}?v={{ @filemtime(public_path('js/inscriptions/administration.js')) ?: '1' }}"></script>
 @endpush

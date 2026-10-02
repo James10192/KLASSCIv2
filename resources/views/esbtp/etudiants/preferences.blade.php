@@ -3,7 +3,7 @@
 @section('title', 'Préférences')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 /* ============================================================
    PAGE PRÉFÉRENCES ÉTUDIANT — PWA — Design Premium KLASSCI

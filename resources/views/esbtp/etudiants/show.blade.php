@@ -3,8 +3,8 @@
 @section('title', $etudiant->nom_complet . ' — Fiche étudiant — KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="{{ asset('css/student-inscription-repair.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/student-inscription-repair.css') }}?v={{ @filemtime(public_path('css/student-inscription-repair.css')) ?: '1' }}">
 <style>
 /* ===================================================================
    FICHE ÉTUDIANT PREMIUM — KLASSCI Design System 2025
@@ -6330,9 +6330,9 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('js/frais/regenerer-modal.js') }}"></script>
-<script src="{{ asset('js/inscriptions/common.js') }}"></script>
-<script src="{{ asset('js/student-inscription-repair.js') }}"></script>
+<script src="{{ asset('js/frais/regenerer-modal.js') }}?v={{ @filemtime(public_path('js/frais/regenerer-modal.js')) ?: '1' }}"></script>
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
+<script src="{{ asset('js/student-inscription-repair.js') }}?v={{ @filemtime(public_path('js/student-inscription-repair.js')) ?: '1' }}"></script>
 <script>
 // Switch LMD semester tabs
 function switchLmdSem(sem) {

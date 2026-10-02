@@ -55,11 +55,11 @@
         "Bonjour, je souhaite renouveler l'abonnement de {$tenantName} (Plan {$plan}). " .
         ($isExpired ? "Mon contrat a expiré le {$endDate}." : "Mon contrat expire le {$endDate} ({$days} jours restants).")
     );
-    $whatsappUrl = "https://wa.me/2250595459843?text={$whatsappMsg}";
+    $whatsappUrl = "https://wa.me/" . ltrim(\App\Services\Master\AbonnementDeLInstance::TELEPHONE_EDITEUR, "+") . "?text={$whatsappMsg}";
 @endphp
 
 {{-- CSS chargé une seule fois --}}
-<link rel="stylesheet" href="{{ asset('css/contract-expiry.css') }}">
+<link rel="stylesheet" href="{{ asset('css/contract-expiry.css') }}?v={{ @filemtime(public_path('css/contract-expiry.css')) ?: '1' }}">
 
 {{-- Bande rouge clignotante si < 7 jours --}}
 @if(!$isExpired && $days <= 7)

@@ -3,8 +3,8 @@
 @section('title', 'Détails de l\'inscription - ' . $inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms . ' - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="{{ asset('css/modal-force-fix.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/modal-force-fix.css') }}?v={{ @filemtime(public_path('css/modal-force-fix.css')) ?: '1' }}">
 <style>
 /* === CORRECTION SPÉCIFIQUE MODALS INSCRIPTIONS SHOW === */
 
@@ -5650,7 +5650,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
         }
     };
 </script>
-<script src="{{ asset('js/frais/regenerer-modal.js') }}"></script>
+<script src="{{ asset('js/frais/regenerer-modal.js') }}?v={{ @filemtime(public_path('js/frais/regenerer-modal.js')) ?: '1' }}"></script>
 @endpush
 @include('esbtp.partials.modal-regenerer-frais')
 

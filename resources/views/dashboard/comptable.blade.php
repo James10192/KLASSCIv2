@@ -3,7 +3,7 @@
 @section('title', 'Tableau de bord Comptable')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* ═══════════ Accueil comptable — namespace cb- — maquette A (claire, façon Stripe)
        Rule premium-dashboard : repère sur chaque chiffre, lien filtré, file de travail,
@@ -203,9 +203,11 @@
                 'd' => $cbFmt($c['totalPending']).' FCFA'.($age ? ' · le plus ancien '.$age : ''),
                 'cta' => 'Valider', 'href' => route('esbtp.paiements.index', ['status' => 'en_attente'])];
         }
-        if ($c['countOverdueTotal'] > 0 && $cbPeutRelancer) {
-            $todo[] = ['ton' => 'warn', 'n' => $c['countOverdueTotal'], 't' => 'Étudiant'.($c['countOverdueTotal'] > 1 ? 's' : '').' en retard de paiement',
-                'd' => $cbFmt($c['totalOverdue']).' FCFA échus à relancer',
+        // Ceux que la liste des relances montre, pas tous les retards : le
+        // nombre affiché doit être celui qu'on trouve en cliquant.
+        if ($c['countARelancer'] > 0 && $cbPeutRelancer) {
+            $todo[] = ['ton' => 'warn', 'n' => $c['countARelancer'], 't' => 'Étudiant'.($c['countARelancer'] > 1 ? 's' : '').' en retard de paiement',
+                'd' => $cbFmt($c['totalARelancer']).' FCFA échus à relancer',
                 'cta' => 'Relancer', 'href' => route('esbtp.comptabilite.relances.index')];
         }
         if ($u?->can('comptabilite.reconciliation.view')) {

@@ -114,10 +114,11 @@
         \App\Models\ESBTPRelance::STATUT_PLANIFIEE => ['Planifiée', 'info', 'Planifiée pour le'],
         \App\Models\ESBTPRelance::STATUT_ECHEC     => ['À renvoyer', 'bad', 'Échec le'],
         \App\Models\ESBTPRelance::STATUT_INTENT    => ['Non confirmée', 'warn', 'Ouverte le'],
+        \App\Models\ESBTPRelance::STATUT_ECARTEE   => ['Écartée', 'mute', 'Écartée le'],
     ];
     [$rsmPuce, $rsmTon, $rsmDateLabel] = $rsmStatuts[$relance->statut] ?? [$relance->statut_formatte, 'mute', 'Date'];
-    $rsmDate = $relance->statut === \App\Models\ESBTPRelance::STATUT_ECHEC ? $relance->updated_at : $relance->date_envoi;
-    $rsmErreur = is_array($relance->response_data) ? ($relance->response_data['error'] ?? $relance->response_data['error_reason'] ?? null) : null;
+    $rsmDate = in_array($relance->statut, [\App\Models\ESBTPRelance::STATUT_ECHEC, \App\Models\ESBTPRelance::STATUT_ECARTEE], true) ? $relance->updated_at : $relance->date_envoi;
+    $rsmErreur = is_array($relance->response_data) ? ($relance->response_data['error'] ?? $relance->response_data['error_reason'] ?? $relance->response_data['ecartee'] ?? null) : null;
 
     $rsmPeutRenvoyer = auth()->user()?->can('comptabilite.relances.send') && $relance->peutEtreRenvoyee();
     $rsmConfig = [
@@ -384,6 +385,13 @@
                                     </p>
                                 </div>
                                 <small class="text-muted">{{ $relance->date_envoi ? $relance->date_envoi->format('d/m/Y H:i') : 'N/A' }}</small>
+                            </div>
+                        </div>
+                        @elseif($relance->statut === \App\Models\ESBTPRelance::STATUT_ECARTEE)
+                        <div class="timeline-item">
+                            <div>
+                                <h6 class="mb-1">Relance écartée, non envoyée</h6>
+                                <p class="text-muted mb-0">{{ $relance->response_data['ecartee'] ?? "L'inscription de l'élève n'est plus active." }}</p>
                             </div>
                         </div>
                         @elseif($relance->statut === 'echec')

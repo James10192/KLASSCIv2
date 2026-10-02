@@ -3,7 +3,7 @@
 @section('title', 'Gestion des inscriptions - KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 /* =====================================================================
    INSCRIPTIONS INDEX — namespace ii-*
@@ -1288,9 +1288,9 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
     };
     window.KLASSCI_CSRF_TOKEN = "{{ csrf_token() }}";
 </script>
-<script src="{{ asset('js/frais/regenerer-modal.js') }}" defer></script>
+<script src="{{ asset('js/frais/regenerer-modal.js') }}?v={{ @filemtime(public_path('js/frais/regenerer-modal.js')) ?: '1' }}" defer></script>
 {{-- common.js fournit window.iiConfirm ; index.js ne le redefinit plus.
      Les deux en defer : l'ordre du document garantit common.js d'abord. --}}
-<script src="{{ asset('js/inscriptions/common.js') }}" defer></script>
-<script src="{{ asset('js/inscriptions/index.js') }}" defer></script>
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}" defer></script>
+<script src="{{ asset('js/inscriptions/index.js') }}?v={{ @filemtime(public_path('js/inscriptions/index.js')) ?: '1' }}" defer></script>
 @endpush

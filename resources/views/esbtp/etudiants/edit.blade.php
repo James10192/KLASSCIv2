@@ -3,7 +3,7 @@
 @section('title', 'Modifier — ' . $etudiant->nom_complet . ' — KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 /* ===================================================================
    STUDENT EDIT PREMIUM — KLASSCI Design System 2025

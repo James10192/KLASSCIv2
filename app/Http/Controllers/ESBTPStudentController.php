@@ -14,6 +14,8 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
+use App\Services\Reinscription\BulkReinscriptionService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -81,7 +83,7 @@ class ESBTPStudentController extends Controller
         // (cf etudiants/partials/results.blade.php). Sans ça, chaque ligne LMD
         // déclenche 3 queries N+1 sur le listing.
         $baseQuery = ESBTPEtudiant::query()
-            ->with(['user', 'accessibilityProfile', 'inscriptions' => function ($q) {
+            ->with(['user', 'accessibilityProfile', 'inscriptionsEnAttente', 'inscriptions' => function ($q) {
                 $q->with(['filiere', 'niveau', 'classe.parcours.mention.domaine', 'anneeUniversitaire']);
             }]);
 
@@ -339,13 +341,10 @@ class ESBTPStudentController extends Controller
             $etudiants = $baseQuery->paginate($perPage)->appends($request->query());
         }
 
-        $etudiants->setCollection(
-            $etudiants->getCollection()->map(function (ESBTPEtudiant $etudiant) {
-                $etudiant->setAttribute('bts_journey_ui', $this->resolveBtsJourney($etudiant));
-
-                return $etudiant;
-            })
-        );
+        // Badge de parcours BTS : lu par le tableau, pas par la liste du telephone.
+        if ($request->input('mode') !== 'mobile') {
+            $this->attacherParcoursBts($etudiants->getCollection());
+        }
 
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where('is_active', true)->get();
@@ -391,21 +390,12 @@ class ESBTPStudentController extends Controller
             ]);
         }
 
-        // Étudiants pour modal Réinscription groupée : source unique via BulkReinscriptionService.
-        // Critères : inscription année N-1 active + workflow_step=etudiant_cree + PAS d'inscription
-        // année N. Cohérent avec reinscription.index.
-        try {
-            $etudiantsForBulk = app(\App\Services\Reinscription\BulkReinscriptionService::class)
-                ->listEligibleStudents();
-        } catch (\Throwable $e) {
-            \Log::warning('Bulk eligible students fetch failed (StudentController)', ['error' => $e->getMessage()]);
-            $etudiantsForBulk = collect();
-        }
+        // Les etudiants eligibles a la reinscription groupee ne sont plus calcules
+        // ici : le modal les charge a son ouverture (reinscriptionEligibles()).
 
         \Log::info('ESBTPStudentController@index returning view', array_merge($baseLogContext, [
             'timestamp' => now()->toIso8601String(),
             'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
-            'etudiants_for_bulk_count' => $etudiantsForBulk->count(),
         ]));
 
         $listeMobile = $this->trancheMobile($etudiants, $anneeCourante);
@@ -413,7 +403,6 @@ class ESBTPStudentController extends Controller
         return view('esbtp.etudiants.index', compact(
             'etudiants',
             'listeMobile',
-            'etudiantsForBulk',
             'filieres',
             'niveaux',
             'annees',
@@ -433,6 +422,21 @@ class ESBTPStudentController extends Controller
             'mentions',
             'parcoursList'
         ));
+    }
+
+    /**
+     * Etudiants eligibles a la reinscription groupee, pour le modal de la liste.
+     *
+     * Charges a l'ouverture du modal plutot qu'a chaque affichage de la liste :
+     * la requete parcourt toute la promotion precedente, et la page les
+     * serialisait pour un modal rarement ouvert. Meme source que
+     * reinscription.index (BulkReinscriptionService::listEligibleStudents).
+     */
+    public function reinscriptionEligibles(BulkReinscriptionService $bulk): JsonResponse
+    {
+        return response()->json([
+            'students' => BulkReinscriptionService::lignesPourModale($bulk->listEligibleStudents()),
+        ]);
     }
 
     /**
@@ -807,7 +811,32 @@ class ESBTPStudentController extends Controller
         ];
     }
 
-    private function resolveBtsJourney(ESBTPEtudiant $etudiant): ?array
+    /**
+     * Pose bts_journey_ui sur chaque etudiant d'une page de la liste.
+     *
+     * Relations et inscriptions candidates sont lues une fois pour la page : le
+     * presentateur, appele ligne par ligne, en faisait six requetes par etudiant.
+     */
+    private function attacherParcoursBts(\Illuminate\Support\Collection $lignes): void
+    {
+        if ($lignes->isEmpty()) {
+            return;
+        }
+
+        $page = new \Illuminate\Database\Eloquent\Collection($lignes->all());
+        $page->loadMissing(BtsUiPresenter::RELATIONS_ETUDIANT);
+        $candidates = $this->btsUiPresenter->inscriptionsCandidates()
+            ->whereIn('etudiant_id', $page->modelKeys())
+            ->get()
+            ->groupBy('etudiant_id');
+
+        $lignes->each(fn (ESBTPEtudiant $etudiant) => $etudiant->setAttribute(
+            'bts_journey_ui',
+            $this->resolveBtsJourney($etudiant, $candidates->get($etudiant->id, collect()))
+        ));
+    }
+
+    private function resolveBtsJourney(ESBTPEtudiant $etudiant, ?\Illuminate\Support\Collection $candidates = null): ?array
     {
         $inscription = $etudiant->inscriptions
             ->sortByDesc(function ($item) {
@@ -821,7 +850,7 @@ class ESBTPStudentController extends Controller
             ->first();
 
         return $this->btsUiPresenter->forInscription($inscription)
-            ?? $this->btsUiPresenter->forStudent($etudiant);
+            ?? $this->btsUiPresenter->forStudent($etudiant, $candidates);
     }
 
     public function update(Request $request, ESBTPEtudiant $etudiant)
