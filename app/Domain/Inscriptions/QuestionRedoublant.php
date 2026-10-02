@@ -3,6 +3,7 @@
 namespace App\Domain\Inscriptions;
 
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPCandidature;
 use App\Models\ESBTPClasse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -57,6 +58,37 @@ class QuestionRedoublant
         $avant = StatutRedoublant::niveauxDeLAnneePrecedente($etudiantId, [$annee])[(string) $annee->id] ?? null;
 
         return $avant !== null && (int) $avant === (int) $classe->niveau_etude_id;
+    }
+
+    /**
+     * Pour une candidature : ce que le candidat a déclaré. Un transféré n'a pas
+     * d'année précédente dans KLASSCI, sa réponse est la seule source ; sans
+     * réponse, ou s'il ne vient pas d'un autre établissement, c'est « non ».
+     */
+    public static function propositionDeCandidature(?ESBTPCandidature $candidature): bool
+    {
+        return $candidature !== null && $candidature->est_transfert && $candidature->redouble_niveau_origine === true;
+    }
+
+    /** La proposition d'une nouvelle inscription, d'après la candidature qu'elle inscrit, s'il y en a une. */
+    public static function propositionDeLaRequete(Request $request): bool
+    {
+        return $request->filled('candidature_id')
+            && self::propositionDeCandidature(ESBTPCandidature::find($request->integer('candidature_id')));
+    }
+
+    /**
+     * Le motif à enregistrer. Garder le « oui » déclaré par le candidat s'écarte
+     * de la déduction (pas d'année précédente ici, donc « non ») : sa
+     * déclaration en tient lieu quand la personne n'en écrit pas.
+     */
+    public static function motifRetenu(?bool $reponse, bool $proposition, ?string $motif): ?string
+    {
+        if (trim((string) $motif) === '' && $reponse === true && $proposition) {
+            return 'Déclaré par le candidat dans sa candidature (transfert d\'un autre établissement).';
+        }
+
+        return $motif;
     }
 
     /** @throws ValidationException quand la réponse change la proposition sans motif */
