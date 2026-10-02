@@ -14,6 +14,27 @@ while read -r _ sha_local ref_distante sha_distant; do
     # Suppression de branche : rien a relire.
     [ "$sha_local" = "0000000000000000000000000000000000000000" ] && continue
 
+    # Vers une ecole : on ne propage pas un changement visible qui ne lui a
+    # pas encore ete annonce (bin/garde-nouveautes.sh). Echappatoire pour une
+    # urgence : KLASSCI_PROPAGER_SANS_NOUVEAUTES="raison" git push ...
+    ecole=${ref_distante#refs/heads/}
+    case " $(sh bin/garde-nouveautes.sh ecoles 2>/dev/null | tr '\n' ' ') " in
+        *" $ecole "*)
+            if [ -x bin/garde-nouveautes.sh ] && ! explication=$(sh bin/garde-nouveautes.sh registre "$sha_local"); then
+                if [ -n "${KLASSCI_PROPAGER_SANS_NOUVEAUTES:-}" ]; then
+                    echo "  ATTENTION — propagation vers $ecole sans annonce : $KLASSCI_PROPAGER_SANS_NOUVEAUTES"
+                else
+                    echo ""
+                    echo "  PUSH REFUSE — $ecole recevrait des changements visibles non annonces"
+                    echo ""
+                    printf '%s\n' "$explication" | sed 's/^/    /'
+                    echo ""
+                    echec=1
+                fi
+            fi
+            ;;
+    esac
+
     if [ "$sha_distant" = "0000000000000000000000000000000000000000" ]; then
         # Branche neuve : on se limite a ce qui n'est pas deja sur presentation,
         # sinon on relit tout l'historique du depot.

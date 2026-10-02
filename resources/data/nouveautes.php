@@ -82,6 +82,18 @@ return [
             ],
         ],
         [
+            'titre' => 'Deux corrections d’affichage dans les inscriptions',
+            'icone' => 'fa-wand-magic-sparkles',
+            'texte' => 'Dans le panneau d’une demande en ligne, le bouton « J’ai joint la famille : confirmer le contact » n’est plus coupé : il passe à la ligne. Sur la fiche d’une inscription, le type s’écrit « Première inscription » au lieu de « Première_inscription ».',
+            'permissions' => ['inscriptions.candidatures.view', 'inscriptions.view'],
+            'captures' => [
+                'avant' => 'images/nouveautes/2026-10/demandes-encart-avant-v2.webp',
+                'apres' => 'images/nouveautes/2026-10/demandes-encart-apres-v2.webp',
+                'format' => 'telephone',
+                'legende' => 'Le bouton de confirmation du contact se lit en entier.',
+            ],
+        ],
+        [
             'titre' => 'Aide : Nanan vous guide',
             'icone' => 'fa-life-ring',
             'si' => 'aide',
