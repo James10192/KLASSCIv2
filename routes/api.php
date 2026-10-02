@@ -215,10 +215,10 @@ Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(func
     // AUTHENTIFICATION & PROFIL
     // ================================
     Route::prefix('auth')->name('auth.')->group(function () {
-        Route::get('/me', [App\Http\Controllers\API\AuthController::class, 'me']);
-        Route::post('/logout', [App\Http\Controllers\API\AuthController::class, 'logout']);
-        Route::post('/logout-all', [App\Http\Controllers\API\AuthController::class, 'logoutAll']);
-        Route::get('/check', [App\Http\Controllers\API\AuthController::class, 'check']);
+        Route::get('/me', [App\Http\Controllers\API\AuthController::class, 'me'])->name('me');
+        Route::post('/logout', [App\Http\Controllers\API\AuthController::class, 'logout'])->name('logout');
+        Route::post('/logout-all', [App\Http\Controllers\API\AuthController::class, 'logoutAll'])->name('logout-all');
+        Route::get('/check', [App\Http\Controllers\API\AuthController::class, 'check'])->name('check');
     });
 
     // ================================
@@ -667,7 +667,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/lmd/import-enseignants', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'importEnseignants'])->name('lmd.import-enseignants');
 
         // Settings
-        Route::put('/settings/{key}', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settingsUpdate'])->name('settings.update');
+        Route::put('/settings/{key}', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settingsUpdate'])->name('settings.update-key');
         Route::post('/settings/{key}/image', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settingsUploadImage'])->name('settings.upload-image');
 
         // Academic years

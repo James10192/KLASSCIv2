@@ -37,7 +37,7 @@ class KlassciDoctorCommand extends Command
         if ($this->option('json')) {
             $this->line(json_encode([
                 'ok' => $allOk,
-                'tenant_code' => env('TENANT_CODE', 'unknown'),
+                'tenant_code' => config('app.tenant_code_declare') ?? 'unknown',
                 'checks' => $checks,
                 'checked_at' => now()->toIso8601String(),
             ], JSON_PRETTY_PRINT));
@@ -47,7 +47,7 @@ class KlassciDoctorCommand extends Command
 
         $this->line('');
         $this->info('=== KLASSCI Doctor — Chantier Emploi-Temps LMD ===');
-        $this->line('Tenant : ' . env('TENANT_CODE', '???'));
+        $this->line('Tenant : ' . (config('app.tenant_code_declare') ?? '???'));
         $this->line('Date   : ' . now()->format('Y-m-d H:i:s'));
         $this->line('');
 

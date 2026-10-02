@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\Exploitation\ReconstructionDesCaches;
 use App\Models\Setting;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -24,7 +25,8 @@ use App\Services\StudentInscriptionRepairService;
 class CLIMaintenanceController extends BaseApiController
 {
     /**
-     * POST /api/cli/cache/clear — Clear all caches
+     * POST /api/cli/cache/clear — Vide tous les caches, puis reconstruit ceux de
+     * configuration et de routes (voir ReconstructionDesCaches).
      */
     public function cacheClear(Request $request): JsonResponse
     {
@@ -63,9 +65,14 @@ class CLIMaintenanceController extends BaseApiController
             return $this->errorResponse('Operation failed. Check server logs for details.', ['completed' => $output], 500);
         }
 
+        $reconstruction = app(ReconstructionDesCaches::class)->reconstruire();
+
         return $this->successResponse([
             'commands' => $output,
-        ], 'All caches cleared successfully');
+            'reconstruction' => $reconstruction,
+        ], ReconstructionDesCaches::toutEstReconstruit($reconstruction)
+            ? 'All caches cleared, config and route caches rebuilt'
+            : 'All caches cleared, but a cache could not be rebuilt and was left empty (see reconstruction)');
     }
 
     /**
@@ -719,6 +726,7 @@ class CLIMaintenanceController extends BaseApiController
             Artisan::call('view:clear');
             Artisan::call('permission:cache-reset');
             $results['steps'][] = ['action' => 'cache_clear', 'status' => 'done'];
+            $results['steps'][] = $this->etapeDeReconstruction();
 
             $failed = collect($results['steps'])->contains(fn($s) => ($s['status'] ?? '') === 'failed');
 
@@ -825,12 +833,14 @@ class CLIMaintenanceController extends BaseApiController
                 if (function_exists('opcache_reset')) {
                     @opcache_reset();
                 }
+                $reconstruction = app(ReconstructionDesCaches::class)->reconstruire();
             }
 
             return $this->successResponse([
                 'action' => $action,
                 'composer' => $composerCmd,
                 'purged_caches' => $purgedCaches,
+                'reconstruction' => $reconstruction ?? null,
                 'exit_code' => $proc->getExitCode(),
                 'output' => $out,
             ], $proc->isSuccessful() ? "composer {$action} OK" : "composer {$action} FAILED (exit {$proc->getExitCode()})");
@@ -1075,6 +1085,7 @@ class CLIMaintenanceController extends BaseApiController
             Artisan::call('view:clear');
             Artisan::call('cache:clear');
             $steps[] = ['action' => 'cache_clear', 'status' => 'done'];
+            $steps[] = $this->etapeDeReconstruction();
 
             return $this->successResponse([
                 'branch' => $branch,
@@ -1084,6 +1095,23 @@ class CLIMaintenanceController extends BaseApiController
             Log::error('CLI: pull failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Pull failed: ' . $e->getMessage(), ['steps' => $steps], 500);
         }
+    }
+
+    /**
+     * Reconstruction des caches de configuration et de routes, sous la forme
+     * d'une étape des réponses de pull et migrate.
+     *
+     * @return array{action: string, status: string, caches: array}
+     */
+    private function etapeDeReconstruction(): array
+    {
+        $caches = app(ReconstructionDesCaches::class)->reconstruire();
+
+        return [
+            'action' => 'cache_rebuild',
+            'status' => ReconstructionDesCaches::toutEstReconstruit($caches) ? 'done' : 'failed',
+            'caches' => $caches,
+        ];
     }
 
     /**

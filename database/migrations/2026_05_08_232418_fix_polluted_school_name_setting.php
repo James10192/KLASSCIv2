@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
 return new class extends Migration {
     public function up(): void
     {
-        $tenantCode = (string) config('app.tenant_code', env('TENANT_CODE', 'unknown'));
+        $tenantCode = (string) config('app.tenant_code');
 
         if ($tenantCode === 'esbtp-yakro') {
             Log::info('fix_polluted_school_name: skip on esbtp-yakro (legitimate value)');

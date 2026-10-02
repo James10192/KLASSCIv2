@@ -44,7 +44,7 @@ class SsoTokenVerifier
 
     private function getSecret(): string
     {
-        $secret = config('services.group_sso.secret') ?: env('GROUP_SSO_SHARED_SECRET');
+        $secret = config('services.group_sso.secret');
 
         if (! $secret || strlen($secret) < 32) {
             throw new RuntimeException('GROUP_SSO_SHARED_SECRET must be set and at least 32 chars');

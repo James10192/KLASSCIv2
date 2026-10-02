@@ -2343,12 +2343,12 @@ class NotificationService
             }
 
             // 2. WHATSAPP (si activé et configuré)
-            if (env('WHATSAPP_ENABLED', false) && $preferences->hasChannel('whatsapp') && $tuteur->telephone) {
+            if (config('services.whatsapp.enabled') && $preferences->hasChannel('whatsapp') && $tuteur->telephone) {
                 $results['whatsapp'] = $this->sendWhatsAppNotification($tuteur, $etudiant, $notificationType, $data);
             }
 
             // 3. SMS (fallback uniquement si WhatsApp échoue ou parent sans WhatsApp)
-            if (env('SMS_ENABLED', false) && $preferences->hasChannel('sms') && $tuteur->telephone) {
+            if (config('services.sms.enabled') && $preferences->hasChannel('sms') && $tuteur->telephone) {
                 // Envoyer SMS uniquement si WhatsApp a échoué OU si pas de WhatsApp
                 if (!$preferences->hasChannel('whatsapp') || !$results['whatsapp']) {
                     $results['sms'] = $this->sendSmsNotification($tuteur, $etudiant, $notificationType, $data);
