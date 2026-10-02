@@ -787,8 +787,10 @@
 
     /* Règles ULTRA strictes pour petits écrans iPhone (390px) */
     @media (max-width: 400px) {
-        /* Forcer tout le contenu à rester dans la largeur */
-        * {
+        /* Forcer le contenu de la page a rester dans la largeur. Borne au
+           contenu : sur `*`, la regle levait aussi la largeur bornee du badge
+           de la barre du haut, et le nom de l'ecole passait sous la cloche. */
+        .nextadmin-content * {
             max-width: 100vw !important;
         }
 
