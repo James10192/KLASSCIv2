@@ -227,7 +227,7 @@ class ESBTPClasse extends Model implements Auditable
     }
 
     /**
-     * Le TC parent de chaque classe d'une liste, en trois requetes quel que soit
+     * Le TC parent de chaque classe d'une liste, en un nombre constant de requetes quel que soit
      * le nombre de classes : la meme regle que classeTroncCommunParent(), qui la
      * delegue ici. Les classes doivent avoir leur filiere chargee.
      *
