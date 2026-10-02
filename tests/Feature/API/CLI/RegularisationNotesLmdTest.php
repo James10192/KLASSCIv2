@@ -133,4 +133,15 @@ class RegularisationNotesLmdTest extends TestCase
             'notes' => [['matiere_id' => DB::table('esbtp_matieres')->where('code', 'ANUM')->value('id'), 'note' => 14]],
         ])->assertStatus(422)->assertJsonPath('message', 'La matière Analyse numerique TIR ne figure pas dans la maquette S1 de cette classe.');
     }
+
+    public function test_une_ecue_reservee_a_un_autre_parcours_est_refusee(): void
+    {
+        // L'element de l'unite TIR est reserve, par le pivot, au parcours BU :
+        // le bulletin TIR ne le lirait pas, la note ne doit donc pas entrer.
+        $bu = ESBTPLMDParcours::where('code', 'BU')->firstOrFail();
+        $ecue = DB::table('esbtp_matieres')->where('code', 'ANUM')->value('id');
+        DB::table('esbtp_ue_matiere')->where('matiere_id', $ecue)->update(['parcours_id' => $bu->id]);
+
+        $this->poster('ANUM')->assertStatus(422);
+    }
 }
