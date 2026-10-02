@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Comptabilite\Relances\PopulationDesRelances;
 use App\Support\ListeInfinie;
 use Illuminate\Http\Request;
 use App\Models\ESBTPComptabiliteConfiguration;
@@ -238,7 +239,7 @@ class ESBTPComptabiliteRelanceController extends Controller
             'etudiant', 'classe.filiere', 'anneeUniversitaire', 'fraisSubscriptions',
             'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
         ])
-        ->where('workflow_step', 'etudiant_cree')
+        ->tap(fn ($q) => PopulationDesRelances::restreindre($q))
         ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
         ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
         ->when($filiereId, fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filiereId)))
@@ -324,7 +325,7 @@ class ESBTPComptabiliteRelanceController extends Controller
             'etudiant', 'classe.filiere', 'anneeUniversitaire', 'fraisSubscriptions',
             'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
         ])
-        ->where('workflow_step', 'etudiant_cree')
+        ->tap(fn ($q) => PopulationDesRelances::restreindre($q))
         ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
         ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
         ->when($filiereId, fn ($q) => $q->whereHas('classe', fn ($c) => $c->where('filiere_id', $filiereId)))
@@ -513,6 +514,7 @@ class ESBTPComptabiliteRelanceController extends Controller
             'delai_niveau_3'        => isset($rows['relances.delai_niveau_3'])   ? (int) $rows['relances.delai_niveau_3']   : null,
             'montant_minimum'       => isset($rows['relances.montant_minimum'])  ? (int) $rows['relances.montant_minimum']  : null,
             'relances_automatiques' => isset($rows['relances.relances_automatiques']) ? (bool) $rows['relances.relances_automatiques'] : false,
+            'inclure_inscriptions_inactives' => filter_var($rows[PopulationDesRelances::CLE_REGLAGE] ?? false, FILTER_VALIDATE_BOOLEAN),
             'heure_envoi'           => $rows['relances.heure_envoi'] ?? null,
         ];
 
@@ -539,8 +541,7 @@ class ESBTPComptabiliteRelanceController extends Controller
             'paiements' => fn($q) => $q->where('status', 'validé')->whereNull('deleted_at'),
         ])
             ->where('annee_universitaire_id', $anneeActive->id)
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
+            ->tap(fn ($q) => PopulationDesRelances::restreindre($q))
             ->get();
 
         $calcService->preloadForInscriptions($inscriptions);
@@ -596,8 +597,7 @@ class ESBTPComptabiliteRelanceController extends Controller
                 'paiements' => fn($q) => $q->where('status', 'validé')->whereNull('deleted_at'),
             ])
                 ->where('annee_universitaire_id', $anneeActive->id)
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree')
+                ->tap(fn ($q) => PopulationDesRelances::restreindre($q))
                 ->get();
 
             $calcService->preloadForInscriptions($inscriptions);
@@ -781,6 +781,7 @@ class ESBTPComptabiliteRelanceController extends Controller
             'relances.montant_minimum'       => (string) (int) $request->montant_minimum,
             'relances.heure_envoi'           => $request->heure_envoi,
             'relances.relances_automatiques' => $request->boolean('relances_automatiques') ? '1' : '0',
+            PopulationDesRelances::CLE_REGLAGE => $request->boolean('inclure_inscriptions_inactives') ? '1' : '0',
         ];
 
         foreach ($parametres as $key => $value) {

@@ -48,6 +48,7 @@
         'delai_niveau_3'        => $parametres['delai_niveau_3'] ?? null,
         'montant_minimum'       => $parametres['montant_minimum'] ?? null,
         'relances_automatiques' => (bool) ($parametres['relances_automatiques'] ?? false),
+        'inclure_inscriptions_inactives' => (bool) ($parametres['inclure_inscriptions_inactives'] ?? false),
         'heure_envoi'           => $parametres['heure_envoi'] ?? '',
     ];
 
@@ -275,6 +276,17 @@
                                 </span>
                             </label>
 
+                            <label class="rlc-toggle" for="rlc-inactives">
+                                <span class="rlc-switch">
+                                    <input type="checkbox" id="rlc-inactives" x-model="params.inclure_inscriptions_inactives">
+                                    <span class="rlc-switch-track"><span class="rlc-switch-knob"></span></span>
+                                </span>
+                                <span>
+                                    <span class="rlc-toggle-label">Relancer aussi les élèves dont l'inscription n'est plus active</span>
+                                    <span class="rlc-toggle-hint">Inscription annulée, terminée ou en attente. Décoché, ces élèves sortent de la liste des relances, de ses compteurs et des envois, même s'il leur reste un solde.</span>
+                                </span>
+                            </label>
+
                             <div class="rlc-field">
                                 <label class="rlc-label" for="rlc-heure">Heure d'envoi automatique</label>
                                 <input type="time" class="rlc-input" id="rlc-heure"
@@ -419,6 +431,17 @@
                     </span>
                     <span class="rlc-switch">
                         <input type="checkbox" id="rlcm-auto" x-model="params.relances_automatiques">
+                        <span class="rlc-switch-track"><span class="rlc-switch-knob"></span></span>
+                    </span>
+                </label>
+
+                <label class="rlcm-switch-row" for="rlcm-inactives">
+                    <span>
+                        <b>Relancer aussi les élèves dont l'inscription n'est plus active</b>
+                        <span>Annulée, terminée ou en attente : sinon ils sortent des relances</span>
+                    </span>
+                    <span class="rlc-switch">
+                        <input type="checkbox" id="rlcm-inactives" x-model="params.inclure_inscriptions_inactives">
                         <span class="rlc-switch-track"><span class="rlc-switch-knob"></span></span>
                     </span>
                 </label>
@@ -883,6 +906,7 @@ window.rlcConfig = function (cfg) {
                     montant_minimum: this.params.montant_minimum,
                     heure_envoi: this.params.heure_envoi,
                     relances_automatiques: !!this.params.relances_automatiques,
+                    inclure_inscriptions_inactives: !!this.params.inclure_inscriptions_inactives,
                 });
                 if (!reponse.ok) {
                     this.notifier(await this.lireErreur(reponse), 'error');

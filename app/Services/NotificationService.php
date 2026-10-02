@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Comptabilite\Relances\PopulationDesRelances;
 use App\Models\ESBTPRelance;
 use App\Models\ESBTPReliquat;
 use App\Models\User;
@@ -152,7 +153,20 @@ class NotificationService
             'echecs' => 0
         ];
 
+        // Une relance planifiee pour une inscription qui a quitte la population
+        // depuis (eleve parti, reglage change) ne part pas : la liste ne la
+        // montre plus, l'envoi ne doit pas la contredire.
+        $inscriptionsRelancables = PopulationDesRelances::restreindre(
+            \App\Models\ESBTPInscription::query()->whereIn('id', $relances->pluck('inscription_id')->filter()->unique())
+        )->pluck('id')->flip();
+
         foreach ($relances as $relance) {
+            if ($relance->inscription_id && ! $inscriptionsRelancables->has($relance->inscription_id)) {
+                $relance->marquerCommeEchec(['error' => "Inscription hors du périmètre des relances (n'est plus active)."]);
+                $resultats['echecs']++;
+                continue;
+            }
+
             $resultat = match($relance->type) {
                 'email' => $this->envoyerRelanceEmail($relance),
                 'sms' => $this->envoyerRelanceSMS($relance),
@@ -202,15 +216,14 @@ class NotificationService
         $anneeActive = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         if (!$anneeActive) return collect();
 
-        // Inscriptions actives avec workflow complet
+        // La population relancable, reglage de l'ecole compris
         $inscriptions = \App\Models\ESBTPInscription::with([
             'etudiant',
             'fraisSubscriptions',
             'paiements' => fn($q) => $q->where('status', 'validé')->whereNull('deleted_at'),
         ])
             ->where('annee_universitaire_id', $anneeActive->id)
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
+            ->tap(fn ($q) => PopulationDesRelances::restreindre($q))
             ->get();
 
         if ($inscriptions->isEmpty()) return collect();
