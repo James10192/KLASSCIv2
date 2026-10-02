@@ -3,12 +3,16 @@
 namespace App\Services\Reinscription;
 
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
+use App\Helpers\SettingsHelper;
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPInscription;
+use App\Services\BtsBulletinPolicy;
 use App\Services\BulletinService;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * La moyenne annuelle d'un eleve BTS telle que son bulletin l'imprime, pour
@@ -21,21 +25,30 @@ use Illuminate\Support\Collection;
  * pouvaient se contredire sur le meme eleve : « Admis » au bulletin,
  * « redoublement » a la reinscription, ou l'inverse.
  *
- * LA SOURCE, et elle seule : le chemin de `BulletinService::buildDonneesBulletin()`
- * qui calcule `$moyenneAnnuelle` imprimee sur le bulletin du semestre 2 —
+ * CE QU'IL REPRODUIT : le chemin de `BulletinService::buildDonneesBulletin()`
+ * qui calcule `$moyenneAnnuelle` imprimee sur le bulletin du semestre 2. Ce
+ * n'est PAS la seule ecriture de ce calcul : `collectAnnualAveragesForClasse()`
+ * (rang annuel) en tient une seconde, qui ignore `tronc_commun_mga_include_s1`.
+ * C'est l'IMPRIMEE que la reinscription doit suivre, et
+ * `MoyennesAnnuellesPariteBulletinTest` verifie que les deux concordent —
  *
  * - chaque semestre : le bulletin enregistre (`esbtp_bulletins`, moyenne > 0)
  *   s'il existe, via `getEffectiveBulletinAverage()` (moyenne + assiduite),
  *   sinon le calcul courant (snapshot du semestre + note d'assiduite), comme
  *   `getAlignedBulletinAverageForPeriode()` ;
  * - le semestre 1 lu dans la classe qui le porte (tronc commun d'un oriente),
- *   par la carte annuelle (`BtsAnnualClassMapResolver`) ;
+ *   par la carte annuelle (`BtsAnnualClassMapResolver`), SEULEMENT si
+ *   `tronc_commun_mga_include_s1` est actif, comme au bulletin ;
  * - les deux combines par `calculateAnnualAverage()` avec
  *   `getSemesterWeights($classe)`.
  *
  * Un semestre sans moyenne rend `null`, comme au bulletin, qui laisse alors la
- * decision du conseil vide. C'est a l'appelant de dire ce qu'il fait d'une
- * moyenne absente ; ce service ne l'invente jamais a zero.
+ * decision du conseil vide. Ce service ne l'invente jamais a zero.
+ *
+ * LA MOYENNE DE DECISION. Le conseil ne tranche pas forcement sur l'annuelle :
+ * `bulletin_btsN_council_average_source` peut designer le semestre 2.
+ * `decision()` applique ce meme reglage, par `BtsBulletinPolicy`, et porte le
+ * repli quand le bulletin n'a rien a dire.
  *
  * COUT. Les bulletins enregistres d'un lot se lisent en une requete par classe.
  * Le calcul courant, lui, passe par `getPeriodeSnapshotsPourCohorte()` (notes et
@@ -57,6 +70,9 @@ class MoyennesAnnuellesDuBulletin
         'inscriptionSpecialisation.classe.filiere',
     ];
 
+    /** Replis deja journalises : une ligne par classe et par annee, pas une par eleve. */
+    private array $replisJournalises = [];
+
     public function __construct(
         private readonly BulletinService $bulletins,
         private readonly BtsCurrentResultSnapshotService $snapshots,
@@ -66,7 +82,7 @@ class MoyennesAnnuellesDuBulletin
 
     /**
      * @param  iterable<ESBTPInscription>  $inscriptions  inscriptions de l'annee terminee
-     * @return array<int, array{moyenne: float|null, semestre1: float|null, semestre2: float|null, poids: array{semester1: float, semester2: float}}>
+     * @return array<int, array{moyenne: float|null, semestre1: float|null, semestre2: float|null, poids: array{semester1: float, semester2: float}, source_conseil: string, moyenne_decision: float|null}>
      *         par identifiant d'inscription, classes BTS seulement
      */
     public function pour(iterable $inscriptions): array
@@ -94,6 +110,53 @@ class MoyennesAnnuellesDuBulletin
     }
 
     /**
+     * La moyenne sur laquelle la reinscription decide, et d'ou elle vient.
+     *
+     * BTS : la moyenne que le conseil du bulletin retient (annuelle ou semestre 2,
+     * selon `bulletin_btsN_council_average_source`). Sans elle — semestre sans
+     * note, notes hors evaluation — le bulletin n'imprime pas de decision ; la
+     * reinscription doit en proposer une, retombe sur `$repli` (sa moyenne des
+     * notes brutes), le DIT dans `source` et le journalise une fois par classe.
+     *
+     * LMD : `$repli`, inchange (rule `lmd-bts-bulletin-separation`).
+     *
+     * @param  array|null  $annuelle  ligne de `pour()` deja calculee pour le lot, sinon relue ici
+     * @return array{moyenne: float|int, source: string, semestres: array|null}
+     */
+    public function decision(?ESBTPInscription $inscription, ESBTPClasse $classe, ?array $annuelle, float|int $repli, bool $sansNote): array
+    {
+        if (! $classe->isBTS()) {
+            return ['moyenne' => $repli, 'source' => 'lmd_notes_brutes', 'semestres' => null];
+        }
+
+        if ($annuelle === null && $inscription) {
+            $annuelle = $this->pour([$inscription])[(int) $inscription->id] ?? null;
+        }
+
+        if (($annuelle['moyenne_decision'] ?? null) !== null) {
+            $source = $annuelle['source_conseil'] === 'annual' ? 'bulletin_annuel' : 'bulletin_semestre2';
+
+            return ['moyenne' => $annuelle['moyenne_decision'], 'source' => $source, 'semestres' => $annuelle];
+        }
+
+        $source = $sansNote ? 'aucune_note' : 'notes_brutes';
+        $cle = $classe->id.':'.($inscription->annee_universitaire_id ?? '?').':'.$source;
+        if (! isset($this->replisJournalises[$cle])) {
+            $this->replisJournalises[$cle] = true;
+            Log::warning('Reinscription : pas de moyenne de conseil au bulletin, repli sur les notes brutes', [
+                'classe_id' => $classe->id,
+                'annee_universitaire_id' => $inscription->annee_universitaire_id ?? null,
+                'inscription_id' => $inscription->id ?? null,
+                'source' => $source,
+                'semestre1' => $annuelle['semestre1'] ?? null,
+                'semestre2' => $annuelle['semestre2'] ?? null,
+            ]);
+        }
+
+        return ['moyenne' => $repli, 'source' => $source, 'semestres' => $annuelle];
+    }
+
+    /**
      * Ce que lit `BtsAnnualClassMapResolver::resolveForInscription()`, en une
      * requete par relation pour tout le lot plutot qu'une par eleve.
      */
@@ -112,13 +175,17 @@ class MoyennesAnnuellesDuBulletin
         $classe = $premiere->classe;
         $anneeId = (int) $premiere->annee_universitaire_id;
         $poids = $this->bulletins->getSemesterWeights($classe);
+        $sourceConseil = $this->sourceDuConseil($classe);
+        // Comme au bulletin : sans ce reglage, le semestre 1 se lit dans la
+        // classe de l'inscription, jamais dans le tronc commun.
+        $s1DuTroncCommun = (bool) SettingsHelper::get('tronc_commun_mga_include_s1', true);
 
         // La classe qui porte chaque semestre, eleve par eleve.
         $classesDuSemestre = [];
         foreach ($inscriptions as $inscription) {
             $carte = $this->cartes->resolveForInscription($inscription, $anneeId);
             $classesDuSemestre[$inscription->id] = [
-                'semestre1' => (int) ($carte['semestre1_classe_id'] ?? $inscription->classe_id),
+                'semestre1' => (int) (($s1DuTroncCommun ? $carte['semestre1_classe_id'] ?? null : null) ?? $inscription->classe_id),
                 'semestre2' => (int) ($carte['semestre2_classe_id'] ?? $inscription->classe_id),
             ];
         }
@@ -131,15 +198,27 @@ class MoyennesAnnuellesDuBulletin
             $s1 = $enregistrees[$inscription->id]['semestre1'] ?? $courantes[$inscription->id]['semestre1'] ?? null;
             $s2 = $enregistrees[$inscription->id]['semestre2'] ?? $courantes[$inscription->id]['semestre2'] ?? null;
 
+            $annuelle = $this->bulletins->calculateAnnualAverage($s1, $s2, $poids);
             $resultat[(int) $inscription->id] = [
-                'moyenne' => $this->bulletins->calculateAnnualAverage($s1, $s2, $poids),
+                'moyenne' => $annuelle,
                 'semestre1' => $s1,
                 'semestre2' => $s2,
                 'poids' => ['semester1' => (float) $poids['semester1'], 'semester2' => (float) $poids['semester2']],
+                'source_conseil' => $sourceConseil,
+                'moyenne_decision' => BtsBulletinPolicy::decisionAverage($sourceConseil, $s2, $annuelle),
             ];
         }
 
         return $resultat;
+    }
+
+    /** Le reglage que `BulletinService::automaticCouncilDecision()` lit, pour ce niveau. */
+    private function sourceDuConseil(ESBTPClasse $classe): string
+    {
+        $annee = $classe->relationLoaded('niveau') ? $classe->niveau?->year : $classe->niveau()->value('year');
+        $cle = "bulletin_bts{$annee}_council_average_source";
+
+        return BtsBulletinPolicy::councilAverageSource($annee !== null ? (int) $annee : null, [$cle => SettingsHelper::get($cle)]);
     }
 
     /**

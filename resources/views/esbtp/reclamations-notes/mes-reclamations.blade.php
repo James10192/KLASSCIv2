@@ -50,7 +50,7 @@
             @if(! $actives)
                 <div class="rcl-vide"><i class="fas fa-lock"></i><p>Les réclamations de notes ne sont pas ouvertes dans votre établissement.</p></div>
             @elseif(empty($optionsNotes))
-                <div class="rcl-vide"><i class="fas fa-circle-check"></i><p>Aucune note contestable pour l'instant. Une note se conteste dans les {{ $delaiJours }} jours après sa saisie.</p></div>
+                <div class="rcl-vide"><i class="fas fa-circle-check"></i><p>Aucune note contestable pour l'instant. Une note se conteste une seule fois, dans les {{ $delaiJours }} jours après sa saisie.</p></div>
             @else
                 <form class="rcl-form" @submit.prevent="envoyer($event)" novalidate>
                     <div class="rcl-champ">

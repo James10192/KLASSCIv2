@@ -94,21 +94,22 @@ class MesReclamationsController extends Controller
             return [];
         }
 
-        $ouvertes = ESBTPReclamationNote::where('etudiant_id', $etudiant->id)->ouvertes()->pluck('note_id')->all();
+        // Un seul recours par note : toute note deja reclamee sort de la liste.
+        $dejaReclamees = ESBTPReclamationNote::withTrashed()->where('etudiant_id', $etudiant->id)->pluck('note_id')->all();
         $limite = now()->subDays($this->reglages->delaiJours());
 
         return ESBTPNote::with(['evaluation:id,titre,type,bareme,date_evaluation,annee_universitaire_id,matiere_id', 'evaluation.matiere:id,name'])
             ->where('etudiant_id', $etudiant->id)
-            ->whereNotIn('id', $ouvertes)
-            ->where('updated_at', '>=', $limite)
+            ->whereNotIn('id', $dejaReclamees)
+            ->where('created_at', '>=', $limite)
             ->whereHas('evaluation', fn ($q) => $q->where('annee_universitaire_id', $annee->id))
-            ->latest('updated_at')
+            ->latest('created_at')
             ->get()
             ->map(fn (ESBTPNote $n) => [
                 'id' => (int) $n->id,
                 'label' => ($n->evaluation->matiere->name ?? 'Matière').' — '.($n->evaluation->titre ?? 'Évaluation'),
                 'sous_titre' => ($n->is_absent ? 'Absent' : number_format((float) $n->note, 2, ',', ' ').' / '.rtrim(rtrim(number_format((float) ($n->evaluation->bareme ?: 20), 2, '.', ''), '0'), '.'))
-                    .' · contestable jusqu\'au '.$n->updated_at->copy()->addDays($this->reglages->delaiJours())->format('d/m/Y'),
+                    .' · contestable jusqu\'au '.ReclamationsDeNotes::fermeLe($n, $this->reglages->delaiJours())->format('d/m/Y'),
             ])
             ->values()
             ->all();

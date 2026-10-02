@@ -54,7 +54,8 @@ return new class extends Migration
                 $table->softDeletes();
 
                 $table->index(['statut', 'created_at']);
-                $table->index(['note_id', 'statut']);
+                // Un seul recours par note ; departage aussi deux envois simultanes.
+                $table->unique('note_id');
             });
         }
 

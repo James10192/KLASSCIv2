@@ -187,6 +187,23 @@ class AnalyseDecisionsReinscriptionTest extends TestCase
     }
 
     /**
+     * L'ecole qui fait trancher le conseil sur le semestre 2 : la reinscription
+     * suit le meme reglage que le bulletin, pas l'annuelle d'office.
+     */
+    public function test_la_decision_suit_la_source_du_conseil_reglee_pour_le_niveau(): void
+    {
+        [, $inscription] = $this->eleveAvecBulletins(7.41, 10.24, noteBrute: 14.0);
+        $annee = (int) $inscription->classe->niveau->year;
+        SettingsHelper::setOrCreate("bulletin_bts{$annee}_council_average_source", 'semestre2');
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+
+        $this->assertSame('bulletin_semestre2', $analyse['moyenne_source']);
+        $this->assertEqualsWithDelta(10.24, (float) $analyse['moyenne_generale'], 0.005);
+        $this->assertSame('passage', $analyse['decision']);
+    }
+
+    /**
      * @return array{0: ESBTPEtudiant, 1: ESBTPInscription}
      */
     private function eleveAvecBulletins(float $s1, float $s2, float $noteBrute): array

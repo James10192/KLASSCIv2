@@ -18,12 +18,15 @@ use Illuminate\Support\Collection;
  * cette évaluation. Ordre de résolution, du plus sûr au plus large :
  *
  *   1. `esbtp_evaluations.enseignant_id`, posé à la création du devoir ;
- *   2. l'auteur de l'évaluation, s'il enseigne (`identity.teach`) — une
+ *   2. l'auteur de l'évaluation, s'il porte lui-même `identity.teach` — une
  *      secrétaire qui saisit pour le compte d'un professeur n'est pas le
- *      correcteur ;
- *   3. l'enseignant que le planning, le bulletin ou les autres évaluations
- *      désignent pour cette matière dans cette classe — et seulement s'il y en
- *      a un seul (CoverageTeacherContactResolver ne choisit jamais au hasard).
+ *      correcteur, et un super-administrateur non plus : le test lit la
+ *      permission réellement donnée, pas `can()`, que `Gate::before` rend vrai
+ *      pour lui ;
+ *   3. l'enseignant que le planning général désigne pour cette matière dans
+ *      cette classe (`CoverageTeacherContactResolver`). Son repli, le nom saisi
+ *      dans « Éditer les professeurs », n'est qu'un texte : il ne désigne aucun
+ *      compte, donc personne à prévenir.
  *
  * Sans enseignant trouvé, la réclamation part quand même au personnel habilité : ne
  * pas savoir qui a corrigé ne doit pas bloquer l'élève.
@@ -42,7 +45,7 @@ final class DestinatairesReclamation
             return $u;
         }
 
-        if ($evaluation->created_by && ($u = User::find($evaluation->created_by)) && $u->can('identity.teach')) {
+        if ($evaluation->created_by && ($u = User::find($evaluation->created_by)) && $u->checkPermissionTo('identity.teach')) {
             return $u;
         }
 

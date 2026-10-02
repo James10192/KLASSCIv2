@@ -114,7 +114,7 @@ class ReclamationsDeNotesTest extends TestCase
     {
         Setting::updateOrCreate(['key' => ReglagesReclamations::REGLAGE_DELAI_JOURS], ['value' => '15', 'type' => 'integer', 'group' => 'scolarite']);
         Cache::flush();
-        ESBTPNote::whereKey($this->note->id)->update(['updated_at' => now()->subDays(16)]);
+        ESBTPNote::whereKey($this->note->id)->update(['created_at' => now()->subDays(16)]);
 
         $this->deposer()->assertStatus(422)->assertJsonValidationErrors('note_id');
     }
@@ -123,6 +123,43 @@ class ReclamationsDeNotesTest extends TestCase
     {
         $this->deposer()->assertCreated();
         $this->deposer()->assertStatus(422)->assertJsonValidationErrors('note_id');
+    }
+
+    public function test_une_note_retouchee_ne_rouvre_pas_le_delai(): void
+    {
+        // Saisie il y a 16 jours, recalculee hier : le recours court depuis la saisie.
+        ESBTPNote::whereKey($this->note->id)->update(['created_at' => now()->subDays(16), 'updated_at' => now()->subDay()]);
+
+        $this->deposer()->assertStatus(422)->assertJsonValidationErrors('note_id');
+    }
+
+    public function test_une_note_tranchee_ne_se_reconteste_pas(): void
+    {
+        $this->deposer()->assertCreated();
+        $r = ESBTPReclamationNote::firstOrFail();
+        $this->actingAs($this->agent)
+            ->postJson(route('esbtp.reclamations-notes.decision', $r->id), ['decision' => 'accepter', 'note_finale' => 12])
+            ->assertOk();
+
+        // La correction reecrit la note ; elle n'ouvre pas pour autant un second recours.
+        $this->deposer()->assertStatus(422)->assertJsonValidationErrors('note_id');
+        $this->assertSame(1, ESBTPReclamationNote::count());
+    }
+
+    public function test_deux_envois_simultanes_ne_creent_qu_une_reclamation(): void
+    {
+        // Le concurrent ecrit sa ligne APRES le controle et AVANT notre insertion :
+        // l'index unique departage, et l'eleve recoit un refus lisible.
+        ESBTPReclamationNote::creating(function (ESBTPReclamationNote $r) {
+            \Illuminate\Support\Facades\DB::table('esbtp_reclamations_notes')->insert(
+                collect($r->getAttributes())->except('statut')->put('statut', StatutReclamationNote::SOUMISE->value)
+                    ->put('created_at', now())->put('updated_at', now())->all()
+            );
+        });
+
+        $this->deposer()->assertStatus(422)->assertJsonValidationErrors('note_id');
+        $this->assertSame(1, ESBTPReclamationNote::count());
+        $this->assertCount(0, Storage::disk('local')->allFiles('reclamations-notes'), 'La photo du perdant ne reste pas sur le disque.');
     }
 
     public function test_on_ne_conteste_pas_la_note_d_un_autre_eleve(): void

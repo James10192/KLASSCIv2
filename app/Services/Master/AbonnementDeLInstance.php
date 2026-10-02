@@ -124,6 +124,18 @@ class AbonnementDeLInstance
             }
         }
 
+        // Master configure mais injoignable : les reglages locaux sont peut-etre
+        // perimes depuis que la fiche adminKlassci fait foi. Une panne reseau ne
+        // doit pas fermer l'ecole : on previent, on ne bloque pas.
+        if ($statut['is_blocked'] && ($etat['source'] ?? null) === 'local' && $this->limites->estConfigure()) {
+            $statut['warnings'] = array_merge(
+                array_map(fn ($r) => $r . ' (valeur locale, adminKlassci injoignable)', $statut['reasons']),
+                $statut['warnings']
+            );
+            $statut['reasons'] = [];
+            $statut['is_blocked'] = false;
+        }
+
         return $statut;
     }
 
@@ -131,19 +143,18 @@ class AbonnementDeLInstance
     {
         $fin = ! empty($d['subscription']['end_date']) ? Carbon::parse($d['subscription']['end_date'])->startOfDay() : null;
         $debut = ! empty($d['subscription']['start_date']) ? Carbon::parse($d['subscription']['start_date'])->startOfDay() : null;
-        $depasse = $d['quota_status'] ?? [];
 
         $usages = [
             'users' => $this->usage('Utilisateurs', 'Limite d\'utilisateurs', 'fa-users',
-                $d['current_usage']['users'] ?? null, $d['limits']['max_users'] ?? null, $depasse['users_over_limit'] ?? false),
+                $d['current_usage']['users'] ?? null, $d['limits']['max_users'] ?? null),
             'staff' => $this->usage('Personnel', 'Limite de personnel', 'fa-user-tie',
-                $d['current_usage']['staff'] ?? null, $d['limits']['max_staff'] ?? null, $depasse['staff_over_limit'] ?? false),
+                $d['current_usage']['staff'] ?? null, $d['limits']['max_staff'] ?? null),
             'students' => $this->usage('Étudiants avec compte', 'Limite d\'étudiants', 'fa-user-graduate',
-                $d['current_usage']['students'] ?? null, $d['limits']['max_students'] ?? null, $depasse['students_over_limit'] ?? false),
+                $d['current_usage']['students'] ?? null, $d['limits']['max_students'] ?? null),
             'inscriptions' => $this->usage('Inscriptions de l\'année', 'Limite d\'inscriptions pour l\'année', 'fa-file-signature',
-                $d['current_usage']['inscriptions_per_year'] ?? null, $d['limits']['max_inscriptions_per_year'] ?? null, $depasse['inscriptions_over_limit'] ?? false),
+                $d['current_usage']['inscriptions_per_year'] ?? null, $d['limits']['max_inscriptions_per_year'] ?? null),
             'storage' => $this->usage('Stockage', 'Limite de stockage', 'fa-database',
-                $d['current_usage']['storage_mb'] ?? null, $d['limits']['max_storage_mb'] ?? null, $depasse['storage_over_limit'] ?? false, 'Mo'),
+                $d['current_usage']['storage_mb'] ?? null, $d['limits']['max_storage_mb'] ?? null, 'Mo'),
         ];
 
         $plan = $d['plan'] ?? null;
@@ -183,12 +194,12 @@ class AbonnementDeLInstance
         // Personnel, comptes etudiants et stockage ne sont pas mesures en local :
         // ils restent « non mesures » (null) plutot que d'afficher un zero faux.
         $usages = [
-            'users' => $this->usage('Utilisateurs', 'Limite d\'utilisateurs', 'fa-users', $utilisateurs, $maxUsers, $utilisateurs > $maxUsers),
-            'staff' => $this->usage('Personnel', 'Limite de personnel', 'fa-user-tie', null, null, false),
-            'students' => $this->usage('Étudiants avec compte', 'Limite d\'étudiants', 'fa-user-graduate', null, null, false),
+            'users' => $this->usage('Utilisateurs', 'Limite d\'utilisateurs', 'fa-users', $utilisateurs, $maxUsers),
+            'staff' => $this->usage('Personnel', 'Limite de personnel', 'fa-user-tie', null, null),
+            'students' => $this->usage('Étudiants avec compte', 'Limite d\'étudiants', 'fa-user-graduate', null, null),
             'inscriptions' => $this->usage('Inscriptions de l\'année', 'Limite d\'inscriptions pour l\'année', 'fa-file-signature',
-                $inscriptions, $maxInscriptions, $inscriptions !== null && $inscriptions > $maxInscriptions),
-            'storage' => $this->usage('Stockage', 'Limite de stockage', 'fa-database', null, null, false, 'Mo'),
+                $inscriptions, $maxInscriptions),
+            'storage' => $this->usage('Stockage', 'Limite de stockage', 'fa-database', null, null, 'Mo'),
         ];
 
         return [
@@ -223,11 +234,19 @@ class AbonnementDeLInstance
         ];
     }
 
-    private function usage(string $libelle, string $libelleLimite, string $icone, $actuel, $max, bool $depasse, ?string $unite = null): array
+    /**
+     * « Dépassée » veut dire strictement au-dessus de la limite, comme
+     * is_over_quota cote master et comme l'ancien middleware. Les drapeaux
+     * *_over_limit du master comptent l'egalite (>=) : une ecole a 30/30
+     * utilisateurs n'est pas en faute, elle est a la limite. Ils ne servent
+     * donc pas au blocage.
+     */
+    private function usage(string $libelle, string $libelleLimite, string $icone, $actuel, $max, ?string $unite = null): array
     {
         $actuel = is_numeric($actuel) ? (int) $actuel : null;
         $max = is_numeric($max) ? (int) $max : null;
         $illimite = $max !== null && $max >= self::SEUIL_ILLIMITE;
+        $depasse = $actuel !== null && $max !== null && ! $illimite && $actuel > $max;
         $pct = ($actuel !== null && $max !== null && $max > 0 && ! $illimite) ? round($actuel / $max * 100, 1) : null;
 
         return [

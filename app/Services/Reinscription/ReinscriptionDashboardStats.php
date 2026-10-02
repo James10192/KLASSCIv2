@@ -96,8 +96,8 @@ final class ReinscriptionDashboardStats
 
                 // Lignes brutes, sans un modele par note : voir NotesDeLaPromotion.
                 $notesParEtudiant = $this->notes->pour($ids->all(), $precedente->name);
-                // Meme moyenne que les onglets : l'annuelle du bulletin en BTS
-                // (voir ReeinscriptionService::moyennePourDecision()).
+                // Meme moyenne que les onglets : celle du conseil du bulletin en
+                // BTS (MoyennesAnnuellesDuBulletin::decision()).
                 $annuelles = $this->moyennesAnnuelles->pour($inscriptions);
 
                 foreach ($inscriptions as $inscription) {
@@ -135,10 +135,9 @@ final class ReinscriptionDashboardStats
                             ->values();
 
                         [$moyenne, $nbEchecs] = $this->moyenneEtEchecs($notes, (float) $regle->moyenne_passage);
-                        $annuelle = $annuelles[(int) $inscription->id]['moyenne'] ?? null;
-                        if ($annuelle !== null) {
-                            $moyenne = $annuelle;
-                        }
+                        $moyenne = $this->moyennesAnnuelles->decision(
+                            $inscription, $classe, $annuelles[(int) $inscription->id] ?? null, $moyenne, $notes->isEmpty()
+                        )['moyenne'];
 
                         if ($regle->peutPasser($moyenne)) {
                             $stats['passages']++;

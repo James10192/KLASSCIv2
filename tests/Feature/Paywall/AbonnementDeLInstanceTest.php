@@ -122,6 +122,43 @@ class AbonnementDeLInstanceTest extends TestCase
         $this->assertSame('Limite d\'étudiants dépassée (1 200/1 000)', $statut['reasons'][1]);
     }
 
+    public function test_une_limite_tout_juste_atteinte_ne_bloque_pas(): void
+    {
+        // Le master pose students_over_limit des l'egalite (>=) ; l'ecole a
+        // 1000/1000 n'est pas en faute pour autant.
+        Http::fake(['master.test/*' => Http::response($this->reponseMaster([
+            'limits' => ['max_students' => 1000],
+            'current_usage' => ['students' => 1000],
+            'quota_status' => ['is_over_quota' => false, 'students_over_limit' => true],
+        ]), 200)]);
+
+        $etat = app(AbonnementDeLInstance::class)->etat();
+
+        $this->assertFalse($etat['statut']['is_blocked']);
+        $this->assertFalse($etat['usages']['students']['depasse']);
+        $this->assertSame('Proche de la limite d\'étudiants (1 000/1 000)', $etat['statut']['warnings'][0]);
+    }
+
+    public function test_master_injoignable_les_valeurs_locales_previennent_sans_bloquer(): void
+    {
+        Http::fake(['master.test/*' => Http::response('erreur', 503)]);
+        ESBTPSystemSetting::setValue('subscription_end_date', now()->subDays(10)->toDateString());
+
+        $statut = app(AbonnementDeLInstance::class)->statutDeBlocage();
+
+        $this->assertFalse($statut['is_blocked']);
+        $this->assertSame([], $statut['reasons']);
+        $this->assertStringContainsString('adminKlassci injoignable', $statut['warnings'][0]);
+    }
+
+    public function test_sans_master_les_valeurs_locales_bloquent_toujours(): void
+    {
+        config(['services.master.api_url' => null]);
+        ESBTPSystemSetting::setValue('subscription_end_date', now()->subDays(10)->toDateString());
+
+        $this->assertTrue(app(AbonnementDeLInstance::class)->statutDeBlocage()['is_blocked']);
+    }
+
     public function test_actualiser_vide_le_cache_et_relit_le_master(): void
     {
         Http::fakeSequence('master.test/*')

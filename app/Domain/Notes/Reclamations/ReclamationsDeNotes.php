@@ -40,12 +40,23 @@ final class ReclamationsDeNotes
             ! $this->reglages->actives() => 'Les réclamations de notes ne sont pas ouvertes dans votre établissement.',
             (int) $note->etudiant_id !== (int) $etudiant->id => 'Cette note ne vous appartient pas.',
             ! $note->evaluation => 'Cette note n\'est plus rattachée à une évaluation.',
-            $note->updated_at !== null && $note->updated_at->copy()->addDays($this->reglages->delaiJours())->isPast()
+            self::fermeLe($note, $this->reglages->delaiJours())?->isPast() === true
                 => 'Le délai de '.$this->reglages->delaiJours().' jours pour contester cette note est dépassé.',
-            ESBTPReclamationNote::where('note_id', $note->id)->ouvertes()->exists()
-                => 'Une réclamation est déjà en cours sur cette note.',
+            ESBTPReclamationNote::withTrashed()->where('note_id', $note->id)->exists()
+                => 'Cette note a déjà fait l\'objet d\'une réclamation : un seul recours par note.',
             default => null,
         };
+    }
+
+    /**
+     * La fin du delai de recours. Il court depuis la SAISIE de la note
+     * (`created_at`), pas depuis sa derniere ecriture : une correction, un
+     * recalcul ou la decision d'une reclamation reecrivent `updated_at`, et
+     * rouvriraient des notes closes depuis des mois.
+     */
+    public static function fermeLe(ESBTPNote $note, int $delaiJours): ?\Illuminate\Support\Carbon
+    {
+        return $note->created_at?->copy()->addDays($delaiJours);
     }
 
     public function deposer(ESBTPNote $note, ESBTPEtudiant $etudiant, string $motif, UploadedFile $photo, User $auteur): ESBTPReclamationNote
@@ -75,6 +86,10 @@ final class ReclamationsDeNotes
         } catch (\Throwable $e) {
             // Pas de photo orpheline sur le disque si la ligne n'est pas écrite.
             Storage::disk(self::DISQUE)->delete($chemin);
+            // Deux envois simultanes : l'index unique sur note_id departage.
+            if ($e instanceof \Illuminate\Database\QueryException && ($e->errorInfo[0] ?? null) === '23000') {
+                throw ValidationException::withMessages(['note_id' => 'Une réclamation vient déjà d\'être déposée sur cette note.']);
+            }
             throw $e;
         }
 

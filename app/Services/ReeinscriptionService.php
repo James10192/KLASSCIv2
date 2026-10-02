@@ -41,14 +41,6 @@ class ReeinscriptionService
      */
     private array $moyennesAnnuellesPrechargees = [];
 
-    /**
-     * Classes dont le repli sur les notes brutes a deja ete journalise : une
-     * ligne par classe, pas une par eleve sur une promotion de 2000.
-     *
-     * @var array<string, true>
-     */
-    private array $replisJournalises = [];
-
     public function __construct(
         private readonly \App\Services\Reinscription\ClassesDeReinscription $classes,
         private readonly \App\Services\Reinscription\NotesDeLaPromotion $notesDeLaPromotion,
@@ -128,9 +120,6 @@ class ReeinscriptionService
         $moyenne = $this->moyennePourDecision($inscription, $classe, $notes);
         $moyenneGenerale = $moyenne['moyenne'];
         $matieresEchouees = $this->getMatieresEchouees($notes, $regle->moyenne_passage);
-
-        // TEMPORAIRE: Désactiver l'enrichissement financier pour éviter timeout (optimisation à faire plus tard)
-        // $this->ajouterInformationsFinancieres($etudiant, $inscription);
 
         // Vérification de sécurité: s'assurer que l'étudiant n'est pas null
         if (!$etudiant) {
@@ -745,57 +734,14 @@ class ReeinscriptionService
     }
 
     /**
-     * La moyenne sur laquelle la reinscription decide.
-     *
-     * BTS : la moyenne annuelle PONDEREE que le bulletin imprime
-     * (`MoyennesAnnuellesDuBulletin`). Avant, la reinscription decidait sur sa
-     * propre moyenne simple des matieres, sans coefficient ni poids de
-     * semestre, et pouvait proposer un passage la ou le bulletin disait
-     * « Redouble » — et l'inverse.
-     *
-     * Quand le bulletin n'a pas de moyenne annuelle (un semestre sans aucune
-     * note, ou des notes saisies hors evaluation), il n'imprime pas de decision.
-     * La reinscription, elle, doit en proposer une : elle retombe sur l'ancien
-     * calcul, le DIT dans `source` (`notes_brutes`, ou `aucune_note` quand le
-     * zero vient de l'absence de toute note) et le journalise une fois par
-     * classe. Ce repli n'est jamais silencieux.
-     *
-     * LMD : inchange (rule `lmd-bts-bulletin-separation`) — le bulletin LMD
-     * decide par credits et compensation, pas sur cette moyenne.
-     *
-     * @return array{moyenne: float|int, source: string, semestres: array|null}
+     * La moyenne de decision : celle du conseil du bulletin en BTS, repli sur
+     * les notes brutes dit et journalise (`MoyennesAnnuellesDuBulletin::decision()`).
      */
     private function moyennePourDecision(?ESBTPInscription $inscription, ESBTPClasse $classe, Collection $notes): array
     {
-        if (! $classe->isBTS()) {
-            return ['moyenne' => $this->calculerMoyenneGenerale($notes), 'source' => 'lmd_notes_brutes', 'semestres' => null];
-        }
+        $annuelle = $inscription ? ($this->moyennesAnnuellesPrechargees[(int) $inscription->id] ?? null) : null;
 
-        $annuelle = null;
-        if ($inscription) {
-            $annuelle = $this->moyennesAnnuellesPrechargees[(int) $inscription->id]
-                ?? ($this->moyennesAnnuelles->pour([$inscription])[(int) $inscription->id] ?? null);
-        }
-
-        if ($annuelle !== null && $annuelle['moyenne'] !== null) {
-            return ['moyenne' => $annuelle['moyenne'], 'source' => 'bulletin_annuel', 'semestres' => $annuelle];
-        }
-
-        $source = $notes->isEmpty() ? 'aucune_note' : 'notes_brutes';
-        $cle = $classe->id.':'.($inscription->annee_universitaire_id ?? '?').':'.$source;
-        if (! isset($this->replisJournalises[$cle])) {
-            $this->replisJournalises[$cle] = true;
-            \Log::warning('Reinscription : pas de moyenne annuelle de bulletin, repli sur les notes brutes', [
-                'classe_id' => $classe->id,
-                'annee_universitaire_id' => $inscription->annee_universitaire_id ?? null,
-                'inscription_id' => $inscription->id ?? null,
-                'source' => $source,
-                'semestre1' => $annuelle['semestre1'] ?? null,
-                'semestre2' => $annuelle['semestre2'] ?? null,
-            ]);
-        }
-
-        return ['moyenne' => $this->calculerMoyenneGenerale($notes), 'source' => $source, 'semestres' => $annuelle];
+        return $this->moyennesAnnuelles->decision($inscription, $classe, $annuelle, $this->calculerMoyenneGenerale($notes), $notes->isEmpty());
     }
 
     private function calculerMoyenneGenerale($notes)
@@ -1072,79 +1018,6 @@ class ReeinscriptionService
                 }
             }
         }
-    }
-
-    /**
-     * Ajoute les informations financières à l'étudiant en tenant compte du statut d'affectation
-     */
-    private function ajouterInformationsFinancieres($etudiant, $inscription)
-    {
-        try {
-            // Récupérer le statut d'affectation de l'inscription (défaut: affecté)
-            $affectationStatus = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-
-            // Calculer le montant attendu selon le statut d'affectation
-            $montantAttendu = $this->calculerMontantAttenduAvecStatut($inscription, $affectationStatus);
-
-            // Calculer le montant payé pour cette inscription
-            $montantPaye = $this->calculerMontantPaye($inscription);
-
-            // Calculer le solde restant
-            $soldeRestant = max(0, $montantAttendu - $montantPaye);
-
-            // Déterminer si l'étudiant peut se réinscrire (soldé ou quasi-soldé)
-            // Le MEME seuil que la garde `peutSeReinscrire()`. Cet ecran
-            // affichait une tolerance de 50 000 ecrite en dur alors que la garde
-            // exigeait un solde nul : l'agent voyait un feu vert, puis se
-            // heurtait au refus.
-            $peutReinscrire = $soldeRestant <= $this->toleranceSolde();
-
-            // Ajouter les propriétés à l'objet étudiant
-            $etudiant->montant_attendu = $montantAttendu;
-            $etudiant->montant_paye = $montantPaye;
-            $etudiant->solde_restant = $soldeRestant;
-            $etudiant->peut_reinscrire = $peutReinscrire;
-            $etudiant->affectation_status = $affectationStatus;
-
-        } catch (\Exception $e) {
-            \Log::warning("Erreur lors du calcul des informations financières", [
-                'etudiant_id' => $etudiant->id ?? null,
-                'inscription_id' => $inscription->id ?? null,
-                'error' => $e->getMessage()
-            ]);
-
-            // Valeurs par défaut en cas d'erreur
-            $etudiant->montant_attendu = 0;
-            $etudiant->montant_paye = 0;
-            $etudiant->solde_restant = 0;
-            $etudiant->peut_reinscrire = false;
-            $etudiant->affectation_status = ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-        }
-    }
-
-    /**
-     * Calcule le montant attendu selon le statut d'affectation
-     */
-    private function calculerMontantAttenduAvecStatut($inscription, $affectationStatus)
-    {
-        $montantTotal = 0;
-
-        // Récupérer les frais de l'inscription
-        $fraisSubscriptions = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscription->id)
-            ->charged()
-            ->with('fraisConfiguration')
-            ->get();
-
-        foreach ($fraisSubscriptions as $fraisSubscription) {
-            $config = $fraisSubscription->fraisConfiguration;
-            if ($config) {
-                // Utiliser le montant selon le statut d'affectation
-                $montant = $config->getMontantByStatus($affectationStatus);
-                $montantTotal += $montant;
-            }
-        }
-
-        return $montantTotal;
     }
 
     /**
