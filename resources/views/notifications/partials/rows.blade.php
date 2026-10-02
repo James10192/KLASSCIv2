@@ -25,7 +25,7 @@
 
         <div class="ntf-body">
             <div class="ntf-title-line">
-                <h4 class="ntf-title">{{ $notification->title ?: 'Notification' }}</h4>
+                <h4 class="ntf-title">{{ $notification->display_title }}</h4>
                 @if($ntfNonLue)
                     <span class="ntf-dot" data-ntf-dot><span class="visually-hidden">Non lue</span></span>
                 @endif
