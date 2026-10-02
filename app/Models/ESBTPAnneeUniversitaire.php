@@ -57,6 +57,30 @@ class ESBTPAnneeUniversitaire extends Model
     }
 
     /**
+     * Toute ecriture sur une annee peut changer la courante (ou ses dates,
+     * affichees dans la barre du haut) : le cache tombe a chaque fois.
+     */
+    protected static function booted(): void
+    {
+        // Apres validation de la transaction : vide avant, le cache se
+        // remplirait de nouveau avec l'ancienne valeur, lue par une requete
+        // concurrente.
+        $vider = fn () => \Illuminate\Support\Facades\DB::afterCommit(fn () => static::flushCurrentCache());
+        static::saved($vider);
+        static::deleted($vider);
+    }
+
+    /**
+     * L'annee est-elle terminee ? Sa date de fin est passee, dans le fuseau de
+     * l'application. Une seule regle pour la barre du haut, la fenetre
+     * « Accepter et inscrire » et le formulaire complet.
+     */
+    public function estTerminee(): bool
+    {
+        return $this->end_date !== null && $this->end_date->lt(today());
+    }
+
+    /**
      * La table associée au modèle.
      *
      * @var string

@@ -12,6 +12,8 @@
     $_recidives = $_nonVenuesMasse->where('absences', '>', 0)->count();
 @endphp
 
+<p class="rac-voisine" role="status" hidden><i class="fas fa-spell-check"></i>Aucune famille ne porte exactement ce nom : voici les orthographes voisines. Vérifiez avant de cocher.</p>
+
 @if($enSouffrance->isNotEmpty())
     <div class="rac-alerte" role="status">
         <i class="fas fa-triangle-exclamation"></i>
@@ -78,7 +80,7 @@
                         $_second = $_contacts->second($resa);
                         $_tel = \App\Domain\Notifications\PhoneFormatter::toReadable($resa->telephone) ?? $resa->telephone;
                         $_retard = $accueil->enRetard($resa);
-                        $_cherche = mb_strtolower($resa->nomComplet().' '.$resa->telephone.' '.str_replace('-', '', $_ref).' '.$_ref.' '.($_second['telephone'] ?? ''), 'UTF-8');
+                        $_cherche = $_contacts->texteRecherche($resa);
                         $_url = fn (string $action) => route('esbtp.rendez-vous.accueil.'.$action, $resa);
                         $_sansNouvelle = $_familles->concerne($resa);
                     @endphp
@@ -167,7 +169,7 @@
                     @php
                         $_ref = $_contacts->reference($resa);
                         $_tel = \App\Domain\Notifications\PhoneFormatter::toReadable($resa->telephone) ?? $resa->telephone;
-                        $_cherche = mb_strtolower($resa->nomComplet().' '.$resa->telephone.' '.str_replace('-', '', $_ref).' '.$_ref, 'UTF-8');
+                        $_cherche = $_contacts->texteRecherche($resa);
                     @endphp
                     <li class="rac-ligne rac-ligne--reprog" data-statut="non_venue" data-cherche="{{ $_cherche }}">
                         <span class="rac-coche rac-coche--non-venue" aria-hidden="true"><i class="fas fa-share"></i></span>
