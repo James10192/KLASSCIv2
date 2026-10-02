@@ -191,6 +191,7 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | lien de confirmation d'adresse expiré | `clx-*` | `clx-carte`, `clx-btn`, `clx-message` |
 | notifications (`/notifications`) | `ntf-*` | `ntf-hero`, `ntf-kpi`, `ntf-chip`, `ntf-row`, `ntf-group`, `ntf-work-card` |
 | messages (`/messages`, centre de messages v2) | `mh2-*` (feuilles `public/css/messages-hub-v2*.css`) | `mh2-conversation`, `mh2-thread`, `mh2-composer`, `mh2-modal` |
+| étape suivante d'un workflow (`layouts/partials/etape-suivante`) | `wns-*` | `wns-bandeau`, `wns-fenetre`, `wns-etape`, `wns-btn--lien` |
 | statut redoublant (fiche d'inscription, réinscription) | `rsr-*` | `rsr-ligne`, `rsr-etat`, `rsr-btn`, `rsr-option`, `rsr-carte` |
 | abonnement de l'instance, paywall (`/esbtp/paywall-config`, `blocked`, `upgrade`) | `pwc-*` (feuille partagée `paywall-config/partials/_styles`) | `pwc-hero`, `pwc-kpi`, `pwc-card`, `pwc-gauge`, `pwc-source`, `pwc-switch` |
 | tableau de bord du service technique | `dst-*` | `dst-hero`, `dst-kpi`, `dst-queue`, `dst-trend`, `dst-usage`, `dst-quick` |

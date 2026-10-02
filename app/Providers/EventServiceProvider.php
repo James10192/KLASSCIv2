@@ -72,6 +72,8 @@ class EventServiceProvider extends ServiceProvider
         // Workflow inscription → notifs event-driven (issue #298)
         WorkflowStepCompleted::class => [
             NotifyWorkflowNextStepActors::class,
+            // Une etape faite clot l'avis qui la demandait, chez tout le monde.
+            \App\Listeners\CloreLesEtapesFaites::class,
         ],
 
         // PR2 Réconciliation paiements ↔ caisse physique
