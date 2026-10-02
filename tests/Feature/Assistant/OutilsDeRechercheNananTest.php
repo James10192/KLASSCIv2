@@ -47,4 +47,20 @@ class OutilsDeRechercheNananTest extends TestCase
 
         $this->assertSame([$eleve->id], $requete->pluck('id')->all());
     }
+
+    /** @test */
+    public function avant_de_corriger_nanan_compare_la_note_trouvee_a_celle_annoncee(): void
+    {
+        $this->monterLaClasse();
+
+        $prompt = app(\App\Domain\Assistant\Harnais\ConstructeurDePrompt::class)->systeme(User::find(1), null, null);
+        $ligne = collect(explode("\n", $prompt))->first(fn ($l) => str_contains($l, 'proposer_correction_notes'));
+
+        // Capture du 2 octobre : « 12,50 au premier semestre » demandé, une
+        // seule note de 15 au second en base, et Nanan proposait sans le dire.
+        $this->assertNotNull($ligne);
+        $this->assertStringContainsString('demande confirmation sans proposer', $ligne);
+        $this->assertStringContainsString('cite toujours la note actuelle lue en base', $ligne);
+    }
+
 }
