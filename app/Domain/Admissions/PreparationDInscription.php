@@ -2,6 +2,7 @@
 
 namespace App\Domain\Admissions;
 
+use App\Domain\Inscriptions\QuestionRedoublant;
 use App\Domain\Notifications\PhoneFormatter;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
@@ -46,6 +47,8 @@ class PreparationDInscription
                 'annee_universitaire_id' => $c->annee_universitaire_id !== null ? (int) $c->annee_universitaire_id : null,
                 'annee' => (string) $c->anneeUniversitaire?->name,
                 'affectation_status' => $c->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+                // Réponse proposée à « Redoublant ? » : ce que le transféré a déclaré.
+                'redoublant_propose' => QuestionRedoublant::propositionDeCandidature($c),
             ],
             'identite' => [
                 'nom' => (string) $c->nom,

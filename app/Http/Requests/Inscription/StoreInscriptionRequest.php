@@ -72,14 +72,19 @@ class StoreInscriptionRequest extends FormRequest
     }
 
     /**
-     * L'élève est nouveau dans KLASSCI : la proposition est « non redoublant ».
-     * Répondre « oui » demande un motif, vérifié avant toute création.
+     * L'élève est nouveau dans KLASSCI : la proposition est « non redoublant »,
+     * sauf pour un transféré qui a déclaré redoubler dans sa candidature.
+     * S'en écarter demande un motif, vérifié avant toute création.
      */
     public function withValidator($validator): void
     {
         $validator->after(function ($validator) {
             try {
-                QuestionRedoublant::exigerLeMotif(QuestionRedoublant::reponse($this), false, $this->input('redoublant_motif'));
+                QuestionRedoublant::exigerLeMotif(
+                    QuestionRedoublant::reponse($this),
+                    QuestionRedoublant::propositionDeLaRequete($this),
+                    $this->input('redoublant_motif'),
+                );
             } catch (\Illuminate\Validation\ValidationException $e) {
                 foreach ($e->errors() as $champ => $messages) {
                     $validator->errors()->add($champ, $messages[0]);

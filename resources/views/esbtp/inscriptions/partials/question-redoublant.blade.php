@@ -1,18 +1,24 @@
 {{-- « Redoublant ? » au formulaire de nouvelle inscription (namespace rsr-*).
      L'élève est nouveau dans KLASSCI : rien à comparer avec l'année d'avant,
-     la proposition est « Non ». Répondre « Oui » demande un motif, vérifié
-     aussi par le serveur (StoreInscriptionRequest). --}}
+     la proposition est « Non », sauf pour un transféré qui a déclaré redoubler
+     dans sa candidature. S'en écarter demande un motif, vérifié aussi par le
+     serveur (StoreInscriptionRequest). --}}
 @can(\App\Domain\Inscriptions\StatutRedoublant::PERMISSION)
 @php
-    $_redoublantAncien = old('redoublant', '0') === '1' ? '1' : '0';
+    $_redoublantPropose = \App\Domain\Inscriptions\QuestionRedoublant::propositionDeCandidature($candidatureSource ?? null) ? '1' : '0';
+    $_redoublantAncien = old('redoublant', $_redoublantPropose) === '1' ? '1' : '0';
 @endphp
 <div class="col-12">
-    <div class="rsr-carte" x-data="{ valeur: '{{ $_redoublantAncien }}' }">
+    <div class="rsr-carte" x-data="{ valeur: '{{ $_redoublantAncien }}', propose: '{{ $_redoublantPropose }}' }">
         <div class="rsr-tete">
             <span class="rsr-icone"><i class="fas fa-redo-alt"></i></span>
             <div>
                 <div class="rsr-titre">Redoublant ?</div>
-                <div class="rsr-aide">Nouvel élève dans KLASSCI : pas d'année précédente à comparer. Répondez « Oui » s'il redouble ce niveau, par exemple en venant d'un autre établissement.</div>
+                @if($_redoublantPropose === '1')
+                    <div class="rsr-aide">Proposé : oui. Dans sa candidature, il déclare recommencer l'année qu'il suivait dans son établissement d'origine.</div>
+                @else
+                    <div class="rsr-aide">Nouvel élève dans KLASSCI : pas d'année précédente à comparer. Répondez « Oui » s'il redouble ce niveau, par exemple en venant d'un autre établissement.</div>
+                @endif
             </div>
         </div>
         <div class="rsr-choix" role="radiogroup" aria-label="Statut redoublant">
@@ -23,10 +29,10 @@
                 <input type="radio" name="redoublant" value="0" x-model="valeur"> Non
             </label>
         </div>
-        <div x-show="valeur === '1'" x-cloak>
-            <label class="rsr-note" for="redoublant_motif"><i class="fas fa-pen"></i> Dites pourquoi (obligatoire, 10 caractères au moins).</label>
+        <div x-show="valeur !== propose" x-cloak>
+            <label class="rsr-note" for="redoublant_motif"><i class="fas fa-pen"></i> Vous changez la réponse proposée : dites pourquoi (obligatoire, 10 caractères au moins).</label>
             <textarea id="redoublant_motif" name="redoublant_motif" class="rsr-motif" rows="2" maxlength="500"
-                      :required="valeur === '1'" :disabled="valeur !== '1'" minlength="10"
+                      :required="valeur !== propose" :disabled="valeur === propose" minlength="10"
                       placeholder="Exemple : redouble sa 1re année, venu d'un autre établissement">{{ old('redoublant_motif') }}</textarea>
         </div>
         @error('redoublant_motif')
