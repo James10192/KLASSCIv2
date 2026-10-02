@@ -48,4 +48,34 @@ class ModificationEnChaineTest extends TestCase
         $this->assertStringContainsString('data-classe-id="'.$classe->id.'"', $html);
         $this->assertStringContainsString('Nouveau nom', $html);
     }
+
+    public function test_une_carte_qui_ne_se_rend_pas_ne_fait_pas_croire_a_un_echec(): void
+    {
+        $classe = ESBTPClasse::factory()->create(['name' => 'Ancien nom']);
+        $user = User::factory()->create();
+        $user->givePermissionTo(['classes.edit', 'classes.view', 'admin.access']);
+        \Illuminate\Support\Facades\View::composer('esbtp.classes.partials.classe-card', function () {
+            throw new \RuntimeException('rendu impossible');
+        });
+
+        $this->actingAs($user)->putJson(route('esbtp.classes.update', $classe), [
+            'name' => 'Nouveau nom', 'code' => $classe->code, 'filiere_id' => $classe->filiere_id,
+            'niveau_etude_id' => $classe->niveau_etude_id, 'annee_universitaire_id' => $classe->annee_universitaire_id,
+            'places_totales' => 40, 'is_active' => 1, 'is_ajax' => '1',
+        ])->assertOk()->assertJsonPath('success', true)->assertJsonPath('html', null);
+
+        $this->assertSame('Nouveau nom', $classe->fresh()->name);
+    }
+
+    public function test_la_liste_porte_la_fenetre_d_edition_a_la_chaine(): void
+    {
+        ESBTPClasse::factory()->count(2)->create();
+        $user = User::factory()->create();
+        $user->givePermissionTo(['classes.edit', 'classes.view', 'admin.access']);
+
+        $this->actingAs($user)->get(route('esbtp.classes.index'))
+            ->assertOk()
+            ->assertSee('id="modal-edit-next-btn"', false)
+            ->assertSee('Enregistrer et modifier la suivante');
+    }
 }

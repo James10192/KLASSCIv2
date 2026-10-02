@@ -853,12 +853,25 @@ class ESBTPClasseController extends Controller
 
         // Si c'est une requête AJAX, retourner une réponse JSON
         if ($request->ajax() || $request->input("is_ajax") === "1") {
+            // La carte rafraichie part avec la reponse : un aller-retour de
+            // moins quand on modifie plusieurs classes a la suite. La classe
+            // est deja enregistree : un echec de rendu ne doit pas se
+            // presenter comme un echec de l'enregistrement. Sans carte,
+            // l'ecran la redemande (refresh-ligne).
+            try {
+                $carte = $this->carteHtml($classe);
+            } catch (\Throwable $e) {
+                \Log::warning("Carte de classe non rendue apres modification", [
+                    "classe_id" => $classe->id,
+                    "erreur" => $e->getMessage(),
+                ]);
+                $carte = null;
+            }
+
             return response()->json([
                 "success" => true,
                 "message" => "La classe a été mise à jour avec succès.",
-                // La carte rafraichie part avec la reponse : un aller-retour de
-                // moins quand on modifie plusieurs classes a la suite.
-                "html" => $this->carteHtml($classe),
+                "html" => $carte,
                 "classe" => [
                     "id" => $classe->id,
                     "name" => $classe->name,
@@ -928,7 +941,7 @@ class ESBTPClasseController extends Controller
     private function carteHtml(ESBTPClasse $classe): string
     {
         // parcours.mention.domaine pour le tree LMD compact dans la card (cf classe-card.blade.php)
-        $classe->load(["filiere.parent", "niveau", "annee", "parcours.mention.domaine"]);
+        $classe->loadMissing(["filiere.parent", "niveau", "annee", "parcours.mention.domaine"]);
 
         // Permissions hoisted ici comme dans items.blade.php — sinon classe-card.blade.php
         // crash avec "Undefined variable $canManageSchool".
