@@ -3592,7 +3592,7 @@ class BulletinService
             $kpis['moyenne_generale'] = round(array_sum($values) / max(count($values), 1), 2);
 
             $reussites = array_filter($values, function ($moyenne) {
-                return $moyenne >= 10;
+                return $moyenne >= \App\Domain\Bulletins\EtatDesResultats::SEUIL_REUSSITE;
             });
 
             $kpis['taux_reussite'] = count($values) > 0
