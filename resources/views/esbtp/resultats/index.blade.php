@@ -153,14 +153,8 @@
 @keyframes rsl-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 .rsl-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* Pied de liste : défilement infini + bouton de repli */
-.rsl-more { text-align: center; padding: 1.25rem; border-top: 1px solid var(--rsl-border); }
-.rsl-more-progress { font-size: .78rem; color: var(--rsl-muted); margin-bottom: .6rem; }
-.rsl-more-loading { display: inline-flex; align-items: center; gap: .5rem; font-size: .82rem; color: var(--rsl-primary); }
-.rsl-more-loading .spinner-border { width: 1rem; height: 1rem; border-width: .15em; }
-.rsl-more-error { color: #b91c1c; font-size: .82rem; margin-bottom: .6rem; }
-.rsl-end { text-align: center; padding: 1rem; font-size: .78rem; color: var(--rsl-muted); border-top: 1px solid var(--rsl-border); }
-.rsl-sentinel { height: 1px; }
+/* Bas de liste : composant x-liste-infinie (public/js/liste-infinie.js) */
+.rsl-bas { border-top: 1px solid var(--rsl-border); }
 .rsl-search-empty { display: none; }
 
 @media (max-width: 992px) {
@@ -248,7 +242,7 @@
                 <div class="rsl-kpi">
                     <div class="rsl-kpi-icon"><i class="fas fa-calculator"></i></div>
                     <div class="rsl-kpi-body">
-                        <div class="rsl-kpi-value"><span id="kpi-moyenne-generale">N/A</span><small>/20</small></div>
+                        <div class="rsl-kpi-value"><span id="kpi-moyenne-generale">N/A</span><small id="kpi-moyenne-suffixe" hidden>/20</small></div>
                         <div class="rsl-kpi-label">Moy. générale</div>
                         <div class="rsl-kpi-ref">seuil de réussite : 10</div>
                     </div>
@@ -395,9 +389,6 @@
                 <p>La recherche porte sur les lignes déjà affichées ; la suite de la liste se charge en descendant.</p>
             </div>
 
-            {{-- Pied de liste : bouton de repli + observateur du défilement infini --}}
-            <div id="rsl-more" style="display: none;"></div>
-            <div class="rsl-sentinel" id="rsl-sentinel" aria-hidden="true"></div>
         </div>
 
     </div>
@@ -409,15 +400,13 @@
 $(document).ready(function() {
     var ajaxUrl = @json(route('esbtp.resultats.load-etudiants'));
     var initialFilters = @json($_rslInitialFilters);
-    var currentPage = 1;
     var isLoading = false;
-    var hasMore = false;
-    var totalStudents = 0;
-    var totalLoadedStudents = 0;
     var currentRequest = null;
     var requestSeq = 0;
     var filterTimer = null;
     var applyingHistory = false;
+    var remplissageAnnee = false;
+    var anneeRequest = null;
 
     var currentFilters = $.extend({}, initialFilters);
 
@@ -443,48 +432,60 @@ $(document).ready(function() {
         el.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
-    function applyFilters(pushHistory) {
+    // Un geste = une entrée d'historique et un rechargement de la page 1.
+    function applyFilters() {
+        clearTimeout(filterTimer);
         currentFilters = readFilters();
-        if (pushHistory !== false) updateQueryString(true);
-        loadEtudiants(1, { reset: true });
+        updateQueryString(true);
+        loadEtudiants({ reset: true });
     }
 
     // Soumission du formulaire : AJAX, aucun rechargement
     $('.filter-form').on('submit', function(e) {
         e.preventDefault();
-        clearTimeout(filterTimer);
-        applyFilters(true);
+        applyFilters();
     });
 
-    // Un filtre qui change recharge la liste (regroupé : la classe peut fixer l'année juste après)
+    // Un filtre qui change recharge la liste
     $('#classe_id, #annee_universitaire_id, #semestre, #include_all_statuses').on('change', function() {
-        if (applyingHistory) return;
+        if (applyingHistory || remplissageAnnee) return;
         clearTimeout(filterTimer);
-        filterTimer = setTimeout(function() { applyFilters(true); }, 300);
+        filterTimer = setTimeout(applyFilters, 300);
     });
 
-    // Sélection d'une classe : propose son année universitaire
+    // L'utilisateur touche l'année : une proposition encore en vol ne l'écrasera pas.
+    $('#annee_universitaire_id').on('change', function() {
+        if (remplissageAnnee || !anneeRequest) return;
+        anneeRequest.abort();
+        anneeRequest = null;
+    });
+
+    // Sélection d'une classe : propose son année, seulement si aucune n'est choisie,
+    // sans recharger la liste et sans jamais remplacer l'année de l'utilisateur.
     $('#classe_id').on('change', function() {
         if (applyingHistory) return;
+        if (anneeRequest) { anneeRequest.abort(); anneeRequest = null; }
         var classeId = $(this).val();
-        if (classeId) {
-            $.ajax({
-                url: '/esbtp/api/classes/' + classeId,
-                type: 'GET',
-                dataType: 'json',
-                success: function(data) {
-                    if (data && data.annee_universitaire_id) {
-                        setNativeValue('annee_universitaire_id', data.annee_universitaire_id);
-                    }
-                }
-            });
-        }
+        if (!classeId || $('#annee_universitaire_id').val()) return;
+        anneeRequest = $.ajax({
+            url: '/esbtp/api/classes/' + classeId,
+            type: 'GET',
+            dataType: 'json',
+            success: function(data) {
+                anneeRequest = null;
+                if (!data || !data.annee_universitaire_id) return;
+                if ($('#annee_universitaire_id').val() || $('#classe_id').val() !== classeId) return;
+                remplissageAnnee = true;
+                setNativeValue('annee_universitaire_id', data.annee_universitaire_id);
+                remplissageAnnee = false;
+            },
+            error: function() { anneeRequest = null; }
+        });
     });
 
     function showInitialSpinner() {
         $('#error-state').hide();
-        $('#results-container').hide();
-        $('#rsl-more').hide().empty();
+        $('#results-container').hide().empty();
         $('#rsl-search-empty').hide();
         $('#initial-instructions').addClass('d-none');
         $('#initial-spinner').show();
@@ -497,7 +498,12 @@ $(document).ready(function() {
     function updateKpis(kpis) {
         if (!kpis) return;
         if (kpis.hasOwnProperty('total_etudiants')) $('#kpi-total-etudiants').text(kpis.total_etudiants ?? 0);
-        if (kpis.hasOwnProperty('moyenne_generale')) $('#kpi-moyenne-generale').text(kpis.moyenne_generale !== null ? kpis.moyenne_generale : 'N/A');
+        if (kpis.hasOwnProperty('moyenne_generale')) {
+            var m = kpis.moyenne_generale;
+            var numerique = m !== null && m !== '' && !isNaN(Number(m));
+            $('#kpi-moyenne-generale').text(numerique ? m : 'N/A');
+            $('#kpi-moyenne-suffixe').prop('hidden', !numerique);
+        }
         if (kpis.hasOwnProperty('taux_reussite')) $('#kpi-taux-reussite').text(kpis.taux_reussite !== null ? kpis.taux_reussite + '%' : 'N/A');
         if (kpis.hasOwnProperty('bulletins_count')) {
             $('#kpi-bulletins').text(kpis.bulletins_count ?? 0);
@@ -535,7 +541,7 @@ $(document).ready(function() {
         applyingHistory = false;
         clearTimeout(filterTimer);
         currentFilters = $.extend({}, f);
-        loadEtudiants(1, { reset: true });
+        loadEtudiants({ reset: true });
     });
 
     function showEmptyState() {
@@ -546,20 +552,19 @@ $(document).ready(function() {
         $('#error-state').hide();
     }
 
-    function updateCount() {
-        if (!totalStudents) {
+    function updateCount(affiches, total) {
+        if (!total) {
             $('#rsl-count').text('');
             return;
         }
-        $('#rsl-count').text(totalLoadedStudents + ' affiché' + (totalLoadedStudents > 1 ? 's' : '') + ' sur ' + totalStudents);
+        $('#rsl-count').text(affiches + ' affiché' + (affiches > 1 ? 's' : '') + ' sur ' + total);
     }
 
-    function loadEtudiants(page, options) {
-        page = page || 1;
+    // Première page (et rechargement quand un filtre change). La suite de la liste
+    // est chargée par le bas de liste x-liste-infinie rendu dans cette page 1.
+    function loadEtudiants(options) {
         options = options || {};
-        var reset = options.reset || false;
-
-        if (reset) {
+        if (options.reset) {
             // Un nouveau filtre l'emporte sur un chargement encore en vol
             if (currentRequest) currentRequest.abort();
             currentRequest = null;
@@ -570,28 +575,17 @@ $(document).ready(function() {
         if (!shouldLoadResults()) {
             hideInitialSpinner();
             $('#results-container').hide().empty();
-            $('#rsl-more').hide().empty();
             $('#error-state').hide();
             $('#initial-instructions').removeClass('d-none');
-            hasMore = false;
-            totalStudents = 0;
-            totalLoadedStudents = 0;
-            updateCount();
+            updateCount(0, 0);
             updateSelection();
             updateKpis({ total_etudiants: 0, moyenne_generale: null, taux_reussite: null, bulletins_count: 0 });
             return;
         }
 
         $('#initial-instructions').addClass('d-none');
-
-        if (reset) {
-            currentPage = 1;
-            totalLoadedStudents = 0;
-            hasMore = false;
-            showInitialSpinner();
-        } else {
-            renderMoreLoading();
-        }
+        showInitialSpinner();
+        updateSelection();
 
         isLoading = true;
         var seq = ++requestSeq;
@@ -600,7 +594,7 @@ $(document).ready(function() {
             url: ajaxUrl,
             method: 'GET',
             data: {
-                page: page,
+                page: 1,
                 per_page: 50,
                 classe_id: currentFilters.classe_id,
                 semestre: currentFilters.semestre,
@@ -612,112 +606,56 @@ $(document).ready(function() {
                 hideInitialSpinner();
                 $('#error-state').hide();
 
-                if (page === 1) {
-                    if (response.total === 0) {
-                        showEmptyState();
-                        totalLoadedStudents = 0;
-                    } else {
-                        $('#results-container').html(response.html);
-                        totalLoadedStudents = response.loaded_count;
-                    }
-                    updateKpis(response.kpis || null);
+                if (response.total === 0) {
+                    showEmptyState();
                 } else {
-                    var newRows = $(response.html);
-                    $('#results-container tbody').append(newRows);
-                    totalLoadedStudents += response.loaded_count;
-                    $('#select-all').prop('checked', false);
+                    $('#results-container').html(response.html);
                 }
+                updateKpis(response.kpis || null);
 
-                totalStudents = response.total || 0;
-                hasMore = !!response.has_more;
-                currentPage = response.current_page || page;
                 $('#results-container').show();
                 isLoading = false;
                 currentRequest = null;
 
-                updateCount();
-                updateLoadMoreButton(response);
+                updateCount(response.loaded_count || 0, response.total || 0);
                 applySearch();
                 updateSelection();
-                maybeLoadNext();
             },
             error: function(xhr, status) {
                 if (status === 'abort' || seq !== requestSeq) return;
                 isLoading = false;
                 currentRequest = null;
-                if (page === 1) {
-                    showErrorState();
-                } else {
-                    renderMoreError(page);
-                }
+                showErrorState();
             }
         });
     }
 
-    function renderMoreLoading() {
-        $('#rsl-more').html(
-            '<div class="rsl-more"><span class="rsl-more-loading"><span class="spinner-border" role="status"></span>Chargement de la suite…</span></div>'
-        ).show();
-    }
-
-    function renderMoreError(page) {
-        $('#rsl-more').html(
-            '<div class="rsl-more"><div class="rsl-more-error"><i class="fas fa-exclamation-triangle"></i> La suite de la liste n\'a pas pu être chargée.</div>' +
-            '<button type="button" class="rsl-btn rsl-btn--ghost" onclick="loadMore(' + page + ')"><i class="fas fa-redo"></i>Réessayer</button></div>'
-        ).show();
-    }
-
-    // Bouton « Charger plus » conservé en repli (navigateur sans IntersectionObserver, ou après une erreur)
-    function updateLoadMoreButton(response) {
-        $('#results-container .load-more-container').remove();
-        var more = $('#rsl-more');
-        if (response.has_more) {
-            var nextPage = (response.current_page || currentPage) + 1;
-            var remaining = Math.max(response.total - totalLoadedStudents, 0);
-            more.html(
-                '<div class="rsl-more load-more-container">' +
-                '<div class="rsl-more-progress">' + totalLoadedStudents + ' / ' + response.total + ' — ' + remaining + ' restants</div>' +
-                '<button type="button" class="rsl-btn rsl-btn--ghost" onclick="loadMore(' + nextPage + ')">' +
-                '<i class="fas fa-plus"></i>Charger plus</button></div>'
-            ).show();
-        } else if (response.total > 0) {
-            more.html('<div class="rsl-end"><i class="fas fa-check-circle"></i> Les ' + response.total + ' étudiants sont affichés.</div>').show();
-        } else {
-            more.hide().empty();
-        }
-    }
-
-    window.loadMore = function(nextPage) { loadEtudiants(nextPage); };
+    // Repli conservé : demande la suite au bas de liste, comme son bouton « Charger la suite ».
+    window.loadMore = function() {
+        var bas = document.querySelector('#results-container [data-liste-infinie]');
+        if (bas && window.ListeInfinie) window.ListeInfinie.charger(bas);
+    };
 
     function showErrorState() {
         hideInitialSpinner();
-        $('#results-container').hide();
-        $('#rsl-more').hide().empty();
+        $('#results-container').hide().empty();
         $('#initial-instructions').addClass('d-none');
+        updateSelection();
         $('#error-state').show();
     }
 
     window.reloadResults = function() {
         $('#error-state').hide();
-        loadEtudiants(1, { reset: true });
+        loadEtudiants({ reset: true });
     };
 
-    // ===== Défilement infini =====
-    var sentinel = document.getElementById('rsl-sentinel');
-    var sentinelVisible = false;
-
-    function maybeLoadNext() {
-        if (sentinelVisible && hasMore && !isLoading && $('#rsl-more .rsl-more-error').length === 0) {
-            loadEtudiants(currentPage + 1);
-        }
-    }
-
-    if ('IntersectionObserver' in window && sentinel) {
-        new IntersectionObserver(function(entries) {
-            sentinelVisible = entries.some(function(e) { return e.isIntersecting; });
-            maybeLoadNext();
-        }, { rootMargin: '600px 0px' }).observe(sentinel);
-    }
+    // Lignes ajoutées par le défilement infini
+    document.getElementById('results-container').addEventListener('liste-infinie:ajout', function(ev) {
+        var p = (ev.detail && ev.detail.pagination) || {};
+        if (p.affiches !== undefined) updateCount(Number(p.affiches), Number(p.total || 0));
+        applySearch();
+        updateSelection();
+    });
 
     // ===== Recherche (porte aussi sur les lignes ajoutées) =====
     function applySearch() {
@@ -758,7 +696,7 @@ $(document).ready(function() {
 
     // Chargement initial
     @if($_rslAutoLoad)
-        loadEtudiants(1, { reset: true });
+        loadEtudiants({ reset: true });
     @else
         hideInitialSpinner();
         $('#initial-instructions').removeClass('d-none');

@@ -33,7 +33,7 @@
         'include_all_statuses' => !empty($include_all_statuses) ? 1 : null,
     ]));
 @endphp
-<tr class="rsl-row" data-search="{{ mb_strtolower($nomComplet . ' ' . $etudiant->matricule, 'UTF-8') }}">
+<tr class="rsl-row" data-li-cle="{{ $etudiant->id }}" data-search="{{ mb_strtolower($nomComplet . ' ' . $etudiant->matricule, 'UTF-8') }}">
     <td class="rsl-cell rsl-cell--check">
         <div class="form-check">
             <input class="form-check-input student-checkbox" type="checkbox" value="{{ $etudiant->id }}" aria-label="Sélectionner {{ $nomComplet }}">

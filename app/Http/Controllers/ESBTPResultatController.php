@@ -1424,7 +1424,12 @@ class ESBTPResultatController extends Controller
 
             // Determine which template to use
             $classe = $classe_id ? ESBTPClasse::find($classe_id) : null;
-            $viewData = compact('etudiants', 'moyennes', 'rangs', 'bulletins', 'classe', 'annualValueStatuses') + [
+            // Contrat du defilement infini (App\Support\ListeInfinie) : le bas de
+            // liste x-liste-infinie de la premiere page et la reponse des suivantes.
+            $paginateurListe = new \Illuminate\Pagination\LengthAwarePaginator(
+                $etudiants, $total, max(1, (int) $perPage), max(1, (int) $page), ['path' => $request->url()]
+            );
+            $viewData = compact('etudiants', 'moyennes', 'rangs', 'bulletins', 'classe', 'annualValueStatuses', 'paginateurListe') + [
                 'annee_id' => $annee_universitaire_id,
                 'detail_periode' => $detail_periode,
                 'include_all_statuses' => (bool) $include_all_statuses,
@@ -1448,6 +1453,11 @@ class ESBTPResultatController extends Controller
                 'has_more' => $hasMore,
                 'loaded_count' => $etudiants->count(),
                 'kpis' => $kpis,
+                // Lu par public/js/liste-infinie.js, qui ne demande que les pages
+                // suivantes : la page 1 arrive en `html`, tableau compris.
+                'success' => true,
+                'rows_html' => (int) $page === 1 ? null : $html,
+                'pagination' => \App\Support\ListeInfinie::pagination($paginateurListe),
             ]);
 
         } catch (\Exception $e) {

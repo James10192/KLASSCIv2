@@ -20,13 +20,19 @@
                 <th class="rsl-th-actions">Actions</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="rsl-tbody">
             @foreach($etudiants as $etudiant)
                 @include('esbtp.resultats.partials._ligne-etudiant')
             @endforeach
         </tbody>
     </table>
 </div>
+
+@isset($paginateurListe)
+    {{-- Suite de la liste : public/js/liste-infinie.js rappelle load-etudiants
+         avec les mêmes filtres (page, mode=rows) et ajoute les lignes au tbody. --}}
+    <x-liste-infinie :paginateur="$paginateurListe" cible="#rsl-tbody" libelle="étudiants" class="rsl-bas" />
+@endisset
 
 {{-- Modal choix de période pour bulletin --}}
 <div class="modal fade" id="modalChoixPeriodeBulletin" tabindex="-1" aria-labelledby="modalChoixPeriodeBulletinLabel" aria-hidden="true">

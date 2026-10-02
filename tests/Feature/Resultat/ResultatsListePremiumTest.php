@@ -40,8 +40,11 @@ class ResultatsListePremiumTest extends TestCase
         }
         $reponse->assertSee('id="include_all_statuses"', false);
         $reponse->assertSee('Inclure inscriptions inactives');
-        $reponse->assertSee('id="rsl-sentinel"', false);
-        $reponse->assertSee('IntersectionObserver', false);
+        // La suite passe par le mécanisme commun (x-liste-infinie), pas par un observateur fait main.
+        $reponse->assertSee('liste-infinie:ajout', false);
+        $reponse->assertDontSee('rsl-sentinel', false);
+        // Pas de « N/A/20 » : le suffixe reste masqué tant que la moyenne n'est pas un nombre.
+        $reponse->assertSee('<small id="kpi-moyenne-suffixe" hidden>/20</small>', false);
         $reponse->assertSee('Mode Moyenne');
         $reponse->assertSee('class="search-bar"', false);
     }
@@ -65,7 +68,6 @@ class ResultatsListePremiumTest extends TestCase
         $page1->assertJson(['total' => 2, 'current_page' => 1, 'has_more' => true, 'loaded_count' => 1]);
         $html1 = $page1->json('html');
         $this->assertStringContainsString('id="select-all"', $html1);
-        $this->assertStringContainsString('<tbody>', $html1);
         $this->assertSame(1, substr_count($html1, 'class="rsl-row"'));
         $this->assertStringContainsString('Détails', $html1);
         $this->assertStringContainsString('data-bs-toggle="dropdown"', $html1);
@@ -73,6 +75,32 @@ class ResultatsListePremiumTest extends TestCase
         $this->assertStringContainsString('Télécharger le PDF', $html1);
         $this->assertStringContainsString('modalChoixPeriodeBulletin', $html1);
         $this->assertArrayHasKey('kpis', $page1->json());
+
+        // Contrat App\Support\ListeInfinie : le bas de liste de la page 1 et la pagination.
+        $this->assertStringContainsString('data-liste-infinie', $html1);
+        $this->assertStringContainsString('data-cible="#rsl-tbody"', $html1);
+        $this->assertStringContainsString('data-page-suivante="2"', $html1);
+        $this->assertStringContainsString('<tbody id="rsl-tbody">', $html1);
+        $page1->assertJson(['pagination' => ['current_page' => 1, 'next_page' => 2, 'has_more' => true, 'total' => 2, 'affiches' => 1, 'par_page' => 1]]);
+
+        // Les actions de la ligne portent leurs filtres.
+        $id1 = $this->premierIdRendu($html1);
+        $this->assertStringContainsString('data-li-cle="' . $id1 . '"', $html1);
+        $detail = route('esbtp.resultats.etudiant', [
+            'etudiant' => $id1,
+            'classe_id' => $this->classe->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'annuel',
+        ]);
+        $this->assertStringContainsString('href="' . e($detail) . '"', $html1, 'Détails : classe, année, période');
+        $bulletin = [
+            'bulletin' => $id1,
+            'classe_id' => $this->classe->id,
+            'periode' => 'annuel',
+            'annee_universitaire_id' => $this->annee->id,
+        ];
+        $this->assertStringContainsString('href="' . e(route('esbtp.bulletins.pdf-params-preview', $bulletin)) . '"', $html1);
+        $this->assertStringContainsString('href="' . e(route('esbtp.bulletins.pdf-params', $bulletin)) . '"', $html1);
 
         $page2 = $this->actingAs($admin)->getJson(route('esbtp.resultats.load-etudiants', $filtres + ['page' => 2]));
         $page2->assertOk();
@@ -82,6 +110,19 @@ class ResultatsListePremiumTest extends TestCase
         $this->assertSame(1, substr_count($html2, 'class="rsl-row"'));
         $this->assertStringContainsString('student-checkbox', $html2);
         $this->assertStringContainsString('Télécharger le PDF', $html2);
+        $this->assertSame($html2, $page2->json('rows_html'), 'liste-infinie.js lit rows_html');
+        $page2->assertJson(['pagination' => ['current_page' => 2, 'next_page' => null, 'has_more' => false, 'affiches' => 2]]);
+
+        // Avec les inscriptions inactives, le lien Détails le transmet.
+        $inactives = $this->actingAs($admin)->getJson(route('esbtp.resultats.load-etudiants', ['include_all_statuses' => 1] + $filtres + ['page' => 1]));
+        $idInactives = $this->premierIdRendu($inactives->json('html'));
+        $this->assertStringContainsString('href="' . e(route('esbtp.resultats.etudiant', [
+            'etudiant' => $idInactives,
+            'classe_id' => $this->classe->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'annuel',
+            'include_all_statuses' => 1,
+        ])) . '"', $inactives->json('html'));
 
         // Les deux pages ensemble couvrent les deux élèves, sans doublon.
         $ids = [];
@@ -93,6 +134,13 @@ class ResultatsListePremiumTest extends TestCase
         $attendus = [(string) $premier->id, (string) $second->id];
         sort($attendus);
         $this->assertSame($attendus, $ids);
+    }
+
+    private function premierIdRendu(string $html): string
+    {
+        $this->assertSame(1, preg_match('/student-checkbox" type="checkbox" value="(\d+)"/', $html, $m));
+
+        return $m[1];
     }
 
     private function unSuperAdmin(): User
