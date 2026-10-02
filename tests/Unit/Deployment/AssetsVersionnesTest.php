@@ -16,7 +16,8 @@ use RecursiveIteratorIterator;
  * (octobre 2026) : `dashboard-moderne.css`, appelé sans version par 173
  * vues, coûtait 1,5 à 2 s par page, sur une feuille qui bloque l'affichage.
  *
- * Ce test échoue dès qu'un `asset('css|js/…')` réapparaît sans `?v=`.
+ * Ce test échoue dès qu'un `asset()`, `secure_asset()` ou `url()` vers css/ ou js/
+ * réapparaît sans `?v=`, entre `{{ }}` comme entre `{!! !!}`.
  */
 class AssetsVersionnesTest extends TestCase
 {
@@ -46,16 +47,17 @@ class AssetsVersionnesTest extends TestCase
     {
         $vue = "<link href=\"{{ asset('css/a.css') }}\">\n"
             . "<script src=\"{{ asset('js/b.js') }}?v={{ @filemtime(public_path('js/b.js')) ?: '1' }}\"></script>\n"
-            . "<img src=\"{{ asset('images/logo.png') }}\">\n";
+            . "<img src=\"{{ asset('images/logo.png') }}\">\n"
+            . "<link href=\"{!! url('css/c.css') !!}\">\n";
 
-        $this->assertSame([1], self::referencesSansVersion($vue));
+        $this->assertSame([1, 4], self::referencesSansVersion($vue));
     }
 
     /** @return int[] numéros de ligne */
     private static function referencesSansVersion(string $source): array
     {
         preg_match_all(
-            '/\{\{\s*asset\([\'"]\/?(?:css|js)\/[^\'"]+\.(?:css|js)[\'"]\)\s*\}\}(?!\?v=)/',
+            '/(?:\{\{|\{!!)\s*(?:secure_asset|asset|url)\([\'"]\/?(?:css|js)\/[^\'"]+\.(?:css|js)[\'"]\)\s*(?:\}\}|!!\})(?!\?v=)/',
             $source,
             $trouvailles,
             PREG_OFFSET_CAPTURE
