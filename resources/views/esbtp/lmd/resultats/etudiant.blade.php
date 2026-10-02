@@ -3,7 +3,7 @@
 @section('title', 'Résultats LMD - ' . $etudiant->nom . ' ' . $etudiant->prenoms . ' | KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .lmd-page { max-width: 1200px; margin: 0 auto; padding: 0 1rem 2rem; }
     .lmd-hero { background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); border-radius: 16px; padding: 1.5rem 2rem; color: #fff; margin-bottom: 1rem; }

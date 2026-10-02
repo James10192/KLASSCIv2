@@ -3,7 +3,7 @@
 @section('title', 'Résultats LMD — KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* ══════════════════════════════════════════════
        LMD Résultats Index — Premium Redesign

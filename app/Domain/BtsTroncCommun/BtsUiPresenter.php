@@ -4,6 +4,9 @@ namespace App\Domain\BtsTroncCommun;
 
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+
 class BtsUiPresenter
 {
     public function __construct(
@@ -46,15 +49,45 @@ class BtsUiPresenter
         ];
     }
 
-    public function forStudent(ESBTPEtudiant $etudiant): ?array
+    /**
+     * Relations lues par forStudent() sur les inscriptions deja chargees d'un
+     * etudiant. Une liste les precharge en une fois : loadMissing(RELATIONS_ETUDIANT).
+     */
+    public const RELATIONS_ETUDIANT = [
+        'inscriptions.anneeUniversitaire',
+        'inscriptions.filiere',
+        'inscriptions.phases.classe.filiere',
+        'inscriptions.inscriptionOrigine.classe.filiere',
+        'inscriptions.inscriptionSpecialisation.classe.filiere',
+    ];
+
+    /**
+     * Toutes les inscriptions d'un ou plusieurs etudiants, dans l'ordre ou
+     * forStudent() les examine quand aucune inscription chargee n'est de tronc
+     * commun. Une liste l'interroge une fois pour toute la page.
+     */
+    public function inscriptionsCandidates(): Builder
     {
-        $etudiant->loadMissing([
-            'inscriptions.anneeUniversitaire',
-            'inscriptions.filiere',
-            'inscriptions.phases.classe.filiere',
-            'inscriptions.inscriptionOrigine.classe.filiere',
-            'inscriptions.inscriptionSpecialisation.classe.filiere',
-        ]);
+        return ESBTPInscription::query()
+            ->with([
+                'anneeUniversitaire',
+                'filiere',
+                'phases.classe.filiere',
+                'inscriptionOrigine.classe.filiere',
+                'inscriptionSpecialisation.classe.filiere',
+            ])
+            ->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
+            ->orderByDesc('date_inscription')
+            ->orderByDesc('id');
+    }
+
+    /**
+     * @param  Collection<int, ESBTPInscription>|null  $candidates  toutes les inscriptions
+     *         de l'etudiant, dans l'ordre de inscriptionsCandidates() ; null = les lire.
+     */
+    public function forStudent(ESBTPEtudiant $etudiant, ?Collection $candidates = null): ?array
+    {
+        $etudiant->loadMissing(self::RELATIONS_ETUDIANT);
 
         $inscription = $etudiant->inscriptions
             ->sortByDesc(function (ESBTPInscription $item) {
@@ -69,19 +102,10 @@ class BtsUiPresenter
             ->first(fn (ESBTPInscription $item) => $item->filiere?->isTroncCommun() || $item->isSpecialisation() || $item->phases->isNotEmpty());
 
         if (! $inscription) {
-            $inscription = ESBTPInscription::query()
-                ->with([
-                    'anneeUniversitaire',
-                    'filiere',
-                    'phases.classe.filiere',
-                    'inscriptionOrigine.classe.filiere',
-                    'inscriptionSpecialisation.classe.filiere',
-                ])
+            $candidates ??= $this->inscriptionsCandidates()
                 ->where('etudiant_id', $etudiant->id)
-                ->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
-                ->orderByDesc('date_inscription')
-                ->orderByDesc('id')
-                ->get()
+                ->get();
+            $inscription = $candidates
                 ->first(fn (ESBTPInscription $item) => $item->filiere?->isTroncCommun() || $item->isSpecialisation() || $item->phases->isNotEmpty());
         }
 

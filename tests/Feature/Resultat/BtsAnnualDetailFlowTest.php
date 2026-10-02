@@ -46,11 +46,14 @@ class BtsAnnualDetailFlowTest extends TestCase
         $detailView = file_get_contents(resource_path('views/esbtp/resultats/etudiant.blade.php'));
         $tableView = file_get_contents(resource_path('views/esbtp/resultats/partials/liste-etudiants.blade.php'));
         $rowsView = file_get_contents(resource_path('views/esbtp/resultats/partials/lignes-etudiants.blade.php'));
+        // Les deux listes rendent la même ligne, partagée depuis la refonte rsl-*.
+        $rowView = file_get_contents(resource_path('views/esbtp/resultats/partials/_ligne-etudiant.blade.php'));
 
         $this->assertStringContainsString("data-periode=\"annuel\"", $detailView);
         $this->assertStringContainsString("\$bulletinWorkflowPeriode", $detailView);
-        $this->assertStringContainsString("Provisoire", $tableView);
-        $this->assertStringContainsString("\$detail_periode ?? 'annuel'", $tableView);
-        $this->assertStringContainsString("\$detail_periode ?? 'annuel'", $rowsView);
+        $this->assertStringContainsString("esbtp.resultats.partials._ligne-etudiant", $tableView);
+        $this->assertStringContainsString("esbtp.resultats.partials._ligne-etudiant", $rowsView);
+        $this->assertStringContainsString("Provisoire", $rowView);
+        $this->assertStringContainsString("\$detail_periode ?? 'annuel'", $rowView);
     }
 }

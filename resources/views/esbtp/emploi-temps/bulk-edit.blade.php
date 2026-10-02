@@ -3,7 +3,7 @@
 @section('title', 'Modification rapide des emplois du temps - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .bulk-edit-header {
         background: linear-gradient(135deg, #0f3f87 0%, #0453cb 100%);

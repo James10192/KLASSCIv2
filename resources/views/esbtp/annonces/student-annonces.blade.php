@@ -3,7 +3,7 @@
 @section('title', 'Mes Annonces')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 /* ══════════════════════════════════════════════
    Mes Annonces — Premium Redesign
@@ -919,5 +919,5 @@
 </script>
 
 {{-- Toast helper (window.showToast) --}}
-<script src="{{ asset('js/inscriptions/common.js') }}" defer></script>
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}" defer></script>
 @endpush

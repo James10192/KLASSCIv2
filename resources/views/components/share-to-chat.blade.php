@@ -15,7 +15,7 @@
 
 @once
     @push('scripts')
-        <script src="{{ asset('js/inscriptions/common.js') }}"></script>
+        <script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
     @endpush
 @endonce
 

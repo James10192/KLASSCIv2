@@ -3,7 +3,7 @@
 @section('title', 'Codes d\'Émargement')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* ── Active Code Card ─────────────────────────────────── */
     .acode-card {
