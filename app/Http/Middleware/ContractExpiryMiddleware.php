@@ -4,8 +4,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 
 class ContractExpiryMiddleware
@@ -74,33 +72,8 @@ class ContractExpiryMiddleware
      */
     protected function getExpiryData(): ?array
     {
-        $masterApiUrl = config('services.master.api_url');
-        $masterApiToken = config('services.master.api_token');
-        $tenantCode = config('app.tenant_code');
-
-        if (! $masterApiUrl || ! $masterApiToken || ! $tenantCode) {
-            return null;
-        }
-
-        // Réutiliser le cache du PaywallMiddleware (même clé, 5 min)
-        $cacheKey = 'paywall_limits_' . $tenantCode;
-
-        $apiData = Cache::get($cacheKey);
-
-        // Si pas en cache, faire l'appel
-        if (! $apiData) {
-            $apiData = Cache::remember($cacheKey, 300, function () use ($masterApiUrl, $masterApiToken, $tenantCode) {
-                try {
-                    $response = Http::withToken($masterApiToken)
-                        ->timeout(10)
-                        ->get($masterApiUrl . '/tenants/' . $tenantCode . '/limits');
-
-                    return $response->successful() ? $response->json() : null;
-                } catch (\Exception $e) {
-                    return null;
-                }
-            });
-        }
+        // Même lecture que le paywall : réponse gardée 5 min, échec 1 min.
+        $apiData = app(\App\Services\Master\LimitesDuMaster::class)->lire();
 
         if (! $apiData || ! isset($apiData['subscription'])) {
             return null;

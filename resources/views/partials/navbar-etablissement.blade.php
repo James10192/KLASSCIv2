@@ -15,7 +15,8 @@
     backdrop-filter, qui casserait le positionnement d'un menu.
 --}}
 @php
-    $etb = \App\Helpers\SettingsHelper::getSchoolInfo();
+    // Déjà lu par le gabarit (bloc PWA de l'en-tête) : on le reprend.
+    $etb = $pwaSchool ?? \App\Helpers\SettingsHelper::getSchoolInfo();
 
     $etbNom = trim((string) ($etb['name'] ?? ''));
     $etbSigle = trim((string) ($etb['acronym'] ?? ''));
@@ -39,6 +40,13 @@
         ? mb_strtoupper(mb_substr($etbCourt, 0, 2, 'UTF-8'), 'UTF-8')
         : '';
 
+    // L'annee courante, pour que chacun sache sur quelle annee il travaille.
+    // Terminee (date de fin passee) : signalee, l'ecole doit en ouvrir une autre.
+    $etbAnnee = \App\Models\ESBTPAnneeUniversitaire::getCurrent();
+    $etbAnneeEchue = (bool) $etbAnnee?->estTerminee();
+    $etbAnneeTitre = $etbAnnee === null ? null : 'Année universitaire courante : ' . $etbAnnee->name
+        . ($etbAnneeEchue ? ' — terminée le ' . $etbAnnee->end_date->translatedFormat('j F Y') : '');
+
     $etbInfobulle = $etbNom !== '' ? $etbNom : $etbCourt;
     if ($etbVille !== '') {
         $etbInfobulle .= ' — ' . $etbVille;
@@ -59,10 +67,22 @@
     </span>
     <span class="etb-texte">
         <span class="etb-app">KLASSCI</span>
-        <span class="etb-nom">{{ $etbCourt }}</span>
+        <span class="etb-sous">
+            <span class="etb-nom">{{ $etbCourt }}</span>
+            @if($etbAnnee)
+                {{-- Sous le shell mobile, l'annee suit le nom sur la seconde ligne. --}}
+                <span class="etb-annee-ligne {{ $etbAnneeEchue ? 'is-echue' : '' }}">{{ $etbAnnee->name }}</span>
+            @endif
+        </span>
         @if($etbVille !== '')
             <span class="etb-ville">{{ $etbVille }}</span>
         @endif
     </span>
+    @if($etbAnnee)
+        <span class="etb-annee {{ $etbAnneeEchue ? 'is-echue' : '' }}" title="{{ $etbAnneeTitre }}">
+            <i class="fas {{ $etbAnneeEchue ? 'fa-triangle-exclamation' : 'fa-calendar-days' }}" aria-hidden="true"></i>
+            <span class="visually-hidden">Année universitaire courante :</span>{{ $etbAnnee->name }}
+        </span>
+    @endif
 </div>
 @endif
