@@ -141,7 +141,7 @@ class CorrigerNotes extends ActionAgent
 
         $changees = array_values(array_filter($rapport, fn ($r) => $r['avant'] !== $r['apres']));
         if ($changees === []) {
-            return $this->seulManque($titre, 'Rien à changer : ces notes ont déjà ces valeurs.');
+            return Proposition::sansObjet($titre, 'Ces notes ont déjà ces valeurs.');
         }
         $retenues = array_values(array_filter($cibles, fn ($c) => in_array($c['note_id'], array_column($changees, 'note_id'), true)));
         $absents = count(array_filter($changees, fn ($r) => $r['avant'] === 'absent'));

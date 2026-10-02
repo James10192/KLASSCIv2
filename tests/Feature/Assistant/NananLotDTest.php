@@ -157,7 +157,9 @@ class NananLotDTest extends TestCase
         $this->assertStringContainsString('entier', $manques([['cle' => 'pdf_font_size', 'valeur' => 'grand']]));
         $this->assertStringContainsString('invisible', $manques([['cle' => 'pdf_header_text_color', 'valeur' => '#0453CB']]));
         $this->assertStringContainsString('préfixes', $manques([['cle' => PhoneNormalizer::CLE_INDICATIF, 'valeur' => '229']]));
-        $this->assertStringContainsString('déjà', $manques([['cle' => 'pdf_font_size', 'valeur' => '12']]));
+        $inchange = $action->executeAuthorized(['reglages' => [['cle' => 'pdf_font_size', 'valeur' => '12']]], $this->admin);
+        $this->assertTrue($inchange['sans_objet'] ?? false, json_encode($inchange, JSON_UNESCAPED_UNICODE));
+        $this->assertStringContainsString('déjà', $inchange['message']);
         $this->assertStringContainsString('valeur', $manques([]));
 
         // Indicatif et préfixes ensemble : accepté.

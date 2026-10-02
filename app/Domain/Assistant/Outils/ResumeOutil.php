@@ -67,6 +67,9 @@ class ResumeOutil
         if (isset($resultat['error'])) {
             return (string) $resultat['error'];
         }
+        if (!empty($resultat['sans_objet'])) {
+            return 'Rien à changer';
+        }
         if (isset(self::RESUMES_FIXES[$nom])) {
             return self::RESUMES_FIXES[$nom];
         }
@@ -98,8 +101,10 @@ class ResumeOutil
         }
 
         // Proposition d'action : ni le jeton ni le tableau, seulement ce qu'il faut dire.
+        // L'identifiant reste : il nomme la proposition pour le modèle, et relie un
+        // second appel identique (sans carte) à l'issue que l'historique substitue.
         if (isset($resultat['proposition'])) {
-            return self::json(array_intersect_key($resultat, array_flip(['statut', 'message', 'resume', 'avertissements'])));
+            return self::json(array_intersect_key($resultat, array_flip(['proposition', 'statut', 'message', 'resume', 'avertissements'])));
         }
 
         // Outils de présentation : il n'y a rien à relire, seulement à ne pas recopier.
