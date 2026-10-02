@@ -93,6 +93,23 @@ if [ "$type_commit" = "feat" ] || [ "$type_commit" = "fix" ]; then
     fi
 fi
 
+# ── 4. Ce que l'ecole voit lui est annonce ───────────────────────────────────
+#
+# Le CHANGELOG ne suffit pas : l'ecole lit la fenetre Nouveautes et le
+# changelog public, et les deux ont ete oublies apres des livraisons visibles.
+# Le detail de la regle, et pourquoi elle passe par un registre plutot que
+# d'exiger l'entree dans le meme commit : bin/garde-nouveautes.sh.
+# Une fusion ne decide rien : elle importe des commits deja controles un par
+# un. La refuser obligerait a --no-verify a chaque fusion de presentation.
+if [ -x bin/garde-nouveautes.sh ] && ! git rev-parse -q --verify MERGE_HEAD > /dev/null; then
+    ajouts=$(git diff --cached -U0 -- docs/nouveautes-en-attente.md | sed -n 's/^+\(- \)/\1/p')
+    if ! explication=$(git diff --cached --name-only | TYPE="$type_commit" MESSAGE="$corps" REGISTRE_AJOUTS="$ajouts" sh bin/garde-nouveautes.sh trace); then
+        refuser "annonce aux ecoles manquante"
+        printf '%s\n' "$explication" | sed 's/^/    /'
+        echo ""
+    fi
+fi
+
 if [ "$echec" -ne 0 ]; then
     echo "  (Ces regles sont rejouees sur la PR : les contourner ici ne les evite pas.)"
     echo ""
