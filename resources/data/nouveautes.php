@@ -3,7 +3,8 @@
 /*
  * Contenu de la fenêtre « Nouveautés » affichée à la connexion.
  *
- * Une entrée par changement VISIBLE. Chaque entrée n'apparaît qu'aux comptes
+ * Une entrée par changement VISIBLE. `si` (facultatif) réserve une entrée aux
+ * écoles où l'écran annoncé est ouvert : voir Nouveautes::disponible(). Chaque entrée n'apparaît qu'aux comptes
  * qui ont au moins une des permissions listées (aucune liste = tout le monde) :
  * une caissière ne lit pas les nouveautés du jury, un étudiant ne lit pas
  * celles de la caisse. Un compte à qui aucune entrée ne s'adresse ne voit pas
@@ -19,74 +20,94 @@
  */
 
 return [
-    'titre' => 'Septembre 2026',
+    'titre' => 'Octobre 2026',
     'entrees' => [
         [
-            'titre' => 'Chercher partout avec Ctrl K',
-            'icone' => 'fa-magnifying-glass',
-            'texte' => 'Ctrl K (⌘ K sur Mac) ouvre une recherche qui trouve les pages de l’application et les fiches : étudiants, paiements, classes, matières. Les flèches parcourent les résultats, Entrée ouvre, Échap ferme. Vous ne voyez que ce que votre compte peut ouvrir.',
-            // Réservée au personnel : un étudiant a la palette, mais n'y trouve que ses propres pages.
-            'permissions' => ['students.view', 'inscriptions.view', 'paiements.view', 'paiements.create', 'classes.view', 'teachers.view'],
+            'titre' => 'Les résultats refaits, plus rapides et en couleur',
+            'icone' => 'fa-chart-column',
+            'texte' => 'La page Résultats se charge plus vite et la liste continue d’elle-même quand vous descendez, 50 élèves à la fois. La moyenne générale et le taux de réussite passent au vert, à l’orange ou au rouge selon leur état ; les repères se règlent dans les paramètres.',
+            'permissions' => ['bulletins.view'],
             'captures' => [
-                'avant' => 'images/nouveautes/2026-09/recherche-bureau-avant.webp',
-                'apres' => 'images/nouveautes/2026-09/recherche-bureau-apres.webp',
+                'avant' => 'images/nouveautes/2026-10/resultats-bureau-avant.webp',
+                'apres' => 'images/nouveautes/2026-10/resultats-bureau-apres.webp',
                 'format' => 'bureau',
-                'legende' => 'Taper « paie » ne trouvait rien ; la recherche propose maintenant les pages correspondantes.',
+                'legende' => 'Les chiffres clés passent dans le bandeau, chacun avec son repère, et la moyenne comme la réussite disent d’un coup d’œil si tout va bien.',
             ],
         ],
         [
-            'titre' => 'Un écran d’encaissement refait',
-            'icone' => 'fa-cash-register',
-            'texte' => 'Au bureau, quatre étapes numérotées à gauche et, à droite, un panneau qui reste visible avec le reste à payer frais par frais et le bouton d’enregistrement. Sur téléphone, le récapitulatif s’affiche avant le choix du mode, et le premier chiffre tapé remplace le montant proposé.',
-            'permissions' => ['paiements.create', 'paiements.create.non_cash'],
+            'titre' => 'Aide : Nanan vous guide',
+            'icone' => 'fa-life-ring',
+            'si' => 'aide',
+            'texte' => 'Le bouton « Aide » ouvre une conversation avec Nanan : un problème, une question « comment faire », une idée, ou le suivi de vos demandes. Si Nanan ne trouve pas, elle prépare la demande au support, capture de la page comprise, et vous êtes averti quand le support répond.',
             'captures' => [
-                'avant' => 'images/nouveautes/2026-09/encaissement-bureau-avant.webp',
-                'apres' => 'images/nouveautes/2026-09/encaissement-bureau-apres.webp',
+                'apres' => 'images/nouveautes/2026-10/aide-nanan.webp',
                 'format' => 'bureau',
-                'legende' => 'Le reste à payer et le bouton d’enregistrement restent toujours visibles.',
+                'legende' => 'Quatre choix, ou une question tapée directement.',
             ],
         ],
         [
-            'titre' => 'La liste des étudiants sur téléphone',
-            'icone' => 'fa-mobile-screen',
-            'texte' => 'Recherche en haut, quatre onglets (Tous, Inscrits, En cours, Sans inscription) et des lignes compactes. Une inscription en cours se valide depuis la ligne, et la liste se charge au fil du défilement.',
-            'permissions' => ['students.view'],
+            'titre' => 'Les réclamations de notes',
+            'si' => 'reclamations',
+            'icone' => 'fa-scale-balanced',
+            'texte' => 'Un élève peut contester une note, avec la photo de sa copie. L’enseignant donne son avis, l’école tranche, et la note est corrigée ou maintenue avec un motif. Tout se suit sur une seule page.',
+            'permissions' => ['notes.reclamations.traiter', 'identity.teach'],
             'captures' => [
-                'avant' => 'images/nouveautes/2026-09/etudiants-telephone-avant.webp',
-                'apres' => 'images/nouveautes/2026-09/etudiants-telephone-apres.webp',
-                'format' => 'telephone',
-                'legende' => 'Des fiches en grille deviennent des lignes compactes.',
+                'apres' => 'images/nouveautes/2026-10/reclamations-notes.webp',
+                'format' => 'bureau',
+                'legende' => 'Ce qui attend votre décision, ce qui attend l’enseignant, et ce qui a été tranché.',
             ],
         ],
         [
-            'titre' => 'Les listes se chargent au fil du défilement',
-            'icone' => 'fa-arrows-down-to-line',
-            'texte' => 'Inscriptions, paiements, relances, bulletins, journal de caisse : plus de pages à tourner. La suite arrive quand vous descendez, et vos filtres restent en place.',
-            'permissions' => ['students.view', 'inscriptions.view', 'paiements.view'],
+            'titre' => 'Contester une note',
+            'si' => 'reclamations',
+            'icone' => 'fa-scale-balanced',
+            'texte' => 'Depuis « Mes notes » ou « Mes réclamations », vous pouvez contester une note en expliquant pourquoi, avec la photo de votre copie. Vous suivez la réponse au même endroit.',
+            'permissions' => ['notes.reclamations.create_own'],
         ],
         [
-            'titre' => 'Retrouver le rendez-vous d’une famille',
-            'icone' => 'fa-calendar-check',
-            'texte' => 'Une famille qui appelle sans connaître sa date se retrouve par son nom, son téléphone, la référence du dossier ou le matricule. Le résultat donne le jour, l’heure et les rendez-vous déjà manqués.',
-            'permissions' => ['inscriptions.rdv.view'],
+            'titre' => 'Des notifications plus claires',
+            'icone' => 'fa-bell',
+            'texte' => 'La page des notifications montre d’abord ce qui vous attend, puis vos notifications regroupées par jour, avec des filtres en un clic. Marquer comme lu ou supprimer ne recharge plus la page.',
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-10/notifications.webp',
+                'format' => 'bureau',
+                'legende' => 'Les compteurs du haut ouvrent la liste filtrée.',
+            ],
         ],
         [
-            'titre' => 'Un accueil qui dit quoi faire',
-            'icone' => 'fa-list-check',
-            'texte' => 'L’accueil de la caisse et celui de la comptabilité montrent ce qui vous attend (paiements à valider, saisies encore annulables, reste à percevoir) et la tendance des derniers jours. Chaque chiffre ouvre la liste correspondante.',
-            'permissions' => ['module.caisse.access', 'comptabilite.dashboard.view'],
+            'titre' => 'Nanan fait davantage pour vous',
+            'icone' => 'fa-wand-magic-sparkles',
+            'texte' => 'Sur simple demande, Nanan prépare et vous validez : valider des inscriptions, annuler un versement par un avoir, corriger une note, créer une évaluation, générer des bulletins, ajouter ou modifier des classes, préparer une année universitaire. Rien ne change sans votre clic sur « Valider ».',
+            'permissions' => ['admin.access', 'identity.school_manager', 'identity.registrar', 'identity.direct_studies'],
         ],
         [
-            'titre' => 'Annuler un versement sans le faire disparaître',
-            'icone' => 'fa-rotate-left',
-            'texte' => 'Le bouton « Annuler le versement » émet un avoir : le versement reste visible, compensé, avec votre motif. Juste après une erreur, l’agent qui a saisi peut aussi annuler lui-même sa saisie, selon les droits donnés par l’école.',
-            'permissions' => ['paiements.create', 'paiements.validate'],
+            'titre' => 'Les bulletins se génèrent même si vous quittez la page',
+            'icone' => 'fa-file-pdf',
+            'texte' => 'La génération des bulletins d’une classe et le PDF groupé continuent en arrière-plan. La progression dit combien d’élèves restent et le temps estimé ; une génération interrompue se relance depuis l’écran déjà rempli.',
+            'permissions' => ['admin.access', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk'],
         ],
         [
-            'titre' => 'Corriger une inscription déjà validée',
-            'icone' => 'fa-pen-to-square',
-            'texte' => 'Filière, niveau et classe se modifient encore après validation pour qui a le droit correspondant. Les frais sont recalculés, et chaque versement de la fiche d’inscription a ses propres boutons.',
-            'permissions' => ['inscriptions.edit_validated'],
+            'titre' => 'Une fiche de réinscription qui dit quoi faire',
+            'icone' => 'fa-user-check',
+            'texte' => 'La fiche commence par le verdict (autorisée, bloquée, possible par dérogation, déjà inscrit) et les actions qui vont avec. La décision de passage se prend sur la moyenne annuelle du bulletin.',
+            'permissions' => ['admin.access', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer'],
+        ],
+        [
+            'titre' => 'Choisir l’année d’une inscription',
+            'icone' => 'fa-calendar-days',
+            'texte' => '« Accepter et inscrire » et « Réinscrire » proposent l’année de l’inscription, places recomptées pour l’année choisie. L’année en cours s’affiche aussi dans la barre du haut, en orange si elle est terminée.',
+            'permissions' => ['inscriptions.candidatures.view', 'reinscriptions.demandes.view'],
+        ],
+        [
+            'titre' => 'Le lieu du rendez-vous est annoncé',
+            'icone' => 'fa-location-dot',
+            'texte' => 'Un nouveau réglage « Lieu du rendez-vous » s’imprime sur la convocation et part dans l’e-mail et le WhatsApp envoyés aux familles.',
+            'permissions' => ['inscriptions.rdv.manage'],
+        ],
+        [
+            'titre' => 'Des pages plus rapides',
+            'icone' => 'fa-gauge-high',
+            'texte' => 'Feuilles de style gardées par le navigateur, listes des étudiants, classes, relances et fiche étudiant allégées : la plupart des pages s’ouvrent nettement plus vite, sans rien changer à ce qu’elles affichent.',
         ],
     ],
 ];
