@@ -14,7 +14,7 @@
 <table class="cs-band">
     <tr>
         @if($csDecision)
-        <td class="cs-cell" style="width: {{ $csSignature ? '62%' : '100%' }};">
+        <td class="cs-cell"{!! $csSignature ? '' : ' style="width: 100%;"' !!}>
             <div class="decision-container">
                 <div class="decision-title">{{ $councilDecision['title'] ?? 'Décision du conseil de classe' }}</div>
                 @if($csTexte !== '')
@@ -25,10 +25,11 @@
             </div>
         </td>
         @elseif($csSignature)
-        <td class="cs-cell" style="width: 62%;"></td>
+        <td class="cs-cell"></td>
         @endif
         @if($csSignature)
-        <td class="cs-cell cs-cell--sign" style="width: 38%;">
+        {{-- Le réglage « Largeur signature » de l'école fixe la colonne ; la décision prend le reste. --}}
+        <td class="cs-cell cs-cell--sign" style="width: {{ $signatureWidth + 8 }}px;">
             <div class="signature-container">
                 <div class="signature-title" style="font-size: {{ $signatureFontSize }}px;">{{ $directorTitle }}</div>
                 <div class="signature-space" style="height: {{ max(40, $signatureHeight - 20) }}px;"></div>

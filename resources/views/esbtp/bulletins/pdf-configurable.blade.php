@@ -52,7 +52,7 @@
             line-height: 1.25;
         }
         /* Compaction auto-fit 1 page : sections critiques évitent coupure */
-        .student-info, .header, .results-container, .signature-container,
+        .student-info, .header, .signature-container,
         tr.section-header, tr.summary-row { page-break-inside: avoid; }
         .container {
             width: 100%;
@@ -333,46 +333,6 @@
         /* Absences */
         .absences-table { width: 100%; margin-bottom: 8px; }
 
-        /* ── Résultats & Statistiques ─────────────────────────── */
-        .results-container { width: 100%; margin-bottom: 5px; }
-        .results-container-table { width: 100%; border-collapse: collapse; }
-        .results-container-table td {
-            border: none;
-            padding: 0;
-            vertical-align: top;
-        }
-        .results-left { width: 50%; padding-right: 5px; }
-        .results-right { width: 50%; padding-left: 5px; }
-
-        .results-card, .stats-card {
-            border: 1px solid #d1d5db;
-            border-radius: 8px;
-            background: #fff;
-            overflow: hidden;
-        }
-        .results-table, .stats-table {
-            width: 100%;
-            font-size: {{ $typeScale['body'] }}px;
-            border-collapse: collapse;
-        }
-        .results-table th, .stats-table th {
-            background: {{ $pdfPrimary }};
-            color: {{ $pdfHeaderText }};
-            padding: 3px 7px;
-            font-size: {{ $typeScale['info'] }}px;
-            border: none;
-            text-align: left;
-        }
-        .results-table td, .stats-table td {
-            padding: 3px 7px;
-            border-bottom: 1px solid #f3f4f6;
-            border-left: none;
-            border-right: none;
-            border-top: none;
-        }
-        .results-table tr:last-child td, .stats-table tr:last-child td {
-            border-bottom: none;
-        }
         .result-value-box {
             border: 1px solid #d1d5db;
             border-radius: 4px;
