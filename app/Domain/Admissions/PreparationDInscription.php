@@ -91,7 +91,7 @@ class PreparationDInscription
      *
      * @return list<array{id: int, nom: string, courante: bool, echue: bool, fin: ?string}>
      */
-    private function annees(?int $anneeCandidature): array
+    public function annees(?int $anneeCandidature = null): array
     {
         $courante = ESBTPAnneeUniversitaire::query()->where('is_current', true)->first(['id', 'start_date']);
         // L'annee qui precede la courante reste proposee : un dossier en retard

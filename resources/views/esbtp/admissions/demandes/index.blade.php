@@ -14,6 +14,8 @@
         'frais' => route('esbtp.inscriptions.frais-by-classe', ['classeId' => '__ID__']),
         'etudiant' => auth()->user()->can('students.view') ? route('esbtp.etudiants.show', ['etudiant' => '__ID__']) : null,
         'parents' => auth()->user()->can('inscriptions.candidatures.process') ? route('esbtp.demandes.parents') : null,
+        'classesParAnnee' => auth()->user()->can('reinscriptions.demandes.process') ? route('esbtp.demandes.classes-par-annee') : null,
+        'annees' => $annees ?? [],
         'creneaux' => auth()->user()->can('inscriptions.rdv.manage') ? route('esbtp.demandes.creneaux') : null,
         'filtres' => $filtres,
         'compteurs' => $compteurs,

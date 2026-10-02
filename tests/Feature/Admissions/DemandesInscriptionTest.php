@@ -395,6 +395,42 @@ class DemandesInscriptionTest extends TestCase
         $this->assertSame(StatutReservationRdv::Honoree, $rdv->fresh()->statut);
     }
 
+    public function test_reinscrire_sur_une_autre_annee_et_confirmer_une_annee_terminee(): void
+    {
+        $terminee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false,
+            'start_date' => '2025-09-01', 'end_date' => Carbon::today()->subDay()->toDateString()]);
+        $avant = ESBTPAnneeUniversitaire::factory()->create(['name' => '2024-2025', 'is_current' => false,
+            'start_date' => '2024-09-01', 'end_date' => '2025-07-31']);
+        $demande = $this->demande('BAMBA');
+        \App\Models\ESBTPInscription::factory()->create([
+            'etudiant_id' => $demande->etudiant_id, 'classe_id' => $this->classe('1A BTS', 30)->id,
+            'filiere_id' => $this->filiere->id, 'niveau_id' => $this->niveau->id,
+            'annee_universitaire_id' => $avant->id, 'status' => 'active',
+        ]);
+        $cible = $this->classe('2A BTS', 30);
+        $convertir = fn (array $champs) => $this->actingAs($this->agent)->postJson(
+            route('esbtp.reinscription-demandes.convertir', $demande),
+            ['classe_id' => $cible->id, 'decision' => 'passage', 'annee_universitaire_id' => $terminee->id] + $champs
+        );
+
+        // Terminee et non confirmee : refusee, la demande reste a traiter.
+        $convertir([])->assertStatus(422)->assertJsonPath('ok', false);
+        $this->assertSame('en_attente', $demande->fresh()->statut);
+
+        $convertir(['annee_echue_confirmee' => true])->assertOk()->assertJsonPath('ok', true);
+        $inscription = \App\Models\ESBTPInscription::findOrFail($demande->fresh()->inscription_id);
+        $this->assertSame($terminee->id, (int) $inscription->annee_universitaire_id);
+
+        // Les places de la fenetre se comptent sur l'annee choisie.
+        \App\Models\ESBTPInscription::factory()->create([
+            'classe_id' => $cible->id, 'annee_universitaire_id' => $terminee->id, 'status' => 'active', 'workflow_step' => 'etudiant_cree',
+        ]);
+        $libres = fn (int $annee) => collect($this->actingAs($this->agent)->getJson(route('esbtp.demandes.classes-par-annee', ['annee' => $annee]))
+            ->assertOk()->json('classes'))->firstWhere('id', $cible->id)['places_libres'];
+        $this->assertSame(29, $libres($terminee->id));
+        $this->assertSame(30, $libres($this->annee->id));
+    }
+
     public function test_proposer_un_creneau_a_une_famille_sans_rendez_vous(): void
     {
         $c = $this->candidature(['nom' => 'SANSRDV']);

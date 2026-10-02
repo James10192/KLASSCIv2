@@ -14,7 +14,7 @@ window.demandesInscription = function () {
         chargement: false, ouvert: null, chargementDossier: false, dossier: null,
         fenetre: '', occupe: false, picker: { ouvert: false, q: '' },
         ins: vierge(),
-        reins: { classe_id: null, decision: '', observations: '', erreurs: {}, message: '' },
+        reins: { classe_id: null, decision: '', observations: '', annee_id: null, annee_echue_confirmee: false, classes: null, placesChargement: false, erreurs: {}, message: '' },
         rejet: { motif: '', erreur: '' },
         rdv: { creneaux: [], chargement: false, choix: null },
 
@@ -225,7 +225,10 @@ window.demandesInscription = function () {
             if (action === 'inscrire') return this.ouvrirInscription();
             if (action === 'accepter') return this.accepter();
             if (action === 'reinscrire') {
-                this.reins = { classe_id: this.dossier.classe || null, decision: '', observations: '', erreurs: {}, message: '' };
+                const anneeDemande = (this.cfg.annees || []).some((a) => a.id === this.dossier.annee_id) ? this.dossier.annee_id : null;
+                this.reins = { classe_id: this.dossier.classe || null, decision: '', observations: '', annee_id: anneeDemande || (this.cfg.annees || []).find((a) => a.courante)?.id || null, annee_echue_confirmee: false, classes: null, placesChargement: false, erreurs: {}, message: '' };
+                // Les places de la liste generale sont celles de l'annee courante.
+                if (this.reins.annee_id && !(this.cfg.annees || []).find((a) => a.id === this.reins.annee_id)?.courante) this.chargerClassesReins(this.reins.annee_id);
                 this.fenetre = 'reinscrire';
                 return;
             }
@@ -243,10 +246,29 @@ window.demandesInscription = function () {
                 await this.apresDecision(d.message);
             } catch (e) { this.notifier('error', e.message); } finally { this.occupe = false; }
         },
+        anneeReins() { return (this.cfg.annees || []).find((a) => a.id === this.reins.annee_id) || null; },
+        reinsPret() { return !!(this.reins.classe_id && this.reins.decision && (!this.anneeReins()?.echue || this.reins.annee_echue_confirmee)); },
+        choisirAnneeReins(annee) {
+            if (this.reins.annee_id === annee.id) return;
+            this.reins.annee_id = annee.id;
+            this.reins.annee_echue_confirmee = false;
+            this.chargerClassesReins(annee.id);
+        },
+        /* Les places se recomptent sur l'annee choisie ; une reponse perimee est ignoree. */
+        async chargerClassesReins(anneeId) {
+            if (!this.cfg.classesParAnnee) return;
+            this.reins.placesChargement = true;
+            try {
+                const d = await this.appeler(this.cfg.classesParAnnee + '?annee=' + encodeURIComponent(anneeId));
+                if (d.annee_universitaire_id === this.reins.annee_id) this.reins.classes = d.classes || [];
+            } catch (e) {
+                this.notifier('error', e.message);
+            } finally { this.reins.placesChargement = false; }
+        },
         async reinscrire() {
             this.occupe = true; this.reins.erreurs = {}; this.reins.message = '';
             try {
-                const d = await this.appeler(this.dossier.convertir, { methode: 'POST', corps: { classe_id: this.reins.classe_id, decision: this.reins.decision, observations: this.reins.observations } });
+                const d = await this.appeler(this.dossier.convertir, { methode: 'POST', corps: { classe_id: this.reins.classe_id, decision: this.reins.decision, observations: this.reins.observations, annee_universitaire_id: this.reins.annee_id, annee_echue_confirmee: this.reins.annee_echue_confirmee } });
                 this.occupe = false;
                 await this.apresDecision(d.message);
             } catch (e) {

@@ -7,8 +7,22 @@
             <button type="button" class="dmi-fermer" x-on:click="fermerFenetre()" aria-label="Fermer"><i class="fas fa-xmark"></i></button>
         </div>
         <div class="dmi-f-corps">
+            <div class="dmi-champ" style="margin-bottom:.9rem" x-show="(cfg.annees || []).length > 1">Année de la réinscription
+                <div class="dmi-choix" role="radiogroup" aria-label="Année de la réinscription">
+                    <template x-for="a in (cfg.annees || [])" :key="'ra' + a.id">
+                        <button type="button" role="radio" :aria-checked="reins.annee_id === a.id" :class="reins.annee_id === a.id ? 'is-actif' : ''"
+                                x-on:click="choisirAnneeReins(a)" x-text="a.nom + (a.courante ? ' · en cours' : (a.echue ? ' · terminée' : ''))"></button>
+                    </template>
+                </div>
+                <span class="dmi-champ-aide" x-show="dossier?.annee_id && reins.annee_id !== dossier?.annee_id">L'étudiant a déposé sa demande pour une autre année.</span>
+                <span class="dmi-champ-aide" x-show="reins.placesChargement"><i class="fas fa-circle-notch fa-spin"></i> Places recomptées pour cette année…</span>
+            </div>
+            <label class="dmi-case dmi-case--alerte" style="margin-bottom:.9rem" x-show="anneeReins()?.echue">
+                <input type="checkbox" x-model="reins.annee_echue_confirmee">
+                <span>L'année <strong x-text="anneeReins()?.nom"></strong> est <strong>terminée</strong> (fin le <span x-text="anneeReins()?.fin"></span>). Je confirme la réinscription sur cette année.</span>
+            </label>
             <div class="dmi-champ" :class="reins.erreurs.classe_id ? 'is-erreur' : ''">Classe de l'année
-                @include('esbtp.admissions.demandes._picker-classe', ['modele' => 'reins.classe_id', 'liste' => 'classes', 'bloquer' => false])
+                @include('esbtp.admissions.demandes._picker-classe', ['modele' => 'reins.classe_id', 'liste' => '(reins.classes || classes)', 'bloquer' => false])
                 <span class="dmi-champ-aide">Proposée : la classe souhaitée par l'étudiant. C'est l'école qui affecte.</span>
                 <span class="dmi-champ-erreur" x-text="reins.erreurs.classe_id" x-show="reins.erreurs.classe_id"></span>
             </div>
@@ -28,7 +42,7 @@
         </div>
         <div class="dmi-f-pied">
             <button type="button" class="dmi-btn dmi-btn--ghost" x-on:click="fermerFenetre()">Annuler</button>
-            <button type="button" class="dmi-btn dmi-btn--primary" x-on:click="reinscrire()" :disabled="occupe || !reins.classe_id || !reins.decision">
+            <button type="button" class="dmi-btn dmi-btn--primary" x-on:click="reinscrire()" :disabled="occupe || !reinsPret()">
                 <span x-show="!occupe"><i class="fas fa-user-check"></i> Réinscrire</span><span x-show="occupe" x-cloak><i class="fas fa-circle-notch fa-spin"></i> Réinscription…</span>
             </button>
         </div>

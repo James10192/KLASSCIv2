@@ -31,6 +31,8 @@
         'preparer' => $_inscrire ? route('esbtp.demandes.preparer-inscription', $m) : null,
         'formulaire' => $_inscrire ? route('esbtp.inscriptions.create', ['candidature' => $m->id]) : null,
         'classe' => $_nouvelle ? null : $m->classe_souhaitee_id,
+        // L'annee visee par la demande : point de depart de la fenetre « Réinscrire ».
+        'annee_id' => $_nouvelle || $m->annee_universitaire_id === null ? null : (int) $m->annee_universitaire_id,
         'obstacle' => $d->obstacle,
         'rendez_vous' => $u?->can('inscriptions.rdv.manage') ? route('esbtp.demandes.rendez-vous', [$d->type, $d->id]) : null,
     ];
