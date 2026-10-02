@@ -124,6 +124,11 @@ class BtsCurrentResultSnapshotService
         $normalizedPeriode = $this->bulletinService->normalizePeriode($periode);
         $annuel = $normalizedPeriode === 'annuel';
 
+        // La carte des classes de chaque eleve (tronc commun, specialite) se
+        // lit dans le perimetre des evaluations : une requete pour la cohorte
+        // plutot que quatre par eleve.
+        $this->classMapResolver->prechargerPourCohorte($etudiantIds, $classeId, $anneeUniversitaireId);
+
         foreach ($annuel ? ['semestre1', 'semestre2'] : [$normalizedPeriode] as $semestre) {
             $this->prechargerSemestre($etudiantIds, $classeId, $anneeUniversitaireId, $semestre, $annuel);
         }
