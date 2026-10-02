@@ -13,12 +13,12 @@
 @if(session('workflow_next_step') && session('workflow_next_step.url'))
 @php
     $_wns = session('workflow_next_step');
-    $_wnsCible = parse_url((string) $_wns['url'], PHP_URL_PATH) ?: '';
-    $_wnsIci = rtrim($_wnsCible, '/') === rtrim('/'.ltrim(request()->path(), '/'), '/');
+    // Meme adresse que la page ou l'on arrive (sans la requete) : l'etape se fait ici.
+    $_wnsIci = rtrim(strtok((string) $_wns['url'], '?'), '/') === rtrim(url()->current(), '/');
     $_wnsEtape = $_wns['label'] ?? 'Étape suivante';
 @endphp
 @if($_wnsIci)
-    <div class="wns-bandeau" role="status" x-data="{ ouvert: true }" x-show="ouvert" x-transition.opacity>
+    <div class="wns-bandeau" role="status" data-fenetre-prioritaire x-data="{ ouvert: true }" x-show="ouvert" x-transition.opacity>
         <span class="wns-icone"><i class="fas fa-circle-info"></i></span>
         <div class="wns-texte">
             <strong>Prochaine étape, sur cette page : {{ $_wnsEtape }}.</strong>
@@ -52,6 +52,15 @@
             </div>
         </div>
     </div>
+    {{-- Sur téléphone la fenêtre ne s'ouvre pas d'elle-même : un bandeau la remplace. --}}
+    <div class="wns-bandeau wns-bandeau--telephone" role="status" x-data="{ ouvert: true }" x-show="ouvert">
+        <span class="wns-icone"><i class="fas fa-route"></i></span>
+        <div class="wns-texte">
+            <strong>Prochaine étape : {{ $_wnsEtape }}.</strong>
+            <span>Pas encore faite. <a href="{{ $_wns['url'] }}" class="wns-lien">Ouvrir la page</a></span>
+        </div>
+        <button type="button" class="wns-fermer" x-on:click="ouvert = false" aria-label="Fermer"><i class="fas fa-xmark"></i></button>
+    </div>
     <script>document.addEventListener('DOMContentLoaded', () => {
         // Shell mobile : pas d'ouverture automatique sous 992px (rappel non bloquant).
         if (window.matchMedia('(max-width:991.98px)').matches) return;
@@ -59,7 +68,7 @@
     });</script>
 @endif
 <style>
-    .wns-bandeau { position: fixed; right: 1.25rem; top: 5rem; z-index: 1080; max-width: 420px; display: flex; align-items: flex-start; gap: .75rem; background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #0453cb; border-radius: 12px; padding: .85rem 1rem; box-shadow: 0 8px 30px rgba(4,83,203,.12), 0 2px 8px rgba(15,23,42,.06); }
+    .wns-bandeau { position: fixed; right: 1.25rem; top: 5rem; z-index: 1040; max-width: 420px; display: flex; align-items: flex-start; gap: .75rem; background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #0453cb; border-radius: 12px; padding: .85rem 1rem; box-shadow: 0 8px 30px rgba(4,83,203,.12), 0 2px 8px rgba(15,23,42,.06); }
     .wns-bandeau .wns-icone { color: #0453cb; font-size: 1.05rem; margin-top: .1rem; }
     .wns-texte { display: flex; flex-direction: column; gap: .15rem; font-size: .85rem; color: #475569; }
     .wns-texte strong { color: #1e293b; font-weight: 700; }
@@ -80,6 +89,9 @@
     .wns-btn:hover { background: #f1f5f9; color: #1e293b; }
     .wns-btn--lien { color: #0453cb; border-color: rgba(4,83,203,.35); }
     .wns-btn--lien:hover { background: rgba(4,83,203,.06); color: #033a8e; }
+    .wns-lien { color: #0453cb; font-weight: 600; }
+    .wns-bandeau--telephone { display: none; }
+    @media (max-width: 991.98px) { .wns-bandeau--telephone { display: flex; } }
     @media (max-width: 576px) { .wns-bandeau { left: 1rem; right: 1rem; top: 4.5rem; max-width: none; } }
 </style>
 @endif

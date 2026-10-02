@@ -84,24 +84,28 @@ class EtapeSuivanteSansFausseConfirmationTest extends TestCase
         $this->assertSame('paiement.created', session('workflow_next_step.type'));
     }
 
-    public function test_une_etape_faite_clot_l_avis_chez_tout_le_monde(): void
+    public function test_une_etape_faite_par_n_importe_quel_chemin_n_est_plus_a_faire(): void
     {
         $collegue = User::factory()->create();
+        $inscription = \App\Models\ESBTPInscription::factory()->create();
+        $pour = ['inscription_id' => $inscription->id, 'etudiant_id' => $inscription->etudiant_id, 'annee_universitaire_id' => $inscription->annee_universitaire_id];
+        $valide = \App\Models\ESBTPPaiement::factory()->create($pour + ['status' => 'validé']);
+        $enAttente = \App\Models\ESBTPPaiement::factory()->create($pour + ['status' => 'en_attente']);
         $avis = fn (int $paiement) => \Illuminate\Notifications\DatabaseNotification::create([
             'id' => (string) \Illuminate\Support\Str::uuid(),
             'type' => \App\Notifications\WorkflowNextStepNotification::class,
             'notifiable_type' => User::class,
             'notifiable_id' => $collegue->id,
-            'data' => ['type' => 'paiement.created', 'context' => ['paiement' => $paiement, 'inscription_id' => 9], 'next_label' => 'Valider ce paiement'],
+            'data' => ['type' => 'paiement.created', 'context' => ['paiement' => $paiement], 'next_label' => 'Valider ce paiement'],
         ]);
-        $concerne = $avis(42);
-        $autre = $avis(43);
+        // Validé hors de tout événement (validation en masse, rapide…) : seul l'état le dit.
+        $fait = $avis($valide->id);
+        $aFaire = $avis($enAttente->id);
 
-        (new \App\Listeners\CloreLesEtapesFaites())->handle(
-            new \App\Events\WorkflowStepCompleted('paiement.validated', User::factory()->create(), ['inscription' => 9, 'paiement' => 42])
-        );
+        $restants = app(\App\Services\WorkflowNextStepResolver::class)->clotureLesEtapesFaites($collegue);
 
-        $this->assertNotNull($concerne->fresh()->read_at);
-        $this->assertNull($autre->fresh()->read_at);
+        $this->assertSame(1, $restants);
+        $this->assertNotNull($fait->fresh()->read_at);
+        $this->assertNull($aFaire->fresh()->read_at);
     }
 }

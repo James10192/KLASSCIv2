@@ -2076,9 +2076,9 @@
                             <div class="menu-icon"><i class="fas fa-comment-dots"></i></div>
                             <div class="menu-text">Messages
                                 @php
-                                    $unreadChat = auth()->user()->unreadNotifications()
-                                        ->where('type', \App\Notifications\WorkflowNextStepNotification::class)
-                                        ->count();
+                                    // Les etapes deja faites ne comptent plus (WorkflowNextStepResolver).
+                                    $unreadChat = app(\App\Services\WorkflowNextStepResolver::class)
+                                        ->clotureLesEtapesFaites(auth()->user());
                                 @endphp
                                 @if($unreadChat > 0)
                                     <span class="badge bg-danger ms-1" style="font-size:.65rem;">{{ $unreadChat }}</span>
