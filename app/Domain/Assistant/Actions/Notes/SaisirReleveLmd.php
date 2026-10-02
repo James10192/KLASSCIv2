@@ -109,7 +109,8 @@ class SaisirReleveLmd extends ActionAgent
         $manques = array_values(array_filter([
             $periode === null ? "Quel semestre ? Pour {$classe->name} : " . $this->semestresPossibles($classe) . ' (numérotation de la maquette : une L2 a S3 et S4).' : null,
             mb_strlen($motif) < 20 ? "D'où viennent ces notes (relevé officiel transmis par qui) ? Le motif est gardé sur chaque note." : null,
-            ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? 'Quelle date pour ce relevé (AAAA-MM-JJ) ?' : null,
+            ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? 'Quelle date pour ce relevé (AAAA-MM-JJ) ?'
+                : ($date > now()->toDateString() ? "La date {$date} est dans le futur : quelle est la date réelle du relevé ou de la session ?" : null),
             $lignes === [] ? 'Quelles notes saisir ?' : null,
             count($lignes) > self::MAX_ETUDIANTS ? 'Trop d\'étudiants en une fois (' . self::MAX_ETUDIANTS . ' au plus) : découpe le relevé.' : null,
         ]));
@@ -118,8 +119,8 @@ class SaisirReleveLmd extends ActionAgent
         }
 
         $inscrits = $this->inscrits($classe, (int) $annee->id);
-        $maquette = $this->regularisation->ecuesDeLaMaquette($classe, (int) substr($periode, 8));
-        [$entrees, $manques, $zeros] = $this->resoudre($lignes, $inscrits, $maquette, $classe, $periode);
+        $unites = $this->regularisation->unitesDeLaMaquette($classe, (int) substr($periode, 8));
+        [$entrees, $manques, $zeros] = $this->resoudre($lignes, $inscrits, $unites, $classe, $periode);
         if ($zeros > 0 && ! filter_var($args['zeros_confirmes'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $manques[] = "{$zeros} note(s) valent 0 : ce sont de vraies notes de 0/20, ou des épreuves non composées ? Retire celles qui n'ont pas été composées, ou confirme (zeros_confirmes).";
         }
@@ -200,7 +201,7 @@ class SaisirReleveLmd extends ActionAgent
     /**
      * @return array{0: list<array{etudiant_id: int, notes: list<array{matiere_id: int, note: float}>}>, 1: list<string>, 2: int}
      */
-    private function resoudre(array $lignes, Collection $inscrits, Collection $maquette, ESBTPClasse $classe, string $periode): array
+    private function resoudre(array $lignes, Collection $inscrits, Collection $unites, ESBTPClasse $classe, string $periode): array
     {
         $entrees = [];
         $manques = [];
@@ -227,7 +228,7 @@ class SaisirReleveLmd extends ActionAgent
                 continue;
             }
             foreach ($sesNotes as $n) {
-                [$element, $manque] = $this->element((string) ($n['element'] ?? ''), $maquette, $periode);
+                [$element, $manque] = $this->element((string) ($n['element'] ?? ''), $unites, $periode);
                 if (! $element) {
                     $manques[$manque] = $manque;
                     continue;
@@ -251,22 +252,37 @@ class SaisirReleveLmd extends ActionAgent
         return [$entrees, array_values($manques), $zeros];
     }
 
-    /** Un élément de la maquette du semestre, par identifiant, code (imprimé ou interne) ou intitulé exact. */
-    private function element(string $designation, Collection $maquette, string $periode): array
+    /**
+     * Un élément de la maquette du semestre, par identifiant, code (imprimé ou
+     * interne) ou intitulé exact. Une colonne qui nomme une UE (« Béton armé »)
+     * n'est pas un élément : on dit laquelle et ce qu'elle contient, pour que la
+     * personne tranche — répartir, ou rattacher à un seul élément.
+     */
+    private function element(string $designation, Collection $unites, string $periode): array
     {
         $cle = $this->normaliser($designation);
-        $trouves = $maquette->filter(fn ($m) => (ctype_digit($designation) && (int) $designation === (int) $m->id)
-            || in_array($cle, [$this->normaliser((string) $m->code), $this->normaliser((string) $m->code_affiche), $this->normaliser((string) $m->name)], true))
-            ->unique('id')->values();
+        $designe = fn ($o) => in_array($cle, [$this->normaliser((string) $o->code), $this->normaliser((string) $o->code_affiche), $this->normaliser((string) $o->name)], true);
+        $maquette = $unites->flatMap(fn (array $u) => $u['ecues'])->unique('id');
 
+        $trouves = $maquette->filter(fn ($m) => (ctype_digit($designation) && (int) $designation === (int) $m->id) || $designe($m))->values();
         if ($trouves->count() === 1) {
             return [$trouves->first(), null];
         }
-        $liste = $maquette->unique('id')->map(fn ($m) => "{$m->code_affiche} {$m->name}")->implode(', ');
+        if ($trouves->count() > 1) {
+            return [null, "« {$designation} » désigne plusieurs éléments (" . $trouves->map(fn ($m) => "{$m->code_affiche} {$m->name}")->implode(', ') . ') : lequel ?'];
+        }
 
-        return [null, $trouves->isEmpty()
-            ? "« {$designation} » n'est pas un élément de la maquette S" . substr($periode, 8) . " de cette classe. Éléments : {$liste}. Lequel ?"
-            : "« {$designation} » désigne plusieurs éléments : lequel ?"];
+        $s = 'S' . substr($periode, 8);
+        $ue = $unites->first(fn (array $u) => $designe($u['ue']));
+        if ($ue) {
+            return [null, "« {$designation} » est une UE ({$ue['ue']->code_affiche}), pas un élément : elle compte "
+                . $ue['ecues']->map(fn ($m) => "{$m->code_affiche} {$m->name}")->implode(', ')
+                . '. À quel élément rattacher cette colonne, ou la même note vaut-elle pour chacun ?'];
+        }
+
+        $liste = $unites->map(fn (array $u) => $u['ue']->name . ' : ' . $u['ecues']->map(fn ($m) => "{$m->code_affiche} {$m->name}")->implode(', '))->implode(' ; ');
+
+        return [null, "« {$designation} » n'est pas un élément de la maquette {$s} de cette classe. Éléments par UE — {$liste}. Lequel ?"];
     }
 
     /**

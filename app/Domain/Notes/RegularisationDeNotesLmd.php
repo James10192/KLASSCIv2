@@ -58,6 +58,10 @@ final class RegularisationDeNotesLmd
 
         // La période d'une évaluation LMD est le semestre ABSOLU (semestre3 pour
         // une L2) : c'est ce que le bulletin LMD lit, et ce que porte la maquette.
+        if (\Illuminate\Support\Carbon::parse((string) $e['date_regularisation'])->isAfter(today())) {
+            $this->refuser('date_regularisation', 'La date du relevé ne peut pas être dans le futur : une épreuve à venir ne se régularise pas.');
+        }
+
         $periode = (string) $e['periode'];
         $semestre = (int) preg_replace('/\D/', '', $periode);
         if (! in_array($semestre, $classe->getSemestresLMD(), true)) {
@@ -124,22 +128,35 @@ final class RegularisationDeNotesLmd
         return ['annee' => (string) $annee->name, 'lignes' => $rapport($ecrites)];
     }
 
+    /** @var array<string, Collection> */
+    private array $maquettes = [];
+
     /**
      * La maquette telle que la classe la voit : la même lecture que le planning
      * et les bulletins. Le pivot esbtp_ue_matiere seul ne suffit pas : une
      * maquette importée par clé étrangère n'y a aucune ligne, et toutes ses
      * notes étaient refusées (ESBTP Abidjan, octobre 2026).
+     *
+     * Une ligne par UE, avec ses éléments : un relevé nomme parfois une UE là
+     * où la maquette attend un élément. Lue une fois par classe et semestre.
+     *
+     * @return Collection<int, array{ue: \App\Models\ESBTPUniteEnseignement, ecues: Collection}>
      */
-    public function ecuesDeLaMaquette(ESBTPClasse $classe, int $semestre): Collection
+    public function unitesDeLaMaquette(ESBTPClasse $classe, int $semestre): Collection
     {
-        return ESBTPLMDParcours::find($classe->parcours_id)
+        return $this->maquettes[$classe->id . ':' . $semestre] ??= ESBTPLMDParcours::find($classe->parcours_id)
             ?->unitesEnseignement()
             ->wherePivot('semestre', $semestre)
             ->where('esbtp_unites_enseignement.is_active', true)
             ->with(['ecues', 'matieres'])
             ->get()
-            ->flatMap(fn ($ue) => $ue->getEcuesEffectifs((int) $classe->parcours_id))
+            ->map(fn ($ue) => ['ue' => $ue, 'ecues' => $ue->getEcuesEffectifs((int) $classe->parcours_id)])
             ?? collect();
+    }
+
+    public function ecuesDeLaMaquette(ESBTPClasse $classe, int $semestre): Collection
+    {
+        return $this->unitesDeLaMaquette($classe, $semestre)->flatMap(fn (array $u) => $u['ecues']);
     }
 
     private function titre(string $periode, ESBTPMatiere $matiere): string
