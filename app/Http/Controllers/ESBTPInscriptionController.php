@@ -437,7 +437,8 @@ class ESBTPInscriptionController extends Controller
         // Vérification des places disponibles dans la classe
         if ($request->filled('classe_id')) {
             $classe = \App\Models\ESBTPClasse::find($request->input('classe_id'));
-            if ($classe && $classe->places_disponibles <= 0) {
+            // Les places de l'annee ou l'on inscrit, pas forcement la courante.
+            if ($classe && $classe->placesDisponiblesPour($request->integer('annee_universitaire_id') ?: null) <= 0) {
                 return redirect()
                     ->back()
                     ->with('error', 'La classe sélectionnée est complète. Veuillez choisir une autre classe.')

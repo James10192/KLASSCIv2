@@ -81,7 +81,7 @@ class ReglagesAssistant
         }
 
         SettingsHelper::setOrCreate(self::CLE_MODELE_DEFAUT, $cle, 'assistant', 'string');
-        Cache::forget('setting_' . self::CLE_MODELE_DEFAUT);
+        \App\Models\Setting::oublier(self::CLE_MODELE_DEFAUT);
     }
 
     /** Budget mensuel en FCFA ; 0 retire la limite. */
@@ -96,7 +96,7 @@ class ReglagesAssistant
         }
 
         SettingsHelper::setOrCreate(self::CLE_BUDGET, (string) $fcfa, 'assistant', 'string');
-        Cache::forget('setting_' . self::CLE_BUDGET);
+        \App\Models\Setting::oublier(self::CLE_BUDGET);
         app(BudgetAssistant::class)->oublier();
     }
 

@@ -66,7 +66,7 @@ class SaisirReleveLmd extends ActionAgent
                 'classe' => ['type' => 'string', 'description' => 'Code, nom exact ou identifiant de la classe LMD.'],
                 'annee' => ['type' => 'string', 'description' => "Année universitaire du relevé, ex. « 2025-2026 ». Par défaut l'année en cours."],
                 'semestre' => ['type' => 'string', 'description' => 'Semestre de la maquette, numéroté en continu : S1-S2 en L1, S3-S4 en L2, S5-S6 en L3.'],
-                'motif' => ['type' => 'string', 'description' => "D'où viennent ces notes (relevé officiel transmis par…), 20 caractères au moins."],
+                'motif' => ['type' => 'string', 'description' => "D'où viennent ces notes (relevé officiel transmis par…), 20 caractères au moins, tel que dit par la personne. Vide s'il n'a pas été donné : l'outil le demandera."],
                 'date' => ['type' => 'string', 'description' => 'Date du relevé ou de la session (AAAA-MM-JJ). Par défaut aujourd\'hui.'],
                 'zeros_confirmes' => ['type' => 'boolean', 'description' => 'true seulement si la personne a confirmé que les 0 sont de vraies notes et non des épreuves non composées.'],
                 'etudiants' => [
@@ -106,20 +106,24 @@ class SaisirReleveLmd extends ActionAgent
         $date = trim((string) ($args['date'] ?? '')) ?: now()->toDateString();
         $lignes = array_values(array_filter((array) ($args['etudiants'] ?? []), 'is_array'));
 
+        // Seul ce qui empêche de lire le relevé arrête ici. Le reste — semestre,
+        // motif, date — rejoint les questions des colonnes, des 0 et des étudiants :
+        // la personne reçoit TOUTES les questions en une fois, pas une par tour.
+        if ($lignes === [] || count($lignes) > self::MAX_ETUDIANTS) {
+            return $this->seulManque($titre, $lignes === [] ? 'Quelles notes saisir ?' : 'Trop d\'étudiants en une fois (' . self::MAX_ETUDIANTS . ' au plus) : découpe le relevé.');
+        }
         $manques = array_values(array_filter([
             $periode === null ? "Quel semestre ? Pour {$classe->name} : " . $this->semestresPossibles($classe) . ' (numérotation de la maquette : une L2 a S3 et S4).' : null,
             mb_strlen($motif) < 20 ? "D'où viennent ces notes (relevé officiel transmis par qui) ? Le motif est gardé sur chaque note." : null,
-            ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? 'Quelle date pour ce relevé (AAAA-MM-JJ) ?' : null,
-            $lignes === [] ? 'Quelles notes saisir ?' : null,
-            count($lignes) > self::MAX_ETUDIANTS ? 'Trop d\'étudiants en une fois (' . self::MAX_ETUDIANTS . ' au plus) : découpe le relevé.' : null,
+            ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? 'Quelle date pour ce relevé (AAAA-MM-JJ) ?'
+                : ($date > now()->toDateString() ? "La date {$date} est dans le futur : quelle est la date réelle du relevé ou de la session ?" : null),
         ]));
-        if ($manques !== []) {
-            return new Proposition(titre: $titre, resume: '', manques: $manques);
-        }
 
-        $inscrits = $this->inscrits($classe, (int) $annee->id);
-        $maquette = $this->regularisation->ecuesDeLaMaquette($classe, (int) substr($periode, 8));
-        [$entrees, $manques, $zeros] = $this->resoudre($lignes, $inscrits, $maquette, $classe, $periode);
+        // Sans semestre, la maquette est inconnue : les colonnes attendront, mais les
+        // étudiants et les 0 se contrôlent quand même.
+        $unites = $periode === null ? null : $this->regularisation->unitesDeLaMaquette($classe, (int) substr($periode, 8));
+        [$entrees, $manquesDuReleve, $zeros] = $this->resoudre($lignes, $this->inscrits($classe, (int) $annee->id), $unites, $classe, (string) $periode);
+        $manques = array_merge($manques, $manquesDuReleve);
         if ($zeros > 0 && ! filter_var($args['zeros_confirmes'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $manques[] = "{$zeros} note(s) valent 0 : ce sont de vraies notes de 0/20, ou des épreuves non composées ? Retire celles qui n'ont pas été composées, ou confirme (zeros_confirmes).";
         }
@@ -135,9 +139,9 @@ class SaisirReleveLmd extends ActionAgent
             return $this->seulManque($titre, collect($e->errors())->flatten()->implode(' '));
         }
 
-        $changees = array_values(array_filter($rapport, fn ($r) => $r['avant'] !== $r['apres']));
+        [$memes, $changees] = collect($rapport)->partition(fn ($r) => $r['avant'] === $r['apres'])->map(fn ($c) => $c->values()->all())->all();
         if ($changees === []) {
-            return $this->seulManque($titre, 'Rien à changer : ce relevé est déjà enregistré.');
+            return Proposition::sansObjet($titre, 'Ce relevé est déjà enregistré, avec ces mêmes notes.');
         }
 
         return new Proposition(
@@ -150,6 +154,7 @@ class SaisirReleveLmd extends ActionAgent
                 'lignes' => array_map(fn ($r) => [$r['etudiant'], $r['matiere'], $r['avant'] === null ? '—' : $this->nombre($r['avant']), $this->nombre($r['apres'])], $changees),
             ],
             avertissements: array_values(array_filter([
+                $this->dejaEnregistrees($memes),
                 count(array_filter($changees, fn ($r) => $r['avant'] !== null)) > 0 ? 'Des notes déjà saisies par régularisation seront remplacées (colonne « Avant »).' : null,
                 'Ces notes comptent au bulletin LMD dès la validation ; les étudiants ne les voient qu\'une fois les évaluations publiées.',
             ])),
@@ -200,7 +205,7 @@ class SaisirReleveLmd extends ActionAgent
     /**
      * @return array{0: list<array{etudiant_id: int, notes: list<array{matiere_id: int, note: float}>}>, 1: list<string>, 2: int}
      */
-    private function resoudre(array $lignes, Collection $inscrits, Collection $maquette, ESBTPClasse $classe, string $periode): array
+    private function resoudre(array $lignes, Collection $inscrits, ?Collection $unites, ESBTPClasse $classe, string $periode): array
     {
         $entrees = [];
         $manques = [];
@@ -227,7 +232,11 @@ class SaisirReleveLmd extends ActionAgent
                 continue;
             }
             foreach ($sesNotes as $n) {
-                [$element, $manque] = $this->element((string) ($n['element'] ?? ''), $maquette, $periode);
+                if ($unites === null) {
+                    $zeros += is_numeric($n['note'] ?? null) && (float) $n['note'] == 0.0 ? 1 : 0;
+                    continue;
+                }
+                [$element, $manque] = $this->element((string) ($n['element'] ?? ''), $unites, $periode);
                 if (! $element) {
                     $manques[$manque] = $manque;
                     continue;
@@ -251,22 +260,53 @@ class SaisirReleveLmd extends ActionAgent
         return [$entrees, array_values($manques), $zeros];
     }
 
-    /** Un élément de la maquette du semestre, par identifiant, code (imprimé ou interne) ou intitulé exact. */
-    private function element(string $designation, Collection $maquette, string $periode): array
+    /**
+     * Un élément de la maquette du semestre, par identifiant, code (imprimé ou
+     * interne) ou intitulé exact. Une colonne qui nomme une UE (« Béton armé »)
+     * n'est pas un élément : on dit laquelle et ce qu'elle contient, pour que la
+     * personne tranche — répartir, ou rattacher à un seul élément.
+     */
+    private function element(string $designation, Collection $unites, string $periode): array
     {
         $cle = $this->normaliser($designation);
-        $trouves = $maquette->filter(fn ($m) => (ctype_digit($designation) && (int) $designation === (int) $m->id)
-            || in_array($cle, [$this->normaliser((string) $m->code), $this->normaliser((string) $m->code_affiche), $this->normaliser((string) $m->name)], true))
-            ->unique('id')->values();
+        $designe = fn ($o) => in_array($cle, [$this->normaliser((string) $o->code), $this->normaliser((string) $o->code_affiche), $this->normaliser((string) $o->name)], true);
+        $maquette = $unites->flatMap(fn (array $u) => $u['ecues'])->unique('id');
 
+        $trouves = $maquette->filter(fn ($m) => (ctype_digit($designation) && (int) $designation === (int) $m->id) || $designe($m))->values();
         if ($trouves->count() === 1) {
             return [$trouves->first(), null];
         }
-        $liste = $maquette->unique('id')->map(fn ($m) => "{$m->code_affiche} {$m->name}")->implode(', ');
+        if ($trouves->count() > 1) {
+            return [null, "« {$designation} » désigne plusieurs éléments (" . $trouves->map(fn ($m) => "{$m->code_affiche} {$m->name}")->implode(', ') . ') : lequel ?'];
+        }
 
-        return [null, $trouves->isEmpty()
-            ? "« {$designation} » n'est pas un élément de la maquette S" . substr($periode, 8) . " de cette classe. Éléments : {$liste}. Lequel ?"
-            : "« {$designation} » désigne plusieurs éléments : lequel ?"];
+        $s = 'S' . substr($periode, 8);
+        $ue = $unites->first(fn (array $u) => $designe($u['ue']));
+        if ($ue) {
+            return [null, $ue['ecues']->isEmpty()
+                ? "« {$designation} » est une UE ({$ue['ue']->code_affiche}) qui n'a aucun élément dans la maquette : à quel élément rattacher cette colonne ?"
+                : "« {$designation} » est une UE ({$ue['ue']->code_affiche}), pas un élément : elle compte "
+                    . $ue['ecues']->map(fn ($m) => "{$m->code_affiche} {$m->name}")->implode(', ')
+                    . '. À quel élément rattacher cette colonne, ou la même note vaut-elle pour chacun ?'];
+        }
+
+        $liste = $unites->map(fn (array $u) => $u['ue']->name . ' : ' . $u['ecues']->map(fn ($m) => "{$m->code_affiche} {$m->name}")->implode(', '))->implode(' ; ');
+
+        return [null, "« {$designation} » n'est pas un élément de la maquette {$s} de cette classe. Éléments par UE — {$liste}. Lequel ?"];
+    }
+
+    /**
+     * Les lignes du relevé déjà en base à l'identique ne sont pas reproposées :
+     * on le dit, pour que personne ne les croie oubliées.
+     */
+    private function dejaEnregistrees(array $memes): ?string
+    {
+        if ($memes === []) {
+            return null;
+        }
+        $liste = implode(', ', array_map(fn ($r) => "{$r['etudiant']} — {$r['matiere']} ({$this->nombre($r['apres'])})", array_slice($memes, 0, 5)));
+
+        return count($memes) . " note(s) du relevé sont déjà enregistrées avec la même valeur et ne changent pas : {$liste}" . (count($memes) > 5 ? '…' : '') . '.';
     }
 
     /**
