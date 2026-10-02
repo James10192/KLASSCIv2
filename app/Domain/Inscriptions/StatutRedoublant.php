@@ -244,13 +244,14 @@ class StatutRedoublant
     }
 
     /**
-     * La personne qui réinscrit a vu le statut proposé et l'a gardé ou changé :
-     * c'est sa confirmation, si elle en a le droit. Sans ce droit (caisse, agent
-     * d'inscription), la valeur reste déduite et la scolarité la confirmera.
+     * La personne qui inscrit ou réinscrit a vu le statut proposé et l'a gardé
+     * ou changé : c'est sa confirmation, si elle en a le droit. Sans ce droit
+     * (caisse, agent d'inscription), la valeur reste déduite et la scolarité la
+     * confirmera. Voir {@see QuestionRedoublant}.
      *
      * @throws ValidationException si elle change la valeur sans motif
      */
-    public function apresReinscription(ESBTPInscription $inscription, ?bool $choix, ?string $motif): void
+    public function etablirALaCreation(ESBTPInscription $inscription, ?bool $choix, ?string $motif): void
     {
         $personne = auth()->user();
 

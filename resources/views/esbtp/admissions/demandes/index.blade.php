@@ -25,6 +25,8 @@
         'liensTuteur' => array_keys(\App\Models\ESBTPCandidature::liensTuteurDeclarables()),
         'decisions' => \App\Models\ESBTPReinscriptionDemande::DECISIONS,
         'affectations' => \App\Models\ESBTPEcheancierRule::STATUTS_INSCRIPTION,
+        // La question « Redoublant ? » n'est posée qu'à qui peut la confirmer.
+        'redoublant' => auth()->user()->can(\App\Domain\Inscriptions\StatutRedoublant::PERMISSION),
     ];
 @endphp
 <div class="dmi" x-data="demandesInscription()" data-dmi-config='@json($_config)' data-dmi-classes='@json($classes)'>

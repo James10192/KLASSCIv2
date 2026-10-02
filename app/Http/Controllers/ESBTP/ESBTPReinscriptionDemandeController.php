@@ -5,8 +5,11 @@ namespace App\Http\Controllers\ESBTP;
 use App\Exceptions\ReinscriptionRefuseeException;
 use App\Domain\Admissions\FileDesDemandes;
 use App\Domain\Admissions\PreparationDInscription;
+use App\Domain\Inscriptions\QuestionRedoublant;
+use App\Domain\Inscriptions\StatutRedoublant;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPEcheancierRule;
 use App\Models\ESBTPReinscriptionDemande;
@@ -72,6 +75,8 @@ class ESBTPReinscriptionDemandeController extends Controller
             'affectation_status' => $statut === ESBTPEcheancierRule::STATUS_ALL ? ESBTPInscription::DEFAULT_AFFECTATION_STATUS : $statut,
             'annee_quittee' => (string) $quittee->anneeUniversitaire?->name,
             'classe_quittee' => (string) $quittee->classe?->name,
+            // Pour proposer « Redoublant ? » d'apres la classe choisie.
+            'niveau_avant' => $cible ? (StatutRedoublant::niveauxDeLAnneePrecedente($demande->etudiant_id, [$cible])[(string) $cible->id] ?? null) : null,
         ]);
     }
 
@@ -96,12 +101,20 @@ class ESBTPReinscriptionDemandeController extends Controller
             ))],
             'annee_echue_confirmee' => ['nullable', 'boolean'],
             'affectation_status' => ['nullable', Rule::in(array_keys(ESBTPEcheancierRule::STATUTS_INSCRIPTION))],
-        ]);
+        ] + QuestionRedoublant::regles());
 
         $annee = $this->anneeDeConversion($valide, $demande);
         if (is_string($annee)) {
             return $this->repondre($request, false, $annee);
         }
+
+        // Avant la reservation : un motif manquant ne doit rien bloquer.
+        $redoublant = QuestionRedoublant::reponse($request);
+        QuestionRedoublant::exigerLeMotif(
+            $redoublant,
+            QuestionRedoublant::proposition($demande->etudiant_id, ESBTPClasse::findOrFail($valide['classe_id']), $annee),
+            $valide['redoublant_motif'] ?? null,
+        );
 
         // Du temps a pu passer entre le depot et cette conversion : l'ecole a
         // pu inscrire cet etudiant au guichet entre-temps. Convertir malgre
@@ -141,6 +154,8 @@ class ESBTPReinscriptionDemandeController extends Controller
                 // Sans choix, le service reprend le statut de l'inscription quittee.
                 affectationStatus: $valide['affectation_status'] ?? null,
                 anneeUniversitaireId: $annee->id,
+                redoublant: $redoublant,
+                redoublantMotif: $valide['redoublant_motif'] ?? null,
             );
         } catch (\Throwable $e) {
             // La reservation n'a pas ete honoree : on la rend, sinon la demande

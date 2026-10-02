@@ -109,6 +109,7 @@
                             </div>
                             <span class="dmi-champ-erreur" x-text="ins.erreurs.statut_etablissement" x-show="ins.erreurs.statut_etablissement"></span>
                         </div>
+                        @include('esbtp.admissions.demandes._question-redoublant', ['ctx' => 'ins'])
                     </section>
 
                     <section class="dmi-ins-bloc">
