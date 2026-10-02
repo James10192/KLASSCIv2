@@ -33,6 +33,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Rendez-vous d'inscription — le lieu est enfin annoncé.** Nouveau réglage « Lieu du rendez-vous » (page Rendez-vous, bloc Accueil au guichet), repris sur la convocation PDF, l'e-mail, le WhatsApp et la page de rendez-vous de klassci.com. Laissé vide, l'adresse de l'établissement est reprise.
 
 ### Améliorations
+- « Accepter et inscrire » propose aussi l'année qui précède la courante (dossier en retard), avec la confirmation d'année terminée.
 - Places disponibles comptées sur l'année de l'inscription, plus seulement l'année courante : « Accepter et inscrire » recompte les places en AJAX quand on change d'année (route `esbtp.demandes.classes-annee`), l'API `classes/{id}/available-places` accepte `?annee_universitaire_id=`, le sélecteur de classe du formulaire complet suit le champ année, et l'enregistrement refuse une classe pleine sur l'année choisie (`ESBTPClasse::placesDisponiblesPour()`).
 - Inscription sur une année terminée : signalée et confirmée par une case, dans « Accepter et inscrire » et dans le formulaire complet.
 - L'année universitaire courante s'affiche dans la barre du haut (pastille sur ordinateur, à la suite du nom de l'école sur téléphone) ; orange si elle est terminée.

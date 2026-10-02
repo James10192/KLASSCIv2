@@ -195,6 +195,11 @@ class DemandesInscriptionTest extends TestCase
     {
         $suivante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => false,
             'start_date' => $this->annee->start_date->copy()->addYear(), 'end_date' => $this->annee->end_date->copy()->addYear()]);
+        // La precedente reste proposee (dossier en retard) ; celle d'avant, non.
+        $precedente = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false,
+            'start_date' => $this->annee->start_date->copy()->subYear(), 'end_date' => $this->annee->end_date->copy()->subYear()]);
+        ESBTPAnneeUniversitaire::factory()->create(['name' => '2024-2025', 'is_current' => false,
+            'start_date' => $this->annee->start_date->copy()->subYears(2), 'end_date' => $this->annee->end_date->copy()->subYears(2)]);
         // Saisi la premiere fois avec l'indicatif et des espaces, prenoms d'abord.
         $parent = ESBTPParent::create(['nom' => "N'GUESSAN", 'prenoms' => 'Koffi Paul', 'telephone' => '+225 07 08 09 10 11']);
         $c = $this->candidature(['tuteur_nom' => 'Nguessan Koffi Paul', 'tuteur_telephone' => '0708091011']);
@@ -203,7 +208,7 @@ class DemandesInscriptionTest extends TestCase
 
         $this->assertSame([$parent->id], array_column($prep['parents_proches'], 'id'));
         $this->assertTrue($prep['parents_proches'][0]['meme_telephone']);
-        $this->assertSame([$this->annee->id, $suivante->id], array_column($prep['annees'], 'id'));
+        $this->assertSame([$precedente->id, $this->annee->id, $suivante->id], array_column($prep['annees'], 'id'));
     }
 
     public function test_la_recherche_de_parents_tolere_l_ordre_les_accents_et_le_format_du_telephone(): void
