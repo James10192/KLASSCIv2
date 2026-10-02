@@ -104,9 +104,10 @@ class ChargementDesResultatsTest extends TestCase
     }
 
     /**
-     * Le nombre de requetes d'une page ne doit plus suivre la taille de la
-     * classe : 4 eleves de plus coutaient une quarantaine de requetes par
-     * eleve (moyenne annuelle refaite deux fois, snapshot eleve par eleve).
+     * Le nombre de requetes d'une page ne suit plus la taille de la classe
+     * qu'au titre des absences : chaque eleve coutait 84 requetes en annuel
+     * (moyenne calculee deux fois, snapshot et carte des classes eleve par
+     * eleve, un bulletin cherche par eleve).
      */
     public function test_une_classe_plus_grande_ne_coute_pas_plus_de_requetes_par_eleve(): void
     {
@@ -137,6 +138,24 @@ class ChargementDesResultatsTest extends TestCase
     }
 
     /**
+     * Une classe n'appartient a aucune annee : sans annee demandee, l'ecran
+     * s'ouvre sur l'annee courante, pas sur l'annee que porte encore la colonne
+     * historique `esbtp_classes.annee_universitaire_id`.
+     */
+    public function test_une_classe_sans_annee_ouvre_l_annee_courante(): void
+    {
+        $ancienne = ESBTPAnneeUniversitaire::factory()->create([
+            'name' => '2023-2024', 'start_date' => '2023-09-01', 'end_date' => '2024-07-31', 'is_current' => false,
+        ]);
+        $classe = $this->classeBts();
+        $classe->update(['annee_universitaire_id' => $ancienne->id]);
+
+        $this->get(route('esbtp.resultats.index', ['classe_id' => $classe->id]))
+            ->assertOk()
+            ->assertViewHas('annee_universitaire_id', $this->annee->id);
+    }
+
+    /**
      * En production chaque requete repart d'un conteneur neuf. Ici le meme
      * conteneur sert toutes les requetes du test : le controleur reste
      * attache a sa route (avec la memoire de ses services) et les services
@@ -150,11 +169,12 @@ class ChargementDesResultatsTest extends TestCase
     }
 
     /**
-     * Ce qui reste lu par eleve : la note d'assiduite du snapshot (annee,
-     * absences, heures, par semestre) et la classe du semestre. Avant le
-     * chantier, une page annuelle en coutait plus de quarante.
+     * Ce qui reste lu par eleve : ses absences (saisie manuelle et seances),
+     * deux requetes par semestre, dans `ESBTPAbsenceService`. Mesure : 5,3 par
+     * eleve en annuel, 2,8 au semestre. Avant le chantier : 84 en annuel,
+     * 20 au semestre.
      */
-    private const REQUETES_PAR_ELEVE_TOLEREES = 14;
+    private const REQUETES_PAR_ELEVE_TOLEREES = 6;
 
     /**
      * @return array{0: ESBTPClasse, 1: ESBTPClasse}

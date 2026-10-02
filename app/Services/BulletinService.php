@@ -207,7 +207,7 @@ class BulletinService
             return 0.0;
         }
 
-        $anneeUniversitaire = ESBTPAnneeUniversitaire::find($anneeUniversitaireId);
+        $anneeUniversitaire = $this->anneePourAssiduite($anneeUniversitaireId);
         if (! $anneeUniversitaire) {
             return 0.0;
         }
@@ -225,6 +225,27 @@ class BulletinService
             $absences['justifiees'] ?? 0,
             $absences['non_justifiees'] ?? 0
         );
+    }
+
+    /**
+     * L'annee de la note d'assiduite, lue une fois par instance. Le classement
+     * d'une classe et le tableau des resultats calculent cette note pour chaque
+     * eleve et chaque semestre : un `find()` nu y faisait une requete par eleve
+     * et par semestre pour relire la meme ligne. Meme limite que les autres
+     * memoires de ce service : une annee modifiee puis relue par la meme
+     * instance rendrait l'ancienne.
+     *
+     * @var array<int, ESBTPAnneeUniversitaire|null>
+     */
+    private array $anneesPourAssiduite = [];
+
+    private function anneePourAssiduite(int $anneeUniversitaireId): ?ESBTPAnneeUniversitaire
+    {
+        if (! array_key_exists($anneeUniversitaireId, $this->anneesPourAssiduite)) {
+            $this->anneesPourAssiduite[$anneeUniversitaireId] = ESBTPAnneeUniversitaire::find($anneeUniversitaireId);
+        }
+
+        return $this->anneesPourAssiduite[$anneeUniversitaireId];
     }
 
     public function getEffectiveBulletinAttendanceNote(?ESBTPBulletin $bulletin): float
@@ -4112,24 +4133,16 @@ class BulletinService
             '2' => 'semestre2',
         ];
 
-        // Si le semestre est spécifié, on récupère seulement ce semestre
-        // Sinon, on récupère tous les semestres
-        $periodes = [];
-        if ($semestre && isset($periodeMap[$semestre])) {
-            $periodes[] = $periodeMap[$semestre];
-        } else {
-            // Si aucun semestre n'est spécifié, on récupère tous les semestres
-            $periodes = array_values($periodeMap);
-        }
+        // Si le semestre est spécifié, on récupère seulement ce semestre,
+        // sinon tous les semestres.
+        $periodes = $semestre && isset($periodeMap[$semestre])
+            ? [$periodeMap[$semestre]]
+            : array_values($periodeMap);
 
-        \Log::info('Récupération des bulletins pour '.count($etudiants).' étudiants', [
-            'annee_universitaire_id' => $annee_universitaire_id,
-            'semestre' => $semestre,
-            'periodes' => $periodes,
-        ]);
-
+        // La classe de chaque eleve : celle demandee, sinon son inscription
+        // active de l'annee (deja chargee avec l'eleve).
+        $classeDe = [];
         foreach ($etudiants as $etudiant) {
-            // If no specific class is provided, get the student's class from inscriptions
             $studentClasseId = $classe_id;
             if (! $studentClasseId) {
                 $inscription = $etudiant->inscriptions
@@ -4138,46 +4151,40 @@ class BulletinService
                     ->first();
                 $studentClasseId = $inscription ? $inscription->classe_id : null;
             }
-
-            if ($studentClasseId && $annee_universitaire_id && ! empty($periodes)) {
-                $query = ESBTPBulletin::where('etudiant_id', $etudiant->id)
-                    ->where('classe_id', $studentClasseId)
-                    ->where('annee_universitaire_id', $annee_universitaire_id);
-
-                // Si on a des périodes spécifiques, on les utilise
-                // Sinon, on récupère tous les bulletins pour cet étudiant dans cette classe et cette année
-                if (count($periodes) == 1) {
-                    $query->where('periode', $periodes[0]);
-                } else {
-                    $query->whereIn('periode', $periodes);
-                }
-
-                $bulletin = $query->first();
-
-                if ($bulletin) {
-                    $bulletins[$etudiant->id] = $bulletin->id;
-                    \Log::debug('Bulletin trouvé pour étudiant', [
-                        'etudiant_id' => $etudiant->id,
-                        'bulletin_id' => $bulletin->id,
-                        'classe_id' => $studentClasseId,
-                        'periode' => $bulletin->periode,
-                    ]);
-                } else {
-                    \Log::warning('Aucun bulletin trouvé pour étudiant', [
-                        'etudiant_id' => $etudiant->id,
-                        'classe_id' => $studentClasseId,
-                        'periodes' => $periodes,
-                    ]);
-                }
-            } else {
-                \Log::warning('Données insuffisantes pour récupérer le bulletin', [
-                    'etudiant_id' => $etudiant->id,
-                    'studentClasseId' => $studentClasseId,
-                    'annee_universitaire_id' => $annee_universitaire_id,
-                    'periodes' => $periodes,
-                ]);
+            if ($studentClasseId && $annee_universitaire_id) {
+                $classeDe[$etudiant->id] = (int) $studentClasseId;
             }
         }
+
+        if ($classeDe === []) {
+            return;
+        }
+
+        // UNE requete pour la page, au lieu d'une par eleve suivie d'une ligne
+        // de journal « aucun bulletin » par eleve. L'ordre est celui de l'index
+        // unique (etudiant, classe, annee, periode) que la lecture unitaire
+        // parcourait : a periodes multiples, le premier semestre l'emporte.
+        $trouves = ESBTPBulletin::whereIn('etudiant_id', array_keys($classeDe))
+            ->whereIn('classe_id', array_values(array_unique($classeDe)))
+            ->where('annee_universitaire_id', $annee_universitaire_id)
+            ->whereIn('periode', $periodes)
+            ->orderBy('periode')
+            ->orderBy('id')
+            ->get(['id', 'etudiant_id', 'classe_id', 'periode'])
+            ->filter(fn ($bulletin) => ($classeDe[$bulletin->etudiant_id] ?? null) === (int) $bulletin->classe_id)
+            ->groupBy('etudiant_id');
+
+        foreach ($classeDe as $etudiantId => $studentClasseId) {
+            if ($bulletin = $trouves->get($etudiantId)?->first()) {
+                $bulletins[$etudiantId] = $bulletin->id;
+            }
+        }
+
+        \Log::debug('Bulletins de la page des resultats', [
+            'etudiants' => count($etudiants),
+            'avec_bulletin' => count($bulletins),
+            'periodes' => $periodes,
+        ]);
     }
 
 

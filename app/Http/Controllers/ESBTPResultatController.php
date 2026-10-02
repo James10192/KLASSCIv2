@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Domain\Bulletins\MoyennesDeLApercu;
+use App\Domain\Bulletins\MoyennesDeLaListe;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use App\Exceptions\CoefficientMissingException;
 use App\Domain\BtsTroncCommun\BtsAnnualAggregationService;
@@ -62,6 +63,7 @@ class ESBTPResultatController extends Controller
     private $btsUiPresenter;
     private \App\Services\RankingService $rankingService;
     private MoyennesDeLApercu $moyennesDeLApercu;
+    private MoyennesDeLaListe $moyennesDeLaListe;
 
     public function __construct(
         \App\Services\ESBTP\ESBTPAbsenceService $absenceService,
@@ -71,7 +73,8 @@ class ESBTPResultatController extends Controller
         BtsAnnualAggregationService $btsAnnualAggregationService,
         BtsUiPresenter $btsUiPresenter,
         \App\Services\RankingService $rankingService,
-        MoyennesDeLApercu $moyennesDeLApercu
+        MoyennesDeLApercu $moyennesDeLApercu,
+        MoyennesDeLaListe $moyennesDeLaListe
     )
     {
         $this->absenceService = $absenceService;
@@ -82,6 +85,7 @@ class ESBTPResultatController extends Controller
         $this->btsUiPresenter = $btsUiPresenter;
         $this->rankingService = $rankingService;
         $this->moyennesDeLApercu = $moyennesDeLApercu;
+        $this->moyennesDeLaListe = $moyennesDeLaListe;
     }
 
     public function resultats(ResultatsFilterRequest $request)
@@ -99,12 +103,13 @@ class ESBTPResultatController extends Controller
             'include_all_statuses' => $include_all_statuses,
         ]);
 
-        // If classe_id is provided, get the corresponding academic year
+        // Une classe choisie sans annee : l'annee courante. Une classe n'appartient
+        // a aucune annee (`classes-universelles-pas-annee.md`) : la colonne
+        // `esbtp_classes.annee_universitaire_id` lue ici jusqu'en octobre 2026
+        // est un vestige, et renvoyait une classe ouverte depuis plusieurs
+        // annees vers sa premiere.
         if ($classe_id && ! $annee_universitaire_id) {
-            $classe = ESBTPClasse::find($classe_id);
-            if ($classe && $classe->annee_universitaire_id) {
-                $annee_universitaire_id = $classe->annee_universitaire_id;
-            }
+            $annee_universitaire_id = ESBTPAnneeUniversitaire::anneeCourante()?->id;
         }
 
         // Get current academic year if not specified
@@ -1197,229 +1202,31 @@ class ESBTPResultatController extends Controller
             // La periode decide de la cohorte : au semestre 1, une classe de
             // tronc commun porte encore ses etudiants passes en specialite.
             $studentsQuery = $this->bulletinService->buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses, $detail_periode);
-            $total = (clone $studentsQuery)->count();
-            $etudiants = (clone $studentsQuery)->skip(($page - 1) * $perPage)->take($perPage)->get();
             $studentIds = (clone $studentsQuery)->pluck('id');
+            $total = $studentIds->count();
+            $etudiants = (clone $studentsQuery)->skip(($page - 1) * $perPage)->take($perPage)->get();
             $kpis = $this->bulletinService->computeResultatsKpis($studentIds, $classe_id, $annee_universitaire_id, $semestre);
 
-            // Calculate moyennes, rangs, etc. for these students
             $moyennes = [];
             $rangs = [];
             $bulletins = [];
             $annualValueStatuses = [];
-            $notes = collect([]);
+            $coefficientsMissingMap = [];
 
             if ($etudiants->count() > 0) {
-                $student_ids = $etudiants->pluck('id')->toArray();
+                $calcul = $this->moyennesDeLaListe->calculer($etudiants, $classe_id, $annee_universitaire_id, $semestre);
+                $moyennes = $calcul['moyennes'];
+                $rangs = $calcul['rangs'];
+                $annualValueStatuses = $calcul['statuts_annuels'];
+                $coefficientsMissingMap = $calcul['coefficients_manquants'];
 
-                // Get notes for these students
-                $notesQuery = ESBTPNote::whereIn('etudiant_id', $student_ids)
-                    ->with(['etudiant', 'etudiant.user', 'evaluation', 'evaluation.classe', 'evaluation.matiere']);
-
-                if ($classe_id) {
-                    $notesQuery->whereHas('evaluation', function ($query) use ($classe_id) {
-                        $query->where('classe_id', $classe_id);
-                    });
-                }
-
-                if ($annee_universitaire_id) {
-                    $notesQuery->whereHas('evaluation', function ($query) use ($annee_universitaire_id) {
-                        $query->where('annee_universitaire_id', $annee_universitaire_id);
-                    });
-                }
-
-                if ($semestre) {
-                    $notesQuery->whereHas('evaluation', function ($query) use ($semestre) {
-                        $query->where('periode', 'like', 'semestre'.$semestre.'%');
-                    });
-                }
-
-                $notes = $notesQuery->get();
-
-                // Calculate stats for these students
-                if (! $semestre) {
-                    // Mode Annuel : calculer la moyenne annuelle pondérée S1/S2 pour chaque étudiant
-                    $weights = $this->bulletinService->getSemesterWeights($classe_id ? \App\Models\ESBTPClasse::with(['filiere', 'niveau', 'niveauEtude'])->find($classe_id) : null);
-
-                    // Pré-charger les inscriptions pour éviter N+1
-                    $inscriptionMap = collect();
-                    if (!$classe_id) {
-                        $inscriptionMap = \App\Models\ESBTPInscription::query()
-                            ->whereIn('etudiant_id', $etudiants->pluck('id'))
-                            ->where('annee_universitaire_id', $annee_universitaire_id)
-                            ->orderByDesc('date_inscription')
-                            ->get()
-                            ->unique('etudiant_id')
-                            ->keyBy('etudiant_id');
-                    }
-
-                    foreach ($etudiants as $etudiant) {
-                        $etudiantClasseId = $classe_id ?: ($inscriptionMap[$etudiant->id]->classe_id ?? null);
-                        if (!$etudiantClasseId) {
-                            continue; // Pas de classe trouvée, skip cet étudiant
-                        }
-
-                        $annualAttendanceNote = $this->bulletinService->calculateEffectiveAttendanceNoteForStudent(
-                            $etudiant->id,
-                            $etudiantClasseId,
-                            $annee_universitaire_id ?? 0,
-                            'annuel'
-                        );
-
-                        try {
-                            $s1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
-                                $etudiant->id, $etudiantClasseId, $annee_universitaire_id ?? 0,
-                                'semestre1', 'annuel', 0, $annualAttendanceNote
-                            );
-                            $s2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
-                                $etudiant->id, $etudiantClasseId, $annee_universitaire_id ?? 0,
-                                'semestre2', 'annuel', 0, $annualAttendanceNote
-                            );
-                        } catch (\RuntimeException $e) {
-                            // Coefficient manquant pour cet étudiant, skip
-                            continue;
-                        }
-                        $annual = $this->bulletinService->calculateAnnualAverage($s1, $s2, $weights);
-                        if ($annual !== null) {
-                            $moyennes[$etudiant->id] = round($annual, 2);
-                            $annualValueStatuses[$etudiant->id] = [
-                                'state' => 'annual_complete',
-                                'label' => null,
-                            ];
-                        } elseif ($s1 !== null) {
-                            $moyennes[$etudiant->id] = round($s1, 2);
-                            $annualValueStatuses[$etudiant->id] = [
-                                'state' => 'annual_incomplete',
-                                'label' => 'Provisoire · S1 seulement',
-                            ];
-                        } elseif ($s2 !== null) {
-                            $moyennes[$etudiant->id] = round($s2, 2);
-                            $annualValueStatuses[$etudiant->id] = [
-                                'state' => 'annual_incomplete',
-                                'label' => 'Provisoire · S2 seulement',
-                            ];
-                        }
-                    }
-                    // Calculer les rangs
-                    if (count($moyennes) > 0) {
-                        arsort($moyennes);
-                        $rank = 1;
-                        foreach (array_keys($moyennes) as $etudiantId) {
-                            $rangs[$etudiantId] = $rank++;
-                        }
-                    }
-                } else {
-                    // Mode Semestre : calcul standard par notes (filtré par période)
-                    $this->bulletinService->calculateStudentStatsFixed($etudiants, $notes, $moyennes, $rangs, $classe_id, $annee_universitaire_id, $semestre);
-
-                    // Ajouter l'assiduité si activée
-                    $showAssid = \App\Helpers\SettingsHelper::drapeau('bulletin_show_attendance_note', true);
-                    if ($showAssid && $annee_universitaire_id) {
-                        $anneeObj = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
-                        if ($anneeObj) {
-                            $periodeForManual = $semestre ? 'semestre'.$semestre : 'annuel';
-                            foreach ($moyennes as $etudiantId => &$moy) {
-                                $abs = $this->absenceService->calculerDetailAbsences(
-                                    $etudiantId,
-                                    $classe_id ?? 0,
-                                    $anneeObj->date_debut ?? null,
-                                    $anneeObj->date_fin ?? null,
-                                    $annee_universitaire_id,
-                                    $periodeForManual
-                                );
-                                $noteAssid = $this->bulletinService->resolveAttendanceNote($abs['justifiees'] ?? 0, $abs['non_justifiees'] ?? 0);
-                                $moy += $noteAssid;
-                            }
-                            unset($moy);
-                            // Re-trier et recalculer les rangs
-                            arsort($moyennes);
-                            $rank = 1;
-                            $rangs = [];
-                            foreach (array_keys($moyennes) as $eid) {
-                                $rangs[$eid] = $rank++;
-                            }
-                        }
-                    }
-                }
-
-                $resolvedMoyennes = [];
-                $resolvedAnnualStatuses = [];
-                $coefficientsMissingMap = []; // Lot 3 : flag par étudiant pour badge UI
-                $inscriptionMap = collect();
-                if (! $classe_id) {
-                    $inscriptionMap = \App\Models\ESBTPInscription::query()
-                        ->whereIn('etudiant_id', $etudiants->pluck('id'))
-                        ->where('annee_universitaire_id', $annee_universitaire_id)
-                        ->orderByDesc('date_inscription')
-                        ->get()
-                        ->unique('etudiant_id')
-                        ->keyBy('etudiant_id');
-                }
-
-                foreach ($etudiants as $etudiant) {
-                    $etudiantClasseId = $classe_id ?: ($inscriptionMap[$etudiant->id]->classe_id ?? null);
-                    if (! $etudiantClasseId) {
-                        continue;
-                    }
-
-                    $snapshot = ! $semestre
-                        ? $this->currentResultSnapshotService->getAnnualSnapshot($etudiant->id, $etudiantClasseId, $annee_universitaire_id)
-                        : $this->currentResultSnapshotService->getSemesterSnapshot(
-                            $etudiant->id,
-                            $etudiantClasseId,
-                            $annee_universitaire_id,
-                            'semestre' . $semestre
-                        );
-
-                    if (! $semestre) {
-                        $resolvedAnnualStatuses[$etudiant->id] = $this->buildBtsAnnualValueStatus($snapshot);
-                    }
-
-                    if (($snapshot['effective_total'] ?? null) !== null) {
-                        $resolvedMoyennes[$etudiant->id] = round((float) $snapshot['effective_total'], 2);
-                    }
-                    if (! empty($snapshot['coefficients_missing'])) {
-                        $coefficientsMissingMap[$etudiant->id] = true;
-                    }
-                }
-
-                if (! empty($resolvedMoyennes) || ! empty($resolvedAnnualStatuses)) {
-                    $moyennes = $resolvedMoyennes;
-                    $annualValueStatuses = $resolvedAnnualStatuses;
-                }
-
-                // RANG CANONIQUE : si une classe est sélectionnée, on délègue le calcul
-                // du rang au RankingService unique (cohort active + workflow validé,
-                // données snapshot, flag bulletin_show_attendance_note respecté,
-                // ex-aequo gérés). Les étudiants hors cohort (ex: include_all_statuses=1)
-                // restent dans la liste mais sans rang.
-                if ($classe_id) {
-                    $rankingPeriode = $semestre ? 'semestre'.$semestre : 'annuel';
-                    $rankingData = $this->rankingService->calculerRangsClasse(
-                        (int) $classe_id,
-                        (int) $annee_universitaire_id,
-                        $rankingPeriode
-                    );
-                    $rangsCanoniques = $rankingData['rows']
-                        ->whereNotNull('rang')
-                        ->keyBy('etudiant_id');
-
-                    $rangs = [];
-                    foreach ($rangsCanoniques as $etudiantId => $row) {
-                        $rangs[$etudiantId] = $row['rang'];
-                    }
-                } elseif (! empty($moyennes)) {
-                    // Pas de classe : tri sur les moyennes calculées (mode cross-classes).
-                    arsort($moyennes);
-                    $rangs = [];
-                    $rank = 1;
-                    foreach (array_keys($moyennes) as $eid) {
-                        $rangs[$eid] = $rank++;
-                    }
-                }
-
-                // Get bulletins
                 $this->bulletinService->getStudentBulletins($etudiants, $classe_id, $annee_universitaire_id, $semestre, $bulletins);
+
+                // Sans classe choisie, la liste affiche la classe de chaque eleve :
+                // chargee ici en une requete plutot qu'une par ligne au rendu.
+                if (! $classe_id) {
+                    $etudiants->loadMissing('inscriptions.classe');
+                }
             }
 
             // Determine which template to use
@@ -1430,7 +1237,7 @@ class ESBTPResultatController extends Controller
                 'include_all_statuses' => (bool) $include_all_statuses,
                 'attendanceNoteEnabled' => $this->bulletinService->isAttendanceNoteEnabled(),
                 'studentWorkflowAlerts' => $this->buildStudentWorkflowAlerts($etudiants, $annee_universitaire_id, $classe_id),
-                'coefficientsMissingMap' => $coefficientsMissingMap ?? [],
+                'coefficientsMissingMap' => $coefficientsMissingMap,
             ];
 
             if ((int) $page === 1) {
@@ -3152,20 +2959,6 @@ class ESBTPResultatController extends Controller
         }
 
         return $notesByMatiere;
-    }
-
-    private function buildBtsAnnualValueStatus(array $annualSnapshot): array
-    {
-        return match ($annualSnapshot['state'] ?? 'no_data') {
-            'annual_complete' => ['state' => 'annual_complete', 'label' => null],
-            'annual_incomplete' => [
-                'state' => 'annual_incomplete',
-                'label' => ($annualSnapshot['primary_semester'] ?? 'semestre1') === 'semestre2'
-                    ? 'Partiel · S2 seulement'
-                    : 'Partiel · S1 seulement',
-            ],
-            default => ['state' => 'no_data', 'label' => 'Aucune note'],
-        };
     }
 
     private function buildBtsDecisionLabel(?float $average, ?string $state): string

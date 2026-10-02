@@ -56,6 +56,40 @@ class BtsAnnualClassMapResolver
     }
 
     /**
+     * Les cartes de toute une cohorte, inscriptions lues en UNE requete.
+     *
+     * `resolve()` lisait l'inscription de chaque eleve a part : quatre
+     * requetes par eleve (inscription, phases, origine, specialisation), sur
+     * chaque eleve d'un classement de classe. La requete groupee porte le meme
+     * ordre que `resolveUncached()` : la premiere ligne de chaque eleve est donc
+     * celle que l'appel unitaire aurait elue, et la carte en est tiree par le
+     * meme `carte()`. Un eleve sans inscription n'est pas mis en memoire :
+     * `resolve()` le traitera comme avant.
+     *
+     * @param  list<int>  $etudiantIds
+     */
+    public function prechargerPourCohorte(array $etudiantIds, int $requestedClasseId, int $anneeUniversitaireId): void
+    {
+        $aLire = array_values(array_filter(
+            array_unique(array_map('intval', $etudiantIds)),
+            fn (int $id) => ! array_key_exists($id.':'.$requestedClasseId.':'.$anneeUniversitaireId, $this->resolveCache)
+        ));
+        if ($aLire === []) {
+            return;
+        }
+
+        $inscriptions = $this->requeteInscriptions($requestedClasseId, $anneeUniversitaireId)
+            ->whereIn('etudiant_id', $aLire)
+            ->get()
+            ->groupBy('etudiant_id');
+
+        foreach ($inscriptions as $etudiantId => $lignes) {
+            $this->resolveCache[$etudiantId.':'.$requestedClasseId.':'.$anneeUniversitaireId]
+                = $this->carte($lignes->first(), $requestedClasseId, $anneeUniversitaireId);
+        }
+    }
+
+    /**
      * Meme carte, pour un appelant qui a deja elu son inscription.
      *
      * Deux elections dans le meme systeme se contredisent : le service de
@@ -86,19 +120,8 @@ class BtsAnnualClassMapResolver
      */
     private function resolveUncached(int $etudiantId, int $requestedClasseId, int $anneeUniversitaireId): array
     {
-        $inscription = ESBTPInscription::query()
-            ->with([
-                'filiere',
-                'phases.classe.filiere',
-                'inscriptionOrigine.classe.filiere',
-                'inscriptionSpecialisation.classe.filiere',
-            ])
+        $inscription = $this->requeteInscriptions($requestedClasseId, $anneeUniversitaireId)
             ->where('etudiant_id', $etudiantId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->orderByRaw('CASE WHEN classe_id = ? THEN 0 ELSE 1 END', [$requestedClasseId])
-            ->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
-            ->orderByDesc('date_inscription')
-            ->orderByDesc('id')
             ->first();
 
         if (! $inscription) {
@@ -111,6 +134,26 @@ class BtsAnnualClassMapResolver
         }
 
         return $this->carte($inscription, $requestedClasseId, $anneeUniversitaireId);
+    }
+
+    /** L'election d'une inscription : la classe demandee, l'active, la plus recente. */
+    private function requeteInscriptions(int $requestedClasseId, int $anneeUniversitaireId): \Illuminate\Database\Eloquent\Builder
+    {
+        return ESBTPInscription::query()
+            ->with([
+                'filiere',
+                // Lue par `BtsPhaseResolver` quand l'inscription n'a pas de phase,
+                // c'est-a-dire pour la plupart des eleves BTS.
+                'classe.filiere',
+                'phases.classe.filiere',
+                'inscriptionOrigine.classe.filiere',
+                'inscriptionSpecialisation.classe.filiere',
+            ])
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->orderByRaw('CASE WHEN classe_id = ? THEN 0 ELSE 1 END', [$requestedClasseId])
+            ->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
+            ->orderByDesc('date_inscription')
+            ->orderByDesc('id');
     }
 
     /**
