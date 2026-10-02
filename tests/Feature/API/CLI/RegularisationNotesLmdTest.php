@@ -162,4 +162,15 @@ class RegularisationNotesLmdTest extends TestCase
     {
         $this->poster('BUNUM')->assertStatus(422)->assertJsonPath('success', false);
     }
+
+    public function test_une_date_future_est_refusee(): void
+    {
+        DB::table('esbtp_ue_matiere')->delete();
+        $this->postJson('/api/cli/lmd/evaluations/regulariser-notes', [
+            'etudiant_id' => $this->eleve->id, 'classe_id' => $this->classe->id, 'annee_universitaire_id' => $this->annee->id,
+            'periode' => 'semestre2', 'date_regularisation' => now()->addDays(3)->toDateString(),
+            'motif' => 'Releve officiel du semestre 2 transmis par l etablissement',
+            'notes' => [['matiere_id' => DB::table('esbtp_matieres')->where('code', 'ANUM')->value('id'), 'note' => 14]],
+        ])->assertStatus(422)->assertJsonPath('success', false);
+    }
 }

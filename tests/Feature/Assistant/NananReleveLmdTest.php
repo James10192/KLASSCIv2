@@ -247,6 +247,65 @@ class NananReleveLmdTest extends TestCase
         $this->assertStringContainsString('41 notes', $this->manques($this->proposer($this->args([['etudiant' => 'FL25-001', 'notes' => $notes]]))));
     }
 
+    public function test_une_colonne_qui_nomme_une_ue_dit_laquelle_et_ses_elements(): void
+    {
+        $manques = $this->manques($this->proposer($this->args([
+            ['etudiant' => 'FL25-001', 'notes' => [['element' => 'Mathematiques', 'note' => 11]]],
+        ])));
+
+        $this->assertStringContainsString('« Mathematiques » est une UE (BMIB1), pas un élément : elle compte BMIB111 Algèbre, BMIB112 Analyse', $manques);
+    }
+
+    /**
+     * Constat du 2 octobre sur presentation : Nanan n'a posé que la question du 0,
+     * la colonne « Béton armé » (une UE) est passée sous silence. L'outil rend
+     * TOUTES les questions d'un relevé en une fois, pour qu'aucune ne se perde.
+     */
+    public function test_toutes_les_questions_d_un_releve_sont_rendues_ensemble(): void
+    {
+        $r = $this->proposer($this->args([
+            ['etudiant' => 'FL25-001', 'notes' => [['element' => 'BMIB111', 'note' => 0], ['element' => 'Mathematiques', 'note' => 11]]],
+            ['etudiant' => 'YESSOTCHE Grace', 'notes' => [['element' => 'BMIB111', 'note' => 12]]],
+        ]));
+
+        $manques = $this->manques($r);
+        $this->assertStringContainsString('est une UE (BMIB1)', $manques);
+        $this->assertStringContainsString('« YESSOTCHE Grace » : aucun étudiant', $manques);
+        $this->assertStringContainsString('épreuves non composées', $manques);
+    }
+
+    public function test_un_motif_manquant_ne_cache_pas_les_questions_du_releve(): void
+    {
+        // Premier appel typique : la personne n'a pas encore dit qui a transmis le relevé.
+        $manques = $this->manques($this->proposer($this->args([
+            ['etudiant' => 'FL25-001', 'notes' => [['element' => 'BMIB111', 'note' => 0], ['element' => 'Mathematiques', 'note' => 11]]],
+        ], ['motif' => 'Relevé'])));
+
+        $this->assertStringContainsString("D'où viennent ces notes", $manques);
+        $this->assertStringContainsString('est une UE (BMIB1)', $manques);
+        $this->assertStringContainsString('épreuves non composées', $manques);
+    }
+
+    public function test_sans_semestre_les_etudiants_et_les_zeros_sont_quand_meme_controles(): void
+    {
+        $manques = $this->manques($this->proposer($this->args([
+            ['etudiant' => 'YESSOTCHE Grace', 'notes' => [['element' => 'BMIB111', 'note' => 12]]],
+            ['etudiant' => 'FL25-001', 'notes' => [['element' => 'BMIB111', 'note' => 0]]],
+        ], ['semestre' => ''])));
+
+        $this->assertStringContainsString('Quel semestre', $manques);
+        $this->assertStringContainsString('« YESSOTCHE Grace » : aucun étudiant', $manques);
+        $this->assertStringContainsString('épreuves non composées', $manques);
+    }
+
+    public function test_une_date_future_est_une_question(): void
+    {
+        $this->assertStringContainsString('dans le futur', $this->manques($this->proposer($this->args(
+            [['etudiant' => 'FL25-001', 'notes' => [['element' => 'BMIB111', 'note' => 12]]]],
+            ['date' => now()->addDay()->toDateString()],
+        ))));
+    }
+
     public function test_seance_d_entrainement_releve(): void
     {
         $faux = new FauxFournisseur();
@@ -263,6 +322,8 @@ class NananReleveLmdTest extends TestCase
         $systeme = app(ConstructeurDePrompt::class)->systeme($this->admin, null, null);
         $this->assertStringContainsString('proposer_releve_notes_lmd', $systeme);
         $this->assertStringContainsString('épreuve non composée', $systeme);
+        $this->assertStringContainsString('Appelle l\'outil AVANT toute question', $systeme);
+        $this->assertStringContainsString('Relaie alors TOUTES ses questions', $systeme);
 
         $r = (new BoucleAgent($catalogue))->executer(
             [new ModeleIa('m', 'faux', 'faux', 'm', 'M', true, true, 'cle', 'https://faux.test/')],
