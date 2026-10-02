@@ -146,4 +146,20 @@ class RegularisationNotesLmdTest extends TestCase
 
         $this->poster('ANUM')->assertStatus(422);
     }
+
+    public function test_une_regularisation_restee_en_brouillon_est_terminee_au_passage(): void
+    {
+        DB::table('esbtp_ue_matiere')->delete();
+        $this->poster('ANUM', false)->assertOk();
+        \App\Models\ESBTPEvaluation::query()->update(['status' => \App\Models\ESBTPEvaluation::STATUS_DRAFT]);
+
+        $this->poster('ANUM', false)->assertOk();
+
+        $this->assertSame([\App\Models\ESBTPEvaluation::STATUS_COMPLETED], \App\Models\ESBTPEvaluation::pluck('status')->all());
+    }
+
+    public function test_un_refus_garde_la_forme_de_reponse_de_la_cli(): void
+    {
+        $this->poster('BUNUM')->assertStatus(422)->assertJsonPath('success', false);
+    }
 }

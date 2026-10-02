@@ -52,7 +52,7 @@ class SaisirReleveLmd extends ActionAgent
     public function description(): string
     {
         return "PROPOSE d'enregistrer le relevé de notes d'une classe LMD pour un semestre, y compris d'une année écoulée, quand les évaluations n'ont jamais été créées. "
-            . "Crée une évaluation de régularisation par élément (brouillon, non publiée) et y pose les notes. "
+            . "Crée une évaluation de régularisation par élément (comptée au bulletin, non publiée aux étudiants) et y pose les notes. "
             . "Classe, année (« 2025-2026 »), semestre, motif, puis une ligne par étudiant (matricule ou nom complet tel que sur le relevé) avec ses notes, "
             . "chaque note rattachée à l'élément de la maquette par son code ou son intitulé exact. N'invente ni note ni correspondance de colonne. "
             . "Pour une évaluation qui existe déjà, utilise proposer_saisie_notes.";
@@ -65,7 +65,7 @@ class SaisirReleveLmd extends ActionAgent
             'properties' => [
                 'classe' => ['type' => 'string', 'description' => 'Code, nom exact ou identifiant de la classe LMD.'],
                 'annee' => ['type' => 'string', 'description' => "Année universitaire du relevé, ex. « 2025-2026 ». Par défaut l'année en cours."],
-                'semestre' => ['type' => 'string', 'description' => 'S1 ou S2.'],
+                'semestre' => ['type' => 'string', 'description' => 'Semestre de la maquette, numéroté en continu : S1-S2 en L1, S3-S4 en L2, S5-S6 en L3.'],
                 'motif' => ['type' => 'string', 'description' => "D'où viennent ces notes (relevé officiel transmis par…), 20 caractères au moins."],
                 'date' => ['type' => 'string', 'description' => 'Date du relevé ou de la session (AAAA-MM-JJ). Par défaut aujourd\'hui.'],
                 'zeros_confirmes' => ['type' => 'boolean', 'description' => 'true seulement si la personne a confirmé que les 0 sont de vraies notes et non des épreuves non composées.'],
@@ -101,13 +101,13 @@ class SaisirReleveLmd extends ActionAgent
         if (! $annee) {
             return $this->seulManque($titre, $manque);
         }
-        $periode = $this->designerSemestre($args['semestre'] ?? '');
+        $periode = $this->semestreDeLaClasse((string) ($args['semestre'] ?? ''), $classe);
         $motif = trim((string) ($args['motif'] ?? ''));
         $date = trim((string) ($args['date'] ?? '')) ?: now()->toDateString();
         $lignes = array_values(array_filter((array) ($args['etudiants'] ?? []), 'is_array'));
 
         $manques = array_values(array_filter([
-            $periode === null ? 'Quel semestre (S1 ou S2) ?' : null,
+            $periode === null ? "Quel semestre ? Pour {$classe->name} : " . $this->semestresPossibles($classe) . ' (numérotation de la maquette : une L2 a S3 et S4).' : null,
             mb_strlen($motif) < 20 ? "D'où viennent ces notes (relevé officiel transmis par qui) ? Le motif est gardé sur chaque note." : null,
             ! preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? 'Quelle date pour ce relevé (AAAA-MM-JJ) ?' : null,
             $lignes === [] ? 'Quelles notes saisir ?' : null,
@@ -118,7 +118,7 @@ class SaisirReleveLmd extends ActionAgent
         }
 
         $inscrits = $this->inscrits($classe, (int) $annee->id);
-        $maquette = $this->regularisation->ecuesDeLaMaquette($classe, (int) substr($periode, -1));
+        $maquette = $this->regularisation->ecuesDeLaMaquette($classe, (int) substr($periode, 8));
         [$entrees, $manques, $zeros] = $this->resoudre($lignes, $inscrits, $maquette, $classe, $periode);
         if ($zeros > 0 && ! filter_var($args['zeros_confirmes'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $manques[] = "{$zeros} note(s) valent 0 : ce sont de vraies notes de 0/20, ou des épreuves non composées ? Retire celles qui n'ont pas été composées, ou confirme (zeros_confirmes).";
@@ -141,17 +141,17 @@ class SaisirReleveLmd extends ActionAgent
         }
 
         return new Proposition(
-            titre: "Relevé {$this->libelleSemestre($periode)} {$annee->name} — {$classe->name}",
-            resume: sprintf('%d note(s) pour %d étudiant(s), %d élément(s) de la maquette %s. Évaluations de régularisation en brouillon, non publiées. Motif : %s',
+            titre: 'Relevé S' . substr($periode, 8) . " {$annee->name} — {$classe->name}",
+            resume: sprintf('%d note(s) pour %d étudiant(s), %d élément(s) de la maquette %s. Une évaluation de régularisation par élément, comptée au bulletin, non publiée aux étudiants. Motif : %s',
                 count($changees), count(array_unique(array_column($changees, 'etudiant_id'))), count(array_unique(array_column($changees, 'matiere_id'))),
-                $this->libelleSemestre($periode), $motif),
+                'S' . substr($periode, 8), $motif),
             tableau: [
                 'colonnes' => ['Étudiant', 'Élément', 'Avant', 'Après'],
                 'lignes' => array_map(fn ($r) => [$r['etudiant'], $r['matiere'], $r['avant'] === null ? '—' : $this->nombre($r['avant']), $this->nombre($r['apres'])], $changees),
             ],
             avertissements: array_values(array_filter([
                 count(array_filter($changees, fn ($r) => $r['avant'] !== null)) > 0 ? 'Des notes déjà saisies par régularisation seront remplacées (colonne « Avant »).' : null,
-                'Les notes restent en brouillon : le bulletin ne les montre qu\'une fois les évaluations publiées.',
+                'Ces notes comptent au bulletin LMD dès la validation ; les étudiants ne les voient qu\'une fois les évaluations publiées.',
             ])),
             donnees: $base + ['etudiants' => $entrees],
             etat: ['lignes' => $rapport],
@@ -181,7 +181,7 @@ class SaisirReleveLmd extends ActionAgent
         Log::warning('assistant: releve de notes LMD saisi', $base + ['etudiants' => count($d['etudiants']), 'notes' => $ecrites, 'user_id' => $user->id]);
 
         return [
-            'message' => "{$ecrites} note(s) enregistrée(s) pour " . count($d['etudiants']) . ' étudiant(s), dans des évaluations de régularisation en brouillon. Publiez-les pour qu\'elles comptent au bulletin.',
+            'message' => "{$ecrites} note(s) enregistrée(s) pour " . count($d['etudiants']) . ' étudiant(s). Elles comptent au bulletin LMD (à régénérer) ; publiez les évaluations pour que les étudiants les voient.',
             'lien' => route('esbtp.classes.show', $d['classe_id'], false),
             'model_type' => ESBTPClasse::class,
             'model_id' => (int) $d['classe_id'],
@@ -221,7 +221,12 @@ class SaisirReleveLmd extends ActionAgent
             $vus[$etudiant->id] = true;
 
             $notes = [];
-            foreach (array_slice(array_values(array_filter((array) ($ligne['notes'] ?? []), 'is_array')), 0, self::MAX_NOTES) as $n) {
+            $sesNotes = array_values(array_filter((array) ($ligne['notes'] ?? []), 'is_array'));
+            if (count($sesNotes) > self::MAX_NOTES) {
+                $manques[] = $this->nom($etudiant) . ' a ' . count($sesNotes) . ' notes : ' . self::MAX_NOTES . ' au plus par étudiant et par semestre. Une colonne en double ?';
+                continue;
+            }
+            foreach ($sesNotes as $n) {
                 [$element, $manque] = $this->element((string) ($n['element'] ?? ''), $maquette, $periode);
                 if (! $element) {
                     $manques[$manque] = $manque;
@@ -260,8 +265,26 @@ class SaisirReleveLmd extends ActionAgent
         $liste = $maquette->unique('id')->map(fn ($m) => "{$m->code_affiche} {$m->name}")->implode(', ');
 
         return [null, $trouves->isEmpty()
-            ? "« {$designation} » n'est pas un élément de la maquette {$this->libelleSemestre($periode)} de cette classe. Éléments : {$liste}. Lequel ?"
+            ? "« {$designation} » n'est pas un élément de la maquette S" . substr($periode, 8) . " de cette classe. Éléments : {$liste}. Lequel ?"
             : "« {$designation} » désigne plusieurs éléments : lequel ?"];
+    }
+
+    /**
+     * « S3 », « semestre 3 », « 3 » : le semestre de la maquette, qui doit être l'un
+     * des deux de la classe. Une L2 n'a pas de S1 : on demande au lieu de deviner.
+     */
+    private function semestreDeLaClasse(string $valeur, ESBTPClasse $classe): ?string
+    {
+        if (! preg_match('/^(?:s|semestre\s*)?(\d{1,2})$/u', mb_strtolower(trim($valeur)), $m)) {
+            return null;
+        }
+
+        return in_array((int) $m[1], $classe->getSemestresLMD(), true) ? 'semestre' . (int) $m[1] : null;
+    }
+
+    private function semestresPossibles(ESBTPClasse $classe): string
+    {
+        return implode(' ou ', array_map(fn ($s) => "S{$s}", $classe->getSemestresLMD()));
     }
 
     /** @return list<array{etudiant_id: int, etudiant: string, matiere_id: int, matiere: string, avant: ?float, apres: float}> */

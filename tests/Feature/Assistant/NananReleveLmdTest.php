@@ -153,6 +153,8 @@ class NananReleveLmdTest extends TestCase
         $this->assertSame(2, ESBTPEvaluation::where('classe_id', $this->classe->id)->where('annee_universitaire_id', $this->passee->id)
             ->where('periode', 'semestre1')->where('is_published', false)->count(), 'une évaluation par élément, en brouillon, sur l\'année du relevé');
         $this->assertSame(['2025-2026'], ESBTPNote::distinct()->pluck('annee_universitaire')->all(), 'l\'année est écrite en clair sur la note');
+        // Le bulletin LMD ne lit que les évaluations terminées : sans cela, ces notes n'y entreraient pas.
+        $this->assertSame(0, ESBTPEvaluation::where('status', '!=', ESBTPEvaluation::STATUS_COMPLETED)->count());
 
         $this->assertStringContainsString('déjà enregistré', $this->manques($this->proposer($this->args([
             ['etudiant' => 'FL25-001', 'notes' => [['element' => 'BMIB111', 'note' => 12.5]]],
@@ -212,6 +214,37 @@ class NananReleveLmdTest extends TestCase
         $this->assertFalse($action->isAvailableFor($saisie));
         $this->assertNotContains($action->name(), array_column(app(CatalogueOutils::class)->schemas($saisie), 'name'));
         $this->assertTrue($action->isAvailableFor($this->admin));
+    }
+
+    public function test_une_l2_saisit_son_s3_et_n_a_pas_de_s1(): void
+    {
+        app(LMDImportService::class)->import([
+            'domaine' => ['name' => 'Sciences et Technologies', 'code' => 'ST'],
+            'mention' => ['name' => 'Genie Civil', 'code' => 'GC'],
+            'parcours' => ['name' => 'Batiment et Urbanisme', 'code' => 'BU', 'credits_licence' => 180],
+            'filiere' => ['name' => 'Batiment', 'code' => 'FBU'],
+            'niveaux' => [['name' => 'Licence 2', 'year' => 2]],
+            'ues' => [['code' => 'BHYD3', 'name' => 'Hydraulique', 'credit' => 3, 'niveau_year' => 2, 'semestre' => 3,
+                'ecues' => [['code' => 'BHYD311', 'name' => 'Hydraulique générale', 'credit_ecue' => 3]]]],
+        ]);
+        DB::table('esbtp_ue_matiere')->delete();
+        $this->classe->update([
+            'name' => 'L2A Batiment',
+            'niveau_etude_id' => ESBTPNiveauEtude::where('year', 2)->where('type', 'Licence')->value('id'),
+        ]);
+        $lignes = [['etudiant' => 'FL25-001', 'notes' => [['element' => 'BHYD311', 'note' => 11]]]];
+
+        $this->assertStringContainsString('S3 ou S4', $this->manques($this->proposer($this->args($lignes, ['classe' => 'L2A Batiment', 'semestre' => 'S1']))));
+
+        $this->valider($this->proposer($this->args($lignes, ['classe' => 'L2A Batiment', 'semestre' => 'S3'])));
+        $this->assertSame(['semestre3'], ESBTPEvaluation::pluck('periode')->all(), 'la période est celle que lit le bulletin LMD de L2');
+    }
+
+    public function test_plus_de_quarante_notes_pour_un_etudiant_est_une_question(): void
+    {
+        $notes = array_fill(0, 41, ['element' => 'BMIB111', 'note' => 10]);
+
+        $this->assertStringContainsString('41 notes', $this->manques($this->proposer($this->args([['etudiant' => 'FL25-001', 'notes' => $notes]]))));
     }
 
     public function test_seance_d_entrainement_releve(): void

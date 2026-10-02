@@ -9,6 +9,7 @@ use App\Http\Controllers\API\BaseApiController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Saisie exceptionnelle, traçable et idempotente de notes LMD provenant d'une
@@ -30,7 +31,7 @@ final class CLILmdRegularisationNotesController extends BaseApiController
             'etudiant_id' => ['required', 'integer', 'exists:esbtp_etudiants,id'],
             'classe_id' => ['required', 'integer', 'exists:esbtp_classes,id'],
             'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
-            'periode' => ['required', 'in:semestre1,semestre2'],
+            'periode' => ['required', 'regex:/^semestre([1-9]|10)$/'],
             'date_regularisation' => ['required', 'date'],
             'motif' => ['required', 'string', 'min:20', 'max:1000'],
             'dry_run' => ['nullable', 'boolean'],
@@ -40,7 +41,12 @@ final class CLILmdRegularisationNotesController extends BaseApiController
         ]);
 
         $dryRun = (bool) ($v['dry_run'] ?? true);
-        $resultat = $regularisation->appliquer($v, $dryRun, (int) $request->user()->id);
+        try {
+            $resultat = $regularisation->appliquer($v, $dryRun, (int) $request->user()->id);
+        } catch (ValidationException $e) {
+            // Même forme de refus qu'avant l'extraction du service.
+            return $this->errorResponse(collect($e->errors())->flatten()->first(), $e->errors(), 422);
+        }
 
         if ($dryRun) {
             return $this->successResponse([

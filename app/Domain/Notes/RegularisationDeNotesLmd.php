@@ -12,6 +12,7 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,7 +24,8 @@ use Illuminate\Validation\ValidationException;
  *
  * Une ligne est toujours créée dans esbtp_evaluations avant la note : une note
  * orpheline perdrait sa provenance et son lien avec la matière du bulletin.
- * Les évaluations restent en brouillon, non publiées.
+ * Les évaluations sont terminées (comptées au bulletin) mais non publiées aux
+ * étudiants.
  */
 final class RegularisationDeNotesLmd
 {
@@ -54,8 +56,13 @@ final class RegularisationDeNotesLmd
             $this->refuser('etudiant_id', "L'étudiant n'est pas inscrit activement dans cette classe pour cette année.");
         }
 
+        // La période d'une évaluation LMD est le semestre ABSOLU (semestre3 pour
+        // une L2) : c'est ce que le bulletin LMD lit, et ce que porte la maquette.
         $periode = (string) $e['periode'];
-        $semestre = (int) substr($periode, -1);
+        $semestre = (int) preg_replace('/\D/', '', $periode);
+        if (! in_array($semestre, $classe->getSemestresLMD(), true)) {
+            $this->refuser('periode', "S{$semestre} n'est pas un semestre de {$classe->name} (" . implode(' ou ', array_map(fn ($s) => "S{$s}", $classe->getSemestresLMD())) . ').');
+        }
         $maquette = $this->ecuesDeLaMaquette($classe, $semestre);
 
         $lignes = collect($e['notes'])->map(function (array $l) use ($classe, $semestre, $maquette, $annee, $periode, $e): array {
@@ -93,9 +100,17 @@ final class RegularisationDeNotesLmd
                 ['titre' => $l['titre'], 'classe_id' => $classe->id, 'matiere_id' => $l['matiere']->id,
                     'annee_universitaire_id' => $annee->id, 'periode' => $periode],
                 ['description' => $e['motif'], 'type' => 'controle', 'date_evaluation' => $e['date_regularisation'].' 08:00:00',
-                    'duree_minutes' => 60, 'coefficient' => 1, 'bareme' => 20, 'status' => ESBTPEvaluation::STATUS_DRAFT,
+                    'duree_minutes' => 60, 'coefficient' => 1, 'bareme' => 20, 'status' => ESBTPEvaluation::STATUS_COMPLETED,
                     'is_published' => false, 'created_by' => $userId],
             );
+            // Une épreuve passée : terminée, donc comptée au bulletin LMD (qui ne lit
+            // que les évaluations terminées), mais non publiée aux étudiants. Une
+            // régularisation créée en brouillon par une version antérieure est remise
+            // au même statut, sinon ses notes n'y comptaient qu'au gré d'un passage
+            // sur la liste des évaluations.
+            if ($evaluation->status === ESBTPEvaluation::STATUS_DRAFT) {
+                ChangementDeStatut::poser($evaluation, ESBTPEvaluation::STATUS_COMPLETED, User::find($userId));
+            }
             $note = ESBTPNote::updateOrCreate(
                 ['evaluation_id' => $evaluation->id, 'etudiant_id' => (int) $e['etudiant_id']],
                 ['matiere_id' => $l['matiere']->id, 'classe_id' => $classe->id, 'note' => $l['apres'], 'is_absent' => false,
