@@ -1,4 +1,5 @@
-{{-- Gabarit « Reçu » des onze avis aux parents : page blanche, liseré de la
+{{-- Gabarit « Reçu » des onze avis aux parents, repris par l'alerte des
+     encaissements envoyée à la comptabilité (`equipe/alerte-encaissements`) : page blanche, liseré de la
      couleur de l'école, une étiquette de statut, une phrase-titre, un chiffre en
      vedette, des lignes libellé / valeur, une seule action, un pied utile.
 
