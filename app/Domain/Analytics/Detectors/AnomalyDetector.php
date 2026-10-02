@@ -22,7 +22,7 @@ class AnomalyDetector
     private const NAME = 'anomaly';
     private const MIN_HISTORY_MONTHS = 6;
     private const HISTORY_LOOKBACK = 24;
-    private const PAYMENT_OUTLIER_LOOKBACK_DAYS = 30;
+    public const PAYMENT_OUTLIER_LOOKBACK_DAYS = 30;
     private const PAYMENT_OUTLIER_MIN_SAMPLE = 20;
     private const RECOUVREMENT_GAP_LOOKBACK_MONTHS = 6;
     private const RECOUVREMENT_GAP_ALERT_RECENCY_MONTHS = 3;
@@ -103,6 +103,7 @@ class AnomalyDetector
                     'year' => $point['year'],
                     'month' => $point['month'],
                     'value' => $point['value'],
+                    'mean' => Statistics::mean($values),
                     'z_score' => $z,
                 ],
             );
@@ -166,6 +167,7 @@ class AnomalyDetector
                 ),
                 context: [
                     'paiement_id' => $payment->id,
+                    'numero_recu' => $payment->numero_recu,
                     'inscription_id' => $payment->inscription_id,
                     'montant' => (float) $payment->montant,
                     'date_paiement' => $payment->date_paiement?->toDateString(),
