@@ -58,7 +58,10 @@ class CLIStudentController extends BaseApiController
             })
             ->with(['inscriptions' => function ($q) use ($annee) {
                 $this->retenues($q, $annee);
-                $q->with('classe:id,name');
+                // Apres une specialisation, l'eleve a deux inscriptions la meme
+                // annee : la classe affichee est celle qui reste active.
+                $q->orderByRaw("status = 'active' desc")->orderByDesc('id')
+                  ->with('classe:id,name');
             }]);
 
         // Search filter — tokenized for multi-word queries (e.g. "KADJO ME ARIELLE DIVINE")
@@ -523,7 +526,7 @@ class CLIStudentController extends BaseApiController
 
     /**
      * L'annee lue par les listes d'eleves et d'inscriptions : `annee_id` si on
-     * la donne, l'annee en cours sinon. Sans ce parametre, la reprise d'une
+     * la donne (ecoulee ou en preparation), l'annee en cours sinon. Sans ce parametre, la reprise d'une
      * annee ecoulee etait aveugle : un eleve inscrit seulement l'an passe ne
      * sortait d'aucune recherche, et on concluait a tort qu'il n'existait pas.
      */
@@ -540,21 +543,25 @@ class CLIStudentController extends BaseApiController
 
 
     /**
-     * Les inscriptions qui comptent pour la liste des eleves. Pour l'annee en
-     * cours : celles validees jusqu'au bout. Pour une annee ecoulee, une
-     * inscription a pu etre close depuis : on garde tout sauf une inscription annulee.
+     * Les inscriptions qui comptent pour la liste des eleves : un dossier mene
+     * jusqu'a l'eleve (`etudiant_cree`), quelle que soit l'annee. Pour l'annee
+     * en cours, il doit etre actif. Pour une autre annee (ecoulee ou en
+     * preparation), il a pu etre clos depuis, par une specialisation de tronc
+     * commun par exemple : `terminee` compte aussi. Un prospect ou un candidat
+     * qui n'a pas abouti n'est jamais un eleve.
      */
     private function retenues($requete, ESBTPAnneeUniversitaire $annee): void
     {
-        $requete->where('annee_universitaire_id', $annee->id);
+        $requete->where('annee_universitaire_id', $annee->id)
+            ->where('workflow_step', 'etudiant_cree');
 
         if ($annee->is_current) {
-            $requete->where('status', 'active')->where('workflow_step', 'etudiant_cree');
+            $requete->where('status', 'active');
 
             return;
         }
 
-        $requete->whereNotIn('status', ESBTPInscription::STATUTS_ANNULES);
+        $requete->whereIn('status', ['active', 'terminée']);
     }
 
 }

@@ -68,6 +68,38 @@ class LectureAnneeEcouleeCliTest extends TestCase
     }
 
     /** @test */
+    public function un_dossier_qui_n_a_pas_abouti_n_est_pas_un_eleve_de_l_an_passe(): void
+    {
+        $this->inscrireLanPasse('PROSPECT', 'active', 'en_validation');
+
+        $donnees = $this->eleves(['search' => 'PROSPECT', 'annee_id' => $this->annee->id]);
+
+        $this->assertCount(0, $donnees['students']);
+    }
+
+    /** @test */
+    public function apres_une_specialisation_la_classe_affichee_est_celle_qui_reste_active(): void
+    {
+        $specialite = \App\Models\ESBTPClasse::factory()->create([
+            'niveau_etude_id' => $this->niveau->id,
+            'annee_universitaire_id' => $this->annee->id,
+        ]);
+        $eleve = $this->inscrireLanPasse('SPECIALISE', 'terminée');
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $eleve->id,
+            'classe_id' => $specialite->id,
+            'annee_universitaire_id' => $this->annee->id,
+            'status' => 'active',
+            'workflow_step' => 'etudiant_cree',
+        ]);
+
+        $donnees = $this->eleves(['search' => 'SPECIALISE', 'annee_id' => $this->annee->id]);
+
+        $this->assertCount(1, $donnees['students']);
+        $this->assertSame($specialite->id, $donnees['students'][0]['classe_id']);
+    }
+
+    /** @test */
     public function les_inscriptions_d_une_annee_ecoulee_se_lisent_par_classe(): void
     {
         $eleve = $this->inscrireLanPasse('ANCIEN', 'terminée');
@@ -89,7 +121,7 @@ class LectureAnneeEcouleeCliTest extends TestCase
         $this->assertSame(422, $reponse->getStatusCode());
     }
 
-    private function inscrireLanPasse(string $nom, string $statut): ESBTPEtudiant
+    private function inscrireLanPasse(string $nom, string $statut, string $etape = 'etudiant_cree'): ESBTPEtudiant
     {
         $eleve = ESBTPEtudiant::factory()->create(['nom' => $nom]);
         ESBTPInscription::factory()->create([
@@ -97,7 +129,7 @@ class LectureAnneeEcouleeCliTest extends TestCase
             'classe_id' => $this->classe->id,
             'annee_universitaire_id' => $this->annee->id,
             'status' => $statut,
-            'workflow_step' => 'etudiant_cree',
+            'workflow_step' => $etape,
         ]);
 
         return $eleve;
