@@ -159,9 +159,17 @@ class NananLotCTest extends TestCase
 
         // Une annonce juste ne bloque rien.
         $r = app(CorrigerNotes::class)->executeAuthorized($base + ['notes' => [[
-            'evaluation_id' => $evaluation->id, 'note' => 12, 'note_annoncee' => 15, 'periode_annoncee' => 'semestre2',
+            'evaluation_id' => $evaluation->id, 'note' => 12, 'note_annoncee' => 15, 'periode_annoncee' => 'S2',
         ]]], $this->admin);
         $this->assertArrayHasKey('widget', $r);
+        // La validation rejoue la préparation avec les annonces : elle passe.
+        $this->assertSame('executee', $this->valider($r)['statut']);
+        $this->assertSame(12.0, (float) ESBTPNote::where('etudiant_id', $eleve->id)->value('note'));
+
+        // Un semestre illisible n'est pas ignoré.
+        $this->assertStringContainsString('quel semestre', $this->manques(app(CorrigerNotes::class)->executeAuthorized($base + ['notes' => [[
+            'evaluation_id' => $evaluation->id, 'note' => 10, 'periode_annoncee' => 'le dernier',
+        ]]], $this->admin)));
     }
 
     public function test_une_note_modifiee_entre_temps_rend_la_proposition_perimee(): void

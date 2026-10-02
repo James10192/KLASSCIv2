@@ -59,7 +59,7 @@ class CorrigerNotes extends ActionAgent
                         'evaluation_id' => ['type' => 'integer'],
                         'note' => ['type' => 'number', 'description' => "Nouvelle note sur le barème de l'évaluation."],
                         'note_annoncee' => ['type' => 'number', 'description' => "Note actuelle telle que la personne l'a donnée (« 12,50 au lieu de… »). Omettre si elle n'en a pas donné, ou après qu'elle a confirmé l'écart."],
-                        'periode_annoncee' => ['type' => 'string', 'enum' => ['semestre1', 'semestre2'], 'description' => "Semestre nommé par la personne. Omettre s'il n'a pas été nommé, ou après confirmation de l'écart."],
+                        'periode_annoncee' => ['type' => 'string', 'description' => "Semestre nommé par la personne : semestre1 ou semestre2. Omettre s'il n'a pas été nommé, ou après confirmation de l'écart."],
                     ], 'required' => ['evaluation_id', 'note']],
                 ],
             ],
@@ -102,10 +102,26 @@ class CorrigerNotes extends ActionAgent
                     : "L'évaluation #{$evaluationId} porte {$notes->count()} notes pour {$this->nom($etudiant)} : à dédoublonner avant toute correction.";
                 continue;
             }
+            // « S1 », « 1 », « premier » : un semestre illisible n'est pas ignoré,
+            // la garde ne doit pas sauter en silence.
+            $periodeAnnoncee = null;
+            if (trim((string) ($l['periode_annoncee'] ?? '')) !== '') {
+                $brut = mb_strtolower(trim((string) $l['periode_annoncee']), 'UTF-8');
+                $periodeAnnoncee = match (true) {
+                    (bool) preg_match('/^(?:s|semestre\s*)?([12])$/u', $brut, $m) => 'semestre'.$m[1],
+                    (bool) preg_match('/^(?:le\s+)?premier(?:\s+semestre)?$/u', $brut) => 'semestre1',
+                    (bool) preg_match('/^(?:le\s+)?(?:second|deuxi[eè]me)(?:\s+semestre)?$/u', $brut) => 'semestre2',
+                    default => \App\Models\ESBTPEvaluation::periodeCanonique($brut),
+                };
+                if (! in_array($periodeAnnoncee, ['semestre1', 'semestre2'], true)) {
+                    $manques[] = "Évaluation #{$evaluationId} : quel semestre la personne a-t-elle nommé (semestre1 ou semestre2) ?";
+                    continue;
+                }
+            }
             $cibles[] = ['note_id' => (int) $notes->first()->id, 'note' => round((float) $l['note'], 2)];
             $annonces[(int) $notes->first()->id] = [
                 'note' => is_numeric($l['note_annoncee'] ?? null) ? round((float) $l['note_annoncee'], 2) : null,
-                'periode' => in_array($l['periode_annoncee'] ?? null, ['semestre1', 'semestre2'], true) ? $l['periode_annoncee'] : null,
+                'periode' => $periodeAnnoncee,
             ];
         }
         if ($manques !== []) {
@@ -206,7 +222,7 @@ class CorrigerNotes extends ActionAgent
             $quoi = "{$r['matiere']} ({$r['evaluation']})";
             $periode = \App\Models\ESBTPEvaluation::periodeCanonique((string) $r['periode']);
             if ($annonce['periode'] !== null && $annonce['periode'] !== $periode) {
-                $ecarts[] = "{$quoi} est au {$this->libelleSemestre($r['periode'])}, pas au {$this->libelleSemestre($annonce['periode'])} annoncé. Est-ce bien cette note-là ?";
+                $ecarts[] = "{$quoi} est au {$this->libelleSemestre($periode)}, pas au {$this->libelleSemestre($annonce['periode'])} annoncé. Est-ce bien cette note-là ?";
             }
             $actuelle = $r['avant'] === 'absent' ? null : round((float) $r['avant'], 2);
             if ($annonce['note'] !== null && $actuelle !== $annonce['note']) {
