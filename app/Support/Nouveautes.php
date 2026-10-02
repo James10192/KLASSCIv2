@@ -20,6 +20,10 @@ class Nouveautes
         $entrees = array_values(array_filter(
             $contenu['entrees'] ?? [],
             function (array $entree) use ($utilisateur): bool {
+                if (! self::disponible($entree['si'] ?? null)) {
+                    return false;
+                }
+
                 $permissions = (array) ($entree['permissions'] ?? []);
                 if ($permissions === []) {
                     return true;
@@ -30,5 +34,20 @@ class Nouveautes
         ));
 
         return ['titre' => (string) ($contenu['titre'] ?? ''), 'entrees' => $entrees];
+    }
+
+    /**
+     * Une nouveaute qui annonce un ecran desactive dans cette ecole n'est pas
+     * montree : on n'annonce pas un bouton absent. La cle `si` nomme la
+     * condition ; une condition inconnue masque l'entree plutot que de l'ouvrir.
+     */
+    private static function disponible(?string $condition): bool
+    {
+        return match ($condition) {
+            null => true,
+            'aide' => app(\App\Domain\Support\Services\DisponibiliteSupport::class)->signalement(),
+            'reclamations' => app(\App\Domain\Notes\Reclamations\ReglagesReclamations::class)->actives(),
+            default => false,
+        };
     }
 }

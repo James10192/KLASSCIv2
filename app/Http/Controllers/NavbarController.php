@@ -36,7 +36,7 @@ class NavbarController extends Controller
                 ->map(function ($notification) {
                     return [
                         'id' => $notification->id,
-                        'title' => $notification->title,
+                        'title' => \App\Services\Notifications\NotificationPresenter::titreLisible($notification->title),
                         'message' => strip_tags($notification->message ?? ''),
                         'type' => $notification->type,
                         'icon' => $this->getNotificationIcon($notification->type),
@@ -56,7 +56,7 @@ class NavbarController extends Controller
                 ->map(function ($notification) {
                     return [
                         'id' => $notification->id,
-                        'title' => $notification->title,
+                        'title' => \App\Services\Notifications\NotificationPresenter::titreLisible($notification->title),
                         'message' => strip_tags($notification->message ?? ''),
                         'type' => $notification->type,
                         'icon' => $this->getNotificationIcon($notification->type),
@@ -76,7 +76,7 @@ class NavbarController extends Controller
                 ->map(function ($notification) {
                     return [
                         'id' => $notification->id,
-                        'title' => $notification->title,
+                        'title' => \App\Services\Notifications\NotificationPresenter::titreLisible($notification->title),
                         'message' => strip_tags($notification->message ?? ''),
                         'type' => $notification->type,
                         'icon' => $this->getNotificationIcon($notification->type),

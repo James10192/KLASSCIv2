@@ -2089,7 +2089,7 @@ class NotificationService
                 }
             }
 
-            $title = "<i class='fas fa-clock'></i> Rappel #{$reminderCount}: Inscription en attente depuis {$daysPending} jours";
+            $title = "Rappel #{$reminderCount}: Inscription en attente depuis {$daysPending} jours";
             $message = "L'inscription de {$etudiant->nom} {$etudiant->prenoms} ({$filiere->name} - {$classe->name}) est en attente depuis {$daysPending} jours.\n";
             $message .= "<i class='fas fa-tasks'></i> Étape actuelle: {$workflowLabel}\n";
             $message .= "<i class='fas fa-wallet'></i> {$paiementInfo}\n";
@@ -2123,7 +2123,7 @@ class NotificationService
             $etudiant = $paiement->etudiant;
             $montant = number_format($paiement->montant, 0, ',', ' ') . ' FCFA';
 
-            $title = "<i class='fas fa-clock'></i> Rappel #{$reminderCount}: Paiement en attente depuis {$daysPending} jours";
+            $title = "Rappel #{$reminderCount}: Paiement en attente depuis {$daysPending} jours";
             $message = "Le paiement de {$montant} de {$etudiant->nom} {$etudiant->prenoms} attend validation depuis {$daysPending} jours.\n";
             $message .= "<i class='fas fa-credit-card'></i> Type: {$paiement->type_paiement}\n";
             $message .= "<i class='fas fa-calendar'></i> Date soumission: " . $paiement->created_at->format('d/m/Y') . "\n";

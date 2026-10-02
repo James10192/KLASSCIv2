@@ -77,6 +77,18 @@ class NotificationsPageTest extends TestCase
             ->assertDontSee('exemple.invalid', false);
     }
 
+    public function test_un_ancien_titre_porteur_d_icone_html_s_affiche_lisible(): void
+    {
+        $this->notif(['title' => "<i class='fas fa-clock'></i> Rappel #1: Inscription en attente depuis 17 jours"]);
+
+        $this->actingAs($this->user)
+            ->get(route('notifications.index'))
+            ->assertOk()
+            ->assertSee('Rappel #1: Inscription en attente depuis 17 jours')
+            ->assertDontSee('fa-clock&#039;', false)
+            ->assertDontSee('&lt;i class', false);
+    }
+
     public function test_l_etat_vide_dit_que_tout_est_a_jour(): void
     {
         $this->actingAs($this->user)
