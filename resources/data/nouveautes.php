@@ -47,6 +47,41 @@ return [
             ],
         ],
         [
+            'titre' => '« Redoublant ? » à chaque inscription',
+            'icone' => 'fa-user-check',
+            'texte' => 'La question se pose aussi au formulaire « Nouvelle inscription », dans « Accepter et inscrire » d’une candidature et dans « Réinscrire » d’une demande en ligne. Pour un nouvel élève, KLASSCI propose « Non » : répondez « Oui » s’il redouble en venant d’un autre établissement, en disant pourquoi.',
+            'permissions' => ['inscriptions.redoublant.confirm'],
+            'captures' => [
+                'avant' => 'images/nouveautes/2026-10/redoublant-creation-avant.webp',
+                'apres' => 'images/nouveautes/2026-10/redoublant-creation-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'La nouvelle inscription demande si l’élève redouble, et le motif seulement quand vous changez la réponse proposée.',
+            ],
+        ],
+        [
+            'titre' => 'Modifier les classes à la chaîne, sans attendre',
+            'icone' => 'fa-chalkboard',
+            'texte' => 'La fenêtre de modification d’une classe s’ouvre aussitôt et se présente plus clairement. « Enregistrer et modifier la suivante » passe directement à la classe d’après, et Ctrl+Entrée enregistre.',
+            'permissions' => ['classes.edit'],
+            'captures' => [
+                'avant' => 'images/nouveautes/2026-10/classes-fenetre-avant.webp',
+                'apres' => 'images/nouveautes/2026-10/classes-fenetre-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Une fenêtre plus lisible, et un bouton pour enchaîner sur la classe suivante.',
+            ],
+        ],
+        [
+            'titre' => 'L’étape suivante ne se confond plus avec une confirmation',
+            'icone' => 'fa-route',
+            'texte' => 'Après une action, KLASSCI vous indique l’étape suivante sans vous laisser croire qu’elle est faite. Si elle se fait sur la page où vous êtes, un bandeau discret vous le dit. Sinon, une fenêtre « Et maintenant ? » propose d’ouvrir la page. Les messages ne gardent plus les étapes déjà faites par un collègue.',
+            'permissions' => ['paiements.create', 'paiements.validate', 'inscriptions.validate'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-10/etape-suivante-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Après la validation du paiement : l’étape suivante attend sur sa page, rien n’est fait à votre place.',
+            ],
+        ],
+        [
             'titre' => 'Aide : Nanan vous guide',
             'icone' => 'fa-life-ring',
             'si' => 'aide',

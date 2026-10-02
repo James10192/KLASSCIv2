@@ -68,6 +68,11 @@ return [
 
     'tenant_code' => env('TENANT_CODE', 'default'),
 
+    // Traces des actions lentes (table traces_lentes). Coupe-circuit d'exploitation :
+    // TRACES_LENTES=false les arrete sans redeploiement. Les seuils, eux, se
+    // reglent par ecole dans /esbtp/settings.
+    'traces_lentes' => env('TRACES_LENTES', true),
+
     /*
     |--------------------------------------------------------------------------
     | Support Contact Email
@@ -221,6 +226,7 @@ return [
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
         App\Providers\QueryDebugServiceProvider::class,
+        App\Providers\TracesLentesServiceProvider::class,
 
     ],
 

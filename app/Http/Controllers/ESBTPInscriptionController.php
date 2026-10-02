@@ -583,10 +583,11 @@ class ESBTPInscriptionController extends Controller
                     );
 
                     // La réponse à « Redoublant ? », motif déjà vérifié par la requête.
+                    $redoublant = QuestionRedoublant::reponse($request);
                     app(StatutRedoublant::class)->etablirALaCreation(
                         $inscription,
-                        QuestionRedoublant::reponse($request),
-                        $request->input('redoublant_motif'),
+                        $redoublant,
+                        QuestionRedoublant::motifRetenu($redoublant, QuestionRedoublant::propositionDeLaRequete($request), $request->input('redoublant_motif')),
                     );
 
                     DB::commit();

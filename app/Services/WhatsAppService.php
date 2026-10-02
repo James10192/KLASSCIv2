@@ -216,6 +216,16 @@ class WhatsAppService
      */
     private function sendTemplateMessage($phoneNumber, $templateName, $parameters)
     {
+        return app(\App\Domain\Exploitation\TracesLentes\EnregistreurDeTraces::class)->mesurer(
+            \App\Domain\Exploitation\TracesLentes\EnregistreurDeTraces::TRAVAIL,
+            'whatsapp:' . $templateName,
+            fn () => $this->envoyerLeModele($phoneNumber, $templateName, $parameters),
+            echoue: fn ($r) => $r === false && ! empty($this->phoneNumberId) && ! empty($this->accessToken),
+        );
+    }
+
+    private function envoyerLeModele($phoneNumber, $templateName, $parameters)
+    {
         try {
             // Vérifier que l'API est configurée
             if (empty($this->phoneNumberId) || empty($this->accessToken)) {
