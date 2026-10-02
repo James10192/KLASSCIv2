@@ -1202,6 +1202,34 @@ class ESBTPResultatController extends Controller
     }
 
     /**
+     * La reponse JSON d'une page de la liste : `html` pour l'ecran (tableau
+     * complet en page 1, lignes seules ensuite) et le contrat du defilement
+     * infini (App\Support\ListeInfinie), lu par public/js/liste-infinie.js,
+     * qui ne demande que les pages suivantes.
+     */
+    private function reponseDeLaListe(Request $request, $etudiants, array $viewData, int $total, int $page, int $perPage, ?array $kpis): \Illuminate\Http\JsonResponse
+    {
+        $paginateurListe = new \Illuminate\Pagination\LengthAwarePaginator(
+            $etudiants, $total, max(1, $perPage), max(1, $page), ['path' => $request->url()]
+        );
+        $viewData['paginateurListe'] = $paginateurListe;
+
+        $html = view($page === 1 ? 'esbtp.resultats.partials.liste-etudiants' : 'esbtp.resultats.partials.lignes-etudiants', $viewData)->render();
+
+        return response()->json([
+            'html' => $html,
+            'total' => $total,
+            'current_page' => $page,
+            'has_more' => ($page * $perPage) < $total,
+            'loaded_count' => $etudiants->count(),
+            'kpis' => $kpis,
+            'success' => true,
+            'rows_html' => $page === 1 ? null : $html,
+            'pagination' => \App\Support\ListeInfinie::pagination($paginateurListe),
+        ]);
+    }
+
+    /**
      * Load students with lazy loading pagination for AJAX requests
      */
     public function loadEtudiants(Request $request)
@@ -1245,12 +1273,7 @@ class ESBTPResultatController extends Controller
 
             // Determine which template to use
             $classe = $classe_id ? ESBTPClasse::find($classe_id) : null;
-            // Contrat du defilement infini (App\Support\ListeInfinie) : le bas de
-            // liste x-liste-infinie de la premiere page et la reponse des suivantes.
-            $paginateurListe = new \Illuminate\Pagination\LengthAwarePaginator(
-                $etudiants, $total, max(1, (int) $perPage), max(1, (int) $page), ['path' => $request->url()]
-            );
-            $viewData = compact('etudiants', 'moyennes', 'rangs', 'bulletins', 'classe', 'annualValueStatuses', 'paginateurListe') + [
+            $viewData = compact('etudiants', 'moyennes', 'rangs', 'bulletins', 'classe', 'annualValueStatuses') + [
                 'annee_id' => $annee_universitaire_id,
                 'detail_periode' => $detail_periode,
                 'include_all_statuses' => (bool) $include_all_statuses,
@@ -1259,27 +1282,7 @@ class ESBTPResultatController extends Controller
                 'coefficientsMissingMap' => $coefficientsMissingMap,
             ];
 
-            if ((int) $page === 1) {
-                $html = view('esbtp.resultats.partials.liste-etudiants', $viewData)->render();
-            } else {
-                $html = view('esbtp.resultats.partials.lignes-etudiants', $viewData)->render();
-            }
-
-            $hasMore = ($page * $perPage) < $total;
-
-            return response()->json([
-                'html' => $html,
-                'total' => $total,
-                'current_page' => (int) $page,
-                'has_more' => $hasMore,
-                'loaded_count' => $etudiants->count(),
-                'kpis' => $kpis,
-                // Lu par public/js/liste-infinie.js, qui ne demande que les pages
-                // suivantes : la page 1 arrive en `html`, tableau compris.
-                'success' => true,
-                'rows_html' => (int) $page === 1 ? null : $html,
-                'pagination' => \App\Support\ListeInfinie::pagination($paginateurListe),
-            ]);
+            return $this->reponseDeLaListe($request, $etudiants, $viewData, (int) $total, (int) $page, (int) $perPage, $kpis);
 
         } catch (\Exception $e) {
             \Log::error('Erreur lors du chargement lazy des étudiants', [
