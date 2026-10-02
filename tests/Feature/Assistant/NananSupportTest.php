@@ -4,6 +4,7 @@ namespace Tests\Feature\Assistant;
 
 use App\Domain\Assistant\Consommation\LigneDeConsommation;
 use App\Domain\Assistant\Fournisseurs\OpenAiCompatible;
+use App\Domain\Assistant\Support\FilDeSupport;
 use App\Domain\Assistant\Support\GuideDeSupport;
 use App\Http\Middleware\CheckInstalled;
 use App\Http\Middleware\EnsureInstalled;
@@ -256,5 +257,48 @@ class NananSupportTest extends TestCase
         $this->assertStringNotContainsString('Koné Awa', (string) $r->json('transcription'));
         $this->assertSame('BLOQUE', $r->json('recap.categorie'), 'Bloquée à la question d\'urgence : catégorie BLOQUE, quoi qu\'ait dit le modèle.');
         $this->assertStringContainsString('empêche de travailler', $this->faux->recues[0]['requete']->systeme);
+    }
+
+    /** @test */
+    public function un_recapitulatif_du_modele_qui_recopie_sa_reponse_est_reecrit_avec_les_mots_de_la_personne(): void
+    {
+        $etapes = "1. Ouvrez le menu Bulletins.\n2. Choisissez la classe et la période voulues.\n3. Cliquez sur Imprimer en bas de la liste.";
+        $this->modele(FauxFournisseur::texte(json_encode([
+            'action' => 'recapitulatif',
+            'texte' => 'Relisez puis envoyez.',
+            'recap' => ['titre' => 'Imprimer les bulletins', 'description' => "Ouvrez le menu Bulletins. Choisissez la classe et la période voulues. Cliquez sur Imprimer en bas de la liste.", 'categorie' => 'QUESTION'],
+        ])));
+
+        $reponse = $this->tour([
+            'intention' => 'comment',
+            'recapitulatif' => true,
+            'fil' => [
+                ['role' => 'personne', 'texte' => 'Je ne sais pas comment imprimer les bulletins de la 2A.'],
+                ['role' => 'nanan', 'texte' => $etapes, 'type' => 'reponse'],
+                ['role' => 'personne', 'texte' => FilDeSupport::PAS_RESOLU],
+            ],
+        ])->assertOk()->assertJsonPath('action', 'recapitulatif')->assertJsonPath('recap.categorie', 'QUESTION');
+
+        $description = $reponse->json('recap.description');
+        $this->assertStringStartsWith('Je ne sais pas comment imprimer les bulletins de la 2A.', $description);
+        $this->assertStringNotContainsString('Ouvrez le menu Bulletins', $description);
+        // L'échange reste joint à part : le support y lit ce que Nanan a proposé.
+        $this->assertStringContainsString('Ouvrez le menu Bulletins', $reponse->json('transcription'));
+    }
+
+    /** @test */
+    public function un_recapitulatif_du_modele_fidele_est_garde(): void
+    {
+        $this->modele(FauxFournisseur::texte('{"action":"recapitulatif","texte":"Relisez puis envoyez.","recap":{"titre":"Comment imprimer les bulletins de la 2A ?","description":"Je veux imprimer les bulletins de la 2A. La marche proposée par Nanan ne m\'a pas suffi.","categorie":"QUESTION"}}'));
+
+        $this->tour([
+            'intention' => 'comment',
+            'recapitulatif' => true,
+            'fil' => [
+                ['role' => 'personne', 'texte' => 'Je ne sais pas comment imprimer les bulletins de la 2A.'],
+                ['role' => 'nanan', 'texte' => "1. Ouvrez le menu Bulletins.\n2. Choisissez la classe et la période voulues.", 'type' => 'reponse'],
+                ['role' => 'personne', 'texte' => FilDeSupport::PAS_RESOLU],
+            ],
+        ])->assertOk()->assertJsonPath('recap.titre', 'Comment imprimer les bulletins de la 2A ?');
     }
 }
