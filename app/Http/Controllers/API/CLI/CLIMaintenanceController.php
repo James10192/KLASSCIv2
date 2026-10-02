@@ -796,7 +796,9 @@ class CLIMaintenanceController extends BaseApiController
             $out = mb_substr(trim($proc->getOutput() . "\n" . $proc->getErrorOutput()), -6000);
 
             if ($proc->isSuccessful()) {
-                $reconstruction = app(ReconstructionDesCaches::class)->apresDeploiement()['reconstruction']['caches'];
+                $etapes = app(ReconstructionDesCaches::class)->apresDeploiement();
+                $reconstruction = $etapes['reconstruction']['caches'];
+                $purgeEchouee = $etapes['purge']['status'] !== 'done';
             }
 
             return $this->successResponse([
@@ -806,7 +808,11 @@ class CLIMaintenanceController extends BaseApiController
                 'reconstruction' => $reconstruction ?? null,
                 'exit_code' => $proc->getExitCode(),
                 'output' => $out,
-            ], $proc->isSuccessful() ? "composer {$action} OK" : "composer {$action} FAILED (exit {$proc->getExitCode()})");
+            ], match (true) {
+                ! $proc->isSuccessful() => "composer {$action} FAILED (exit {$proc->getExitCode()})",
+                $purgeEchouee ?? false => "composer {$action} OK, but cache purge failed (see server logs)",
+                default => "composer {$action} OK",
+            });
         } catch (\Throwable $e) {
             Log::error('CLI: composer install failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Composer process error: ' . $e->getMessage(), [], 500);
@@ -1044,11 +1050,12 @@ class CLIMaintenanceController extends BaseApiController
 
             // Purge et reconstruction des caches, pour que le nouveau code soit lu
             array_push($steps, ...array_values(app(ReconstructionDesCaches::class)->apresDeploiement()));
+            $failed = collect($steps)->contains(fn ($s) => ($s['status'] ?? '') === 'failed');
 
             return $this->successResponse([
                 'branch' => $branch,
                 'steps' => $steps,
-            ], 'Pull + cache:clear OK');
+            ], $failed ? 'Pull OK, cache purge or rebuild failed (see steps)' : 'Pull + cache:clear OK');
         } catch (\Throwable $e) {
             Log::error('CLI: pull failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Pull failed: ' . $e->getMessage(), ['steps' => $steps], 500);
