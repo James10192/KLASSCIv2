@@ -80,7 +80,7 @@ class InstallerHierarchieLmd extends ActionAgent
         $parcours = ESBTPLMDParcours::with('filiere')->where('code', $codes['parcours'])->first();
         $filiereInchangee = $codes['filiere'] === null || ($parcours && $parcours->filiere?->code === $codes['filiere']);
         if ($filiereInchangee && collect($apercu['lignes'])->every(fn ($l) => $l['avant'] === $l['apres'])) {
-            return new Proposition(titre: $titre, resume: '', manques: ['Rien à changer : cette structure existe déjà telle quelle.']);
+            return Proposition::sansObjet($titre, 'Cette structure existe déjà telle quelle.');
         }
 
         $effet = fn ($l) => $l['avant'] === null ? 'Créé' : ($l['avant'] === $l['apres'] ? 'Réutilisé' : 'Renommé');

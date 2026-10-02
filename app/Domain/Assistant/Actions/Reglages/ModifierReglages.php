@@ -77,6 +77,9 @@ class ModifierReglages extends ActionAgent
         }
 
         $examen = $this->reglages->examiner($changements);
+        if (! empty($examen['sans_objet'])) {
+            return Proposition::sansObjet($titre, 'Ces réglages ont déjà ces valeurs.');
+        }
         if ($examen['refus'] !== []) {
             return new Proposition(titre: $titre, resume: '', manques: array_values(array_unique($examen['refus'])));
         }
