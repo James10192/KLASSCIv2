@@ -90,6 +90,18 @@ class ESBTPInscription extends Model implements Auditable
         static::saving(fn (self $inscription) => app(\App\Domain\Inscriptions\StatutRedoublant::class)
             ->rouvrirSiLeNiveauChange($inscription));
 
+        // Une inscription qui naît, disparaît, revient ou change de niveau change
+        // la déduction des autres inscriptions du même étudiant.
+        $rafraichir = fn (self $inscription) => $inscription->etudiant_id
+            ? app(\App\Domain\Inscriptions\StatutRedoublant::class)->rafraichirLEtudiant((int) $inscription->etudiant_id)
+            : null;
+        static::created($rafraichir);
+        static::deleted($rafraichir);
+        static::restored($rafraichir);
+        static::updated(fn (self $inscription) => $inscription->wasChanged(['niveau_id', 'annee_universitaire_id', 'etudiant_id'])
+            ? $rafraichir($inscription)
+            : null);
+
         static::deleting(function (self $inscription) {
             if ($inscription->isForceDeleting()) {
                 return;

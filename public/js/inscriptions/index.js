@@ -254,7 +254,7 @@
         const resetBtn = document.getElementById('reset-filters-btn');
         if (resetBtn) {
             resetBtn.addEventListener('click', () => {
-                form.querySelectorAll('input[type="text"], input[type="search"], input[type="date"]').forEach((i) => (i.value = ''));
+                form.querySelectorAll('input[type="text"], input[type="search"], input[type="date"], input[name="classe"]').forEach((i) => (i.value = ''));
                 form.querySelectorAll('select').forEach((s) => (s.value = s.querySelector('option').value));
 
                 // Le statut est le seul filtre dont le defaut N'EST PAS la
@@ -322,12 +322,13 @@
             annee: 'Année',
             status: 'Statut',
             redoublant: 'Redoublant',
+            classe: 'Classe',
         };
         Object.keys(filterLabels).forEach((key) => {
             const sel = form.querySelector(`#${key}`);
             if (!sel || !sel.value || (key === 'status' && sel.value === 'active')) return;
             if (key === 'annee' && !sel.value) return;
-            const label = sel.options[sel.selectedIndex]?.text || sel.value;
+            const label = sel.options ? (sel.options[sel.selectedIndex]?.text || sel.value) : (sel.dataset.label || sel.value);
             chips.push({ key, label: `${filterLabels[key]} : ${label}`, input: sel });
         });
 

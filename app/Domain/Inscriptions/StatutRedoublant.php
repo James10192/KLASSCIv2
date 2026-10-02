@@ -8,6 +8,7 @@ use App\Models\ESBTPInscription;
 use App\Models\User;
 use App\Services\Inscriptions\NormalisationTypeInscription;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -16,12 +17,17 @@ use Illuminate\Validation\ValidationException;
  *
  * Le logiciel déduit (même niveau d'étude que l'année d'avant, règle unique de
  * {@see ESBTPInscription::estUnRedoublement()}). Une personne habilitée confirme
- * la valeur, ou la corrige en disant pourquoi. Tant que personne n'a tranché,
- * la valeur qui fait foi est la déduction calculée À L'INSTANT, jamais la
- * colonne : elle a pu vieillir (inscription antérieure ajoutée après coup,
- * recensement pas encore passé). Une valeur établie par une personne n'est
- * plus réécrite par une déduction, sauf si l'inscription change de niveau ou
- * d'année : la confirmation portait sur l'ancien (voir le crochet du modèle).
+ * la valeur, ou la corrige en disant pourquoi.
+ *
+ * La colonne `is_redoublant` est la SEULE valeur lue partout (écrans, listes,
+ * bulletins, exports) : deux lectures différentes finiraient par se contredire
+ * sur un même élève. Elle est donc tenue à jour : le modèle recalcule les
+ * inscriptions non confirmées d'un étudiant dès qu'une de ses inscriptions
+ * naît, disparaît, revient ou change de niveau ou d'année
+ * ({@see rafraichirLEtudiant()}), et une inscription jamais recensée l'est à la
+ * première lecture ({@see valeurEtablie()}). Une valeur établie par une
+ * personne n'est plus réécrite, sauf si son inscription change de niveau ou
+ * d'année : la confirmation portait sur l'ancien.
  *
  * Tant que personne n'a confirmé, le bulletin imprime la valeur déduite et la
  * génération des bulletins prévient (décision de l'établissement, octobre 2026).
@@ -64,12 +70,53 @@ class StatutRedoublant
         return in_array($inscription->redoublant_source, [self::SOURCE_CONFIRME, self::SOURCE_CORRIGE], true);
     }
 
-    /** La valeur qui fait foi : celle d'une personne, sinon la déduction du moment. */
+    /**
+     * La valeur qui fait foi : la colonne. Une inscription jamais recensée
+     * (créée avant ce statut, recensement du déploiement manqué) reçoit sa
+     * déduction à cette lecture, pour que l'écran et le bulletin disent la même
+     * chose.
+     */
     public function valeurEtablie(ESBTPInscription $inscription): bool
     {
-        return $this->estEtabliParUnePersonne($inscription)
-            ? (bool) $inscription->is_redoublant
-            : $this->deduire($inscription);
+        if ($inscription->redoublant_source === null && $inscription->exists) {
+            $this->ecrireLaDeduction($inscription, $this->deduire($inscription));
+        }
+
+        return (bool) $inscription->is_redoublant;
+    }
+
+    /**
+     * Recalcule les inscriptions non confirmées d'un étudiant : une inscription
+     * qui naît, disparaît ou change de niveau change la déduction des autres
+     * (une année passée importée après coup, par exemple).
+     */
+    public function rafraichirLEtudiant(int $etudiantId): void
+    {
+        ESBTPInscription::query()->with('anneeUniversitaire')
+            ->where('etudiant_id', $etudiantId)
+            ->where(fn ($q) => $q->whereNull('redoublant_source')
+                ->orWhereNotIn('redoublant_source', [self::SOURCE_CONFIRME, self::SOURCE_CORRIGE]))
+            ->get()
+            ->each(function (ESBTPInscription $inscription) {
+                if ($inscription->anneeUniversitaire?->start_date === null) {
+                    return;
+                }
+                $valeur = $this->deduire($inscription);
+                if ($inscription->redoublant_source === null || (bool) $inscription->is_redoublant !== $valeur) {
+                    $this->ecrireLaDeduction($inscription, $valeur);
+                }
+            });
+    }
+
+    /** Écrit la déduction sans réveiller les événements du modèle ni l'audit. */
+    private function ecrireLaDeduction(ESBTPInscription $inscription, bool $valeur): void
+    {
+        DB::table('esbtp_inscriptions')->where('id', $inscription->id)
+            ->where(fn ($q) => $q->whereNull('redoublant_source')
+                ->orWhereNotIn('redoublant_source', [self::SOURCE_CONFIRME, self::SOURCE_CORRIGE]))
+            ->update(['is_redoublant' => $valeur, 'redoublant_source' => self::SOURCE_DEDUIT]);
+
+        $inscription->forceFill(['is_redoublant' => $valeur, 'redoublant_source' => self::SOURCE_DEDUIT])->syncOriginalAttributes(['is_redoublant', 'redoublant_source']);
     }
 
     /**
@@ -168,10 +215,18 @@ class StatutRedoublant
         ])->save();
     }
 
-    /** Confirme la valeur qui fait foi, sans rien changer. */
+    /**
+     * Confirme la valeur qui fait foi, sans rien changer. Tant que personne n'a
+     * tranché, elle est d'abord remise à jour : on confirme la déduction du
+     * moment, pas une colonne qui aurait vieilli.
+     */
     public function confirmer(ESBTPInscription $inscription, User $personne): void
     {
-        $this->etablir($inscription, $personne, $this->valeurEtablie($inscription));
+        if (! $this->estEtabliParUnePersonne($inscription)) {
+            $this->ecrireLaDeduction($inscription, $this->deduire($inscription));
+        }
+
+        $this->etablir($inscription, $personne, (bool) $inscription->is_redoublant);
     }
 
     /** Ce qu'une réinscription écrit à la création de l'inscription. */
@@ -239,6 +294,35 @@ class StatutRedoublant
                 ? route('esbtp.inscriptions.index', ['annee' => $anneeId, 'classe' => $classe->id, 'status' => 'all', 'redoublant' => 'a_confirmer'])
                 : null,
         ];
+    }
+
+    /** « dont N redoublants » sur la page d'une classe (inscriptions actives de l'année). */
+    public static function nombreDansLaClasse(ESBTPClasse $classe, ?int $anneeId): int
+    {
+        return $anneeId === null ? 0 : ESBTPInscription::where('classe_id', $classe->id)
+            ->where('annee_universitaire_id', $anneeId)
+            ->where('status', 'active')
+            ->where('is_redoublant', true)
+            ->count();
+    }
+
+    /**
+     * Le niveau occupé l'année d'avant, pour chaque année où l'on peut
+     * réinscrire : l'écran de réinscription en tire sa proposition, avec la
+     * même règle que le serveur.
+     *
+     * @param  iterable<ESBTPAnneeUniversitaire>  $annees
+     * @return array<string, ?int>
+     */
+    public static function niveauxDeLAnneePrecedente(int $etudiantId, iterable $annees): array
+    {
+        $niveaux = [];
+        foreach ($annees as $annee) {
+            $precedente = ESBTPInscription::precedantAnnee($etudiantId, $annee);
+            $niveaux[(string) $annee->id] = $precedente?->niveau_id !== null ? (int) $precedente->niveau_id : null;
+        }
+
+        return $niveaux;
     }
 
     /**

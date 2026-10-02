@@ -6,12 +6,18 @@
     $_niveauParClasse = collect($classesParDecision ?? [])->flatten(1)
         ->mapWithKeys(fn ($c) => [(string) data_get($c, 'id') => data_get($c, 'niveau_etude_id')])
         ->all();
-    $_niveauQuitte = $analyse['inscription']->niveau_id ?? null;
+    // Le niveau de l'année d'avant, pour chaque année de destination : la même
+    // règle que le serveur (une correction dans l'année en cours compte aussi).
+    $_niveauAvant = \App\Domain\Inscriptions\StatutRedoublant::niveauxDeLAnneePrecedente(
+        (int) $analyse['etudiant']->id, $anneeUniversitairesFutures ?? []
+    );
+    $_ancien = ['valeur' => old('redoublant'), 'motif' => old('redoublant_motif')];
 @endphp
 <div class="rsr-carte mb-lg"
      x-data="statutRedoublantReinscription()"
      data-niveaux='@json($_niveauParClasse)'
-     data-niveau-quitte="{{ $_niveauQuitte }}"
+     data-niveau-avant='@json($_niveauAvant)'
+     data-ancien='@json($_ancien)'
      data-motif-minimum="{{ \App\Domain\Inscriptions\StatutRedoublant::MOTIF_MINIMUM }}"
      x-effect="suivreLaClasse()">
     <div class="rsr-tete">
@@ -36,7 +42,7 @@
     </div>
     <div x-show="classeChoisie && valeur !== propose" x-cloak>
         <label class="rsr-note" for="redoublant_motif"><i class="fas fa-pen"></i> Vous changez la valeur proposée : dites pourquoi (obligatoire).</label>
-        <textarea id="redoublant_motif" name="redoublant_motif" class="rsr-motif" rows="2" maxlength="500"
+        <textarea id="redoublant_motif" name="redoublant_motif" class="rsr-motif" rows="2" maxlength="500" x-model="motif"
                   :required="classeChoisie && valeur !== propose" :minlength="motifMinimum"
                   :disabled="!(classeChoisie && valeur !== propose)"
                   placeholder="Exemple : redouble sur décision du conseil de classe de juin"></textarea>
@@ -68,7 +74,8 @@
             const AIDE_SANS_CLASSE = 'Choisissez d\'abord la classe : la réponse sera proposée d\'après son niveau.';
             return {
                 niveaux: {},
-                niveauQuitte: null,
+                niveauAvant: {},
+                motif: '',
                 motifMinimum: 10,
                 valeur: '',
                 propose: '',
@@ -78,12 +85,21 @@
                 aide: AIDE_SANS_CLASSE,
                 init() {
                     try { this.niveaux = JSON.parse(this.$root.dataset.niveaux || '{}'); } catch (e) { this.niveaux = {}; }
-                    this.niveauQuitte = this.$root.dataset.niveauQuitte || null;
+                    try { this.niveauAvant = JSON.parse(this.$root.dataset.niveauAvant || '{}'); } catch (e) { this.niveauAvant = {}; }
+                    // Retour d'erreur du serveur : on rend le choix et le motif saisis.
+                    try {
+                        const ancien = JSON.parse(this.$root.dataset.ancien || '{}');
+                        if (ancien.valeur === '0' || ancien.valeur === '1') {
+                            this.valeur = ancien.valeur;
+                            this.touche = true;
+                        }
+                        this.motif = ancien.motif || '';
+                    } catch (e) { /* rien à rendre */ }
                     this.motifMinimum = parseInt(this.$root.dataset.motifMinimum || '10', 10);
-                    const decision = document.getElementById('decision');
-                    if (decision) {
-                        decision.addEventListener('change', () => this.suivreLaClasse());
-                    }
+                    ['decision', 'annee_universitaire_id'].forEach((id) => {
+                        const champ = document.getElementById(id);
+                        if (champ) champ.addEventListener('change', () => this.suivreLaClasse());
+                    });
                 },
                 suivreLaClasse() {
                     const autre = window.autreClasseSelector ? String(window.autreClasseSelector.selectedValue || '') : '';
@@ -101,11 +117,13 @@
                         this.contradiction = '';
                         return;
                     }
-                    const redouble = niveau !== null && this.niveauQuitte !== null && String(niveau) === String(this.niveauQuitte);
+                    const annee = (document.getElementById('annee_universitaire_id') || {}).value || '';
+                    const niveauAvant = this.niveauAvant[annee] ?? null;
+                    const redouble = niveau !== null && niveauAvant !== null && String(niveau) === String(niveauAvant);
                     this.propose = redouble ? '1' : '0';
                     this.aide = redouble
-                        ? 'Proposé : oui. La classe choisie est du même niveau que cette année.'
-                        : 'Proposé : non. La classe choisie n\'est pas du même niveau que cette année.';
+                        ? 'Proposé : oui. La classe choisie est du même niveau que l\'année d\'avant.'
+                        : 'Proposé : non. La classe choisie n\'est pas du même niveau que l\'année d\'avant.';
                     if (!this.touche) {
                         this.valeur = this.propose;
                     }
@@ -113,7 +131,7 @@
                     const decision = (document.getElementById('decision') || {}).value || '';
                     this.contradiction = (decision === 'redoublement') !== redouble
                         ? (redouble
-                            ? 'La classe choisie est du même niveau que cette année, mais la décision est « ' + decision + ' ».'
+                            ? 'La classe choisie est du même niveau que l\'année d\'avant, mais la décision est « ' + decision + ' ».'
                             : 'La décision est « redoublement », mais la classe choisie est d\'un autre niveau.')
                         : '';
                 },

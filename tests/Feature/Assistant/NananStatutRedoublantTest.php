@@ -112,7 +112,7 @@ class NananStatutRedoublantTest extends TestCase
             $this->assertFalse((bool) $i->is_redoublant);
             $this->assertSame($this->admin->id, (int) $i->redoublant_confirme_par);
         }
-        $this->assertNull($nouveau->fresh()->redoublant_source, 'un nouvel étudiant n’attend aucune confirmation');
+        $this->assertSame(StatutRedoublant::SOURCE_DEDUIT, $nouveau->fresh()->redoublant_source, 'un nouvel étudiant n’attend aucune confirmation');
     }
 
     public function test_corriger_exige_le_motif_de_la_personne(): void

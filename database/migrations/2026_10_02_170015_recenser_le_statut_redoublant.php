@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\Log;
  * secrétaire confirmer ces valeurs avant ce recensement figerait un « non »
  * faux comme une décision humaine.
  *
+ * Appelle une classe de l'application : si `RecensementDesRedoublants` est un
+ * jour renommée, cette migration (déjà passée partout) ne s'exécute plus que
+ * sur une base neuve, vide d'inscriptions — la renommer ici aussi.
+ *
  * Rejouable et prudent : rien de ce qu'une personne a confirmé ou corrigé
  * n'est réécrit. Si le recensement échoue, la migration ne bloque pas le
  * déploiement : il se relance par `inscriptions:recenser-redoublants --apply`

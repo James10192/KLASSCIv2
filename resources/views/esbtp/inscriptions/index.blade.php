@@ -863,6 +863,11 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                     <option value="terminée" @selected(request('status') == 'terminée')>Terminées</option>
                 </select>
 
+                @if(request('classe'))
+                    {{-- Venu d'un lien (contrôle avant bulletins) : visible en pastille, retirable. --}}
+                    <input type="hidden" name="classe" id="classe" value="{{ request('classe') }}"
+                           data-label="{{ \App\Models\ESBTPClasse::whereKey(request('classe'))->value('name') ?? request('classe') }}">
+                @endif
                 <select name="redoublant" id="redoublant" class="ii-filter-select" aria-label="Redoublants">
                     <option value="">Redoublants et autres</option>
                     <option value="oui" @selected(request('redoublant') === 'oui')>Redoublants</option>

@@ -76,6 +76,7 @@ class StatutRedoublantTest extends TestCase
             'type_inscription' => 'réinscription',
             'reinscription_observations' => "Redoublement - moyenne insuffisante\n[BATCH abc]",
         ]);
+        $this->commeAvantLeStatut($repetee);
 
         $aBlanc = app(RecensementDesRedoublants::class)->executer(false);
         $this->assertFalse((bool) $repetee->fresh()->is_redoublant, 'À blanc, rien n\'est écrit.');
@@ -99,6 +100,8 @@ class StatutRedoublantTest extends TestCase
             'redoublant_source' => StatutRedoublant::SOURCE_CORRIGE,
             'redoublant_motif' => 'Redoublement validé ailleurs, dérogation du conseil',
         ]);
+        \Illuminate\Support\Facades\DB::table('esbtp_inscriptions')->where('id', $corrigee->id)
+            ->update(['is_redoublant' => false, 'redoublant_source' => StatutRedoublant::SOURCE_CORRIGE]);
 
         app(RecensementDesRedoublants::class)->executer(true);
 
@@ -240,7 +243,7 @@ class StatutRedoublantTest extends TestCase
 
         $this->assertSame(StatutRedoublant::SOURCE_CONFIRME, $aConfirmer->fresh()->redoublant_source);
         $this->assertTrue((bool) $aConfirmer->fresh()->is_redoublant);
-        $this->assertNull($nouvelArrivant->fresh()->redoublant_source);
+        $this->assertSame(StatutRedoublant::SOURCE_DEDUIT, $nouvelArrivant->fresh()->redoublant_source, 'Un nouvel arrivant n\'a rien à confirmer.');
     }
 
     public function test_la_liste_filtre_les_statuts_a_confirmer(): void
@@ -289,8 +292,10 @@ class StatutRedoublantTest extends TestCase
         $etudiant = ESBTPEtudiant::factory()->create();
         $this->inscrire($etudiant, $this->bts2, $this->anDernier);
         $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
+        $this->commeAvantLeStatut($inscription);
 
-        $this->assertTrue(app(StatutRedoublant::class)->pourAffichage($inscription)['valeur']);
+        $this->assertTrue(app(StatutRedoublant::class)->pourAffichage($inscription->fresh())['valeur']);
+        $this->assertTrue((bool) $inscription->fresh()->is_redoublant, 'La lecture recense : le bulletin dira la même chose.');
 
         $this->actingAs($this->scolarite)
             ->postJson(route('esbtp.inscriptions.redoublant.confirmer-en-masse'), ['inscription_ids' => [$inscription->id]])
@@ -317,6 +322,44 @@ class StatutRedoublantTest extends TestCase
         $sansListe = User::factory()->create();
         $sansListe->givePermissionTo(StatutRedoublant::PERMISSION);
         $this->assertNull($statut->pourLePreControle($inscription->classe, $this->cetteAnnee->id, $sansListe)['redoublants_url']);
+    }
+
+    public function test_une_annee_passee_importee_apres_coup_met_a_jour_l_annee_suivante(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create(['nom' => 'ZZIMPORTE']);
+        $cetteAnnee = $this->inscrire($etudiant, $this->bts1, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
+        $this->assertFalse((bool) $cetteAnnee->fresh()->is_redoublant, 'Sans année passée, rien à redoubler.');
+
+        // L'école importe son historique : l'élève était déjà en BTS 1.
+        $this->inscrire($etudiant, $this->bts1, $this->anDernier);
+
+        $this->assertTrue((bool) $cetteAnnee->fresh()->is_redoublant);
+        $this->assertSame(StatutRedoublant::SOURCE_DEDUIT, $cetteAnnee->fresh()->redoublant_source);
+
+        $this->actingAs($this->scolarite)
+            ->get(route('esbtp.inscriptions.index', ['annee' => $this->cetteAnnee->id, 'status' => 'all', 'redoublant' => 'oui']))
+            ->assertOk()
+            ->assertSee('ZZIMPORTE')
+            ->assertSee('Redoublant ?');
+    }
+
+    public function test_supprimer_l_annee_passee_retire_la_deduction(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $passee = $this->inscrire($etudiant, $this->bts1, $this->anDernier);
+        $cetteAnnee = $this->inscrire($etudiant, $this->bts1, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
+        $this->assertTrue((bool) $cetteAnnee->fresh()->is_redoublant);
+
+        $passee->delete();
+
+        $this->assertFalse((bool) $cetteAnnee->fresh()->is_redoublant);
+    }
+
+    /** L'état d'une inscription créée avant ce statut : colonne à non, jamais recensée. */
+    private function commeAvantLeStatut(ESBTPInscription $inscription): void
+    {
+        \Illuminate\Support\Facades\DB::table('esbtp_inscriptions')->where('id', $inscription->id)
+            ->update(['is_redoublant' => false, 'redoublant_source' => null]);
     }
 
     /** La valeur déduite posée, comme le fait le recensement. */
