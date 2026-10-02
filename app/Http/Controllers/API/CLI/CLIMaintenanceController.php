@@ -798,7 +798,7 @@ class CLIMaintenanceController extends BaseApiController
             if ($proc->isSuccessful()) {
                 $etapes = app(ReconstructionDesCaches::class)->apresDeploiement();
                 $reconstruction = $etapes['reconstruction']['caches'];
-                $purgeEchouee = $etapes['purge']['status'] !== 'done';
+                $cachesEnEchec = collect($etapes)->contains(fn ($e) => ($e['status'] ?? '') === 'failed');
             }
 
             return $this->successResponse([
@@ -810,7 +810,7 @@ class CLIMaintenanceController extends BaseApiController
                 'output' => $out,
             ], match (true) {
                 ! $proc->isSuccessful() => "composer {$action} FAILED (exit {$proc->getExitCode()})",
-                $purgeEchouee ?? false => "composer {$action} OK, but cache purge failed (see server logs)",
+                $cachesEnEchec ?? false => "composer {$action} OK, but cache purge or rebuild failed (see server logs)",
                 default => "composer {$action} OK",
             });
         } catch (\Throwable $e) {
