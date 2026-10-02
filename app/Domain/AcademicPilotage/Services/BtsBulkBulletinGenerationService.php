@@ -253,7 +253,31 @@ final class BtsBulkBulletinGenerationService
         return 'ready';
     }
 
+    /** Genere puis reclasse la classe une fois, si un bulletin a ete ecrit. */
     public function generate(
+        ESBTPClasse $classe,
+        int $academicYearId,
+        string $period,
+        ?User $actor,
+        bool $recalculate = false,
+        ?string $incompleteReason = null,
+        ?array $studentIds = null,
+    ): BulkBulletinGenerationResult {
+        $resultat = $this->genererSansClasser($classe, $academicYearId, $period, $actor, $recalculate, $incompleteReason, $studentIds);
+
+        if ($resultat->hasWrites()) {
+            $this->reclasserLaClasse($classe->id, $academicYearId, $this->bulletinService->normalizePeriode($period));
+        }
+
+        return $resultat;
+    }
+
+    /**
+     * Genere sans reclasser la classe. Pour une generation par tranches : le
+     * moteur des taches reclasse une seule fois, a la conclusion
+     * (reclasserLaClasse()).
+     */
+    public function genererSansClasser(
         ESBTPClasse $classe,
         int $academicYearId,
         string $period,
@@ -282,11 +306,10 @@ final class BtsBulkBulletinGenerationService
 
         $students = $this->activeStudentsForClass($classe->id, $academicYearId, $period);
 
-        // Traitement par lots : la generation coute O(N^2) et l'hebergement
-        // coupe a 30 secondes. Restreindre le lot permet de tenir dans le
-        // budget et de reprendre la ou on s'est arrete. Le recalcul des rangs
-        // en fin de methode reste calcule sur la cohorte entiere, le resultat
-        // final est donc identique a un traitement en une passe.
+        // Traitement par lots : l'hebergement coupe a 30 secondes. Restreindre
+        // le lot permet de tenir dans le budget et de reprendre la ou on s'est
+        // arrete. Le reclassement porte toujours sur la cohorte entiere ; par
+        // tranches, le moteur des taches le fait une fois, a la conclusion.
         $totalStudents = $students->count();
         if ($studentIds !== null) {
             $wanted = array_map('intval', $studentIds);
@@ -295,6 +318,38 @@ final class BtsBulkBulletinGenerationService
             )->values();
         }
 
+        // Chaque bulletin genere ne reclasse plus la classe : sinon la classe
+        // entiere etait reecrite a chaque eleve (≈ N²/2 sauvegardes et autant
+        // de lignes d'audit). On reclasse une fois, dans generate(), ou a la fin
+        // de la tache quand la generation avance par tranches.
+        [$created, $regenerated, $skipped, $blockingErrors, $errors] = $this->bulletinService->sansReclasserLaClasse(
+            fn (): array => $this->genererChaqueEleve($students, $classe, $academicYearId, $period, $actor, $recalculate, $incompleteReason)
+        );
+
+        return new BulkBulletinGenerationResult(
+            created: $created,
+            regenerated: $regenerated,
+            skipped: $skipped,
+            blockingErrors: $this->deduplicateStudentBlocks($blockingErrors),
+            errors: $errors,
+            preflight: $preflight,
+        );
+    }
+
+    /**
+     * La boucle de generation, eleve par eleve, sans reclassement.
+     *
+     * @return array{0: int, 1: int, 2: array, 3: array, 4: array} crees, regeneres, ecartes, blocages, erreurs
+     */
+    private function genererChaqueEleve(
+        Collection $students,
+        ESBTPClasse $classe,
+        int $academicYearId,
+        string $period,
+        ?User $actor,
+        bool $recalculate,
+        ?string $incompleteReason,
+    ): array {
         $created = 0;
         $regenerated = 0;
         $skipped = [];
@@ -403,18 +458,18 @@ final class BtsBulkBulletinGenerationService
             }
         }
 
-        if ($created > 0 || $regenerated > 0) {
-            $this->bulletinService->calculerRangsPourClasse($classe->id, $academicYearId, $period);
-        }
+        return [$created, $regenerated, $skipped, $blockingErrors, $errors];
+    }
 
-        return new BulkBulletinGenerationResult(
-            created: $created,
-            regenerated: $regenerated,
-            skipped: $skipped,
-            blockingErrors: $this->deduplicateStudentBlocks($blockingErrors),
-            errors: $errors,
-            preflight: $preflight,
-        );
+    /**
+     * Le classement de la classe, une fois toutes les moyennes posees.
+     *
+     * Appele par {@see generate()} en fin de lot, ou par le moteur des taches
+     * quand la generation avance par tranches (genererSansClasser()).
+     */
+    public function reclasserLaClasse(int $classeId, int $academicYearId, string $period): void
+    {
+        $this->bulletinService->calculerRangsPourClasse($classeId, $academicYearId, $period);
     }
 
     /**

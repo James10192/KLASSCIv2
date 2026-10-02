@@ -133,7 +133,7 @@ class PresentationDemoSeeder extends Seeder
 
     private function guardTenant(): void
     {
-        $tenant = (string) config('app.tenant_code', env('TENANT_CODE', 'default'));
+        $tenant = (string) config('app.tenant_code');
 
         if ($tenant !== self::TARGET_TENANT) {
             $msg = sprintf(

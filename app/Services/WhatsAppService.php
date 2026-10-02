@@ -29,9 +29,9 @@ class WhatsAppService
     public function __construct()
     {
         $this->apiUrl = 'https://graph.facebook.com/v18.0';
-        $this->phoneNumberId = env('WHATSAPP_PHONE_NUMBER_ID');
-        $this->accessToken = env('WHATSAPP_ACCESS_TOKEN');
-        $this->businessAccountId = env('WHATSAPP_BUSINESS_ACCOUNT_ID');
+        $this->phoneNumberId = config('services.whatsapp.phone_number_id');
+        $this->accessToken = config('services.whatsapp.access_token');
+        $this->businessAccountId = config('services.whatsapp.business_account_id');
     }
 
     /**

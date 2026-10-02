@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Services\EcheancierResolverService;
 use Illuminate\Database\Eloquent\Model;
 
 class ESBTPEcheancierRule extends Model
@@ -15,6 +16,13 @@ class ESBTPEcheancierRule extends Model
     public const STATUS_AFFECTE = 'affecté';
     public const STATUS_REAFFECTE = 'réaffecté';
     public const STATUS_NON_AFFECTE = 'non_affecté';
+
+    /** Les statuts qu'une inscription peut porter, avec leur libelle. */
+    public const STATUTS_INSCRIPTION = [
+        self::STATUS_AFFECTE => 'Affecté',
+        self::STATUS_REAFFECTE => 'Réaffecté',
+        self::STATUS_NON_AFFECTE => 'Non affecté',
+    ];
 
     public const SCOPE_CONFIGURATION = 'configuration';
     public const SCOPE_OPTION_ASSIGNMENT = 'option_assignment';
@@ -38,6 +46,13 @@ class ESBTPEcheancierRule extends Model
         'effective_from' => 'date',
         'effective_to' => 'date',
     ];
+
+    protected static function booted(): void
+    {
+        // Le resolveur retient les regles le temps d'une page : toute ecriture l'en vide.
+        static::saved(fn () => EcheancierResolverService::oublierRegles());
+        static::deleted(fn () => EcheancierResolverService::oublierRegles());
+    }
 
     public function lines()
     {

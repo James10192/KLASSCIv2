@@ -15,7 +15,8 @@
     backdrop-filter, qui casserait le positionnement d'un menu.
 --}}
 @php
-    $etb = \App\Helpers\SettingsHelper::getSchoolInfo();
+    // Déjà lu par le gabarit (bloc PWA de l'en-tête) : on le reprend.
+    $etb = $pwaSchool ?? \App\Helpers\SettingsHelper::getSchoolInfo();
 
     $etbNom = trim((string) ($etb['name'] ?? ''));
     $etbSigle = trim((string) ($etb['acronym'] ?? ''));
