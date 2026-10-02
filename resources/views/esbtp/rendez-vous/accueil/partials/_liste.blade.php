@@ -12,6 +12,8 @@
     $_recidives = $_nonVenuesMasse->where('absences', '>', 0)->count();
 @endphp
 
+<p class="rac-voisine" role="status" hidden><i class="fas fa-spell-check"></i>Aucune famille ne porte exactement ce nom : voici les orthographes voisines. Vérifiez avant de cocher.</p>
+
 @if($enSouffrance->isNotEmpty())
     <div class="rac-alerte" role="status">
         <i class="fas fa-triangle-exclamation"></i>

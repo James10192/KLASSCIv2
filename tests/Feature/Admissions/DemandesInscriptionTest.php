@@ -10,6 +10,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
+use App\Models\ESBTPParent;
 use App\Models\ESBTPRdvCreneau;
 use App\Models\ESBTPRdvReservation;
 use App\Models\ESBTPReinscriptionDemande;
@@ -188,6 +189,53 @@ class DemandesInscriptionTest extends TestCase
         $this->assertNotNull($c->inscription_id);
         $this->assertSame(route('esbtp.inscriptions.show', $c->inscription_id), $reponse->json('redirect'));
         $this->assertSame(StatutReservationRdv::Honoree, $rdv->fresh()->statut);
+    }
+
+    public function test_la_preparation_propose_le_parent_deja_enregistre_et_les_annees_ouvertes(): void
+    {
+        $suivante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => false,
+            'start_date' => $this->annee->start_date->copy()->addYear(), 'end_date' => $this->annee->end_date->copy()->addYear()]);
+        // Saisi la premiere fois avec l'indicatif et des espaces, prenoms d'abord.
+        $parent = ESBTPParent::create(['nom' => "N'GUESSAN", 'prenoms' => 'Koffi Paul', 'telephone' => '+225 07 08 09 10 11']);
+        $c = $this->candidature(['tuteur_nom' => 'Nguessan Koffi Paul', 'tuteur_telephone' => '0708091011']);
+
+        $prep = $this->actingAs($this->agent)->getJson(route('esbtp.demandes.preparer-inscription', $c))->assertOk()->json();
+
+        $this->assertSame([$parent->id], array_column($prep['parents_proches'], 'id'));
+        $this->assertTrue($prep['parents_proches'][0]['meme_telephone']);
+        $this->assertSame([$this->annee->id, $suivante->id], array_column($prep['annees'], 'id'));
+    }
+
+    public function test_la_recherche_de_parents_tolere_l_ordre_les_accents_et_le_format_du_telephone(): void
+    {
+        $parent = ESBTPParent::create(['nom' => 'KOUAMÉ', 'prenoms' => 'Jean-Marc', 'telephone' => '+2250102030405']);
+        ESBTPParent::create(['nom' => 'KOUAME', 'prenoms' => 'Alice', 'telephone' => '0700000000']);
+        $chercher = fn (string $q) => array_column($this->actingAs($this->agent)
+            ->getJson(route('esbtp.demandes.parents', ['q' => $q]))->assertOk()->json('parents'), 'id');
+
+        $this->assertSame([$parent->id], $chercher('jean marc kouame'));
+        $this->assertSame([$parent->id], $chercher('01 02 03 04 05'));
+        $this->assertSame([], $chercher('k'));
+    }
+
+    public function test_inscrire_avec_un_parent_existant_le_rattache_sans_en_creer_un_autre_et_sur_l_annee_choisie(): void
+    {
+        $suivante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => false]);
+        $classe = $this->classe('1A BTS Génie civil', 30);
+        $parent = ESBTPParent::create(['nom' => 'TRAORE', 'prenoms' => 'Mamadou', 'telephone' => '0505442110']);
+        $c = $this->candidature(['nom' => 'TRAORE', 'prenoms' => 'Awa']);
+
+        $this->actingAs($this->agent)->postJson(route('esbtp.inscriptions.store'), [
+            'nom' => 'TRAORE', 'prenoms' => 'AWA', 'sexe' => 'F', 'date_naissance' => '2007-03-12',
+            'telephone' => '+225 07 07 12 34 99', 'classe_id' => $classe->id,
+            'annee_universitaire_id' => $suivante->id, 'candidature_id' => $c->id, 'duplicate_override' => 0,
+            'parents' => [['type' => 'existant', 'parent_id' => $parent->id, 'relation' => 'Père']],
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $inscription = \App\Models\ESBTPInscription::findOrFail($c->fresh()->inscription_id);
+        $this->assertSame($suivante->id, (int) $inscription->annee_universitaire_id);
+        $this->assertSame(1, ESBTPParent::count());
+        $this->assertSame([$parent->id], $inscription->etudiant->parents()->pluck('esbtp_parents.id')->all());
     }
 
     public function test_un_refus_de_l_inscription_revient_en_json_sans_laisser_de_message_en_session(): void

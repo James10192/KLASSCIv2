@@ -204,6 +204,10 @@
 .dmi-doublon-qui { flex: 1; min-width: 180px; font-size: .8rem; }
 .dmi-doublon-qui strong { display: block; color: var(--dmi-dark); }
 .dmi-doublon-qui small { color: var(--dmi-muted); }
+.dmi-doublon--choisi { border-color: var(--dmi-primary, #0453cb); background: rgba(4,83,203,.04); }
+.dmi-parents-proches { background: rgba(4,83,203,.04); border: 1px solid rgba(4,83,203,.18); border-radius: 12px; padding: .7rem; margin-bottom: .8rem; }
+.dmi-parents-proches .dmi-p-note { margin: 0 0 .5rem; }
+.dmi-h3-actions { display: flex; align-items: flex-start; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
 .dmi-apercu { background: var(--dmi-surface); border: 1px solid var(--dmi-line); border-radius: 12px; padding: 1rem; position: sticky; top: 0; align-self: start; }
 .dmi-apercu h3 { font-size: .66rem; font-weight: 800; letter-spacing: .08em; color: var(--dmi-muted); margin: 0 0 .75rem; text-transform: uppercase; }
 .dmi-apercu dl { display: grid; grid-template-columns: auto 1fr; gap: .35rem .75rem; font-size: .8rem; margin: .8rem 0; }

@@ -3,6 +3,7 @@
 namespace App\Domain\Admissions;
 
 use App\Domain\Notifications\PhoneFormatter;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
@@ -26,6 +27,7 @@ class PreparationDInscription
     public function __construct(
         private readonly StudentDuplicateDetector $doublons,
         private readonly TenantScolariteSettings $scolarite,
+        private readonly RechercheParents $parents,
     ) {
     }
 
@@ -63,6 +65,10 @@ class PreparationDInscription
                 'relation' => ESBTPCandidature::relationTuteurNormalisee($c->tuteur_lien),
                 'profession' => (string) $c->tuteur_profession,
             ],
+            // Le parent revient souvent pour un deuxieme enfant, parfois saisi
+            // deux fois : on montre ceux qui lui ressemblent avant d'en creer un.
+            'parents_proches' => $this->parents->proches($c->tuteur_nom, $c->tuteur_telephone),
+            'annees' => $this->annees($c->annee_universitaire_id),
             'doublons' => $this->doublons($c),
             'classes' => $this->classes($c->filiere_id, $c->niveau_id),
             'matricule_automatique' => ESBTPSystemSetting::isMatriculeAutomatic(),
@@ -70,6 +76,29 @@ class PreparationDInscription
             'montants_masques' => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user()),
             'rendez_vous' => $this->rendezVous($c),
         ];
+    }
+
+    /**
+     * Les annees ou l'on peut inscrire : celle de la candidature, la courante
+     * et celles qui suivent. Une candidature deposee pour une annee qu'on n'a
+     * pas encore ouverte, ou reportee, s'inscrit ainsi sur la bonne.
+     *
+     * @return list<array{id: int, nom: string, courante: bool}>
+     */
+    private function annees(?int $anneeCandidature): array
+    {
+        $courante = ESBTPAnneeUniversitaire::query()->where('is_current', true)->first(['id', 'start_date']);
+
+        return ESBTPAnneeUniversitaire::query()
+            ->where(fn ($q) => $q
+                ->when($courante?->start_date, fn ($w) => $w->where('start_date', '>=', $courante->start_date))
+                ->orWhere('is_current', true)
+                ->orWhere('id', $anneeCandidature ?? 0))
+            ->orderBy('start_date')
+            ->limit(4)
+            ->get(['id', 'name', 'is_current'])
+            ->map(fn (ESBTPAnneeUniversitaire $a) => ['id' => (int) $a->id, 'nom' => (string) $a->name, 'courante' => (bool) $a->is_current])
+            ->values()->all();
     }
 
     /** @return list<array<string, mixed>> */

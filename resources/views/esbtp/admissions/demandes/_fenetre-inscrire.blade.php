@@ -24,7 +24,10 @@
             <div class="dmi-ins" x-show="!ins.chargement && ins.prep">
                 <div>
                     <section class="dmi-ins-bloc">
-                        <h3>1 · Identité déclarée par le candidat <small>Corrigez ce qui ne correspond pas à la pièce présentée.</small></h3>
+                        <h3 class="dmi-h3-actions">
+                            <span>1 · Identité déclarée par le candidat <small>Corrigez ce qui ne correspond pas à la pièce présentée.</small></span>
+                            <button type="button" class="dmi-btn dmi-btn--ghost dmi-btn--sm" x-on:click="majuscules(ins.f)" title="Met le nom et les prénoms tout en majuscules"><i class="fas fa-font"></i> Tout en majuscules</button>
+                        </h3>
                         <div class="dmi-grille">
                             <label class="dmi-champ" :class="ins.erreurs.nom ? 'is-erreur' : ''">Nom<input type="text" x-model="ins.f.nom" maxlength="100" autocomplete="off"><span class="dmi-champ-erreur" x-text="ins.erreurs.nom" x-show="ins.erreurs.nom"></span></label>
                             <label class="dmi-champ" :class="ins.erreurs.prenoms ? 'is-erreur' : ''">Prénoms<input type="text" x-model="ins.f.prenoms" maxlength="100" autocomplete="off"><span class="dmi-champ-erreur" x-text="ins.erreurs.prenoms" x-show="ins.erreurs.prenoms"></span></label>
@@ -84,6 +87,16 @@
                                 <span class="dmi-champ-erreur" x-text="ins.erreurs.matricule" x-show="ins.erreurs.matricule"></span>
                             </div>
                         </div>
+                        <div class="dmi-champ" style="margin-top:.75rem" x-show="(ins.prep?.annees || []).length > 1">Année de l'inscription
+                            <div class="dmi-choix" role="radiogroup" aria-label="Année de l'inscription">
+                                <template x-for="a in (ins.prep?.annees || [])" :key="a.id">
+                                    <button type="button" role="radio" :aria-checked="ins.f.annee_universitaire_id === a.id" :class="ins.f.annee_universitaire_id === a.id ? 'is-actif' : ''"
+                                            x-on:click="ins.f.annee_universitaire_id = a.id" x-text="a.nom + (a.courante ? ' · en cours' : '')"></button>
+                                </template>
+                            </div>
+                            <span class="dmi-champ-aide" x-show="ins.prep?.candidature?.annee_universitaire_id && ins.f.annee_universitaire_id !== ins.prep?.candidature?.annee_universitaire_id"
+                                  x-text="'La candidature visait ' + (ins.prep?.candidature?.annee || 'une autre année') + '.'"></span>
+                        </div>
                         <div class="dmi-champ" style="margin-top:.75rem" x-show="ins.prep?.statut_etablissement_requis" :class="ins.erreurs.statut_etablissement ? 'is-erreur' : ''">Déjà inscrit dans l'établissement ?
                             <div class="dmi-choix" role="radiogroup" aria-label="Statut dans l'établissement">
                                 <button type="button" role="radio" :aria-checked="ins.f.statut_etablissement === 'nouveau'" :class="ins.f.statut_etablissement === 'nouveau' ? 'is-actif' : ''" x-on:click="ins.f.statut_etablissement = 'nouveau'; chargerFrais()">Nouvel étudiant</button>
@@ -94,20 +107,74 @@
                     </section>
 
                     <section class="dmi-ins-bloc">
-                        <h3>Parent ou tuteur <small x-show="ins.prep?.tuteur?.declare" x-text="'Saisi en un seul champ sur la candidature : « ' + ins.prep?.tuteur?.declare + ' »'"></small></h3>
-                        <label class="dmi-case" style="margin-bottom:.75rem"><input type="checkbox" x-model="ins.sansTuteur"><span>Ne pas enregistrer de tuteur maintenant</span></label>
-                        <div class="dmi-grille" x-show="!ins.sansTuteur">
+                        <h3 class="dmi-h3-actions">
+                            <span>Parent ou tuteur <small x-show="ins.prep?.tuteur?.declare" x-text="'Saisi en un seul champ sur la candidature : « ' + ins.prep?.tuteur?.declare + ' »'"></small></span>
+                            <button type="button" class="dmi-btn dmi-btn--ghost dmi-btn--sm" x-show="!ins.sansTuteur && ins.modeTuteur === 'nouveau'" x-on:click="majuscules(ins.tuteur)" title="Met le nom et les prénoms du parent tout en majuscules"><i class="fas fa-font"></i> Tout en majuscules</button>
+                        </h3>
+
+                        <div class="dmi-parents-proches" x-show="!ins.sansTuteur && ins.modeTuteur === 'nouveau' && (ins.prep?.parents_proches || []).length">
+                            <p class="dmi-p-note"><i class="fas fa-user-check"></i> <strong x-text="(ins.prep?.parents_proches || []).length > 1 ? 'Des parents déjà enregistrés lui ressemblent' : 'Un parent déjà enregistré lui ressemble'"></strong> : rattachez-le plutôt que d'en créer un double.</p>
+                            <template x-for="p in (ins.prep?.parents_proches || [])" :key="'pp' + p.id">
+                                <div class="dmi-doublon">
+                                    <span class="dmi-av" x-text="initiales(nomParent(p))"></span>
+                                    <div class="dmi-doublon-qui">
+                                        <strong><span x-text="nomParent(p)"></span> <small x-show="p.meme_telephone">· même téléphone</small></strong>
+                                        <small x-text="[p.telephone, p.nb_enfants ? 'parent de ' + p.enfants.join(', ') + (p.nb_enfants > p.enfants.length ? '…' : '') : 'aucun élève rattaché'].filter(Boolean).join(' · ')"></small>
+                                    </div>
+                                    <button type="button" class="dmi-btn dmi-btn--ghost dmi-btn--sm" x-on:click="utiliserParent(p)">Utiliser ce parent</button>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div class="dmi-choix" role="radiogroup" aria-label="Parent ou tuteur" style="margin-bottom:.75rem">
+                            <button type="button" role="radio" :aria-checked="!ins.sansTuteur && ins.modeTuteur === 'nouveau'" :class="!ins.sansTuteur && ins.modeTuteur === 'nouveau' ? 'is-actif' : ''" x-on:click="choisirModeTuteur('nouveau')">Nouveau parent</button>
+                            <button type="button" role="radio" :aria-checked="!ins.sansTuteur && ins.modeTuteur === 'existant'" :class="!ins.sansTuteur && ins.modeTuteur === 'existant' ? 'is-actif' : ''" x-on:click="choisirModeTuteur('existant')" x-show="cfg.parents">Parent déjà enregistré</button>
+                            <button type="button" role="radio" :aria-checked="ins.sansTuteur" :class="ins.sansTuteur ? 'is-actif' : ''" x-on:click="ins.sansTuteur = true">Plus tard</button>
+                        </div>
+
+                        <div x-show="!ins.sansTuteur && ins.modeTuteur === 'existant'">
+                            <template x-if="ins.parentExistant">
+                                <div class="dmi-doublon dmi-doublon--choisi">
+                                    <span class="dmi-av" x-text="initiales(nomParent(ins.parentExistant))"></span>
+                                    <div class="dmi-doublon-qui">
+                                        <strong x-text="nomParent(ins.parentExistant)"></strong>
+                                        <small x-text="[ins.parentExistant.telephone, ins.parentExistant.nb_enfants ? 'parent de ' + ins.parentExistant.enfants.join(', ') : ''].filter(Boolean).join(' · ')"></small>
+                                    </div>
+                                    <button type="button" class="dmi-lien" x-on:click="ins.parentExistant = null">Changer</button>
+                                </div>
+                            </template>
+                            <div x-show="!ins.parentExistant">
+                                <label class="dmi-champ">Rechercher un parent
+                                    <input type="search" x-model="ins.parentQ" x-on:input.debounce.350ms="chercherParents()" placeholder="Nom, prénoms ou téléphone, dans n'importe quel ordre" autocomplete="off">
+                                </label>
+                                <div class="dmi-p-note" x-show="ins.parentChargement"><i class="fas fa-circle-notch fa-spin"></i> Recherche…</div>
+                                <div class="dmi-p-note" x-show="!ins.parentChargement && ins.parentResultats && !ins.parentResultats.length">Aucun parent ne correspond. Essayez le téléphone, ou créez un nouveau parent.</div>
+                                <template x-for="p in (ins.parentResultats || [])" :key="'pr' + p.id">
+                                    <div class="dmi-doublon">
+                                        <span class="dmi-av" x-text="initiales(nomParent(p))"></span>
+                                        <div class="dmi-doublon-qui">
+                                            <strong x-text="nomParent(p)"></strong>
+                                            <small x-text="[p.telephone, p.nb_enfants ? 'parent de ' + p.enfants.join(', ') + (p.nb_enfants > p.enfants.length ? '…' : '') : 'aucun élève rattaché'].filter(Boolean).join(' · ')"></small>
+                                        </div>
+                                        <button type="button" class="dmi-btn dmi-btn--ghost dmi-btn--sm" x-on:click="utiliserParent(p)">Choisir</button>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+
+                        <div class="dmi-grille" x-show="!ins.sansTuteur && ins.modeTuteur === 'nouveau'">
                             <label class="dmi-champ" :class="ins.erreurs['parents.0.nom'] ? 'is-erreur' : ''">Nom<input type="text" x-model="ins.tuteur.nom" maxlength="100"><span class="dmi-champ-aide" x-show="ins.prep?.tuteur?.declare && !ins.tuteur.prenoms">Séparez le nom et les prénoms.</span>
                                 <button type="button" class="dmi-lien" style="font-size:.74rem;text-align:left" x-show="coupeTuteur()" x-on:click="appliquerCoupeTuteur()"
-                                        x-text="coupeTuteur() ? 'Nom « ' + coupeTuteur()[0] + ' », prénoms « ' + coupeTuteur()[1] + ' » ? Séparer ainsi' : ''"></button></label>
+                                        x-text="coupeTuteur() ? 'Nom « ' + coupeTuteur()[0] + ' », prénoms « ' + coupeTuteur()[1] + ' » ? Séparer ainsi' : ''"></button>
+                                <span class="dmi-champ-aide" x-show="ins.coupeAuto !== null">Séparé au premier mot. <button type="button" class="dmi-lien" style="font-size:.74rem" x-on:click="annulerCoupeTuteur()">Annuler</button></span></label>
                             <label class="dmi-champ" :class="ins.erreurs['parents.0.prenoms'] ? 'is-erreur' : ''">Prénoms<input type="text" x-model="ins.tuteur.prenoms" maxlength="100"></label>
                             <label class="dmi-champ" :class="ins.erreurs['parents.0.telephone'] ? 'is-erreur' : ''">Téléphone<input type="tel" x-model="ins.tuteur.telephone" maxlength="20"></label>
-                            <div class="dmi-champ" :class="ins.erreurs['parents.0.relation'] ? 'is-erreur' : ''">Lien
-                                <div class="dmi-choix" role="radiogroup" aria-label="Lien avec l'étudiant">
-                                    <template x-for="lien in (cfg.liensTuteur || [])" :key="lien">
-                                        <button type="button" role="radio" :aria-checked="ins.tuteur.relation === lien" :class="ins.tuteur.relation === lien ? 'is-actif' : ''" x-on:click="ins.tuteur.relation = lien" x-text="lien"></button>
-                                    </template>
-                                </div>
+                        </div>
+                        <div class="dmi-champ" style="margin-top:.75rem" x-show="!ins.sansTuteur" :class="ins.erreurs['parents.0.relation'] ? 'is-erreur' : ''">Lien avec l'étudiant
+                            <div class="dmi-choix" role="radiogroup" aria-label="Lien avec l'étudiant">
+                                <template x-for="lien in (cfg.liensTuteur || [])" :key="lien">
+                                    <button type="button" role="radio" :aria-checked="ins.tuteur.relation === lien" :class="ins.tuteur.relation === lien ? 'is-actif' : ''" x-on:click="ins.tuteur.relation = lien" x-text="lien"></button>
+                                </template>
                             </div>
                         </div>
                         <span :class="Object.keys(ins.erreurs).some((k) => k.startsWith('parents.')) ? 'dmi-champ-erreur' : 'dmi-champ-aide'" x-show="erreurTuteur()" x-text="erreurTuteur()"></span>
@@ -122,8 +189,8 @@
                     </div>
                     <dl>
                         <dt>Classe</dt><dd x-text="classeChoisie(ins.prep?.classes, ins.f.classe_id)?.nom || 'À choisir'"></dd>
-                        <dt>Année</dt><dd x-text="ins.prep?.candidature?.annee || '—'"></dd>
-                        <dt>Tuteur</dt><dd x-text="ins.sansTuteur || !ins.tuteur.nom ? '—' : (ins.tuteur.nom + ' ' + ins.tuteur.prenoms).trim() + (ins.tuteur.relation ? ' · ' + ins.tuteur.relation.toLowerCase() : '')"></dd>
+                        <dt>Année</dt><dd x-text="anneeChoisie()?.nom || ins.prep?.candidature?.annee || '—'"></dd>
+                        <dt>Tuteur</dt><dd x-text="ins.sansTuteur ? '—' : (ins.modeTuteur === 'existant' ? (ins.parentExistant ? nomParent(ins.parentExistant) + ' (déjà enregistré)' : '—') : (ins.tuteur.nom ? (ins.tuteur.nom + ' ' + ins.tuteur.prenoms).trim() : '—')) + (!ins.sansTuteur && ins.tuteur.relation ? ' · ' + ins.tuteur.relation.toLowerCase() : '')"></dd>
                     </dl>
                     <div class="dmi-frais" x-show="ins.f.classe_id">
                         <div class="dmi-p-note" style="font-weight:700;margin-bottom:.35rem">Frais à régler</div>

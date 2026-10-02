@@ -77,6 +77,8 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
 .rac-actions { display: flex; gap: .4rem; justify-content: flex-end; flex-wrap: wrap; }
 .rac-aucun { text-align: center; color: var(--rdv-muted); padding: 1.5rem; font-size: .88rem; }
 .rac-aucun i { margin-right: .4rem; }
+.rac-voisine { margin: 0 0 .75rem; padding: .6rem .85rem; border-radius: 10px; background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.18); color: var(--rdv-text); font-size: .84rem; }
+.rac-voisine i { margin-right: .45rem; color: var(--rdv-primary); }
 #rac-liste.is-chargement { opacity: .55; pointer-events: none; transition: opacity .2s ease; }
 
 .rac-nonvenues { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; border-color: rgba(220,38,38,.25); }
@@ -289,17 +291,55 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
         return okChiffres && mots.every((m) => compact.includes(m.replace(/\s/g, '')));
     }
 
+    // Distance d'edition (lettre en trop, en moins, changee, deux lettres inversees).
+    function distance(a, b, max) {
+        if (Math.abs(a.length - b.length) > max) return max + 1;
+        let avant = null, prec = Array.from({ length: b.length + 1 }, (_, j) => j);
+        for (let i = 1; i <= a.length; i++) {
+            const cour = [i];
+            let mini = i;
+            for (let j = 1; j <= b.length; j++) {
+                let v = Math.min(prec[j] + 1, cour[j - 1] + 1, prec[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+                if (avant && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, avant[j - 2] + 1);
+                cour.push(v); mini = Math.min(mini, v);
+            }
+            if (mini > max) return max + 1;
+            avant = prec; prec = cour;
+        }
+        return prec[b.length];
+    }
+
+    // Repli quand rien ne correspond exactement : une faute de frappe par mot
+    // (deux au-dela de sept lettres). Les mots courts et les chiffres restent exacts.
+    function voisin(texte, q) {
+        const mots = texte.split(' ');
+        return q.split(' ').every((m) => {
+            if (m.length < 4 || /\d/.test(m)) return texte.replace(/\s/g, '').includes(m);
+            const max = m.length >= 8 ? 2 : 1;
+            return mots.some((w) => w.includes(m) || distance(m, w, max) <= max
+                || (w.length > m.length && distance(m, w.slice(0, m.length), max) <= max));
+        });
+    }
+
     // Recherche et filtre s'appliquent cote client, et se rejouent apres chaque rechargement de la liste.
     function appliquerFiltres() {
         const q = normaliser(champ.value);
-        let visibles = [];
-        liste.querySelectorAll('.rac-ligne').forEach((li) => {
-            const okTexte = q === '' || correspond(li.dataset.cherche || '', q);
-            const okFiltre = filtre === 'tous' || li.dataset.statut === filtre;
-            li.hidden = !(okTexte && okFiltre);
+        const lignes = Array.from(liste.querySelectorAll('.rac-ligne'));
+        const okFiltre = (li) => filtre === 'tous' || li.dataset.statut === filtre;
+        let approche = false;
+        let retenues = lignes.filter((li) => okFiltre(li) && (q === '' || correspond(li.dataset.cherche || '', q)));
+        if (q !== '' && retenues.length === 0) {
+            retenues = lignes.filter((li) => okFiltre(li) && voisin(li.dataset.cherche || '', q));
+            approche = retenues.length > 0;
+        }
+        const visibles = [];
+        lignes.forEach((li) => {
+            li.hidden = !retenues.includes(li);
             li.classList.remove('is-surlignee');
             if (!li.hidden) visibles.push(li);
         });
+        const voisine = liste.querySelector('.rac-voisine');
+        if (voisine) voisine.hidden = !approche;
         liste.querySelectorAll('[data-rac-creneau]').forEach((s) => {
             s.hidden = !s.querySelector('.rac-ligne:not([hidden])');
         });
@@ -311,7 +351,8 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
             url.searchParams.set('q', (champ.value || '').trim());
             partout.href = url.toString();
         }
-        if (q !== '' && visibles.length === 1) visibles[0].classList.add('is-surlignee');
+        if (q !== '' && visibles.length === 1 && !approche) visibles[0].classList.add('is-surlignee');
+        visibles.approche = approche;
         return visibles;
     }
 
@@ -535,6 +576,8 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
         if (ev.key !== 'Enter') return;
         ev.preventDefault();
         const visibles = appliquerFiltres();
+        // Une orthographe voisine peut designer un homonyme : l'agent coche lui-meme.
+        if (visibles.approche) { notifier('info', 'Orthographe voisine : vérifiez la famille puis cochez-la vous-même.'); return; }
         if (visibles.length !== 1) {
             if (visibles.length > 1) notifier('info', visibles.length + ' familles correspondent : précisez la recherche.');
             return;
