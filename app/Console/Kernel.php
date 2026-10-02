@@ -34,6 +34,12 @@ class Kernel extends ConsoleKernel
         // Tâches existantes
         $schedule->command('attendance:mark-unattended-teacher-sessions')->everyTenMinutes();
 
+        // Pouls du planificateur : prouve de l'exterieur que cette tache cron
+        // tourne (GET /api/cli/planificateur, tenant:planificateur d'adminKlassci).
+        $schedule->call(fn () => \App\Domain\Exploitation\PoulsPlanificateur::battre())
+            ->everyMinute()
+            ->name('pouls-planificateur');
+
         // KLASSCI Care : signalements que le Master n'a pas pu recevoir.
         $schedule->command('support:vider-boite-envoi')->everyMinute()->withoutOverlapping(10);
         // KLASSCI Care : avertir quand le support a répondu ou clôturé une demande.
