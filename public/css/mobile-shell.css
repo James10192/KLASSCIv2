@@ -31,7 +31,7 @@
 
    Marqueurs attendus sur <body> (posés par le layout) :
      .has-m-shell            le shell est actif (padding bas, police, flottants)
-     .m-profile-{caissier|comptable|etudiant|enseignant|scolarite}  profil courant
+     .m-profile-{caissier|comptable|etudiant|enseignant|scolarite|technique}  profil courant
    ============================================================= */
 
 /* ---------- 1. Socle global ---------- */
