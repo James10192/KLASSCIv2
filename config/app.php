@@ -68,11 +68,6 @@ return [
 
     'tenant_code' => env('TENANT_CODE', 'default'),
 
-    // La variable telle que déclarée, sans repli : null si TENANT_CODE est
-    // absent. Pour les diagnostics qui distinguent « non déclaré » du code
-    // par défaut ci-dessus (klassci:doctor affiche « unknown »).
-    'tenant_code_declare' => env('TENANT_CODE'),
-
     /*
     |--------------------------------------------------------------------------
     | Support Contact Email

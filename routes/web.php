@@ -92,7 +92,7 @@ if (app()->environment('local')) {
 // Route d'accueil â€” la landing publique vit dÃ©sormais sur klassci.com (Vercel /
 // klassci-landing). Sur les sous-domaines tenant et sur l'apex Laravel, on
 // redirige vers le login pour ne plus exposer de page marketing.
-Route::get('/', fn () => redirect()->route('login'))->name('welcome');
+Route::get('/', [\App\Http\Controllers\Routage\RoutesSimplesController::class, 'accueil'])->name('welcome');
 
 // Apercu partage sur les reseaux et messageries. Publique et sans
 // authentification : un robot ne se connecte pas, et une image derriere
@@ -139,7 +139,7 @@ Route::prefix('install')->middleware('install.lock')->group(function () {
 });
 
 // CSRF token refresh (keeps login/register forms alive when idle)
-Route::get('/csrf-token-refresh', fn () => response()->json(['token' => csrf_token()]))->name('csrf.refresh');
+Route::get('/csrf-token-refresh', [\App\Http\Controllers\Routage\RoutesSimplesController::class, 'jetonCsrf'])->name('csrf.refresh');
 
 // Routes auth + password reset + SSO â†’ extraites dans routes/auth.php (audit 2026-05-21,
 // refactor god-code routes/web.php). require inline prÃ©serve le middleware group 'web'.
@@ -962,7 +962,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // â•â•â• Sous-lot C+ : Corbeille multi-entitÃ© (Ã©tudiants + inscriptions + paiements) â•â•â•
             Route::middleware('permission:trash.view')->prefix('trash')->name('trash.')->group(function () {
-                Route::get('/', fn () => view('esbtp.trash.index'))->name('index');
+                Route::view('/', 'esbtp.trash.index')->name('index');
                 Route::get('/etudiants', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'index'])->name('etudiants');
                 Route::get('/inscriptions', [\App\Http\Controllers\ESBTPInscriptionTrashController::class, 'index'])->name('inscriptions');
                 Route::get('/paiements', [\App\Http\Controllers\ESBTPPaiementTrashController::class, 'index'])
@@ -1813,11 +1813,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
     // Routes pour les paramÃ¨tres et les rÃ´les
     Route::middleware(['auth', 'permission:system.manage'])->group(function () {
-        Route::get('/roles', function () {
-            $roles = \Spatie\Permission\Models\Role::with('permissions')->get();
-
-            return view('admin.roles.index', compact('roles'));
-        })->name('roles.index');
+        Route::get('/roles', [\App\Http\Controllers\Routage\RoutesSimplesController::class, 'roles'])->name('roles.index');
     });
 
     // Notifications routes
@@ -2302,9 +2298,9 @@ Route::permanentRedirect('/esbtp/comptabilite', '/esbtp/comptabilite/dashboard')
 Route::permanentRedirect('/esbtp/comptabilite/paiements', '/esbtp/paiements');
 Route::permanentRedirect('/esbtp/comptabilite/paiements/create', '/esbtp/paiements/create');
 Route::permanentRedirect('/esbtp/comptabilite/rapports', '/esbtp/comptabilite/dashboard');
-Route::get('/esbtp/comptabilite/paiements/{id}', fn ($id) => redirect()->route('esbtp.paiements.show', $id));
-Route::get('/esbtp/comptabilite/paiements/{id}/edit', fn ($id) => redirect()->route('esbtp.paiements.edit', $id));
-Route::get('/esbtp/comptabilite/paiements/{id}/recu', fn ($id) => redirect()->route('esbtp.paiements.recu', $id));
+Route::get('/esbtp/comptabilite/paiements/{id}', [\App\Http\Controllers\Routage\RoutesSimplesController::class, 'paiementHerite']);
+Route::get('/esbtp/comptabilite/paiements/{id}/edit', [\App\Http\Controllers\Routage\RoutesSimplesController::class, 'paiementHeriteEdition']);
+Route::get('/esbtp/comptabilite/paiements/{id}/recu', [\App\Http\Controllers\Routage\RoutesSimplesController::class, 'paiementHeriteRecu']);
 
 Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')->name('esbtp.comptabilite.')->group(function () {
     // KPIs temps rÃ©el
@@ -2849,9 +2845,7 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('permission:classes.edit')
         ->name('esbtp.classes.sync-systeme-academique');
     Route::get('/esbtp/classes/{classe}/etudiants', [ESBTPClasseController::class, 'getEtudiants'])->name('esbtp.classes.etudiants');
-    Route::get('/esbtp/classes/{classe}/semestres-lmd', function (\App\Models\ESBTPClasse $classe) {
-        return response()->json(['semestres' => $classe->getSemestresLMD()]);
-    })->name('esbtp.classes.semestres-lmd');
+    Route::get('/esbtp/classes/{classe}/semestres-lmd', [\App\Http\Controllers\Routage\RoutesSimplesController::class, 'semestresLmd'])->name('esbtp.classes.semestres-lmd');
     Route::middleware('permission:classes.view')->group(function () {
         Route::get('/esbtp/classes/{classe}/liste-appel', [ESBTPClasseController::class, 'listeAppel'])->name('esbtp.classes.liste-appel');
         Route::get('/esbtp/classes/{classe}/liste-appel/pdf', [ESBTPClasseController::class, 'listeAppelPDF'])->name('esbtp.classes.liste-appel.pdf');

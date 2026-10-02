@@ -1,6 +1,5 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ESBTPClasseController;
 use App\Http\Controllers\ESBTPEtudiantController;
@@ -127,9 +126,7 @@ Route::prefix('public/etablissement')->group(function () {
         ->name('api.public.etablissement.logo');
 });
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+Route::middleware('auth:sanctum')->get('/user', [App\Http\Controllers\Routage\RoutesSimplesController::class, 'utilisateurConnecte']);
 
 // MailPulse is the transport only. KLASSCI validates and answers parent requests itself.
 Route::post('/v1/integrations/mailpulse/parent-chatbot/inbound', App\Http\Controllers\API\ParentChatbotInboundController::class)
@@ -329,40 +326,7 @@ Route::middleware(['auth:sanctum'])->prefix('lms')->name('api.lms.')->group(func
 // ================================
 // ROUTES DE DOCUMENTATION
 // ================================
-Route::get('/lms/documentation', function () {
-    return response()->json([
-        'title' => 'API LMS-KLASSCI Integration',
-        'version' => '1.0.0',
-        'description' => 'API pour l\'intégration entre le LMS et KLASSCI',
-        'base_url' => url('/api/lms'),
-        'authentication' => [
-            'type' => 'Bearer Token (Laravel Sanctum)',
-            'login_endpoint' => '/api/lms/auth/login',
-            'header_format' => 'Authorization: Bearer {token}'
-        ],
-        'endpoints' => [
-            'read_only' => [
-                'GET /api/lms/structure' => 'Structure organisationnelle (filières, niveaux)',
-                'GET /api/lms/matieres' => 'Liste des matières accessibles',
-                'GET /api/lms/classes' => 'Classes de l\'année courante',
-                'GET /api/lms/classes/{id}/etudiants' => 'Étudiants d\'une classe',
-                'GET /api/lms/emploi-temps' => 'Emploi du temps filtré par rôle',
-                'GET /api/lms/evaluations' => 'Évaluations programmées'
-            ],
-            'write_only' => [
-                'POST /api/lms/evaluations/{id}/notes' => 'Sauvegarder notes d\'évaluation',
-                'POST /api/lms/cours/{id}/presences' => 'Enregistrer présences cours',
-                'PUT /api/lms/cours/{id}/statut' => 'Mettre à jour statut cours'
-            ]
-        ],
-        'roles_supported' => ['enseignant', 'coordinateur', 'etudiant'],
-        'data_scope' => 'Année universitaire courante uniquement',
-        'contact' => [
-            'team' => 'KLASSCI Development Team',
-            'documentation' => url('/api/lms/auth/documentation')
-        ]
-    ]);
-})->name('api.lms.documentation');
+Route::get('/lms/documentation', App\Http\Controllers\API\LmsDocumentationController::class)->name('api.lms.documentation');
 
 /*
 |--------------------------------------------------------------------------

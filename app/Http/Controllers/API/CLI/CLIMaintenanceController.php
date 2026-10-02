@@ -34,45 +34,18 @@ class CLIMaintenanceController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
-        $output = [];
+        $etapes = app(ReconstructionDesCaches::class)->apresDeploiement();
 
-        try {
-            Artisan::call('config:clear');
-            $output[] = 'config:clear OK';
-
-            Artisan::call('route:clear');
-            $output[] = 'route:clear OK';
-
-            Artisan::call('cache:clear');
-            $output[] = 'cache:clear OK';
-
-            Artisan::call('view:clear');
-            $output[] = 'view:clear OK';
-
-            Artisan::call('permission:cache-reset');
-            $output[] = 'permission:cache-reset OK';
-
-            // Also clear settings cache
-            Setting::clearCache();
-            $output[] = 'settings cache cleared';
-
-            if (function_exists('opcache_reset')) {
-                @opcache_reset();
-                $output[] = 'opcache reset OK';
-            }
-        } catch (\Exception $e) {
-            Log::error('CLI: cache clear failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return $this->errorResponse('Operation failed. Check server logs for details.', ['completed' => $output], 500);
+        if ($etapes['purge']['status'] !== 'done') {
+            return $this->errorResponse('Operation failed. Check server logs for details.', ['completed' => $etapes['purge']['commands']], 500);
         }
 
-        $reconstruction = app(ReconstructionDesCaches::class)->reconstruire();
-
         return $this->successResponse([
-            'commands' => $output,
-            'reconstruction' => $reconstruction,
-        ], ReconstructionDesCaches::toutEstReconstruit($reconstruction)
+            'commands' => $etapes['purge']['commands'],
+            'reconstruction' => $etapes['reconstruction']['caches'],
+        ], $etapes['reconstruction']['status'] === 'done'
             ? 'All caches cleared, config and route caches rebuilt'
-            : 'All caches cleared, but a cache could not be rebuilt and was left empty (see reconstruction)');
+            : 'All caches cleared, but config or route cache was not rebuilt (see reconstruction)');
     }
 
     /**
@@ -720,13 +693,8 @@ class CLIMaintenanceController extends BaseApiController
                 $results['steps'][] = ['action' => 'migrate_retry', 'exit_code' => $exitCode2, 'output' => $output2];
             }
 
-            // 2. Clear caches
-            Artisan::call('config:clear');
-            Artisan::call('cache:clear');
-            Artisan::call('view:clear');
-            Artisan::call('permission:cache-reset');
-            $results['steps'][] = ['action' => 'cache_clear', 'status' => 'done'];
-            $results['steps'][] = $this->etapeDeReconstruction();
+            // 2. Purge et reconstruction des caches
+            array_push($results['steps'], ...array_values(app(ReconstructionDesCaches::class)->apresDeploiement()));
 
             $failed = collect($results['steps'])->contains(fn($s) => ($s['status'] ?? '') === 'failed');
 
@@ -828,12 +796,7 @@ class CLIMaintenanceController extends BaseApiController
             $out = mb_substr(trim($proc->getOutput() . "\n" . $proc->getErrorOutput()), -6000);
 
             if ($proc->isSuccessful()) {
-                Artisan::call('config:clear');
-                Artisan::call('cache:clear');
-                if (function_exists('opcache_reset')) {
-                    @opcache_reset();
-                }
-                $reconstruction = app(ReconstructionDesCaches::class)->reconstruire();
+                $reconstruction = app(ReconstructionDesCaches::class)->apresDeploiement()['reconstruction']['caches'];
             }
 
             return $this->successResponse([
@@ -1079,13 +1042,8 @@ class CLIMaintenanceController extends BaseApiController
                 $steps[] = ['action' => 'git stash drop', 'status' => 'done'];
             }
 
-            // Cache clear pour que le nouveau code soit visible
-            Artisan::call('config:clear');
-            Artisan::call('route:clear');
-            Artisan::call('view:clear');
-            Artisan::call('cache:clear');
-            $steps[] = ['action' => 'cache_clear', 'status' => 'done'];
-            $steps[] = $this->etapeDeReconstruction();
+            // Purge et reconstruction des caches, pour que le nouveau code soit lu
+            array_push($steps, ...array_values(app(ReconstructionDesCaches::class)->apresDeploiement()));
 
             return $this->successResponse([
                 'branch' => $branch,
@@ -1095,23 +1053,6 @@ class CLIMaintenanceController extends BaseApiController
             Log::error('CLI: pull failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Pull failed: ' . $e->getMessage(), ['steps' => $steps], 500);
         }
-    }
-
-    /**
-     * Reconstruction des caches de configuration et de routes, sous la forme
-     * d'une étape des réponses de pull et migrate.
-     *
-     * @return array{action: string, status: string, caches: array}
-     */
-    private function etapeDeReconstruction(): array
-    {
-        $caches = app(ReconstructionDesCaches::class)->reconstruire();
-
-        return [
-            'action' => 'cache_rebuild',
-            'status' => ReconstructionDesCaches::toutEstReconstruit($caches) ? 'done' : 'failed',
-            'caches' => $caches,
-        ];
     }
 
     /**
