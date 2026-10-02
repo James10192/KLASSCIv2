@@ -135,6 +135,9 @@
 .dmi-encart { display: flex; gap: .6rem; align-items: flex-start; background: #f1f6ff; border: 1px solid #c9daf6; border-radius: 10px; padding: .7rem .8rem; font-size: .8rem; margin-top: .75rem; }
 .dmi-encart i { color: var(--dmi-primary); margin-top: .15rem; }
 .dmi-encart--alerte { background: #fffaf0; border-color: #fde7c2; }
+/* Le panneau est étroit : un bouton d'encart passe à la ligne au lieu de pousser l'encart hors du panneau. */
+.dmi-encart > div { min-width: 0; }
+.dmi-encart .dmi-btn { white-space: normal; text-align: left; justify-content: flex-start; max-width: 100%; }
 .dmi-encart--alerte i { color: var(--dmi-warning); }
 .dmi-message { font-size: .8rem; background: var(--dmi-surface); border-radius: 10px; padding: .65rem .75rem; color: #334155; white-space: pre-line; }
 .dmi-p-actions { display: flex; flex-direction: column; gap: .5rem; margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid #eef2f7; }

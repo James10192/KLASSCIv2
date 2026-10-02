@@ -156,7 +156,7 @@ class SearchInscriptionsTool extends ChatbotTool
             'matricule' => $etudiant?->matricule,
             'classe' => $classe?->name ?? 'Non affectée',
             'filiere' => $classe?->filiere?->name ?? 'N/A',
-            'type' => ucfirst(str_replace('_', ' ', $i->type_inscription ?? 'N/A')),
+            'type' => \App\Services\Inscriptions\NormalisationTypeInscription::libelle($i->type_inscription),
             'statut' => ucfirst(str_replace('_', ' ', $i->status ?? 'N/A')),
             'date' => $i->date_inscription?->format('d/m/Y') ?? 'N/A',
             'redoublant' => $redoublant['libelle'],
