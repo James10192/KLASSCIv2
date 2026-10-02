@@ -40,10 +40,12 @@ passent par `mailpulse:*`, qui note l'échec.
 
 Réglés par école dans `/esbtp/settings`, section « Surveillance des lenteurs » :
 
-| clé | défaut | plancher |
+| clé | défaut | bornes |
 |---|---|---|
-| `exploitation.traces_lentes.seuil_ms` | 1000 | 50 |
-| `exploitation.traces_lentes.seuil_requetes` | 100 | 10 |
+| `exploitation.traces_lentes.seuil_ms` | 1000 | 50 à 60 000 |
+| `exploitation.traces_lentes.seuil_requetes` | 100 | 10 à 10 000 |
+
+Une valeur hors bornes est ramenée dans les bornes à la lecture.
 
 Ils sont relus au plus une fois par minute et par processus. Coupe-circuit
 d'exploitation, sans redéploiement : `TRACES_LENTES=false` dans le `.env`.
@@ -82,8 +84,16 @@ d'exploitation, sans redéploiement : `TRACES_LENTES=false` dans le `.env`.
 `echecs` compte les statuts ≥ 500 pour une requête, les codes non nuls pour un
 travail ou une commande. Le centile est pris au rang le plus proche ; la
 médiane d'un nombre pair de valeurs est la moyenne des deux du milieu. Au-delà
-de 50 000 lignes dans la fenêtre, la lecture s'arrête et `tronque` vaut `true`.
+de 50 000 lignes dans la fenêtre, la lecture s'arrête et `tronque` vaut `true` :
+ce sont alors les traces **les plus récentes** qui sont lues.
+
+Une commande qui lève avant sa fin est notée avec `code` 1 et
+`details.resultat` = `interrompue` (`ok` et `echec` pour une fin normale).
+Les traces d'un PDF ou d'un envoi produits pendant une page sont écrites avec
+celle de la page, après la réponse, ou à l'arrêt du processus si la page tombe.
+Cette route ne se trace pas elle-même : la console la lit chaque heure.
 
 ## Historique
 
 - **Octobre 2026** — création.
+- **Octobre 2026** — seuils bornés aussi par le haut ; lecture tronquée sur les plus récentes ; résultat `interrompue` ; route exclue de sa propre mesure. Pas de rupture de contrat.

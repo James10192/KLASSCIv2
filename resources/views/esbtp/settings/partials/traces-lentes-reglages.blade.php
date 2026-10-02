@@ -6,6 +6,7 @@
     $_tl = app(\App\Domain\Exploitation\TracesLentes\SeuilsDesTraces::class);
     $_tlCleDuree = \App\Domain\Exploitation\TracesLentes\SeuilsDesTraces::REGLAGE_DUREE_MS;
     $_tlCleSql = \App\Domain\Exploitation\TracesLentes\SeuilsDesTraces::REGLAGE_REQUETES;
+    $_tlS = \App\Domain\Exploitation\TracesLentes\SeuilsDesTraces::class;
 @endphp
 <div class="settings-section">
     <div class="section-header">
@@ -24,11 +25,11 @@
                 <div class="row g-2" style="margin-top:.6rem;max-width:560px;">
                     <div class="col-12 col-md-6">
                         <label class="bc-desc" for="tl-duree" style="display:block;margin-bottom:.2rem;">Durée (millisecondes)</label>
-                        <input type="number" class="form-control form-control-sm" id="tl-duree" name="{{ $_tlCleDuree }}" min="50" max="60000" step="50" value="{{ $_tl->dureeMs() }}">
+                        <input type="number" class="form-control form-control-sm" id="tl-duree" name="{{ $_tlCleDuree }}" min="{{ $_tlS::DUREE_MIN_MS }}" max="{{ $_tlS::DUREE_MAX_MS }}" step="50" value="{{ $_tl->dureeMs() }}">
                     </div>
                     <div class="col-12 col-md-6">
                         <label class="bc-desc" for="tl-sql" style="display:block;margin-bottom:.2rem;">Requêtes à la base</label>
-                        <input type="number" class="form-control form-control-sm" id="tl-sql" name="{{ $_tlCleSql }}" min="10" max="10000" value="{{ $_tl->requetes() }}">
+                        <input type="number" class="form-control form-control-sm" id="tl-sql" name="{{ $_tlCleSql }}" min="{{ $_tlS::REQUETES_MIN }}" max="{{ $_tlS::REQUETES_MAX }}" value="{{ $_tl->requetes() }}">
                     </div>
                 </div>
             </div>
