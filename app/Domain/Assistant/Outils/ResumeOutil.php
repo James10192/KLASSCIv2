@@ -101,7 +101,8 @@ class ResumeOutil
         }
 
         // Proposition d'action : ni le jeton ni le tableau, seulement ce qu'il faut dire.
-        // L'identifiant reste : l'historique s'en sert pour substituer l'issue réelle.
+        // L'identifiant reste : il nomme la proposition pour le modèle, et relie un
+        // second appel identique (sans carte) à l'issue que l'historique substitue.
         if (isset($resultat['proposition'])) {
             return self::json(array_intersect_key($resultat, array_flip(['proposition', 'statut', 'message', 'resume', 'avertissements'])));
         }

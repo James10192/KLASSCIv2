@@ -470,37 +470,53 @@ class PropositionsTest extends TestCase
      */
     public function test_le_modele_relit_l_issue_reelle_de_ses_propositions(): void
     {
-        $proposerEtTracer = function (string $appel, int $note) {
+        $proposerEtTracer = function (string $appel, int $note, string $avant = '', bool $doublon = false) {
             $resultat = $this->proposer([['etudiant' => 'MAT-001', 'note' => $note]]);
             $fil = new \App\Domain\Assistant\Harnais\FilDeReponse();
+            if ($avant !== '') {
+                $fil->texte($avant);
+            }
             $fil->etape($appel, ['nom' => 'proposer_saisie_notes', 'etat' => 'termine']);
             $fil->widget($appel, $resultat['widget']);
             $fil->texte('Je propose la note ' . $note . '.');
             ChatbotMessage::create(['conversation_id' => $this->conversation->id, 'role' => 'user', 'content' => 'Mets ' . $note]);
+            $pourModele = ResumeOutil::pourModele('proposer_saisie_notes', $resultat, true);
+            $trace = [
+                ['role' => 'assistant', 'texte' => $avant, 'appels' => [['id' => $appel, 'nom' => 'proposer_saisie_notes', 'arguments' => []]]],
+                ['role' => 'outil', 'id' => $appel, 'nom' => 'proposer_saisie_notes', 'resultat' => $pourModele],
+            ];
+            if ($doublon) {
+                // Un second appel identique dans l'échange : résultat déjà obtenu, sans carte.
+                $trace[] = ['role' => 'assistant', 'texte' => '', 'appels' => [['id' => $appel . 'b', 'nom' => 'proposer_saisie_notes', 'arguments' => []]]];
+                $trace[] = ['role' => 'outil', 'id' => $appel . 'b', 'nom' => 'proposer_saisie_notes', 'resultat' => $pourModele . "\n(Appel identique déjà fait dans cet échange : utilise ce résultat.)"];
+            }
             ChatbotMessage::create([
-                'conversation_id' => $this->conversation->id, 'role' => 'assistant', 'content' => 'Je propose la note ' . $note . '.',
-                'metadata' => ['parties' => $fil->toArray(), 'trace' => [
-                    ['role' => 'assistant', 'texte' => '', 'appels' => [['id' => $appel, 'nom' => 'proposer_saisie_notes', 'arguments' => []]]],
-                    ['role' => 'outil', 'id' => $appel, 'nom' => 'proposer_saisie_notes', 'resultat' => ResumeOutil::pourModele('proposer_saisie_notes', $resultat, true)],
-                ]],
+                'conversation_id' => $this->conversation->id, 'role' => 'assistant', 'content' => trim($avant . "\n\n" . 'Je propose la note ' . $note . '.'),
+                'metadata' => ['parties' => $fil->toArray(), 'trace' => $trace],
             ]);
 
             return $resultat['widget'];
         };
 
-        $ancienne = $proposerEtTracer('a00000001', 11);
+        $ancienne = $proposerEtTracer('a00000001', 11, 'Liste des élèves sans note : KOUASSI Aya, KONAN Jean.');
         $this->actingAs($this->user)->postJson($ancienne['valider_url'], ['jeton' => $ancienne['jeton']])->assertOk();
         // Trois réponses plus récentes avec leurs propres outils : l'ancienne sort des traces rejouées en entier.
         $refusee = $proposerEtTracer('a00000002', 12);
-        $this->actingAs($this->user)->postJson($refusee['valider_url'] ? $refusee['refuser_url'] : '')->assertOk();
+        $this->actingAs($this->user)->postJson($refusee['refuser_url'])->assertOk();
         $expiree = $proposerEtTracer('a00000003', 13);
         ChatbotActionLog::whereKey($expiree['id'])->update(['expires_at' => now()->subMinute()]);
-        $enAttente = $proposerEtTracer('a00000004', 14);
+        $enAttente = $proposerEtTracer('a00000004', 14, '', true);
 
         $messages = app(\App\Domain\Assistant\Harnais\ConstructeurDePrompt::class)->messages($this->conversation, 'Et maintenant ?');
-        $resultats = collect($messages)->where('role', 'outil')->pluck('resultat')->map(fn ($r) => json_decode($r, true))->keyBy('proposition');
+        $tous = collect($messages)->where('role', 'outil')->pluck('resultat')->map(fn ($r) => json_decode($r, true));
+        $resultats = $tous->keyBy('proposition');
 
+        $this->assertCount(5, $tous, 'le doublon est rejoué aussi');
         $this->assertCount(4, $resultats);
+        // Le doublon porte la même issue que le premier appel, pas « en attente de validation ».
+        $this->assertSame(2, $tous->where('proposition', $enAttente['id'])->where('statut', 'en_attente')->count());
+        // Une réponse plus ancienne garde le texte qu'elle avait écrit avant la carte.
+        $this->assertStringContainsString('Liste des élèves sans note', collect($messages)->where('role', 'assistant')->pluck('texte')->implode("\n"));
         $this->assertSame('executee', $resultats[$ancienne['id']]['statut']);
         $this->assertStringContainsString('Validée', $resultats[$ancienne['id']]['issue']);
         $this->assertSame('refusee', $resultats[$refusee['id']]['statut']);

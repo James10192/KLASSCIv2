@@ -90,14 +90,13 @@ class ConstructeurDePrompt
             if ($role === 'assistant') {
                 $sesIssues = $issues[$msg->id] ?? [];
                 $complete = in_array($msg->id, $avecOutils, true);
-                $final = ($complete || $sesIssues !== []) ? $this->texteFinal($msg) : null;
-                // Hors des traces rejouées, une proposition repart quand même : seul
-                // son appel, avec son issue. Sinon Nanan oubliait qu'elle avait été
-                // validée dès qu'elle sortait des trois dernières réponses.
+                // Réponse récente : la trace entière, puis le texte écrit après elle.
+                // Réponse plus ancienne : seuls les appels de proposition, avec leur
+                // issue, puis TOUT son texte (rien de ce qu'elle disait avant la
+                // carte ne se perd). Sinon Nanan oubliait qu'une proposition avait
+                // été validée dès qu'elle sortait des trois dernières réponses.
                 $trace = $complete ? $msg->metadata['trace'] : $this->appelsDePropositions((array) ($msg->metadata['trace'] ?? []), $sesIssues);
-                if ($final === null && !$complete && $trace !== [] && trim($texte) !== '') {
-                    $final = $texte;
-                }
+                $final = $complete ? $this->texteFinal($msg) : ($trace !== [] ? $texte : null);
                 // Une trace ne se rejoue que suivie de sa réponse : une réponse coupée
                 // après ses outils (limite, erreur) n'en a pas, et un repère inventé
                 // à sa place finirait recopié à l'écran, comme l'ancien.
@@ -527,12 +526,31 @@ PROMPT;
         return $this->traceValide($reduite) ? $reduite : [];
     }
 
-    /** Le résultat enregistré d'une proposition remplacé par son issue réelle. */
+    /**
+     * Le résultat enregistré d'une proposition remplacé par son issue réelle.
+     *
+     * Par l'identifiant de l'appel (celui de la carte), et aussi par le numéro
+     * de proposition lu dans le résultat : un second appel identique dans le
+     * même échange reçoit le résultat déjà obtenu, sans carte, et garderait
+     * sinon « en attente » à côté de l'issue réelle.
+     */
     private function avecIssues(array $trace, array $issues): array
     {
+        $parProposition = [];
+        foreach ($issues as $issue) {
+            $parProposition[(int) (json_decode($issue, true)['proposition'] ?? 0)] = $issue;
+        }
         foreach ($trace as $i => $message) {
-            if ($message['role'] === 'outil' && isset($issues[(string) ($message['id'] ?? '')])) {
-                $trace[$i]['resultat'] = $issues[(string) $message['id']];
+            if ($message['role'] !== 'outil') {
+                continue;
+            }
+            $issue = $issues[(string) ($message['id'] ?? '')] ?? null;
+            if ($issue === null && is_string($message['resultat'] ?? null)) {
+                $numero = (int) (json_decode(strtok($message['resultat'], "\n"), true)['proposition'] ?? 0);
+                $issue = $parProposition[$numero] ?? null;
+            }
+            if ($issue !== null) {
+                $trace[$i]['resultat'] = $issue;
             }
         }
 
