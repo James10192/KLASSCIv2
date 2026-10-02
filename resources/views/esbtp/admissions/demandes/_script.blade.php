@@ -225,7 +225,9 @@ window.demandesInscription = function () {
             if (action === 'inscrire') return this.ouvrirInscription();
             if (action === 'accepter') return this.accepter();
             if (action === 'reinscrire') {
-                const anneeDemande = (this.cfg.annees || []).some((a) => a.id === this.dossier.annee_id) ? this.dossier.annee_id : null;
+                // L'annee de la demande par defaut, sauf si elle est terminee :
+                // on ne propose pas d'office une reinscription sur une annee close.
+                const anneeDemande = (this.cfg.annees || []).some((a) => a.id === this.dossier.annee_id && !a.echue) ? this.dossier.annee_id : null;
                 this.reins = { classe_id: this.dossier.classe || null, decision: '', observations: '', annee_id: anneeDemande || (this.cfg.annees || []).find((a) => a.courante)?.id || null, annee_echue_confirmee: false, classes: null, placesChargement: false, erreurs: {}, message: '' };
                 // Les places de la liste generale sont celles de l'annee courante.
                 if (this.reins.annee_id && !(this.cfg.annees || []).find((a) => a.id === this.reins.annee_id)?.courante) this.chargerClassesReins(this.reins.annee_id);
@@ -252,18 +254,22 @@ window.demandesInscription = function () {
             if (this.reins.annee_id === annee.id) return;
             this.reins.annee_id = annee.id;
             this.reins.annee_echue_confirmee = false;
+            // Les places affichees ne valent plus pour la nouvelle annee.
+            this.reins.classes = [];
             this.chargerClassesReins(annee.id);
         },
         /* Les places se recomptent sur l'annee choisie ; une reponse perimee est ignoree. */
         async chargerClassesReins(anneeId) {
             if (!this.cfg.classesParAnnee) return;
+            const jeton = (this.reins.jeton || 0) + 1;
+            this.reins.jeton = jeton;
             this.reins.placesChargement = true;
             try {
                 const d = await this.appeler(this.cfg.classesParAnnee + '?annee=' + encodeURIComponent(anneeId));
-                if (d.annee_universitaire_id === this.reins.annee_id) this.reins.classes = d.classes || [];
+                if (jeton === this.reins.jeton && d.annee_universitaire_id === this.reins.annee_id) this.reins.classes = d.classes || [];
             } catch (e) {
-                this.notifier('error', e.message);
-            } finally { this.reins.placesChargement = false; }
+                if (jeton === this.reins.jeton) this.notifier('error', 'Places indisponibles pour cette année : ' + e.message);
+            } finally { if (jeton === this.reins.jeton) this.reins.placesChargement = false; }
         },
         async reinscrire() {
             this.occupe = true; this.reins.erreurs = {}; this.reins.message = '';

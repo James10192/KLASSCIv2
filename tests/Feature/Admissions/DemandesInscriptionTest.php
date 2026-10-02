@@ -431,6 +431,29 @@ class DemandesInscriptionTest extends TestCase
         $this->assertSame(30, $libres($this->annee->id));
     }
 
+    public function test_une_reinscription_ne_revient_pas_sur_une_annee_anterieure(): void
+    {
+        $this->annee->update(['start_date' => '2026-09-01', 'end_date' => '2027-07-31']);
+        $terminee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false,
+            'start_date' => '2025-09-01', 'end_date' => '2026-07-31']);
+        $demande = $this->demande('KONE');
+        // L'etudiant est deja inscrit sur l'annee courante.
+        \App\Models\ESBTPInscription::factory()->create([
+            'etudiant_id' => $demande->etudiant_id, 'classe_id' => $this->classe('1A BTS', 30)->id,
+            'filiere_id' => $this->filiere->id, 'niveau_id' => $this->niveau->id,
+            'annee_universitaire_id' => $this->annee->id, 'status' => 'active',
+        ]);
+
+        $this->actingAs($this->agent)->postJson(route('esbtp.reinscription-demandes.convertir', $demande), [
+            'classe_id' => $this->classe('2A BTS', 30)->id, 'decision' => 'passage',
+            'annee_universitaire_id' => $terminee->id, 'annee_echue_confirmee' => true,
+        ])->assertStatus(422)->assertJsonPath('ok', false);
+
+        $this->assertSame('en_attente', $demande->fresh()->statut);
+        $this->assertSame(0, \App\Models\ESBTPInscription::where('etudiant_id', $demande->etudiant_id)
+            ->where('annee_universitaire_id', $terminee->id)->count());
+    }
+
     public function test_proposer_un_creneau_a_une_famille_sans_rendez_vous(): void
     {
         $c = $this->candidature(['nom' => 'SANSRDV']);

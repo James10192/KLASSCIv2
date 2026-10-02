@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Exceptions\ReinscriptionRefuseeException;
 use App\Domain\Admissions\FileDesDemandes;
+use App\Domain\Admissions\PreparationDInscription;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPInscription;
@@ -50,23 +51,17 @@ class ESBTPReinscriptionDemandeController extends Controller
             'classe_id' => ['required', Rule::exists('esbtp_classes', 'id')->where('is_active', true)],
             'decision' => ['required', Rule::in(array_keys(ESBTPReinscriptionDemande::DECISIONS))],
             'observations' => ['nullable', 'string', 'max:1000'],
-            'annee_universitaire_id' => ['nullable', 'integer', Rule::exists('esbtp_annee_universitaires', 'id')],
+            // Seulement les annees que la fenetre propose (precedente, courante,
+            // suivantes, et celle de la demande) : un envoi forge n'en vise pas d'autre.
+            'annee_universitaire_id' => ['nullable', 'integer', Rule::in(array_column(
+                app(PreparationDInscription::class)->annees($demande->annee_universitaire_id), 'id'
+            ))],
             'annee_echue_confirmee' => ['nullable', 'boolean'],
         ]);
 
-        // L'annee : celle choisie dans la fenetre, sinon celle de la demande.
-        $annee = isset($valide['annee_universitaire_id'])
-            ? ESBTPAnneeUniversitaire::find($valide['annee_universitaire_id'])
-            : $demande->anneeUniversitaire;
-
-        // Sans choix explicite, une demande deposee sur une annee revolue ne se
-        // convertit pas telle quelle : elle reinscrirait l'etudiant dans le passe.
-        if (! isset($valide['annee_universitaire_id']) && ! optional($annee)->is_current) {
-            return $this->repondre($request, false, "Cette demande vise une année qui n'est plus l'année en cours. Choisissez l'année de la réinscription.");
-        }
-        // Choisie et terminee : possible (dossier en retard), mais confirmee.
-        if (isset($valide['annee_universitaire_id']) && $annee->estTerminee() && empty($valide['annee_echue_confirmee'])) {
-            return $this->repondre($request, false, "L'année {$annee->name} est terminée : confirmez la réinscription sur cette année.");
+        $annee = $this->anneeDeConversion($valide, $demande);
+        if (is_string($annee)) {
+            return $this->repondre($request, false, $annee);
         }
 
         // Du temps a pu passer entre le depot et cette conversion : l'ecole a
@@ -146,6 +141,8 @@ class ESBTPReinscriptionDemandeController extends Controller
             'demande_id' => $demande->id,
             'etudiant_id' => $demande->etudiant_id,
             'classe_id' => $valide['classe_id'],
+            'annee_universitaire_id' => $annee->id,
+            'annee_echue_confirmee' => ! empty($valide['annee_echue_confirmee']),
             'traite_par' => auth()->id(),
         ]);
 
@@ -155,6 +152,34 @@ class ESBTPReinscriptionDemandeController extends Controller
         FileDesDemandes::oublierLesCompteurs();
 
         return $this->repondre($request, true, 'Réinscription effectuée. La demande est clôturée.');
+    }
+
+    /**
+     * L'annee sur laquelle reinscrire. Sans choix explicite, celle de la
+     * demande — a condition qu'elle soit encore l'annee en cours : une demande
+     * deposee l'an dernier ne doit pas reinscrire sur une annee close sans
+     * qu'on l'ait choisie. Une annee terminee choisie se confirme.
+     *
+     * Rend le message a afficher quand la conversion ne peut pas partir.
+     */
+    private function anneeDeConversion(array $valide, ESBTPReinscriptionDemande $demande): ESBTPAnneeUniversitaire|string
+    {
+        $explicite = isset($valide['annee_universitaire_id']);
+        $annee = $explicite
+            ? ESBTPAnneeUniversitaire::find($valide['annee_universitaire_id'])
+            : $demande->anneeUniversitaire;
+
+        if ($annee === null) {
+            return "Choisissez l'année de la réinscription.";
+        }
+        if (! $explicite && ! $annee->is_current) {
+            return "Cette demande vise une année qui n'est plus l'année en cours. Choisissez l'année de la réinscription.";
+        }
+        if ($explicite && $annee->estTerminee() && empty($valide['annee_echue_confirmee'])) {
+            return "L'année {$annee->name} est terminée : confirmez la réinscription sur cette année.";
+        }
+
+        return $annee;
     }
 
     public function rejeter(Request $request, ESBTPReinscriptionDemande $demande, ReservateurRdv $reservateur): RedirectResponse|JsonResponse
