@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Comptabilite\Relances\PopulationDesRelances;
 use App\Models\ESBTPRelance;
 use App\Models\ESBTPReliquat;
 use App\Models\User;
@@ -109,32 +110,31 @@ class NotificationService
     }
 
     /**
-     * Planifie les relances automatiques
+     * Le seul point d'envoi d'une relance enregistree : la boucle des relances
+     * planifiees comme le renvoi (EnvoyerRelanceJob) passent par ici.
+     *
+     * Une relance dont l'eleve n'est plus dans la population des relances
+     * (inscription plus active, ou introuvable) est ECARTEE au lieu de partir :
+     * la liste ne la montre plus, l'envoi ne la contredit pas — et le montant
+     * du message, calcule sur la meme population, vaudrait zero.
+     *
+     * @return array{success: bool, message: string, ecartee?: bool}
      */
-    public function planifierRelances()
+    public function envoyerRelance(ESBTPRelance $relance, ?bool $inclureInactives = null): array
     {
-        $etudiants = $this->getEtudiantsARelancer();
-        $relancesPlanifiees = 0;
+        if (! PopulationDesRelances::couvreLaRelance($relance, $inclureInactives)) {
+            $motif = "L'inscription de l'élève n'est plus active : la relance n'est pas envoyée.";
+            $relance->marquerCommeEcartee($motif);
 
-        foreach ($etudiants as $etudiant) {
-            $dernierRelance = ESBTPRelance::where('etudiant_id', $etudiant->id)
-                ->orderBy('created_at', 'desc')
-                ->first();
-
-            $niveau = $dernierRelance ? $dernierRelance->niveau + 1 : 1;
-
-            // Maximum 3 niveaux de relance
-            if ($niveau <= 3) {
-                $this->creerRelance($etudiant, $niveau);
-                $relancesPlanifiees++;
-            }
+            return ['success' => false, 'ecartee' => true, 'message' => $motif];
         }
 
-        return [
-            'success' => true,
-            'relances_planifiees' => $relancesPlanifiees,
-            'message' => "$relancesPlanifiees relances planifiées"
-        ];
+        return match ($relance->type) {
+            'email' => $this->envoyerRelanceEmail($relance),
+            'sms' => $this->envoyerRelanceSMS($relance),
+            'courrier' => $this->genererCourrierRelance($relance),
+            default => ['success' => false, 'message' => 'Type de relance non supporté'],
+        };
     }
 
     /**
@@ -149,18 +149,19 @@ class NotificationService
         $resultats = [
             'total' => $relances->count(),
             'reussies' => 0,
-            'echecs' => 0
+            'echecs' => 0,
+            'ecartees' => 0,
         ];
 
-        foreach ($relances as $relance) {
-            $resultat = match($relance->type) {
-                'email' => $this->envoyerRelanceEmail($relance),
-                'sms' => $this->envoyerRelanceSMS($relance),
-                'courrier' => $this->genererCourrierRelance($relance),
-                default => ['success' => false, 'message' => 'Type de relance non supporté']
-            };
+        // Le reglage est lu une fois pour toute la boucle.
+        $inclureInactives = PopulationDesRelances::inclutLesInactives();
 
-            if ($resultat['success']) {
+        foreach ($relances as $relance) {
+            $resultat = $this->envoyerRelance($relance, $inclureInactives);
+
+            if ($resultat['ecartee'] ?? false) {
+                $resultats['ecartees']++;
+            } elseif ($resultat['success']) {
                 $resultats['reussies']++;
             } else {
                 $resultats['echecs']++;
@@ -168,24 +169,6 @@ class NotificationService
         }
 
         return $resultats;
-    }
-
-    /**
-     * Crée une nouvelle relance
-     */
-    private function creerRelance($etudiant, $niveau)
-    {
-        $type = $this->determinerTypeRelance($niveau);
-        $dateEnvoi = $this->calculerDateEnvoi($niveau);
-
-        return ESBTPRelance::create([
-            'etudiant_id' => $etudiant->id,
-            'type' => $type,
-            'niveau' => $niveau,
-            'template_utilise' => "relance_niveau_{$niveau}",
-            'date_envoi' => $dateEnvoi,
-            'statut' => 'planifiee'
-        ]);
     }
 
     /**
@@ -202,15 +185,14 @@ class NotificationService
         $anneeActive = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         if (!$anneeActive) return collect();
 
-        // Inscriptions actives avec workflow complet
+        // La population relancable, reglage de l'ecole compris
         $inscriptions = \App\Models\ESBTPInscription::with([
             'etudiant',
             'fraisSubscriptions',
             'paiements' => fn($q) => $q->where('status', 'validé')->whereNull('deleted_at'),
         ])
             ->where('annee_universitaire_id', $anneeActive->id)
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
+            ->tap(fn ($q) => PopulationDesRelances::restreindre($q))
             ->get();
 
         if ($inscriptions->isEmpty()) return collect();
@@ -348,41 +330,6 @@ class NotificationService
         $valeur = DB::table('settings')->where('key', "relances.template_{$canal}_niveau_{$niveau}")->value('value');
 
         return is_string($valeur) && trim($valeur) !== '' ? $valeur : null;
-    }
-
-    /**
-     * Détermine le type de relance selon le niveau
-     */
-    private function determinerTypeRelance($niveau)
-    {
-        return match($niveau) {
-            1 => 'email',
-            2 => 'sms',
-            3 => 'courrier',
-            default => 'email'
-        };
-    }
-
-    /**
-     * Calcule la date d'envoi selon le niveau
-     */
-    private function calculerDateEnvoi($niveau)
-    {
-        // Lire depuis settings (source unique de vérité)
-        $delaiKey = "relances.delai_niveau_{$niveau}";
-        $delaiSettings = DB::table('settings')->where('key', $delaiKey)->value('value');
-
-        if ($delaiSettings !== null) {
-            return now()->addDays((int) $delaiSettings);
-        }
-
-        // Fallback si settings non configurés
-        return match($niveau) {
-            1 => now(),
-            2 => now()->addDays(7),
-            3 => now()->addDays(14), // 14 jours après niveau 1
-            default => now()
-        };
     }
 
     /**
@@ -1122,6 +1069,7 @@ class NotificationService
         foreach ($etudiants as $segment => $listeEtudiants) {
             foreach ($listeEtudiants as $etudiant) {
                 $dernierRelance = ESBTPRelance::where('etudiant_id', $etudiant->id)
+                    ->comptePourLeNiveau()
                     ->orderBy('created_at', 'desc')
                     ->first();
 

@@ -3,7 +3,7 @@
 @section('title', 'Tableau de bord Caisse')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* ═══════════ Accueil caisse (bureau) — namespace cx- — maquette C « guichet »
        Rule premium-dashboard : le montant du jour et son repère, les gestes du

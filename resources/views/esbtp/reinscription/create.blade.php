@@ -3,7 +3,7 @@
 @section('title', 'Finaliser la Réinscription - ' . $analyse['etudiant']->nom . ' ' . $analyse['etudiant']->prenoms)
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .form-group-disabled {
         opacity: 0.7;

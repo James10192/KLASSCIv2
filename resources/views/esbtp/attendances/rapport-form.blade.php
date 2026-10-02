@@ -3,7 +3,7 @@
 @section('title', 'Générer un rapport de présence')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .rpf-au { display: flex !important; width: 100%; }
     .rpf-au .au-select-trigger { width: 100%; }

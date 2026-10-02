@@ -3,11 +3,11 @@
 @section('title', 'Nouvelle Inscription')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="{{ asset('css/modal-force-fix.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/modal-force-fix.css') }}?v={{ @filemtime(public_path('css/modal-force-fix.css')) ?: '1' }}">
 <!-- Choices.js CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
-<link rel="stylesheet" href="{{ asset('css/inscription-create.css') }}">
+<link rel="stylesheet" href="{{ asset('css/inscription-create.css') }}?v={{ @filemtime(public_path('css/inscription-create.css')) ?: '1' }}">
 @endsection
 
 @section('content')

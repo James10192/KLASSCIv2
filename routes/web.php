@@ -1714,6 +1714,18 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('mes-notes.index')
                 ->middleware(['permission:notes.view_own|notes.view']);
 
+            // Réclamations de notes : l'élève conteste, avec la photo de sa copie.
+            Route::get('/mes-reclamations', [\App\Http\Controllers\Notes\MesReclamationsController::class, 'index'])
+                ->name('mes-reclamations.index')
+                ->middleware(['permission:notes.reclamations.create_own']);
+            Route::post('/mes-reclamations', [\App\Http\Controllers\Notes\MesReclamationsController::class, 'store'])
+                ->name('mes-reclamations.store')
+                ->middleware(['permission:notes.reclamations.create_own', 'throttle:6,1']);
+            Route::get('/mes-reclamations/{id}/photo', [\App\Http\Controllers\Notes\MesReclamationsController::class, 'photo'])
+                ->whereNumber('id')
+                ->name('mes-reclamations.photo')
+                ->middleware(['permission:notes.reclamations.create_own']);
+
             Route::get('/mon-emploi-temps', [ESBTPEmploiTempsController::class, 'studentTimetable'])
                 ->name('mon-emploi-temps.index')
                 ->middleware(['permission:timetables.view_own|timetables.view']);
@@ -2010,9 +2022,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     //
     // Deux exceptions à la garde #1 : `blocked` et `upgrade` sont dans
     // `PaywallMiddleware::$excludedRoutes`, testé AVANT la détection des routes
-    // d'abonnement. Un superAdmin y accède donc, et ni l'une ni l'autre
-    // n'appelle la garde #3 — sans conséquence, les deux ne font que rendre une
-    // vue. Mais ce sont bien deux pages de ce groupe qui n'ont qu'une garde.
+    // d'abonnement, et vivent dans un groupe à part (voir plus bas).
     //
     // La route exigeait `system.manage` — celle qui ouvre AUSSI `/esbtp/settings`,
     // donc une troisième permission, plus large que les deux autres. Aucune
@@ -2021,10 +2031,20 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     // croire l'une en ayant lu l'autre.
     //
     // Le lien de la barre latérale est réservé au rôle, lui aussi.
-    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:paywall.manage'])->group(function () {
-        Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
+    //
+    // `blocked` et `upgrade` sont vues par les ecoles BLOQUEES, quel que soit
+    // leur role : le middleware y redirige une secretaire dont l'abonnement a
+    // expire. Sous `permission:paywall.manage`, elle recevait un 403 au lieu de
+    // la page qui lui dit pourquoi et qui contacter. Elles vivent donc dans
+    // leur propre groupe, `auth` seul ; elles ne font que lire.
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall'])->group(function () {
         Route::get('/paywall-config/blocked', [ESBTPPaywallConfigController::class, 'blocked'])->name('paywall-config.blocked');
         Route::get('/paywall-config/upgrade', [ESBTPPaywallConfigController::class, 'upgrade'])->name('paywall-config.upgrade');
+    });
+
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'paywall', 'permission:paywall.manage'])->group(function () {
+        Route::get('/paywall-config', [ESBTPPaywallConfigController::class, 'index'])->name('paywall-config.index');
+        Route::post('/paywall-config/refresh', [ESBTPPaywallConfigController::class, 'refresh'])->middleware('throttle:20,1')->name('paywall-config.refresh');
         Route::post('/paywall-config', [ESBTPPaywallConfigController::class, 'store'])->name('paywall-config.store');
         Route::post('/paywall-config/extend', [ESBTPPaywallConfigController::class, 'extendSubscription'])->name('paywall-config.extend');
         Route::post('/paywall-config/generate-emergency', [ESBTPPaywallConfigController::class, 'generateEmergencyCode'])->name('paywall-config.generate-emergency');
@@ -2541,6 +2561,20 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
 
 // Routes pour le systÃ¨me d'Ã©margement
 Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () {
+    // Réclamations de notes, côté personnel : l'enseignant de l'évaluation
+    // donne son avis, le porteur de notes.reclamations.traiter tranche. Le
+    // contrôleur filtre (un enseignant ne voit que ses évaluations).
+    Route::middleware(['paywall', 'permission:notes.reclamations.traiter|identity.teach'])->group(function () {
+        Route::get('/reclamations-notes', [\App\Http\Controllers\Notes\ReclamationNoteController::class, 'index'])
+            ->name('reclamations-notes.index');
+        Route::post('/reclamations-notes/{id}/avis', [\App\Http\Controllers\Notes\ReclamationNoteController::class, 'avis'])
+            ->whereNumber('id')->name('reclamations-notes.avis')->middleware('throttle:30,1');
+        Route::post('/reclamations-notes/{id}/decision', [\App\Http\Controllers\Notes\ReclamationNoteController::class, 'decision'])
+            ->whereNumber('id')->name('reclamations-notes.decision')->middleware('throttle:30,1');
+        Route::get('/reclamations-notes/{id}/photo', [\App\Http\Controllers\Notes\ReclamationNoteController::class, 'photo'])
+            ->whereNumber('id')->name('reclamations-notes.photo');
+    });
+
     // Routes pour l'administration des codes (accÃ¨s restreint aux administrateurs et secrÃ©taires)
     Route::middleware(['permission:attendances.generate_codes', 'paywall'])->group(function () {
         Route::get('/attendance-codes', [ESBTPAttendanceCodeController::class, 'index'])
@@ -2670,6 +2704,12 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
         ->middleware('permission:students.view');
     Route::get('esbtp/etudiants-export/pdf', [ESBTPStudentController::class, 'exportPdf'])
         ->name('esbtp.etudiants.export.pdf')
+        ->middleware('permission:students.view');
+
+    // Modal « Réinscription groupée » de la liste : étudiants éligibles, chargés à
+    // l'ouverture (même permission que la liste qui porte le modal).
+    Route::get('esbtp/etudiants-reinscription-groupee/eligibles', [ESBTPStudentController::class, 'reinscriptionEligibles'])
+        ->name('esbtp.etudiants.reinscription-eligibles')
         ->middleware('permission:students.view');
 
     // Resource CRUD

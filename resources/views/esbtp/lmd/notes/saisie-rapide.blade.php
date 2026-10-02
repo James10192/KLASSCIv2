@@ -3,7 +3,7 @@
 @section('title', 'Saisie Notes LMD | KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .lmd-hero { background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); border-radius: 16px; padding: 1.5rem 2rem; color: white; margin-bottom: 1.5rem; }
     .lmd-hero-title { font-size: 1.35rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }

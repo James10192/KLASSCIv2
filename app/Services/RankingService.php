@@ -153,6 +153,9 @@ class RankingService
             'attendance_enabled' => $attendanceEnabled,
             'periode' => $periode,
             'sort_key' => $sortKey,
+            // Les snapshots bruts de la cohorte, par eleve : le tableau des
+            // resultats les reprend au lieu de les recalculer pour sa page.
+            'snapshots' => $snapshots,
         ];
     }
 }

@@ -3,9 +3,9 @@
 @section('title', 'Liste des matières')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="{{ asset('css/modal-force-fix.css') }}">
-<link rel="stylesheet" href="{{ asset('css/matieres-index.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/modal-force-fix.css') }}?v={{ @filemtime(public_path('css/modal-force-fix.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/matieres-index.css') }}?v={{ @filemtime(public_path('css/matieres-index.css')) ?: '1' }}">
 @endsection
 
 
@@ -821,7 +821,7 @@
 
 @push('scripts')
 {{-- common.js : fournit window.iiConfirm() et window.showToast(). --}}
-<script src="{{ asset('js/inscriptions/common.js') }}"></script>
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <script>
 (function () {
     const FILTER_DEBOUNCE = 350;

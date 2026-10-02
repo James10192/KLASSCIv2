@@ -3,7 +3,7 @@
 @section('title', 'Tableau de bord Secretaire')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* ─── Scoped Premium — Secretaire Dashboard ─────────────────── */
     body { background-color: var(--background); }

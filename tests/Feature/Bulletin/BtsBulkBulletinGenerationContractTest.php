@@ -220,7 +220,9 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
 
     public function test_bts_council_decision_uses_the_configured_field_in_both_pdf_templates(): void
     {
-        $yakro = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable.blade.php'));
+        $yakro = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable.blade.php'))
+            // Décision et signature vivent dans un partiel inclus par le gabarit.
+            .file_get_contents(resource_path('views/esbtp/bulletins/partials/conseil-signature.blade.php'));
         $abidjan = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable-abidjan.blade.php'));
 
         $this->assertStringContainsString("{{ \$decisionConseil ?? \$councilDecision['text'] ?? \$bulletin->decision_conseil ?? '' }}", $yakro);

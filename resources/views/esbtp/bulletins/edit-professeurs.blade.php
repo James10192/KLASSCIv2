@@ -3,8 +3,8 @@
 @section('title', 'Édition des professeurs — KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="{{ asset('css/student-results.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/student-results.css') }}?v={{ @filemtime(public_path('css/student-results.css')) ?: '1' }}">
 <style>
 .subject-card {
     border: 1.5px solid #e5e7eb;
