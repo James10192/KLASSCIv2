@@ -72,6 +72,23 @@ class ReclassementDeMasseTest extends TestCase
         $this->assertLessThanOrEqual(2 * self::ELEVES, $nouvelleBoucle);
     }
 
+    public function test_le_service_de_masse_classe_une_fois_et_reste_lineaire(): void
+    {
+        [$etudiants] = $this->uneClasseNotee();
+        $avant = $this->auditsDeBulletin();
+
+        $resultat = app(\App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService::class)
+            ->generate($this->classe, (int) $this->annee->id, 'semestre1', null);
+
+        $this->assertTrue($resultat->hasWrites(), 'Témoin : la génération a bien écrit des bulletins.');
+        $rangs = $this->rangs();
+        $this->assertCount(self::ELEVES, $rangs);
+        $this->assertSame(range(1, self::ELEVES), array_values(array_reverse($rangs, true)), 'Notes croissantes, rangs décroissants.');
+        // Le vrai chemin ajoute la synchronisation de configuration par élève :
+        // trois sauvegardes au plus par bulletin, jamais N².
+        $this->assertLessThanOrEqual(3 * self::ELEVES, $this->auditsDeBulletin() - $avant);
+    }
+
     public function test_un_bulletin_genere_seul_reste_classe_aussitot(): void
     {
         [$etudiants] = $this->uneClasseNotee();
