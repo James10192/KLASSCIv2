@@ -105,7 +105,14 @@ class ChargementDesResultatsTest extends TestCase
             if (! str_ends_with($cas, '|page=1')) {
                 $valeur['kpis'] = null;
             }
-            $this->assertSame($valeur, $obtenu[$cas] ?? null, "Reponse differente pour {$cas}.");
+            // Les lignes se comparent par leur SENS : la reference a ete capturee
+            // sur l'ancien balisage, la refonte rsl-* en a change les classes et
+            // l'ordre des textes, pas un chiffre. Le reste reste strict.
+            $this->assertArrayHasKey($cas, $obtenu, "Cas absent : {$cas}.");
+            $valeur['lignes'] = array_map([$this, 'sens'], $valeur['lignes']);
+            $rendu = $obtenu[$cas];
+            $rendu['lignes'] = array_map([$this, 'sens'], $rendu['lignes']);
+            $this->assertSame($valeur, $rendu, "Reponse differente pour {$cas}.");
         }
         $this->assertSame(array_keys($attendu), array_keys($obtenu));
     }
@@ -356,6 +363,60 @@ class ChargementDesResultatsTest extends TestCase
             'matiere_id' => $evaluation->matiere_id, 'classe_id' => $evaluation->classe_id,
             'annee_universitaire' => $this->annee->name, 'note' => $note, 'valeur' => $note, 'is_absent' => false,
         ]);
+    }
+
+    /**
+     * Ce qu'une ligne DIT, lu dans sa forme serialisee par lignes() et commun a
+     * l'ancien balisage (badges Bootstrap) et au nouveau (rsl-*) : matricule,
+     * nom, courriel, moyenne, rang, statut, badges, classe, info-bulles (dont la
+     * periode des actions du bulletin). L'en-tete se reduit a ses colonnes.
+     *
+     * @return array<string, mixed>
+     */
+    private function sens(string $ligne): array
+    {
+        $jetons = explode(' | ', $ligne);
+        $textes = array_values(array_filter($jetons, fn ($j) => ! preg_match('/^(class|title)=/', $j)));
+
+        if (! in_array('class=form-check-input student-checkbox', $jetons, true)) {
+            return ['entete' => $textes];
+        }
+
+        $apres = function (string $motif) use ($jetons): ?string {
+            foreach ($jetons as $i => $jeton) {
+                if (preg_match($motif, $jeton)) {
+                    for ($k = $i + 1; $k < count($jetons); $k++) {
+                        if (! preg_match('/^(class|title)=/', $jetons[$k])) {
+                            return $jetons[$k];
+                        }
+                    }
+                }
+            }
+
+            return null;
+        };
+        $phrase = implode(' ', $textes);
+        $statuts = array_values(array_intersect(['Admis', 'Échec', 'Partiel', 'Non évalué'], $textes));
+        $titres = array_values(array_map(
+            fn ($j) => substr($j, 6),
+            array_filter($jetons, fn ($j) => str_starts_with($j, 'title='))
+        ));
+
+        return [
+            'matricule' => $textes[0] ?? null,
+            'nom' => $apres('/^class=fw-semibold\b/'),
+            'courriel' => $apres('/^class=(text-muted|rsl-email)$/'),
+            'moyenne' => preg_match('/(\d+\.\d{2}) ?\/20\b/u', $phrase, $m) ? $m[1] : null,
+            'rang' => preg_match('/(\d+) (er|ème) \/ (\d+)/u', $phrase, $m) ? $m[1].'/'.$m[3] : null,
+            'statut' => $statuts,
+            'aucune_note' => in_array('Aucune note', $textes, true),
+            'na' => count(array_keys($textes, 'N/A', true)),
+            'provisoire' => $apres('/^class=.*warning.*\bms-1\b/'),
+            'coefficients_a_configurer' => in_array('Coefficients à configurer', $textes, true),
+            'inscription_non_validee' => in_array('Inscription non validée', $textes, true),
+            'classe' => $apres('/^class=(badge bg-light text-dark border|rsl-chip)$/'),
+            'titres' => $titres,
+        ];
     }
 
     /**
