@@ -1882,11 +1882,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btnOpenCreateModal) {
         btnOpenCreateModal.addEventListener('click', function() {
             modalCreateBody.innerHTML = `
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Chargement...</span>
-                    </div>
-                </div>
+                <div class="cfm-attente"><span class="spinner-border text-primary" role="status"></span><span>Chargement du formulaire…</span></div>
             `;
             modalCreateSubmitBtn.disabled = true;
 

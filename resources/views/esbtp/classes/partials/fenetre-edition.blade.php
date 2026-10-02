@@ -70,6 +70,7 @@
     </div>
 </div>
 
+@push('styles')
 <style>
 /* =========================================
    FENÊTRES CRÉATION / MODIFICATION — namespace cfm-*
@@ -115,6 +116,7 @@
     .cfm-pied-actions .cfm-btn { flex: 1 1 auto; justify-content: center; }
 }
 </style>
+@endpush
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -183,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Tant que le formulaire n'est pas arrive, on attend : jamais
         // l'ancien formulaire sous le nom de la nouvelle classe.
         const enCache = formulairesEdition.get(classeEnEdition);
-        if (!enCache || !enCache.pret) {
+        if (!enCache || !enCache.pret || Date.now() - enCache.le >= 60000) {
             modalEditBody.innerHTML = `
                 <div class="cfm-attente"><span class="spinner-border text-primary" role="status"></span><span>Chargement du formulaire…</span></div>
             `;
