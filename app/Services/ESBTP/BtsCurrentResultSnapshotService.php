@@ -59,10 +59,20 @@ class BtsCurrentResultSnapshotService
     /** @var array<string, Collection> */
     private array $moyennesPrechargees = [];
 
-    /** @var array<string, string> */
+    /**
+     * Memoire pour la vie de l'instance, comme `classesChargees` : une
+     * ESBTPConfigMatiere modifiee puis relue par la meme instance rendrait l'ancien type.
+     *
+     * @var array<string, string>
+     */
     private array $typesFormation = [];
 
-    /** @var array<int, ESBTPClasse|null> */
+    /**
+     * Memoire pour la vie de l'instance, meme limite que `typesFormation` :
+     * une classe modifiee puis relue par la meme instance rendrait l'ancienne.
+     *
+     * @var array<int, ESBTPClasse|null>
+     */
     private array $classesAvecCycle = [];
 
     /**
