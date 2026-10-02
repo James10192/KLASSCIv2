@@ -12,12 +12,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-    <link href="{{ asset('css/nextadmin.css') }}" rel="stylesheet">
-    <link href="{{ asset('css/navbar-enhancements.css') }}" rel="stylesheet">
-    <link href="{{ asset('css/sidebar-fixes.css') }}" rel="stylesheet">
-    <link href="{{ asset('css/dashboard-moderne.css') }}" rel="stylesheet">
-    <link href="{{ asset('css/modal-z-index-fix.css') }}" rel="stylesheet">
-    <link href="{{ asset('css/form-interaction-fix.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/nextadmin.css') }}?v={{ @filemtime(public_path('css/nextadmin.css')) ?: '1' }}" rel="stylesheet">
+    <link href="{{ asset('css/navbar-enhancements.css') }}?v={{ @filemtime(public_path('css/navbar-enhancements.css')) ?: '1' }}" rel="stylesheet">
+    <link href="{{ asset('css/sidebar-fixes.css') }}?v={{ @filemtime(public_path('css/sidebar-fixes.css')) ?: '1' }}" rel="stylesheet">
+    <link href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}" rel="stylesheet">
+    <link href="{{ asset('css/modal-z-index-fix.css') }}?v={{ @filemtime(public_path('css/modal-z-index-fix.css')) ?: '1' }}" rel="stylesheet">
+    <link href="{{ asset('css/form-interaction-fix.css') }}?v={{ @filemtime(public_path('css/form-interaction-fix.css')) ?: '1' }}" rel="stylesheet">
     <style>
         body {
             background: #f4f6f8;
