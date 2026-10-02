@@ -612,7 +612,7 @@ class ReeinscriptionService
             'updated_by' => auth()->id(),
         ]);
 
-        app(\App\Domain\Inscriptions\StatutRedoublant::class)->apresReinscription($nouvelleInscription, $redoublant, $redoublantMotif);
+        app(\App\Domain\Inscriptions\StatutRedoublant::class)->etablirALaCreation($nouvelleInscription, $redoublant, $redoublantMotif);
 
 
             // 5. Générer nouveaux frais via service existant

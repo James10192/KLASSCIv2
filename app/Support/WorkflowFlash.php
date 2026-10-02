@@ -11,8 +11,10 @@ use App\Services\WorkflowNextStepResolver;
  *
  * Usage : WorkflowFlash::dispatch('inscription.created', $user, ['inscription_id' => $i->id]);
  *
- * Le layout app.blade.php peut lire session('workflow_next_step') pour afficher
- * un modal "Tu peux maintenant X → [bouton CTA]" sans envoyer de notif au user.
+ * Le layout le lit (layouts/partials/etape-suivante) : un simple bandeau quand
+ * l'etape se fait sur la page ou l'on arrive, sinon une fenetre qui mene a la
+ * bonne page. Ni l'un ni l'autre n'a l'allure d'une confirmation : on a cru,
+ * en cliquant « Valider ce paiement » dans l'ancienne fenetre, avoir valide.
  */
 class WorkflowFlash
 {
@@ -21,6 +23,15 @@ class WorkflowFlash
         WorkflowStepCompleted::dispatch($type, $actor, $context);
 
         $resolver = app(WorkflowNextStepResolver::class);
+
+        // Une action faite sans recharger la page (AJAX, application mobile)
+        // ne laisse rien en session : le message ressurgirait plus tard, sur
+        // une autre page, a propos d'une etape deja passee.
+        $requete = request();
+        if ($requete && ($requete->expectsJson() || $requete->ajax())) {
+            return;
+        }
+
         if ($resolver->actorCanDoNextStep($type, $actor)) {
             session()->flash('workflow_next_step', [
                 'type'  => $type,
