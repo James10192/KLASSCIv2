@@ -87,6 +87,7 @@ return [
             \App\Domain\Assistant\Actions\TroncCommun\OrienterInscription::class,
             \App\Domain\Assistant\Actions\Matieres\RetirerDeMaquetteBts::class,
             \App\Domain\Assistant\Actions\Notes\CorrigerNotes::class,
+            \App\Domain\Assistant\Actions\Notes\SaisirReleveLmd::class,
             \App\Domain\Assistant\Actions\Bulletins\EnregistrerMoyennes::class,
             \App\Domain\Assistant\Actions\Bulletins\GenererBulletinsManquants::class,
             \App\Domain\Assistant\Actions\Evaluations\DeplacerEvaluationsDePeriode::class,
