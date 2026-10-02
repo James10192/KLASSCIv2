@@ -5,6 +5,7 @@
 
 ```bash
 node tests/js/assistant-securite.spec.mjs    # code 0 : toutes les vérifications passent
+node tests/js/assistant-proposition.spec.mjs # carte « Valider » en bas de la réponse, reçu sur place
 ```
 
 Il faut Node 18+ et Playwright avec Chromium (`npm i -g playwright && npx playwright install chromium`).

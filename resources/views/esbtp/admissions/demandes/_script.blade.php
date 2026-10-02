@@ -7,7 +7,7 @@
 if (typeof window.demandesInscription !== 'function') {
 window.demandesInscription = function () {
     const jeton = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
-    const vierge = () => ({ prep: null, chargement: false, f: {}, tuteur: { nom: '', prenoms: '', telephone: '', relation: '', profession: '' }, sansTuteur: false, erreurs: {}, message: '', frais: { chargement: false, masques: false, lignes: [], total: 0, incomplet: false } });
+    const vierge = () => ({ prep: null, chargement: false, f: {}, tuteur: { nom: '', prenoms: '', telephone: '', relation: '', profession: '' }, sansTuteur: false, modeTuteur: 'nouveau', parentExistant: null, parentQ: '', parentResultats: null, parentChargement: false, placesChargement: false, coupeAuto: null, erreurs: {}, message: '', frais: { chargement: false, masques: false, lignes: [], total: 0, incomplet: false } });
 
     return {
         cfg: {}, filtres: {}, compteurs: {}, classes: [],
@@ -294,10 +294,16 @@ window.demandesInscription = function () {
                 this.ins.f = Object.assign({}, p.identite, {
                     classe_id: voeux.length === 1 ? voeux[0].id : null,
                     matricule: '', statut_etablissement: p.statut_etablissement_requis ? 'nouveau' : '',
-                    duplicate_override: false, candidature_naissance_confirmee: false,
+                    duplicate_override: false, candidature_naissance_confirmee: false, annee_echue_confirmee: false,
                 });
+                this.ins.f.annee_universitaire_id = p.candidature.annee_universitaire_id || (p.annees || []).find((a) => a.courante)?.id || null;
+                this.ins.placesChargement = false;
                 this.ins.tuteur = Object.assign(this.ins.tuteur, p.tuteur);
-                this.ins.sansTuteur = !p.tuteur.nom && !p.tuteur.telephone;
+                this.ins.sansTuteur = !p.tuteur.nom && !p.tuteur.telephone && !(p.parents_proches || []).length;
+                // Le tuteur arrive en un seul champ : le premier mot fait le nom,
+                // le reste les prenoms. Affiche et reversible, jamais muet.
+                const coupe = this.coupeTuteur();
+                if (coupe) { this.ins.coupeAuto = this.ins.tuteur.nom; this.appliquerCoupeTuteur(); }
                 if (this.ins.f.classe_id) this.chargerFrais();
             } catch (e) {
                 this.fenetre = '';
@@ -333,23 +339,82 @@ window.demandesInscription = function () {
             const c = this.coupeTuteur();
             if (c) { this.ins.tuteur.nom = c[0]; this.ins.tuteur.prenoms = c[1]; }
         },
+        annulerCoupeTuteur() {
+            if (this.ins.coupeAuto === null) return;
+            this.ins.tuteur.nom = this.ins.coupeAuto; this.ins.tuteur.prenoms = ''; this.ins.coupeAuto = null;
+        },
+        /* Nom et prenoms tout en majuscules, comme sur les pieces et les listes. */
+        majuscules(cible) {
+            ['nom', 'prenoms'].forEach((k) => { cible[k] = (cible[k] || '').toLocaleUpperCase('fr-FR').replace(/\s+/g, ' ').trim(); });
+        },
+        /* ---------- Parent deja enregistre ---------- */
+        choisirModeTuteur(mode) {
+            this.ins.modeTuteur = mode;
+            this.ins.sansTuteur = false;
+            if (mode === 'existant' && this.ins.parentResultats === null && !this.ins.parentQ) {
+                this.ins.parentQ = this.ins.tuteur.telephone || this.ins.prep?.tuteur?.declare || '';
+                if (this.ins.parentQ) this.chercherParents();
+            }
+        },
+        utiliserParent(parent) {
+            this.ins.modeTuteur = 'existant';
+            this.ins.sansTuteur = false;
+            this.ins.parentExistant = parent;
+        },
+        async chercherParents() {
+            const q = (this.ins.parentQ || '').trim();
+            if (!this.cfg.parents || q.length < 2) { this.ins.parentResultats = null; return; }
+            this.ins.parentChargement = true;
+            try {
+                const d = await this.appeler(this.cfg.parents + '?' + new URLSearchParams({ q: q }).toString());
+                if (q === (this.ins.parentQ || '').trim()) this.ins.parentResultats = d.parents || [];
+            } catch (e) {
+                this.ins.parentResultats = [];
+                this.notifier('error', e.message);
+            } finally { this.ins.parentChargement = false; }
+        },
+        nomParent(p) { return p ? (p.nom + ' ' + (p.prenoms || '')).trim() : ''; },
+        /*
+         * Changer d'annee recompte les places : une classe pleine cette annee
+         * peut etre libre la suivante. La reponse d'une annee abandonnee entre-
+         * temps est ignoree.
+         */
+        async choisirAnnee(annee) {
+            if (!this.ins.prep || this.ins.f.annee_universitaire_id === annee.id) return;
+            this.ins.f.annee_universitaire_id = annee.id;
+            this.ins.f.annee_echue_confirmee = false;
+            this.ins.placesChargement = true;
+            try {
+                const d = await this.appeler(this.ins.prep.url_classes + '?annee=' + encodeURIComponent(annee.id));
+                if (d.annee_universitaire_id !== this.ins.f.annee_universitaire_id) return;
+                this.ins.prep.classes = d.classes || [];
+            } catch (e) {
+                this.notifier('error', e.message);
+            } finally { this.ins.placesChargement = false; }
+        },
+        anneeEchue() { return !!this.anneeChoisie()?.echue; },
+        anneeChoisie() { return (this.ins.prep?.annees || []).find((a) => a.id === this.ins.f.annee_universitaire_id) || null; },
         naissanceModifiee() { return !!this.ins.prep && (this.ins.f.date_naissance || '') !== (this.ins.prep.identite.date_naissance || ''); },
         doublonsBloquants() { return (this.ins.prep?.doublons || []).filter((d) => d.bloquant); },
         tuteurPartiel() {
             if (this.ins.sansTuteur) return false;
             const t = this.ins.tuteur;
+            if (this.ins.modeTuteur === 'existant') return !this.ins.parentExistant || !t.relation;
             const remplis = [t.nom, t.prenoms, t.telephone].filter((v) => (v || '').trim() !== '').length;
             return remplis > 0 && (remplis < 3 || !t.relation);
         },
         erreurTuteur() {
             const serveur = Object.keys(this.ins.erreurs).find((k) => k.startsWith('parents.'));
             if (serveur) return this.ins.erreurs[serveur];
-            return this.tuteurPartiel() ? 'Complétez nom, prénoms, téléphone et lien, ou cochez « Ne pas enregistrer de tuteur maintenant ».' : '';
+            if (!this.tuteurPartiel()) return '';
+            if (this.ins.modeTuteur === 'existant') return this.ins.parentExistant ? 'Indiquez le lien avec l\'étudiant.' : 'Choisissez le parent dans la liste, ou passez à « Nouveau parent ».';
+            return 'Complétez nom, prénoms, téléphone et lien, ou choisissez « Plus tard ».';
         },
         insIdentiteOk() {
             const f = this.ins.f;
             return !!(f.nom && f.prenoms && f.sexe && f.date_naissance && f.telephone)
                 && (!this.naissanceModifiee() || f.candidature_naissance_confirmee)
+                && (!this.anneeEchue() || f.annee_echue_confirmee)
                 && (!this.doublonsBloquants().length || f.duplicate_override);
         },
         insAffectationOk() {
@@ -361,10 +426,11 @@ window.demandesInscription = function () {
             const f = this.ins.f;
             if (!(f.nom && f.prenoms && f.sexe && f.date_naissance && f.telephone)) return "Complétez l'identité : nom, prénoms, sexe, date de naissance et téléphone.";
             if (this.naissanceModifiee() && !f.candidature_naissance_confirmee) return 'Confirmez la date de naissance vérifiée sur la pièce.';
+            if (this.anneeEchue() && !f.annee_echue_confirmee) return "L'année choisie est terminée : confirmez l'inscription sur cette année.";
             if (this.doublonsBloquants().length && !f.duplicate_override) return 'Tranchez les doublons : ouvrez la fiche proche, ou confirmez que c\'est une autre personne.';
             if (!f.classe_id) return 'Choisissez la classe.';
             if (!this.insAffectationOk()) return this.ins.prep?.statut_etablissement_requis && !f.statut_etablissement ? "Indiquez s'il est déjà inscrit dans l'établissement." : 'Saisissez le matricule.';
-            return this.tuteurPartiel() ? 'Complétez le tuteur ou cochez « Ne pas enregistrer de tuteur ».' : '';
+            return this.tuteurPartiel() ? 'Complétez le tuteur ou choisissez « Plus tard ».' : '';
         },
         formulaire() {
             const fd = new FormData();
@@ -372,12 +438,17 @@ window.demandesInscription = function () {
             ['nom', 'prenoms', 'sexe', 'date_naissance', 'lieu_naissance', 'telephone', 'email_personnel', 'ville', 'commune', 'classe_id', 'statut_etablissement'].forEach((k) => { if (f[k]) fd.append(k, f[k]); });
             if (!this.ins.prep.matricule_automatique && f.matricule) fd.append('matricule', f.matricule.trim());
             fd.append('candidature_id', c.id);
-            if (c.annee_universitaire_id) fd.append('annee_universitaire_id', c.annee_universitaire_id);
+            const annee = f.annee_universitaire_id || c.annee_universitaire_id;
+            if (annee) fd.append('annee_universitaire_id', annee);
             fd.append('affectation_status', c.affectation_status || '');
             fd.append('duplicate_override', f.duplicate_override ? '1' : '0');
             if (f.candidature_naissance_confirmee) fd.append('candidature_naissance_confirmee', '1');
             const t = this.ins.tuteur;
-            if (!this.ins.sansTuteur && t.nom && t.prenoms && t.telephone) {
+            if (!this.ins.sansTuteur && this.ins.modeTuteur === 'existant' && this.ins.parentExistant) {
+                fd.append('parents[0][type]', 'existant');
+                fd.append('parents[0][parent_id]', this.ins.parentExistant.id);
+                fd.append('parents[0][relation]', t.relation);
+            } else if (!this.ins.sansTuteur && this.ins.modeTuteur !== 'existant' && t.nom && t.prenoms && t.telephone) {
                 fd.append('parents[0][type]', 'nouveau');
                 ['nom', 'prenoms', 'telephone', 'relation', 'profession'].forEach((k) => { if (t[k]) fd.append('parents[0][' + k + ']', t[k]); });
             }

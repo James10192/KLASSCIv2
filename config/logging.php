@@ -31,6 +31,12 @@ return [
     |
     */
 
+    /*
+    | Recopie le corps de chaque requête dans le journal (LogRequests). Coupé par
+    | défaut : volumineux, et l'audit trace déjà les écritures.
+    */
+    'corps_des_requetes' => (bool) env('LOG_REQUESTS_BODY', false),
+
     'deprecations' => env('LOG_DEPRECATIONS_CHANNEL', 'null'),
 
     /*

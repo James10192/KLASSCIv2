@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
@@ -55,9 +56,19 @@ class UpdateLastLogin
 
     private static function lastSeenColumnExists(): bool
     {
+        // La mémoire statique ne survit pas d'une requête à l'autre sous PHP-FPM :
+        // sans le cache, chaque page interrogeait information_schema. La présence
+        // est gardée un jour ; l'absence cinq minutes seulement, pour qu'une
+        // migration qui ajoute la colonne soit vue sans vider le cache.
         if (self::$hasLastSeenColumn === null) {
             try {
-                self::$hasLastSeenColumn = Schema::hasColumn('users', 'last_seen_at');
+                $cle = 'schema.users.last_seen_at';
+                $connu = Cache::get($cle);
+                if ($connu === null) {
+                    $connu = Schema::hasColumn('users', 'last_seen_at') ? 1 : 0;
+                    Cache::put($cle, $connu, $connu ? 86400 : 300);
+                }
+                self::$hasLastSeenColumn = (bool) $connu;
             } catch (\Throwable $e) {
                 self::$hasLastSeenColumn = false;
             }

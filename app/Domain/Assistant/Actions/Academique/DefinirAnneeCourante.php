@@ -76,7 +76,7 @@ class DefinirAnneeCourante extends ActionAgent
 
         $actuelle = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         if ($actuelle && (int) $actuelle->id === (int) $annee->id) {
-            return new Proposition(titre: $titre, resume: '', manques: ["{$annee->name} est déjà l'année en cours : rien à changer."]);
+            return Proposition::sansObjet($titre, "{$annee->name} est déjà l'année en cours.");
         }
 
         $effectifs = app(AnneesUniversitaires::class)->effectifs($annee);
