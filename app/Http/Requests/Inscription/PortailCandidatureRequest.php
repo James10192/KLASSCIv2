@@ -158,6 +158,10 @@ class PortailCandidatureRequest extends FormRequest
             ],
             'formation_origine' => ['nullable', 'string', 'max:150'],
             'niveau_atteint_origine' => ['nullable', 'string', 'max:60'],
+            // Repris par « Accepter et inscrire » comme reponse proposee a
+            // « Redoublant ? » : un transfere n'a pas d'annee precedente ici
+            // d'ou la deduire. Vide = il n'a pas repondu, pas « non ».
+            'redouble_niveau_origine' => ['nullable', 'boolean'],
             'annee_derniere_inscription' => [
                 'nullable', 'integer', 'min:1980', 'max:'.(date('Y') + 1),
             ],
