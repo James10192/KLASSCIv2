@@ -16,7 +16,6 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPClasse;
 use App\Models\User;
 use App\Services\ComptabiliteService;
-use App\Services\PerformanceMonitoringService;
 use App\Support\ListeInfinie;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -32,11 +31,9 @@ class ESBTPComptabiliteFraisController extends Controller
      * Constructeur avec injection des services optimisés
      */
     public function __construct(
-        ComptabiliteService $comptabiliteService,
-        PerformanceMonitoringService $performanceMonitor
+        ComptabiliteService $comptabiliteService
     ) {
         $this->comptabiliteService = $comptabiliteService;
-        $this->performanceMonitor = $performanceMonitor;
 
         $this->middleware('auth');
         $this->middleware('comptabilite.access');

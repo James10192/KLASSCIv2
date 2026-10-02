@@ -50,6 +50,10 @@ class Kernel extends ConsoleKernel
         // assemblés jamais récupérés). Sans ça, rien ne les reprenait.
         $schedule->command('bulletins:purger-exports')->hourly();
 
+        // Traces des actions lentes : trente jours suffisent à un audit, au-delà
+        // la table ne ferait que grossir.
+        $schedule->command('traces:purger --jours=30')->dailyAt('03:20');
+
         // Générations et PDF groupés de bulletins lancés en arrière-plan : c'est
         // ce passage qui les finit quand l'utilisateur a quitté la page. En
         // arrière-plan pour ne pas retenir les autres tâches de la minute ; le

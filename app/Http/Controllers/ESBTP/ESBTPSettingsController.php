@@ -567,6 +567,9 @@ class ESBTPSettingsController extends Controller
                 \App\Domain\Bulletins\EtatDesResultats::REGLAGE_REUSSITE_SATISFAISANTE,
                 \App\Domain\Bulletins\EtatDesResultats::REGLAGE_REUSSITE_ALERTE,
                 \App\Domain\Notes\Reclamations\ReglagesReclamations::REGLAGE_DELAI_JOURS,
+                // Les deux seuils de la surveillance des lenteurs.
+                \App\Domain\Exploitation\TracesLentes\SeuilsDesTraces::REGLAGE_DUREE_MS,
+                \App\Domain\Exploitation\TracesLentes\SeuilsDesTraces::REGLAGE_REQUETES,
             ];
 
             // Les trois regles de separation des devoirs : un mode a trois
