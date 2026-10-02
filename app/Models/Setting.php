@@ -123,10 +123,17 @@ class Setting extends Model
     private static array $memoire = [];
 
     /**
-     * Seul un reglage present va dans le cache partage. Une cle absente n'y va
-     * pas : un reglage cree par une ecriture directe en base (migration,
-     * seeder, CLI) doit etre vu sans attendre l'expiration. Elle n'est retenue
-     * que dans la memoire de la requete.
+     * Un reglage present va dans le cache partage pour une heure, sous sa cle
+     * brute `setting_<cle>` (d'autres lecteurs et les tests la posent ou la
+     * lisent directement).
+     *
+     * Une cle ABSENTE est retenue aussi, mais a part et brievement
+     * (`setting_absent_<cle>`, cinq minutes) : les ecrans PDF et analytics lisent
+     * des dizaines de cles jamais creees, et sans cela chacune repartait en base
+     * a chaque page. Une creation par le modele efface ce marqueur (`oublier()`,
+     * via les evenements saved/deleted). Une creation qui contourne le modele
+     * (`DB::table`, migration) est vue au plus tard cinq minutes apres : c'est la
+     * meme peremption, en plus court, que celle d'une cle presente modifiee ainsi.
      *
      * @return array{present: bool, valeur: mixed}
      */
@@ -141,6 +148,8 @@ class Setting extends Model
         $enCache = Cache::get("setting_{$key}");
         if ($enCache !== null) {
             $lu = ['present' => true, 'valeur' => $enCache];
+        } elseif (Cache::has("setting_absent_{$key}")) {
+            $lu = ['present' => false, 'valeur' => null];
         } else {
             $setting = static::where('key', $key)->where('is_active', true)->first();
             $lu = [
@@ -149,6 +158,8 @@ class Setting extends Model
             ];
             if ($lu['valeur'] !== null) {
                 Cache::put("setting_{$key}", $lu['valeur'], 3600);
+            } elseif (! $lu['present']) {
+                Cache::put("setting_absent_{$key}", true, 300);
             }
         }
 
@@ -164,6 +175,7 @@ class Setting extends Model
     {
         unset(static::$memoire[$key]);
         Cache::forget("setting_{$key}");
+        Cache::forget("setting_absent_{$key}");
     }
 
     /**
