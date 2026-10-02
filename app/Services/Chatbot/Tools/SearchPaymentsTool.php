@@ -156,7 +156,13 @@ class SearchPaymentsTool extends ChatbotTool
                     $this->applyFuzzyNameSearch($q, $args['student_name']);
                 })->get();
 
-            if ($matchedStudents->count() > 1) {
+            // Un matricule tapé tel quel désigne un seul élève : il passe avant
+            // les noms voisins que le SOUNDEX remonte avec lui.
+            $parMatricule = $matchedStudents->firstWhere('matricule', trim($args['student_name']));
+
+            if ($parMatricule) {
+                $bestId = $parMatricule->id;
+            } elseif ($matchedStudents->count() > 1) {
                 $search = mb_strtolower($args['student_name']);
                 $exact = $matchedStudents->filter(function ($e) use ($search) {
                     $fullName = mb_strtolower(trim(($e->nom ?? '') . ' ' . ($e->prenoms ?? '')));
