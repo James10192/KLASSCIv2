@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Inscription;
 
+use App\Domain\Inscriptions\QuestionRedoublant;
 use App\Models\ESBTPInscription;
 use App\Services\TenantScolariteSettings;
 use Illuminate\Foundation\Http\FormRequest;
@@ -67,7 +68,24 @@ class StoreInscriptionRequest extends FormRequest
             }
         }
 
-        return $rules;
+        return $rules + QuestionRedoublant::regles();
+    }
+
+    /**
+     * L'élève est nouveau dans KLASSCI : la proposition est « non redoublant ».
+     * Répondre « oui » demande un motif, vérifié avant toute création.
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator) {
+            try {
+                QuestionRedoublant::exigerLeMotif(QuestionRedoublant::reponse($this), false, $this->input('redoublant_motif'));
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                foreach ($e->errors() as $champ => $messages) {
+                    $validator->errors()->add($champ, $messages[0]);
+                }
+            }
+        });
     }
 
     public function messages(): array

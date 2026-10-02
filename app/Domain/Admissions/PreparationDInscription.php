@@ -154,6 +154,7 @@ class PreparationDInscription
 
                 return [
                     'id' => (int) $classe->id,
+                    'niveau_id' => $classe->niveau_etude_id !== null ? (int) $classe->niveau_etude_id : null,
                     'nom' => (string) $classe->name,
                     'detail' => trim(($classe->filiere?->name ?? '').' · '.($classe->niveau?->name ?? ''), ' ·'),
                     'places_totales' => $total,
