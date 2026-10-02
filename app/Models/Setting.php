@@ -84,17 +84,9 @@ class Setting extends Model
     public static function get($key, $default = null)
     {
         try {
-            $cacheKey = "setting_{$key}";
+            $lu = static::lireMemorise((string) $key);
 
-            return Cache::remember($cacheKey, 3600, function () use ($key, $default) {
-                $setting = static::where('key', $key)->where('is_active', true)->first();
-
-                if (!$setting) {
-                    return $default;
-                }
-
-                return static::castValue($setting->value, $setting->type);
-            });
+            return $lu['present'] ? $lu['valeur'] : $default;
         } catch (\Exception $e) {
             // Fallback sans cache en cas d'erreur
             try {
@@ -115,6 +107,75 @@ class Setting extends Model
 
             return static::castValue($setting->value, $setting->type);
         }
+    }
+
+    /**
+     * Les reglages deja lus pendant cette requete.
+     *
+     * Une page lit des dizaines de reglages, parfois la meme cle plusieurs fois
+     * (le gabarit appelle getSchoolInfo() deux fois, soit 26 lectures) : chaque
+     * lecture ouvrait un fichier de cache. Hors console seulement : un worker de
+     * file d'attente vit des heures et ne verrait jamais un reglage modifie
+     * depuis l'ecran.
+     *
+     * @var array<string, array{present: bool, valeur: mixed}>
+     */
+    private static array $memoire = [];
+
+    /**
+     * Un reglage present va dans le cache partage pour une heure, sous sa cle
+     * brute `setting_<cle>` (d'autres lecteurs et les tests la posent ou la
+     * lisent directement).
+     *
+     * Une cle ABSENTE est retenue aussi, mais a part et brievement
+     * (`setting_absent_<cle>`, cinq minutes) : les ecrans PDF et analytics lisent
+     * des dizaines de cles jamais creees, et sans cela chacune repartait en base
+     * a chaque page. Une creation par le modele efface ce marqueur (`oublier()`,
+     * via les evenements saved/deleted). Une creation qui contourne le modele
+     * (`DB::table`, migration) est vue au plus tard cinq minutes apres : c'est la
+     * meme peremption, en plus court, que celle d'une cle presente modifiee ainsi.
+     *
+     * @return array{present: bool, valeur: mixed}
+     */
+    private static function lireMemorise(string $key): array
+    {
+        if (isset(static::$memoire[$key])) {
+            return static::$memoire[$key];
+        }
+
+        // Valeur brute sous `setting_<cle>`, comme avant : d'autres lecteurs
+        // (et les tests) posent ou lisent directement cette entree.
+        $enCache = Cache::get("setting_{$key}");
+        if ($enCache !== null) {
+            $lu = ['present' => true, 'valeur' => $enCache];
+        } elseif (Cache::has("setting_absent_{$key}")) {
+            $lu = ['present' => false, 'valeur' => null];
+        } else {
+            $setting = static::where('key', $key)->where('is_active', true)->first();
+            $lu = [
+                'present' => (bool) $setting,
+                'valeur' => $setting ? static::castValue($setting->value, $setting->type) : null,
+            ];
+            if ($lu['valeur'] !== null) {
+                Cache::put("setting_{$key}", $lu['valeur'], 3600);
+            } elseif (! $lu['present']) {
+                Cache::put("setting_absent_{$key}", true, 300);
+            }
+        }
+
+        if (! app()->runningInConsole()) {
+            static::$memoire[$key] = $lu;
+        }
+
+        return $lu;
+    }
+
+    /** Retire une cle du cache et de la memoire de la requete. */
+    public static function oublier(string $key): void
+    {
+        unset(static::$memoire[$key]);
+        Cache::forget("setting_{$key}");
+        Cache::forget("setting_absent_{$key}");
     }
 
     /**
@@ -181,7 +242,7 @@ class Setting extends Model
 
             // Vider le cache (avec gestion d'erreur)
             try {
-                Cache::forget("setting_{$key}");
+                static::oublier((string) $key);
             } catch (\Exception $e) {
                 // Ignorer les erreurs de cache
             }
@@ -342,7 +403,7 @@ class Setting extends Model
 
             foreach ($keys as $key) {
                 try {
-                    Cache::forget("setting_{$key}");
+                    static::oublier((string) $key);
                 } catch (\Exception $e) {
                     // Ignorer les erreurs de cache individuelles
                 }
@@ -378,7 +439,7 @@ class Setting extends Model
 
         static::saved(function ($setting) {
             try {
-                Cache::forget("setting_{$setting->key}");
+                static::oublier((string) $setting->key);
                 Cache::forget("settings_group_{$setting->group}");
                 if ($setting->category) {
                     Cache::forget("settings_category_{$setting->category}");
@@ -390,7 +451,7 @@ class Setting extends Model
 
         static::deleted(function ($setting) {
             try {
-                Cache::forget("setting_{$setting->key}");
+                static::oublier((string) $setting->key);
                 Cache::forget("settings_group_{$setting->group}");
                 if ($setting->category) {
                     Cache::forget("settings_category_{$setting->category}");
@@ -426,7 +487,7 @@ class Setting extends Model
 
             // Vider le cache (avec gestion d'erreur)
             try {
-                Cache::forget("setting_{$key}");
+                static::oublier((string) $key);
                 Cache::forget("settings_group_{$group}");
             } catch (\Exception $e) {
                 // Ignorer les erreurs de cache

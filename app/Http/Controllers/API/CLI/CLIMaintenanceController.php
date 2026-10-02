@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\Exploitation\ReconstructionDesCaches;
 use App\Models\Setting;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
@@ -24,7 +25,8 @@ use App\Services\StudentInscriptionRepairService;
 class CLIMaintenanceController extends BaseApiController
 {
     /**
-     * POST /api/cli/cache/clear — Clear all caches
+     * POST /api/cli/cache/clear — Vide tous les caches, puis reconstruit ceux de
+     * configuration et de routes (voir ReconstructionDesCaches).
      */
     public function cacheClear(Request $request): JsonResponse
     {
@@ -32,40 +34,18 @@ class CLIMaintenanceController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
-        $output = [];
+        $etapes = app(ReconstructionDesCaches::class)->apresDeploiement();
 
-        try {
-            Artisan::call('config:clear');
-            $output[] = 'config:clear OK';
-
-            Artisan::call('route:clear');
-            $output[] = 'route:clear OK';
-
-            Artisan::call('cache:clear');
-            $output[] = 'cache:clear OK';
-
-            Artisan::call('view:clear');
-            $output[] = 'view:clear OK';
-
-            Artisan::call('permission:cache-reset');
-            $output[] = 'permission:cache-reset OK';
-
-            // Also clear settings cache
-            Setting::clearCache();
-            $output[] = 'settings cache cleared';
-
-            if (function_exists('opcache_reset')) {
-                @opcache_reset();
-                $output[] = 'opcache reset OK';
-            }
-        } catch (\Exception $e) {
-            Log::error('CLI: cache clear failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return $this->errorResponse('Operation failed. Check server logs for details.', ['completed' => $output], 500);
+        if ($etapes['purge']['status'] !== 'done') {
+            return $this->errorResponse('Operation failed. Check server logs for details.', ['completed' => $etapes['purge']['commands']], 500);
         }
 
         return $this->successResponse([
-            'commands' => $output,
-        ], 'All caches cleared successfully');
+            'commands' => $etapes['purge']['commands'],
+            'reconstruction' => $etapes['reconstruction']['caches'],
+        ], $etapes['reconstruction']['status'] === 'done'
+            ? 'All caches cleared, config and route caches rebuilt'
+            : 'All caches cleared, but config or route cache was not rebuilt (see reconstruction)');
     }
 
     /**
@@ -713,12 +693,8 @@ class CLIMaintenanceController extends BaseApiController
                 $results['steps'][] = ['action' => 'migrate_retry', 'exit_code' => $exitCode2, 'output' => $output2];
             }
 
-            // 2. Clear caches
-            Artisan::call('config:clear');
-            Artisan::call('cache:clear');
-            Artisan::call('view:clear');
-            Artisan::call('permission:cache-reset');
-            $results['steps'][] = ['action' => 'cache_clear', 'status' => 'done'];
+            // 2. Purge et reconstruction des caches
+            array_push($results['steps'], ...array_values(app(ReconstructionDesCaches::class)->apresDeploiement()));
 
             $failed = collect($results['steps'])->contains(fn($s) => ($s['status'] ?? '') === 'failed');
 
@@ -820,20 +796,23 @@ class CLIMaintenanceController extends BaseApiController
             $out = mb_substr(trim($proc->getOutput() . "\n" . $proc->getErrorOutput()), -6000);
 
             if ($proc->isSuccessful()) {
-                Artisan::call('config:clear');
-                Artisan::call('cache:clear');
-                if (function_exists('opcache_reset')) {
-                    @opcache_reset();
-                }
+                $etapes = app(ReconstructionDesCaches::class)->apresDeploiement();
+                $reconstruction = $etapes['reconstruction']['caches'];
+                $cachesEnEchec = collect($etapes)->contains(fn ($e) => ($e['status'] ?? '') === 'failed');
             }
 
             return $this->successResponse([
                 'action' => $action,
                 'composer' => $composerCmd,
                 'purged_caches' => $purgedCaches,
+                'reconstruction' => $reconstruction ?? null,
                 'exit_code' => $proc->getExitCode(),
                 'output' => $out,
-            ], $proc->isSuccessful() ? "composer {$action} OK" : "composer {$action} FAILED (exit {$proc->getExitCode()})");
+            ], match (true) {
+                ! $proc->isSuccessful() => "composer {$action} FAILED (exit {$proc->getExitCode()})",
+                $cachesEnEchec ?? false => "composer {$action} OK, but cache purge or rebuild failed (see server logs)",
+                default => "composer {$action} OK",
+            });
         } catch (\Throwable $e) {
             Log::error('CLI: composer install failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Composer process error: ' . $e->getMessage(), [], 500);
@@ -1069,17 +1048,14 @@ class CLIMaintenanceController extends BaseApiController
                 $steps[] = ['action' => 'git stash drop', 'status' => 'done'];
             }
 
-            // Cache clear pour que le nouveau code soit visible
-            Artisan::call('config:clear');
-            Artisan::call('route:clear');
-            Artisan::call('view:clear');
-            Artisan::call('cache:clear');
-            $steps[] = ['action' => 'cache_clear', 'status' => 'done'];
+            // Purge et reconstruction des caches, pour que le nouveau code soit lu
+            array_push($steps, ...array_values(app(ReconstructionDesCaches::class)->apresDeploiement()));
+            $failed = collect($steps)->contains(fn ($s) => ($s['status'] ?? '') === 'failed');
 
             return $this->successResponse([
                 'branch' => $branch,
                 'steps' => $steps,
-            ], 'Pull + cache:clear OK');
+            ], $failed ? 'Pull OK, cache purge or rebuild failed (see steps)' : 'Pull + cache:clear OK');
         } catch (\Throwable $e) {
             Log::error('CLI: pull failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Pull failed: ' . $e->getMessage(), ['steps' => $steps], 500);

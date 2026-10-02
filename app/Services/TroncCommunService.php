@@ -93,7 +93,8 @@ class TroncCommunService
             throw new \InvalidArgumentException("La classe de spécialisation n'a plus de places disponibles.");
         }
 
-        if ($inscriptionOrigine->hasSpecialisation()) {
+        // Lecture en base : une relation deja chargee peut etre perimee.
+        if ($inscriptionOrigine->inscriptionSpecialisation()->exists()) {
             throw new \InvalidArgumentException("Cette inscription a déjà donné lieu à une spécialisation.");
         }
 

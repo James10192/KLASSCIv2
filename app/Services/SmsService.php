@@ -32,9 +32,9 @@ class SmsService
 
     public function __construct()
     {
-        $this->provider = env('SMS_PROVIDER', 'orange'); // orange, beem, smsto
-        $this->apiKey = env('SMS_API_KEY');
-        $this->senderId = env('SMS_SENDER_ID', 'KLASSCI');
+        $this->provider = config('services.sms.provider'); // orange, beem, smsto
+        $this->apiKey = config('services.sms.api_key');
+        $this->senderId = config('services.sms.sender_id');
 
         // URLs par provider
         $this->apiUrl = match($this->provider) {
@@ -63,8 +63,8 @@ class SmsService
             // NOTE: Orange API nécessite client_id/secret dans le body (pas en Authorization header)
             $response = Http::asForm()->post('https://api.orange.com/oauth/v3/token', [
                 'grant_type' => 'client_credentials',
-                'client_id' => env('ORANGE_CLIENT_ID'),
-                'client_secret' => env('ORANGE_CLIENT_SECRET'),
+                'client_id' => config('services.orange.client_id'),
+                'client_secret' => config('services.orange.client_secret'),
             ]);
 
             if ($response->successful()) {
@@ -160,7 +160,7 @@ class SmsService
             // Vérifier que l'API est configurée
             // Pour Orange, on utilise OAuth2 (pas besoin de SMS_API_KEY)
             $isConfigured = $this->provider === 'orange'
-                ? !empty($this->apiUrl) && !empty(env('ORANGE_CLIENT_ID'))
+                ? !empty($this->apiUrl) && !empty(config('services.orange.client_id'))
                 : !empty($this->apiKey) && !empty($this->apiUrl);
 
             if (!$isConfigured) {
@@ -168,7 +168,7 @@ class SmsService
                     'provider' => $this->provider,
                     'api_key' => !empty($this->apiKey),
                     'api_url' => !empty($this->apiUrl),
-                    'orange_client_id' => !empty(env('ORANGE_CLIENT_ID')),
+                    'orange_client_id' => !empty(config('services.orange.client_id')),
                 ]);
                 return false;
             }
@@ -240,7 +240,7 @@ class SmsService
             // Un expéditeur illisible arrête l'envoi au lieu de fabriquer une
             // adresse que l'opérateur rejettera sans dire pourquoi — c'est le
             // cas du `0000000000` de remplissage, qu'aucun plan n'accepte.
-            $expediteurBrut = (string) env('SMS_SENDER_NUMBER', '');
+            $expediteurBrut = (string) config('services.sms.sender_number');
             $expediteur = PhoneNormalizer::toE164($expediteurBrut);
 
             if ($expediteur === null) {

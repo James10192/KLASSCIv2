@@ -57,16 +57,16 @@
 
     <!-- Custom CSS -->
     <link href="{{ asset('css/nextadmin.css') }}?v={{ @filemtime(public_path('css/nextadmin.css')) ?: '1' }}" rel="stylesheet">
-    <link href="{{ asset('css/navbar-enhancements.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/navbar-enhancements.css') }}?v={{ @filemtime(public_path('css/navbar-enhancements.css')) ?: '1' }}" rel="stylesheet">
     <link href="{{ asset('css/sidebar-fixes.css') }}?v={{ @filemtime(public_path('css/sidebar-fixes.css')) ?: '1' }}" rel="stylesheet">
     <!-- Dashboard Moderne CSS - Design System ACASI 2025 -->
-    <link href="{{ asset('css/dashboard-moderne.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}" rel="stylesheet">
     <!-- Modal Z-Index Fix - Doit être chargé après les autres CSS -->
-    <link href="{{ asset('css/modal-z-index-fix.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/modal-z-index-fix.css') }}?v={{ @filemtime(public_path('css/modal-z-index-fix.css')) ?: '1' }}" rel="stylesheet">
     <!-- Form Interaction Fix - Correction des problèmes d'interaction avec les formulaires -->
-    <link href="{{ asset('css/form-interaction-fix.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/form-interaction-fix.css') }}?v={{ @filemtime(public_path('css/form-interaction-fix.css')) ?: '1' }}" rel="stylesheet">
     <!-- Modal Force Fix - DEBUG MODE -->
-    <link href="{{ asset('css/modal-force-fix.css') }}" rel="stylesheet">
+    <link href="{{ asset('css/modal-force-fix.css') }}?v={{ @filemtime(public_path('css/modal-force-fix.css')) ?: '1' }}" rel="stylesheet">
     {{-- Assistant IA (namespace ast-*) : panneau lateral, feuille plein ecran sur telephone. --}}
     <link href="{{ asset('css/assistant.css') }}?v={{ @filemtime(public_path('css/assistant.css')) ?: '1' }}" rel="stylesheet">
 
@@ -2781,48 +2781,9 @@
                         $anneeCouranteExpired = $anneeCouranteModal && $anneeCouranteEndDate && $anneeCouranteEndDate->isPast();
                         $isSuperAdmin = auth()->user()?->can('admin.access');
                         $canManageAnneeCourante = auth()->user()?->can('annees.set_current');
-                        $canValidateInscriptions = auth()->user()?->can('inscriptions.validate');
-                        $canAccessTimetable = auth()->user()?->can('timetables.view') || auth()->user()?->can('timetables.view_all');
-                        $canAccessEvaluations = auth()->user()?->can('exams.view') || auth()->user()?->can('evaluations.view');
-                        $canAccessNotes = auth()->user()?->can('notes.view') || auth()->user()?->can('notes.create') || auth()->user()?->can('notes.edit') || auth()->user()?->can('notes.manage_own');
-                        $canSeeGradingReminder = $canAccessEvaluations || $canAccessNotes;
-                        $pendingCurrentYearInscriptionsCount = 0;
-                        $pendingCurrentYearInscriptionsByStep = [];
-                        $timetableShortcut = ['show' => false];
-                        $evaluationGradingShortcut = ['show' => false];
-                        $evaluationPublishShortcut = ['show' => false];
-
-                        if ($canValidateInscriptions && $anneeCouranteModal) {
-                            $pendingCurrentYearQuery = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeCouranteModal->id)
-                                ->where(function($query) {
-                                    $query->whereIn('status', ['en_attente', 'pending'])
-                                        ->orWhere(function($subQuery) {
-                                            $subQuery->where('status', 'active')
-                                                ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
-                                        });
-                                });
-
-                            $pendingCurrentYearInscriptionsCount = (clone $pendingCurrentYearQuery)->count();
-                            $pendingCurrentYearInscriptionsByStep = [
-                                'prospect' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'prospect')->count(),
-                                'documents_complets' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'documents_complets')->count(),
-                                'en_validation' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'en_validation')->count(),
-                            ];
-                        }
-
-                        if ($canAccessTimetable && $anneeCouranteModal) {
-                            $timetableShortcut = app(\App\Services\TimetableShortcutService::class)->getShortcutSummary($anneeCouranteModal);
-                        }
-
-                        if ($canSeeGradingReminder && $anneeCouranteModal) {
-                            $evaluationGradingShortcut = app(\App\Services\EvaluationGradingShortcutService::class)
-                                ->getShortcutSummary($anneeCouranteModal, auth()->user());
-                        }
-
-                        if ($canAccessEvaluations && $anneeCouranteModal) {
-                            $evaluationPublishShortcut = app(\App\Services\EvaluationPublishShortcutService::class)
-                                ->getShortcutSummary($anneeCouranteModal);
-                        }
+                        // Rappels permis à ce compte (droits seulement, aucune requête) : leur contenu
+                        // est demandé par le navigateur, une fois l'heure passée (App\Support\RappelsDuGabarit).
+                        $rappelsDuGabarit = $anneeCouranteModal ? \App\Support\RappelsDuGabarit::permis(auth()->user()) : [];
                     @endphp
 
                     @if($anneeCouranteExpired)
@@ -2871,197 +2832,11 @@
                         </div>
                     @endif
 
-                    @if($canValidateInscriptions && ($pendingCurrentYearInscriptionsCount ?? 0) > 0 && $anneeCouranteModal)
-                        <div class="modal fade" id="pendingInscriptionsReminderModal" tabindex="-1" role="dialog" aria-labelledby="pendingInscriptionsReminderModalLabel" aria-hidden="true" data-reminder-key="pendingInscriptionsReminder.user.{{ auth()->id() }}">
-                            <div class="modal-dialog" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="pendingInscriptionsReminderModalLabel">
-                                            Inscriptions en attente - {{ $anneeCouranteModal->name }}
-                                        </h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p><strong>{{ $pendingCurrentYearInscriptionsCount }}</strong> inscription(s) sont en attente de validation pour l'année universitaire courante.</p>
-                                        @if(!empty($pendingCurrentYearInscriptionsByStep))
-                                            <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin: 12px 0;">
-                                                <div style="font-weight: 600; margin-bottom: 6px;">Répartition par étape :</div>
-                                                <ul style="padding-left: 20px; margin: 0;">
-                                                    <li>Prospect : <strong>{{ $pendingCurrentYearInscriptionsByStep['prospect'] ?? 0 }}</strong></li>
-                                                    <li>Documents complets : <strong>{{ $pendingCurrentYearInscriptionsByStep['documents_complets'] ?? 0 }}</strong></li>
-                                                    <li>En validation : <strong>{{ $pendingCurrentYearInscriptionsByStep['en_validation'] ?? 0 }}</strong></li>
-                                                </ul>
-                                            </div>
-                                        @endif
-                                        <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
-                                            <li>Les dossiers dont le workflow n'est pas à <strong>etudiant_cree</strong> restent en attente.</li>
-                                            <li>Ces étudiants ne seront pas comptés dans KLASSCI pour l'année <strong>{{ $anneeCouranteModal->name }}</strong>.</li>
-                                            <li>Validez ou complétez les dossiers pour finaliser l'inscription.</li>
-                                        </ol>
-                                        <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
-                                            <strong>Astuce :</strong><br>
-                                            Le workflow doit atteindre <strong>etudiant_cree</strong> pour activer l'étudiant dans l'année courante.
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="localStorage.setItem(document.getElementById('pendingInscriptionsReminderModal').dataset.reminderKey, String(Date.now()))">
-                                            Rappeler plus tard
-                                        </button>
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-                                        <a href="{{ route('esbtp.inscriptions.administration', ['annee' => $anneeCouranteModal->id]) }}" class="btn btn-primary">
-                                            <i class="fas fa-check-circle"></i> Consulter les inscriptions
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-
-                    @if($canAccessTimetable && !empty($timetableShortcut) && ($timetableShortcut['show'] ?? false))
-                        <div class="modal fade" id="timetableReminderModal" tabindex="-1" role="dialog" aria-labelledby="timetableReminderModalLabel" aria-hidden="true" data-reminder-key="timetableReminder.user.{{ auth()->id() }}">
-                            <div class="modal-dialog modal-lg" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="timetableReminderModalLabel">
-                                            Emplois du temps a renouveler
-                                        </h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p class="mb-3">Certaines classes n'ont pas d'emploi du temps valide pour la periode courante.</p>
-                                        <ul class="mb-3">
-                                            @if($timetableShortcut['missing'] > 0)
-                                                <li><strong>{{ $timetableShortcut['missing'] }}</strong> classe(s) sans emploi du temps</li>
-                                            @endif
-                                            @if($timetableShortcut['expired'] > 0)
-                                                <li><strong>{{ $timetableShortcut['expired'] }}</strong> emploi(s) expire(s)</li>
-                                            @endif
-                                            @if($timetableShortcut['expiring_soon'] > 0)
-                                                <li><strong>{{ $timetableShortcut['expiring_soon'] }}</strong> emploi(s) expirant bientot</li>
-                                            @endif
-                                        </ul>
-                                        <div class="alert alert-warning mb-0">
-                                            <strong>Astuce :</strong> utilisez la generation rapide pour creer ou dupliquer les emplois du temps manquants.
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="localStorage.setItem(document.getElementById('timetableReminderModal').dataset.reminderKey, String(Date.now()))">
-                                            Rappeler plus tard
-                                        </button>
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-                                        <a href="{{ route('esbtp.emploi-temps.index', ['quick_generate' => 1]) }}" class="btn btn-warning">
-                                            <i class="fas fa-calendar-plus me-1"></i>Aller aux emplois du temps
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-
-                    @if($canSeeGradingReminder && !empty($evaluationGradingShortcut) && ($evaluationGradingShortcut['show'] ?? false))
-                        @php
-                            $gradingCtaUrl = $canAccessEvaluations
-                                ? route('esbtp.evaluations.index')
-                                : route('esbtp.notes.index');
-                        @endphp
-                        <div class="modal fade" id="evaluationGradingReminderModal" tabindex="-1" role="dialog" aria-labelledby="evaluationGradingReminderModalLabel" aria-hidden="true" data-reminder-key="evaluationGradingReminder.user.{{ auth()->id() }}">
-                            <div class="modal-dialog modal-lg" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="evaluationGradingReminderModalLabel">
-                                            Notes a saisir
-                                        </h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p class="mb-3"><strong>{{ $evaluationGradingShortcut['total'] ?? 0 }}</strong> evaluation(s) sont passees et attendent la saisie des notes.</p>
-                                        <ul class="mb-3">
-                                            @if(($evaluationGradingShortcut['missing_notes'] ?? 0) > 0)
-                                                <li><strong>{{ $evaluationGradingShortcut['missing_notes'] }}</strong> sans notes saisies</li>
-                                            @endif
-                                            @if(($evaluationGradingShortcut['notes_unpublished'] ?? 0) > 0)
-                                                <li><strong>{{ $evaluationGradingShortcut['notes_unpublished'] }}</strong> notes saisies mais non publiees</li>
-                                            @endif
-                                        </ul>
-                                        @if(!empty($evaluationGradingShortcut['items']))
-                                            <div class="table-responsive">
-                                                <table class="table table-sm align-middle mb-0">
-                                                    <thead class="table-light">
-                                                        <tr>
-                                                            <th>Evaluation</th>
-                                                            <th>Classe</th>
-                                                            <th>Date</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach($evaluationGradingShortcut['items'] as $item)
-                                                            <tr>
-                                                                <td>
-                                                                    <div class="fw-semibold">{{ $item['title'] ?? '—' }}</div>
-                                                                    <small class="text-muted">{{ $item['matiere'] ?? '—' }}</small>
-                                                                </td>
-                                                                <td>{{ $item['classe'] ?? '—' }}</td>
-                                                                <td>{{ !empty($item['date']) ? \Carbon\Carbon::parse($item['date'])->format('d/m/Y') : '—' }}</td>
-                                                            </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        @endif
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="localStorage.setItem(document.getElementById('evaluationGradingReminderModal').dataset.reminderKey, String(Date.now()))">
-                                            Rappeler plus tard
-                                        </button>
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-                                        <a href="{{ $gradingCtaUrl }}" class="btn btn-primary">
-                                            <i class="fas fa-pen-to-square me-1"></i>Aller a la saisie
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endif
-
-                    @if($canAccessEvaluations && !empty($evaluationPublishShortcut) && ($evaluationPublishShortcut['show'] ?? false))
-                        <div class="modal fade" id="evaluationPublishReminderModal" tabindex="-1" role="dialog" aria-labelledby="evaluationPublishReminderModalLabel" aria-hidden="true" data-reminder-key="evaluationPublishReminder.user.{{ auth()->id() }}">
-                            <div class="modal-dialog modal-lg" role="document">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="evaluationPublishReminderModalLabel">
-                                            Evaluations a activer
-                                        </h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p class="mb-3"><strong>{{ $evaluationPublishShortcut['total'] ?? 0 }}</strong> evaluation(s) sont encore en brouillon.</p>
-                                        <ul class="mb-3">
-                                            @if(($evaluationPublishShortcut['overdue'] ?? 0) > 0)
-                                                <li><strong>{{ $evaluationPublishShortcut['overdue'] }}</strong> en retard (date depassee)</li>
-                                            @endif
-                                            @if(($evaluationPublishShortcut['soon'] ?? 0) > 0)
-                                                <li><strong>{{ $evaluationPublishShortcut['soon'] }}</strong> a publier bientot</li>
-                                            @endif
-                                            @if(($evaluationPublishShortcut['undated'] ?? 0) > 0)
-                                                <li><strong>{{ $evaluationPublishShortcut['undated'] }}</strong> sans date</li>
-                                            @endif
-                                        </ul>
-                                        <div class="alert alert-info mb-0">
-                                            <strong>Action :</strong> publiez les evaluations pour activer la saisie des notes.
-                                        </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" onclick="localStorage.setItem(document.getElementById('evaluationPublishReminderModal').dataset.reminderKey, String(Date.now()))">
-                                            Rappeler plus tard
-                                        </button>
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-                                        <a href="{{ route('esbtp.evaluations.index') }}" class="btn btn-primary">
-                                            <i class="fas fa-clipboard-check me-1"></i>Aller aux evaluations
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                    @if($anneeCouranteModal && $rappelsDuGabarit)
+                        {{-- Les rappels permis à ce compte ; le navigateur demande celui du moment quand l'heure est passée. --}}
+                        <div id="gabaritRappels" hidden
+                             data-url="{{ route('gabarit.rappel-du-moment') }}"
+                             data-rappels='@json($rappelsDuGabarit)'></div>
                     @endif
 
                     @include('layouts.partials.nouveautes', ['cleVersion' => 'whatsNew.v2026_09_25'])
@@ -3138,7 +2913,7 @@
         const debugMeta = document.querySelector('meta[name="app-debug"]');
         window.DEBUG_MODE = debugMeta ? debugMeta.content === '1' : false;
     </script>
-    <script src="{{ asset('js/debug-helper.js') }}"></script>
+    <script src="{{ asset('js/debug-helper.js') }}?v={{ @filemtime(public_path('js/debug-helper.js')) ?: '1' }}"></script>
 
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -3172,12 +2947,15 @@
     <!-- Alpine.js (focus plugin must load BEFORE core for x-trap to register) -->
     <script defer src="{{ asset('js/mobile-shell.js') }}?v={{ @filemtime(public_path('js/mobile-shell.js')) ?: '1' }}"></script>
     <script defer src="{{ asset('js/liste-infinie.js') }}?v={{ @filemtime(public_path('js/liste-infinie.js')) ?: '1' }}"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.17.4/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.4/dist/cdn.min.js"></script>
     {{-- Shell mobile (feuilles, toasts, tirer-pour-rafraichir, invite d'installation) : attend alpine:init --}}
 
     <!-- Custom JavaScript -->
-    <script src="{{ asset('js/navbar-diagnostics.js') }}"></script>
+    {{-- Diagnostic console seulement : ses écouteurs sont remplacés par ceux du gabarit. --}}
+    @if(config('app.debug'))
+    <script src="{{ asset('js/navbar-diagnostics.js') }}?v={{ @filemtime(public_path('js/navbar-diagnostics.js')) ?: '1' }}"></script>
+    @endif
     <script>
             document.addEventListener('DOMContentLoaded', function() {
                 // Shell mobile : sous 768px, les rappels non bloquants ne s'ouvrent pas seuls
@@ -3217,83 +2995,65 @@
                     });
                 }
 
-                const pendingModalElement = document.getElementById('pendingInscriptionsReminderModal');
-                if (pendingModalElement && typeof bootstrap !== 'undefined') {
-                    const reminderKey = pendingModalElement.dataset.reminderKey || 'pendingInscriptionsReminder';
-                    const lastSeen = Number(localStorage.getItem(reminderKey) || 0);
-                    const now = Date.now();
-                    const oneHourMs = 60 * 60 * 1000;
-
-                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
-                        rappelOuvert();
-                        const pendingModal = new bootstrap.Modal(pendingModalElement);
-                        pendingModal.show();
-                        localStorage.setItem(reminderKey, String(now));
+                // Rappels calculés côté serveur : la page ne porte que ceux permis à ce compte.
+                // Le navigateur ne demande le contenu que si l'heure est passée pour l'un d'eux,
+                // et l'ouvre comme avant (même ordre, même clé, une fois par heure).
+                const ouvrirRappelDuMoment = function () {
+                    const conteneur = document.getElementById('gabaritRappels');
+                    if (!conteneur || typeof bootstrap === 'undefined' || !peutOuvrirRappel()) {
+                        return Promise.resolve(false);
                     }
 
-                    pendingModalElement.addEventListener('hidden.bs.modal', function () {
-                        localStorage.setItem(reminderKey, String(Date.now()));
-                    });
-                }
-
-                const timetableModalElement = document.getElementById('timetableReminderModal');
-                if (timetableModalElement && typeof bootstrap !== 'undefined') {
-                    const reminderKey = timetableModalElement.dataset.reminderKey || 'timetableReminder';
-                    const lastSeen = Number(localStorage.getItem(reminderKey) || 0);
-                    const now = Date.now();
+                    let cles = {};
+                    try { cles = JSON.parse(conteneur.dataset.rappels || '{}'); } catch (e) { cles = {}; }
                     const oneHourMs = 60 * 60 * 1000;
-
-                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
-                        rappelOuvert();
-                        const timetableModal = new bootstrap.Modal(timetableModalElement);
-                        timetableModal.show();
-                        localStorage.setItem(reminderKey, String(now));
+                    const dus = Object.keys(cles).filter(function (rappel) {
+                        return Date.now() - Number(localStorage.getItem(cles[rappel]) || 0) >= oneHourMs;
+                    });
+                    if (!dus.length) {
+                        return Promise.resolve(false);
                     }
 
-                    timetableModalElement.addEventListener('hidden.bs.modal', function () {
-                        localStorage.setItem(reminderKey, String(Date.now()));
-                    });
-                }
-
-                const gradingModalElement = document.getElementById('evaluationGradingReminderModal');
-                if (gradingModalElement && typeof bootstrap !== 'undefined') {
-                    const reminderKey = gradingModalElement.dataset.reminderKey || 'evaluationGradingReminder';
-                    const lastSeen = Number(localStorage.getItem(reminderKey) || 0);
-                    const now = Date.now();
-                    const oneHourMs = 60 * 60 * 1000;
-
-                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
-                        rappelOuvert();
-                        const gradingModal = new bootstrap.Modal(gradingModalElement);
-                        gradingModal.show();
-                        localStorage.setItem(reminderKey, String(now));
-                    }
-
-                    gradingModalElement.addEventListener('hidden.bs.modal', function () {
-                        localStorage.setItem(reminderKey, String(Date.now()));
-                    });
-                }
-
-                const evaluationPublishModalElement = document.getElementById('evaluationPublishReminderModal');
-                if (evaluationPublishModalElement && typeof bootstrap !== 'undefined') {
-                    const reminderKey = evaluationPublishModalElement.dataset.reminderKey || 'evaluationPublishReminder';
-                    const lastSeen = Number(localStorage.getItem(reminderKey) || 0);
-                    const now = Date.now();
-                    const oneHourMs = 60 * 60 * 1000;
-
-                    if (peutOuvrirRappel() && now - lastSeen >= oneHourMs) {
-                        rappelOuvert();
-                        const publishModal = new bootstrap.Modal(evaluationPublishModalElement);
-                        publishModal.show();
-                        localStorage.setItem(reminderKey, String(now));
-                    }
-
-                    evaluationPublishModalElement.addEventListener('hidden.bs.modal', function () {
-                        localStorage.setItem(reminderKey, String(Date.now()));
-                    });
-                }
+                    const url = conteneur.dataset.url + '?rappels=' + encodeURIComponent(dus.join(','));
+                    return fetch(url, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, credentials: 'same-origin' })
+                        .then(function (res) { return res.ok ? res.json() : null; })
+                        .then(function (data) {
+                            if (!data) {
+                                return false;
+                            }
+                            // Regardés et vides : pas de nouvelle demande avant une heure.
+                            (data.verifies || []).forEach(function (rappel) {
+                                if (cles[rappel]) { localStorage.setItem(cles[rappel], String(Date.now())); }
+                            });
+                            if (!data.html || !data.cle) {
+                                return false;
+                            }
+                            // Une autre fenêtre a pu s'ouvrir pendant la demande.
+                            if (document.querySelector('.modal.show')) {
+                                return false;
+                            }
+                            const gabarit = document.createElement('template');
+                            gabarit.innerHTML = data.html.trim();
+                            const modalElement = gabarit.content.firstElementChild;
+                            if (!modalElement) {
+                                return false;
+                            }
+                            document.body.appendChild(modalElement);
+                            rappelOuvert();
+                            new bootstrap.Modal(modalElement).show();
+                            localStorage.setItem(data.cle, String(Date.now()));
+                            modalElement.addEventListener('hidden.bs.modal', function () {
+                                localStorage.setItem(data.cle, String(Date.now()));
+                            });
+                            return true;
+                        })
+                        .catch(function () { return false; });
+                };
 
                 const whatsNewModalElement = document.getElementById('whatsNewModal');
+                if (!whatsNewModalElement || typeof bootstrap === 'undefined') {
+                    ouvrirRappelDuMoment();
+                }
                 if (whatsNewModalElement && typeof bootstrap !== 'undefined') {
                     const prefKey = whatsNewModalElement.dataset.prefKey || 'whatsNew.v2026_09_02';
                     const now = Date.now();
@@ -3309,11 +3069,14 @@
                     const dismissed = !!state.dismissed;
                     const remindAt = Number(state.remindAt || 0);
 
-                    if (peutOuvrirRappel() && !dismissed && now >= remindAt) {
-                        rappelOuvert();
-                        const whatsNewModal = new bootstrap.Modal(whatsNewModalElement);
-                        whatsNewModal.show();
-                    }
+                    // Après le rappel du moment : les nouveautés passent seulement s'il n'a rien ouvert.
+                    ouvrirRappelDuMoment().then(function () {
+                        if (peutOuvrirRappel() && !dismissed && now >= remindAt) {
+                            rappelOuvert();
+                            const whatsNewModal = new bootstrap.Modal(whatsNewModalElement);
+                            whatsNewModal.show();
+                        }
+                    });
 
                     const persistState = (nextState) => {
                         localStorage.setItem(prefKey, JSON.stringify({

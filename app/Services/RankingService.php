@@ -87,14 +87,18 @@ class RankingService
             $this->cohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, $periode)
         )->get(['id', 'matricule', 'nom', 'prenoms']);
 
+        // Les snapshots de toute la cohorte d'un coup : notes et moyennes lues
+        // en une requete par semestre, au lieu de deux par eleve et par semestre.
+        $snapshots = $this->snapshotService->getPeriodeSnapshotsPourCohorte(
+            $etudiants->pluck('id')->all(),
+            $classeId,
+            $anneeUniversitaireId,
+            $periode
+        );
+
         $rows = collect();
         foreach ($etudiants as $etudiant) {
-            $snapshot = $this->snapshotService->getPeriodeSnapshot(
-                $etudiant->id,
-                $classeId,
-                $anneeUniversitaireId,
-                $periode
-            );
+            $snapshot = $snapshots[(int) $etudiant->id];
 
             $rawTotal = $snapshot['raw_total'] ?? null;
             $effectiveTotal = $snapshot['effective_total'] ?? null;

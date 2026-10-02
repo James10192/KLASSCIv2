@@ -11,6 +11,14 @@ class EcheancierReadinessService
     public const MODE_CONFIGURED = 'configured';
     public const MODE_FALLBACK = 'fallback';
 
+    /** Une page Analytics interroge mode() plusieurs fois : une requete suffit. */
+    private ?string $mode = null;
+
+    private int $generationDuMode = -1;
+
+    /** Seule l'infra presente est retenue : une migration en cours de route reste vue. */
+    private bool $infraPrete = false;
+
     /**
      * Retourne null quand l'infra échéanciers est prête (tables + colonnes).
      * N'exige PAS la présence d'au moins une règle active : un fallback
@@ -20,6 +28,10 @@ class EcheancierReadinessService
      */
     public function unavailableReason(): ?string
     {
+        if ($this->infraPrete) {
+            return null;
+        }
+
         try {
             foreach (['esbtp_echeancier_rules', 'esbtp_echeancier_rule_lines'] as $table) {
                 if (!Schema::hasTable($table)) {
@@ -37,6 +49,8 @@ class EcheancierReadinessService
             return $this->migrationReason();
         }
 
+        $this->infraPrete = true;
+
         return null;
     }
 
@@ -46,6 +60,17 @@ class EcheancierReadinessService
      *                (configuration de frais → catégorie → défaut 30j).
      */
     public function mode(): string
+    {
+        $generation = EcheancierResolverService::generationDesRegles();
+        if ($this->mode === null || $this->generationDuMode !== $generation) {
+            $this->mode = $this->lireMode();
+            $this->generationDuMode = $generation;
+        }
+
+        return $this->mode;
+    }
+
+    private function lireMode(): string
     {
         try {
             $hasActiveRules = ESBTPEcheancierRule::query()

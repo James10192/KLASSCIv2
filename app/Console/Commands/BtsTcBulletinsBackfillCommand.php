@@ -45,7 +45,7 @@ class BtsTcBulletinsBackfillCommand extends Command
         BulletinConsistencyService $consistencyService
     ): int {
         $tenant = (string) $this->argument('tenant');
-        $expectedTenant = (string) (config('app.tenant_code') ?? env('TENANT_CODE'));
+        $expectedTenant = (string) config('app.tenant_code');
 
         // GARDE-FOU tenant : refuse toute exécution sur une instance non concordante.
         if ($tenant !== $expectedTenant) {

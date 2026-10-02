@@ -11,10 +11,11 @@ class EmbeddedLayoutAlpineTest extends TestCase
         $layout = file_get_contents(resource_path('views/layouts/embedded.blade.php'));
 
         $this->assertStringContainsString('@alpinejs/focus', $layout);
-        $this->assertStringContainsString('alpinejs@3.x.x', $layout);
+        // Version épinglée : « 3.x.x » laissait le CDN servir une version différente d'un jour à l'autre.
+        $this->assertMatchesRegularExpression('#npm/alpinejs@3\.\d+\.\d+/#', $layout);
         $this->assertStringContainsString('[x-cloak]', $layout);
 
-        $alpinePosition = strpos($layout, 'alpinejs@3.x.x');
+        $alpinePosition = strpos($layout, 'npm/alpinejs@3.');
         $stackPosition = strpos($layout, '@stack(\'scripts\')');
 
         $this->assertIsInt($alpinePosition);

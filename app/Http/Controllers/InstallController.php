@@ -560,7 +560,7 @@ class InstallController extends Controller
         }
 
         // Generate application key if not already generated
-        if (env('APP_KEY') == '') {
+        if (config('app.key') == '') {
             Artisan::call('key:generate');
         }
 
@@ -890,11 +890,11 @@ class InstallController extends Controller
     {
         try {
             // Get database configuration from session
-            $host = session('db_host', env('DB_HOST'));
-            $port = session('db_port', env('DB_PORT'));
-            $database = session('db_database', env('DB_DATABASE'));
-            $username = session('db_username', env('DB_USERNAME'));
-            $password = session('db_password', env('DB_PASSWORD'));
+            $host = session('db_host', config('installation.base_de_donnees.host'));
+            $port = session('db_port', config('installation.base_de_donnees.port'));
+            $database = session('db_database', config('installation.base_de_donnees.database'));
+            $username = session('db_username', config('installation.base_de_donnees.username'));
+            $password = session('db_password', config('installation.base_de_donnees.password'));
             
             // Test database connection
             $connection = $this->testDatabaseConnection($host, $port, $username, $password, $database);

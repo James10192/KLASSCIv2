@@ -125,4 +125,29 @@ return [
         'test_notification_phones' => env('TEST_NOTIFICATION_PHONES'),
     ],
 
+    /*
+    | WhatsApp (Meta Cloud API) et SMS, lus par WhatsAppService, SmsService et
+    | NotificationService. Les défauts sont ceux qu'écrivaient ces classes avec
+    | env() avant que la configuration puisse être mise en cache.
+    */
+    'whatsapp' => [
+        'enabled' => env('WHATSAPP_ENABLED', false),
+        'phone_number_id' => env('WHATSAPP_PHONE_NUMBER_ID'),
+        'access_token' => env('WHATSAPP_ACCESS_TOKEN'),
+        'business_account_id' => env('WHATSAPP_BUSINESS_ACCOUNT_ID'),
+    ],
+
+    'sms' => [
+        'enabled' => env('SMS_ENABLED', false),
+        'provider' => env('SMS_PROVIDER', 'orange'),
+        'api_key' => env('SMS_API_KEY'),
+        'sender_id' => env('SMS_SENDER_ID', 'KLASSCI'),
+        'sender_number' => env('SMS_SENDER_NUMBER', ''),
+    ],
+
+    'orange' => [
+        'client_id' => env('ORANGE_CLIENT_ID'),
+        'client_secret' => env('ORANGE_CLIENT_SECRET'),
+    ],
+
 ];

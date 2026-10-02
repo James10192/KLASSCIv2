@@ -25,6 +25,21 @@ class NoteStudentCohortService
     }
 
     /**
+     * Relations dont la résolution d'éligibilité a besoin (parcours, phases,
+     * origine, spécialisation). Le comptage s'arrête là ; la liste d'étudiants
+     * y ajoute l'étudiant lui-même.
+     */
+    private const ELIGIBILITY_RELATIONS = [
+        'classe.filiere',
+        'filiere',
+        'phases.classe.filiere',
+        'inscriptionOrigine.classe.filiere',
+        'inscriptionOrigine.filiere',
+        'inscriptionOrigine.phases.classe.filiere',
+        'inscriptionSpecialisation.classe.filiere',
+    ];
+
+    /**
      * Compte la cohorte éligible d'une classe pour les semestres donnés, sans
      * matérialiser les modèles étudiants (ni eager-load d'accessibilité, ni tri).
      * Utilisé par les boucles de statistiques par classe (assiduité) où seul le
@@ -35,26 +50,64 @@ class NoteStudentCohortService
         ESBTPAnneeUniversitaire $annee,
         array $semesters = []
     ): int {
-        $requestedSemesters = $this->normalizeSemesters($semesters);
-        $eligibleIds = [];
+        return $this->countStudentsForClasses([$classe], $annee, $semesters)[(int) $classe->id] ?? 0;
+    }
 
-        foreach ($this->candidateInscriptions($classe, $annee, forCounting: true) as $inscription) {
+    /**
+     * countStudentsForClass() pour plusieurs classes à la fois : le même
+     * résultat, classe par classe, en un nombre de requêtes qui ne dépend pas
+     * du nombre de classes (une inscription est examinée pour chaque classe à
+     * laquelle elle se rattache, exactement comme la requête par classe la
+     * retiendrait).
+     *
+     * @param  iterable<int, ESBTPClasse>  $classes
+     * @return array<int, int> classe_id => effectif
+     */
+    public function countStudentsForClasses(
+        iterable $classes,
+        ESBTPAnneeUniversitaire $annee,
+        array $semesters = []
+    ): array {
+        $classeIds = collect($classes)->map(fn ($c) => (int) $c->id)->unique()->values()->all();
+        $counts = array_fill_keys($classeIds, 0);
+        if ($classeIds === []) {
+            return $counts;
+        }
+
+        $requestedSemesters = $this->normalizeSemesters($semesters);
+        $inscriptions = $this->candidatesQuery($classeIds, $annee)->with(self::ELIGIBILITY_RELATIONS)->get();
+
+        // Toutes les spécialisations, pas seulement celle que porte le hasOne :
+        // le orWhereHas de la requête par classe les considère toutes.
+        $specialisations = ESBTPInscription::query()
+            ->whereIn('inscription_origine_id', $inscriptions->pluck('id'))
+            ->get(['inscription_origine_id', 'classe_id'])
+            ->groupBy('inscription_origine_id');
+
+        $eligibles = array_fill_keys($classeIds, []);
+        foreach ($inscriptions as $inscription) {
             if (! $inscription->etudiant_id) {
                 continue;
             }
+            $rattachements = collect([$inscription->classe_id, optional($inscription->inscriptionOrigine)->classe_id])
+                ->merge($inscription->phases->pluck('classe_id'))
+                ->merge(($specialisations->get($inscription->id) ?? collect())->pluck('classe_id'))
+                ->filter()->map(fn ($id) => (int) $id)->unique()
+                ->intersect($classeIds);
 
-            $eligibility = $this->resolveEligibilityForClass(
-                $inscription,
-                (int) $classe->id,
-                $requestedSemesters
-            );
-
-            if (! empty($eligibility['semesters'])) {
-                $eligibleIds[(int) $inscription->etudiant_id] = true;
+            foreach ($rattachements as $classeId) {
+                $eligibility = $this->resolveEligibilityForClass($inscription, $classeId, $requestedSemesters);
+                if (! empty($eligibility['semesters'])) {
+                    $eligibles[$classeId][(int) $inscription->etudiant_id] = true;
+                }
             }
         }
 
-        return count($eligibleIds);
+        foreach ($eligibles as $classeId => $etudiants) {
+            $counts[$classeId] = count($etudiants);
+        }
+
+        return $counts;
     }
 
     public function studentsForClass(
@@ -137,49 +190,37 @@ class NoteStudentCohortService
         return $this->normalizeSemester($evaluation->periode ?? null) ?? 1;
     }
 
-    private function candidateInscriptions(ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee, bool $forCounting = false): Collection
+    private function candidateInscriptions(ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee): Collection
     {
-        // Le comptage n'a besoin que des phases (résolution d'éligibilité) : on
-        // évite l'eager-load étudiant.accessibilityProfile, inutile pour un count.
-        $relations = $forCounting
-            ? [
-                'classe.filiere',
-                'filiere',
-                'phases.classe.filiere',
-                'inscriptionOrigine.classe.filiere',
-                'inscriptionOrigine.filiere',
-                'inscriptionOrigine.phases.classe.filiere',
-                'inscriptionSpecialisation.classe.filiere',
-            ]
-            : [
-                'etudiant.accessibilityProfile',
-                'classe.filiere',
-                'filiere',
-                'phases.classe.filiere',
-                'inscriptionOrigine.classe.filiere',
-                'inscriptionOrigine.filiere',
-                'inscriptionOrigine.phases.classe.filiere',
-                'inscriptionSpecialisation.classe.filiere',
-            ];
+        return $this->candidatesQuery([(int) $classe->id], $annee)
+            ->with(array_merge(['etudiant.accessibilityProfile'], self::ELIGIBILITY_RELATIONS))
+            ->get();
+    }
 
+    /**
+     * Inscriptions de l'année rattachées à l'une des classes : directement, par
+     * une phase, par l'inscription d'origine ou par une spécialisation.
+     *
+     * @param  array<int, int>  $classeIds
+     */
+    private function candidatesQuery(array $classeIds, ESBTPAnneeUniversitaire $annee)
+    {
         return ESBTPInscription::query()
-            ->with($relations)
             ->where('annee_universitaire_id', $annee->id)
             ->where('status', 'active')
             ->where('workflow_step', 'etudiant_cree')
-            ->where(function ($query) use ($classe) {
-                $query->where('classe_id', $classe->id)
-                    ->orWhereHas('phases', function ($phaseQuery) use ($classe) {
-                        $phaseQuery->where('classe_id', $classe->id);
+            ->where(function ($query) use ($classeIds) {
+                $query->whereIn('classe_id', $classeIds)
+                    ->orWhereHas('phases', function ($phaseQuery) use ($classeIds) {
+                        $phaseQuery->whereIn('classe_id', $classeIds);
                     })
-                    ->orWhereHas('inscriptionOrigine', function ($originQuery) use ($classe) {
-                        $originQuery->where('classe_id', $classe->id);
+                    ->orWhereHas('inscriptionOrigine', function ($originQuery) use ($classeIds) {
+                        $originQuery->whereIn('classe_id', $classeIds);
                     })
-                    ->orWhereHas('inscriptionSpecialisation', function ($specialisationQuery) use ($classe) {
-                        $specialisationQuery->where('classe_id', $classe->id);
+                    ->orWhereHas('inscriptionSpecialisation', function ($specialisationQuery) use ($classeIds) {
+                        $specialisationQuery->whereIn('classe_id', $classeIds);
                     });
-            })
-            ->get();
+            });
     }
 
     private function resolveEligibilityForClass(

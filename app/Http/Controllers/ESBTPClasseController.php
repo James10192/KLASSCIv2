@@ -158,6 +158,9 @@ class ESBTPClasseController extends Controller
 
         // Simuler la pagination manuelle
         $classes = $allClasses->slice($offset, $perPage)->values();
+        // Places prises et TC parent des cartes affichees, en requetes groupees :
+        // sans cela chaque carte relance ~10 requetes (classe-card.blade.php).
+        ESBTPClasse::preparerPourListe($classes);
         $hasMore = $allClasses->count() > $offset + $perPage;
         $totalCount = $allClasses->count();
 
@@ -172,7 +175,9 @@ class ESBTPClasseController extends Controller
 
         // Calculer les KPI globaux sur TOUTES les classes actives (pas seulement celles filtrées)
         // En tenant compte uniquement des inscriptions de l'année courante
-        $kpiQuery = ESBTPClasse::where("is_active", true);
+        // without() : les KPI ne lisent aucune relation, le $with du modele
+        // ferait trois requetes pour rien.
+        $kpiQuery = ESBTPClasse::without(["filiere", "niveau", "annee"])->where("is_active", true);
 
         // Charger les relations avec comptage des étudiants de l'année courante
         if ($anneeCourante) {
