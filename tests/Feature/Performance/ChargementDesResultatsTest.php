@@ -112,6 +112,13 @@ class ChargementDesResultatsTest extends TestCase
             $valeur['lignes'] = array_map([$this, 'sens'], $valeur['lignes']);
             $rendu = $obtenu[$cas];
             $rendu['lignes'] = array_map([$this, 'sens'], $rendu['lignes']);
+            // La couleur d'etat est venue apres la reference : elle se verifie
+            // a part, comme la lecture des deux chiffres qu'elle colore.
+            if (is_array($rendu['kpis'])) {
+                $etats = $rendu['kpis']['etats'] ?? 'absent';
+                unset($rendu['kpis']['etats']);
+                $this->assertSame(app(\App\Domain\Bulletins\EtatDesResultats::class)->completer($rendu['kpis'])['etats'], $etats, "Etats faux pour {$cas}.");
+            }
             $this->assertSame($valeur, $rendu, "Reponse differente pour {$cas}.");
         }
         $this->assertSame(array_keys($attendu), array_keys($obtenu));
