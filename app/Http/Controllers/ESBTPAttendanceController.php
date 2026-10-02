@@ -132,11 +132,14 @@ class ESBTPAttendanceController extends Controller
         $matieres = ESBTPMatiere::orderBy('name')->get();
 
         // Calculate statistics for each status using the unpaginated query ($statsQuery déjà cloné ligne 113)
+        // Un seul GROUP BY statut au lieu d'un count() par statut.
+        $parStatut = (clone $statsQuery)->toBase()
+            ->selectRaw('statut, COUNT(*) as n')->groupBy('statut')->pluck('n', 'statut');
         $stats = [
-            'present' => (clone $statsQuery)->where('statut', 'present')->count(),
-            'absent' => (clone $statsQuery)->where('statut', 'absent')->count(),
-            'retard' => (clone $statsQuery)->whereIn('statut', ['retard', 'late'])->count(),
-            'excuse' => (clone $statsQuery)->where('statut', 'excuse')->count()
+            'present' => (int) ($parStatut['present'] ?? 0),
+            'absent' => (int) ($parStatut['absent'] ?? 0),
+            'retard' => (int) ($parStatut['retard'] ?? 0) + (int) ($parStatut['late'] ?? 0),
+            'excuse' => (int) ($parStatut['excuse'] ?? 0),
         ];
 
         // Add total to stats array
@@ -233,11 +236,13 @@ class ESBTPAttendanceController extends Controller
                     ->load('user');
             }
         } else {
-            // Get students from attendances to avoid loading too many students
-            $etudiantIds = ESBTPAttendance::distinct('etudiant_id')->pluck('etudiant_id')->toArray();
-            if (!empty($etudiantIds)) {
-                $etudiants = ESBTPEtudiant::whereIn('id', $etudiantIds)->with('user')->get();
-            }
+            // Les étudiants ayant une présence CETTE année : la liste n'affiche que
+            // l'année courante, un étudiant sans présence cette année n'y mènerait
+            // à rien. Avant, la lecture portait sur toute la table, toutes années.
+            $etudiants = ESBTPEtudiant::whereIn('id', ESBTPAttendance::query()
+                ->select('etudiant_id')
+                ->where('annee_universitaire_id', $anneeUniversitaire->id))
+                ->with('user')->get();
         }
 
         // Calculate statistics by class
@@ -245,46 +250,21 @@ class ESBTPAttendanceController extends Controller
         // deux requêtes identiques n'apportaient rien, et l'ordre alphabétique rend
         // l'affichage déterministe alors que l'ordre naturel de MySQL ne l'est pas.
         $classeStats = [];
+        $comptesParClasse = $this->comptesDePresenceParClasse($anneeUniversitaire);
+        // La cohorte annuelle inclut les phases BTS tronc commun orientées, tout
+        // en conservant le comportement des inscriptions directes et LMD.
+        $effectifs = $this->attendanceStudentCohortService
+            ->countForClassesPeriod($classes, $anneeUniversitaire, 'annuel');
 
         foreach ($classes as $classe) {
-            // Compter les faits de présence de cette classe pour l'année courante.
-            // IMPORTANT: Utiliser finalOnly() pour éviter les doublons (start + merged)
-            $presentCount = ESBTPAttendance::finalOnly()
-            ->whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
-                $q->where('classe_id', $classe->id);
-            })
-            ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->where('statut', 'present')->count();
-
-            $absentCount = ESBTPAttendance::finalOnly()
-            ->whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
-                $q->where('classe_id', $classe->id);
-            })
-            ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->where('statut', 'absent')->count();
-
-            $retardCount = ESBTPAttendance::finalOnly()
-            ->whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
-                $q->where('classe_id', $classe->id);
-            })
-            ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->whereIn('statut', ['retard', 'late'])->count();
-
-            $excuseCount = ESBTPAttendance::finalOnly()
-            ->whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
-                $q->where('classe_id', $classe->id);
-            })
-            ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->where('statut', 'excuse')->count();
-
+            $comptes = $comptesParClasse[$classe->id] ?? [];
+            $presentCount = $comptes['present'] ?? 0;
+            $absentCount = $comptes['absent'] ?? 0;
+            $retardCount = $comptes['retard'] ?? 0;
+            $excuseCount = $comptes['excuse'] ?? 0;
             $totalAttendanceForClass = $presentCount + $absentCount + $retardCount + $excuseCount;
+            $totalStudents = $effectifs[$classe->id] ?? 0;
 
-            // La cohorte annuelle inclut les phases BTS tronc commun orientées,
-            // tout en conservant le comportement des inscriptions directes et LMD.
-            // Count optimisé : pas de matérialisation des modèles pour un dénominateur.
-            $totalStudents = $this->attendanceStudentCohortService
-                ->countForClassPeriod($classe, $anneeUniversitaire, 'annuel');
-            
             if ($totalAttendanceForClass > 0 || $totalStudents > 0) {
                 // IMPORTANT: Le taux de présence inclut les retards (présents + retards)
                 $totalPresenceWithRetards = $presentCount + $retardCount;
@@ -1529,11 +1509,15 @@ class ESBTPAttendanceController extends Controller
             return ListeInfinie::reponse($absences, fn ($abs) => view('esbtp.attendances._justification', ['abs' => $abs, 'statusFilter' => $statusFilter])->render());
         }
 
-        // KPIs (counts par statut)
+        // KPIs (counts par statut), en un seul GROUP BY sur l'index du statut
+        $parStatut = ESBTPAttendance::whereNotNull('justification_status')->toBase()
+            ->selectRaw('justification_status, COUNT(*) as n')
+            ->groupBy('justification_status')
+            ->pluck('n', 'justification_status');
         $kpis = [
-            'pending' => ESBTPAttendance::where('justification_status', JustificationStatus::PENDING->value)->count(),
-            'approved' => ESBTPAttendance::where('justification_status', JustificationStatus::APPROVED->value)->count(),
-            'rejected' => ESBTPAttendance::where('justification_status', JustificationStatus::REJECTED->value)->count(),
+            'pending' => (int) ($parStatut[JustificationStatus::PENDING->value] ?? 0),
+            'approved' => (int) ($parStatut[JustificationStatus::APPROVED->value] ?? 0),
+            'rejected' => (int) ($parStatut[JustificationStatus::REJECTED->value] ?? 0),
         ];
         $kpis['total'] = array_sum($kpis);
 
@@ -1753,6 +1737,44 @@ class ESBTPAttendanceController extends Controller
     /**
      * Calculate coordinator-specific statistics for today
      */
+    /**
+     * Présences finales de l'année par classe (celle de l'emploi du temps de la
+     * séance) et par statut, en deux requêtes quel que soit le nombre de classes.
+     * « late » est compté comme « retard ».
+     *
+     * @return array<int, array<string, int>> classe_id => [statut => nombre]
+     */
+    private function comptesDePresenceParClasse(ESBTPAnneeUniversitaire $annee): array
+    {
+        $parSeance = ESBTPAttendance::finalOnly()
+            ->where('annee_universitaire_id', $annee->id)
+            ->toBase()
+            ->selectRaw('seance_cours_id, statut, COUNT(*) as n')
+            ->groupBy('seance_cours_id', 'statut')
+            ->get();
+
+        // Classe de chaque séance par son emploi du temps (même un emploi du temps
+        // supprimé, comme la relation seanceCours.emploiTemps ; pas une séance supprimée).
+        $classeDeLaSeance = ESBTPSeanceCours::query()
+            ->whereIn('esbtp_seance_cours.id', ESBTPAttendance::query()
+                ->select('seance_cours_id')
+                ->where('annee_universitaire_id', $annee->id))
+            ->join('esbtp_emploi_temps', 'esbtp_emploi_temps.id', '=', 'esbtp_seance_cours.emploi_temps_id')
+            ->pluck('esbtp_emploi_temps.classe_id', 'esbtp_seance_cours.id');
+
+        $comptes = [];
+        foreach ($parSeance as $ligne) {
+            $classeId = $classeDeLaSeance[$ligne->seance_cours_id] ?? null;
+            if ($classeId === null) {
+                continue;
+            }
+            $statut = $ligne->statut === 'late' ? 'retard' : $ligne->statut;
+            $comptes[$classeId][$statut] = ($comptes[$classeId][$statut] ?? 0) + (int) $ligne->n;
+        }
+
+        return $comptes;
+    }
+
     private function calculateCoordinatorStats($date)
     {
         try {
