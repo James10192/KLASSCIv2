@@ -396,13 +396,23 @@ class ChatbotService
             ->where('user_id', $userId)->get()->keyBy('message_id');
 
         $messages = $messages
+            // Les lignes « ✓ … » et « Proposition refusée » des versions antérieures :
+            // la carte porte désormais son issue, elles l'auraient répétée.
+            ->reject(fn ($m) => isset($m->metadata['action_executee']) || isset($m->metadata['action_refusee']))
+            ->values()
             ->map(function ($message) use ($propositions, $retours) {
                 $parties = $message->metadata['parties'] ?? null;
                 if (is_array($parties)) {
                     foreach ($parties as $i => $partie) {
-                        if (($partie['data']['kind'] ?? null) === 'approbation') {
+                        // Le fil enregistre `kind` à côté de `data` (FilDeReponse::widget).
+                        if (($partie['kind'] ?? $partie['data']['kind'] ?? null) === 'approbation') {
                             $journal = $propositions->get($partie['data']['id'] ?? null);
                             $parties[$i]['data']['etat'] = $journal ? \App\Domain\Assistant\Actions\ExecutionDesPropositions::etat($journal) : 'expiree';
+                            if ($journal) {
+                                $issue = \App\Domain\Assistant\Actions\ExecutionDesPropositions::issueAffichee($journal);
+                                $parties[$i]['data']['issue_message'] = $issue['message'];
+                                $parties[$i]['data']['issue_lien'] = $issue['lien'];
+                            }
                         }
                     }
                 }
