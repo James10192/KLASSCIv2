@@ -7,7 +7,7 @@
 if (typeof window.demandesInscription !== 'function') {
 window.demandesInscription = function () {
     const jeton = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
-    const vierge = () => ({ prep: null, chargement: false, f: {}, tuteur: { nom: '', prenoms: '', telephone: '', relation: '', profession: '' }, sansTuteur: false, modeTuteur: 'nouveau', parentExistant: null, parentQ: '', parentResultats: null, parentChargement: false, placesChargement: false, coupeAuto: null, erreurs: {}, message: '', frais: { chargement: false, masques: false, lignes: [], total: 0, incomplet: false } });
+    const vierge = () => ({ prep: null, chargement: false, f: {}, tuteur: { nom: '', prenoms: '', telephone: '', relation: '', profession: '' }, sansTuteur: false, modeTuteur: 'nouveau', parentExistant: null, parentQ: '', parentResultats: null, parentChargement: false, placesChargement: false, coupeAuto: null, erreurs: {}, message: '', redo: { valeur: '', motif: '' }, frais: { chargement: false, masques: false, lignes: [], total: 0, incomplet: false } });
 
     return {
         cfg: {}, filtres: {}, compteurs: {}, classes: [],
@@ -16,7 +16,7 @@ window.demandesInscription = function () {
         ins: vierge(),
         jetonPropositionReins: 0,
         jetonPlacesReins: 0,
-        reins: { classe_id: null, decision: '', observations: '', annee_id: null, annee_echue_confirmee: false, classes: null, placesChargement: false, placesErreur: false, affectation_status: '', proposition: null, decisionTouchee: false, affectationTouchee: false, erreurs: {}, message: '' },
+        reins: { classe_id: null, decision: '', observations: '', annee_id: null, annee_echue_confirmee: false, classes: null, placesChargement: false, placesErreur: false, affectation_status: '', proposition: null, decisionTouchee: false, affectationTouchee: false, redo: { valeur: '', motif: '' }, erreurs: {}, message: '' },
         rejet: { motif: '', erreur: '' },
         rdv: { creneaux: [], chargement: false, choix: null },
 
@@ -230,7 +230,7 @@ window.demandesInscription = function () {
                 // L'annee de la demande par defaut, sauf si elle est terminee :
                 // on ne propose pas d'office une reinscription sur une annee close.
                 const anneeDemande = (this.cfg.annees || []).some((a) => a.id === this.dossier.annee_id && !a.echue) ? this.dossier.annee_id : null;
-                this.reins = { classe_id: this.dossier.classe || null, decision: '', observations: '', annee_id: anneeDemande || (this.cfg.annees || []).find((a) => a.courante)?.id || null, annee_echue_confirmee: false, classes: null, placesChargement: false, placesErreur: false, affectation_status: '', proposition: null, decisionTouchee: false, affectationTouchee: false, erreurs: {}, message: '' };
+                this.reins = { classe_id: this.dossier.classe || null, decision: '', observations: '', annee_id: anneeDemande || (this.cfg.annees || []).find((a) => a.courante)?.id || null, annee_echue_confirmee: false, classes: null, placesChargement: false, placesErreur: false, affectation_status: '', proposition: null, decisionTouchee: false, affectationTouchee: false, redo: { valeur: '', motif: '' }, erreurs: {}, message: '' };
                 this.chargerPropositionReins(this.reins.annee_id);
                 // Les places de la liste generale sont celles de l'annee courante.
                 if (this.reins.annee_id && !(this.cfg.annees || []).find((a) => a.id === this.reins.annee_id)?.courante) this.chargerClassesReins(this.reins.annee_id);
@@ -254,12 +254,59 @@ window.demandesInscription = function () {
         anneeReins() { return (this.cfg.annees || []).find((a) => a.id === this.reins.annee_id) || null; },
         reinsPret() {
             return !!(this.reins.classe_id && this.reins.decision && !this.reins.placesChargement && !this.reins.placesErreur
-                && (!this.anneeReins()?.echue || this.reins.annee_echue_confirmee));
+                && (!this.anneeReins()?.echue || this.reins.annee_echue_confirmee) && this.redoPret('reins'));
+        },
+        /*
+         * « Redoublant ? » : le logiciel propose (meme niveau que l'annee d'avant),
+         * la personne garde ou change ; changer demande un motif. Un nouvel eleve
+         * n'a pas d'annee precedente dans KLASSCI : la proposition est « non ».
+         */
+        redoPropose(ctx) {
+            if (ctx === 'ins') return '0';
+            // Sans proposition chargee (en cours, ou echec), la question ne se pose
+            // pas : rien n'est envoye, la valeur reste deduite et se confirmera.
+            if (!this.reins.proposition) return null;
+            const c = this.classeChoisie(this.reins.classes || this.classes, this.reins.classe_id);
+            if (!c) return null;
+            const avant = this.reins.proposition?.niveau_avant;
+            return avant != null && c.niveau_id != null && String(avant) === String(c.niveau_id) ? '1' : '0';
+        },
+        redoValeur(ctx) { return this[ctx].redo.valeur || this.redoPropose(ctx) || ''; },
+        redoChoisir(ctx, valeur) { this[ctx].redo.valeur = valeur; },
+        redoMotifRequis(ctx) {
+            const propose = this.redoPropose(ctx);
+            return !!this.cfg.redoublant && propose !== null && this.redoValeur(ctx) !== propose;
+        },
+        redoPret(ctx) { return !this.redoMotifRequis(ctx) || this[ctx].redo.motif.trim().length >= 10; },
+        redoAide(ctx) {
+            if (ctx === 'ins') return "Nouvel élève dans KLASSCI : pas d'année précédente à comparer. Répondez « Oui » s'il redouble ce niveau, par exemple en venant d'un autre établissement.";
+            if (this.reins.proposition?.niveau_avant == null) return "Proposé : non. Pas d'inscription l'année d'avant dans KLASSCI.";
+            return this.redoPropose(ctx) === '1'
+                ? "Proposé : oui. La classe choisie est du même niveau que l'année d'avant."
+                : "Proposé : non. La classe choisie n'est pas du même niveau que l'année d'avant.";
+        },
+        // La decision et la reponse peuvent se contredire : on le montre, la personne tranche.
+        redoContradiction(ctx) {
+            if (ctx !== 'reins' || !this.reins.decision) return '';
+            const redouble = this.redoValeur(ctx) === '1';
+            if ((this.reins.decision === 'redoublement') === redouble) return '';
+            return redouble ? 'La décision n\'est pas « redoublement », mais vous indiquez qu\'il redouble.' : 'La décision est « redoublement », mais vous indiquez qu\'il ne redouble pas.';
+        },
+        redoChamps(ctx) {
+            // Question masquee (pas de proposition) : rien ne part.
+            const valeur = this.cfg.redoublant && this.redoPropose(ctx) !== null ? this.redoValeur(ctx) : '';
+            if (!valeur) return {};
+            const motif = this.redoMotifRequis(ctx) || this[ctx].erreurs.redoublant_motif ? this[ctx].redo.motif.trim() : '';
+            return motif ? { redoublant: valeur, redoublant_motif: motif } : { redoublant: valeur };
         },
         choisirAnneeReins(annee) {
             if (this.reins.annee_id === annee.id) return;
             this.reins.annee_id = annee.id;
             this.reins.annee_echue_confirmee = false;
+            // La proposition de l'ancienne annee ne vaut plus : la question attend la nouvelle.
+            this.reins.proposition = null;
+            // La reponse portait sur la proposition de l'autre annee.
+            this.reins.redo = { valeur: '', motif: '' };
             // La liste reste affichee pendant le recomptage ; l'envoi attend
             // les places de la nouvelle annee (reinsPret).
             this.chargerClassesReins(annee.id);
@@ -303,7 +350,7 @@ window.demandesInscription = function () {
         async reinscrire() {
             this.occupe = true; this.reins.erreurs = {}; this.reins.message = '';
             try {
-                const d = await this.appeler(this.dossier.convertir, { methode: 'POST', corps: { classe_id: this.reins.classe_id, decision: this.reins.decision, observations: this.reins.observations, annee_universitaire_id: this.reins.annee_id, annee_echue_confirmee: this.reins.annee_echue_confirmee, affectation_status: this.reins.affectation_status || null } });
+                const d = await this.appeler(this.dossier.convertir, { methode: 'POST', corps: Object.assign({ classe_id: this.reins.classe_id, decision: this.reins.decision, observations: this.reins.observations, annee_universitaire_id: this.reins.annee_id, annee_echue_confirmee: this.reins.annee_echue_confirmee, affectation_status: this.reins.affectation_status || null }, this.redoChamps('reins')) });
                 this.occupe = false;
                 await this.apresDecision(d.message);
             } catch (e) {
@@ -478,7 +525,7 @@ window.demandesInscription = function () {
             const p = this.ins.prep, f = this.ins.f;
             return !!(p && f.classe_id && (p.matricule_automatique || (f.matricule || '').trim()) && (!p.statut_etablissement_requis || f.statut_etablissement));
         },
-        insPret() { return this.insIdentiteOk() && this.insAffectationOk() && !this.tuteurPartiel(); },
+        insPret() { return this.insIdentiteOk() && this.insAffectationOk() && !this.tuteurPartiel() && this.redoPret('ins'); },
         raisonNonPret() {
             const f = this.ins.f;
             if (!(f.nom && f.prenoms && f.sexe && f.date_naissance && f.telephone)) return "Complétez l'identité : nom, prénoms, sexe, date de naissance et téléphone.";
@@ -487,7 +534,8 @@ window.demandesInscription = function () {
             if (this.doublonsBloquants().length && !f.duplicate_override) return 'Tranchez les doublons : ouvrez la fiche proche, ou confirmez que c\'est une autre personne.';
             if (!f.classe_id) return 'Choisissez la classe.';
             if (!this.insAffectationOk()) return this.ins.prep?.statut_etablissement_requis && !f.statut_etablissement ? "Indiquez s'il est déjà inscrit dans l'établissement." : 'Saisissez le matricule.';
-            return this.tuteurPartiel() ? 'Complétez le tuteur ou choisissez « Plus tard ».' : '';
+            if (this.tuteurPartiel()) return 'Complétez le tuteur ou choisissez « Plus tard ».';
+            return this.redoPret('ins') ? '' : 'Dites pourquoi il redouble (10 caractères au moins).';
         },
         formulaire() {
             const fd = new FormData();
@@ -500,6 +548,7 @@ window.demandesInscription = function () {
             fd.append('affectation_status', c.affectation_status || '');
             fd.append('duplicate_override', f.duplicate_override ? '1' : '0');
             if (f.candidature_naissance_confirmee) fd.append('candidature_naissance_confirmee', '1');
+            Object.entries(this.redoChamps('ins')).forEach(([k, v]) => fd.append(k, v));
             const t = this.ins.tuteur;
             if (!this.ins.sansTuteur && this.ins.modeTuteur === 'existant' && this.ins.parentExistant) {
                 fd.append('parents[0][type]', 'existant');
