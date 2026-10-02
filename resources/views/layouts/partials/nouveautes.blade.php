@@ -117,7 +117,18 @@
                         </div>
                         <p class="nvx-entree-texte">{{ $entree['texte'] }}</p>
 
-                        @if(!empty($entree['captures']))
+                        @if(!empty($entree['captures']) && empty($entree['captures']['avant']))
+                            {{-- Ecran nouveau : pas d'avant a montrer, et un avant reconstitue est interdit. --}}
+                            @php $cap = $entree['captures']; @endphp
+                            <figure class="nvx-comparer {{ ($cap['format'] ?? '') === 'telephone' ? 'nvx-comparer--telephone' : '' }}">
+                                <div class="nvx-cadre">
+                                    <img src="{{ asset($cap['apres']) }}" alt="{{ $entree['titre'] }}" loading="lazy" draggable="false">
+                                </div>
+                                @if(!empty($cap['legende']))
+                                    <figcaption class="nvx-legende">{{ $cap['legende'] }}</figcaption>
+                                @endif
+                            </figure>
+                        @elseif(!empty($entree['captures']))
                             @php $cap = $entree['captures']; @endphp
                             <figure class="nvx-comparer {{ ($cap['format'] ?? '') === 'telephone' ? 'nvx-comparer--telephone' : '' }}" x-data="{ pos: 50 }">
                                 <div class="nvx-cadre">

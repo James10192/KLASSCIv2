@@ -59,7 +59,9 @@ $versionChangelog = sprintf('%s-%s', $c[2], $moisChangelog);
 
 $ecart = (int) ((strtotime($versionChangelog.'-01') - strtotime($versionModal.'-01')) / 2629800);
 
-if ($ecart <= 1) {
+// Un seul mois de retard suffit a avertir : octobre 2026 est passe une
+// semaine sans entree parce que le seuil tolerait un mois d'ecart.
+if ($ecart < 1) {
     echo "Modal Nouveautés à jour (modal {$versionModal}, changelog {$versionChangelog}).\n";
     exit(0);
 }

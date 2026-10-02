@@ -53,9 +53,11 @@ class NouveautesTest extends TestCase
         foreach ($contenu['entrees'] as $entree) {
             $this->assertNotEmpty($entree['titre']);
             $this->assertNotEmpty($entree['texte']);
-            foreach (['avant', 'apres'] as $cote) {
-                if (isset($entree['captures'])) {
-                    $this->assertFileExists(public_path($entree['captures'][$cote]));
+            if (isset($entree['captures'])) {
+                // L'apres est toujours la ; l'avant manque seulement pour un ecran nouveau.
+                $this->assertFileExists(public_path($entree['captures']['apres']));
+                if (isset($entree['captures']['avant'])) {
+                    $this->assertFileExists(public_path($entree['captures']['avant']));
                 }
             }
         }
@@ -63,29 +65,34 @@ class NouveautesTest extends TestCase
 
     public function test_la_fenetre_rend_ses_entrees_et_garde_les_identifiants_lus_par_le_layout(): void
     {
-        Permission::findOrCreate('students.view', 'web');
+        Permission::findOrCreate('bulletins.view', 'web');
         $user = User::factory()->create();
-        $user->givePermissionTo('students.view');
+        $user->givePermissionTo('bulletins.view');
         $this->actingAs($user);
 
-        $html = view('layouts.partials.nouveautes', ['cleVersion' => 'whatsNew.v2026_09_25'])->render();
+        $html = view('layouts.partials.nouveautes', ['cleVersion' => 'whatsNew.v2026_10_02'])->render();
 
         $this->assertStringContainsString('id="whatsNewModal"', $html);
-        $this->assertStringContainsString('whatsNew.v2026_09_25.user.'.$user->id, $html);
-        $this->assertStringContainsString('La liste des étudiants sur téléphone', $html);
-        $this->assertStringContainsString('etudiants-telephone-avant.webp', $html);
-        $this->assertStringNotContainsString('Un écran d’encaissement refait', $html);
+        $this->assertStringContainsString('whatsNew.v2026_10_02.user.'.$user->id, $html);
+        $this->assertStringContainsString('Les résultats refaits', $html);
+        $this->assertStringContainsString('resultats-bureau-avant.webp', $html);
+        $this->assertStringNotContainsString('Les bulletins se génèrent même si vous quittez la page', $html);
+        // Un ecran nouveau montre sa capture seule, sans curseur avant / apres.
+        $this->assertStringContainsString('aide-nanan.webp', $html);
+        $this->assertSame(1, substr_count($html, 'aria-label="Comparer avant et après"'));
         foreach (['whatsNewCloseBtn', 'whatsNewRemindLaterBtn', 'whatsNewDismissBtn'] as $id) {
             $this->assertStringContainsString('id="'.$id.'"', $html);
         }
     }
 
-    public function test_un_compte_sans_entree_ne_recoit_pas_de_fenetre(): void
+    public function test_un_compte_sans_permission_ne_voit_que_les_entrees_pour_tous(): void
     {
         $this->actingAs(User::factory()->create());
 
-        $html = view('layouts.partials.nouveautes', ['cleVersion' => 'whatsNew.v2026_09_25'])->render();
+        $html = view('layouts.partials.nouveautes', ['cleVersion' => 'whatsNew.v2026_10_02'])->render();
 
-        $this->assertStringNotContainsString('whatsNewModal', $html);
+        $this->assertStringContainsString('Aide : Nanan vous guide', $html);
+        $this->assertStringNotContainsString('Les résultats refaits', $html);
+        $this->assertStringNotContainsString('Nanan fait davantage pour vous', $html);
     }
 }
