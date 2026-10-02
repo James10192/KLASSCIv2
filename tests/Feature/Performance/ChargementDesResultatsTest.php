@@ -273,19 +273,29 @@ class ChargementDesResultatsTest extends TestCase
             }
         }
 
-        // Les deux cas ou le calcul historique reste VISIBLE (voir
-        // `MoyennesDeLaListe::besoinDuCalculHistorique()`). Sans eux, toute page
-        // qui l'emprunte rendrait une sortie vide et le test ne prouverait rien.
+        $repli = $this->decorRepli($matieres[0]);
+        $this->decorOriente($notee, $matieres[0], $evaluations['semestre2'][0]);
+
+        return [$notee, $sansNote, $repli];
+    }
+
+    /**
+     * Les deux cas ou le calcul historique reste VISIBLE (voir
+     * `MoyennesDeLaListe::besoinDuCalculHistorique()`). Sans eux, toute page
+     * qui l'emprunte rendrait une sortie vide et le test ne prouverait rien.
+     */
+    private function decorRepli(ESBTPMatiere $matiere): ESBTPClasse
+    {
         $repli = $this->classeBts();
         $repli->update(['name' => '1BTS REPLI']);
 
         // (a) Seule note du semestre posee sur une evaluation annulee : le snapshot
-        // l'ecarte, l'ancien calcul des notes non. Moyenne et rang historiques au
-        // semestre, classe choisie ou non.
+        // l'ecarte, l'ancien calcul des notes non. Moyenne historique au semestre ;
+        // rang seulement sans classe choisie, inscriptions inactives incluses.
         $annulee = $this->eleve('REPLI1', 'Zran1', 'Moussa');
         $this->inscrire($annulee, $repli, $this->annee)->update(['date_inscription' => '2025-09-25']);
         $evaluationAnnulee = ESBTPEvaluation::factory()->create([
-            'matiere_id' => $matieres[0]->id, 'classe_id' => $repli->id,
+            'matiere_id' => $matiere->id, 'classe_id' => $repli->id,
             'annee_universitaire_id' => $this->annee->id, 'periode' => 'semestre1',
             'coefficient' => 1, 'bareme' => 20, 'status' => 'cancelled',
         ]);
@@ -301,8 +311,16 @@ class ChargementDesResultatsTest extends TestCase
             'periode' => 'semestre1', 'moyenne_generale' => 13.0, 'rang' => 1, 'mention' => 'Assez Bien',
         ]);
 
-        // Un eleve oriente : semestre 1 en tronc commun, semestre 2 dans la classe
-        // notee. Sa carte des classes passe par le prechargement de la cohorte.
+        return $repli;
+    }
+
+    /**
+     * Un eleve oriente : semestre 1 en tronc commun, semestre 2 dans la classe
+     * notee. ORIENT1 couvre la carte unitaire des classes ; le prechargement de
+     * la cohorte est confronte au calcul unitaire par `FicheEtudiantRequetesTest`.
+     */
+    private function decorOriente(ESBTPClasse $notee, ESBTPMatiere $matiere, ESBTPEvaluation $evaluationS2): void
+    {
         $troncCommun = $this->classeBts();
         $troncCommun->update(['name' => '1BTS TC']);
         $oriente = $this->eleve('ORIENT1', 'Yao', 'Serge');
@@ -315,14 +333,12 @@ class ChargementDesResultatsTest extends TestCase
             ]);
         }
         $evaluationTc = ESBTPEvaluation::factory()->create([
-            'matiere_id' => $matieres[0]->id, 'classe_id' => $troncCommun->id,
+            'matiere_id' => $matiere->id, 'classe_id' => $troncCommun->id,
             'annee_universitaire_id' => $this->annee->id, 'periode' => 'semestre1',
             'coefficient' => 1, 'bareme' => 20, 'status' => 'completed',
         ]);
         $this->noter($oriente, $evaluationTc, 15);
-        $this->noter($oriente, $evaluations['semestre2'][0], 9);
-
-        return [$notee, $sansNote, $repli];
+        $this->noter($oriente, $evaluationS2, 9);
     }
 
     private function eleve(string $matricule, string $nom, string $prenoms): ESBTPEtudiant

@@ -1183,6 +1183,25 @@ class ESBTPResultatController extends Controller
     }
 
     /**
+     * Le total de la cohorte, et ses KPI en page 1 seulement : ils portent sur
+     * toute la cohorte et ne changent pas d'une page a l'autre, et l'ecran ne
+     * les lit qu'en page 1 (`updateKpis()` ignore un `null`). Les pages
+     * suivantes rendent la cle `kpis` a `null`.
+     *
+     * @return array{0: int, 1: ?array}
+     */
+    private function totalEtKpis($studentsQuery, int $page, $classeId, $anneeId, $semestre): array
+    {
+        if ($page !== 1) {
+            return [(clone $studentsQuery)->count(), null];
+        }
+
+        $studentIds = (clone $studentsQuery)->pluck('id');
+
+        return [$studentIds->count(), $this->bulletinService->computeResultatsKpis($studentIds, $classeId, $anneeId, $semestre)];
+    }
+
+    /**
      * Load students with lazy loading pagination for AJAX requests
      */
     public function loadEtudiants(Request $request)
@@ -1199,17 +1218,7 @@ class ESBTPResultatController extends Controller
             // La periode decide de la cohorte : au semestre 1, une classe de
             // tronc commun porte encore ses etudiants passes en specialite.
             $studentsQuery = $this->bulletinService->buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses, $detail_periode);
-            // Les KPI portent sur toute la cohorte et ne changent pas d'une page a
-            // l'autre : l'ecran ne les lit qu'en page 1 (`updateKpis()` ignore un
-            // `null`). Les pages suivantes rendent la cle a `null`.
-            if ((int) $page === 1) {
-                $studentIds = (clone $studentsQuery)->pluck('id');
-                $total = $studentIds->count();
-                $kpis = $this->bulletinService->computeResultatsKpis($studentIds, $classe_id, $annee_universitaire_id, $semestre);
-            } else {
-                $total = (clone $studentsQuery)->count();
-                $kpis = null;
-            }
+            [$total, $kpis] = $this->totalEtKpis($studentsQuery, (int) $page, $classe_id, $annee_universitaire_id, $semestre);
             $etudiants = (clone $studentsQuery)->skip(($page - 1) * $perPage)->take($perPage)->get();
 
             $moyennes = [];
