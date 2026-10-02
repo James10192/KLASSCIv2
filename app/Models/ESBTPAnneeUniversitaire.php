@@ -57,6 +57,16 @@ class ESBTPAnneeUniversitaire extends Model
     }
 
     /**
+     * Toute ecriture sur une annee peut changer la courante (ou ses dates,
+     * affichees dans la barre du haut) : le cache tombe a chaque fois.
+     */
+    protected static function booted(): void
+    {
+        static::saved(fn () => static::flushCurrentCache());
+        static::deleted(fn () => static::flushCurrentCache());
+    }
+
+    /**
      * La table associée au modèle.
      *
      * @var string

@@ -367,19 +367,34 @@ class ESBTPClasse extends Model implements Auditable
     }
 
     /**
-     * Les places prises de chaque classe pour l'annee courante, en une requete :
-     * la meme regle que nombre_etudiants, pour les ecrans qui listent toutes
-     * les classes a la fois.
+     * Les places prises de chaque classe pour une annee (la courante par
+     * defaut), en une requete : la meme regle que nombre_etudiants, pour les
+     * ecrans qui listent toutes les classes a la fois. Une classe est
+     * universelle : c'est l'annee de l'inscription qui decide des places.
      *
      * @return \Illuminate\Support\Collection<int, int> classe_id => places prises
      */
-    public static function placesPrisesParClasse(): \Illuminate\Support\Collection
+    public static function placesPrisesParClasse(?int $anneeId = null): \Illuminate\Support\Collection
     {
-        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
+        $annee = $anneeId ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
 
         return $annee === null ? collect() : ESBTPInscription::query()->occupeUnePlace((int) $annee)
             ->selectRaw('classe_id, COUNT(*) as n')->groupBy('classe_id')->pluck('n', 'classe_id')
             ->map(fn ($n) => (int) $n);
+    }
+
+    /**
+     * Places encore disponibles pour une annee donnee (la courante par defaut).
+     * Sans capacite reglee, aucune place : l'enregistrement refuse la classe.
+     */
+    public function placesDisponiblesPour(?int $anneeId = null): int
+    {
+        if (! $anneeId) {
+            return $this->places_disponibles;
+        }
+        $prises = $this->inscriptions()->occupeUnePlace($anneeId)->count();
+
+        return max(0, (int) ($this->places_totales ?? 0) - $prises);
     }
 
     /**

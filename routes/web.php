@@ -393,6 +393,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/parents', [$c, 'parents'])
                 ->middleware(['permission:inscriptions.candidatures.process', 'can:inscriptions.ouvrir-formulaire', 'throttle:120,1'])
                 ->name('parents');
+            Route::get('/nouvelle/{candidature}/classes', [$c, 'classesPourAnnee'])
+                ->middleware(['permission:inscriptions.candidatures.process', 'can:inscriptions.ouvrir-formulaire', 'throttle:120,1'])
+                ->name('classes-annee');
             Route::get('/nouvelle/{candidature}/inscription', [$c, 'preparerInscription'])
                 ->middleware(['permission:inscriptions.candidatures.process', 'can:inscriptions.ouvrir-formulaire', 'throttle:60,1'])
                 ->name('preparer-inscription');

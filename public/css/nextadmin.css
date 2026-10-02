@@ -652,6 +652,47 @@ body {
     text-overflow: ellipsis;
 }
 
+.etb-sous {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+    min-width: 0;
+}
+
+.etb-sous .etb-nom { min-width: 0; }
+
+/* L'annee sur la seconde ligne ne sert que sous le shell mobile ; sur bureau
+   elle a sa propre pastille, .etb-annee. */
+.etb-annee-ligne {
+    display: none;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* Pastille de l'annee courante : discrete, toujours visible sur bureau.
+   Terminee, elle passe en orange (sens fonctionnel : a regulariser). */
+.etb-annee {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: rgba(4, 83, 203, 0.08);
+    border: 1px solid rgba(4, 83, 203, 0.18);
+    color: var(--primary, #0453cb);
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.etb-annee.is-echue {
+    background: #fff7ed;
+    border-color: #fdba74;
+    color: #9a5b00;
+}
+
 .etb-ville {
     font-size: 0.7rem;
     color: var(--gray-500, #64748b);
@@ -665,6 +706,8 @@ body {
    sur les autres icones de 44 px. */
 @media (max-width: 991.98px) {
     .etb-texte { display: none; }
+    .etb-annee { padding: 2px 7px; font-size: 0.68rem; }
+    .etb-annee i { display: none; }
     .etb-badge {
         padding: 0;
         background: transparent;

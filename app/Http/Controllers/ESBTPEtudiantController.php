@@ -1987,11 +1987,14 @@ class ESBTPEtudiantController extends Controller
             ], 404);
         }
         
-        $availablePlaces = $this->classeManagementService->getAvailablePlaces($id);
+        // ?annee_universitaire_id= : les places de l'annee choisie dans le
+        // formulaire ; sans, celles de l'annee courante (comportement d'avant).
+        $annee = \App\Models\ESBTPAnneeUniversitaire::find(request()->integer('annee_universitaire_id') ?: null);
 
         return response()->json([
-            'available_places' => $availablePlaces,
-            'capacity' => $classe->places_totales ?? 0
+            'available_places' => $annee ? $classe->placesDisponiblesPour((int) $annee->id) : $this->classeManagementService->getAvailablePlaces($id),
+            'capacity' => $classe->places_totales ?? 0,
+            'annee_universitaire_id' => $annee?->id,
         ]);
     }
 

@@ -517,7 +517,9 @@
                                     <option value="{{ $annee->id }}"
                                         {{ (old('annee_universitaire_id', $anneeEnCours->id ?? '') == $annee->id) ? 'selected' : '' }}
                                         data-is-current="{{ $annee->is_current ? '1' : '0' }}"
-                                        data-start-date="{{ $annee->start_date?->format('Y-m-d') ?? '' }}">
+                                        data-start-date="{{ $annee->start_date?->format('Y-m-d') ?? '' }}"
+                                        data-end-date="{{ $annee->end_date?->format('Y-m-d') ?? '' }}"
+                                        data-fin="{{ $annee->end_date?->translatedFormat('j F Y') ?? '' }}">
                                         {{ $annee->name }}
                                         @if($annee->is_current) (Année courante) @endif
                                     </option>
@@ -526,6 +528,13 @@
                             @error('annee_universitaire_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                            {{-- Annee terminee : possible (dossier en retard), mais confirme. --}}
+                            <div class="form-check mt-2 p-2 ps-4 rounded" id="annee-echue-block" style="display:none;background:#fffcf5;border:1px solid #fde7c2">
+                                <input class="form-check-input" type="checkbox" id="annee_echue_confirmee">
+                                <label class="form-check-label" for="annee_echue_confirmee">
+                                    L'année <strong data-annee-echue-nom></strong> est <strong>terminée</strong> (fin le <span data-annee-echue-fin></span>). Je confirme inscrire l'étudiant sur cette année.
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1207,7 +1216,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Annee terminee : la case de confirmation devient obligatoire.
+    const echueBlock = document.getElementById('annee-echue-block');
+    const echueCase = document.getElementById('annee_echue_confirmee');
+    function updateAnneeEchue() {
+        if (!anneeSelect || !echueBlock || !echueCase) return;
+        const opt = anneeSelect.options[anneeSelect.selectedIndex];
+        const fin = opt?.dataset?.endDate || '';
+        const aujourdhui = new Date().toISOString().slice(0, 10);
+        const echue = fin !== '' && fin < aujourdhui;
+        echueBlock.style.display = echue ? '' : 'none';
+        echueCase.required = echue;
+        if (!echue) echueCase.checked = false;
+        echueBlock.querySelector('[data-annee-echue-nom]').textContent = (opt?.textContent || '').trim();
+        echueBlock.querySelector('[data-annee-echue-fin]').textContent = opt?.dataset?.fin || fin;
+    }
+
     if (anneeSelect) {
+        anneeSelect.addEventListener('change', updateAnneeEchue);
+        updateAnneeEchue();
         anneeSelect.addEventListener('change', updateSousReserveVisibility);
         // Exécuter au chargement pour gérer old()
         updateSousReserveVisibility();

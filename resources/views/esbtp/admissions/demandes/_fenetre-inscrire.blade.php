@@ -91,12 +91,17 @@
                             <div class="dmi-choix" role="radiogroup" aria-label="Année de l'inscription">
                                 <template x-for="a in (ins.prep?.annees || [])" :key="a.id">
                                     <button type="button" role="radio" :aria-checked="ins.f.annee_universitaire_id === a.id" :class="ins.f.annee_universitaire_id === a.id ? 'is-actif' : ''"
-                                            x-on:click="ins.f.annee_universitaire_id = a.id" x-text="a.nom + (a.courante ? ' · en cours' : '')"></button>
+                                            x-on:click="choisirAnnee(a)" x-text="a.nom + (a.courante ? ' · en cours' : (a.echue ? ' · terminée' : ''))"></button>
                                 </template>
                             </div>
                             <span class="dmi-champ-aide" x-show="ins.prep?.candidature?.annee_universitaire_id && ins.f.annee_universitaire_id !== ins.prep?.candidature?.annee_universitaire_id"
                                   x-text="'La candidature visait ' + (ins.prep?.candidature?.annee || 'une autre année') + '.'"></span>
+                            <span class="dmi-champ-aide" x-show="ins.placesChargement"><i class="fas fa-circle-notch fa-spin"></i> Places recomptées pour cette année…</span>
                         </div>
+                        <label class="dmi-case dmi-case--alerte" style="margin-top:.6rem" x-show="anneeEchue()">
+                            <input type="checkbox" x-model="ins.f.annee_echue_confirmee">
+                            <span>L'année <strong x-text="anneeChoisie()?.nom"></strong> est <strong>terminée</strong> (fin le <span x-text="anneeChoisie()?.fin"></span>). Je confirme inscrire l'étudiant sur cette année.</span>
+                        </label>
                         <div class="dmi-champ" style="margin-top:.75rem" x-show="ins.prep?.statut_etablissement_requis" :class="ins.erreurs.statut_etablissement ? 'is-erreur' : ''">Déjà inscrit dans l'établissement ?
                             <div class="dmi-choix" role="radiogroup" aria-label="Statut dans l'établissement">
                                 <button type="button" role="radio" :aria-checked="ins.f.statut_etablissement === 'nouveau'" :class="ins.f.statut_etablissement === 'nouveau' ? 'is-actif' : ''" x-on:click="ins.f.statut_etablissement = 'nouveau'; chargerFrais()">Nouvel étudiant</button>

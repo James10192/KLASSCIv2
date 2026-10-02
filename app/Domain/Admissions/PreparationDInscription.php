@@ -69,8 +69,9 @@ class PreparationDInscription
             // deux fois : on montre ceux qui lui ressemblent avant d'en creer un.
             'parents_proches' => $this->parents->proches($c->tuteur_nom, $c->tuteur_telephone),
             'annees' => $this->annees($c->annee_universitaire_id),
+            'url_classes' => route('esbtp.demandes.classes-annee', $c),
             'doublons' => $this->doublons($c),
-            'classes' => $this->classes($c->filiere_id, $c->niveau_id),
+            'classes' => $this->classes($c->filiere_id, $c->niveau_id, $c->annee_universitaire_id),
             'matricule_automatique' => ESBTPSystemSetting::isMatriculeAutomatic(),
             'statut_etablissement_requis' => $this->scolarite->confirmerStatutEtablissement(),
             'montants_masques' => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user()),
@@ -83,7 +84,10 @@ class PreparationDInscription
      * et celles qui suivent. Une candidature deposee pour une annee qu'on n'a
      * pas encore ouverte, ou reportee, s'inscrit ainsi sur la bonne.
      *
-     * @return list<array{id: int, nom: string, courante: bool}>
+     * `echue` : l'annee est terminee (date de fin passee). Inscrire dessus
+     * reste possible — un dossier en retard — mais l'ecran le fait confirmer.
+     *
+     * @return list<array{id: int, nom: string, courante: bool, echue: bool, fin: ?string}>
      */
     private function annees(?int $anneeCandidature): array
     {
@@ -96,8 +100,14 @@ class PreparationDInscription
                 ->orWhere('id', $anneeCandidature ?? 0))
             ->orderBy('start_date')
             ->limit(4)
-            ->get(['id', 'name', 'is_current'])
-            ->map(fn (ESBTPAnneeUniversitaire $a) => ['id' => (int) $a->id, 'nom' => (string) $a->name, 'courante' => (bool) $a->is_current])
+            ->get(['id', 'name', 'is_current', 'end_date'])
+            ->map(fn (ESBTPAnneeUniversitaire $a) => [
+                'id' => (int) $a->id,
+                'nom' => (string) $a->name,
+                'courante' => (bool) $a->is_current,
+                'echue' => $a->end_date !== null && $a->end_date->lt(today()),
+                'fin' => $a->end_date?->translatedFormat('j F Y'),
+            ])
             ->values()->all();
     }
 
@@ -119,13 +129,16 @@ class PreparationDInscription
      * `complete` suit le refus de ESBTPInscriptionController::store() :
      * places disponibles nulles, capacite non reglee comprise.
      *
+     * Les places se comptent sur l'annee de l'inscription ($anneeId), la
+     * courante par defaut : changer d'annee dans la fenetre les recompte.
+     *
      * Sert aussi a la reinscription, sans voeu.
      *
      * @return list<array<string, mixed>>
      */
-    public function classes(?int $filiereVoulue = null, ?int $niveauVoulu = null): array
+    public function classes(?int $filiereVoulue = null, ?int $niveauVoulu = null, ?int $anneeId = null): array
     {
-        $inscrits = ESBTPClasse::placesPrisesParClasse();
+        $inscrits = ESBTPClasse::placesPrisesParClasse($anneeId);
 
         return ESBTPClasse::query()->where('is_active', true)->with(['filiere:id,name', 'niveau:id,name'])
             ->get(['id', 'name', 'filiere_id', 'niveau_etude_id', 'places_totales'])

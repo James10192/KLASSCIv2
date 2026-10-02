@@ -7,7 +7,7 @@
 if (typeof window.demandesInscription !== 'function') {
 window.demandesInscription = function () {
     const jeton = () => document.querySelector('meta[name="csrf-token"]')?.content || '';
-    const vierge = () => ({ prep: null, chargement: false, f: {}, tuteur: { nom: '', prenoms: '', telephone: '', relation: '', profession: '' }, sansTuteur: false, modeTuteur: 'nouveau', parentExistant: null, parentQ: '', parentResultats: null, parentChargement: false, coupeAuto: null, erreurs: {}, message: '', frais: { chargement: false, masques: false, lignes: [], total: 0, incomplet: false } });
+    const vierge = () => ({ prep: null, chargement: false, f: {}, tuteur: { nom: '', prenoms: '', telephone: '', relation: '', profession: '' }, sansTuteur: false, modeTuteur: 'nouveau', parentExistant: null, parentQ: '', parentResultats: null, parentChargement: false, placesChargement: false, coupeAuto: null, erreurs: {}, message: '', frais: { chargement: false, masques: false, lignes: [], total: 0, incomplet: false } });
 
     return {
         cfg: {}, filtres: {}, compteurs: {}, classes: [],
@@ -294,9 +294,10 @@ window.demandesInscription = function () {
                 this.ins.f = Object.assign({}, p.identite, {
                     classe_id: voeux.length === 1 ? voeux[0].id : null,
                     matricule: '', statut_etablissement: p.statut_etablissement_requis ? 'nouveau' : '',
-                    duplicate_override: false, candidature_naissance_confirmee: false,
+                    duplicate_override: false, candidature_naissance_confirmee: false, annee_echue_confirmee: false,
                 });
                 this.ins.f.annee_universitaire_id = p.candidature.annee_universitaire_id || (p.annees || []).find((a) => a.courante)?.id || null;
+                this.ins.placesChargement = false;
                 this.ins.tuteur = Object.assign(this.ins.tuteur, p.tuteur);
                 this.ins.sansTuteur = !p.tuteur.nom && !p.tuteur.telephone && !(p.parents_proches || []).length;
                 // Le tuteur arrive en un seul champ : le premier mot fait le nom,
@@ -373,6 +374,25 @@ window.demandesInscription = function () {
             } finally { this.ins.parentChargement = false; }
         },
         nomParent(p) { return p ? (p.nom + ' ' + (p.prenoms || '')).trim() : ''; },
+        /*
+         * Changer d'annee recompte les places : une classe pleine cette annee
+         * peut etre libre la suivante. La reponse d'une annee abandonnee entre-
+         * temps est ignoree.
+         */
+        async choisirAnnee(annee) {
+            if (!this.ins.prep || this.ins.f.annee_universitaire_id === annee.id) return;
+            this.ins.f.annee_universitaire_id = annee.id;
+            this.ins.f.annee_echue_confirmee = false;
+            this.ins.placesChargement = true;
+            try {
+                const d = await this.appeler(this.ins.prep.url_classes + '?annee=' + encodeURIComponent(annee.id));
+                if (d.annee_universitaire_id !== this.ins.f.annee_universitaire_id) return;
+                this.ins.prep.classes = d.classes || [];
+            } catch (e) {
+                this.notifier('error', e.message);
+            } finally { this.ins.placesChargement = false; }
+        },
+        anneeEchue() { return !!this.anneeChoisie()?.echue; },
         anneeChoisie() { return (this.ins.prep?.annees || []).find((a) => a.id === this.ins.f.annee_universitaire_id) || null; },
         naissanceModifiee() { return !!this.ins.prep && (this.ins.f.date_naissance || '') !== (this.ins.prep.identite.date_naissance || ''); },
         doublonsBloquants() { return (this.ins.prep?.doublons || []).filter((d) => d.bloquant); },
@@ -394,6 +414,7 @@ window.demandesInscription = function () {
             const f = this.ins.f;
             return !!(f.nom && f.prenoms && f.sexe && f.date_naissance && f.telephone)
                 && (!this.naissanceModifiee() || f.candidature_naissance_confirmee)
+                && (!this.anneeEchue() || f.annee_echue_confirmee)
                 && (!this.doublonsBloquants().length || f.duplicate_override);
         },
         insAffectationOk() {
@@ -405,6 +426,7 @@ window.demandesInscription = function () {
             const f = this.ins.f;
             if (!(f.nom && f.prenoms && f.sexe && f.date_naissance && f.telephone)) return "Complétez l'identité : nom, prénoms, sexe, date de naissance et téléphone.";
             if (this.naissanceModifiee() && !f.candidature_naissance_confirmee) return 'Confirmez la date de naissance vérifiée sur la pièce.';
+            if (this.anneeEchue() && !f.annee_echue_confirmee) return "L'année choisie est terminée : confirmez l'inscription sur cette année.";
             if (this.doublonsBloquants().length && !f.duplicate_override) return 'Tranchez les doublons : ouvrez la fiche proche, ou confirmez que c\'est une autre personne.';
             if (!f.classe_id) return 'Choisissez la classe.';
             if (!this.insAffectationOk()) return this.ins.prep?.statut_etablissement_requis && !f.statut_etablissement ? "Indiquez s'il est déjà inscrit dans l'établissement." : 'Saisissez le matricule.';

@@ -35,7 +35,7 @@ class DemandesInscriptionTest extends TestCase
         'admin.access', 'inscriptions.view', 'inscriptions.create',
         'inscriptions.candidatures.view', 'inscriptions.candidatures.process',
         'reinscriptions.demandes.view', 'reinscriptions.demandes.process',
-        'inscriptions.rdv.view', 'inscriptions.rdv.manage', 'inscriptions.rdv.accueil', 'students.view',
+        'inscriptions.rdv.view', 'inscriptions.rdv.manage', 'inscriptions.rdv.accueil', 'students.view', 'classes.view',
     ];
 
     private User $agent;
@@ -236,6 +236,42 @@ class DemandesInscriptionTest extends TestCase
         $this->assertSame($suivante->id, (int) $inscription->annee_universitaire_id);
         $this->assertSame(1, ESBTPParent::count());
         $this->assertSame([$parent->id], $inscription->etudiant->parents()->pluck('esbtp_parents.id')->all());
+    }
+
+    public function test_les_places_se_recomptent_sur_l_annee_choisie_et_l_inscription_y_passe(): void
+    {
+        $suivante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => false]);
+        $classe = $this->classe('1A BTS Génie civil', 1);
+        // La seule place de l'annee courante est prise.
+        \App\Models\ESBTPInscription::factory()->create([
+            'classe_id' => $classe->id, 'annee_universitaire_id' => $this->annee->id,
+            'status' => 'active', 'workflow_step' => 'etudiant_cree',
+        ]);
+        $c = $this->candidature(['nom' => 'KONE', 'prenoms' => 'Ali', 'filiere_id' => $this->filiere->id, 'niveau_id' => $this->niveau->id]);
+
+        $courante = $this->actingAs($this->agent)->getJson(route('esbtp.demandes.classes-annee', [$c, 'annee' => $this->annee->id]))->assertOk()->json('classes');
+        $autre = $this->actingAs($this->agent)->getJson(route('esbtp.demandes.classes-annee', [$c, 'annee' => $suivante->id]))->assertOk()->json('classes');
+        $this->assertTrue(collect($courante)->firstWhere('id', $classe->id)['complete']);
+        $this->assertSame(1, collect($autre)->firstWhere('id', $classe->id)['places_libres']);
+
+        $this->actingAs($this->agent)->getJson(route('esbtp.classes.available-places', ['id' => $classe->id, 'annee_universitaire_id' => $suivante->id]))
+            ->assertOk()->assertJsonPath('available_places', 1);
+
+        $this->actingAs($this->agent)->postJson(route('esbtp.inscriptions.store'), [
+            'nom' => 'KONE', 'prenoms' => 'Ali', 'sexe' => 'M', 'date_naissance' => '2007-03-12',
+            'telephone' => '+225 07 07 12 34 77', 'classe_id' => $classe->id,
+            'annee_universitaire_id' => $suivante->id, 'candidature_id' => $c->id, 'duplicate_override' => 0,
+        ])->assertOk()->assertJsonPath('ok', true);
+    }
+
+    public function test_une_annee_terminee_est_signalee_dans_la_preparation(): void
+    {
+        $this->annee->update(['end_date' => Carbon::today()->subDay()->toDateString()]);
+        $c = $this->candidature();
+
+        $annees = $this->actingAs($this->agent)->getJson(route('esbtp.demandes.preparer-inscription', $c))->assertOk()->json('annees');
+
+        $this->assertTrue(collect($annees)->firstWhere('id', $this->annee->id)['echue']);
     }
 
     public function test_un_refus_de_l_inscription_revient_en_json_sans_laisser_de_message_en_session(): void

@@ -116,6 +116,18 @@ class ESBTPDemandesInscriptionController extends Controller
         return response()->json($preparation->pour($candidature));
     }
 
+    /** Les classes et leurs places pour l'annee choisie dans la fenetre. */
+    public function classesPourAnnee(Request $request, ESBTPCandidature $candidature, PreparationDInscription $preparation): JsonResponse
+    {
+        $annee = \App\Models\ESBTPAnneeUniversitaire::find($request->integer('annee') ?: null);
+        abort_if($annee === null, 422, "Choisissez l'année de l'inscription.");
+
+        return response()->json([
+            'annee_universitaire_id' => (int) $annee->id,
+            'classes' => $preparation->classes($candidature->filiere_id, $candidature->niveau_id, (int) $annee->id),
+        ]);
+    }
+
     /** Un parent deja enregistre, a rattacher plutot que d'en creer un double. */
     public function parents(Request $request, RechercheParents $recherche): JsonResponse
     {
