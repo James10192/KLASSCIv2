@@ -2062,9 +2062,15 @@
                             <div class="menu-icon"><i class="fas fa-comment-dots"></i></div>
                             <div class="menu-text">Messages
                                 @php
-                                    $unreadChat = auth()->user()->unreadNotifications()
+                                    // Compte gardé une minute par utilisateur ; relu à neuf sur les pages du chat,
+                                    // où les notifications se lisent.
+                                    $unreadChatCle = 'gabarit.chat-non-lus.user.'.auth()->id();
+                                    if (Request::routeIs('chat.*')) {
+                                        \Illuminate\Support\Facades\Cache::forget($unreadChatCle);
+                                    }
+                                    $unreadChat = \Illuminate\Support\Facades\Cache::remember($unreadChatCle, 60, fn () => auth()->user()->unreadNotifications()
                                         ->where('type', \App\Notifications\WorkflowNextStepNotification::class)
-                                        ->count();
+                                        ->count());
                                 @endphp
                                 @if($unreadChat > 0)
                                     <span class="badge bg-danger ms-1" style="font-size:.65rem;">{{ $unreadChat }}</span>
@@ -2792,36 +2798,24 @@
                         $evaluationGradingShortcut = ['show' => false];
                         $evaluationPublishShortcut = ['show' => false];
 
+                        // Résumés gardés en cache court (App\Support\RappelsDuGabarit) :
+                        // ils étaient recalculés à chaque page, avant le contrôleur.
                         if ($canValidateInscriptions && $anneeCouranteModal) {
-                            $pendingCurrentYearQuery = \App\Models\ESBTPInscription::where('annee_universitaire_id', $anneeCouranteModal->id)
-                                ->where(function($query) {
-                                    $query->whereIn('status', ['en_attente', 'pending'])
-                                        ->orWhere(function($subQuery) {
-                                            $subQuery->where('status', 'active')
-                                                ->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation']);
-                                        });
-                                });
-
-                            $pendingCurrentYearInscriptionsCount = (clone $pendingCurrentYearQuery)->count();
-                            $pendingCurrentYearInscriptionsByStep = [
-                                'prospect' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'prospect')->count(),
-                                'documents_complets' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'documents_complets')->count(),
-                                'en_validation' => (clone $pendingCurrentYearQuery)->where('workflow_step', 'en_validation')->count(),
-                            ];
+                            $pendingCurrentYear = \App\Support\RappelsDuGabarit::inscriptionsEnAttente($anneeCouranteModal);
+                            $pendingCurrentYearInscriptionsCount = $pendingCurrentYear['count'];
+                            $pendingCurrentYearInscriptionsByStep = $pendingCurrentYear['by_step'];
                         }
 
                         if ($canAccessTimetable && $anneeCouranteModal) {
-                            $timetableShortcut = app(\App\Services\TimetableShortcutService::class)->getShortcutSummary($anneeCouranteModal);
+                            $timetableShortcut = \App\Support\RappelsDuGabarit::emploisDuTemps($anneeCouranteModal);
                         }
 
                         if ($canSeeGradingReminder && $anneeCouranteModal) {
-                            $evaluationGradingShortcut = app(\App\Services\EvaluationGradingShortcutService::class)
-                                ->getShortcutSummary($anneeCouranteModal, auth()->user());
+                            $evaluationGradingShortcut = \App\Support\RappelsDuGabarit::notesASaisir($anneeCouranteModal, auth()->user());
                         }
 
                         if ($canAccessEvaluations && $anneeCouranteModal) {
-                            $evaluationPublishShortcut = app(\App\Services\EvaluationPublishShortcutService::class)
-                                ->getShortcutSummary($anneeCouranteModal);
+                            $evaluationPublishShortcut = \App\Support\RappelsDuGabarit::evaluationsAPublier($anneeCouranteModal);
                         }
                     @endphp
 
@@ -3172,12 +3166,15 @@
     <!-- Alpine.js (focus plugin must load BEFORE core for x-trap to register) -->
     <script defer src="{{ asset('js/mobile-shell.js') }}?v={{ @filemtime(public_path('js/mobile-shell.js')) ?: '1' }}"></script>
     <script defer src="{{ asset('js/liste-infinie.js') }}?v={{ @filemtime(public_path('js/liste-infinie.js')) ?: '1' }}"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.17.4/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.17.4/dist/cdn.min.js"></script>
     {{-- Shell mobile (feuilles, toasts, tirer-pour-rafraichir, invite d'installation) : attend alpine:init --}}
 
     <!-- Custom JavaScript -->
+    {{-- Diagnostic console seulement : ses écouteurs sont remplacés par ceux du gabarit. --}}
+    @if(config('app.debug'))
     <script src="{{ asset('js/navbar-diagnostics.js') }}"></script>
+    @endif
     <script>
             document.addEventListener('DOMContentLoaded', function() {
                 // Shell mobile : sous 768px, les rappels non bloquants ne s'ouvrent pas seuls
