@@ -21,7 +21,7 @@
             <div class="bc-icon"><i class="fas fa-stopwatch"></i></div>
             <div class="bc-body">
                 <div class="bc-label">Seuils</div>
-                <div class="bc-desc">Une page en erreur serveur, une tâche ou un envoi qui échoue sont notés quel que soit le seuil. Ce que le serveur arrête pour dépassement de temps ou de mémoire ne laisse pas de note. Les notes sont effacées au bout de trente jours.</div>
+                <div class="bc-desc">Une page en erreur serveur, une tâche, une commande ou un envoi MailPulse ou WhatsApp qui échoue sont notés quel que soit le seuil ; un courriel classique en échec ne l’est pas. Ce que le serveur arrête pour dépassement de temps ou de mémoire ne laisse pas de note. Les notes sont effacées au bout de trente jours.</div>
                 <div class="row g-2" style="margin-top:.6rem;max-width:560px;">
                     <div class="col-12 col-md-6">
                         <label class="bc-desc" for="tl-duree" style="display:block;margin-bottom:.2rem;">Durée (millisecondes)</label>
