@@ -30,7 +30,8 @@ class BulletinServiceAttendanceNoteTest extends TestCase
             new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver())),
             new \App\Domain\BtsTroncCommun\BtsClassCohortCounter(new BtsPhaseResolver()),
             new ClasseOuvertureResolver(),
-            new BulletinSubjectOrder(new BtsBulletinSubjectResolver())
+            new BulletinSubjectOrder(new BtsBulletinSubjectResolver()),
+            app(\App\Domain\BtsTroncCommun\BulletinSubjectRowsCompleter::class)
         );
     }
 
