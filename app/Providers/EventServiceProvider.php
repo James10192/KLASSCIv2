@@ -18,7 +18,6 @@ use App\Events\WorkflowStepCompleted;
 // Import all the listeners
 use App\Listeners\EnvoyerNotificationPaiement;
 use App\Listeners\NotifyWorkflowNextStepActors;
-use App\Listeners\MettreAJourKPIs;
 use App\Listeners\GererSeuilAtteint;
 use App\Listeners\TraiterRelanceEnvoyee;
 use App\Listeners\MettreAJourDashboard;
@@ -49,7 +48,6 @@ class EventServiceProvider extends ServiceProvider
         // Événements comptabilité ESBTP
         PaiementRecu::class => [
             EnvoyerNotificationPaiement::class,
-            MettreAJourKPIs::class,
         ],
 
         SeuilAtteint::class => [
