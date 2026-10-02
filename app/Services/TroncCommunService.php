@@ -118,6 +118,7 @@ class TroncCommunService
                     ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
                 'date_inscription' => now(),
                 'type_inscription' => $inscriptionOrigine->type_inscription,
+                ...\App\Domain\Inscriptions\StatutRedoublant::colonnesHeritees($inscriptionOrigine),
                 'status' => 'active',
                 'workflow_step' => 'etudiant_cree',
                 'montant_scolarite' => $inscriptionOrigine->montant_scolarite,

@@ -2062,6 +2062,8 @@ class ESBTPInscriptionController extends Controller
                 "Statut",
                 "Workflow",
                 "Date inscription",
+                "Redoublant",
+                "Statut redoublant",
             ], ";");
             foreach ($inscriptions as $ins) {
                 fputcsv($out, [
@@ -2076,6 +2078,8 @@ class ESBTPInscriptionController extends Controller
                     $ins->status ?? "",
                     $ins->workflow_step ?? "",
                     optional($ins->created_at)->format("d/m/Y") ?? "",
+                    $ins->is_redoublant ? "Oui" : "Non",
+                    app(\App\Domain\Inscriptions\StatutRedoublant::class)->libelleSource($ins),
                 ], ";");
             }
             fclose($out);
@@ -2508,6 +2512,7 @@ class ESBTPInscriptionController extends Controller
                     ? ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN
                     : ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU,
                 'is_redoublant' => $estRedoublement,
+                'redoublant_source' => \App\Domain\Inscriptions\StatutRedoublant::SOURCE_DEDUIT, // la scolarité confirmera
                 // Saisi au guichet, comme la classe. L'ecrire en dur ici donnait a
                 // chaque pre-inscription le statut « affecte », celui qui ouvre droit
                 // a la subvention : la scolarite tombait a zero et le guichet
