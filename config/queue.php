@@ -188,7 +188,6 @@ return [
     */
     'job_queues' => [
         'App\Jobs\EnvoyerRelanceJob' => 'high',
-        'App\Jobs\CalculerKPIsJob' => 'medium',
         'App\Jobs\GenererRapportJob' => 'reports',
         'App\Jobs\PlanifierRelancesJob' => 'medium',
         'App\Jobs\SauvegardeDataJob' => 'backup',

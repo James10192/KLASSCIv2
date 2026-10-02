@@ -48,8 +48,6 @@ class EventServiceProvider extends ServiceProvider
         // Événements comptabilité ESBTP
         PaiementRecu::class => [
             EnvoyerNotificationPaiement::class,
-            // MettreAJourKPIs retiré (octobre 2026) : il lançait CalculerKPIsJob,
-            // qui échouait à chaque paiement et dont rien ne lit le résultat.
         ],
 
         SeuilAtteint::class => [

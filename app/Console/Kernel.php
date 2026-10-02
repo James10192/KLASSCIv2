@@ -85,11 +85,10 @@ class Kernel extends ConsoleKernel
         // NOUVELLES TÂCHES ASYNCHRONES - TASK #7
         // =====================================================================
 
-        // Les calculs d'indicateurs CalculerKPIsJob (horaire, journalier,
-        // hebdomadaire, mensuel) ne sont plus planifiés (octobre 2026) : ils
-        // échouaient à chaque passage (période hors de l'enum de esbtp_kpis,
-        // colonne `statut` inexistante sur esbtp_paiements) et rien ne lit
-        // esbtp_kpis. Les écrans comptables calculent leurs chiffres en direct.
+        // Plus de calcul d'indicateurs stockés (CalculerKPIsJob, supprimé en
+        // octobre 2026) : il échouait à chaque passage et rien ne lisait
+        // esbtp_kpis. Les chiffres comptables se calculent en direct
+        // (BuildDashboardDataAction).
 
         // Sauvegarde complète quotidienne (03h00 chaque jour)
         $schedule->job(new SauvegardeDataJob('complet', [

@@ -7,7 +7,6 @@ use App\Models\ESBTPSalaire;
 use App\Models\ESBTPFraisScolarite;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPInscription;
-use App\Models\ESBTPKPI;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -26,35 +25,6 @@ class ComptabiliteService
     private const CACHE_TTL_KPI = 15; // 15 minutes
     private const CACHE_TTL_STATS = 30; // 30 minutes
     private const CACHE_TTL_HEAVY = 60; // 1 heure pour calculs lourds
-
-    /**
-     * Calcule les KPIs financiers avancés avec cache intelligent
-     */
-    public function calculerKPIsAvances($anneeId = null)
-    {
-        $annee = $anneeId ?
-            ESBTPAnneeUniversitaire::find($anneeId) :
-            ESBTPAnneeUniversitaire::where('est_actif', true)->first();
-
-        if (!$annee) {
-            return $this->getDefaultKPIs();
-        }
-
-        $cacheKey = "kpis_avances_{$annee->id}_" . Carbon::now()->format('Y-m-d-H');
-
-        return Cache::store('comptabilite_kpis')->remember($cacheKey, self::CACHE_TTL_KPI, function () use ($annee) {
-            Log::info("Calcul KPIs avancés pour l'année {$annee->id}");
-
-            return [
-                'recettes' => $this->calculerStatsRecettes($annee),
-                'paiements' => $this->calculerStatsPaiements($annee),
-                'performance' => ['croissance_mensuelle' => $this->calculerCroissanceMensuelle($annee)],
-                'previsions' => $this->calculerPrevisions($annee),
-                'alertes' => $this->detecterAlertes($annee),
-                'cache_generated_at' => now()->toISOString()
-            ];
-        });
-    }
 
     /**
      * Méthode rapide pour récupérer les KPIs du dashboard avec cache optimisé
@@ -122,141 +92,6 @@ class ComptabiliteService
 
     /**
 
-    /**
-     * Calcule les statistiques des paiements avec cache optimisé
-     */
-    private function calculerStatsPaiements($annee)
-    {
-        $cacheKey = "stats_paiements_{$annee->id}_" . Carbon::now()->format('Y-m-d');
-
-        return Cache::store('heavy_calculations')->remember($cacheKey, self::CACHE_TTL_HEAVY, function () use ($annee) {
-            $totalInscriptions = ESBTPInscription::where('annee_universitaire_id', $annee->id)->count();
-
-            // Optimisation avec requête unique pour éviter les N+1 - Correction jointure et colonnes
-            $paymentStats = DB::table('esbtp_inscriptions')
-                ->select([
-                    'esbtp_etudiants.id as etudiant_id',
-                    DB::raw('COALESCE(SUM(esbtp_paiements.montant), 0) as total_paye'),
-                    DB::raw('(esbtp_inscriptions.montant_scolarite + esbtp_inscriptions.frais_inscription) as montant_requis')
-                ])
-                ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
-                ->leftJoin('esbtp_paiements', function($join) {
-                    $join->on('esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
-                         ->where('esbtp_paiements.status', '=', 'validé');
-                })
-                ->where('esbtp_inscriptions.annee_universitaire_id', $annee->id)
-                ->groupBy(['esbtp_etudiants.id', 'esbtp_inscriptions.montant_scolarite', 'esbtp_inscriptions.frais_inscription'])
-                ->get();
-
-            $etudiantsPayeComplet = 0;
-            $etudiantsPayePartiel = 0;
-
-            foreach ($paymentStats as $stat) {
-                if ($stat->total_paye >= $stat->montant_requis) {
-                    $etudiantsPayeComplet++;
-                } elseif ($stat->total_paye > 0) {
-                    $etudiantsPayePartiel++;
-                }
-            }
-
-            $etudiantsImpaye = $totalInscriptions - $etudiantsPayeComplet - $etudiantsPayePartiel;
-
-            return [
-                'total' => $totalInscriptions,
-                'complets' => $etudiantsPayeComplet,
-                'partiels' => $etudiantsPayePartiel,
-                'impayés' => $etudiantsImpaye,
-                'taux_recouvrement' => $totalInscriptions > 0 ?
-                    round(($etudiantsPayeComplet / $totalInscriptions) * 100, 2) : 0
-            ];
-        });
-    }
-
-
-    /**
-     * Génère les prévisions financières avec cache
-     */
-    public function calculerPrevisions($annee, $nombreMois = 3)
-    {
-        $cacheKey = "previsions_{$annee->id}_{$nombreMois}_" . Carbon::now()->format('Y-m-d');
-
-        return Cache::store('comptabilite_reports')->remember($cacheKey, self::CACHE_TTL_HEAVY, function () use ($annee, $nombreMois) {
-            // Moyenne des 6 derniers mois avec optimisation SQL
-            $moyenneRecettes = ESBTPPaiement::where('annee_universitaire_id', $annee->id)
-                ->where('date_paiement', '>=', Carbon::now()->subMonths(6))
-                ->where('status', 'validé')
-                ->selectRaw('AVG(montant) as moyenne')
-                ->value('moyenne') ?? 0;
-
-
-            $previsions = [];
-            for ($i = 1; $i <= $nombreMois; $i++) {
-                $moisFutur = Carbon::now()->addMonths($i);
-                $previsions[$moisFutur->format('Y-m')] = [
-                    'recettes_prevues' => $moyenneRecettes * 1.05, // Légère croissance
-                ];
-            }
-
-            return $previsions;
-        });
-    }
-
-    /**
-     * Détecte les alertes financières
-     */
-    private function detecterAlertes($annee)
-    {
-        $alertes = [];
-        $recettes = $this->calculerStatsRecettes($annee);
-        $paiements = $this->calculerStatsPaiements($annee);
-
-        // Alerte taux de recouvrement faible
-        if ($recettes['taux_recouvrement'] < 70) {
-            $alertes[] = [
-                'type' => 'warning',
-                'message' => 'Taux de recouvrement faible: ' . $recettes['taux_recouvrement'] . '%',
-                'action' => 'Intensifier les relances'
-            ];
-        }
-
-        // Alerte grand nombre d'impayés
-        if ($paiements['impayés'] > ($paiements['total'] * 0.3)) {
-            $alertes[] = [
-                'type' => 'danger',
-                'message' => $paiements['impayés'] . ' étudiants n\'ont rien payé',
-                'action' => 'Campagne de relance urgente'
-            ];
-        }
-
-        return $alertes;
-    }
-
-    /**
-     * Sauvegarde les KPIs calculés
-     */
-    public function sauvegarderKPIs($kpis, $periode = 'jour')
-    {
-        foreach ($kpis as $nom => $donnees) {
-            if (is_array($donnees)) {
-                foreach ($donnees as $sousNom => $valeur) {
-                    if (is_numeric($valeur)) {
-                        ESBTPKPI::updateOrCreate(
-                            [
-                                'nom' => $nom . '.' . $sousNom,
-                                'periode' => $periode,
-                                'date_calcul' => Carbon::now()->format('Y-m-d')
-                            ],
-                            [
-                                'valeur' => $valeur,
-                                'type' => $this->determinerTypeKPI($nom, $sousNom),
-                                'metadata' => json_encode(['source' => 'auto_calculation'])
-                            ]
-                        );
-                    }
-                }
-            }
-        }
-    }
 
     /**
      * Génère automatiquement les factures depuis les inscriptions
@@ -280,20 +115,6 @@ class ComptabiliteService
         ];
     }
 
-
-    private function calculerCroissanceMensuelle($annee)
-    {
-        // Logique pour calculer la croissance mensuelle
-        return 0;
-    }
-
-    private function determinerTypeKPI($nom, $sousNom)
-    {
-        if (strpos($nom, 'recette') !== false) return 'recette';
-        if (strpos($nom, 'depense') !== false) return 'depense';
-        if (strpos($nom, 'performance') !== false) return 'performance';
-        return 'ratio';
-    }
 
     /**
      * Invalide intelligemment le cache lors de modifications
