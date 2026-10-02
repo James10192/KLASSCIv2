@@ -5,6 +5,7 @@ namespace App\Domain\Inscriptions;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPClasse;
+use App\Services\Inscription\PreRemplissageCandidature;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -70,11 +71,15 @@ class QuestionRedoublant
         return $candidature !== null && $candidature->est_transfert && $candidature->redouble_niveau_origine === true;
     }
 
-    /** La proposition d'une nouvelle inscription, d'après la candidature qu'elle inscrit, s'il y en a une. */
+    /**
+     * La proposition d'une nouvelle inscription, d'après la candidature qu'elle
+     * inscrit. Même lecture que le formulaire (`aInscrire`) : un identifiant
+     * posé à la main, sur un dossier clos ou par qui ne traite pas les
+     * candidatures, ne propose rien.
+     */
     public static function propositionDeLaRequete(Request $request): bool
     {
-        return $request->filled('candidature_id')
-            && self::propositionDeCandidature(ESBTPCandidature::find($request->integer('candidature_id')));
+        return self::propositionDeCandidature(PreRemplissageCandidature::aInscrire($request->integer('candidature_id')));
     }
 
     /**
@@ -85,7 +90,7 @@ class QuestionRedoublant
     public static function motifRetenu(?bool $reponse, bool $proposition, ?string $motif): ?string
     {
         if (trim((string) $motif) === '' && $reponse === true && $proposition) {
-            return 'Déclaré par le candidat dans sa candidature (transfert d\'un autre établissement).';
+            return 'Déclaré par le candidat dans sa candidature : il recommence l\'année qu\'il suivait dans un autre établissement.';
         }
 
         return $motif;

@@ -281,7 +281,7 @@ window.demandesInscription = function () {
         redoPret(ctx) { return !this.redoMotifRequis(ctx) || this[ctx].redo.motif.trim().length >= 10; },
         redoAide(ctx) {
             if (ctx === 'ins') return this.redoPropose(ctx) === '1'
-                ? "Proposé : oui. Dans sa candidature, il déclare redoubler le niveau atteint dans son établissement d'origine."
+                ? "Proposé : oui. Dans sa candidature, il déclare recommencer l'année qu'il suivait dans son établissement d'origine."
                 : "Nouvel élève dans KLASSCI : pas d'année précédente à comparer. Répondez « Oui » s'il redouble ce niveau, par exemple en venant d'un autre établissement.";
             if (this.reins.proposition?.niveau_avant == null) return "Proposé : non. Pas d'inscription l'année d'avant dans KLASSCI.";
             return this.redoPropose(ctx) === '1'

@@ -15,7 +15,7 @@
             <div>
                 <div class="rsr-titre">Redoublant ?</div>
                 @if($_redoublantPropose === '1')
-                    <div class="rsr-aide">Proposé : oui. Dans sa candidature, il déclare redoubler le niveau atteint dans son établissement d'origine.</div>
+                    <div class="rsr-aide">Proposé : oui. Dans sa candidature, il déclare recommencer l'année qu'il suivait dans son établissement d'origine.</div>
                 @else
                     <div class="rsr-aide">Nouvel élève dans KLASSCI : pas d'année précédente à comparer. Répondez « Oui » s'il redouble ce niveau, par exemple en venant d'un autre établissement.</div>
                 @endif
