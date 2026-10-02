@@ -711,7 +711,7 @@ a.af-todo:hover { border-color: #b9cdee; color: #1e293b; }
 @endpush
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
 <script>
 (function () {
     'use strict';

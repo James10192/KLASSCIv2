@@ -38,7 +38,7 @@ class InstallationHelper
     {
         try {
             // Vérifier si le fichier .env indique que l'application est installée
-            $envInstalled = env('APP_INSTALLED', false);
+            $envInstalled = config('installation.installee');
 
             // Vérifier si la base de données est configurée et si au moins un superAdmin existe
             $dbConfigured = self::isDatabaseConfigured();
@@ -176,7 +176,7 @@ class InstallationHelper
     {
         try {
             return Cache::remember(self::INSTALL_STATUS_CACHE_KEY, self::INSTALL_CACHE_TTL_SECONDS, function () {
-                $envInstalled = env('APP_INSTALLED', false);
+                $envInstalled = config('installation.installee');
                 $isDatabaseConfigured = self::isDatabaseConfigured();
                 $hasAdminUser = $isDatabaseConfigured ? self::hasAdminUser() : false;
                 $allTablesPresent = false;
@@ -247,7 +247,7 @@ class InstallationHelper
             \Log::error("Erreur lors de la récupération du cache d'installation: " . $e->getMessage());
 
             return [
-                'env_installed' => env('APP_INSTALLED', false),
+                'env_installed' => config('installation.installee'),
                 'db_configured' => false,
                 'has_admin_user' => false,
                 'all_tables_present' => false,

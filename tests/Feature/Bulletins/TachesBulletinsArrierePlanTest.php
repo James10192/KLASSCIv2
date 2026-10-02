@@ -48,6 +48,9 @@ class TachesBulletinsArrierePlanTest extends TestCase
 
     public bool $renduEchoue = false;
 
+    /** @var array<int, int> tâches reclassées, une entrée par reclassement */
+    public array $reclassements = [];
+
     /** @var array<int, int> tâches dont chaque tranche lève */
     public array $tachesEnPanne = [];
 
@@ -155,6 +158,11 @@ class TachesBulletinsArrierePlanTest extends TestCase
                 return $this->test->resultatImpose ?? new BulkBulletinGenerationResult(created: count($ids));
             }
 
+            protected function reclasserLaClasse(BulletinTache $tache): void
+            {
+                $this->test->reclassements[] = $tache->id;
+            }
+
             protected function rendreUnBulletin(ESBTPBulletin $bulletin): \Barryvdh\DomPDF\PDF
             {
                 if ($this->test->renduEchoue) {
@@ -201,6 +209,8 @@ class TachesBulletinsArrierePlanTest extends TestCase
         $tache->refresh();
 
         $this->assertSame([range(101, 106), [107, 108]], $this->tranchesGenerees);
+        // Une seule fois, à la conclusion : pas une par tranche.
+        $this->assertSame([$tache->id], $this->reclassements);
         $this->assertSame(BulletinTache::TERMINEE, $tache->statut);
         $this->assertSame(8, $tache->resultat['created']);
         $this->assertNotNull($tache->cloche_at);
@@ -423,6 +433,23 @@ class TachesBulletinsArrierePlanTest extends TestCase
         app(ExecuteurTachesBulletins::class)->avancer($tache, 50);
 
         $this->assertSame(BulletinTache::ECHOUEE, $tache->fresh()->statut);
+        $this->assertSame([], $this->reclassements, 'Rien d\'écrit : rien à reclasser.');
+    }
+
+    public function test_une_generation_arretee_en_route_reclasse_les_tranches_deja_ecrites(): void
+    {
+        $tache = $this->generation(eleves: 8);
+        $executeur = app(ExecuteurTachesBulletins::class);
+        $executeur->avancer($tache, 20, 1);
+        $this->assertSame([], $this->reclassements, 'Pas de reclassement par tranche.');
+
+        $this->tachesEnPanne = [$tache->id];
+        foreach (range(1, ExecuteurTachesBulletins::ESSAIS_MAX) as $_) {
+            $executeur->avancer($tache, 50);
+        }
+
+        $this->assertSame(BulletinTache::ECHOUEE, $tache->fresh()->statut);
+        $this->assertSame([$tache->id], $this->reclassements, 'Les six bulletins écrits doivent porter un rang juste.');
     }
 
     public function test_une_tache_tenue_ailleurs_n_est_pas_traitee_deux_fois(): void
