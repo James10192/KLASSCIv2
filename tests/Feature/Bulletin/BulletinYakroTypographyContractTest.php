@@ -2,13 +2,6 @@
 
 namespace Tests\Feature\Bulletin;
 
-use App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver;
-use App\Domain\BtsTroncCommun\BulletinSubjectOrder;
-use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
-use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
-use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
-use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
-use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Helpers\SettingsHelper;
 use App\Services\BulletinService;
 use App\Services\BulletinTypography;
@@ -64,14 +57,10 @@ class BulletinYakroTypographyContractTest extends TestCase
         SettingsHelper::setOrCreate('bulletin_style', 'yakro', 'bulletin');
         SettingsHelper::setOrCreate('bulletin_font_size', '14', 'bulletin');
 
-        $service = new BulletinService(
-            Mockery::mock(ESBTPAbsenceService::class),
-            new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver()),
-            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver(), new ClasseOuvertureResolver())),
-            new BtsClassCohortCounter(new BtsPhaseResolver()),
-            new ClasseOuvertureResolver(),
-            new BulletinSubjectOrder(new BtsBulletinSubjectResolver())
-        );
+        // Le conteneur construit le service : un argument ajouté au
+        // constructeur ne casse plus ce test (il en manquait un, le septième).
+        $this->app->instance(ESBTPAbsenceService::class, Mockery::mock(ESBTPAbsenceService::class));
+        $service = $this->app->make(BulletinService::class);
 
         self::assertSame('esbtp.bulletins.pdf-configurable', $service->getBulletinTemplateView());
         self::assertSame('14', $service->getPDFConfig()['bulletin_font_size']);
@@ -90,8 +79,10 @@ class BulletinYakroTypographyContractTest extends TestCase
         self::assertStringContainsString('bulletin_header_left_font_size', $view);
         self::assertStringContainsString('bulletin_header_school_name_font_size', $view);
         self::assertStringContainsString('bulletin_header_logo_height', $view);
-        self::assertStringContainsString("height: {{ \$signatureHeight }}px", $view);
-        self::assertStringContainsString("width: {{ \$signatureWidth }}px", $view);
+        // La hauteur et la largeur de signature réglées par l'école pilotent
+        // la bande décision + signature (la colonne prend la largeur réglée).
+        self::assertStringContainsString("height: {{ max(40, \$signatureHeight - 20) }}px", $view);
+        self::assertStringContainsString("width: {{ \$signatureWidth + 8 }}px", $view);
         self::assertStringContainsString("font-size: {{ \$signatureFontSize }}px", $view);
         self::assertStringContainsString("font-size: {{ \$authenticityFontSize }}px", $view);
         self::assertStringContainsString("opacity: {{ \$authenticityOpacity }}", $view);
