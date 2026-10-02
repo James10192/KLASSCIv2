@@ -156,9 +156,11 @@ class NananReleveLmdTest extends TestCase
         // Le bulletin LMD ne lit que les évaluations terminées : sans cela, ces notes n'y entreraient pas.
         $this->assertSame(0, ESBTPEvaluation::where('status', '!=', ESBTPEvaluation::STATUS_COMPLETED)->count());
 
-        $this->assertStringContainsString('déjà enregistré', $this->manques($this->proposer($this->args([
+        $deja = $this->proposer($this->args([
             ['etudiant' => 'FL25-001', 'notes' => [['element' => 'BMIB111', 'note' => 12.5]]],
-        ]))));
+        ]));
+        $this->assertTrue($deja['sans_objet'] ?? false);
+        $this->assertStringContainsString('déjà enregistré', $deja['message']);
 
         // Une ligne inchangée à côté d'une nouvelle : elle n'est pas reproposée, mais elle est dite.
         $r = $this->proposer($this->args([

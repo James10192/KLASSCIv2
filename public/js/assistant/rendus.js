@@ -721,8 +721,11 @@
         c.corps.appendChild(actions);
         c.corps.appendChild(etat);
 
+        // La carte devient le reçu de la décision, au même endroit, en direct
+        // comme à la réouverture : l'issue n'est écrite nulle part ailleurs.
         function clore(statut, message, lienResultat) {
             actions.remove();
+            ruban.remove();
             etat.textContent = message || ETATS_PROPOSITION[statut] || '';
             etat.className = 'ast-approval-state ' + (statut === 'executee' ? 'is-ok' : 'is-ko');
             var l = lienResultat ? lien(lienResultat, 'Voir') : null;
@@ -737,6 +740,7 @@
             ctx.repondreProposition(url, corps).then(function (res) {
                 if (res.ok || ETATS_PROPOSITION[res.statut] !== undefined) {
                     clore(res.statut, res.message, res.lien);
+                    if (etat.scrollIntoView) { etat.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
                 } else {
                     // Refus récupérable (réseau, droit) : on laisse la main.
                     etat.textContent = res.message;
@@ -749,7 +753,7 @@
         ok.addEventListener('click', function () { envoyer(data.valider_url, { jeton: data.jeton }, 'Enregistrement…'); });
         non.addEventListener('click', function () { envoyer(data.refuser_url, {}, 'Refus…'); });
         if (data.etat && data.etat !== 'en_attente') {
-            clore(data.etat, null, null);
+            clore(data.etat, data.issue_message || null, data.issue_lien || null);
         }
         return c.racine;
     };

@@ -498,6 +498,7 @@ class ModificationDeReglages
 
         if ($examen['refus'] === [] && $examen['ecritures'] === []) {
             $examen['refus'][] = 'Ces réglages ont déjà ces valeurs : rien à changer.';
+            $examen['sans_objet'] = true;
         }
         if ($examen['refus'] === [] && ($croise = $this->refusCroise($examen['ecritures'])) !== null) {
             $examen['refus'][] = $croise;
