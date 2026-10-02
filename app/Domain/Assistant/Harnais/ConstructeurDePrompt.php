@@ -2,7 +2,9 @@
 
 namespace App\Domain\Assistant\Harnais;
 
+use App\Domain\Assistant\Actions\ExecutionDesPropositions;
 use App\Helpers\SettingsHelper;
+use App\Models\ChatbotActionLog;
 use App\Models\ChatbotConversation;
 use App\Models\ChatbotSystemPrompt;
 use App\Models\ChatbotUserPreference;
@@ -53,8 +55,15 @@ class ConstructeurDePrompt
             ->orderBy('id', 'desc')
             ->limit($this->fenetreHistorique)
             ->get()
+            // Les lignes « ✓ … » et « Proposition refusée » des versions
+            // antérieures : l'issue est désormais rendue à la place du résultat
+            // de l'outil, elles feraient doublon (et passaient pour du texte de
+            // Nanan, qu'il imitait).
+            ->reject(fn ($m) => isset($m->metadata['action_executee']) || isset($m->metadata['action_refusee']))
             ->reverse()
             ->values();
+
+        $issues = $this->issuesDesPropositions($conversation, $messages);
 
         // Les traces rejouées, de la plus récente à la plus ancienne, dans la limite du plafond.
         $avecOutils = [];
@@ -79,12 +88,21 @@ class ConstructeurDePrompt
             $texte = (string) ($msg->content ?? '');
 
             if ($role === 'assistant') {
-                $final = in_array($msg->id, $avecOutils, true) ? $this->texteFinal($msg) : null;
+                $sesIssues = $issues[$msg->id] ?? [];
+                $complete = in_array($msg->id, $avecOutils, true);
+                $final = ($complete || $sesIssues !== []) ? $this->texteFinal($msg) : null;
+                // Hors des traces rejouées, une proposition repart quand même : seul
+                // son appel, avec son issue. Sinon Nanan oubliait qu'elle avait été
+                // validée dès qu'elle sortait des trois dernières réponses.
+                $trace = $complete ? $msg->metadata['trace'] : $this->appelsDePropositions((array) ($msg->metadata['trace'] ?? []), $sesIssues);
+                if ($final === null && !$complete && $trace !== [] && trim($texte) !== '') {
+                    $final = $texte;
+                }
                 // Une trace ne se rejoue que suivie de sa réponse : une réponse coupée
                 // après ses outils (limite, erreur) n'en a pas, et un repère inventé
                 // à sa place finirait recopié à l'écran, comme l'ancien.
-                if ($final !== null && trim($final) !== '') {
-                    foreach ($this->renumeroter($msg->metadata['trace'], $numero) as $etape) {
+                if ($final !== null && trim($final) !== '' && $trace !== []) {
+                    foreach ($this->renumeroter($this->avecIssues($trace, $sesIssues), $numero) as $etape) {
                         $neutres[] = $etape;
                     }
                     $texte = $final;
@@ -185,7 +203,8 @@ Tu t'appelles Nanan, l'agent IA de KLASSCI, le logiciel de gestion de l'établis
 
 <actions>
 Tu peux modifier des données SEULEMENT par un outil dont le nom commence par « proposer_ ». Il n'enregistre rien : il montre à la personne ce qui sera écrit, et c'est elle qui clique « Valider ».
-- Ne dis jamais qu'une modification est faite, enregistrée ou validée : dis ce que tu proposes et invite à relire puis valider. Tant que la personne n'a pas cliqué « Valider », les mots « saisie », « enregistrée », « ajoutée », « modifiée » sont faux : écris « Je propose… » ou « prête à être enregistrée ».
+- Ne dis jamais qu'une modification est faite, enregistrée ou validée : dis ce que tu proposes. La carte s'affiche sous ta réponse avec ses boutons ; ne dis pas sur quoi cliquer. Tant que la personne n'a pas validé, les mots « saisie », « enregistrée », « ajoutée », « modifiée » sont faux : écris « Je propose… » ou « prête à être enregistrée ».
+- Dans l'historique, le résultat d'un outil « proposer_ » donne l'issue RÉELLE de la proposition (validée et enregistrée, refusée, expirée, données changées, échec). C'est la seule source pour dire si c'est fait : ne repropose pas une proposition validée, et n'annonce pas comme faite une proposition refusée ou expirée.
 - Transmets les noms, matricules et valeurs EXACTEMENT comme la personne les a donnés. Ne complète jamais une donnée manquante, n'arrondis pas une note, ne choisis pas entre deux étudiants au nom proche.
 - Si l'outil répond par des manques, pose la question correspondante et attends la réponse : une proposition incomplète n'est pas présentée.
 - Avant de proposer, identifie l'élément visé avec l'outil de recherche (ex. search_evaluations pour l'identifiant d'une évaluation). En cas de doute entre deux évaluations, demande laquelle.
@@ -442,6 +461,78 @@ PROMPT;
                 }
             } else {
                 $trace[$i]['id'] = $ids[$message['id']] ?? ('h' . str_pad((string) ++$numero, 8, '0', STR_PAD_LEFT));
+            }
+        }
+
+        return $trace;
+    }
+
+    /**
+     * Pour chaque réponse qui portait une carte de proposition : l'identifiant de
+     * l'appel (celui du widget, celui de la trace) → l'issue réelle à rendre au modèle.
+     *
+     * @return array<int, array<string, string>>
+     */
+    private function issuesDesPropositions(ChatbotConversation $conversation, $messages): array
+    {
+        $parAppel = [];
+        foreach ($messages as $msg) {
+            foreach ((array) ($msg->metadata['parties'] ?? []) as $partie) {
+                $kind = $partie['kind'] ?? ($partie['data']['kind'] ?? null);
+                if (($partie['type'] ?? null) === 'widget' && $kind === 'approbation' && isset($partie['id'], $partie['data']['id'])) {
+                    $parAppel[$msg->id][(string) $partie['id']] = (int) $partie['data']['id'];
+                }
+            }
+        }
+        if ($parAppel === []) {
+            return [];
+        }
+
+        $journaux = ChatbotActionLog::where('conversation_id', $conversation->id)
+            ->whereIn('id', array_merge(...array_values(array_map('array_values', $parAppel))))
+            ->get()->keyBy('id');
+
+        $issues = [];
+        foreach ($parAppel as $messageId => $appels) {
+            foreach ($appels as $appel => $journalId) {
+                $journal = $journaux->get($journalId);
+                $issues[$messageId][$appel] = json_encode(
+                    $journal ? ExecutionDesPropositions::issuePourModele($journal) : ['proposition' => $journalId, 'statut' => 'expiree', 'issue' => 'Introuvable : rien n\'a été enregistré.'],
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES,
+                );
+            }
+        }
+
+        return $issues;
+    }
+
+    /** Les seuls appels de proposition d'une trace, et leurs résultats. */
+    private function appelsDePropositions(array $trace, array $issues): array
+    {
+        if ($issues === [] || !$this->traceValide($trace)) {
+            return [];
+        }
+        $reduite = [];
+        foreach ($trace as $message) {
+            if ($message['role'] === 'assistant') {
+                $appels = array_values(array_filter($message['appels'] ?? [], fn ($a) => isset($issues[(string) ($a['id'] ?? '')])));
+                if ($appels !== []) {
+                    $reduite[] = ['role' => 'assistant', 'texte' => '', 'appels' => $appels];
+                }
+            } elseif (isset($issues[(string) ($message['id'] ?? '')])) {
+                $reduite[] = $message;
+            }
+        }
+
+        return $this->traceValide($reduite) ? $reduite : [];
+    }
+
+    /** Le résultat enregistré d'une proposition remplacé par son issue réelle. */
+    private function avecIssues(array $trace, array $issues): array
+    {
+        foreach ($trace as $i => $message) {
+            if ($message['role'] === 'outil' && isset($issues[(string) ($message['id'] ?? '')])) {
+                $trace[$i]['resultat'] = $issues[(string) $message['id']];
             }
         }
 

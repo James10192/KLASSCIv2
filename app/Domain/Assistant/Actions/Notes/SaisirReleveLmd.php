@@ -141,7 +141,7 @@ class SaisirReleveLmd extends ActionAgent
 
         [$memes, $changees] = collect($rapport)->partition(fn ($r) => $r['avant'] === $r['apres'])->map(fn ($c) => $c->values()->all())->all();
         if ($changees === []) {
-            return $this->seulManque($titre, 'Rien à changer : ce relevé est déjà enregistré.');
+            return Proposition::sansObjet($titre, 'Ce relevé est déjà enregistré, avec ces mêmes notes.');
         }
 
         return new Proposition(

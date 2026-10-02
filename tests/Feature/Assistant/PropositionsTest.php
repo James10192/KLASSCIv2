@@ -159,7 +159,11 @@ class PropositionsTest extends TestCase
         $journal = ChatbotActionLog::sole();
         $this->assertSame('executed', $journal->status);
         $this->assertSame($this->user->id, (int) $journal->approved_by);
-        $this->assertSame(1, ChatbotMessage::where('conversation_id', $this->conversation->id)->where('content', 'like', '✓%')->count());
+        // L'issue vit dans le journal, pas dans un message séparé du fil.
+        $this->assertSame(0, ChatbotMessage::where('conversation_id', $this->conversation->id)->count());
+        $issue = ExecutionDesPropositions::issuePourModele($journal);
+        $this->assertSame('executee', $issue['statut']);
+        $this->assertStringContainsString('Validée par la personne et enregistrée', $issue['issue']);
 
         // Un second clic ne rejoue rien.
         $this->actingAs($this->user)
@@ -423,13 +427,115 @@ class PropositionsTest extends TestCase
         $this->assertSame('rejected', ChatbotActionLog::sole()->status);
         $this->assertSame('refusee', ExecutionDesPropositions::etat(ChatbotActionLog::sole()));
 
+        // La forme RÉELLEMENT enregistrée par le fil : `kind` à côté de `data`,
+        // pas dedans. L'ancien jeu d'essai mettait `kind` dans `data`, et masquait
+        // que toute carte rouverte revenait avec « Valider » actif.
+        $fil = new \App\Domain\Assistant\Harnais\FilDeReponse();
+        $fil->widget('w1', $widget);
         ChatbotMessage::create([
             'conversation_id' => $this->conversation->id, 'role' => 'assistant', 'content' => 'Voici ma proposition.',
-            'metadata' => ['parties' => [['type' => 'widget', 'id' => 'w1', 'data' => $widget]]],
+            'metadata' => ['parties' => $fil->toArray()],
         ]);
         $historique = $this->actingAs($this->user)->getJson(route('chatbot.history', $this->conversation->session_id))->json('messages');
         $partie = collect($historique)->pluck('parties')->filter()->flatten(1)->firstWhere('type', 'widget');
+        $this->assertArrayNotHasKey('kind', $partie['data']);
         $this->assertSame('refusee', $partie['data']['etat']);
+    }
+
+    public function test_une_carte_validee_rouverte_montre_le_message_et_le_lien_de_l_ecriture(): void
+    {
+        $widget = $this->proposer([['etudiant' => 'MAT-001', 'note' => 14]])['widget'];
+        $fil = new \App\Domain\Assistant\Harnais\FilDeReponse();
+        $fil->widget('w1', $widget);
+        ChatbotMessage::create([
+            'conversation_id' => $this->conversation->id, 'role' => 'assistant', 'content' => 'Je propose une note.',
+            'metadata' => ['parties' => $fil->toArray()],
+        ]);
+        $reponse = $this->actingAs($this->user)->postJson($widget['valider_url'], ['jeton' => $widget['jeton']])->assertOk()->json();
+        // Une ligne « ✓ » d'une version antérieure n'est plus montrée : la carte porte l'issue.
+        ChatbotMessage::create(['conversation_id' => $this->conversation->id, 'role' => 'assistant', 'content' => '✓ ancien', 'metadata' => ['action_executee' => 1]]);
+
+        $historique = $this->actingAs($this->user)->getJson(route('chatbot.history', $this->conversation->session_id))->json('messages');
+        $this->assertCount(1, $historique);
+        $partie = collect($historique[0]['parties'])->firstWhere('type', 'widget');
+        $this->assertSame('executee', $partie['data']['etat']);
+        $this->assertSame($reponse['message'], $partie['data']['issue_message']);
+        $this->assertSame($reponse['lien'] ?? null, $partie['data']['issue_lien']);
+    }
+
+    /**
+     * Au tour suivant, le modèle relit l'issue RÉELLE à la place de « en attente
+     * de validation » : validée, refusée, ou expirée. Que la réponse soit parmi
+     * les traces rejouées en entier ou plus ancienne.
+     */
+    public function test_le_modele_relit_l_issue_reelle_de_ses_propositions(): void
+    {
+        $proposerEtTracer = function (string $appel, int $note) {
+            $resultat = $this->proposer([['etudiant' => 'MAT-001', 'note' => $note]]);
+            $fil = new \App\Domain\Assistant\Harnais\FilDeReponse();
+            $fil->etape($appel, ['nom' => 'proposer_saisie_notes', 'etat' => 'termine']);
+            $fil->widget($appel, $resultat['widget']);
+            $fil->texte('Je propose la note ' . $note . '.');
+            ChatbotMessage::create(['conversation_id' => $this->conversation->id, 'role' => 'user', 'content' => 'Mets ' . $note]);
+            ChatbotMessage::create([
+                'conversation_id' => $this->conversation->id, 'role' => 'assistant', 'content' => 'Je propose la note ' . $note . '.',
+                'metadata' => ['parties' => $fil->toArray(), 'trace' => [
+                    ['role' => 'assistant', 'texte' => '', 'appels' => [['id' => $appel, 'nom' => 'proposer_saisie_notes', 'arguments' => []]]],
+                    ['role' => 'outil', 'id' => $appel, 'nom' => 'proposer_saisie_notes', 'resultat' => ResumeOutil::pourModele('proposer_saisie_notes', $resultat, true)],
+                ]],
+            ]);
+
+            return $resultat['widget'];
+        };
+
+        $ancienne = $proposerEtTracer('a00000001', 11);
+        $this->actingAs($this->user)->postJson($ancienne['valider_url'], ['jeton' => $ancienne['jeton']])->assertOk();
+        // Trois réponses plus récentes avec leurs propres outils : l'ancienne sort des traces rejouées en entier.
+        $refusee = $proposerEtTracer('a00000002', 12);
+        $this->actingAs($this->user)->postJson($refusee['valider_url'] ? $refusee['refuser_url'] : '')->assertOk();
+        $expiree = $proposerEtTracer('a00000003', 13);
+        ChatbotActionLog::whereKey($expiree['id'])->update(['expires_at' => now()->subMinute()]);
+        $enAttente = $proposerEtTracer('a00000004', 14);
+
+        $messages = app(\App\Domain\Assistant\Harnais\ConstructeurDePrompt::class)->messages($this->conversation, 'Et maintenant ?');
+        $resultats = collect($messages)->where('role', 'outil')->pluck('resultat')->map(fn ($r) => json_decode($r, true))->keyBy('proposition');
+
+        $this->assertCount(4, $resultats);
+        $this->assertSame('executee', $resultats[$ancienne['id']]['statut']);
+        $this->assertStringContainsString('Validée', $resultats[$ancienne['id']]['issue']);
+        $this->assertSame('refusee', $resultats[$refusee['id']]['statut']);
+        $this->assertSame('expiree', $resultats[$expiree['id']]['statut']);
+        $this->assertSame('en_attente', $resultats[$enAttente['id']]['statut']);
+        foreach ($resultats as $r) {
+            $this->assertArrayNotHasKey('message', $r, 'L\'ancienne consigne « en attente de validation » ne doit plus être relue.');
+        }
+        // Chaque appel d'outil est suivi de son résultat, et l'échange alterne bien.
+        $this->assertSame('user', $messages[0]['role']);
+        $this->assertSame('user', end($messages)['role']);
+    }
+
+    public function test_une_demande_deja_satisfaite_n_est_ni_une_question_ni_un_echec(): void
+    {
+        app(\App\Domain\Notes\SaisieGroupeeDeNotes::class)->enregistrer([
+            ['etudiant_id' => $this->etudiants[0]->id, 'evaluation_id' => $this->evaluation->id, 'note' => 14, 'is_absent' => false],
+        ], $this->user, false);
+
+        $resultat = $this->proposer([['etudiant' => 'MAT-001', 'note' => 14]]);
+
+        $this->assertArrayNotHasKey('error', $resultat);
+        $this->assertTrue($resultat['sans_objet']);
+        $this->assertStringContainsString('déjà enregistrées', $resultat['message']);
+        $this->assertSame('Rien à changer', ResumeOutil::resumeCourt('proposer_saisie_notes', $resultat));
+        $this->assertSame(0, ChatbotActionLog::count());
+    }
+
+    public function test_une_proposition_perimee_a_la_validation_le_dit(): void
+    {
+        $widget = $this->proposer([['etudiant' => 'MAT-001', 'note' => 14]])['widget'];
+        $this->evaluation->update(['bareme' => 40]);
+        $this->actingAs($this->user)->postJson($widget['valider_url'], ['jeton' => $widget['jeton']])->assertJson(['statut' => 'perimee']);
+
+        $this->assertSame('perimee', ExecutionDesPropositions::etat(ChatbotActionLog::sole()));
     }
 
     public function test_sans_droit_de_saisie_l_outil_n_est_pas_propose(): void
