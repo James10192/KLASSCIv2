@@ -14,6 +14,8 @@ window.demandesInscription = function () {
         chargement: false, ouvert: null, chargementDossier: false, dossier: null,
         fenetre: '', occupe: false, picker: { ouvert: false, q: '' },
         ins: vierge(),
+        jetonPropositionReins: 0,
+        jetonPlacesReins: 0,
         reins: { classe_id: null, decision: '', observations: '', annee_id: null, annee_echue_confirmee: false, classes: null, placesChargement: false, placesErreur: false, affectation_status: '', proposition: null, decisionTouchee: false, affectationTouchee: false, erreurs: {}, message: '' },
         rejet: { motif: '', erreur: '' },
         rdv: { creneaux: [], chargement: false, choix: null },
@@ -270,11 +272,12 @@ window.demandesInscription = function () {
          */
         async chargerPropositionReins(anneeId) {
             if (!this.dossier?.proposition) return;
-            const jeton = (this.reins.jetonProposition || 0) + 1;
-            this.reins.jetonProposition = jeton;
+            // Compteur porte par le composant, jamais remis a zero : une reponse
+            // tardive d'un autre dossier ne preremplit pas celui-ci.
+            const jeton = ++this.jetonPropositionReins;
             try {
                 const d = await this.appeler(this.dossier.proposition + (anneeId ? '?annee=' + encodeURIComponent(anneeId) : ''));
-                if (jeton !== this.reins.jetonProposition) return;
+                if (jeton !== this.jetonPropositionReins) return;
                 this.reins.proposition = d;
                 if (!this.reins.decisionTouchee && d.decision) this.reins.decision = d.decision;
                 if (!this.reins.affectationTouchee && d.affectation_status) this.reins.affectation_status = d.affectation_status;
@@ -285,18 +288,17 @@ window.demandesInscription = function () {
         /* Les places se recomptent sur l'annee choisie ; une reponse perimee est ignoree. */
         async chargerClassesReins(anneeId) {
             if (!this.cfg.classesParAnnee) return;
-            const jeton = (this.reins.jeton || 0) + 1;
-            this.reins.jeton = jeton;
+            const jeton = ++this.jetonPlacesReins;
             this.reins.placesChargement = true;
             this.reins.placesErreur = false;
             try {
                 const d = await this.appeler(this.cfg.classesParAnnee + '?annee=' + encodeURIComponent(anneeId));
-                if (jeton === this.reins.jeton && d.annee_universitaire_id === this.reins.annee_id) this.reins.classes = d.classes || [];
+                if (jeton === this.jetonPlacesReins && d.annee_universitaire_id === this.reins.annee_id) this.reins.classes = d.classes || [];
             } catch (e) {
-                if (jeton !== this.reins.jeton) return;
+                if (jeton !== this.jetonPlacesReins) return;
                 this.reins.placesErreur = true;
                 this.notifier('error', 'Places indisponibles pour cette année : ' + e.message);
-            } finally { if (jeton === this.reins.jeton) this.reins.placesChargement = false; }
+            } finally { if (jeton === this.jetonPlacesReins) this.reins.placesChargement = false; }
         },
         async reinscrire() {
             this.occupe = true; this.reins.erreurs = {}; this.reins.message = '';

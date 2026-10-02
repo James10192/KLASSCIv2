@@ -16,6 +16,13 @@ class ESBTPEcheancierRule extends Model
     public const STATUS_REAFFECTE = 'réaffecté';
     public const STATUS_NON_AFFECTE = 'non_affecté';
 
+    /** Les statuts qu'une inscription peut porter, avec leur libelle. */
+    public const STATUTS_INSCRIPTION = [
+        self::STATUS_AFFECTE => 'Affecté',
+        self::STATUS_REAFFECTE => 'Réaffecté',
+        self::STATUS_NON_AFFECTE => 'Non affecté',
+    ];
+
     public const SCOPE_CONFIGURATION = 'configuration';
     public const SCOPE_OPTION_ASSIGNMENT = 'option_assignment';
 

@@ -55,9 +55,14 @@ class ESBTPReinscriptionDemandeController extends Controller
             return response()->json(['decision' => null, 'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS, 'moyenne' => null, 'annee_quittee' => null]);
         }
 
-        $analyse = $this->reinscription->analyserSituationEtudiantParInscription(
-            $quittee->loadMissing('anneeUniversitaire', 'classe'), (string) $quittee->anneeUniversitaire?->name
-        );
+        $quittee->loadMissing('anneeUniversitaire', 'classe');
+        try {
+            $analyse = $this->reinscription->analyserSituationEtudiantParInscription($quittee, (string) $quittee->anneeUniversitaire?->name);
+        } catch (\Throwable $e) {
+            // Sans resultats lisibles, pas de decision proposee : l'agent choisit.
+            Log::warning('Proposition de reinscription indisponible', ['demande_id' => $demande->id, 'erreur' => $e->getMessage()]);
+            $analyse = [];
+        }
         $decision = $analyse['decision'] ?? null;
         $statut = ESBTPEcheancierRule::normalizeStatus($quittee->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
 
@@ -90,7 +95,7 @@ class ESBTPReinscriptionDemandeController extends Controller
                 app(PreparationDInscription::class)->annees($demande->annee_universitaire_id), 'id'
             ))],
             'annee_echue_confirmee' => ['nullable', 'boolean'],
-            'affectation_status' => ['nullable', Rule::in([ESBTPEcheancierRule::STATUS_AFFECTE, ESBTPEcheancierRule::STATUS_REAFFECTE, ESBTPEcheancierRule::STATUS_NON_AFFECTE])],
+            'affectation_status' => ['nullable', Rule::in(array_keys(ESBTPEcheancierRule::STATUTS_INSCRIPTION))],
         ]);
 
         $annee = $this->anneeDeConversion($valide, $demande);

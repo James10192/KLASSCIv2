@@ -24,11 +24,7 @@
         // Les deux listes fermees des fenetres, lues a leur source.
         'liensTuteur' => array_keys(\App\Models\ESBTPCandidature::liensTuteurDeclarables()),
         'decisions' => \App\Models\ESBTPReinscriptionDemande::DECISIONS,
-        'affectations' => [
-            \App\Models\ESBTPEcheancierRule::STATUS_AFFECTE => 'Affecté',
-            \App\Models\ESBTPEcheancierRule::STATUS_REAFFECTE => 'Réaffecté',
-            \App\Models\ESBTPEcheancierRule::STATUS_NON_AFFECTE => 'Non affecté',
-        ],
+        'affectations' => \App\Models\ESBTPEcheancierRule::STATUTS_INSCRIPTION,
     ];
 @endphp
 <div class="dmi" x-data="demandesInscription()" data-dmi-config='@json($_config)' data-dmi-classes='@json($classes)'>
