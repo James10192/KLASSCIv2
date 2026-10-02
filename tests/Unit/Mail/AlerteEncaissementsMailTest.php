@@ -41,7 +41,7 @@ class AlerteEncaissementsMailTest extends TestCase
             $ecart(7, 1_200_000, 130_000),
             $ecart(8, 100_000, 0),
             new AnomalyAlert('revenue_drop', AnomalyAlert::SEVERITY_CRITICAL, 'period', 202606, 3.4, 'Juin 2026 : … (Z=3.4)', ['year' => 2026, 'month' => 6, 'value' => 40_000, 'mean' => 900_000, 'z_score' => -3.4]),
-            new AnomalyAlert('payment_outlier', AnomalyAlert::SEVERITY_CRITICAL, 'paiement', 12, 6.2, 'brut', ['montant' => 2_500_000, 'mean' => 400_000, 'ratio' => 6.25, 'date_paiement' => '2026-09-12']),
+            new AnomalyAlert('payment_outlier', AnomalyAlert::SEVERITY_CRITICAL, 'paiement', 12, 6.2, 'brut', ['paiement_id' => 12, 'numero_recu' => 'REC-2026-0042', 'montant' => 2_500_000, 'mean' => 400_000, 'ratio' => 6.25, 'date_paiement' => '2026-09-12']),
         ];
     }
 
@@ -55,7 +55,8 @@ class AlerteEncaissementsMailTest extends TestCase
         $this->assertStringContainsString('Bonjour Marcel', $html);
         // Les mois dans l'ordre du calendrier, pas dans celui du détecteur.
         $this->assertLessThan(strpos($html, 'Septembre 2026'), strpos($html, 'Juillet 2026'));
-        $this->assertStringContainsString('Paiement inhabituel', $html);
+        $this->assertStringContainsString('Paiement inhabituel · reçu n° REC-2026-0042', $html);
+        $this->assertStringContainsString('des 30 derniers jours', $html);
         $this->assertStringContainsString('Juin 2026 · encaissements très bas', $html);
         foreach (['[CRITICAL]', 'CRITICAL', 'Z=', 'Voir les analytics', 'brut'] as $interdit) {
             $this->assertStringNotContainsString($interdit, $html, $interdit);
@@ -79,5 +80,13 @@ class AlerteEncaissementsMailTest extends TestCase
 
         $this->assertInstanceOf(AlerteEncaissementsMail::class, $mail);
         $this->assertTrue($mail->hasTo('awa@ecole.test'));
+    }
+
+    public function test_sans_adresse_la_notification_reste_en_base(): void
+    {
+        $notification = new AnalyticsAnomalyNotification(self::alertes());
+
+        $this->assertSame(['database'], $notification->via(new User(['name' => 'Sans adresse', 'email' => ''])));
+        $this->assertSame(['mail', 'database'], $notification->via(new User(['email' => 'awa@ecole.test'])));
     }
 }

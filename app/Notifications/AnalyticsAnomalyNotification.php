@@ -21,7 +21,9 @@ class AnalyticsAnomalyNotification extends Notification implements ShouldQueue
 
     public function via($notifiable): array
     {
-        return ['mail', 'database'];
+        // Le canal mail ne filtre plus une adresse vide quand `toMail` rend une
+        // Mailable : sans adresse, la notification reste en base seulement.
+        return filled($notifiable->email ?? null) ? ['mail', 'database'] : ['database'];
     }
 
     /**

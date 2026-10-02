@@ -4,10 +4,9 @@
     $statutTon = $nbMois > 0 ? 'danger' : 'alerte';
     $statutTexte = $nbMois > 0 ? 'Écart de recouvrement' : 'À vérifier';
     $service = 'Comptabilité · suivi des encaissements';
-    $raison = "Vous recevez ce message parce que vous suivez la comptabilité de l’établissement. Ce contrôle passe toutes les six heures ; un même écart n'est signalé qu'une fois par jour.";
+    $raison = "Vous recevez ce message parce que vous suivez la comptabilité de l’établissement. Ce contrôle passe toutes les six heures ; un même écart n'est en principe signalé qu'une fois par jour.";
     $totalEcart = max(0, $totalAttendu - $totalEncaisse);
     $part = $totalAttendu > 0 ? (int) round(100 * $totalEncaisse / $totalAttendu) : 0;
-    $nbAutres = count($autres);
     // Le mois et ses deux montants à gauche, la part encaissée seule à droite :
     // trois montants sur une ligne débordaient sur téléphone.
     $_lignesMois = array_map(fn ($e) => [
@@ -17,14 +16,14 @@
 @endphp
 @extends('esbtp.emails.parents.recu')
 
-@section('preheader')@if($nbMois > 0){{ \App\Helpers\MontantFcfa::nombre($totalEcart) }} FCFA attendus par les échéanciers ne sont pas encore encaissés.@else{{ $nbAutres }} point{{ $nbAutres > 1 ? 's' : '' }} à vérifier dans les encaissements.@endif
+@section('preheader')@if($nbMois > 0){{ \App\Helpers\MontantFcfa::nombre($totalEcart) }} FCFA attendus par les échéanciers ne sont pas encore encaissés.@else{{ $nbSignaux }} point{{ $nbSignaux > 1 ? 's' : '' }} à vérifier dans les encaissements.@endif
 @endsection
 
-@section('titre')@if($nbMois > 0)Les encaissements sont en retard sur {{ $nbMois }} mois @else{{ $nbAutres }} point{{ $nbAutres > 1 ? 's' : '' }} à vérifier dans les encaissements @endif
+@section('titre')@if($nbMois > 0)Les encaissements sont en retard sur {{ $nbMois }} mois @else{{ $nbSignaux }} point{{ $nbSignaux > 1 ? 's' : '' }} à vérifier dans les encaissements @endif
 @endsection
 
 @section('content')
-<p style="margin:0 0 22px;">Bonjour{{ $prenom !== '' ? ' '.$prenom : '' }}, @if($nbMois > 0)sur {{ $nbMois > 1 ? 'ces mois' : 'ce mois' }}, l'école a encaissé bien moins que ce que prévoient les échéanciers des élèves.@else le contrôle des encaissements a relevé des montants inhabituels.@endif</p>
+<p style="margin:0 0 22px;">Bonjour{{ $nomDestinataire !== '' ? ' '.$nomDestinataire : '' }}, @if($nbMois > 0)sur {{ $nbMois > 1 ? 'ces mois' : 'ce mois' }}, l'école a encaissé bien moins que ce que prévoient les échéanciers des élèves.@else le contrôle des encaissements a relevé des montants inhabituels.@endif</p>
 @if($nbMois > 0)
 @include('esbtp.emails.parents.partials.vedette', [
     'libelle' => 'Reste à encaisser',

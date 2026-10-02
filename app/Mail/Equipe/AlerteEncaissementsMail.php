@@ -2,6 +2,7 @@
 
 namespace App\Mail\Equipe;
 
+use App\Domain\Analytics\Detectors\AnomalyDetector;
 use App\Domain\Analytics\DTOs\AnomalyAlert;
 use App\Helpers\MontantFcfa;
 use App\Helpers\SettingsHelper;
@@ -33,7 +34,7 @@ class AlerteEncaissementsMail extends Mailable
     /** @param array<int, AnomalyAlert> $alertes */
     public function __construct(
         public readonly array $alertes,
-        public readonly string $prenom = '',
+        public readonly string $nomDestinataire = '',
         public readonly ?string $lien = null,
     ) {}
 
@@ -54,7 +55,8 @@ class AlerteEncaissementsMail extends Mailable
         return new Content(
             view: 'esbtp.emails.equipe.alerte-encaissements',
             with: [
-                'prenom' => $this->prenom,
+                'nomDestinataire' => $this->nomDestinataire,
+                'nbSignaux' => count($this->alertes),
                 'lien' => $this->lien,
                 'ecarts' => $ecarts,
                 'totalAttendu' => array_sum(array_column($ecarts, 'attendu')),
@@ -107,12 +109,17 @@ class AlerteEncaissementsMail extends Mailable
                     ),
                 ],
                 'payment_outlier' => [
-                    'titre' => 'Paiement inhabituel',
+                    // Le numéro de reçu, sinon l'identifiant : deux versements du
+                    // même montant le même jour doivent rester distinguables.
+                    'titre' => 'Paiement inhabituel · '.(! empty($c['numero_recu'])
+                        ? 'reçu n° '.$c['numero_recu']
+                        : 'paiement n° '.($c['paiement_id'] ?? $alerte->entityId)),
                     'texte' => sprintf(
-                        '%s%s, soit %s fois le montant moyen des trente derniers jours (%s). Vérifiez qu\'il ne s\'agit pas d\'une erreur de saisie.',
+                        '%s%s, soit %s fois le montant moyen des %d derniers jours (%s). Vérifiez qu\'il ne s\'agit pas d\'une erreur de saisie.',
                         self::fcfa($c['montant'] ?? 0),
-                        ! empty($c['date_paiement']) ? ' le '.Carbon::parse($c['date_paiement'])->translatedFormat('j F Y') : '',
+                        $this->le($c['date_paiement'] ?? null),
                         number_format((float) ($c['ratio'] ?? 0), 1, ',', ' '),
+                        AnomalyDetector::PAYMENT_OUTLIER_LOOKBACK_DAYS,
                         self::fcfa($c['mean'] ?? 0),
                     ),
                 ],
@@ -124,6 +131,20 @@ class AlerteEncaissementsMail extends Mailable
         }
 
         return $signaux;
+    }
+
+    /** « le 12 septembre 2026 », ou rien si la date manque ou ne se lit pas. */
+    private function le(?string $date): string
+    {
+        if (empty($date)) {
+            return '';
+        }
+
+        try {
+            return ' le '.Carbon::parse($date)->translatedFormat('j F Y');
+        } catch (\Throwable) {
+            return '';
+        }
     }
 
     private function mois(array $contexte): string
