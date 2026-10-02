@@ -21,6 +21,10 @@ use Illuminate\Support\Facades\DB;
  * cette valeur ; celles dont la valeur change exigent un motif, comme sur la
  * fiche. L'écriture passe par StatutRedoublant::etablir, le chemin de l'écran
  * et de la CLI.
+ *
+ * Lire une inscription jamais recensée lui pose sa valeur déduite (rattrapage
+ * technique, gardé, jamais une décision) : seul ce qu'une personne confirme
+ * ou corrige attend « Valider ».
  */
 class EtablirStatutRedoublant extends ActionAgent
 {

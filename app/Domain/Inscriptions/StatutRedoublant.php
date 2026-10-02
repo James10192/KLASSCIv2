@@ -78,7 +78,9 @@ class StatutRedoublant
      */
     public function valeurEtablie(ESBTPInscription $inscription): bool
     {
-        if ($inscription->redoublant_source === null && $inscription->exists) {
+        // Une année sans date de début reste indéterminée, comme au recensement.
+        if ($inscription->redoublant_source === null && $inscription->exists
+            && ESBTPAnneeUniversitaire::whereKey($inscription->annee_universitaire_id)->whereNotNull('start_date')->exists()) {
             $this->ecrireLaDeduction($inscription, $this->deduire($inscription));
         }
 

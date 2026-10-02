@@ -63,7 +63,8 @@ déploiement ; à relancer seulement si le journal signale qu'il a échoué :
 curl -X POST -H "Authorization: Bearer $TOKEN" "$BASE/api/cli/inscriptions/redoublants/recenser" -d apply=1
 ```
 
-Rejouable : une deuxième course n'écrit rien.
+Rejouable : une deuxième course n'écrit rien. À relancer aussi après avoir
+modifié la date de début d'une année : les déductions en dépendent.
 
 ## `POST /inscriptions/{id}/redoublant` — ability `cli:write`
 
