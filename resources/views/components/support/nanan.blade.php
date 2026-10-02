@@ -210,7 +210,13 @@ if (typeof window.klassciNananSupport !== 'function') {
                 this.cle = null;
                 this.resultat = null;
                 this.verification = { etat: 'repos', message: '' };
-                if (this.retirerCapture) { this.retirerCapture(); this.captureAvis = ''; this.captureMessage = ''; this.captureEchec = false; }
+                if (this.retirerCapture) {
+                    this.retirerCapture();
+                    this.captureAvis = '';
+                    this.captureMessage = '';
+                    this.captureEchec = false;
+                    this.captureReference = null;
+                }
                 var self = this;
                 this.$nextTick(function () { self.focaliser(); });
             },
@@ -872,6 +878,12 @@ if (typeof window.klassciNananSupport !== 'function') {
     .nsp-corps--capture .sp-outils { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: .15rem; }
     .nsp-corps--capture .sp-outils::-webkit-scrollbar { display: none; }
     .nsp-corps--capture .sp-outil { flex-shrink: 0; }
+    /* Sur téléphone, la ligne ne tient pas : « Taille réelle » et « Annuler » passent dessous, en icônes, alignés à droite. */
+    @media (max-width: 576px) {
+        .nsp-corps--capture .sp-outils { flex-wrap: wrap; overflow-x: visible; }
+        .nsp-corps--capture .sp-outil--icone span { display: none; }
+        .nsp-corps--capture .sp-outil--droite { margin-left: auto; }
+    }
     .nsp-btn--secondaire:hover { border-color: #0453cb; color: #0453cb; }
 
     .nsp-fin { text-align: center; padding-top: 1.75rem; }

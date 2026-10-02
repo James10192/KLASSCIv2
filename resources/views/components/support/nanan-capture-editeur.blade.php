@@ -15,11 +15,11 @@
                 <i x-bind:class="o[1]" aria-hidden="true"></i><span x-text="o[2]"></span>
             </button>
         </template>
-        <button type="button" class="sp-outil sp-outil--droite" x-bind:aria-pressed="captureReelle ? 'true' : 'false'" x-on:click="basculerTaille()">
-            <i class="fas fa-magnifying-glass-plus" aria-hidden="true"></i>Taille réelle
+        <button type="button" class="sp-outil sp-outil--droite sp-outil--icone" aria-label="Taille réelle" x-bind:aria-pressed="captureReelle ? 'true' : 'false'" x-on:click="basculerTaille()">
+            <i class="fas fa-magnifying-glass-plus" aria-hidden="true"></i><span>Taille réelle</span>
         </button>
-        <button type="button" class="sp-outil" x-bind:disabled="!captureAnnulable" x-on:click="annulerTrait()">
-            <i class="fas fa-rotate-left" aria-hidden="true"></i>Annuler
+        <button type="button" class="sp-outil sp-outil--icone" aria-label="Annuler le dernier trait" x-bind:disabled="!captureAnnulable" x-on:click="annulerTrait()">
+            <i class="fas fa-rotate-left" aria-hidden="true"></i><span>Annuler</span>
         </button>
     </div>
     <div class="sp-toile-cadre" x-ref="toile"></div>

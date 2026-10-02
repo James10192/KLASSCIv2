@@ -19,7 +19,7 @@ final class FilDeSupport
     public const PAS_RESOLU = "Non, ça n'a pas résolu mon problème.";
 
     /** Les types d'un message de Nanan, tels que l'écran les a reçus (TourDeSupport::action). */
-    private const TYPES = [TourDeSupport::QUESTION, TourDeSupport::REPONSE, TourDeSupport::RECAPITULATIF];
+    public const TYPES = [TourDeSupport::QUESTION, TourDeSupport::REPONSE, TourDeSupport::RECAPITULATIF];
 
     /** @param list<array{role:string,texte:string,type?:string}> $messages */
     private function __construct(private readonly array $messages)
@@ -80,6 +80,8 @@ final class FilDeSupport
      * plutôt qu'une question ? L'écran le dit depuis octobre 2026 ; un brouillon
      * plus ancien ne le dit pas, et c'est alors la suite qui tranche : une
      * réponse est suivie de « ça n'a pas résolu », une question ne l'est jamais.
+     * Limite assumée : dans un tel brouillon, une réponse suivie d'un texte libre
+     * passe pour une question. Les brouillons durent 24 heures.
      */
     public function estUneReponseDeNanan(int $i): bool
     {

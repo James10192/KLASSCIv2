@@ -86,4 +86,15 @@ class FilDeSupportTest extends TestCase
         $this->assertFalse($fil->estUneReponseDeNanan(1));
         $this->assertFalse($fil->reponseInsuffisante());
     }
+
+    public function test_une_reponse_d_une_seule_phrase_citee_une_fois_est_une_recopie(): void
+    {
+        $fil = FilDeSupport::depuis([
+            ['role' => 'personne', 'texte' => 'Comment exporter les absences ?'],
+            ['role' => 'nanan', 'texte' => 'Ouvrez Absences puis cliquez sur Exporter en haut à droite.', 'type' => 'reponse'],
+        ]);
+
+        $this->assertTrue($fil->recopieUneReponseDeNanan('Je veux exporter. Ouvrez Absences puis cliquez sur Exporter en haut à droite.'));
+        $this->assertFalse($fil->recopieUneReponseDeNanan('Comment exporter les absences en Excel ?'));
+    }
 }

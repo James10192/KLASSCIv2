@@ -240,9 +240,12 @@ if (typeof window.klassciNananCapture !== 'function') {
                         if (!r.ok) { throw Object.assign(new Error(corps.message || ''), { statut: r.status }); }
                     });
                 }).then(function () {
+                    /* Entre-temps, la personne a pu recommencer et préparer une autre image : on n'y touche pas. */
+                    if (self.capture !== capture) { return; }
                     self.captureAvis = 'Capture jointe à la demande.';
                     self.retirerCapture();
                 }).catch(function (e) {
+                    if (self.capture !== capture) { return; }
                     self.captureEchec = true;
                     self.captureAvis = "La capture n'a pas pu être jointe" + (e.message ? ' : ' + e.message : '.');
                     /* Refus définitif : inutile de proposer « Réessayer » (le bouton suit `capture`). */
