@@ -503,6 +503,10 @@ git push origin presentation:ucao-benin
    - `.env` rempli : MASTER_API_URL, MASTER_API_TOKEN, TENANT_CODE
    - GROUP_SSO_SHARED_SECRET si tenant fait partie d'un groupe
    - Setup script exécuté : storage symlinks, permissions, seeders
+   - **Pas de ligne cron à ajouter** : la tâche cron d'adminKlassci lance
+     `schedule:run` dans le dossier de chaque école active
+     (`tenant:planificateur`, adminKlassci `docs/exploitation/PLANIFICATEUR_DES_ECOLES.md`).
+     Vérifier dans la minute : `GET /api/cli/planificateur` → `actif: true`.
    - **Instance hors Côte d'Ivoire** → suivre
      [docs/runbooks/ucao-benin-mise-en-service.md](../../docs/runbooks/ucao-benin-mise-en-service.md)
      **avant la première candidature** : les deux réglages de téléphone et les
