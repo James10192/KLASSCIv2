@@ -1,8 +1,7 @@
 @php
     /** @var array $widget */
     $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::getCurrent();
-    $query = \App\Domain\Inscriptions\StatutRedoublant::contraindreAConfirmer(\App\Models\ESBTPInscription::query())
-        ->whereNotIn('esbtp_inscriptions.status', \App\Models\ESBTPInscription::STATUTS_ANNULES);
+    $query = \App\Domain\Inscriptions\StatutRedoublant::contraindreAConfirmer(\App\Models\ESBTPInscription::query());
     if ($anneeEnCours) {
         $query->where('esbtp_inscriptions.annee_universitaire_id', $anneeEnCours->id);
     }
@@ -17,7 +16,7 @@
     :alert="$count > 0"
     :hint="$count > 0 ? null : 'Tous les statuts redoublant sont confirmés'"
 >
-    @if ($count > 0)
+    @if ($count > 0 && auth()->user()?->can('inscriptions.view'))
         <a href="{{ route('esbtp.inscriptions.index', ['status' => 'all', 'redoublant' => 'a_confirmer'] + ($anneeEnCours ? ['annee' => $anneeEnCours->id] : [])) }}" class="dw-widget-link">
             <i class="fas fa-arrow-right"></i> Confirmer dans la liste
         </a>

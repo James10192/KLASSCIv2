@@ -512,6 +512,13 @@
         return fetchResults(window.location.href, { pushState: false });
     }
 
+    // Outils de la sélection, pour les actions vivant dans leur propre fichier
+    // (inscriptions/redoublant.js).
+    window.iiSelection = {
+        ajouter: ajouterSelection, vide: selectionVide, effacer: clearSelection,
+        recharger: rechargerLaListe, toast: showToast, erreur: messageDErreur,
+    };
+
     window.iiBulkValider = async function () {
         if (selectionVide()) {
             showToast('Veuillez sélectionner au moins une inscription.', 'warning');
@@ -562,40 +569,6 @@
                 showToast(err.message || 'Erreur validation.', 'error');
                 sel.ids.forEach((id) => setRowLoading(id, false));
             });
-    };
-
-    // Confirme tel quel le statut redoublant des inscriptions sélectionnées qui
-    // l'attendaient. Rien n'est changé : une correction se fait sur la fiche.
-    window.iiBulkConfirmerRedoublant = async function () {
-        if (selectionVide()) {
-            showToast('Veuillez sélectionner au moins une inscription.', 'warning');
-            return;
-        }
-        const formData = new FormData();
-        formData.append('_token', CSRF_TOKEN);
-        const sel = ajouterSelection(formData);
-        const ok = await window.iiConfirm({
-            title: 'Confirmer le statut redoublant',
-            message: `Confirmer tel quel le statut redoublant de ${sel.n.toLocaleString('fr-FR')} inscription(s) ? Seules celles qui attendaient une confirmation sont concernées. Pour changer une valeur, ouvrez la fiche et cliquez sur « Corriger ».`,
-            confirmLabel: 'Confirmer',
-        });
-        if (!ok) return;
-
-        fetch(ROUTES.confirmerRedoublant, {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-        })
-            .then(async (r) => {
-                if (!r.ok) throw new Error(await messageDErreur(r, 'Confirmation impossible.'));
-                return r.json();
-            })
-            .then((data) => {
-                showToast(data.message, data.confirmees > 0 ? 'success' : 'info');
-                clearSelection();
-                rechargerLaListe();
-            })
-            .catch((err) => showToast(err.message || 'Confirmation impossible.', 'error'));
     };
 
     window.iiBulkAnnuler = function () {

@@ -53,7 +53,7 @@ class ESBTPInscriptionRedoublantController extends Controller
                         if (! $this->statut->aConfirmer($inscription)) {
                             continue;
                         }
-                        $this->statut->etablir($inscription, $personne, (bool) $inscription->is_redoublant);
+                        $this->statut->confirmer($inscription, $personne);
                         $confirmees++;
                     }
                 });

@@ -56,7 +56,8 @@ Recensement à blanc, plus le nombre d'inscriptions à confirmer par année.
 | `apply` | booléen | sans lui, à blanc |
 
 Pose la valeur déduite sur toutes les années, et reprend `decision_reinscription`.
-À lancer **une fois après le déploiement**, sur chaque école :
+La migration `2026_10_02_170015_recenser_le_statut_redoublant` le fait déjà au
+déploiement ; à relancer seulement si le journal signale qu'il a échoué :
 
 ```bash
 curl -X POST -H "Authorization: Bearer $TOKEN" "$BASE/api/cli/inscriptions/redoublants/recenser" -d apply=1

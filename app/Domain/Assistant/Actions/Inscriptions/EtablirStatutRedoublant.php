@@ -86,19 +86,22 @@ class EtablirStatutRedoublant extends ActionAgent
         $changements = 0;
         $avertissements = [];
         foreach ($inscriptions as $i) {
-            $actuel = (bool) $i->is_redoublant;
+            // La valeur qui fait foi, pas la colonne : avant le recensement
+            // elle peut dire « non » à un vrai redoublant.
+            $affichage = $this->statut->pourAffichage($i);
+            $actuel = $affichage['valeur'];
             $voulu = $valeur ?? $actuel;
             $nom = trim(($i->etudiant->nom ?? '').' '.($i->etudiant->prenoms ?? ''));
             $deja = $voulu === $actuel && $this->statut->estEtabliParUnePersonne($i);
             $lignes[] = [$nom, (string) ($i->etudiant->matricule ?? '—'), (string) ($i->classe->name ?? '—'),
-                $this->libelleStatut($actuel).' ('.self::ETATS[$this->statut->pourAffichage($i)['etat']].')',
+                $this->libelleStatut($actuel).' ('.self::ETATS[$affichage['etat']].')',
                 $deja ? 'Déjà établi, inchangé' : ($voulu === $actuel ? 'Confirmé' : 'Corrigé → '.$this->libelleStatut($voulu))];
             if ($deja) {
                 continue;
             }
             $aEtablir[(int) $i->id] = $voulu;
             $changements += (int) ($voulu !== $actuel);
-            if ($incoherence = $this->statut->incoherence($i)) {
+            if ($incoherence = $affichage['incoherence']) {
                 $avertissements[] = $nom.' : '.$incoherence;
             }
         }

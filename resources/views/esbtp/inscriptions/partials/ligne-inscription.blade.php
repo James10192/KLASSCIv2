@@ -84,7 +84,7 @@
                 <div class="ii-etu-meta">
                     <span class="ii-matricule">{{ $etudiant->matricule ?? 'N/A' }}</span>
                     @if($inscription->is_redoublant)
-                        @php $_redoublantAConfirmer = ! in_array($inscription->redoublant_source, ['confirme', 'corrige'], true); @endphp
+                        @php $_redoublantAConfirmer = ! app(\App\Domain\Inscriptions\StatutRedoublant::class)->estEtabliParUnePersonne($inscription); @endphp
                         <span class="ii-redoublant {{ $_redoublantAConfirmer ? 'ii-redoublant--a-confirmer' : '' }}"
                               title="{{ $_redoublantAConfirmer ? 'Redoublant (déduit, à confirmer)' : 'Redoublant (confirmé)' }}">
                             <i class="fas fa-redo-alt"></i> Redoublant{{ $_redoublantAConfirmer ? ' ?' : '' }}

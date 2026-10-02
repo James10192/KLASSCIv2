@@ -298,13 +298,6 @@
     display: flex; align-items: center; gap: .3rem;
     font-size: .72rem; color: var(--ii-muted); margin-top: .15rem;
 }
-.ii-redoublant {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: .66rem; font-weight: 700; color: #0453cb;
-    background: rgba(4,83,203,.08); border: 1px solid rgba(4,83,203,.22);
-    padding: 1px 7px; border-radius: 999px; white-space: nowrap; margin-left: 4px;
-}
-.ii-redoublant--a-confirmer { background: transparent; border-style: dashed; }
 .ii-matricule {
     font-family: 'Courier New', monospace;
     background: var(--ii-surface); padding: .1rem .35rem;
@@ -1313,4 +1306,5 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
      Les deux en defer : l'ordre du document garantit common.js d'abord. --}}
 <script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}" defer></script>
 <script src="{{ asset('js/inscriptions/index.js') }}?v={{ @filemtime(public_path('js/inscriptions/index.js')) ?: '1' }}" defer></script>
+@include('esbtp.inscriptions.partials.redoublant-liste')
 @endpush

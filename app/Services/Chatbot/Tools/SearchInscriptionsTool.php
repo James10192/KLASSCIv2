@@ -97,12 +97,7 @@ class SearchInscriptionsTool extends ChatbotTool
             $query->where('annee_universitaire_id', ESBTPAnneeUniversitaire::where('is_current', true)->value('id'));
         }
 
-        match ($args['redoublant'] ?? null) {
-            'oui' => $query->where('is_redoublant', true),
-            'non' => $query->where(fn ($q) => $q->where('is_redoublant', false)->orWhereNull('is_redoublant')),
-            'a_confirmer' => StatutRedoublant::contraindreAConfirmer($query),
-            default => null,
-        };
+        StatutRedoublant::filtrer($query, $args['redoublant'] ?? null);
 
         if (!empty($args['classe'])) {
             $classeName = $args['classe'];
@@ -138,24 +133,7 @@ class SearchInscriptionsTool extends ChatbotTool
         $results = $query->orderByDesc('date_inscription')->limit($limit)->get();
 
         $statut = app(StatutRedoublant::class);
-        $inscriptions = $results->map(function ($i) use ($statut) {
-            $etudiant = $i->etudiant;
-            $classe = $i->classe;
-            $redoublant = $statut->pourAffichage($i);
-            return [
-                'id' => $i->id,
-                'etudiant' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : 'Inconnu',
-                'matricule' => $etudiant?->matricule,
-                'classe' => $classe?->name ?? 'Non affectée',
-                'filiere' => $classe?->filiere?->name ?? 'N/A',
-                'type' => ucfirst(str_replace('_', ' ', $i->type_inscription ?? 'N/A')),
-                'statut' => ucfirst(str_replace('_', ' ', $i->status ?? 'N/A')),
-                'date' => $i->date_inscription?->format('d/m/Y') ?? 'N/A',
-                'redoublant' => $redoublant['libelle'],
-                'statut_redoublant' => $redoublant['etat'],
-                'lien' => Route::has('esbtp.inscriptions.show') ? route('esbtp.inscriptions.show', $i->id) : null,
-            ];
-        })->toArray();
+        $inscriptions = $results->map(fn ($i) => $this->ligne($i, $statut))->toArray();
 
         return [
             'results' => $inscriptions,
@@ -163,6 +141,27 @@ class SearchInscriptionsTool extends ChatbotTool
             'total' => $total,
             'display_type' => 'cards',
             'deep_link' => Route::has('esbtp.inscriptions.index') ? route('esbtp.inscriptions.index') : null,
+        ];
+    }
+
+    private function ligne(ESBTPInscription $i, StatutRedoublant $statut): array
+    {
+        $etudiant = $i->etudiant;
+        $classe = $i->classe;
+        $redoublant = $statut->pourAffichage($i);
+
+        return [
+            'id' => $i->id,
+            'etudiant' => $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : 'Inconnu',
+            'matricule' => $etudiant?->matricule,
+            'classe' => $classe?->name ?? 'Non affectée',
+            'filiere' => $classe?->filiere?->name ?? 'N/A',
+            'type' => ucfirst(str_replace('_', ' ', $i->type_inscription ?? 'N/A')),
+            'statut' => ucfirst(str_replace('_', ' ', $i->status ?? 'N/A')),
+            'date' => $i->date_inscription?->format('d/m/Y') ?? 'N/A',
+            'redoublant' => $redoublant['libelle'],
+            'statut_redoublant' => $redoublant['etat'],
+            'lien' => Route::has('esbtp.inscriptions.show') ? route('esbtp.inscriptions.show', $i->id) : null,
         ];
     }
 

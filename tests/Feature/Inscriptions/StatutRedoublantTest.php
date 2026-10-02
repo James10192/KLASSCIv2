@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Inscriptions;
 
+use App\Domain\Inscriptions\RecensementDesRedoublants;
 use App\Domain\Inscriptions\StatutRedoublant;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -76,11 +77,11 @@ class StatutRedoublantTest extends TestCase
             'reinscription_observations' => "Redoublement - moyenne insuffisante\n[BATCH abc]",
         ]);
 
-        $aBlanc = app(StatutRedoublant::class)->recenser(false);
+        $aBlanc = app(RecensementDesRedoublants::class)->executer(false);
         $this->assertFalse((bool) $repetee->fresh()->is_redoublant, 'À blanc, rien n\'est écrit.');
         $this->assertGreaterThanOrEqual(1, $aBlanc['a_poser']);
 
-        app(StatutRedoublant::class)->recenser(true);
+        app(RecensementDesRedoublants::class)->executer(true);
         $repetee->refresh();
 
         $this->assertTrue((bool) $repetee->is_redoublant);
@@ -99,7 +100,7 @@ class StatutRedoublantTest extends TestCase
             'redoublant_motif' => 'Redoublement validé ailleurs, dérogation du conseil',
         ]);
 
-        app(StatutRedoublant::class)->recenser(true);
+        app(RecensementDesRedoublants::class)->executer(true);
 
         $this->assertFalse((bool) $corrigee->fresh()->is_redoublant);
         $this->assertSame(StatutRedoublant::SOURCE_CORRIGE, $corrigee->fresh()->redoublant_source);
@@ -111,7 +112,7 @@ class StatutRedoublantTest extends TestCase
         $this->inscrire($etudiant, $this->bts1, $this->anDernier);
         $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
         $statut = app(StatutRedoublant::class);
-        $statut->poserDeduit($inscription);
+        $this->poser($inscription);
 
         $statut->etablir($inscription, $this->scolarite, false);
         $this->assertSame(StatutRedoublant::SOURCE_CONFIRME, $inscription->fresh()->redoublant_source);
@@ -128,7 +129,7 @@ class StatutRedoublantTest extends TestCase
         $this->assertTrue((bool) $inscription->fresh()->is_redoublant);
         $this->assertSame(StatutRedoublant::SOURCE_CORRIGE, $inscription->fresh()->redoublant_source);
 
-        $statut->poserDeduit($inscription->fresh(), false);
+        app(RecensementDesRedoublants::class)->executer(true);
         $this->assertTrue((bool) $inscription->fresh()->is_redoublant, 'Une déduction ne réécrit pas une correction.');
     }
 
@@ -138,12 +139,14 @@ class StatutRedoublantTest extends TestCase
         $this->inscrire($etudiant, $this->bts2, $this->anDernier);
         $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
         $statut = app(StatutRedoublant::class);
-        $statut->poserDeduit($inscription);
+        $this->poser($inscription);
         $statut->etablir($inscription->fresh('anneeUniversitaire'), $this->scolarite, true);
         $this->assertSame(StatutRedoublant::SOURCE_CONFIRME, $inscription->fresh()->redoublant_source);
 
-        $inscription->forceFill(['niveau_id' => $this->bts1->id])->save();
-        $statut->reouvrir($inscription->fresh('anneeUniversitaire'));
+        // N'importe quel écran qui déplace l'inscription : le modèle rouvre.
+        $deplacee = $inscription->fresh();
+        $deplacee->niveau_id = $this->bts1->id;
+        $deplacee->save();
 
         $inscription->refresh();
         $this->assertFalse((bool) $inscription->is_redoublant);
@@ -199,7 +202,7 @@ class StatutRedoublantTest extends TestCase
         $etudiant = ESBTPEtudiant::factory()->create();
         $this->inscrire($etudiant, $this->bts2, $this->anDernier);
         $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
-        app(StatutRedoublant::class)->poserDeduit($inscription);
+        $this->poser($inscription);
 
         $sansDroit = User::factory()->create();
         $sansDroit->givePermissionTo(['admin.access', 'inscriptions.view']);
@@ -224,7 +227,7 @@ class StatutRedoublantTest extends TestCase
         $etudiant = ESBTPEtudiant::factory()->create();
         $this->inscrire($etudiant, $this->bts2, $this->anDernier);
         $aConfirmer = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
-        app(StatutRedoublant::class)->poserDeduit($aConfirmer);
+        $this->poser($aConfirmer);
         $nouvelArrivant = $this->inscrire(ESBTPEtudiant::factory()->create(), $this->bts1, $this->cetteAnnee);
 
         $this->actingAs($this->scolarite)
@@ -245,7 +248,7 @@ class StatutRedoublantTest extends TestCase
         $etudiant = ESBTPEtudiant::factory()->create(['nom' => 'ZZREDOUBLE']);
         $this->inscrire($etudiant, $this->bts2, $this->anDernier);
         $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
-        app(StatutRedoublant::class)->poserDeduit($inscription);
+        $this->poser($inscription);
         $autre = ESBTPEtudiant::factory()->create(['nom' => 'ZZNOUVEAU']);
         $this->inscrire($autre, $this->bts1, $this->cetteAnnee);
 
@@ -262,7 +265,7 @@ class StatutRedoublantTest extends TestCase
         $etudiant = ESBTPEtudiant::factory()->create();
         $this->inscrire($etudiant, $this->bts2, $this->anDernier);
         $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
-        app(StatutRedoublant::class)->poserDeduit($inscription);
+        $this->poser($inscription);
 
         $this->actingAs($this->scolarite)
             ->get(route('esbtp.inscriptions.show', $inscription))
@@ -277,6 +280,52 @@ class StatutRedoublantTest extends TestCase
             ->assertOk()
             ->assertSee('statutRedoublantFiche', false)
             ->assertDontSee('<i class="fas fa-pen"></i> Corriger', false);
+    }
+
+    public function test_confirmer_avant_le_recensement_retient_la_vraie_deduction(): void
+    {
+        // En production la colonne valait « non » partout : confirmer tel quel
+        // ne doit pas figer ce « non » faux comme une décision humaine.
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->inscrire($etudiant, $this->bts2, $this->anDernier);
+        $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
+
+        $this->assertTrue(app(StatutRedoublant::class)->pourAffichage($inscription)['valeur']);
+
+        $this->actingAs($this->scolarite)
+            ->postJson(route('esbtp.inscriptions.redoublant.confirmer-en-masse'), ['inscription_ids' => [$inscription->id]])
+            ->assertOk()
+            ->assertJsonPath('confirmees', 1);
+
+        $inscription->refresh();
+        $this->assertTrue((bool) $inscription->is_redoublant);
+        $this->assertSame(StatutRedoublant::SOURCE_CONFIRME, $inscription->redoublant_source);
+    }
+
+    public function test_le_pre_controle_compte_la_classe_et_ne_donne_le_lien_qu_a_qui_peut_l_ouvrir(): void
+    {
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $this->inscrire($etudiant, $this->bts2, $this->anDernier);
+        $inscription = $this->inscrire($etudiant, $this->bts2, $this->cetteAnnee, ['type_inscription' => 'réinscription']);
+        $this->poser($inscription);
+        $statut = app(StatutRedoublant::class);
+
+        $constat = $statut->pourLePreControle($inscription->classe, $this->cetteAnnee->id, $this->scolarite);
+        $this->assertSame(1, $constat['redoublants_a_confirmer']);
+        $this->assertStringContainsString('classe='.$inscription->classe_id, $constat['redoublants_url']);
+
+        $sansListe = User::factory()->create();
+        $sansListe->givePermissionTo(StatutRedoublant::PERMISSION);
+        $this->assertNull($statut->pourLePreControle($inscription->classe, $this->cetteAnnee->id, $sansListe)['redoublants_url']);
+    }
+
+    /** La valeur déduite posée, comme le fait le recensement. */
+    private function poser(ESBTPInscription $inscription): void
+    {
+        $inscription->forceFill([
+            'is_redoublant' => app(StatutRedoublant::class)->deduire($inscription),
+            'redoublant_source' => StatutRedoublant::SOURCE_DEDUIT,
+        ])->save();
     }
 
     private function inscrire(ESBTPEtudiant $etudiant, ESBTPNiveauEtude $niveau, ESBTPAnneeUniversitaire $annee, array $plus = []): ESBTPInscription

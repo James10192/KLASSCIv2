@@ -108,7 +108,11 @@ class FiltresListeInscriptions
             $this->appliquerStatut($query, $status);
         }
 
-        $this->appliquerRedoublant($query, $request->input('redoublant'));
+        if ($classe = $request->input('classe')) {
+            $query->where('esbtp_inscriptions.classe_id', $classe);
+        }
+
+        \App\Domain\Inscriptions\StatutRedoublant::filtrer($query, $request->input('redoublant'));
 
         return $query;
     }
@@ -250,19 +254,5 @@ class FiltresListeInscriptions
         $requete->orderBy('esbtp_inscriptions.id', $sens);
 
         return [$tri, $sens];
-    }
-
-    /**
-     * Redoublants, non redoublants, ou statut encore à confirmer (même tri que
-     * la fiche, {@see \App\Domain\Inscriptions\StatutRedoublant::aConfirmer()}).
-     */
-    private function appliquerRedoublant(Builder $query, ?string $redoublant): void
-    {
-        match ($redoublant) {
-            'oui' => $query->where('esbtp_inscriptions.is_redoublant', true),
-            'non' => $query->where('esbtp_inscriptions.is_redoublant', false),
-            'a_confirmer' => \App\Domain\Inscriptions\StatutRedoublant::contraindreAConfirmer($query),
-            default => null,
-        };
     }
 }

@@ -1374,21 +1374,9 @@ class ESBTPBulletinController extends Controller
         // limite de 30 s pour tenir sous charge.
         $preflight['batch_size'] = 6;
 
-        // Le bulletin imprime « Redoublant : Oui/Non ». Tant qu'une personne ne
-        // l'a pas confirmé, c'est la valeur déduite qui part : on le dit ici,
-        // sans bloquer (décision de l'établissement, octobre 2026).
-        $preflight['redoublants_a_confirmer'] = \App\Domain\Inscriptions\StatutRedoublant::contraindreAConfirmer(
-            \App\Models\ESBTPInscription::query()
-                ->where('esbtp_inscriptions.classe_id', $classe->id)
-                ->where('esbtp_inscriptions.annee_universitaire_id', $request->integer('annee_universitaire_id'))
-                ->where('esbtp_inscriptions.status', 'active')
-        )->count();
-        $preflight['redoublants_url'] = route('esbtp.inscriptions.index', [
-            'annee' => $request->integer('annee_universitaire_id'),
-            'niveau' => $classe->niveau_etude_id,
-            'status' => 'all',
-            'redoublant' => 'a_confirmer',
-        ]);
+        // Le bulletin imprime la valeur déduite tant que personne n'a confirmé : on le dit, sans bloquer.
+        $preflight += app(\App\Domain\Inscriptions\StatutRedoublant::class)
+            ->pourLePreControle($classe, $request->integer('annee_universitaire_id'), $request->user());
 
         // Le constat de couverture etait calcule ici et joint a la reponse.
         // AUCUN ecran ne le lisait : le panneau de pre-controle

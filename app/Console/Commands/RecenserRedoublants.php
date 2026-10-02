@@ -2,7 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Domain\Inscriptions\StatutRedoublant;
+use App\Domain\Inscriptions\RecensementDesRedoublants;
 use Illuminate\Console\Command;
 
 /**
@@ -15,9 +15,9 @@ class RecenserRedoublants extends Command
 
     protected $description = 'Déduit le statut redoublant de toutes les inscriptions non confirmées (à blanc par défaut)';
 
-    public function handle(StatutRedoublant $statut): int
+    public function handle(RecensementDesRedoublants $recensement): int
     {
-        $bilan = $statut->recenser((bool) $this->option('apply'));
+        $bilan = $recensement->executer((bool) $this->option('apply'));
 
         $this->table(['Mesure', 'Nombre'], collect($bilan)->except('ecrit')->map(fn ($v, $k) => [$k, $v])->values()->all());
         $this->info($bilan['ecrit'] ? 'Recensement écrit.' : 'À blanc : relancez avec --apply pour écrire.');

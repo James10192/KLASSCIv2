@@ -1389,13 +1389,6 @@ class ESBTPInscriptionController extends Controller
             $inscription->updated_by = Auth::id();
             $inscription->save();
 
-            // Le statut redoublant se juge par rapport au niveau : une
-            // confirmation donnée pour l'ancien ne vaut plus pour le nouveau.
-            if ((int) $ancienNiveau !== (int) $inscription->niveau_id) {
-                app(\App\Domain\Inscriptions\StatutRedoublant::class)
-                    ->reouvrir($inscription->loadMissing('anneeUniversitaire'));
-            }
-
             if ($ancienneClasse != $inscription->classe_id && $inscription->classe_id) {
                 $nouvelleClasse = ESBTPClasse::with('filiere')->findOrFail($inscription->classe_id);
                 $this->btsOrientationService->syncAfterClassChange($inscription, $nouvelleClasse);
@@ -2086,11 +2079,7 @@ class ESBTPInscriptionController extends Controller
                     $ins->workflow_step ?? "",
                     optional($ins->created_at)->format("d/m/Y") ?? "",
                     $ins->is_redoublant ? "Oui" : "Non",
-                    match ($ins->redoublant_source) {
-                        'confirme' => "Confirmé",
-                        'corrige' => "Corrigé",
-                        default => "Déduit",
-                    },
+                    app(\App\Domain\Inscriptions\StatutRedoublant::class)->libelleSource($ins),
                 ], ";");
             }
             fclose($out);
@@ -2523,9 +2512,7 @@ class ESBTPInscriptionController extends Controller
                     ? ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN
                     : ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU,
                 'is_redoublant' => $estRedoublement,
-                // Le guichet ne décide rien d'académique : la valeur reste
-                // déduite, la scolarité la confirmera.
-                'redoublant_source' => \App\Domain\Inscriptions\StatutRedoublant::SOURCE_DEDUIT,
+                'redoublant_source' => \App\Domain\Inscriptions\StatutRedoublant::SOURCE_DEDUIT, // la scolarité confirmera
                 // Saisi au guichet, comme la classe. L'ecrire en dur ici donnait a
                 // chaque pre-inscription le statut « affecte », celui qui ouvre droit
                 // a la subvention : la scolarite tombait a zero et le guichet

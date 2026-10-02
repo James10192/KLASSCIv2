@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Domain\Inscriptions\RecensementDesRedoublants;
 use App\Domain\Inscriptions\StatutRedoublant;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPInscription;
@@ -16,8 +17,10 @@ use Illuminate\Validation\ValidationException;
  */
 class CLIStatutRedoublantController extends BaseApiController
 {
-    public function __construct(private readonly StatutRedoublant $statut)
-    {
+    public function __construct(
+        private readonly StatutRedoublant $statut,
+        private readonly RecensementDesRedoublants $recensement,
+    ) {
     }
 
     /** Le recensement à blanc : ce qui serait posé, sans rien écrire. */
@@ -27,7 +30,7 @@ class CLIStatutRedoublantController extends BaseApiController
             return $this->errorResponse('Token missing cli:read ability', [], 403);
         }
 
-        $bilan = $this->statut->recenser(false);
+        $bilan = $this->recensement->executer(false);
         $bilan['a_confirmer_par_annee'] = StatutRedoublant::contraindreAConfirmer(ESBTPInscription::query())
             ->join('esbtp_annee_universitaires as a', 'a.id', '=', 'esbtp_inscriptions.annee_universitaire_id')
             ->groupBy('a.name')
@@ -49,7 +52,7 @@ class CLIStatutRedoublantController extends BaseApiController
 
         $valide = $request->validate(['apply' => ['nullable', 'boolean']]);
         $ecrire = (bool) ($valide['apply'] ?? false);
-        $bilan = $this->statut->recenser($ecrire);
+        $bilan = $this->recensement->executer($ecrire);
 
         return $this->successResponse($bilan, $ecrire
             ? sprintf('%d statut(s) posé(s), %d décision(s) reprise(s).', $bilan['a_poser'], $bilan['decisions'])

@@ -84,6 +84,12 @@ class ESBTPInscription extends Model implements Auditable
      */
     protected static function booted(): void
     {
+        // Le statut redoublant se juge par rapport au niveau et à l'année :
+        // une confirmation donnée pour l'ancien ne vaut plus, quel que soit
+        // l'écran qui déplace l'inscription.
+        static::saving(fn (self $inscription) => app(\App\Domain\Inscriptions\StatutRedoublant::class)
+            ->rouvrirSiLeNiveauChange($inscription));
+
         static::deleting(function (self $inscription) {
             if ($inscription->isForceDeleting()) {
                 return;

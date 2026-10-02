@@ -2,12 +2,12 @@
 
 namespace App\Domain\Inscriptions;
 
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
+use App\Models\User;
 use App\Services\Inscriptions\NormalisationTypeInscription;
 use Illuminate\Database\Eloquent\Builder;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -16,9 +16,12 @@ use Illuminate\Validation\ValidationException;
  *
  * Le logiciel déduit (même niveau d'étude que l'année d'avant, règle unique de
  * {@see ESBTPInscription::estUnRedoublement()}). Une personne habilitée confirme
- * la valeur telle quelle, ou la corrige en disant pourquoi. Une valeur
- * confirmée ou corrigée n'est plus jamais réécrite par une déduction, sauf si
- * l'inscription change de niveau : la confirmation portait sur l'ancien.
+ * la valeur, ou la corrige en disant pourquoi. Tant que personne n'a tranché,
+ * la valeur qui fait foi est la déduction calculée À L'INSTANT, jamais la
+ * colonne : elle a pu vieillir (inscription antérieure ajoutée après coup,
+ * recensement pas encore passé). Une valeur établie par une personne n'est
+ * plus réécrite par une déduction, sauf si l'inscription change de niveau ou
+ * d'année : la confirmation portait sur l'ancien (voir le crochet du modèle).
  *
  * Tant que personne n'a confirmé, le bulletin imprime la valeur déduite et la
  * génération des bulletins prévient (décision de l'établissement, octobre 2026).
@@ -41,7 +44,10 @@ class StatutRedoublant
     /** Ce que le logiciel conclut des inscriptions de l'étudiant. */
     public function deduire(ESBTPInscription $inscription): bool
     {
-        $annee = $inscription->anneeUniversitaire;
+        $annee = $inscription->relationLoaded('anneeUniversitaire')
+            && $inscription->anneeUniversitaire?->id === (int) $inscription->annee_universitaire_id
+            ? $inscription->anneeUniversitaire
+            : ESBTPAnneeUniversitaire::find($inscription->annee_universitaire_id);
 
         if ($annee === null) {
             return false;
@@ -58,16 +64,25 @@ class StatutRedoublant
         return in_array($inscription->redoublant_source, [self::SOURCE_CONFIRME, self::SOURCE_CORRIGE], true);
     }
 
+    /** La valeur qui fait foi : celle d'une personne, sinon la déduction du moment. */
+    public function valeurEtablie(ESBTPInscription $inscription): bool
+    {
+        return $this->estEtabliParUnePersonne($inscription)
+            ? (bool) $inscription->is_redoublant
+            : $this->deduire($inscription);
+    }
+
     /**
      * Une inscription attend une confirmation quand la question se pose
      * vraiment : l'étudiant était déjà là (réinscription), vient d'ailleurs
      * (transfert, il a pu redoubler chez l'autre), ou le logiciel le dit
-     * redoublant. Un nouvel étudiant qui arrive de rien ne redouble pas ici :
-     * le confirmer un par un ne serait que du bruit.
+     * redoublant. Un nouvel étudiant qui arrive de rien ne redouble pas ici, et
+     * une inscription annulée ne demande plus rien.
      */
     public function aConfirmer(ESBTPInscription $inscription): bool
     {
-        if ($this->estEtabliParUnePersonne($inscription)) {
+        if ($this->estEtabliParUnePersonne($inscription)
+            || in_array($inscription->status, ESBTPInscription::STATUTS_ANNULES, true)) {
             return false;
         }
 
@@ -84,54 +99,59 @@ class StatutRedoublant
         return $requete
             ->where(fn ($q) => $q->whereNull("{$table}.redoublant_source")
                 ->orWhereNotIn("{$table}.redoublant_source", [self::SOURCE_CONFIRME, self::SOURCE_CORRIGE]))
+            ->whereNotIn("{$table}.status", ESBTPInscription::STATUTS_ANNULES)
             ->where(fn ($q) => $q->where("{$table}.type_inscription", NormalisationTypeInscription::REINSCRIPTION)
                 ->orWhere("{$table}.est_transfert", true)
                 ->orWhere("{$table}.is_redoublant", true));
     }
 
-    /**
-     * Pose la valeur déduite, sans toucher à ce qu'une personne a établi.
-     * `$valeur` permet à l'appelant qui vient de la calculer de ne pas la
-     * recalculer.
-     */
-    public function poserDeduit(ESBTPInscription $inscription, ?bool $valeur = null): void
+    /** Le filtre des listes (écran et Nanan) : `oui`, `non`, `a_confirmer`. */
+    public static function filtrer(Builder $requete, ?string $filtre): Builder
     {
-        if ($this->estEtabliParUnePersonne($inscription)) {
-            return;
-        }
+        $table = $requete->getModel()->getTable();
 
-        $inscription->forceFill([
-            'is_redoublant' => $valeur ?? $this->deduire($inscription),
-            'redoublant_source' => self::SOURCE_DEDUIT,
-        ])->save();
+        return match ($filtre) {
+            'oui' => $requete->where("{$table}.is_redoublant", true),
+            'non' => $requete->where(fn ($q) => $q->where("{$table}.is_redoublant", false)->orWhereNull("{$table}.is_redoublant")),
+            'a_confirmer' => self::contraindreAConfirmer($requete),
+            default => $requete,
+        };
     }
 
     /**
-     * Le niveau a changé : la confirmation portait sur l'ancien. On repart de
-     * la déduction, et l'inscription repasse « à confirmer ».
+     * Le niveau ou l'année a changé : la confirmation portait sur l'ancien. On
+     * repart de la déduction, et l'inscription repasse « à confirmer ». Appelé
+     * avant l'enregistrement par le modèle, pour tous les écrans qui déplacent
+     * une inscription.
      */
-    public function reouvrir(ESBTPInscription $inscription): void
+    public function rouvrirSiLeNiveauChange(ESBTPInscription $inscription): void
     {
+        if (! $inscription->exists || ! $inscription->isDirty(['niveau_id', 'annee_universitaire_id'])) {
+            return;
+        }
+
         $inscription->forceFill([
             'is_redoublant' => $this->deduire($inscription),
             'redoublant_source' => self::SOURCE_DEDUIT,
             'redoublant_confirme_par' => null,
             'redoublant_confirme_le' => null,
             'redoublant_motif' => null,
-        ])->save();
+        ]);
     }
 
     /**
-     * Une personne établit le statut. La même valeur que la déduction est une
-     * confirmation ; une autre est une correction. Changer la valeur déjà
-     * enregistrée exige un motif.
+     * Une personne établit le statut. La valeur de la déduction est une
+     * confirmation ; une autre est une correction. Changer la valeur qui fait
+     * foi (voir {@see valeurEtablie()}) exige un motif.
      *
      * @throws ValidationException
      */
     public function etablir(ESBTPInscription $inscription, User $personne, bool $valeur, ?string $motif = null): void
     {
         $motif = trim((string) $motif);
-        $change = (bool) $inscription->is_redoublant !== $valeur;
+        $deduction = $this->deduire($inscription);
+        $reference = $this->estEtabliParUnePersonne($inscription) ? (bool) $inscription->is_redoublant : $deduction;
+        $change = $reference !== $valeur;
 
         if ($change && mb_strlen($motif) < self::MOTIF_MINIMUM) {
             throw ValidationException::withMessages([
@@ -139,22 +159,93 @@ class StatutRedoublant
             ]);
         }
 
-        $source = $valeur === $this->deduire($inscription) ? self::SOURCE_CONFIRME : self::SOURCE_CORRIGE;
-
         $inscription->forceFill([
             'is_redoublant' => $valeur,
-            'redoublant_source' => $source,
+            'redoublant_source' => $valeur === $deduction ? self::SOURCE_CONFIRME : self::SOURCE_CORRIGE,
             'redoublant_confirme_par' => $personne->id,
             'redoublant_confirme_le' => now(),
             'redoublant_motif' => $motif !== '' ? $motif : ($change ? null : $inscription->redoublant_motif),
         ])->save();
     }
 
+    /** Confirme la valeur qui fait foi, sans rien changer. */
+    public function confirmer(ESBTPInscription $inscription, User $personne): void
+    {
+        $this->etablir($inscription, $personne, $this->valeurEtablie($inscription));
+    }
+
+    /** Ce qu'une réinscription écrit à la création de l'inscription. */
+    public static function colonnesALaReinscription(bool $deduit, ?string $decision): array
+    {
+        $decision = strtolower((string) $decision);
+
+        return [
+            'is_redoublant' => $deduit,
+            'redoublant_source' => self::SOURCE_DEDUIT,
+            'decision_reinscription' => in_array($decision, self::DECISIONS, true) ? $decision : null,
+        ];
+    }
+
+    /**
+     * La personne qui réinscrit a vu le statut proposé et l'a gardé ou changé :
+     * c'est sa confirmation, si elle en a le droit. Sans ce droit (caisse, agent
+     * d'inscription), la valeur reste déduite et la scolarité la confirmera.
+     *
+     * @throws ValidationException si elle change la valeur sans motif
+     */
+    public function apresReinscription(ESBTPInscription $inscription, ?bool $choix, ?string $motif): void
+    {
+        $personne = auth()->user();
+
+        if ($choix === null || ! $personne || ! $personne->can(self::PERMISSION)) {
+            return;
+        }
+
+        $this->etablir($inscription->loadMissing('anneeUniversitaire'), $personne, $choix, $motif);
+    }
+
+    /** Même niveau, même année : passer en spécialité ne change rien au statut. */
+    public static function colonnesHeritees(ESBTPInscription $origine): array
+    {
+        return [
+            'is_redoublant' => (bool) $origine->is_redoublant,
+            'redoublant_source' => $origine->redoublant_source,
+            'redoublant_confirme_par' => $origine->redoublant_confirme_par,
+            'redoublant_confirme_le' => $origine->redoublant_confirme_le,
+            'redoublant_motif' => $origine->redoublant_motif,
+            'decision_reinscription' => $origine->decision_reinscription,
+        ];
+    }
+
+    /**
+     * Le constat du contrôle avant génération des bulletins : combien d'élèves
+     * de la classe partiront avec une valeur déduite, et la liste qui les montre
+     * (seulement à qui peut l'ouvrir).
+     *
+     * @return array{redoublants_a_confirmer:int, redoublants_url:?string}
+     */
+    public function pourLePreControle(ESBTPClasse $classe, int $anneeId, ?User $personne): array
+    {
+        $nombre = self::contraindreAConfirmer(ESBTPInscription::query())
+            ->where('esbtp_inscriptions.classe_id', $classe->id)
+            ->where('esbtp_inscriptions.annee_universitaire_id', $anneeId)
+            ->count();
+
+        $peutOuvrir = $personne && $personne->can('inscriptions.view') && $personne->can(self::PERMISSION);
+
+        return [
+            'redoublants_a_confirmer' => $nombre,
+            'redoublants_url' => $nombre > 0 && $peutOuvrir
+                ? route('esbtp.inscriptions.index', ['annee' => $anneeId, 'classe' => $classe->id, 'status' => 'all', 'redoublant' => 'a_confirmer'])
+                : null,
+        ];
+    }
+
     /**
      * Ce qui mérite un second regard : la décision de réinscription dit l'un,
      * la classe choisie dit l'autre. Le logiciel ne tranche pas, il le montre.
      */
-    public function incoherence(ESBTPInscription $inscription): ?string
+    public function incoherence(ESBTPInscription $inscription, ?bool $valeur = null): ?string
     {
         if ($this->estEtabliParUnePersonne($inscription) || ! $inscription->decision_reinscription) {
             return null;
@@ -162,7 +253,7 @@ class StatutRedoublant
 
         $decideRedoublement = $inscription->decision_reinscription === 'redoublement';
 
-        if ($decideRedoublement === (bool) $inscription->is_redoublant) {
+        if ($decideRedoublement === ($valeur ?? (bool) $inscription->is_redoublant)) {
             return null;
         }
 
@@ -171,15 +262,25 @@ class StatutRedoublant
             : 'La classe choisie est du même niveau que l\'an dernier, mais la décision de réinscription est « '.$inscription->decision_reinscription.' ».';
     }
 
+    /** L'origine de la valeur, en un mot (exports). */
+    public function libelleSource(ESBTPInscription $inscription): string
+    {
+        return match ($inscription->redoublant_source) {
+            self::SOURCE_CONFIRME => 'Confirmé',
+            self::SOURCE_CORRIGE => 'Corrigé',
+            default => $this->aConfirmer($inscription) ? 'À confirmer' : 'Déduit',
+        };
+    }
+
     /**
-     * Ce que l'écran montre : la valeur, d'où elle vient, et s'il reste
-     * quelque chose à faire.
+     * Ce que l'écran montre : la valeur qui fait foi, d'où elle vient, et s'il
+     * reste quelque chose à faire.
      *
      * @return array{valeur: bool, etat: string, libelle: string, detail: ?string, motif: ?string, incoherence: ?string, a_confirmer: bool}
      */
     public function pourAffichage(ESBTPInscription $inscription): array
     {
-        $valeur = (bool) $inscription->is_redoublant;
+        $valeur = $this->valeurEtablie($inscription);
         $aConfirmer = $this->aConfirmer($inscription);
         $etat = $inscription->redoublant_source === self::SOURCE_CORRIGE ? 'corrige'
             : ($inscription->redoublant_source === self::SOURCE_CONFIRME ? 'confirme'
@@ -200,7 +301,7 @@ class StatutRedoublant
             'libelle' => $valeur ? 'Redoublant' : 'Non redoublant',
             'detail' => $detail,
             'motif' => $inscription->redoublant_motif,
-            'incoherence' => $this->incoherence($inscription),
+            'incoherence' => $this->incoherence($inscription, $valeur),
             'a_confirmer' => $aConfirmer,
         ];
     }
@@ -217,116 +318,5 @@ class StatutRedoublant
         $tete = mb_strtolower(trim(explode(' - ', $premiereLigne, 2)[0]));
 
         return in_array($tete, self::DECISIONS, true) ? $tete : null;
-    }
-
-    /**
-     * Pose la valeur déduite sur toutes les inscriptions qu'aucune personne n'a
-     * établies, toutes années confondues, et reprend la décision de
-     * réinscription depuis son texte. Rien de ce qu'une personne a confirmé ou
-     * corrigé n'est réécrit. Les inscriptions d'une année sans date de début
-     * restent sans statut : on ne sait pas quelle année les précède.
-     *
-     * @return array{examinees:int, redoublants:int, a_poser:int, changees:int, decisions:int, indeterminees:int, etablies:int, ecrit:bool}
-     */
-    public function recenser(bool $ecrire = false): array
-    {
-        $lignes = DB::table('esbtp_inscriptions as i')
-            ->leftJoin('esbtp_annee_universitaires as a', 'a.id', '=', 'i.annee_universitaire_id')
-            ->whereNull('i.deleted_at')
-            ->orderBy('i.etudiant_id')
-            ->get([
-                'i.id', 'i.etudiant_id', 'i.niveau_id', 'i.annee_universitaire_id', 'a.start_date',
-                'i.is_redoublant', 'i.redoublant_source', 'i.decision_reinscription', 'i.reinscription_observations',
-            ]);
-
-        $bilan = ['examinees' => $lignes->count(), 'redoublants' => 0, 'a_poser' => 0, 'changees' => 0,
-            'decisions' => 0, 'indeterminees' => 0, 'etablies' => 0, 'ecrit' => $ecrire];
-        $aPoser = [true => [], false => []];
-        $decisions = [];
-
-        foreach ($lignes->groupBy('etudiant_id') as $inscriptions) {
-            foreach ($inscriptions as $ligne) {
-                $decision = $ligne->decision_reinscription ?: self::decisionDepuisObservations($ligne->reinscription_observations);
-                if ($decision !== null && $ligne->decision_reinscription === null) {
-                    $decisions[$decision][] = $ligne->id;
-                }
-
-                if (in_array($ligne->redoublant_source, [self::SOURCE_CONFIRME, self::SOURCE_CORRIGE], true)) {
-                    $bilan['etablies']++;
-                    $bilan['redoublants'] += (int) $ligne->is_redoublant;
-
-                    continue;
-                }
-
-                if ($ligne->start_date === null) {
-                    $bilan['indeterminees']++;
-
-                    continue;
-                }
-
-                $valeur = $this->deduireDansLeLot($ligne, $inscriptions);
-                $bilan['redoublants'] += (int) $valeur;
-
-                if ($ligne->redoublant_source !== self::SOURCE_DEDUIT || (bool) $ligne->is_redoublant !== $valeur) {
-                    $aPoser[$valeur][] = $ligne->id;
-                    $bilan['a_poser']++;
-                    $bilan['changees'] += (int) ((bool) $ligne->is_redoublant !== $valeur);
-                }
-            }
-        }
-
-        $bilan['decisions'] = array_sum(array_map('count', $decisions));
-
-        if ($ecrire) {
-            $this->ecrireLeRecensement($aPoser, $decisions);
-            Log::info('Statut redoublant recensé', $bilan);
-        }
-
-        return $bilan;
-    }
-
-    /**
-     * Même règle que {@see ESBTPInscription::precedantAnnee()}, appliquée aux
-     * inscriptions déjà chargées de l'étudiant : l'inscription d'une autre année
-     * commencée avant celle-ci, la plus récente, à identifiant égal la dernière.
-     */
-    private function deduireDansLeLot(object $ligne, $inscriptions): bool
-    {
-        $precedente = $inscriptions
-            ->filter(fn ($autre) => $autre->annee_universitaire_id !== $ligne->annee_universitaire_id
-                && $autre->start_date !== null
-                && $autre->start_date < $ligne->start_date)
-            ->sortBy([['start_date', 'desc'], ['id', 'desc']])
-            ->first();
-
-        if ($precedente === null || $precedente->niveau_id === null || $ligne->niveau_id === null) {
-            return false;
-        }
-
-        return (int) $precedente->niveau_id === (int) $ligne->niveau_id;
-    }
-
-    /**
-     * @param  array<int, array<int, int>>  $aPoser  valeur => ids
-     * @param  array<string, array<int, int>>  $decisions  décision => ids
-     */
-    private function ecrireLeRecensement(array $aPoser, array $decisions): void
-    {
-        DB::transaction(function () use ($aPoser, $decisions) {
-            foreach ($aPoser as $valeur => $ids) {
-                foreach (array_chunk($ids, 500) as $lot) {
-                    DB::table('esbtp_inscriptions')->whereIn('id', $lot)
-                        ->whereNotIn(DB::raw("COALESCE(redoublant_source, '')"), [self::SOURCE_CONFIRME, self::SOURCE_CORRIGE])
-                        ->update(['is_redoublant' => (bool) $valeur, 'redoublant_source' => self::SOURCE_DEDUIT]);
-                }
-            }
-
-            foreach ($decisions as $decision => $ids) {
-                foreach (array_chunk($ids, 500) as $lot) {
-                    DB::table('esbtp_inscriptions')->whereIn('id', $lot)->whereNull('decision_reinscription')
-                        ->update(['decision_reinscription' => $decision]);
-                }
-            }
-        });
     }
 }

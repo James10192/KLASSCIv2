@@ -998,7 +998,9 @@
                         <p class="bus-inline-panel__body">
                             <span x-text="preflight.redoublants_a_confirmer"></span>
                             élève(s) au statut redoublant non confirmé : le bulletin imprimera la valeur déduite.
-                            <a :href="preflight.redoublants_url" target="_blank" rel="noopener">Confirmer dans la liste des inscriptions</a>
+                            <template x-if="preflight.redoublants_url">
+                                <a :href="preflight.redoublants_url" target="_blank" rel="noopener">Confirmer dans la liste des inscriptions</a>
+                            </template>
                         </p>
                     </template>
                     <template x-if="preflight?.existing_empty_locked_count > 0">
