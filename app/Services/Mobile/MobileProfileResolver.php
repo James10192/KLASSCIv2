@@ -17,8 +17,12 @@ use App\Models\User;
  * A defaut, qui gere des dossiers (inscriptions, etudiants, classes) recoit le
  * profil « scolarite ».
  *
- * Le superAdmin voit tout : il recoit « comptable » par defaut et peut basculer
- * de profil pour la session (route POST mobile.profil) afin de verifier chacun.
+ * Deux exceptions, lues sur le role parce qu'ils portent TOUTES les permissions
+ * (la cascade les rangerait en caisse) : le superAdmin recoit « comptable » par
+ * defaut et peut basculer de profil pour la session (route POST mobile.profil) ;
+ * le service technique recoit « technique », ses propres pages. Ce dernier
+ * profil n'est pas declarable par une ecole (PROFILS_DECLARABLES) : les pages
+ * qu'il ouvre sont reservees au role serviceTechnique.
  *
  * Le calcul est memoise pour la duree de la requete : il est appele par un
  * composer de vue sur '*', donc potentiellement des dizaines de fois par page.
@@ -44,6 +48,20 @@ class MobileProfileResolver
         self::ETUDIANT,
         self::SCOLARITE,
         self::TECHNIQUE,
+    ];
+
+    /**
+     * Profils qu'une ecole peut choisir pour un role personnalise. « technique »
+     * en est exclu : il se deduit du role serviceTechnique, et ses onglets
+     * (matricules, roles, style des bulletins) sont reserves a ce role — un role
+     * d'ecole n'y recevrait qu'une barre vide, a la place du repli « scolarite ».
+     */
+    public const PROFILS_DECLARABLES = [
+        self::CAISSIER,
+        self::COMPTABLE,
+        self::ENSEIGNANT,
+        self::ETUDIANT,
+        self::SCOLARITE,
     ];
 
     /**
@@ -81,7 +99,8 @@ class MobileProfileResolver
     private static ?bool $memoActif = null;
 
     /**
-     * Libelles affiches a l'ecole quand elle choisit le profil d'un role.
+     * Libelles affiches a l'ecole quand elle choisit le profil d'un role
+     * (PROFILS_DECLARABLES, dans le meme ordre).
      *
      * @return array<string, string>
      */
@@ -93,13 +112,17 @@ class MobileProfileResolver
             self::ENSEIGNANT => 'Enseignant',
             self::ETUDIANT => 'Étudiant',
             self::SCOLARITE => 'Scolarité (dossiers, inscriptions)',
-            self::TECHNIQUE => 'Service technique (réglages de l\'instance)',
         ];
     }
 
     public static function estUnProfil(?string $valeur): bool
     {
         return $valeur !== null && in_array($valeur, self::PROFILS, true);
+    }
+
+    public static function estDeclarable(?string $valeur): bool
+    {
+        return $valeur !== null && in_array($valeur, self::PROFILS_DECLARABLES, true);
     }
 
     /**
@@ -160,7 +183,7 @@ class MobileProfileResolver
         if ($user->hasRole('superAdmin')) {
             $force = $this->profilForce();
 
-            return self::estUnProfil($force) ? $force : self::COMPTABLE;
+            return self::estDeclarable($force) ? $force : self::COMPTABLE;
         }
 
         // Meme raison pour le service technique : il porte toutes les
@@ -209,7 +232,7 @@ class MobileProfileResolver
         foreach ($roles ?? [] as $role) {
             $profil = $role->getAttribute('mobile_profile');
 
-            if (is_string($profil) && self::estUnProfil($profil)) {
+            if (is_string($profil) && self::estDeclarable($profil)) {
                 return $profil;
             }
         }

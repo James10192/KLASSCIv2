@@ -7,7 +7,7 @@
     (config/permissions.php) quand une permission évidente existe — jamais de 403 visible.
     L'onglet « Plus » ouvre la feuille m-sheet `m-plus` (profil, raccourcis, déconnexion).
     Pour le superAdmin, si la route `mobile.profil` existe (outil de démonstration), la feuille
-    propose un sélecteur des quatre profils (form POST).
+    propose un sélecteur des profils déclarables (form POST).
 --}}
 @php
     $mUser = auth()->user();
@@ -62,8 +62,9 @@
                 ];
                 break;
             case 'technique':
-                // Pages du service technique : routes gardees par le role, donc
-                // chaque onglet passe par la garde REELLE de sa route.
+                // Pages du service technique : gardees par le role serviceTechnique
+                // ou par une permission (abonnement) ; chaque onglet passe donc par
+                // la garde REELLE de sa route.
                 $mTech = fn (string $route) => $r($route) && \App\Support\PorteDeRoute::ouverte($route, $mUser);
                 $mItems = [
                     ['label' => 'Accueil', 'icon' => 'home', 'href' => $r('dashboard') ? route('dashboard') : null, 'on' => $on('dashboard'), 'show' => true],
@@ -127,9 +128,11 @@
     $mOnIndex = $mOnIndex === false ? -1 : (int) $mOnIndex;
     $mCanSwitch = $mUser && $mUser->hasRole('superAdmin') && Route::has('mobile.profil');
     // Libellés courts pour l'affichage (la liste canonique vient du resolver).
-    $mProfilLabels = ['caissier' => 'Caisse', 'comptable' => 'Comptabilité', 'etudiant' => 'Étudiant', 'enseignant' => 'Enseignant', 'scolarite' => 'Scolarité', 'technique' => 'Service technique'];
-    $mProfilLabels = array_intersect_key($mProfilLabels, array_flip(\App\Services\Mobile\MobileProfileResolver::PROFILS));
-    $mRoleLabel = $mProfil ? ($mProfilLabels[$mProfil] ?? '') : '';
+    $mProfilLabels = ['caissier' => 'Caisse', 'comptable' => 'Comptabilité', 'etudiant' => 'Étudiant', 'enseignant' => 'Enseignant', 'scolarite' => 'Scolarité'];
+    // Le sélecteur du superAdmin ne propose que les profils déclarables :
+    // « technique » se lit sur le rôle, le superAdmin n'y verrait pas les pages du technicien.
+    $mProfilLabels = array_intersect_key($mProfilLabels, array_flip(\App\Services\Mobile\MobileProfileResolver::PROFILS_DECLARABLES));
+    $mRoleLabel = $mProfil === 'technique' ? 'Service technique' : ($mProfil ? ($mProfilLabels[$mProfil] ?? '') : '');
 @endphp
 
 @if($mUser && $mProfil && count($mItems))

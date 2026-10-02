@@ -53,20 +53,20 @@ class TechniqueBottomNavTest extends TestCase
         $this->assertStringNotContainsString('aria-label="Ma caisse"', $html);
     }
 
-    public function test_sans_le_role_les_pages_du_service_technique_ne_s_affichent_pas(): void
+    public function test_le_superadmin_ne_voit_pas_technique_dans_sa_bascule(): void
     {
-        // Un role custom peut declarer le profil : les routes, gardees par le
-        // role serviceTechnique, ne lui sont pas ouvertes, donc aucun onglet mort.
-        $role = Role::findOrCreate('Support interne', 'web');
-        $role->forceFill(['mobile_profile' => MobileProfileResolver::TECHNIQUE])->save();
+        Role::findOrCreate('superAdmin', 'web');
         $user = User::factory()->create();
-        $user->assignRole($role);
+        $user->assignRole('superAdmin');
+        $this->actingAs($user);
 
-        $html = $this->rendre($user);
+        $html = view('layouts.partials.mobile.bottom-nav', [
+            'mobileProfile' => MobileProfileResolver::COMPTABLE,
+            'mobileShellEnabled' => true,
+        ])->render();
 
-        $this->assertStringNotContainsString(route('esbtp.paywall-config.index'), $html);
-        $this->assertStringNotContainsString(route('esbtp.matricule-config.index'), $html);
-        $this->assertStringContainsString('aria-label="Accueil"', $html);
+        $this->assertStringContainsString('name="profil" value="scolarite"', $html);
+        $this->assertStringNotContainsString('value="technique"', $html);
     }
 
     private function rendre(User $user): string
