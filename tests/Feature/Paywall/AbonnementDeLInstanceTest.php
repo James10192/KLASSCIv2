@@ -159,6 +159,38 @@ class AbonnementDeLInstanceTest extends TestCase
         $this->assertTrue(app(AbonnementDeLInstance::class)->statutDeBlocage()['is_blocked']);
     }
 
+    public function test_paywall_non_applique_l_ecran_ne_dit_pas_bloque(): void
+    {
+        Http::fake(['master.test/*' => Http::response($this->reponseMaster([
+            'limits' => ['max_students' => 1000],
+            'current_usage' => ['students' => 1200],
+        ]), 200)]);
+        ESBTPSystemSetting::setValue('paywall_active', false);
+
+        $this->actingAs($this->serviceTechnique())
+            ->get(route('esbtp.paywall-config.index'))
+            ->assertOk()
+            ->assertSee('l\'école reste ouverte')
+            ->assertDontSee('L\'école est bloquée')
+            ->assertDontSee('Bloqué');
+    }
+
+    public function test_paywall_applique_l_ecran_dit_bloque(): void
+    {
+        Http::fake(['master.test/*' => Http::response($this->reponseMaster([
+            'limits' => ['max_students' => 1000],
+            'current_usage' => ['students' => 1200],
+        ]), 200)]);
+        ESBTPSystemSetting::setValue('paywall_active', true);
+
+        $this->actingAs($this->serviceTechnique())
+            ->get(route('esbtp.paywall-config.index'))
+            ->assertOk()
+            ->assertSee('L\'école est bloquée')
+            ->assertSee('Bloqué')
+            ->assertDontSee('l\'école reste ouverte');
+    }
+
     public function test_actualiser_vide_le_cache_et_relit_le_master(): void
     {
         Http::fakeSequence('master.test/*')

@@ -100,7 +100,7 @@ a.dst-kpi:hover { background:rgba(255,255,255,.18); color:#fff; }
         $file[] = ['niveau' => 'danger', 'titre' => 'adminKlassci injoignable', 'detail' => $abonnement['erreur_master'] ?? 'Aucune réponse du master.', 'lien' => $routePaywall, 'action' => 'Réessayer'];
     }
     foreach ($abonnement['statut']['reasons'] as $raison) {
-        $file[] = ['niveau' => 'danger', 'titre' => $raison, 'detail' => $abonnement['paywall_actif'] ? 'L\'école est bloquée.' : 'Paywall non appliqué : rien n\'est bloqué.', 'lien' => $abonnement['fiche_url'] ?: $routePaywall, 'action' => $abonnement['fiche_url'] ? 'Régler dans adminKlassci' : 'Voir'];
+        $file[] = ['niveau' => $abonnement['paywall_actif'] ? 'danger' : 'warning', 'titre' => $raison, 'detail' => $abonnement['paywall_actif'] ? 'L\'école est bloquée.' : 'Paywall non appliqué : rien n\'est bloqué.', 'lien' => $abonnement['fiche_url'] ?: $routePaywall, 'action' => $abonnement['fiche_url'] ? 'Régler dans adminKlassci' : 'Voir'];
     }
     foreach ($abonnement['statut']['warnings'] as $alerte) {
         $file[] = ['niveau' => 'warning', 'titre' => $alerte, 'detail' => 'À anticiper avec l\'école.', 'lien' => $abonnement['fiche_url'] ?: $routePaywall, 'action' => 'Voir'];
