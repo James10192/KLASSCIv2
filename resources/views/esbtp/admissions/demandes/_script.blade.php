@@ -293,7 +293,8 @@ window.demandesInscription = function () {
             return redouble ? 'La décision n\'est pas « redoublement », mais vous indiquez qu\'il redouble.' : 'La décision est « redoublement », mais vous indiquez qu\'il ne redouble pas.';
         },
         redoChamps(ctx) {
-            const valeur = this.cfg.redoublant ? this.redoValeur(ctx) : '';
+            // Question masquee (pas de proposition) : rien ne part.
+            const valeur = this.cfg.redoublant && this.redoPropose(ctx) !== null ? this.redoValeur(ctx) : '';
             if (!valeur) return {};
             const motif = this.redoMotifRequis(ctx) || this[ctx].erreurs.redoublant_motif ? this[ctx].redo.motif.trim() : '';
             return motif ? { redoublant: valeur, redoublant_motif: motif } : { redoublant: valeur };
@@ -304,6 +305,8 @@ window.demandesInscription = function () {
             this.reins.annee_echue_confirmee = false;
             // La proposition de l'ancienne annee ne vaut plus : la question attend la nouvelle.
             this.reins.proposition = null;
+            // La reponse portait sur la proposition de l'autre annee.
+            this.reins.redo = { valeur: '', motif: '' };
             // La liste reste affichee pendant le recomptage ; l'envoi attend
             // les places de la nouvelle annee (reinsPret).
             this.chargerClassesReins(annee.id);
