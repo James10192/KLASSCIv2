@@ -52,7 +52,7 @@ class SearchEvaluationsTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
-        $query = ESBTPEvaluation::query()->with(['matiere', 'classe', 'enseignant.user']);
+        $query = ESBTPEvaluation::query()->with(['matiere', 'classe', 'enseignant']);
 
         if (!empty($args['classe'])) {
             $classe = $args['classe'];
@@ -92,7 +92,7 @@ class SearchEvaluationsTool extends ChatbotTool
                 'bareme' => $eval->bareme ?? 20,
                 'statut' => ucfirst($eval->status ?? 'N/A'),
                 'publiee' => $eval->is_published ? 'Oui' : 'Non',
-                'enseignant' => $eval->enseignant?->user?->name ?? $eval->enseignant_externe_nom ?? 'N/A',
+                'enseignant' => $eval->enseignant?->name ?? $eval->enseignant_externe_nom ?? 'N/A',
                 'nb_notes' => $eval->notes()->count(),
                 'lien' => Route::has('esbtp.evaluations.show') ? route('esbtp.evaluations.show', $eval->id) : null,
             ];
