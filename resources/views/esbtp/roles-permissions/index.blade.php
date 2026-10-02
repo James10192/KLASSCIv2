@@ -4,6 +4,8 @@
     use Illuminate\Support\Str;
     // $roleLabels, $roleDescriptions, $roleIcons et $managementMatrix viennent du registre.
     $selectedPermissions = $rolePermissions[$selectedRoleName] ?? collect();
+    // Un rôle porte aussi les anciens noms ; on ne compte que ce qui a une case.
+    $selectedVisibleCount = $permissions->pluck('name')->intersect($selectedPermissions)->count();
     $roleInfos = $roles->mapWithKeys(fn ($r) => [$r->name => [
         'label' => $roleLabels[$r->name] ?? $r->name,
         'description' => $roleDescriptions[$r->name] ?? '',
@@ -182,7 +184,7 @@
                 <div class="rp-kpi-label">Rôles configurables</div>
             </div>
             <div class="rp-kpi">
-                <div class="rp-kpi-value"><span id="rpCheckedCount">{{ $selectedPermissions->count() }}</span> <small>/ {{ $permissions->count() }}</small></div>
+                <div class="rp-kpi-value"><span id="rpCheckedCount">{{ $selectedVisibleCount }}</span> <small>/ {{ $permissions->count() }}</small></div>
                 <div class="rp-kpi-label">Accordées à <span id="rpKpiRole">{{ $selectedInfo['label'] }}</span></div>
             </div>
             <div class="rp-kpi">
@@ -224,6 +226,7 @@
     <form action="{{ route('esbtp.roles-permissions.update') }}" method="POST" id="rpForm">
         @csrf
         <input type="hidden" id="rpRoleInput" name="role" value="{{ $selectedRoleName }}">
+        <input type="hidden" name="show_legacy" value="{{ $showLegacy ? 1 : 0 }}">
 
         <div class="rp-card">
             <div class="rp-card-head">
@@ -380,7 +383,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const toast = (type, message) => (window.klassciToast ? window.klassciToast(type, message) : alert(message));
 
     const activeChip = () => chips.find(c => c.dataset.role === roleInput.value) || chips[0];
-    const savedSet = () => new Set(JSON.parse(activeChip()?.dataset.permissions || '[]'));
+    // Le rôle porte aussi des anciens noms sans case quand ils sont masqués :
+    // on ne compare que ce qui est affiché.
+    const visibles = new Set(boxes.map(b => b.value));
+    const savedSet = () => new Set(JSON.parse(activeChip()?.dataset.permissions || '[]').filter(p => visibles.has(p)));
     const checkedValues = () => boxes.filter(b => b.checked).map(b => b.value);
 
     function isDirty() {
@@ -450,7 +456,9 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     document.querySelectorAll('.rp-group-check-all, .rp-group-uncheck-all').forEach(btn => btn.addEventListener('click', () => {
         const on = btn.classList.contains('rp-group-check-all');
-        document.querySelectorAll(`input[data-group="${btn.dataset.group}"]`).forEach(b => { b.checked = on; });
+        document.querySelectorAll(`input[data-group="${btn.dataset.group}"]`).forEach(b => {
+            if (!b.closest('.rp-perm-card').classList.contains('is-hidden')) b.checked = on;
+        });
         refresh();
     }));
     boxes.forEach(b => b.addEventListener('change', refresh));

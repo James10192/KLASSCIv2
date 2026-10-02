@@ -127,7 +127,7 @@ class ESBTPRolePermissionConfigController extends Controller
         return response()->json(json_decode(file_get_contents($path), true));
     }
 
-    public function update(Request $request)
+    public function update(Request $request, PermissionRegistry $registry)
     {
         $validated = $request->validate([
             'role' => 'required|exists:roles,name',
@@ -138,12 +138,19 @@ class ESBTPRolePermissionConfigController extends Controller
         $roleName = $validated['role'];
         $permissionNames = array_values(array_unique($validated['permissions'] ?? []));
 
+        // Anciens noms masqués à l'écran : chaque nom coché garde ses alias,
+        // sinon enregistrer retirerait l'accès aux écrans qui testent encore
+        // l'ancien nom, jusqu'au déploiement suivant.
+        if (! $request->boolean('show_legacy')) {
+            $permissionNames = Permission::whereIn('name', $registry->avecAlias($permissionNames))->pluck('name')->all();
+        }
+
         try {
             [$avant, $apres] = $this->appliquer($roleName, $permissionNames, 'Accordé depuis la configuration des rôles.');
         } catch (\Throwable $e) {
             Log::error('Configuration des rôles : enregistrement refusé', ['role' => $roleName, 'erreur' => $e->getMessage()]);
 
-            return $this->repondre($request, false, 'Les permissions n\'ont pas été enregistrées : ' . $e->getMessage(), $roleName, null, 500);
+            return $this->repondre($request, false, 'Les permissions n\'ont pas été enregistrées : ' . $e->getMessage(), $roleName, null);
         }
 
         Log::info('Configuration des rôles : permissions enregistrées', [
@@ -161,15 +168,7 @@ class ESBTPRolePermissionConfigController extends Controller
         $validated = $request->validate(['role' => 'required|exists:roles,name']);
         $roleName = $validated['role'];
 
-        $canonicals = $registry->defaultPermissionsFor($roleName);
-        $expanded = [];
-        foreach ($canonicals as $canonical) {
-            $expanded[] = $canonical;
-            foreach ($registry->aliasesOf($canonical) as $alias) {
-                $expanded[] = $alias;
-            }
-        }
-        $expanded = array_values(array_unique($expanded));
+        $expanded = $registry->avecAlias($registry->defaultPermissionsFor($roleName));
 
         // Filtrer pour ne garder que les permissions qui existent en DB
         $existing = Permission::whereIn('name', $expanded)->pluck('name')->all();
@@ -182,7 +181,7 @@ class ESBTPRolePermissionConfigController extends Controller
         } catch (\Throwable $e) {
             Log::error('Configuration des rôles : restauration refusée', ['role' => $roleName, 'erreur' => $e->getMessage()]);
 
-            return $this->repondre($request, false, 'Les défauts n\'ont pas été restaurés : ' . $e->getMessage(), $roleName, null, 500);
+            return $this->repondre($request, false, 'Les défauts n\'ont pas été restaurés : ' . $e->getMessage(), $roleName, null);
         }
 
         return $this->repondre($request, true, "Permissions par défaut restaurées pour {$roleName} (" . count($apres) . ' permissions).', $roleName, $apres);
@@ -219,7 +218,7 @@ class ESBTPRolePermissionConfigController extends Controller
     /**
      * JSON pour l'écran (aucun rechargement), redirection pour un envoi classique.
      */
-    private function repondre(Request $request, bool $ok, string $message, string $roleName, ?array $permissions, int $statutErreur = 422)
+    private function repondre(Request $request, bool $ok, string $message, string $roleName, ?array $permissions)
     {
         if ($request->expectsJson()) {
             return response()->json(array_filter([
@@ -227,7 +226,7 @@ class ESBTPRolePermissionConfigController extends Controller
                 'message' => $message,
                 'role' => $roleName,
                 'permissions' => $permissions,
-            ], fn ($v) => $v !== null), $ok ? 200 : $statutErreur);
+            ], fn ($v) => $v !== null), $ok ? 200 : 500);
         }
 
         return $ok

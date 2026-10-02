@@ -79,9 +79,7 @@ class RolesEtPermissionsTest extends TestCase
         ])->assertOk();
 
         $extensions = app(ExtensionsDeRole::class);
-        if (! in_array($this->horsDefaut, $extensions->pour('comptable'), true)) {
-            $this->markTestSkipped('Table des extensions absente de la base de test.');
-        }
+        $this->assertContains($this->horsDefaut, $extensions->pour('comptable'));
 
         $this->actingAs($this->st)
             ->postJson(route('esbtp.roles-permissions.restore-defaults'), ['role' => 'comptable'])
@@ -91,6 +89,27 @@ class RolesEtPermissionsTest extends TestCase
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->assertFalse(Role::findByName('comptable')->hasPermissionTo($this->horsDefaut));
         $this->assertNotContains($this->horsDefaut, $extensions->pour('comptable'));
+    }
+
+    public function test_enregistrer_les_noms_affiches_garde_les_anciens_noms(): void
+    {
+        $registry = app(PermissionRegistry::class);
+        $canonique = collect($registry->defaultPermissionsFor('comptable'))->first(fn ($p) => $registry->aliasesOf($p) !== []);
+        $this->assertNotNull($canonique, 'Le comptable doit avoir une permission par défaut avec un ancien nom.');
+        $alias = $registry->aliasesOf($canonique)[0];
+        Permission::findOrCreate($canonique, 'web');
+        Permission::findOrCreate($alias, 'web');
+        Role::findByName('comptable')->syncPermissions([$canonique, $alias]);
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        // Anciens noms masqués : l'écran n'envoie que le nom canonique.
+        $this->actingAs($this->st)
+            ->postJson(route('esbtp.roles-permissions.update'), ['role' => 'comptable', 'permissions' => [$canonique]])
+            ->assertOk()
+            ->assertJsonFragment(['permissions' => collect([$canonique, $alias])->sort()->values()->all()]);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->assertTrue(Role::findByName('comptable')->hasPermissionTo($alias));
     }
 
     public function test_un_compte_sans_service_technique_est_refuse(): void

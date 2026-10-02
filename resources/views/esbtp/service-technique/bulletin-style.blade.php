@@ -66,26 +66,6 @@
 
 @section('content')
 @php
-    $styles = [
-        'yakro' => [
-            'nom' => 'Modèle Yakro',
-            'image' => 'images/service-technique/gabarit-bulletin-yakro.webp',
-            'points' => [
-                'En-tête officiel à gauche, logo au centre, titre à droite.',
-                'Décision du conseil et signature sous les statistiques, pour tenir sur une page.',
-                'Gabarit des instances ESBTP Yamoussoukro.',
-            ],
-        ],
-        'abidjan' => [
-            'nom' => 'Modèle Abidjan / Plateau',
-            'image' => 'images/service-technique/gabarit-bulletin-abidjan.webp',
-            'points' => [
-                'Ministère sur toute la largeur, logo encadré à gauche.',
-                'Bloc « Conseil de classe » au-dessus de la signature du directeur.',
-                'Le titre du conseil en 1re année BTS, semestre 1, se règle à part.',
-            ],
-        ],
-    ];
     $libelleActif = $styles[$currentStyle]['nom'] ?? $styles['yakro']['nom'];
 @endphp
 <div class="bst" id="bst-page" data-update-url="{{ route('esbtp.bulletin-style.update') }}" data-actif="{{ $currentStyle }}">

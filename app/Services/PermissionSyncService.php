@@ -161,14 +161,7 @@ class PermissionSyncService
      */
     private function expandWithAliases(array $canonicals): array
     {
-        $expanded = [];
-        foreach ($canonicals as $canonical) {
-            $expanded[] = $canonical;
-            foreach ($this->registry->aliasesOf($canonical) as $alias) {
-                $expanded[] = $alias;
-            }
-        }
-        return array_values(array_unique($expanded));
+        return $this->registry->avecAlias($canonicals);
     }
 
     /**
