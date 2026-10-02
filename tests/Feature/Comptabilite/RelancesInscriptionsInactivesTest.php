@@ -184,6 +184,28 @@ class RelancesInscriptionsInactivesTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_l_ecran_de_configuration_enregistre_le_reglage(): void
+    {
+        Permission::findOrCreate('comptabilite.relances.send', 'web');
+        auth()->user()->givePermissionTo('comptabilite.relances.send');
+        $parametres = [
+            'delai_niveau_1' => 7, 'delai_niveau_2' => 14, 'delai_niveau_3' => 21,
+            'montant_minimum' => 0, 'heure_envoi' => '08:00', 'relances_automatiques' => false,
+        ];
+
+        $this->postJson(route('esbtp.comptabilite.relances.config.parametres'), $parametres + ['inclure_inscriptions_inactives' => true])
+            ->assertOk();
+        $this->assertTrue(PopulationDesRelances::inclutLesInactives());
+        $this->get(route('esbtp.comptabilite.relances.config'))
+            ->assertOk()
+            ->assertSee("Relancer aussi les élèves dont l'inscription n'est plus active", false)
+            ->assertSee('inclure_inscriptions_inactives\\u0022:true', false);
+
+        $this->postJson(route('esbtp.comptabilite.relances.config.parametres'), $parametres + ['inclure_inscriptions_inactives' => false])
+            ->assertOk();
+        $this->assertFalse(PopulationDesRelances::inclutLesInactives());
+    }
+
     public function test_un_statut_absent_compte_comme_actif(): void
     {
         $requete = PopulationDesRelances::restreindre(ESBTPInscription::query(), false)->toSql();
