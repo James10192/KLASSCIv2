@@ -55,14 +55,20 @@
 .rsl-kpi-value small { font-size: .7rem; font-weight: 600; opacity: .75; margin-left: .15rem; }
 .rsl-kpi-label { font-size: .72rem; color: rgba(255,255,255,.7); margin-top: .15rem; display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .4rem; }
 .rsl-kpi-ref { font-size: .68rem; color: rgba(255,255,255,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rsl-kpi { transition: background .2s ease, box-shadow .2s ease; }
+.rsl-kpi { transition: box-shadow .2s ease; }
 /* Etat semantique (vert / orange / rouge) : la couleur porte un sens, pas un decor. */
-.rsl-kpi[data-etat="bon"] { background: rgba(16,185,129,.16); box-shadow: inset 3px 0 0 #10b981; }
-.rsl-kpi[data-etat="a_surveiller"] { background: rgba(245,158,11,.16); box-shadow: inset 3px 0 0 #f59e0b; }
-.rsl-kpi[data-etat="alerte"] { background: rgba(220,38,38,.2); box-shadow: inset 3px 0 0 #dc2626; }
+.rsl-kpi[data-etat="bon"] { box-shadow: inset 4px 0 0 #10b981; }
+.rsl-kpi[data-etat="a_surveiller"] { box-shadow: inset 4px 0 0 #f59e0b; }
+.rsl-kpi[data-etat="alerte"] { box-shadow: inset 4px 0 0 #dc2626; }
 .rsl-kpi[data-etat="bon"] .rsl-kpi-icon { background: #10b981; }
 .rsl-kpi[data-etat="a_surveiller"] .rsl-kpi-icon { background: #f59e0b; }
 .rsl-kpi[data-etat="alerte"] .rsl-kpi-icon { background: #dc2626; }
+.rsl-kpi-icon { position: relative; }
+/* Un signe en plus de la couleur (WCAG 1.4.1) : coche, point d'exclamation, croix. */
+.rsl-kpi[data-etat] .rsl-kpi-icon::after { position: absolute; right: -5px; bottom: -5px; width: 16px; height: 16px; border-radius: 50%; background: #fff; font-size: .62rem; font-weight: 800; line-height: 16px; text-align: center; box-shadow: 0 1px 3px rgba(15,23,42,.25); }
+.rsl-kpi[data-etat="bon"] .rsl-kpi-icon::after { content: '\2713'; color: #047857; }
+.rsl-kpi[data-etat="a_surveiller"] .rsl-kpi-icon::after { content: '!'; color: #b45309; }
+.rsl-kpi[data-etat="alerte"] .rsl-kpi-icon::after { content: '\00D7'; color: #b91c1c; font-size: .8rem; }
 .rsl-kpi-etat { display: inline-flex; align-items: center; gap: .3rem; padding: .12rem .45rem; border-radius: 999px; background: #fff; font-size: .62rem; font-weight: 700; line-height: 1.4; white-space: nowrap; }
 .rsl-kpi-etat::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .rsl-kpi-etat[hidden] { display: none; }
@@ -181,7 +187,7 @@
     .rsl-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-top: 1.1rem; }
     .rsl-kpi { padding: .7rem .75rem; gap: .55rem; }
     .rsl-kpi-icon { width: 32px; height: 32px; }
-    /* Sur telephone, la carte teintee et son icone portent l'etat ; le mot reste lu
+    /* Sur telephone, l'icone coloree et son signe portent l'etat ; le mot reste lu
        par les lecteurs d'ecran. */
     .rsl-kpi-etat { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; padding: 0; margin: 0; }
     .rsl-filters { padding: 1rem; }
@@ -553,10 +559,10 @@ $(document).ready(function() {
             $('#kpi-moyenne-suffixe').prop('hidden', !numerique);
         }
         if (kpis.hasOwnProperty('taux_reussite')) $('#kpi-taux-reussite').text(kpis.taux_reussite !== null ? kpis.taux_reussite + '%' : 'N/A');
-        if (kpis.etats) {
-            poserEtat('#kpi-carte-moyenne', '#kpi-moyenne-etat', kpis.etats.moyenne_generale, LIBELLES_ETAT_MOYENNE);
-            poserEtat('#kpi-carte-reussite', '#kpi-reussite-etat', kpis.etats.taux_reussite, LIBELLES_ETAT_REUSSITE);
-        }
+        // L'etat suit sa valeur : une valeur remise a vide efface aussi sa couleur.
+        var etats = kpis.etats || {};
+        if (kpis.hasOwnProperty('moyenne_generale')) poserEtat('#kpi-carte-moyenne', '#kpi-moyenne-etat', etats.moyenne_generale, LIBELLES_ETAT_MOYENNE);
+        if (kpis.hasOwnProperty('taux_reussite')) poserEtat('#kpi-carte-reussite', '#kpi-reussite-etat', etats.taux_reussite, LIBELLES_ETAT_REUSSITE);
         if (kpis.hasOwnProperty('bulletins_count')) {
             $('#kpi-bulletins').text(kpis.bulletins_count ?? 0);
             var total = kpis.total_etudiants || 0;

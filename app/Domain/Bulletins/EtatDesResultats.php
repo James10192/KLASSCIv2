@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Bulletins;
 
 use App\Helpers\SettingsHelper;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Dit si la moyenne générale et le taux de réussite de /esbtp/resultats sont
@@ -79,6 +80,31 @@ final class EtatDesResultats
         return (float) $taux >= $satisfaisant ? self::BON : self::A_SURVEILLER;
     }
 
+    /**
+     * Ce qui cloche dans trois seuils saisis, ou null. L'ecran des reglages
+     * refuse l'enregistrement plutot que de laisser la lecture retomber en
+     * silence sur les replis. Une valeur absente (reglage jamais seme) n'est
+     * pas jugee : c'est son repli qui s'applique.
+     */
+    public static function incoherence($moyenne, $reussiteBonne, $reussiteAlerte): ?string
+    {
+        if ($moyenne !== null && $moyenne !== '' && (! is_numeric($moyenne) || (float) $moyenne < self::SEUIL_REUSSITE || (float) $moyenne > 20)) {
+            return 'La moyenne affichée en vert doit être comprise entre '.self::SEUIL_REUSSITE.' et 20.';
+        }
+
+        foreach ([$reussiteBonne, $reussiteAlerte] as $taux) {
+            if ($taux !== null && $taux !== '' && (! is_numeric($taux) || (int) $taux < 0 || (int) $taux > 100)) {
+                return 'Les taux de réussite se règlent entre 0 et 100 %.';
+            }
+        }
+
+        if (is_numeric($reussiteBonne) && is_numeric($reussiteAlerte) && (int) $reussiteAlerte >= (int) $reussiteBonne) {
+            return 'Le taux de réussite affiché en rouge doit être inférieur à celui affiché en vert.';
+        }
+
+        return null;
+    }
+
     public function moyenneSatisfaisante(): float
     {
         $brut = SettingsHelper::get(self::REGLAGE_MOYENNE_SATISFAISANTE, self::MOYENNE_SATISFAISANTE_REPLI);
@@ -93,7 +119,9 @@ final class EtatDesResultats
     /**
      * Les deux seuils se lisent ensemble : un « alerte » au-dessus du
      * « satisfaisant » rendrait tout taux soit rouge soit vert, sans orange.
-     * Saisis dans le désordre, ils retombent tous deux sur leur repli.
+     * L'écran des réglages refuse ce cas (incoherence()) ; posés dans le
+     * désordre par un autre chemin, ils retombent tous deux sur leur repli, et
+     * le journal le dit.
      *
      * @return array{0: int, 1: int} [alerte, satisfaisant]
      */
@@ -103,6 +131,8 @@ final class EtatDesResultats
         $satisfaisant = $this->pourcentage(self::REGLAGE_REUSSITE_SATISFAISANTE, self::REUSSITE_SATISFAISANTE_REPLI);
 
         if ($alerte >= $satisfaisant) {
+            Log::warning('Seuils de reussite incoherents, replis appliques', compact('alerte', 'satisfaisant'));
+
             return [self::REUSSITE_ALERTE_REPLI, self::REUSSITE_SATISFAISANTE_REPLI];
         }
 

@@ -1095,6 +1095,10 @@ class ESBTPSettingsController extends Controller
             return $refus;
         }
 
+        if (($incoherence = $this->incoherenceDesSeuilsDeResultats($request)) !== null) {
+            return $this->refus($request, $incoherence);
+        }
+
         return $this->refuserCandidaturesSansAnnee($request);
     }
 
@@ -1163,6 +1167,25 @@ class ESBTPSettingsController extends Controller
         $message = ModificationDeReglages::refusAnneeCible($this->valeurSoumise($rawInput, $cle));
 
         return $message === null ? null : $this->refus($request, $message);
+    }
+
+    /**
+     * Les seuils de couleur de /esbtp/resultats se jugent ensemble, sur leur
+     * valeur apres enregistrement : la soumise, sinon celle en base.
+     */
+    private function incoherenceDesSeuilsDeResultats(Request $request): ?string
+    {
+        $rawInput = $request->all();
+        $valeur = fn (string $cle) => $this->estSoumis($rawInput, $cle)
+            ? $this->valeurSoumise($rawInput, $cle)
+            : Setting::get($cle);
+        $etat = \App\Domain\Bulletins\EtatDesResultats::class;
+
+        return $etat::incoherence(
+            $valeur($etat::REGLAGE_MOYENNE_SATISFAISANTE),
+            $valeur($etat::REGLAGE_REUSSITE_SATISFAISANTE),
+            $valeur($etat::REGLAGE_REUSSITE_ALERTE)
+        );
     }
 
     private function refus(Request $request, string $message)

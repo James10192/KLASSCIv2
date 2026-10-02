@@ -63,6 +63,16 @@ class EtatDesResultatsTest extends TestCase
         $this->assertSame(Etat::MOYENNE_SATISFAISANTE_REPLI, $etat->moyenneSatisfaisante());
     }
 
+    public function test_l_ecran_des_reglages_refuse_des_seuils_incoherents(): void
+    {
+        $this->assertNull(Etat::incoherence('12', '70', '50'));
+        $this->assertNull(Etat::incoherence(null, null, null));
+        $this->assertStringContainsString('inférieur', (string) Etat::incoherence('12', '60', '80'));
+        $this->assertStringContainsString('inférieur', (string) Etat::incoherence('12', '60', '60'));
+        $this->assertStringContainsString('entre 10 et 20', (string) Etat::incoherence('8', '70', '50'));
+        $this->assertStringContainsString('0 et 100', (string) Etat::incoherence('12', '120', '50'));
+    }
+
     private function poser(string $moyenne, string $bon, string $alerte): void
     {
         Cache::put('setting_'.Etat::REGLAGE_MOYENNE_SATISFAISANTE, $moyenne, 60);
