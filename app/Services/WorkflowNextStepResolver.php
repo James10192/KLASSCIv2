@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\ESBTPInscription;
+use App\Models\ESBTPPaiement;
 use App\Models\User;
+use App\Notifications\WorkflowNextStepNotification;
 use Illuminate\Support\Collection;
 
 /**
@@ -116,5 +119,99 @@ class WorkflowNextStepResolver
     {
         $perm = $this->nextPermission($eventType);
         return $perm !== null && $actor->can($perm);
+    }
+
+    /** L'identifiant de l'objet que vise l'etape suivante, lu dans le contexte. */
+    public function objetVise(string $eventType, array $context): ?int
+    {
+        $key = self::NEXT_STEPS[$eventType]['param_key'] ?? null;
+        if (! $key) {
+            return null;
+        }
+        $value = $context[$key] ?? $context[str_replace('_id', '', $key)] ?? null;
+
+        return $value === null ? null : (int) $value;
+    }
+
+    /**
+     * Clot les avis « etape suivante » de cette personne dont l'etape est deja
+     * faite, et rend le nombre d'avis encore a faire.
+     *
+     * Lu dans l'ETAT des objets, pas dans les evenements : valider en masse,
+     * valider rapidement, rejeter, valider definitivement… ne declenchent pas
+     * tous un evenement, et l'avis, envoye par la file d'attente, peut arriver
+     * apres que l'etape a ete faite. Sans cela, /messages et le badge du menu
+     * montraient « Valider ce paiement » pour un paiement deja valide.
+     */
+    public function clotureLesEtapesFaites(User $personne): int
+    {
+        $avis = $personne->unreadNotifications()
+            ->where('type', WorkflowNextStepNotification::class)
+            ->latest()
+            ->limit(200)
+            ->get();
+        if ($avis->isEmpty()) {
+            return 0;
+        }
+
+        $etat = $this->etatDes($avis);
+        $faits = $avis->filter(fn ($a) => $this->etapeFaite((array) $a->data, $etat));
+        if ($faits->isNotEmpty()) {
+            $personne->unreadNotifications()->whereIn('id', $faits->pluck('id'))->update(['read_at' => now()]);
+        }
+
+        return $avis->count() - $faits->count();
+    }
+
+    /**
+     * L'etat des objets vises par ces avis, en trois requetes au plus.
+     *
+     * @return array{paiements: array<int,string>, inscriptions: array<int,object>, payees: array<int,bool>}
+     */
+    private function etatDes(Collection $avis): array
+    {
+        $ids = ['paiement.created' => [], 'inscription.created' => [], 'paiement.validated' => []];
+        foreach ($avis as $a) {
+            $type = (string) ($a->data['type'] ?? '');
+            $id = $this->objetVise($type, (array) ($a->data['context'] ?? []));
+            if ($id !== null && isset($ids[$type])) {
+                $ids[$type][] = $id;
+            }
+        }
+        $inscriptions = array_unique(array_merge($ids['inscription.created'], $ids['paiement.validated']));
+
+        return [
+            'paiements' => $ids['paiement.created']
+                ? ESBTPPaiement::whereIn('id', $ids['paiement.created'])->pluck('status', 'id')->all() : [],
+            'inscriptions' => $inscriptions
+                ? ESBTPInscription::whereIn('id', $inscriptions)->get(['id', 'status', 'workflow_step'])->keyBy('id')->all() : [],
+            'payees' => $ids['inscription.created']
+                // Un paiement rejete n'a rien encaisse : l'etape reste a faire.
+                ? array_fill_keys(ESBTPPaiement::whereIn('inscription_id', $ids['inscription.created'])
+                    ->where('status', '!=', 'rejeté')->distinct()->pluck('inscription_id')->all(), true) : [],
+        ];
+    }
+
+    /** L'etape que demande cet avis est-elle deja faite ? Un objet disparu compte pour fait. */
+    private function etapeFaite(array $data, array $etat): bool
+    {
+        $type = (string) ($data['type'] ?? '');
+        $id = $this->objetVise($type, (array) ($data['context'] ?? []));
+        if ($id === null) {
+            return false;
+        }
+
+        return match ($type) {
+            // « Valider ce paiement » : fait des qu'il n'est plus en attente (valide, rejete) ou n'existe plus.
+            'paiement.created' => ($etat['paiements'][$id] ?? null) !== 'en_attente',
+            // « Encaisser un paiement » : fait des qu'un paiement existe, ou que l'inscription est validee.
+            'inscription.created' => ! isset($etat['inscriptions'][$id])
+                || isset($etat['payees'][$id])
+                || $etat['inscriptions'][$id]->workflow_step === 'etudiant_cree',
+            // « Valider l'inscription » : fait quand elle l'est, ou qu'elle n'existe plus.
+            'paiement.validated' => ! isset($etat['inscriptions'][$id])
+                || $etat['inscriptions'][$id]->workflow_step === 'etudiant_cree',
+            default => false,
+        };
     }
 }

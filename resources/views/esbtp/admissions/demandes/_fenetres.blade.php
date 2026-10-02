@@ -38,6 +38,7 @@
                 </span>
                 <span class="dmi-champ-erreur" x-text="reins.erreurs.decision" x-show="reins.erreurs.decision"></span>
             </div>
+            @include('esbtp.admissions.demandes._question-redoublant', ['ctx' => 'reins'])
             <div class="dmi-champ" style="margin-top:.9rem">Statut d'affectation
                 <div class="dmi-choix" role="radiogroup" aria-label="Statut d'affectation">
                     <template x-for="opt in Object.entries(cfg.affectations || {})" :key="'af' + opt[0]">

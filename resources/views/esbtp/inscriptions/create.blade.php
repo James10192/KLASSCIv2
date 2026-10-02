@@ -611,6 +611,7 @@
                             </span>
                         </div>
                     </div>
+                    @include('esbtp.inscriptions.partials.question-redoublant')
                 </div>
             </div>
 
