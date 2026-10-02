@@ -21,6 +21,10 @@ class ESBTPReinscriptionController extends Controller
     protected $reinscriptionService;
     protected FuzzyNameMatcher $matcher;
 
+    private bool $anneeAReSolderLue = false;
+
+    private ?\App\Models\ESBTPAnneeUniversitaire $anneeAReSolderMemo = null;
+
     public function __construct(
         ReeinscriptionService $reinscriptionService,
         FuzzyNameMatcher $matcher,
@@ -78,12 +82,19 @@ class ESBTPReinscriptionController extends Controller
      */
     private function anneeAReSolder(): ?\App\Models\ESBTPAnneeUniversitaire
     {
+        // Lue une fois par requete : la liste l'interrogeait pour chaque ligne
+        // affichee, deux requetes par etudiant pour une reponse identique.
+        if ($this->anneeAReSolderLue) {
+            return $this->anneeAReSolderMemo;
+        }
+        $this->anneeAReSolderLue = true;
+
         $courante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         if (! $courante) {
-            return null;
+            return $this->anneeAReSolderMemo = null;
         }
 
-        return \App\Models\ESBTPAnneeUniversitaire::where('end_date', '<', $courante->start_date)
+        return $this->anneeAReSolderMemo = \App\Models\ESBTPAnneeUniversitaire::where('end_date', '<', $courante->start_date)
             ->orderBy('end_date', 'desc')
             ->first();
     }
@@ -172,12 +183,11 @@ class ESBTPReinscriptionController extends Controller
         // aurait suffi d'en corriger une pour que l'ecran se contredise selon
         // qu'il charge la liste d'un coup ou au fil du defilement.
         $anneePrecedente = $this->anneeAReSolder();
+        // Pas de paiements charges avec l'inscription : le solde se lit en
+        // agregats SQL (SoldeDeReinscription), la relation n'etait jamais lue.
         $inscription = $anneePrecedente
             ? $etudiant->inscriptions()
                 ->where('annee_universitaire_id', $anneePrecedente->id)
-                ->with(['paiements' => function($query) {
-                    $query->where('status', 'validé');
-                }])
                 ->latest()
                 ->first()
             : null;
