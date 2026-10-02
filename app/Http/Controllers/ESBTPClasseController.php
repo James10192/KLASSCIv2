@@ -856,6 +856,9 @@ class ESBTPClasseController extends Controller
             return response()->json([
                 "success" => true,
                 "message" => "La classe a été mise à jour avec succès.",
+                // La carte rafraichie part avec la reponse : un aller-retour de
+                // moins quand on modifie plusieurs classes a la suite.
+                "html" => $this->carteHtml($classe),
                 "classe" => [
                     "id" => $classe->id,
                     "name" => $classe->name,
@@ -887,26 +890,7 @@ class ESBTPClasseController extends Controller
     public function refreshLigne(ESBTPClasse $classe)
     {
         try {
-            // Charger toutes les relations nécessaires
-            // parcours.mention.domaine pour le tree LMD compact dans la card (cf classe-card.blade.php)
-            $classe->load(["filiere.parent", "niveau", "annee", "parcours.mention.domaine"]);
-
-            // Permissions hoisted ici comme dans items.blade.php — sinon classe-card.blade.php
-            // crash avec "Undefined variable $canManageSchool" (bug pré-existant exposé par
-            // le refresh AJAX d'une ligne après action).
-            $u = auth()->user();
-            $cardPerms = [
-                'canAdmin'         => $u->can('admin.access'),
-                'canEditClasse'    => $u->can('classes.edit'),
-                'canDeleteClasse'  => $u->can('classes.delete'),
-                'canManageSchool'  => $u->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']),
-                'canTeach'         => $u->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.teach', 'identity.coordinate']),
-            ];
-
-            // Rendu de la partial classe-card
-            $html = view("esbtp.classes.partials.classe-card", array_merge([
-                "classe" => $classe,
-            ], $cardPerms))->render();
+            $html = $this->carteHtml($classe);
 
             \Log::info("Carte classe rafraîchie avec succès", [
                 "classe_id" => $classe->id,
@@ -936,6 +920,28 @@ class ESBTPClasseController extends Controller
                 500,
             );
         }
+    }
+
+    /**
+     * La carte d'une classe, telle que la liste l'affiche.
+     */
+    private function carteHtml(ESBTPClasse $classe): string
+    {
+        // parcours.mention.domaine pour le tree LMD compact dans la card (cf classe-card.blade.php)
+        $classe->load(["filiere.parent", "niveau", "annee", "parcours.mention.domaine"]);
+
+        // Permissions hoisted ici comme dans items.blade.php — sinon classe-card.blade.php
+        // crash avec "Undefined variable $canManageSchool".
+        $u = auth()->user();
+
+        return view("esbtp.classes.partials.classe-card", [
+            "classe" => $classe,
+            'canAdmin'         => $u->can('admin.access'),
+            'canEditClasse'    => $u->can('classes.edit'),
+            'canDeleteClasse'  => $u->can('classes.delete'),
+            'canManageSchool'  => $u->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']),
+            'canTeach'         => $u->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.teach', 'identity.coordinate']),
+        ])->render();
     }
 
     /**
