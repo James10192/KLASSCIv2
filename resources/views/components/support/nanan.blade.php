@@ -4,8 +4,9 @@
     Inclus par le lanceur du support, qui ne le rend que si KLASSCI Care est
     ouvert à l'instance. Il intercepte les boutons `data-support-ouvrir` (menu du
     compte, feuille mobile, page d'erreur) avant le formulaire classique. Une
-    capture d'écran se joint ensuite depuis la page de la demande (« Ajouter une
-    capture d'écran », après l'envoi).
+    capture d'écran se joint dans la fenêtre même : page capturée, image collée
+    (Ctrl+V), déposée ou choisie (nanan-capture.blade.php), puis jointe à la
+    demande une fois créée.
 
     Parcours : accueil (quatre choix + saisie libre) → conversation (une question
     à la fois, le serveur décide : modèle ou questions scriptées) → récapitulatif
@@ -20,8 +21,10 @@
     $_nspConfig = [
         'tour' => route('chatbot.support.tour'),
         'prenom' => $prenom,
+        'pasResolu' => \App\Domain\Assistant\Support\FilDeSupport::PAS_RESOLU,
     ];
 @endphp
+@include('components.support.nanan-capture')
 <script>
 /* Lien direct ?signaler=1 (page d'erreur, courriel) : le formulaire classique
    l'ouvrirait au chargement, avant que Nanan soit prête. On le retient une fois,
@@ -49,7 +52,7 @@ if (typeof window.klassciNananSupport !== 'function') {
             });
         }
 
-        return {
+        var etat = {
             ouvert: false,
             vue: 'accueil',
             intention: null,
@@ -207,6 +210,13 @@ if (typeof window.klassciNananSupport !== 'function') {
                 this.cle = null;
                 this.resultat = null;
                 this.verification = { etat: 'repos', message: '' };
+                if (this.retirerCapture) {
+                    this.retirerCapture();
+                    this.captureAvis = '';
+                    this.captureMessage = '';
+                    this.captureEchec = false;
+                    this.captureReference = null;
+                }
                 var self = this;
                 this.$nextTick(function () { self.focaliser(); });
             },
@@ -226,7 +236,8 @@ if (typeof window.klassciNananSupport !== 'function') {
                 var bas = texte.toLowerCase();
                 if (/(id[ée]e|suggestion|j'aimerais|ce serait bien|il faudrait|pourrait-on ajouter)/.test(bas)) {
                     this.intention = 'idee';
-                } else if (/^(comment|o[uù] |est-ce que|peut-on|puis-je|je voudrais savoir|quelle|quel )/.test(bas) || /\?\s*$/.test(texte)) {
+                } else if (/^(comment|o[uù] |est-ce que|peut-on|puis-je|je voudrais savoir|quelle|quel )/.test(bas)
+                    || /je ne (sais|vois|trouve) pas (comment|o[uù])|comment (faire|on |je |proc[ée]der)/.test(bas) || /\?\s*$/.test(texte)) {
                     this.intention = 'comment';
                 } else {
                     this.intention = 'probleme';
@@ -264,7 +275,8 @@ if (typeof window.klassciNananSupport !== 'function') {
             },
 
             pasResolu() {
-                this.fil.push({ role: 'personne', texte: "Non, ça n'a pas résolu mon problème." });
+                /* Texte exact attendu par le serveur (FilDeSupport::PAS_RESOLU) : il y reconnaît la réponse écartée. */
+                this.fil.push({ role: 'personne', texte: this.config.pasResolu || "Non, ça n'a pas résolu mon problème." });
                 this.dernierType = null;
                 /* Un problème mérite encore une ou deux questions ; une question d'usage part telle quelle. */
                 this.tour(this.intention !== 'probleme');
@@ -313,7 +325,8 @@ if (typeof window.klassciNananSupport !== 'function') {
             },
 
             recevoir(tour) {
-                this.fil.push({ role: 'nanan', texte: tour.texte });
+                /* Le type part avec le fil : une réponse de Nanan n'entre jamais dans la demande. */
+                this.fil.push({ role: 'nanan', texte: tour.texte, type: tour.action });
                 this.choix = tour.choix || [];
                 this.dernierType = tour.action;
                 if (tour.action === 'recapitulatif' && tour.recap) {
@@ -458,6 +471,7 @@ if (typeof window.klassciNananSupport !== 'function') {
                 };
                 this.oublier();
                 this.vue = 'envoye';
+                if (this.capture) { this.joindreCapture(enAttente ? null : (corps.reference || null)); }
                 if (typeof window.mToast === 'function') { window.mToast(enAttente ? 'Demande enregistrée' : 'Demande envoyée', 'success'); }
                 document.dispatchEvent(new CustomEvent('support:demande-envoyee', { detail: corps }));
                 var self = this;
@@ -495,11 +509,16 @@ if (typeof window.klassciNananSupport !== 'function') {
                 });
             }
         };
+
+        return typeof window.klassciNananCapture === 'function' ? Object.assign(etat, window.klassciNananCapture()) : etat;
     };
 }
 </script>
 
-<div class="nsp-root" x-data="klassciNananSupport()" x-on:keydown.escape.window="ouvert && fermer()">
+{{-- data-support-exclure : « Capturer cette page » rend la page SOUS la fenêtre, jamais Nanan. --}}
+<div class="nsp-root" x-data="klassciNananSupport()" data-support-exclure
+     x-on:keydown.escape.window="ouvert && (vue === 'capture' ? abandonnerCapture() : fermer())"
+     x-on:paste="ouvert && surCollage && surCollage($event)">
     <script type="application/json" data-nsp-config>@json($_nspConfig)</script>
 
     <div class="nsp-voile" x-show="ouvert" x-cloak x-transition.opacity x-on:click="fermer()" aria-hidden="true"></div>
@@ -510,8 +529,8 @@ if (typeof window.klassciNananSupport !== 'function') {
 
         <header class="nsp-tete">
             {{-- La flèche ne vide jamais une conversation commencée : « Recommencer », en bas, demande confirmation. --}}
-            <button type="button" class="nsp-icone-btn" x-show="vue === 'recap' || (vue === 'conversation' && !aParle())"
-                    x-on:click="vue === 'recap' ? (vue = 'conversation') : recommencer()" aria-label="Revenir en arrière">
+            <button type="button" class="nsp-icone-btn" x-show="vue === 'recap' || vue === 'capture' || (vue === 'conversation' && !aParle())"
+                    x-on:click="vue === 'capture' ? abandonnerCapture() : (vue === 'recap' ? (vue = 'conversation') : recommencer())" aria-label="Revenir en arrière">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i>
             </button>
             <span class="nsp-avatar" x-bind:class="{ 'nsp-avatar--pense': attente }" aria-hidden="true">
@@ -609,6 +628,7 @@ if (typeof window.klassciNananSupport !== 'function') {
                         <button type="button" class="nsp-lien" x-on:click="recommencer()">Oui</button>
                         <button type="button" class="nsp-lien" x-on:click="confirmerEffacer = false">Non</button>
                     </span>
+                    <span class="nsp-capture-puce" x-show="capture" x-cloak><i class="fas fa-image" aria-hidden="true"></i>Capture prête</span>
                     <button type="button" class="nsp-lien nsp-lien--recap" x-show="peutRecapituler() && dernierType === 'question'" x-on:click="tour(true)">
                         J'ai tout dit, préparer ma demande <i class="fas fa-arrow-right" aria-hidden="true"></i>
                     </button>
@@ -653,8 +673,12 @@ if (typeof window.klassciNananSupport !== 'function') {
                 </template>
             </div>
 
+            @include('components.support.nanan-capture-bloc')
+
             <p class="nsp-note"><i class="fas fa-shield-halved" aria-hidden="true"></i>
-                Nous joignons votre échange avec Nanan, le nom technique de l'écran ouvert et un code de suivi. Ni le titre ni le contenu de la page ne sont transmis.
+                <span x-text="capture
+                    ? 'Nous joignons votre échange avec Nanan, le nom technique de l\'écran ouvert, un code de suivi et la capture que vous avez vérifiée.'
+                    : 'Nous joignons votre échange avec Nanan, le nom technique de l\'écran ouvert et un code de suivi. Ni le titre ni le contenu de la page ne sont transmis.'"></span>
                 <button type="button" class="nsp-lien" x-show="transcription" x-on:click="voirTranscription = !voirTranscription"
                         x-text="voirTranscription ? 'Masquer l\'échange' : 'Voir l\'échange joint'"></button>
             </p>
@@ -669,6 +693,8 @@ if (typeof window.klassciNananSupport !== 'function') {
                 </button>
             </div>
         </div>
+
+        @include('components.support.nanan-capture-editeur')
 
         {{-- Envoyée --}}
         <div class="nsp-corps nsp-fin" x-show="vue === 'envoye'">
@@ -690,8 +716,13 @@ if (typeof window.klassciNananSupport !== 'function') {
                    x-bind:class="verification.etat === 'erreur' ? 'nsp-verifier-message--erreur' : ''" role="status"></p>
             </div>
 
+            <p class="nsp-fin-texte nsp-capture-avis" x-show="captureAvis" role="status">
+                <span x-text="captureAvis"></span>
+                <button type="button" class="nsp-lien" x-show="peutReessayerCapture()" x-on:click="joindreCapture(captureReference)">Réessayer</button>
+            </p>
+
             <div class="nsp-actions nsp-actions--centre">
-                <a class="nsp-btn nsp-btn--secondaire" x-show="resultat && resultat.capture" x-bind:href="resultat && resultat.capture ? resultat.capture : '#'">
+                <a class="nsp-btn nsp-btn--secondaire" x-show="resultat && resultat.capture && !captureAvis" x-bind:href="resultat && resultat.capture ? resultat.capture : '#'">
                     <i class="fas fa-camera" aria-hidden="true"></i> Ajouter une capture d'écran
                 </a>
                 <a class="nsp-btn nsp-btn--secondaire" x-show="resultat && resultat.suivi" x-bind:href="resultat ? resultat.suivi : '#'">Suivre ma demande</a>
@@ -823,6 +854,36 @@ if (typeof window.klassciNananSupport !== 'function') {
     .nsp-btn--primaire:hover { background: #033a8e; color: #fff; }
     .nsp-btn--primaire:disabled { opacity: .55; cursor: not-allowed; }
     .nsp-btn--secondaire { background: #fff; color: #0453cb; border-color: #bfd3f2; }
+
+    /* Capture jointe (nanan-capture-bloc / -editeur) */
+    .nsp-capture { margin-top: .9rem; padding: .8rem; border: 1px dashed #bfd3f2; border-radius: 12px; background: rgba(4,83,203,.025); transition: background .15s ease, border-color .15s ease; }
+    .nsp-capture--survol { background: rgba(4,83,203,.08); border-color: #0453cb; }
+    .nsp-capture-titre { margin-top: 0; }
+    .nsp-capture-titre span { font-weight: 500; color: #64748b; margin-left: .25rem; }
+    .nsp-capture-choix { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .nsp-capture-choix .nsp-btn { flex: 1 1 auto; justify-content: center; }
+    .nsp-capture-fichier { position: relative; cursor: pointer; }
+    .nsp-capture-fichier input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .nsp-capture-fichier:focus-within { outline: 2px solid #0453cb; outline-offset: 2px; }
+    .nsp-capture-astuce { margin: .5rem 0 0; }
+    .nsp-capture-astuce kbd { font-size: .7rem; padding: .05rem .3rem; border-radius: 4px; background: #fff; color: #1e293b; border: 1px solid #cbd5e1; box-shadow: none; }
+    .nsp-capture-jointe { display: flex; align-items: center; gap: .7rem; }
+    .nsp-capture-jointe img { width: 72px; height: 48px; object-fit: cover; object-position: top; border-radius: 6px; border: 1px solid #e2e8f0; }
+    .nsp-capture-jointe-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: .82rem; }
+    .nsp-capture-jointe-texte span { color: #64748b; font-size: .75rem; }
+    .nsp-capture-puce { display: inline-flex; align-items: center; gap: .3rem; font-size: .75rem; color: #0453cb; background: rgba(4,83,203,.08); border-radius: 999px; padding: .15rem .55rem; }
+    .nsp-capture-avis { font-size: .82rem; }
+    .nsp-corps--capture .sp-toile { max-height: 46vh; }
+    /* Une seule ligne d'outils, qui défile si la fenêtre est étroite : l'image garde la place. */
+    .nsp-corps--capture .sp-outils { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: .15rem; }
+    .nsp-corps--capture .sp-outils::-webkit-scrollbar { display: none; }
+    .nsp-corps--capture .sp-outil { flex-shrink: 0; }
+    /* Sur téléphone, la ligne ne tient pas : « Taille réelle » et « Annuler » passent dessous, en icônes, alignés à droite. */
+    @media (max-width: 576px) {
+        .nsp-corps--capture .sp-outils { flex-wrap: wrap; overflow-x: visible; }
+        .nsp-corps--capture .sp-outil--icone span { display: none; }
+        .nsp-corps--capture .sp-outil--droite { margin-left: auto; }
+    }
     .nsp-btn--secondaire:hover { border-color: #0453cb; color: #0453cb; }
 
     .nsp-fin { text-align: center; padding-top: 1.75rem; }

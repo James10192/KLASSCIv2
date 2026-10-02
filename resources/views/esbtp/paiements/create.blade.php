@@ -3,7 +3,7 @@
 @section('title', 'Nouveau Paiement - KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .pc-page {
         --pc-primary: #0453cb;

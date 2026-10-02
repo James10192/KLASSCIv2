@@ -2,6 +2,7 @@
 
 namespace App\Actions\Comptabilite;
 
+use App\Domain\Comptabilite\Relances\PopulationDesRelances;
 use App\DTOs\Comptabilite\ComptabiliteFilters;
 use App\Enums\ModePaiement;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -43,12 +44,15 @@ class BuildDashboardDataAction
      */
     public function __invoke(ComptabiliteFilters $filters, ?ESBTPAnneeUniversitaire $annee): array
     {
+        // Le reglage des relances change le compteur « a relancer » : il est
+        // dans la cle, sinon le changement n'apparaitrait qu'a expiration.
         $cacheKey = sprintf(
-            'dashboard_compta_v2_%s_%s_%s_%s',
+            'dashboard_compta_v2_%s_%s_%s_%s_r%d',
             $filters->anneeId ?? 'all',
             $filters->filiereId ?? 'all',
             $filters->classeId ?? 'all',
             $annee?->id ?? 'none',
+            (int) PopulationDesRelances::inclutLesInactives(),
         );
 
         return Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($filters, $annee) {
@@ -134,6 +138,9 @@ class BuildDashboardDataAction
             'countOverdue' => $countOverdueTotal,
             'countToValidate' => $countPartiallyPaid,
             'countOverdueTotal' => $countOverdueTotal,
+            // Ceux que la liste des relances montre (PopulationDesRelances).
+            'countARelancer' => (int) $analyse['aRelancer']['count'],
+            'totalARelancer' => (float) $analyse['aRelancer']['amount'],
             'countValidatedToday' => $aujourdhui['count'],
             'totalValidatedToday' => $aujourdhui['total'],
             'totalPaidYesterday' => $hier['total'],

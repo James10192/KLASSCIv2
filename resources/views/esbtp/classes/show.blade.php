@@ -3,7 +3,7 @@
 @section('title', 'Détails de la classe ' . $classe->name . ' - KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 /* =====================================================================
    CLASSES SHOW — namespace cs-*

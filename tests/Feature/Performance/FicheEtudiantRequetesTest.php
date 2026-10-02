@@ -123,6 +123,13 @@ class FicheEtudiantRequetesTest extends TestCase
         $ids = $camarades->pluck('id')->push($oriente->id)->map(fn ($id) => (int) $id)->all();
         $service = fn () => app(BtsCurrentResultSnapshotService::class);
 
+        // Chaque calcul part d'un conteneur neuf : `BtsAnnualClassMapResolver`,
+        // `BtsPhaseResolver` et le compteur de cohorte sont `scoped`, donc
+        // partages par tous les appels d'un meme test. Sans cela, le calcul
+        // unitaire relirait la carte des classes que le calcul groupe a deja
+        // posee (`prechargerPourCohorte()`), et ne la confronterait jamais a
+        // celle que `resolveUncached()` aurait elue.
+        $this->app->forgetScopedInstances();
         $this->assertNotSame(
             $classeId,
             (int) app(BtsAnnualClassMapResolver::class)
@@ -131,8 +138,10 @@ class FicheEtudiantRequetesTest extends TestCase
         );
 
         foreach (['annuel', 'semestre1', 'semestre2'] as $periode) {
+            $this->app->forgetScopedInstances();
             $groupes = $service()->getPeriodeSnapshotsPourCohorte($ids, $classeId, $this->annee->id, $periode);
             foreach ($ids as $id) {
+                $this->app->forgetScopedInstances();
                 $this->assertSame(
                     $service()->getPeriodeSnapshot($id, $classeId, $this->annee->id, $periode),
                     $groupes[$id],

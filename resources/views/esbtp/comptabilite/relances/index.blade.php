@@ -684,6 +684,7 @@
         \App\Models\ESBTPRelance::STATUT_PLANIFIEE => ['Planifié', 'info', 'planifié'],
         \App\Models\ESBTPRelance::STATUT_ECHEC     => ['À renvoyer', 'bad', 'échec'],
         \App\Models\ESBTPRelance::STATUT_INTENT    => ['Non confirmé', 'warn', 'ouvert'],
+        \App\Models\ESBTPRelance::STATUT_ECARTEE   => ['Écarté', 'mute', 'écarté'],
     ];
     $rlmQuand = function ($date): string {
         if (! $date) return 'sans date';

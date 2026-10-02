@@ -1,646 +1,306 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard Service Technique - African Digit Consulting')
+@section('title', 'Service technique - KLASSCI')
 
-@section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@push('styles')
 <style>
-    .service-technique-header {
-        background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);
-        border-radius: 12px;
-        padding: 2rem;
-        margin-bottom: 2rem;
-        color: white;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .service-technique-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 100px;
-        height: 100%;
-        background: rgba(255,255,255,0.1);
-        transform: skewX(-15deg);
-        transform-origin: top;
-    }
-
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .stat-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.5rem;
-        border: 2px solid #e5e7eb;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-        min-height: 160px;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        border-radius: 12px 12px 0 0;
-    }
-
-    .stat-card.primary::before { background: #2563eb; }
-    .stat-card.success::before { background: #10b981; }
-    .stat-card.info::before { background: #0ea5e9; }
-    .stat-card.warning::before { background: #f59e0b; }
-    .stat-card.danger::before { background: #ef4444; }
-
-    .stat-card:hover {
-        border-color: #0ea5e9;
-        box-shadow: 0 8px 25px rgba(33, 150, 243, 0.15);
-        transform: translateY(-2px);
-    }
-
-    .stat-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        color: white;
-        margin-bottom: 1rem;
-        flex-shrink: 0;
-    }
-
-    .stat-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        background: linear-gradient(135deg, #0ea5e9, #2563eb);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        line-height: 1.2;
-    }
-
-    .stat-label {
-        color: #6b7280;
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-        font-size: 1rem;
-        line-height: 1.4;
-    }
-
-    .stat-sublabel {
-        font-size: 0.85rem;
-        color: #9ca3af;
-        line-height: 1.3;
-        margin-top: auto;
-    }
-
-    .paywall-status {
-        background: white;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        border: 2px solid #e5e7eb;
-    }
-
-    .status-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
-
-    .status-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 1rem;
-        font-size: 1.25rem;
-        color: white;
-    }
-
-    .status-icon.success { background: #10b981; }
-    .status-icon.warning { background: #f59e0b; }
-    .status-icon.danger { background: #ef4444; }
-
-    .quick-actions {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-
-    .action-card {
-        background: white;
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 1.5rem;
-        text-align: center;
-        transition: all 0.3s ease;
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .action-card:hover {
-        border-color: #0ea5e9;
-        box-shadow: 0 8px 25px rgba(33, 150, 243, 0.15);
-        transform: translateY(-2px);
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .action-icon {
-        width: 70px;
-        height: 70px;
-        border-radius: 15px;
-        background: linear-gradient(135deg, #0ea5e9, #2563eb);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto 1rem;
-        font-size: 1.75rem;
-        color: white;
-    }
-
-    .action-title {
-        font-weight: 600;
-        margin-bottom: 0.5rem;
-        color: #1f2937;
-    }
-
-    .action-description {
-        font-size: 0.9rem;
-        color: #6b7280;
-    }
-
-    .emergency-codes {
-        background: #fff8dc;
-        border: 2px solid #f59e0b;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin-top: 2rem;
-    }
-
-    .emergency-codes h5 {
-        color: #f59e0b;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-    }
-
-    .code-item {
-        background: white;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 1rem;
-        margin-bottom: 0.75rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .code-value {
-        font-family: monospace;
-        font-weight: 600;
-        color: #2563eb;
-    }
-
-    .code-expiry {
-        font-size: 0.85rem;
-        color: #9ca3af;
-    }
-
-    .etablissements-section {
-        background: white;
-        border-radius: 12px;
-        padding: 0;
-        border: 2px solid #e5e7eb;
-        overflow: hidden;
-    }
-
-    .etablissements-header {
-        background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-        padding: 1.5rem;
-        border-bottom: 1px solid #e5e7eb;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-
-    .etablissements-title {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: #1f2937;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .etablissements-count {
-        background: #0ea5e9;
-        color: white;
-        padding: 0.25rem 0.75rem;
-        border-radius: 25px;
-        font-size: 0.85rem;
-        font-weight: 600;
-    }
-
-    .etablissement-card {
-        padding: 1.5rem;
-        border-bottom: 1px solid #f3f4f6;
-        transition: all 0.3s ease;
-    }
-
-    .etablissement-card:last-child {
-        border-bottom: none;
-    }
-
-    .etablissement-card:hover {
-        background: #f8fafc;
-    }
-
-    .etablissement-main {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 1rem;
-    }
-
-    .etablissement-info {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .etablissement-icon {
-        width: 50px;
-        height: 50px;
-        background: linear-gradient(135deg, #0ea5e9, #2563eb);
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        color: white;
-        flex-shrink: 0;
-    }
-
-    .etablissement-details h4 {
-        margin: 0 0 0.25rem 0;
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #1f2937;
-    }
-
-    .etablissement-subtitle {
-        font-size: 0.9rem;
-        color: #6b7280;
-        margin: 0;
-    }
-
-    .etablissement-status {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .status-badge {
-        padding: 0.25rem 0.75rem;
-        border-radius: 25px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .status-badge.active {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .status-badge.inactive {
-        background: #f3f4f6;
-        color: #6b7280;
-    }
-
-    .etablissement-meta {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-
-    .meta-item {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .meta-label {
-        font-size: 0.75rem;
-        color: #6b7280;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 0.25rem;
-        font-weight: 600;
-    }
-
-    .meta-value {
-        font-weight: 600;
-        color: #1f2937;
-    }
-
-    .meta-value code {
-        background: #f1f5f9;
-        color: #0ea5e9;
-        padding: 0.25rem 0.5rem;
-        border-radius: 6px;
-        font-size: 0.85rem;
-    }
-
-    .etablissement-actions {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-
-    .action-btn {
-        padding: 0.5rem 1rem;
-        border-radius: 8px;
-        text-decoration: none;
-        font-size: 0.85rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        border: 1px solid transparent;
-    }
-
-    .action-btn.primary {
-        background: #0ea5e9;
-        color: white;
-    }
-
-    .action-btn.primary:hover {
-        background: #0284c7;
-        color: white;
-        text-decoration: none;
-    }
-
-    .action-btn.secondary {
-        background: #f1f5f9;
-        color: #0ea5e9;
-        border-color: #e2e8f0;
-    }
-
-    .action-btn.secondary:hover {
-        background: #0ea5e9;
-        color: white;
-        text-decoration: none;
-    }
-
-    @media (max-width: 768px) {
-        .stats-grid {
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-
-        .stat-card {
-            min-height: 140px;
-            padding: 1.25rem;
-        }
-
-        .quick-actions {
-            grid-template-columns: 1fr;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-        }
-
-        .stat-label {
-            font-size: 0.9rem;
-        }
-
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            margin-bottom: 0.75rem;
-        }
-    }
+.dst { --dst-primary:#0453cb; --dst-primary-d:#033a8e; --dst-dark:#0f172a; --dst-text:#1e293b; --dst-muted:#64748b; --dst-border:#e2e8f0; --dst-surface:#f8fafc; color:var(--dst-text); max-width:1320px; margin:0 auto; padding:clamp(1rem,2.5vw,1.5rem) clamp(.75rem,2.5vw,1.5rem) 2rem; overflow-x:clip; }
+.dst *, .dst *::before, .dst *::after { box-sizing:border-box; }
+.dst-hero { background:linear-gradient(135deg,#0a3d8f 0%,#0453cb 40%,#3b7ddb 100%); border-radius:18px; padding:clamp(1.25rem,3vw,2rem) clamp(1rem,3vw,2.5rem) clamp(1.1rem,2.5vw,1.5rem); color:#fff; margin-bottom:1.25rem; box-shadow:0 8px 30px rgba(4,83,203,.18); }
+.dst-hero-top { display:flex; align-items:flex-start; justify-content:space-between; flex-wrap:wrap; gap:1rem; }
+.dst-hero-left { display:flex; align-items:center; gap:1rem; min-width:0; flex:1 1 auto; }
+.dst-hero-icon { width:52px; height:52px; border-radius:14px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.15); display:flex; align-items:center; justify-content:center; font-size:1.35rem; flex-shrink:0; }
+.dst-hero h1 { font-size:clamp(1.15rem,2.6vw,1.45rem); font-weight:700; color:#fff; margin:0; line-height:1.25; }
+.dst-hero p { color:rgba(255,255,255,.75); font-size:.88rem; margin:.2rem 0 0; }
+.dst-hero-actions { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; }
+.dst-pill { display:inline-flex; align-items:center; gap:.4rem; font-size:.74rem; font-weight:600; padding:.32rem .7rem; border-radius:999px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); white-space:nowrap; }
+.dst-pill-dot { width:8px; height:8px; border-radius:50%; background:#fff; }
+.dst-pill--ok .dst-pill-dot { background:#6ee7b7; }
+.dst-pill--ko .dst-pill-dot { background:#fca5a5; }
+.dst-btn { display:inline-flex; align-items:center; justify-content:center; gap:.45rem; border-radius:10px; padding:.55rem 1rem; font-size:.82rem; font-weight:600; border:1px solid transparent; text-decoration:none; transition:all .2s ease; white-space:nowrap; }
+.dst-btn--white { background:#fff; color:var(--dst-primary); }
+.dst-btn--white:hover { background:#eef4fd; color:var(--dst-primary-d); }
+.dst-btn--glass { background:rgba(255,255,255,.15); color:#fff; border-color:rgba(255,255,255,.22); }
+.dst-btn--glass:hover { background:rgba(255,255,255,.24); color:#fff; }
+.dst-kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); gap:.75rem; margin-top:1.4rem; }
+.dst-kpi { display:block; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); border-radius:12px; padding:.85rem 1rem; color:#fff; text-decoration:none; min-width:0; transition:background .2s ease; }
+a.dst-kpi:hover { background:rgba(255,255,255,.18); color:#fff; }
+.dst-kpi-label { font-size:.7rem; letter-spacing:.04em; text-transform:uppercase; color:rgba(255,255,255,.7); font-weight:600; }
+.dst-kpi-value { font-size:clamp(1.05rem,2.6vw,1.45rem); font-weight:700; margin-top:.25rem; line-height:1.2; }
+.dst-kpi-sub { font-size:.74rem; color:rgba(255,255,255,.75); margin-top:.15rem; line-height:1.35; }
+.dst-layout { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:1rem; align-items:start; }
+.dst-card { background:#fff; border:1px solid var(--dst-border); border-radius:14px; box-shadow:0 1px 3px rgba(15,23,42,.04),0 1px 2px rgba(15,23,42,.06); padding:1.1rem; min-width:0; }
+.dst-card + .dst-card { margin-top:1rem; }
+.dst-card-head { display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap; margin-bottom:.85rem; }
+.dst-card-title { display:flex; align-items:center; gap:.6rem; min-width:0; }
+.dst-card-title h2 { font-size:.98rem; font-weight:700; color:var(--dst-dark); margin:0; }
+.dst-card-title span { display:block; font-size:.76rem; color:var(--dst-muted); }
+.dst-icon { width:34px; height:34px; border-radius:9px; background:linear-gradient(135deg,#0453cb,#3b7ddb); color:#fff; display:flex; align-items:center; justify-content:center; font-size:.85rem; flex-shrink:0; }
+.dst-link { font-size:.8rem; font-weight:600; color:var(--dst-primary); text-decoration:none; white-space:nowrap; }
+.dst-link:hover { color:var(--dst-primary-d); text-decoration:underline; }
+.dst-queue { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.55rem; }
+.dst-queue li { display:flex; align-items:flex-start; gap:.7rem; padding:.7rem .8rem; border:1px solid var(--dst-border); border-radius:11px; background:var(--dst-surface); }
+.dst-queue-dot { width:10px; height:10px; border-radius:50%; margin-top:.35rem; flex-shrink:0; background:var(--dst-primary); }
+.dst-queue-dot--danger { background:#dc2626; }
+.dst-queue-dot--warning { background:#f59e0b; }
+.dst-queue-body { flex:1; min-width:0; font-size:.84rem; line-height:1.4; }
+.dst-queue-body strong { color:var(--dst-dark); display:block; }
+.dst-queue-body small { color:var(--dst-muted); }
+.dst-queue li .dst-link { margin-left:auto; align-self:center; }
+.dst-empty { display:flex; align-items:center; gap:.6rem; padding:.85rem; border-radius:11px; background:rgba(16,185,129,.06); border:1px solid rgba(16,185,129,.25); font-size:.85rem; }
+.dst-empty i { color:#10b981; }
+.dst-trend { display:flex; align-items:flex-end; gap:.5rem; height:140px; padding-top:.5rem; }
+.dst-trend-col { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; min-width:0; gap:.3rem; }
+.dst-trend-bar { width:100%; max-width:42px; border-radius:7px 7px 3px 3px; background:linear-gradient(180deg,#3b7ddb,#0453cb); min-height:3px; }
+.dst-trend-val { font-size:.74rem; font-weight:700; color:var(--dst-dark); white-space:nowrap; }
+.dst-trend-lbl { font-size:.7rem; color:var(--dst-muted); white-space:nowrap; }
+.dst-usage { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr)); gap:.6rem; }
+.dst-usage-item { border:1px solid var(--dst-border); border-radius:11px; padding:.7rem .8rem; min-width:0; }
+.dst-usage-label { font-size:.76rem; color:var(--dst-muted); font-weight:600; }
+.dst-usage-value { font-size:1.05rem; font-weight:700; color:var(--dst-dark); white-space:nowrap; margin-top:.15rem; }
+.dst-usage-value small { font-size:.74rem; color:var(--dst-muted); font-weight:600; }
+.dst-gauge { height:6px; border-radius:999px; background:#eef2f7; margin-top:.45rem; overflow:hidden; }
+.dst-gauge > div { height:100%; border-radius:999px; background:linear-gradient(90deg,#0453cb,#3b7ddb); }
+.dst-gauge > div.is-warning { background:#f59e0b; }
+.dst-gauge > div.is-danger { background:#dc2626; }
+.dst-codes { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.45rem; }
+.dst-codes li { display:flex; flex-wrap:wrap; justify-content:space-between; gap:.3rem .75rem; font-size:.8rem; padding:.55rem .7rem; border:1px solid var(--dst-border); border-radius:10px; }
+.dst-mono { font-family:'Courier New',ui-monospace,monospace; color:var(--dst-primary-d); overflow-wrap:anywhere; word-break:break-all; min-width:0; }
+.dst-quick { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr)); gap:.6rem; }
+.dst-quick a { display:flex; align-items:center; gap:.65rem; padding:.75rem .85rem; border:1px solid var(--dst-border); border-radius:11px; text-decoration:none; color:var(--dst-text); transition:border-color .2s ease, box-shadow .2s ease; min-width:0; }
+.dst-quick a:hover { border-color:#c7d4e5; box-shadow:0 6px 20px rgba(4,83,203,.08); color:var(--dst-text); }
+.dst-quick a i { width:32px; height:32px; border-radius:9px; background:rgba(4,83,203,.08); color:var(--dst-primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.dst-quick strong { display:block; font-size:.84rem; color:var(--dst-dark); }
+.dst-quick small { font-size:.74rem; color:var(--dst-muted); line-height:1.3; overflow-wrap:anywhere; }
+.dst-quick span { min-width:0; }
+@media (max-width:992px) { .dst-layout { grid-template-columns:minmax(0,1fr); } }
+/* Sur deux colonnes, une cinquième jauge seule : elle prend la rangée entière plutôt que de rester orpheline. */
+@media (max-width:575.98px) { .dst-usage > :last-child:nth-child(odd) { grid-column:1 / -1; } }
+@media (max-width:576px) {
+    .dst-hero-actions { width:100%; }
+    .dst-hero-actions .dst-btn, .dst-pill { flex:1 1 100%; justify-content:center; }
+    .dst-queue li { flex-wrap:wrap; }
+    .dst-queue li .dst-link { margin-left:1.4rem; }
+}
 </style>
-@endsection
+@endpush
 
 @section('content')
-<div class="main-content">
-    <div class="container-fluid">
-        <!-- Header Service Technique -->
-        <div class="service-technique-header">
-            <div class="row align-items-center">
-                <div class="col-lg-8">
-                    <h1 class="h2 mb-2">
-                        <i class="fas fa-tools me-2"></i>
-                        Dashboard Service Technique
-                    </h1>
-                    <p class="mb-0 opacity-90">
-                        Bienvenue, {{ auth()->user()->name }} !
-                        Gestion centralisée des établissements KLASSCI
-                    </p>
+@php
+    $fmt = fn ($n) => number_format((int) $n, 0, ',', ' ');
+    $abo = $abonnement['abonnement'];
+    $estMaster = $abonnement['source'] === 'master';
+    $routePaywall = route('esbtp.paywall-config.index');
+
+    // File de travail : ce qui attend le service technique, du plus urgent au moins urgent.
+    $file = [];
+    if (! $abonnement['master_configure']) {
+        $file[] = ['niveau' => 'warning', 'titre' => 'adminKlassci non configuré', 'detail' => 'Les limites lues sont les réglages locaux de secours.', 'lien' => $routePaywall, 'action' => 'Voir'];
+    } elseif (! $estMaster) {
+        $file[] = ['niveau' => 'danger', 'titre' => 'adminKlassci injoignable', 'detail' => $abonnement['erreur_master'] ?? 'Aucune réponse du master.', 'lien' => $routePaywall, 'action' => 'Réessayer'];
+    }
+    foreach ($abonnement['statut']['reasons'] as $raison) {
+        $file[] = ['niveau' => 'danger', 'titre' => $raison, 'detail' => $abonnement['paywall_actif'] ? 'L\'école est bloquée.' : 'Paywall non appliqué : rien n\'est bloqué.', 'lien' => $abonnement['fiche_url'] ?: $routePaywall, 'action' => $abonnement['fiche_url'] ? 'Régler dans adminKlassci' : 'Voir'];
+    }
+    foreach ($abonnement['statut']['warnings'] as $alerte) {
+        $file[] = ['niveau' => 'warning', 'titre' => $alerte, 'detail' => 'À anticiper avec l\'école.', 'lien' => $abonnement['fiche_url'] ?: $routePaywall, 'action' => 'Voir'];
+    }
+    if ($activeCodes->isNotEmpty()) {
+        $file[] = ['niveau' => 'info', 'titre' => $activeCodes->count() . ' code(s) d\'urgence en cours', 'detail' => 'Le premier expire à ' . $activeCodes->first()->expires_at->format('H:i') . '.', 'lien' => $routePaywall, 'action' => 'Voir'];
+    }
+
+    $maxTendance = max(1, (int) $tendanceInscriptions->max('total'));
+    $moisCourant = $tendanceInscriptions->last()['total'] ?? 0;
+    $moisPrecedent = $tendanceInscriptions->count() > 1 ? $tendanceInscriptions[$tendanceInscriptions->count() - 2]['total'] : 0;
+    $usageInscriptions = $abonnement['usages']['inscriptions'];
+@endphp
+
+<div class="dst">
+    <div class="dst-hero">
+        <div class="dst-hero-top">
+            <div class="dst-hero-left">
+                <div class="dst-hero-icon"><i class="fas fa-screwdriver-wrench"></i></div>
+                <div style="min-width:0">
+                    <h1>Service technique</h1>
+                    <p>Bonjour {{ auth()->user()->name }} · {{ now()->format('d/m/Y') }} · instance {{ $abonnement['code'] ?? '—' }}</p>
                 </div>
-                <div class="col-lg-4 text-lg-end">
-                    <div class="service-technique-header-accent">
-                        <i class="fas fa-cogs fa-3x opacity-50"></i>
-                    </div>
-                </div>
+            </div>
+            <div class="dst-hero-actions">
+                <span class="dst-pill {{ $estMaster ? 'dst-pill--ok' : ($abonnement['master_configure'] ? 'dst-pill--ko' : '') }}">
+                    <span class="dst-pill-dot"></span>{{ $estMaster ? 'adminKlassci connecté' : ($abonnement['master_configure'] ? 'adminKlassci injoignable' : 'adminKlassci non configuré') }}
+                </span>
+                @if($abonnement['fiche_url'])
+                    <a href="{{ $abonnement['fiche_url'] }}" target="_blank" rel="noopener" class="dst-btn dst-btn--white">
+                        <i class="fas fa-arrow-up-right-from-square"></i><span>Fiche adminKlassci</span>
+                    </a>
+                @endif
             </div>
         </div>
 
-        <!-- Statut Paywall -->
-        <div class="paywall-status">
-            <div class="status-header">
-                <div class="status-icon {{ $paywallStatus['level'] }}">
-                    <i class="fas fa-{{ $paywallStatus['level'] === 'success' ? 'check' : ($paywallStatus['level'] === 'warning' ? 'exclamation-triangle' : 'times') }}"></i>
+        <div class="dst-kpis">
+            <a class="dst-kpi" href="{{ $routePaywall }}">
+                <div class="dst-kpi-label">Abonnement</div>
+                <div class="dst-kpi-value">
+                    @if(! $abo['fin'])
+                        Sans échéance
+                    @elseif($abo['expire'])
+                        Expiré
+                    @else
+                        {{ $fmt($abo['jours_restants']) }} j
+                    @endif
                 </div>
-                <div>
-                    <h5 class="mb-1">Statut Système Paywall</h5>
-                    <p class="mb-0 text-{{ $paywallStatus['level'] }}">{{ $paywallStatus['message'] }}</p>
-                </div>
-            </div>
-
-            @if($paywallConfig['is_active'])
-                <div class="row">
-                    <div class="col-md-6">
-                        <strong>Plan actuel :</strong> {{ $paywallConfig['plan_name'] }}<br>
-                        <strong>Prix :</strong> {{ number_format($paywallConfig['plan_price'], 0, ',', ' ') }} XOF/an
-                    </div>
-                    <div class="col-md-6">
-                        @if($paywallConfig['subscription_end'])
-                            <strong>Expiration :</strong> {{ \Carbon\Carbon::parse($paywallConfig['subscription_end'])->format('d/m/Y') }}<br>
-                        @endif
-                        <strong>Limites :</strong> {{ $paywallConfig['max_users'] }} utilisateurs, {{ $paywallConfig['max_inscriptions_per_year'] }} inscriptions/an
-                    </div>
-                </div>
-            @else
-                <p class="text-muted mb-0">Le système paywall n'est pas activé pour cet établissement.</p>
-            @endif
-        </div>
-
-        <!-- Statistiques Établissement Actuel -->
-        <div class="stats-grid">
-            <div class="stat-card primary">
-                <div class="stat-icon" style="background: #2563eb;">
-                    <i class="fas fa-users"></i>
-                </div>
-                <div class="stat-value">{{ $stats['total_users'] }}</div>
-                <div class="stat-label">Utilisateurs Total</div>
-                <div class="stat-sublabel">{{ $paywallConfig['max_users'] }} maximum autorisés</div>
-            </div>
-
-            <div class="stat-card success">
-                <div class="stat-icon" style="background: #10b981;">
-                    <i class="fas fa-user-graduate"></i>
-                </div>
-                <div class="stat-value">{{ $stats['total_students'] }}</div>
-                <div class="stat-label">Étudiants</div>
-                <div class="stat-sublabel">{{ $recentActivity['new_students_this_month'] }} ce mois</div>
-            </div>
-
-            <div class="stat-card info">
-                <div class="stat-icon" style="background: #0ea5e9;">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                </div>
-                <div class="stat-value">{{ $stats['total_teachers'] }}</div>
-                <div class="stat-label">Enseignants</div>
-                <div class="stat-sublabel">Personnel académique</div>
-            </div>
-
-            <div class="stat-card warning">
-                <div class="stat-icon" style="background: #f59e0b;">
-                    <i class="fas fa-user-plus"></i>
-                </div>
-                <div class="stat-value">{{ $stats['total_inscriptions_year'] }}</div>
-                <div class="stat-label">Inscriptions Année</div>
-                <div class="stat-sublabel">{{ $paywallConfig['max_inscriptions_per_year'] }} maximum autorisées</div>
-            </div>
-        </div>
-
-        <!-- Actions Rapides -->
-        <div class="quick-actions">
-            <a href="{{ route('esbtp.paywall-config.index') }}" class="action-card">
-                <div class="action-icon">
-                    <i class="fas fa-shield-alt"></i>
-                </div>
-                <div class="action-title">Configuration Paywall</div>
-                <div class="action-description">Gérer les abonnements et limites de l'établissement</div>
+                <div class="dst-kpi-sub">{{ $abonnement['plan_label'] ?: 'Plan non renseigné' }}@if($abo['fin']) · fin le {{ $abo['fin']->format('d/m/Y') }}@endif</div>
             </a>
-
-            <a href="{{ route('esbtp.matricule-config.index') }}" class="action-card">
-                <div class="action-icon">
-                    <i class="fas fa-id-card"></i>
+            <a class="dst-kpi" href="{{ $routePaywall }}">
+                <div class="dst-kpi-label">Inscriptions de l'année</div>
+                <div class="dst-kpi-value">{{ $fmt($stats['total_inscriptions_year']) }}</div>
+                <div class="dst-kpi-sub">
+                    @if($usageInscriptions['illimite'])
+                        Sans limite sur ce plan
+                    @elseif($usageInscriptions['max'] !== null)
+                        sur {{ $fmt($usageInscriptions['max']) }} autorisées
+                    @else
+                        Limite non renseignée
+                    @endif
                 </div>
-                <div class="action-title">Configuration Matricule</div>
-                <div class="action-description">Paramétrer la génération des numéros matricule</div>
             </a>
-
-            <a href="{{ route('esbtp.paywall-config.upgrade') }}" class="action-card">
-                <div class="action-icon">
-                    <i class="fas fa-chart-line"></i>
-                </div>
-                <div class="action-title">Plans d'Abonnement</div>
-                <div class="action-description">Voir les plans disponibles et tarifs KLASSCI</div>
-            </a>
-
-            <a href="mailto:klassci@africandigitconsulting.com" class="action-card">
-                <div class="action-icon">
-                    <i class="fas fa-headset"></i>
-                </div>
-                <div class="action-title">Support Client</div>
-                <div class="action-description">Contacter l'équipe pour assistance</div>
-            </a>
+            @php
+                $routeEtudiants = \Illuminate\Support\Facades\Route::has('esbtp.etudiants.index') ? route('esbtp.etudiants.index') : null;
+            @endphp
+            @if($routeEtudiants)<a class="dst-kpi" href="{{ $routeEtudiants }}">@else<div class="dst-kpi">@endif
+                <div class="dst-kpi-label">Étudiants inscrits</div>
+                <div class="dst-kpi-value">{{ $fmt($stats['total_students']) }}</div>
+                <div class="dst-kpi-sub">+{{ $fmt($recentActivity['new_students_this_month']) }} ce mois · {{ $fmt($recentActivity['new_students_last_month']) }} le mois dernier</div>
+            @if($routeEtudiants)</a>@else</div>@endif
+            <div class="dst-kpi">
+                <div class="dst-kpi-label">Comptes utilisateurs</div>
+                <div class="dst-kpi-value">{{ $fmt($stats['total_users']) }}</div>
+                <div class="dst-kpi-sub">+{{ $fmt($recentActivity['new_users_this_month']) }} ce mois · {{ $fmt($recentActivity['new_users_last_month']) }} le mois dernier</div>
+            </div>
         </div>
+    </div>
 
-        <!-- Établissements Gérés -->
-        <div class="etablissements-section">
-            <div class="etablissements-header">
-                <div class="etablissements-title">
-                    <i class="fas fa-school"></i>
-                    Établissements Gérés
+    <div class="dst-layout">
+        <div>
+            <div class="dst-card">
+                <div class="dst-card-head">
+                    <div class="dst-card-title">
+                        <div class="dst-icon"><i class="fas fa-list-check"></i></div>
+                        <div><h2>À traiter</h2><span>Du plus urgent au moins urgent</span></div>
+                    </div>
                 </div>
-                <div class="etablissements-count">{{ $etablissements->count() }} établissement{{ $etablissements->count() > 1 ? 's' : '' }}</div>
+                @if(count($file) > 0)
+                    <ul class="dst-queue">
+                        @foreach($file as $ligne)
+                            <li>
+                                <span class="dst-queue-dot {{ $ligne['niveau'] !== 'info' ? 'dst-queue-dot--' . $ligne['niveau'] : '' }}"></span>
+                                <div class="dst-queue-body">
+                                    <strong>{{ $ligne['titre'] }}</strong>
+                                    <small>{{ $ligne['detail'] }}</small>
+                                </div>
+                                <a class="dst-link" href="{{ $ligne['lien'] }}" @if(str_starts_with($ligne['lien'], 'http') && $ligne['lien'] !== $routePaywall) target="_blank" rel="noopener" @endif>{{ $ligne['action'] }}</a>
+                            </li>
+                        @endforeach
+                    </ul>
+                @else
+                    <div class="dst-empty">
+                        <i class="fas fa-circle-check"></i>
+                        <span>Rien en attente. Dernier contrôle à {{ now()->format('H:i') }}.</span>
+                    </div>
+                @endif
             </div>
 
-            @foreach($etablissements as $etablissement)
-                <div class="etablissement-card">
-                    <div class="etablissement-main">
-                        <div class="etablissement-info">
-                            <div class="etablissement-icon">
-                                <i class="fas fa-university"></i>
-                            </div>
-                            <div class="etablissement-details">
-                                <h4>{{ $etablissement->nom }}</h4>
-                                <p class="etablissement-subtitle">Établissement d'enseignement supérieur</p>
-                            </div>
-                        </div>
-                        <div class="etablissement-status">
-                            <span class="status-badge {{ $etablissement->status }}">
-                                {{ $etablissement->status === 'active' ? 'Actif' : 'Inactif' }}
-                            </span>
-                        </div>
+            <div class="dst-card">
+                <div class="dst-card-head">
+                    <div class="dst-card-title">
+                        <div class="dst-icon"><i class="fas fa-gauge-high"></i></div>
+                        <div><h2>Limites de l'abonnement</h2><span>{{ $estMaster ? 'Lues dans adminKlassci' : 'Réglages locaux de secours' }}</span></div>
                     </div>
-
-                    <div class="etablissement-meta">
-                        <div class="meta-item">
-                            <div class="meta-label">Branche Git</div>
-                            <div class="meta-value"><code>{{ $etablissement->branch }}</code></div>
-                        </div>
-                        <div class="meta-item">
-                            <div class="meta-label">Date de création</div>
-                            <div class="meta-value">{{ $etablissement->created_at->format('d/m/Y') }}</div>
-                        </div>
-                        <div class="meta-item">
-                            <div class="meta-label">Type</div>
-                            <div class="meta-value">Multi-tenant</div>
-                        </div>
-                    </div>
-
-                    
+                    <a class="dst-link" href="{{ $routePaywall }}">Détail</a>
                 </div>
-            @endforeach
+                <div class="dst-usage">
+                    @foreach($abonnement['usages'] as $u)
+                        @php
+                            $niveau = $u['depasse'] ? 'is-danger' : (($u['pct'] ?? 0) >= \App\Services\Master\AbonnementDeLInstance::SEUIL_ALERTE_PCT ? 'is-warning' : '');
+                        @endphp
+                        <div class="dst-usage-item">
+                            <div class="dst-usage-label">{{ $u['libelle'] }}</div>
+                            @if($u['actuel'] === null)
+                                <div class="dst-usage-value"><small>Non mesuré</small></div>
+                            @else
+                                <div class="dst-usage-value">{{ $fmt($u['actuel']) }} <small>/ {{ $u['illimite'] ? 'illimité' : ($u['max'] !== null ? $fmt($u['max']) : '—') }}</small></div>
+                                @if($u['pct'] !== null)
+                                    <div class="dst-gauge"><div class="{{ $niveau }}" style="width: {{ min(100, $u['pct']) }}%"></div></div>
+                                @endif
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
         </div>
 
-        <!-- Codes d'Urgence Actifs -->
-        @if($activeCodes->count() > 0)
-            <div class="emergency-codes">
-                <h5><i class="fas fa-key me-2"></i>Codes d'Urgence Actifs ({{ $activeCodes->count() }})</h5>
-                @foreach($activeCodes as $code)
-                    <div class="code-item">
+        <div>
+            <div class="dst-card">
+                <div class="dst-card-head">
+                    <div class="dst-card-title">
+                        <div class="dst-icon"><i class="fas fa-chart-column"></i></div>
                         <div>
-                            <span class="code-value">{{ $code->code }}</span>
-                            <small class="text-muted d-block">Créé par : {{ $code->created_by }}</small>
-                        </div>
-                        <div class="code-expiry">
-                            Expire : {{ $code->expires_at->format('d/m/Y H:i') }}
+                            <h2>Inscriptions créées</h2>
+                            <span>Six derniers mois · {{ $fmt($moisCourant) }} ce mois, {{ $fmt($moisPrecedent) }} le mois dernier</span>
                         </div>
                     </div>
-                @endforeach
+                </div>
+                <div class="dst-trend" role="img" aria-label="Inscriptions créées par mois sur six mois">
+                    @foreach($tendanceInscriptions as $point)
+                        <div class="dst-trend-col" title="{{ ucfirst($point['mois']->translatedFormat('F Y')) }} : {{ $fmt($point['total']) }} inscription(s)">
+                            <span class="dst-trend-val">{{ $fmt($point['total']) }}</span>
+                            <div class="dst-trend-bar" style="height: {{ max(2, round($point['total'] / $maxTendance * 100)) }}%"></div>
+                            <span class="dst-trend-lbl">{{ $point['mois']->translatedFormat('M') }}</span>
+                        </div>
+                    @endforeach
+                </div>
             </div>
-        @endif
+
+            <div class="dst-card">
+                <div class="dst-card-head">
+                    <div class="dst-card-title">
+                        <div class="dst-icon"><i class="fas fa-key"></i></div>
+                        <div><h2>Codes d'urgence actifs</h2><span>Accès d'une heure, à usage unique</span></div>
+                    </div>
+                    <a class="dst-link" href="{{ $routePaywall }}">Générer</a>
+                </div>
+                @if($activeCodes->isNotEmpty())
+                    <ul class="dst-codes">
+                        @foreach($activeCodes as $code)
+                            <li>
+                                <span class="dst-mono">{{ $code->code }}</span>
+                                <span>{{ $code->created_by }} · expire à {{ $code->expires_at->format('H:i') }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @else
+                    <p class="dst-kpi-sub" style="color:var(--dst-muted);margin:0">Aucun code en cours de validité.</p>
+                @endif
+            </div>
+
+            <div class="dst-card">
+                <div class="dst-card-head">
+                    <div class="dst-card-title">
+                        <div class="dst-icon"><i class="fas fa-bolt"></i></div>
+                        <div><h2>Accès rapides</h2><span>Réglages réservés au service technique</span></div>
+                    </div>
+                </div>
+                <div class="dst-quick">
+                    <a href="{{ $routePaywall }}"><i class="fas fa-shield-alt"></i><span><strong>Abonnement</strong><small>Limites, échéance, accès d'urgence</small></span></a>
+                    <a href="{{ route('esbtp.matricule-config.index') }}"><i class="fas fa-id-card"></i><span><strong>Matricules</strong><small>Mode et nomenclature</small></span></a>
+                    <a href="{{ route('esbtp.roles-permissions.index') }}"><i class="fas fa-user-shield"></i><span><strong>Rôles et permissions</strong><small>Droits par rôle</small></span></a>
+                    <a href="{{ route('esbtp.bulletin-style.index') }}"><i class="fas fa-file-lines"></i><span><strong>Style des bulletins</strong><small>Présentation des PDF</small></span></a>
+                    @if(config('app.support_email'))
+                        <a href="mailto:{{ config('app.support_email') }}"><i class="fas fa-envelope"></i><span><strong>Support KLASSCI</strong><small>{{ config('app.support_email') }}</small></span></a>
+                    @endif
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 @endsection

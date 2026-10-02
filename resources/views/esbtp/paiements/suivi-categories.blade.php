@@ -3,7 +3,7 @@
 @section('title', 'Suivi des Paiements par Catégorie - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .btn-acasi.small {
         padding: var(--space-xs) var(--space-sm);

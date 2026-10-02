@@ -3,7 +3,7 @@
 @section('title', 'Profil Enseignant — ' . ($teacher->user->name ?? 'N/A') . ' — KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 /* ===================================================================
    ENSEIGNANT SHOW — Premium Design — KLASSCI Design System

@@ -3,7 +3,7 @@
 @section('title', 'Gestion des Notes | KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <link rel="stylesheet" href="{{ asset('css/notes-management.css') }}?v={{ @filemtime(public_path('css/notes-management.css')) ?: '1' }}">
 <style>
     .note-input.nm-note-refused { border-color: #dc2626 !important; background: rgba(220,38,38,.06) !important; }
@@ -611,7 +611,7 @@
      ══════════════════════════════════════════════════════ --}}
 @push('scripts')
 {{-- common.js fournit window.iiConfirm + window.showToast (utilisés pour la confirmation de fermeture). --}}
-<script src="{{ asset('js/inscriptions/common.js') }}" defer></script>
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}" defer></script>
 <script>
 // Variables globales
 let currentClassId = null;

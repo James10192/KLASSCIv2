@@ -579,7 +579,21 @@ class ESBTPEtudiant extends Model implements Auditable
      */
     public function getPendingInscriptionsAttribute()
     {
-        return $this->inscriptions()->where('status', 'pending')->get();
+        // Precharge par une liste (with('inscriptionsEnAttente')) : une requete pour
+        // toute la page au lieu d'une par ligne.
+        if ($this->relationLoaded('inscriptionsEnAttente')) {
+            return $this->getRelation('inscriptionsEnAttente');
+        }
+
+        return $this->inscriptionsEnAttente()->get();
+    }
+
+    /**
+     * Inscriptions en attente de validation, en relation pour pouvoir les precharger.
+     */
+    public function inscriptionsEnAttente()
+    {
+        return $this->hasMany(ESBTPInscription::class, 'etudiant_id')->where('status', 'pending');
     }
 
     /**

@@ -3,7 +3,7 @@
 @section('title', 'Emplois du temps - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* ─── Scoped Premium — Emploi du Temps Index ─────────────────── */
 

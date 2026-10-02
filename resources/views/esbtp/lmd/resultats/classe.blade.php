@@ -3,7 +3,7 @@
 @section('title', 'Résultats LMD - ' . $classe->name . ' - KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .rc-page { max-width: 1440px; margin: 0 auto; padding: 0 1rem 2rem; }
     .rc-hero {

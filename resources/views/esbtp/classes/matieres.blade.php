@@ -3,7 +3,7 @@
 @section('title', 'Matières pour ' . $classe->name)
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 .classe-matieres-page .table tbody tr[data-linked="1"] {
     background-color: rgba(4, 83, 203, 0.05);

@@ -163,17 +163,36 @@ class RelancesDefilementTest extends TestCase
     public function test_l_arrivee_sur_la_page_recalcule_toujours_la_liste(): void
     {
         $annee = ESBTPAnneeUniversitaire::factory()->create();
-        ESBTPInscription::factory()->count(3)->create([
+        $inscriptions = ESBTPInscription::factory()->count(3)->create([
+            'annee_universitaire_id' => $annee->id,
+            'workflow_step' => 'etudiant_cree',
+            'created_at' => now()->subHour()->startOfSecond(),
+        ]);
+        $url = route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]);
+        $lignes = function () use ($url): array {
+            preg_match_all('/<tr data-li-cle="(\d+)"/', $this->get($url)->assertOk()->getContent(), $m);
+            sort($m[1]);
+
+            return $m[1];
+        };
+
+        $this->assertSame($inscriptions->pluck('id')->map(fn ($id) => (string) $id)->sort()->values()->all(), $lignes());
+
+        // Entre les deux visites, sans vider le cache : un eleve sort de la
+        // population (inscription annulee), un autre y entre.
+        $inscriptions->first()->update(['status' => 'annulée']);
+        $nouvelle = ESBTPInscription::factory()->create([
             'annee_universitaire_id' => $annee->id,
             'workflow_step' => 'etudiant_cree',
         ]);
-
-        $this->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->assertOk();
         self::$calculs = 0;
-        $this->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->assertOk();
 
-        // 3 lignes pour l'index + 3 pour la tranche : un encaissement fait
-        // entre les deux visites serait deja pris en compte.
-        $this->assertSame(6, self::$calculs);
+        // La seconde arrivee en tient compte : l'index n'est pas relu du cache.
+        $attendues = $inscriptions->slice(1)->pluck('id')->push($nouvelle->id)
+            ->map(fn ($id) => (string) $id)->sort()->values()->all();
+        $this->assertSame($attendues, $lignes());
+
+        // Une seule passe de calcul : la premiere tranche reprend les lignes de l'index.
+        $this->assertSame(3, self::$calculs);
     }
 }

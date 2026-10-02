@@ -107,6 +107,8 @@ class ESBTPComptabiliteController extends Controller
             'countDue' => $data['countDue'],
             'countToValidate' => $data['countToValidate'],
             'countOverdueTotal' => $data['countOverdueTotal'],
+            'countARelancer' => $data['countARelancer'],
+            'totalARelancer' => $data['totalARelancer'],
             'countValidatedToday' => $data['countValidatedToday'],
             'totalValidatedToday' => $data['totalValidatedToday'],
             'labelsMois' => $data['labelsMois'],

@@ -3,7 +3,7 @@
 @section('title', 'Modifier Catégorie de Frais - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 /* Fix pour les modales parfaitement centrées sur l'écran */
 .modal {

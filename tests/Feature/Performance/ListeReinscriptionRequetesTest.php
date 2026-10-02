@@ -3,6 +3,7 @@
 namespace Tests\Feature\Performance;
 
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPMatiere;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Services\ReeinscriptionService;
 use App\Services\Reinscription\ReinscriptionDashboardStats;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Tests\Feature\Performance\Concerns\ConstruitUneClasseNotee;
 use Tests\TestCase;
@@ -55,23 +57,111 @@ class ListeReinscriptionRequetesTest extends TestCase
         ]);
     }
 
-    public function test_les_onglets_ne_coutent_pas_une_requete_de_plus_par_etudiant(): void
+    /** Tables dont la lecture ne doit pas suivre la taille de la promotion. */
+    private const TABLES_PAR_PROMOTION = [
+        'esbtp_notes', 'esbtp_resultats', 'esbtp_evaluations', 'esbtp_bulletins',
+        'esbtp_inscriptions', 'esbtp_inscription_phases', 'esbtp_regles_academiques', 'esbtp_classes',
+    ];
+
+    /**
+     * Ce qui suit le nombre de MATIERES de la classe, pas d'eleves : le
+     * second appel a `classeNotee()` cree deux matieres de plus.
+     */
+    private const TABLES_PAR_MATIERE = ['esbtp_matieres', 'esbtp_config_matieres', 'esbtp_matiere_filiere_niveau'];
+
+    /**
+     * Ce qui reste lu par eleve quand AUCUN bulletin n'est enregistre : la note
+     * d'assiduite du calcul courant de chaque semestre (annee, absences,
+     * heures saisies — trois requetes par semestre), dans `BulletinService`.
+     * C'est le prix de decider sur la moyenne annuelle du bulletin plutot que
+     * sur une moyenne simple des notes ; la fiche etudiant le paie deja
+     * (`FicheEtudiantRequetesTest`). Bulletins generes, il tombe a zero : voir
+     * le test suivant.
+     */
+    private const REQUETES_D_ASSIDUITE_PAR_ETUDIANT = 6;
+
+    public function test_les_onglets_ne_relisent_ni_notes_ni_regles_par_etudiant(): void
     {
         $classe = $this->classeNotee($this->precedente, 2)['classe'];
         $this->ouvrirLesOnglets(); // rechauffe les caches de la requete, hors mesure
 
-        $avec2 = $this->requetesDe(fn () => $this->analyserLaPromotion());
+        $avec2 = $this->requetesParTable(fn () => $this->analyserLaPromotion());
 
         $this->classeNotee($this->precedente, 6, $classe);
-        $avec8 = $this->requetesDe(fn () => $this->analyserLaPromotion());
+        $avec8 = $this->requetesParTable(fn () => $this->analyserLaPromotion());
         $this->ouvrirLesOnglets();
+
+        foreach (self::TABLES_PAR_PROMOTION as $table) {
+            $this->assertSame(
+                $avec2[$table] ?? 0,
+                $avec8[$table] ?? 0,
+                "La liste lit `{$table}` une fois par etudiant."
+            );
+        }
+
+        $total = fn (array $parTable) => array_sum(array_diff_key(
+            $parTable,
+            array_flip([...self::TABLES_PAR_MATIERE, 'settings'])
+        ));
+        $this->assertLessThanOrEqual(
+            6 * self::REQUETES_D_ASSIDUITE_PAR_ETUDIANT,
+            $total($avec8) - $total($avec2),
+            "Six etudiants de plus ne doivent couter que leur note d'assiduite."
+        );
+    }
+
+    public function test_bulletins_generes_la_liste_ne_coute_rien_de_plus_par_etudiant(): void
+    {
+        $premiers = $this->classeNotee($this->precedente, 2);
+        $this->genererLesBulletins($premiers['classe'], $premiers['etudiants']);
+        $this->ouvrirLesOnglets();
+
+        $avec2 = $this->requetesDe(fn () => $this->analyserLaPromotion());
+
+        $suivants = $this->classeNotee($this->precedente, 6, $premiers['classe']);
+        $this->genererLesBulletins($premiers['classe'], $suivants['etudiants']);
+        $avec8 = $this->requetesDe(fn () => $this->analyserLaPromotion());
 
         $this->assertSame(
             $avec2,
             $avec8,
-            "La liste doit couter autant de requetes pour 8 etudiants que pour 2. "
-            .'Une difference signifie que les notes ou la regle se relisent de nouveau par etudiant.'
+            'Bulletins enregistres, la moyenne annuelle se lit en une requete par classe : '
+            .'une difference signifie qu\'une lecture est repassee par etudiant.'
         );
+    }
+
+    private function genererLesBulletins(ESBTPClasse $classe, $etudiants): void
+    {
+        foreach ($etudiants as $etudiant) {
+            foreach (['semestre1' => 11.0, 'semestre2' => 9.5] as $periode => $moyenne) {
+                ESBTPBulletin::factory()->create([
+                    'etudiant_id' => $etudiant->id,
+                    'classe_id' => $classe->id,
+                    'annee_universitaire_id' => $this->precedente->id,
+                    'periode' => $periode,
+                    'moyenne_generale' => $moyenne,
+                    'note_assiduite' => 0,
+                ]);
+            }
+        }
+    }
+
+    /** @return array<string, int> */
+    private function requetesParTable(callable $operation): array
+    {
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        try {
+            $operation();
+        } finally {
+            $log = DB::getQueryLog();
+            DB::disableQueryLog();
+        }
+
+        return collect($log)
+            ->map(fn ($q) => preg_match('/from `([a-z_]+)`/', $q['query'], $m) ? $m[1] : 'autre')
+            ->countBy()
+            ->all();
     }
 
     public function test_la_decision_reste_celle_de_l_analyse_etudiant_par_etudiant(): void

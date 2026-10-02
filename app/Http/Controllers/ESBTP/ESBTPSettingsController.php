@@ -527,6 +527,7 @@ class ESBTPSettingsController extends Controller
                 TenantScolariteSettings::CLERK_LMD_ACCESS,
                 TenantScolariteSettings::CLERK_PEDAGOGIE,
                 TenantScolariteSettings::MANAGE_TEACHERS,
+                \App\Domain\Notes\Reclamations\ReglagesReclamations::REGLAGE_ACTIF,
                 PortailCandidaturePublication::REGLAGE_ACTIF,
                 // Case a cocher, donc ici et non dans $reglagesTexte : une case
                 // decochee n'est pas envoyee par le navigateur, et seule cette
@@ -561,6 +562,7 @@ class ESBTPSettingsController extends Controller
                 \App\Domain\AcademicPilotage\Services\SeuilsDePilotage::REGLAGE_RELANCE_JOURS,
                 \App\Domain\AcademicPilotage\Services\SeuilsDePilotage::REGLAGE_PRESENCE_MIN,
                 \App\Services\Personnel\ActiviteDuPersonnel::REGLAGE_ATTENTE_JOURS,
+                \App\Domain\Notes\Reclamations\ReglagesReclamations::REGLAGE_DELAI_JOURS,
             ];
 
             // Les trois regles de separation des devoirs : un mode a trois

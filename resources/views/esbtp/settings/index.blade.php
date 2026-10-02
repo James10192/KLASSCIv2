@@ -3,7 +3,7 @@
 @section('title', 'Paramètres du Système - KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .settings-section {
         background: var(--surface);
@@ -2633,6 +2633,7 @@
                     @include('esbtp.settings.partials.rendez-vous-reglages')
                     @include('esbtp.settings.partials.pieces-dossier-reglages')
                     @include('esbtp.settings.partials.pilotage-reglages')
+                    @include('esbtp.settings.partials.reclamations-notes-reglages')
                 </div>
             </div>
 

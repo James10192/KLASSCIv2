@@ -3,8 +3,8 @@
 @section('title', 'Édition Groupée — ' . $classe->name . ' — KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="{{ asset('css/student-results.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/student-results.css') }}?v={{ @filemtime(public_path('css/student-results.css')) ?: '1' }}">
 <style>
 .student-checkbox { width: 18px; height: 18px; cursor: pointer; }
 .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.8); display: none; align-items: center; justify-content: center; z-index: 1000; }

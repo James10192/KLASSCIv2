@@ -9,6 +9,24 @@ use Illuminate\Support\Collection;
 class EcheancierProjectionService
 {
     /**
+     * Les lignes actives d'une regle, triees et lues une fois.
+     *
+     * Une meme regle sert a des centaines d'eleves dans un calcul de lot (la
+     * liste des relances calcule toute l'annee). Refiltrer, retrier et relire
+     * chaque attribut caste des lignes pour chaque eleve coutait plus que la
+     * projection elle-meme. La memoire est attachee a la collection de lignes
+     * (WeakMap) : une regle rechargee repart d'une lecture neuve.
+     *
+     * @var \WeakMap<Collection, list<array{label: mixed, amount_mode: mixed, amount_value: mixed, due_mode: mixed, due_value: mixed, grace_days: mixed}>>
+     */
+    private \WeakMap $lignesLues;
+
+    public function __construct()
+    {
+        $this->lignesLues = new \WeakMap();
+    }
+
+    /**
      * @param float $itemAmount
      * @param Collection<int, ESBTPEcheancierRuleLine> $ruleLines
      * @return array<int, array<string, mixed>>
@@ -28,12 +46,21 @@ class EcheancierProjectionService
             return [];
         }
 
-        $activeLines = $ruleLines
+        $activeLines = $this->lignesLues[$ruleLines] ??= $ruleLines
             ->filter(fn ($line) => (bool) ($line->is_active ?? true))
             ->sortBy('sort_order')
-            ->values();
+            ->values()
+            ->map(fn ($line) => [
+                'label' => $line->label,
+                'amount_mode' => $line->amount_mode,
+                'amount_value' => $line->amount_value,
+                'due_mode' => $line->due_mode,
+                'due_value' => $line->due_value,
+                'grace_days' => $line->grace_days,
+            ])
+            ->all();
 
-        if ($activeLines->isEmpty()) {
+        if ($activeLines === []) {
             return [$this->fallbackLine($amount, $referenceDate, $fallbackDays, $itemKey, $categoryId, $categoryName)];
         }
 
@@ -50,12 +77,12 @@ class EcheancierProjectionService
             $projected[] = [
                 'line_key' => $itemKey . ':line:' . ($index + 1),
                 'item_key' => $itemKey,
-                'label' => $line->label ?: ('Tranche ' . ($index + 1)),
+                'label' => $line['label'] ?: ('Tranche ' . ($index + 1)),
                 'category_id' => $categoryId,
                 'category_name' => $categoryName,
                 'amount' => $lineAmount,
                 'due_date' => $dueDate->toDateString(),
-                'grace_days' => max(0, (int) ($line->grace_days ?? 0)),
+                'grace_days' => max(0, (int) ($line['grace_days'] ?? 0)),
             ];
         }
 
@@ -74,19 +101,21 @@ class EcheancierProjectionService
         return $projected;
     }
 
-    private function resolveLineAmount(ESBTPEcheancierRuleLine $line, float $itemAmount): float
+    /** @param array{amount_mode: mixed, amount_value: mixed} $line */
+    private function resolveLineAmount(array $line, float $itemAmount): float
     {
-        if ($line->amount_mode === ESBTPEcheancierRuleLine::AMOUNT_MODE_PERCENT) {
-            return $itemAmount * ((float) $line->amount_value / 100);
+        if ($line['amount_mode'] === ESBTPEcheancierRuleLine::AMOUNT_MODE_PERCENT) {
+            return $itemAmount * ((float) $line['amount_value'] / 100);
         }
 
-        return (float) $line->amount_value;
+        return (float) $line['amount_value'];
     }
 
-    private function resolveDueDate(ESBTPEcheancierRuleLine $line, Carbon $referenceDate, int $fallbackDays): Carbon
+    /** @param array{due_mode: mixed, due_value: mixed} $line */
+    private function resolveDueDate(array $line, Carbon $referenceDate, int $fallbackDays): Carbon
     {
-        if ($line->due_mode === ESBTPEcheancierRuleLine::DUE_MODE_FIXED_MM_DD) {
-            if (preg_match('/^(\d{2})-(\d{2})$/', (string) $line->due_value, $m)) {
+        if ($line['due_mode'] === ESBTPEcheancierRuleLine::DUE_MODE_FIXED_MM_DD) {
+            if (preg_match('/^(\d{2})-(\d{2})$/', (string) $line['due_value'], $m)) {
                 $month = (int) $m[1];
                 $day = (int) $m[2];
 
@@ -102,8 +131,8 @@ class EcheancierProjectionService
         }
 
         $days = $fallbackDays;
-        if ($line->due_mode === ESBTPEcheancierRuleLine::DUE_MODE_DAYS_AFTER_INSCRIPTION) {
-            $days = max(0, (int) $line->due_value);
+        if ($line['due_mode'] === ESBTPEcheancierRuleLine::DUE_MODE_DAYS_AFTER_INSCRIPTION) {
+            $days = max(0, (int) $line['due_value']);
         }
 
         return $referenceDate->copy()->startOfDay()->addDays($days);
