@@ -214,6 +214,8 @@
         font-size: .8rem; font-weight: 600; color: var(--primary); text-decoration: none;
     }
     .note-contester:hover { text-decoration: underline; }
+    .note-contester--faite { color: var(--text-secondary, #64748b); }
+    .note-contester--faite:hover { text-decoration: none; }
 
     .note-comment {
         background: rgba(var(--neutral-rgb), 0.05);
@@ -449,6 +451,10 @@
     // Contester une note : permission de l'élève ET réclamations ouvertes par l'école.
     $peutContester = auth()->user()?->can('notes.reclamations.create_own')
         && app(\App\Domain\Notes\Reclamations\ReglagesReclamations::class)->actives();
+    // Le lien ne s'offre que sur une note réellement contestable : dans le
+    // délai, et pas déjà réclamée (un seul recours par note).
+    $reclamations = $peutContester ? app(\App\Domain\Notes\Reclamations\ReclamationsDeNotes::class) : null;
+    $notesReclamees = $reclamations && ($etudiant->id ?? null) ? $reclamations->notesDejaReclamees((int) $etudiant->id) : [];
 @endphp
 <div class="m-only-desktop">
 <div class="dashboard-acasi notes-container">
@@ -631,7 +637,11 @@
                                             {{ $note->commentaire }}
                                         </div>
                                     @endif
-                                    @if($peutContester)
+                                    @if($peutContester && isset($notesReclamees[(int) $note->id]))
+                                        <span class="note-contester note-contester--faite">
+                                            <i class="fas fa-flag"></i> Réclamation déposée
+                                        </span>
+                                    @elseif($peutContester && $reclamations->dansLeDelai($note))
                                         <a href="{{ route('esbtp.mes-reclamations.index', ['note' => $note->id]) }}" class="note-contester">
                                             <i class="fas fa-flag"></i> Contester cette note
                                         </a>

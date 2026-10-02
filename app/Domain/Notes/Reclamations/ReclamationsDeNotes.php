@@ -40,7 +40,7 @@ final class ReclamationsDeNotes
             ! $this->reglages->actives() => 'Les réclamations de notes ne sont pas ouvertes dans votre établissement.',
             (int) $note->etudiant_id !== (int) $etudiant->id => 'Cette note ne vous appartient pas.',
             ! $note->evaluation => 'Cette note n\'est plus rattachée à une évaluation.',
-            self::fermeLe($note, $this->reglages->delaiJours())?->isPast() === true
+            ! $this->dansLeDelai($note)
                 => 'Le délai de '.$this->reglages->delaiJours().' jours pour contester cette note est dépassé.',
             ESBTPReclamationNote::withTrashed()->where('note_id', $note->id)->exists()
                 => 'Cette note a déjà fait l\'objet d\'une réclamation : un seul recours par note.',
@@ -54,6 +54,24 @@ final class ReclamationsDeNotes
      * recalcul ou la decision d'une reclamation reecrivent `updated_at`, et
      * rouvriraient des notes closes depuis des mois.
      */
+    /**
+     * Une note sans date de saisie (insertion directe, import ancien) est
+     * traitee comme close : on ne sait pas quand son delai a commence.
+     */
+    public function dansLeDelai(ESBTPNote $note): bool
+    {
+        $fin = self::fermeLe($note, $this->reglages->delaiJours());
+
+        return $fin !== null && ! $fin->isPast();
+    }
+
+    /** Les notes de l'eleve deja reclamees, en cles : un seul recours par note. */
+    public function notesDejaReclamees(int $etudiantId): array
+    {
+        return ESBTPReclamationNote::withTrashed()->where('etudiant_id', $etudiantId)
+            ->pluck('note_id')->map(fn ($id) => (int) $id)->flip()->all();
+    }
+
     public static function fermeLe(ESBTPNote $note, int $delaiJours): ?\Illuminate\Support\Carbon
     {
         return $note->created_at?->copy()->addDays($delaiJours);
@@ -86,8 +104,9 @@ final class ReclamationsDeNotes
         } catch (\Throwable $e) {
             // Pas de photo orpheline sur le disque si la ligne n'est pas écrite.
             Storage::disk(self::DISQUE)->delete($chemin);
-            // Deux envois simultanes : l'index unique sur note_id departage.
-            if ($e instanceof \Illuminate\Database\QueryException && ($e->errorInfo[0] ?? null) === '23000') {
+            // Deux envois simultanes : l'index unique sur note_id departage (1062 =
+            // doublon ; 23000 couvrirait aussi une cle etrangere, note supprimee).
+            if ($e instanceof \Illuminate\Database\QueryException && (int) ($e->errorInfo[1] ?? 0) === 1062) {
                 throw ValidationException::withMessages(['note_id' => 'Une réclamation vient déjà d\'être déposée sur cette note.']);
             }
             throw $e;

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Bulletins;
 
+use App\Domain\BtsTroncCommun\BtsMaquette;
+use App\Domain\BtsTroncCommun\BulletinSubjectRowsCompleter;
 use App\Domain\Academique\CoherenceSystemeAcademique;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -99,6 +101,7 @@ final class MoyennesDeLApercu
         private readonly BulletinService $bulletins,
         private readonly BtsCurrentResultSnapshotService $snapshots,
         private readonly AppreciationScaleService $appreciations,
+        private readonly BtsMaquette $maquette,
     ) {}
 
     /**
@@ -345,7 +348,20 @@ final class MoyennesDeLApercu
             ->get()
             ->filter(fn ($matiere) => $this->matiereDeLaClasse($matiere, $classe));
 
+        // La maquette range chaque matiere dans un semestre : celles du S1 ne
+        // se proposent pas, vides, sur l'ecran du S2 (et l'inverse). Le bulletin
+        // applique la meme regle (`BulletinSubjectRowsCompleter`). Sans maquette
+        // appliquee, ou sur l'annuel, rien ne change.
+        $semestre = BulletinSubjectRowsCompleter::semestreDe($periode);
+        $prevues = $semestre !== null && $this->maquette->estAppliquee($classe)
+            ? $this->maquette->subjectsForClasseAndSemestre($classe, $semestre)->pluck('id')->map(fn ($id) => (int) $id)->flip()
+            : null;
+
         foreach ($matieres as $matiere) {
+            if ($prevues !== null && ! isset($lignes[(int) $matiere->id]) && ! $prevues->has((int) $matiere->id)) {
+                continue;
+            }
+
             $moyenne = $parMatiere[$matiere->id]['moyenne'] ?? null;
             $source = $moyenne !== null ? 'calculee' : 'manuelle';
 

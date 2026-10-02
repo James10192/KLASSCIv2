@@ -133,6 +133,24 @@ class ReclamationsDeNotesTest extends TestCase
         $this->deposer()->assertStatus(422)->assertJsonValidationErrors('note_id');
     }
 
+    public function test_une_note_sans_date_de_saisie_ne_se_conteste_pas(): void
+    {
+        ESBTPNote::whereKey($this->note->id)->update(['created_at' => null]);
+
+        $this->deposer()->assertStatus(422)->assertJsonValidationErrors('note_id');
+    }
+
+    public function test_le_lien_contester_disparait_une_fois_la_note_reclamee(): void
+    {
+        $this->actingAs($this->eleveUser)->get(route('esbtp.mes-notes.index'))
+            ->assertOk()->assertSee('Contester cette note')->assertDontSee('Réclamation déposée');
+
+        $this->deposer()->assertCreated();
+
+        $this->actingAs($this->eleveUser)->get(route('esbtp.mes-notes.index'))
+            ->assertOk()->assertDontSee('Contester cette note')->assertSee('Réclamation déposée');
+    }
+
     public function test_une_note_tranchee_ne_se_reconteste_pas(): void
     {
         $this->deposer()->assertCreated();

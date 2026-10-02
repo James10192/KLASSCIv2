@@ -220,15 +220,15 @@
 
 @if(count($etat['fonctionnalites_bloquees']) > 0)
     <div class="pwc-section-title">
-        <div class="pwc-section-icon"><i class="fas fa-lock"></i></div>
+        <div class="pwc-section-icon"><i class="fas fa-flag"></i></div>
         <div>
-            <h2>Fonctionnalités bloquées par adminKlassci</h2>
-            <span>Tant que la limite ou l'échéance n'est pas réglée dans la fiche</span>
+            <h2>Limites signalées par adminKlassci</h2>
+            <span>Atteintes ou dépassées. Seul un dépassement bloque l'école.</span>
         </div>
     </div>
     <div class="pwc-chips">
         @foreach($etat['fonctionnalites_bloquees'] as $fonction)
-            <span class="pwc-chip"><i class="fas fa-lock"></i>{{ $fonction }}</span>
+            <span class="pwc-chip"><i class="fas fa-flag"></i>{{ $fonction }}</span>
         @endforeach
     </div>
 @endif

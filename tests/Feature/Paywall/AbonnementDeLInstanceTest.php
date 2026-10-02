@@ -136,7 +136,7 @@ class AbonnementDeLInstanceTest extends TestCase
 
         $this->assertFalse($etat['statut']['is_blocked']);
         $this->assertFalse($etat['usages']['students']['depasse']);
-        $this->assertSame('Proche de la limite d\'étudiants (1 000/1 000)', $etat['statut']['warnings'][0]);
+        $this->assertSame('Atteinte : limite d\'étudiants (1 000/1 000)', $etat['statut']['warnings'][0]);
     }
 
     public function test_master_injoignable_les_valeurs_locales_previennent_sans_bloquer(): void

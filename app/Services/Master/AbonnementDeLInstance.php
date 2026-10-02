@@ -120,7 +120,8 @@ class AbonnementDeLInstance
                 $statut['is_blocked'] = true;
                 $statut['reasons'][] = $usage['libelle_limite'] . ' dépassée (' . $chiffres . ')';
             } elseif ($usage['pct'] !== null && $usage['pct'] >= self::SEUIL_ALERTE_PCT) {
-                $statut['warnings'][] = 'Proche de la ' . mb_strtolower($usage['libelle_limite'], 'UTF-8') . ' (' . $chiffres . ')';
+                $statut['warnings'][] = ($usage['actuel'] >= $usage['max'] ? 'Atteinte : ' : 'Proche de la ')
+                    . mb_strtolower($usage['libelle_limite'], 'UTF-8') . ' (' . $chiffres . ')';
             }
         }
 

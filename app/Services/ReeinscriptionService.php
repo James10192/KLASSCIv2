@@ -886,19 +886,6 @@ class ReeinscriptionService
     }
 
     /**
-     * Reste du jusqu'auquel une reinscription reste permise.
-     *
-     * Defaut 0 : le dossier doit etre entierement solde, ce qui est le
-     * comportement d'avant ce reglage. Une ecole qui veut tolerer un reliquat le
-     * pose dans ses parametres, et l'affichage comme la garde le suivent
-     * ensemble — c'est tout l'objet de cette methode.
-     */
-    private function toleranceSolde(): float
-    {
-        return \App\Services\Reinscription\EligibiliteReinscription::tolerance();
-    }
-
-    /**
      * Calculer le solde restant d'une inscription basé sur les frais souscriptions actives.
      * Si aucune souscription → solde = 0 (rien à payer).
      */
@@ -1018,14 +1005,6 @@ class ReeinscriptionService
                 }
             }
         }
-    }
-
-    /**
-     * Calcule le montant payé pour une inscription
-     */
-    private function calculerMontantPaye($inscription)
-    {
-        return \App\Models\ESBTPPaiement::netPaidForInscription((int) $inscription->id);
     }
 
 }
