@@ -14,6 +14,7 @@ Jeton `cli:admin`. Lecture seule.
   "dernier_passage": "2026-10-02T07:12:00+00:00",
   "source": "master",
   "silence_secondes": 34,
+  "passages": { "cron": "2026-10-01T18:02:00+00:00", "master": "2026-10-02T07:12:00+00:00" },
   "boite_envoi_care": { "en_attente": 0, "plus_ancienne": null }
 }
 ```
@@ -22,6 +23,8 @@ Jeton `cli:admin`. Lecture seule.
 - `source` : `cron` (tâche cron propre à l'instance) ou `master` (lancé par
   adminKlassci, commande `tenant:planificateur`). `null` : jamais lancé depuis le
   déploiement de ce contrôle.
+- `passages` : le dernier passage de chaque source. adminKlassci ne lance le
+  planificateur d'une école que si `passages.cron` a plus de 150 secondes.
 - `boite_envoi_care.en_attente` qui grossit alors que `actif` est vrai : le Master
   refuse ou ne répond pas — voir les journaux (`GET /api/cli/logs?search=Care`).
 
