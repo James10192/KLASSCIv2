@@ -47,6 +47,10 @@ class ResultatsListePremiumTest extends TestCase
         $reponse->assertSee('<small id="kpi-moyenne-suffixe" hidden>/20</small>', false);
         $reponse->assertSee('Mode Moyenne');
         $reponse->assertSee('class="search-bar"', false);
+        // La classe ne lance la liste qu'une fois sa proposition d'année revenue.
+        $reponse->assertSee('function rechargerApresAnnee(classeId)', false);
+        $reponse->assertSee("if (anneeRequest && this.id !== 'annee_universitaire_id') return;", false);
+        $reponse->assertSee('rechargerApresAnnee(classeId);', false);
     }
 
     public function test_les_pages_du_defilement_se_rendent_avec_leurs_actions(): void
@@ -80,6 +84,11 @@ class ResultatsListePremiumTest extends TestCase
         $this->assertStringContainsString('data-liste-infinie', $html1);
         $this->assertStringContainsString('data-cible="#rsl-tbody"', $html1);
         $this->assertStringContainsString('data-page-suivante="2"', $html1);
+        $this->assertSame(1, preg_match('/data-query="([^"]*)"/', $html1, $requete));
+        parse_str(html_entity_decode($requete[1]), $suite);
+        $this->assertEquals($this->classe->id, $suite['classe_id'] ?? null);
+        $this->assertEquals($this->annee->id, $suite['annee_universitaire_id'] ?? null);
+        $this->assertArrayHasKey('include_all_statuses', $suite);
         $this->assertStringContainsString('<tbody id="rsl-tbody">', $html1);
         $page1->assertJson(['pagination' => ['current_page' => 1, 'next_page' => 2, 'has_more' => true, 'total' => 2, 'affiches' => 1, 'par_page' => 1]]);
 

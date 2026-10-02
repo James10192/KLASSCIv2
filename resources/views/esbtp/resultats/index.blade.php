@@ -313,7 +313,8 @@
                     <div class="rsl-section-icon"><i class="fas fa-list-ol"></i></div>
                     <div>
                         <h3>Liste des résultats</h3>
-                        <div class="rsl-count" id="rsl-count" aria-live="polite"></div>
+                        {{-- Le compteur visible est celui du bas de liste ; celui-ci reste tenu à jour, masqué. --}}
+                        <div class="rsl-count" id="rsl-count" hidden></div>
                     </div>
                 </div>
                 <div class="rsl-list-tools">
@@ -446,40 +447,59 @@ $(document).ready(function() {
         applyFilters();
     });
 
-    // Un filtre qui change recharge la liste
-    $('#classe_id, #annee_universitaire_id, #semestre, #include_all_statuses').on('change', function() {
+    // Un filtre qui change recharge la liste (la classe a son propre gestionnaire, plus bas)
+    $('#annee_universitaire_id, #semestre, #include_all_statuses').on('change', function() {
         if (applyingHistory || remplissageAnnee) return;
+        // Une proposition d'année est en vol : sa fin rechargera, avec ce filtre-ci.
+        // Seule l'année de l'utilisateur passe outre (la proposition est alors abandonnée).
+        if (anneeRequest && this.id !== 'annee_universitaire_id') return;
         clearTimeout(filterTimer);
         filterTimer = setTimeout(applyFilters, 300);
     });
 
-    // L'utilisateur touche l'année : une proposition encore en vol ne l'écrasera pas.
+    // L'utilisateur touche l'année : une proposition encore en vol ne l'écrasera pas,
+    // et c'est son geste qui recharge la liste.
     $('#annee_universitaire_id').on('change', function() {
         if (remplissageAnnee || !anneeRequest) return;
         anneeRequest.abort();
         anneeRequest = null;
     });
 
+    // Fin de la proposition d'année (reçue ou non) : un seul rechargement, avec
+    // l'année affichée, si la classe demandée est toujours celle du sélecteur.
+    function rechargerApresAnnee(classeId) {
+        if ($('#classe_id').val() !== classeId) return;
+        applyFilters();
+    }
+
     // Sélection d'une classe : propose son année, seulement si aucune n'est choisie,
-    // sans recharger la liste et sans jamais remplacer l'année de l'utilisateur.
+    // sans jamais remplacer l'année de l'utilisateur. La liste attend la réponse :
+    // le filtre appliqué est toujours celui que le sélecteur affiche.
     $('#classe_id').on('change', function() {
         if (applyingHistory) return;
         if (anneeRequest) { anneeRequest.abort(); anneeRequest = null; }
+        clearTimeout(filterTimer);
         var classeId = $(this).val();
-        if (!classeId || $('#annee_universitaire_id').val()) return;
+        if (!classeId || $('#annee_universitaire_id').val()) {
+            filterTimer = setTimeout(applyFilters, 300);
+            return;
+        }
         anneeRequest = $.ajax({
             url: '/esbtp/api/classes/' + classeId,
             type: 'GET',
             dataType: 'json',
             success: function(data) {
-                anneeRequest = null;
                 if (!data || !data.annee_universitaire_id) return;
                 if ($('#annee_universitaire_id').val() || $('#classe_id').val() !== classeId) return;
                 remplissageAnnee = true;
                 setNativeValue('annee_universitaire_id', data.annee_universitaire_id);
                 remplissageAnnee = false;
             },
-            error: function() { anneeRequest = null; }
+            complete: function(xhr, status) {
+                if (status === 'abort') return;
+                anneeRequest = null;
+                rechargerApresAnnee(classeId);
+            }
         });
     });
 
