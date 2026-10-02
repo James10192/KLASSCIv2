@@ -1549,6 +1549,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/inscriptions/bulk-export', [ESBTPInscriptionController::class, 'bulkExport'])->name('inscriptions.bulk-export');
             });
 
+            // Statut redoublant : confirmer ou corriger (fiche, liste).
+            Route::middleware(['permission:inscriptions.redoublant.confirm', 'throttle:60,1'])->group(function () {
+                Route::post('/inscriptions/{inscription}/redoublant', [\App\Http\Controllers\ESBTPInscriptionRedoublantController::class, 'etablir'])
+                    ->name('inscriptions.redoublant.etablir');
+                Route::post('/inscriptions-redoublant/confirmer', [\App\Http\Controllers\ESBTPInscriptionRedoublantController::class, 'confirmerEnMasse'])
+                    ->name('inscriptions.redoublant.confirmer-en-masse');
+            });
+
             // â”€â”€ CREATE (nouvelles inscriptions)
             Route::middleware('permission:inscriptions.create')->group(function () {
                 Route::get('/inscriptions/create', [ESBTPInscriptionController::class, 'create'])->name('inscriptions.create');

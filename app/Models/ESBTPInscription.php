@@ -42,6 +42,11 @@ class ESBTPInscription extends Model implements Auditable
         'reinscription_validated_by',
         'est_transfert',
         'etablissement_origine',
+        'is_redoublant',
+        'redoublant_source',
+        'redoublant_confirme_par',
+        'redoublant_motif',
+        'decision_reinscription',
     ];
 
     /**
@@ -79,6 +84,24 @@ class ESBTPInscription extends Model implements Auditable
      */
     protected static function booted(): void
     {
+        // Le statut redoublant se juge par rapport au niveau et à l'année :
+        // une confirmation donnée pour l'ancien ne vaut plus, quel que soit
+        // l'écran qui déplace l'inscription.
+        static::saving(fn (self $inscription) => app(\App\Domain\Inscriptions\StatutRedoublant::class)
+            ->rouvrirSiLeNiveauChange($inscription));
+
+        // Une inscription qui naît, disparaît, revient ou change de niveau change
+        // la déduction des autres inscriptions du même étudiant.
+        $rafraichir = fn (self $inscription) => $inscription->etudiant_id
+            ? app(\App\Domain\Inscriptions\StatutRedoublant::class)->rafraichirLEtudiant((int) $inscription->etudiant_id)
+            : null;
+        static::created($rafraichir);
+        static::deleted($rafraichir);
+        static::restored($rafraichir);
+        static::updated(fn (self $inscription) => $inscription->wasChanged(['niveau_id', 'annee_universitaire_id', 'etudiant_id'])
+            ? $rafraichir($inscription)
+            : null);
+
         static::deleting(function (self $inscription) {
             if ($inscription->isForceDeleting()) {
                 return;
@@ -121,6 +144,11 @@ class ESBTPInscription extends Model implements Auditable
         'date_inscription',
         'type_inscription', // Première inscription, réinscription, etc.
         'is_redoublant', // Réinscription sur le même niveau d'étude
+        'redoublant_source', // deduit | confirme | corrige (App\Domain\Inscriptions\StatutRedoublant)
+        'redoublant_confirme_par',
+        'redoublant_confirme_le',
+        'redoublant_motif',
+        'decision_reinscription', // passage | redoublement | rattrapage
         'status', // active, annulée, etc.
         'is_sous_reserve', // Inscription conditionnelle (ex: sous réserve du BAC)
         'condition_reserve', // Motif de la réserve (ex: BACCALAURÉAT)
@@ -172,6 +200,7 @@ class ESBTPInscription extends Model implements Auditable
         'affectation_status' => 'string',
         'est_transfert' => 'boolean',
         'is_redoublant' => 'boolean',
+        'redoublant_confirme_le' => 'datetime',
     ];
 
     // Constants for affectation status
@@ -354,6 +383,12 @@ class ESBTPInscription extends Model implements Auditable
     public function reinscriptionValidatedBy()
     {
         return $this->belongsTo(User::class, 'reinscription_validated_by');
+    }
+
+    /** La personne qui a confirmé ou corrigé le statut redoublant. */
+    public function redoublantConfirmePar()
+    {
+        return $this->belongsTo(User::class, 'redoublant_confirme_par');
     }
 
     /**

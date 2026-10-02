@@ -67,6 +67,18 @@ return [
         'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur', 'directeurEtudes'],
     ],
 
+    'inscriptions.redoublants_a_confirmer' => [
+        'label' => 'Statuts redoublant à confirmer',
+        'description' => 'Réinscriptions et transferts dont le statut redoublant est encore déduit par le logiciel',
+        'icon' => 'fa-redo-alt',
+        'color' => 'primary',
+        'permission' => 'inscriptions.redoublant.confirm',
+        'partial' => 'dashboard.widgets.inscriptions-redoublants-a-confirmer',
+        'group' => 'Inscriptions',
+        'size' => 'sm',
+        'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur', 'directeurEtudes', 'responsableScolarite', 'serviceScolarite'],
+    ],
+
     'inscriptions.this_year' => [
         'label' => 'Inscriptions de l\'année',
         'description' => 'Total des inscriptions sur l\'année universitaire en cours',

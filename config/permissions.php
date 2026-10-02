@@ -363,6 +363,12 @@ return [
             'group' => 'Inscriptions',
             'icon' => 'fa-unlock-alt',
         ],
+        'inscriptions.redoublant.confirm' => [
+            'label' => 'Confirmer ou corriger le statut redoublant d\'une inscription',
+            'description' => 'Le logiciel déduit le statut (même niveau que l\'année d\'avant). Ce droit permet de le confirmer, ou de le corriger avec un motif. Le bulletin imprime ce statut.',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-redo-alt',
+        ],
         'inscriptions.validate' => [
             'label' => 'Valider une inscription',
             'group' => 'Inscriptions',
@@ -2264,6 +2270,7 @@ return [
         ],
 
         'secretaire' => [
+            'inscriptions.redoublant.confirm',
             'dashboard.view', 'admin.access', 'parent_chatbot.manage',
             'students.view', 'students.create', 'students.edit', 'students.delete',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
@@ -2396,6 +2403,7 @@ return [
         ],
 
         'coordinateur' => [
+            'inscriptions.redoublant.confirm',
             'emargement.prolongation.decide',
             'admin.access', 'dashboard.view',
             'students.view', 'students.view_own',
@@ -2476,6 +2484,7 @@ return [
         ],
 
         'directeurEtudes' => [
+            'inscriptions.redoublant.confirm',
             'emargement.prolongation.decide',
             'dashboard.view',
             'students.view', 'students.view_own',
@@ -2537,6 +2546,7 @@ return [
 
 
         'responsableScolarite' => [
+            'inscriptions.redoublant.confirm',
             'dashboard.view',
             'students.view', 'students.create', 'students.edit',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
@@ -2598,6 +2608,7 @@ return [
         ],
 
         'serviceScolarite' => [
+            'inscriptions.redoublant.confirm',
             'dashboard.view',
             'students.view',
             'students.accessibility.view',

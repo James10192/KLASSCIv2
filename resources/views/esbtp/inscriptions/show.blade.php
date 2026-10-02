@@ -1712,6 +1712,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                         @endif
                                     </span>
                                 </div>
+                                @include('esbtp.inscriptions.partials.statut-redoublant')
                             </div>
 
                             {{-- Autres inscriptions de cet étudiant --}}

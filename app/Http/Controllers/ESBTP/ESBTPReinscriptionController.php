@@ -844,6 +844,8 @@ class ESBTPReinscriptionController extends Controller
             'affectation_status' => 'nullable|string|in:affecté,réaffecté,non_affecté',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'action_reliquat' => 'nullable|string|in:reporter,abandonner', // Gestion des reliquats pour superAdmin
+            'redoublant' => 'nullable|in:0,1',
+            'redoublant_motif' => 'nullable|string|max:500',
         ]);
 
         try {
@@ -877,7 +879,9 @@ class ESBTPReinscriptionController extends Controller
                 $selectedOptionals,
                 $affectationStatus,
                 $request->annee_universitaire_id,
-                $request->action_reliquat // Gestion des reliquats pour superAdmin
+                $request->action_reliquat, // Gestion des reliquats pour superAdmin
+                redoublant: $request->filled('redoublant') ? $request->boolean('redoublant') : null,
+                redoublantMotif: $request->input('redoublant_motif')
             );
 
             // Envoyer notification aux parents
@@ -899,6 +903,9 @@ class ESBTPReinscriptionController extends Controller
                 // joue dans le dialogue lui-meme : si l'etudiant a deja une
                 // photo, il commence par demander s'il faut la remplacer.
                 ->with('demander_photo', true);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Le statut redoublant changé sans motif : rien n'est enregistré.
+            return back()->withInput()->withErrors($e->errors());
         } catch (\App\Exceptions\ReinscriptionRefuseeException $e) {
             // Refus métier : le message est écrit pour la personne.
             return back()->withInput()->withErrors(['error' => $e->getMessage()]);
