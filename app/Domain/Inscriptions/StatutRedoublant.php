@@ -16,7 +16,8 @@ use Illuminate\Validation\ValidationException;
  * ce qu'une personne en a confirmé.
  *
  * Le logiciel déduit (même niveau d'étude que l'année d'avant, règle unique de
- * {@see ESBTPInscription::estUnRedoublement()}). Une personne habilitée confirme
+ * {@see ESBTPInscription::estUnRedoublement()}) ; sans année d'avant dans
+ * KLASSCI, il reprend la déclaration du transféré ({@see DeclarationDuTransfere}). Une personne habilitée confirme
  * la valeur, ou la corrige en disant pourquoi.
  *
  * La colonne `is_redoublant` est la SEULE valeur lue partout (écrans, listes,
@@ -59,8 +60,15 @@ class StatutRedoublant
             return false;
         }
 
+        $precedente = ESBTPInscription::precedantAnnee((int) $inscription->etudiant_id, $annee);
+
+        // Pas d'année précédente ici : seul un transféré peut dire qu'il recommence.
+        if ($precedente === null) {
+            return app(DeclarationDuTransfere::class)->declareRecommencer((int) $inscription->etudiant_id, (int) $annee->id);
+        }
+
         return ESBTPInscription::estUnRedoublement(
-            ESBTPInscription::precedantAnnee((int) $inscription->etudiant_id, $annee),
+            $precedente,
             $inscription->niveau_id !== null ? (int) $inscription->niveau_id : null,
         );
     }
@@ -378,7 +386,10 @@ class StatutRedoublant
         $detail = match ($etat) {
             'confirme' => trim('Confirmé'.($qui ? ' par '.$qui : '').($quand ? ' le '.$quand : '')),
             'corrige' => trim('Corrigé'.($qui ? ' par '.$qui : '').($quand ? ' le '.$quand : '')),
-            'a_confirmer' => 'Déduit du niveau de l\'an dernier, à confirmer.',
+            'a_confirmer' => $valeur && $inscription->anneeUniversitaire?->start_date !== null
+                    && ESBTPInscription::precedantAnnee((int) $inscription->etudiant_id, $inscription->anneeUniversitaire) === null
+                ? 'Déclaré par le candidat dans sa candidature de transfert, à confirmer.'
+                : 'Déduit du niveau de l\'an dernier, à confirmer.',
             default => 'Première inscription dans l\'établissement.',
         };
 

@@ -90,7 +90,7 @@ class QuestionRedoublant
     public static function motifRetenu(?bool $reponse, bool $proposition, ?string $motif): ?string
     {
         if (trim((string) $motif) === '' && $reponse === true && $proposition) {
-            return 'Déclaré par le candidat dans sa candidature : il recommence l\'année qu\'il suivait dans un autre établissement.';
+            return DeclarationDuTransfere::MOTIF;
         }
 
         return $motif;
