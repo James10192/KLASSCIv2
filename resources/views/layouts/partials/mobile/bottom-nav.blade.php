@@ -7,7 +7,7 @@
     (config/permissions.php) quand une permission évidente existe — jamais de 403 visible.
     L'onglet « Plus » ouvre la feuille m-sheet `m-plus` (profil, raccourcis, déconnexion).
     Pour le superAdmin, si la route `mobile.profil` existe (outil de démonstration), la feuille
-    propose un sélecteur des quatre profils (form POST).
+    propose un sélecteur des profils déclarables (form POST).
 --}}
 @php
     $mUser = auth()->user();
@@ -59,6 +59,19 @@
                     ['label' => 'Appel', 'icon' => 'hand', 'href' => $r('teacher.dashboard') ? route('teacher.dashboard') . '#pending-roll-calls' : null, 'on' => false, 'show' => true],
                     ['label' => 'Notes', 'icon' => 'pen', 'href' => $r('teacher.grades') ? route('teacher.grades') : null, 'on' => $on('teacher.grades*'), 'show' => true],
                     ['label' => 'Profil', 'icon' => 'user', 'href' => $r('teacher.profile') ? route('teacher.profile') : null, 'on' => $on('teacher.profile*'), 'show' => true],
+                ];
+                break;
+            case 'technique':
+                // Pages du service technique : gardees par le role serviceTechnique
+                // ou par une permission (abonnement) ; chaque onglet passe donc par
+                // la garde REELLE de sa route.
+                $mTech = fn (string $route) => $r($route) && \App\Support\PorteDeRoute::ouverte($route, $mUser);
+                $mItems = [
+                    ['label' => 'Accueil', 'icon' => 'home', 'href' => $r('dashboard') ? route('dashboard') : null, 'on' => $on('dashboard'), 'show' => true],
+                    ['label' => 'Abonnement', 'icon' => 'lock', 'href' => $mTech('esbtp.paywall-config.index') ? route('esbtp.paywall-config.index') : null, 'on' => $on('esbtp.paywall-config.*'), 'show' => true],
+                    ['label' => 'Matricules', 'icon' => 'qr', 'href' => $mTech('esbtp.matricule-config.index') ? route('esbtp.matricule-config.index') : null, 'on' => $on('esbtp.matricule-config.*'), 'show' => true],
+                    ['label' => 'Rôles', 'icon' => 'users', 'href' => $mTech('esbtp.roles-permissions.index') ? route('esbtp.roles-permissions.index') : null, 'on' => $on('esbtp.roles-permissions.*'), 'show' => true],
+                    ['label' => 'Plus', 'icon' => 'menu', 'sheet' => 'm-plus', 'on' => false, 'show' => true],
                 ];
                 break;
             case 'scolarite':
@@ -116,8 +129,10 @@
     $mCanSwitch = $mUser && $mUser->hasRole('superAdmin') && Route::has('mobile.profil');
     // Libellés courts pour l'affichage (la liste canonique vient du resolver).
     $mProfilLabels = ['caissier' => 'Caisse', 'comptable' => 'Comptabilité', 'etudiant' => 'Étudiant', 'enseignant' => 'Enseignant', 'scolarite' => 'Scolarité'];
-    $mProfilLabels = array_intersect_key($mProfilLabels, array_flip(\App\Services\Mobile\MobileProfileResolver::PROFILS));
-    $mRoleLabel = $mProfil ? ($mProfilLabels[$mProfil] ?? '') : '';
+    // Le sélecteur du superAdmin ne propose que les profils déclarables :
+    // « technique » se lit sur le rôle, le superAdmin n'y verrait pas les pages du technicien.
+    $mProfilLabels = array_intersect_key($mProfilLabels, array_flip(\App\Services\Mobile\MobileProfileResolver::PROFILS_DECLARABLES));
+    $mRoleLabel = $mProfil === 'technique' ? 'Service technique' : ($mProfil ? ($mProfilLabels[$mProfil] ?? '') : '');
 @endphp
 
 @if($mUser && $mProfil && count($mItems))
@@ -246,6 +261,20 @@
                             <x-m.icon name="settings" />Préférences<span class="ch"><x-m.icon name="chr" /></span>
                         </a>
                     @endif
+                @elseif($mProfil === 'technique')
+                    @foreach([
+                        ['esbtp.bulletin-style.index', 'esbtp.bulletin-style.*', 'file', 'Style des bulletins'],
+                        ['esbtp.reclamations-notes.index', 'esbtp.reclamations-notes.*', 'scale', 'Réclamations de notes'],
+                    ] as [$mRoute, $mOn, $mIcone, $mLibelle])
+                        @if(Route::has($mRoute) && \App\Support\PorteDeRoute::ouverte($mRoute, $mUser))
+                            <a href="{{ route($mRoute) }}" class="{{ request()->routeIs($mOn) ? 'on' : '' }}">
+                                <x-m.icon :name="$mIcone" />{{ $mLibelle }}<span class="ch"><x-m.icon name="chr" /></span>
+                            </a>
+                        @endif
+                    @endforeach
+                    <button type="button" x-on:click="hide(); document.getElementById('sidebar-toggle')?.click();">
+                        <x-m.icon name="menu" />Tout le menu<span class="ch"><x-m.icon name="chr" /></span>
+                    </button>
                 @elseif($mProfil === 'scolarite')
                     @if(Route::has('esbtp.inscriptions.create') && \App\Support\PorteDeRoute::ouverte('esbtp.inscriptions.create', $mUser))
                         <a href="{{ route('esbtp.inscriptions.create') }}" class="{{ request()->routeIs('esbtp.inscriptions.create') ? 'on' : '' }}">
