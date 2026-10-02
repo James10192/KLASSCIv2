@@ -45,6 +45,23 @@ class NouveautesTest extends TestCase
         $this->assertSame(['Pour tous'], $titres);
     }
 
+    public function test_une_entree_conditionnee_suit_l_ecran_qu_elle_annonce(): void
+    {
+        $contenu = ['titre' => 'T', 'entrees' => [
+            ['titre' => 'Reclamations', 'texte' => 'x', 'si' => 'reclamations'],
+            ['titre' => 'Inconnue', 'texte' => 'x', 'si' => 'nimporte'],
+            ['titre' => 'Pour tous', 'texte' => 'x'],
+        ]];
+
+        \App\Models\Setting::updateOrCreate(['key' => 'notes.reclamations.enabled'], ['value' => '0', 'type' => 'boolean', 'group' => 'notes', 'is_required' => false]);
+        \Illuminate\Support\Facades\Cache::flush();
+        $this->assertSame(['Pour tous'], array_column(Nouveautes::pour(null, $contenu)['entrees'], 'titre'));
+
+        \App\Models\Setting::where('key', 'notes.reclamations.enabled')->update(['value' => '1']);
+        \Illuminate\Support\Facades\Cache::flush();
+        $this->assertSame(['Reclamations', 'Pour tous'], array_column(Nouveautes::pour(null, $contenu)['entrees'], 'titre'));
+    }
+
     public function test_le_contenu_livre_est_valide_et_ses_captures_existent(): void
     {
         $contenu = require resource_path('data/nouveautes.php');
@@ -78,7 +95,7 @@ class NouveautesTest extends TestCase
         $this->assertStringContainsString('resultats-bureau-avant.webp', $html);
         $this->assertStringNotContainsString('Les bulletins se génèrent même si vous quittez la page', $html);
         // Un ecran nouveau montre sa capture seule, sans curseur avant / apres.
-        $this->assertStringContainsString('aide-nanan.webp', $html);
+        $this->assertStringContainsString('notifications.webp', $html);
         $this->assertSame(1, substr_count($html, 'aria-label="Comparer avant et après"'));
         foreach (['whatsNewCloseBtn', 'whatsNewRemindLaterBtn', 'whatsNewDismissBtn'] as $id) {
             $this->assertStringContainsString('id="'.$id.'"', $html);
@@ -91,7 +108,7 @@ class NouveautesTest extends TestCase
 
         $html = view('layouts.partials.nouveautes', ['cleVersion' => 'whatsNew.v2026_10_02'])->render();
 
-        $this->assertStringContainsString('Aide : Nanan vous guide', $html);
+        $this->assertStringContainsString('Des pages plus rapides', $html);
         $this->assertStringNotContainsString('Les résultats refaits', $html);
         $this->assertStringNotContainsString('Nanan fait davantage pour vous', $html);
     }

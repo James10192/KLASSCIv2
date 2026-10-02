@@ -3,7 +3,8 @@
 /*
  * Contenu de la fenêtre « Nouveautés » affichée à la connexion.
  *
- * Une entrée par changement VISIBLE. Chaque entrée n'apparaît qu'aux comptes
+ * Une entrée par changement VISIBLE. `si` (facultatif) réserve une entrée aux
+ * écoles où l'écran annoncé est ouvert : voir Nouveautes::disponible(). Chaque entrée n'apparaît qu'aux comptes
  * qui ont au moins une des permissions listées (aucune liste = tout le monde) :
  * une caissière ne lit pas les nouveautés du jury, un étudiant ne lit pas
  * celles de la caisse. Un compte à qui aucune entrée ne s'adresse ne voit pas
@@ -36,6 +37,7 @@ return [
         [
             'titre' => 'Aide : Nanan vous guide',
             'icone' => 'fa-life-ring',
+            'si' => 'aide',
             'texte' => 'Le bouton « Aide » ouvre une conversation avec Nanan : un problème, une question « comment faire », une idée, ou le suivi de vos demandes. Si Nanan ne trouve pas, elle prépare la demande au support, capture de la page comprise, et vous êtes averti quand le support répond.',
             'captures' => [
                 'apres' => 'images/nouveautes/2026-10/aide-nanan.webp',
@@ -45,6 +47,7 @@ return [
         ],
         [
             'titre' => 'Les réclamations de notes',
+            'si' => 'reclamations',
             'icone' => 'fa-scale-balanced',
             'texte' => 'Un élève peut contester une note, avec la photo de sa copie. L’enseignant donne son avis, l’école tranche, et la note est corrigée ou maintenue avec un motif. Tout se suit sur une seule page.',
             'permissions' => ['notes.reclamations.traiter', 'identity.teach'],
@@ -56,6 +59,7 @@ return [
         ],
         [
             'titre' => 'Contester une note',
+            'si' => 'reclamations',
             'icone' => 'fa-scale-balanced',
             'texte' => 'Depuis « Mes notes » ou « Mes réclamations », vous pouvez contester une note en expliquant pourquoi, avec la photo de votre copie. Vous suivez la réponse au même endroit.',
             'permissions' => ['notes.reclamations.create_own'],
@@ -73,20 +77,20 @@ return [
         [
             'titre' => 'Nanan fait davantage pour vous',
             'icone' => 'fa-wand-magic-sparkles',
-            'texte' => 'Sur simple demande, Nanan prépare et vous validez : valider des inscriptions, enregistrer un versement, corriger une note, créer une évaluation, générer des bulletins, ajouter ou modifier des classes, préparer une année universitaire. Rien ne change sans votre clic sur « Valider ».',
+            'texte' => 'Sur simple demande, Nanan prépare et vous validez : valider des inscriptions, annuler un versement par un avoir, corriger une note, créer une évaluation, générer des bulletins, ajouter ou modifier des classes, préparer une année universitaire. Rien ne change sans votre clic sur « Valider ».',
             'permissions' => ['admin.access', 'identity.school_manager', 'identity.registrar', 'identity.direct_studies'],
         ],
         [
             'titre' => 'Les bulletins se génèrent même si vous quittez la page',
             'icone' => 'fa-file-pdf',
             'texte' => 'La génération des bulletins d’une classe et le PDF groupé continuent en arrière-plan. La progression dit combien d’élèves restent et le temps estimé ; une génération interrompue se relance depuis l’écran déjà rempli.',
-            'permissions' => ['bulletins.export.bulk'],
+            'permissions' => ['admin.access', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk'],
         ],
         [
             'titre' => 'Une fiche de réinscription qui dit quoi faire',
             'icone' => 'fa-user-check',
             'texte' => 'La fiche commence par le verdict (autorisée, bloquée, possible par dérogation, déjà inscrit) et les actions qui vont avec. La décision de passage se prend sur la moyenne annuelle du bulletin.',
-            'permissions' => ['students.edit', 'reinscriptions.demandes.process'],
+            'permissions' => ['admin.access', 'identity.direct_studies', 'identity.registrar', 'identity.registrar_clerk', 'identity.enrollment_officer'],
         ],
         [
             'titre' => 'Choisir l’année d’une inscription',
