@@ -209,15 +209,6 @@ class ESBTPInscriptionApiController extends Controller
         try {
             $search = $request->input("search", "");
 
-            // Une saisie : la recherche tolerante des demandes d'inscription
-            // (ordre des mots, accents, format du telephone).
-            if (trim((string) $search) !== "") {
-                return response()->json([
-                    "success" => true,
-                    "parents" => app(\App\Domain\Admissions\RechercheParents::class)->chercher((string) $search, 50),
-                ]);
-            }
-
             $query = ESBTPParent::query();
 
             if (!empty($search)) {

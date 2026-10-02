@@ -214,9 +214,6 @@ class DemandesInscriptionTest extends TestCase
             ->getJson(route('esbtp.demandes.parents', ['q' => $q]))->assertOk()->json('parents'), 'id');
 
         $this->assertSame([$parent->id], $chercher('jean marc kouame'));
-        // Le formulaire complet passe par la meme recherche.
-        $this->assertSame([$parent->id], array_column($this->actingAs($this->agent)
-            ->getJson(route('esbtp.api.parents.search', ['search' => 'kouame jean marc']))->assertOk()->json('parents'), 'id'));
         $this->assertSame([$parent->id], $chercher('01 02 03 04 05'));
         $this->assertSame([], $chercher('k'));
     }

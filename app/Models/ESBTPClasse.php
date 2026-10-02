@@ -390,7 +390,10 @@ class ESBTPClasse extends Model implements Auditable
     public function placesDisponiblesPour(?int $anneeId = null): int
     {
         $anneeId = $anneeId ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
-        // Sans annee courante, rien n'est compte (meme regle que nombre_etudiants).
+        // Sans annee courante, rien n'est compte (meme regle que nombre_etudiants), et on le dit.
+        if (! $anneeId) {
+            \Log::warning("Aucune année universitaire courante définie pour les places de la classe {$this->id}");
+        }
         $prises = $anneeId ? $this->inscriptions()->occupeUnePlace((int) $anneeId)->count() : 0;
 
         return max(0, (int) ($this->places_totales ?? 0) - $prises);
