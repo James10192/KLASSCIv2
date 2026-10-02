@@ -1684,7 +1684,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                     <span class="is-info-lbl">Type d'inscription</span>
                                     <span class="is-info-val">
                                         <span class="is-badge {{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'info' : 'primary' }}">
-                                            {{ in_array($inscription->type_inscription, ['reinscription', 'réinscription']) ? 'Réinscription' : ucfirst($inscription->type_inscription) }}
+                                            {{ \App\Services\Inscriptions\NormalisationTypeInscription::libelle($inscription->type_inscription) }}
                                         </span>
                                         @if($inscription->est_transfert)
                                             <span class="is-badge warning ms-1"><i class="fas fa-exchange-alt"></i> Transfert</span>
