@@ -3,6 +3,7 @@
 namespace App\Domain\Admissions;
 
 use App\Domain\Notifications\PhoneFormatter;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
@@ -26,6 +27,7 @@ class PreparationDInscription
     public function __construct(
         private readonly StudentDuplicateDetector $doublons,
         private readonly TenantScolariteSettings $scolarite,
+        private readonly RechercheParents $parents,
     ) {
     }
 
@@ -40,7 +42,8 @@ class PreparationDInscription
                 'statut' => (string) $c->statut,
                 'reference' => (string) ($c->referencePubliqueAffichee() ?? ''),
                 'voeu' => $c->voeu(),
-                'annee_universitaire_id' => $c->annee_universitaire_id,
+                // Entier : l'ecran compare avec ===, contre des identifiants d'annee entiers.
+                'annee_universitaire_id' => $c->annee_universitaire_id !== null ? (int) $c->annee_universitaire_id : null,
                 'annee' => (string) $c->anneeUniversitaire?->name,
                 'affectation_status' => $c->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
             ],
@@ -63,13 +66,50 @@ class PreparationDInscription
                 'relation' => ESBTPCandidature::relationTuteurNormalisee($c->tuteur_lien),
                 'profession' => (string) $c->tuteur_profession,
             ],
+            // Le parent revient souvent pour un deuxieme enfant, parfois saisi
+            // deux fois : on montre ceux qui lui ressemblent avant d'en creer un.
+            'parents_proches' => $this->parents->proches($c->tuteur_nom, $c->tuteur_telephone),
+            'annees' => $this->annees($c->annee_universitaire_id),
+            'url_classes' => route('esbtp.demandes.classes-annee', $c),
             'doublons' => $this->doublons($c),
-            'classes' => $this->classes($c->filiere_id, $c->niveau_id),
+            'classes' => $this->classes($c->filiere_id, $c->niveau_id, $c->annee_universitaire_id),
             'matricule_automatique' => ESBTPSystemSetting::isMatriculeAutomatic(),
             'statut_etablissement_requis' => $this->scolarite->confirmerStatutEtablissement(),
             'montants_masques' => app(EnrollmentAmountVisibility::class)->hideAmounts(auth()->user()),
             'rendez_vous' => $this->rendezVous($c),
         ];
+    }
+
+    /**
+     * Les annees ou l'on peut inscrire : celle de la candidature, la courante
+     * et celles qui suivent. Une candidature deposee pour une annee qu'on n'a
+     * pas encore ouverte, ou reportee, s'inscrit ainsi sur la bonne.
+     *
+     * `echue` : l'annee est terminee (date de fin passee). Inscrire dessus
+     * reste possible — un dossier en retard — mais l'ecran le fait confirmer.
+     *
+     * @return list<array{id: int, nom: string, courante: bool, echue: bool, fin: ?string}>
+     */
+    private function annees(?int $anneeCandidature): array
+    {
+        $courante = ESBTPAnneeUniversitaire::query()->where('is_current', true)->first(['id', 'start_date']);
+
+        return ESBTPAnneeUniversitaire::query()
+            ->where(fn ($q) => $q
+                ->when($courante?->start_date, fn ($w) => $w->where('start_date', '>=', $courante->start_date))
+                ->orWhere('is_current', true)
+                ->orWhere('id', $anneeCandidature ?? 0))
+            ->orderBy('start_date')
+            ->limit(4)
+            ->get(['id', 'name', 'is_current', 'end_date'])
+            ->map(fn (ESBTPAnneeUniversitaire $a) => [
+                'id' => (int) $a->id,
+                'nom' => (string) $a->name,
+                'courante' => (bool) $a->is_current,
+                'echue' => $a->estTerminee(),
+                'fin' => $a->end_date?->translatedFormat('j F Y'),
+            ])
+            ->values()->all();
     }
 
     /** @return list<array<string, mixed>> */
@@ -90,13 +130,16 @@ class PreparationDInscription
      * `complete` suit le refus de ESBTPInscriptionController::store() :
      * places disponibles nulles, capacite non reglee comprise.
      *
+     * Les places se comptent sur l'annee de l'inscription ($anneeId), la
+     * courante par defaut : changer d'annee dans la fenetre les recompte.
+     *
      * Sert aussi a la reinscription, sans voeu.
      *
      * @return list<array<string, mixed>>
      */
-    public function classes(?int $filiereVoulue = null, ?int $niveauVoulu = null): array
+    public function classes(?int $filiereVoulue = null, ?int $niveauVoulu = null, ?int $anneeId = null): array
     {
-        $inscrits = ESBTPClasse::placesPrisesParClasse();
+        $inscrits = ESBTPClasse::placesPrisesParClasse($anneeId);
 
         return ESBTPClasse::query()->where('is_active', true)->with(['filiere:id,name', 'niveau:id,name'])
             ->get(['id', 'name', 'filiere_id', 'niveau_etude_id', 'places_totales'])
