@@ -28,6 +28,7 @@
         'accepter' => $_nouvelle ? route('esbtp.candidatures.accepter', $m) : null,
         'rejeter' => $_nouvelle ? route('esbtp.candidatures.rejeter', $m) : route('esbtp.reinscription-demandes.rejeter', $m),
         'convertir' => $_nouvelle ? null : route('esbtp.reinscription-demandes.convertir', $m),
+        'proposition' => $_nouvelle ? null : route('esbtp.reinscription-demandes.proposition', $m),
         'preparer' => $_inscrire ? route('esbtp.demandes.preparer-inscription', $m) : null,
         'formulaire' => $_inscrire ? route('esbtp.inscriptions.create', ['candidature' => $m->id]) : null,
         'classe' => $_nouvelle ? null : $m->classe_souhaitee_id,

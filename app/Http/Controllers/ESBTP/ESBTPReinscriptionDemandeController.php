@@ -8,7 +8,9 @@ use App\Domain\Admissions\PreparationDInscription;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPEcheancierRule;
 use App\Models\ESBTPReinscriptionDemande;
+use App\Services\Reinscription\ClassesDeReinscription;
 use App\Services\ReeinscriptionService;
 use App\Services\RendezVous\RendezVousApresInscription;
 use App\Services\RendezVous\ReservateurRdv;
@@ -34,7 +36,38 @@ class ESBTPReinscriptionDemandeController extends Controller
 
     public function __construct(private readonly ReeinscriptionService $reinscription)
     {
-        $this->middleware('permission:reinscriptions.demandes.process')->only(['convertir', 'rejeter']);
+        $this->middleware('permission:reinscriptions.demandes.process')->only(['convertir', 'rejeter', 'proposition']);
+    }
+
+    /**
+     * Ce que la fenetre « Réinscrire » pre-remplit : la decision que les
+     * resultats de l'annee quittee proposent (la meme que la fiche de
+     * reinscription), et le statut d'affectation de l'etudiant, qui le suit
+     * d'une annee sur l'autre. L'agent reste libre de changer l'un et l'autre.
+     */
+    public function proposition(Request $request, ESBTPReinscriptionDemande $demande, ClassesDeReinscription $classes): JsonResponse
+    {
+        $cible = ESBTPAnneeUniversitaire::find($request->integer('annee') ?: $demande->annee_universitaire_id);
+        $quittee = ($cible ? $classes->inscriptionQuitteeAvant($demande->etudiant_id, $cible) : null)
+            ?? $classes->inscriptionQuittee($demande->etudiant_id);
+
+        if ($quittee === null) {
+            return response()->json(['decision' => null, 'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS, 'moyenne' => null, 'annee_quittee' => null]);
+        }
+
+        $analyse = $this->reinscription->analyserSituationEtudiantParInscription(
+            $quittee->loadMissing('anneeUniversitaire', 'classe'), (string) $quittee->anneeUniversitaire?->name
+        );
+        $decision = $analyse['decision'] ?? null;
+        $statut = ESBTPEcheancierRule::normalizeStatus($quittee->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
+
+        return response()->json([
+            'decision' => array_key_exists((string) $decision, ESBTPReinscriptionDemande::DECISIONS) ? $decision : null,
+            'moyenne' => isset($analyse['moyenne_generale']) ? round((float) $analyse['moyenne_generale'], 2) : null,
+            'affectation_status' => $statut === ESBTPEcheancierRule::STATUS_ALL ? ESBTPInscription::DEFAULT_AFFECTATION_STATUS : $statut,
+            'annee_quittee' => (string) $quittee->anneeUniversitaire?->name,
+            'classe_quittee' => (string) $quittee->classe?->name,
+        ]);
     }
 
     /**
@@ -57,6 +90,7 @@ class ESBTPReinscriptionDemandeController extends Controller
                 app(PreparationDInscription::class)->annees($demande->annee_universitaire_id), 'id'
             ))],
             'annee_echue_confirmee' => ['nullable', 'boolean'],
+            'affectation_status' => ['nullable', Rule::in([ESBTPEcheancierRule::STATUS_AFFECTE, ESBTPEcheancierRule::STATUS_REAFFECTE, ESBTPEcheancierRule::STATUS_NON_AFFECTE])],
         ]);
 
         $annee = $this->anneeDeConversion($valide, $demande);
@@ -99,6 +133,8 @@ class ESBTPReinscriptionDemandeController extends Controller
                 nouvelleClasseId: $valide['classe_id'],
                 decision: $valide['decision'],
                 observations: $valide['observations'] ?? null,
+                // Sans choix, le service reprend le statut de l'inscription quittee.
+                affectationStatus: $valide['affectation_status'] ?? null,
                 anneeUniversitaireId: $annee->id,
             );
         } catch (\Throwable $e) {
@@ -143,6 +179,7 @@ class ESBTPReinscriptionDemandeController extends Controller
             'classe_id' => $valide['classe_id'],
             'annee_universitaire_id' => $annee->id,
             'annee_echue_confirmee' => ! empty($valide['annee_echue_confirmee']),
+            'affectation_status' => $valide['affectation_status'] ?? null,
             'traite_par' => auth()->id(),
         ]);
 

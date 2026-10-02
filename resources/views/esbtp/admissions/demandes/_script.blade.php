@@ -14,7 +14,7 @@ window.demandesInscription = function () {
         chargement: false, ouvert: null, chargementDossier: false, dossier: null,
         fenetre: '', occupe: false, picker: { ouvert: false, q: '' },
         ins: vierge(),
-        reins: { classe_id: null, decision: '', observations: '', annee_id: null, annee_echue_confirmee: false, classes: null, placesChargement: false, erreurs: {}, message: '' },
+        reins: { classe_id: null, decision: '', observations: '', annee_id: null, annee_echue_confirmee: false, classes: null, placesChargement: false, placesErreur: false, affectation_status: '', proposition: null, decisionTouchee: false, affectationTouchee: false, erreurs: {}, message: '' },
         rejet: { motif: '', erreur: '' },
         rdv: { creneaux: [], chargement: false, choix: null },
 
@@ -228,7 +228,8 @@ window.demandesInscription = function () {
                 // L'annee de la demande par defaut, sauf si elle est terminee :
                 // on ne propose pas d'office une reinscription sur une annee close.
                 const anneeDemande = (this.cfg.annees || []).some((a) => a.id === this.dossier.annee_id && !a.echue) ? this.dossier.annee_id : null;
-                this.reins = { classe_id: this.dossier.classe || null, decision: '', observations: '', annee_id: anneeDemande || (this.cfg.annees || []).find((a) => a.courante)?.id || null, annee_echue_confirmee: false, classes: null, placesChargement: false, erreurs: {}, message: '' };
+                this.reins = { classe_id: this.dossier.classe || null, decision: '', observations: '', annee_id: anneeDemande || (this.cfg.annees || []).find((a) => a.courante)?.id || null, annee_echue_confirmee: false, classes: null, placesChargement: false, placesErreur: false, affectation_status: '', proposition: null, decisionTouchee: false, affectationTouchee: false, erreurs: {}, message: '' };
+                this.chargerPropositionReins(this.reins.annee_id);
                 // Les places de la liste generale sont celles de l'annee courante.
                 if (this.reins.annee_id && !(this.cfg.annees || []).find((a) => a.id === this.reins.annee_id)?.courante) this.chargerClassesReins(this.reins.annee_id);
                 this.fenetre = 'reinscrire';
@@ -249,32 +250,58 @@ window.demandesInscription = function () {
             } catch (e) { this.notifier('error', e.message); } finally { this.occupe = false; }
         },
         anneeReins() { return (this.cfg.annees || []).find((a) => a.id === this.reins.annee_id) || null; },
-        reinsPret() { return !!(this.reins.classe_id && this.reins.decision && (!this.anneeReins()?.echue || this.reins.annee_echue_confirmee)); },
+        reinsPret() {
+            return !!(this.reins.classe_id && this.reins.decision && !this.reins.placesChargement && !this.reins.placesErreur
+                && (!this.anneeReins()?.echue || this.reins.annee_echue_confirmee));
+        },
         choisirAnneeReins(annee) {
             if (this.reins.annee_id === annee.id) return;
             this.reins.annee_id = annee.id;
             this.reins.annee_echue_confirmee = false;
-            // Les places affichees ne valent plus pour la nouvelle annee.
-            this.reins.classes = [];
+            // La liste reste affichee pendant le recomptage ; l'envoi attend
+            // les places de la nouvelle annee (reinsPret).
             this.chargerClassesReins(annee.id);
+            this.chargerPropositionReins(annee.id);
         },
+        /*
+         * La decision proposee par les resultats de l'annee quittee et le
+         * statut d'affectation de l'etudiant. Un choix deja fait par l'agent
+         * n'est jamais ecrase.
+         */
+        async chargerPropositionReins(anneeId) {
+            if (!this.dossier?.proposition) return;
+            const jeton = (this.reins.jetonProposition || 0) + 1;
+            this.reins.jetonProposition = jeton;
+            try {
+                const d = await this.appeler(this.dossier.proposition + (anneeId ? '?annee=' + encodeURIComponent(anneeId) : ''));
+                if (jeton !== this.reins.jetonProposition) return;
+                this.reins.proposition = d;
+                if (!this.reins.decisionTouchee && d.decision) this.reins.decision = d.decision;
+                if (!this.reins.affectationTouchee && d.affectation_status) this.reins.affectation_status = d.affectation_status;
+            } catch (e) { /* La proposition est une aide : sans elle, l'agent choisit. */ }
+        },
+        choisirDecisionReins(valeur) { this.reins.decision = valeur; this.reins.decisionTouchee = true; },
+        choisirAffectationReins(valeur) { this.reins.affectation_status = valeur; this.reins.affectationTouchee = true; },
         /* Les places se recomptent sur l'annee choisie ; une reponse perimee est ignoree. */
         async chargerClassesReins(anneeId) {
             if (!this.cfg.classesParAnnee) return;
             const jeton = (this.reins.jeton || 0) + 1;
             this.reins.jeton = jeton;
             this.reins.placesChargement = true;
+            this.reins.placesErreur = false;
             try {
                 const d = await this.appeler(this.cfg.classesParAnnee + '?annee=' + encodeURIComponent(anneeId));
                 if (jeton === this.reins.jeton && d.annee_universitaire_id === this.reins.annee_id) this.reins.classes = d.classes || [];
             } catch (e) {
-                if (jeton === this.reins.jeton) this.notifier('error', 'Places indisponibles pour cette année : ' + e.message);
+                if (jeton !== this.reins.jeton) return;
+                this.reins.placesErreur = true;
+                this.notifier('error', 'Places indisponibles pour cette année : ' + e.message);
             } finally { if (jeton === this.reins.jeton) this.reins.placesChargement = false; }
         },
         async reinscrire() {
             this.occupe = true; this.reins.erreurs = {}; this.reins.message = '';
             try {
-                const d = await this.appeler(this.dossier.convertir, { methode: 'POST', corps: { classe_id: this.reins.classe_id, decision: this.reins.decision, observations: this.reins.observations, annee_universitaire_id: this.reins.annee_id, annee_echue_confirmee: this.reins.annee_echue_confirmee } });
+                const d = await this.appeler(this.dossier.convertir, { methode: 'POST', corps: { classe_id: this.reins.classe_id, decision: this.reins.decision, observations: this.reins.observations, annee_universitaire_id: this.reins.annee_id, annee_echue_confirmee: this.reins.annee_echue_confirmee, affectation_status: this.reins.affectation_status || null } });
                 this.occupe = false;
                 await this.apresDecision(d.message);
             } catch (e) {

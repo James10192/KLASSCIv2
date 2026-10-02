@@ -370,6 +370,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('throttle:30,1')->name('convertir');
             Route::post('/demandes/{demande}/rejeter', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'rejeter'])
                 ->middleware('throttle:30,1')->name('rejeter');
+            Route::get('/demandes/{demande}/proposition', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'proposition'])
+                ->middleware('throttle:60,1')->name('proposition');
         });
 
         // Candidatures des NOUVEAUX eleves, deposees depuis klassci.com.

@@ -402,6 +402,12 @@ class ESBTPReinscriptionController extends Controller
             $anneeUniversitairesFutures = $this->getAnneesUniversitairesFutures();
 
             $analyse['inscription'] = $inscription;
+            // Le statut d'affectation suit l'etudiant : on le reprend de
+            // l'inscription quittee, sous la forme des options du formulaire.
+            $affectationActuelle = \App\Models\ESBTPEcheancierRule::normalizeStatus($inscription->affectation_status ?: \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
+            if ($affectationActuelle === \App\Models\ESBTPEcheancierRule::STATUS_ALL) {
+                $affectationActuelle = \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
+            }
 
             // Déterminer les années pour l'affichage cohérent
             $anneeEtudiantActuelle = $inscription->anneeUniversitaire->name ?? 'N/A'; // Année de l'inscription actuelle de l'étudiant
@@ -421,7 +427,8 @@ class ESBTPReinscriptionController extends Controller
                 'anneeUniversitairesFutures',
                 'anneeEtudiantActuelle',
                 'anneeDestinationName',
-                'anneeDestination'
+                'anneeDestination',
+                'affectationActuelle'
             ));
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);

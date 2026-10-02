@@ -16,6 +16,7 @@
                 </div>
                 <span class="dmi-champ-aide" x-show="dossier?.annee_id && reins.annee_id !== dossier?.annee_id">L'étudiant a déposé sa demande pour une autre année.</span>
                 <span class="dmi-champ-aide" x-show="reins.placesChargement"><i class="fas fa-circle-notch fa-spin"></i> Places recomptées pour cette année…</span>
+                <span class="dmi-champ-erreur" x-show="reins.placesErreur" x-cloak>Places indisponibles pour cette année. <button type="button" class="dmi-lien" x-on:click="chargerClassesReins(reins.annee_id)">Réessayer</button></span>
             </div>
             <label class="dmi-case dmi-case--alerte" style="margin-bottom:.9rem" x-show="anneeReins()?.echue">
                 <input type="checkbox" x-model="reins.annee_echue_confirmee">
@@ -29,10 +30,21 @@
             <div class="dmi-champ" style="margin-top:.9rem" :class="reins.erreurs.decision ? 'is-erreur' : ''">Décision du conseil
                 <div class="dmi-choix" role="radiogroup" aria-label="Décision">
                     <template x-for="opt in Object.entries(cfg.decisions || {})" :key="opt[0]">
-                        <button type="button" role="radio" :aria-checked="reins.decision === opt[0]" :class="reins.decision === opt[0] ? 'is-actif' : ''" x-on:click="reins.decision = opt[0]" x-text="opt[1]"></button>
+                        <button type="button" role="radio" :aria-checked="reins.decision === opt[0]" :class="reins.decision === opt[0] ? 'is-actif' : ''" x-on:click="choisirDecisionReins(opt[0])" x-text="opt[1]"></button>
                     </template>
                 </div>
+                <span class="dmi-champ-aide" x-show="reins.proposition?.decision" x-cloak>
+                    Proposée d'après les résultats de <span x-text="reins.proposition?.classe_quittee"></span> (<span x-text="reins.proposition?.annee_quittee"></span>)<span x-show="reins.proposition?.moyenne !== null">, moyenne <strong x-text="reins.proposition?.moyenne"></strong>/20</span>.
+                </span>
                 <span class="dmi-champ-erreur" x-text="reins.erreurs.decision" x-show="reins.erreurs.decision"></span>
+            </div>
+            <div class="dmi-champ" style="margin-top:.9rem">Statut d'affectation
+                <div class="dmi-choix" role="radiogroup" aria-label="Statut d'affectation">
+                    <template x-for="opt in Object.entries(cfg.affectations || {})" :key="'af' + opt[0]">
+                        <button type="button" role="radio" :aria-checked="reins.affectation_status === opt[0]" :class="reins.affectation_status === opt[0] ? 'is-actif' : ''" x-on:click="choisirAffectationReins(opt[0])" x-text="opt[1]"></button>
+                    </template>
+                </div>
+                <span class="dmi-champ-aide">Repris de l'année quittée. Il change les frais de l'année.</span>
             </div>
             <label class="dmi-champ" style="margin-top:.9rem">Observations <span class="dmi-champ-aide">(facultatif)</span>
                 <textarea x-model="reins.observations" maxlength="1000"></textarea>
