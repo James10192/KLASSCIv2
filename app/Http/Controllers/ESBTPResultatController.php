@@ -61,7 +61,6 @@ class ESBTPResultatController extends Controller
     private $currentResultSnapshotService;
     private $btsAnnualAggregationService;
     private $btsUiPresenter;
-    private \App\Services\RankingService $rankingService;
     private MoyennesDeLApercu $moyennesDeLApercu;
     private MoyennesDeLaListe $moyennesDeLaListe;
 
@@ -72,7 +71,6 @@ class ESBTPResultatController extends Controller
         BtsCurrentResultSnapshotService $currentResultSnapshotService,
         BtsAnnualAggregationService $btsAnnualAggregationService,
         BtsUiPresenter $btsUiPresenter,
-        \App\Services\RankingService $rankingService,
         MoyennesDeLApercu $moyennesDeLApercu,
         MoyennesDeLaListe $moyennesDeLaListe
     )
@@ -83,7 +81,6 @@ class ESBTPResultatController extends Controller
         $this->currentResultSnapshotService = $currentResultSnapshotService;
         $this->btsAnnualAggregationService = $btsAnnualAggregationService;
         $this->btsUiPresenter = $btsUiPresenter;
-        $this->rankingService = $rankingService;
         $this->moyennesDeLApercu = $moyennesDeLApercu;
         $this->moyennesDeLaListe = $moyennesDeLaListe;
     }
@@ -1202,10 +1199,18 @@ class ESBTPResultatController extends Controller
             // La periode decide de la cohorte : au semestre 1, une classe de
             // tronc commun porte encore ses etudiants passes en specialite.
             $studentsQuery = $this->bulletinService->buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses, $detail_periode);
-            $studentIds = (clone $studentsQuery)->pluck('id');
-            $total = $studentIds->count();
+            // Les KPI portent sur toute la cohorte et ne changent pas d'une page a
+            // l'autre : l'ecran ne les lit qu'en page 1 (`updateKpis()` ignore un
+            // `null`). Les pages suivantes rendent la cle a `null`.
+            if ((int) $page === 1) {
+                $studentIds = (clone $studentsQuery)->pluck('id');
+                $total = $studentIds->count();
+                $kpis = $this->bulletinService->computeResultatsKpis($studentIds, $classe_id, $annee_universitaire_id, $semestre);
+            } else {
+                $total = (clone $studentsQuery)->count();
+                $kpis = null;
+            }
             $etudiants = (clone $studentsQuery)->skip(($page - 1) * $perPage)->take($perPage)->get();
-            $kpis = $this->bulletinService->computeResultatsKpis($studentIds, $classe_id, $annee_universitaire_id, $semestre);
 
             $moyennes = [];
             $rangs = [];
