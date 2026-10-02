@@ -46,7 +46,7 @@ class ServiceTechniqueSeeder extends Seeder
             'name' => 'Service Technique ADC',
             'username' => 'service.technique.adc',
             'email' => 'technique@africandigitconsulting.com',
-            'password' => Hash::make($motDePassePrincipal = $this->motDePasse('SERVICE_TECHNIQUE_PASSWORD')),
+            'password' => Hash::make($motDePassePrincipal = $this->motDePasse('mot_de_passe')),
             'email_verified_at' => now(),
         ];
 
@@ -66,7 +66,7 @@ class ServiceTechniqueSeeder extends Seeder
             'name' => 'Service Technique ADC (Backup)',
             'username' => 'support.technique.adc',
             'email' => 'support@africandigitconsulting.com',
-            'password' => Hash::make($motDePasseBackup = $this->motDePasse('SERVICE_TECHNIQUE_BACKUP_PASSWORD')),
+            'password' => Hash::make($motDePasseBackup = $this->motDePasse('mot_de_passe_secours')),
             'email_verified_at' => now(),
         ];
 
@@ -102,9 +102,9 @@ class ServiceTechniqueSeeder extends Seeder
      * et identiques sur chaque instance. Ils se lisent desormais dans
      * l'environnement de l'instance, et a defaut se generent au hasard.
      */
-    private function motDePasse(string $variable): string
+    private function motDePasse(string $cle): string
     {
-        $fourni = env($variable);
+        $fourni = config('securite.service_technique.' . $cle);
 
         return is_string($fourni) && $fourni !== '' ? $fourni : Str::random(32);
     }
