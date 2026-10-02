@@ -587,7 +587,8 @@ class ESBTPInscriptionController extends Controller
                     app(StatutRedoublant::class)->etablirALaCreation(
                         $inscription,
                         $redoublant,
-                        QuestionRedoublant::motifRetenu($redoublant, QuestionRedoublant::propositionDeLaRequete($request), $request->input('redoublant_motif')),
+                        $request->input('redoublant_motif'),
+                        QuestionRedoublant::propositionDeLaRequete($request) ?: null,
                     );
 
                     DB::commit();

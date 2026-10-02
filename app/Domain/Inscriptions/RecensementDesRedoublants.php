@@ -20,6 +20,9 @@ class RecensementDesRedoublants
 {
     private const ETABLIES = [StatutRedoublant::SOURCE_CONFIRME, StatutRedoublant::SOURCE_CORRIGE];
 
+    /** @var array<string, true> les transférés qui déclarent recommencer, par « étudiant:année » */
+    private array $declares = [];
+
     /**
      * @return array{examinees:int, redoublants:int, a_poser:int, changees:int, decisions:int, indeterminees:int, etablies:int, ecrit:bool}
      */
@@ -37,6 +40,7 @@ class RecensementDesRedoublants
             'decisions' => 0, 'indeterminees' => 0, 'etablies' => 0, 'ecrit' => $ecrire];
         $aPoser = [1 => [], 0 => []];
         $decisions = [];
+        $this->declares = app(DeclarationDuTransfere::class)->couples();
 
         foreach ($lignes->groupBy('etudiant_id') as $inscriptions) {
             foreach ($inscriptions as $ligne) {
@@ -88,7 +92,8 @@ class RecensementDesRedoublants
     }
 
     /**
-     * Même règle que {@see \App\Models\ESBTPInscription::precedantAnnee()},
+     * Même règle que {@see StatutRedoublant::deduire()}, déclaration du transféré comprise,
+     * et que {@see \App\Models\ESBTPInscription::precedantAnnee()},
      * appliquée aux inscriptions déjà chargées de l'étudiant : l'inscription
      * d'une autre année commencée avant celle-ci, la plus récente, à date égale
      * la dernière créée.
@@ -102,7 +107,12 @@ class RecensementDesRedoublants
             ->sortBy([['start_date', 'desc'], ['id', 'desc']])
             ->first();
 
-        if ($precedente === null || $precedente->niveau_id === null || $ligne->niveau_id === null) {
+        if ($precedente === null) {
+            return isset($this->declares[$ligne->etudiant_id.':'.$ligne->annee_universitaire_id])
+                || isset($this->declares[$ligne->etudiant_id.':*']);
+        }
+
+        if ($precedente->niveau_id === null || $ligne->niveau_id === null) {
             return false;
         }
 
