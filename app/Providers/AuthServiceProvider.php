@@ -66,6 +66,21 @@ class AuthServiceProvider extends ServiceProvider
     ];
 
     /**
+     * La porte d'autorisation qui retient ses réponses le temps d'une lecture
+     * (voir PorteMemorisee). Liée ici, avant toute résolution : Spatie y
+     * accroche son contrôle au démarrage des fournisseurs.
+     */
+    public function register()
+    {
+        $this->app->singleton(\Illuminate\Contracts\Auth\Access\Gate::class, function ($app) {
+            return new \App\Support\Autorisations\PorteMemorisee(
+                $app,
+                fn () => call_user_func($app['auth']->userResolver())
+            );
+        });
+    }
+
+    /**
      * Register any authentication / authorization services.
      *
      * @return void
