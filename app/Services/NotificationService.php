@@ -120,9 +120,9 @@ class NotificationService
      *
      * @return array{success: bool, message: string, ecartee?: bool}
      */
-    public function envoyerRelance(ESBTPRelance $relance): array
+    public function envoyerRelance(ESBTPRelance $relance, ?bool $inclureInactives = null): array
     {
-        if (! PopulationDesRelances::couvreLaRelance($relance)) {
+        if (! PopulationDesRelances::couvreLaRelance($relance, $inclureInactives)) {
             $motif = "L'inscription de l'élève n'est plus active : la relance n'est pas envoyée.";
             $relance->marquerCommeEcartee($motif);
 
@@ -153,8 +153,11 @@ class NotificationService
             'ecartees' => 0,
         ];
 
+        // Le reglage est lu une fois pour toute la boucle.
+        $inclureInactives = PopulationDesRelances::inclutLesInactives();
+
         foreach ($relances as $relance) {
-            $resultat = $this->envoyerRelance($relance);
+            $resultat = $this->envoyerRelance($relance, $inclureInactives);
 
             if ($resultat['ecartee'] ?? false) {
                 $resultats['ecartees']++;
@@ -1066,6 +1069,7 @@ class NotificationService
         foreach ($etudiants as $segment => $listeEtudiants) {
             foreach ($listeEtudiants as $etudiant) {
                 $dernierRelance = ESBTPRelance::where('etudiant_id', $etudiant->id)
+                    ->comptePourLeNiveau()
                     ->orderBy('created_at', 'desc')
                     ->first();
 

@@ -220,6 +220,30 @@ class RelancesInscriptionsInactivesTest extends TestCase
         $this->assertNonEnvoyee($ancienEchec);
     }
 
+    public function test_une_relance_ecartee_ne_fait_pas_monter_de_niveau(): void
+    {
+        $ecartee = $this->relance(ESBTPRelance::STATUT_ECARTEE, $this->active->id, $this->active->etudiant_id);
+        $ecartee->forceFill(['created_at' => now()->subDays(30)])->save();
+
+        app(NotificationService::class)->planifierRelancesAvancees(['types_relance' => ['email']]);
+
+        $nouvelle = ESBTPRelance::where('inscription_id', $this->active->id)->whereKeyNot($ecartee->id)->sole();
+        $this->assertSame(1, (int) $nouvelle->niveau);
+    }
+
+    public function test_la_fiche_d_une_relance_ecartee_dit_pourquoi(): void
+    {
+        Permission::findOrCreate('comptabilite.relances.send', 'web');
+        auth()->user()->givePermissionTo('comptabilite.relances.send');
+        $relance = $this->relance('planifiee', $this->annulee->id, $this->annulee->etudiant_id);
+        app(NotificationService::class)->envoyerRelance($relance);
+
+        $this->get(route('esbtp.comptabilite.relances.show', $relance->id))
+            ->assertOk()
+            ->assertSee('Relance écartée, non envoyée')
+            ->assertSee("L'inscription de l'élève n'est plus active");
+    }
+
     public function test_une_relance_sans_inscription_se_resout_par_l_eleve_sur_l_annee_courante(): void
     {
         Mail::fake();

@@ -78,7 +78,7 @@ final class PopulationDesRelances
      * retrouvee, la reponse est non : on n'envoie pas une relance dont on ne
      * sait plus a quelle dette elle se rapporte.
      */
-    public static function couvreLaRelance(ESBTPRelance $relance): bool
+    public static function couvreLaRelance(ESBTPRelance $relance, ?bool $inclureInactives = null): bool
     {
         $requete = ESBTPInscription::query();
 
@@ -92,6 +92,6 @@ final class PopulationDesRelances
             $requete->where('etudiant_id', $relance->etudiant_id)->where('annee_universitaire_id', $anneeCourante);
         }
 
-        return self::restreindre($requete)->exists();
+        return self::restreindre($requete, $inclureInactives)->exists();
     }
 }

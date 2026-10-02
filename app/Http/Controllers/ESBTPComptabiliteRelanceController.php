@@ -628,6 +628,7 @@ class ESBTPComptabiliteRelanceController extends Controller
 
                 // Niveau = dernier niveau + 1 (max 3)
                 $dernierNiveau = \App\Models\ESBTPRelance::where('etudiant_id', $inscription->etudiant_id)
+                    ->comptePourLeNiveau()
                     ->orderByDesc('niveau')->value('niveau') ?? 0;
 
                 $niveau = min(3, $dernierNiveau + 1);

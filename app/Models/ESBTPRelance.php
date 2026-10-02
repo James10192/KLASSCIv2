@@ -62,6 +62,16 @@ class ESBTPRelance extends Model
     /**
      * Scopes
      */
+    /**
+     * Les relances qui comptent dans la progression des niveaux : une relance
+     * ecartee n'a jamais ete envoyee, elle ne fait pas monter l'eleve au
+     * niveau suivant.
+     */
+    public function scopeComptePourLeNiveau($query)
+    {
+        return $query->where('statut', '!=', self::STATUT_ECARTEE);
+    }
+
     public function scopePlanifiee($query)
     {
         return $query->where('statut', 'planifiee');
