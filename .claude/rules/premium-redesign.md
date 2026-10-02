@@ -196,6 +196,8 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | matricules (`/esbtp/matricule-config`) | `mcf-*` | `mcf-hero`, `mcf-kpi`, `mcf-field`, `mcf-niveau`, `mcf-note` |
 | réclamations de notes (`/esbtp/mes-reclamations`, `/esbtp/reclamations-notes`) | `rcl-*` (feuille partagée `reclamations-notes/partials/_styles`) | `rcl-hero`, `rcl-card`, `rcl-item`, `rcl-badge`, `rcl-voile`, `rcl-fenetre` |
 | résultats des étudiants (`/esbtp/resultats`, liste à défilement infini) | `rsl-*` | `rsl-hero`, `rsl-kpi`, `rsl-row`, `rsl-action-main`, `rsl-more`, `rsl-sentinel` |
+| style des bulletins BTS (`/esbtp/service-technique/bulletin-style`) | `bst-*` | `bst-hero`, `bst-kpi`, `bst-option`, `bst-apercu`, `bst-pastille` |
+| rôles et permissions (`/esbtp/roles-permissions`) | `rp-*` | `rp-hero`, `rp-kpi`, `rp-role-chip`, `rp-actions-bar`, `rp-group`, `rp-perm-card`, `rp-audit` |
 
 Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 
