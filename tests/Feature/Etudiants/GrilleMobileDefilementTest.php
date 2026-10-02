@@ -39,6 +39,12 @@ class GrilleMobileDefilementTest extends TestCase
 
     public function test_la_grille_mobile_a_sa_sentinelle_et_la_tranche_suivante_porte_des_cartes(): void
     {
+        // La grille de cartes est la vue du telephone quand le shell mobile est
+        // coupe ; shell actif, la liste _index-mobile la remplace et elle n'est
+        // pas rendue (PoidsListeEtudiantsTest).
+        Cache::put('setting_' . \App\Services\Mobile\MobileProfileResolver::REGLAGE_ACTIF, false, 60);
+        \App\Services\Mobile\MobileProfileResolver::oublier();
+        $this->beforeApplicationDestroyed(fn () => \App\Services\Mobile\MobileProfileResolver::oublier());
         ESBTPEtudiant::factory()->count(45)->create();
 
         $html = $this->get(route('esbtp.etudiants.index'))
@@ -61,7 +67,9 @@ class GrilleMobileDefilementTest extends TestCase
 
         // Le defilement n'ajoute a la grille que les elements portant la classe de
         // la carte : si l'une change sans l'autre, la grille s'arrete en silence.
-        $this->assertStringContainsString("carte.classList.contains('etm-card')", $html);
+        // Le script de la page vit dans public/js/etudiants-index.js depuis octobre 2026.
+        $this->assertStringContainsString('js/etudiants-index.js', $html);
+        $this->assertStringContainsString("carte.classList.contains('etm-card')", file_get_contents(public_path('js/etudiants-index.js')));
     }
 
     public function test_le_tri_finit_par_l_identifiant(): void

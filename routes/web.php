@@ -2672,6 +2672,12 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
         ->name('esbtp.etudiants.export.pdf')
         ->middleware('permission:students.view');
 
+    // Modal « Réinscription groupée » de la liste : étudiants éligibles, chargés à
+    // l'ouverture (même permission que la liste qui porte le modal).
+    Route::get('esbtp/etudiants-reinscription-groupee/eligibles', [ESBTPStudentController::class, 'reinscriptionEligibles'])
+        ->name('esbtp.etudiants.reinscription-eligibles')
+        ->middleware('permission:students.view');
+
     // Resource CRUD
     Route::resource('esbtp/etudiants', ESBTPStudentController::class, ['as' => 'esbtp'])
         ->parameters(['etudiants' => 'etudiant'])
