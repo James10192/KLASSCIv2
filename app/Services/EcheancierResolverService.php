@@ -45,9 +45,9 @@ class EcheancierResolverService
      * La regle ne depend que de (portee, statut, jour) : on la retient par
      * instance. La duree de vie reste celle de l'appelant (une page, une
      * tache), et toute ecriture par modele sur une regle ou une ligne vide la
-     * memoire. Une ecriture par requete brute (`lines()->delete()` de la copie
-     * de regles) ne declenche pas d'evenement : elle vit dans des requetes
-     * d'administration qui ne calculent rien ensuite.
+     * memoire. Une ecriture par requete brute ne declenche pas d'evenement :
+     * elle doit appeler oublierRegles() elle-meme, comme le fait la bascule
+     * groupee `bulkStatus()` de ESBTPEcheancierController.
      *
      * @var array<string, ESBTPEcheancierRule|null>
      */
