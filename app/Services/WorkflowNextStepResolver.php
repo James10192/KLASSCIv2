@@ -186,7 +186,9 @@ class WorkflowNextStepResolver
             'inscriptions' => $inscriptions
                 ? ESBTPInscription::whereIn('id', $inscriptions)->get(['id', 'status', 'workflow_step'])->keyBy('id')->all() : [],
             'payees' => $ids['inscription.created']
-                ? array_fill_keys(ESBTPPaiement::whereIn('inscription_id', $ids['inscription.created'])->distinct()->pluck('inscription_id')->all(), true) : [],
+                // Un paiement rejete n'a rien encaisse : l'etape reste a faire.
+                ? array_fill_keys(ESBTPPaiement::whereIn('inscription_id', $ids['inscription.created'])
+                    ->where('status', '!=', 'rejeté')->distinct()->pluck('inscription_id')->all(), true) : [],
         ];
     }
 

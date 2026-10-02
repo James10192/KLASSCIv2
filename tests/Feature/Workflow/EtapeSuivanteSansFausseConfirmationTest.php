@@ -108,4 +108,29 @@ class EtapeSuivanteSansFausseConfirmationTest extends TestCase
         $this->assertNotNull($fait->fresh()->read_at);
         $this->assertNull($aFaire->fresh()->read_at);
     }
+
+    public function test_un_paiement_rejete_laisse_l_encaissement_a_faire(): void
+    {
+        $collegue = User::factory()->create();
+        $inscription = \App\Models\ESBTPInscription::factory()->create(['workflow_step' => 'valide']);
+        \App\Models\ESBTPPaiement::factory()->create([
+            'inscription_id' => $inscription->id,
+            'etudiant_id' => $inscription->etudiant_id,
+            'annee_universitaire_id' => $inscription->annee_universitaire_id,
+            'status' => 'rejeté',
+        ]);
+        $avis = \Illuminate\Notifications\DatabaseNotification::create([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'type' => \App\Notifications\WorkflowNextStepNotification::class,
+            'notifiable_type' => User::class,
+            'notifiable_id' => $collegue->id,
+            'data' => ['type' => 'inscription.created', 'context' => ['inscription_id' => $inscription->id], 'next_label' => 'Encaisser un paiement pour cette inscription'],
+        ]);
+
+        // Rejeté, il n'a rien encaissé : l'étape attend toujours quelqu'un.
+        $restants = app(\App\Services\WorkflowNextStepResolver::class)->clotureLesEtapesFaites($collegue);
+
+        $this->assertSame(1, $restants);
+        $this->assertNull($avis->fresh()->read_at);
+    }
 }
