@@ -17,6 +17,9 @@
         $sourceTexte = 'adminKlassci non configuré';
     }
     $bloque = $etat['statut']['is_blocked'];
+    // Paywall non appliqué : les limites dépassées restent dites, mais
+    // l'école est ouverte. Ne jamais afficher « Bloqué » dans ce cas.
+    $bloqueEnFait = $bloque && $etat['paywall_actif'];
 @endphp
 
 <div class="pwc-hero">
@@ -84,7 +87,7 @@
         </div>
         <div class="pwc-kpi">
             <div class="pwc-kpi-label">Accès de l'école</div>
-            <div class="pwc-kpi-value">{{ $bloque ? 'Bloqué' : 'Ouvert' }}</div>
+            <div class="pwc-kpi-value">{{ $bloqueEnFait ? 'Bloqué' : 'Ouvert' }}</div>
             <div class="pwc-kpi-sub">
                 Paywall {{ $etat['paywall_actif'] ? 'appliqué' : 'non appliqué' }} sur cette instance
                 @if($etat['statut_tenant_label'])
@@ -137,10 +140,10 @@
 @endif
 
 @if($bloque)
-    <div class="pwc-alert pwc-alert--danger">
-        <i class="fas fa-ban"></i>
+    <div class="pwc-alert {{ $bloqueEnFait ? 'pwc-alert--danger' : 'pwc-alert--warning' }}">
+        <i class="fas {{ $bloqueEnFait ? 'fa-ban' : 'fa-triangle-exclamation' }}"></i>
         <div>
-            <strong>L'école est bloquée{{ $etat['paywall_actif'] ? '' : ' (le paywall n\'est pas appliqué : rien n\'est bloqué en pratique)' }}.</strong>
+            <strong>{{ $bloqueEnFait ? 'L\'école est bloquée.' : 'Limites dépassées. Le paywall n\'est pas appliqué sur cette instance : l\'école reste ouverte.' }}</strong>
             <ul>
                 @foreach($etat['statut']['reasons'] as $raison)
                     <li>{{ $raison }}</li>
