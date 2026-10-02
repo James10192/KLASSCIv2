@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Domain\Students\Accessibility\Actions\AttachAccessibilityProfile;
 use App\Domain\BtsTroncCommun\BtsOrientationService;
 use App\Domain\BtsTroncCommun\BtsUiPresenter;
+use App\Domain\Inscriptions\QuestionRedoublant;
+use App\Domain\Inscriptions\StatutRedoublant;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPClasse;
@@ -578,6 +580,13 @@ class ESBTPInscriptionController extends Controller
                         $selectedOptionals,
                         $affectationStatus,
                         $request->input('in_kind_deposits', []),
+                    );
+
+                    // La réponse à « Redoublant ? », motif déjà vérifié par la requête.
+                    app(StatutRedoublant::class)->etablirALaCreation(
+                        $inscription,
+                        QuestionRedoublant::reponse($request),
+                        $request->input('redoublant_motif'),
                     );
 
                     DB::commit();

@@ -1363,67 +1363,8 @@
     </div>
 </div>
 
-{{-- ========================================
-     MODAL CRÉATION CLASSE (AJAX)
-     ======================================== --}}
-<div class="modal fade" id="createClasseModal" tabindex="-1" aria-labelledby="createClasseModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header ci-modal-header">
-                <h5 class="modal-title" id="createClasseModalLabel">
-                    <i class="fas fa-plus-circle me-2"></i>Nouvelle classe
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <div class="modal-body" id="modal-create-body">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Chargement...</span>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Annuler
-                </button>
-                <button type="button" class="btn btn-primary" id="modal-create-submit-btn" disabled>
-                    <i class="fas fa-save me-1"></i>Enregistrer la classe
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- ========================================
-     MODAL ÉDITION CLASSE (AJAX)
-     ======================================== --}}
-<div class="modal fade" id="editClasseModal" tabindex="-1" aria-labelledby="editClasseModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header ci-modal-header">
-                <h5 class="modal-title" id="editClasseModalLabel">
-                    <i class="fas fa-edit me-2"></i>Modifier la classe
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <div class="modal-body" id="modal-edit-body">
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Chargement...</span>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Annuler
-                </button>
-                <button type="button" class="btn btn-primary" id="modal-edit-submit-btn" disabled>
-                    <i class="fas fa-save me-1"></i>Mettre à jour la classe
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+{{-- Fenêtres création / modification : partials/fenetre-edition (namespace cfm-*). --}}
+@include('esbtp.classes.partials.fenetre-edition')
 
 {{-- ========================================
      MODAL OVERCAPACITY (détails surcapacité) — namespace cs-overcap-*
@@ -1937,19 +1878,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalCreateBody = document.getElementById('modal-create-body');
     const modalCreateSubmitBtn = document.getElementById('modal-create-submit-btn');
 
-    const editModalEl = document.getElementById('editClasseModal');
-    const editClasseModal = new bootstrap.Modal(editModalEl);
-    const modalEditBody = document.getElementById('modal-edit-body');
-    const modalEditSubmitBtn = document.getElementById('modal-edit-submit-btn');
 
     if (btnOpenCreateModal) {
         btnOpenCreateModal.addEventListener('click', function() {
             modalCreateBody.innerHTML = `
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Chargement...</span>
-                    </div>
-                </div>
+                <div class="cfm-attente"><span class="spinner-border text-primary" role="status"></span><span>Chargement du formulaire…</span></div>
             `;
             modalCreateSubmitBtn.disabled = true;
 
@@ -2038,101 +1971,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, true);
 
-    // Click handler délégation pour .btn-open-edit-modal
-    document.addEventListener('click', function(e) {
-        const btnEdit = e.target.closest('.btn-open-edit-modal');
-        if (!btnEdit) return;
-
-        e.preventDefault();
-        const classeId = btnEdit.getAttribute('data-classe-id');
-        if (!classeId) return;
-
-        modalEditBody.innerHTML = `
-            <div class="text-center py-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Chargement...</span>
-                </div>
-            </div>
-        `;
-        modalEditSubmitBtn.disabled = true;
-        modalEditSubmitBtn.setAttribute('data-classe-id', classeId);
-
-        // Meme raison que pour la creation : la fenetre s'ouvre d'abord, sinon un echec
-        // de chargement reste totalement invisible pour l'utilisateur.
-        editClasseModal.show();
-
-        fetch(`/esbtp/classes/${classeId}/edit?ajax=1`, {
-            method: 'GET',
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' }
-        })
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.text();
-        })
-        .then(html => {
-            injectHtmlWithScripts(modalEditBody, html);
-            initClasseFormScripts('modal-edit-classe-form');
-            modalEditSubmitBtn.disabled = false;
-        })
-        .catch(error => {
-            console.error('Erreur chargement formulaire édition:', error);
-            modalEditBody.innerHTML = `
-                <div class="ci-alert ci-alert--danger">
-                    <i class="fas fa-exclamation-triangle"></i>Impossible de charger le formulaire (${error.message}). Veuillez réessayer ou signaler ce message.
-                </div>
-            `;
-        });
-    });
-
-    if (modalEditSubmitBtn) {
-        modalEditSubmitBtn.addEventListener('click', function() {
-            const form = document.getElementById('modal-edit-classe-form');
-            if (form) form.requestSubmit();
-        });
-    }
-
-    document.addEventListener('submit', function(e) {
-        if (e.target && e.target.id === 'modal-edit-classe-form') {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-
-            const form = e.target;
-            modalEditSubmitBtn.disabled = true;
-            modalEditSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Mise à jour...';
-
-            fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Accept': 'application/json'
-                },
-                body: new FormData(form)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    modalEditSubmitBtn.disabled = false;
-                    modalEditSubmitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Mettre à jour la classe';
-                    editClasseModal.hide();
-                    updateClasseCard(data.classe, data.message || 'La classe a été mise à jour.');
-                } else {
-                    displayValidationErrors(data.errors, 'modal-edit-classe-form');
-                    modalEditSubmitBtn.disabled = false;
-                    modalEditSubmitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Mettre à jour la classe';
-                }
-            })
-            .catch(error => {
-                console.error('Erreur soumission formulaire:', error);
-                alert('Une erreur est survenue lors de la mise à jour.');
-                modalEditSubmitBtn.disabled = false;
-                modalEditSubmitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Mettre à jour la classe';
-            });
-
-            return false;
-        }
-    }, true);
 });
 
 // ============================================================
@@ -2191,7 +2029,7 @@ function addNewClasseCard(classe, successMessage = null) {
     });
 }
 
-function updateClasseCard(classe, successMessage = null) {
+function updateClasseCard(classe, successMessage = null, html = null) {
     const classeId = classe.id;
     const refreshUrl = `/esbtp/classes/${classeId}/refresh-ligne`;
     const existingCard = document.querySelector(`[data-classe-id="${classeId}"]`);
@@ -2201,10 +2039,12 @@ function updateClasseCard(classe, successMessage = null) {
         return;
     }
 
-    fetch(refreshUrl, {
-        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
-    })
-    .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+    // La carte arrive avec la reponse de l'enregistrement : pas de second aller-retour.
+    (html
+        ? Promise.resolve({ success: true, html: html })
+        : fetch(refreshUrl, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+        }).then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))))
     .then(data => {
         if (!data.success || !data.html) throw new Error(data.message || 'Réponse invalide');
 
