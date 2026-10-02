@@ -172,8 +172,9 @@ class RelancesDefilementTest extends TestCase
         self::$calculs = 0;
         $this->get(route('esbtp.comptabilite.relances.index', ['annee_id' => $annee->id]))->assertOk();
 
-        // 3 lignes pour l'index + 3 pour la tranche : un encaissement fait
-        // entre les deux visites serait deja pris en compte.
-        $this->assertSame(6, self::$calculs);
+        // Les 3 lignes sont recalculees a la seconde visite (un encaissement
+        // fait entre les deux serait deja pris en compte), une seule fois :
+        // la premiere tranche reprend les lignes calculees pour l'index.
+        $this->assertSame(3, self::$calculs);
     }
 }

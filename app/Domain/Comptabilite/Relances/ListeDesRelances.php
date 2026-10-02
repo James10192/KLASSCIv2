@@ -57,12 +57,13 @@ class ListeDesRelances
         // cache : le changer donne un autre index, jamais l'ancien.
         $filtres['inclure_inactives'] = PopulationDesRelances::inclutLesInactives();
         $cle = $this->cle($filtres, $utilisateurId);
+        $calculees = null;
         if ($arrivee) {
-            $index = $this->indexer($filtres);
+            ['index' => $index, 'rows' => $calculees] = $this->calculer($filtres);
             Cache::put($cle, $index, self::DUREE_CACHE_SECONDES);
         } else {
             // Index expire (visite trop longue) : on le refait.
-            $index = Cache::remember($cle, self::DUREE_CACHE_SECONDES, fn () => $this->indexer($filtres));
+            $index = Cache::remember($cle, self::DUREE_CACHE_SECONDES, fn () => $this->calculer($filtres)['index']);
         }
 
         $lignes = collect($index['lignes']);
@@ -74,14 +75,12 @@ class ListeDesRelances
         $ids = $lignes->slice(($page - 1) * self::TRANCHE, self::TRANCHE)->pluck('id')->all();
         $rang = array_flip($ids);
 
-        $inscriptions = $ids === []
-            ? collect()
-            : $this->requete($filtres)->whereIn('esbtp_inscriptions.id', $ids)->get()
-                ->sortBy(fn (ESBTPInscription $i) => $rang[$i->id])->values();
-
-        $rows = $inscriptions->isEmpty()
-            ? collect()
-            : $this->calcul->preloadForInscriptions($inscriptions)->buildBatch($inscriptions)['rows'];
+        // A l'arrivee, les lignes de la tranche viennent d'etre calculees pour
+        // l'index, au meme instant et sur les memes donnees : on les reprend
+        // au lieu de relire et recalculer ces 25 inscriptions.
+        $rows = $calculees !== null
+            ? collect($ids)->map(fn (int $id) => $calculees[$id])
+            : $this->recalculer($filtres, $ids, $rang);
 
         return [
             'paginated' => new LengthAwarePaginator($rows->values(), $lignes->count(), self::TRANCHE, $page, ['path' => $path, 'query' => $query]),
@@ -90,33 +89,61 @@ class ListeDesRelances
     }
 
     /**
-     * @return array{lignes: list<array{id: int, risk: string}>, kpis: array<string, mixed>}
+     * L'index (mis en cache) et les lignes calculees, par identifiant
+     * d'inscription (jamais mises en cache : elles portent des modeles).
+     *
+     * @return array{index: array{lignes: list<array{id: int, risk: string}>, kpis: array<string, mixed>}, rows: array<int, object>}
      */
-    private function indexer(array $filtres): array
+    private function calculer(array $filtres): array
     {
         $toutes = $this->requete($filtres)->get();
         $batch = $this->calcul->preloadForInscriptions($toutes)->buildBatch($toutes);
 
         return [
-            // Seuls les debiteurs figurent dans la liste ; les compteurs, eux,
-            // portent sur toute l'annee filtree.
-            'lignes' => $batch['rows']
-                ->filter(fn ($r) => $r->soldeRestant > 0)
-                ->map(fn ($r) => ['id' => (int) $r->inscription->id, 'risk' => (string) $r->risk])
-                ->values()->all(),
-            'kpis' => $batch['kpis'],
+            'index' => [
+                // Seuls les debiteurs figurent dans la liste ; les compteurs, eux,
+                // portent sur toute l'annee filtree.
+                'lignes' => $batch['rows']
+                    ->filter(fn ($r) => $r->soldeRestant > 0)
+                    ->map(fn ($r) => ['id' => (int) $r->inscription->id, 'risk' => (string) $r->risk])
+                    ->values()->all(),
+                'kpis' => $batch['kpis'],
+            ],
+            'rows' => $batch['rows']->keyBy(fn ($r) => (int) $r->inscription->id)->all(),
         ];
+    }
+
+    /**
+     * Une tranche suivante : relire et recalculer ses seules lignes.
+     *
+     * @param  list<int>  $ids
+     * @param  array<int, int>  $rang
+     */
+    private function recalculer(array $filtres, array $ids, array $rang): \Illuminate\Support\Collection
+    {
+        if ($ids === []) {
+            return collect();
+        }
+
+        $inscriptions = $this->requete($filtres)->whereIn('esbtp_inscriptions.id', $ids)->get()
+            ->sortBy(fn (ESBTPInscription $i) => $rang[$i->id])->values();
+
+        return $inscriptions->isEmpty()
+            ? collect()
+            : $this->calcul->preloadForInscriptions($inscriptions)->buildBatch($inscriptions)['rows'];
     }
 
     private function requete(array $filtres): Builder
     {
         $search = $filtres['search'];
 
+        // Ni l'annee ni les souscriptions ne sont lues ici : le calcul recharge
+        // les souscriptions actives lui-meme (preloadForInscriptions), et la
+        // ligne n'affiche pas l'annee. Les precharger coutait deux requetes et
+        // l'hydratation de toutes les souscriptions de l'annee, pour rien.
         return PopulationDesRelances::restreindre(ESBTPInscription::with([
             'etudiant',
             'classe.filiere',
-            'anneeUniversitaire',
-            'fraisSubscriptions',
             'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
         ]), (bool) $filtres['inclure_inactives'])
             ->when($filtres['annee_id'], fn ($q) => $q->where('annee_universitaire_id', $filtres['annee_id']))

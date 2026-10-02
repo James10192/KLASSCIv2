@@ -11,11 +11,36 @@ use Illuminate\Support\Collection;
 
 class EcheancierComputationService
 {
+    /**
+     * Ce qui ne depend que des donnees de reference, retenu le temps d'un lot.
+     *
+     * La liste des relances calcule l'echeancier de TOUTE l'annee a chaque
+     * arrivee sur la page. Les categories, configurations et regles y sont les
+     * memes pour chaque eleve : seule l'inscription change. Refaire pour chaque
+     * eleve la meme indexation des categories, le meme choix de configuration
+     * (lecture de dates castees, tri) et le meme montant par statut coutait
+     * l'essentiel du calcul. On le retient donc, attache a la collection de
+     * reference elle-meme (WeakMap) : un nouveau chargement des references
+     * repart d'une memoire vide, et le choix de configuration porte le jour,
+     * comme le fait deja EcheancierResolverService pour les regles.
+     *
+     * @var \WeakMap<Collection, \stdClass>
+     */
+    private \WeakMap $memoire;
+
+    /** @var array<string, list<array<string, mixed>>> tranches projetees, sans cle d'item */
+    private array $projections = [];
+
+    /** @var array<string, Carbon> date d'echeance + jours de grace, en debut de jour */
+    private array $echeancesAvecGrace = [];
+
     public function __construct(
         private readonly EcheancierResolverService $resolver,
         private readonly EcheancierProjectionService $projection,
         private readonly EcheancierPaymentAllocationService $allocation,
-    ) {}
+    ) {
+        $this->memoire = new \WeakMap();
+    }
 
     /**
      * @param Collection<int, ESBTPFraisCategory> $categories
@@ -33,65 +58,85 @@ class EcheancierComputationService
         $dueLines = [];
         $itemCounter = 0;
 
-        $categoriesById = $categories->keyBy('id');
+        // Les attributs d'un modele se relisent a chaque acces (casts) : sur un
+        // lot de toute l'annee, ces lectures repetees pesaient plus que le
+        // calcul. Categories et configurations sont lues une fois par lot,
+        // l'inscription une fois par appel.
+        $fiches = $this->fichesDesCategories($categories);
+        $aujourdhui = now()->toDateString();
+        $inscriptionId = $inscription->id;
+        $filiereId = $inscription->filiere_id;
+        $niveauId = $inscription->niveau_id;
+        $statutBrut = $inscription->affectation_status;
+        $statut = $statutBrut ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
+        $dateInscription = null;
 
-        foreach ($categories as $category) {
-            if (!(bool) $category->is_mandatory) {
+        // Premiere souscription par categorie, comme firstWhere('frais_category_id', …).
+        $souscriptionParCategorie = [];
+        foreach ($subscriptions as $souscription) {
+            $souscriptionParCategorie[(string) $souscription->frais_category_id] ??= $souscription;
+        }
+
+        foreach ($fiches as $category) {
+            if (!$category->obligatoire) {
                 continue;
             }
 
-            $subscription = $subscriptions->firstWhere('frais_category_id', $category->id);
+            $subscription = $souscriptionParCategorie[(string) $category->id] ?? null;
             if ($subscription && $subscription->satisfied_in_kind) {
                 continue;
             }
-            $configuration = $this->resolveConfiguration($configurations, $category->id, $inscription->filiere_id, $inscription->niveau_id);
+            $fiche = $this->ficheDeConfiguration($configurations, $category->id, $filiereId, $niveauId, $aujourdhui);
+            $configuration = $fiche?->modele;
 
             if ($subscription) {
                 $amount = (float) $subscription->amount;
                 $sourceType = 'subscription_override';
                 $sourceId = (int) $subscription->id;
             } else {
-                $amount = $configuration
-                    ? (float) $configuration->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
-                    : (float) ($category->default_amount ?? 0);
+                $amount = $fiche
+                    ? (float) ($fiche->montants[$statut] ??= $configuration->getMontantByStatus($statut))
+                    : (float) ($category->montantParDefaut ?? 0);
                 $sourceType = 'configuration';
-                $sourceId = $configuration ? (int) $configuration->id : null;
+                $sourceId = $fiche ? (int) $fiche->id : null;
             }
 
             $amount = round(max(0, $amount), 2);
 
-            $rule = $this->resolver->resolveForConfiguration($configuration, $inscription->affectation_status);
+            $rule = $this->resolver->resolveForConfiguration($configuration, $statutBrut);
             $ruleLines = $rule ? $rule->lines : collect();
-            $fallbackDays = (int) ($configuration->payment_deadline_days ?? $category->payment_deadline_days ?? 30);
+            $fallbackDays = (int) ($fiche?->delai ?? $category->delai ?? 30);
 
             $itemCounter++;
-            $itemKey = 'inscription:' . $inscription->id . ':mandatory:' . $category->id . ':' . $itemCounter;
+            $itemKey = 'inscription:' . $inscriptionId . ':mandatory:' . $category->id . ':' . $itemCounter;
 
             // amount=0 (gratuit pour ce statut) → on émet quand même un item dans le snapshot
             // pour que la couverture analytics voie la catégorie comme "configurée et gratuite"
             // au lieu de "manquante / fallback". Mais on ne projette aucune tranche
             // (rien à payer = rien à projeter — projectDueLines retourne déjà [] pour amount=0).
             $projectedLines = $amount > 0
-                ? $this->projection->projectDueLines(
+                ? $this->projeter(
                     $amount,
+                    $rule,
                     $ruleLines,
-                    $inscription->date_inscription
+                    // Une seule lecture par inscription : la projection copie la date, ne la modifie pas.
+                    $dateInscription ??= ($inscription->date_inscription
                         ? Carbon::parse($inscription->date_inscription)
-                        : Carbon::parse($inscription->created_at ?? now()),
+                        : Carbon::parse($inscription->created_at ?? now())),
                     $fallbackDays,
                     $itemKey,
-                    (int) $category->id,
-                    (string) $category->name
+                    $category->id,
+                    $category->nom
                 )
                 : [];
 
             $items[] = [
                 'item_key' => $itemKey,
-                'label' => (string) $category->name,
+                'label' => $category->nom,
                 'source_type' => $sourceType,
                 'source_id' => $sourceId,
-                'category_id' => (int) $category->id,
-                'category_name' => (string) $category->name,
+                'category_id' => $category->id,
+                'category_name' => $category->nom,
                 'amount' => $amount,
                 'rule_id' => $rule?->id,
                 'is_free' => $amount === 0.0,
@@ -100,13 +145,13 @@ class EcheancierComputationService
             $dueLines = array_merge($dueLines, $projectedLines);
         }
 
-        $optionalSubscriptions = $subscriptions->filter(function ($subscription) use ($categoriesById) {
-            $category = $categoriesById->get($subscription->frais_category_id);
-            return $category && !(bool) $category->is_mandatory && (bool) $subscription->is_active && ! $subscription->satisfied_in_kind;
+        $optionalSubscriptions = $subscriptions->filter(function ($subscription) use ($fiches) {
+            $category = $fiches[$subscription->frais_category_id] ?? null;
+            return $category && !$category->obligatoire && (bool) $subscription->is_active && ! $subscription->satisfied_in_kind;
         })->values();
 
         foreach ($optionalSubscriptions as $subscription) {
-            $category = $categoriesById->get($subscription->frais_category_id);
+            $category = $fiches[$subscription->frais_category_id] ?? null;
             if (!$category) {
                 continue;
             }
@@ -118,36 +163,37 @@ class EcheancierComputationService
                 : $subscription->selectedOption()->with('assignments')->first();
 
             $assignment = $this->resolver->findBestAssignmentForInscription($option, $inscription);
-            $rule = $this->resolver->resolveForOptionAssignment($assignment, $inscription->affectation_status);
+            $rule = $this->resolver->resolveForOptionAssignment($assignment, $statutBrut);
             $ruleLines = $rule ? $rule->lines : collect();
-            $fallbackDays = (int) ($category->payment_deadline_days ?? 30);
+            $fallbackDays = (int) ($category->delai ?? 30);
 
             $itemCounter++;
-            $itemKey = 'inscription:' . $inscription->id . ':optional:' . $subscription->id . ':' . $itemCounter;
+            $itemKey = 'inscription:' . $inscriptionId . ':optional:' . $subscription->id . ':' . $itemCounter;
 
             // Cf bloc mandatory ci-dessus : amount=0 = subscription gratuite, on émet
             // l'item dans le snapshot mais sans tranche à projeter.
             $projectedLines = $amount > 0
-                ? $this->projection->projectDueLines(
+                ? $this->projeter(
                     $amount,
+                    $rule,
                     $ruleLines,
                     $subscription->subscribed_at
                         ? Carbon::parse($subscription->subscribed_at)
                         : Carbon::parse($inscription->created_at ?? now()),
                     $fallbackDays,
                     $itemKey,
-                    (int) $category->id,
-                    (string) $category->name
+                    $category->id,
+                    $category->nom
                 )
                 : [];
 
             $items[] = [
                 'item_key' => $itemKey,
-                'label' => (string) $category->name . ($option ? ' - ' . $option->name : ''),
+                'label' => $category->nom . ($option ? ' - ' . $option->name : ''),
                 'source_type' => 'subscription',
                 'source_id' => (int) $subscription->id,
-                'category_id' => (int) $category->id,
-                'category_name' => (string) $category->name,
+                'category_id' => $category->id,
+                'category_name' => $category->nom,
                 'amount' => $amount,
                 'rule_id' => $rule?->id,
                 'option_assignment_id' => $assignment?->id,
@@ -183,16 +229,16 @@ class EcheancierComputationService
         $expectedDueToDate = 0.0;
         $paidDueToDate = 0.0;
         $oldestOverdueDate = null;
+        $debutDuJour = $asOf->copy()->startOfDay();
 
         foreach ($allocatedLines as $line) {
-            $dueWithGrace = Carbon::parse($line['due_date'])->addDays((int) ($line['grace_days'] ?? 0))->startOfDay();
-            $line['due_date_with_grace'] = $dueWithGrace->toDateString();
+            $dueWithGrace = $this->echeanceAvecGrace((string) $line['due_date'], (int) ($line['grace_days'] ?? 0));
 
             $amount = (float) ($line['amount'] ?? 0);
             $paid = (float) ($line['paid_amount'] ?? 0);
             $remaining = (float) ($line['remaining_amount'] ?? 0);
 
-            if ($dueWithGrace->lte($asOf->copy()->startOfDay())) {
+            if ($dueWithGrace->lte($debutDuJour)) {
                 $expectedDueToDate += $amount;
                 $paidDueToDate += min($amount, $paid);
 
@@ -259,6 +305,97 @@ class EcheancierComputationService
             'categories' => $categoriesSummary,
             'as_of' => $asOf->toDateString(),
         ];
+    }
+
+    /**
+     * Projection des tranches, retenue par ce dont elle depend vraiment : la
+     * regle (et la generation des regles, que toute ecriture sur une regle ou
+     * une ligne fait avancer), le montant, le JOUR de reference (la projection
+     * ne lit que la date : debut de jour, annee), le delai de repli et la
+     * categorie. Seules les cles d'item different d'un eleve a l'autre : la
+     * projection est faite avec une cle vide, puis la cle de l'eleve est
+     * apposee (line_key = cle d'item . ':line:N', comme projectDueLines).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function projeter(
+        float $amount,
+        ?ESBTPEcheancierRule $rule,
+        Collection $ruleLines,
+        Carbon $reference,
+        int $fallbackDays,
+        string $itemKey,
+        int $categoryId,
+        string $categoryName
+    ): array {
+        $cle = ($rule?->id ?? 0) . '|' . EcheancierResolverService::generationDesRegles() . '|' . $amount
+            . '|' . $reference->toDateString() . '|' . $fallbackDays . '|' . $categoryId . '|' . $categoryName;
+
+        $modele = $this->projections[$cle]
+            ??= $this->projection->projectDueLines($amount, $ruleLines, $reference, $fallbackDays, '', $categoryId, $categoryName);
+
+        return array_map(
+            fn (array $ligne) => ['line_key' => $itemKey . $ligne['line_key'], 'item_key' => $itemKey] + $ligne,
+            $modele
+        );
+    }
+
+    private function memoirePour(Collection $reference): \stdClass
+    {
+        return $this->memoire[$reference] ??= (object) ['fiches' => null, 'configurations' => []];
+    }
+
+    /**
+     * La configuration retenue pour (categorie, filiere, niveau) ce jour-la,
+     * et ce qu'on en lit : choisie et lue une fois par lot.
+     */
+    private function ficheDeConfiguration(Collection $configurations, int $categoryId, $filiereId, $niveauId, string $aujourdhui): ?\stdClass
+    {
+        $memoire = $this->memoirePour($configurations);
+        $cle = $categoryId . '_' . $filiereId . '_' . $niveauId . '|' . $aujourdhui;
+        if (! array_key_exists($cle, $memoire->configurations)) {
+            $configuration = $this->resolveConfiguration($configurations, $categoryId, $filiereId, $niveauId);
+            $memoire->configurations[$cle] = $configuration
+                ? (object) ['modele' => $configuration, 'id' => $configuration->id, 'delai' => $configuration->payment_deadline_days, 'montants' => []]
+                : null;
+        }
+
+        return $memoire->configurations[$cle];
+    }
+
+    /**
+     * Les categories du lot, lues une fois, dans leur ordre, indexees par id.
+     *
+     * @return array<int, object{id: int, obligatoire: bool, nom: string, delai: mixed, montantParDefaut: mixed}>
+     */
+    private function fichesDesCategories(Collection $categories): array
+    {
+        $memoire = $this->memoirePour($categories);
+        if ($memoire->fiches === null) {
+            $memoire->fiches = [];
+            foreach ($categories as $category) {
+                $memoire->fiches[$category->id] ??= (object) [
+                    'id' => (int) $category->id,
+                    'obligatoire' => (bool) $category->is_mandatory,
+                    'nom' => (string) $category->name,
+                    'delai' => $category->payment_deadline_days,
+                    'montantParDefaut' => $category->default_amount,
+                ];
+            }
+        }
+
+        return $memoire->fiches;
+    }
+
+    /**
+     * Date d'echeance plus grace, en debut de jour. Ne depend que de ses deux
+     * arguments : retenue sans limite de jour. L'objet rendu est partage, il ne
+     * doit jamais etre modifie (copy() avant toute arithmetique).
+     */
+    private function echeanceAvecGrace(string $dueDate, int $graceDays): Carbon
+    {
+        return $this->echeancesAvecGrace[$dueDate . '|' . $graceDays]
+            ??= Carbon::parse($dueDate)->addDays($graceDays)->startOfDay();
     }
 
     private function resolveConfiguration(Collection $configurations, int $categoryId, int $filiereId, int $niveauId): ?ESBTPFraisConfiguration
