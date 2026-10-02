@@ -3,7 +3,7 @@
 @section('title', 'Ajouter une matière - KLASSCI')
 
 @section('styles')
-<link href="{{ asset('css/dashboard-moderne.css') }}" rel="stylesheet">
+<link href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════
    MATIERE CREATE — PREMIUM (mc-*)

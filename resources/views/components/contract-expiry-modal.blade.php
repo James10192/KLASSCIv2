@@ -59,7 +59,7 @@
 @endphp
 
 {{-- CSS chargé une seule fois --}}
-<link rel="stylesheet" href="{{ asset('css/contract-expiry.css') }}">
+<link rel="stylesheet" href="{{ asset('css/contract-expiry.css') }}?v={{ @filemtime(public_path('css/contract-expiry.css')) ?: '1' }}">
 
 {{-- Bande rouge clignotante si < 7 jours --}}
 @if(!$isExpired && $days <= 7)

@@ -3,7 +3,7 @@
 @section('title', 'Modifier Coordinateur - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .edit-header {
         background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);

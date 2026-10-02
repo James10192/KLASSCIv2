@@ -3,7 +3,7 @@
 @section('title', 'Tableau de bord Étudiant')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* Accueil étudiant mobile — namespace mab-* (le socle m-* vient de mobile-shell.css) */
     .mab-screen .m-hero .v { font-size: 22px; line-height: 1.15; }

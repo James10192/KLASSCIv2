@@ -3,8 +3,8 @@
 @section('title', 'Suivi des Paiements - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="{{ asset('css/cursor-fix.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/cursor-fix.css') }}?v={{ @filemtime(public_path('css/cursor-fix.css')) ?: '1' }}">
 <style>
     /* ═══════════════════════════════════════════════
        Namespace pi-* (paiements.index premium)
@@ -1228,7 +1228,7 @@
 @endsection
 
 @push('scripts')
-<script src="{{ asset('js/inscriptions/common.js') }}"></script>
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <style>
 .avatar-circle {
     width: 40px;

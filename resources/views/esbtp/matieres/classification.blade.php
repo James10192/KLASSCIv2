@@ -326,6 +326,6 @@
 {{-- common.js : fournit window.iiConfirm(). Cet ecran ne le chargeait pas et
      utilisait donc les boites natives du navigateur — celui d'a cote, qui pose
      la confirmation jumelle, le charge depuis toujours. --}}
-<script src="{{ asset('js/inscriptions/common.js') }}"></script>
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 @include('esbtp.matieres.partials._classification-script')
 @endpush

@@ -3,7 +3,7 @@
 @section('title', 'Matière : ' . $matiere->name . ' - KLASSCI')
 
 @section('styles')
-<link href="{{ asset('css/dashboard-moderne.css') }}" rel="stylesheet">
+<link href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}" rel="stylesheet">
 @endsection
 
 @section('content')

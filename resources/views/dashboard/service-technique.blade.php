@@ -3,7 +3,7 @@
 @section('title', 'Dashboard Service Technique - African Digit Consulting')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .service-technique-header {
         background: linear-gradient(135deg, #1e40af 0%, #1d4ed8 100%);

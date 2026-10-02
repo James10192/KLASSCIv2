@@ -3,7 +3,7 @@
 @section('title', 'Répartition du reçu ' . $paiement->numero_recu . ' — KLASSCI')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 /* ===================================================================
    CORRECTION DE VENTILATION — namespace pv- (paiement ventilation)

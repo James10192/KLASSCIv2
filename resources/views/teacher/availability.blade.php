@@ -3,7 +3,7 @@
 @section('title', 'Mes disponibilités')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* Styles cohérents avec la page admin enseignants/show */
     body {
