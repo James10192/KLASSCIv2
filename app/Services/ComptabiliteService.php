@@ -8,7 +8,6 @@ use App\Models\ESBTPFraisScolarite;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPInscription;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use App\Models\ESBTPTransactionFinanciere;
@@ -24,7 +23,6 @@ class ComptabiliteService
     // Durées de cache en minutes
     private const CACHE_TTL_KPI = 15; // 15 minutes
     private const CACHE_TTL_STATS = 30; // 30 minutes
-    private const CACHE_TTL_HEAVY = 60; // 1 heure pour calculs lourds
 
     /**
      * Méthode rapide pour récupérer les KPIs du dashboard avec cache optimisé

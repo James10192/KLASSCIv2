@@ -195,7 +195,6 @@ class Kernel extends ConsoleKernel
             ->name('mailpulse-prune-parent-chatbot-inbound-responses')
             ->description('Supprime les reponses chiffrees expirees du chatbot parent MailPulse');
 
-
         // Nettoyage des logs et fichiers temporaires (chaque dimanche à 04h00)
         $schedule->command('queue:prune-batches --hours=168') // 7 jours
             ->weekly()
