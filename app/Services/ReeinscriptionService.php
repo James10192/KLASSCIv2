@@ -472,6 +472,25 @@ class ReeinscriptionService
                 );
             }
 
+            // On ne se réinscrit jamais à rebours : l'année visée doit commencer
+            // après celle qu'on quitte, et aucune inscription vivante ne doit
+            // exister plus tard. Sinon le reste dû partirait en reliquat vers le
+            // passé, et l'élève aurait deux inscriptions actives.
+            $debutQuitte = $inscriptionActuelle->anneeUniversitaire?->start_date;
+            if ($debutQuitte && $nouvelleAnnee->start_date && $debutQuitte->gte($nouvelleAnnee->start_date)) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException(
+                    "L'année de destination ({$nouvelleAnnee->name}) précède l'année que l'étudiant quitte ({$inscriptionActuelle->anneeUniversitaire->name})."
+                );
+            }
+            if ($nouvelleAnnee->start_date && \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
+                ->whereIn('status', ['en_attente', 'active'])
+                ->whereHas('anneeUniversitaire', fn ($a) => $a->where('start_date', '>', $nouvelleAnnee->start_date))
+                ->exists()) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException(
+                    "L'étudiant a déjà une inscription sur une année postérieure à {$nouvelleAnnee->name}."
+                );
+            }
+
             // Une inscription existe déjà sur l'année visée : la refaire la
             // termine et la remplace (correction de classe). Réservé à qui peut
             // déroger — la fiche ne propose « Corriger » qu'à ce compte-là.

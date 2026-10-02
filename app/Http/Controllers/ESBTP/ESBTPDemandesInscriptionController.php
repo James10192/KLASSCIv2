@@ -67,6 +67,7 @@ class ESBTPDemandesInscriptionController extends Controller
 
         return view('esbtp.admissions.demandes.index', $donnees + [
             'classes' => $request->user()->can('reinscriptions.demandes.process') ? app(PreparationDInscription::class)->classes() : [],
+            'annees' => $request->user()->can('reinscriptions.demandes.process') ? app(PreparationDInscription::class)->annees() : [],
             'ouvrir' => (string) $request->query('ouvrir', ''),
             'agir' => $request->boolean('agir'),
         ]);
@@ -125,6 +126,18 @@ class ESBTPDemandesInscriptionController extends Controller
         return response()->json([
             'annee_universitaire_id' => (int) $annee->id,
             'classes' => $preparation->classes($candidature->filiere_id, $candidature->niveau_id, (int) $annee->id),
+        ]);
+    }
+
+    /** Les classes et leurs places pour une annee, sans voeu (fenetre « Réinscrire »). */
+    public function classesParAnnee(Request $request, PreparationDInscription $preparation): JsonResponse
+    {
+        $annee = \App\Models\ESBTPAnneeUniversitaire::find($request->integer('annee') ?: null);
+        abort_if($annee === null, 422, "Choisissez l'année de la réinscription.");
+
+        return response()->json([
+            'annee_universitaire_id' => (int) $annee->id,
+            'classes' => $preparation->classes(null, null, (int) $annee->id),
         ]);
     }
 
