@@ -12,7 +12,8 @@ use Illuminate\Support\Collection;
 class EcheancierComputationService
 {
     /**
-     * Ce qui ne depend que des donnees de reference, retenu le temps d'un lot.
+     * Ce qui ne depend que des donnees de reference, attache a la collection
+     * de reference : il vit autant qu'elle (en pratique, le temps d'un lot).
      *
      * La liste des relances calcule l'echeancier de TOUTE l'annee a chaque
      * arrivee sur la page. Les categories, configurations et regles y sont les
@@ -28,7 +29,13 @@ class EcheancierComputationService
      */
     private \WeakMap $memoire;
 
-    /** @var array<string, list<array<string, mixed>>> tranches projetees, sans cle d'item */
+    /**
+     * Memoires qui ne dependent que de leurs cles (la generation des regles
+     * entre dans celle des projections) : elles vivent autant que l'instance
+     * du service, c'est-a-dire le temps d'une requete ou d'une tache.
+     *
+     * @var array<string, list<array<string, mixed>>> tranches projetees, sans cle d'item
+     */
     private array $projections = [];
 
     /** @var array<string, Carbon> date d'echeance + jours de grace, en debut de jour */
@@ -63,19 +70,8 @@ class EcheancierComputationService
         // calcul. Categories et configurations sont lues une fois par lot,
         // l'inscription une fois par appel.
         $fiches = $this->fichesDesCategories($categories);
-        $aujourdhui = now()->toDateString();
-        $inscriptionId = $inscription->id;
-        $filiereId = $inscription->filiere_id;
-        $niveauId = $inscription->niveau_id;
-        $statutBrut = $inscription->affectation_status;
-        $statut = $statutBrut ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
-        $dateInscription = null;
-
-        // Premiere souscription par categorie, comme firstWhere('frais_category_id', …).
-        $souscriptionParCategorie = [];
-        foreach ($subscriptions as $souscription) {
-            $souscriptionParCategorie[(string) $souscription->frais_category_id] ??= $souscription;
-        }
+        $eleve = $this->lireInscription($inscription);
+        $souscriptionParCategorie = $this->premiereSouscriptionParCategorie($subscriptions);
 
         foreach ($fiches as $category) {
             if (!$category->obligatoire) {
@@ -86,62 +82,8 @@ class EcheancierComputationService
             if ($subscription && $subscription->satisfied_in_kind) {
                 continue;
             }
-            $fiche = $this->ficheDeConfiguration($configurations, $category->id, $filiereId, $niveauId, $aujourdhui);
-            $configuration = $fiche?->modele;
 
-            if ($subscription) {
-                $amount = (float) $subscription->amount;
-                $sourceType = 'subscription_override';
-                $sourceId = (int) $subscription->id;
-            } else {
-                $amount = $fiche
-                    ? (float) ($fiche->montants[$statut] ??= $configuration->getMontantByStatus($statut))
-                    : (float) ($category->montantParDefaut ?? 0);
-                $sourceType = 'configuration';
-                $sourceId = $fiche ? (int) $fiche->id : null;
-            }
-
-            $amount = round(max(0, $amount), 2);
-
-            $rule = $this->resolver->resolveForConfiguration($configuration, $statutBrut);
-            $ruleLines = $rule ? $rule->lines : collect();
-            $fallbackDays = (int) ($fiche?->delai ?? $category->delai ?? 30);
-
-            $itemCounter++;
-            $itemKey = 'inscription:' . $inscriptionId . ':mandatory:' . $category->id . ':' . $itemCounter;
-
-            // amount=0 (gratuit pour ce statut) → on émet quand même un item dans le snapshot
-            // pour que la couverture analytics voie la catégorie comme "configurée et gratuite"
-            // au lieu de "manquante / fallback". Mais on ne projette aucune tranche
-            // (rien à payer = rien à projeter — projectDueLines retourne déjà [] pour amount=0).
-            $projectedLines = $amount > 0
-                ? $this->projeter(
-                    $amount,
-                    $rule,
-                    $ruleLines,
-                    // Une seule lecture par inscription : la projection copie la date, ne la modifie pas.
-                    $dateInscription ??= ($inscription->date_inscription
-                        ? Carbon::parse($inscription->date_inscription)
-                        : Carbon::parse($inscription->created_at ?? now())),
-                    $fallbackDays,
-                    $itemKey,
-                    $category->id,
-                    $category->nom
-                )
-                : [];
-
-            $items[] = [
-                'item_key' => $itemKey,
-                'label' => $category->nom,
-                'source_type' => $sourceType,
-                'source_id' => $sourceId,
-                'category_id' => $category->id,
-                'category_name' => $category->nom,
-                'amount' => $amount,
-                'rule_id' => $rule?->id,
-                'is_free' => $amount === 0.0,
-            ];
-
+            [$items[], $projectedLines] = $this->itemObligatoire($eleve, $category, $subscription, $configurations, ++$itemCounter);
             $dueLines = array_merge($dueLines, $projectedLines);
         }
 
@@ -156,50 +98,7 @@ class EcheancierComputationService
                 continue;
             }
 
-            $amount = round(max(0, (float) $subscription->amount), 2);
-
-            $option = $subscription->relationLoaded('selectedOption')
-                ? $subscription->selectedOption
-                : $subscription->selectedOption()->with('assignments')->first();
-
-            $assignment = $this->resolver->findBestAssignmentForInscription($option, $inscription);
-            $rule = $this->resolver->resolveForOptionAssignment($assignment, $statutBrut);
-            $ruleLines = $rule ? $rule->lines : collect();
-            $fallbackDays = (int) ($category->delai ?? 30);
-
-            $itemCounter++;
-            $itemKey = 'inscription:' . $inscriptionId . ':optional:' . $subscription->id . ':' . $itemCounter;
-
-            // Cf bloc mandatory ci-dessus : amount=0 = subscription gratuite, on émet
-            // l'item dans le snapshot mais sans tranche à projeter.
-            $projectedLines = $amount > 0
-                ? $this->projeter(
-                    $amount,
-                    $rule,
-                    $ruleLines,
-                    $subscription->subscribed_at
-                        ? Carbon::parse($subscription->subscribed_at)
-                        : Carbon::parse($inscription->created_at ?? now()),
-                    $fallbackDays,
-                    $itemKey,
-                    $category->id,
-                    $category->nom
-                )
-                : [];
-
-            $items[] = [
-                'item_key' => $itemKey,
-                'label' => $category->nom . ($option ? ' - ' . $option->name : ''),
-                'source_type' => 'subscription',
-                'source_id' => (int) $subscription->id,
-                'category_id' => $category->id,
-                'category_name' => $category->nom,
-                'amount' => $amount,
-                'rule_id' => $rule?->id,
-                'option_assignment_id' => $assignment?->id,
-                'is_free' => $amount === 0.0,
-            ];
-
+            [$items[], $projectedLines] = $this->itemOptionnel($eleve, $category, $subscription, ++$itemCounter);
             $dueLines = array_merge($dueLines, $projectedLines);
         }
 
@@ -207,6 +106,154 @@ class EcheancierComputationService
             'items' => $items,
             'due_lines' => $dueLines,
         ];
+    }
+
+    /**
+     * Ce que le calcul lit de l'inscription, lu une fois par appel. La date de
+     * reference ne se lit qu'au premier frais a projeter (voir dateDInscription()).
+     */
+    private function lireInscription(ESBTPInscription $inscription): \stdClass
+    {
+        $statutBrut = $inscription->affectation_status;
+
+        return (object) [
+            'modele' => $inscription,
+            'id' => $inscription->id,
+            'filiereId' => $inscription->filiere_id,
+            'niveauId' => $inscription->niveau_id,
+            'statutBrut' => $statutBrut,
+            'statut' => $statutBrut ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+            'aujourdhui' => now()->toDateString(),
+            'dateInscription' => null,
+        ];
+    }
+
+    /** Une seule lecture par inscription : la projection copie la date, ne la modifie pas. */
+    private function dateDInscription(\stdClass $eleve): Carbon
+    {
+        $inscription = $eleve->modele;
+
+        return $eleve->dateInscription ??= ($inscription->date_inscription
+            ? Carbon::parse($inscription->date_inscription)
+            : Carbon::parse($inscription->created_at ?? now()));
+    }
+
+    /**
+     * Premiere souscription par categorie, comme firstWhere('frais_category_id', …).
+     *
+     * @return array<string, mixed>
+     */
+    private function premiereSouscriptionParCategorie(Collection $subscriptions): array
+    {
+        $parCategorie = [];
+        foreach ($subscriptions as $souscription) {
+            $parCategorie[(string) $souscription->frais_category_id] ??= $souscription;
+        }
+
+        return $parCategorie;
+    }
+
+    /**
+     * Un frais obligatoire : son item et ses tranches projetees.
+     *
+     * @return array{0: array<string, mixed>, 1: array<int, array<string, mixed>>}
+     */
+    private function itemObligatoire(\stdClass $eleve, object $category, $subscription, Collection $configurations, int $itemCounter): array
+    {
+        $fiche = $this->ficheDeConfiguration($configurations, $category->id, $eleve->filiereId, $eleve->niveauId, $eleve->aujourdhui);
+        $configuration = $fiche?->modele;
+
+        if ($subscription) {
+            $amount = (float) $subscription->amount;
+            $sourceType = 'subscription_override';
+            $sourceId = (int) $subscription->id;
+        } else {
+            $amount = $fiche
+                ? (float) ($fiche->montants[$eleve->statut] ??= $configuration->getMontantByStatus($eleve->statut))
+                : (float) ($category->montantParDefaut ?? 0);
+            $sourceType = 'configuration';
+            $sourceId = $fiche ? (int) $fiche->id : null;
+        }
+
+        $amount = round(max(0, $amount), 2);
+
+        $rule = $this->resolver->resolveForConfiguration($configuration, $eleve->statutBrut);
+        $ruleLines = $rule ? $rule->lines : collect();
+        $fallbackDays = (int) ($fiche?->delai ?? $category->delai ?? 30);
+
+        $itemKey = 'inscription:' . $eleve->id . ':mandatory:' . $category->id . ':' . $itemCounter;
+
+        // amount=0 (gratuit pour ce statut) → on émet quand même un item dans le snapshot
+        // pour que la couverture analytics voie la catégorie comme "configurée et gratuite"
+        // au lieu de "manquante / fallback". Mais on ne projette aucune tranche
+        // (rien à payer = rien à projeter — projectDueLines retourne déjà [] pour amount=0).
+        $projectedLines = $amount > 0
+            ? $this->projeter($amount, $rule, $ruleLines, $this->dateDInscription($eleve), $fallbackDays, $itemKey, $category->id, $category->nom)
+            : [];
+
+        return [[
+            'item_key' => $itemKey,
+            'label' => $category->nom,
+            'source_type' => $sourceType,
+            'source_id' => $sourceId,
+            'category_id' => $category->id,
+            'category_name' => $category->nom,
+            'amount' => $amount,
+            'rule_id' => $rule?->id,
+            'is_free' => $amount === 0.0,
+        ], $projectedLines];
+    }
+
+    /**
+     * Un frais optionnel souscrit : son item et ses tranches projetees.
+     *
+     * @return array{0: array<string, mixed>, 1: array<int, array<string, mixed>>}
+     */
+    private function itemOptionnel(\stdClass $eleve, object $category, $subscription, int $itemCounter): array
+    {
+        $inscription = $eleve->modele;
+        $amount = round(max(0, (float) $subscription->amount), 2);
+
+        $option = $subscription->relationLoaded('selectedOption')
+            ? $subscription->selectedOption
+            : $subscription->selectedOption()->with('assignments')->first();
+
+        $assignment = $this->resolver->findBestAssignmentForInscription($option, $inscription);
+        $rule = $this->resolver->resolveForOptionAssignment($assignment, $eleve->statutBrut);
+        $ruleLines = $rule ? $rule->lines : collect();
+        $fallbackDays = (int) ($category->delai ?? 30);
+
+        $itemKey = 'inscription:' . $eleve->id . ':optional:' . $subscription->id . ':' . $itemCounter;
+
+        // Cf frais obligatoire : amount=0 = subscription gratuite, on émet
+        // l'item dans le snapshot mais sans tranche à projeter.
+        $projectedLines = $amount > 0
+            ? $this->projeter(
+                $amount,
+                $rule,
+                $ruleLines,
+                $subscription->subscribed_at
+                    ? Carbon::parse($subscription->subscribed_at)
+                    : Carbon::parse($inscription->created_at ?? now()),
+                $fallbackDays,
+                $itemKey,
+                $category->id,
+                $category->nom
+            )
+            : [];
+
+        return [[
+            'item_key' => $itemKey,
+            'label' => $category->nom . ($option ? ' - ' . $option->name : ''),
+            'source_type' => 'subscription',
+            'source_id' => (int) $subscription->id,
+            'category_id' => $category->id,
+            'category_name' => $category->nom,
+            'amount' => $amount,
+            'rule_id' => $rule?->id,
+            'option_assignment_id' => $assignment?->id,
+            'is_free' => $amount === 0.0,
+        ], $projectedLines];
     }
 
     /**

@@ -95,6 +95,18 @@ class RelancesArriveeTest extends TestCase
             'total_etudiants' => $debiteurs->count(),
         ], $arrivee['kpis']);
         $this->assertGreaterThan(0, $arrivee['kpis']['count_critical'] + $arrivee['kpis']['count_high']);
+
+        // Une valeur absolue, pour ne pas seulement comparer le calcul a lui-meme :
+        // le 3e eleve est non affecte, sans souscription ni paiement. Il doit
+        // 50 000 (inscription) + 600 000 (scolarite, tarif non affecte) + 25 000.
+        $troisieme = ESBTPInscription::where('annee_universitaire_id', $this->annee->id)->orderBy('id')->skip(2)->first();
+        $this->assertSame('non_affecté', $troisieme->affectation_status);
+        $ligne = $arrivee['paginated']->getCollection()->first(fn ($r) => $r->inscription->id === $troisieme->id)
+            ?? $suite['paginated']->getCollection()->first(fn ($r) => $r->inscription->id === $troisieme->id);
+        $this->assertNotNull($ligne, 'Debiteur, il figure dans les deux premieres tranches.');
+        $this->assertSame(675000.0, $ligne->totalDu);
+        $this->assertSame(675000.0, $ligne->remainingTotal);
+        $this->assertSame(0.0, $ligne->totalPaye);
         $this->assertGreaterThan(0, $arrivee['kpis']['total_en_attente']);
     }
 
