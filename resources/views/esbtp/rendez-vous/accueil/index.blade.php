@@ -171,7 +171,7 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
         <label class="rac-recherche">
             <i class="fas fa-magnifying-glass"></i>
             <span class="visually-hidden">Rechercher une famille</span>
-            <input type="search" placeholder="Nom, téléphone ou référence…" autocomplete="off" data-rac-cherche>
+            <input type="search" placeholder="Nom, élève, matricule, téléphone ou référence…" autocomplete="off" data-rac-cherche>
             <kbd>Entrée</kbd>
         </label>
         <div class="rac-filtres" role="group" aria-label="Filtrer">
@@ -270,14 +270,31 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
     }
     const poster = (url, corps) => appeler(url, { method: 'POST', body: JSON.stringify(corps || {}) });
 
+    // Meme regle que ContactsFamilleRdv::normaliser() : sans accents, apostrophes
+    // retirees, tirets et blancs reduits a une espace.
+    function normaliser(texte) {
+        return (texte || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+            .replace(/['\u2019`]/g, '').replace(/[\s-]+/g, ' ').trim();
+    }
+
+    // Chaque mot doit se retrouver, dans n'importe quel ordre : « Naomie Dje »
+    // retrouve « DJE Lou Affoue Anna Naomie ». Les chiffres se lisent d'un bloc
+    // (un telephone tape par paires), avec ou sans l'indicatif du pays.
+    function correspond(texte, q) {
+        const compact = texte.replace(/[\s+]/g, '');
+        const mots = q.split(' ').filter((m) => !/^\+?\d+$/.test(m));
+        const chiffres = q.split(' ').filter((m) => /^\+?\d+$/.test(m)).join('').replace(/\+/g, '');
+        const okChiffres = chiffres === '' || compact.includes(chiffres)
+            || (chiffres.length > 10 && compact.includes(chiffres.slice(-10)));
+        return okChiffres && mots.every((m) => compact.includes(m.replace(/\s/g, '')));
+    }
+
     // Recherche et filtre s'appliquent cote client, et se rejouent apres chaque rechargement de la liste.
     function appliquerFiltres() {
-        const q = (champ.value || '').trim().toLocaleLowerCase('fr').replace(/[\s-]+/g, ' ');
-        const qCompact = q.replace(/\s/g, '');
+        const q = normaliser(champ.value);
         let visibles = [];
         liste.querySelectorAll('.rac-ligne').forEach((li) => {
-            const texte = li.dataset.cherche || '';
-            const okTexte = q === '' || texte.includes(q) || texte.replace(/\s/g, '').includes(qCompact);
+            const okTexte = q === '' || correspond(li.dataset.cherche || '', q);
             const okFiltre = filtre === 'tous' || li.dataset.statut === filtre;
             li.hidden = !(okTexte && okFiltre);
             li.classList.remove('is-surlignee');
@@ -539,7 +556,7 @@ span.rac-coche--non-venue { color: #b91c1c; background: rgba(220,38,38,.06); cur
 <script>
 window.__rdvGuideEtapes = [
     { sel: '#rac-kpis', titre: 'Le point de la journée', texte: 'Familles attendues, reçues, encore à recevoir et absentes. La barre montre l\'avancement.' },
-    { sel: '.rac-recherche', titre: 'Retrouver une famille', texte: 'Tapez un nom, un téléphone ou une référence. S\'il ne reste qu\'une famille, Entrée la marque reçue.' },
+    { sel: '.rac-recherche', titre: 'Retrouver une famille', texte: 'Tapez un nom (celui de la convocation ou de l\'élève), un matricule, un téléphone ou une référence, dans n\'importe quel ordre. S\'il ne reste qu\'une famille, Entrée la marque reçue.' },
     { sel: '.rac-filtres', titre: 'Filtrer la liste', texte: '« À recevoir » pour voir qui manque encore, « Non venues » pour les familles dont le créneau est passé sans elles.' },
     { sel: '#rac-liste .rac-coche', titre: 'Cocher à l\'arrivée', texte: 'Un clic marque la famille reçue, avec l\'heure et votre nom. Un second clic annule.' },
     { sel: '#rac-liste .rac-actions', titre: 'Dossier, prévenir ou déplacer', texte: '« Dossier » ouvre la candidature ou la demande de la famille ; « Prévenue » quand vous l\'avez appelée faute de convocation ; « Reprogrammer » propose les prochains créneaux libres et renvoie la convocation.' },
