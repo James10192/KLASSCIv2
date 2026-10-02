@@ -8,7 +8,6 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
 use App\Services\ComptabiliteService;
-use App\Services\PerformanceMonitoringService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,7 +20,6 @@ class ESBTPComptabiliteController extends Controller
 
     public function __construct(
         private readonly ComptabiliteService $comptabiliteService,
-        private readonly PerformanceMonitoringService $performanceMonitor,
     ) {
         $this->middleware('auth');
         $this->middleware('comptabilite.access');
@@ -32,30 +30,28 @@ class ESBTPComptabiliteController extends Controller
      */
     public function kpisTempsReel(Request $request): JsonResponse
     {
-        return $this->performanceMonitor->monitor('kpis_temps_reel', function () use ($request) {
-            try {
-                $kpis = $this->comptabiliteService->getKPIsDashboard($request->get('annee_id'));
+        try {
+            $kpis = $this->comptabiliteService->getKPIsDashboard($request->get('annee_id'));
 
-                return response()->json([
-                    'success' => true,
-                    'kpis' => $kpis,
-                    'cache_info' => [
-                        'cached' => isset($kpis['cache_generated_at']),
-                        'last_updated' => $kpis['last_updated'] ?? now()->toISOString(),
-                    ],
-                ]);
-            } catch (\Throwable $e) {
-                Log::error('Erreur KPIs temps réel', [
-                    'error' => $e->getMessage(),
-                    'annee_id' => $request->get('annee_id'),
-                ]);
+            return response()->json([
+                'success' => true,
+                'kpis' => $kpis,
+                'cache_info' => [
+                    'cached' => isset($kpis['cache_generated_at']),
+                    'last_updated' => $kpis['last_updated'] ?? now()->toISOString(),
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Erreur KPIs temps réel', [
+                'error' => $e->getMessage(),
+                'annee_id' => $request->get('annee_id'),
+            ]);
 
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Erreur lors de la récupération des KPIs',
-                ], 500);
-            }
-        }, ['annee_id' => $request->get('annee_id')]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Erreur lors de la récupération des KPIs',
+            ], 500);
+        }
     }
 
     /**

@@ -259,10 +259,11 @@ window.demandesInscription = function () {
         /*
          * « Redoublant ? » : le logiciel propose (meme niveau que l'annee d'avant),
          * la personne garde ou change ; changer demande un motif. Un nouvel eleve
-         * n'a pas d'annee precedente dans KLASSCI : la proposition est « non ».
+         * n'a pas d'annee precedente dans KLASSCI : la proposition est « non »,
+         * sauf si, transfere, il a declare redoubler dans sa candidature.
          */
         redoPropose(ctx) {
-            if (ctx === 'ins') return '0';
+            if (ctx === 'ins') return this.ins.prep?.candidature?.redoublant_propose ? '1' : '0';
             // Sans proposition chargee (en cours, ou echec), la question ne se pose
             // pas : rien n'est envoye, la valeur reste deduite et se confirmera.
             if (!this.reins.proposition) return null;
@@ -279,7 +280,9 @@ window.demandesInscription = function () {
         },
         redoPret(ctx) { return !this.redoMotifRequis(ctx) || this[ctx].redo.motif.trim().length >= 10; },
         redoAide(ctx) {
-            if (ctx === 'ins') return "Nouvel élève dans KLASSCI : pas d'année précédente à comparer. Répondez « Oui » s'il redouble ce niveau, par exemple en venant d'un autre établissement.";
+            if (ctx === 'ins') return this.redoPropose(ctx) === '1'
+                ? "Proposé : oui. Dans sa candidature, il déclare recommencer l'année qu'il suivait dans son établissement d'origine."
+                : "Nouvel élève dans KLASSCI : pas d'année précédente à comparer. Répondez « Oui » s'il redouble ce niveau, par exemple en venant d'un autre établissement.";
             if (this.reins.proposition?.niveau_avant == null) return "Proposé : non. Pas d'inscription l'année d'avant dans KLASSCI.";
             return this.redoPropose(ctx) === '1'
                 ? "Proposé : oui. La classe choisie est du même niveau que l'année d'avant."

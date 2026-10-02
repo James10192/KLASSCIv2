@@ -343,6 +343,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/journal-caisse', [App\Http\Controllers\API\CLI\CLIDataController::class, 'journalCaisse'])->name('journal-caisse');
     Route::get('/audit-comptable', [App\Http\Controllers\API\CLI\CLIDataController::class, 'auditComptable'])->name('audit-comptable');
     Route::get('/usage/pages', [App\Http\Controllers\API\CLI\CLIUsageController::class, 'pages'])->name('usage.pages');
+    // Actions lentes agregees (docs/api/CLI_TRACES_LENTES.md). Lu par la sante du parc (adminKlassci, slow_actions).
+    Route::get('/traces/lentes', [App\Http\Controllers\API\CLI\CLITracesLentesController::class, 'index'])->name('traces.lentes');
     Route::get('/settings', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settings'])->name('settings');
     Route::get('/frais/bareme', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'bareme'])->name('frais.bareme');
     Route::get('/frais/soldes-inscription', [App\Http\Controllers\API\CLI\CLIFraisController::class, 'soldesInscription'])->name('frais.soldes-inscription');

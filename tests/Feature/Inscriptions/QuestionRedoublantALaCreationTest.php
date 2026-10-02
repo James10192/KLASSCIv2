@@ -4,6 +4,7 @@ namespace Tests\Feature\Inscriptions;
 
 use App\Domain\Inscriptions\StatutRedoublant;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPCandidature;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
@@ -190,7 +191,91 @@ class QuestionRedoublantALaCreationTest extends TestCase
             ->assertOk()->assertSee('"redoublant":true', false)->assertSee('Redoublant ?');
     }
 
+    public function test_le_transfere_qui_declare_redoubler_est_inscrit_redoublant_sans_motif_a_ecrire(): void
+    {
+        $candidature = $this->candidatureTransfert(true);
+
+        $this->actingAs($this->agent)->postJson(route('esbtp.inscriptions.store'), $this->nouvelEleve([
+            'candidature_id' => $candidature->id, 'redoublant' => '1',
+        ]))->assertOk()->assertJsonPath('ok', true);
+
+        $inscription = ESBTPInscription::sole();
+        $this->assertTrue((bool) $inscription->is_redoublant);
+        $this->assertSame($this->agent->id, (int) $inscription->redoublant_confirme_par);
+        $this->assertStringContainsString('candidature', (string) $inscription->redoublant_motif);
+    }
+
+    public function test_contredire_la_declaration_du_transfere_exige_un_motif(): void
+    {
+        $candidature = $this->candidatureTransfert(true);
+
+        $this->actingAs($this->agent)->postJson(route('esbtp.inscriptions.store'), $this->nouvelEleve([
+            'candidature_id' => $candidature->id, 'redoublant' => '0',
+        ]))->assertStatus(422)->assertJsonValidationErrors('redoublant_motif');
+
+        $this->assertSame(0, ESBTPInscription::count());
+    }
+
+    public function test_le_depot_en_ligne_enregistre_la_reponse_du_transfere(): void
+    {
+        \App\Models\Setting::updateOrCreate(
+            ['key' => \App\Services\Reinscription\PortailReinscriptionService::REGLAGE_ANNEE_CIBLE],
+            ['value' => (string) $this->annee->id, 'type' => 'string', 'group' => 'scolarite', 'is_active' => true],
+        );
+        \Illuminate\Support\Facades\Cache::flush();
+
+        $candidature = app(\App\Services\Inscription\PortailCandidatureService::class)->deposer([
+            'nom' => 'TRA', 'prenoms' => 'Fé', 'date_naissance' => '2006-05-04', 'telephone' => '+2250701999901',
+            'est_transfert' => true, 'etablissement_sup_origine' => 'Université de Bouaké',
+            'redouble_niveau_origine' => true,
+        ]);
+
+        $this->assertTrue($candidature->fresh()->redouble_niveau_origine);
+    }
+
+    public function test_une_candidature_close_ne_dispense_pas_du_motif(): void
+    {
+        $candidature = $this->candidatureTransfert(true);
+        $candidature->forceFill(['statut' => ESBTPCandidature::statutsDossierClos()[0]])->save();
+
+        $this->actingAs($this->agent)->postJson(route('esbtp.inscriptions.store'), $this->nouvelEleve([
+            'candidature_id' => $candidature->id, 'redoublant' => '1',
+        ]))->assertStatus(422)->assertJsonValidationErrors('redoublant_motif');
+    }
+
+    public function test_le_formulaire_pre_rempli_propose_oui_sans_motif_a_ecrire(): void
+    {
+        $candidature = $this->candidatureTransfert(true);
+
+        $this->actingAs($this->agent)->get(route('esbtp.inscriptions.create', ['candidature' => $candidature->id]))
+            ->assertOk()->assertSee("valeur: '1', propose: '1'", false)->assertSee('Proposé : oui');
+    }
+
+    public function test_la_fenetre_propose_ce_que_le_transfere_a_declare(): void
+    {
+        $oui = $this->candidatureTransfert(true);
+        $sansReponse = $this->candidatureTransfert(null);
+
+        $this->actingAs($this->agent)->getJson(route('esbtp.demandes.preparer-inscription', $oui))
+            ->assertOk()->assertJsonPath('candidature.redoublant_propose', true);
+        $this->actingAs($this->agent)->getJson(route('esbtp.demandes.preparer-inscription', $sansReponse))
+            ->assertOk()->assertJsonPath('candidature.redoublant_propose', false);
+    }
+
     /* ─────────────── Données ─────────────── */
+
+    private function candidatureTransfert(?bool $redouble): ESBTPCandidature
+    {
+        $n = ++$this->numero;
+
+        return ESBTPCandidature::create([
+            'nom' => 'KONE'.$n, 'prenoms' => 'Awa', 'date_naissance' => '2007-03-12', 'sexe' => 'F',
+            'telephone' => '+22507071299'.sprintf('%02d', $n), 'annee_universitaire_id' => $this->annee->id,
+            'consentement_at' => now(), 'statut' => ESBTPCandidature::STATUT_EN_ATTENTE,
+            'est_transfert' => true, 'etablissement_sup_origine' => 'Université de Bouaké',
+            'niveau_atteint_origine' => 'Licence 1', 'redouble_niveau_origine' => $redouble,
+        ]);
+    }
 
     private function nouvelEleve(array $valeurs = []): array
     {
