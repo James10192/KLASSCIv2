@@ -225,7 +225,7 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
             .file_get_contents(resource_path('views/esbtp/bulletins/partials/conseil-signature.blade.php'));
         $abidjan = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable-abidjan.blade.php'));
 
-        $this->assertStringContainsString("{{ \$decisionConseil ?? \$councilDecision['text'] ?? \$bulletin->decision_conseil ?? '' }}", $yakro);
+        $this->assertStringContainsString("\$csTexte = trim((string) (\$decisionConseil ?? \$councilDecision['text'] ?? \$bulletin->decision_conseil ?? ''));", $yakro);
         // Le gabarit Abidjan lit le conseil dans son pied de page, depuis
         // `$councilDecision['text']` — que le service et le controleur
         // construisent a partir de `$decisionConseil`, lequel retombe sur
