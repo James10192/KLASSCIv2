@@ -108,6 +108,12 @@ class FiltresListeInscriptions
             $this->appliquerStatut($query, $status);
         }
 
+        if ($classe = $request->input('classe')) {
+            $query->where('esbtp_inscriptions.classe_id', $classe);
+        }
+
+        \App\Domain\Inscriptions\StatutRedoublant::filtrer($query, $request->input('redoublant'));
+
         return $query;
     }
 

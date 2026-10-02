@@ -319,7 +319,14 @@ class EtudiantAcademicJourneyPresenter
             return ['type' => 'bridge_lmd_bts', 'label' => 'Transition LMD vers BTS', 'icon' => 'fa-route'];
         }
 
-        if ($this->niveauLabel($previous) && $this->niveauLabel($previous) === $this->niveauLabel($current)) {
+        // Le statut établi sur l'inscription fait foi : une personne l'a
+        // peut-être confirmé ou corrigé. Sans statut (inscription jamais
+        // recensée), on retombe sur la comparaison des niveaux.
+        if ($current->redoublant_source !== null) {
+            if ($current->is_redoublant) {
+                return ['type' => 'same_level', 'label' => 'Redoublement', 'icon' => 'fa-redo-alt'];
+            }
+        } elseif ($this->niveauLabel($previous) && $this->niveauLabel($previous) === $this->niveauLabel($current)) {
             return ['type' => 'same_level', 'label' => 'Même niveau repris', 'icon' => 'fa-redo-alt'];
         }
 

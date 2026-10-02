@@ -577,6 +577,8 @@
                         </div>
                     </div>
 
+                    @include('esbtp.reinscription.partials.statut-redoublant')
+
                     <!-- Configuration des nouveaux frais -->
                     @if($analyse['etudiant']->peut_reinscrire)
                     <div class="card-moderne mb-lg">

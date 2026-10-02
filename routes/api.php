@@ -545,6 +545,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::get('/settings', [App\Http\Controllers\API\CLI\CLISettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [App\Http\Controllers\API\CLI\CLISettingsController::class, 'update'])->name('settings.update');
         Route::post('/inscriptions/normaliser-type', [App\Http\Controllers\API\CLI\CLIInscriptionTypeController::class, 'normaliser'])->name('inscriptions.normaliser-type');
+        // Statut redoublant : état, recensement de toutes les années, confirmation.
+        Route::get('/inscriptions/redoublants', [App\Http\Controllers\API\CLI\CLIStatutRedoublantController::class, 'etat'])->name('inscriptions.redoublants');
+        Route::post('/inscriptions/redoublants/recenser', [App\Http\Controllers\API\CLI\CLIStatutRedoublantController::class, 'recenser'])->name('inscriptions.redoublants.recenser');
+        Route::post('/inscriptions/{id}/redoublant', [App\Http\Controllers\API\CLI\CLIStatutRedoublantController::class, 'etablir'])->whereNumber('id')->name('inscriptions.redoublant');
         // Assistant IA : cle d'un fournisseur (chiffree en base), modele par defaut, essai reel.
         Route::get('/assistant', [App\Http\Controllers\API\CLI\CLIAssistantController::class, 'etat'])->name('assistant.etat');
         Route::put('/assistant/cle', [App\Http\Controllers\API\CLI\CLIAssistantController::class, 'poserCle'])->name('assistant.cle');

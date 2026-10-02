@@ -421,7 +421,9 @@ class ReeinscriptionService
         $anneeUniversitaireId = null,
         $actionReliquat = null,
         bool $skipTransaction = false,
-        bool $sendNotification = true
+        bool $sendNotification = true,
+        ?bool $redoublant = null,
+        ?string $redoublantMotif = null
     ): ESBTPInscription {
         if (!$skipTransaction) {
             \DB::beginTransaction();
@@ -589,7 +591,7 @@ class ReeinscriptionService
                 // bien « ancien » apres correction, mais la souscription, elle,
                 // avait deja ete creee et payee.
                 'statut_etablissement' => \App\Models\ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN,
-                'is_redoublant' => $estRedoublement,
+                ...\App\Domain\Inscriptions\StatutRedoublant::colonnesALaReinscription($estRedoublement, $decision),
                 'date_inscription' => now(),
                 'status' => 'active',
                 'workflow_step' => 'documents_complets',
@@ -609,6 +611,8 @@ class ReeinscriptionService
             'reinscription_observations' => $reinscriptionNote,
             'updated_by' => auth()->id(),
         ]);
+
+        app(\App\Domain\Inscriptions\StatutRedoublant::class)->apresReinscription($nouvelleInscription, $redoublant, $redoublantMotif);
 
 
             // 5. Générer nouveaux frais via service existant
@@ -1006,5 +1010,4 @@ class ReeinscriptionService
             }
         }
     }
-
 }
