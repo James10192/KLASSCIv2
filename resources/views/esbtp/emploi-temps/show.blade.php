@@ -3,7 +3,7 @@
 @section('title', 'Emploi du temps - ' . (is_object($emploiTemps) && is_object($emploiTemps->classe) ? $emploiTemps->classe->name : 'Non défini') . ' - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* ═════════════════════════════════════════════════════════════════
        Emploi du temps — show premium v1 (PR #221)
@@ -1172,7 +1172,7 @@
 @endsection
 
 @section('scripts')
-<script src="{{ asset('js/inscriptions/common.js') }}"></script>
+<script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <script>
     // ═════════════════════════════════════════════════════════════════
     // Emploi-temps show — actions premium (delete emploi, delete seance)

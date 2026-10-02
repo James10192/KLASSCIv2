@@ -3,9 +3,9 @@
 @section('title', 'Planning Général - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <!-- Correction des modales Bootstrap -->
-<link rel="stylesheet" href="{{ asset('css/modal-force-fix.css') }}">
+<link rel="stylesheet" href="{{ asset('css/modal-force-fix.css') }}?v={{ @filemtime(public_path('css/modal-force-fix.css')) ?: '1' }}">
 <style>
     /* Amélioration Mobile-First */
     .planning-nav {

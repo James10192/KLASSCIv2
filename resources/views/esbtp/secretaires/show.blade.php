@@ -3,7 +3,7 @@
 @section('title', 'Profil Secretaire — ' . ($secretaire->first_name ?? $secretaire->name ?? 'Secretaire') . ' ' . ($secretaire->last_name ?? '') . ' — KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 /* ===================================================================
    SECRETAIRE SHOW — Premium Design — KLASSCI Design System

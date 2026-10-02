@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\Comptabilite\Relances\PopulationDesRelances;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
@@ -191,7 +192,7 @@ class RelanceCalculationService
     }
 
     /**
-     * Calcule la dette d'un étudiant via ses inscriptions actives.
+     * Calcule la dette d'un étudiant via ses inscriptions relançables (PopulationDesRelances).
      * Alternative à l'ancien calculerDette() qui utilisait ESBTPFacture.
      */
     public function calculerDetteEtudiant(\App\Models\ESBTPEtudiant $etudiant): float
@@ -205,8 +206,7 @@ class RelanceCalculationService
         ])
             ->where('etudiant_id', $etudiant->id)
             ->where('annee_universitaire_id', $anneeActive->id)
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
+            ->tap(fn ($q) => PopulationDesRelances::restreindre($q))
             ->get();
 
         if ($inscriptions->isEmpty()) return 0;
@@ -237,8 +237,7 @@ class RelanceCalculationService
         ])
             ->where('etudiant_id', $etudiant->id)
             ->where('annee_universitaire_id', $anneeActive->id)
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
+            ->tap(fn ($q) => PopulationDesRelances::restreindre($q))
             ->get();
 
         if ($inscriptions->isEmpty()) return 0;

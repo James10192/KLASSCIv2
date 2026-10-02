@@ -3,7 +3,7 @@
 @section('title', 'Gestion des Coordinateurs - KLASSCI')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     .coordinateurs-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

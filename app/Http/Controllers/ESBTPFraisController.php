@@ -1321,6 +1321,7 @@ class ESBTPFraisController extends Controller
             foreach ($studentsWithOverdue->students as $student) {
                 // Vérifier s'il n'y a pas déjà une relance récente
                 $existingRelance = \App\Models\ESBTPRelance::where('etudiant_id', $student->id)
+                    ->comptePourLeNiveau()
                     ->where('niveau', $request->niveau)
                     ->where('created_at', '>=', now()->subDays(7))
                     ->first();
@@ -1328,6 +1329,7 @@ class ESBTPFraisController extends Controller
                 if (!$existingRelance) {
                     \App\Models\ESBTPRelance::create([
                         'etudiant_id' => $student->id,
+                        'inscription_id' => $student->inscription_id,
                         'type' => $request->type,
                         'niveau' => $request->niveau,
                         'contenu_message' => $this->generateReminderMessage($category, $student, $request->niveau),

@@ -687,6 +687,23 @@ return [
             'icon' => 'fa-file-import',
             'aliases' => [],
         ],
+        // Réclamations de notes : l'élève conteste, l'enseignant de l'évaluation
+        // donne son avis (par affectation, pas par permission), et seul le
+        // porteur de « traiter » applique ou refuse la correction.
+        'notes.reclamations.create_own' => [
+            'label' => 'Contester une de ses notes',
+            'description' => 'Déposer une réclamation sur une note, avec la photo de la copie.',
+            'group' => 'Notes & Évaluations',
+            'icon' => 'fa-flag',
+            'aliases' => [],
+        ],
+        'notes.reclamations.traiter' => [
+            'label' => 'Traiter les réclamations de notes',
+            'description' => 'Recevoir les réclamations des élèves, puis accepter (la note est corrigée) ou refuser.',
+            'group' => 'Notes & Évaluations',
+            'icon' => 'fa-scale-balanced',
+            'aliases' => [],
+        ],
 
         // ===== Évaluations =====
         'evaluations.view' => [
@@ -2690,6 +2707,7 @@ return [
         'etudiant' => [
             'dashboard.view',
             'notes.view_own',
+            'notes.reclamations.create_own',
             'bulletins.view_own',
             'lmd.credit_wallet.view',
             'attendances.view_own',

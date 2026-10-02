@@ -43,6 +43,7 @@ class SupportController extends Controller
             'fil' => ['nullable', 'array', 'max:' . FilDeSupport::MESSAGES_MAX],
             'fil.*.role' => ['required', Rule::in(['nanan', 'personne'])],
             'fil.*.texte' => ['required', 'string', 'max:' . FilDeSupport::LONGUEUR_MAX],
+            'fil.*.type' => ['nullable', Rule::in(FilDeSupport::TYPES)],
             'page' => ['nullable', 'array'],
             'page.titre' => ['nullable', 'string', 'max:200'],
             'recapitulatif' => ['nullable', 'boolean'],

@@ -242,7 +242,7 @@
 @endsection
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 .lmd-tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1rem; }
 .lmd-tab { display:inline-flex; align-items:center; gap:.4rem; padding:.45rem .85rem; border-radius:8px; border:1px solid #cbd5e1; background:#fff; color:#475569; font-size:.82rem; font-weight:600; cursor:pointer; transition:background .15s, color .15s, border-color .15s; }

@@ -97,6 +97,31 @@ class BulkReinscriptionService
     }
 
     /**
+     * Les lignes de l'étape « sélection » du modal de réinscription groupée.
+     *
+     * Source unique : le composant <x-reinscription-bulk-modal> les sérialise dans
+     * la page, la liste des étudiants les charge à l'ouverture du modal.
+     *
+     * @return array<int, array{id: int, matricule: ?string, nom_complet: string, classe: ?string, telephone: ?string, email: ?string, fiche_complete: bool}>
+     */
+    public static function lignesPourModale(iterable $etudiants): array
+    {
+        return collect($etudiants)->map(function ($e) {
+            $insc = method_exists($e, 'inscriptions') ? $e->inscriptions->first() : null;
+
+            return [
+                'id' => $e->id,
+                'matricule' => $e->matricule,
+                'nom_complet' => $e->nom_complet ?? trim(($e->nom ?? '') . ' ' . ($e->prenoms ?? '')),
+                'classe' => optional($insc)->classe?->name,
+                'telephone' => $e->telephone ?? null,
+                'email' => $e->email ?? null,
+                'fiche_complete' => !empty($e->telephone) && !empty($e->email),
+            ];
+        })->values()->all();
+    }
+
+    /**
      * Pré-calcule un payload "preview" pour N étudiants avant validation utilisateur.
      * Retourne pour chacun : decision, moyenne, solde, peut_reinscrire, fiche_complete.
      */

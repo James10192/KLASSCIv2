@@ -248,6 +248,37 @@ class MoyennesDeLApercuTest extends TestCase
         $this->assertSame('manuelle', $apercu['lignes'][$matiere->id]['source']);
     }
 
+    /**
+     * Cas Abidjan, 1BTS GBAT D (octobre 2026) : sur l'ecran du S2, Anglais
+     * technique, Chimie, Droit... s'offraient vides avec « Aucune eval. », alors
+     * que la maquette les range au S1. Une maquette validee range chaque
+     * matiere : l'ecran d'un semestre ne propose que les siennes, comme le
+     * bulletin. Une ligne deja enregistree, elle, reste.
+     */
+    public function test_la_maquette_ne_propose_que_les_matieres_du_semestre_ouvert(): void
+    {
+        $duS1 = $this->matiereDeLaMaquette(['name' => 'Anglais technique']);
+        $duS2 = $this->matiereDeLaMaquette(['name' => 'Géotechnique']);
+        $desDeux = $this->matiereDeLaMaquette(['name' => 'Mathématiques']);
+        foreach ([[$duS1, 1], [$duS2, 2], [$desDeux, null]] as [$matiere, $semestre]) {
+            \App\Models\ESBTPMatiereFilierNiveau::create([
+                'matiere_id' => $matiere->id, 'filiere_id' => $this->filiere->id,
+                'niveau_etude_id' => $this->niveau->id, 'semestre' => $semestre, 'semestre_renseigne' => true,
+            ]);
+        }
+
+        $s2 = $this->assembler('semestre2')['lignes'];
+        $this->assertArrayNotHasKey($duS1->id, $s2, 'Matiere du S1 : absente de l\'ecran du S2.');
+        $this->assertArrayHasKey($duS2->id, $s2);
+        $this->assertArrayHasKey($desDeux->id, $s2);
+
+        $s1 = $this->assembler('semestre1')['lignes'];
+        $this->assertArrayHasKey($duS1->id, $s1);
+        $this->assertArrayNotHasKey($duS2->id, $s1);
+
+        $this->assertArrayHasKey($duS1->id, $this->assembler('annuel')['lignes'], 'L\'annuel garde tout.');
+    }
+
     public function test_une_ecue_deja_enregistree_reste_visible_et_marquee_intruse(): void
     {
         // LE FILTRE DE COHÉRENCE, ET SES DEUX CONDUITES. Une ECUE LMD portant

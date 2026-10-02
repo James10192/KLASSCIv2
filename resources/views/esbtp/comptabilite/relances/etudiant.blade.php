@@ -3,7 +3,7 @@
 @section('title', 'Relance — ' . $etudiant->nom_complet)
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
 /* ═══════════════════════════════════════════════════════════════════
    RELANCE HERO — fiche d'urgence financière
@@ -523,10 +523,11 @@
         \App\Models\ESBTPRelance::STATUT_PLANIFIEE => ['Planifiée', 'info', 'planifiée pour'],
         \App\Models\ESBTPRelance::STATUT_ECHEC     => ['À renvoyer', 'bad', 'échec'],
         \App\Models\ESBTPRelance::STATUT_INTENT    => ['Non confirmée', 'warn', 'ouverte'],
+        \App\Models\ESBTPRelance::STATUT_ECARTEE   => ['Écartée', 'mute', 'écartée'],
     ];
     $remHistorique = $relancesEnregistrees->map(function ($r) use ($remCanalDe, $remStatuts) {
         [$puce, $ton, $verbe] = $remStatuts[$r->statut] ?? [$r->statut_formatte, 'mute', ''];
-        $date = $r->statut === \App\Models\ESBTPRelance::STATUT_ECHEC ? $r->updated_at : $r->date_envoi;
+        $date = in_array($r->statut, [\App\Models\ESBTPRelance::STATUT_ECHEC, \App\Models\ESBTPRelance::STATUT_ECARTEE], true) ? $r->updated_at : $r->date_envoi;
         return [
             'url'   => route('esbtp.comptabilite.relances.show', $r->id),
             'titre' => ($r->type === 'recouvrement' ? 'Recouvrement' : $r->niveau_formatte) . ' · ' . $remCanalDe($r),

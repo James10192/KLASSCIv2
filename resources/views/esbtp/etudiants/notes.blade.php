@@ -3,7 +3,7 @@
 @section('title', 'Mes Notes')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <style>
     /* Styles spécifiques pour la page notes */
     .notes-container {
@@ -209,6 +209,14 @@
         font-size: var(--text-xs);
     }
 
+    .note-contester {
+        display: inline-flex; align-items: center; gap: .4rem; margin-top: var(--space-sm);
+        font-size: .8rem; font-weight: 600; color: var(--primary); text-decoration: none;
+    }
+    .note-contester:hover { text-decoration: underline; }
+    .note-contester--faite { color: var(--text-secondary, #64748b); }
+    .note-contester--faite:hover { text-decoration: none; }
+
     .note-comment {
         background: rgba(var(--neutral-rgb), 0.05);
         padding: var(--space-sm);
@@ -398,6 +406,13 @@
     .mnm-hint { font-size: 12px; color: #64748b; margin: -6px 0 0; }
     .mnm .m-seg button:focus-visible { outline: 2px solid #0453cb; outline-offset: -2px; }
 
+    .mnm-contester {
+        display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px;
+        background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.18); color: #0453cb;
+        font-size: .86rem; text-decoration: none; line-height: 1.35;
+    }
+    .mnm-contester strong { white-space: nowrap; }
+
     @media (max-width: 991.98px) {
         .mnm.m-screen { display: flex; flex-direction: column; }
         .mnm-panel { display: grid; gap: 14px; align-content: start; }
@@ -433,6 +448,13 @@
     $classeNom = $inscription?->classe?->name ?? null;
     $anneeNom = $anneeCourante?->name ?? null;
     $sousTitre = implode(' · ', array_filter([$classeNom, $anneeNom]));
+    // Contester une note : permission de l'élève ET réclamations ouvertes par l'école.
+    $peutContester = auth()->user()?->can('notes.reclamations.create_own')
+        && app(\App\Domain\Notes\Reclamations\ReglagesReclamations::class)->actives();
+    // Le lien ne s'offre que sur une note réellement contestable : dans le
+    // délai, et pas déjà réclamée (un seul recours par note).
+    $reclamations = $peutContester ? app(\App\Domain\Notes\Reclamations\ReclamationsDeNotes::class) : null;
+    $notesReclamees = $reclamations && ($etudiant->id ?? null) ? $reclamations->notesDejaReclamees((int) $etudiant->id) : [];
 @endphp
 <div class="m-only-desktop">
 <div class="dashboard-acasi notes-container">
@@ -449,7 +471,12 @@
                         Consultez vos résultats et votre progression académique
                     </p>
                 </div>
-                <div class="text-end">
+                <div class="text-end d-flex flex-wrap gap-2 justify-content-end align-items-center">
+                    @if($peutContester)
+                        <a href="{{ route('esbtp.mes-reclamations.index') }}" class="badge text-decoration-none" style="background: #fff; color: var(--primary); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-medium); font-size: var(--text-sm);">
+                            <i class="fas fa-flag me-2"></i>Mes réclamations
+                        </a>
+                    @endif
                     <div class="badge" style="background: rgba(255, 255, 255, 0.2); color: white; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-medium); font-size: var(--text-sm);">
                         <i class="fas fa-chart-line me-2"></i>
                         Année {{ $anneeCourante->name ?? (date('Y').'-'.(date('Y')+1)) }}
@@ -609,6 +636,15 @@
                                             <i class="fas fa-quote-left me-2"></i>
                                             {{ $note->commentaire }}
                                         </div>
+                                    @endif
+                                    @if($peutContester && isset($notesReclamees[(int) $note->id]))
+                                        <span class="note-contester note-contester--faite">
+                                            <i class="fas fa-flag"></i> Réclamation déposée
+                                        </span>
+                                    @elseif($peutContester && $reclamations->dansLeDelai($note))
+                                        <a href="{{ route('esbtp.mes-reclamations.index', ['note' => $note->id]) }}" class="note-contester">
+                                            <i class="fas fa-flag"></i> Contester cette note
+                                        </a>
                                     @endif
                                 </div>
                             @endforeach
@@ -867,6 +903,11 @@
 {{-- ================= Mobile (shell m-*) : appbar + segments semestres + notes ================= --}}
 <div class="m-only-mobile m-screen mnm" x-data="{ seg: @js($segDefaut) }">
     <x-m.appbar title="Mes notes" :sub="$sousTitre !== '' ? $sousTitre : null">
+        @if($peutContester)
+            <a href="{{ route('esbtp.mes-reclamations.index') }}" class="m-ib" aria-label="Contester une note">
+                <x-m.icon name="alert" />
+            </a>
+        @endif
         @canany(['bulletins.view_own', 'bulletins.view'])
             @if(Route::has('esbtp.mon-bulletin.index'))
                 <a href="{{ route('esbtp.mon-bulletin.index') }}" class="m-ib" aria-label="Mes relevés">
@@ -884,6 +925,12 @@
             <x-m.empty icon="book" title="Aucune note disponible"
                 text="Les notes apparaîtront ici dès qu'elles seront saisies par vos enseignants." />
         @else
+            @if($peutContester)
+                <a href="{{ route('esbtp.mes-reclamations.index') }}" class="mnm-contester">
+                    <x-m.icon name="alert" />
+                    <span>Une note vous semble fausse ? <strong>Contester</strong></span>
+                </a>
+            @endif
             <div class="m-seg" role="tablist" aria-label="Période">
                 @foreach($semestresEcran as $sem)
                     <button type="button" role="tab"
