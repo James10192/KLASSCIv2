@@ -21,7 +21,7 @@
             <div class="bc-icon"><i class="fas fa-stopwatch"></i></div>
             <div class="bc-body">
                 <div class="bc-label">Seuils</div>
-                <div class="bc-desc">Les échecs sont toujours notés, quel que soit le seuil. Les notes sont effacées au bout de trente jours.</div>
+                <div class="bc-desc">Les erreurs signalées sont toujours notées, quel que soit le seuil ; une page arrêtée par la limite de temps ou de mémoire du serveur ne laisse pas de note. Les notes sont effacées au bout de trente jours.</div>
                 <div class="row g-2" style="margin-top:.6rem;max-width:560px;">
                     <div class="col-12 col-md-6">
                         <label class="bc-desc" for="tl-duree" style="display:block;margin-bottom:.2rem;">Durée (millisecondes)</label>
