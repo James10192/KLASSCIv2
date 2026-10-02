@@ -65,7 +65,10 @@ class InscriptionSearchService
         );
 
         $total = $scored->count();
-        $items = $scored->forPage($currentPage, $perPage)->values();
+        $items = $this->chargerLaPage(
+            $baseQuery,
+            $scored->forPage($currentPage, $perPage)->pluck('id')->all(),
+        );
 
         $paginator = new LengthAwarePaginator(
             $items,
@@ -80,11 +83,39 @@ class InscriptionSearchService
     }
 
     /**
-     * Récupère les candidats via requête SQL avec fallback.
+     * Charge, dans l'ordre du classement, les seules inscriptions affichées,
+     * avec tout ce que la ligne demande.
+     *
+     * Les candidats, eux, n'en portent que le nécessaire au classement : les
+     * charger avec leurs paiements, leurs phases et leur parcours coûtait
+     * deux cents fiches complètes pour en montrer vingt-cinq.
+     *
+     * @param  array<int, int>  $ids
+     */
+    private function chargerLaPage(Builder $baseQuery, array $ids)
+    {
+        if ($ids === []) {
+            return collect();
+        }
+
+        $parId = (clone $baseQuery)
+            ->whereIn('esbtp_inscriptions.id', $ids)
+            ->get()
+            ->keyBy('id');
+
+        return collect($ids)
+            ->map(fn ($id) => $parId->get($id))
+            ->filter()
+            ->values();
+    }
+
+    /**
+     * Récupère les candidats via requête SQL avec fallback, sans leurs
+     * relations : seulement ce que le classement lit.
      */
     private function fetchCandidates(Builder $baseQuery, string $search)
     {
-        $candidatesQuery = clone $baseQuery;
+        $candidatesQuery = $this->allegee($baseQuery);
         $searchTokens = collect(
             preg_split("/[\s,]+/u", $search, -1, PREG_SPLIT_NO_EMPTY),
         )->map(fn($token) => trim($token))->filter();
@@ -132,7 +163,7 @@ class InscriptionSearchService
                 'message' => $e->getMessage(),
             ]);
 
-            $fallbackQuery = clone $baseQuery;
+            $fallbackQuery = $this->allegee($baseQuery);
             $fallbackQuery->where(function ($q) use ($search) {
                 $likeSearch = '%' . self::escapeLike($search) . '%';
                 $q->whereHas('etudiant', function ($eq) use ($likeSearch) {
@@ -144,6 +175,23 @@ class InscriptionSearchService
 
             return $fallbackQuery->orderByDesc('esbtp_inscriptions.id')->limit(200)->get();
         }
+    }
+
+    /**
+     * La requête de base, dépouillée de ses relations lourdes : l'étudiant et la
+     * classe ne servent qu'au nom, au matricule et au libellé.
+     */
+    private function allegee(Builder $baseQuery): Builder
+    {
+        return (clone $baseQuery)
+            ->setEagerLoads([])
+            ->select([
+                'esbtp_inscriptions.id',
+                'esbtp_inscriptions.etudiant_id',
+                'esbtp_inscriptions.classe_id',
+                'esbtp_inscriptions.numero_recu',
+            ])
+            ->with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name']);
     }
 
     private static function escapeLike(string $value): string

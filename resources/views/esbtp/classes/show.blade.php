@@ -601,6 +601,7 @@
 
         @php
             $nombreEtudiants = $classe->etudiants->count();
+            $nbRedoublants = \App\Domain\Inscriptions\StatutRedoublant::nombreDansLaClasse($classe, \App\Models\ESBTPAnneeUniversitaire::getCurrent()?->id);
             $pourcentage = $classe->places_totales > 0 ? round(($nombreEtudiants / $classe->places_totales) * 100, 1) : 0;
             $placesLibres = max(0, $classe->places_totales - $nombreEtudiants);
             // LMD : compter les ECUE depuis ESBTPPlanificationAcademique (source canonique)
@@ -701,7 +702,7 @@
                     <div class="cs-kpi-icon"><i class="fas fa-users"></i></div>
                     <div class="cs-kpi-body">
                         <div class="cs-kpi-value">{{ $nombreEtudiants }}</div>
-                        <div class="cs-kpi-label">Inscrits</div>
+                        <div class="cs-kpi-label">Inscrits{{ $nbRedoublants > 0 ? ' · dont '.$nbRedoublants.' redoublant'.($nbRedoublants > 1 ? 's' : '') : '' }}</div>
                     </div>
                 </div>
                 <div class="cs-kpi">

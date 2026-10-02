@@ -180,7 +180,8 @@ class BulletinRankRecalculationServiceTest extends TestCase
             new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver($phaseResolver, new ClasseOuvertureResolver())),
             new BtsClassCohortCounter($phaseResolver),
             new ClasseOuvertureResolver(),
-            new BulletinSubjectOrder(new BtsBulletinSubjectResolver())
+            new BulletinSubjectOrder(new BtsBulletinSubjectResolver()),
+            app(\App\Domain\BtsTroncCommun\BulletinSubjectRowsCompleter::class)
         );
 
         return new BulletinRankRecalculationService($bulletinService);

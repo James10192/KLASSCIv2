@@ -1374,6 +1374,10 @@ class ESBTPBulletinController extends Controller
         // limite de 30 s pour tenir sous charge.
         $preflight['batch_size'] = 6;
 
+        // Le bulletin imprime la valeur déduite tant que personne n'a confirmé : on le dit, sans bloquer.
+        $preflight += app(\App\Domain\Inscriptions\StatutRedoublant::class)
+            ->pourLePreControle($classe, $request->integer('annee_universitaire_id'), $request->user());
+
         // Le constat de couverture etait calcule ici et joint a la reponse.
         // AUCUN ecran ne le lisait : le panneau de pre-controle
         // (`bulletins/partials/select-scripts.blade.php`) lit `ok`, `status`,

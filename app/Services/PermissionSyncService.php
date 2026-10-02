@@ -202,6 +202,9 @@ class PermissionSyncService
             // cette ligne, les instances en service ne la donneraient jamais aux
             // élèves (la synchronisation saute les rôles déjà garnis).
             'notes.reclamations.create_own',
+            // Statut redoublant : confirmer ou corriger. Sans cette ligne, le
+            // secrétariat et la scolarité des écoles en service ne l'auraient pas.
+            'inscriptions.redoublant.confirm',
             'paiements.create.mobile_money',
             'paiements.create.non_cash',
             'finance.unpaid_count.view',
