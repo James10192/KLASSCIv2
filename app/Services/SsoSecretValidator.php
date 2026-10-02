@@ -17,7 +17,7 @@ class SsoSecretValidator
 {
     public static function validate(): void
     {
-        $secret = config('services.group_sso.secret') ?: env('GROUP_SSO_SHARED_SECRET');
+        $secret = config('services.group_sso.secret');
 
         if (empty($secret)) {
             // validate() est appelee depuis AppServiceProvider::boot(), donc au

@@ -5,12 +5,10 @@
 
     RewriteEngine On
 
-    # Désactiver la mise en cache pour le développement
-    <IfModule mod_headers.c>
-        Header set Cache-Control "no-cache, no-store, must-revalidate"
-        Header set Pragma "no-cache"
-        Header set Expires 0
-    </IfModule>
+    # Fichiers versionnés (?v=...) : l'URL change a chaque modification, le
+    # navigateur peut donc les garder un an sans jamais redemander.
+    RewriteCond %{QUERY_STRING} (^|&)v= [NC]
+    RewriteRule \.(css|js|woff2?|ttf|eot|svg|png|jpe?g|webp|gif|ico)$ - [E=ASSET_VERSIONNE:1]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
@@ -38,3 +36,44 @@
 <FilesMatch "^\.env">
     Require all denied
 </FilesMatch>
+
+# Cache du navigateur.
+#
+# Ce bloc remplace un « no-cache, no-store » pose « pour le developpement » et
+# reste en production : chaque clic retelechargeait la vingtaine de feuilles et
+# de scripts de l'application, avant meme d'afficher la page.
+#
+# - Pages PHP : jamais en cache (donnees personnelles, postes partages).
+# - CSS / JS non versionnes : gardes, mais revalides a chaque usage. Le serveur
+#   repond 304 sans renvoyer le fichier tant qu'il n'a pas change ; un
+#   deploiement est donc vu immediatement.
+# - Fichiers versionnes (?v=) : un an, sans revalidation.
+# - Images et polices : une semaine.
+#
+# FilesMatch est applique apres les directives du dossier : il l'emporte sur
+# la regle generale des pages.
+#
+# L'ordre des deux lignes de chaque bloc est voulu. Hypothese non verifiee sur
+# LWS : LiteSpeed ignorerait en silence
+# ce qu'il ne reconnait pas. S'il ignorait la condition « env= », la DERNIERE
+# ligne l'emporterait : c'est donc la prudente (revalidation), jamais
+# l'« immutable », qui aurait fige un an tous les fichiers non versionnes.
+<IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires 0
+
+    <FilesMatch "\.(css|js)$">
+        Header unset Pragma
+        Header unset Expires
+        Header set Cache-Control "public, max-age=31536000, immutable" env=ASSET_VERSIONNE
+        Header set Cache-Control "public, no-cache" env=!ASSET_VERSIONNE
+    </FilesMatch>
+
+    <FilesMatch "\.(woff2?|ttf|eot|svg|png|jpe?g|webp|gif|ico)$">
+        Header unset Pragma
+        Header unset Expires
+        Header set Cache-Control "public, max-age=31536000, immutable" env=ASSET_VERSIONNE
+        Header set Cache-Control "public, max-age=604800" env=!ASSET_VERSIONNE
+    </FilesMatch>
+</IfModule>

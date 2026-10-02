@@ -582,6 +582,12 @@ class ESBTPInscription extends Model implements Auditable
      */
     public function hasSpecialisation(): bool
     {
+        // Relation deja chargee (cohortes, parcours) : la lire plutot que de
+        // relancer un exists() par inscription.
+        if ($this->relationLoaded('inscriptionSpecialisation')) {
+            return $this->inscriptionSpecialisation !== null;
+        }
+
         return $this->inscriptionSpecialisation()->exists();
     }
 

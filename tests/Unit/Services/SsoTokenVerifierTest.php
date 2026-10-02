@@ -10,7 +10,7 @@ use Tests\TestCase;
 /**
  * Security-critical: these tests guard the cross-app SSO verification logic.
  *
- * Uses a fixed secret via $_ENV to stay isolated from Laravel bootstrap.
+ * Uses a fixed secret set in configuration (services.group_sso.secret).
  */
 /**
  * @backupGlobals disabled
@@ -25,15 +25,14 @@ class SsoTokenVerifierTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $_ENV['GROUP_SSO_SHARED_SECRET'] = self::SECRET;
-        putenv('GROUP_SSO_SHARED_SECRET=' . self::SECRET);
+        // Le verificateur lit la configuration, jamais env() : sous
+        // config:cache, env() rend null hors de config/.
+        config(['services.group_sso.secret' => self::SECRET]);
         $this->verifier = new SsoTokenVerifier();
     }
 
     protected function tearDown(): void
     {
-        unset($_ENV['GROUP_SSO_SHARED_SECRET']);
-        putenv('GROUP_SSO_SHARED_SECRET');
         parent::tearDown();
     }
 

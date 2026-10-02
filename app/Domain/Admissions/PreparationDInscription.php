@@ -81,26 +81,31 @@ class PreparationDInscription
     }
 
     /**
-     * Les annees ou l'on peut inscrire : celle de la candidature, la courante
-     * et celles qui suivent. Une candidature deposee pour une annee qu'on n'a
-     * pas encore ouverte, ou reportee, s'inscrit ainsi sur la bonne.
+     * Les annees ou l'on peut inscrire : celle de la candidature, la
+     * precedente, la courante et celles qui suivent. Une candidature deposee
+     * pour une annee qu'on n'a pas encore ouverte, ou reportee, s'inscrit
+     * ainsi sur la bonne.
      *
      * `echue` : l'annee est terminee (date de fin passee). Inscrire dessus
      * reste possible — un dossier en retard — mais l'ecran le fait confirmer.
      *
      * @return list<array{id: int, nom: string, courante: bool, echue: bool, fin: ?string}>
      */
-    private function annees(?int $anneeCandidature): array
+    public function annees(?int $anneeCandidature = null): array
     {
         $courante = ESBTPAnneeUniversitaire::query()->where('is_current', true)->first(['id', 'start_date']);
+        // L'annee qui precede la courante reste proposee : un dossier en retard
+        // s'y inscrit encore, et l'ecran fait confirmer une annee terminee.
+        $depuis = $courante?->start_date === null ? null
+            : (ESBTPAnneeUniversitaire::query()->where('start_date', '<', $courante->start_date)->max('start_date') ?? $courante->start_date);
 
         return ESBTPAnneeUniversitaire::query()
             ->where(fn ($q) => $q
-                ->when($courante?->start_date, fn ($w) => $w->where('start_date', '>=', $courante->start_date))
+                ->when($depuis, fn ($w) => $w->where('start_date', '>=', $depuis))
                 ->orWhere('is_current', true)
                 ->orWhere('id', $anneeCandidature ?? 0))
             ->orderBy('start_date')
-            ->limit(4)
+            ->limit(5)
             ->get(['id', 'name', 'is_current', 'end_date'])
             ->map(fn (ESBTPAnneeUniversitaire $a) => [
                 'id' => (int) $a->id,

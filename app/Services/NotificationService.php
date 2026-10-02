@@ -2249,15 +2249,17 @@ class NotificationService
 
                 $link = route('coordinateur.attendance-dashboard');
 
+                // Destinataires deja notifies ce jour de cette alerte : une requete
+                // pour tous, au lieu d'une par destinataire a chaque affichage.
+                $dejaNotifies = Notification::whereIn('user_id', $recipients->pluck('id'))
+                    ->where('title', $title)
+                    ->whereDate('created_at', $date)
+                    ->pluck('user_id')
+                    ->flip();
+
                 // Envoyer à tous les destinataires
                 foreach ($recipients as $recipient) {
-                    // Vérifier si une notification identique n'a pas déjà été envoyée aujourd'hui
-                    $existingNotification = Notification::where('user_id', $recipient->id)
-                        ->where('title', $title)
-                        ->whereDate('created_at', $date)
-                        ->first();
-
-                    if (!$existingNotification) {
+                    if (!$dejaNotifies->has($recipient->id)) {
                         $this->createNotification(
                             $recipient,
                             $title,
@@ -2343,12 +2345,12 @@ class NotificationService
             }
 
             // 2. WHATSAPP (si activé et configuré)
-            if (env('WHATSAPP_ENABLED', false) && $preferences->hasChannel('whatsapp') && $tuteur->telephone) {
+            if (config('services.whatsapp.enabled') && $preferences->hasChannel('whatsapp') && $tuteur->telephone) {
                 $results['whatsapp'] = $this->sendWhatsAppNotification($tuteur, $etudiant, $notificationType, $data);
             }
 
             // 3. SMS (fallback uniquement si WhatsApp échoue ou parent sans WhatsApp)
-            if (env('SMS_ENABLED', false) && $preferences->hasChannel('sms') && $tuteur->telephone) {
+            if (config('services.sms.enabled') && $preferences->hasChannel('sms') && $tuteur->telephone) {
                 // Envoyer SMS uniquement si WhatsApp a échoué OU si pas de WhatsApp
                 if (!$preferences->hasChannel('whatsapp') || !$results['whatsapp']) {
                     $results['sms'] = $this->sendSmsNotification($tuteur, $etudiant, $notificationType, $data);

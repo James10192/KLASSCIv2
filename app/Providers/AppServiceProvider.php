@@ -294,7 +294,7 @@ class AppServiceProvider extends ServiceProvider
      */
     private function forcerLesUrlsDeBase(): void
     {
-        if (env('APP_ENV') !== 'local') {
+        if (config('app.env') !== 'local') {
             URL::forceScheme('https');
 
             return;

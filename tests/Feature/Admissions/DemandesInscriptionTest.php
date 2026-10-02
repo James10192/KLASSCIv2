@@ -68,7 +68,9 @@ class DemandesInscriptionTest extends TestCase
         $this->agent = User::factory()->create();
         $this->agent->givePermissionTo(self::PERMISSIONS);
 
-        $this->annee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2026-2027', 'is_current' => true]);
+        // Dates fixes : la reinscription compare les annees par leur debut.
+        $this->annee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2026-2027', 'is_current' => true,
+            'start_date' => '2026-09-01', 'end_date' => '2027-07-31']);
         $this->filiere = ESBTPFiliere::factory()->create(['name' => 'Génie civil']);
         $this->niveau = ESBTPNiveauEtude::factory()->create(['name' => 'BTS 1', 'year' => 1]);
     }
@@ -195,6 +197,11 @@ class DemandesInscriptionTest extends TestCase
     {
         $suivante = ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => false,
             'start_date' => $this->annee->start_date->copy()->addYear(), 'end_date' => $this->annee->end_date->copy()->addYear()]);
+        // La precedente reste proposee (dossier en retard) ; celle d'avant, non.
+        $precedente = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false,
+            'start_date' => $this->annee->start_date->copy()->subYear(), 'end_date' => $this->annee->end_date->copy()->subYear()]);
+        ESBTPAnneeUniversitaire::factory()->create(['name' => '2024-2025', 'is_current' => false,
+            'start_date' => $this->annee->start_date->copy()->subYears(2), 'end_date' => $this->annee->end_date->copy()->subYears(2)]);
         // Saisi la premiere fois avec l'indicatif et des espaces, prenoms d'abord.
         $parent = ESBTPParent::create(['nom' => "N'GUESSAN", 'prenoms' => 'Koffi Paul', 'telephone' => '+225 07 08 09 10 11']);
         $c = $this->candidature(['tuteur_nom' => 'Nguessan Koffi Paul', 'tuteur_telephone' => '0708091011']);
@@ -203,7 +210,7 @@ class DemandesInscriptionTest extends TestCase
 
         $this->assertSame([$parent->id], array_column($prep['parents_proches'], 'id'));
         $this->assertTrue($prep['parents_proches'][0]['meme_telephone']);
-        $this->assertSame([$this->annee->id, $suivante->id], array_column($prep['annees'], 'id'));
+        $this->assertSame([$precedente->id, $this->annee->id, $suivante->id], array_column($prep['annees'], 'id'));
     }
 
     public function test_la_recherche_de_parents_tolere_l_ordre_les_accents_et_le_format_du_telephone(): void
@@ -365,7 +372,8 @@ class DemandesInscriptionTest extends TestCase
 
     public function test_reinscrire_depuis_la_file_repond_en_json_et_honore_le_rendez_vous(): void
     {
-        $passee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false]);
+        $passee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false,
+            'start_date' => '2025-09-01', 'end_date' => '2026-07-31']);
         $demande = $this->demande('YAO');
         \App\Models\ESBTPInscription::factory()->create([
             'etudiant_id' => $demande->etudiant_id, 'classe_id' => $this->classe('1A BTS', 30)->id,
@@ -388,6 +396,114 @@ class DemandesInscriptionTest extends TestCase
         // Le statut change par requete directe : le compte du menu suit quand meme.
         $this->assertSame(0, \App\Domain\Admissions\FileDesDemandes::aTraiter($this->agent));
         $this->assertSame(StatutReservationRdv::Honoree, $rdv->fresh()->statut);
+    }
+
+    public function test_reinscrire_sur_une_autre_annee_et_confirmer_une_annee_terminee(): void
+    {
+        $terminee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false,
+            'start_date' => '2025-09-01', 'end_date' => Carbon::today()->subDay()->toDateString()]);
+        $avant = ESBTPAnneeUniversitaire::factory()->create(['name' => '2024-2025', 'is_current' => false,
+            'start_date' => '2024-09-01', 'end_date' => '2025-07-31']);
+        $demande = $this->demande('BAMBA');
+        \App\Models\ESBTPInscription::factory()->create([
+            'etudiant_id' => $demande->etudiant_id, 'classe_id' => $this->classe('1A BTS', 30)->id,
+            'filiere_id' => $this->filiere->id, 'niveau_id' => $this->niveau->id,
+            'annee_universitaire_id' => $avant->id, 'status' => 'active',
+        ]);
+        $cible = $this->classe('2A BTS', 30);
+        $convertir = fn (array $champs) => $this->actingAs($this->agent)->postJson(
+            route('esbtp.reinscription-demandes.convertir', $demande),
+            ['classe_id' => $cible->id, 'decision' => 'passage', 'annee_universitaire_id' => $terminee->id] + $champs
+        );
+
+        // Terminee et non confirmee : refusee, la demande reste a traiter.
+        $convertir([])->assertStatus(422)->assertJsonPath('ok', false);
+        $this->assertSame('en_attente', $demande->fresh()->statut);
+
+        $convertir(['annee_echue_confirmee' => true])->assertOk()->assertJsonPath('ok', true);
+        $inscription = \App\Models\ESBTPInscription::findOrFail($demande->fresh()->inscription_id);
+        $this->assertSame($terminee->id, (int) $inscription->annee_universitaire_id);
+
+        // Les places de la fenetre se comptent sur l'annee choisie.
+        \App\Models\ESBTPInscription::factory()->create([
+            'classe_id' => $cible->id, 'annee_universitaire_id' => $terminee->id, 'status' => 'active', 'workflow_step' => 'etudiant_cree',
+        ]);
+        $libres = fn (int $annee) => collect($this->actingAs($this->agent)->getJson(route('esbtp.demandes.classes-par-annee', ['annee' => $annee]))
+            ->assertOk()->json('classes'))->firstWhere('id', $cible->id)['places_libres'];
+        $this->assertSame(29, $libres($terminee->id));
+        $this->assertSame(30, $libres($this->annee->id));
+    }
+
+    public function test_une_reinscription_ne_revient_pas_sur_une_annee_anterieure(): void
+    {
+        $terminee = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false,
+            'start_date' => '2025-09-01', 'end_date' => '2026-07-31']);
+        $demande = $this->demande('KONE');
+        // L'etudiant est deja inscrit sur l'annee courante.
+        \App\Models\ESBTPInscription::factory()->create([
+            'etudiant_id' => $demande->etudiant_id, 'classe_id' => $this->classe('1A BTS', 30)->id,
+            'filiere_id' => $this->filiere->id, 'niveau_id' => $this->niveau->id,
+            'annee_universitaire_id' => $this->annee->id, 'status' => 'active',
+        ]);
+
+        $this->actingAs($this->agent)->postJson(route('esbtp.reinscription-demandes.convertir', $demande), [
+            'classe_id' => $this->classe('2A BTS', 30)->id, 'decision' => 'passage',
+            'annee_universitaire_id' => $terminee->id, 'annee_echue_confirmee' => true,
+        ])->assertStatus(422)->assertJsonPath('ok', false);
+
+        $this->assertSame('en_attente', $demande->fresh()->statut);
+        $this->assertSame(0, \App\Models\ESBTPInscription::where('etudiant_id', $demande->etudiant_id)
+            ->where('annee_universitaire_id', $terminee->id)->count());
+    }
+
+    public function test_la_fenetre_reinscrire_propose_la_decision_et_l_affectation(): void
+    {
+        $avant = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false,
+            'start_date' => '2025-09-01', 'end_date' => '2026-07-31']);
+        $demande = $this->demande('OUATTARA');
+        \App\Models\ESBTPInscription::factory()->create([
+            'etudiant_id' => $demande->etudiant_id, 'classe_id' => $this->classe('1A BTS', 30)->id,
+            'filiere_id' => $this->filiere->id, 'niveau_id' => $this->niveau->id,
+            'annee_universitaire_id' => $avant->id, 'status' => 'active', 'affectation_status' => 'non_affecté',
+        ]);
+
+        $proposition = $this->actingAs($this->agent)
+            ->getJson(route('esbtp.reinscription-demandes.proposition', ['demande' => $demande, 'annee' => $this->annee->id]))
+            ->assertOk();
+        $this->assertSame('non_affecté', $proposition->json('affectation_status'));
+        $this->assertContains($proposition->json('decision'), array_keys(ESBTPReinscriptionDemande::DECISIONS));
+        $this->assertSame('2025-2026', $proposition->json('annee_quittee'));
+
+        // L'agent change le statut : c'est celui-la qui est enregistre.
+        $this->actingAs($this->agent)->postJson(route('esbtp.reinscription-demandes.convertir', $demande), [
+            'classe_id' => $this->classe('2A BTS', 30)->id, 'decision' => 'passage',
+            'annee_universitaire_id' => $this->annee->id, 'affectation_status' => 'réaffecté',
+        ])->assertOk();
+        $inscription = \App\Models\ESBTPInscription::findOrFail($demande->fresh()->inscription_id);
+        $this->assertSame('réaffecté', $inscription->affectation_status);
+    }
+
+    public function test_une_reinscription_est_refusee_si_l_etudiant_est_deja_inscrit_plus_tard(): void
+    {
+        $avant = ESBTPAnneeUniversitaire::factory()->create(['name' => '2025-2026', 'is_current' => false,
+            'start_date' => '2025-09-01', 'end_date' => '2026-07-31']);
+        $apres = ESBTPAnneeUniversitaire::factory()->create(['name' => '2027-2028', 'is_current' => false,
+            'start_date' => '2027-09-01', 'end_date' => '2028-07-31']);
+        $demande = $this->demande('DIABATE');
+        foreach ([$avant, $apres] as $a) {
+            \App\Models\ESBTPInscription::factory()->create([
+                'etudiant_id' => $demande->etudiant_id, 'classe_id' => $this->classe('1A BTS '.$a->name, 30)->id,
+                'filiere_id' => $this->filiere->id, 'niveau_id' => $this->niveau->id,
+                'annee_universitaire_id' => $a->id, 'status' => 'active',
+            ]);
+        }
+
+        $reponse = $this->actingAs($this->agent)->postJson(route('esbtp.reinscription-demandes.convertir', $demande), [
+            'classe_id' => $this->classe('2A BTS', 30)->id, 'decision' => 'passage', 'annee_universitaire_id' => $this->annee->id,
+        ])->assertStatus(422);
+
+        $this->assertStringContainsString('postérieure', (string) $reponse->json('message'));
+        $this->assertSame('en_attente', $demande->fresh()->statut);
     }
 
     public function test_proposer_un_creneau_a_une_famille_sans_rendez_vous(): void

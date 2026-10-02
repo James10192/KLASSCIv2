@@ -387,9 +387,9 @@
                             <div class="form-group-moderne">
                                 <label for="decision" class="form-label-moderne">Décision académique *</label>
                                 <select name="decision" id="decision" class="form-select-moderne" required>
-                                    <option value="passage" {{ $analyse['decision'] === 'passage' ? 'selected' : '' }}>Passage</option>
-                                    <option value="redoublement" {{ $analyse['decision'] === 'redoublement' ? 'selected' : '' }}>Redoublement</option>
-                                    <option value="rattrapage" {{ $analyse['decision'] === 'rattrapage' ? 'selected' : '' }}>Rattrapage</option>
+                                    <option value="passage" {{ $analyse['decision'] === 'passage' ? 'selected' : '' }}>Passage{{ $analyse['decision'] === 'passage' ? ' (proposée par les résultats)' : '' }}</option>
+                                    <option value="redoublement" {{ $analyse['decision'] === 'redoublement' ? 'selected' : '' }}>Redoublement{{ $analyse['decision'] === 'redoublement' ? ' (proposée par les résultats)' : '' }}</option>
+                                    <option value="rattrapage" {{ $analyse['decision'] === 'rattrapage' ? 'selected' : '' }}>Rattrapage{{ $analyse['decision'] === 'rattrapage' ? ' (proposée par les résultats)' : '' }}</option>
                                 </select>
                                 <small class="form-text text-muted">
                                     La décision détermine les classes proposées
@@ -422,12 +422,12 @@
                             <div class="form-group-moderne">
                                 <label for="affectation_status" class="form-label-moderne">Statut d'affectation *</label>
                                 <select name="affectation_status" id="affectation_status" class="form-select-moderne" required>
-                                    <option value="affecté">Affecté</option>
-                                    <option value="réaffecté">Réaffecté</option>
-                                    <option value="non_affecté">Non affecté</option>
+                                    <option value="affecté" {{ $affectationActuelle === 'affecté' ? 'selected' : '' }}>Affecté</option>
+                                    <option value="réaffecté" {{ $affectationActuelle === 'réaffecté' ? 'selected' : '' }}>Réaffecté</option>
+                                    <option value="non_affecté" {{ $affectationActuelle === 'non_affecté' ? 'selected' : '' }}>Non affecté</option>
                                 </select>
                                 <small class="form-text text-muted">
-                                    Le statut influence les frais applicables
+                                    Repris de l'inscription quittée. Le statut influence les frais applicables
                                 </small>
                             </div>
                         </div>
@@ -598,7 +598,7 @@
 
                     <!-- Champs cachés -->
                     <input type="hidden" name="decision_finale" id="decisionFinale" value="{{ $analyse['decision'] }}">
-                    <input type="hidden" name="affectation_status_final" id="affectationFinale" value="affecté">
+                    <input type="hidden" name="affectation_status_final" id="affectationFinale" value="{{ $affectationActuelle }}">
                     <input type="hidden" name="selected_optionals" id="selectedOptionals" value="{}"
                     @if($isSuperAdmin)
                     <input type="hidden" name="has_reliquat" value="{{ !empty($fraisNonSoldes) ? '1' : '0' }}">
