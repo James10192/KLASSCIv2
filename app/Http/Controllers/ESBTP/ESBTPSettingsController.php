@@ -562,6 +562,10 @@ class ESBTPSettingsController extends Controller
                 \App\Domain\AcademicPilotage\Services\SeuilsDePilotage::REGLAGE_RELANCE_JOURS,
                 \App\Domain\AcademicPilotage\Services\SeuilsDePilotage::REGLAGE_PRESENCE_MIN,
                 \App\Services\Personnel\ActiviteDuPersonnel::REGLAGE_ATTENTE_JOURS,
+                // Les seuils qui colorent la moyenne et la reussite de /esbtp/resultats.
+                \App\Domain\Bulletins\EtatDesResultats::REGLAGE_MOYENNE_SATISFAISANTE,
+                \App\Domain\Bulletins\EtatDesResultats::REGLAGE_REUSSITE_SATISFAISANTE,
+                \App\Domain\Bulletins\EtatDesResultats::REGLAGE_REUSSITE_ALERTE,
                 \App\Domain\Notes\Reclamations\ReglagesReclamations::REGLAGE_DELAI_JOURS,
             ];
 

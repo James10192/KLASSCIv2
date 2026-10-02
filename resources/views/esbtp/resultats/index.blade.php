@@ -53,8 +53,22 @@
 .rsl-kpi-body { min-width: 0; }
 .rsl-kpi-value { font-size: clamp(1.1rem, 2.2vw, 1.35rem); font-weight: 700; color: #fff; white-space: nowrap; line-height: 1.15; }
 .rsl-kpi-value small { font-size: .7rem; font-weight: 600; opacity: .75; margin-left: .15rem; }
-.rsl-kpi-label { font-size: .72rem; color: rgba(255,255,255,.7); margin-top: .15rem; }
+.rsl-kpi-label { font-size: .72rem; color: rgba(255,255,255,.7); margin-top: .15rem; display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .4rem; }
 .rsl-kpi-ref { font-size: .68rem; color: rgba(255,255,255,.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rsl-kpi { transition: background .2s ease, box-shadow .2s ease; }
+/* Etat semantique (vert / orange / rouge) : la couleur porte un sens, pas un decor. */
+.rsl-kpi[data-etat="bon"] { background: rgba(16,185,129,.16); box-shadow: inset 3px 0 0 #10b981; }
+.rsl-kpi[data-etat="a_surveiller"] { background: rgba(245,158,11,.16); box-shadow: inset 3px 0 0 #f59e0b; }
+.rsl-kpi[data-etat="alerte"] { background: rgba(220,38,38,.2); box-shadow: inset 3px 0 0 #dc2626; }
+.rsl-kpi[data-etat="bon"] .rsl-kpi-icon { background: #10b981; }
+.rsl-kpi[data-etat="a_surveiller"] .rsl-kpi-icon { background: #f59e0b; }
+.rsl-kpi[data-etat="alerte"] .rsl-kpi-icon { background: #dc2626; }
+.rsl-kpi-etat { display: inline-flex; align-items: center; gap: .3rem; padding: .12rem .45rem; border-radius: 999px; background: #fff; font-size: .62rem; font-weight: 700; line-height: 1.4; white-space: nowrap; }
+.rsl-kpi-etat::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.rsl-kpi-etat[hidden] { display: none; }
+.rsl-kpi[data-etat="bon"] .rsl-kpi-etat { color: #047857; }
+.rsl-kpi[data-etat="a_surveiller"] .rsl-kpi-etat { color: #b45309; }
+.rsl-kpi[data-etat="alerte"] .rsl-kpi-etat { color: #b91c1c; }
 
 /* Filtres */
 .rsl-card { background: #fff; border: 1px solid var(--rsl-border); border-radius: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06); }
@@ -167,6 +181,9 @@
     .rsl-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-top: 1.1rem; }
     .rsl-kpi { padding: .7rem .75rem; gap: .55rem; }
     .rsl-kpi-icon { width: 32px; height: 32px; }
+    /* Sur telephone, la carte teintee et son icone portent l'etat ; le mot reste lu
+       par les lecteurs d'ecran. */
+    .rsl-kpi-etat { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; padding: 0; margin: 0; }
     .rsl-filters { padding: 1rem; }
     .rsl-filter-row { grid-template-columns: 1fr; }
     .rsl-filter-row .rsl-btn { width: 100%; justify-content: center; }
@@ -230,6 +247,7 @@
                 </div>
             </div>
 
+            @php $_seuilReussite = rtrim(rtrim(number_format(\App\Domain\Bulletins\EtatDesResultats::SEUIL_REUSSITE, 2, ',', ''), '0'), ','); @endphp
             <div class="rsl-kpis" aria-live="polite">
                 <div class="rsl-kpi">
                     <div class="rsl-kpi-icon"><i class="fas fa-users"></i></div>
@@ -239,20 +257,20 @@
                         <div class="rsl-kpi-ref">dans la sélection</div>
                     </div>
                 </div>
-                <div class="rsl-kpi">
+                <div class="rsl-kpi" id="kpi-carte-moyenne">
                     <div class="rsl-kpi-icon"><i class="fas fa-calculator"></i></div>
                     <div class="rsl-kpi-body">
                         <div class="rsl-kpi-value"><span id="kpi-moyenne-generale">N/A</span><small id="kpi-moyenne-suffixe" hidden>/20</small></div>
-                        <div class="rsl-kpi-label">Moy. générale</div>
-                        <div class="rsl-kpi-ref">seuil de réussite : 10</div>
+                        <div class="rsl-kpi-label">Moy. générale<span class="rsl-kpi-etat" id="kpi-moyenne-etat" hidden></span></div>
+                        <div class="rsl-kpi-ref">seuil de réussite : {{ $_seuilReussite }}</div>
                     </div>
                 </div>
-                <div class="rsl-kpi">
+                <div class="rsl-kpi" id="kpi-carte-reussite">
                     <div class="rsl-kpi-icon"><i class="fas fa-percentage"></i></div>
                     <div class="rsl-kpi-body">
                         <div class="rsl-kpi-value" id="kpi-taux-reussite">N/A</div>
-                        <div class="rsl-kpi-label">Réussite</div>
-                        <div class="rsl-kpi-ref">part des moyennes ≥ 10</div>
+                        <div class="rsl-kpi-label">Réussite<span class="rsl-kpi-etat" id="kpi-reussite-etat" hidden></span></div>
+                        <div class="rsl-kpi-ref">part des moyennes ≥ {{ $_seuilReussite }}</div>
                     </div>
                 </div>
                 <div class="rsl-kpi">
@@ -515,6 +533,16 @@ $(document).ready(function() {
         $('#initial-spinner').hide();
     }
 
+    var LIBELLES_ETAT_MOYENNE = { bon: 'Satisfaisante', a_surveiller: 'À surveiller', alerte: 'Sous le seuil' };
+    var LIBELLES_ETAT_REUSSITE = { bon: 'Bon niveau', a_surveiller: 'À surveiller', alerte: 'Alerte' };
+
+    // Sans etat (aucune moyenne encore), la carte reste neutre : ni rassurante ni alarmante.
+    function poserEtat(carte, pastille, etat, libelles) {
+        var libelle = etat ? libelles[etat] : null;
+        $(carte).attr('data-etat', libelle ? etat : null);
+        $(pastille).text(libelle || '').prop('hidden', !libelle);
+    }
+
     function updateKpis(kpis) {
         if (!kpis) return;
         if (kpis.hasOwnProperty('total_etudiants')) $('#kpi-total-etudiants').text(kpis.total_etudiants ?? 0);
@@ -525,6 +553,10 @@ $(document).ready(function() {
             $('#kpi-moyenne-suffixe').prop('hidden', !numerique);
         }
         if (kpis.hasOwnProperty('taux_reussite')) $('#kpi-taux-reussite').text(kpis.taux_reussite !== null ? kpis.taux_reussite + '%' : 'N/A');
+        if (kpis.etats) {
+            poserEtat('#kpi-carte-moyenne', '#kpi-moyenne-etat', kpis.etats.moyenne_generale, LIBELLES_ETAT_MOYENNE);
+            poserEtat('#kpi-carte-reussite', '#kpi-reussite-etat', kpis.etats.taux_reussite, LIBELLES_ETAT_REUSSITE);
+        }
         if (kpis.hasOwnProperty('bulletins_count')) {
             $('#kpi-bulletins').text(kpis.bulletins_count ?? 0);
             var total = kpis.total_etudiants || 0;
