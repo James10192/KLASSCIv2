@@ -2076,9 +2076,9 @@
                             <div class="menu-icon"><i class="fas fa-comment-dots"></i></div>
                             <div class="menu-text">Messages
                                 @php
-                                    $unreadChat = auth()->user()->unreadNotifications()
-                                        ->where('type', \App\Notifications\WorkflowNextStepNotification::class)
-                                        ->count();
+                                    // Les etapes deja faites ne comptent plus (WorkflowNextStepResolver).
+                                    $unreadChat = app(\App\Services\WorkflowNextStepResolver::class)
+                                        ->clotureLesEtapesFaites(auth()->user());
                                 @endphp
                                 @if($unreadChat > 0)
                                     <span class="badge bg-danger ms-1" style="font-size:.65rem;">{{ $unreadChat }}</span>
@@ -2889,35 +2889,8 @@
 
             @yield('content')
 
-            {{-- Modal "next step" anti-self-notif (issue #298) --}}
-            @if(session('workflow_next_step') && session('workflow_next_step.url'))
-                @php $wns = session('workflow_next_step'); @endphp
-                <div class="modal fade" id="workflowNextStepModal" data-fenetre-prioritaire tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content">
-                            <div class="modal-header" style="background:linear-gradient(135deg,#0453cb,#3b7ddb); color:#fff; border-bottom:none;">
-                                <h5 class="modal-title"><i class="fas fa-bolt me-2"></i>Étape suivante du workflow</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                            </div>
-                            <div class="modal-body" style="padding:1.75rem;">
-                                <p style="margin-bottom:.4rem; color:#64748b; font-size:.85rem;">Tu as les permissions pour enchaîner directement.</p>
-                                <h5 style="font-weight:700; color:#0f172a; margin-bottom:1.25rem;">{{ $wns['label'] ?? 'Continuer' }}</h5>
-                                <div class="d-flex gap-2 justify-content-end">
-                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Plus tard</button>
-                                    <a href="{{ $wns['url'] }}" class="btn" style="background:#0453cb; color:#fff;">
-                                        <i class="fas fa-arrow-right me-1"></i>{{ $wns['label'] ?? 'Y aller' }}
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <script>document.addEventListener('DOMContentLoaded', () => {
-                    // Shell mobile : pas d'ouverture automatique sous 768px (rappel non bloquant).
-                    if (window.matchMedia('(max-width:991.98px)').matches) return;
-                    new bootstrap.Modal(document.getElementById('workflowNextStepModal')).show();
-                });</script>
-            @endif
+            {{-- Étape suivante d'un workflow (issue #298) : bandeau ou fenêtre, jamais une fausse confirmation. --}}
+            @include('layouts.partials.etape-suivante')
         </div>
         </main>
     </div>
