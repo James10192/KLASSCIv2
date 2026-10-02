@@ -136,6 +136,42 @@ class NananLotCTest extends TestCase
             ['etudiant_id' => $eleve->id, 'motif' => 'Réclamation de l’élève', 'notes' => [['evaluation_id' => $evaluation->id, 'note' => 12]]], $this->admin)));
     }
 
+    public function test_une_note_ou_un_semestre_qui_ne_correspond_pas_a_l_annonce_suspend_la_correction(): void
+    {
+        // Capture du 2 octobre : « 12,50 au premier semestre » demandé, une
+        // seule note de 15 au second en base, et la correction partait dessus.
+        $evaluation = $this->evaluationDe($this->matiereConfiguree());
+        $evaluation->update(['periode' => 'semestre2']);
+        $eleve = $this->etudiantInscrit();
+        $this->noter($eleve, $evaluation, 15);
+        $base = ['etudiant_id' => $eleve->id, 'motif' => 'Réclamation de l’élève sur sa copie'];
+
+        $manques = $this->manques(app(CorrigerNotes::class)->executeAuthorized($base + ['notes' => [[
+            'evaluation_id' => $evaluation->id, 'note' => 12, 'note_annoncee' => 12.5, 'periode_annoncee' => 'semestre1',
+        ]]], $this->admin));
+        $this->assertStringContainsString('la note actuelle en base est 15', $manques);
+        $this->assertStringContainsString('pas au', $manques);
+
+        // Une fois l'écart confirmé, Nanan rappelle sans les annonces : la correction se propose.
+        $r = app(CorrigerNotes::class)->executeAuthorized($base + ['notes' => [['evaluation_id' => $evaluation->id, 'note' => 12]]], $this->admin);
+        $this->assertArrayHasKey('widget', $r);
+        $this->assertSame(15.0, (float) ESBTPNote::where('etudiant_id', $eleve->id)->value('note'), 'rien avant Valider');
+
+        // Une annonce juste ne bloque rien.
+        $r = app(CorrigerNotes::class)->executeAuthorized($base + ['notes' => [[
+            'evaluation_id' => $evaluation->id, 'note' => 12, 'note_annoncee' => 15, 'periode_annoncee' => 'S2',
+        ]]], $this->admin);
+        $this->assertArrayHasKey('widget', $r);
+        // La validation rejoue la préparation avec les annonces : elle passe.
+        $this->assertSame('executee', $this->valider($r)['statut']);
+        $this->assertSame(12.0, (float) ESBTPNote::where('etudiant_id', $eleve->id)->value('note'));
+
+        // Un semestre illisible n'est pas ignoré.
+        $this->assertStringContainsString('quel semestre', $this->manques(app(CorrigerNotes::class)->executeAuthorized($base + ['notes' => [[
+            'evaluation_id' => $evaluation->id, 'note' => 10, 'periode_annoncee' => 'le dernier',
+        ]]], $this->admin)));
+    }
+
     public function test_une_note_modifiee_entre_temps_rend_la_proposition_perimee(): void
     {
         $evaluation = $this->evaluationDe($this->matiereConfiguree());
