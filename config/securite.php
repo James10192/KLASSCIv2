@@ -32,4 +32,14 @@ return [
      */
     'mot_de_passe_par_defaut' => env('SECURITE_MOT_DE_PASSE_DEFAUT'),
 
+    /*
+     * Mots de passe des deux comptes du Service Technique, lus par
+     * ServiceTechniqueSeeder. Absents ou vides, le seeder en tire un au
+     * hasard et l'affiche une seule fois à la création.
+     */
+    'service_technique' => [
+        'mot_de_passe' => env('SERVICE_TECHNIQUE_PASSWORD'),
+        'mot_de_passe_secours' => env('SERVICE_TECHNIQUE_BACKUP_PASSWORD'),
+    ],
+
 ];
