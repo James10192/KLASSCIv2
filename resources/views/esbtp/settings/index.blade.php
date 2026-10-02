@@ -2666,6 +2666,8 @@
                 </div>
             </div>
 
+            @include('esbtp.settings.partials.traces-lentes-reglages')
+
             <!-- Section 6b: Assiduite / Saisie manuelle d'heures -->
             <div class="settings-section">
                 <div class="section-header">

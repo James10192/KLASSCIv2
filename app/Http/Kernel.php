@@ -33,6 +33,8 @@ class Kernel extends HttpKernel
         \App\Http\Middleware\AttribuerIdentifiantRequete::class,
         \App\Http\Middleware\LogRequests::class,
         \App\Http\Middleware\SecurityHeaders::class,
+        // Mesure la requete, et l'ecrit apres la reponse si elle depasse le seuil de l'ecole.
+        \App\Http\Middleware\MesureLesRequetesLentes::class,
         \App\Http\Middleware\OuvreLaMemoireDesAutorisations::class,
     ];
 
