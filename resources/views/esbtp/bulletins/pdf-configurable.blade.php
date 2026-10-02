@@ -484,6 +484,13 @@
             margin-top: 4px;
         }
 
+        /* Décision et signature dans la colonne des statistiques : la ligne
+           de signature ne dépasse jamais la demi-page. */
+        .conseil-a-droite .decision-container { margin: 5px 0 0; }
+        .conseil-a-droite .signature-container { margin-top: 8px; }
+        .conseil-a-droite .signature-box { min-width: 0; max-width: 100%; }
+        .conseil-a-droite .signature-line { max-width: 100%; }
+
         /* ── Mode PDF export ──────────────────────────────────── */
         @page {
             size: A4 portrait;
@@ -853,6 +860,50 @@
         </table>
         @endif
 
+        {{-- Décision du conseil et signature, écrites UNE fois puis placées.
+             Avec les statistiques, elles montent dans la colonne de droite,
+             sous elles : cette colonne restait vide pendant que les mentions
+             remplissaient la gauche, et la signature passait en page 2 sur les
+             BTS 2 à quinze matières techniques et plus (Yakro, octobre 2026).
+             Sans statistiques ni résultats, elles gardent leur place pleine
+             largeur. --}}
+        @php ob_start(); @endphp
+        @php
+            $councilDecision = $councilDecision ?? ['title' => 'Décision du conseil de classe', 'text' => $appreciation ?? ''];
+        @endphp
+        {{-- Décision du conseil --}}
+        @if(($settings['bulletin_show_council_decision'] ?? '1') == '1')
+        <div class="decision-container">
+            <div class="decision-title">{{ $councilDecision['title'] ?? 'Décision du conseil de classe' }}</div>
+            <div style="min-height: 36px; font-size: {{ $typeScale['decision'] }}px;">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
+        </div>
+        @endif
+
+        {{-- Signature --}}
+        @if(($settings['bulletin_show_signature'] ?? '1') == '1' || ($settings['bulletin_show_director_signature'] ?? '1') == '1')
+        @php
+            $directorTitle = $settings['director_title'] ?? \App\Helpers\SettingsHelper::get('director_title', 'Directeur');
+            $directorName  = $settings['director_name']  ?? \App\Helpers\SettingsHelper::get('director_name', '');
+        @endphp
+        <div class="signature-container">
+            @if(($settings['bulletin_show_director_signature'] ?? '1') == '1')
+            <div class="signature-box">
+                <div style="font-size: {{ $signatureFontSize }}px;">{{ $directorTitle }}</div>
+                <div class="signature-line"></div>
+                @if($directorName)
+                    <div style="margin-top: 4px; font-weight: 700; font-size: {{ $signatureFontSize }}px;">{{ $directorName }}</div>
+                @endif
+            </div>
+            @endif
+        </div>
+        @endif
+
+        @php $blocConseil = ob_get_clean(); @endphp
+        @php
+            $conseilADroite = ($settings['bulletin_show_results_section'] ?? '1') == '1'
+                && ($settings['bulletin_show_statistics'] ?? '1') == '1';
+        @endphp
+
         {{-- Résultats & Statistiques --}}
         @if(($settings['bulletin_show_results_section'] ?? '1') == '1')
         <div class="results-container">
@@ -972,6 +1023,9 @@
                                 </tbody>
                             </table>
                         </div>
+                        @if($conseilADroite)
+                            <div class="conseil-a-droite">{!! $blocConseil !!}</div>
+                        @endif
                     </td>
                     @endif
                 </tr>
@@ -979,35 +1033,9 @@
         </div>
         @endif
 
-        @php
-            $councilDecision = $councilDecision ?? ['title' => 'Décision du conseil de classe', 'text' => $appreciation ?? ''];
-        @endphp
-        {{-- Décision du conseil --}}
-        @if(($settings['bulletin_show_council_decision'] ?? '1') == '1')
-        <div class="decision-container">
-            <div class="decision-title">{{ $councilDecision['title'] ?? 'Décision du conseil de classe' }}</div>
-            <div style="min-height: 36px; font-size: {{ $typeScale['decision'] }}px;">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
-        </div>
-        @endif
-
-        {{-- Signature --}}
-        @if(($settings['bulletin_show_signature'] ?? '1') == '1' || ($settings['bulletin_show_director_signature'] ?? '1') == '1')
-        @php
-            $directorTitle = $settings['director_title'] ?? \App\Helpers\SettingsHelper::get('director_title', 'Directeur');
-            $directorName  = $settings['director_name']  ?? \App\Helpers\SettingsHelper::get('director_name', '');
-        @endphp
-        <div class="signature-container">
-            @if(($settings['bulletin_show_director_signature'] ?? '1') == '1')
-            <div class="signature-box">
-                <div style="font-size: {{ $signatureFontSize }}px;">{{ $directorTitle }}</div>
-                <div class="signature-line"></div>
-                @if($directorName)
-                    <div style="margin-top: 4px; font-weight: 700; font-size: {{ $signatureFontSize }}px;">{{ $directorName }}</div>
-                @endif
-            </div>
-            @endif
-        </div>
-        @endif
+        @unless($conseilADroite)
+            {!! $blocConseil !!}
+        @endunless
 
         @include('esbtp.bulletins.partials.edition-footer')
 
