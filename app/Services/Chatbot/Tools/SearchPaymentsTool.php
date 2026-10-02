@@ -112,7 +112,7 @@ class SearchPaymentsTool extends ChatbotTool
                 $options = $inscriptions->map(function ($i) {
                     $label = ($i->classe?->name ?? '') . ' (' . ($i->classe?->filiere?->name ?? '') . ')';
                     $label .= ' — ' . ($i->anneeUniversitaire?->name ?? 'N/A');
-                    $label .= ' — ' . ucfirst(str_replace('_', ' ', $i->type_inscription ?? ''));
+                    $label .= ' — ' . \App\Services\Inscriptions\NormalisationTypeInscription::libelle($i->type_inscription);
                     return [
                         'inscription_id' => $i->id,
                         'label' => $label,
@@ -223,7 +223,7 @@ class SearchPaymentsTool extends ChatbotTool
                 'classe' => $classe?->name ?? 'N/A',
                 'filiere' => $classe?->filiere?->name ?? 'N/A',
                 'annee' => $inscription?->anneeUniversitaire?->name ?? 'N/A',
-                'type' => ucfirst(str_replace('_', ' ', $inscription?->type_inscription ?? 'N/A')),
+                'type' => \App\Services\Inscriptions\NormalisationTypeInscription::libelle($inscription?->type_inscription),
                 'statut' => ucfirst(str_replace('_', ' ', $inscription?->status ?? 'N/A')),
                 'lien' => $inscriptionId && Route::has('esbtp.inscriptions.show')
                     ? route('esbtp.inscriptions.show', $inscriptionId) : null,
