@@ -51,6 +51,15 @@ class MobileProfileResolverTest extends TestCase
         $this->assertSame(MobileProfileResolver::COMPTABLE, $this->resolver()->resolve($user));
     }
 
+    public function test_service_technique_recoit_son_profil_et_non_la_caisse(): void
+    {
+        // Il porte toutes les permissions : la cascade le rangeait en caisse.
+        $user = $this->utilisateur(superAdmin: false, permissions: ['module.caisse.access', 'comptabilite.access', 'students.view'], serviceTechnique: true);
+        $user->shouldNotReceive('can');
+
+        $this->assertSame(MobileProfileResolver::TECHNIQUE, $this->resolver()->resolve($user));
+    }
+
     public function test_super_admin_suit_le_profil_pose_en_session(): void
     {
         foreach (MobileProfileResolver::PROFILS as $profil) {
@@ -181,10 +190,11 @@ class MobileProfileResolverTest extends TestCase
      * @param array<int, ?string> $roles       mobile_profile de chaque role, dans l'ordre
      * @param int|null            $appelsCan   nombre exact d'appels a can() attendus, null = libre
      */
-    private function utilisateur(bool $superAdmin, array $permissions = [], array $roles = [], ?int $appelsCan = null): MockInterface
+    private function utilisateur(bool $superAdmin, array $permissions = [], array $roles = [], ?int $appelsCan = null, bool $serviceTechnique = false): MockInterface
     {
         $user = Mockery::mock(User::class);
         $user->shouldReceive('hasRole')->with('superAdmin')->andReturn($superAdmin);
+        $user->shouldReceive('hasRole')->with('serviceTechnique')->andReturn($serviceTechnique);
         $can = $user->shouldReceive('can')->andReturnUsing(
             fn (string $permission): bool => in_array($permission, $permissions, true)
         );

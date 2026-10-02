@@ -35,6 +35,7 @@ class MobileProfileResolver
     public const ENSEIGNANT = 'enseignant';
     public const ETUDIANT = 'etudiant';
     public const SCOLARITE = 'scolarite';
+    public const TECHNIQUE = 'technique';
 
     public const PROFILS = [
         self::CAISSIER,
@@ -42,6 +43,7 @@ class MobileProfileResolver
         self::ENSEIGNANT,
         self::ETUDIANT,
         self::SCOLARITE,
+        self::TECHNIQUE,
     ];
 
     /**
@@ -91,6 +93,7 @@ class MobileProfileResolver
             self::ENSEIGNANT => 'Enseignant',
             self::ETUDIANT => 'Étudiant',
             self::SCOLARITE => 'Scolarité (dossiers, inscriptions)',
+            self::TECHNIQUE => 'Service technique (réglages de l\'instance)',
         ];
     }
 
@@ -151,13 +154,22 @@ class MobileProfileResolver
             return null;
         }
 
-        // Seule exception toleree a l'interdiction de hasRole() : le superAdmin
+        // Exceptions tolerees a l'interdiction de hasRole() : le superAdmin
         // possede toutes les permissions, la cascade ci-dessous le rangerait
         // toujours en caisse.
         if ($user->hasRole('superAdmin')) {
             $force = $this->profilForce();
 
             return self::estUnProfil($force) ? $force : self::COMPTABLE;
+        }
+
+        // Meme raison pour le service technique : il porte toutes les
+        // permissions, la cascade le rangeait en caisse et sa barre d'onglets
+        // proposait « Encaisser » et « Ma caisse ». Son accueil est le tableau
+        // de bord du service technique (DashboardController::index le route
+        // par role, avant toute permission) : son profil suit.
+        if ($user->hasRole('serviceTechnique')) {
+            return self::TECHNIQUE;
         }
 
         foreach (self::PROFIL_PAR_PERMISSION as $permission => $profil) {
