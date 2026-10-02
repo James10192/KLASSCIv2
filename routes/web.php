@@ -370,6 +370,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('throttle:30,1')->name('convertir');
             Route::post('/demandes/{demande}/rejeter', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'rejeter'])
                 ->middleware('throttle:30,1')->name('rejeter');
+            Route::get('/demandes/{demande}/proposition', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionDemandeController::class, 'proposition'])
+                ->middleware('throttle:60,1')->name('proposition');
         });
 
         // Candidatures des NOUVEAUX eleves, deposees depuis klassci.com.
@@ -394,6 +396,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             $lire = 'permission:inscriptions.candidatures.view|reinscriptions.demandes.view';
             Route::get('/', [$c, 'index'])->middleware($lire)->name('index');
             Route::get('/creneaux', [$c, 'creneaux'])->middleware(['permission:inscriptions.rdv.manage', 'throttle:60,1'])->name('creneaux');
+            Route::get('/classes', [$c, 'classesParAnnee'])
+                ->middleware(['permission:reinscriptions.demandes.process', 'throttle:120,1'])
+                ->name('classes-par-annee');
             Route::get('/parents', [$c, 'parents'])
                 ->middleware(['permission:inscriptions.candidatures.process', 'can:inscriptions.ouvrir-formulaire', 'throttle:120,1'])
                 ->name('parents');

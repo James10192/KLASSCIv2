@@ -4,9 +4,13 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Exceptions\ReinscriptionRefuseeException;
 use App\Domain\Admissions\FileDesDemandes;
+use App\Domain\Admissions\PreparationDInscription;
 use App\Http\Controllers\Controller;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPEcheancierRule;
 use App\Models\ESBTPReinscriptionDemande;
+use App\Services\Reinscription\ClassesDeReinscription;
 use App\Services\ReeinscriptionService;
 use App\Services\RendezVous\RendezVousApresInscription;
 use App\Services\RendezVous\ReservateurRdv;
@@ -32,7 +36,43 @@ class ESBTPReinscriptionDemandeController extends Controller
 
     public function __construct(private readonly ReeinscriptionService $reinscription)
     {
-        $this->middleware('permission:reinscriptions.demandes.process')->only(['convertir', 'rejeter']);
+        $this->middleware('permission:reinscriptions.demandes.process')->only(['convertir', 'rejeter', 'proposition']);
+    }
+
+    /**
+     * Ce que la fenetre « Réinscrire » pre-remplit : la decision que les
+     * resultats de l'annee quittee proposent (la meme que la fiche de
+     * reinscription), et le statut d'affectation de l'etudiant, qui le suit
+     * d'une annee sur l'autre. L'agent reste libre de changer l'un et l'autre.
+     */
+    public function proposition(Request $request, ESBTPReinscriptionDemande $demande, ClassesDeReinscription $classes): JsonResponse
+    {
+        $cible = ESBTPAnneeUniversitaire::find($request->integer('annee') ?: $demande->annee_universitaire_id);
+        $quittee = ($cible ? $classes->inscriptionQuitteeAvant($demande->etudiant_id, $cible) : null)
+            ?? $classes->inscriptionQuittee($demande->etudiant_id);
+
+        if ($quittee === null) {
+            return response()->json(['decision' => null, 'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS, 'moyenne' => null, 'annee_quittee' => null]);
+        }
+
+        $quittee->loadMissing('anneeUniversitaire', 'classe');
+        try {
+            $analyse = $this->reinscription->analyserSituationEtudiantParInscription($quittee, (string) $quittee->anneeUniversitaire?->name);
+        } catch (\Throwable $e) {
+            // Sans resultats lisibles, pas de decision proposee : l'agent choisit.
+            Log::warning('Proposition de reinscription indisponible', ['demande_id' => $demande->id, 'erreur' => $e->getMessage()]);
+            $analyse = [];
+        }
+        $decision = $analyse['decision'] ?? null;
+        $statut = ESBTPEcheancierRule::normalizeStatus($quittee->affectation_status ?: ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
+
+        return response()->json([
+            'decision' => array_key_exists((string) $decision, ESBTPReinscriptionDemande::DECISIONS) ? $decision : null,
+            'moyenne' => isset($analyse['moyenne_generale']) ? round((float) $analyse['moyenne_generale'], 2) : null,
+            'affectation_status' => $statut === ESBTPEcheancierRule::STATUS_ALL ? ESBTPInscription::DEFAULT_AFFECTATION_STATUS : $statut,
+            'annee_quittee' => (string) $quittee->anneeUniversitaire?->name,
+            'classe_quittee' => (string) $quittee->classe?->name,
+        ]);
     }
 
     /**
@@ -49,20 +89,25 @@ class ESBTPReinscriptionDemandeController extends Controller
             'classe_id' => ['required', Rule::exists('esbtp_classes', 'id')->where('is_active', true)],
             'decision' => ['required', Rule::in(array_keys(ESBTPReinscriptionDemande::DECISIONS))],
             'observations' => ['nullable', 'string', 'max:1000'],
+            // Seulement les annees que la fenetre propose (precedente, courante,
+            // suivantes, et celle de la demande) : un envoi forge n'en vise pas d'autre.
+            'annee_universitaire_id' => ['nullable', 'integer', Rule::in(array_column(
+                app(PreparationDInscription::class)->annees($demande->annee_universitaire_id), 'id'
+            ))],
+            'annee_echue_confirmee' => ['nullable', 'boolean'],
+            'affectation_status' => ['nullable', Rule::in(array_keys(ESBTPEcheancierRule::STATUTS_INSCRIPTION))],
         ]);
 
-        // Une demande vise l'annee qui etait courante au moment du depot. Si
-        // l'ecole a bascule d'annee depuis, la convertir telle quelle
-        // reinscrirait l'etudiant dans une annee revolue.
-        if (! optional($demande->anneeUniversitaire)->is_current) {
-            return $this->repondre($request, false, "Cette demande vise une année qui n'est plus l'année en cours. Rejetez-la et invitez l'étudiant à déposer de nouveau.");
+        $annee = $this->anneeDeConversion($valide, $demande);
+        if (is_string($annee)) {
+            return $this->repondre($request, false, $annee);
         }
 
         // Du temps a pu passer entre le depot et cette conversion : l'ecole a
         // pu inscrire cet etudiant au guichet entre-temps. Convertir malgre
         // tout creerait une seconde inscription, donc un second jeu de frais
         // pour la meme famille.
-        if (ESBTPInscription::aUneInscriptionVivantePour($demande->etudiant_id, $demande->annee_universitaire_id)) {
+        if (ESBTPInscription::aUneInscriptionVivantePour($demande->etudiant_id, $annee->id)) {
             return $this->repondre($request, false, "Cet étudiant a déjà une inscription pour cette année. Rejetez la demande plutôt que de la convertir.");
         }
 
@@ -93,7 +138,9 @@ class ESBTPReinscriptionDemandeController extends Controller
                 nouvelleClasseId: $valide['classe_id'],
                 decision: $valide['decision'],
                 observations: $valide['observations'] ?? null,
-                anneeUniversitaireId: $demande->annee_universitaire_id,
+                // Sans choix, le service reprend le statut de l'inscription quittee.
+                affectationStatus: $valide['affectation_status'] ?? null,
+                anneeUniversitaireId: $annee->id,
             );
         } catch (\Throwable $e) {
             // La reservation n'a pas ete honoree : on la rend, sinon la demande
@@ -135,6 +182,9 @@ class ESBTPReinscriptionDemandeController extends Controller
             'demande_id' => $demande->id,
             'etudiant_id' => $demande->etudiant_id,
             'classe_id' => $valide['classe_id'],
+            'annee_universitaire_id' => $annee->id,
+            'annee_echue_confirmee' => ! empty($valide['annee_echue_confirmee']),
+            'affectation_status' => $valide['affectation_status'] ?? null,
             'traite_par' => auth()->id(),
         ]);
 
@@ -144,6 +194,34 @@ class ESBTPReinscriptionDemandeController extends Controller
         FileDesDemandes::oublierLesCompteurs();
 
         return $this->repondre($request, true, 'Réinscription effectuée. La demande est clôturée.');
+    }
+
+    /**
+     * L'annee sur laquelle reinscrire. Sans choix explicite, celle de la
+     * demande — a condition qu'elle soit encore l'annee en cours : une demande
+     * deposee l'an dernier ne doit pas reinscrire sur une annee close sans
+     * qu'on l'ait choisie. Une annee terminee choisie se confirme.
+     *
+     * Rend le message a afficher quand la conversion ne peut pas partir.
+     */
+    private function anneeDeConversion(array $valide, ESBTPReinscriptionDemande $demande): ESBTPAnneeUniversitaire|string
+    {
+        $explicite = isset($valide['annee_universitaire_id']);
+        $annee = $explicite
+            ? ESBTPAnneeUniversitaire::find($valide['annee_universitaire_id'])
+            : $demande->anneeUniversitaire;
+
+        if ($annee === null) {
+            return "Choisissez l'année de la réinscription.";
+        }
+        if (! $explicite && ! $annee->is_current) {
+            return "Cette demande vise une année qui n'est plus l'année en cours. Choisissez l'année de la réinscription.";
+        }
+        if ($explicite && $annee->estTerminee() && empty($valide['annee_echue_confirmee'])) {
+            return "L'année {$annee->name} est terminée : confirmez la réinscription sur cette année.";
+        }
+
+        return $annee;
     }
 
     public function rejeter(Request $request, ESBTPReinscriptionDemande $demande, ReservateurRdv $reservateur): RedirectResponse|JsonResponse
