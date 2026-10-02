@@ -131,8 +131,14 @@ abstract class ChatbotTool
         $terms = preg_split('/\s+/', trim($search));
 
         $query->where(function ($q) use ($search, $terms, $nomCol, $prenomsCol) {
+            // Un matricule tapé à la place du nom : tous les appelants
+            // cherchent dans esbtp_etudiants, qui porte la colonne.
+            if ($nomCol === 'nom') {
+                $q->orWhere('matricule', trim($search));
+            }
+
             // Exact substring match
-            $q->where($nomCol, 'like', "%{$search}%")
+            $q->orWhere($nomCol, 'like', "%{$search}%")
               ->orWhere($prenomsCol, 'like', "%{$search}%")
               ->orWhereRaw("CONCAT({$nomCol}, ' ', {$prenomsCol}) LIKE ?", ["%{$search}%"]);
 
