@@ -21,6 +21,31 @@ return new class extends Migration
             });
         }
 
+        // Les bulletins déjà générés n'ont pas de snapshot d'affectation. On le
+        // fige une seule fois depuis leur inscription correspondante afin que les
+        // anciens PDF profitent eux aussi d'Affecté / Réaffecté / Non affecté.
+        DB::table('esbtp_lmd_bulletins')
+            ->where(function ($query) {
+                $query->whereNull('affectation_status')->orWhere('affectation_status', '');
+            })
+            ->orderBy('id')
+            ->chunkById(200, function ($bulletins): void {
+                foreach ($bulletins as $bulletin) {
+                    $statut = DB::table('esbtp_inscriptions')
+                        ->where('etudiant_id', $bulletin->etudiant_id)
+                        ->where('classe_id', $bulletin->classe_id)
+                        ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
+                        ->orderByDesc('id')
+                        ->value('affectation_status');
+
+                    if ($statut !== null && trim((string) $statut) !== '') {
+                        DB::table('esbtp_lmd_bulletins')
+                            ->where('id', $bulletin->id)
+                            ->update(['affectation_status' => (string) $statut]);
+                    }
+                }
+            });
+
         $settings = [
             // Bloc officiel / visibilité
             'lmd_bulletin_show_republic_info' => ['1', 'boolean', 'Afficher les informations République sur le bulletin LMD'],
