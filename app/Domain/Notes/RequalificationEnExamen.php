@@ -26,6 +26,10 @@ use Illuminate\Validation\ValidationException;
  *
  * Le type ne change aucun calcul (le bulletin LMD moyenne les évaluations par
  * coefficient) : rien n'est recalculé, aucune note ne bouge.
+ *
+ * La trace : l'audit de l'évaluation (titre et type) dit qui a requalifié et
+ * quand. `type_evaluation` des notes est réaligné en masse, sans audit par note :
+ * il ne fait que recopier le type de l'évaluation.
  */
 final class RequalificationEnExamen
 {
@@ -118,6 +122,26 @@ final class RequalificationEnExamen
         });
 
         return $lignes;
+    }
+
+    /**
+     * Qui peut requalifier : l'écran, sa route et Nanan lisent cette seule règle.
+     * La requalification porte sur toutes les régularisations d'une classe ; un
+     * enseignant, qui ne saisit que les évaluations qui lui sont confiées, n'y a
+     * pas accès (même distinction que la saisie des notes LMD).
+     *
+     * @return string|null le refus, ou null si la personne peut requalifier
+     */
+    public static function refusPour($user): ?string
+    {
+        if (! $user || ! $user->can('lmd.notes.manage') || ! $user->can('evaluations.edit')) {
+            return "Vous n'avez pas le droit de modifier les évaluations LMD.";
+        }
+        if ($user->can('identity.teach') && ! $user->can('identity.coordinate')) {
+            return 'La requalification des évaluations est réservée à l\'administration.';
+        }
+
+        return null;
     }
 
     private function refuser(string $champ, string $message): never

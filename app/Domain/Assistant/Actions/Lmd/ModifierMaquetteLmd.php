@@ -9,6 +9,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPUniteEnseignement;
 use App\Services\LMD\CodeDeMaquette;
+use App\Services\LMD\CodeDUnite;
 use App\Services\LMD\CompositionUe;
 use App\Services\LMD\EcritureEcue;
 use App\Services\LMD\ParcoursUeSyncService;
@@ -19,19 +20,22 @@ use Illuminate\Validation\ValidationException;
  * Aligner une maquette LMD sur un bulletin officiel : codes, crédits,
  * coefficients et ordre d'affichage des UE et de leurs éléments, et ajout d'un
  * élément manquant. Les gestes des modals de /esbtp/lmd/ue, par les mêmes
- * services : EcritureEcue pour les éléments, ParcoursUeSyncService pour le rang
- * d'une UE dans un parcours.
+ * services : CodeDUnite pour le code d'une UE, EcritureEcue pour les éléments,
+ * ParcoursUeSyncService pour le rang d'une UE dans un parcours.
  *
  * Le cas d'origine : ESBTP Abidjan, octobre 2026. Le L1 S1 de Bâtiment et
  * Travaux Publics a été recodé et réordonné d'après les bulletins officiels, et
  * « Initiation au génie civil » ajoutée.
  *
- * Le code d'une UE ne se change ici que s'il n'est pas propre à un parcours
- * (sans suffixe) : sinon l'écran, qui connaît la case « propre au parcours ».
+ * Une UE et ses éléments communs sont PARTAGÉS par les parcours qui les
+ * utilisent. Quand un parcours est nommé, le crédit de l'UE se pose sur SA
+ * maquette (`esbtp_lmd_parcours_ue.credit`, que lit son bulletin) dès que l'UE
+ * sert d'autres parcours ; tout autre changement d'un objet partagé est dit.
  */
 class ModifierMaquetteLmd extends ActionAgent
 {
     use DesigneLaMaquette;
+
     private const MAX_LIGNES = 60;
 
     public function __construct(
@@ -39,6 +43,7 @@ class ModifierMaquetteLmd extends ActionAgent
         private CompositionUe $composition,
         private ParcoursUeSyncService $sync,
         private CodeDeMaquette $maquette,
+        private CodeDUnite $codes,
     ) {
     }
 
@@ -67,20 +72,20 @@ class ModifierMaquetteLmd extends ActionAgent
             'properties' => [
                 'parcours' => ['type' => 'string', 'description' => "Code du parcours dont on aligne la maquette (requis pour un rang d'UE ou un élément réservé)."],
                 'ues' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => [
-                    'ue' => ['type' => 'string', 'description' => "Code imprimé actuel ou identifiant de l'UE."],
+                    'ue' => ['type' => 'string', 'description' => "Code imprimé ACTUEL ou identifiant de l'UE."],
                     'code' => ['type' => 'string', 'description' => 'Nouveau code.'],
                     'intitule' => ['type' => 'string'],
                     'credit' => ['type' => 'integer'],
-                    'rang' => ['type' => 'integer', 'description' => 'Rang de l\'UE sur le bulletin du parcours (1 = en premier).'],
+                    'rang' => ['type' => 'integer', 'description' => "Rang de l'UE sur le bulletin du parcours, en ordre croissant : numérote toutes les UE du semestre (1, 2, 3…)."],
                 ], 'required' => ['ue']]],
                 'elements' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => [
-                    'ue' => ['type' => 'string', 'description' => "Code imprimé (après modification éventuelle : non, l'ACTUEL) ou identifiant de l'UE."],
+                    'ue' => ['type' => 'string', 'description' => "Code imprimé ACTUEL ou identifiant de l'UE."],
                     'element' => ['type' => 'string', 'description' => "Code, intitulé exact ou identifiant de l'élément à modifier. Vide pour en AJOUTER un."],
                     'code' => ['type' => 'string'],
                     'intitule' => ['type' => 'string'],
                     'credit' => ['type' => 'integer'],
                     'coefficient' => ['type' => 'number'],
-                    'ordre' => ['type' => 'integer', 'description' => "Ordre de l'élément dans son UE sur le bulletin (1 = en premier)."],
+                    'ordre' => ['type' => 'integer', 'description' => "Ordre de l'élément dans son UE sur le bulletin, croissant : numérote tous les éléments de l'UE."],
                     'reserve_au_parcours' => ['type' => 'boolean', 'description' => 'Ajout seulement : true pour un élément propre au parcours, sinon commun.'],
                 ], 'required' => ['ue']]],
             ],
@@ -99,18 +104,20 @@ class ModifierMaquetteLmd extends ActionAgent
             return new Proposition(titre: $titre, resume: '', manques: ['Trop de modifications en une fois (' . self::MAX_LIGNES . ' au plus) : découpe par semestre.']);
         }
 
-        $manques = [];
         $parcours = null;
-        if (trim((string) ($args['parcours'] ?? '')) !== '') {
-            $parcours = ESBTPLMDParcours::whereRaw('UPPER(code) = ?', [mb_strtoupper(trim((string) $args['parcours']))])->first();
+        if (($code = trim((string) ($args['parcours'] ?? ''))) !== '') {
+            $parcours = ESBTPLMDParcours::whereRaw('UPPER(code) = ?', [mb_strtoupper($code)])->first();
             if (! $parcours) {
-                $manques[] = 'Parcours inconnu : ' . $args['parcours'] . '.';
+                return new Proposition(titre: $titre, resume: '', manques: ["Parcours inconnu : {$code}."]);
             }
         }
 
-        [$opsUe, $credits, $m1] = $this->preparerUes($ues, $parcours);
-        [$opsEl, $m2] = $this->preparerElements($elements, $parcours, $credits);
-        $manques = array_merge($manques, $m1, $m2);
+        [$opsUe, $m1] = $this->preparerUes($ues, $parcours);
+        [$opsEl, $m2] = $this->preparerElements($elements, $parcours);
+        $manques = array_merge($m1, $m2);
+        if ($manques === []) {
+            $manques = $this->depassementsDeCredits($opsUe, $opsEl, $parcours);
+        }
         if ($manques !== []) {
             return new Proposition(titre: $titre, resume: '', manques: $manques);
         }
@@ -118,43 +125,33 @@ class ModifierMaquetteLmd extends ActionAgent
         if ($lignes === []) {
             return Proposition::sansObjet($titre, 'La maquette porte déjà ces valeurs.');
         }
-
-        $ueIds = array_unique(array_merge(array_column($opsUe, 'ue_id'), array_column($opsEl, 'ue_id')));
+        $ueIds = array_values(array_unique(array_merge(array_column($opsUe, 'ue_id'), array_column($opsEl, 'ue_id'))));
+        $sansLigne = fn (array $ops) => array_map(fn ($o) => array_diff_key($o, ['ligne' => 1, 'avertissement' => 1]), $ops);
 
         return new Proposition(
             titre: $titre . ($parcours ? " — {$parcours->code}" : ''),
             resume: sprintf('%d modification(s) sur %d UE.', count($lignes), count($ueIds)),
             tableau: ['colonnes' => ['UE', 'Élément', 'Avant', 'Après'], 'lignes' => $lignes],
-            avertissements: ['Les bulletins déjà générés gardent l\'ancienne maquette : régénérez-les.'],
-            donnees: ['ues' => array_map(fn ($o) => array_diff_key($o, ['ligne' => 1]), $opsUe),
-                'elements' => array_map(fn ($o) => array_diff_key($o, ['ligne' => 1]), $opsEl)],
+            avertissements: array_values(array_unique(array_filter(array_merge(
+                array_column($opsUe, 'avertissement'),
+                array_column($opsEl, 'avertissement'),
+                ['Les bulletins déjà générés gardent l\'ancienne maquette : régénérez-les.'],
+            )))),
+            donnees: ['ues' => $sansLigne($opsUe), 'elements' => $sansLigne($opsEl)],
             etat: $this->etat($ueIds),
         );
     }
 
     public function executer(Proposition $proposition, $user): array
     {
+        // La fraîcheur (etat) est vérifiée par ExecutionDesPropositions, qui
+        // reprépare la proposition et compare son empreinte avant d'appeler ici.
         $d = $proposition->donnees;
-        $ueIds = array_unique(array_merge(array_column($d['ues'], 'ue_id'), array_column($d['elements'], 'ue_id')));
-        if ($this->etat($ueIds) !== $proposition->etat) {
-            throw new PropositionPerimee('Ces UE ou leurs éléments ont changé depuis la proposition.');
-        }
 
         try {
             DB::transaction(function () use ($d): void {
                 foreach ($d['ues'] as $op) {
-                    $ue = ESBTPUniteEnseignement::findOrFail($op['ue_id']);
-                    if ($op['attributs'] !== []) {
-                        $ue->fill($op['attributs'] + ['updated_by' => auth()->id()])->save();
-                    }
-                    if ($op['rang'] !== null) {
-                        $liens = DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $ue->id)
-                            ->get(['parcours_id', 'semestre'])
-                            ->map(fn ($l) => ['parcours_id' => (int) $l->parcours_id, 'semestre' => (int) $l->semestre]
-                                + ((int) $l->parcours_id === $op['parcours_id'] ? ['ordre' => $op['rang']] : []))
-                            ->all();
-                        $this->sync->syncPourUnite($ue, $liens);
-                    }
+                    $this->ecrireUe($op);
                 }
                 foreach ($d['elements'] as $op) {
                     $ue = ESBTPUniteEnseignement::findOrFail($op['ue_id']);
@@ -173,11 +170,34 @@ class ModifierMaquetteLmd extends ActionAgent
         ];
     }
 
-    /** @return array{0: list<array>, 1: array<int, int>, 2: list<string>} les opérations, le crédit voulu par UE, les manques */
+    private function ecrireUe(array $op): void
+    {
+        $ue = ESBTPUniteEnseignement::findOrFail($op['ue_id']);
+        if ($op['attributs'] !== []) {
+            $ue->fill($op['attributs'] + ['updated_by' => auth()->id()])->save();
+        }
+        if ($op['credit_parcours'] !== null) {
+            // Le crédit propre à CETTE maquette, comme l'import le grave
+            // (LMDImportService::graverLesCreditsPropres) : la synchronisation
+            // des liens ne touche jamais cette colonne.
+            DB::table('esbtp_lmd_parcours_ue')
+                ->where(['unite_enseignement_id' => $ue->id, 'parcours_id' => $op['parcours_id']])
+                ->update(['credit' => $op['credit_parcours'], 'updated_at' => now()]);
+        }
+        if ($op['rang'] !== null) {
+            $liens = DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $ue->id)
+                ->get(['parcours_id', 'semestre'])
+                ->map(fn ($l) => ['parcours_id' => (int) $l->parcours_id, 'semestre' => (int) $l->semestre]
+                    + ((int) $l->parcours_id === $op['parcours_id'] ? ['ordre' => $op['rang']] : []))
+                ->all();
+            $this->sync->syncPourUnite($ue, $liens);
+        }
+    }
+
+    /** @return array{0: list<array>, 1: list<string>} les opérations et les manques */
     private function preparerUes(array $ues, ?ESBTPLMDParcours $parcours): array
     {
         $ops = [];
-        $credits = [];
         $manques = [];
         foreach ($ues as $u) {
             [$ue, $manque] = $this->unite((string) ($u['ue'] ?? ''));
@@ -185,64 +205,77 @@ class ModifierMaquetteLmd extends ActionAgent
                 $manques[] = $manque;
                 continue;
             }
-            $attributs = [];
+            $lie = $parcours && DB::table('esbtp_lmd_parcours_ue')->where(['unite_enseignement_id' => $ue->id, 'parcours_id' => $parcours->id])->exists();
+            if ($parcours && ! $lie && (isset($u['rang']) || isset($u['credit']))) {
+                $manques[] = "L'UE {$ue->code_affiche} n'est pas liée au parcours {$parcours->code} : lie-la d'abord.";
+                continue;
+            }
+            $op = ['ue_id' => (int) $ue->id, 'parcours_id' => $parcours?->id, 'attributs' => [], 'credit_parcours' => null, 'rang' => null];
             $avant = [];
             $apres = [];
-            if (isset($u['code']) && trim((string) $u['code']) !== '' && trim((string) $u['code']) !== $ue->code_affiche) {
-                $code = trim((string) $u['code']);
-                if (CodeDeMaquette::suffixe($ue->code) !== null) {
-                    $manques[] = "L'UE {$ue->code_affiche} est propre à un parcours : change son code depuis l'écran des UE.";
-                } elseif (str_contains($code, CodeDeMaquette::SEPARATEUR)) {
-                    $manques[] = "Le code {$code} contient un caractère réservé.";
-                } elseif (ESBTPUniteEnseignement::withTrashed()->where('id', '!=', $ue->id)
-                    ->where(fn ($q) => $q->where('code', $code)->orWhere('code', 'like', $code . CodeDeMaquette::SEPARATEUR . '%'))->exists()) {
-                    $manques[] = "Le code {$code} est déjà pris par une autre UE.";
-                } else {
-                    $attributs['code'] = $code;
-                    [$avant[], $apres[]] = ['code ' . $ue->code_affiche, 'code ' . $code];
-                }
-            }
-            if (isset($u['intitule']) && trim((string) $u['intitule']) !== '' && trim((string) $u['intitule']) !== $ue->name) {
-                $attributs['name'] = trim((string) $u['intitule']);
-                [$avant[], $apres[]] = [$ue->name, $attributs['name']];
-            }
-            if (isset($u['credit']) && (int) $u['credit'] !== (int) $ue->credit) {
-                if ((int) $u['credit'] < 1 || (int) $u['credit'] > 60) {
-                    $manques[] = "Crédit de l'UE {$ue->code_affiche} invalide : {$u['credit']}.";
-                }
-                $attributs['credit'] = (int) $u['credit'];
-                [$avant[], $apres[]] = [$ue->credit . ' crédit(s)', $attributs['credit'] . ' crédit(s)'];
-            }
-            $credits[(int) $ue->id] = (int) ($attributs['credit'] ?? $ue->credit);
 
-            $rang = null;
+            $saisi = trim((string) ($u['code'] ?? ''));
+            if ($saisi !== '' && $saisi !== $ue->code_affiche) {
+                $code = $this->codes->resoudre($saisi, $ue, $parcours, false);
+                if ($code['refus'] !== null) {
+                    $manques[] = "UE {$ue->code_affiche} : {$code['refus']}";
+                } else {
+                    $op['attributs']['code'] = $code['cle'];
+                    [$avant[], $apres[]] = ['code ' . $ue->code_affiche, 'code ' . $saisi];
+                }
+            }
+            $nom = trim((string) ($u['intitule'] ?? ''));
+            if ($nom !== '' && $nom !== $ue->name) {
+                $op['attributs']['name'] = $nom;
+                [$avant[], $apres[]] = [$ue->name, $nom];
+            }
+            if (isset($u['credit'])) {
+                $nouveau = (int) $u['credit'];
+                if ($nouveau < 0) {
+                    $manques[] = "Crédit de l'UE {$ue->code_affiche} invalide : {$nouveau}.";
+                }
+                $propre = $lie ? $this->creditPropre($ue, (int) $parcours->id) : null;
+                $actuel = $propre ?? (int) $ue->credit;
+                if ($nouveau !== $actuel) {
+                    // Sur la maquette du parcours si l'UE en sert d'autres ou porte déjà un crédit propre.
+                    if ($lie && ($propre !== null || $this->autresParcours($ue, (int) $parcours->id) !== [])) {
+                        $op['credit_parcours'] = $nouveau;
+                    } else {
+                        $op['attributs']['credit'] = $nouveau;
+                    }
+                    [$avant[], $apres[]] = [$actuel . ' crédit(s)', $nouveau . ' crédit(s)'];
+                }
+            }
             if (isset($u['rang'])) {
-                $actuel = $parcours ? DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $ue->id)
-                    ->where('parcours_id', $parcours->id)->value('ordre') : null;
                 if (! $parcours) {
                     $manques[] = "Pour quel parcours ranger l'UE {$ue->code_affiche} ?";
-                } elseif ($actuel === null) {
-                    $manques[] = "L'UE {$ue->code_affiche} n'est pas liée au parcours {$parcours->code} : lie-la d'abord.";
-                } elseif ((int) $actuel !== (int) $u['rang']) {
-                    $rang = (int) $u['rang'];
-                    [$avant[], $apres[]] = ['rang ' . $actuel, 'rang ' . $rang];
+                } else {
+                    $actuel = (int) DB::table('esbtp_lmd_parcours_ue')->where(['unite_enseignement_id' => $ue->id, 'parcours_id' => $parcours->id])->value('ordre');
+                    if ($actuel !== (int) $u['rang']) {
+                        $op['rang'] = (int) $u['rang'];
+                        [$avant[], $apres[]] = ['rang ' . $actuel, 'rang ' . $op['rang']];
+                    }
                 }
             }
-            if ($attributs !== [] || $rang !== null) {
-                $ops[] = ['ue_id' => (int) $ue->id, 'attributs' => $attributs, 'rang' => $rang, 'parcours_id' => $parcours?->id,
-                    'ligne' => [(string) $ue->code_affiche, '—', implode(', ', $avant), implode(', ', $apres)]];
+            if ($op['attributs'] !== [] || $op['credit_parcours'] !== null || $op['rang'] !== null) {
+                $partage = $op['attributs'] !== [] ? $this->autresParcours($ue, $parcours?->id) : [];
+                $op['avertissement'] = count($partage) >= ($parcours ? 1 : 2)
+                    ? sprintf('L\'UE %s sert aussi %s : %s change aussi pour eux.', $ue->code_affiche, implode(', ', $partage),
+                        implode(', ', array_map(fn ($k) => ['code' => 'son code', 'name' => 'son intitulé', 'credit' => 'son crédit'][$k], array_keys($op['attributs']))))
+                    : null;
+                $op['ligne'] = [(string) $ue->code_affiche, '—', implode(', ', $avant), implode(', ', $apres)];
+                $ops[] = $op;
             }
         }
 
-        return [$ops, $credits, $manques];
+        return [$ops, $manques];
     }
 
     /** @return array{0: list<array>, 1: list<string>} */
-    private function preparerElements(array $elements, ?ESBTPLMDParcours $parcours, array $credits): array
+    private function preparerElements(array $elements, ?ESBTPLMDParcours $parcours): array
     {
         $ops = [];
         $manques = [];
-        $ajouts = [];
         foreach ($elements as $e) {
             [$ue, $manque] = $this->unite((string) ($e['ue'] ?? ''));
             if (! $ue) {
@@ -251,14 +284,14 @@ class ModifierMaquetteLmd extends ActionAgent
             }
             $designation = trim((string) ($e['element'] ?? ''));
             [$matiere, $portee, $manque] = $designation === ''
-                ? [null, ! empty($e['reserve_au_parcours']) && $parcours ? (int) $parcours->id : CompositionUe::COMMUN, null]
+                ? $this->porteeDUnAjout($ue, $parcours, ! empty($e['reserve_au_parcours']))
                 : $this->element($ue, $designation, $parcours);
             if ($manque) {
                 $manques[] = $manque;
                 continue;
             }
             $actuel = $matiere ? $this->ligne($ue, $matiere, $portee) : ['coefficient_ecue' => null, 'credit_ecue' => null, 'ordre_bulletin' => 0];
-            // Tous les champs : EcritureEcue reécrit la ligne de pivot entière.
+            // Tous les champs : EcritureEcue réécrit la ligne de pivot entière.
             $valeurs = [
                 'name' => trim((string) ($e['intitule'] ?? '')) ?: $matiere?->name,
                 'code' => trim((string) ($e['code'] ?? '')) ?: ($matiere?->code_affiche),
@@ -275,28 +308,103 @@ class ModifierMaquetteLmd extends ActionAgent
                 $manques[] = "Le code {$valeurs['code']} est déjà celui d'une autre matière.";
                 continue;
             }
-            $credit = (int) ($valeurs['credit_ecue'] ?? 0);
-            $budget = $credits[(int) $ue->id] ?? (int) $ue->credit;
-            // Le plafond se compte dans la maquette du parcours nommé : un élément commun
-            // y côtoie ceux qui lui sont réservés.
-            $maquette = $parcours ? (int) $parcours->id : $portee;
-            $autres = $this->composition->creditsDe($ue, $maquette, $matiere ? [(int) $matiere->id] : []) + ($ajouts[$ue->id . ':' . $maquette] ?? 0);
-            if ($budget > 0 && $credit > 0 && $autres + $credit > $budget) {
-                $manques[] = "Les crédits des éléments de {$ue->code_affiche} dépasseraient ceux de l'UE ({$autres} + {$credit} > {$budget}) : ajuste le crédit de l'UE dans la même demande.";
-                continue;
-            }
-            $ajouts[$ue->id . ':' . $maquette] = ($ajouts[$ue->id . ':' . $maquette] ?? 0) + ($matiere ? 0 : $credit);
 
             $avant = $matiere ? sprintf('%s · %s cr · coef %s · ordre %d', $matiere->code_affiche, $actuel['credit_ecue'] ?? '—', $actuel['coefficient_ecue'] ?? '—', $actuel['ordre_bulletin']) : '(nouveau)';
             $apres = sprintf('%s · %s cr · coef %s · ordre %d', $valeurs['code'], $valeurs['credit_ecue'] ?? '—', $valeurs['coefficient_ecue'] ?? '—', $valeurs['ordre_bulletin']);
             if ($matiere && $avant === $apres && $valeurs['name'] === $matiere->name) {
                 continue;
             }
+            $partage = $portee === CompositionUe::COMMUN ? $this->autresParcours($ue, $parcours?->id) : [];
             $ops[] = ['ue_id' => (int) $ue->id, 'matiere_id' => $matiere ? (int) $matiere->id : null, 'portee' => $portee, 'valeurs' => $valeurs,
-                'ligne' => [(string) $ue->code_affiche, (string) $valeurs['name'], $avant, $apres]];
+                'ligne' => [(string) $ue->code_affiche, (string) $valeurs['name'], $avant, $apres],
+                'avertissement' => count($partage) >= ($parcours ? 1 : 2)
+                    ? sprintf('« %s » est commun à l\'UE %s : le changement vaut aussi pour %s.', $valeurs['name'], $ue->code_affiche, implode(', ', $partage))
+                    : null];
         }
 
         return [$ops, $manques];
+    }
+
+    /**
+     * Après la demande entière, chaque maquette touchée tient-elle dans le crédit
+     * de son UE ? Les modifications d'une même demande s'additionnent : deux
+     * hausses contrôlées chacune contre l'ancien total passeraient ensemble.
+     *
+     * @return list<string>
+     */
+    private function depassementsDeCredits(array $opsUe, array $opsEl, ?ESBTPLMDParcours $parcours): array
+    {
+        $parUe = [];
+        foreach ($opsUe as $op) {
+            $parUe[$op['ue_id']]['ue'] = $op;
+        }
+        foreach ($opsEl as $op) {
+            $parUe[$op['ue_id']]['elements'][] = $op;
+        }
+
+        $manques = [];
+        foreach ($parUe as $ueId => $touche) {
+            $ue = ESBTPUniteEnseignement::findOrFail($ueId);
+            $elements = $touche['elements'] ?? [];
+            $maquettes = array_unique(array_merge(
+                [$parcours && DB::table('esbtp_lmd_parcours_ue')->where(['unite_enseignement_id' => $ueId, 'parcours_id' => $parcours->id])->exists() ? (int) $parcours->id : CompositionUe::COMMUN],
+                array_filter(array_column($elements, 'portee')),
+            ));
+            $exclus = array_values(array_filter(array_column($elements, 'matiere_id')));
+            foreach ($maquettes as $m) {
+                $budget = $this->budget($ue, $m, $touche['ue'] ?? null);
+                $somme = $this->composition->creditsDe($ue, $m, $exclus) + array_sum(array_map(
+                    fn ($op) => in_array($op['portee'], [CompositionUe::COMMUN, $m], true) ? (int) ($op['valeurs']['credit_ecue'] ?? 0) : 0,
+                    $elements,
+                ));
+                if ($budget > 0 && $somme > $budget) {
+                    $manques[] = "Les crédits des éléments de {$ue->code_affiche} dépasseraient ceux de l'UE ({$somme} > {$budget}) : "
+                        . 'ajuste les crédits des éléments ou celui de l\'UE dans la même demande.';
+                }
+            }
+        }
+
+        return $manques;
+    }
+
+    /** Le crédit de l'UE dans cette maquette, après la demande. */
+    private function budget(ESBTPUniteEnseignement $ue, int $maquette, ?array $op): int
+    {
+        $fiche = (int) ($op['attributs']['credit'] ?? $ue->credit);
+        if ($maquette === CompositionUe::COMMUN) {
+            return $fiche;
+        }
+        if ($op !== null && $op['credit_parcours'] !== null && (int) $op['parcours_id'] === $maquette) {
+            return (int) $op['credit_parcours'];
+        }
+
+        return $this->creditPropre($ue, $maquette) ?? $fiche;
+    }
+
+    private function creditPropre(ESBTPUniteEnseignement $ue, int $parcoursId): ?int
+    {
+        $credit = DB::table('esbtp_lmd_parcours_ue')->where(['unite_enseignement_id' => $ue->id, 'parcours_id' => $parcoursId])
+            ->whereNotNull('credit')->value('credit');
+
+        return $credit === null ? null : (int) $credit;
+    }
+
+    /** @return array{0: null, 1: int, 2: ?string} */
+    private function porteeDUnAjout(ESBTPUniteEnseignement $ue, ?ESBTPLMDParcours $parcours, bool $reserve): array
+    {
+        if (! $reserve) {
+            return [null, CompositionUe::COMMUN, null];
+        }
+        if (! $parcours) {
+            return [null, CompositionUe::COMMUN, "À quel parcours réserver le nouvel élément de {$ue->code_affiche} ?"];
+        }
+        // Le même contrôle que la fenêtre ECUE : un parcours qui n'utilise pas l'UE
+        // créerait une composition qu'aucune maquette ne montre.
+        $portee = $this->composition->porteeValide($ue, $parcours->id);
+
+        return $portee === (int) $parcours->id
+            ? [null, $portee, null]
+            : [null, $portee, "L'UE {$ue->code_affiche} n'est pas liée au parcours {$parcours->code} : impossible d'y réserver un élément."];
     }
 
     /** La ligne de pivot de la maquette, ou les colonnes de la matière à défaut. */
@@ -314,20 +422,18 @@ class ModifierMaquetteLmd extends ActionAgent
     /** @param  array<int, int>  $ueIds */
     private function etat(array $ueIds): array
     {
-        $ueIds = array_values(array_unique(array_map('intval', $ueIds)));
         sort($ueIds);
 
         return [
             'ues' => ESBTPUniteEnseignement::whereIn('id', $ueIds)->orderBy('id')->get(['id', 'code', 'name', 'credit'])->map(fn ($u) => [$u->id, $u->code, $u->name, (int) $u->credit])->all(),
-            'liens' => DB::table('esbtp_lmd_parcours_ue')->whereIn('unite_enseignement_id', $ueIds)->orderBy('id')->get(['unite_enseignement_id', 'parcours_id', 'semestre', 'ordre'])->map(fn ($l) => (array) $l)->all(),
+            'liens' => DB::table('esbtp_lmd_parcours_ue')->whereIn('unite_enseignement_id', $ueIds)->orderBy('id')->get(['unite_enseignement_id', 'parcours_id', 'semestre', 'ordre', 'credit'])->map(fn ($l) => (array) $l)->all(),
             'elements' => DB::table('esbtp_ue_matiere')->whereIn('unite_enseignement_id', $ueIds)->orderBy('id')
                 ->get(['unite_enseignement_id', 'matiere_id', 'parcours_id', 'credit_ecue', 'coefficient_ecue', 'ordre_bulletin'])->map(fn ($l) => (array) $l)->all(),
         ];
     }
 
     /**
-     * L'élément parmi ceux de l'unité, et la maquette où le modifier : celle du
-     * parcours s'il y est réservé, la composition commune sinon.
+     * L'élément parmi ceux de l'unité, et la maquette où le modifier.
      *
      * @return array{0: ?ESBTPMatiere, 1: int, 2: ?string}
      */

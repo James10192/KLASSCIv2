@@ -117,10 +117,9 @@ class RequalifierEnExamen extends ActionAgent
         $d = $proposition->donnees;
         $classe = ESBTPClasse::find((int) $d['classe_id']) ?? throw new PropositionPerimee("Cette classe n'existe plus.");
 
+        // La fraîcheur est déjà vérifiée par ExecutionDesPropositions, qui
+        // reprépare la proposition et compare son empreinte avant d'appeler ici.
         try {
-            if ($this->requalification->appliquer($classe, (int) $d['annee_universitaire_id'], $d['periode'], true, (int) $user->id) !== $proposition->etat['lignes']) {
-                throw new PropositionPerimee('Les évaluations de cette classe ont changé depuis la proposition.');
-            }
             $lignes = $this->requalification->appliquer($classe, (int) $d['annee_universitaire_id'], $d['periode'], false, (int) $user->id);
         } catch (ValidationException $e) {
             throw new PropositionPerimee(collect($e->errors())->flatten()->implode(' '));
@@ -134,16 +133,8 @@ class RequalifierEnExamen extends ActionAgent
         ];
     }
 
-    /** Mêmes conditions que l'écran : les deux permissions, et pas un enseignant seul. */
     private function refusDroits($user): ?string
     {
-        if (! $user->can('lmd.notes.manage') || ! $user->can('evaluations.edit')) {
-            return "Cet utilisateur n'a pas le droit de modifier les évaluations LMD.";
-        }
-        if ($user->can('identity.teach') && ! $user->can('identity.coordinate')) {
-            return "La requalification des évaluations est réservée à l'administration.";
-        }
-
-        return null;
+        return RequalificationEnExamen::refusPour($user);
     }
 }

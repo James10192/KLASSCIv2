@@ -85,6 +85,15 @@ class RetirerEcueLmd extends ActionAgent
         if ($manque) {
             return $this->manque($titre, $manque);
         }
+        // Un parcours nommé, un élément commun : le retirer l'enlèverait aussi
+        // des autres parcours de l'UE. L'écran le refuse ; Nanan aussi.
+        if ($parcours && $portee === CompositionUe::COMMUN && ($autres = $this->autresParcours($ue, (int) $parcours->id)) !== []) {
+            return $this->manque($titre, sprintf(
+                '« %s » est commun à tous les parcours de l\'UE %s (aussi %s) : il ne se retire pas de la seule maquette %s. '
+                . 'Le retirer pour tous (sans nommer de parcours), ou le garder ?',
+                $ecue->name, $ue->code_affiche, implode(', ', $autres), $parcours->code
+            ));
+        }
 
         $devenir = $args['devenir'] ?? null;
         $sortirait = $this->sortie->sortirait($ue, $ecue, $portee);

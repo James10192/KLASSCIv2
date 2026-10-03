@@ -64,18 +64,9 @@ class ESBTPLMDRequalificationController extends Controller
             ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id'));
     }
 
-    /**
-     * La requalification porte sur toutes les régularisations d'une classe :
-     * un enseignant, qui ne saisit que les évaluations qui lui sont confiées,
-     * n'y a pas accès. Même distinction que la saisie des notes LMD.
-     */
     private function assertPasEnseignantSeul(): void
     {
-        $user = auth()->user();
-        abort_if(
-            $user && $user->can('identity.teach') && ! $user->can('identity.coordinate'),
-            403,
-            'La requalification des évaluations est réservée à l\'administration.'
-        );
+        $refus = RequalificationEnExamen::refusPour(auth()->user());
+        abort_if($refus !== null, 403, (string) $refus);
     }
 }

@@ -230,8 +230,61 @@ class NananMaquetteEtExamenTest extends TestCase
             ['ue' => 'BST4', 'code' => 'BST414', 'intitule' => 'Initiation au génie civil', 'credit' => 1],
         ]], $this->admin));
 
-        $this->assertStringContainsString('dépasseraient ceux de l\'UE (2 + 1 > 2)', $manques);
+        $this->assertStringContainsString('dépasseraient ceux de l\'UE (3 > 2)', $manques);
         $this->assertFalse(ESBTPMatiere::where('code', 'BST414')->exists());
+    }
+
+    public function test_deux_hausses_qui_depassent_ensemble_sont_une_question(): void
+    {
+        $manques = $this->manques(app(ModifierMaquetteLmd::class)->executeAuthorized(['parcours' => 'BU', 'elements' => [
+            ['ue' => 'BMI1', 'element' => 'BMI11', 'credit' => 3],
+            ['ue' => 'BMI1', 'element' => 'BMI12', 'credit' => 3],
+        ]], $this->admin));
+
+        $this->assertStringContainsString('dépasseraient ceux de l\'UE (6 > 4)', $manques, 'chaque hausse passe seule, pas les deux');
+    }
+
+    /** BU et TP partagent l'UE : nommer BU ne doit rien changer à TP en silence. */
+    private function partagerAvecTp(string $codeUe): ESBTPLMDParcours
+    {
+        $tp = ESBTPLMDParcours::create(['name' => 'Travaux publics', 'code' => 'TP', 'mention_id' => $this->bu->mention_id, 'filiere_id' => $this->bu->filiere_id]);
+        DB::table('esbtp_lmd_parcours_ue')->insert(['parcours_id' => $tp->id, 'unite_enseignement_id' => ESBTPUniteEnseignement::where('code', $codeUe)->value('id'),
+            'semestre' => 1, 'ordre' => 0, 'is_optional' => false, 'created_at' => now(), 'updated_at' => now()]);
+
+        return $tp;
+    }
+
+    public function test_le_credit_d_une_ue_partagee_se_pose_sur_la_maquette_du_parcours_nomme(): void
+    {
+        $tp = $this->partagerAvecTp('BST4');
+        $st = ESBTPUniteEnseignement::where('code', 'BST4')->firstOrFail();
+
+        $this->valider(app(ModifierMaquetteLmd::class)->executeAuthorized(['parcours' => 'BU', 'ues' => [['ue' => 'BST4', 'credit' => 3]]], $this->admin));
+
+        $credit = fn ($p) => DB::table('esbtp_lmd_parcours_ue')->where(['unite_enseignement_id' => $st->id, 'parcours_id' => $p])->value('credit');
+        $this->assertSame(3, (int) $credit($this->bu->id));
+        $this->assertNull($credit($tp->id), 'TP garde le crédit de la fiche');
+        $this->assertSame(2, (int) $st->fresh()->credit);
+    }
+
+    public function test_renommer_une_ue_partagee_le_dit(): void
+    {
+        $this->partagerAvecTp('BMI1');
+
+        $r = app(ModifierMaquetteLmd::class)->executeAuthorized(['parcours' => 'BU', 'ues' => [['ue' => 'BMI1', 'code' => 'BMIB1']]], $this->admin);
+
+        $this->assertStringContainsString('sert aussi TP : son code change aussi pour eux', json_encode($r, JSON_UNESCAPED_UNICODE));
+    }
+
+    public function test_un_element_commun_ne_se_retire_pas_d_un_seul_parcours(): void
+    {
+        $this->partagerAvecTp('BST4');
+        DB::table('esbtp_ue_matiere')->where('matiere_id', $this->matiere('BST413')->id)->update(['parcours_id' => 0]);
+
+        $manques = $this->manques(app(RetirerEcueLmd::class)->executeAuthorized(['ue' => 'BST4', 'element' => 'BST413', 'parcours' => 'BU', 'devenir' => 'archiver'], $this->admin));
+
+        $this->assertStringContainsString('commun à tous les parcours de l\'UE BST4 (aussi TP)', $manques);
+        $this->assertTrue(DB::table('esbtp_ue_matiere')->where('matiere_id', $this->matiere('BST413')->id)->exists());
     }
 
     // ── Retirer un élément ────────────────────────────────────────────────

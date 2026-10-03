@@ -89,4 +89,13 @@ trait DesigneLaMaquette
         return [CompositionUe::COMMUN, "« {$m->name} » est réservé à la maquette de {$codes}"
             . ($parcours ? ", pas à celle de {$parcours->code}" : '') . ' : de quel parcours s\'agit-il ?'];
     }
+
+    /** Les codes des parcours de l'UE autres que celui-ci. @return list<string> */
+    private function autresParcours(ESBTPUniteEnseignement $ue, ?int $sauf): array
+    {
+        return \App\Models\ESBTPLMDParcours::query()
+            ->whereIn('id', \Illuminate\Support\Facades\DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $ue->id)->pluck('parcours_id'))
+            ->when($sauf, fn ($q) => $q->where('id', '!=', $sauf))
+            ->orderBy('code')->pluck('code')->all();
+    }
 }
