@@ -318,6 +318,8 @@
     .ln-student-mat { font-size: .68rem; color: #94a3b8; font-family: 'SF Mono', SFMono-Regular, monospace; }
 
     /* Note input */
+    .ln-suivi { margin: .85rem 1.5rem 0; }
+    .ln-suivi .cvn { margin-bottom: 0; }
     .ln-note-input {
         width: 52px; padding: .28rem .3rem; border: 1.5px solid #e2e8f0;
         border-radius: 6px; font-size: .84rem; text-align: center;
@@ -650,6 +652,11 @@
 
                 @include('esbtp.lmd.notes.partials._requalification')
 
+                {{-- Ce qui est noté et ce qui manque, élément par élément, sur la maquette du semestre. --}}
+                <div class="ln-suivi">
+                    @include('esbtp.partials._couverture-notes', ['classeId' => null, 'anneeId' => $anneeCourante->id ?? null, 'periode' => 'semestre1', 'titre' => 'Suivi du semestre', 'replie' => true])
+                </div>
+
                 {{-- Toolbar: UE → ECUE selectors + dynamic periods --}}
                 <div class="ln-modal-toolbar">
                     <select id="ueSelect" style="min-width:220px;">
@@ -914,6 +921,10 @@ async function openNotesModal(classeId, classeName) {
 
         // Store class semestres for dynamic period options
         classeSemestres = data.classe.semestres || [1, 2];
+        if (!document.getElementById('notesModalTitle').textContent) {
+            document.getElementById('notesModalTitle').textContent = data.classe.name || '';
+        }
+        lmdSuiviContexte(classeSemestres[0]);
 
         // Update hero
         const sub = [data.classe.filiere, data.classe.niveau].filter(Boolean).join(' · ');
@@ -1026,7 +1037,11 @@ document.getElementById('periodeFilter').addEventListener('change', function() {
     if (document.getElementById('ecueSelect').value) {
         buildNotesGrid();
     }
+    // Le suivi montre le semestre choisi ; « Toutes » le laisse où il est.
+    if (this.value !== 'all') lmdSuiviContexte(this.value);
 });
+
+@include('esbtp.lmd.notes.partials._suivi-script')
 
 // ══ Load evaluations for class + matière (same API as BTS) ══
 async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
@@ -1263,6 +1278,7 @@ function saveNote(studentId, evaluationId, noteValue) {
         if (!data.success) throw new Error(data.message || 'Erreur de sauvegarde');
         markNoteSaved(input);
         removeOfflineNote(noteMutationKey(payload));
+        lmdSuiviApresSauvegarde();
     }).catch(err => {
         if (err.refusee) {
             // Refus du serveur : ce n'est PAS une attente réseau. On ne garde
@@ -1447,6 +1463,7 @@ function envoyerLot(notes, submitFinal) {
             setTimeout(() => inp.classList.remove('ln-saved'), 1500);
         });
         window.dispatchEvent(new CustomEvent('toast', { detail: { type: data.success ? 'success' : 'warning', message: data.message || 'Notes enregistrées.' } }));
+        lmdSuiviApresSauvegarde();
         (currentClasseData?.etudiants || []).forEach(stu => calculateStudentAverage(stu.id));
         calculateClassAverages();
     }).catch(err => {

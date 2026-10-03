@@ -98,29 +98,28 @@ class ESBTPLMDNoteController extends Controller
                 'saisie_url' => route('esbtp.lmd.notes.saisie', $e),
             ]);
 
-        // Matières (ECUEs) disponibles pour cette classe via parcours + filtrées par semestres du niveau
-        $matieres = collect();
-        $uesDisponibles = collect();
-        if ($classe->parcours) {
-            $semestresAutorises = $classe->getSemestresLMD();
-            $uesDisponibles = $classe->parcours->unitesEnseignement()
-                ->wherePivotIn('semestre', $semestresAutorises)
-                ->with(['matieres' => fn ($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code')])
-                ->get()
-                ->unique('id')
-                ->values();
+        // Les éléments que le bulletin lit, semestre par semestre : la même
+        // lecture que le suivi des notes (`LMDBulletinService::getUEsForSemestre`
+        // puis `getEcuesEffectifs`). Un élément réservé au parcours par le
+        // pivot figure donc dans la grille comme dans le suivi.
+        $bulletin = app(\App\Services\LMDBulletinService::class);
+        $parcoursId = $classe->parcours_id ? (int) $classe->parcours_id : null;
+        $uesDisponibles = collect($classe->getSemestresLMD())
+            ->flatMap(fn (int $s) => $bulletin->getUEsForSemestre($classe, $s)
+                ->map(fn ($ue) => [$ue, $s, $ue->getEcuesEffectifs($parcoursId)]))
+            ->unique(fn ($ligne) => $ligne[0]->id)
+            ->values();
 
-            $matieres = $uesDisponibles
-                ->flatMap(fn ($ue) => $ue->matieres->map(fn ($m) => [
-                    'id' => $m->id,
-                    'name' => $m->name,
-                    'code' => $m->code_affiche,
-                    'ue_name' => $ue->name,
-                    'ue_code' => $ue->code_affiche,
-                ]))
-                ->unique('id')
-                ->values();
-        }
+        $matieres = $uesDisponibles
+            ->flatMap(fn ($ligne) => $ligne[2]->map(fn ($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'code' => $m->code_affiche,
+                'ue_name' => $ligne[0]->name,
+                'ue_code' => $ligne[0]->code_affiche,
+            ]))
+            ->unique('id')
+            ->values();
 
         return response()->json([
             'classe' => [
@@ -140,12 +139,12 @@ class ESBTPLMDNoteController extends Controller
             'etudiants' => $etudiants,
             'evaluations' => $evaluations,
             'matieres' => $matieres,
-            'ues' => $uesDisponibles->map(fn ($ue) => [
-                'id' => $ue->id,
-                'name' => $ue->name,
-                'code' => $ue->code_affiche,
-                'semestre' => $ue->pivot->semestre ?? $ue->semestre,
-                'ecues_count' => $ue->matieres->count(),
+            'ues' => $uesDisponibles->map(fn ($ligne) => [
+                'id' => $ligne[0]->id,
+                'name' => $ligne[0]->name,
+                'code' => $ligne[0]->code_affiche,
+                'semestre' => $ligne[1],
+                'ecues_count' => $ligne[2]->count(),
             ]),
         ]);
     }
