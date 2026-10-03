@@ -93,6 +93,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Paramètres LMD : les cases « Compensation inter-UE » et « Compensation intra-UE » ne se décochaient plus.** Elles postaient `setting_lmd_compensation_*`, que seule la boucle générique lisait : elle savait écrire 1, mais une case décochée n'étant pas envoyée, rien ne la remettait à 0. Elles postent désormais leur nom nu et figurent parmi les bascules du contrôleur (`LmdAcademicRuleProfile::REGLAGE_COMPENSATION_INTER_UE` / `_INTRA_UE`).
 - **Paramètres LMD : la case « Appliquer la pondération à la moyenne des ECUE » ne s'enregistrait pas.** Elle postait `setting_lmd_ponderation_cc_examen`, nom que le contrôleur ne lit pas pour une case (le préfixe n'est lu que pour le parcours d'inscription) : la page affichait « Paramètres mis à jour » et la case revenait décochée. Elle poste désormais son nom nu, comme les autres cases.
 - **Paramètres LMD : la note sous les pondérations disait qu'elles n'étaient pas appliquées.** Elle date d'avant la case « Appliquer la pondération à la moyenne des ECUE » ; elle dit désormais qu'elles ne comptent que si cette case est cochée.
 
