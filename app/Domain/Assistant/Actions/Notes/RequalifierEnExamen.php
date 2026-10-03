@@ -51,7 +51,7 @@ class RequalifierEnExamen extends ActionAgent
             'properties' => [
                 'classe' => ['type' => 'string', 'description' => 'Code, nom exact ou identifiant de la classe LMD.'],
                 'annee' => ['type' => 'string', 'description' => "Année universitaire, ex. « 2025-2026 ». Par défaut l'année en cours."],
-                'semestre' => ['type' => 'string', 'description' => 'Limiter à un semestre (S1, S2…). Vide : tous.'],
+                'semestre' => ['type' => 'string', 'description' => 'Le semestre du relevé (S1, S2…). Requis si la classe a des régularisations sur plusieurs semestres : ne le devine pas, demande.'],
             ],
             'required' => ['classe'],
         ];

@@ -175,6 +175,19 @@ class NananMaquetteEtExamenTest extends TestCase
         $this->assertSame(1, ESBTPEvaluation::where('type', 'controle')->count());
     }
 
+    public function test_plusieurs_semestres_demandent_lequel(): void
+    {
+        $this->regulariser([['matiere_id' => $this->matiere('BMI11')->id, 'note' => 12.5]]);
+        $s2 = ESBTPEvaluation::firstOrFail()->replicate();
+        $s2->fill(['periode' => 'semestre2', 'titre' => 'Régularisation SEMESTRE2 — Algèbre'])->save();
+
+        $this->assertStringContainsString('plusieurs semestres (S1, S2) : précisez lequel',
+            $this->manques(app(RequalifierEnExamen::class)->executeAuthorized(['classe' => 'L1A Batiment'], $this->admin)));
+
+        $this->valider(app(RequalifierEnExamen::class)->executeAuthorized(['classe' => 'L1A Batiment', 'semestre' => 'S1'], $this->admin));
+        $this->assertSame(['semestre1' => 'examen', 'semestre2' => 'controle'], ESBTPEvaluation::orderBy('periode')->pluck('type', 'periode')->all());
+    }
+
     public function test_l_ecran_requalifie_en_deux_temps_et_refuse_un_enseignant(): void
     {
         $this->regulariser([['matiere_id' => $this->matiere('BMI11')->id, 'note' => 14]]);
@@ -182,7 +195,7 @@ class NananMaquetteEtExamenTest extends TestCase
 
         $this->actingAs($this->admin)->getJson(route('esbtp.lmd.notes.requalification', $this->classe))
             ->assertOk()->assertJsonPath('lignes.0.nouveau_titre', 'Examen SEMESTRE1 — Algèbre');
-        $this->actingAs($this->admin)->postJson($url, ['dry_run' => true])->assertOk()->assertJsonPath('dry_run', true);
+        $this->actingAs($this->admin)->postJson($url, ['dry_run' => true, 'periode' => 'semestre1'])->assertOk()->assertJsonPath('dry_run', true);
         $this->assertSame('controle', ESBTPEvaluation::value('type'), 'l\'aperçu n\'écrit rien');
 
         $enseignant = $this->utilisateur();

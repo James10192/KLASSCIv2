@@ -19,6 +19,13 @@
     .ln-requal-actions { display: flex; gap: .5rem; align-items: center; }
     .ln-requal-actions .ln-modal-add-btn { margin-left: 0; }
     .ln-requal-actions .ln-modal-add-btn:disabled { opacity: .6; cursor: wait; }
+    .ln-requal-semestres { display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .5rem; }
+    .ln-requal-chip {
+        padding: .25rem .65rem; border-radius: 999px; font-size: .74rem; font-weight: 600; cursor: pointer;
+        border: 1px solid #c7d7f2; background: #fff; color: #0453cb; transition: all .15s ease;
+    }
+    .ln-requal-chip:hover { background: rgba(4,83,203,.06); }
+    .ln-requal-chip--actif { background: #0453cb; border-color: #0453cb; color: #fff; }
 </style>
 
 {{-- Régularisations d'un relevé qui étaient des notes d'examen --}}
@@ -27,6 +34,8 @@
     <div class="ln-requal-corps">
         <div class="ln-requal-titre" id="requalTitre"></div>
         <div class="ln-requal-texte" id="requalTexte"></div>
+        {{-- Un semestre à la fois : un relevé d'examen ne vaut que pour son semestre. --}}
+        <div class="ln-requal-semestres" id="requalSemestres"></div>
         <ul class="ln-requal-liste" id="requalListe" style="display:none;"></ul>
     </div>
     <div class="ln-requal-actions">
@@ -45,6 +54,9 @@
 // d'examen : le titre et le type changent, aucune note ne bouge.
 const peutRequalifier = @json($peutRequalifier ?? false);
 
+let requalLignes = [];
+let requalPeriode = null;
+
 async function chargerRequalification(classeId) {
     const banner = document.getElementById('requalBanner');
     banner.style.display = 'none';
@@ -55,19 +67,32 @@ async function chargerRequalification(classeId) {
         });
         if (!resp.ok || classeId !== currentClasseId) return;
         const data = await resp.json();
-        const lignes = data.lignes || [];
-        if (lignes.length === 0) return;
-        const notes = lignes.reduce((t, l) => t + l.notes, 0);
-        document.getElementById('requalTitre').textContent =
-            lignes.length + ' évaluation(s) de régularisation (' + notes + ' note(s))';
-        afficherRequalTexte('S’il s’agissait des notes d’examen, requalifiez-les : elles deviennent « Examen … », le contrôle continu restera distinct. Aucune note ne change.', false);
-        document.getElementById('requalListe').style.display = 'none';
-        document.getElementById('requalBtn').style.display = 'inline-flex';
-        document.getElementById('requalConfirmBtn').style.display = 'none';
+        requalLignes = data.lignes || [];
+        if (requalLignes.length === 0) return;
+        const periodes = [...new Set(requalLignes.map(l => l.periode))].sort();
+        document.getElementById('requalSemestres').innerHTML = periodes.map(p =>
+            '<button type="button" class="ln-requal-chip" data-periode="' + escHtml(p) + '" onclick="choisirSemestreRequal(this.dataset.periode)">'
+            + 'S' + escHtml(p.replace(/\D/g, '')) + ' · ' + requalLignes.filter(l => l.periode === p).length + '</button>'
+        ).join('');
         banner.style.display = 'flex';
+        choisirSemestreRequal(periodes[0]);
     } catch (err) {
         console.error('Requalification indisponible', err);
     }
+}
+
+function choisirSemestreRequal(periode) {
+    requalPeriode = periode;
+    document.querySelectorAll('#requalSemestres .ln-requal-chip').forEach(c =>
+        c.classList.toggle('ln-requal-chip--actif', c.dataset.periode === periode));
+    const lignes = requalLignes.filter(l => l.periode === periode);
+    const notes = lignes.reduce((t, l) => t + l.notes, 0);
+    document.getElementById('requalTitre').textContent =
+        lignes.length + ' évaluation(s) de régularisation au semestre ' + periode.replace(/\D/g, '') + ' (' + notes + ' note(s))';
+    afficherRequalTexte('S’il s’agissait des notes d’examen de ce semestre, requalifiez-les : elles deviennent « Examen … », le contrôle continu restera distinct. Aucune note ne change.', false);
+    document.getElementById('requalListe').style.display = 'none';
+    document.getElementById('requalBtn').style.display = 'inline-flex';
+    document.getElementById('requalConfirmBtn').style.display = 'none';
 }
 
 function afficherRequalTexte(texte, erreur) {
@@ -86,7 +111,7 @@ async function requalifierEnExamen(simulation) {
                 'Content-Type': 'application/json', 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}',
             },
-            body: JSON.stringify({ dry_run: simulation }),
+            body: JSON.stringify({ dry_run: simulation, periode: requalPeriode }),
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok || !data.success) {
@@ -105,7 +130,9 @@ async function requalifierEnExamen(simulation) {
             return;
         }
         document.getElementById('requalConfirmBtn').style.display = 'none';
-        document.getElementById('requalTitre').textContent = 'Requalification faite';
+        document.getElementById('requalTitre').textContent = 'Requalification faite (semestre ' + requalPeriode.replace(/\D/g, '') + ')';
+        requalLignes = requalLignes.filter(l => l.periode !== requalPeriode);
+        document.querySelector('#requalSemestres .ln-requal-chip--actif')?.remove();
         window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: data.message } }));
         if (currentMatiereId) loadEvaluationsAndBuildGrid(currentClasseId, currentMatiereId);
     } catch (err) {

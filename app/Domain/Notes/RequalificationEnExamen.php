@@ -89,10 +89,15 @@ final class RequalificationEnExamen
             $this->refuser('classe_id', 'La requalification ne concerne que les classes LMD.');
         }
 
-        $lignes = array_values(array_filter(
-            $this->inventaire($classe, $anneeId),
-            fn (array $l) => $periode === null || $l['periode'] === $periode,
-        ));
+        $inventaire = $this->inventaire($classe, $anneeId);
+        // Un relevé d'examen vaut pour SON semestre : requalifier tous les semestres
+        // d'un coup emporterait des régularisations qui n'étaient pas des examens.
+        $periodes = array_values(array_unique(array_column($inventaire, 'periode')));
+        if ($periode === null && count($periodes) > 1) {
+            $this->refuser('periode', "{$classe->name} a des régularisations sur plusieurs semestres ("
+                . implode(', ', array_map(fn ($p) => 'S' . preg_replace('/\D/', '', $p), $periodes)) . ') : précisez lequel.');
+        }
+        $lignes = array_values(array_filter($inventaire, fn (array $l) => $periode === null || $l['periode'] === $periode));
 
         if ($lignes === []) {
             $this->refuser('periode', "Aucune régularisation à requalifier pour {$classe->name}.");
