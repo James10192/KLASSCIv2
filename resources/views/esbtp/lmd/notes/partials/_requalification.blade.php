@@ -153,3 +153,5 @@ async function requalifierEnExamen(simulation) {
     }
 }
 </script>
+
+@include('esbtp.lmd.partials.teacher-quick-dialog')
