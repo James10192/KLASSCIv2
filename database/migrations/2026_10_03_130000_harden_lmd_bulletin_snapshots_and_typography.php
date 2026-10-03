@@ -22,11 +22,29 @@ return new class extends Migration
         }
 
         $settings = [
+            // Bloc officiel / visibilité
+            'lmd_bulletin_show_republic_info' => ['1', 'boolean', 'Afficher les informations République sur le bulletin LMD'],
+            'lmd_bulletin_show_ministry_info' => ['1', 'boolean', 'Afficher les informations Ministère sur le bulletin LMD'],
+            'lmd_bulletin_republic_text' => ["REPUBLIQUE DE COTE D'IVOIRE", 'string', 'Texte République du bulletin LMD'],
+            'lmd_bulletin_union_text' => ['Union - Discipline - Travail', 'string', 'Devise nationale du bulletin LMD'],
+            'lmd_bulletin_ministry_text' => ["MINISTERE DE L'ENSEIGNEMENT SUPERIEUR ET DE LA RECHERCHE SCIENTIFIQUE", 'string', 'Texte Ministère du bulletin LMD'],
+            'lmd_bulletin_show_etablissement_box' => ['1', 'boolean', 'Afficher code / statut / direction du bulletin LMD'],
             'lmd_bulletin_code_etablissement' => ['', 'string', 'Code établissement affiché sur le bulletin LMD'],
             'lmd_bulletin_statut' => ['Privé', 'string', 'Statut établissement affiché sur le bulletin LMD'],
             'lmd_bulletin_direction' => ['', 'string', 'Direction affichée sur le bulletin LMD'],
+            'lmd_bulletin_show_domaine' => ['1', 'boolean', 'Afficher Domaine sur le bulletin LMD'],
+            'lmd_bulletin_show_mention' => ['1', 'boolean', 'Afficher Mention sur le bulletin LMD'],
+            'lmd_bulletin_show_specialite' => ['0', 'boolean', 'Afficher Spécialité sur le bulletin LMD'],
+            'lmd_bulletin_show_parcours' => ['1', 'boolean', 'Afficher Parcours sur le bulletin LMD'],
+            'lmd_bulletin_label_domaine' => ['', 'string', 'Libellé Domaine du bulletin LMD'],
+            'lmd_bulletin_label_mention' => ['', 'string', 'Libellé Mention du bulletin LMD'],
+            'lmd_bulletin_label_specialite' => ['SPÉCIALITÉ', 'string', 'Libellé Spécialité du bulletin LMD'],
+            'lmd_bulletin_label_parcours' => ['', 'string', 'Libellé Parcours du bulletin LMD'],
+            'lmd_bulletin_parcours_auto' => ['1', 'boolean', 'Construire automatiquement le libellé parcours du bulletin LMD'],
             'lmd_bulletin_notice_text' => ["Un ECUE n'est ni transférable ni capitalisable. Les crédits d'une UE non acquise ne sont capitalisés qu'après validation de celle-ci.", 'string', 'Notice du bulletin LMD'],
             'lmd_bulletin_bottom_text' => ['Conservez soigneusement ce bulletin de notes. Aucun duplicata ne sera délivré.', 'string', 'Texte de pied du bulletin LMD'],
+
+            // Typographie indépendante par zone
             'lmd_bulletin_font_republic' => ['8.5', 'float', 'Taille République / Ministère du bulletin LMD'],
             'lmd_bulletin_font_school_name' => ['13', 'float', 'Taille du nom établissement du bulletin LMD'],
             'lmd_bulletin_font_school_meta' => ['7.5', 'float', 'Taille des coordonnées établissement du bulletin LMD'],
@@ -66,7 +84,7 @@ return new class extends Migration
                 'default_value' => $value,
                 'validation_rules' => $type === 'float'
                     ? json_encode(['nullable', 'numeric', 'min:6', 'max:24'])
-                    : null,
+                    : ($type === 'boolean' ? json_encode(['nullable', 'in:0,1']) : null),
                 'is_active' => true,
                 'sort_order' => $sortOrder++,
                 'created_at' => now(),
