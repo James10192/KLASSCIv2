@@ -601,10 +601,26 @@ final class AcademicNoteCoverageService
 
         $matiereId = $subject?->id ?? ($evaluations->first()?->matiere_id ? (int) $evaluations->first()->matiere_id : null);
 
+        // Ce qui a ete note : controle continu, examen, ou les deux. La moyenne
+        // LMD en depend quand l'ecole pondere. Aucune note n'y figure : le
+        // champ reste dans le constat remis a l'enseignant.
+        $types = $evaluationRows->where('treated_count', '>', 0)->pluck('type');
+        $examen = $types->contains(ESBTPEvaluation::TYPE_EXAMEN);
+        $controle = $types->contains(fn ($type) => $type !== ESBTPEvaluation::TYPE_EXAMEN);
+        $nature = match (true) {
+            $examen && $controle => 'cc_examen',
+            $examen => 'examen',
+            $controle => 'cc',
+            default => null,
+        };
+
         return [
             'id' => $matiereId,
             'name' => $subject?->name ?? ($matiereId ? 'Matière #'.$matiereId : 'Matière hors référentiel'),
             'code' => $subject?->code,
+            // L'unite d'un element LMD, pour regrouper le suivi comme la maquette.
+            'groupe' => $subject?->getAttribute('ue_libelle'),
+            'nature' => $nature,
             'is_orphan' => $orphan,
             'statut' => $statut,
             // Qui relancer. Vient du planning general, et ne sert QU'A CA :

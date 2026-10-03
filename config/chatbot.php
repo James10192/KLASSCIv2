@@ -88,6 +88,13 @@ return [
             'libelle' => 'Lecture du dossier de réinscription…',
             'suggestion' => 'Pourquoi la réinscription de cet étudiant est bloquée ?',
         ],
+        // Mêmes droits que le panneau « Suivi du semestre » : l'enseignant y lit ses classes.
+        'suivi_des_notes' => [
+            'enabled' => true,
+            'any_permissions' => ['academic_health.view', 'academic_health.view_own'],
+            'libelle' => 'Lecture du suivi des notes…',
+            'suggestion' => "Qu'est-ce qui manque comme notes au semestre 1 de cette classe ?",
+        ],
         'proposer_liaison_ue_parcours' => [
             'enabled' => true,
             'all_permissions' => ['lmd.structure.manage'],

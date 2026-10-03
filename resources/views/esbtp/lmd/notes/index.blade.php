@@ -318,6 +318,8 @@
     .ln-student-mat { font-size: .68rem; color: #94a3b8; font-family: 'SF Mono', SFMono-Regular, monospace; }
 
     /* Note input */
+    .ln-suivi { margin: .85rem 1.5rem 0; }
+    .ln-suivi .cvn { margin-bottom: 0; }
     .ln-note-input {
         width: 52px; padding: .28rem .3rem; border: 1.5px solid #e2e8f0;
         border-radius: 6px; font-size: .84rem; text-align: center;
@@ -650,6 +652,11 @@
 
                 @include('esbtp.lmd.notes.partials._requalification')
 
+                {{-- Ce qui est noté et ce qui manque, élément par élément, sur la maquette du semestre. --}}
+                <div class="ln-suivi">
+                    @include('esbtp.partials._couverture-notes', ['classeId' => null, 'anneeId' => $anneeCourante->id ?? null, 'periode' => 'semestre1', 'titre' => 'Suivi du semestre', 'replie' => true])
+                </div>
+
                 {{-- Toolbar: UE → ECUE selectors + dynamic periods --}}
                 <div class="ln-modal-toolbar">
                     <select id="ueSelect" style="min-width:220px;">
@@ -914,6 +921,12 @@ async function openNotesModal(classeId, classeName) {
 
         // Store class semestres for dynamic period options
         classeSemestres = data.classe.semestres || [1, 2];
+        if (!document.getElementById('notesModalTitle').textContent) {
+            document.getElementById('notesModalTitle').textContent = data.classe.name || '';
+        }
+        window.dispatchEvent(new CustomEvent('couverture:contexte', { detail: {
+            classe_id: classeId, annee_universitaire_id: anneeSuivi, periode: 'semestre' + classeSemestres[0],
+        } }));
 
         // Update hero
         const sub = [data.classe.filiere, data.classe.niveau].filter(Boolean).join(' · ');
@@ -1026,6 +1039,46 @@ document.getElementById('periodeFilter').addEventListener('change', function() {
     if (document.getElementById('ecueSelect').value) {
         buildNotesGrid();
     }
+    // Le suivi montre le semestre choisi ; « Toutes » le laisse où il est.
+    if (this.value !== 'all' && currentClasseId) {
+        window.dispatchEvent(new CustomEvent('couverture:contexte', { detail: {
+            classe_id: currentClasseId, annee_universitaire_id: anneeSuivi, periode: 'semestre' + this.value,
+        } }));
+    }
+});
+
+// ══ Suivi des notes ══
+const anneeSuivi = @json($anneeCourante->id ?? null);
+
+// Ouvre la grille d'un élément de la classe affichée : depuis le suivi,
+// ou depuis un lien direct (?classe=…&ecue=…).
+function lmdOuvrirElement(matiereId) {
+    const ueMap = currentClasseData?._ueMap || {};
+    const ue = Object.values(ueMap).find(u => u.ecues.some(e => Number(e.id) === Number(matiereId)));
+    if (!ue) return false;
+    const ueSelect = document.getElementById('ueSelect');
+    ueSelect.value = ue.code || '';
+    ueSelect.dispatchEvent(new Event('change'));
+    const ecueSelect = document.getElementById('ecueSelect');
+    ecueSelect.value = String(matiereId);
+    ecueSelect.dispatchEvent(new Event('change'));
+    document.querySelector('#modalNotes .ln-modal-toolbar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return true;
+}
+
+// Le bandeau de suivi appelle ce point d'entrée quand la page sait ouvrir la
+// saisie elle-même ; sinon il ouvre l'adresse dans un nouvel onglet.
+window.nmOpenCoverageSaisie = function (matiere) {
+    if (!lmdOuvrirElement(matiere.id) && matiere.saisie_url) window.open(matiere.saisie_url, '_blank', 'noopener');
+};
+
+document.addEventListener('DOMContentLoaded', async function () {
+    const params = new URLSearchParams(window.location.search);
+    const classe = parseInt(params.get('classe') || '', 10);
+    if (!classe) return;
+    await openNotesModal(classe, '');
+    const ecue = parseInt(params.get('ecue') || '', 10);
+    if (ecue) lmdOuvrirElement(ecue);
 });
 
 // ══ Load evaluations for class + matière (same API as BTS) ══

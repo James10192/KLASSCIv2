@@ -81,10 +81,11 @@
                     <strong>{{ $_cvnTitre }}</strong>
                     <span x-text="phrase()"></span>
                 </div>
+                {{-- Les semestres de la classe : S1 et S2 en BTS, S3 et S4 en deuxième année de licence. --}}
                 <div class="cvn-periodes" role="tablist" aria-label="Période du suivi">
-                    <button type="button" :class="{ 'is-active': periode === 'annuel' }" @click="changerPeriode('annuel')">Année</button>
-                    <button type="button" :class="{ 'is-active': periode === 'semestre1' }" @click="changerPeriode('semestre1')">S1</button>
-                    <button type="button" :class="{ 'is-active': periode === 'semestre2' }" @click="changerPeriode('semestre2')">S2</button>
+                    <template x-for="p in periodes()" :key="p.valeur">
+                        <button type="button" :class="{ 'is-active': periode === p.valeur }" @click="changerPeriode(p.valeur)" x-text="p.libelle"></button>
+                    </template>
                 </div>
 
                 <template x-if="aUneBarre()">
@@ -142,6 +143,12 @@
                         <div class="cvn-matiere-nom">
                             <span x-text="m.name"></span>
                             <span class="cvn-chip" x-text="libelleStatut(m)"></span>
+                            <template x-if="nature(m)">
+                                <span class="cvn-chip cvn-chip--nature" x-text="nature(m)"></span>
+                            </template>
+                            <template x-if="m.groupe">
+                                <span class="cvn-groupe" x-text="m.groupe"></span>
+                            </template>
                         </div>
                         <div class="cvn-matiere-qui">
                             <template x-if="contact(m)">
@@ -223,6 +230,8 @@
 .cvn-matiere { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; font-size: .8rem; }
 .cvn-matiere-nom { display: flex; align-items: center; gap: .5rem; font-weight: 600; color: #1e293b; }
 .cvn-chip { font-size: .66rem; font-weight: 700; text-transform: uppercase; padding: .12rem .45rem; border-radius: 5px; background: rgba(4,83,203,.08); color: #0453cb; border: 1px solid rgba(4,83,203,.2); }
+.cvn-chip--nature { background: #fff; text-transform: none; }
+.cvn-groupe { font-size: .72rem; font-weight: 500; color: #64748b; }
 .cvn-matiere-qui { font-size: .76rem; color: #64748b; display: flex; align-items: center; gap: .4rem; }
 .cvn-action { margin-left: auto; border: 1px solid rgba(4,83,203,.28); border-radius: 6px; padding: .25rem .45rem; color: #0453cb; background: #fff; text-decoration: none; font-size: .72rem; font-weight: 700; white-space: nowrap; }
 .cvn-matiere-qui a { color: #0453cb; text-decoration: none; }

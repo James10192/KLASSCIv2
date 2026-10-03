@@ -51,6 +51,7 @@ class ResumeOutil
         'navigate_to_page' => 'Page trouvée',
         'get_setup_guide' => 'Guide préparé',
         'diagnostiquer_reinscription' => 'Dossier de réinscription lu',
+        'suivi_des_notes' => 'Suivi des notes lu',
         'chercher_dans_piece' => 'Recherche faite dans le fichier',
         'lire_rendez_vous' => 'État des rendez-vous lu',
         'lire_reglages' => 'Réglages lus',

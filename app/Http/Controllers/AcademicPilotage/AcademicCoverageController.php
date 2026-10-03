@@ -59,7 +59,7 @@ class AcademicCoverageController extends Controller
         if ($anneeId === null) {
             $payload = $this->coverage->summarize(null, $periode, null, (int) $classe->id);
 
-            $payload = $this->ajouterLiensDeSaisie($payload);
+            $payload = $this->ajouterNavigation($payload, $classe);
 
             return response()->json($detailComplet ? $payload : $this->coverage->sansLesNotesNiLeursAuteurs($payload), 200);
         }
@@ -78,7 +78,7 @@ class AcademicCoverageController extends Controller
 
         // Le lien est ajouté après le cache : il reste une aide de navigation,
         // pas une donnée calculée qui modifierait la clé ou le périmètre.
-        $payload = $this->ajouterLiensDeSaisie($payload);
+        $payload = $this->ajouterNavigation($payload, $classe);
 
         // APRES le cache, jamais avant : la premiere lecture par un enseignant
         // servirait sinon une version amputee a tous les suivants.
@@ -86,34 +86,40 @@ class AcademicCoverageController extends Controller
     }
 
     /**
-     * Ajoute une destination directe pour achever la saisie d'une matière.
-     * Le navigateur reçoit le contexte classe + matière + période et ouvre la
-     * grille correspondante sans demander à l'utilisateur de refaire le chemin.
+     * Ce qui sert a naviguer, ajoute apres le cache : les periodes que la
+     * classe peut afficher, et pour chaque matiere l'adresse qui ouvre sa
+     * grille de saisie sans refaire le chemin.
+     *
+     * Une classe LMD a ses propres semestres (S3 et S4 en deuxieme annee) et sa
+     * propre saisie : `esbtp.lmd.notes.index`, qui ouvre la classe et l'element.
      *
      * @param array<string, mixed> $payload
      * @return array<string, mixed>
      */
-    private function ajouterLiensDeSaisie(array $payload): array
+    private function ajouterNavigation(array $payload, ESBTPClasse $classe): array
     {
-        $classeId = (int) data_get($payload, 'classe.id', 0);
-        $periode = (string) data_get($payload, 'maquette.semestre', '');
+        $lmd = strtoupper((string) $classe->systeme_academique) === 'LMD';
+        $semestres = $lmd ? $classe->getSemestresLMD() : [1, 2];
+        $payload['periodes'] = array_merge(
+            [['valeur' => 'annuel', 'libelle' => 'Année']],
+            array_map(fn (int $n) => ['valeur' => 'semestre'.$n, 'libelle' => 'S'.$n], $semestres),
+        );
 
-        if ($classeId <= 0 || ! isset($payload['subjects']) || ! is_array($payload['subjects'])) {
+        if (! isset($payload['subjects']) || ! is_array($payload['subjects'])) {
             return $payload;
         }
 
-        $periode = $periode === '2' ? 'semestre2' : 'semestre1';
+        $semestre = (int) data_get($payload, 'maquette.semestre', 0);
+        $periode = 'semestre'.(in_array($semestre, $semestres, true) ? $semestre : $semestres[0]);
 
-        $payload['subjects'] = array_map(function (array $matiere) use ($classeId, $periode): array {
+        $payload['subjects'] = array_map(function (array $matiere) use ($classe, $periode, $lmd): array {
             if (empty($matiere['id'])) {
                 return $matiere;
             }
 
-            $matiere['saisie_url'] = route('esbtp.notes.index', [
-                'classe_id' => $classeId,
-                'matiere_id' => (int) $matiere['id'],
-                'periode' => $periode,
-            ]);
+            $matiere['saisie_url'] = $lmd
+                ? route('esbtp.lmd.notes.index', ['classe' => $classe->id, 'ecue' => (int) $matiere['id']])
+                : route('esbtp.notes.index', ['classe_id' => $classe->id, 'matiere_id' => (int) $matiere['id'], 'periode' => $periode]);
 
             return $matiere;
         }, $payload['subjects']);

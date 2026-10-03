@@ -498,6 +498,9 @@
                         </div>
                     </div>
 
+                    {{-- Avant de générer : ce qui est noté et ce qui manque sur la maquette du semestre --}}
+                    @include('esbtp.partials._couverture-notes', ['classeId' => null, 'anneeId' => null, 'periode' => 'semestre1', 'titre' => 'Notes du semestre', 'replie' => true])
+
                     {{-- Row 3: Target mode --}}
                     <div class="bs-row bs-row--1">
                         <div class="bs-field">
@@ -693,6 +696,14 @@ function lmdBulletinSelect() {
         },
 
         init() {
+            // Le suivi des notes suit la classe, l'année et le semestre choisis.
+            const suivre = () => {
+                if (!this.classeId || !this.anneeId || !this.semestre) return;
+                window.dispatchEvent(new CustomEvent('couverture:contexte', { detail: {
+                    classe_id: this.classeId, annee_universitaire_id: this.anneeId, periode: 'semestre' + this.semestre,
+                } }));
+            };
+            ['classeId', 'anneeId', 'semestre'].forEach(champ => this.$watch(champ, suivre));
             this.$watch('mode', (val) => {
                 if (val === 'etudiant' && this.classeId && this.etudiants.length === 0) {
                     this.fetchEtudiants();

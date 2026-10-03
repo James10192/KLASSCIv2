@@ -31,11 +31,12 @@ use Illuminate\Support\Collection;
  *    a ete validee, une matiere prevue au seul semestre 2 ne doit plus etre
  *    attendue au semestre 1.
  *
- * LE LMD RESTE INCHANGE. Il tient ses matieres par parcours -> UE -> ECUE, et
- * la couverture LMD n'a montre aucun des deux defauts ci-dessus. Lui appliquer
- * le resolver BTS melangerait deux systemes que le depot separe strictement, et
- * changerait un comportement qu'aucune regle metier validee ne demande de
- * changer.
+ * LE LMD A SA PROPRE SOURCE : la maquette du parcours de la classe, unite par
+ * unite, pour le semestre demande. Il lisait jusqu'en octobre 2026 le pivot BTS
+ * (filiere, niveau), que l'import LMD n'ecrit pas : une classe LMD n'avait donc
+ * aucun element attendu, et le suivi ne pouvait dire ni ce qui manquait ni ce
+ * qui etait note. Le resolver BTS ne s'y applique pas, les deux systemes
+ * restent separes.
  *
  * @see .claude/rules/lmd-bts-bulletin-separation.md
  * @see .claude/rules/lmd-bts-matieres-single-source.md
@@ -63,7 +64,13 @@ final class ExpectedSubjectsResolver
         $systeme = $this->systems->normalize($classe->systeme_academique);
         $semestre = $this->periods->semesterNumber($periode);
 
+        if ($systeme === AcademicSystemNormalizer::LMD && $classe->parcours_id) {
+            return $this->reponse($this->elementsDeLaMaquetteLmd($classe, $semestre), BtsMaquette::ETAT_COMPLET, $semestre, $systeme);
+        }
+
         if ($systeme !== AcademicSystemNormalizer::BTS) {
+            // Classe LMD sans parcours (tronc commun d'une mention) : pas de
+            // maquette a lire, on garde l'ancienne lecture.
             return $this->reponse($this->matieresHistoriques($classe), BtsMaquette::ETAT_AUCUN, $semestre, $systeme);
         }
 
@@ -163,6 +170,39 @@ final class ExpectedSubjectsResolver
      *
      * @return Collection<int, ESBTPMatiere>
      */
+    /**
+     * Les elements de la maquette LMD de la classe : unites de son parcours
+     * pour le semestre (tous ses semestres en vue annuelle), dans l'ordre du
+     * bulletin, puis leurs elements par `getEcuesEffectifs()`, la lecture
+     * canonique qui tient compte des elements reserves a un parcours.
+     *
+     * Chaque element porte `ue_libelle` (non persiste) : le suivi regroupe
+     * par unite, comme la maquette.
+     *
+     * @return Collection<int, ESBTPMatiere>
+     */
+    private function elementsDeLaMaquetteLmd(ESBTPClasse $classe, ?int $semestre): Collection
+    {
+        $parcours = $classe->parcours;
+        if (! $parcours) {
+            return collect();
+        }
+
+        $semestres = $semestre !== null ? [$semestre] : $classe->getSemestresLMD();
+
+        return $parcours->unitesEnseignement()
+            ->wherePivotIn('semestre', $semestres)
+            ->where('esbtp_unites_enseignement.is_active', true)
+            ->with(['ecues', 'matieres'])
+            ->orderBy('esbtp_lmd_parcours_ue.semestre')
+            ->orderBy('esbtp_lmd_parcours_ue.ordre')
+            ->get()
+            ->flatMap(fn ($ue) => $ue->getEcuesEffectifs((int) $parcours->id)
+                ->each(fn (ESBTPMatiere $ecue) => $ecue->setAttribute('ue_libelle', trim(($ue->code_affiche ?? '').' — '.$ue->name, ' —'))))
+            ->unique('id')
+            ->values();
+    }
+
     private function matieresHistoriques(ESBTPClasse $classe): Collection
     {
         if (! $classe->filiere_id || ! $classe->niveau_etude_id) {
