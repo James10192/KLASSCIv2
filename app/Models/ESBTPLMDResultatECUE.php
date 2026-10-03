@@ -6,7 +6,6 @@ use App\Models\Traits\HasAuditTrail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 class ESBTPLMDResultatECUE extends Model
@@ -165,15 +164,18 @@ class ESBTPLMDResultatECUE extends Model
             return $snapshot;
         }
 
-        if ($this->enseignant?->name) {
-            return trim((string) $this->enseignant->name);
-        }
-
+        // Données legacy : avant l'ajout du snapshot, enseignant_id pouvait avoir
+        // été choisi sans filtre de semestre. On recalcule donc d'abord depuis les
+        // évaluations du semestre exact ; seulement si elles ne donnent rien, on
+        // conserve l'ancien enseignant interne comme dernier recours.
         $bulletin = $this->relationLoaded('bulletin') ? $this->bulletin : $this->bulletin()->first();
-        if (! $bulletin || ! $this->matiere_id) {
-            return '';
+        if ($bulletin && $this->matiere_id) {
+            $resolu = static::resoudreEnseignantDuSemestre($bulletin, (int) $this->matiere_id)['nom'];
+            if ($resolu !== '') {
+                return $resolu;
+            }
         }
 
-        return static::resoudreEnseignantDuSemestre($bulletin, (int) $this->matiere_id)['nom'];
+        return trim((string) ($this->enseignant?->name ?? ''));
     }
 }
