@@ -62,11 +62,41 @@ class ESBTPLMDBulletin extends Model
             if ($statut !== null && trim((string) $statut) !== '') {
                 $bulletin->affectation_status = (string) $statut;
             }
+
+            // Les rangs/statistiques sont des données de promotion. Une fois un
+            // bulletin de la cohorte publié, régénérer un autre étudiant ferait
+            // nécessairement bouger ces agrégats. On refuse donc la régénération
+            // académique tant que la cohorte porte un snapshot publié. Publier un
+            // brouillon déjà généré reste autorisé.
+            $dirtyAcademique = array_diff(
+                array_keys($bulletin->getDirty()),
+                ['is_published', 'updated_at', 'affectation_status']
+            );
+            $publicationSeule = $bulletin->exists
+                && $bulletin->isDirty('is_published')
+                && (bool) $bulletin->is_published
+                && $dirtyAcademique === [];
+
+            if (! $publicationSeule && $dirtyAcademique !== []) {
+                $publieDansCohorte = static::query()
+                    ->where('classe_id', $bulletin->classe_id)
+                    ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
+                    ->where('semestre', $bulletin->semestre)
+                    ->where('is_published', true)
+                    ->when($bulletin->exists, fn ($query) => $query->whereKeyNot($bulletin->getKey()))
+                    ->exists();
+
+                if ($publieDansCohorte) {
+                    throw ValidationException::withMessages([
+                        'bulletin' => 'La cohorte contient déjà un bulletin LMD publié. Dépubliez les bulletins de cette classe/année/semestre avant toute nouvelle génération afin de préserver les rangs et statistiques du snapshot.',
+                    ]);
+                }
+            }
         });
 
         // Un bulletin publié est un snapshot : la seule mutation autorisée est
-        // sa dépublication/republication explicite. Une régénération doit passer
-        // par cette étape au lieu d'écraser le document officiel en place.
+        // sa dépublication explicite. Une régénération doit passer par cette étape
+        // au lieu d'écraser le document officiel en place.
         static::updating(function (ESBTPLMDBulletin $bulletin): void {
             if (! (bool) $bulletin->getOriginal('is_published')) {
                 return;
@@ -76,6 +106,14 @@ class ESBTPLMDBulletin extends Model
             if ($dirty !== []) {
                 throw ValidationException::withMessages([
                     'bulletin' => 'Ce bulletin LMD est publié et donc figé. Dépubliez-le avant toute régénération ou correction académique.',
+                ]);
+            }
+        });
+
+        static::deleting(function (ESBTPLMDBulletin $bulletin): void {
+            if ($bulletin->is_published) {
+                throw ValidationException::withMessages([
+                    'bulletin' => 'Un bulletin LMD publié ne peut pas être supprimé. Dépubliez-le d’abord.',
                 ]);
             }
         });
