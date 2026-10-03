@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Evaluations\EnseignantsDuPlanning;
 use App\Models\Traits\HasAuditTrail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,9 +40,6 @@ class ESBTPLMDResultatECUE extends Model
         'rattrapage_inscrit' => 'boolean',
     ];
 
-    /** @var array<string, array{enseignant_id: int|null, nom: string}> */
-    private static array $enseignantsSnapshot = [];
-
     protected static function booted(): void
     {
         static::saving(function (ESBTPLMDResultatECUE $resultat): void {
@@ -64,72 +62,13 @@ class ESBTPLMDResultatECUE extends Model
                 return;
             }
 
-            $snapshot = static::resoudreEnseignantDuSemestre($bulletin, (int) $resultat->matiere_id);
+            // Le planning academique est l'affectation officielle. Les
+            // evaluations ne sont qu'un repli pour les donnees historiques.
+            $snapshot = app(EnseignantsDuPlanning::class)
+                ->pourBulletin($bulletin, (int) $resultat->matiere_id);
             $resultat->enseignant_id = $snapshot['enseignant_id'];
             $resultat->enseignant_snapshot_nom = $snapshot['nom'] !== '' ? $snapshot['nom'] : null;
         });
-    }
-
-    private static function resoudreEnseignantDuSemestre(ESBTPLMDBulletin $bulletin, int $matiereId): array
-    {
-        $cacheKey = implode(':', [
-            $bulletin->classe_id,
-            $bulletin->annee_universitaire_id,
-            $bulletin->semestre,
-            $matiereId,
-        ]);
-
-        if (! app()->runningInConsole() && array_key_exists($cacheKey, static::$enseignantsSnapshot)) {
-            return static::$enseignantsSnapshot[$cacheKey];
-        }
-
-        $semestre = (int) $bulletin->semestre;
-        $periodes = [
-            (string) $semestre,
-            'semestre'.$semestre,
-            'S'.$semestre,
-            'Semestre '.$semestre,
-            'semestre '.$semestre,
-        ];
-
-        $evaluations = ESBTPEvaluation::query()
-            ->where('matiere_id', $matiereId)
-            ->where('classe_id', $bulletin->classe_id)
-            ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
-            ->whereIn('periode', $periodes)
-            ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
-            ->where(function ($query) {
-                $query->whereNotNull('enseignant_id')
-                    ->orWhere(function ($q) {
-                        $q->whereNotNull('enseignant_externe_nom')
-                            ->where('enseignant_externe_nom', '<>', '');
-                    });
-            })
-            ->with('enseignant:id,name')
-            ->orderBy('date_evaluation')
-            ->orderBy('id')
-            ->get();
-
-        $noms = $evaluations
-            ->map(fn (ESBTPEvaluation $evaluation): string => trim((string) (
-                $evaluation->enseignant?->name
-                ?: $evaluation->enseignant_externe_nom
-                ?: ''
-            )))
-            ->filter()
-            ->unique(fn (string $nom): string => mb_strtolower($nom, 'UTF-8'))
-            ->values();
-
-        $snapshot = [
-            'enseignant_id' => $evaluations->first(fn (ESBTPEvaluation $evaluation) => $evaluation->enseignant_id !== null)?->enseignant_id,
-            'nom' => $noms->implode(' / '),
-        ];
-
-        if (! app()->runningInConsole()) {
-            static::$enseignantsSnapshot[$cacheKey] = $snapshot;
-        }
-
-        return $snapshot;
     }
 
     public function bulletin()
@@ -159,18 +98,33 @@ class ESBTPLMDResultatECUE extends Model
 
     public function getEnseignantAfficheAttribute(): string
     {
+        $bulletin = $this->relationLoaded('bulletin')
+            ? $this->bulletin
+            : $this->bulletin()->first();
+
+        // Un brouillon reste une vue de travail : si la direction corrige
+        // l'affectation dans le planning, l'apercu suit tout de suite sans
+        // devoir fabriquer un faux nouveau snapshot. La publication figera la
+        // valeur courante (ESBTPLMDBulletin::booted()).
+        if ($bulletin && ! $bulletin->is_published && $this->matiere_id) {
+            $courant = app(EnseignantsDuPlanning::class)
+                ->pourBulletin($bulletin, (int) $this->matiere_id)['nom'];
+            if ($courant !== '') {
+                return $courant;
+            }
+        }
+
         $snapshot = trim((string) $this->enseignant_snapshot_nom);
         if ($snapshot !== '') {
             return $snapshot;
         }
 
-        // Données legacy : avant l'ajout du snapshot, enseignant_id pouvait avoir
-        // été choisi sans filtre de semestre. On recalcule donc d'abord depuis les
-        // évaluations du semestre exact ; seulement si elles ne donnent rien, on
-        // conserve l'ancien enseignant interne comme dernier recours.
-        $bulletin = $this->relationLoaded('bulletin') ? $this->bulletin : $this->bulletin()->first();
+        // Donnees legacy : avant le snapshot, certains bulletins ne portaient
+        // que enseignant_id. On re-resout avec la meme regle planning ->
+        // evaluations, puis on garde la relation historique en dernier recours.
         if ($bulletin && $this->matiere_id) {
-            $resolu = static::resoudreEnseignantDuSemestre($bulletin, (int) $this->matiere_id)['nom'];
+            $resolu = app(EnseignantsDuPlanning::class)
+                ->pourBulletin($bulletin, (int) $this->matiere_id)['nom'];
             if ($resolu !== '') {
                 return $resolu;
             }
