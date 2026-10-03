@@ -31,11 +31,12 @@ Ability : `cli:admin`. Simulation par défaut : `dry_run: false` est requis pour
   donne que la note d'examen, le contrôle continu venant à part, se saisit en
   `examen` : l'évaluation est de type `examen`, nommée `Examen SEMESTREn — <élément>`,
   et reste distincte du contrôle continu saisi ensuite.
-  **Le type ne change aucun calcul** : le bulletin LMD fait la moyenne des
-  évaluations de l'élément selon leur coefficient (1 ici), et la pondération
-  contrôle continu / examen (`lmd_cc_weight`, `lmd_exam_weight`) n'est pas
-  encore appliquée. Deux contrôles continus de coefficient 1 plus cet examen
-  donnent donc un tiers chacun.
+  **Le type ne compte que si l'école applique la pondération** (réglage
+  `lmd_ponderation_cc_examen`, onglet LMD des paramètres) : la moyenne de
+  l'élément est alors `lmd_cc_weight` % de la moyenne des contrôles continus
+  plus `lmd_exam_weight` % de celle des examens (40/60 par défaut), une seule
+  partie présente comptant seule. Sans ce réglage, le bulletin LMD fait la
+  moyenne de toutes les évaluations selon leur coefficient (1 ici).
 - Une note déjà saisie pour le même élément sous l'autre nature est **refusée**
   (`422`, qui nomme l'évaluation) : elle serait comptée deux fois. Même risque si
   l'examen est ensuite planifié dans le module des examens : ne pas le ressaisir.
@@ -74,6 +75,8 @@ Les évaluations prennent le titre et le type d'un examen ; les notes ne changen
 pas. Service : `App\Domain\Notes\RequalificationEnExamen`.
 
 ## Historique
+
+- 3 octobre 2026 : la pondération contrôle continu / examen s'applique quand l'école l'active (`lmd_ponderation_cc_examen`).
 
 - 3 octobre 2026 : paramètre `nature` (`regularisation` | `examen`), aussi pour
   Nanan (`proposer_releve_notes_lmd`). Sans lui, rien ne change.

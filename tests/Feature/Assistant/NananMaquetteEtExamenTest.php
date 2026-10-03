@@ -273,7 +273,22 @@ class NananMaquetteEtExamenTest extends TestCase
 
         $r = app(ModifierMaquetteLmd::class)->executeAuthorized(['parcours' => 'BU', 'ues' => [['ue' => 'BMI1', 'code' => 'BMIB1']]], $this->admin);
 
-        $this->assertStringContainsString('sert aussi TP : son code change aussi pour eux', json_encode($r, JSON_UNESCAPED_UNICODE));
+        $this->assertStringContainsString('L\'UE BMI1 est partagée : son code change aussi pour TP', json_encode($r, JSON_UNESCAPED_UNICODE));
+    }
+
+    public function test_un_element_commun_est_controle_dans_chaque_maquette_qui_le_lit(): void
+    {
+        $tp = $this->partagerAvecTp('BST4');
+        $st = ESBTPUniteEnseignement::where('code', 'BST4')->firstOrFail();
+        DB::table('esbtp_ue_matiere')->where('matiere_id', $this->matiere('BST413')->id)->update(['parcours_id' => 0, 'credit_ecue' => 1]);
+        // TP n'a que 1 crédit pour cette UE ; BU garde les 2 de la fiche.
+        DB::table('esbtp_lmd_parcours_ue')->where(['unite_enseignement_id' => $st->id, 'parcours_id' => $tp->id])->update(['credit' => 1]);
+
+        $manques = $this->manques(app(ModifierMaquetteLmd::class)->executeAuthorized(['parcours' => 'BU', 'elements' => [
+            ['ue' => 'BST4', 'element' => 'BST413', 'credit' => 2],
+        ]], $this->admin));
+
+        $this->assertStringContainsString('BST4 (maquette TP) dépasseraient ceux de l\'UE (2 > 1)', $manques);
     }
 
     public function test_un_element_commun_ne_se_retire_pas_d_un_seul_parcours(): void

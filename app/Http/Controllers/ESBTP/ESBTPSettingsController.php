@@ -537,6 +537,9 @@ class ESBTPSettingsController extends Controller
                 // migration, lu par MobileProfileResolver, sans cette ligne
                 // la case de la page n'aurait jamais ete enregistree.
                 MobileProfileResolver::REGLAGE_ACTIF,
+                // Pondération CC / examen de la moyenne des ECUE : une case de
+                // l'onglet LMD ; décochée, seule cette liste l'enregistre à 0.
+                \App\Services\LMD\LmdAcademicRuleProfile::REGLAGE_PONDERATION_ACTIVE,
             ], InscriptionWorkflowSettings::booleens(), array_keys($troncCommunDefaults));
 
             // Reglages a cle pointee qui ne sont PAS des cases a cocher. La

@@ -258,11 +258,7 @@ class ModifierMaquetteLmd extends ActionAgent
                 }
             }
             if ($op['attributs'] !== [] || $op['credit_parcours'] !== null || $op['rang'] !== null) {
-                $partage = $op['attributs'] !== [] ? $this->autresParcours($ue, $parcours?->id) : [];
-                $op['avertissement'] = count($partage) >= ($parcours ? 1 : 2)
-                    ? sprintf('L\'UE %s sert aussi %s : %s change aussi pour eux.', $ue->code_affiche, implode(', ', $partage),
-                        implode(', ', array_map(fn ($k) => ['code' => 'son code', 'name' => 'son intitulé', 'credit' => 'son crédit'][$k], array_keys($op['attributs']))))
-                    : null;
+                $op['avertissement'] = $this->avertissementPartage($ue, $parcours, $op['attributs']);
                 $op['ligne'] = [(string) $ue->code_affiche, '—', implode(', ', $avant), implode(', ', $apres)];
                 $ops[] = $op;
             }
@@ -326,6 +322,39 @@ class ModifierMaquetteLmd extends ActionAgent
     }
 
     /**
+     * Ce qu'un changement de la fiche d'une UE partagée fait aux AUTRES parcours :
+     * le code et l'intitulé valent pour tous, le crédit seulement pour ceux qui
+     * n'ont pas le leur.
+     *
+     * @param  array<string, mixed>  $attributs
+     */
+    private function avertissementPartage(ESBTPUniteEnseignement $ue, ?ESBTPLMDParcours $parcours, array $attributs): ?string
+    {
+        $autres = $this->autresParcours($ue, $parcours?->id);
+        if ($attributs === [] || count($autres) < ($parcours ? 1 : 2)) {
+            return null;
+        }
+        $phrases = [];
+        $champs = array_values(array_intersect_key(['code' => 'son code', 'name' => 'son intitulé'], $attributs));
+        if ($champs !== []) {
+            $phrases[] = implode(' et ', $champs) . (count($champs) > 1 ? ' changent' : ' change') . ' aussi pour ' . implode(', ', $autres);
+        }
+        if (array_key_exists('credit', $attributs)) {
+            $propres = ESBTPLMDParcours::whereIn('id', DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $ue->id)->whereNotNull('credit')->pluck('parcours_id'))
+                ->pluck('code')->all();
+            $touches = array_values(array_diff($autres, $propres));
+            if ($touches !== []) {
+                $phrases[] = 'son crédit change aussi pour ' . implode(', ', $touches);
+            }
+            if (($gardent = array_values(array_intersect($autres, $propres))) !== []) {
+                $phrases[] = implode(', ', $gardent) . ' gardent leur propre crédit';
+            }
+        }
+
+        return $phrases === [] ? null : sprintf('L\'UE %s est partagée : %s.', $ue->code_affiche, implode(' ; ', $phrases));
+    }
+
+    /**
      * Après la demande entière, chaque maquette touchée tient-elle dans le crédit
      * de son UE ? Les modifications d'une même demande s'additionnent : deux
      * hausses contrôlées chacune contre l'ancien total passeraient ensemble.
@@ -346,19 +375,27 @@ class ModifierMaquetteLmd extends ActionAgent
         foreach ($parUe as $ueId => $touche) {
             $ue = ESBTPUniteEnseignement::findOrFail($ueId);
             $elements = $touche['elements'] ?? [];
+            $lies = DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $ueId)->pluck('parcours_id')->map(fn ($id) => (int) $id)->unique()->all();
+            // Un élément commun vaut pour chaque parcours de l'UE : chacune de
+            // leurs maquettes est contrôlée, pas seulement celle qu'on a nommée.
+            $toucheLeCommun = in_array(CompositionUe::COMMUN, array_column($elements, 'portee'), true);
             $maquettes = array_unique(array_merge(
-                [$parcours && DB::table('esbtp_lmd_parcours_ue')->where(['unite_enseignement_id' => $ueId, 'parcours_id' => $parcours->id])->exists() ? (int) $parcours->id : CompositionUe::COMMUN],
+                [$parcours && in_array((int) $parcours->id, $lies, true) ? (int) $parcours->id : CompositionUe::COMMUN],
+                $toucheLeCommun ? array_merge([CompositionUe::COMMUN], $lies) : [],
                 array_filter(array_column($elements, 'portee')),
             ));
-            $exclus = array_values(array_filter(array_column($elements, 'matiere_id')));
             foreach ($maquettes as $m) {
+                // L'opération compte dans cette maquette si c'est SA ligne que le
+                // bulletin y lit : une ligne réservée l'emporte sur la commune.
+                $effectives = array_filter($elements, fn ($op) => $op['portee'] === $m || ($op['portee'] === CompositionUe::COMMUN
+                    && ($op['matiere_id'] === null || $m === CompositionUe::COMMUN
+                        || ! DB::table('esbtp_ue_matiere')->where(['unite_enseignement_id' => $ueId, 'matiere_id' => $op['matiere_id'], 'parcours_id' => $m])->exists())));
                 $budget = $this->budget($ue, $m, $touche['ue'] ?? null);
-                $somme = $this->composition->creditsDe($ue, $m, $exclus) + array_sum(array_map(
-                    fn ($op) => in_array($op['portee'], [CompositionUe::COMMUN, $m], true) ? (int) ($op['valeurs']['credit_ecue'] ?? 0) : 0,
-                    $elements,
-                ));
+                $somme = $this->composition->creditsDe($ue, $m, array_values(array_filter(array_column($effectives, 'matiere_id'))))
+                    + array_sum(array_map(fn ($op) => (int) ($op['valeurs']['credit_ecue'] ?? 0), $effectives));
                 if ($budget > 0 && $somme > $budget) {
-                    $manques[] = "Les crédits des éléments de {$ue->code_affiche} dépasseraient ceux de l'UE ({$somme} > {$budget}) : "
+                    $ou = $m === CompositionUe::COMMUN ? '' : ' (maquette ' . ESBTPLMDParcours::whereKey($m)->value('code') . ')';
+                    $manques[] = "Les crédits des éléments de {$ue->code_affiche}{$ou} dépasseraient ceux de l'UE ({$somme} > {$budget}) : "
                         . 'ajuste les crédits des éléments ou celui de l\'UE dans la même demande.';
                 }
             }
