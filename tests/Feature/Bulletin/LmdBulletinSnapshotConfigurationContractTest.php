@@ -11,13 +11,13 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
     {
         $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));
 
-        $this->assertStringContainsString("header_text_on_primary", $pdf);
-        $this->assertStringContainsString("$tableHeaderText", $pdf);
-        $this->assertStringContainsString("$bulletin->affectation_label", $pdf);
-        $this->assertStringContainsString("$resECUE->enseignant_affiche", $pdf);
-        $this->assertStringContainsString("lmd_bulletin_font_table_header", $pdf);
-        $this->assertStringContainsString("lmd_bulletin_font_teacher", $pdf);
-        $this->assertStringContainsString("$statutEtablissement", $pdf);
+        $this->assertStringContainsString('header_text_on_primary', $pdf);
+        $this->assertStringContainsString('$tableHeaderText', $pdf);
+        $this->assertStringContainsString('$bulletin->affectation_label', $pdf);
+        $this->assertStringContainsString('$resECUE->enseignant_affiche', $pdf);
+        $this->assertStringContainsString('lmd_bulletin_font_table_header', $pdf);
+        $this->assertStringContainsString('lmd_bulletin_font_teacher', $pdf);
+        $this->assertStringContainsString('$statutEtablissement', $pdf);
         $this->assertStringNotContainsString('Etablissement privé, Côte d\'Ivoire', $pdf);
     }
 
@@ -32,7 +32,7 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString('setting_lmd_bulletin_font_table_header', $view);
         $this->assertStringContainsString('setting_lmd_bulletin_font_signature', $view);
         $this->assertStringContainsString('<x-liste-infinie', $view);
-        $this->assertStringContainsString("form.submit=function(){if(!suspendre)filtrer()}", $view);
+        $this->assertStringContainsString('form.submit=function(){if(!suspendre)filtrer()}', $view);
     }
 
     public function test_lmd_teacher_snapshot_is_scoped_to_semester_and_supports_external_teachers(): void
@@ -40,9 +40,9 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $model = file_get_contents(app_path('Models/ESBTPLMDResultatECUE.php'));
 
         $this->assertStringContainsString("'enseignant_snapshot_nom'", $model);
-        $this->assertStringContainsString("'semestre'.$semestre", $model);
-        $this->assertStringContainsString("'S'.$semestre", $model);
-        $this->assertStringContainsString("enseignant_externe_nom", $model);
+        $this->assertStringContainsString("'semestre'.\$semestre", $model);
+        $this->assertStringContainsString("'S'.\$semestre", $model);
+        $this->assertStringContainsString('enseignant_externe_nom', $model);
         $this->assertStringContainsString('resoudreEnseignantDuSemestre', $model);
         $this->assertStringContainsString('getEnseignantAfficheAttribute', $model);
     }
@@ -80,7 +80,7 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
 
         $this->assertStringContainsString("'affectation_status'", $migration);
         $this->assertStringContainsString("'enseignant_snapshot_nom'", $migration);
-        $this->assertStringContainsString("where('key', $key)->exists()", $migration);
+        $this->assertStringContainsString("where('key', \$key)->exists()", $migration);
         $this->assertStringContainsString("value('affectation_status')", $migration);
         $this->assertStringNotContainsString('updateOrInsert(', $migration);
     }
