@@ -64,6 +64,19 @@ class ESBTPLMDBulletin extends Model
                 $bulletin->affectation_status = (string) $statut;
             }
 
+            // Juste avant la premiere publication, chaque ECUE relit
+            // l'affectation officielle du planning. Le parent n'est pas encore
+            // enregistre comme publie en base : les enfants peuvent donc
+            // rafraichir leur snapshot sans contourner leur garde d'immuabilite.
+            if ($bulletin->exists
+                && $bulletin->isDirty('is_published')
+                && (bool) $bulletin->is_published) {
+                foreach ($bulletin->resultatsECUEs()->get() as $resultat) {
+                    $resultat->unsetRelation('bulletin');
+                    $resultat->save();
+                }
+            }
+
             // Les rangs/statistiques sont des données de promotion. Une fois un
             // bulletin de la cohorte publié, régénérer un autre étudiant ferait
             // nécessairement bouger ces agrégats. On refuse donc la régénération
