@@ -3606,7 +3606,7 @@
                                     <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
                                         <input class="form-check-input" type="checkbox" id="lmd_ponderation_cc_examen"
                                                name="lmd_ponderation_cc_examen" value="1"
-                                               {{ $lmdVal('lmd_ponderation_cc_examen', '0') == '1' ? 'checked' : '' }}>
+                                               {{ old('lmd_ponderation_cc_examen', $lmdVal('lmd_ponderation_cc_examen', '0')) == '1' ? 'checked' : '' }}>
                                     </div>
                                 </label>
                             </div>
