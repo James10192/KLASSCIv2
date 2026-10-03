@@ -16,6 +16,7 @@ use App\Services\LMD\CodeDeMatiere;
 use App\Services\LMD\CompositionUe;
 use App\Services\LMD\EcritureEcue;
 use App\Services\LMD\ParcoursUeSyncService;
+use App\Services\LMD\SortieDuLmd;
 use App\Services\LMD\SuppressionUeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,7 @@ class ESBTPLMDUEController extends Controller
         private CompositionUe $composition,
         private CodeDeMatiere $codes,
         private EcritureEcue $ecritures,
+        private SortieDuLmd $sortieDuLmd,
     ) {}
 
     /**
@@ -469,6 +471,10 @@ class ESBTPLMDUEController extends Controller
         if (! $appartientAUneAutreUe) {
             $matiere->unite_enseignement_id = $ue->id;
         }
+        // Ressaisir un element archive dans le LMD, c'est le reprendre.
+        if ($existait && ! $matiere->is_active) {
+            $matiere->is_active = true;
+        }
         if (!$existait) {
             $matiere->is_active = true;
             $matiere->created_by = auth()->id();
@@ -528,7 +534,9 @@ class ESBTPLMDUEController extends Controller
         if ($parcoursId === CompositionUe::COMMUN) {
             // La cle etrangere ne connait pas les maquettes : ce qu'elle porte
             // appartient a la composition commune.
-            $idsActuels = $idsActuels->merge($ue->matieres()->pluck('esbtp_matieres.id'))->unique();
+            // Les actifs seulement : compter un element archive (SortieDuLmd) le
+            // detacherait, donc le verserait au BTS, a chaque enregistrement.
+            $idsActuels = $idsActuels->merge($ue->matieres()->where('is_active', true)->pluck('esbtp_matieres.id'))->unique();
         }
 
         $aDetacher = $idsActuels->map(fn ($id) => (int) $id)->diff($idsConserves)->values();
@@ -538,9 +546,9 @@ class ESBTPLMDUEController extends Controller
         }
 
         // Détacher, jamais supprimer : la matière peut porter des évaluations
-        // et des notes. Même comportement que le retrait d'un ECUE isolé.
-        $this->composition->retirer($ue, $aDetacher->all(), $parcoursId);
-        $this->composition->libererCleEtrangere($ue, $aDetacher->all());
+        // et des notes. Ce qui sort de sa derniere maquette suit le reglage de
+        // l'ecole (le formulaire ne pose pas la question element par element).
+        $this->sortieDuLmd->retirerSansQuestion($ue, $aDetacher->all(), $parcoursId);
     }
 
     /**
@@ -750,66 +758,52 @@ class ESBTPLMDUEController extends Controller
     {
         $portee = $this->composition->porteeValide($ue, $request->input('parcours_id'));
 
-        // Retirer la DERNIERE ligne d'un element le fait sortir du LMD : sa cle
-        // etrangere est liberee, il rejoint le catalogue BTS, et on ne peut plus
-        // ni le relier ni le recreer sous le meme code. On le dit avant, et on
-        // n'agit que sur confirmation explicite.
-        if (! $request->boolean('confirmer_sortie') && $this->sortiraitDuLmd($ue, $ecue, $portee)) {
-            return response()->json([
-                'success' => false,
-                'confirmation_requise' => true,
-                'message' => sprintf(
-                    "« %s » n'est dans aucune autre maquette de cette UE : le retirer le détache du LMD, et il repassera dans les listes de matières BTS. "
-                    . "Pour le changer de parcours, utilisez plutôt le crayon. Le retirer quand même ?",
-                    $ecue->name ?? $ecue->code
-                ),
-            ], 409);
+        // Derniere maquette de l'element : l'ecole dit ce qu'il devient
+        // (SortieDuLmd). `confirmer_sortie`, l'ancien accord, valait « BTS ».
+        $devenir = $request->input('devenir')
+            ?? ($request->boolean('confirmer_sortie') ? SortieDuLmd::CATALOGUE_BTS : null);
+        $sortirait = $this->sortieDuLmd->sortirait($ue, $ecue, $portee);
+
+        if ($sortirait && $devenir === null) {
+            return response()->json(
+                ['success' => false, 'confirmation_requise' => true] + $this->sortieDuLmd->question($ecue),
+                409
+            );
         }
 
         // Retirer de CETTE maquette, et d'elle seule. `detach($id)` supprimait
         // toutes les lignes de cet élément, toutes maquettes confondues : retirer
         // un élément de Bâtiment le retirait aussi de Travaux Publics.
-        $retires = $this->composition->retirer($ue, [(int) $ecue->id], $portee);
+        $message = DB::transaction(function () use ($ue, $ecue, $portee, $sortirait, $devenir) {
+            $retires = $this->composition->retirer($ue, [(int) $ecue->id], $portee);
 
-        // Rien retiré alors que l'élément figure dans une AUTRE maquette de
-        // l'unité : on répondait « ECUE détaché » à vide, et l'élément restait.
-        // Le refus nomme la maquette qui le tient, pour qu'on sache où aller.
-        if ($retires === 0 && ($refus = $this->refusRetraitHorsMaquette($ue, $ecue, $portee))) {
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $refus], 422);
+            // Rien retiré alors que l'élément figure dans une AUTRE maquette de
+            // l'unité : on répondait « ECUE détaché » à vide, et l'élément restait.
+            // Le refus nomme la maquette qui le tient, pour qu'on sache où aller.
+            if ($retires === 0 && ($refus = $this->refusRetraitHorsMaquette($ue, $ecue, $portee))) {
+                return ['refus' => $refus];
             }
-            return redirect()->route('esbtp.lmd.ue.index')->with('error', $refus);
-        }
 
-        // La clé étrangère est globale : on ne la libère que si l'élément ne
-        // figure plus dans AUCUNE maquette de cette unité.
-        $this->composition->libererCleEtrangere($ue, [(int) $ecue->id]);
+            if ($sortirait) {
+                return $this->sortieDuLmd->appliquer($devenir, $ue, $ecue);
+            }
+
+            // Clé étrangère libérée, ou reportée sur une autre unité qui le porte.
+            $this->composition->libererCleEtrangere($ue, [(int) $ecue->id]);
+
+            return 'ECUE retiré de la maquette.';
+        });
+
+        $refus = is_array($message) ? $message['refus'] : null;
 
         if ($request->ajax() || $request->wantsJson()) {
-            return response()->json(['success' => true, 'message' => 'ECUE détaché avec succès.']);
+            return $refus !== null
+                ? response()->json(['success' => false, 'message' => $refus], 422)
+                : response()->json(['success' => true, 'message' => $message]);
         }
-        return redirect()->route('esbtp.lmd.ue.index')
-            ->with('success', 'ECUE détaché de l\'UE avec succès.');
-    }
 
-    /**
-     * Vrai si retirer cette ligne fait sortir l'element du LMD.
-     *
-     * Miroir de CompositionUe::libererCleEtrangere() : la cle etrangere est
-     * coupee des qu'il ne reste plus de ligne dans CETTE unite, meme si une
-     * autre unite en porte encore. L'element retombe alors dans les listes de
-     * matieres BTS (whereNull).
-     */
-    private function sortiraitDuLmd(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue, int $portee): bool
-    {
-        // Sans cle sur cette unite, rien n'est libere : un element sans cle du
-        // tout est deja dans les listes BTS, la seconde question mentirait.
-        return (int) $ecue->unite_enseignement_id === (int) $ue->id
-            && DB::table('esbtp_ue_matiere')
-                ->where('unite_enseignement_id', $ue->id)
-                ->where('matiere_id', $ecue->id)
-                ->where('parcours_id', '!=', $portee)
-                ->doesntExist();
+        return redirect()->route('esbtp.lmd.ue.index')
+            ->with($refus !== null ? 'error' : 'success', $refus ?? $message);
     }
 
     /**
@@ -865,7 +859,10 @@ class ESBTPLMDUEController extends Controller
         // par le pivot. Sans ce filtre, la liste offre l'intégralité du catalogue
         // BTS de l'établissement, et un seul clic sortirait une matière BTS de
         // tous les écrans BTS (ils filtrent sur `unite_enseignement_id IS NULL`).
-        $matieres = ESBTPMatiere::where('is_active', true)
+        // Les elements inactifs du LMD sont proposes aussi, marques « archive » :
+        // ceux que SortieDuLmd a archives, et ceux qu'un autre ecran aurait
+        // desactives. Les rattacher les reactive (EcritureEcue::ajouter).
+        $matieres = ESBTPMatiere::query()
             ->where(function ($q) {
                 $q->whereNotNull('unite_enseignement_id')
                     ->orWhereExists(fn ($sub) => $sub->selectRaw('1')
@@ -876,7 +873,7 @@ class ESBTPLMDUEController extends Controller
                 ->where('esbtp_ue_matiere.unite_enseignement_id', $ue->id)
                 ->where('esbtp_ue_matiere.parcours_id', $portee))
             ->orderBy('name')
-            ->get(['id', 'name', 'code', 'coefficient_ecue', 'credit_ecue'])
+            ->get(['id', 'name', 'code', 'coefficient_ecue', 'credit_ecue', 'is_active'])
             // Deux elements differents peuvent imprimer le meme code dans deux
             // parcours : on montre le code imprime ET le parcours d'une cle
             // suffixee, sinon les deux « AGR21031 » seraient indiscernables.
@@ -887,6 +884,7 @@ class ESBTPLMDUEController extends Controller
                 'propre_a' => CodeDeMaquette::suffixe($m->code),
                 'coefficient_ecue' => $m->coefficient_ecue,
                 'credit_ecue' => $m->credit_ecue,
+                'archive' => ! $m->is_active,
             ]);
 
         return response()->json($matieres);

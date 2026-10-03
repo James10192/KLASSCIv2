@@ -513,6 +513,7 @@
         </div>
     </div>
 </div>
+@include('esbtp.lmd.ue.partials._demande')
 @endsection
 
 @push('scripts')
@@ -621,7 +622,7 @@ function ueManager() {
 
         // ── Delete UE ──
         async deleteUe(ue) {
-            if (!confirm(`Supprimer l'UE "${ue.name}" et ses ECUEs ?`)) return;
+            if (!await demanderLu({ titre: 'Supprimer l\'UE', message: `Supprimer l'UE « ${ue.name} » et ses ECUE ?`, valider: 'Supprimer', danger: true })) return;
             try {
                 const resp = await fetch(`${BASE}/${ue.id}`, {
                     method: 'DELETE',
@@ -668,28 +669,28 @@ function ueManager() {
         },
 
         // ── Delete ECUE ──
-        async deleteEcue(ue, ecue, confirmerSortie = false) {
+        async deleteEcue(ue, ecue, devenir = null) {
             const maquette = ecue.portee
                 ? `de la maquette ${ecue.portee_label || ecue.portee_code}`
                 : 'de la composition commune (tous les parcours de l\'UE)';
-            if (!confirmerSortie && !confirm(`Retirer « ${ecue.name} » ${maquette} ?`)) return;
+            if (!devenir && !await demanderLu({ titre: 'Retirer l\'ECUE', message: `Retirer « ${ecue.name} » ${maquette} ?`, valider: 'Retirer' })) return;
             try {
                 const resp = await fetch(`${BASE}/${ue.id}/ecue/${ecue.id}`, {
                     method: 'DELETE',
                     headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' },
                     // La ligne visee : celle de CETTE maquette, et d'elle seule.
-                    body: JSON.stringify({ parcours_id: ecue.portee || null, confirmer_sortie: confirmerSortie }),
+                    body: JSON.stringify({ parcours_id: ecue.portee || null, devenir }),
                 });
                 const data = await resp.json();
-                // Derniere ligne de l'element : le serveur demande une seconde confirmation.
+                // Derniere maquette de l'element : le serveur demande ce qu'il devient.
                 if (resp.status === 409 && data.confirmation_requise) {
-                    if (confirm(data.message)) return this.deleteEcue(ue, ecue, true);
-                    return;
+                    const choix = await demanderLu({ titre: 'Dernière maquette', message: data.message, options: data.options, valider: 'Retirer' });
+                    return choix ? this.deleteEcue(ue, ecue, choix) : undefined;
                 }
                 if (resp.ok && data.success) {
                     ue.ecues = (ue.ecues || []).filter(e => !(e.id === ecue.id && (e.portee || 0) === (ecue.portee || 0)));
                     ue.matieres_count = new Set(ue.ecues.map(e => e.id)).size;
-                    this.showToast('ECUE retiré de la maquette');
+                    this.showToast(data.message || 'ECUE retiré de la maquette');
                 } else {
                     this.showToast(data.message || 'Erreur', 'error');
                 }
@@ -926,7 +927,7 @@ async function loadMatieresDisponibles() {
         matieres.forEach(m => {
             const opt = document.createElement('option');
             opt.value = m.id;
-            opt.textContent = (m.code ? m.code + ' — ' : '') + m.name + (m.propre_a ? ' (' + m.propre_a + ')' : '');
+            opt.textContent = (m.code ? m.code + ' — ' : '') + m.name + (m.propre_a ? ' (' + m.propre_a + ')' : '') + (m.archive ? ' — archivé' : '');
             opt.dataset.name = m.name; opt.dataset.code = m.code || '';
             opt.dataset.coeff = m.coefficient_ecue || ''; opt.dataset.credit = m.credit_ecue || '';
             sel.appendChild(opt);
