@@ -21,6 +21,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPUniteEnseignement;
 use App\Models\User;
 use App\Services\Chatbot\Tools\SuiviDesNotesTool;
 use App\Services\LMD\LMDImportService;
@@ -59,7 +60,7 @@ class SuiviDesNotesLmdTest extends TestCase
         parent::setUp();
         $this->withoutMiddleware([PaywallMiddleware::class, EnsureInstalled::class, CheckInstalled::class]);
         Role::findOrCreate('superAdmin', 'web');
-        foreach (['module.academic_pilotage.access', 'academic_health.view', 'academic_health.view_own', 'academic_pilotage.view_all'] as $p) {
+        foreach (['module.academic_pilotage.access', 'academic_health.view', 'academic_health.view_own', 'academic_pilotage.view_all', 'lmd.notes.view', 'module.lmd.access'] as $p) {
             Permission::findOrCreate($p, 'web');
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -97,7 +98,7 @@ class SuiviDesNotesLmdTest extends TestCase
         $this->admin = User::withoutEvents(fn () => User::factory()->create([
             'username' => 'u_'.Str::lower(Str::random(8)), 'must_change_password' => false, 'password_changed_at' => now(),
         ]));
-        $this->admin->givePermissionTo(['module.academic_pilotage.access', 'academic_health.view', 'academic_pilotage.view_all']);
+        $this->admin->givePermissionTo(['module.academic_pilotage.access', 'academic_health.view', 'academic_pilotage.view_all', 'lmd.notes.view', 'module.lmd.access']);
 
         // Algèbre : contrôle et examen, complet. Analyse : examen seul, Koffi manque.
         // Droit civil : rien du tout.
@@ -169,11 +170,40 @@ class SuiviDesNotesLmdTest extends TestCase
 
     public function test_les_deux_ecrans_lmd_portent_le_panneau(): void
     {
-        foreach (['esbtp/lmd/notes/index', 'esbtp/lmd/bulletins/select'] as $vue) {
-            $source = file_get_contents(resource_path('views/'.$vue.'.blade.php'));
-            $this->assertStringContainsString("esbtp.partials._couverture-notes'", $source, $vue);
-            $this->assertStringContainsString('couverture:contexte', $source, $vue);
+        $vue = fn (string $chemin) => file_get_contents(resource_path('views/'.$chemin.'.blade.php'));
+        foreach (['esbtp/lmd/notes/index', 'esbtp/lmd/bulletins/select'] as $page) {
+            $this->assertStringContainsString("esbtp.partials._couverture-notes'", $vue($page), $page);
         }
+        $this->assertStringContainsString("esbtp.lmd.notes.partials._suivi-script'", $vue('esbtp/lmd/notes/index'));
+        foreach (['esbtp/lmd/notes/partials/_suivi-script', 'esbtp/lmd/bulletins/select'] as $page) {
+            $this->assertStringContainsString('couverture:contexte', $vue($page), $page);
+            $this->assertStringContainsString('couverture:periode-change', $vue($page), $page);
+        }
+        // Une note enregistrée dans la fenêtre fait recalculer le panneau.
+        $this->assertSame(2, substr_count($vue('esbtp/lmd/notes/index'), 'lmdSuiviApresSauvegarde();'));
+        $this->assertStringContainsString('couverture:invalider', $vue('esbtp/lmd/notes/partials/_suivi-script'));
+    }
+
+    public function test_un_semestre_sans_unite_dans_la_maquette_se_dit_referentiel_absent(): void
+    {
+        ESBTPUniteEnseignement::where('code', 'BPH2')->update(['is_active' => false]);
+
+        $s2 = app(AcademicNoteCoverageService::class)->summarize($this->annee->id, 'semestre2', null, $this->classe->id);
+
+        $this->assertSame('referentiel_absent', $s2['summary']['state']);
+    }
+
+    public function test_la_grille_des_notes_propose_les_elements_du_suivi(): void
+    {
+        $this->admin->assignRole('superAdmin');
+        $grille = $this->actingAs($this->admin)->getJson(route('esbtp.lmd.notes.classe-data', $this->classe->id))->assertOk();
+        $suivi = collect(array_merge(
+            app(AcademicNoteCoverageService::class)->summarize($this->annee->id, 'semestre1', null, $this->classe->id)['subjects'],
+            app(AcademicNoteCoverageService::class)->summarize($this->annee->id, 'semestre2', null, $this->classe->id)['subjects'],
+        ))->pluck('id')->sort()->values()->all();
+
+        $this->assertSame($suivi, collect($grille->json('matieres'))->pluck('id')->sort()->values()->all());
+        $this->assertSame([1, 1, 2], collect($grille->json('ues'))->pluck('semestre')->sort()->values()->all());
     }
 
     public function test_nanan_dit_ce_qui_manque_et_ne_nomme_les_eleves_qu_avec_le_droit(): void

@@ -924,9 +924,7 @@ async function openNotesModal(classeId, classeName) {
         if (!document.getElementById('notesModalTitle').textContent) {
             document.getElementById('notesModalTitle').textContent = data.classe.name || '';
         }
-        window.dispatchEvent(new CustomEvent('couverture:contexte', { detail: {
-            classe_id: classeId, annee_universitaire_id: anneeSuivi, periode: 'semestre' + classeSemestres[0],
-        } }));
+        lmdSuiviContexte(classeSemestres[0]);
 
         // Update hero
         const sub = [data.classe.filiere, data.classe.niveau].filter(Boolean).join(' · ');
@@ -1040,46 +1038,10 @@ document.getElementById('periodeFilter').addEventListener('change', function() {
         buildNotesGrid();
     }
     // Le suivi montre le semestre choisi ; « Toutes » le laisse où il est.
-    if (this.value !== 'all' && currentClasseId) {
-        window.dispatchEvent(new CustomEvent('couverture:contexte', { detail: {
-            classe_id: currentClasseId, annee_universitaire_id: anneeSuivi, periode: 'semestre' + this.value,
-        } }));
-    }
+    if (this.value !== 'all') lmdSuiviContexte(this.value);
 });
 
-// ══ Suivi des notes ══
-const anneeSuivi = @json($anneeCourante->id ?? null);
-
-// Ouvre la grille d'un élément de la classe affichée : depuis le suivi,
-// ou depuis un lien direct (?classe=…&ecue=…).
-function lmdOuvrirElement(matiereId) {
-    const ueMap = currentClasseData?._ueMap || {};
-    const ue = Object.values(ueMap).find(u => u.ecues.some(e => Number(e.id) === Number(matiereId)));
-    if (!ue) return false;
-    const ueSelect = document.getElementById('ueSelect');
-    ueSelect.value = ue.code || '';
-    ueSelect.dispatchEvent(new Event('change'));
-    const ecueSelect = document.getElementById('ecueSelect');
-    ecueSelect.value = String(matiereId);
-    ecueSelect.dispatchEvent(new Event('change'));
-    document.querySelector('#modalNotes .ln-modal-toolbar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    return true;
-}
-
-// Le bandeau de suivi appelle ce point d'entrée quand la page sait ouvrir la
-// saisie elle-même ; sinon il ouvre l'adresse dans un nouvel onglet.
-window.nmOpenCoverageSaisie = function (matiere) {
-    if (!lmdOuvrirElement(matiere.id) && matiere.saisie_url) window.open(matiere.saisie_url, '_blank', 'noopener');
-};
-
-document.addEventListener('DOMContentLoaded', async function () {
-    const params = new URLSearchParams(window.location.search);
-    const classe = parseInt(params.get('classe') || '', 10);
-    if (!classe) return;
-    await openNotesModal(classe, '');
-    const ecue = parseInt(params.get('ecue') || '', 10);
-    if (ecue) lmdOuvrirElement(ecue);
-});
+@include('esbtp.lmd.notes.partials._suivi-script')
 
 // ══ Load evaluations for class + matière (same API as BTS) ══
 async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
@@ -1316,6 +1278,7 @@ function saveNote(studentId, evaluationId, noteValue) {
         if (!data.success) throw new Error(data.message || 'Erreur de sauvegarde');
         markNoteSaved(input);
         removeOfflineNote(noteMutationKey(payload));
+        lmdSuiviApresSauvegarde();
     }).catch(err => {
         if (err.refusee) {
             // Refus du serveur : ce n'est PAS une attente réseau. On ne garde
@@ -1500,6 +1463,7 @@ function envoyerLot(notes, submitFinal) {
             setTimeout(() => inp.classList.remove('ln-saved'), 1500);
         });
         window.dispatchEvent(new CustomEvent('toast', { detail: { type: data.success ? 'success' : 'warning', message: data.message || 'Notes enregistrées.' } }));
+        lmdSuiviApresSauvegarde();
         (currentClasseData?.etudiants || []).forEach(stu => calculateStudentAverage(stu.id));
         calculateClassAverages();
     }).catch(err => {

@@ -19,7 +19,7 @@
 
     @param int|null    $classeId   null si la page fait choisir la classe
     @param int|null    $anneeId
-    @param string      $periode    semestre1 | semestre2 | annuel
+    @param string      $periode    semestre1 … semestre10 (LMD) | annuel
     @param bool        $replie     détail plié par défaut (true)
     @param string|null $titre      surcharge du libellé
     @param bool        $lienPilotage  lien « Ouvrir le pilotage académique » (true)

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\AcademicPilotage;
 use App\Domain\AcademicPilotage\Services\AcademicActorScopeService;
 use App\Domain\AcademicPilotage\Services\AcademicNoteCoverageService;
 use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
+use App\Domain\AcademicPilotage\Support\NavigationDuSuivi;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPClasse;
 use Illuminate\Http\JsonResponse;
@@ -27,6 +28,7 @@ class AcademicCoverageController extends Controller
     public function __construct(
         private readonly AcademicNoteCoverageService $coverage,
         private readonly AcademicActorScopeService $scope,
+        private readonly NavigationDuSuivi $navigation,
     ) {}
 
     public function show(Request $request, ESBTPClasse $classe): JsonResponse
@@ -59,7 +61,7 @@ class AcademicCoverageController extends Controller
         if ($anneeId === null) {
             $payload = $this->coverage->summarize(null, $periode, null, (int) $classe->id);
 
-            $payload = $this->ajouterNavigation($payload, $classe);
+            $payload = $this->navigation->ajouter($payload, $classe);
 
             return response()->json($detailComplet ? $payload : $this->coverage->sansLesNotesNiLeursAuteurs($payload), 200);
         }
@@ -78,53 +80,11 @@ class AcademicCoverageController extends Controller
 
         // Le lien est ajouté après le cache : il reste une aide de navigation,
         // pas une donnée calculée qui modifierait la clé ou le périmètre.
-        $payload = $this->ajouterNavigation($payload, $classe);
+        $payload = $this->navigation->ajouter($payload, $classe);
 
         // APRES le cache, jamais avant : la premiere lecture par un enseignant
         // servirait sinon une version amputee a tous les suivants.
         return response()->json($detailComplet ? $payload : $this->coverage->sansLesNotesNiLeursAuteurs($payload), 200);
-    }
-
-    /**
-     * Ce qui sert a naviguer, ajoute apres le cache : les periodes que la
-     * classe peut afficher, et pour chaque matiere l'adresse qui ouvre sa
-     * grille de saisie sans refaire le chemin.
-     *
-     * Une classe LMD a ses propres semestres (S3 et S4 en deuxieme annee) et sa
-     * propre saisie : `esbtp.lmd.notes.index`, qui ouvre la classe et l'element.
-     *
-     * @param array<string, mixed> $payload
-     * @return array<string, mixed>
-     */
-    private function ajouterNavigation(array $payload, ESBTPClasse $classe): array
-    {
-        $lmd = strtoupper((string) $classe->systeme_academique) === 'LMD';
-        $semestres = $lmd ? $classe->getSemestresLMD() : [1, 2];
-        $payload['periodes'] = array_merge(
-            [['valeur' => 'annuel', 'libelle' => 'Année']],
-            array_map(fn (int $n) => ['valeur' => 'semestre'.$n, 'libelle' => 'S'.$n], $semestres),
-        );
-
-        if (! isset($payload['subjects']) || ! is_array($payload['subjects'])) {
-            return $payload;
-        }
-
-        $semestre = (int) data_get($payload, 'maquette.semestre', 0);
-        $periode = 'semestre'.(in_array($semestre, $semestres, true) ? $semestre : $semestres[0]);
-
-        $payload['subjects'] = array_map(function (array $matiere) use ($classe, $periode, $lmd): array {
-            if (empty($matiere['id'])) {
-                return $matiere;
-            }
-
-            $matiere['saisie_url'] = $lmd
-                ? route('esbtp.lmd.notes.index', ['classe' => $classe->id, 'ecue' => (int) $matiere['id']])
-                : route('esbtp.notes.index', ['classe_id' => $classe->id, 'matiere_id' => (int) $matiere['id'], 'periode' => $periode]);
-
-            return $matiere;
-        }, $payload['subjects']);
-
-        return $payload;
     }
 
     /**

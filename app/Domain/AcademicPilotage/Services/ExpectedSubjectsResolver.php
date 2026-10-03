@@ -9,6 +9,7 @@ use App\Domain\BtsTroncCommun\BtsMaquette;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereFilierNiveau;
+use App\Services\LMDBulletinService;
 use Illuminate\Support\Collection;
 
 /**
@@ -64,13 +65,15 @@ final class ExpectedSubjectsResolver
         $systeme = $this->systems->normalize($classe->systeme_academique);
         $semestre = $this->periods->semesterNumber($periode);
 
-        if ($systeme === AcademicSystemNormalizer::LMD && $classe->parcours_id) {
-            return $this->reponse($this->elementsDeLaMaquetteLmd($classe, $semestre), BtsMaquette::ETAT_COMPLET, $semestre, $systeme);
+        if ($systeme === AcademicSystemNormalizer::LMD) {
+            $elements = $this->elementsDeLaMaquetteLmd($classe, $semestre);
+
+            // Vide, c'est la maquette qui manque pour ce semestre : le dire
+            // « referentiel absent », pas « rien d'attendu ce semestre ».
+            return $this->reponse($elements, $elements->isEmpty() ? BtsMaquette::ETAT_AUCUN : BtsMaquette::ETAT_COMPLET, $semestre, $systeme);
         }
 
         if ($systeme !== AcademicSystemNormalizer::BTS) {
-            // Classe LMD sans parcours (tronc commun d'une mention) : pas de
-            // maquette a lire, on garde l'ancienne lecture.
             return $this->reponse($this->matieresHistoriques($classe), BtsMaquette::ETAT_AUCUN, $semestre, $systeme);
         }
 
@@ -165,16 +168,13 @@ final class ExpectedSubjectsResolver
     }
 
     /**
-     * Comportement d'avant, conserve pour le LMD : les matieres rattachees au
-     * couple (filiere, niveau) de la classe, sans union ni filtre.
+     * Les elements que le bulletin LMD de la classe lit, semestre par semestre
+     * (tous ses semestres en vue annuelle).
      *
-     * @return Collection<int, ESBTPMatiere>
-     */
-    /**
-     * Les elements de la maquette LMD de la classe : unites de son parcours
-     * pour le semestre (tous ses semestres en vue annuelle), dans l'ordre du
-     * bulletin, puis leurs elements par `getEcuesEffectifs()`, la lecture
-     * canonique qui tient compte des elements reserves a un parcours.
+     * La lecture est celle du bulletin, `LMDBulletinService::getUEsForSemestre()`,
+     * puis `getEcuesEffectifs()` : memes elements actifs, meme ordre, meme repli
+     * par filiere et niveau pour une classe sans parcours. Le suivi ne doit pas
+     * compter sur une maquette et le bulletin se calculer sur une autre.
      *
      * Chaque element porte `ue_libelle` (non persiste) : le suivi regroupe
      * par unite, comme la maquette.
@@ -183,26 +183,24 @@ final class ExpectedSubjectsResolver
      */
     private function elementsDeLaMaquetteLmd(ESBTPClasse $classe, ?int $semestre): Collection
     {
-        $parcours = $classe->parcours;
-        if (! $parcours) {
-            return collect();
-        }
-
+        $bulletin = app(LMDBulletinService::class);
+        $parcoursId = $classe->parcours_id ? (int) $classe->parcours_id : null;
         $semestres = $semestre !== null ? [$semestre] : $classe->getSemestresLMD();
 
-        return $parcours->unitesEnseignement()
-            ->wherePivotIn('semestre', $semestres)
-            ->where('esbtp_unites_enseignement.is_active', true)
-            ->with(['ecues', 'matieres'])
-            ->orderBy('esbtp_lmd_parcours_ue.semestre')
-            ->orderBy('esbtp_lmd_parcours_ue.ordre')
-            ->get()
-            ->flatMap(fn ($ue) => $ue->getEcuesEffectifs((int) $parcours->id)
+        return collect($semestres)
+            ->flatMap(fn (int $s) => $bulletin->getUEsForSemestre($classe, $s))
+            ->flatMap(fn ($ue) => $ue->getEcuesEffectifs($parcoursId)
                 ->each(fn (ESBTPMatiere $ecue) => $ecue->setAttribute('ue_libelle', trim(($ue->code_affiche ?? '').' — '.$ue->name, ' —'))))
             ->unique('id')
             ->values();
     }
 
+    /**
+     * Systeme ni BTS ni LMD : les matieres rattachees au couple (filiere,
+     * niveau) de la classe, sans union ni filtre.
+     *
+     * @return Collection<int, ESBTPMatiere>
+     */
     private function matieresHistoriques(ESBTPClasse $classe): Collection
     {
         if (! $classe->filiere_id || ! $classe->niveau_etude_id) {

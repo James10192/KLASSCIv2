@@ -4,10 +4,10 @@ namespace App\Services\Chatbot\Tools;
 
 use App\Domain\AcademicPilotage\Services\AcademicActorScopeService;
 use App\Domain\AcademicPilotage\Services\AcademicNoteCoverageService;
+use App\Domain\AcademicPilotage\Support\NavigationDuSuivi;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Route;
 
 /**
  * « Qu'est-ce qui manque au S1 en LBU ? » — le même constat que le panneau
@@ -61,6 +61,8 @@ class SuiviDesNotesTool extends ChatbotTool
         $autorisees = $perimetre->global ? null : $perimetre->classIds;
 
         $classes = $this->classes($args, $autorisees);
+        $tronque = $classes->count() > self::CLASSES_MAX;
+        $classes = $classes->take(self::CLASSES_MAX);
         if ($classes->isEmpty()) {
             return ['display_type' => 'text', 'message' => 'Aucune classe de votre périmètre ne correspond. Précisez le nom ou le code de la classe.'];
         }
@@ -68,16 +70,17 @@ class SuiviDesNotesTool extends ChatbotTool
         $detail = (bool) $user->can('academic_health.view');
         $demande = isset($args['semestre']) ? (int) $args['semestre'] : null;
         $service = app(AcademicNoteCoverageService::class);
+        $navigation = app(NavigationDuSuivi::class);
 
-        $constats = $classes->map(function (ESBTPClasse $classe) use ($service, $anneeId, $autorisees, $detail, $demande) {
-            $semestres = strtoupper((string) $classe->systeme_academique) === 'LMD' ? $classe->getSemestresLMD() : [1, 2];
+        $constats = $classes->map(function (ESBTPClasse $classe) use ($service, $navigation, $anneeId, $autorisees, $detail, $demande) {
+            $semestres = $navigation->semestres($classe);
             $semestre = $demande ?? $semestres[0];
             if (! in_array($semestre, $semestres, true)) {
                 return ['classe' => $classe->name, 'classe_id' => (int) $classe->id, 'semestre' => $semestre,
                     'refus' => 'Cette classe n\'a pas de semestre '.$semestre.' (semestres : '.implode(', ', $semestres).').'];
             }
 
-            $payload = $service->summarize((int) $anneeId, 'semestre'.$semestre, null, (int) $classe->id, $autorisees);
+            $payload = $navigation->ajouter($service->summarize((int) $anneeId, 'semestre'.$semestre, null, (int) $classe->id, $autorisees), $classe);
             if (! $detail) {
                 $payload = $service->sansLesNotesNiLeursAuteurs($payload);
             }
@@ -92,7 +95,10 @@ class SuiviDesNotesTool extends ChatbotTool
             'results' => $constats->flatMap(fn (array $c) => $this->lignes($c))->values()->all(),
             'diagnostic' => [
                 'noms_des_eleves_visibles' => $detail,
-                'classes' => $constats->map(fn (array $c) => $unique ? $c : array_diff_key($c, ['eleves_sans_note' => 1]))->all(),
+                // Plus de classes correspondent : seules les premieres sont lues.
+                'classes_non_lues' => $tronque ? 'au moins une ; demander une classe plus precise' : null,
+                // Les liens partent a l'ecran (cartes), pas au raisonnement.
+                'classes' => $constats->map(fn (array $c) => array_diff_key($c, ['liens' => 1] + ($unique ? [] : ['eleves_sans_note' => 1])))->all(),
             ],
         ];
     }
@@ -116,7 +122,7 @@ class SuiviDesNotesTool extends ChatbotTool
             $q->where('name', 'like', "%{$texte}%")
                 ->orWhere('code', 'like', "%{$texte}%")
                 ->orWhereHas('parcours', fn ($p) => $p->where('code', $texte));
-        })->orderBy('name')->limit(self::CLASSES_MAX)->get();
+        })->orderBy('name')->limit(self::CLASSES_MAX + 1)->get();
     }
 
     /** Le constat d'une classe, verdicts d'abord, listes bornées. */
@@ -139,6 +145,7 @@ class SuiviDesNotesTool extends ChatbotTool
             'notes_manquantes' => (int) ($payload['summary']['missing_results'] ?? 0),
             'eleves_attendus' => (int) ($payload['summary']['students_expected'] ?? 0),
             'sans_aucune_note' => $elements->whereIn('statut', ['non_evaluee', 'programmee'])->map($nom)->values()->all(),
+            'liens' => $elements->whereIn('statut', ['non_evaluee', 'programmee', 'partielle'])->mapWithKeys(fn (array $m) => [$nom($m) => $m['saisie_url'] ?? null])->all(),
             'partiels' => $elements->where('statut', 'partielle')->map(fn (array $m) => [
                 'element' => $nom($m),
                 'manquantes' => (int) $m['missing_count'],
@@ -158,14 +165,14 @@ class SuiviDesNotesTool extends ChatbotTool
             return [['nom' => $constat['classe'], 'detail' => $constat['refus']]];
         }
 
-        $lien = Route::has('esbtp.lmd.notes.index')
-            ? route('esbtp.lmd.notes.index', ['classe' => $constat['classe_id']], false) : null;
+        // Chaque carte ouvre la saisie de SON élément, LMD ou BTS selon la classe.
+        $lien = fn (string $element) => $constat['liens'][$element] ?? null;
 
         $cartes = collect($constat['sans_aucune_note'])->map(fn (string $e) => [
-            'nom' => $e, 'classe' => $constat['classe'], 'detail' => 'S'.$constat['semestre'], 'statut' => 'Aucune note', 'lien' => $lien,
+            'nom' => $e, 'classe' => $constat['classe'], 'detail' => 'S'.$constat['semestre'], 'statut' => 'Aucune note', 'lien' => $lien($e),
         ])->merge(collect($constat['partiels'])->map(fn (array $p) => [
             'nom' => $p['element'], 'classe' => $constat['classe'], 'detail' => 'S'.$constat['semestre'],
-            'statut' => $p['manquantes'].' note(s) manquante(s)', 'lien' => $lien,
+            'statut' => $p['manquantes'].' note(s) manquante(s)', 'lien' => $lien($p['element']),
         ]));
 
         return $cartes->isEmpty()

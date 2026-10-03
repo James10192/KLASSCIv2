@@ -704,6 +704,11 @@ function lmdBulletinSelect() {
                 } }));
             };
             ['classeId', 'anneeId', 'semestre'].forEach(champ => this.$watch(champ, suivre));
+            // Et le semestre choisi dans le panneau devient celui de la génération.
+            window.addEventListener('couverture:periode-change', (event) => {
+                const n = Number(String(event.detail?.periode || '').replace('semestre', ''));
+                if (this.semestresAutorises.map(Number).includes(n)) this.semestre = String(n);
+            });
             this.$watch('mode', (val) => {
                 if (val === 'etudiant' && this.classeId && this.etudiants.length === 0) {
                     this.fetchEtudiants();
