@@ -385,6 +385,11 @@ class ESBTPEvaluationController extends Controller
     {
         $isEmbedRequest = $request->boolean('embed') || $request->ajax() || $request->wantsJson();
 
+        // La fenêtre des notes LMD envoie « 1 » : refusé depuis que la période
+        // est contrôlée, il bloquait toute création d'évaluation LMD.
+        $request->merge(['periode' => ESBTPEvaluation::periodeSaisie($request->input('periode'))]);
+        $classeCible = ESBTPClasse::find($request->input('classe_id'));
+
         // Garde-fou critique : bareme strictement > 0 (sinon division par zéro
         // dans ESBTPNote::getNoteVingtAttribute), coefficient strictement borné.
         $validator = \Validator::make($request->all(), [
@@ -400,7 +405,7 @@ class ESBTPEvaluationController extends Controller
             'coefficient' => 'required|numeric|min:'.ESBTPEvaluation::COEFFICIENT_MIN.'|max:'.ESBTPEvaluation::COEFFICIENT_MAX,
             'duree_minutes' => 'nullable|integer|min:1|max:480',
             'is_published' => 'nullable|boolean',
-            'periode' => ['required', Rule::in(array_keys(ESBTPEvaluation::getPeriodes()))],
+            'periode' => ['required', Rule::in(array_keys(ESBTPEvaluation::periodesPourClasse($classeCible)))],
         ], [
             'titre.required' => 'Le titre est obligatoire',
             'type.required' => 'Le type d\'évaluation est obligatoire',
