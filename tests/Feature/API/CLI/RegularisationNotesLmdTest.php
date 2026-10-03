@@ -90,9 +90,9 @@ class RegularisationNotesLmdTest extends TestCase
         ];
     }
 
-    private function poster(string $codeEcue, bool $dryRun = true)
+    private function poster(string $codeEcue, bool $dryRun = true, array $plus = [])
     {
-        return $this->postJson('/api/cli/lmd/evaluations/regulariser-notes', [
+        return $this->postJson('/api/cli/lmd/evaluations/regulariser-notes', $plus + [
             'etudiant_id' => $this->eleve->id,
             'classe_id' => $this->classe->id,
             'annee_universitaire_id' => $this->annee->id,
@@ -172,5 +172,31 @@ class RegularisationNotesLmdTest extends TestCase
             'motif' => 'Releve officiel du semestre 2 transmis par l etablissement',
             'notes' => [['matiere_id' => DB::table('esbtp_matieres')->where('code', 'ANUM')->value('id'), 'note' => 14]],
         ])->assertStatus(422)->assertJsonPath('success', false);
+    }
+
+    public function test_une_note_d_examen_seul_est_un_examen_distinct_du_controle_continu(): void
+    {
+        // Abidjan, session d'avril 2026 : le relevé ne donne que l'examen, le
+        // contrôle continu viendra à part. L'évaluation doit le dire.
+        DB::table('esbtp_ue_matiere')->delete();
+
+        $this->poster('ANUM', true, ['nature' => 'examen'])
+            ->assertOk()
+            ->assertJsonPath('data.evaluations_et_notes.0.evaluation', 'Examen SEMESTRE2 — Analyse numerique TIR');
+        $this->poster('ANUM', false, ['nature' => 'examen'])->assertOk();
+
+        $evaluation = \App\Models\ESBTPEvaluation::firstOrFail();
+        $this->assertSame('examen', $evaluation->type);
+        $this->assertSame(\App\Models\ESBTPEvaluation::STATUS_COMPLETED, $evaluation->status);
+        $this->assertSame('examen', ESBTPNote::where('etudiant_id', $this->eleve->id)->value('type_evaluation'));
+
+        // Sans nature : la régularisation d'avant, inchangée et à part.
+        $this->poster('ANUM', false)->assertOk();
+        $this->assertSame(['controle', 'examen'], \App\Models\ESBTPEvaluation::orderBy('type')->pluck('type')->all());
+    }
+
+    public function test_une_nature_inconnue_est_refusee(): void
+    {
+        $this->poster('ANUM', true, ['nature' => 'partiel'])->assertStatus(422);
     }
 }
