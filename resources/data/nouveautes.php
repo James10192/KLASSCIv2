@@ -23,6 +23,17 @@ return [
     'titre' => 'Octobre 2026',
     'entrees' => [
         [
+            'titre' => 'Retirer un ECUE ne le fait plus passer en BTS',
+            'icone' => 'fa-layer-group',
+            'texte' => 'Quand vous retirez un élément de la dernière maquette qui le contient (Unités d’enseignement LMD), KLASSCI vous demande ce qu’il devient : le supprimer s’il n’a jamais servi, l’archiver dans le LMD avec son historique, ou, seulement si vous le choisissez, en faire une matière BTS. Il ne retombe plus de lui-même dans les listes de notes et de bulletins BTS.',
+            'permissions' => ['lmd.structure.delete'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-10/retrait-ecue-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Un élément qui a déjà servi ne peut pas être supprimé : KLASSCI conseille de l’archiver.',
+            ],
+        ],
+        [
             'titre' => 'Les résultats refaits, plus rapides et en couleur',
             'icone' => 'fa-chart-column',
             'texte' => 'La page Résultats se charge plus vite et la liste continue d’elle-même quand vous descendez, 50 élèves à la fois. La moyenne générale et le taux de réussite passent au vert, à l’orange ou au rouge selon leur état ; les repères se règlent dans les paramètres.',
