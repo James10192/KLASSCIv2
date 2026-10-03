@@ -6,7 +6,6 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPPlanificationAcademique;
-use Illuminate\Support\Collection;
 
 /**
  * Source unique de l'affectation enseignant d'une evaluation LMD.
@@ -135,6 +134,60 @@ final class EnseignantsDuPlanning
     }
 
     /**
+     * Quand la direction change l'enseignant principal du planning LMD, les
+     * evaluations deja creees doivent suivre : sinon le bulletin dirait un nom
+     * et le garde de saisie des notes en autoriserait un autre.
+     *
+     * Une desaffectation explicite nettoie aussi les evaluations existantes.
+     * Une planification sans changement de professeur ne declenche rien.
+     */
+    public function synchroniserEvaluations(ESBTPPlanificationAcademique $planning): void
+    {
+        if (! $planning->wasRecentlyCreated && ! $planning->wasChanged('enseignant_principal_id')) {
+            return;
+        }
+
+        if (! $planning->matiere_id || ! $planning->filiere_id || ! $planning->niveau_etude_id
+            || ! $planning->annee_universitaire_id || ! $planning->semestre) {
+            return;
+        }
+
+        $classeIds = ESBTPClasse::query()
+            ->where('systeme_academique', 'LMD')
+            ->where('niveau_etude_id', $planning->niveau_etude_id)
+            ->where(function ($query) use ($planning) {
+                $query->where('filiere_id', $planning->filiere_id)
+                    ->orWhereHas('parcours', fn ($parcours) => $parcours->where('filiere_id', $planning->filiere_id));
+            })
+            ->pluck('id');
+
+        if ($classeIds->isEmpty()) {
+            return;
+        }
+
+        ESBTPEvaluation::query()
+            ->whereIn('classe_id', $classeIds)
+            ->where('matiere_id', $planning->matiere_id)
+            ->where('annee_universitaire_id', $planning->annee_universitaire_id)
+            ->whereIn('periode', $this->periodesDuSemestre((int) $planning->semestre))
+            ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
+            ->each(function (ESBTPEvaluation $evaluation) use ($planning): void {
+                $nouveau = $planning->enseignant_principal_id
+                    ? (int) $planning->enseignant_principal_id
+                    : null;
+
+                if ((int) ($evaluation->enseignant_id ?? 0) === (int) ($nouveau ?? 0)
+                    && ($nouveau !== null || $evaluation->enseignant_externe_nom === null)) {
+                    return;
+                }
+
+                $evaluation->enseignant_id = $nouveau;
+                $evaluation->enseignant_externe_nom = null;
+                $evaluation->save();
+            });
+    }
+
+    /**
      * Enseignant(s) a figer sur un bulletin LMD. Le planning gagne toujours.
      * Les evaluations ne servent que de repli pour les donnees historiques ou
      * les ECUE dont le planning n'a encore aucun enseignant.
@@ -177,19 +230,11 @@ final class EnseignantsDuPlanning
     private function depuisEvaluations(ESBTPLMDBulletin $bulletin, int $matiereId): array
     {
         $semestre = (int) $bulletin->semestre;
-        $periodes = [
-            (string) $semestre,
-            'semestre'.$semestre,
-            'S'.$semestre,
-            'Semestre '.$semestre,
-            'semestre '.$semestre,
-        ];
-
         $evaluations = ESBTPEvaluation::query()
             ->where('matiere_id', $matiereId)
             ->where('classe_id', $bulletin->classe_id)
             ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
-            ->whereIn('periode', $periodes)
+            ->whereIn('periode', $this->periodesDuSemestre($semestre))
             ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
             ->where(function ($query) {
                 $query->whereNotNull('enseignant_id')
@@ -235,6 +280,18 @@ final class EnseignantsDuPlanning
         $semestre = (int) $match[1];
 
         return $semestre >= 1 && $semestre <= 10 ? $semestre : null;
+    }
+
+    /** @return list<string> */
+    private function periodesDuSemestre(int $semestre): array
+    {
+        return [
+            (string) $semestre,
+            'semestre'.$semestre,
+            'S'.$semestre,
+            'Semestre '.$semestre,
+            'semestre '.$semestre,
+        ];
     }
 
     private function vide(bool $lmd, ?int $semestre): array
