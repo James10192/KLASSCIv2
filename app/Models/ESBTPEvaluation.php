@@ -266,6 +266,37 @@ class ESBTPEvaluation extends Model implements Auditable
     }
 
     /**
+     * Périodes qu'une évaluation de CETTE classe peut porter : les deux
+     * semestres de l'écran, et pour une classe LMD ceux de son niveau
+     * (semestre3 à semestre6 en licence, par exemple).
+     *
+     * @return array<string, string>
+     */
+    public static function periodesPourClasse(?ESBTPClasse $classe): array
+    {
+        $periodes = self::getPeriodes();
+        if ($classe !== null && ($classe->systeme_academique ?? '') === 'LMD') {
+            foreach ($classe->getSemestresLMD() as $numero) {
+                $periodes['semestre'.$numero] ??= 'Semestre '.$numero;
+            }
+        }
+
+        return $periodes;
+    }
+
+    /**
+     * Un numéro seul (« 1 », « 3 ») est la forme qu'envoie la fenêtre des
+     * notes LMD : il s'écrit « semestre1 », « semestre3 ». Tout le reste est
+     * rendu tel quel, et la validation en décidera.
+     */
+    public static function periodeSaisie(mixed $periode): mixed
+    {
+        return is_string($periode) && preg_match('/^\d{1,2}$/', $periode) === 1
+            ? 'semestre'.(int) $periode
+            : $periode;
+    }
+
+    /**
      * Périodes à proposer pour modifier CETTE évaluation : la liste de
      * l'écran, plus sa période actuelle si elle n'y figure pas (évaluation
      * créée avant, ou par un autre chemin) — sinon le sélecteur l'effacerait.
