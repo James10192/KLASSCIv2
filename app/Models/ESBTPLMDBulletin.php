@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\ValidationException;
 
 class ESBTPLMDBulletin extends Model
 {
@@ -18,6 +19,7 @@ class ESBTPLMDBulletin extends Model
     protected $fillable = [
         'etudiant_id', 'classe_id', 'parcours_id', 'annee_universitaire_id',
         'semestre', 'niveau', 'domaine_label', 'mention_label', 'parcours_label',
+        'affectation_status',
         'moyenne_generale', 'credits_capitalises', 'credits_totaux',
         'rang', 'effectif', 'decision_deliberation', 'appreciation',
         'absences_justifiees', 'absences_non_justifiees', 'is_published',
@@ -35,6 +37,49 @@ class ESBTPLMDBulletin extends Model
         'absences_non_justifiees' => 'integer',
         'is_published' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        // Tant que le bulletin est en brouillon, il suit le statut MESRS courant
+        // de l'inscription. Au passage en publié, cette valeur devient une partie
+        // du snapshot officiel et ne bouge plus silencieusement.
+        static::saving(function (ESBTPLMDBulletin $bulletin): void {
+            if ($bulletin->exists && (bool) $bulletin->getOriginal('is_published')) {
+                return;
+            }
+
+            if (! $bulletin->etudiant_id || ! $bulletin->classe_id || ! $bulletin->annee_universitaire_id) {
+                return;
+            }
+
+            $statut = ESBTPInscription::query()
+                ->where('etudiant_id', $bulletin->etudiant_id)
+                ->where('classe_id', $bulletin->classe_id)
+                ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
+                ->orderByDesc('id')
+                ->value('affectation_status');
+
+            if ($statut !== null && trim((string) $statut) !== '') {
+                $bulletin->affectation_status = (string) $statut;
+            }
+        });
+
+        // Un bulletin publié est un snapshot : la seule mutation autorisée est
+        // sa dépublication/republication explicite. Une régénération doit passer
+        // par cette étape au lieu d'écraser le document officiel en place.
+        static::updating(function (ESBTPLMDBulletin $bulletin): void {
+            if (! (bool) $bulletin->getOriginal('is_published')) {
+                return;
+            }
+
+            $dirty = array_diff(array_keys($bulletin->getDirty()), ['is_published', 'updated_at']);
+            if ($dirty !== []) {
+                throw ValidationException::withMessages([
+                    'bulletin' => 'Ce bulletin LMD est publié et donc figé. Dépubliez-le avant toute régénération ou correction académique.',
+                ]);
+            }
+        });
+    }
 
     // --- Relations ---
 
@@ -101,5 +146,17 @@ class ESBTPLMDBulletin extends Model
     {
         if ($this->credits_totaux == 0) return 0;
         return round(($this->credits_capitalises / $this->credits_totaux) * 100, 1);
+    }
+
+    public function getAffectationLabelAttribute(): string
+    {
+        $statut = mb_strtolower(trim((string) $this->affectation_status), 'UTF-8');
+
+        return match ($statut) {
+            'affecté', 'affecte' => 'Affecté',
+            'réaffecté', 'reaffecté', 'réaffecte', 'reaffecte' => 'Réaffecté',
+            'non_affecté', 'non_affecte', 'non affecté', 'non affecte' => 'Non affecté',
+            default => '—',
+        };
     }
 }
