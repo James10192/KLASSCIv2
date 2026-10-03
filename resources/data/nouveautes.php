@@ -24,6 +24,7 @@ return [
     'entrees' => [
         [
             'titre' => 'Des régularisations qui étaient des notes d’examen',
+            'si' => 'requalification_examen',
             'icone' => 'fa-exchange-alt',
             'texte' => 'Dans la fenêtre des notes LMD d’une classe, un bandeau signale les évaluations saisies en « Régularisation ». Si c’étaient les notes d’examen d’un semestre, choisissez ce semestre, regardez ce qui change, puis « Requalifier en examen » : elles s’appellent désormais « Examen … », aucune note ne bouge, et le contrôle continu reste distinct.',
             'permissions' => ['lmd.notes.manage'],
