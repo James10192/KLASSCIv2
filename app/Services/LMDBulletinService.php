@@ -662,6 +662,9 @@ class LMDBulletinService
      * cette moyenne se fait a part pour les examens et pour le reste (controle
      * continu), puis les deux se ponderent : 40/60 par defaut. Une seule des deux
      * parties presente compte seule. Une absence vaut 0, comme sans ponderation.
+     * « Controle continu » = toute evaluation qui n'est pas un examen (devoir,
+     * controle, tp, oral...). Le rattrapage LMD ne passe pas par une evaluation :
+     * il est porte par la note de rattrapage de l'ECUE (noteEffectiveECUE).
      */
     public function calculerMoyenneECUE(
         int $etudiantId,

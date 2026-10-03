@@ -81,6 +81,20 @@ final class LmdAcademicRuleProfile
     }
 
     /**
+     * La pondération telle qu'un document officiel la grave : null quand l'école
+     * ne l'applique pas, pour que le PV et le relevé n'affirment jamais une
+     * règle qui n'a pas produit leurs moyennes.
+     *
+     * @return array{cc: float, examen: float}|null
+     */
+    public function ponderationGravee(): ?array
+    {
+        return $this->ponderationAppliquee()
+            ? ['cc' => $this->continuousAssessmentWeight(), 'examen' => $this->finalExamWeight()]
+            : null;
+    }
+
+    /**
      * Portee du rattrapage : `ecue` (seuls les ECUE rates) ou `ue` (toute UE non acquise).
      */
     public function rattrapageScope(): string

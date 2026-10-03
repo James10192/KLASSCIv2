@@ -3,6 +3,7 @@
 use App\Models\Setting;
 use App\Services\LMD\LmdAcademicRuleProfile;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
 
 /**
  * La bascule qui fait entrer la pondération contrôle continu / examen dans la
@@ -13,6 +14,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Le premier compte, null sur une base vide : jamais `1` en dur.
+        $createur = DB::table('users')->min('id');
+
         Setting::firstOrCreate(
             ['key' => LmdAcademicRuleProfile::REGLAGE_PONDERATION_ACTIVE],
             [
@@ -25,6 +29,8 @@ return new class extends Migration
                 'sort_order' => 19,
                 'is_active' => true,
                 'is_required' => false,
+                'created_by' => $createur,
+                'updated_by' => $createur,
             ]
         );
     }

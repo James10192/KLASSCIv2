@@ -24,8 +24,10 @@ use Illuminate\Validation\ValidationException;
  * on les reconnaît à leur titre exact, recalculé depuis l'élément. Une
  * évaluation renommée à la main, ou d'un autre type, n'est pas touchée.
  *
- * Le type ne change aucun calcul (le bulletin LMD moyenne les évaluations par
- * coefficient) : rien n'est recalculé, aucune note ne bouge.
+ * Aucune note ne bouge. Le type ne change la moyenne que si l'école applique la
+ * pondération contrôle continu / examen (LmdAcademicRuleProfile::ponderationAppliquee) :
+ * alors la moyenne de l'élément se recalcule à la prochaine génération des
+ * bulletins LMD ; sinon il ne change aucun calcul.
  *
  * La trace : l'audit de l'évaluation (titre et type) dit qui a requalifié et
  * quand. `type_evaluation` des notes est réaligné en masse, sans audit par note :

@@ -103,7 +103,9 @@ class RequalifierEnExamen extends ActionAgent
                 'colonnes' => ['Avant', 'Après', 'Notes'],
                 'lignes' => array_map(fn ($l) => [$l['titre'], $l['nouveau_titre'], (string) $l['notes']], $lignes),
             ],
-            avertissements: ['Le type ne change pas la moyenne : le bulletin LMD compte chaque évaluation selon son coefficient.'],
+            avertissements: [app(\App\Services\LMD\LmdAcademicRuleProfile::class)->ponderationAppliquee()
+                ? 'L’école applique la pondération contrôle continu / examen : la requalification change les moyennes. Régénérez ensuite les bulletins LMD.'
+                : 'Le type ne change pas la moyenne : le bulletin LMD compte chaque évaluation selon son coefficient.'],
             donnees: ['classe_id' => (int) $classe->id, 'annee_universitaire_id' => (int) $annee->id, 'periode' => $periode],
             etat: ['lignes' => $lignes],
         );

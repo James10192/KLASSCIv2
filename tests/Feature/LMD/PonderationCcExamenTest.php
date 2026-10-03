@@ -73,4 +73,13 @@ class PonderationCcExamenTest extends TestCase
             [['controle', 20], ['examen', 11]],
         ));
     }
+
+    /** Le PV et le relevé gravent la règle seulement quand elle a produit leurs moyennes. */
+    public function test_les_documents_officiels_ne_gravent_la_ponderation_que_si_elle_s_applique(): void
+    {
+        $profil = fn (array $r) => new LmdAcademicRuleProfile(fn (string $cle, mixed $defaut = null) => $r[$cle] ?? $defaut);
+
+        $this->assertNull($profil([])->ponderationGravee());
+        $this->assertSame(['cc' => 40.0, 'examen' => 60.0], $profil([LmdAcademicRuleProfile::REGLAGE_PONDERATION_ACTIVE => '1'])->ponderationGravee());
+    }
 }

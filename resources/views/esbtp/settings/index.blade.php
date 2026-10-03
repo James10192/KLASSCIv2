@@ -3601,7 +3601,7 @@
                                 <label class="ls-toggle" for="lmd_ponderation_cc_examen">
                                     <div class="ls-toggle-text">
                                         <div class="ls-toggle-label">Appliquer la pondération à la moyenne des ECUE</div>
-                                        <div class="ls-toggle-hint">Moyenne des examens et moyenne du contrôle continu, puis pondérées (ex. 40 % CC + 60 % examen). Change les moyennes déjà calculées : régénérez les bulletins.</div>
+                                        <div class="ls-toggle-hint">Moyenne des examens et moyenne du contrôle continu, puis pondérées (ex. 40 % CC + 60 % examen). Change les moyennes : régénérez les bulletins. Les écrans de résultats montreront aussi les années déjà délibérées avec cette règle.</div>
                                     </div>
                                     <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
                                         <input class="form-check-input" type="checkbox" id="lmd_ponderation_cc_examen"
