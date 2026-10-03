@@ -81,8 +81,8 @@ final class RegularisationDeNotesLmd
             $this->refuser('periode', "S{$semestre} n'est pas un semestre de {$classe->name} (" . implode(' ou ', array_map(fn ($s) => "S{$s}", $classe->getSemestresLMD())) . ').');
         }
         $maquette = $this->ecuesDeLaMaquette($classe, $semestre);
-        $nature = (string) ($e['nature'] ?? self::NATURE_REGULARISATION);
-        if (! in_array($nature, self::NATURES, true)) {
+        $nature = $e['nature'] ?? self::NATURE_REGULARISATION;
+        if (! is_string($nature) || ! in_array($nature, self::NATURES, true)) {
             $this->refuser('nature', 'Nature inconnue : ' . implode(' ou ', self::NATURES) . '.');
         }
         $type = $nature === self::NATURE_EXAMEN ? ESBTPEvaluation::TYPE_EXAMEN : 'controle';
@@ -103,7 +103,9 @@ final class RegularisationDeNotesLmd
             $autre = ESBTPNote::query()
                 ->where('etudiant_id', (int) $e['etudiant_id'])
                 ->whereHas('evaluation', fn ($q) => $q->where('titre', $autreTitre)->where('classe_id', $classe->id)
-                    ->where('matiere_id', $matiere->id)->where('annee_universitaire_id', $annee->id)->where('periode', $periode))
+                    ->where('matiere_id', $matiere->id)->where('annee_universitaire_id', $annee->id)->where('periode', $periode)
+                    // Ce que le bulletin compte : une évaluation annulée ne double rien.
+                    ->where('status', ESBTPEvaluation::STATUS_COMPLETED))
                 ->first(['evaluation_id', 'note']);
             if ($autre !== null) {
                 $this->refuser('notes', "{$matiere->name} : une note ({$autre->note}) est déjà saisie dans « {$autreTitre} » (évaluation #{$autre->evaluation_id}). Annulez-la ou corrigez-la plutôt que d'en créer une seconde.");

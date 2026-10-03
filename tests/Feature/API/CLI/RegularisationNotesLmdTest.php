@@ -193,6 +193,10 @@ class RegularisationNotesLmdTest extends TestCase
         // La même note sous l'autre nature serait comptée deux fois au bulletin.
         $this->poster('ANUM', true)->assertStatus(422)->assertJsonPath('success', false);
         $this->assertSame(1, \App\Models\ESBTPEvaluation::count());
+
+        // Annulée, comme le refus le conseille, elle ne bloque plus.
+        \App\Models\ESBTPEvaluation::query()->update(['status' => \App\Models\ESBTPEvaluation::STATUS_CANCELLED]);
+        $this->poster('ANUM', true)->assertOk();
     }
 
     public function test_une_nature_inconnue_est_refusee(): void
