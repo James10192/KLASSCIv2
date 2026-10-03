@@ -13,3 +13,4 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
 
+- 2026-10-03 · #à venir · notes LMD : requalifier en examen les régularisations d'une classe ; « Lier à des parcours » : rang de l'UE au bulletin

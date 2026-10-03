@@ -752,6 +752,10 @@ function buildParcoursCheckbox(p, checked) {
             <div style="font-size:.86rem; font-weight:600; color:#1e293b;">${escHtml(p.code || '')} — ${escHtml(p.name)}</div>
             <div style="display:flex; gap:.25rem; flex-wrap:wrap; margin-top:.35rem;">${semChips}</div>
         </div>
+        <label class="lp-ordre" title="Rang de cette UE sur le bulletin de ce parcours (1 = en premier)">
+            <span>Rang au bulletin</span>
+            <input type="number" min="0" max="99" class="lp-ordre-input" data-parcours-id="${p.id}" value="${p.ordre ? p.ordre : ''}" placeholder="—">
+        </label>
     </div>`;
 }
 
@@ -765,7 +769,11 @@ document.getElementById('lp_submit').addEventListener('click', async function() 
     const checkboxes = document.querySelectorAll('#lp_checkboxes .lp-parcours-check:checked');
     const parcours = Array.from(checkboxes).map(cb => {
         const semChips = document.querySelectorAll(`.lp-sem-chip--on[data-parcours-id="${cb.value}"]`);
-        return { id: cb.value, semestres: Array.from(semChips).map(c => parseInt(c.dataset.sem)) || [1] };
+        const ordre = document.querySelector(`.lp-ordre-input[data-parcours-id="${cb.value}"]`)?.value;
+        const lien = { id: cb.value, semestres: Array.from(semChips).map(c => parseInt(c.dataset.sem)) || [1] };
+        // Vide : le rang actuel est gardé.
+        if (ordre !== undefined && ordre !== '') lien.ordre = parseInt(ordre, 10);
+        return lien;
     }).filter(p => p.semestres.length > 0);
 
     try {

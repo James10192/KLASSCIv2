@@ -771,28 +771,7 @@ class ESBTPLMDUEController extends Controller
             );
         }
 
-        // Retirer de CETTE maquette, et d'elle seule. `detach($id)` supprimait
-        // toutes les lignes de cet élément, toutes maquettes confondues : retirer
-        // un élément de Bâtiment le retirait aussi de Travaux Publics.
-        $message = DB::transaction(function () use ($ue, $ecue, $portee, $sortirait, $devenir) {
-            $retires = $this->composition->retirer($ue, [(int) $ecue->id], $portee);
-
-            // Rien retiré alors que l'élément figure dans une AUTRE maquette de
-            // l'unité : on répondait « ECUE détaché » à vide, et l'élément restait.
-            // Le refus nomme la maquette qui le tient, pour qu'on sache où aller.
-            if ($retires === 0 && ($refus = $this->refusRetraitHorsMaquette($ue, $ecue, $portee))) {
-                return ['refus' => $refus];
-            }
-
-            if ($sortirait) {
-                return $this->sortieDuLmd->appliquer($devenir, $ue, $ecue);
-            }
-
-            // Clé étrangère libérée, ou reportée sur une autre unité qui le porte.
-            $this->composition->libererCleEtrangere($ue, [(int) $ecue->id]);
-
-            return 'ECUE retiré de la maquette.';
-        });
+        $message = $this->sortieDuLmd->retirer($ue, $ecue, $portee, $devenir);
 
         $refus = is_array($message) ? $message['refus'] : null;
 
@@ -804,46 +783,6 @@ class ESBTPLMDUEController extends Controller
 
         return redirect()->route('esbtp.lmd.ue.index')
             ->with($refus !== null ? 'error' : 'success', $refus ?? $message);
-    }
-
-    /**
-     * Pourquoi le retrait n'a rien retiré, quand l'élément tient à l'unité par
-     * une autre maquette que celle visée. Null si l'élément n'est dans aucune
-     * ligne de pivot : c'est alors un rattachement hérité, par clé étrangère,
-     * que l'appelant libère lui-même.
-     */
-    private function refusRetraitHorsMaquette(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue, int $portee): ?string
-    {
-        $portees = DB::table('esbtp_ue_matiere')
-            ->where('unite_enseignement_id', $ue->id)
-            ->where('matiere_id', $ecue->id)
-            ->pluck('parcours_id')
-            ->map(fn ($id) => (int) $id);
-
-        if ($portees->isEmpty()) {
-            return null;
-        }
-
-        $nom = $ecue->name ?? $ecue->code;
-
-        if ($portee === CompositionUe::COMMUN) {
-            $noms = ESBTPLMDParcours::whereIn('id', $portees->filter()->all())
-                ->pluck('name')
-                ->implode(', ');
-
-            return sprintf(
-                "« %s » n'est pas dans la composition commune : il est réservé à %s. "
-                . 'Filtrez la liste sur ce parcours pour le retirer de sa maquette.',
-                $nom,
-                $noms !== '' ? $noms : 'une autre maquette'
-            );
-        }
-
-        return sprintf(
-            "« %s » est commun à tous les parcours de l'unité : il ne se retire pas d'une seule maquette. "
-            . 'Retirez-le sans filtre de parcours, ou réservez à ce parcours les éléments qui lui sont propres.',
-            $nom
-        );
     }
 
     /**
@@ -908,6 +847,9 @@ class ESBTPLMDUEController extends Controller
                     'code' => $p->code,
                     'name' => $p->name,
                     'semestres' => [],
+                    // Rang de l'unité sur le bulletin de ce parcours (un par
+                    // parcours à l'écran : le premier semestre lu le donne).
+                    'ordre' => (int) ($p->pivot->ordre ?? 0),
                 ];
             }
             $liesMap[$p->id]['semestres'][] = $p->pivot->semestre;
@@ -938,6 +880,7 @@ class ESBTPLMDUEController extends Controller
             'parcours.*.id' => 'required|exists:esbtp_lmd_parcours,id',
             'parcours.*.semestres' => 'required|array|min:1',
             'parcours.*.semestres.*' => 'integer|between:1,10',
+            'parcours.*.ordre' => 'nullable|integer|between:0,99',
         ]);
 
         // `detach()` sans argument effaçait TOUS les liens de l'unité avant de
@@ -945,13 +888,19 @@ class ESBTPLMDUEController extends Controller
         // une maquette, le caractère optionnel et l'ordre étaient reposés à leur
         // valeur par défaut à chaque enregistrement — donc perdus. Le service de
         // synchronisation ne touche que ce qui change réellement, et garde
-        // l'ordre et le caractère optionnel d'un lien conservé : l'écran ne les
-        // envoie pas, le service les reprend sur le lien existant.
+        // l'ordre et le caractère optionnel d'un lien conservé quand l'écran ne
+        // les envoie pas. L'ordre (rang de l'unité sur le bulletin du parcours)
+        // se règle désormais depuis le modal.
         $count = DB::transaction(function () use ($request, $ue) {
             $liens = [];
             foreach ($request->input('parcours', []) as $item) {
                 foreach ($item['semestres'] as $sem) {
-                    $liens[] = ['parcours_id' => (int) $item['id'], 'semestre' => (int) $sem];
+                    $lien = ['parcours_id' => (int) $item['id'], 'semestre' => (int) $sem];
+                    // Absent : le service garde l'ordre du lien existant.
+                    if (isset($item['ordre']) && $item['ordre'] !== '') {
+                        $lien['ordre'] = (int) $item['ordre'];
+                    }
+                    $liens[] = $lien;
                 }
             }
 

@@ -93,6 +93,19 @@ return [
             'all_permissions' => ['lmd.structure.manage'],
             'libelle' => 'Préparation de la liaison UE ↔ parcours…',
         ],
+        // Mêmes permissions que les modals de /esbtp/lmd/ue (modifier : manage ;
+        // retirer un élément : delete).
+        'proposer_modification_maquette_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.structure.manage'],
+            'libelle' => 'Préparation des modifications de la maquette…',
+            'suggestion' => 'Aligne la maquette L1 S1 de ce parcours sur le bulletin officiel',
+        ],
+        'proposer_retrait_ecue_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.structure.delete'],
+            'libelle' => 'Préparation du retrait de l’élément…',
+        ],
         'proposer_creation_classes' => [
             'enabled' => true,
             'all_permissions' => ['classes.create'],
@@ -169,6 +182,13 @@ return [
             'all_permissions' => ['notes.edit', 'evaluations.create'],
             'libelle' => 'Préparation de la saisie du relevé…',
             'suggestion' => 'Saisis le relevé de notes du semestre 1 de cette classe pour 2025-2026',
+        ],
+        // Mêmes permissions que le bandeau de l'écran des notes LMD.
+        'proposer_requalification_examen' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.notes.manage', 'evaluations.edit'],
+            'libelle' => 'Recherche des régularisations à requalifier…',
+            'suggestion' => 'Les notes de régularisation de cette classe étaient les notes d’examen',
         ],
         'proposer_saisie_moyennes' => [
             'enabled' => true,

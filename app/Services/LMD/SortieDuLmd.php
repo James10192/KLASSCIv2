@@ -2,6 +2,7 @@
 
 namespace App\Services\LMD;
 
+use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPUniteEnseignement;
 use Illuminate\Support\Facades\DB;
@@ -232,6 +233,87 @@ class SortieDuLmd
         throw ValidationException::withMessages([
             'devenir' => 'Choix inconnu : supprimer, archiver ou catalogue_bts.',
         ]);
+    }
+
+    /**
+     * Retire l'element de la maquette `$portee` de cette unite, et d'elle seule.
+     * Le chemin de l'ecran (`destroyECUE`) et de Nanan (`proposer_retrait_ecue_lmd`).
+     *
+     * L'appelant a deja demande `$devenir` quand `sortirait()` est vrai.
+     *
+     * @return string|array{refus: string} le message, ou le refus a montrer
+     *
+     * @throws ValidationException choix inconnu, ou suppression d'un element qui a servi
+     */
+    public function retirer(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue, int $portee, ?string $devenir): string|array
+    {
+        $sortirait = $this->sortirait($ue, $ecue, $portee);
+
+        return DB::transaction(function () use ($ue, $ecue, $portee, $sortirait, $devenir) {
+            // `detach($id)` supprimait toutes les lignes de cet element, toutes
+            // maquettes confondues : retirer un element de Batiment le retirait
+            // aussi de Travaux Publics.
+            $retires = $this->composition->retirer($ue, [(int) $ecue->id], $portee);
+
+            // Rien retire alors que l'element figure dans une AUTRE maquette de
+            // l'unite : on repondait « ECUE detache » a vide, et l'element restait.
+            if ($retires === 0 && ($refus = $this->refusRetraitHorsMaquette($ue, $ecue, $portee))) {
+                return ['refus' => $refus];
+            }
+
+            if ($sortirait) {
+                if ($devenir === null) {
+                    throw ValidationException::withMessages(['devenir' => 'Que doit devenir cet élément : supprimer, archiver ou catalogue_bts ?']);
+                }
+
+                return $this->appliquer($devenir, $ue, $ecue);
+            }
+
+            // Cle etrangere liberee, ou reportee sur une autre unite qui le porte.
+            $this->composition->libererCleEtrangere($ue, [(int) $ecue->id]);
+
+            return 'ECUE retiré de la maquette.';
+        });
+    }
+
+    /**
+     * Pourquoi le retrait n'a rien retiré, quand l'élément tient à l'unité par
+     * une autre maquette que celle visée. Null si l'élément n'est dans aucune
+     * ligne de pivot : c'est alors un rattachement hérité, par clé étrangère,
+     * que l'appelant libère lui-même.
+     */
+    public function refusRetraitHorsMaquette(ESBTPUniteEnseignement $ue, ESBTPMatiere $ecue, int $portee): ?string
+    {
+        $portees = DB::table('esbtp_ue_matiere')
+            ->where('unite_enseignement_id', $ue->id)
+            ->where('matiere_id', $ecue->id)
+            ->pluck('parcours_id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($portees->isEmpty()) {
+            return null;
+        }
+
+        $nom = $ecue->name ?? $ecue->code;
+
+        if ($portee === CompositionUe::COMMUN) {
+            $noms = ESBTPLMDParcours::whereIn('id', $portees->filter()->all())
+                ->pluck('name')
+                ->implode(', ');
+
+            return sprintf(
+                "« %s » n'est pas dans la composition commune : il est réservé à %s. "
+                . 'Filtrez la liste sur ce parcours pour le retirer de sa maquette.',
+                $nom,
+                $noms !== '' ? $noms : 'une autre maquette'
+            );
+        }
+
+        return sprintf(
+            "« %s » est commun à tous les parcours de l'unité : il ne se retire pas d'une seule maquette. "
+            . 'Retirez-le sans filtre de parcours, ou réservez à ce parcours les éléments qui lui sont propres.',
+            $nom
+        );
     }
 
     /**

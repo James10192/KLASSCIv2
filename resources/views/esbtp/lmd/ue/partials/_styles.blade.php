@@ -152,6 +152,10 @@
     .lp-sem-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; padding: .15rem .35rem; border-radius: 5px; font-size: .7rem; font-weight: 700; cursor: pointer; transition: all .15s; border: 1px solid #e2e8f0; background: #f8fafc; color: #94a3b8; user-select: none; }
     .lp-sem-chip--on { border-color: #4338ca; background: #4338ca; color: #fff; }
     .lp-sem-chip:hover:not(.lp-sem-chip--on) { background: #eef2ff; border-color: #c7d2fe; color: #4338ca; }
+    .lp-ordre { display: flex; flex-direction: column; align-items: center; gap: .2rem; flex-shrink: 0; margin: 0; }
+    .lp-ordre span { font-size: .64rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .3px; white-space: nowrap; }
+    .lp-ordre-input { width: 58px; padding: .3rem .4rem; border: 1px solid #e2e8f0; border-radius: 7px; font-size: .82rem; text-align: center; }
+    .lp-ordre-input:focus { outline: none; border-color: #4338ca; box-shadow: 0 0 0 3px rgba(67,56,202,.1); }
 
     /* Toast notification */
     /* Un refus explique OU aller corriger : il tient en plusieurs lignes, et il

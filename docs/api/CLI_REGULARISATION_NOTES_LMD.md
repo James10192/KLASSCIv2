@@ -65,6 +65,14 @@ Refus : `422`, `{"success": false, "message": "...", "errors": {...}}`
 (classe non LMD, étudiant non inscrit, semestre hors classe, élément hors
 maquette, date future).
 
+## Requalifier après coup
+
+Un relevé déjà saisi en `regularisation` qui contenait en fait les notes d'examen
+se requalifie sans ressaisie : écran des notes LMD (fenêtre de la classe, bandeau
+« évaluations de régularisation »), ou Nanan (`proposer_requalification_examen`).
+Les évaluations prennent le titre et le type d'un examen ; les notes ne changent
+pas. Service : `App\Domain\Notes\RequalificationEnExamen`.
+
 ## Historique
 
 - 3 octobre 2026 : paramètre `nature` (`regularisation` | `examen`), aussi pour

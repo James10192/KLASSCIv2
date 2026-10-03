@@ -47,7 +47,12 @@ class ESBTPLMDNoteController extends Controller
             ->groupBy('classe_id')
             ->pluck('total', 'classe_id');
 
-        return view('esbtp.lmd.notes.index', compact('classes', 'evalCounts', 'anneeCourante'));
+        // Mêmes conditions que les routes de requalification et leur contrôleur.
+        $user = $request->user();
+        $peutRequalifier = $user && $user->can('lmd.notes.manage') && $user->can('evaluations.edit')
+            && ! ($user->can('identity.teach') && ! $user->can('identity.coordinate'));
+
+        return view('esbtp.lmd.notes.index', compact('classes', 'evalCounts', 'anneeCourante', 'peutRequalifier'));
     }
 
     /**
