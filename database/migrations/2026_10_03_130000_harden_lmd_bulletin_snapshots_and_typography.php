@@ -25,8 +25,8 @@ return new class extends Migration
             'lmd_bulletin_code_etablissement' => ['', 'string', 'Code établissement affiché sur le bulletin LMD'],
             'lmd_bulletin_statut' => ['Privé', 'string', 'Statut établissement affiché sur le bulletin LMD'],
             'lmd_bulletin_direction' => ['', 'string', 'Direction affichée sur le bulletin LMD'],
-            'lmd_bulletin_notice_text' => ['', 'string', 'Notice du bulletin LMD'],
-            'lmd_bulletin_bottom_text' => ['', 'string', 'Texte de pied du bulletin LMD'],
+            'lmd_bulletin_notice_text' => ["Un ECUE n'est ni transférable ni capitalisable. Les crédits d'une UE non acquise ne sont capitalisés qu'après validation de celle-ci.", 'string', 'Notice du bulletin LMD'],
+            'lmd_bulletin_bottom_text' => ['Conservez soigneusement ce bulletin de notes. Aucun duplicata ne sera délivré.', 'string', 'Texte de pied du bulletin LMD'],
             'lmd_bulletin_font_republic' => ['8.5', 'float', 'Taille République / Ministère du bulletin LMD'],
             'lmd_bulletin_font_school_name' => ['13', 'float', 'Taille du nom établissement du bulletin LMD'],
             'lmd_bulletin_font_school_meta' => ['7.5', 'float', 'Taille des coordonnées établissement du bulletin LMD'],
@@ -48,55 +48,37 @@ return new class extends Migration
 
         $sortOrder = 300;
         foreach ($settings as $key => [$value, $type, $description]) {
-            DB::table('settings')->updateOrInsert(
-                ['key' => $key],
-                [
-                    'value' => $value,
-                    'type' => $type,
-                    'group' => 'bulletin',
-                    'category' => 'bulletin',
-                    'description' => $description,
-                    'is_required' => false,
-                    'default_value' => $value,
-                    'validation_rules' => $type === 'float'
-                        ? json_encode(['nullable', 'numeric', 'min:6', 'max:24'])
-                        : null,
-                    'is_active' => true,
-                    'sort_order' => $sortOrder++,
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ]
-            );
+            // Ne jamais écraser la charte ou les textes déjà configurés d'un tenant.
+            // Cette migration ajoute uniquement les clés manquantes.
+            if (DB::table('settings')->where('key', $key)->exists()) {
+                $sortOrder++;
+                continue;
+            }
+
+            DB::table('settings')->insert([
+                'key' => $key,
+                'value' => $value,
+                'type' => $type,
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'description' => $description,
+                'is_required' => false,
+                'default_value' => $value,
+                'validation_rules' => $type === 'float'
+                    ? json_encode(['nullable', 'numeric', 'min:6', 'max:24'])
+                    : null,
+                'is_active' => true,
+                'sort_order' => $sortOrder++,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
     }
 
     public function down(): void
     {
-        DB::table('settings')->whereIn('key', [
-            'lmd_bulletin_code_etablissement',
-            'lmd_bulletin_statut',
-            'lmd_bulletin_direction',
-            'lmd_bulletin_notice_text',
-            'lmd_bulletin_bottom_text',
-            'lmd_bulletin_font_republic',
-            'lmd_bulletin_font_school_name',
-            'lmd_bulletin_font_school_meta',
-            'lmd_bulletin_font_title',
-            'lmd_bulletin_font_header_meta',
-            'lmd_bulletin_font_establishment',
-            'lmd_bulletin_font_student',
-            'lmd_bulletin_font_structure',
-            'lmd_bulletin_font_table_header',
-            'lmd_bulletin_font_table',
-            'lmd_bulletin_font_teacher',
-            'lmd_bulletin_font_summary',
-            'lmd_bulletin_font_decision',
-            'lmd_bulletin_font_notice',
-            'lmd_bulletin_font_signature',
-            'lmd_bulletin_font_legend',
-            'lmd_bulletin_font_bottom',
-        ])->delete();
-
+        // Les réglages sont des données tenant : on ne les supprime pas au rollback,
+        // car certaines clés pouvaient préexister à cette migration.
         if (Schema::hasColumn('esbtp_lmd_resultats_ecues', 'enseignant_snapshot_nom')) {
             Schema::table('esbtp_lmd_resultats_ecues', function (Blueprint $table) {
                 $table->dropColumn('enseignant_snapshot_nom');
