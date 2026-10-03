@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Relations\LmdSnapshotHasMany;
 use App\Models\Traits\HasAuditTrail;
 use App\Services\AppreciationScaleService;
 use Illuminate\Database\Eloquent\Builder;
@@ -117,6 +118,16 @@ class ESBTPLMDBulletin extends Model
                 ]);
             }
         });
+    }
+
+    /**
+     * Les hasMany du bulletin portent des données du snapshot. Cette fabrique
+     * spécialisée intercepte les update/delete bulk qui contournent les events
+     * des modèles enfants et les refuse lorsque le bulletin est publié.
+     */
+    protected function newHasMany(Builder $query, Model $parent, $foreignKey, $localKey): LmdSnapshotHasMany
+    {
+        return new LmdSnapshotHasMany($query, $parent, $foreignKey, $localKey);
     }
 
     // --- Relations ---
