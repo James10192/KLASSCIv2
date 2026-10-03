@@ -693,3 +693,203 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+(function () {
+    'use strict';
+
+    var form = document.getElementById('lb-filter-form');
+    if (!form || form.dataset.ajaxReady === '1') return;
+    form.dataset.ajaxReady = '1';
+
+    var recherche = form.querySelector('input[name="search"]');
+    var actions = form.querySelector('.lb-filter-actions');
+    var filtreNoms = ['classe_id', 'annee_universitaire_id', 'semestre', 'search'];
+    var requete = null;
+    var numeroRequete = 0;
+    var minuterieRecherche = null;
+    var suspendre = false;
+
+    function valeurChamp(nom) {
+        var champ = form.elements.namedItem(nom);
+        return champ ? String(champ.value || '').trim() : '';
+    }
+
+    function filtresActifs() {
+        return filtreNoms.some(function (nom) { return valeurChamp(nom) !== ''; });
+    }
+
+    function assurerBoutonReset() {
+        var reset = actions ? actions.querySelector('.lb-filter-btn--reset') : null;
+        if (!reset && actions) {
+            reset = document.createElement('button');
+            reset.type = 'button';
+            reset.className = 'lb-filter-btn lb-filter-btn--reset';
+            reset.setAttribute('aria-label', 'Réinitialiser les filtres');
+            reset.innerHTML = '<i class="fas fa-times"></i>';
+            actions.appendChild(reset);
+        }
+        if (!reset) return null;
+
+        reset.hidden = !filtresActifs();
+        if (reset.dataset.ajaxResetReady !== '1') {
+            reset.dataset.ajaxResetReady = '1';
+            reset.addEventListener('click', function (event) {
+                event.preventDefault();
+                reinitialiser();
+            });
+        }
+        return reset;
+    }
+
+    function afficherErreur(message) {
+        var boite = document.getElementById('lb-filter-ajax-error');
+        if (!boite) {
+            boite = document.createElement('div');
+            boite.id = 'lb-filter-ajax-error';
+            boite.setAttribute('role', 'alert');
+            boite.style.cssText = 'display:none;margin:-.5rem 0 1rem;padding:.7rem .9rem;border:1px solid #fecaca;background:#fef2f2;color:#b91c1c;border-radius:10px;font-size:.84rem;';
+            form.insertAdjacentElement('afterend', boite);
+        }
+        boite.textContent = message || '';
+        boite.style.display = message ? 'block' : 'none';
+    }
+
+    function etatChargement(actif) {
+        var carte = document.querySelector('.lb-table-card');
+        if (!carte) return;
+        carte.style.transition = 'opacity .16s ease';
+        carte.style.opacity = actif ? '.5' : '';
+        carte.style.pointerEvents = actif ? 'none' : '';
+        carte.setAttribute('aria-busy', actif ? 'true' : 'false');
+    }
+
+    function construireUrl() {
+        var url = new URL(form.action, window.location.origin);
+        var donnees = new FormData(form);
+
+        donnees.forEach(function (valeur, cle) {
+            var texte = String(valeur || '').trim();
+            if (texte !== '') url.searchParams.set(cle, texte);
+        });
+
+        url.searchParams.delete('page');
+        url.searchParams.delete('mode');
+        return url;
+    }
+
+    function synchroniserKpis(documentSuivant) {
+        var actuels = document.querySelectorAll('.lb-hero-kpis .lb-kpi-value');
+        var suivants = documentSuivant.querySelectorAll('.lb-hero-kpis .lb-kpi-value');
+        actuels.forEach(function (el, index) {
+            if (suivants[index]) el.textContent = suivants[index].textContent;
+        });
+    }
+
+    async function filtrer() {
+        if (suspendre) return;
+
+        clearTimeout(minuterieRecherche);
+        var url = construireUrl();
+        var monNumero = ++numeroRequete;
+
+        if (requete) requete.abort();
+        requete = new AbortController();
+
+        afficherErreur('');
+        etatChargement(true);
+
+        try {
+            var reponse = await fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                },
+                credentials: 'same-origin',
+                signal: requete.signal
+            });
+
+            if (!reponse.ok) throw new Error('HTTP ' + reponse.status);
+
+            var html = await reponse.text();
+            if (monNumero !== numeroRequete) return;
+
+            var suivant = new DOMParser().parseFromString(html, 'text/html');
+            var carteSuivante = suivant.querySelector('.lb-table-card');
+            var carteActuelle = document.querySelector('.lb-table-card');
+
+            if (!carteSuivante || !carteActuelle) {
+                throw new Error('Zone des bulletins introuvable dans la réponse');
+            }
+
+            synchroniserKpis(suivant);
+            carteActuelle.replaceWith(carteSuivante);
+
+            window.history.replaceState(
+                { lmdBulletinsFiltres: true },
+                '',
+                url.pathname + url.search
+            );
+
+            assurerBoutonReset();
+            document.dispatchEvent(new CustomEvent('lmd-bulletins:filtres-appliques', {
+                detail: { url: url.toString() }
+            }));
+        } catch (erreur) {
+            if (erreur && erreur.name === 'AbortError') return;
+            console.error('Filtrage AJAX des bulletins LMD :', erreur);
+            afficherErreur('Le filtrage n’a pas pu être appliqué. Réessayez sans recharger la page.');
+        } finally {
+            if (monNumero === numeroRequete) {
+                requete = null;
+                etatChargement(false);
+            }
+        }
+    }
+
+    function reinitialiser() {
+        suspendre = true;
+        clearTimeout(minuterieRecherche);
+
+        filtreNoms.forEach(function (nom) {
+            var champ = form.elements.namedItem(nom);
+            if (!champ) return;
+
+            champ.value = '';
+            if (champ.tagName === 'SELECT') {
+                champ.dispatchEvent(new Event('change', { bubbles: true }));
+                champ.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        });
+
+        suspendre = false;
+        filtrer();
+    }
+
+    // Les x-au-select existants appellent form.submit() dans leur onchange.
+    // On remplace seulement cette methode sur CE formulaire : aucun autre
+    // formulaire de la page n'est touche, et le choix d'un filtre reste
+    // instantane sans navigation/rechargement du document.
+    form.submit = function () {
+        if (!suspendre) filtrer();
+    };
+
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        filtrer();
+    });
+
+    if (recherche) {
+        recherche.addEventListener('input', function () {
+            if (suspendre) return;
+            clearTimeout(minuterieRecherche);
+            minuterieRecherche = setTimeout(filtrer, 400);
+        });
+    }
+
+    assurerBoutonReset();
+})();
+</script>
+@endpush
