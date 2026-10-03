@@ -31,6 +31,14 @@ Ability : `cli:admin`. Simulation par défaut : `dry_run: false` est requis pour
   donne que la note d'examen, le contrôle continu venant à part, se saisit en
   `examen` : l'évaluation est de type `examen`, nommée `Examen SEMESTREn — <élément>`,
   et reste distincte du contrôle continu saisi ensuite.
+  **Le type ne change aucun calcul** : le bulletin LMD fait la moyenne des
+  évaluations de l'élément selon leur coefficient (1 ici), et la pondération
+  contrôle continu / examen (`lmd_cc_weight`, `lmd_exam_weight`) n'est pas
+  encore appliquée. Deux contrôles continus de coefficient 1 plus cet examen
+  donnent donc un tiers chacun.
+- Une note déjà saisie pour le même élément sous l'autre nature est **refusée**
+  (`422`, qui nomme l'évaluation) : elle serait comptée deux fois. Même risque si
+  l'examen est ensuite planifié dans le module des examens : ne pas le ressaisir.
 - `notes[].matiere_id` : un élément (ECUE) de la maquette du semestre, tel que
   la classe le voit (`getEcuesEffectifs`, clé étrangère comprise). Au plus 40.
 - L'étudiant doit être inscrit **activement** dans la classe, cette année-là.

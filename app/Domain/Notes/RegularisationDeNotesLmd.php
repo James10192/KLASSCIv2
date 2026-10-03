@@ -96,6 +96,18 @@ final class RegularisationDeNotesLmd
                 $this->refuser('notes', "La matière {$matiere->name} ne figure pas dans la maquette S{$semestre} de cette classe.");
             }
             $titre = $this->titre($nature, $periode, $matiere);
+            // La même note, saisie sous l'autre nature, serait une seconde
+            // évaluation : le bulletin LMD moyenne toutes les évaluations de
+            // l'élément, et la compterait deux fois.
+            $autreTitre = $this->titre($nature === self::NATURE_EXAMEN ? self::NATURE_REGULARISATION : self::NATURE_EXAMEN, $periode, $matiere);
+            $autre = ESBTPNote::query()
+                ->where('etudiant_id', (int) $e['etudiant_id'])
+                ->whereHas('evaluation', fn ($q) => $q->where('titre', $autreTitre)->where('classe_id', $classe->id)
+                    ->where('matiere_id', $matiere->id)->where('annee_universitaire_id', $annee->id)->where('periode', $periode))
+                ->first(['evaluation_id', 'note']);
+            if ($autre !== null) {
+                $this->refuser('notes', "{$matiere->name} : une note ({$autre->note}) est déjà saisie dans « {$autreTitre} » (évaluation #{$autre->evaluation_id}). Annulez-la ou corrigez-la plutôt que d'en créer une seconde.");
+            }
             $avant = ESBTPNote::query()
                 ->where('etudiant_id', (int) $e['etudiant_id'])
                 ->whereHas('evaluation', fn ($q) => $q->where('titre', $titre)->where('classe_id', $classe->id)

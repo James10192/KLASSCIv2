@@ -190,9 +190,9 @@ class RegularisationNotesLmdTest extends TestCase
         $this->assertSame(\App\Models\ESBTPEvaluation::STATUS_COMPLETED, $evaluation->status);
         $this->assertSame('examen', ESBTPNote::where('etudiant_id', $this->eleve->id)->value('type_evaluation'));
 
-        // Sans nature : la régularisation d'avant, inchangée et à part.
-        $this->poster('ANUM', false)->assertOk();
-        $this->assertSame(['controle', 'examen'], \App\Models\ESBTPEvaluation::orderBy('type')->pluck('type')->all());
+        // La même note sous l'autre nature serait comptée deux fois au bulletin.
+        $this->poster('ANUM', true)->assertStatus(422)->assertJsonPath('success', false);
+        $this->assertSame(1, \App\Models\ESBTPEvaluation::count());
     }
 
     public function test_une_nature_inconnue_est_refusee(): void

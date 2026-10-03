@@ -134,7 +134,9 @@ class SaisirReleveLmd extends ActionAgent
 
         $base = ['classe_id' => (int) $classe->id, 'annee_universitaire_id' => (int) $annee->id, 'periode' => $periode,
             'date_regularisation' => $date, 'motif' => $motif,
-            'nature' => in_array($args['nature'] ?? null, RegularisationDeNotesLmd::NATURES, true) ? $args['nature'] : RegularisationDeNotesLmd::NATURE_REGULARISATION];
+            // Transmise telle quelle : une nature inconnue est refusée par le
+            // service, et le refus revient en question à la personne.
+            'nature' => $args['nature'] ?? RegularisationDeNotesLmd::NATURE_REGULARISATION];
         try {
             $rapport = $this->simuler($base, $entrees, (int) $user->id);
         } catch (ValidationException $e) {
