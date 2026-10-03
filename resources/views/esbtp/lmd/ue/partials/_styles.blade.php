@@ -132,6 +132,22 @@
     .lu-modal.fade .modal-dialog { transform: translateY(20px) scale(.98); transition: transform .25s ease-out, opacity .2s; }
     .lu-modal.show .modal-dialog { transform: translateY(0) scale(1); }
 
+    /* Fenetre de question (remplace confirm()) */
+    .lu-modal-btn--danger { background: #dc2626; box-shadow: 0 2px 8px rgba(220,38,38,.2); }
+    .lu-modal-btn--danger:hover { background: #b91c1c; }
+    .lu-demande-message { font-size: .92rem; color: #1e293b; margin: 0; line-height: 1.5; }
+    .lu-choix-liste { display: flex; flex-direction: column; gap: .5rem; margin-top: 1rem; }
+    .lu-choix-liste:empty { display: none; }
+    .lu-modal label.lu-choix { display: flex; align-items: flex-start; gap: .7rem; padding: .75rem .9rem; border: 1.5px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: border-color .2s, background .2s; margin: 0; font-weight: 400; }
+    .lu-modal label.lu-choix:hover { border-color: #93b4e8; }
+    .lu-modal label.lu-choix:has(input:checked) { border-color: #0453cb; background: rgba(4,83,203,.04); }
+    .lu-modal label.lu-choix--off { cursor: not-allowed; opacity: .55; }
+    .lu-choix input { margin-top: .2rem; accent-color: #0453cb; flex-shrink: 0; }
+    .lu-choix-texte { display: flex; flex-direction: column; gap: .15rem; }
+    .lu-choix-titre { font-size: .88rem; font-weight: 600; color: #1e293b; }
+    .lu-choix-aide { font-size: .78rem; color: #64748b; line-height: 1.45; }
+    .lu-choix-reco { font-size: .65rem; font-weight: 700; color: #0453cb; background: rgba(4,83,203,.08); padding: .1rem .4rem; border-radius: 5px; margin-left: .35rem; }
+
     /* Sem chips */
     .lp-sem-chip { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; padding: .15rem .35rem; border-radius: 5px; font-size: .7rem; font-weight: 700; cursor: pointer; transition: all .15s; border: 1px solid #e2e8f0; background: #f8fafc; color: #94a3b8; user-select: none; }
     .lp-sem-chip--on { border-color: #4338ca; background: #4338ca; color: #fff; }
