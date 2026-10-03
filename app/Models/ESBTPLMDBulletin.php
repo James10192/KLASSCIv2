@@ -41,9 +41,6 @@ class ESBTPLMDBulletin extends Model
 
     protected static function booted(): void
     {
-        // Tant que le bulletin est en brouillon, il suit le statut MESRS courant
-        // de l'inscription. Au passage en publié, cette valeur devient une partie
-        // du snapshot officiel et ne bouge plus silencieusement.
         static::saving(function (ESBTPLMDBulletin $bulletin): void {
             if ($bulletin->exists && (bool) $bulletin->getOriginal('is_published')) {
                 return;
@@ -64,11 +61,18 @@ class ESBTPLMDBulletin extends Model
                 $bulletin->affectation_status = (string) $statut;
             }
 
-            // Les rangs/statistiques sont des données de promotion. Une fois un
-            // bulletin de la cohorte publié, régénérer un autre étudiant ferait
-            // nécessairement bouger ces agrégats. On refuse donc la régénération
-            // académique tant que la cohorte porte un snapshot publié. Publier un
-            // brouillon déjà généré reste autorisé.
+            // Juste avant la première publication, les enfants relisent le
+            // planning courant. Le parent n'est pas encore publié en base : la
+            // garde d'immuabilité des résultats autorise donc ce dernier refresh.
+            if ($bulletin->exists
+                && $bulletin->isDirty('is_published')
+                && (bool) $bulletin->is_published) {
+                foreach ($bulletin->resultatsECUEs()->get() as $resultat) {
+                    $resultat->unsetRelation('bulletin');
+                    $resultat->save();
+                }
+            }
+
             $dirtyAcademique = array_diff(
                 array_keys($bulletin->getDirty()),
                 ['is_published', 'updated_at', 'affectation_status']
@@ -95,9 +99,6 @@ class ESBTPLMDBulletin extends Model
             }
         });
 
-        // Un bulletin publié est un snapshot : la seule mutation autorisée est
-        // sa dépublication explicite. Une régénération doit passer par cette étape
-        // au lieu d'écraser le document officiel en place.
         static::updating(function (ESBTPLMDBulletin $bulletin): void {
             if (! (bool) $bulletin->getOriginal('is_published')) {
                 return;
@@ -120,17 +121,10 @@ class ESBTPLMDBulletin extends Model
         });
     }
 
-    /**
-     * Les hasMany du bulletin portent des données du snapshot. Cette fabrique
-     * spécialisée intercepte les update/delete bulk qui contournent les events
-     * des modèles enfants et les refuse lorsque le bulletin est publié.
-     */
     protected function newHasMany(Builder $query, Model $parent, $foreignKey, $localKey): LmdSnapshotHasMany
     {
         return new LmdSnapshotHasMany($query, $parent, $foreignKey, $localKey);
     }
-
-    // --- Relations ---
 
     public function etudiant()
     {
@@ -154,8 +148,7 @@ class ESBTPLMDBulletin extends Model
 
     public function resultatsUEs()
     {
-        return $this->hasMany(ESBTPLMDResultatUE::class, 'bulletin_id')
-                     ->orderBy('id');
+        return $this->hasMany(ESBTPLMDResultatUE::class, 'bulletin_id')->orderBy('id');
     }
 
     public function resultatsECUEs()
@@ -176,8 +169,6 @@ class ESBTPLMDBulletin extends Model
             ->when($jury->classe_id, fn (Builder $builder, int $classeId) => $builder->where('classe_id', $classeId))
             ->when($jury->semestre, fn (Builder $builder, int $semestre) => $builder->where('semestre', $semestre));
     }
-
-    // --- Accessors ---
 
     public function getMentionGeneraleAttribute(): ?string
     {

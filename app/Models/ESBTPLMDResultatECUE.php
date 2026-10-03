@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Traits\HasAuditTrail;
+use App\Services\LMD\EnseignantDePlanificationLmd;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -18,7 +19,6 @@ class ESBTPLMDResultatECUE extends Model
         'bulletin_id', 'resultat_ue_id', 'matiere_id', 'etudiant_id',
         'moyenne', 'credit', 'rang', 'enseignant_id', 'enseignant_snapshot_nom',
         'stat_min', 'stat_moy', 'stat_max',
-        // PR10 rattrapage
         'note_session_normale', 'note_rattrapage', 'note_finale',
         'rattrapage_eligible', 'rattrapage_inscrit',
         'created_by', 'updated_by',
@@ -31,16 +31,12 @@ class ESBTPLMDResultatECUE extends Model
         'stat_min' => 'decimal:2',
         'stat_moy' => 'decimal:2',
         'stat_max' => 'decimal:2',
-        // PR10 rattrapage
         'note_session_normale' => 'decimal:2',
         'note_rattrapage' => 'decimal:2',
         'note_finale' => 'decimal:2',
         'rattrapage_eligible' => 'boolean',
         'rattrapage_inscrit' => 'boolean',
     ];
-
-    /** @var array<string, array{enseignant_id: int|null, nom: string}> */
-    private static array $enseignantsSnapshot = [];
 
     protected static function booted(): void
     {
@@ -70,66 +66,26 @@ class ESBTPLMDResultatECUE extends Model
         });
     }
 
+    /** @return array{enseignant_id: int|null, nom: string} */
     private static function resoudreEnseignantDuSemestre(ESBTPLMDBulletin $bulletin, int $matiereId): array
     {
-        $cacheKey = implode(':', [
-            $bulletin->classe_id,
-            $bulletin->annee_universitaire_id,
-            $bulletin->semestre,
+        $classe = ESBTPClasse::find($bulletin->classe_id);
+        if (! $classe) {
+            return ['enseignant_id' => null, 'nom' => ''];
+        }
+
+        $resolution = app(EnseignantDePlanificationLmd::class)->resoudre(
+            $classe,
             $matiereId,
-        ]);
+            (int) $bulletin->annee_universitaire_id,
+            (int) $bulletin->semestre,
+            true,
+        );
 
-        if (! app()->runningInConsole() && array_key_exists($cacheKey, static::$enseignantsSnapshot)) {
-            return static::$enseignantsSnapshot[$cacheKey];
-        }
-
-        $semestre = (int) $bulletin->semestre;
-        $periodes = [
-            (string) $semestre,
-            'semestre'.$semestre,
-            'S'.$semestre,
-            'Semestre '.$semestre,
-            'semestre '.$semestre,
+        return [
+            'enseignant_id' => $resolution['enseignant_id'],
+            'nom' => $resolution['noms'],
         ];
-
-        $evaluations = ESBTPEvaluation::query()
-            ->where('matiere_id', $matiereId)
-            ->where('classe_id', $bulletin->classe_id)
-            ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
-            ->whereIn('periode', $periodes)
-            ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
-            ->where(function ($query) {
-                $query->whereNotNull('enseignant_id')
-                    ->orWhere(function ($q) {
-                        $q->whereNotNull('enseignant_externe_nom')
-                            ->where('enseignant_externe_nom', '<>', '');
-                    });
-            })
-            ->with('enseignant:id,name')
-            ->orderBy('date_evaluation')
-            ->orderBy('id')
-            ->get();
-
-        $noms = $evaluations
-            ->map(fn (ESBTPEvaluation $evaluation): string => trim((string) (
-                $evaluation->enseignant?->name
-                ?: $evaluation->enseignant_externe_nom
-                ?: ''
-            )))
-            ->filter()
-            ->unique(fn (string $nom): string => mb_strtolower($nom, 'UTF-8'))
-            ->values();
-
-        $snapshot = [
-            'enseignant_id' => $evaluations->first(fn (ESBTPEvaluation $evaluation) => $evaluation->enseignant_id !== null)?->enseignant_id,
-            'nom' => $noms->implode(' / '),
-        ];
-
-        if (! app()->runningInConsole()) {
-            static::$enseignantsSnapshot[$cacheKey] = $snapshot;
-        }
-
-        return $snapshot;
     }
 
     public function bulletin()
@@ -159,16 +115,26 @@ class ESBTPLMDResultatECUE extends Model
 
     public function getEnseignantAfficheAttribute(): string
     {
+        $bulletin = $this->relationLoaded('bulletin')
+            ? $this->bulletin
+            : $this->bulletin()->first();
+
+        // Un brouillon est une vue de travail : il suit le planning actuel. La
+        // publication figera précisément cette valeur dans le snapshot.
+        if ($bulletin && ! $bulletin->is_published && $this->matiere_id) {
+            $courant = static::resoudreEnseignantDuSemestre($bulletin, (int) $this->matiere_id)['nom'];
+            if ($courant !== '') {
+                return $courant;
+            }
+        }
+
         $snapshot = trim((string) $this->enseignant_snapshot_nom);
         if ($snapshot !== '') {
             return $snapshot;
         }
 
-        // Données legacy : avant l'ajout du snapshot, enseignant_id pouvait avoir
-        // été choisi sans filtre de semestre. On recalcule donc d'abord depuis les
-        // évaluations du semestre exact ; seulement si elles ne donnent rien, on
-        // conserve l'ancien enseignant interne comme dernier recours.
-        $bulletin = $this->relationLoaded('bulletin') ? $this->bulletin : $this->bulletin()->first();
+        // Legacy : un ancien bulletin sans snapshot tente la même résolution
+        // planning -> évaluations avant de retomber sur l'ancien enseignant_id.
         if ($bulletin && $this->matiere_id) {
             $resolu = static::resoudreEnseignantDuSemestre($bulletin, (int) $this->matiere_id)['nom'];
             if ($resolu !== '') {

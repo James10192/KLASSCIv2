@@ -71,6 +71,12 @@ class RouteServiceProvider extends ServiceProvider
                 ->namespace($this->namespace)
                 ->group(base_path('routes/web.php'));
 
+            // Les flux enseignants des évaluations et bulletins LMD restent
+            // séparés du gros fichier web.php et du système BTS.
+            Route::middleware('web')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/lmd-evaluation-teachers.php'));
+
             Route::middleware('web')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/message-hub.php'));
