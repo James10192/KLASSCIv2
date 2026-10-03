@@ -3643,8 +3643,7 @@
                             <i class="fas fa-info-circle"></i>
                             <span>
                                 <strong>Note :</strong> CC + Examen doivent totaliser 100%. Si vous modifiez l'un, ajustez l'autre.
-                                Ces deux pondérations ne sont pas encore appliquées au calcul des moyennes : elles sont
-                                enregistrées pour l'établissement, mais la moyenne d'une matière reste calculée comme aujourd'hui.
+                                Elles ne comptent dans la moyenne des ECUE que si la case « Appliquer la pondération » est cochée.
                             </span>
                         </div>
                     </div>
