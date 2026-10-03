@@ -22,6 +22,11 @@ final class LmdAcademicRuleProfile
      */
     public const REGLAGE_PONDERATION_ACTIVE = 'lmd_ponderation_cc_examen';
 
+    /** Les deux cases de compensation de l'onglet LMD des paramètres. */
+    public const REGLAGE_COMPENSATION_INTER_UE = 'lmd_compensation_inter_ue';
+
+    public const REGLAGE_COMPENSATION_INTRA_UE = 'lmd_compensation_intra_ue';
+
     private Closure $resolver;
 
     /** @param null|Closure(string, mixed): mixed $resolver */
@@ -42,7 +47,7 @@ final class LmdAcademicRuleProfile
 
     public function interUeCompensationEnabled(): bool
     {
-        return $this->toBool($this->first(['lmd_compensation_inter_ue', 'lmd_compensation_enabled'], true));
+        return $this->toBool($this->first([self::REGLAGE_COMPENSATION_INTER_UE, 'lmd_compensation_enabled'], true));
     }
 
     /**
@@ -54,7 +59,7 @@ final class LmdAcademicRuleProfile
      */
     public function intraUeCompensationEnabled(): bool
     {
-        return $this->toBool($this->first(['lmd_compensation_intra_ue', 'lmd_intra_ue_compensation'], true));
+        return $this->toBool($this->first([self::REGLAGE_COMPENSATION_INTRA_UE, 'lmd_intra_ue_compensation'], true));
     }
 
     /**

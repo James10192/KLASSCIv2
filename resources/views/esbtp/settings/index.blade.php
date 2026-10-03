@@ -3546,8 +3546,8 @@
                                     </div>
                                     <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
                                         <input class="form-check-input" type="checkbox" id="lmd_compensation_inter_ue"
-                                               name="setting_lmd_compensation_inter_ue" value="1"
-                                               {{ $lmdVal('lmd_compensation_inter_ue', '1') == '1' ? 'checked' : '' }}>
+                                               name="lmd_compensation_inter_ue" value="1"
+                                               {{ old('lmd_compensation_inter_ue', $lmdVal('lmd_compensation_inter_ue', '1')) == '1' ? 'checked' : '' }}>
                                     </div>
                                 </label>
                             </div>
@@ -3559,8 +3559,8 @@
                                     </div>
                                     <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
                                         <input class="form-check-input" type="checkbox" id="lmd_compensation_intra_ue"
-                                               name="setting_lmd_compensation_intra_ue" value="1"
-                                               {{ $lmdVal('lmd_compensation_intra_ue', '1') == '1' ? 'checked' : '' }}>
+                                               name="lmd_compensation_intra_ue" value="1"
+                                               {{ old('lmd_compensation_intra_ue', $lmdVal('lmd_compensation_intra_ue', '1')) == '1' ? 'checked' : '' }}>
                                     </div>
                                 </label>
                             </div>
