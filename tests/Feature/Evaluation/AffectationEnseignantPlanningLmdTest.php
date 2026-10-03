@@ -107,6 +107,23 @@ class AffectationEnseignantPlanningLmdTest extends TestCase
         $this->assertSame((int) $expliciteS2->id, (int) $evaluation->fresh()->enseignant_id);
     }
 
+    public function test_modifier_ou_retirer_le_professeur_du_planning_propage_aux_evaluations_existantes(): void
+    {
+        $initial = User::factory()->create(['name' => 'Mme Initiale']);
+        $nouveau = User::factory()->create(['name' => 'M. Nouveau']);
+        $planification = $this->planifier($initial, 1);
+        $evaluation = $this->evaluation('semestre1', $initial);
+
+        $planification->enseignant_principal_id = $nouveau->id;
+        $planification->save();
+        $this->assertSame((int) $nouveau->id, (int) $evaluation->fresh()->enseignant_id);
+
+        $planification->enseignant_principal_id = null;
+        $planification->save();
+        $this->assertNull($evaluation->fresh()->enseignant_id);
+        $this->assertNull($evaluation->fresh()->enseignant_externe_nom);
+    }
+
     public function test_le_bulletin_brouillon_suit_le_planning_puis_la_publication_fige_le_nom(): void
     {
         $premier = User::factory()->create(['name' => 'Mme Premiere']);
