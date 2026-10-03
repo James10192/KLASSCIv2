@@ -534,7 +534,9 @@ class ESBTPLMDUEController extends Controller
         if ($parcoursId === CompositionUe::COMMUN) {
             // La cle etrangere ne connait pas les maquettes : ce qu'elle porte
             // appartient a la composition commune.
-            $idsActuels = $idsActuels->merge($ue->matieres()->pluck('esbtp_matieres.id'))->unique();
+            // Les actifs seulement : compter un element archive (SortieDuLmd) le
+            // detacherait, donc le verserait au BTS, a chaque enregistrement.
+            $idsActuels = $idsActuels->merge($ue->matieres()->where('is_active', true)->pluck('esbtp_matieres.id'))->unique();
         }
 
         $aDetacher = $idsActuels->map(fn ($id) => (int) $id)->diff($idsConserves)->values();
@@ -545,20 +547,8 @@ class ESBTPLMDUEController extends Controller
 
         // Détacher, jamais supprimer : la matière peut porter des évaluations
         // et des notes. Ce qui sort de sa derniere maquette suit le reglage de
-        // l'ecole, comme a la suppression d'une UE : rendu au BTS, ou archive
-        // dans le LMD (le formulaire ne pose pas la question element par element).
-        $sortants = $aDetacher->filter(fn ($id) => ($m = ESBTPMatiere::find($id))
-            && $this->sortieDuLmd->sortirait($ue, $m, $parcoursId))->values();
-
-        $this->composition->retirer($ue, $aDetacher->all(), $parcoursId);
-
-        if (! $this->suppressionUe->libereEcuesVersBts() && $sortants->isNotEmpty()) {
-            ESBTPMatiere::whereIn('id', $sortants->all())
-                ->update(['is_active' => false, 'updated_by' => auth()->id()]);
-            $aDetacher = $aDetacher->diff($sortants);
-        }
-
-        $this->composition->libererCleEtrangere($ue, $aDetacher->values()->all());
+        // l'ecole (le formulaire ne pose pas la question element par element).
+        $this->sortieDuLmd->retirerSansQuestion($ue, $aDetacher->all(), $parcoursId);
     }
 
     /**
@@ -768,10 +758,8 @@ class ESBTPLMDUEController extends Controller
     {
         $portee = $this->composition->porteeValide($ue, $request->input('parcours_id'));
 
-        // Retirer la DERNIERE ligne d'un element le fait sortir de la maquette :
-        // l'ecole dit ce qu'il devient (supprime, archive dans le LMD, ou rendu
-        // au BTS). Sans reponse, on ne touche a rien et on pose la question.
-        // `confirmer_sortie` est l'ancien accord, qui valait « rendu au BTS ».
+        // Derniere maquette de l'element : l'ecole dit ce qu'il devient
+        // (SortieDuLmd). `confirmer_sortie`, l'ancien accord, valait « BTS ».
         $devenir = $request->input('devenir')
             ?? ($request->boolean('confirmer_sortie') ? SortieDuLmd::CATALOGUE_BTS : null);
         $sortirait = $this->sortieDuLmd->sortirait($ue, $ecue, $portee);
@@ -800,9 +788,7 @@ class ESBTPLMDUEController extends Controller
                 return $this->sortieDuLmd->appliquer($devenir, $ue, $ecue);
             }
 
-            // La clé étrangère ne se libère que si l'élément ne figure plus dans
-            // AUCUNE maquette de cette unité, et passe à une autre unité qui le
-            // porte encore.
+            // Clé étrangère libérée, ou reportée sur une autre unité qui le porte.
             $this->composition->libererCleEtrangere($ue, [(int) $ecue->id]);
 
             return 'ECUE retiré de la maquette.';
@@ -873,8 +859,9 @@ class ESBTPLMDUEController extends Controller
         // par le pivot. Sans ce filtre, la liste offre l'intégralité du catalogue
         // BTS de l'établissement, et un seul clic sortirait une matière BTS de
         // tous les écrans BTS (ils filtrent sur `unite_enseignement_id IS NULL`).
-        // Les elements archives dans le LMD sont proposes aussi : les
-        // rattacher les reactive (EcritureEcue::ajouter).
+        // Les elements inactifs du LMD sont proposes aussi, marques « archive » :
+        // ceux que SortieDuLmd a archives, et ceux qu'un autre ecran aurait
+        // desactives. Les rattacher les reactive (EcritureEcue::ajouter).
         $matieres = ESBTPMatiere::query()
             ->where(function ($q) {
                 $q->whereNotNull('unite_enseignement_id')

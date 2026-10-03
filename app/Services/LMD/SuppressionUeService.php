@@ -147,8 +147,10 @@ class SuppressionUeService
             DB::table('esbtp_ue_matiere')->where('unite_enseignement_id', $ue->id)->delete();
             DB::table('esbtp_lmd_parcours_ue')->where('unite_enseignement_id', $ue->id)->delete();
 
+            // Les actifs seulement : un element archive dans le LMD (SortieDuLmd)
+            // a ete retire volontairement de toute maquette, pas rendu au BTS.
             if ($this->libereEcuesVersBts()) {
-                $ue->matieres()->update([
+                $ue->matieres()->where('is_active', true)->update([
                     'unite_enseignement_id' => null,
                     'updated_by' => auth()->id(),
                 ]);

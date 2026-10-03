@@ -332,6 +332,23 @@ class EcuePorteeDepuisEcranTest extends TestCase
         $this->assertContains('ECUE-BU', $this->vusPar($this->batiment));
     }
 
+    public function test_enregistrer_l_unite_ne_verse_pas_au_bts_un_element_archive(): void
+    {
+        // Le formulaire d'UE ne charge que les elements actifs : un archive n'y
+        // figure pas. Il ne doit pas pour autant etre « detache » a chaque
+        // enregistrement, ce qui couperait sa cle et le verserait au BTS.
+        $this->actingAs($this->acteur)
+            ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]), ['parcours_id' => $this->batiment->id, 'devenir' => 'archiver'])
+            ->assertOk();
+
+        $this->actingAs($this->acteur)->putJson(route('esbtp.lmd.ue.update', $this->ue), [
+            'name' => $this->ue->name, 'code' => 'UE-PARTAGEE', 'credit' => $this->ue->credit, 'type_ue' => 'fondamentale',
+            'ecues' => [], 'sync_ecues' => true,
+        ])->assertOk();
+
+        $this->assertSame($this->ue->id, (int) $this->ecueBu->fresh()->unite_enseignement_id);
+    }
+
     public function test_un_element_qui_a_servi_ne_se_supprime_pas(): void
     {
         // Une note suffit a dire que l'element a servi. L'eleve et la classe

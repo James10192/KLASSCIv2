@@ -177,6 +177,7 @@ class ESBTPTpeDeclarationController extends Controller
         return ESBTPMatiere::query()
             ->whereIn('id', $matiereIds)
             ->whereNotNull('unite_enseignement_id') // LMD strict : ECUE only
+            ->where('is_active', true) // un ECUE archive n'est plus enseigne
             ->orderBy('name')
             ->get(['id', 'name', 'unite_enseignement_id']);
     }

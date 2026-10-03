@@ -513,36 +513,7 @@
         </div>
     </div>
 </div>
-{{-- ══ MODAL Confirmation (remplace confirm() du navigateur) ══
-     Un confirm() natif peut etre bloque pour de bon par la case « Ne pas
-     autoriser ce site a vous solliciter » : l'action devient alors impossible
-     sans un mot. Et il ne sait poser qu'une question oui/non. --}}
-<div class="modal fade lu-modal" id="modalDemandeLu" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="lu-modal-hero w-100">
-                    <div class="lu-modal-hero-top">
-                        <div class="lu-modal-hero-left">
-                            <div class="lu-modal-icon"><i class="fas fa-question"></i></div>
-                            <div><h5 class="lu-modal-title" id="dl_titre">Confirmer</h5></div>
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-body">
-                <p class="lu-demande-message" id="dl_message"></p>
-                <div class="lu-choix-liste" id="dl_options" role="radiogroup"></div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="lu-modal-btn lu-modal-btn--cancel" data-bs-dismiss="modal"><i class="fas fa-times"></i> Annuler</button>
-                <button type="button" class="lu-modal-btn lu-modal-btn--submit" id="dl_valider"><i class="fas fa-check"></i> <span id="dl_valider_texte">Confirmer</span></button>
-            </div>
-        </div>
-    </div>
-</div>
-
+@include('esbtp.lmd.ue.partials._demande')
 @endsection
 
 @push('scripts')
@@ -557,55 +528,6 @@ function escHtml(str) {
     const d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
-}
-
-/**
- * Pose une question dans une fenetre KLASSCI et rend la reponse :
- * true / false sans options, la valeur choisie (ou null) avec options.
- */
-function demanderLu({ titre, message, options = null, valider = 'Confirmer', danger = false }) {
-    const el = document.getElementById('modalDemandeLu');
-    const liste = document.getElementById('dl_options');
-    const bouton = document.getElementById('dl_valider');
-    document.getElementById('dl_titre').textContent = titre;
-    document.getElementById('dl_message').textContent = message;
-    document.getElementById('dl_valider_texte').textContent = valider;
-    bouton.classList.toggle('lu-modal-btn--danger', danger);
-    liste.innerHTML = '';
-
-    (options || []).forEach(o => {
-        liste.insertAdjacentHTML('beforeend', `
-            <label class="lu-choix${o.possible ? '' : ' lu-choix--off'}">
-                <input type="radio" name="dl_choix" value="${escHtml(o.valeur)}"${o.possible ? '' : ' disabled'}${o.recommande ? ' checked' : ''}>
-                <span class="lu-choix-texte">
-                    <span class="lu-choix-titre">${escHtml(o.libelle)}${o.recommande ? ' <span class="lu-choix-reco">Conseillé</span>' : ''}</span>
-                    <span class="lu-choix-aide">${escHtml(o.aide)}</span>
-                </span>
-            </label>`);
-    });
-
-    const modal = bootstrap.Modal.getOrCreateInstance(el);
-    return new Promise(resolve => {
-        let reponse = options ? null : false;
-        const surValider = () => {
-            if (options) {
-                const choisi = liste.querySelector('input[name="dl_choix"]:checked');
-                if (!choisi) return;
-                reponse = choisi.value;
-            } else {
-                reponse = true;
-            }
-            modal.hide();
-        };
-        const surFermer = () => {
-            bouton.removeEventListener('click', surValider);
-            el.removeEventListener('hidden.bs.modal', surFermer);
-            resolve(reponse);
-        };
-        bouton.addEventListener('click', surValider);
-        el.addEventListener('hidden.bs.modal', surFermer);
-        modal.show();
-    });
 }
 
 function ueManager() {
@@ -700,12 +622,7 @@ function ueManager() {
 
         // ── Delete UE ──
         async deleteUe(ue) {
-            if (!await demanderLu({
-                titre: 'Supprimer l\'UE',
-                message: `Supprimer l'UE « ${ue.name} » et ses ECUE ?`,
-                valider: 'Supprimer',
-                danger: true,
-            })) return;
+            if (!await demanderLu({ titre: 'Supprimer l\'UE', message: `Supprimer l'UE « ${ue.name} » et ses ECUE ?`, valider: 'Supprimer', danger: true })) return;
             try {
                 const resp = await fetch(`${BASE}/${ue.id}`, {
                     method: 'DELETE',
@@ -756,11 +673,7 @@ function ueManager() {
             const maquette = ecue.portee
                 ? `de la maquette ${ecue.portee_label || ecue.portee_code}`
                 : 'de la composition commune (tous les parcours de l\'UE)';
-            if (!devenir && !await demanderLu({
-                titre: 'Retirer l\'ECUE',
-                message: `Retirer « ${ecue.name} » ${maquette} ?`,
-                valider: 'Retirer',
-            })) return;
+            if (!devenir && !await demanderLu({ titre: 'Retirer l\'ECUE', message: `Retirer « ${ecue.name} » ${maquette} ?`, valider: 'Retirer' })) return;
             try {
                 const resp = await fetch(`${BASE}/${ue.id}/ecue/${ecue.id}`, {
                     method: 'DELETE',
@@ -771,14 +684,8 @@ function ueManager() {
                 const data = await resp.json();
                 // Derniere maquette de l'element : le serveur demande ce qu'il devient.
                 if (resp.status === 409 && data.confirmation_requise) {
-                    const choix = await demanderLu({
-                        titre: 'Dernière maquette',
-                        message: data.message,
-                        options: data.options,
-                        valider: 'Retirer',
-                    });
-                    if (choix) return this.deleteEcue(ue, ecue, choix);
-                    return;
+                    const choix = await demanderLu({ titre: 'Dernière maquette', message: data.message, options: data.options, valider: 'Retirer' });
+                    return choix ? this.deleteEcue(ue, ecue, choix) : undefined;
                 }
                 if (resp.ok && data.success) {
                     ue.ecues = (ue.ecues || []).filter(e => !(e.id === ecue.id && (e.portee || 0) === (ecue.portee || 0)));

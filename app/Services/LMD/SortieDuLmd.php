@@ -50,9 +50,18 @@ class SortieDuLmd
         'esbtp_seance_cours' => 'séance(s) d\'emploi du temps',
         'esbtp_lmd_resultats_ecues' => 'résultat(s) LMD',
         'esbtp_resultats' => 'moyenne(s) enregistrée(s)',
+        'esbtp_resultats_matieres' => 'moyenne(s) de bulletin',
+        'esbtp_tpe_declarations' => 'déclaration(s) de TPE',
+        'esbtp_examens_planifies' => 'examen(s) planifié(s)',
     ];
 
-    public function __construct(private CompositionUe $composition) {}
+    /** @var array<string, array{0: bool, 1: bool}>|null table => [lisible, avec suppression douce] */
+    private static ?array $tables = null;
+
+    public function __construct(
+        private CompositionUe $composition,
+        private SuppressionUeService $suppressionUe,
+    ) {}
 
     /**
      * Vrai si retirer cette ligne fait sortir l'element du LMD.
@@ -86,12 +95,13 @@ class SortieDuLmd
         $usages = [];
 
         foreach (self::USAGES as $table => $libelle) {
-            if (! Schema::hasTable($table) || ! Schema::hasColumn($table, 'matiere_id')) {
+            [$lisible, $douce] = $this->table($table);
+            if (! $lisible) {
                 continue;
             }
 
             $requete = DB::table($table)->where('matiere_id', $ecue->id);
-            if (Schema::hasColumn($table, 'deleted_at')) {
+            if ($douce) {
                 $requete->whereNull('deleted_at');
             }
 
@@ -102,6 +112,35 @@ class SortieDuLmd
         }
 
         return $usages;
+    }
+
+    /**
+     * Retire des elements d'une maquette sans poser la question, pour le
+     * formulaire d'UE qui en retire plusieurs d'un coup. Ceux qui sortent de
+     * leur derniere maquette suivent le reglage de l'ecole, comme a la
+     * suppression d'une UE : rendus au BTS, ou archives dans le LMD.
+     *
+     * @param  array<int, int>  $matiereIds
+     */
+    public function retirerSansQuestion(ESBTPUniteEnseignement $ue, array $matiereIds, int $portee): void
+    {
+        if ($matiereIds === []) {
+            return;
+        }
+
+        $sortants = $this->suppressionUe->libereEcuesVersBts()
+            ? []
+            : ESBTPMatiere::whereIn('id', $matiereIds)->get()
+                ->filter(fn (ESBTPMatiere $m) => $this->sortirait($ue, $m, $portee))
+                ->map(fn (ESBTPMatiere $m) => (int) $m->id)->values()->all();
+
+        $this->composition->retirer($ue, $matiereIds, $portee);
+
+        if ($sortants !== []) {
+            ESBTPMatiere::whereIn('id', $sortants)->update(['is_active' => false, 'updated_by' => auth()->id()]);
+        }
+
+        $this->composition->libererCleEtrangere($ue, array_values(array_diff($matiereIds, $sortants)));
     }
 
     /**
@@ -193,5 +232,19 @@ class SortieDuLmd
         throw ValidationException::withMessages([
             'devenir' => 'Choix inconnu : supprimer, archiver ou catalogue_bts.',
         ]);
+    }
+
+    /**
+     * Une table d'usage existe-t-elle sur cette instance, avec `matiere_id`,
+     * et en suppression douce ? Lu une fois par processus : le schema ne
+     * bouge pas entre deux requetes.
+     *
+     * @return array{0: bool, 1: bool}
+     */
+    private function table(string $table): array
+    {
+        return self::$tables[$table] ??= Schema::hasTable($table)
+            ? [Schema::hasColumn($table, 'matiere_id'), Schema::hasColumn($table, 'deleted_at')]
+            : [false, false];
     }
 }
