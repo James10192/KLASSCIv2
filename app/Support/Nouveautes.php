@@ -20,7 +20,7 @@ class Nouveautes
         $entrees = array_values(array_filter(
             $contenu['entrees'] ?? [],
             function (array $entree) use ($utilisateur): bool {
-                if (! self::disponible($entree['si'] ?? null)) {
+                if (! self::disponible($entree['si'] ?? null, $utilisateur)) {
                     return false;
                 }
 
@@ -41,12 +41,15 @@ class Nouveautes
      * montree : on n'annonce pas un bouton absent. La cle `si` nomme la
      * condition ; une condition inconnue masque l'entree plutot que de l'ouvrir.
      */
-    private static function disponible(?string $condition): bool
+    private static function disponible(?string $condition, ?User $utilisateur): bool
     {
         return match ($condition) {
             null => true,
             'aide' => app(\App\Domain\Support\Services\DisponibiliteSupport::class)->signalement(),
             'reclamations' => app(\App\Domain\Notes\Reclamations\ReglagesReclamations::class)->actives(),
+            // Le bandeau des notes LMD suit la même règle que sa route : pas d'enseignant seul.
+            'requalification_examen' => $utilisateur !== null
+                && \App\Domain\Notes\RequalificationEnExamen::refusPour($utilisateur) === null,
             default => false,
         };
     }
