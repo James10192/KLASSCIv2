@@ -17,6 +17,7 @@ Ability : `cli:admin`. Simulation par défaut : `dry_run: false` est requis pour
   "periode": "semestre2",
   "date_regularisation": "2026-06-30",
   "motif": "Relevé officiel du semestre 2 transmis par l'établissement",
+  "nature": "regularisation",
   "dry_run": true,
   "notes": [{ "matiere_id": 148, "note": 15 }]
 }
@@ -26,6 +27,18 @@ Ability : `cli:admin`. Simulation par défaut : `dry_run: false` est requis pour
   (`semestre3` ou `semestre4` pour une L2). Un semestre qui n'est pas l'un des
   deux de la classe est refusé.
 - `date_regularisation` : jamais dans le futur.
+- `nature` (facultatif) : `regularisation` (défaut) ou `examen`. Un relevé qui ne
+  donne que la note d'examen, le contrôle continu venant à part, se saisit en
+  `examen` : l'évaluation est de type `examen`, nommée `Examen SEMESTREn — <élément>`,
+  et reste distincte du contrôle continu saisi ensuite.
+  **Le type ne change aucun calcul** : le bulletin LMD fait la moyenne des
+  évaluations de l'élément selon leur coefficient (1 ici), et la pondération
+  contrôle continu / examen (`lmd_cc_weight`, `lmd_exam_weight`) n'est pas
+  encore appliquée. Deux contrôles continus de coefficient 1 plus cet examen
+  donnent donc un tiers chacun.
+- Une note déjà saisie pour le même élément sous l'autre nature est **refusée**
+  (`422`, qui nomme l'évaluation) : elle serait comptée deux fois. Même risque si
+  l'examen est ensuite planifié dans le module des examens : ne pas le ressaisir.
 - `notes[].matiere_id` : un élément (ECUE) de la maquette du semestre, tel que
   la classe le voit (`getEcuesEffectifs`, clé étrangère comprise). Au plus 40.
 - L'étudiant doit être inscrit **activement** dans la classe, cette année-là.
@@ -54,6 +67,8 @@ maquette, date future).
 
 ## Historique
 
+- 3 octobre 2026 : paramètre `nature` (`regularisation` | `examen`), aussi pour
+  Nanan (`proposer_releve_notes_lmd`). Sans lui, rien ne change.
 - 2 octobre 2026 : semestre absolu, évaluations terminées au lieu de brouillon,
   année écrite en clair sur la note, maquette lue par clé étrangère, date future
   refusée. Service partagé avec Nanan.

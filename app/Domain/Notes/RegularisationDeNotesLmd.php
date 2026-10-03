@@ -30,9 +30,21 @@ use Illuminate\Validation\ValidationException;
  */
 final class RegularisationDeNotesLmd
 {
+    /** Une note dont l'épreuve n'a jamais été créée (défaut, comportement historique). */
+    public const NATURE_REGULARISATION = 'regularisation';
+
+    /**
+     * La note d'examen seule, sans le contrôle continu : l'évaluation est un
+     * examen, nommée comme tel, pour que le contrôle continu saisi plus tard
+     * reste distinct (ESBTP Abidjan, session d'avril 2026).
+     */
+    public const NATURE_EXAMEN = 'examen';
+
+    public const NATURES = [self::NATURE_REGULARISATION, self::NATURE_EXAMEN];
+
     /**
      * @param  array{etudiant_id: int, classe_id: int, annee_universitaire_id?: ?int, periode: string,
-     *               date_regularisation: string, motif: string, notes: list<array{matiere_id: int, note: float|int}>}  $e
+     *               date_regularisation: string, motif: string, nature?: ?string, notes: list<array{matiere_id: int, note: float|int}>}  $e
      * @return array{annee: string, lignes: list<array{matiere_id: int, matiere: string, evaluation: string, avant: ?float, apres: float, evaluation_id?: int, note_id?: int}>}
      *
      * @throws ValidationException quand la classe, l'inscription ou une matière ne convient pas
@@ -69,8 +81,13 @@ final class RegularisationDeNotesLmd
             $this->refuser('periode', "S{$semestre} n'est pas un semestre de {$classe->name} (" . implode(' ou ', array_map(fn ($s) => "S{$s}", $classe->getSemestresLMD())) . ').');
         }
         $maquette = $this->ecuesDeLaMaquette($classe, $semestre);
+        $nature = $e['nature'] ?? self::NATURE_REGULARISATION;
+        if (! is_string($nature) || ! in_array($nature, self::NATURES, true)) {
+            $this->refuser('nature', 'Nature inconnue : ' . implode(' ou ', self::NATURES) . '.');
+        }
+        $type = $nature === self::NATURE_EXAMEN ? ESBTPEvaluation::TYPE_EXAMEN : 'controle';
 
-        $lignes = collect($e['notes'])->map(function (array $l) use ($classe, $semestre, $maquette, $annee, $periode, $e): array {
+        $lignes = collect($e['notes'])->map(function (array $l) use ($classe, $semestre, $maquette, $annee, $periode, $e, $nature): array {
             $matiere = ESBTPMatiere::findOrFail((int) $l['matiere_id']);
             if (! CoherenceSystemeAcademique::estCoherente($classe->systeme_academique, $matiere->unite_enseignement_id)) {
                 $this->refuser('notes', "La matière {$matiere->name} n'est pas une ECUE LMD de cette classe.");
@@ -78,7 +95,21 @@ final class RegularisationDeNotesLmd
             if (! $maquette->contains('id', $matiere->id)) {
                 $this->refuser('notes', "La matière {$matiere->name} ne figure pas dans la maquette S{$semestre} de cette classe.");
             }
-            $titre = $this->titre($periode, $matiere);
+            $titre = $this->titre($nature, $periode, $matiere);
+            // La même note, saisie sous l'autre nature, serait une seconde
+            // évaluation : le bulletin LMD moyenne toutes les évaluations de
+            // l'élément, et la compterait deux fois.
+            $autreTitre = $this->titre($nature === self::NATURE_EXAMEN ? self::NATURE_REGULARISATION : self::NATURE_EXAMEN, $periode, $matiere);
+            $autre = ESBTPNote::query()
+                ->where('etudiant_id', (int) $e['etudiant_id'])
+                ->whereHas('evaluation', fn ($q) => $q->where('titre', $autreTitre)->where('classe_id', $classe->id)
+                    ->where('matiere_id', $matiere->id)->where('annee_universitaire_id', $annee->id)->where('periode', $periode)
+                    // Ce que le bulletin compte : une évaluation annulée ne double rien.
+                    ->where('status', ESBTPEvaluation::STATUS_COMPLETED))
+                ->first(['evaluation_id', 'note']);
+            if ($autre !== null) {
+                $this->refuser('notes', "{$matiere->name} : une note ({$autre->note}) est déjà saisie dans « {$autreTitre} » (évaluation #{$autre->evaluation_id}). Annulez-la ou corrigez-la plutôt que d'en créer une seconde.");
+            }
             $avant = ESBTPNote::query()
                 ->where('etudiant_id', (int) $e['etudiant_id'])
                 ->whereHas('evaluation', fn ($q) => $q->where('titre', $titre)->where('classe_id', $classe->id)
@@ -100,11 +131,11 @@ final class RegularisationDeNotesLmd
             return ['annee' => (string) $annee->name, 'lignes' => $rapport()];
         }
 
-        $ecrites = DB::transaction(fn () => $lignes->values()->map(function (array $l) use ($classe, $annee, $periode, $e, $userId, $canal): array {
+        $ecrites = DB::transaction(fn () => $lignes->values()->map(function (array $l) use ($classe, $annee, $periode, $e, $userId, $canal, $type): array {
             $evaluation = ESBTPEvaluation::firstOrCreate(
                 ['titre' => $l['titre'], 'classe_id' => $classe->id, 'matiere_id' => $l['matiere']->id,
                     'annee_universitaire_id' => $annee->id, 'periode' => $periode],
-                ['description' => $e['motif'], 'type' => 'controle', 'date_evaluation' => $e['date_regularisation'].' 08:00:00',
+                ['description' => $e['motif'], 'type' => $type, 'date_evaluation' => $e['date_regularisation'].' 08:00:00',
                     'duree_minutes' => 60, 'coefficient' => 1, 'bareme' => 20, 'status' => ESBTPEvaluation::STATUS_COMPLETED,
                     'is_published' => false, 'created_by' => $userId],
             );
@@ -119,7 +150,7 @@ final class RegularisationDeNotesLmd
             $note = ESBTPNote::updateOrCreate(
                 ['evaluation_id' => $evaluation->id, 'etudiant_id' => (int) $e['etudiant_id']],
                 ['matiere_id' => $l['matiere']->id, 'classe_id' => $classe->id, 'note' => $l['apres'], 'is_absent' => false,
-                    'type_evaluation' => 'controle', 'annee_universitaire' => $annee->name,
+                    'type_evaluation' => $type, 'annee_universitaire' => $annee->name,
                     'commentaire' => "Note régularisée via {$canal} — ".$e['motif'], 'created_by' => $userId, 'updated_by' => $userId],
             );
 
@@ -163,9 +194,9 @@ final class RegularisationDeNotesLmd
         return $this->unitesDeLaMaquette($classe, $semestre)->flatMap(fn (array $u) => $u['ecues']);
     }
 
-    private function titre(string $periode, ESBTPMatiere $matiere): string
+    private function titre(string $nature, string $periode, ESBTPMatiere $matiere): string
     {
-        return 'Régularisation '.strtoupper($periode).' — '.$matiere->name;
+        return ($nature === self::NATURE_EXAMEN ? 'Examen ' : 'Régularisation ').strtoupper($periode).' — '.$matiere->name;
     }
 
     private function refuser(string $champ, string $message): never
