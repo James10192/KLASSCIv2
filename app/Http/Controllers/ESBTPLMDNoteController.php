@@ -50,7 +50,11 @@ class ESBTPLMDNoteController extends Controller
         // La règle de la requalification elle-même : le bandeau ne s'affiche qu'à qui peut l'utiliser.
         $peutRequalifier = \App\Domain\Notes\RequalificationEnExamen::refusPour($request->user()) === null;
 
-        return view('esbtp.lmd.notes.index', compact('classes', 'evalCounts', 'anneeCourante', 'peutRequalifier'));
+        // La moyenne affichée dans la grille suit la règle du bulletin LMD :
+        // pondération contrôle continu / examen si l'école l'applique, sinon null.
+        $ponderation = app(\App\Services\LMD\LmdAcademicRuleProfile::class)->ponderationGravee();
+
+        return view('esbtp.lmd.notes.index', compact('classes', 'evalCounts', 'anneeCourante', 'peutRequalifier', 'ponderation'));
     }
 
     /**
