@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use App\Domain\Academique\CoherenceSystemeAcademique;
-use Illuminate\Support\Facades\Log;
 use App\Domain\BtsTroncCommun\ClasseOuvertureResolver;
-use Illuminate\Validation\ValidationException;
+use App\Domain\Evaluations\EnseignantsDuPlanning;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use OwenIt\Auditing\Contracts\Auditable;
 
 class ESBTPEvaluation extends Model implements Auditable
@@ -499,7 +500,8 @@ class ESBTPEvaluation extends Model implements Auditable
             self::STATUS_CANCELLED => 'Annulée',
         ];
     }
-/**
+
+    /**
      * Coherence entre le systeme academique de la classe et la nature de la
      * matiere.
      *
@@ -559,6 +561,25 @@ class ESBTPEvaluation extends Model implements Auditable
 
         static::saving(function (self $evaluation): void {
             $evaluation->assertPeriodeCoherenteAvecLaClasse();
+        });
+
+        // Tous les chemins d'ecriture (formulaire, notes LMD, Nanan, examen
+        // planifie, devoir de l'emploi du temps) passent par le modele. On y
+        // applique donc l'affectation LMD du planning plutot que de recopier
+        // cette regle dans chaque createur.
+        static::saving(function (self $evaluation): void {
+            $doitResoudre = ! $evaluation->exists || $evaluation->isDirty([
+                'classe_id',
+                'matiere_id',
+                'annee_universitaire_id',
+                'periode',
+                'enseignant_id',
+                'enseignant_externe_nom',
+            ]);
+
+            if ($doitResoudre) {
+                app(EnseignantsDuPlanning::class)->appliquerAEvaluation($evaluation);
+            }
         });
     }
 
