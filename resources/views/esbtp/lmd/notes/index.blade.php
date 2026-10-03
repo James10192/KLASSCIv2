@@ -1274,7 +1274,7 @@ function saveNote(studentId, evaluationId, noteValue) {
             return;
         }
         if (!err.limite) console.error('Save error:', err);
-        queueOfflineNote(payload, input, err.message);
+        queueOfflineNote(payload, input, err.limite ? null : err.message);
         if (err.limite) planifierRepriseApresLimite(err.limite);
     }).finally(() => {
         input?.classList.remove('ln-syncing');
@@ -1421,6 +1421,11 @@ function envoyerLot(notes, submitFinal) {
         body: JSON.stringify({ notes, submit_final: submitFinal })
     }).then(async r => {
         const data = await r.json().catch(() => ({}));
+        if (r.status === 429) {
+            const err = new Error('Trop d’enregistrements en une minute : réessayez dans un instant.');
+            err.limite = parseInt(r.headers.get('Retry-After') || '20', 10) || 20;
+            throw err;
+        }
         if (r.status >= 400 && r.status < 500) {
             const err = new Error(data.errors ? Object.values(data.errors).flat()[0] : (data.message || 'Enregistrement refusé.'));
             err.refusee = true;
@@ -1449,6 +1454,12 @@ function envoyerLot(notes, submitFinal) {
         btn.innerHTML = libelle;
         if (err.refusee) {
             window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: err.message } }));
+            return;
+        }
+        if (err.limite) {
+            // Rien n'est perdu : les notes restent à l'écran, la file les renverra.
+            if (!submitFinal) { notes.forEach(note => queueOfflineNote(note, findNoteInput(note))); planifierRepriseApresLimite(err.limite); }
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message: err.message } }));
             return;
         }
         console.error('Bulk save error:', err);
@@ -1545,6 +1556,7 @@ async function replayOfflineNoteQueue() {
     if (isReplayingOfflineQueue || !navigator.onLine || offlineNoteQueue.length === 0) return;
     isReplayingOfflineQueue = true;
     updateOfflineQueueIndicator('syncing');
+    const presentesAuDepart = new Set(offlineNoteQueue.map(item => item.key));
 
     for (const item of [...offlineNoteQueue]) {
         const input = findNoteInput(item.payload);
@@ -1562,7 +1574,7 @@ async function replayOfflineNoteQueue() {
                 markNoteRefused(input, err.message);
                 continue;
             }
-            queueOfflineNote(item.payload, input, err.message);
+            queueOfflineNote(item.payload, input, err.limite ? null : err.message);
             if (err.limite) planifierRepriseApresLimite(err.limite);
             break;
         } finally {
@@ -1572,6 +1584,11 @@ async function replayOfflineNoteQueue() {
 
     isReplayingOfflineQueue = false;
     updateOfflineQueueIndicator();
+    // Une note mise en file pendant cette reprise ne doit pas attendre le
+    // prochain « online ». Les autres restent pour leur propre motif (réseau,
+    // limite) : relancer sur elles bouclerait contre une panne du serveur.
+    const arriveesPendant = offlineNoteQueue.some(item => !presentesAuDepart.has(item.key));
+    if (arriveesPendant && navigator.onLine && !repriseLimitePrevue) planifierRepriseApresLimite(5);
 }
 
 function updateOfflineQueueIndicator(mode = null) {
