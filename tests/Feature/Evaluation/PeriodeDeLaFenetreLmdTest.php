@@ -75,5 +75,12 @@ class PeriodeDeLaFenetreLmdTest extends TestCase
         ])->assertJsonMissingValidationErrors('periode');
 
         $this->assertSame('semestre1', ESBTPEvaluation::where('titre', 'Examen SEMESTRE1 — test')->value('periode'));
+
+        // Une classe qui n'est pas LMD n'a que deux semestres.
+        $this->actingAs($user)->postJson(route('esbtp.evaluations.store'), [
+            'titre' => 'Examen SEMESTRE3 — test', 'type' => 'examen', 'periode' => '3',
+            'date_evaluation' => '2026-04-30', 'heure_debut' => '08:00', 'heure_fin' => '10:00',
+            'classe_id' => $classe->id, 'matiere_id' => $matiere->id, 'bareme' => 20, 'coefficient' => 1, 'embed' => 1,
+        ])->assertJsonValidationErrors('periode');
     }
 }
