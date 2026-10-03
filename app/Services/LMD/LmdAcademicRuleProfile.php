@@ -81,9 +81,10 @@ final class LmdAcademicRuleProfile
     }
 
     /**
-     * La pondération telle qu'un document officiel la grave : null quand l'école
-     * ne l'applique pas, pour que le PV et le relevé n'affirment jamais une
-     * règle qui n'a pas produit leurs moyennes.
+     * La pondération telle qu'un document officiel la grave : la règle en vigueur
+     * à la production du document, null quand l'école ne l'applique pas. Comme
+     * les règles de compensation, elle est relue à ce moment-là : régénérer les
+     * bulletins avant le PV ou le relevé après avoir changé la case.
      *
      * @return array{cc: float, examen: float}|null
      */

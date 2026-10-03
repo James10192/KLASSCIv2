@@ -69,13 +69,24 @@ async function chargerRequalification(classeId) {
         const data = await resp.json();
         requalLignes = data.lignes || [];
         if (requalLignes.length === 0) return;
-        const periodes = [...new Set(requalLignes.map(l => l.periode))].sort();
+        const periodes = [...new Set(requalLignes.map(l => l.periode))].sort((a, b) => parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10));
         document.getElementById('requalSemestres').innerHTML = periodes.map(p =>
             '<button type="button" class="ln-requal-chip" data-periode="' + escHtml(p) + '" onclick="choisirSemestreRequal(this.dataset.periode)">'
             + 'S' + escHtml(p.replace(/\D/g, '')) + ' · ' + requalLignes.filter(l => l.periode === p).length + '</button>'
         ).join('');
         banner.style.display = 'flex';
-        choisirSemestreRequal(periodes[0]);
+        if (periodes.length === 1) {
+            choisirSemestreRequal(periodes[0]);
+            return;
+        }
+        // Plusieurs semestres : rien n'est présélectionné, l'école choisit.
+        requalPeriode = null;
+        document.getElementById('requalTitre').textContent =
+            requalLignes.length + ' évaluation(s) de régularisation sur ' + periodes.length + ' semestres';
+        afficherRequalTexte('Choisissez le semestre dont les notes étaient celles de l’examen.', false);
+        document.getElementById('requalListe').style.display = 'none';
+        document.getElementById('requalBtn').style.display = 'none';
+        document.getElementById('requalConfirmBtn').style.display = 'none';
     } catch (err) {
         console.error('Requalification indisponible', err);
     }
