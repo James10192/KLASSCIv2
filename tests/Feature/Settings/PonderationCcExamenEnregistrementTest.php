@@ -27,9 +27,9 @@ class PonderationCcExamenEnregistrementTest extends TestCase
     public static function cases(): array
     {
         return [
-            'pondération' => [LmdAcademicRuleProfile::REGLAGE_PONDERATION_ACTIVE, '0'],
-            'compensation inter-UE' => [LmdAcademicRuleProfile::REGLAGE_COMPENSATION_INTER_UE, '1'],
-            'compensation intra-UE' => [LmdAcademicRuleProfile::REGLAGE_COMPENSATION_INTRA_UE, '1'],
+            'pondération' => [LmdAcademicRuleProfile::REGLAGE_PONDERATION_ACTIVE],
+            'compensation inter-UE' => [LmdAcademicRuleProfile::REGLAGE_COMPENSATION_INTER_UE],
+            'compensation intra-UE' => [LmdAcademicRuleProfile::REGLAGE_COMPENSATION_INTRA_UE],
         ];
     }
 
@@ -58,9 +58,9 @@ class PonderationCcExamenEnregistrementTest extends TestCase
     }
 
     /** @dataProvider cases */
-    public function test_cocher_puis_decocher_la_case_s_enregistre(string $cle, string $initial): void
+    public function test_cocher_puis_decocher_la_case_s_enregistre(string $cle): void
     {
-        Setting::updateOrCreate(['key' => $cle], ['value' => $initial, 'type' => 'boolean', 'group' => 'lmd', 'is_required' => false]);
+        Setting::updateOrCreate(['key' => $cle], ['value' => '0', 'type' => 'boolean', 'group' => 'lmd', 'is_required' => false]);
         $admin = $this->superAdmin();
 
         $this->actingAs($admin)->put(route('esbtp.settings.update'), [
