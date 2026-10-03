@@ -95,11 +95,11 @@ final class RegularisationDeNotesLmd
             if (! $maquette->contains('id', $matiere->id)) {
                 $this->refuser('notes', "La matière {$matiere->name} ne figure pas dans la maquette S{$semestre} de cette classe.");
             }
-            $titre = $this->titre($nature, $periode, $matiere);
+            $titre = self::titre($nature, $periode, $matiere);
             // La même note, saisie sous l'autre nature, serait une seconde
             // évaluation : le bulletin LMD moyenne toutes les évaluations de
             // l'élément, et la compterait deux fois.
-            $autreTitre = $this->titre($nature === self::NATURE_EXAMEN ? self::NATURE_REGULARISATION : self::NATURE_EXAMEN, $periode, $matiere);
+            $autreTitre = self::titre($nature === self::NATURE_EXAMEN ? self::NATURE_REGULARISATION : self::NATURE_EXAMEN, $periode, $matiere);
             $autre = ESBTPNote::query()
                 ->where('etudiant_id', (int) $e['etudiant_id'])
                 ->whereHas('evaluation', fn ($q) => $q->where('titre', $autreTitre)->where('classe_id', $classe->id)
@@ -194,7 +194,8 @@ final class RegularisationDeNotesLmd
         return $this->unitesDeLaMaquette($classe, $semestre)->flatMap(fn (array $u) => $u['ecues']);
     }
 
-    private function titre(string $nature, string $periode, ESBTPMatiere $matiere): string
+    /** Le titre d'une évaluation saisie par ce service : la requalification le relit. */
+    public static function titre(string $nature, string $periode, ESBTPMatiere $matiere): string
     {
         return ($nature === self::NATURE_EXAMEN ? 'Examen ' : 'Régularisation ').strtoupper($periode).' — '.$matiere->name;
     }

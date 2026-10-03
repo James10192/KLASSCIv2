@@ -28,7 +28,11 @@ class LmdTranscriptSnapshotBuilder
      * terminal en sont absentes pour la meme raison que dans le PV : elles
      * n'entrent aujourd'hui dans aucun calcul.
      */
-    public const RULES_VERSION = 'lmd-transcript-profile-v1';
+    /**
+     * v2 — octobre 2026 : la pondération contrôle continu / examen est gravée
+     * quand l'école l'applique (`ponderation_cc_examen`, null sinon), comme dans le PV.
+     */
+    public const RULES_VERSION = 'lmd-transcript-profile-v2';
 
     /**
      * Les deux mises en page du releve, et le reglage qui tranche.
@@ -345,6 +349,7 @@ class LmdTranscriptSnapshotBuilder
             'intra_ue_compensation' => $this->profile->intraUeCompensationEnabled(),
             'mention_thresholds' => $this->profile->mentionThresholds(),
             'expected_credits_per_semester' => $this->profile->expectedCreditsPerSemester(),
+            'ponderation_cc_examen' => $this->profile->ponderationGravee(),
         ];
     }
 

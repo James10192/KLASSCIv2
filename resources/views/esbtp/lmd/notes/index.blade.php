@@ -648,6 +648,8 @@
                     </div>
                 </div>
 
+                @include('esbtp.lmd.notes.partials._requalification')
+
                 {{-- Toolbar: UE → ECUE selectors + dynamic periods --}}
                 <div class="ln-modal-toolbar">
                     <select id="ueSelect" style="min-width:220px;">
@@ -898,6 +900,7 @@ async function openNotesModal(classeId, classeName) {
     ecueSelect.disabled = true;
 
     notesModal.show();
+    chargerRequalification(classeId);
 
     try {
         const resp = await fetch('/esbtp/lmd/notes/classe/' + classeId + '/data', {

@@ -26,7 +26,12 @@ class JuryPvSnapshotBuilder
      * `v2` ferait porter le même numéro à deux jeux de règles différents, et
      * personne ne pourrait plus dire, devant un PV de 2026, lequel l'a produit.
      */
-    public const RULES_VERSION = 'lmd-academic-profile-v3';
+    /**
+     * v4 — octobre 2026 : la pondération contrôle continu / examen entre dans la
+     * moyenne d'un élément quand l'école l'active ; le PV la grave alors
+     * (`ponderation_cc_examen`), et null quand elle ne s'applique pas.
+     */
+    public const RULES_VERSION = 'lmd-academic-profile-v4';
 
     public function __construct(
         private readonly LmdAcademicRuleProfile $profile,
@@ -94,6 +99,7 @@ class JuryPvSnapshotBuilder
             'intra_ue_compensation' => $this->profile->intraUeCompensationEnabled(),
             'mention_thresholds' => $this->profile->mentionThresholds(),
             'expected_credits' => $this->profile->expectedCreditsPerSemester(),
+            'ponderation_cc_examen' => $this->profile->ponderationGravee(),
         ];
     }
 

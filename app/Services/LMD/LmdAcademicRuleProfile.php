@@ -14,6 +14,14 @@ final class LmdAcademicRuleProfile
 
     public const RATTRAPAGE_SCOPE_UE = 'ue';
 
+    /**
+     * L'école applique-t-elle la pondération contrôle continu / examen à la
+     * moyenne d'un ECUE ? Désactivé par défaut : avant ce réglage, la moyenne
+     * était celle de toutes les évaluations, et l'activer change les moyennes.
+     * ESBTP Abidjan l'active (fiches 40 % CC + 60 % test final, octobre 2026).
+     */
+    public const REGLAGE_PONDERATION_ACTIVE = 'lmd_ponderation_cc_examen';
+
     private Closure $resolver;
 
     /** @param null|Closure(string, mixed): mixed $resolver */
@@ -50,11 +58,8 @@ final class LmdAcademicRuleProfile
     }
 
     /**
-     * Ponderation du controle continu, en pourcentage.
-     *
-     * ATTENTION : ce reglage n'entre encore dans aucun calcul de moyenne. Il est expose
-     * ici pour un branchement futur, et volontairement absent du proces-verbal de jury
-     * tant qu'il ne pilote rien (un document legal ne doit pas affirmer une regle inappliquee).
+     * Ponderation du controle continu, en pourcentage. N'entre dans la moyenne
+     * d'un ECUE que si l'ecole l'a activee (ponderationAppliquee()).
      */
     public function continuousAssessmentWeight(): float
     {
@@ -63,11 +68,31 @@ final class LmdAcademicRuleProfile
 
     /**
      * Ponderation de l'examen terminal, en pourcentage. Meme reserve que
-     * continuousAssessmentWeight() : expose, pas encore applique au calcul des notes.
+     * continuousAssessmentWeight().
      */
     public function finalExamWeight(): float
     {
         return (float) $this->first(['lmd_exam_weight'], 60);
+    }
+
+    public function ponderationAppliquee(): bool
+    {
+        return $this->toBool($this->first([self::REGLAGE_PONDERATION_ACTIVE], false));
+    }
+
+    /**
+     * La pondération telle qu'un document officiel la grave : la règle en vigueur
+     * à la production du document, null quand l'école ne l'applique pas. Comme
+     * les règles de compensation, elle est relue à ce moment-là : régénérer les
+     * bulletins avant le PV ou le relevé après avoir changé la case.
+     *
+     * @return array{cc: float, examen: float}|null
+     */
+    public function ponderationGravee(): ?array
+    {
+        return $this->ponderationAppliquee()
+            ? ['cc' => $this->continuousAssessmentWeight(), 'examen' => $this->finalExamWeight()]
+            : null;
     }
 
     /**

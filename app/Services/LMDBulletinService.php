@@ -657,6 +657,14 @@ class LMDBulletinService
      * Calculer la moyenne d'un ECUE depuis les notes des evaluations.
      *
      * Moyenne ECUE = Σ(note_normalized × coeff_eval) / Σ coeff_eval
+     *
+     * Si l'ecole applique la ponderation (LmdAcademicRuleProfile::ponderationAppliquee),
+     * cette moyenne se fait a part pour les examens et pour le reste (controle
+     * continu), puis les deux se ponderent : 40/60 par defaut. Une seule des deux
+     * parties presente compte seule. Une absence vaut 0, comme sans ponderation.
+     * « Controle continu » = toute evaluation qui n'est pas un examen (devoir,
+     * controle, tp, oral...). Le rattrapage LMD ne passe pas par une evaluation :
+     * il est porte par la note de rattrapage de l'ECUE (noteEffectiveECUE).
      */
     public function calculerMoyenneECUE(
         int $etudiantId,
@@ -684,26 +692,48 @@ class LMDBulletinService
 
         if ($notes->isEmpty()) return null;
 
+        $notes = $notes->filter(fn ($note) => $note->evaluation !== null);
+        if (! $this->rules->ponderationAppliquee()) {
+            $moyenne = $this->moyenneParCoefficient($notes);
+
+            return $moyenne === null ? null : round($moyenne, 2);
+        }
+
+        [$examens, $controles] = $notes->partition(fn ($note) => $note->evaluation->type === ESBTPEvaluation::TYPE_EXAMEN);
+        $parties = array_filter([
+            [$this->moyenneParCoefficient($controles), max(0.0, $this->rules->continuousAssessmentWeight())],
+            [$this->moyenneParCoefficient($examens), max(0.0, $this->rules->finalExamWeight())],
+        ], fn (array $partie) => $partie[0] !== null);
+        $poids = array_sum(array_column($parties, 1));
+        if ($parties === []) {
+            return null;
+        }
+        if ($poids <= 0) {
+            // Deux poids a zero : rien a ponderer, la moyenne simple reprend la main.
+            return round((float) $this->moyenneParCoefficient($notes), 2);
+        }
+
+        return round(array_sum(array_map(fn (array $p) => $p[0] * $p[1], $parties)) / $poids, 2);
+    }
+
+    /** Σ(note sur 20 × coefficient) / Σ coefficient, une absence comptant 0. */
+    private function moyenneParCoefficient(\Illuminate\Support\Collection $notes): ?float
+    {
         $totalPoints = 0;
         $totalCoeff = 0;
 
         foreach ($notes as $note) {
             $eval = $note->evaluation;
-            if (!$eval) continue;
-
             $bareme = $eval->bareme ?: 20;
             $coeffEval = $eval->coefficient ?: 1;
 
-            // Normaliser la note sur 20
             $noteNormalisee = $note->is_absent ? 0 : (($note->note / $bareme) * 20);
 
             $totalPoints += $noteNormalisee * $coeffEval;
             $totalCoeff += $coeffEval;
         }
 
-        if ($totalCoeff == 0) return null;
-
-        return round($totalPoints / $totalCoeff, 2);
+        return $totalCoeff == 0 ? null : $totalPoints / $totalCoeff;
     }
 
     /**

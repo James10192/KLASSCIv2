@@ -3594,8 +3594,22 @@
                         </div>
                         <div class="ls-desc">
                             Pondération entre Contrôle Continu et Examen. Chaque établissement peut définir sa propre répartition.
+                            Elle ne compte dans la moyenne des ECUE que si elle est activée ; sinon toutes les évaluations pèsent selon leur seul coefficient.
                         </div>
                         <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="ls-toggle" for="lmd_ponderation_cc_examen">
+                                    <div class="ls-toggle-text">
+                                        <div class="ls-toggle-label">Appliquer la pondération à la moyenne des ECUE</div>
+                                        <div class="ls-toggle-hint">Moyenne des examens et moyenne du contrôle continu, puis pondérées (ex. 40 % CC + 60 % examen). Change les moyennes : régénérez les bulletins. Les écrans de résultats montreront aussi les années déjà délibérées avec cette règle.</div>
+                                    </div>
+                                    <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
+                                        <input class="form-check-input" type="checkbox" id="lmd_ponderation_cc_examen"
+                                               name="setting_lmd_ponderation_cc_examen" value="1"
+                                               {{ $lmdVal('lmd_ponderation_cc_examen', '0') == '1' ? 'checked' : '' }}>
+                                    </div>
+                                </label>
+                            </div>
                             <div class="col-md-3">
                                 <div class="ls-field">
                                     <div class="ls-label">Pondération CC (%)</div>
