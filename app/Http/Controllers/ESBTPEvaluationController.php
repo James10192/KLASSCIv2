@@ -586,6 +586,16 @@ class ESBTPEvaluationController extends Controller
             }
 
             return $redirect;
+        } catch (ValidationException $e) {
+            if ($isEmbedRequest) {
+                return response()->json([
+                    'success' => false,
+                    'message' => collect($e->errors())->flatten()->first(),
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
+            return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la création de l\'évaluation: '.$e->getMessage());
             \Log::error('Trace: '.$e->getTraceAsString());
@@ -2088,3 +2098,4 @@ class ESBTPEvaluationController extends Controller
         }
     }
 }
+
