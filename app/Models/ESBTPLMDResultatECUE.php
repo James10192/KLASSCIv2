@@ -84,7 +84,7 @@ class ESBTPLMDResultatECUE extends Model
 
         return [
             'enseignant_id' => $resolution['enseignant_id'],
-            'nom' => $resolution['noms'],
+            'nom' => static::nomsEnseignantsAvecTitres($resolution['noms'], $resolution['enseignants']),
         ];
     }
 
@@ -142,6 +142,55 @@ class ESBTPLMDResultatECUE extends Model
             }
         }
 
-        return trim((string) ($this->enseignant?->name ?? ''));
+        return static::nomEnseignantAvecTitre($this->enseignant);
+    }
+
+    /**
+     * Le titre fait partie du nom figé sur le bulletin, sans modifier User::name.
+     */
+    private static function nomEnseignantAvecTitre(?User $enseignant): string
+    {
+        $nom = trim((string) ($enseignant?->name ?? ''));
+        if ($nom === '') {
+            return '';
+        }
+
+        $enseignant->loadMissing('teacherProfile');
+        $titre = trim((string) ($enseignant->teacherProfile?->title ?? ''));
+        if ($titre === '') {
+            return $nom;
+        }
+
+        // Les noms legacy peuvent déjà porter le même titre, avec ou sans point.
+        $prefixe = preg_quote(rtrim($titre, '.'), '/');
+        if (preg_match('/^'.$prefixe.'\\.?(?:\\s|$)/iu', $nom) === 1) {
+            return $nom;
+        }
+
+        return $titre.' '.$nom;
+    }
+
+    /** @param \Illuminate\Support\Collection<int, User> $enseignants */
+    private static function nomsEnseignantsAvecTitres(
+        string $noms,
+        \Illuminate\Support\Collection $enseignants,
+    ): string {
+        // Charger les profils ensemble ; conserver l'ordre et les noms externes
+        // fournis par le résolveur canonique (séparateur « / »).
+        $users = new \Illuminate\Database\Eloquent\Collection($enseignants->all());
+        $users->loadMissing('teacherProfile');
+
+        $avecTitres = [];
+        foreach ($users as $user) {
+            $nom = trim((string) $user->name);
+            if ($nom !== '') {
+                $avecTitres[$nom] = static::nomEnseignantAvecTitre($user);
+            }
+        }
+
+        return implode(' / ', array_map(
+            fn (string $nom) => $avecTitres[trim($nom)] ?? $nom,
+            explode(' / ', $noms),
+        ));
     }
 }
