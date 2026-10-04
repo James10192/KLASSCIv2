@@ -5,16 +5,15 @@ namespace App\Observers;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\User;
-use App\Services\LMD\EnseignantDePlanificationLmd;
+use App\Services\LMD\EnseignantDeClasseLmd;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Une évaluation LMD créée/modifiée par un utilisateur prend son enseignant
- * depuis la planification académique de l'ECUE.
+ * Une evaluation LMD consomme l'affectation REELLE de sa classe.
  *
- * Les régularisations historiques sont des conteneurs techniques de reprise de
- * notes, pas des évaluations pédagogiques nouvelles : elles gardent le repli
- * historique et ne bloquent pas une reprise de données ancienne.
+ * Le planning peut contenir plusieurs enseignants pour le meme ECUE : on ne
+ * choisit donc plus arbitrairement le principal. Une classe deja coherente est
+ * resolue automatiquement ; un pool ambigu exige un choix explicite.
  */
 final class ESBTPEvaluationLmdTeacherObserver
 {
@@ -44,12 +43,11 @@ final class ESBTPEvaluationLmdTeacherObserver
             return;
         }
 
-        $resolution = app(EnseignantDePlanificationLmd::class)->resoudre(
+        $resolution = app(EnseignantDeClasseLmd::class)->resoudre(
             $classe,
             (int) $evaluation->matiere_id,
             (int) $evaluation->annee_universitaire_id,
             $evaluation->periode,
-            false,
         );
 
         if (! $resolution['dans_maquette']) {
@@ -58,16 +56,22 @@ final class ESBTPEvaluationLmdTeacherObserver
                     'matiere_id' => $resolution['message'] ?? 'Cet ECUE ne figure pas dans la maquette LMD de ce semestre.',
                 ]);
             }
-
             return;
         }
 
         if ($resolution['enseignant_id']) {
-            // La planification a la priorité absolue : aucune affectation libre
-            // sur le formulaire ou l'API ne doit créer une troisième vérité.
             $evaluation->enseignant_id = $resolution['enseignant_id'];
             $evaluation->enseignant_externe_nom = null;
+            return;
+        }
 
+        // Premier acte pedagogique d'une classe : si le planning porte plusieurs
+        // professeurs, le formulaire peut en fournir un explicitement. Il doit
+        // appartenir au pool/candidats resolu ; cette evaluation devient ensuite
+        // la preuve qui permettra aux ecrans suivants de choisir automatiquement.
+        $choisi = (int) ($evaluation->enseignant_id ?: 0);
+        if ($choisi && app(EnseignantDeClasseLmd::class)->candidatAutorise($resolution, $choisi)) {
+            $evaluation->enseignant_externe_nom = null;
             return;
         }
 
@@ -77,11 +81,11 @@ final class ESBTPEvaluationLmdTeacherObserver
 
         $acteur = $this->acteur($evaluation);
         $action = $acteur?->can('lmd.planning.edit')
-            ? 'Assignez rapidement un enseignant à cet ECUE dans la planification LMD, puis enregistrez de nouveau.'
-            : 'Demandez à une personne ayant le droit de modifier le planning LMD d’affecter l’enseignant.';
+            ? 'Choisissez le professeur de cette classe dans le dialogue LMD. KLASSCI harmonisera ensuite les evaluations et les seances de cette classe.'
+            : 'Demandez a une personne ayant le droit de modifier le planning LMD de confirmer le professeur de cette classe.';
 
         throw ValidationException::withMessages([
-            'enseignant_id' => ($resolution['message'] ?? 'Aucun enseignant n’est affecté dans le planning LMD.').' '.$action,
+            'enseignant_id' => ($resolution['message'] ?? 'Le professeur de cette classe doit etre confirme.').' '.$action,
         ]);
     }
 
@@ -92,9 +96,6 @@ final class ESBTPEvaluationLmdTeacherObserver
             return false;
         }
 
-        // Les fixtures/seeders historiques sans auteur restent importables. Une
-        // vraie création utilisateur (écran, API, Nanan, examen planifié) porte
-        // toujours created_by ou un utilisateur authentifié.
         return $this->acteur($evaluation) !== null;
     }
 
@@ -105,7 +106,6 @@ final class ESBTPEvaluationLmdTeacherObserver
         }
 
         $id = $evaluation->created_by ?: $evaluation->updated_by;
-
         return $id ? User::find($id) : null;
     }
 }
