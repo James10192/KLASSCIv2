@@ -2,15 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 /**
  * Validation pour l'édition inline d'une planification académique LMD
- * (volumes horaires, crédits, coefficient, enseignant principal).
- *
- * Tous les champs sont optionnels — on n'envoie que ceux qui sont édités
- * dans la cellule cliquée. Le controller recalcule `volume_horaire_total`
- * automatiquement à partir des cinq sous-volumes (CM/TD/TP/Projet/TPE).
+ * (volumes horaires, crédits, coefficient, pool d'enseignants).
  */
 class UpdatePlanificationRequest extends FormRequest
 {
@@ -30,7 +28,34 @@ class UpdatePlanificationRequest extends FormRequest
             'coefficient'             => 'sometimes|nullable|numeric|min:0|max:10',
             'credits_ects'            => 'sometimes|nullable|integer|min:0|max:30',
             'enseignant_principal_id' => 'sometimes|nullable|integer|exists:users,id',
+            'enseignants_secondaires' => 'sometimes|nullable|array|max:20',
+            'enseignants_secondaires.*' => 'integer|distinct|exists:users,id',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $ids = collect([$this->input('enseignant_principal_id')])
+                ->merge($this->input('enseignants_secondaires', []))
+                ->filter()->map(fn ($id) => (int) $id)->unique()->values();
+
+            if ($ids->isEmpty()) {
+                return;
+            }
+
+            $users = User::whereIn('id', $ids)->get();
+            foreach ($users as $user) {
+                if (! $user->hasRole('enseignant')) {
+                    $validator->errors()->add('enseignants_secondaires', 'Le pool ne peut contenir que des utilisateurs ayant le rôle enseignant.');
+                    break;
+                }
+            }
+
+            if ($ids->count() !== $users->count()) {
+                $validator->errors()->add('enseignants_secondaires', 'Un des enseignants sélectionnés est introuvable.');
+            }
+        });
     }
 
     public function messages(): array
@@ -46,7 +71,9 @@ class UpdatePlanificationRequest extends FormRequest
             'coefficient.max'                 => 'Le coefficient ne peut excéder 10.',
             'credits_ects.integer'            => 'Les crédits doivent être un nombre entier.',
             'credits_ects.max'                => 'Les crédits ne peuvent excéder 30.',
-            'enseignant_principal_id.exists'  => 'L\'enseignant sélectionné est introuvable.',
+            'enseignant_principal_id.exists'  => 'L\'enseignant principal sélectionné est introuvable.',
+            'enseignants_secondaires.array'   => 'La liste des enseignants secondaires est invalide.',
+            'enseignants_secondaires.*.exists' => 'Un enseignant secondaire sélectionné est introuvable.',
         ];
     }
 }

@@ -27,9 +27,13 @@ use App\Listeners\AuditPermissionChange;
 // Audit infrastructure
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPPlanificationAcademique;
+use App\Models\ESBTPSeanceCours;
 use App\Models\Setting;
 use App\Models\User;
 use App\Observers\ESBTPEvaluationLmdTeacherObserver;
+use App\Observers\ESBTPPlanificationTeacherPoolObserver;
+use App\Observers\ESBTPSeanceCoursLmdTeacherObserver;
 use App\Observers\InvalideurRdv;
 use App\Observers\SettingObserver;
 use Spatie\Permission\Models\Permission;
@@ -47,65 +51,33 @@ class EventServiceProvider extends ServiceProvider
             SendEmailVerificationNotification::class,
         ],
 
-        // Événements comptabilité ESBTP
-        PaiementRecu::class => [
-            EnvoyerNotificationPaiement::class,
-        ],
-
-        SeuilAtteint::class => [
-            GererSeuilAtteint::class,
-        ],
-
-        RelanceEnvoyee::class => [
-            TraiterRelanceEnvoyee::class,
-        ],
-
-        KPIsCalcules::class => [
-            MettreAJourDashboard::class,
-        ],
-
-        // Événements émargement enseignants
-        TeacherAttendanceValidated::class => [
-            UpdatePlanificationHours::class,
-        ],
-
-        // Workflow inscription → notifs event-driven (issue #298)
-        WorkflowStepCompleted::class => [
-            NotifyWorkflowNextStepActors::class,
-        ],
-
-        // PR2 Réconciliation paiements ↔ caisse physique
+        PaiementRecu::class => [EnvoyerNotificationPaiement::class],
+        SeuilAtteint::class => [GererSeuilAtteint::class],
+        RelanceEnvoyee::class => [TraiterRelanceEnvoyee::class],
+        KPIsCalcules::class => [MettreAJourDashboard::class],
+        TeacherAttendanceValidated::class => [UpdatePlanificationHours::class],
+        WorkflowStepCompleted::class => [NotifyWorkflowNextStepActors::class],
         \App\Domain\Comptabilite\Reconciliation\Events\ReconciliationClosed::class => [
             \App\Domain\Comptabilite\Reconciliation\Listeners\LockPaymentsAfterReconciliation::class,
         ],
     ];
 
-    /**
-     * Register any events for the application.
-     *
-     * @return void
-     */
     public function boot()
     {
         parent::boot();
 
-        // Une évaluation LMD consomme l'enseignant de sa planification ; le
-        // modèle d'évaluation n'invente pas une deuxième affectation parallèle.
+        // En LMD, evaluations ET seances consomment la resolution du professeur
+        // pour leur classe. Le planning garde le pool de professeurs possibles.
         ESBTPEvaluation::observe(ESBTPEvaluationLmdTeacherObserver::class);
+        ESBTPSeanceCours::observe(ESBTPSeanceCoursLmdTeacherObserver::class);
+        ESBTPPlanificationAcademique::observe(ESBTPPlanificationTeacherPoolObserver::class);
 
-        // ─── Audit infrastructure ──────────────────────────────────────────
-        // Observer custom pour les Settings (KV pairs hétéroclites,
-        // ne passe pas par le trait Auditable).
         Setting::observe(SettingObserver::class);
         ESBTPCandidature::observe(InvalideurRdv::class);
 
-        // Listener pour les changements rôles/permissions Spatie.
-        // Spatie 5.x ne dispatche pas d'events natifs RoleAttached/Detached,
-        // on s'appuie sur les Eloquent pivot events.
         $audit = app(AuditPermissionChange::class);
 
         Event::listen('eloquent.pivotAttached: ' . User::class, function (...$args) use ($audit) {
-            // Eloquent passe (model, relation, ids, attrs)
             $audit->handlePivotAttached($args[0] ?? null, array_slice($args, 1));
         });
 
@@ -113,18 +85,9 @@ class EventServiceProvider extends ServiceProvider
             $audit->handlePivotDetached($args[0] ?? null, array_slice($args, 1));
         });
 
-        // CRUD direct sur Role et Permission (création/renommage/suppression).
-        Role::saved(function ($role) use ($audit) {
-            $audit->handleRoleSaved($role);
-        });
-        Role::deleted(function ($role) use ($audit) {
-            $audit->handleRoleDeleted($role);
-        });
-        Permission::saved(function ($permission) use ($audit) {
-            $audit->handlePermissionSaved($permission);
-        });
-        Permission::deleted(function ($permission) use ($audit) {
-            $audit->handlePermissionDeleted($permission);
-        });
+        Role::saved(function ($role) use ($audit) { $audit->handleRoleSaved($role); });
+        Role::deleted(function ($role) use ($audit) { $audit->handleRoleDeleted($role); });
+        Permission::saved(function ($permission) use ($audit) { $audit->handlePermissionSaved($permission); });
+        Permission::deleted(function ($permission) use ($audit) { $audit->handlePermissionDeleted($permission); });
     }
 }
