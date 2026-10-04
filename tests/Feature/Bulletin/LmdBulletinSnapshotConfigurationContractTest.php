@@ -13,6 +13,8 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
 
         $this->assertStringContainsString('header_text_on_primary', $pdf);
         $this->assertStringContainsString('$tableHeaderText', $pdf);
+        $this->assertStringContainsString("\$hdrText = \$pdfCfg['header_text_color_raw'] ?? \$pdfCfg['header_text_color'] ?? '#ffffff';", $pdf);
+        $this->assertStringNotContainsString("\$hdrText = \$pdfCfg['header_text_on_bg']", $pdf);
         $this->assertStringContainsString('$bulletin->affectation_label', $pdf);
         $this->assertStringContainsString('$resECUE->enseignant_affiche', $pdf);
         $this->assertStringContainsString('lmd_bulletin_font_table_header', $pdf);

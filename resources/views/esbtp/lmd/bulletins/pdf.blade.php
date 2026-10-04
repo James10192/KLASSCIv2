@@ -9,7 +9,11 @@
 
     @php
         $hdrBg = $pdfCfg['header_bg_color'] ?? $pdfCfg['primary_color'] ?? '#0453cb';
-        $hdrText = $pdfCfg['header_text_on_bg'] ?? $pdfCfg['header_text_color'] ?? '#ffffff';
+        // Le picker « Texte dans l'en-tête établissement » est une décision de
+        // charte de l'école : nom de l'établissement, titre du document et
+        // métadonnées doivent reprendre EXACTEMENT la valeur enregistrée.
+        // Le contraste automatique reste réservé aux en-têtes de tableaux.
+        $hdrText = $pdfCfg['header_text_color_raw'] ?? $pdfCfg['header_text_color'] ?? '#ffffff';
         $primary = $pdfCfg['primary_color'] ?? '#0453cb';
         $tableHeaderText = $pdfCfg['header_text_on_primary']
             ?? \App\Helpers\SettingsHelper::contrastingText($primary, $pdfCfg['header_text_color_raw'] ?? '#ffffff');
