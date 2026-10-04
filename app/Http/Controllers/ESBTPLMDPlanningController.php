@@ -822,7 +822,10 @@ class ESBTPLMDPlanningController extends Controller
             $query->wherePivot('semestre', $semestre);
         }
         if ($niveauId) {
-            $query->where('esbtp_unites_enseignement.niveau_id', $niveauId);
+            // Le semestre du pivot situe l’UE dans CE parcours. Une UE
+            // partagée peut conserver le niveau de sa première importation.
+            $niveau = ESBTPNiveauEtude::find($niveauId);
+            $query->wherePivotIn('semestre', $niveau?->semestres() ?: []);
         }
 
         return $query->orderBy('esbtp_unites_enseignement.name')->get();
@@ -850,3 +853,4 @@ class ESBTPLMDPlanningController extends Controller
         return $query->get()->keyBy('matiere_id');
     }
 }
+
