@@ -1822,11 +1822,16 @@ async function submitEvaluation() {
             body: formData
         });
 
-        const data = await resp.json();
+        const data = await resp.json().catch(() => ({
+            success: false,
+            message: resp.status === 419
+                ? 'Votre session a expiré. Rechargez la page avant de réessayer.'
+                : 'Le serveur n’a pas pu créer l’évaluation (HTTP ' + resp.status + '). Veuillez réessayer.'
+        }));
 
         if (!resp.ok || !data.success) {
             // Show validation errors
-            if (data.errors) {
+            if (data.errors && Object.values(data.errors).flat().some(Boolean)) {
                 const errDiv = document.getElementById('evalErrors');
                 errDiv.innerHTML = '<strong>Erreurs :</strong><ul style="margin:.25rem 0 0; padding-left:1.2rem;">' +
                     Object.values(data.errors).flat().map(e => '<li>' + escHtml(e) + '</li>').join('') + '</ul>';
@@ -1844,6 +1849,10 @@ async function submitEvaluation() {
                         input.parentNode.appendChild(fb);
                     }
                 });
+            } else {
+                const errDiv = document.getElementById('evalErrors');
+                errDiv.textContent = data.message || 'La création de l’évaluation a été refusée. Veuillez réessayer.';
+                errDiv.style.display = 'block';
             }
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-plus-circle"></i> Créer l\'évaluation';
@@ -1909,3 +1918,4 @@ function escHtml(str) {
 }
 </script>
 @endpush
+
