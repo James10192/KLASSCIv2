@@ -13,4 +13,5 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
 
-- 2026-10-03 · #à venir · suivi des notes des classes LMD par semestre : panneau dans la fenêtre des notes LMD et sur la génération des bulletins LMD, Nanan dit ce qui manque
+- 2026-10-03 · #1397 · suivi des notes des classes LMD par semestre : panneau dans la fenêtre des notes LMD et sur la génération des bulletins LMD, Nanan dit ce qui manque
+- 2026-10-03 · #1399 · enseignants LMD : évaluations et bulletins reprennent le professeur du planning, avec affectation rapide et écran de configuration par semestre

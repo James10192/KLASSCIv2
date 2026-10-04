@@ -26,8 +26,10 @@ use App\Listeners\AuditPermissionChange;
 
 // Audit infrastructure
 use App\Models\ESBTPCandidature;
+use App\Models\ESBTPEvaluation;
 use App\Models\Setting;
 use App\Models\User;
+use App\Observers\ESBTPEvaluationLmdTeacherObserver;
 use App\Observers\InvalideurRdv;
 use App\Observers\SettingObserver;
 use Spatie\Permission\Models\Permission;
@@ -79,13 +81,17 @@ class EventServiceProvider extends ServiceProvider
     ];
 
     /**
-     * Register any events for your application.
+     * Register any events for the application.
      *
      * @return void
      */
     public function boot()
     {
         parent::boot();
+
+        // Une évaluation LMD consomme l'enseignant de sa planification ; le
+        // modèle d'évaluation n'invente pas une deuxième affectation parallèle.
+        ESBTPEvaluation::observe(ESBTPEvaluationLmdTeacherObserver::class);
 
         // ─── Audit infrastructure ──────────────────────────────────────────
         // Observer custom pour les Settings (KV pairs hétéroclites,

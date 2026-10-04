@@ -48,6 +48,7 @@
     <td style="text-align:center;">
         <div class="lb-actions">
             <a href="{{ route('esbtp.lmd.bulletins.show', $b) }}" class="lb-act lb-act--view" title="Détails (web)"><i class="fas fa-list-ul"></i></a>
+            <a href="{{ route('esbtp.lmd.bulletins.professeurs', ['classe_id' => $b->classe_id, 'annee_universitaire_id' => $b->annee_universitaire_id, 'semestre' => $b->semestre]) }}" class="lb-act lb-act--view" title="Professeurs du semestre"><i class="fas fa-user-tie"></i></a>
             <a href="{{ route('esbtp.lmd.bulletins.pdf-preview', $b) }}" class="lb-act lb-act--view" title="Aperçu PDF" target="_blank"><i class="fas fa-eye"></i></a>
             <a href="{{ route('esbtp.lmd.bulletins.pdf', $b) }}" class="lb-act lb-act--pdf" title="Télécharger PDF"><i class="fas fa-download"></i></a>
             <form method="POST" action="{{ route('esbtp.lmd.bulletins.toggle-publication', $b) }}" style="display:inline;">
