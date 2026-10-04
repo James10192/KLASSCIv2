@@ -71,7 +71,7 @@ class ESBTPLMDResultatECUE extends Model
 
         return [
             'enseignant_id' => $resolution['enseignant_id'],
-            'nom' => trim((string) ($resolution['enseignant_nom'] ?? '')),
+            'nom' => static::nomEnseignantAvecTitre($resolution['enseignant']),
         ];
     }
 
@@ -100,6 +100,31 @@ class ESBTPLMDResultatECUE extends Model
             if ($resolu !== '') return $resolu;
         }
 
-        return trim((string) ($this->enseignant?->name ?? ''));
+        return static::nomEnseignantAvecTitre($this->enseignant);
+    }
+
+    /**
+     * Le titre fait partie du nom figé sur le bulletin, sans modifier User::name.
+     */
+    private static function nomEnseignantAvecTitre(?User $enseignant): string
+    {
+        $nom = trim((string) ($enseignant?->name ?? ''));
+        if ($nom === '') {
+            return '';
+        }
+
+        $enseignant->loadMissing('teacherProfile');
+        $titre = trim((string) ($enseignant->teacherProfile?->title ?? ''));
+        if ($titre === '') {
+            return $nom;
+        }
+
+        // Les noms legacy peuvent déjà porter le même titre, avec ou sans point.
+        $prefixe = preg_quote(rtrim($titre, '.'), '/');
+        if (preg_match('/^'.$prefixe.'\\.?(?:\\s|$)/iu', $nom) === 1) {
+            return $nom;
+        }
+
+        return $titre.' '.$nom;
     }
 }
