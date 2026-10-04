@@ -14,4 +14,17 @@ class UpdateEnseignantRequestContractTest extends TestCase
         $this->assertStringContainsString("!\$this->exists('taux_horaire')", $source);
         $this->assertStringContainsString("'taux_horaire' => \$enseignant->taux_horaire", $source);
     }
+
+    public function test_edit_form_surfaces_errors_and_does_not_silently_block_submission(): void
+    {
+        $source = file_get_contents(resource_path('views/esbtp/enseignants/edit.blade.php'));
+
+        $this->assertStringContainsString("@if(session('error'))", $source);
+        $this->assertStringContainsString('role="alert"', $source);
+        $this->assertStringContainsString('step="0.01"', $source);
+        $this->assertStringNotContainsString('step="500"', $source);
+        $this->assertStringContainsString('if (tauxField)', $source);
+        $this->assertStringContainsString("teacherForm.addEventListener('invalid'", $source);
+        $this->assertStringContainsString("submitBtn.setAttribute('aria-busy', 'true')", $source);
+    }
 }
