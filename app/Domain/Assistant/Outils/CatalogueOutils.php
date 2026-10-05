@@ -32,22 +32,11 @@ use App\Services\Chatbot\Tools\SearchTeachersTool;
 use App\Services\Chatbot\Tools\SearchTimetableTool;
 use Illuminate\Support\Facades\Log;
 
-/**
- * Catalogue des outils de l'assistant, commun à tous les fournisseurs.
- *
- * Deux contrôles, inchangés par rapport à l'ancien service Claude :
- *  - pour()     : seuls les outils que l'utilisateur peut utiliser sont DÉCLARÉS au modèle ;
- *  - executer() : chaque appel repasse par ChatbotTool::executeAuthorized, qui revérifie
- *                 les permissions — même pour un outil que le modèle n'aurait pas dû connaître.
- */
 class CatalogueOutils
 {
     /** @var ChatbotTool[] */
     private array $outils;
 
-    /**
-     * @param ChatbotTool[]|null $outils liste imposée (tests) ; sinon les outils de l'application
-     */
     public function __construct(ChatbotSetupGuideService $guide, ?array $outils = null)
     {
         $this->outils = $outils ?? [
@@ -71,6 +60,7 @@ class CatalogueOutils
             new ChercherDansPiece(),
             new LireStructureAcademique(),
             new LireRendezVous(),
+            app(RechercherRendezVous::class),
             new LireReglages(),
             new SearchBulletinsTool(),
             new SearchAbsencesSummaryTool(),
@@ -87,49 +77,32 @@ class CatalogueOutils
 
     public function outil(string $nom): ?ChatbotTool
     {
-        foreach ($this->outils as $outil) {
-            if ($outil->name() === $nom) {
-                return $outil;
-            }
-        }
-
+        foreach ($this->outils as $outil) if ($outil->name() === $nom) return $outil;
         return null;
     }
 
-    /** @return ChatbotTool[] outils que cet utilisateur peut réellement utiliser */
     public function pour($user): array
     {
         return array_values(array_filter($this->outils, fn (ChatbotTool $o) => $o->isAvailableFor($user)));
     }
 
-    /** Schémas neutres, déclarés une fois ; chaque adaptateur les traduit. */
     public function schemas($user): array
     {
         return array_map(fn (ChatbotTool $o) => [
-            'nom' => $o->name(),
-            'description' => $o->description(),
-            'parametres' => $o->parameters(),
+            'nom' => $o->name(), 'description' => $o->description(), 'parametres' => $o->parameters(),
         ], $this->pour($user));
     }
 
     public function libelle(string $nom): string
     {
         $outil = $this->outil($nom);
-
         return $outil ? $outil->libelle() : 'Consultation des données…';
     }
 
-    /**
-     * Exécute un appel demandé par le modèle. Le détail d'une exception ne part
-     * ni au modèle ni au navigateur : il est journalisé.
-     */
     public function executer(string $nom, array $arguments, $user): array
     {
         $outil = $this->outil($nom);
-        if (!$outil) {
-            return ['error' => 'Outil indisponible.'];
-        }
-
+        if (!$outil) return ['error' => 'Outil indisponible.'];
         try {
             return $outil->executeAuthorized($arguments, $user);
         } catch (\Throwable $e) {
