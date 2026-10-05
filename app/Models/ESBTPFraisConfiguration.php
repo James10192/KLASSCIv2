@@ -24,6 +24,7 @@ class ESBTPFraisConfiguration extends Model
         'amount_affecte',
         'amount_reaffecte',
         'amount_non_affecte',
+        'audience',
         'payment_deadline_days',
         'installments_allowed',
         'max_installments',

@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\DB;
  * code) puis leurs montants par portée (système, parcours ou filière, niveau).
  *
  * Vivait dans CLIFraisController::poserBareme(). Extrait pour que la CLI et
- * Nanan écrivent par le même chemin. Les montants passent par
- * FraisConfigurationWriter, comme l'écran de configuration des frais, et le
- * cache des configurations est invalidé comme il le fait.
+ * Nanan écrivent par le même chemin. Les montants, l'audience et l'échéance
+ * passent par FraisConfigurationWriter, comme l'écran de configuration des
+ * frais, et le cache des configurations est invalidé comme il le fait.
  *
  * Entrée : le tableau déjà validé par la CLI (categories, configurations,
  * confirmer_statut), avec les identifiants de portée résolus.
@@ -38,6 +38,18 @@ class PoseDeBareme
         foreach ($bareme['configurations'] ?? [] as $ligne) {
             if (! $codes->has(strtoupper((string) $ligne['category_code']))) {
                 return 'Categorie inconnue dans configurations: '.$ligne['category_code'];
+            }
+
+            if (isset($ligne['audience']) && ! in_array($ligne['audience'], [
+                ESBTPFraisCategory::AUDIENCE_TOUS,
+                ESBTPFraisCategory::AUDIENCE_NOUVEAUX,
+                ESBTPFraisCategory::AUDIENCE_ANCIENS,
+            ], true)) {
+                return 'Audience de frais invalide: '.$ligne['audience'];
+            }
+
+            if (isset($ligne['deadline_days']) && ((int) $ligne['deadline_days'] < 1 || (int) $ligne['deadline_days'] > 365)) {
+                return 'L’échéance doit être comprise entre 1 et 365 jours.';
             }
         }
 
@@ -60,12 +72,35 @@ class PoseDeBareme
     /** Le montant global actuel d'une catégorie sur une portée, ou null s'il n'y en a pas. */
     public static function montantActuel(int $categorieId, array $portee): ?float
     {
+        $etat = self::etatActuel($categorieId, $portee);
+
+        return $etat ? $etat['amount'] : null;
+    }
+
+    /**
+     * Snapshot minimal de la configuration globale, utilisé par Nanan pour
+     * invalider une proposition si quelqu'un change montant/audience/échéance
+     * entre « proposer » et « Valider ».
+     */
+    public static function etatActuel(int $categorieId, array $portee): ?array
+    {
         $existante = ESBTPFraisConfiguration::queryForScope($portee)
             ->where('frais_category_id', $categorieId)
             ->whereNull('annee_universitaire_id')
             ->first();
 
-        return $existante ? (float) $existante->amount : null;
+        if (! $existante) {
+            return null;
+        }
+
+        return [
+            'amount' => (float) $existante->amount,
+            'amount_affecte' => $existante->amount_affecte !== null ? (float) $existante->amount_affecte : null,
+            'amount_reaffecte' => $existante->amount_reaffecte !== null ? (float) $existante->amount_reaffecte : null,
+            'amount_non_affecte' => $existante->amount_non_affecte !== null ? (float) $existante->amount_non_affecte : null,
+            'audience' => $existante->audience ?? $existante->fraisCategory?->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS,
+            'deadline_days' => (int) $existante->payment_deadline_days,
+        ];
     }
 
     /**
@@ -121,6 +156,8 @@ class PoseDeBareme
                     'name' => $cat['name'],
                     'code' => $code,
                     'is_mandatory' => (bool) ($cat['is_mandatory'] ?? true),
+                    // Audience catalogue = défaut de repli. L'audience réellement
+                    // facturée se pose désormais sur chaque configuration.
                     'audience' => $cat['audience'] ?? ESBTPFraisCategory::AUDIENCE_TOUS,
                     'category_type' => $cat['category_type'] ?? 'academic',
                     'default_amount' => (float) ($cat['default_amount'] ?? 0),
@@ -169,13 +206,22 @@ class PoseDeBareme
             $cle = implode('|', [$portee['systeme'], $portee['parcours_id'] ?? '', $portee['filiere_id'] ?? '', $portee['niveau_id']]);
             $parPortee[$cle]['scope'] = $portee;
             $cat = $parCode[strtoupper($ligne['category_code'])];
-            $parPortee[$cle]['categories'][$cat->id] = [
+            $categorie = [
                 'amount' => $ligne['amount'],
                 'amount_affecte' => $ligne['amount_affecte'] ?? $ligne['amount'],
                 'amount_reaffecte' => $ligne['amount_reaffecte'] ?? $ligne['amount'],
                 'amount_non_affecte' => $ligne['amount_non_affecte'] ?? $ligne['amount'],
-                'deadline_days' => 30,
             ];
+            // Un champ absent signifie « conserver » pour une configuration
+            // existante ; le writer appliquera ses valeurs par défaut uniquement
+            // lors d'une vraie création.
+            if (array_key_exists('deadline_days', $ligne)) {
+                $categorie['deadline_days'] = (int) $ligne['deadline_days'];
+            }
+            if (array_key_exists('audience', $ligne)) {
+                $categorie['audience'] = $ligne['audience'];
+            }
+            $parPortee[$cle]['categories'][$cat->id] = $categorie;
         }
 
         return $parPortee;
