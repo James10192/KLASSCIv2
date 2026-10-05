@@ -12,6 +12,12 @@ class RendezVousReglages
 {
     public const ENABLED = 'inscriptions.rdv.enabled';
 
+    /**
+     * Si actif, dès 00:00 un créneau daté d'aujourd'hui n'accepte plus de
+     * nouvelle réservation. Les réservations déjà présentes sont conservées.
+     */
+    public const FERMER_JOUR_A_MINUIT = 'inscriptions.rdv.fermer_jour_a_minuit';
+
     public const OUVERTURE = 'inscriptions.rdv.ouverture';
 
     public const FERMETURE = 'inscriptions.rdv.fermeture';
@@ -68,12 +74,17 @@ class RendezVousReglages
     /** @return list<string> */
     public static function clesBascules(): array
     {
-        return [self::ENABLED];
+        return [self::ENABLED, self::FERMER_JOUR_A_MINUIT];
     }
 
     public function enabled(): bool
     {
         return $this->flag(self::ENABLED);
+    }
+
+    public function fermerJourAMinuit(): bool
+    {
+        return $this->flag(self::FERMER_JOUR_A_MINUIT);
     }
 
     public function pourGeneration(): CreneauRegle
