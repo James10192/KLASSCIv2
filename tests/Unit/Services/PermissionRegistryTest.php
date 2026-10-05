@@ -67,6 +67,14 @@ class PermissionRegistryTest extends TestCase
         $this->assertEquals('classes.create', $this->registry->canonicalize('create_classe'));
     }
 
+    public function test_canonicalize_role_resolves_deprecated_role_duplicates(): void
+    {
+        $this->assertSame('enseignant', $this->registry->canonicalizeRole('teacher'));
+        $this->assertSame('superAdmin', $this->registry->canonicalizeRole('admin'));
+        $this->assertSame('directeurEtudes', $this->registry->canonicalizeRole('directeurEtudes'));
+        $this->assertSame('custom-inconnu', $this->registry->canonicalizeRole('custom-inconnu'));
+    }
+
     public function test_canonicalize_returns_canonical_unchanged(): void
     {
         $this->assertEquals('students.view', $this->registry->canonicalize('students.view'));
@@ -121,6 +129,14 @@ class PermissionRegistryTest extends TestCase
 
         // Caissier peut gérer étudiant (pour pré-inscription)
         $this->assertEquals(['etudiant'], $this->registry->manageableRoles('caissier'));
+    }
+
+    public function test_manageable_roles_accepts_legacy_actor_role(): void
+    {
+        $this->assertSame(
+            $this->registry->manageableRoles('superAdmin'),
+            $this->registry->manageableRoles('admin'),
+        );
     }
 
     public function test_deprecated_permissions_are_marked(): void
