@@ -8,10 +8,6 @@ use App\Services\RendezVous\RechercheRdv;
 use App\Services\Chatbot\Tools\ChatbotTool;
 use Illuminate\Support\Facades\Route;
 
-/**
- * Lecture ciblée avant une action RDV. Elle donne à Nanan les identifiants
- * stables qu'elle doit ensuite transmettre aux outils proposer_*.
- */
 class RechercherRendezVous extends ChatbotTool
 {
     public function __construct(
@@ -19,10 +15,7 @@ class RechercherRendezVous extends ChatbotTool
         private readonly AccueilRdv $accueil,
     ) {}
 
-    public function name(): string
-    {
-        return 'rechercher_rendez_vous';
-    }
+    public function name(): string { return 'rechercher_rendez_vous'; }
 
     public function description(): string
     {
@@ -48,9 +41,7 @@ class RechercherRendezVous extends ChatbotTool
     public function execute(array $args, $user): array
     {
         $q = mb_substr(trim((string) ($args['q'] ?? '')), 0, 120);
-        if ($q === '') {
-            return ['error' => 'Indiquez un nom, un téléphone, un matricule ou une référence.'];
-        }
+        if ($q === '') return ['error' => 'Indiquez un nom, un téléphone, un matricule ou une référence.'];
 
         $quand = in_array($args['quand'] ?? '', [RechercheRdv::QUAND_A_VENIR, RechercheRdv::QUAND_PASSES, RechercheRdv::QUAND_TOUS], true)
             ? (string) $args['quand'] : RechercheRdv::QUAND_TOUS;
@@ -91,7 +82,7 @@ class RechercherRendezVous extends ChatbotTool
             'count' => count($resultats),
             'approchant' => $this->recherche->approchant($filtres),
             'creneaux_libres' => ! empty($args['creneaux_libres']) ? $this->accueil->creneauxProposes() : [],
-            'deep_link' => Route::has('esbtp.rendez-vous.recherche.index') ? route('esbtp.rendez-vous.recherche.index', ['q' => $q], false) : null,
+            'deep_link' => Route::has('esbtp.rendez-vous.recherche') ? route('esbtp.rendez-vous.recherche', ['q' => $q], false) : null,
         ];
     }
 }
