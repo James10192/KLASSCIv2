@@ -23,6 +23,34 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringNotContainsString('Etablissement privé, Côte d\'Ivoire', $pdf);
     }
 
+    public function test_lmd_bulletin_pdf_uses_space_for_readability_and_can_flow_cleanly_to_page_two(): void
+    {
+        $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));
+
+        $this->assertStringContainsString('class="official-band"', $pdf);
+        $this->assertStringContainsString('class="identity-grid"', $pdf);
+        $this->assertStringContainsString('class="closing-grid"', $pdf);
+        $this->assertStringContainsString('.bulletin-table thead { display: table-header-group; }', $pdf);
+        $this->assertStringContainsString('page-break-inside: avoid', $pdf);
+        $this->assertStringContainsString('$academicRowCount', $pdf);
+        $this->assertStringContainsString('$rowPadding', $pdf);
+        $this->assertStringContainsString("min(32, \$value)", $pdf);
+        $this->assertStringContainsString("lmd_bulletin_font_table', 9.5", $pdf);
+        $this->assertStringContainsString("lmd_bulletin_font_student', 10.5", $pdf);
+    }
+
+    public function test_lmd_direction_is_a_real_setting_and_not_the_directors_name_fallback(): void
+    {
+        $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));
+        $view = file_get_contents(resource_path('views/esbtp/lmd/bulletins/index.blade.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/ESBTPLMDBulletinController.php'));
+
+        $this->assertStringContainsString('setting_lmd_bulletin_direction', $view);
+        $this->assertStringContainsString("SettingsHelper::get('lmd_bulletin_direction', '')", $controller);
+        $this->assertStringContainsString('$directionEtablissement', $pdf);
+        $this->assertStringNotContainsString("\$bCfg['direction'] ?? \$etab['directeur']", $pdf);
+    }
+
     public function test_lmd_bulletins_page_exposes_its_own_configuration_and_keeps_infinite_scroll(): void
     {
         $view = file_get_contents(resource_path('views/esbtp/lmd/bulletins/index.blade.php'));
@@ -30,9 +58,12 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString('Configuration du bulletin LMD', $view);
         $this->assertStringContainsString("route('esbtp.settings.update')", $view);
         $this->assertStringContainsString('setting_lmd_bulletin_statut', $view);
+        $this->assertStringContainsString('setting_lmd_bulletin_direction', $view);
         $this->assertStringContainsString('setting_lmd_bulletin_font_student', $view);
         $this->assertStringContainsString('setting_lmd_bulletin_font_table_header', $view);
         $this->assertStringContainsString('setting_lmd_bulletin_font_signature', $view);
+        $this->assertStringContainsString('max="32"', $view);
+        $this->assertStringContainsString('6 à 32 px', $view);
         $this->assertStringContainsString('<x-liste-infinie', $view);
         $this->assertStringContainsString('form.submit=function(){if(!suspendre)filtrer()}', $view);
     }
@@ -85,5 +116,18 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString("where('key', \$key)->exists()", $migration);
         $this->assertStringContainsString("value('affectation_status')", $migration);
         $this->assertStringNotContainsString('updateOrInsert(', $migration);
+    }
+
+    public function test_readability_migration_only_upgrades_untouched_defaults_and_guarantees_direction_setting(): void
+    {
+        $migration = file_get_contents(database_path('migrations/2026_10_05_150500_improve_lmd_bulletin_print_layout_defaults.php'));
+
+        $this->assertStringContainsString("'lmd_bulletin_font_table' => ['8.5', '9.5']", $migration);
+        $this->assertStringContainsString("'lmd_bulletin_font_school_name' => ['13', '15']", $migration);
+        $this->assertStringContainsString("'max:32'", $migration);
+        $this->assertStringContainsString("'validation_rules' => \$fontValidationRules", $migration);
+        $this->assertStringContainsString("(string) \$existing->value === \$oldDefault", $migration);
+        $this->assertStringContainsString("where('key', 'lmd_bulletin_direction')->exists()", $migration);
+        $this->assertStringContainsString("Direction affichée dans le bandeau du bulletin LMD", $migration);
     }
 }

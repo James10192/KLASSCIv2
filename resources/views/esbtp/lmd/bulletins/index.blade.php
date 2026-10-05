@@ -22,23 +22,23 @@
     $lmdGet = static fn (string $key, $default = '') => \App\Helpers\SettingsHelper::get($key, $default);
     $pdfColors = \App\Helpers\SettingsHelper::getPdfSettings();
     $fontFields = [
-        'lmd_bulletin_font_republic' => ['République / Ministère', 8.5],
-        'lmd_bulletin_font_school_name' => ['Nom établissement', 13],
-        'lmd_bulletin_font_school_meta' => ['Coordonnées établissement', 7.5],
-        'lmd_bulletin_font_title' => ['Titre du bulletin', 12],
-        'lmd_bulletin_font_header_meta' => ['Année / niveau / semestre', 8],
-        'lmd_bulletin_font_establishment' => ['Code / statut / direction', 8.5],
-        'lmd_bulletin_font_student' => ['Identité étudiant / affectation', 9.5],
-        'lmd_bulletin_font_structure' => ['Domaine / mention / parcours', 9],
-        'lmd_bulletin_font_table_header' => ['En-tête tableau', 8],
-        'lmd_bulletin_font_table' => ['Lignes UE / ECUE', 8.5],
-        'lmd_bulletin_font_teacher' => ['Nom des enseignants', 7.5],
-        'lmd_bulletin_font_summary' => ['Moyenne / crédits', 12],
-        'lmd_bulletin_font_decision' => ['Décision', 10],
-        'lmd_bulletin_font_notice' => ['Notice importante', 8],
-        'lmd_bulletin_font_signature' => ['Signature', 9],
-        'lmd_bulletin_font_legend' => ['Légende', 7.5],
-        'lmd_bulletin_font_bottom' => ['Pied de page', 8],
+        'lmd_bulletin_font_republic' => ['République / Ministère', 9],
+        'lmd_bulletin_font_school_name' => ['Nom établissement', 15],
+        'lmd_bulletin_font_school_meta' => ['Coordonnées établissement', 8.5],
+        'lmd_bulletin_font_title' => ['Titre du bulletin', 14],
+        'lmd_bulletin_font_header_meta' => ['Année / niveau / semestre', 9],
+        'lmd_bulletin_font_establishment' => ['Code / statut / direction', 9.5],
+        'lmd_bulletin_font_student' => ['Identité étudiant / affectation', 10.5],
+        'lmd_bulletin_font_structure' => ['Domaine / mention / parcours', 10],
+        'lmd_bulletin_font_table_header' => ['En-tête tableau', 9],
+        'lmd_bulletin_font_table' => ['Lignes UE / ECUE', 9.5],
+        'lmd_bulletin_font_teacher' => ['Nom des enseignants', 8.5],
+        'lmd_bulletin_font_summary' => ['Moyenne / crédits', 13],
+        'lmd_bulletin_font_decision' => ['Décision', 10.5],
+        'lmd_bulletin_font_notice' => ['Notice importante', 8.5],
+        'lmd_bulletin_font_signature' => ['Signature', 10],
+        'lmd_bulletin_font_legend' => ['Légende', 8],
+        'lmd_bulletin_font_bottom' => ['Pied de page', 8.5],
     ];
 @endphp
 <div class="lb-page">
@@ -108,7 +108,7 @@
                             <div class="lb-config-field" style="grid-column:span 2"><label>Texte Ministère</label><input name="setting_lmd_bulletin_ministry_text" value="{{ $lmdGet('lmd_bulletin_ministry_text',"MINISTERE DE L'ENSEIGNEMENT SUPERIEUR ET DE LA RECHERCHE SCIENTIFIQUE") }}"></div>
                             <div class="lb-config-field"><label>Code établissement</label><input name="setting_lmd_bulletin_code_etablissement" value="{{ $lmdGet('lmd_bulletin_code_etablissement','') }}"></div>
                             <div class="lb-config-field"><label>Statut</label><select name="setting_lmd_bulletin_statut"><option value="Privé" {{ $lmdGet('lmd_bulletin_statut','Privé') === 'Privé' ? 'selected' : '' }}>Privé</option><option value="Public" {{ $lmdGet('lmd_bulletin_statut','Privé') === 'Public' ? 'selected' : '' }}>Public</option></select></div>
-                            <div class="lb-config-field"><label>Direction</label><input name="setting_lmd_bulletin_direction" value="{{ $lmdGet('lmd_bulletin_direction','') }}" placeholder="Ex. Direction des études"></div>
+                            <div class="lb-config-field"><label>Direction affichée</label><input name="setting_lmd_bulletin_direction" value="{{ $lmdGet('lmd_bulletin_direction','') }}" placeholder="Ex. Direction des Études"><span class="lb-font-hint">Texte du bandeau, distinct du nom du directeur signataire.</span></div>
                         </div>
                     </div>
 
@@ -137,9 +137,10 @@
 
                     <div class="lb-config-section">
                         <h3>Tailles de police par partie</h3>
+                        <p style="margin:-.3rem 0 .8rem;color:#64748b;font-size:.8rem;">Le gabarit peut maintenant respirer sur une page et se poursuivre proprement sur une deuxième : vous pouvez augmenter réellement la lisibilité sans casser le tableau.</p>
                         <div class="lb-config-grid lb-config-grid--fonts">
                             @foreach($fontFields as $key=>[$label,$default])
-                            <div class="lb-config-field"><label>{{ $label }}</label><input type="number" min="6" max="24" step="0.5" name="setting_{{ $key }}" value="{{ $lmdGet($key,$default) }}"><span class="lb-font-hint">6 à 24 px</span></div>
+                            <div class="lb-config-field"><label>{{ $label }}</label><input type="number" min="6" max="32" step="0.5" name="setting_{{ $key }}" value="{{ $lmdGet($key,$default) }}"><span class="lb-font-hint">6 à 32 px</span></div>
                             @endforeach
                         </div>
                     </div>
