@@ -27,4 +27,17 @@ class UpdateEnseignantRequestContractTest extends TestCase
         $this->assertStringContainsString("teacherForm.addEventListener('invalid'", $source);
         $this->assertStringContainsString("submitBtn.setAttribute('aria-busy', 'true')", $source);
     }
+
+    public function test_hidden_regime_fields_are_disabled_before_native_validation(): void
+    {
+        $source = file_get_contents(resource_path('views/esbtp/enseignants/edit.blade.php'));
+
+        $this->assertStringContainsString("const tauxInput = document.getElementById('taux_horaire')", $source);
+        $this->assertStringContainsString("const chargeInput = document.getElementById('charge_horaire_max_semaine')", $source);
+        $this->assertStringContainsString('chargeInput.disabled = !permanent', $source);
+        $this->assertStringContainsString('tauxInput.disabled = permanent', $source);
+        $this->assertStringContainsString('Number(chargeInput.value) < 1', $source);
+        $this->assertStringContainsString("chargeInput.value = '18'", $source);
+        $this->assertStringContainsString('applyRegime(@json($selectedRegime))', $source);
+    }
 }

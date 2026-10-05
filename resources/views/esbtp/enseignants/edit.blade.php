@@ -314,6 +314,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                             <input type="number" name="taux_horaire" id="taux_horaire"
                                    value="{{ $currentTaux }}"
                                    min="0" step="0.01"
+                                   {{ $selectedRegime === 'permanent' ? 'disabled' : '' }}
                                    class="ee-input @error('taux_horaire') is-invalid @enderror">
                             <small class="ee-help">Appliqué quand aucun taux par type n'est défini.</small>
                             @error('taux_horaire') <div class="ee-error">{{ $message }}</div> @enderror
@@ -325,6 +326,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                             <input type="number" name="charge_horaire_max_semaine" id="charge_horaire_max_semaine"
                                    value="{{ $currentCharge }}"
                                    min="1" max="60"
+                                   {{ $selectedRegime !== 'permanent' ? 'disabled' : '' }}
                                    class="ee-input @error('charge_horaire_max_semaine') is-invalid @enderror">
                             @error('charge_horaire_max_semaine') <div class="ee-error">{{ $message }}</div> @enderror
                         </div>
@@ -542,13 +544,26 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
     const regimeGrid = document.getElementById('regimeGrid');
     const tauxField = document.getElementById('tauxField');
     const chargeField = document.getElementById('chargeField');
+    const tauxInput = document.getElementById('taux_horaire');
+    const chargeInput = document.getElementById('charge_horaire_max_semaine');
 
     function applyRegime(regime) {
         regimeGrid.querySelectorAll('.ee-regime-card').forEach(c => {
             c.classList.toggle('active', c.dataset.regime === regime);
         });
-        if (tauxField) tauxField.classList.toggle('show', regime !== 'permanent');
-        if (chargeField) chargeField.classList.toggle('show', regime === 'permanent');
+
+        const permanent = regime === 'permanent';
+
+        if (tauxField) tauxField.classList.toggle('show', !permanent);
+        if (tauxInput) tauxInput.disabled = permanent;
+
+        if (chargeField) chargeField.classList.toggle('show', permanent);
+        if (chargeInput) {
+            chargeInput.disabled = !permanent;
+            if (permanent && (!chargeInput.value || Number(chargeInput.value) < 1)) {
+                chargeInput.value = '18';
+            }
+        }
     }
     regimeGrid.querySelectorAll('.ee-regime-card').forEach(card => {
         card.addEventListener('click', () => {
@@ -557,6 +572,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
             applyRegime(card.dataset.regime);
         });
     });
+    applyRegime(@json($selectedRegime));
 
     // ─── Profil détaillé (collapse) ────────────────────────────────
     const profileToggle = document.getElementById('profileToggle');
