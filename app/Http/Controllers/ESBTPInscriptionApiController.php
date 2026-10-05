@@ -285,6 +285,7 @@ class ESBTPInscriptionApiController extends Controller
 
             $statutEtablissement = $request->get("statut_etablissement");
             $fraisAudience = app(\App\Services\ApplicableFraisResolver::class);
+            $scope = app(\App\Services\FraisScopeResolver::class)->resolveForClasse($classe);
 
             foreach ($allCategories as $category) {
                 if (! $fraisAudience->categoryAppliesToStudent($category, $statutEtablissement)) {
@@ -306,15 +307,10 @@ class ESBTPInscriptionApiController extends Controller
                 if ($category->is_mandatory) {
                     // FRAIS OBLIGATOIRES : Recherche configuration par classe
 
-                    // 1. Chercher une configuration spécifique pour cette filière/niveau
-                    $configuration = \App\Models\ESBTPFraisConfiguration::where(
-                        "frais_category_id",
+                    $configuration = \App\Models\ESBTPFraisConfiguration::getApplicableForScope(
                         $category->id,
-                    )
-                        ->where("filiere_id", $classe->filiere_id)
-                        ->where("niveau_id", $classe->niveau_etude_id)
-                        ->where("is_active", true)
-                        ->first();
+                        $scope,
+                    );
 
                     if ($configuration) {
                         $defaultAmount = $configuration->getMontantByStatus(
