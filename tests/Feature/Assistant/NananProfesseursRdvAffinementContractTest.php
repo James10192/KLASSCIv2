@@ -63,7 +63,7 @@ class NananProfesseursRdvAffinementContractTest extends TestCase
             $this->assertStringContainsString("'{$mode}'", $action);
         }
         $this->assertStringContainsString('proposer_convocations_rdv', $action);
-        $this->assertStringContainsString("$user->can('inscriptions.rdv.manage')", $action);
+        $this->assertStringContainsString("\$user->can('inscriptions.rdv.manage')", $action);
         $this->assertContains(RendezVousReglages::FERMER_JOUR_A_MINUIT, RendezVousReglages::clesBascules());
     }
 }
