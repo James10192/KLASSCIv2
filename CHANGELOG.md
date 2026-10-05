@@ -14,7 +14,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
-- Les frais proposés lors de l’inscription dans une classe utilisent le scope académique commun : parcours et niveau en LMD, filière et niveau en BTS, avec priorité aux surcharges annuelles valides. La recherche par filière seule ignorait les configurations LMD sauvegardées. Les montants des souscriptions existantes ne sont pas réécrits.
+- Les frais proposés lors de l’inscription dans une classe utilisent le scope académique commun : parcours et niveau en LMD, filière et niveau en BTS, avec priorité aux surcharges annuelles valides. La recherche par filière seule ignorait les configurations LMD sauvegardées. L’aperçu utilise l’année choisie dans l’inscription, validée côté serveur, ou l’année courante quand elle n’est pas fournie, et non l’année historique de la classe. Les montants des souscriptions existantes ne sont pas réécrits.
 
 ### Ajouts
 
