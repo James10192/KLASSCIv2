@@ -72,7 +72,12 @@ class CatalogueCreneaux
             return collect();
         }
 
-        $debut = Carbon::today();
+        // Quand l'école ferme le jour à minuit, un créneau daté d'aujourd'hui
+        // n'est plus proposé, même si le cron de 00:00 a été retardé. La base
+        // reste ensuite physiquement alignée par FermetureAutomatiqueCreneauxRdv.
+        $debut = $this->reglages->fermerJourAMinuit()
+            ? Carbon::tomorrow()->startOfDay()
+            : Carbon::today();
         if ($regle->plancher->gt($debut)) {
             $debut = $regle->plancher->copy();
         }
