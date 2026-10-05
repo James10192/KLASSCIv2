@@ -43,8 +43,13 @@ class ReprogrammateurRdvAdministratif
     public function simuler(Carbon $jour): array
     {
         $jour = $jour->copy()->startOfDay();
+        $anneeId = $this->catalogue->anneeDesCreneaux()?->id ?? 0;
         $reservations = $this->reservationsDuJour($jour)->get();
-        $sources = $reservations->pluck('creneau')->filter()->unique('id')->values();
+        $sources = ESBTPRdvCreneau::query()
+            ->where('annee_universitaire_id', $anneeId)
+            ->whereDate('date', $jour->toDateString())
+            ->orderBy('heure_debut')
+            ->get();
 
         $regle = $this->reglages->pourGeneration();
         $places = $this->catalogue->placesLibres();
@@ -127,8 +132,9 @@ class ReprogrammateurRdvAdministratif
                 throw new RuntimeException('lot_modifie');
             }
 
-            // Le verrou sur les créneaux source empêche une nouvelle réservation
-            // publique de se glisser entre la seconde simulation et leur fermeture.
+            // Le verrou sur tous les créneaux du jour source empêche une nouvelle
+            // réservation publique de se glisser entre la seconde simulation et
+            // leur fermeture, y compris sur un créneau jusque-là vide.
             $proposees = array_values(array_unique(array_map(
                 fn (array $a) => (int) $a['reservation_id'],
                 $assignations
