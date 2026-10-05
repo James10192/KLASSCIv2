@@ -87,6 +87,7 @@ class NananRdvReprogrammationTest extends TestCase
     public function test_nanan_lit_un_vendredi_puis_reprogramme_tout_le_lot_apres_validation(): void
     {
         $source = $this->creneau('2026-10-09', '08:00', '08:40', 5, true);
+        $sourceVide = $this->creneau('2026-10-09', '08:40', '09:20', 5, true);
         $a = $this->reservation($source, 'KOFFI');
         $b = $this->reservation($source, 'YAO');
         $lundi = $this->creneau('2026-10-12', '08:00', '08:40', 1, true);
@@ -105,12 +106,14 @@ class NananRdvReprogrammationTest extends TestCase
         $this->assertSame('approbation', $proposition['widget']['kind'] ?? null, json_encode($proposition, JSON_UNESCAPED_UNICODE));
         $this->assertSame($source->id, (int) $a->fresh()->creneau_id, 'rien avant Valider');
         $this->assertTrue($source->fresh()->ouvert, 'la fermeture fait partie de la proposition, pas de la préparation');
+        $this->assertTrue($sourceVide->fresh()->ouvert, 'un créneau vide du même jour reste lui aussi intact avant Valider');
 
         $this->actingAs($this->admin)
             ->postJson($proposition['widget']['valider_url'], ['jeton' => $proposition['widget']['jeton']])
             ->assertOk()->assertJson(['statut' => 'executee']);
 
         $this->assertFalse($source->fresh()->ouvert);
+        $this->assertFalse($sourceVide->fresh()->ouvert, 'tout le vendredi est fermé, même les créneaux sans réservation');
         $this->assertSame($lundi->id, (int) $a->fresh()->creneau_id);
         $this->assertSame($mardi->id, (int) $b->fresh()->creneau_id);
         $this->assertSame('deplace', $a->fresh()->convocation_action);
