@@ -100,11 +100,13 @@ return [
             \App\Domain\Assistant\Actions\Lmd\ImporterMaquetteLmd::class,
             \App\Domain\Assistant\Actions\Lmd\RattacherClassesAuParcours::class,
             \App\Domain\Assistant\Actions\Lmd\AffecterEnseignantsLmd::class,
+            \App\Domain\Assistant\Actions\Lmd\ConfirmerProfesseurClasseLmd::class,
             \App\Domain\Assistant\Actions\Reglages\ModifierReglages::class,
             \App\Domain\Assistant\Actions\Reglages\PoserImageReglage::class,
             \App\Domain\Assistant\Actions\RendezVous\GenererCreneaux::class,
             \App\Domain\Assistant\Actions\RendezVous\PlacerDossiers::class,
             \App\Domain\Assistant\Actions\RendezVous\ConvocationsRdv::class,
+            \App\Domain\Assistant\Actions\RendezVous\GererRendezVousCible::class,
         ],
     ],
 

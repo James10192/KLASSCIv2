@@ -71,6 +71,7 @@ class CatalogueOutils
             new ChercherDansPiece(),
             new LireStructureAcademique(),
             new LireRendezVous(),
+            new LireRendezVousCible(),
             new LireReglages(),
             new SearchBulletinsTool(),
             new SearchAbsencesSummaryTool(),

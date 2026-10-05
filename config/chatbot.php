@@ -241,6 +241,12 @@ return [
             'all_permissions' => ['lmd.planning.edit'],
             'libelle' => 'Préparation des affectations d’enseignants…',
         ],
+        'proposer_professeur_classe_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.planning.edit'],
+            'libelle' => 'Préparation du professeur de la classe…',
+            'suggestion' => 'Mets ce professeur sur cet ECUE de cette classe au semestre 1',
+        ],
         // La pièce appartient à qui l'a déposée (PiecesJointes::pour) : ces droits
         // ne disent que les métiers où lire un tableau joint a un sens.
         'chercher_dans_piece' => [
@@ -321,6 +327,12 @@ return [
             'libelle' => 'Lecture des rendez-vous…',
             'suggestion' => 'Où en sont les rendez-vous d’inscription ?',
         ],
+        'lire_rendez_vous_cible' => [
+            'enabled' => true,
+            'any_permissions' => ['inscriptions.rdv.view', 'inscriptions.rdv.manage', 'inscriptions.rdv.accueil'],
+            'libelle' => 'Recherche du rendez-vous précis…',
+            'suggestion' => 'Retrouve le rendez-vous de cette famille',
+        ],
         'proposer_generation_creneaux_rdv' => [
             'enabled' => true,
             'all_permissions' => ['inscriptions.rdv.manage'],
@@ -335,6 +347,12 @@ return [
             'enabled' => true,
             'all_permissions' => ['inscriptions.rdv.manage'],
             'libelle' => 'Préparation des convocations…',
+        ],
+        'proposer_gestion_rendez_vous_cible' => [
+            'enabled' => true,
+            'any_permissions' => ['inscriptions.rdv.manage', 'inscriptions.rdv.accueil'],
+            'libelle' => 'Préparation du rendez-vous…',
+            'suggestion' => 'Reprogramme le rendez-vous de cette famille',
         ],
         'search_attendances' => [
             'enabled' => true,

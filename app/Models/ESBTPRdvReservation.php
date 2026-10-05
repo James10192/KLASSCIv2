@@ -6,10 +6,13 @@ use App\Contracts\PorteurDeRendezVous;
 use App\Enums\CanalConvocationRdv;
 use App\Enums\StatutConvocationRdv;
 use App\Enums\StatutReservationRdv;
+use App\Services\RendezVous\RendezVousReglages;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Validation\ValidationException;
 
 class ESBTPRdvReservation extends Model
 {
@@ -56,6 +59,33 @@ class ESBTPRdvReservation extends Model
         'convocation_delivree_at' => 'datetime',
         'convocation_synchro_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        // Garde métier ultime de la fermeture à minuit. Le catalogue retire déjà
+        // le jour courant et le scheduler ferme ses créneaux, mais une ancienne
+        // page ouverte ou une requête forgée pourrait encore envoyer son ID dans
+        // l'intervalle. On refuse donc toute NOUVELLE occupation ou tout
+        // DÉPLACEMENT vers aujourd'hui/passé lorsque l'école a activé la règle.
+        // Les mises à jour d'un rendez-vous déjà pris (accueil, convocation,
+        // statut...) restent possibles : elles ne changent pas creneau_id.
+        static::saving(function (self $reservation) {
+            if (! $reservation->exists || $reservation->isDirty('creneau_id')) {
+                $reglages = app(RendezVousReglages::class);
+                if (! $reglages->fermerJourAMinuit()) {
+                    return;
+                }
+
+                $creneauId = (int) $reservation->creneau_id;
+                $date = ESBTPRdvCreneau::query()->whereKey($creneauId)->value('date');
+                if ($date !== null && Carbon::parse($date)->startOfDay()->lte(Carbon::today())) {
+                    throw ValidationException::withMessages([
+                        'creneau_id' => 'La journée de ce créneau est fermée depuis minuit. Choisissez une date future.',
+                    ]);
+                }
+            }
+        });
+    }
 
     public function creneau(): BelongsTo
     {
