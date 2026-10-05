@@ -193,6 +193,49 @@ class ReservateurRdv
     }
 
     /**
+     * Annulation décidée par l'école : contrairement au portail famille, elle
+     * n'est pas limitée par le délai public. Elle ne peut jamais annuler un
+     * rendez-vous déjà honoré. Une convocation encore en file devient sans objet.
+     *
+     * @return array{ok:true,reservation:ESBTPRdvReservation}|array{ok:false,code:string}
+     */
+    public function annulerAuGuichet(ESBTPRdvReservation $reservation): array
+    {
+        $porteur = $reservation->porteur();
+        if ($porteur === null) {
+            return ['ok' => false, 'code' => 'introuvable'];
+        }
+
+        return $this->sousVerrou($porteur, function () use ($reservation) {
+            $actuelle = ESBTPRdvReservation::query()->occupantes()->whereKey($reservation->id)->lockForUpdate()->first();
+            if ($actuelle === null) {
+                return ['ok' => false, 'code' => 'introuvable'];
+            }
+            if ((int) $actuelle->creneau_id !== (int) $reservation->creneau_id) {
+                return ['ok' => false, 'code' => 'deplacee'];
+            }
+            if ($actuelle->statut === StatutReservationRdv::Honoree) {
+                return ['ok' => false, 'code' => 'recue'];
+            }
+
+            $valeurs = [
+                'statut' => StatutReservationRdv::Annulee,
+                'accueilli_at' => null,
+                'accueilli_par' => null,
+            ];
+            if ($actuelle->convocation_statut === StatutConvocationRdv::EnAttente) {
+                $valeurs += [
+                    'convocation_statut' => StatutConvocationRdv::SansObjet,
+                    'convocation_erreur' => "Rendez-vous annulé par l'école avant l'envoi.",
+                ];
+            }
+            $actuelle->update($valeurs);
+
+            return ['ok' => true, 'reservation' => $actuelle->fresh()->load('creneau')];
+        });
+    }
+
+    /**
      * @return array{ok: true, reservation?: ESBTPRdvReservation}|array{ok: false, code: string}
      */
     public function annuler(string $reference, string $dateNaissance): array
@@ -395,6 +438,13 @@ class ReservateurRdv
     {
         $creneau = ESBTPRdvCreneau::query()->whereKey($creneauId)->lockForUpdate()->first();
         if ($creneau === null || ! $creneau->ouvert) {
+            return ['ok' => false, 'code' => 'ferme', 'creneaux' => $this->catalogue->publier()];
+        }
+
+        // Garde dure : même avec un ID connu, ni le portail, ni le guichet, ni
+        // Nanan ne peuvent remplir aujourd'hui quand l'école a choisi de fermer
+        // la journée dès 00:00. Le cron ne constitue donc pas l'unique protection.
+        if ($this->reglages->fermerJourAMinuit() && $creneau->date->lte(Carbon::today())) {
             return ['ok' => false, 'code' => 'ferme', 'creneaux' => $this->catalogue->publier()];
         }
 
