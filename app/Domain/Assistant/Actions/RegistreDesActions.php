@@ -2,22 +2,27 @@
 
 namespace App\Domain\Assistant\Actions;
 
+use App\Domain\Assistant\Actions\Enseignants\ModifierProfilEnseignant;
+
 /**
  * Les actions que l'assistant sait proposer. Une action absente d'ici n'existe
- * pas pour lui ; chacune est en plus soumise à sa permission (config/chatbot.php).
+ * pas pour lui ; chacune est en plus soumise à sa permission (config/chatbot.php
+ * ou garde explicite de l'action pour les capacités ajoutées progressivement).
  */
 class RegistreDesActions
 {
     /** @return ActionAgent[] */
     public function toutes(): array
     {
-        $classes = (array) config('assistant.actions.classes', []);
-
-        // Reprogrammation administrative des rendez-vous : ajoutée ici pour
-        // rester disponible pendant le déploiement progressif du lot Nanan RDV.
-        // La classe garde elle-même la permission canonique inscriptions.rdv.manage.
-        $classes[] = \App\Domain\Assistant\Actions\RendezVous\ReprogrammerRendezVous::class;
-        $classes = array_values(array_unique($classes));
+        $classes = array_values(array_unique(array_merge(
+            (array) config('assistant.actions.classes', []),
+            [
+                ModifierProfilEnseignant::class,
+                // La reprogrammation administrative en masse reste disponible en
+                // complément de la gestion ciblée des rendez-vous.
+                \App\Domain\Assistant\Actions\RendezVous\ReprogrammerRendezVous::class,
+            ],
+        )));
 
         return array_map(fn (string $classe) => app($classe), $classes);
     }

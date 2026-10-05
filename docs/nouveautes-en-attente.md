@@ -17,3 +17,4 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 - 2026-10-03 · #1399 · enseignants LMD : évaluations et bulletins reprennent le professeur du planning, avec affectation rapide et écran de configuration par semestre
 - 2026-10-04 · #1400 · professeurs LMD par classe : plusieurs enseignants possibles dans le planning, résolution automatique par classe, conflit détecté puis confirmation/harmonisation sur évaluations, séances et bulletins
 - 2026-10-04 · #1401 · bulletin LMD : le nom de l'établissement, le titre du document et les métadonnées d'en-tête reprennent exactement la couleur de texte choisie dans les paramètres PDF
+- 2026-10-05 · #1407 · Nanan gère les enseignants et professeurs LMD ainsi que les rendez-vous ciblés : programmer, reprogrammer, annuler, fermer ou rouvrir un créneau, renvoyer les convocations et activer/désactiver la fermeture automatique du jour à minuit

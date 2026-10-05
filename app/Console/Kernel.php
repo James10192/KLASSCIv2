@@ -129,7 +129,7 @@ class Kernel extends ConsoleKernel
             'segmentation' => 'niveau_retard',
             'niveau_max' => 5,
             'types_relance' => ['email', 'sms'],
-            'seuil_urgence' => 60, // Plus de 60 jours de retard
+            'seuil_urgence' => 60,
         ]))
             ->dailyAt('14:00')
             ->name('planification-relances-urgentes')
@@ -140,7 +140,6 @@ class Kernel extends ConsoleKernel
         // RAPPELS AUTOMATIQUES INSCRIPTIONS/PAIEMENTS
         // =====================================================================
 
-        // Envoi des rappels pour inscriptions et paiements en attente (08h00 chaque jour)
         $schedule->command('reminders:send-inscription-paiement')
             ->dailyAt('08:00')
             ->name('rappels-inscriptions-paiements')
@@ -154,6 +153,16 @@ class Kernel extends ConsoleKernel
             ->name('mailpulse-reconcile-parent-notifications')
             ->description('Rejoue les notifications parents MailPulse en attente de reconciliation');
 
+        // Dès minuit, la règle métier retire déjà le jour courant du catalogue.
+        // Ce passage matérialise aussi `ouvert = false` en base et rattrape un
+        // éventuel arrêt du scheduler au premier tick suivant.
+        $schedule->command('inscriptions:fermer-creneaux-rdv-du-jour')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->name('rdv-fermeture-jour-minuit')
+            ->description('Ferme les créneaux du jour quand le réglage école est actif');
+
         // Convocations de rendez-vous en attente. Remplace l'envoi en lot dans
         // `terminating`, qui mourait avec le processus. N'envoie que l'etat
         // « en attente » : les reservations d'avant le suivi attendent un geste
@@ -165,8 +174,6 @@ class Kernel extends ConsoleKernel
             ->name('rdv-convocations-en-attente')
             ->description('Envoie les convocations de rendez-vous en attente');
 
-        // « Envoyee » ne dit que « acceptee par MailPulse » : relire l'etat reel
-        // met en echec les rebonds, qui rejoignent alors les familles a prevenir.
         $schedule->command('inscriptions:synchroniser-convocations-rdv --max=100')
             ->everyFifteenMinutes()
             ->withoutOverlapping()
@@ -195,22 +202,20 @@ class Kernel extends ConsoleKernel
             ->name('mailpulse-prune-parent-chatbot-inbound-responses')
             ->description('Supprime les reponses chiffrees expirees du chatbot parent MailPulse');
 
-        // Nettoyage des logs et fichiers temporaires (chaque dimanche à 04h00)
-        $schedule->command('queue:prune-batches --hours=168') // 7 jours
+        $schedule->command('queue:prune-batches --hours=168')
             ->weekly()
             ->sundays()
             ->at('04:00')
             ->name('nettoyage-batches')
             ->description('Nettoyage des anciens batches de jobs');
 
-        $schedule->command('queue:prune-failed --hours=168') // 7 jours
+        $schedule->command('queue:prune-failed --hours=168')
             ->weekly()
             ->sundays()
             ->at('04:15')
             ->name('nettoyage-failed-jobs')
             ->description('Nettoyage des jobs échoués anciens');
 
-        // Surveillance de la santé du système (toutes les 15 minutes)
         $schedule->call(function () {
             \Log::info('Système opérationnel - Vérification automatique', [
                 'timestamp' => now(),
@@ -224,15 +229,12 @@ class Kernel extends ConsoleKernel
             ->name('surveillance-systeme')
             ->description('Surveillance de la santé du système');
 
-        // Redémarrage automatique des workers (toutes les 6 heures)
         $schedule->command('queue:restart')
             ->everySixHours()
             ->name('restart-workers')
             ->description('Redémarrage préventif des workers de queue');
 
-        // Optimisation de la base de données (chaque dimanche à 05h00)
         $schedule->call(function () {
-            // Optimiser les tables principales
             \DB::statement('OPTIMIZE TABLE jobs, failed_jobs, esbtp_paiements, esbtp_relances');
             \Log::info('Optimisation base de données terminée');
         })
@@ -242,25 +244,18 @@ class Kernel extends ConsoleKernel
             ->name('optimisation-database')
             ->description('Optimisation hebdomadaire de la base de données');
 
-        // =====================================================================
-        // ANALYTICS — Phase 4 (PR feat/analytics-default-risk-anomaly)
-        // =====================================================================
-
-        // Calcul quotidien des prédictions analytics (4h au fuseau de l'instance)
         $schedule->job(new ComputeAnalyticsPredictionsJob)
             ->dailyAt('04:00')
             ->name('analytics-predictions-daily')
             ->description('Calcul quotidien cash flow + default risk + persistence + cache warm-up')
             ->onOneServer();
 
-        // Détection d'anomalies financières (toutes les 6 heures)
         $schedule->job(new DetectAnalyticsAnomaliesJob)
             ->everySixHours()
             ->name('analytics-anomaly-detection')
             ->description('Détection anomalies revenue + paiements outliers + notification admin/comptables')
             ->onOneServer();
 
-        // Évaluation rétrospective de la précision des prédictions (1er du mois 5h)
         $schedule->job(new EvaluateAnalyticsAccuracyJob)
             ->monthlyOn(1, '05:00')
             ->name('analytics-accuracy-evaluation')
