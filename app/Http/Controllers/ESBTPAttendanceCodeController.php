@@ -74,7 +74,7 @@ class ESBTPAttendanceCodeController extends Controller
         $request->validate([
             'description' => 'nullable|string|max:255',
             'duration_minutes' => 'nullable|integer|min:5|max:1440',
-            'seance_id' => 'nullable|exists:esbtp_seances_cours,id'
+            'seance_id' => 'nullable|exists:esbtp_seance_cours,id'
         ]);
 
         try {
