@@ -18,31 +18,45 @@
         $tableHeaderText = $pdfCfg['header_text_on_primary']
             ?? \App\Helpers\SettingsHelper::contrastingText($primary, $pdfCfg['header_text_color_raw'] ?? '#ffffff');
         $bodyText = $pdfCfg['text_color'] ?? '#1f2937';
+        $secondary = $pdfCfg['secondary_color'] ?? '#64748b';
         $etab = $etablissement ?? [];
         $bCfg = $bulletinCfg ?? [];
 
+        // La page de configuration reste maître des tailles. Le plafond plus
+        // généreux permet désormais une vraie mise en page lisible ; le gabarit
+        // est conçu pour déborder proprement sur une seconde page plutôt que de
+        // forcer tout le bulletin à tenir dans une typographie minuscule.
         $font = static function (string $key, float $default): float {
             $raw = \App\Helpers\SettingsHelper::get($key, $default);
             $value = is_numeric($raw) ? (float) $raw : $default;
-            return max(6, min(24, $value));
+            return max(6, min(32, $value));
         };
-        $fontRepublic = $font('lmd_bulletin_font_republic', 8.5);
-        $fontSchoolName = $font('lmd_bulletin_font_school_name', 13);
-        $fontSchoolMeta = $font('lmd_bulletin_font_school_meta', 7.5);
-        $fontTitle = $font('lmd_bulletin_font_title', 12);
-        $fontHeaderMeta = $font('lmd_bulletin_font_header_meta', 8);
-        $fontEstablishment = $font('lmd_bulletin_font_establishment', 8.5);
-        $fontStudent = $font('lmd_bulletin_font_student', 9.5);
-        $fontStructure = $font('lmd_bulletin_font_structure', 9);
-        $fontTableHeader = $font('lmd_bulletin_font_table_header', 8);
-        $fontTable = $font('lmd_bulletin_font_table', 8.5);
-        $fontTeacher = $font('lmd_bulletin_font_teacher', 7.5);
-        $fontSummary = $font('lmd_bulletin_font_summary', 12);
-        $fontDecision = $font('lmd_bulletin_font_decision', 10);
-        $fontNotice = $font('lmd_bulletin_font_notice', 8);
-        $fontSignature = $font('lmd_bulletin_font_signature', 9);
-        $fontLegend = $font('lmd_bulletin_font_legend', 7.5);
-        $fontBottom = $font('lmd_bulletin_font_bottom', 8);
+        $fontRepublic = $font('lmd_bulletin_font_republic', 9);
+        $fontSchoolName = $font('lmd_bulletin_font_school_name', 15);
+        $fontSchoolMeta = $font('lmd_bulletin_font_school_meta', 8.5);
+        $fontTitle = $font('lmd_bulletin_font_title', 14);
+        $fontHeaderMeta = $font('lmd_bulletin_font_header_meta', 9);
+        $fontEstablishment = $font('lmd_bulletin_font_establishment', 9.5);
+        $fontStudent = $font('lmd_bulletin_font_student', 10.5);
+        $fontStructure = $font('lmd_bulletin_font_structure', 10);
+        $fontTableHeader = $font('lmd_bulletin_font_table_header', 9);
+        $fontTable = $font('lmd_bulletin_font_table', 9.5);
+        $fontTeacher = $font('lmd_bulletin_font_teacher', 8.5);
+        $fontSummary = $font('lmd_bulletin_font_summary', 13);
+        $fontDecision = $font('lmd_bulletin_font_decision', 10.5);
+        $fontNotice = $font('lmd_bulletin_font_notice', 8.5);
+        $fontSignature = $font('lmd_bulletin_font_signature', 10);
+        $fontLegend = $font('lmd_bulletin_font_legend', 8);
+        $fontBottom = $font('lmd_bulletin_font_bottom', 8.5);
+
+        // Plus le semestre contient de lignes, plus on réduit légèrement le
+        // padding vertical, jamais la taille choisie par l'école. Un bulletin
+        // court respire ; un bulletin long s'étale proprement sur deux pages.
+        $academicRowCount = collect($resultats_ues ?? [])->sum(function ($resUE) {
+            return 1 + ($resUE->resultatsECUEs?->count() ?? 0);
+        });
+        $rowPadding = $academicRowCount <= 28 ? 4.2 : ($academicRowCount <= 40 ? 3.5 : 2.8);
+        $rowLineHeight = $academicRowCount <= 28 ? 1.28 : ($academicRowCount <= 40 ? 1.22 : 1.16);
 
         $appreciationScale = app(\App\Services\AppreciationScaleService::class);
         $anneeLabel = $annee?->display_name ?? $annee?->name ?? '';
@@ -54,67 +68,137 @@
         $noticeText = trim((string) ($bCfg['notice_text'] ?? '')) ?: \App\Services\LMDBulletinService::NOTICE_DEFAUT;
         $bottomText = trim((string) ($bCfg['bottom_text'] ?? '')) ?: 'Conservez soigneusement ce bulletin de notes. Aucun duplicata ne sera délivré.';
         $statutEtablissement = trim((string) ($bCfg['statut'] ?? 'Privé')) ?: 'Privé';
+        $directionEtablissement = trim((string) ($bCfg['direction'] ?? ''));
+        $codeEtablissement = trim((string) ($bCfg['code_etablissement'] ?? ''));
         $editionDate = ($bulletin->updated_at ?? now())->format('d/m/Y');
     @endphp
 
     <style>
+        @page { margin: 0.42cm 0.46cm 0.50cm; size: A4 portrait; }
+
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
             font-size: {{ $fontTable }}px;
             margin: 0;
-            padding: 8px;
+            padding: 2px;
             color: {{ $bodyText }};
-            line-height: 1.35;
+            line-height: 1.28;
             background: #ffffff;
         }
-        .container { max-width: 100%; background: white; padding: 10px; }
-        @page { margin: 0.5cm; size: A4 portrait; }
+        .container { width: 100%; max-width: 100%; background: #fff; padding: 4px 5px; box-sizing: border-box; }
+        .num { text-align: center; }
+        .keep-together { page-break-inside: avoid; }
 
-        .bulletin-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+        .official-band {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            margin: 0 0 6px;
+        }
+        .official-band td {
+            width: 33.333%;
+            padding: 5px 8px;
+            vertical-align: middle;
+            font-size: {{ $fontEstablishment }}px;
+        }
+        .official-band td + td { border-left: 1px solid #dbe3ea; }
+        .official-label {
+            display: block;
+            margin-bottom: 1px;
+            font-size: {{ max(6, $fontEstablishment - 1.6) }}px;
+            font-weight: 700;
+            letter-spacing: .35px;
+            text-transform: uppercase;
+            color: {{ $secondary }};
+        }
+        .official-value { font-weight: 700; color: {{ $bodyText }}; }
+
+        .identity-grid { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        .identity-grid > tbody > tr > td { vertical-align: top; }
+        .identity-grid > tbody > tr > td:first-child { padding-right: 13px; }
+        .identity-grid > tbody > tr > td:last-child { padding-left: 13px; border-left: 1px solid #e2e8f0; }
+        .identity-grid table td { padding: 2.3px 0; line-height: 1.23; }
+
+        .bulletin-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 5px;
+            page-break-inside: auto;
+        }
+        .bulletin-table thead { display: table-header-group; }
+        .bulletin-table tbody { display: table-row-group; }
+        .bulletin-table tr { page-break-inside: avoid; page-break-after: auto; }
         .bulletin-table td,
         .bulletin-table th {
             border: 1px solid {{ $bodyText }};
-            padding: 3px 4px;
+            padding: {{ $rowPadding }}px 4px;
             font-size: {{ $fontTable }}px;
+            line-height: {{ $rowLineHeight }};
             vertical-align: middle;
         }
-        .num { text-align: center; }
+        .bulletin-table .ue-row td { background-color: #f8fafc; font-weight: 700; }
 
-        .moyenne-box {
-            border: 2px solid {{ $bodyText }};
-            padding: 6px 12px;
-            text-align: center;
-            font-weight: bold;
-            font-size: {{ $fontSummary }}px;
-        }
+        .summary-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 8px; page-break-inside: avoid; }
+        .summary-table td { vertical-align: middle; }
+        .moyenne-box,
         .credits-box {
-            border: 2px solid {{ $bodyText }};
-            padding: 6px 12px;
+            border: 1.2px solid #94a3b8;
+            padding: 6px 10px;
             text-align: center;
-            font-weight: bold;
-            font-size: {{ max(6, $fontSummary - 1) }}px;
+            font-weight: 700;
+            font-size: {{ $fontSummary }}px;
+            border-radius: 5px;
         }
+        .summary-label { color: {{ $secondary }}; font-size: {{ max(6, $fontSummary - 2.2) }}px; letter-spacing: .25px; }
+        .summary-value { color: {{ $primary }}; font-size: {{ min(32, $fontSummary + 2) }}px; font-weight: 800; }
+
         .decision-box {
-            border: 1px solid {{ $bodyText }};
-            padding: 8px 12px;
-            margin-top: 8px;
+            border: 1px solid #94a3b8;
+            padding: 6px 10px;
+            margin-top: 6px;
             text-align: center;
             font-size: {{ $fontDecision }}px;
+            page-break-inside: avoid;
         }
-        .decision-label { font-size: {{ max(6, $fontDecision - 1) }}px; font-weight: bold; text-decoration: underline; }
-        .decision-value { font-size: {{ $fontDecision }}px; font-weight: bold; margin-left: 20px; }
+        .decision-label { font-size: {{ max(6, $fontDecision - 1) }}px; font-weight: 700; text-decoration: underline; }
+        .decision-value { font-size: {{ $fontDecision }}px; font-weight: 800; margin-left: 16px; }
         .notice {
-            border: 1.5px solid {{ $bodyText }};
-            padding: 6px 10px;
-            margin-top: 8px;
+            border: 1px solid #94a3b8;
+            padding: 5px 8px;
+            margin-top: 6px;
             font-size: {{ $fontNotice }}px;
+            page-break-inside: avoid;
         }
+
+        .closing-grid {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 8px;
+            page-break-inside: avoid;
+        }
+        .closing-grid td { vertical-align: top; }
         .legend {
-            margin-top: 10px;
-            border-top: 1px solid #d1d5db;
-            padding-top: 6px;
+            padding: 5px 12px 0 0;
             font-size: {{ $fontLegend }}px;
-            color: {{ $pdfCfg['secondary_color'] ?? '#6b7280' }};
+            line-height: 1.35;
+            color: {{ $secondary }};
+        }
+        .signature-block {
+            border-left: 1px solid #e2e8f0;
+            padding: 4px 0 0 16px;
+            text-align: right;
+            font-size: {{ $fontSignature }}px;
+            line-height: 1.35;
+        }
+        .bottom-note {
+            text-align: center;
+            font-size: {{ $fontBottom }}px;
+            color: {{ $secondary }};
+            margin-top: 5px;
+            line-height: 1.32;
+            page-break-inside: avoid;
         }
     </style>
 </head>
@@ -122,36 +206,36 @@
 <div class="container">
 
 @if(($bCfg['show_republic_info'] ?? true) || ($bCfg['show_ministry_info'] ?? true))
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 6px;">
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 4px;">
     <tr>
-        <td style="text-align: center; font-size: {{ $fontRepublic }}px; color: {{ $bodyText }}; line-height: 1.4;">
+        <td style="text-align: center; font-size: {{ $fontRepublic }}px; color: {{ $bodyText }}; line-height: 1.32;">
             @if($bCfg['show_republic_info'] ?? true)
-                <div style="font-weight: bold; font-size: {{ max(6, $fontRepublic + .5) }}px;">{{ $bCfg['republic_text'] ?? 'REPUBLIQUE DE COTE D\'IVOIRE' }}</div>
-                <div style="font-size: {{ max(6, $fontRepublic - 1) }}px; font-style: italic; color: {{ $pdfCfg['secondary_color'] ?? '#6b7280' }};">{{ $bCfg['union_text'] ?? 'Union - Discipline - Travail' }}</div>
+                <div style="font-weight: 800; font-size: {{ max(6, $fontRepublic + .5) }}px;">{{ $bCfg['republic_text'] ?? 'REPUBLIQUE DE COTE D\'IVOIRE' }}</div>
+                <div style="font-size: {{ max(6, $fontRepublic - 1) }}px; font-style: italic; color: {{ $secondary }};">{{ $bCfg['union_text'] ?? 'Union - Discipline - Travail' }}</div>
             @endif
             @if($bCfg['show_ministry_info'] ?? true)
-                <div style="font-size: {{ $fontRepublic }}px; margin-top: 2px;">{{ $bCfg['ministry_text'] ?? 'MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR ET DE LA RECHERCHE SCIENTIFIQUE' }}</div>
+                <div style="font-size: {{ $fontRepublic }}px; margin-top: 1px;">{{ $bCfg['ministry_text'] ?? 'MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR ET DE LA RECHERCHE SCIENTIFIQUE' }}</div>
             @endif
         </td>
     </tr>
 </table>
 @endif
 
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius: 6px; overflow: hidden; margin-bottom: 8px;">
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius: 6px; overflow: hidden; margin-bottom: 6px; page-break-inside: avoid;">
     <tr>
-        <td width="16%" style="background-color: {{ $hdrBg }}; padding: 12px 8px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.25);">
+        <td width="16%" style="background-color: {{ $hdrBg }}; padding: 10px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
             @if(isset($logoBase64) && $logoBase64)
-                <img src="{{ $logoBase64 }}" style="max-height: 50px; max-width: 90px;" alt="Logo">
+                <img src="{{ $logoBase64 }}" style="max-height: 54px; max-width: 94px;" alt="Logo">
             @else
-                <div style="font-size: 26px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4; letter-spacing: -2px;">K</div>
+                <div style="font-size: 28px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4; letter-spacing: -2px;">K</div>
             @endif
         </td>
-        <td width="84%" style="background-color: {{ $hdrBg }}; padding: 10px 14px; vertical-align: middle;">
-            <div style="font-size: {{ $fontSchoolName }}px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 1px;">
+        <td width="84%" style="background-color: {{ $hdrBg }}; padding: 8px 13px; vertical-align: middle;">
+            <div style="font-size: {{ $fontSchoolName }}px; font-weight: 800; color: {{ $hdrText }}; margin-bottom: 1px;">
                 {{ $etab['nom'] ?? 'KLASSCI' }}
             </div>
             @if(($etab['adresse'] ?? '') || ($etab['telephone'] ?? '') || ($etab['email'] ?? ''))
-            <div style="font-size: {{ $fontSchoolMeta }}px; color: {{ $hdrText }}; opacity: 0.85; margin-bottom: 6px;">
+            <div style="font-size: {{ $fontSchoolMeta }}px; color: {{ $hdrText }}; opacity: 0.86; margin-bottom: 5px;">
                 @if($etab['adresse'] ?? ''){{ $etab['adresse'] }}@endif
                 @if($etab['telephone'] ?? '')
                     @if($etab['adresse'] ?? '') &nbsp;|&nbsp; @endif
@@ -163,8 +247,8 @@
                 @endif
             </div>
             @endif
-            <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 6px;">
-                <div style="font-size: {{ $fontTitle }}px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px; margin-bottom: 3px;">
+            <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 5px;">
+                <div style="font-size: {{ $fontTitle }}px; font-weight: 800; color: {{ $hdrText }}; letter-spacing: 0.35px; margin-bottom: 2px;">
                     BULLETIN SEMESTRIEL DE NOTES — {{ $semestre }}{{ $semestre == 1 ? 'er' : 'ème' }} semestre
                 </div>
                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -189,69 +273,72 @@
 </table>
 
 @if($bCfg['show_etablissement_box'] ?? true)
-<table width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 6px;">
+<table class="official-band" cellspacing="0" cellpadding="0">
     <tr>
-        <td width="33%" style="padding: 2px 0; font-size: {{ $fontEstablishment }}px;">
-            <strong>Code :</strong> {{ $bCfg['code_etablissement'] ?? '' }}
+        <td>
+            <span class="official-label">Code établissement</span>
+            <span class="official-value">{{ $codeEtablissement !== '' ? $codeEtablissement : '—' }}</span>
         </td>
-        <td width="34%" style="padding: 2px 0; font-size: {{ $fontEstablishment }}px; text-align: center;">
-            <strong>Statut :</strong> {{ $statutEtablissement }}
+        <td>
+            <span class="official-label">Statut</span>
+            <span class="official-value">{{ $statutEtablissement }}</span>
         </td>
-        <td width="33%" style="padding: 2px 0; font-size: {{ $fontEstablishment }}px; text-align: right;">
-            <strong>Direction :</strong> {{ $bCfg['direction'] ?? $etab['directeur'] ?? '' }}
+        <td>
+            <span class="official-label">Direction</span>
+            <span class="official-value">{{ $directionEtablissement !== '' ? $directionEtablissement : '—' }}</span>
         </td>
     </tr>
 </table>
 @endif
 
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 6px;">
+<table class="identity-grid" border="0" cellspacing="0" cellpadding="0">
     <tr>
-        <td width="55%" style="vertical-align: top;">
-            <table width="100%" cellspacing="0" cellpadding="2">
+        <td width="55%">
+            <table width="100%" cellspacing="0" cellpadding="0">
                 <tr>
-                    <td width="25%" style="font-size: {{ $fontStudent }}px; font-weight: bold;">NOM :</td>
+                    <td width="25%" style="font-size: {{ $fontStudent }}px; font-weight: 800;">NOM :</td>
                     <td style="font-size: {{ $fontStudent }}px;">{{ mb_strtoupper($etudiant->nom ?? '', 'UTF-8') }}</td>
                 </tr>
                 <tr>
-                    <td style="font-size: {{ $fontStudent }}px; font-weight: bold;">PRENOMS :</td>
+                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">PRENOMS :</td>
                     <td style="font-size: {{ $fontStudent }}px;">{{ mb_strtoupper($etudiant->prenoms ?? '', 'UTF-8') }}</td>
                 </tr>
                 <tr>
-                    <td style="font-size: {{ $fontStudent }}px; font-weight: bold;">DATE NAISS. :</td>
+                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">DATE NAISS. :</td>
                     <td style="font-size: {{ $fontStudent }}px;">{{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : '' }}</td>
                 </tr>
                 <tr>
-                    <td style="font-size: {{ $fontStudent }}px; font-weight: bold;">MATRICULE :</td>
+                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">MATRICULE :</td>
                     <td style="font-size: {{ $fontStudent }}px;">{{ $etudiant->matricule ?? '' }}</td>
                 </tr>
                 <tr>
-                    <td style="font-size: {{ $fontStudent }}px; font-weight: bold;">AFFECTATION :</td>
+                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">AFFECTATION :</td>
                     <td style="font-size: {{ $fontStudent }}px;">{{ $bulletin->affectation_label }}</td>
                 </tr>
             </table>
         </td>
-        <td width="45%" style="vertical-align: top;">
-            <table width="100%" cellspacing="0" cellpadding="2">
+        <td width="45%">
+            <table width="100%" cellspacing="0" cellpadding="0">
                 @if(isset($bulletin_fields))
                     @foreach($bulletin_fields as $field)
                         @if($field['show'] && $field['value'])
                         <tr>
-                            <td width="40%" style="font-size: {{ $fontStructure }}px; font-weight: bold;">{{ $field['label'] }} :</td>
+                            <td width="40%" style="font-size: {{ $fontStructure }}px; font-weight: 800;">{{ $field['label'] }} :</td>
                             <td style="font-size: {{ $fontStructure }}px;">{{ $field['value'] }}</td>
                         </tr>
                         @endif
                     @endforeach
                 @else
                     <tr>
-                        <td width="40%" style="font-size: {{ $fontStructure }}px; font-weight: bold;">{{ mb_strtoupper($vocabulaire->rang('domaine'), 'UTF-8') }} :</td>
+                        <td width="40%" style="font-size: {{ $fontStructure }}px; font-weight: 800;">{{ mb_strtoupper($vocabulaire->rang('domaine'), 'UTF-8') }} :</td>
                         <td style="font-size: {{ $fontStructure }}px;">{{ $domaine ?? '' }}</td>
                     </tr>
                     <tr>
-                        <td style="font-size: {{ $fontStructure }}px; font-weight: bold;">{{ mb_strtoupper($vocabulaire->rang('mention'), 'UTF-8') }} :</td>
+                        <td style="font-size: {{ $fontStructure }}px; font-weight: 800;">{{ mb_strtoupper($vocabulaire->rang('mention'), 'UTF-8') }} :</td>
                         <td style="font-size: {{ $fontStructure }}px;">{{ $mention ?? '' }}</td>
                     </tr>
                     <tr>
-                        <td style="font-size: {{ $fontStructure }}px; font-weight: bold;">{{ mb_strtoupper($vocabulaire->rang('parcours'), 'UTF-8') }} :</td>
+                        <td style="font-size: {{ $fontStructure }}px; font-weight: 800;">{{ mb_strtoupper($vocabulaire->rang('parcours'), 'UTF-8') }} :</td>
                         <td style="font-size: {{ $fontStructure }}px;">{{ $parcours_label ?? '' }}</td>
                     </tr>
                 @endif
@@ -263,16 +350,16 @@
 <table class="bulletin-table">
     <thead>
         <tr>
-            <td style="width: 10%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: bold; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">Code</td>
-            <td style="width: 28%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: bold; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">Intitulés</td>
-            <td style="width: 7%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: bold; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">Moy /<br>20</td>
-            <td style="width: 8%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: bold; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">AQ,APC,<br>NAQ</td>
-            <td style="width: 5%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: bold; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">Appr.</td>
-            <td style="width: 5%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: bold; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">CECT</td>
-            <td style="width: 7%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: bold; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">min</td>
-            <td style="width: 7%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: bold; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">moy</td>
-            <td style="width: 7%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: bold; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">max</td>
-            <td style="width: 16%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: bold; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">Nom et prénoms<br>enseignant</td>
+            <td style="width: 10%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: 800; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">Code</td>
+            <td style="width: 28%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: 800; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">Intitulés</td>
+            <td style="width: 7%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: 800; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">Moy /<br>20</td>
+            <td style="width: 8%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: 800; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">AQ,APC,<br>NAQ</td>
+            <td style="width: 5%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: 800; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">Appr.</td>
+            <td style="width: 5%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: 800; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">CECT</td>
+            <td style="width: 7%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: 800; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">min</td>
+            <td style="width: 7%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: 800; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">moy</td>
+            <td style="width: 7%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: 800; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">max</td>
+            <td style="width: 16%; background-color: {{ $primary }}; color: {{ $tableHeaderText }}; font-weight: 800; text-align: center; font-size: {{ $fontTableHeader }}px; padding: 4px 3px;">Nom et prénoms<br>enseignant</td>
         </tr>
     </thead>
     <tbody>
@@ -281,31 +368,31 @@
                 $ue = $resUE->uniteEnseignement;
                 $ecues = $resUE->resultatsECUEs;
             @endphp
-            <tr>
-                <td style="background-color: #f3f4f6; font-weight: bold; font-size: {{ $fontTable }}px;">{{ $ue->code_affiche ?? '' }}</td>
-                <td style="background-color: #f3f4f6; font-weight: bold; font-size: {{ $fontTable }}px;">{{ $ue->name ?? '' }}</td>
-                <td class="num" style="background-color: #f3f4f6; font-weight: bold;">{{ $resUE->moyenne !== null ? number_format($resUE->moyenne, 2) : '' }}</td>
-                <td class="num" style="background-color: #f3f4f6; font-weight: bold;">{{ $resUE->statut }}</td>
-                <td class="num" style="background-color: #f3f4f6; font-weight: bold;">{{ $resUE->mention }}</td>
-                <td class="num" style="background-color: #f3f4f6; font-weight: bold;">{{ $resUE->credit }}</td>
-                <td class="num" style="background-color: #f3f4f6;">{{ $resUE->stat_min !== null ? number_format($resUE->stat_min, 2) : '' }}</td>
-                <td class="num" style="background-color: #f3f4f6;">{{ $resUE->stat_moy !== null ? number_format($resUE->stat_moy, 2) : '' }}</td>
-                <td class="num" style="background-color: #f3f4f6;">{{ $resUE->stat_max !== null ? number_format($resUE->stat_max, 2) : '' }}</td>
-                <td style="background-color: #f3f4f6;"></td>
+            <tr class="ue-row">
+                <td>{{ $ue->code_affiche ?? '' }}</td>
+                <td>{{ $ue->name ?? '' }}</td>
+                <td class="num">{{ $resUE->moyenne !== null ? number_format($resUE->moyenne, 2) : '' }}</td>
+                <td class="num">{{ $resUE->statut }}</td>
+                <td class="num">{{ $resUE->mention }}</td>
+                <td class="num">{{ $resUE->credit }}</td>
+                <td class="num" style="font-weight: 400;">{{ $resUE->stat_min !== null ? number_format($resUE->stat_min, 2) : '' }}</td>
+                <td class="num" style="font-weight: 400;">{{ $resUE->stat_moy !== null ? number_format($resUE->stat_moy, 2) : '' }}</td>
+                <td class="num" style="font-weight: 400;">{{ $resUE->stat_max !== null ? number_format($resUE->stat_max, 2) : '' }}</td>
+                <td></td>
             </tr>
 
             @foreach($ecues as $resECUE)
                 @php $mat = $resECUE->matiere; @endphp
                 <tr>
-                    <td style="font-size: {{ $fontTable }}px;">{{ $mat->code_affiche ?? '' }}</td>
-                    <td style="font-size: {{ $fontTable }}px;">{{ $mat->name ?? '' }}</td>
-                    <td class="num" style="font-size: {{ $fontTable }}px;">{{ $resECUE->moyenne !== null ? number_format($resECUE->moyenne, 2) : '' }}</td>
+                    <td>{{ $mat->code_affiche ?? '' }}</td>
+                    <td>{{ $mat->name ?? '' }}</td>
+                    <td class="num">{{ $resECUE->moyenne !== null ? number_format($resECUE->moyenne, 2) : '' }}</td>
                     <td class="num"></td>
                     <td class="num"></td>
-                    <td class="num" style="font-size: {{ $fontTable }}px;">{{ $resECUE->credit > 0 ? $resECUE->credit : '' }}</td>
-                    <td class="num" style="font-size: {{ $fontTable }}px;">{{ $resECUE->stat_min !== null ? number_format($resECUE->stat_min, 2) : '' }}</td>
-                    <td class="num" style="font-size: {{ $fontTable }}px;">{{ $resECUE->stat_moy !== null ? number_format($resECUE->stat_moy, 2) : '' }}</td>
-                    <td class="num" style="font-size: {{ $fontTable }}px;">{{ $resECUE->stat_max !== null ? number_format($resECUE->stat_max, 2) : '' }}</td>
+                    <td class="num">{{ $resECUE->credit > 0 ? $resECUE->credit : '' }}</td>
+                    <td class="num">{{ $resECUE->stat_min !== null ? number_format($resECUE->stat_min, 2) : '' }}</td>
+                    <td class="num">{{ $resECUE->stat_moy !== null ? number_format($resECUE->stat_moy, 2) : '' }}</td>
+                    <td class="num">{{ $resECUE->stat_max !== null ? number_format($resECUE->stat_max, 2) : '' }}</td>
                     <td style="font-size: {{ $fontTeacher }}px;">{{ $resECUE->enseignant_affiche }}</td>
                 </tr>
             @endforeach
@@ -313,27 +400,19 @@
     </tbody>
 </table>
 
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 10px;">
+<table class="summary-table keep-together" border="0" cellspacing="0" cellpadding="0">
     <tr>
-        <td width="55%" style="vertical-align: middle; padding-right: 10px;">
-            <table width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                    <td class="moyenne-box">
-                        MOYENNE GENERALE &nbsp;&nbsp;
-                        <span style="font-size: {{ min(24, $fontSummary + 2) }}px; color: {{ $primary }};">{{ $moyenne_generale !== null ? number_format($moyenne_generale, 2) : '--' }}</span>
-                    </td>
-                </tr>
-            </table>
+        <td width="55%" style="padding-right: 6px;">
+            <div class="moyenne-box">
+                <span class="summary-label">MOYENNE GENERALE</span>&nbsp;&nbsp;
+                <span class="summary-value">{{ $moyenne_generale !== null ? number_format($moyenne_generale, 2) : '--' }}</span>
+            </div>
         </td>
-        <td width="45%" style="vertical-align: middle;">
-            <table width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                    <td class="credits-box">
-                        Crédits capitalisés &nbsp;&nbsp;
-                        <span style="font-size: {{ min(24, $fontSummary + 1) }}px; color: {{ $primary }};">{{ $credits_capitalises }} / {{ $credits_totaux }}</span>
-                    </td>
-                </tr>
-            </table>
+        <td width="45%" style="padding-left: 0;">
+            <div class="credits-box">
+                <span class="summary-label">Crédits capitalisés</span>&nbsp;&nbsp;
+                <span class="summary-value" style="font-size: {{ min(32, $fontSummary + 1) }}px;">{{ $credits_capitalises }} / {{ $credits_totaux }}</span>
+            </div>
         </td>
     </tr>
 </table>
@@ -344,49 +423,51 @@
 </div>
 
 <div class="notice">
-    <strong>Très important:</strong> {{ $noticeText }}
+    <strong>Très important :</strong> {{ $noticeText }}
 </div>
 
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-top: 12px;">
+<table class="closing-grid" border="0" cellspacing="0" cellpadding="0">
     <tr>
-        <td width="55%"></td>
-        <td width="45%" style="text-align: right; font-size: {{ $fontSignature }}px;">
-            <div style="font-size: {{ $fontSignature }}px; font-weight: bold;">
-                Nom / Signature et cachet du chef<br>d'Etablissement
+        <td width="62%">
+            <div class="legend">
+                <strong>UE:</strong> Unité d'Enseignement -
+                <strong>ECUE:</strong> Elément Constitutif de l'Unité d'Enseignement -
+                <strong>CECT:</strong> Crédit d'Evaluation Capitalisable et Transférable -
+                <strong>AQ:</strong> Acquis -
+                <strong>NAQ:</strong> Non Acquis -
+                <strong>APC:</strong> Acquis Par Compensation -
+                <strong>Moy:</strong> Moyenne -
+                <strong>TB:</strong> Très bien -
+                <strong>B:</strong> Bien -
+                <strong>AB:</strong> Assez Bien -
+                <strong>P:</strong> Passable -
+                <strong>INS:</strong> Insuffisant -
+                <strong>F:</strong> Faible
+                @if($lmdAppreciationLegend)
+                    <br><strong>Barème des appréciations :</strong> {{ $lmdAppreciationLegend }}
+                @endif
             </div>
-            <div style="font-size: {{ $fontSignature }}px; margin-top: 4px;">
-                {{ $etab['ville'] ?? 'Abidjan' }}, le {{ $editionDate }}
+        </td>
+        <td width="38%">
+            <div class="signature-block">
+                <div style="font-weight: 800;">
+                    Nom / Signature et cachet du chef<br>d'Etablissement
+                </div>
+                <div style="margin-top: 4px;">
+                    {{ $etab['ville'] ?? 'Abidjan' }}, le {{ $editionDate }}
+                </div>
+                <div style="margin-top: 2px;">Le Directeur des Etudes</div>
+                <div style="font-size: {{ min(32, $fontSignature + 1) }}px; font-weight: 800; margin-top: 14px;">{{ $etab['directeur'] ?? '' }}</div>
             </div>
-            <div style="font-size: {{ $fontSignature }}px; margin-top: 2px;">Le Directeur des Etudes</div>
-            <div style="font-size: {{ min(24, $fontSignature + 1) }}px; font-weight: bold; margin-top: 16px;">{{ $etab['directeur'] ?? '' }}</div>
         </td>
     </tr>
 </table>
 
-<div class="legend">
-    <strong>UE:</strong> Unité d'Enseignement -
-    <strong>ECUE:</strong> Elément Constitutif de l'Unité d'Enseignement –
-    <strong>CECT:</strong> Crédit d'Evaluation Capitalisable et Transférable -
-    <strong>AQ:</strong> Acquis -
-    <strong>NAQ:</strong> Non Acquis –
-    <strong>APC:</strong> Acquis Par Compensation –
-    <strong>Moy:</strong> Moyenne –
-    <strong>TB:</strong> Très bien –
-    <strong>B:</strong> Bien –
-    <strong>AB:</strong> Assez Bien –
-    <strong>P:</strong> Passable –
-    <strong>INS:</strong> Insuffisant –
-    <strong>F:</strong> Faible
-    @if($lmdAppreciationLegend)
-        <br><strong>Barème des appréciations :</strong> {{ $lmdAppreciationLegend }}
-    @endif
-</div>
-
-<div style="text-align: center; font-size: {{ $fontBottom }}px; color: {{ $pdfCfg['secondary_color'] ?? '#6b7280' }}; margin-top: 6px;">
+<div class="bottom-note">
     {{ $bottomText }}<br>
     {{ $etab['nom'] ?? 'KLASSCI' }}, Etablissement {{ mb_strtolower($statutEtablissement, 'UTF-8') }}, Côte d'Ivoire
 </div>
-<div style="text-align: center; font-size: {{ min(24, $fontBottom + .5) }}px; font-weight: bold; margin-top: 4px;">
+<div style="text-align: center; font-size: {{ min(32, $fontBottom + .5) }}px; font-weight: 800; margin-top: 3px; page-break-inside: avoid;">
     {{ \App\Services\BulletinMentionResolver::authenticityText() }}
 </div>
 
