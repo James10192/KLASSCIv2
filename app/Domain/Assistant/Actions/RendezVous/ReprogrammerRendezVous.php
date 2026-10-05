@@ -159,6 +159,9 @@ class ReprogrammerRendezVous extends ActionAgent
                 (int) $user->id,
             );
         } catch (RuntimeException $e) {
+            if ($e->getMessage() === 'lot_modifie') {
+                throw new PropositionPerimee('La liste des familles de ce jour a changé pendant la validation.');
+            }
             throw new PropositionPerimee(AccueilRdv::message($e->getMessage()));
         }
 
