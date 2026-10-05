@@ -62,6 +62,8 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString('setting_lmd_bulletin_font_student', $view);
         $this->assertStringContainsString('setting_lmd_bulletin_font_table_header', $view);
         $this->assertStringContainsString('setting_lmd_bulletin_font_signature', $view);
+        $this->assertStringContainsString('max="32"', $view);
+        $this->assertStringContainsString('6 à 32 px', $view);
         $this->assertStringContainsString('<x-liste-infinie', $view);
         $this->assertStringContainsString('form.submit=function(){if(!suspendre)filtrer()}', $view);
     }
@@ -122,6 +124,8 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
 
         $this->assertStringContainsString("'lmd_bulletin_font_table' => ['8.5', '9.5']", $migration);
         $this->assertStringContainsString("'lmd_bulletin_font_school_name' => ['13', '15']", $migration);
+        $this->assertStringContainsString("'max:32'", $migration);
+        $this->assertStringContainsString("'validation_rules' => \$fontValidationRules", $migration);
         $this->assertStringContainsString("(string) \$existing->value === \$oldDefault", $migration);
         $this->assertStringContainsString("where('key', 'lmd_bulletin_direction')->exists()", $migration);
         $this->assertStringContainsString("Direction affichée dans le bandeau du bulletin LMD", $migration);
