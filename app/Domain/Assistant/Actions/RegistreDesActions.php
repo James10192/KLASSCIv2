@@ -11,7 +11,15 @@ class RegistreDesActions
     /** @return ActionAgent[] */
     public function toutes(): array
     {
-        return array_map(fn (string $classe) => app($classe), (array) config('assistant.actions.classes', []));
+        $classes = (array) config('assistant.actions.classes', []);
+
+        // Reprogrammation administrative des rendez-vous : ajoutée ici pour
+        // rester disponible pendant le déploiement progressif du lot Nanan RDV.
+        // La classe garde elle-même la permission canonique inscriptions.rdv.manage.
+        $classes[] = \App\Domain\Assistant\Actions\RendezVous\ReprogrammerRendezVous::class;
+        $classes = array_values(array_unique($classes));
+
+        return array_map(fn (string $classe) => app($classe), $classes);
     }
 
     public function action(string $cle): ?ActionAgent
