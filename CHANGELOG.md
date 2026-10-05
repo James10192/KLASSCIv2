@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+### Correctifs
+
+- Les frais proposés lors de l’inscription utilisent le scope académique commun : parcours et niveau en LMD, filière et niveau en BTS, avec priorité aux surcharges annuelles valides. L’année choisie dans le formulaire, validée côté serveur, ou l’année courante quand elle n’est pas fournie, remplace l’année historique de la classe. Les souscriptions et paiements existants ne sont pas réécrits.
+
 ### Ajouts
 
 - **Suivi des notes des classes LMD, semestre par semestre.** Le suivi des notes (`AcademicNoteCoverageService`) lit désormais la maquette LMD de la classe : les éléments (ECUE) des UE de son parcours pour le semestre demandé, du S1 au S10 selon le niveau, y compris ceux qui n'ont encore aucune note. Il lisait jusqu'ici les seules matières déjà notées, et annonçait « tout est saisi » sur un semestre où des éléments n'avaient pas une note. Chaque élément porte son UE et ce qui a été noté (CC + examen, examen seul, CC seul). Le panneau « Suivi du semestre » apparaît dans la fenêtre des notes LMD (une ligne ouvre la grille de l'élément) et sur la page de génération des bulletins LMD ; l'adresse de couverture rend les semestres de la classe et ouvre la saisie LMD. Nanan répond à « qu'est-ce qui manque au S1 en LBU ? » (`suivi_des_notes`, droits `academic_health.view` ou `view_own`, noms des élèves réservés au premier).
