@@ -41,9 +41,9 @@ class InKindDepositService
             throw new InKindDepositForbiddenException('Cette catégorie n\'accepte pas de dépôt en nature.');
         }
 
-        if (! app(ApplicableFraisResolver::class)->categoryAppliesToStudent(
+        if (! app(ApplicableFraisResolver::class)->categoryAppliesToInscription(
             $category,
-            $inscription->statut_etablissement,
+            $inscription,
         )) {
             throw new InKindDepositForbiddenException('Ce frais ne s\'applique pas à cet étudiant.');
         }
@@ -87,9 +87,9 @@ class InKindDepositService
             return false;
         }
 
-        return app(ApplicableFraisResolver::class)->categoryAppliesToStudent(
+        return app(ApplicableFraisResolver::class)->categoryAppliesToInscription(
             $category,
-            $inscription->statut_etablissement,
+            $inscription,
         );
     }
 

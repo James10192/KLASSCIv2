@@ -294,7 +294,17 @@ class ESBTPInscriptionApiController extends Controller
                 ?? ESBTPAnneeUniversitaire::anneeCourante()?->id;
 
             foreach ($allCategories as $category) {
-                if (! $fraisAudience->categoryAppliesToStudent($category, $statutEtablissement)) {
+                // L'audience est une propriété de la combinaison académique,
+                // pas du catalogue de frais partagé entre tous les niveaux.
+                $configuration = ESBTPFraisConfiguration::getApplicableForScope(
+                    $category->id,
+                    $scope,
+                );
+                if (! $fraisAudience->categoryAppliesToStudent(
+                    $category,
+                    $statutEtablissement,
+                    $configuration,
+                )) {
                     continue;
                 }
 
@@ -313,10 +323,6 @@ class ESBTPInscriptionApiController extends Controller
                 if ($category->is_mandatory) {
                     // FRAIS OBLIGATOIRES : Recherche configuration par classe
 
-                    $configuration = \App\Models\ESBTPFraisConfiguration::getApplicableForScope(
-                        $category->id,
-                        $scope,
-                    );
 
                     if ($configuration) {
                         $defaultAmount = $configuration->getMontantByStatus(
