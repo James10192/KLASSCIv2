@@ -8,6 +8,7 @@ use App\Models\ESBTPRdvCreneau;
 use App\Models\Setting;
 use App\Services\RendezVous\AffecteurDossiersRdv;
 use App\Services\RendezVous\FamillesAPrevenirRdv;
+use App\Services\RendezVous\FermetureAutomatiqueCreneauxRdv;
 use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\RendezVous\GenerateurCreneaux;
 use App\Services\RendezVous\RendezVousReglages;
@@ -24,6 +25,7 @@ class ESBTPRendezVousController extends Controller
     public function __construct(
         private readonly RendezVousReglages $reglages,
         private readonly TableauRendezVous $tableau,
+        private readonly FermetureAutomatiqueCreneauxRdv $fermetureAutomatique,
     ) {
     }
 
@@ -53,9 +55,6 @@ class ESBTPRendezVousController extends Controller
         $brut = $request->all();
         $auteur = auth()->id();
 
-        // Fermer la prise de rendez-vous sous un parcours d'inscription qui
-        // l'exige bloquerait chaque dossier au guichet : meme refus qu'a
-        // l'ecran des parametres et au CLI, lu dans la meme classe.
         $rdvOuvert = filter_var($brut[RendezVousReglages::ENABLED] ?? $brut[str_replace('.', '_', RendezVousReglages::ENABLED)] ?? false, FILTER_VALIDATE_BOOLEAN);
         $incoherence = \App\Services\Admissions\InscriptionWorkflowSettings::incoherence(
             fn (string $cle): string => $cle === RendezVousReglages::ENABLED ? ($rdvOuvert ? '1' : '0') : (string) Setting::get($cle, '')
@@ -64,7 +63,6 @@ class ESBTPRendezVousController extends Controller
             return response()->json(['message' => $incoherence], 422);
         }
 
-        // Une tolerance illisible retomberait en silence sur 15 minutes.
         $grace = $brut[RendezVousReglages::GRACE] ?? $brut[str_replace('.', '_', RendezVousReglages::GRACE)] ?? null;
         if (is_string($grace) && trim($grace) !== '' && ! ctype_digit(trim($grace))) {
             return response()->json(['message' => 'La tolérance de retard doit être un nombre entier de minutes.'], 422);
@@ -73,7 +71,6 @@ class ESBTPRendezVousController extends Controller
         $jours = $brut['inscriptions_rdv_jours_ouverts'] ?? [];
         Setting::set(RendezVousReglages::JOURS, is_array($jours) ? implode(',', array_map('strval', $jours)) : '', $auteur);
 
-        // PHP change les points des noms de champs en soulignes : on lit les deux.
         foreach (RendezVousReglages::clesTexte() as $cle) {
             $cleFormulaire = str_replace('.', '_', $cle);
             if ($cle === RendezVousReglages::JOURS || (! array_key_exists($cle, $brut) && ! array_key_exists($cleFormulaire, $brut))) {
@@ -81,8 +78,6 @@ class ESBTPRendezVousController extends Controller
             }
             $soumis = $brut[$cle] ?? $brut[$cleFormulaire] ?? '';
             $soumis = is_string($soumis) ? trim($soumis) : '';
-            // Le lieu part dans un WhatsApp et sur un PDF : borne cote serveur
-            // aussi, le maxlength du champ ne lie que le navigateur.
             if ($cle === RendezVousReglages::LIEU) {
                 $soumis = mb_substr($soumis, 0, 160);
             }
@@ -95,8 +90,11 @@ class ESBTPRendezVousController extends Controller
         }
 
         Setting::clearCache();
+        $fermes = $this->fermetureAutomatique->fermerAujourdHui();
 
-        return response()->json(['message' => 'Réglages enregistrés.']);
+        return response()->json([
+            'message' => 'Réglages enregistrés.'.($fermes > 0 ? " {$fermes} créneau(x) d'aujourd'hui fermé(s) immédiatement." : ''),
+        ]);
     }
 
     public function generer(GenerateurCreneaux $generateur): JsonResponse
@@ -130,7 +128,6 @@ class ESBTPRendezVousController extends Controller
 
     public function envoyerConvocations(FileConvocationsRdv $file): JsonResponse
     {
-        // Un paquet court : l'ecran rappelle tant qu'il en reste, et affiche la progression.
         return response()->json($file->envoyerUnPaquet(15, 20.0));
     }
 
@@ -143,6 +140,11 @@ class ESBTPRendezVousController extends Controller
 
     public function ouvrir(ESBTPRdvCreneau $creneau): JsonResponse
     {
+        if ($this->fermetureAutomatique->doitEtreFerme($creneau)) {
+            return response()->json([
+                'message' => "Ce créneau est daté d'aujourd'hui : le réglage « fermeture du jour à minuit » interdit de le rouvrir.",
+            ], 422);
+        }
         $creneau->update(['ouvert' => true]);
 
         return response()->json(['message' => 'Créneau ouvert aux familles.']);
