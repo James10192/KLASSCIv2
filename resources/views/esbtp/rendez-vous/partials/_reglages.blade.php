@@ -3,6 +3,7 @@
     $_jours = [1 => 'Lun', 2 => 'Mar', 3 => 'Mer', 4 => 'Jeu', 5 => 'Ven', 6 => 'Sam', 7 => 'Dim'];
     $_choisis = array_map('strval', array_filter(preg_split('/[,\s]+/', $rdv->valeur($rdv::JOURS, '1,2,3,4,5')) ?: []));
     $_ouvert = $rdv->enabled();
+    $_fermerJourMinuit = $rdv->fermerJourAMinuit();
 @endphp
 <details class="rdv-card rdv-reglages" id="reglages" @if(! $debit || ! $_ouvert) open @endif>
     <summary id="rdv-reglages-resume">
@@ -94,6 +95,15 @@
                 <small style="color:#64748b;">Affiché sur la convocation PDF, l'e-mail, le WhatsApp et klassci.com. Vide : l'adresse de l'établissement est reprise.</small>
             </label>
         </fieldset>
+
+        <label class="rdv-bascule">
+            <input type="checkbox" name="{{ $rdv::FERMER_JOUR_A_MINUIT }}" value="1" @checked($_fermerJourMinuit)>
+            <span class="rdv-bascule-piste" aria-hidden="true"><span></span></span>
+            <span class="rdv-bascule-texte">
+                <strong>Fermer automatiquement les rendez-vous du jour à 00:00</strong>
+                <span>Activé, dès minuit les familles ne peuvent plus choisir un créneau daté d'aujourd'hui. Les rendez-vous déjà pris restent valides.</span>
+            </span>
+        </label>
 
         <label class="rdv-bascule">
             <input type="checkbox" name="{{ $rdv::ENABLED }}" value="1" @checked($_ouvert)>

@@ -12,6 +12,12 @@ class RendezVousReglages
 {
     public const ENABLED = 'inscriptions.rdv.enabled';
 
+    /**
+     * Quand ce réglage est actif, aucun créneau de la date du jour n'est proposé
+     * aux familles à partir de 00:00, même si l'heure du rendez-vous est encore à venir.
+     */
+    public const FERMER_JOUR_A_MINUIT = 'inscriptions.rdv.fermer_jour_a_minuit';
+
     public const OUVERTURE = 'inscriptions.rdv.ouverture';
 
     public const FERMETURE = 'inscriptions.rdv.fermeture';
@@ -34,15 +40,8 @@ class RendezVousReglages
 
     public const DELAI_MODIF = 'inscriptions.rdv.delai_modif_heures';
 
-    /**
-     * Ou se presenter : « Scolarite, batiment A, rez-de-chaussee ». Texte libre,
-     * pose par l'ecole. Sans lui, la convocation donnait la date et l'heure mais
-     * jamais le lieu, et les familles appelaient l'ecole — ou ecrivaient a
-     * KLASSCI — pour le demander.
-     */
     public const LIEU = 'inscriptions.rdv.lieu';
 
-    /** Minutes apres le debut d'un creneau au-dela desquelles une famille attendue est « en retard ». */
     public const GRACE = 'inscriptions.rdv.grace_no_show_minutes';
 
     /** @return list<string> */
@@ -68,12 +67,22 @@ class RendezVousReglages
     /** @return list<string> */
     public static function clesBascules(): array
     {
-        return [self::ENABLED];
+        return [self::ENABLED, self::FERMER_JOUR_A_MINUIT];
     }
 
     public function enabled(): bool
     {
         return $this->flag(self::ENABLED);
+    }
+
+    public function fermerJourAMinuit(): bool
+    {
+        return $this->flag(self::FERMER_JOUR_A_MINUIT);
+    }
+
+    public function dateAcceptablePourNouvelleReservation(Carbon $date): bool
+    {
+        return ! $this->fermerJourAMinuit() || ! $date->isToday();
     }
 
     public function pourGeneration(): CreneauRegle
@@ -131,9 +140,6 @@ class RendezVousReglages
         );
     }
 
-    /**
-     * @return array{duree: int, capacite: int, minutes_utiles: int, creneaux_par_jour: int, personnes_par_jour: int}|null
-     */
     public function debitJournalier(): ?array
     {
         try {
@@ -146,8 +152,7 @@ class RendezVousReglages
         $fin = $this->minutesDepuisMinuit($regle->heureFin);
         $pause = 0;
         if ($regle->pauseDebut !== null && $regle->pauseFin !== null) {
-            $pause = $this->minutesDepuisMinuit($regle->pauseFin)
-                - $this->minutesDepuisMinuit($regle->pauseDebut);
+            $pause = $this->minutesDepuisMinuit($regle->pauseFin) - $this->minutesDepuisMinuit($regle->pauseDebut);
         }
 
         $utiles = max(0, $fin - $debut - $pause);
@@ -162,38 +167,29 @@ class RendezVousReglages
         ];
     }
 
-    /**
-     * @param  list<string>  $manquants
-     */
     private function dateObligatoire(string $cle, array &$manquants): ?Carbon
     {
         $valeur = $this->texte($cle);
         if ($valeur === '') {
             $manquants[] = $cle;
-
             return null;
         }
 
         $date = PortailReinscriptionService::interpreterDateIso($valeur);
         if ($date === null) {
             $manquants[] = $cle;
-
             return null;
         }
 
         return $date->startOfDay();
     }
 
-    /**
-     * @param  list<string>  $manquants
-     */
     private function heureObligatoire(string $cle, array &$manquants): ?string
     {
         $heure = $this->heureOptionnelle($cle);
         if ($heure === null) {
             $manquants[] = $cle;
         }
-
         return $heure;
     }
 
@@ -203,20 +199,14 @@ class RendezVousReglages
         if ($valeur === '') {
             return null;
         }
-
         return $this->interpreterHeure($valeur);
     }
 
-    /**
-     * @param  list<string>  $manquants
-     * @return list<int>
-     */
     private function joursOuverts(array &$manquants): array
     {
         $brut = $this->texte(self::JOURS);
         if ($brut === '') {
             $manquants[] = self::JOURS;
-
             return [];
         }
 
@@ -228,7 +218,6 @@ class RendezVousReglages
             $n = (int) $morceau;
             if ($n < 1 || $n > 7) {
                 $manquants[] = self::JOURS;
-
                 return [];
             }
             $jours[] = $n;
@@ -236,26 +225,19 @@ class RendezVousReglages
 
         $jours = array_values(array_unique($jours));
         sort($jours);
-
         if ($jours === []) {
             $manquants[] = self::JOURS;
         }
-
         return $jours;
     }
 
-    /**
-     * @param  list<string>  $manquants
-     */
     private function entierPositif(string $cle, array &$manquants): int
     {
         $valeur = $this->texte($cle);
         if ($valeur === '' || ! ctype_digit($valeur) || (int) $valeur < 1) {
             $manquants[] = $cle;
-
             return 0;
         }
-
         return (int) $valeur;
     }
 
@@ -267,45 +249,33 @@ class RendezVousReglages
                 return $date->format('H:i');
             }
         }
-
         return null;
     }
 
     public function minutesDepuisMinuit(string $heure): int
     {
         [$h, $m] = array_map('intval', explode(':', $heure));
-
         return ($h * 60) + $m;
     }
 
     public function graceMinutes(): int
     {
         $valeur = $this->valeur(self::GRACE, '15');
-
         return ctype_digit($valeur) ? (int) $valeur : 15;
     }
 
-    /**
-     * Le lieu annonce sur la convocation, le portail et les messages.
-     *
-     * Repli sur l'adresse de l'etablissement : moins precise qu'un guichet, mais
-     * une adresse vaut mieux que rien. Vide si l'ecole n'a regle ni l'un ni
-     * l'autre — l'appelant n'affiche alors aucune ligne, plutot qu'un tiret.
-     */
     public function lieu(): string
     {
         $lieu = $this->valeur(self::LIEU);
         if ($lieu !== '') {
             return $lieu;
         }
-
         return $this->valeur('school_address');
     }
 
     public function valeur(string $cle, string $defaut = ''): string
     {
         $valeur = SettingsHelper::get($cle, $defaut);
-
         return is_scalar($valeur) ? trim((string) $valeur) : '';
     }
 
@@ -317,7 +287,6 @@ class RendezVousReglages
     private function flag(string $cle): bool
     {
         $valeur = SettingsHelper::get($cle, '0');
-
         return $valeur === true || $valeur === 1 || $valeur === '1';
     }
 }

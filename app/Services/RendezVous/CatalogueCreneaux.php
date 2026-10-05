@@ -17,9 +17,6 @@ class CatalogueCreneaux
     ) {
     }
 
-    /**
-     * @return list<array{id: int, date: string, heure_debut: string, heure_fin: string, etat: string}>
-     */
     public function publier(): array
     {
         return $this->creneauxOuverts()->map(function (ESBTPRdvCreneau $creneau) {
@@ -35,9 +32,6 @@ class CatalogueCreneaux
         })->values()->all();
     }
 
-    /**
-     * @return array<int, int>
-     */
     public function placesLibres(): array
     {
         $restantes = [];
@@ -56,9 +50,6 @@ class CatalogueCreneaux
         return $this->reinscriptions->anneeCible();
     }
 
-    /**
-     * @return Collection<int, ESBTPRdvCreneau>
-     */
     private function creneauxOuverts(): Collection
     {
         try {
@@ -73,6 +64,9 @@ class CatalogueCreneaux
         }
 
         $debut = Carbon::today();
+        if ($this->reglages->fermerJourAMinuit()) {
+            $debut->addDay();
+        }
         if ($regle->plancher->gt($debut)) {
             $debut = $regle->plancher->copy();
         }
