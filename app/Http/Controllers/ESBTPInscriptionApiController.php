@@ -260,6 +260,10 @@ class ESBTPInscriptionApiController extends Controller
      */
     public function getFraisByClasse($classeId, Request $request)
     {
+        $validated = $request->validate([
+            'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
+        ]);
+
         try {
             $classe = ESBTPClasse::with([
                 "filiere",
@@ -286,6 +290,8 @@ class ESBTPInscriptionApiController extends Controller
             $statutEtablissement = $request->get("statut_etablissement");
             $fraisAudience = app(\App\Services\ApplicableFraisResolver::class);
             $scope = app(\App\Services\FraisScopeResolver::class)->resolveForClasse($classe);
+            $scope['annee_universitaire_id'] = $validated['annee_universitaire_id']
+                ?? ESBTPAnneeUniversitaire::anneeCourante()?->id;
 
             foreach ($allCategories as $category) {
                 if (! $fraisAudience->categoryAppliesToStudent($category, $statutEtablissement)) {
