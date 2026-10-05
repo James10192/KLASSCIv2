@@ -4,6 +4,7 @@ namespace App\Domain\Assistant\Outils;
 
 use App\Models\ESBTPRdvReservation;
 use App\Services\RendezVous\AffecteurDossiersRdv;
+use App\Services\RendezVous\CatalogueCreneaux;
 use App\Services\RendezVous\EtatChaineRdv;
 use App\Services\RendezVous\FileConvocationsRdv;
 use App\Services\Chatbot\Tools\ChatbotTool;
@@ -27,7 +28,7 @@ class LireRendezVous extends ChatbotTool
     {
         return "Lit l'état des rendez-vous d'inscription : ce qui bloque (prise de rendez-vous fermée, réglages incomplets, aucune place, messagerie coupée), "
             .'les convocations par état et combien de dossiers attendent d’être placés. '
-            .'Passe date=AAAA-MM-JJ pour lister les réservations ACTIVES de ce jour avec leurs identifiants et créneaux. '
+            .'Passe date=AAAA-MM-JJ pour lister les réservations ACTIVES de ce jour avec leurs identifiants et créneaux, dans la campagne de rendez-vous courante. '
             .'À utiliser avant toute génération, placement, convocation ou reprogrammation. Si un jour futur doit être supprimé du planning, lire cette date puis utiliser proposer_reprogrammation_rdv.';
     }
 
@@ -86,10 +87,12 @@ class LireRendezVous extends ChatbotTool
             return ['error' => 'Date invalide : utilisez AAAA-MM-JJ.'];
         }
 
+        $annee = app(CatalogueCreneaux::class)->anneeDesCreneaux()?->id ?? 0;
         $limite = min(max((int) ($args['limite'] ?? 50), 1), 100);
         $base = ESBTPRdvReservation::query()
             ->select('esbtp_rdv_reservations.*')
             ->join('esbtp_rdv_creneaux as c', 'c.id', '=', 'esbtp_rdv_reservations.creneau_id')
+            ->where('c.annee_universitaire_id', $annee)
             ->whereDate('c.date', $jour->toDateString())
             ->occupantes()
             ->dossierOuvert();
