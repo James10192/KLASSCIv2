@@ -34,6 +34,7 @@ return new class extends Migration
         $sortOrder = 330;
         foreach ($fontDefaults as $key => [$oldDefault, $newDefault]) {
             $existing = DB::table('settings')->where('key', $key)->first();
+            $fontValidationRules = json_encode(['nullable', 'numeric', 'min:6', 'max:32']);
 
             if (! $existing) {
                 DB::table('settings')->insert([
@@ -45,7 +46,7 @@ return new class extends Migration
                     'description' => 'Typographie du bulletin LMD',
                     'is_required' => false,
                     'default_value' => $newDefault,
-                    'validation_rules' => json_encode(['nullable', 'numeric', 'min:6', 'max:24']),
+                    'validation_rules' => $fontValidationRules,
                     'is_active' => true,
                     'sort_order' => $sortOrder++,
                     'created_at' => now(),
@@ -56,6 +57,7 @@ return new class extends Migration
 
             $updates = [
                 'default_value' => $newDefault,
+                'validation_rules' => $fontValidationRules,
                 'updated_at' => now(),
             ];
 
