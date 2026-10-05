@@ -6,6 +6,7 @@ use App\Models\ESBTPRdvCreneau;
 use App\Models\ESBTPRdvReservation;
 use App\Services\Chatbot\Tools\ChatbotTool;
 use App\Services\RendezVous\RendezVousReglages;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Route;
 
@@ -23,8 +24,10 @@ class LireRendezVousCible extends ChatbotTool
 
     public function description(): string
     {
-        return 'Recherche un rendez-vous précis par identifiant, nom/prénom, référence de dossier ou date, et/ou liste les créneaux d’une date. '
-            .'Retourne reservation_id, candidature_id/reinscription_demande_id et creneau_id. À utiliser AVANT programmer, reprogrammer, annuler, fermer/rouvrir un créneau ou renvoyer une convocation ciblée.';
+        return 'Recherche un rendez-vous précis par identifiant, nom/prénom, référence de dossier ou date, et liste les créneaux d’une date avec leur disponibilité réelle. '
+            .'À utiliser avant proposer_gestion_rendez_vous_cible pour programmer, reprogrammer, annuler, fermer ou rouvrir un créneau, et avant proposer_convocations_rdv pour un renvoi ciblé. '
+            .'Pour reprogrammer : lis d’abord la réservation actuelle, puis la date cible ; choisis uniquement un créneau avec reservable=true. '
+            .'Quand le réglage « fermeture du jour à minuit » est actif, les créneaux d’aujourd’hui sont non réservables dès 00:00 même s’ils étaient encore marqués ouverts en base. Nanan ne doit jamais tenter de les rouvrir.';
     }
 
     public function parameters(): array
@@ -36,6 +39,7 @@ class LireRendezVousCible extends ChatbotTool
                 'recherche' => ['type' => 'string', 'description' => 'Nom, prénom ou référence publique du dossier.'],
                 'date' => ['type' => 'string', 'description' => 'Date AAAA-MM-JJ pour filtrer les rendez-vous et afficher les créneaux de ce jour.'],
                 'creneau_id' => ['type' => 'integer'],
+                'disponibles_seulement' => ['type' => 'boolean', 'description' => 'Si true, ne retourne que les créneaux réellement réservables.'],
                 'limit' => ['type' => 'integer'],
             ],
         ];
@@ -83,22 +87,60 @@ class LireRendezVousCible extends ChatbotTool
                 ->withCount(['reservations as prises' => fn ($r) => $r->occupantes()])
                 ->orderBy('heure_debut')->limit(50)->get();
         }
-        $creneaux = collect($creneaux)->map(fn (ESBTPRdvCreneau $c) => [
-            'creneau_id' => (int) $c->id,
-            'date' => $c->date->toDateString(),
-            'heure' => $c->heureDebutHi().'–'.$c->heureFinHi(),
-            'ouvert' => (bool) $c->ouvert,
-            'capacite' => (int) $c->capacite,
-            'prises' => (int) ($c->prises ?? 0),
-            'libres' => max(0, (int) $c->capacite - (int) ($c->prises ?? 0)),
-        ])->values()->all();
+
+        $reglages = app(RendezVousReglages::class);
+        $fermetureMinuit = $reglages->fermerJourAMinuit();
+        $aujourdhui = Carbon::today();
+
+        $creneaux = collect($creneaux)->map(function (ESBTPRdvCreneau $c) use ($fermetureMinuit, $aujourdhui) {
+            $prises = (int) ($c->prises ?? 0);
+            $libres = max(0, (int) $c->capacite - $prises);
+            $jourFerme = $fermetureMinuit && $c->date->copy()->startOfDay()->lte($aujourdhui);
+            $commence = $c->aCommence();
+            $reservable = (bool) $c->ouvert && $libres > 0 && ! $jourFerme && ! $commence;
+
+            $raison = null;
+            if ($jourFerme) {
+                $raison = 'journée fermée à minuit par le réglage de l’école';
+            } elseif (! $c->ouvert) {
+                $raison = 'créneau fermé manuellement';
+            } elseif ($commence) {
+                $raison = 'créneau déjà commencé';
+            } elseif ($libres <= 0) {
+                $raison = 'créneau complet';
+            }
+
+            return [
+                'creneau_id' => (int) $c->id,
+                'date' => $c->date->toDateString(),
+                'heure' => $c->heureDebutHi().'–'.$c->heureFinHi(),
+                'ouvert' => (bool) $c->ouvert,
+                'reservable' => $reservable,
+                'raison_indisponible' => $raison,
+                'capacite' => (int) $c->capacite,
+                'prises' => $prises,
+                'libres' => $libres,
+            ];
+        });
+
+        if (($args['disponibles_seulement'] ?? false) === true) {
+            $creneaux = $creneaux->where('reservable', true)->values();
+        }
 
         return [
             'results' => $reservations,
             'count' => count($reservations),
             'display_type' => 'table',
-            'creneaux' => $creneaux,
-            'reglage_fermeture_jour_minuit' => app(RendezVousReglages::class)->fermerJourAMinuit(),
+            'creneaux' => $creneaux->values()->all(),
+            'reglage_fermeture_jour_minuit' => $fermetureMinuit,
+            'regle' => $fermetureMinuit
+                ? 'La date du jour et les dates passées n’acceptent plus de nouvelles réservations dès 00:00. Les réservations existantes sont conservées.'
+                : 'La fermeture automatique du jour à minuit est désactivée.',
+            'actions_suivantes' => [
+                'programmer_reprogrammer_annuler_fermer_ouvrir' => 'proposer_gestion_rendez_vous_cible',
+                'renvoyer_convocation' => 'proposer_convocations_rdv',
+                'modifier_fermeture_minuit' => 'proposer_gestion_rendez_vous_cible avec mode=fermeture_jour_minuit',
+            ],
             'deep_link' => Route::has('esbtp.rendez-vous.index') ? route('esbtp.rendez-vous.index', [], false) : null,
         ];
     }
