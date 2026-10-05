@@ -4,157 +4,92 @@ namespace App\Services\Chatbot\Tools;
 
 /**
  * Contrat de base pour les outils du chatbot IA.
- *
- * Chaque outil déclare son schéma (JSON Schema pour Claude tool use)
- * et exécute une action concrète quand le LLM le demande.
  */
 abstract class ChatbotTool
 {
-    /**
-     * Nom unique de l'outil.
-     */
     abstract public function name(): string;
-
-    /**
-     * Description courte pour le LLM.
-     */
     abstract public function description(): string;
 
-    /**
-     * Schéma des paramètres au format JSON Schema.
-     *
-     * @return array{type:string,properties:array,required?:array}
-     */
+    /** @return array{type:string,properties:array,required?:array} */
     abstract public function parameters(): array;
 
-    /**
-     * Exécuter l'outil et retourner les résultats.
-     *
-     * @param  array  $args  Arguments fournis par le LLM
-     * @param  \App\Models\User  $user  Utilisateur authentifié
-     * @return array  Résultats structurés
-     */
+    /** @param array $args @param \App\Models\User $user */
     abstract public function execute(array $args, $user): array;
 
-    /**
-     * Permissions canoniques requises. Un outil absent de la configuration est refusé.
-     *
-     * @return string[]
-     */
     public function requiredPermissions(): array
     {
         return $this->toolConfig()['all_permissions'] ?? [];
     }
 
-    /**
-     * Vérifie l'autorisation à l'exposition comme à l'exécution.
-     *
-     * Les outils sont explicitement opt-in: une configuration manquante, désactivée ou
-     * sans permission canonique ne peut jamais ouvrir un accès implicite.
-     */
     public function isAvailableFor($user): bool
     {
         $config = $this->toolConfig();
-
-        if (($config['enabled'] ?? false) !== true || ! $user) {
-            return false;
-        }
+        if (($config['enabled'] ?? false) !== true || ! $user) return false;
 
         $allPermissions = $config['all_permissions'] ?? [];
         $anyPermissions = $config['any_permissions'] ?? [];
         $allowedRoles = $config['allowed_roles'] ?? [];
-
-        if ($allPermissions === [] && $anyPermissions === []) {
-            return false;
-        }
+        if ($allPermissions === [] && $anyPermissions === []) return false;
 
         if ($allowedRoles !== []) {
-            if (! method_exists($user, 'hasRole') || ! $user->hasRole($allowedRoles)) {
-                return false;
-            }
+            if (! method_exists($user, 'hasRole') || ! $user->hasRole($allowedRoles)) return false;
         }
 
         return collect($allPermissions)->every(fn (string $permission) => $user->can($permission))
             && ($anyPermissions === [] || collect($anyPermissions)->contains(fn (string $permission) => $user->can($permission)));
     }
 
-    /**
-     * Point d'exécution obligatoire pour les agents. Ne révèle pas la cause du refus.
-     */
     public function executeAuthorized(array $args, $user): array
     {
-        if (! $this->isAvailableFor($user)) {
-            return $this->unavailableResponse();
-        }
-
+        if (! $this->isAvailableFor($user)) return $this->unavailableResponse();
         return $this->execute($args, $user);
     }
 
-    /**
-     * Libellé montré pendant l'exécution (« Recherche des étudiants… »).
-     */
     public function libelle(): string
     {
         return (string) ($this->toolConfig()['libelle'] ?? 'Consultation des données…');
     }
 
-    /**
-     * Question d'exemple proposée sur l'écran d'accueil de l'assistant, pour les
-     * seuls utilisateurs qui ont accès à cet outil.
-     */
     public function suggestion(): ?string
     {
         $suggestion = $this->toolConfig()['suggestion'] ?? null;
-
         return is_string($suggestion) && $suggestion !== '' ? $suggestion : null;
     }
 
     protected function unavailableResponse(): array
     {
-        return [
-            'error' => 'Outil indisponible.',
-        ];
+        return ['error' => 'Outil indisponible.'];
     }
 
-    /** @return array<string, mixed> */
+    /** @return array<string,mixed> */
     protected function toolConfig(): array
     {
-        return config('chatbot.tools.' . $this->name(), []);
+        $principal = config('chatbot.tools.' . $this->name());
+        if (is_array($principal) && $principal !== []) return $principal;
+
+        // Extension volontairement explicite : même principe opt-in que chatbot.php.
+        // Un outil absent des DEUX registres reste fermé par défaut.
+        $extension = config('assistant_tools_nanan.tools.' . $this->name(), []);
+        return is_array($extension) ? $extension : [];
     }
 
-    /**
-     * Appliquer une recherche floue nom/prénoms sur une query Eloquent.
-     * Stratégie fuzzy-OR : LIKE exact + LIKE par terme + SOUNDEX phonétique (combinés).
-     */
     public function applyFuzzyNameSearch($query, string $search, string $nomCol = 'nom', string $prenomsCol = 'prenoms'): void
     {
         $terms = preg_split('/\s+/', trim($search));
-
         $query->where(function ($q) use ($search, $terms, $nomCol, $prenomsCol) {
-            // Un matricule tapé à la place du nom : tous les appelants
-            // cherchent dans esbtp_etudiants, qui porte la colonne.
-            if ($nomCol === 'nom') {
-                $q->orWhere('matricule', trim($search));
-            }
-
-            // Exact substring match
+            if ($nomCol === 'nom') $q->orWhere('matricule', trim($search));
             $q->orWhere($nomCol, 'like', "%{$search}%")
               ->orWhere($prenomsCol, 'like', "%{$search}%")
               ->orWhereRaw("CONCAT({$nomCol}, ' ', {$prenomsCol}) LIKE ?", ["%{$search}%"]);
-
-            // Per-term match
             if (count($terms) > 1) {
                 $q->orWhere(function ($sub) use ($terms, $nomCol, $prenomsCol) {
                     foreach ($terms as $term) {
                         $sub->where(function ($inner) use ($term, $nomCol, $prenomsCol) {
-                            $inner->where($nomCol, 'like', "%{$term}%")
-                                  ->orWhere($prenomsCol, 'like', "%{$term}%");
+                            $inner->where($nomCol, 'like', "%{$term}%")->orWhere($prenomsCol, 'like', "%{$term}%");
                         });
                     }
                 });
             }
-
-            // SOUNDEX fuzzy fallback
             foreach ($terms as $term) {
                 $q->orWhereRaw("SOUNDEX({$nomCol}) = SOUNDEX(?)", [$term])
                   ->orWhereRaw("SOUNDEX({$prenomsCol}) = SOUNDEX(?)", [$term]);
@@ -162,76 +97,45 @@ abstract class ChatbotTool
         });
     }
 
-    /**
-     * Nom complet d'un étudiant.
-     */
     protected function studentFullName($etudiant, string $fallback = 'N/A'): string
     {
         return $etudiant ? trim(($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '')) : $fallback;
     }
 
-    /**
-     * Initiales d'un étudiant (première lettre nom + première lettre prénoms).
-     */
     protected function studentInitials($etudiant, string $fallback = '?'): string
     {
         if (!$etudiant) return $fallback;
         return mb_strtoupper(mb_substr($etudiant->nom ?? '', 0, 1) . mb_substr($etudiant->prenoms ?? '', 0, 1));
     }
 
-    /**
-     * Appliquer un filtre classe par nom ou code sur une query.
-     */
     protected function applyClasseSearch($query, string $search, string $relation = 'classe'): void
     {
         $query->whereHas($relation, function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-              ->orWhere('code', 'like', "%{$search}%");
+            $q->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%");
         });
     }
 
-    /**
-     * Clamper la limite de résultats.
-     */
     protected function clampLimit(array $args, int $default = 10, int $max = 25): int
     {
         return min(max((int) ($args['limit'] ?? $default), 1), $max);
     }
 
-    /**
-     * Formater un montant en FCFA.
-     */
     protected function formatFCFA(float $amount): string
     {
         return number_format($amount, 0, ',', ' ') . ' FCFA';
     }
 
-    /**
-     * Mapper les périodes S1/S2 vers semestre1/semestre2 (format DB).
-     */
     protected function mapPeriode(string $periode): ?string
     {
         return match (mb_strtoupper(trim($periode))) {
-            'S1' => 'semestre1',
-            'S2' => 'semestre2',
-            'SEMESTRE1' => 'semestre1',
-            'SEMESTRE2' => 'semestre2',
-            default => null,
+            'S1' => 'semestre1', 'S2' => 'semestre2', 'SEMESTRE1' => 'semestre1', 'SEMESTRE2' => 'semestre2', default => null,
         };
     }
 
-    /**
-     * Convertir en définition d'outil Claude (tool use).
-     */
     public function toToolDefinition(): array
     {
         $schema = $this->parameters();
         $schema['additionalProperties'] = false;
-
-        return [
-            'name' => $this->name(),
-            'description' => $this->description(),
-            'input_schema' => $schema,
-        ];
+        return ['name' => $this->name(), 'description' => $this->description(), 'input_schema' => $schema];
     }
 }
