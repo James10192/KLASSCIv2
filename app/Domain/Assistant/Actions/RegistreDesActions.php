@@ -3,25 +3,27 @@
 namespace App\Domain\Assistant\Actions;
 
 /**
- * Les actions que l'assistant sait proposer. Une action absente d'ici n'existe
- * pas pour lui ; chacune est en plus soumise à sa permission (config/chatbot.php).
+ * Les actions que l'assistant sait proposer. Une action absente des registres
+ * n'existe pas pour lui ; chacune reste soumise à sa permission d'outil.
  */
 class RegistreDesActions
 {
     /** @return ActionAgent[] */
     public function toutes(): array
     {
-        return array_map(fn (string $classe) => app($classe), (array) config('assistant.actions.classes', []));
+        $classes = array_values(array_unique(array_merge(
+            (array) config('assistant.actions.classes', []),
+            (array) config('assistant_tools_nanan.actions', []),
+        )));
+
+        return array_map(fn (string $classe) => app($classe), $classes);
     }
 
     public function action(string $cle): ?ActionAgent
     {
         foreach ($this->toutes() as $action) {
-            if ($action->cle() === $cle) {
-                return $action;
-            }
+            if ($action->cle() === $cle) return $action;
         }
-
         return null;
     }
 }
