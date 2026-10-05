@@ -119,6 +119,33 @@ class ReprogrammateurRdvAdministratif
     public function executer(array $assignations, array $creneauxSource, int $agentId): array
     {
         $faites = DB::transaction(function () use ($assignations, $creneauxSource, $agentId) {
+            $sources = ESBTPRdvCreneau::query()
+                ->whereKey($creneauxSource)
+                ->lockForUpdate()
+                ->get();
+            if ($sources->count() !== count(array_unique(array_map('intval', $creneauxSource)))) {
+                throw new RuntimeException('lot_modifie');
+            }
+
+            // Le verrou sur les créneaux source empêche une nouvelle réservation
+            // publique de se glisser entre la seconde simulation et leur fermeture.
+            $proposees = array_values(array_unique(array_map(
+                fn (array $a) => (int) $a['reservation_id'],
+                $assignations
+            )));
+            sort($proposees);
+            $actuelles = ESBTPRdvReservation::query()
+                ->whereIn('creneau_id', $creneauxSource)
+                ->occupantes()
+                ->dossierOuvert()
+                ->orderBy('id')
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+            if ($actuelles !== $proposees) {
+                throw new RuntimeException('lot_modifie');
+            }
+
             ESBTPRdvCreneau::query()->whereKey($creneauxSource)->update(['ouvert' => false]);
 
             $n = 0;
