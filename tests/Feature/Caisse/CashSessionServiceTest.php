@@ -113,7 +113,7 @@ class CashSessionServiceTest extends TestCase
             'created_by' => $user->id,
             'montant' => 2000,
             'mode_paiement' => 'espèces',
-            'status' => 'en attente',
+            'status' => 'en_attente',
             'created_at' => now(),
         ]);
 
