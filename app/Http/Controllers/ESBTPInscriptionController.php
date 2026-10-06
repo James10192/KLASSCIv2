@@ -792,7 +792,9 @@ class ESBTPInscriptionController extends Controller
             "niveau",
             "classe.parcours.mention.domaine",
             "anneeUniversitaire",
-            "paiements",
+            "paiements.fraisCategory",
+            "paiements.categorie",
+            "paiements.creator",
         ]);
 
 
