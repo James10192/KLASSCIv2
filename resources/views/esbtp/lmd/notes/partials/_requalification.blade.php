@@ -62,7 +62,7 @@ async function chargerRequalification(classeId) {
     banner.style.display = 'none';
     if (!peutRequalifier) return;
     try {
-        const resp = await fetch('/esbtp/lmd/notes/classe/' + classeId + '/requalification', {
+        const resp = await fetch('/esbtp/lmd/notes/classe/' + classeId + '/requalification?annee_universitaire_id=' + encodeURIComponent(lmdAcademicYearId), {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
         if (!resp.ok || classeId !== currentClasseId) return;
@@ -122,7 +122,11 @@ async function requalifierEnExamen(simulation) {
                 'Content-Type': 'application/json', 'Accept': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': '{{ csrf_token() }}',
             },
-            body: JSON.stringify({ dry_run: simulation, periode: requalPeriode }),
+            body: JSON.stringify({
+                dry_run: simulation,
+                periode: requalPeriode,
+                annee_universitaire_id: lmdAcademicYearId,
+            }),
         });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok || !data.success) {

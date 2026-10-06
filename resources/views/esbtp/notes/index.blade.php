@@ -25,7 +25,7 @@
                 <div class="nm-hero-subtitle">Saisie et gestion des notes par classe et matière</div>
             </div>
             <div class="nm-hero-actions">
-                <a href="{{ route('esbtp.notes.index') }}" class="nm-hero-btn">
+                <a href="{{ route('esbtp.notes.index', ['annee_universitaire_id' => $anneeSelectionneeId]) }}" class="nm-hero-btn">
                     <i class="fas fa-sync-alt"></i>Actualiser
                 </a>
             </div>
@@ -64,10 +64,7 @@
     <div class="nm-context-bar">
         <div class="nm-context-label"><i class="fas fa-calendar-alt me-1"></i>Année académique</div>
         <div class="nm-context-value">{{ $anneeAcademique }}</div>
-        <small style="color: #94a3b8;">Les notes correspondent à l'année courante</small>
-        <button type="button" class="nm-context-info-btn" onclick="showYearChangeInfo()">
-            <i class="fas fa-info-circle me-1"></i>Changer
-        </button>
+        <small style="color: #94a3b8;">Sélection locale à la gestion des notes · défaut : année courante</small>
     </div>
 
     {{-- ══ Filter bar ══ --}}
@@ -75,6 +72,13 @@
         <div class="nm-filter-title"><i class="fas fa-filter"></i>Filtres de recherche</div>
         <form method="GET" action="{{ route('esbtp.notes.index') }}" id="filtersForm">
             <div class="nm-filter-grid">
+                <div class="nm-filter-group">
+                    <label for="annee_universitaire_id">Année universitaire</label>
+                    <x-au-select name="annee_universitaire_id" id="annee_universitaire_id"
+                        :value="$anneeSelectionneeId" icon="fa-calendar" :searchable="false"
+                        :placeholder-is-first-option="false"
+                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => $a->name.($a->is_current ? ' · courante' : '')])->toArray()" />
+                </div>
                 <div class="nm-filter-group">
                     <label for="search">Recherche</label>
                     <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Nom ou code de classe...">
@@ -197,7 +201,7 @@
                      `couverture:contexte` quand elle est choisie. --}}
                 @include('esbtp.partials._couverture-notes', [
                     'classeId' => null,
-                    'anneeId' => $anneeCouranteId ?? null,
+                    'anneeId' => $anneeSelectionneeId ?? null,
                     'periode' => 'annuel',
                     'titre' => 'Reste à saisir',
                 ])
@@ -353,6 +357,7 @@
                     @csrf
                     <input type="hidden" name="embed" value="1">
                     <input type="hidden" name="is_published" value="1">
+                    <input type="hidden" name="annee_universitaire_id" value="{{ $anneeSelectionneeId }}">
                     <input type="hidden" id="evalModal_classe_id" name="classe_id">
                     <input type="hidden" id="evalModal_matiere_id" name="matiere_id">
 
@@ -565,45 +570,6 @@
     </div>
 </div>
 
-{{-- ══════════════════════════════════════════════════════
-     MODAL: Info changement d'année
-     ══════════════════════════════════════════════════════ --}}
-<div class="modal fade nm-year-modal" id="yearChangeInfoModal" tabindex="-1" aria-labelledby="yearChangeInfoModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="yearChangeInfoModalLabel">
-                    <i class="fas fa-calendar-alt me-2"></i>Changer d'année académique
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-info mb-3" style="font-size: 0.9rem;">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Pourquoi l'année est-elle verrouillée ?</strong><br>
-                    La page affiche uniquement les évaluations de l'année académique courante pour éviter toute confusion.
-                </div>
-                <p style="font-size: 0.9rem;">Pour changer d'année, rendez-vous dans la gestion des années universitaires et cliquez sur <strong>"Définir comme courante"</strong>.</p>
-                <div class="nm-year-current">
-                    <i class="fas fa-cog" style="color: #0453cb;"></i>
-                    <div>
-                        <div class="nm-year-current-label">Année courante</div>
-                        <div class="nm-year-current-value">{{ $anneeAcademique }}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
-                @if(auth()->user()->can('admin.access'))
-                <a href="{{ route('esbtp.annees-universitaires.index') }}" class="btn btn-primary btn-sm">
-                    <i class="fas fa-external-link-alt me-1"></i>Gérer les années
-                </a>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
-
 @endsection
 
 {{-- ══════════════════════════════════════════════════════
@@ -637,8 +603,8 @@ let nmFinalSaveInFlight = false;
 let nmFinalSaveRetryTimer = null;
 const nmCanEditSubmittedNotes = @json(auth()->user()?->can('notes.edit') ?? false);
 const nmAppreciationScale = @json(app(\App\Services\AppreciationScaleService::class)->frontendScale('bts'));
-const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId"]) }}';
-const blankPdfPreviewUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf-preview", ["classe" => ":classId"]) }}';
+const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId", "annee_universitaire_id" => $anneeSelectionneeId]) }}';
+const blankPdfPreviewUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf-preview", ["classe" => ":classId", "annee_universitaire_id" => $anneeSelectionneeId]) }}';
 
 // L'onglet de saisie prévient l'onglet d'origine après une validation finale.
 // La charge ne contient aucune note : seulement le contexte nécessaire pour
@@ -652,7 +618,7 @@ function nmActualiserCouvertureApresSauvegarde() {
     clearTimeout(nmCouvertureRefreshTimer);
     nmCouvertureRefreshTimer = setTimeout(function() {
         window.dispatchEvent(new CustomEvent('couverture:invalider', {
-            detail: { classe_id: Number(currentClassId), annee_universitaire_id: @json($anneeCouranteId ?? null) }
+            detail: { classe_id: Number(currentClassId), annee_universitaire_id: @json($anneeSelectionneeId ?? null) }
         }));
         nmNotifyOtherTabsNotesUpdated();
     }, 900);
@@ -663,7 +629,7 @@ function nmNotifyOtherTabsNotesUpdated() {
     const detail = {
         type: 'notes-updated',
         classe_id: Number(currentClassId),
-        annee_universitaire_id: @json($anneeCouranteId ?? null),
+        annee_universitaire_id: @json($anneeSelectionneeId ?? null),
         at: Date.now(),
     };
 
@@ -764,7 +730,13 @@ $(document).ready(function() {
     }
 
     filterInputs.forEach((input) => {
-        input.addEventListener('change', fetchClasses);
+        input.addEventListener('change', function() {
+            if (input.getAttribute('name') === 'annee_universitaire_id') {
+                filtersForm.submit();
+                return;
+            }
+            fetchClasses();
+        });
         if (input.getAttribute('name') === 'search') {
             input.addEventListener('input', function() {
                 clearTimeout(window.notesSearchDebounce);
@@ -854,7 +826,7 @@ $(document).ready(function() {
             buildNotesGrid();
         }
         window.dispatchEvent(new CustomEvent('couverture:contexte', {
-            detail: { classe_id: currentClassId || null, annee_universitaire_id: @json($anneeCouranteId ?? null), periode: currentPeriodeFilter === 'semestre1' || currentPeriodeFilter === 'semestre2' ? currentPeriodeFilter : 'annuel' }
+            detail: { classe_id: currentClassId || null, annee_universitaire_id: @json($anneeSelectionneeId ?? null), periode: currentPeriodeFilter === 'semestre1' || currentPeriodeFilter === 'semestre2' ? currentPeriodeFilter : 'annuel' }
         }));
     });
 
@@ -956,7 +928,7 @@ function selectClass(classId, className) {
     window.dispatchEvent(new CustomEvent('couverture:contexte', {
         detail: {
             classe_id: classId,
-            annee_universitaire_id: @json($anneeCouranteId ?? null),
+            annee_universitaire_id: @json($anneeSelectionneeId ?? null),
             periode: 'annuel',
         },
     }));
@@ -1058,6 +1030,9 @@ function loadEvaluationsAndNotes() {
             .replace(':classId', currentClassId)
             .replace(':matiereId', currentMatiereId),
         method: 'GET',
+        data: {
+            annee_universitaire_id: @json($anneeSelectionneeId),
+        },
         dataType: 'json',
         success: function(response) {
             evaluationsData = response.evaluations || {};
@@ -1148,7 +1123,8 @@ function buildNotesGrid() {
         url: '{{ route("esbtp.notes.classes.students", ["classe" => ":classId"]) }}'.replace(':classId', requestedClassId),
         method: 'GET',
         data: {
-            semesters: requestedSemesters
+            semesters: requestedSemesters,
+            annee_universitaire_id: @json($anneeSelectionneeId),
         },
         dataType: 'json',
         success: function(response) {
@@ -2033,16 +2009,6 @@ $(document).ajaxError(function(_event, jqxhr) {
     nmHandleSessionExpired(jqxhr);
 });
 
-function showYearChangeInfo() {
-    const modalEl = document.getElementById('yearChangeInfoModal');
-    if (!modalEl) return;
-    if (window.bootstrap && window.bootstrap.Modal) {
-        new window.bootstrap.Modal(modalEl).show();
-    } else {
-        $(modalEl).modal('show');
-    }
-}
-
 // ════════════════════════════════════════════════════════════════════════
 // PR #7 — Excel Export/Import + Preview Impact (JS)
 // ════════════════════════════════════════════════════════════════════════
@@ -2100,7 +2066,8 @@ $(document).on('click', '#exportExcelBtn:not(:disabled):not(.disabled)', functio
     const url = PR7.routes.exportExcel
         + '?classe=' + encodeURIComponent(currentClassId)
         + '&matiere=' + encodeURIComponent(currentMatiereId)
-        + '&periode=' + encodeURIComponent(periode);
+        + '&periode=' + encodeURIComponent(periode)
+        + '&annee_universitaire_id=' + encodeURIComponent(@json($anneeSelectionneeId));
     window.open(url, '_blank');
 });
 
@@ -2195,6 +2162,7 @@ function pr7HandleFile(file) {
     formData.append('classe_id', currentClassId);
     formData.append('matiere_id', currentMatiereId);
     formData.append('periode', $('#periodeFilter').val());
+    formData.append('annee_universitaire_id', @json($anneeSelectionneeId));
 
     fetch(PR7.routes.importDryRun, {
         method: 'POST',
@@ -2303,6 +2271,7 @@ $(document).on('click', '#nm-import-confirm-btn:not(:disabled)', function() {
     formData.append('classe_id', currentClassId);
     formData.append('matiere_id', currentMatiereId);
     formData.append('periode', $('#periodeFilter').val());
+    formData.append('annee_universitaire_id', @json($anneeSelectionneeId));
 
     fetch(PR7.routes.importApply, {
         method: 'POST',

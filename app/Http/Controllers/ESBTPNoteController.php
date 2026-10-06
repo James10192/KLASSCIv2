@@ -77,15 +77,14 @@ class ESBTPNoteController extends Controller
      */
     public function index(Request $request)
     {
-        // Get current academic year
+        // is_current reste le défaut ; l'URL ne change que cet écran et ses appels AJAX.
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', 1)->first();
-        $anneeAcademique = $anneeCourante ? $anneeCourante->name : 'Aucune année active';
-        // `$anneeAcademique` est une CHAINE (le libelle affiche en en-tete). La vue
-        // appelait `optional($anneeAcademique)->id` pour le bandeau de couverture :
-        // sur une chaine, cela rend toujours null, donc le bandeau n'avait jamais
-        // d'annee, ne se considerait jamais pret, et ne chargeait rien — y compris
-        // pour un superAdmin. L'identifiant voyage donc a part.
-        $anneeCouranteId = $anneeCourante?->id;
+        $anneeSelectionnee = $request->filled('annee_universitaire_id')
+            ? ESBTPAnneeUniversitaire::findOrFail((int) $request->input('annee_universitaire_id'))
+            : $anneeCourante;
+        $anneeAcademique = $anneeSelectionnee ? $anneeSelectionnee->name : 'Aucune année active';
+        $anneeSelectionneeId = $anneeSelectionnee?->id;
+        $anneesUniversitaires = ESBTPAnneeUniversitaire::orderByDesc('id')->get();
 
         $semesterWeights = [
             'semester1' => floatval(\App\Helpers\SettingsHelper::get('bulletin_semester1_weight', '50')),
@@ -100,10 +99,10 @@ class ESBTPNoteController extends Controller
 
         $classesQuery = ESBTPClasse::query()
             ->where(fn($q) => $q->whereNull('systeme_academique')->orWhere('systeme_academique', '!=', 'LMD'))
-            ->withCount(['inscriptions' => function ($query) use ($anneeCourante) {
+            ->withCount(['inscriptions' => function ($query) use ($anneeSelectionnee) {
                 $query->where('status', 'active');
-                if ($anneeCourante) {
-                    $query->where('annee_universitaire_id', $anneeCourante->id);
+                if ($anneeSelectionnee) {
+                    $query->where('annee_universitaire_id', $anneeSelectionnee->id);
                 }
             }])
             ->with(['filiere', 'niveau', 'annee']);
@@ -112,11 +111,11 @@ class ESBTPNoteController extends Controller
         $user = Auth::user();
         if ($user && $user->can('identity.teach')) {
             $teacher = $user->teacherProfile;
-            if ($teacher && $anneeCourante) {
+            if ($teacher && $anneeSelectionnee) {
                 $classeIds = ESBTPSeanceCours::query()
                     ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
                     ->where('esbtp_seance_cours.teacher_id', $teacher->id)
-                    ->where('esbtp_emploi_temps.annee_universitaire_id', $anneeCourante->id)
+                    ->where('esbtp_emploi_temps.annee_universitaire_id', $anneeSelectionnee->id)
                     ->distinct()
                     ->pluck('esbtp_seance_cours.classe_id');
                 $classesQuery->whereIn('id', $classeIds);
@@ -207,19 +206,19 @@ class ESBTPNoteController extends Controller
             }
         }
 
-        $matieresConfigured = ($anneeCourante && $classeIds->isNotEmpty())
+        $matieresConfigured = ($anneeSelectionnee && $classeIds->isNotEmpty())
             ? DB::table('esbtp_evaluations')
                 ->select('classe_id', DB::raw('count(distinct matiere_id) as total'))
-                ->where('annee_universitaire_id', $anneeCourante->id)
+                ->where('annee_universitaire_id', $anneeSelectionnee->id)
                 ->whereIn('classe_id', $classeIds)
                 ->groupBy('classe_id')
                 ->pluck('total', 'classe_id')
             : collect();
 
-        $bulletinAverages = ($anneeCourante && $classeIds->isNotEmpty())
+        $bulletinAverages = ($anneeSelectionnee && $classeIds->isNotEmpty())
             ? DB::table('esbtp_bulletins')
                 ->select('classe_id', 'periode', DB::raw('avg(moyenne_generale) as moyenne'), DB::raw('count(*) as total'))
-                ->where('annee_universitaire_id', $anneeCourante->id)
+                ->where('annee_universitaire_id', $anneeSelectionnee->id)
                 ->whereIn('classe_id', $classeIds)
                 ->whereNotNull('moyenne_generale')
                 ->whereNull('archived_at')
@@ -290,9 +289,9 @@ class ESBTPNoteController extends Controller
 
         if ($isAjax) {
             // For AJAX requests, use the old system
-            $query = ESBTPNote::whereHas('evaluation', function ($q) use ($anneeCourante) {
-                if ($anneeCourante) {
-                    $q->where('annee_universitaire_id', $anneeCourante->id);
+            $query = ESBTPNote::whereHas('evaluation', function ($q) use ($anneeSelectionnee) {
+                if ($anneeSelectionnee) {
+                    $q->where('annee_universitaire_id', $anneeSelectionnee->id);
                 }
             })
                 ->with([
@@ -333,7 +332,7 @@ class ESBTPNoteController extends Controller
                 ? collect()
                 : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
 
-            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'anneeCouranteId', 'filieres', 'niveaux', 'classStatsById', 'heroStats', 'semesterWeights', 'evaluationTypes', 'enseignants'));
+            return view('esbtp.notes.index', compact('notes', 'classes', 'allClasses', 'matieres', 'anneeAcademique', 'anneeSelectionneeId', 'anneesUniversitaires', 'filieres', 'niveaux', 'classStatsById', 'heroStats', 'semesterWeights', 'evaluationTypes', 'enseignants'));
         }
 
         // Get filter options for dropdowns (if needed)
@@ -354,7 +353,8 @@ class ESBTPNoteController extends Controller
             'allClasses',
             'matieres',
             'anneeAcademique',
-            'anneeCouranteId',
+            'anneeSelectionneeId',
+            'anneesUniversitaires',
             'filieres',
             'niveaux',
             'classStatsById',
@@ -796,11 +796,8 @@ class ESBTPNoteController extends Controller
             }
         }
 
-        // Récupérer l'année universitaire courante
-        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-
-        // Récupérer uniquement les étudiants avec inscriptions actives sur l'année courante
-        // ET workflow_step = etudiant_cree (exclut les pré-inscriptions / prospects).
+        // La cohorte est celle de l'évaluation, y compris lorsqu'elle appartient
+        // à une année historique.
         $etudiants = $this->noteStudentCohortService
             ->studentsForEvaluation($evaluation)
             ->load(['notes' => function ($query) use ($evaluation) {
@@ -841,7 +838,7 @@ class ESBTPNoteController extends Controller
     {
         $evaluation->load(['classe', 'matiere']);
 
-        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeCourante = ESBTPAnneeUniversitaire::find($evaluation->annee_universitaire_id);
 
         $etudiants = $this->noteStudentCohortService
             ->studentsForEvaluation($evaluation)
@@ -868,9 +865,9 @@ class ESBTPNoteController extends Controller
     /**
      * Télécharge le PDF de saisie rapide vierge pour une classe (attachment).
      */
-    public function saisieRapideBlankPDF(ESBTPClasse $classe)
+    public function saisieRapideBlankPDF(Request $request, ESBTPClasse $classe)
     {
-        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe);
+        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe, $request->integer('annee_universitaire_id') ?: null);
 
         return $pdf->download($filename);
     }
@@ -878,9 +875,9 @@ class ESBTPNoteController extends Controller
     /**
      * Aperçu inline du PDF de saisie rapide vierge pour une classe.
      */
-    public function saisieRapideBlankPDFPreview(ESBTPClasse $classe)
+    public function saisieRapideBlankPDFPreview(Request $request, ESBTPClasse $classe)
     {
-        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe);
+        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe, $request->integer('annee_universitaire_id') ?: null);
 
         return $pdf->stream($filename);
     }
@@ -888,11 +885,13 @@ class ESBTPNoteController extends Controller
     /**
      * Construit le PDF vierge de saisie rapide pour une classe. Retourne [PDF, filename].
      */
-    private function buildSaisieRapideBlankPdf(ESBTPClasse $classe): array
+    private function buildSaisieRapideBlankPdf(ESBTPClasse $classe, ?int $anneeUniversitaireId = null): array
     {
         $classe->load(['filiere']);
 
-        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeCourante = $anneeUniversitaireId
+            ? ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId)
+            : ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         $etudiants = $anneeCourante
             ? $this->noteStudentCohortService
@@ -1497,10 +1496,10 @@ class ESBTPNoteController extends Controller
             ], 422);
         }
 
-        // Toutes les évaluations de la matière + période
         $evaluations = ESBTPEvaluation::query()
             ->where('classe_id', $classeId)
             ->where('matiere_id', $matiereId)
+            ->where('annee_universitaire_id', $targetEval->annee_universitaire_id)
             ->where('periode', $periode)
             ->where('is_published', 1)
             ->get();
@@ -1524,8 +1523,8 @@ class ESBTPNoteController extends Controller
         $mentionApres = $moyenneMatiereApres !== null ? $calc->getMention($moyenneMatiereApres) : null;
 
         // Moyenne générale (toutes matières confondues, période)
-        $moyenneGeneraleAvant = $this->computeGeneralAverage($calc, $etudiantId, $classeId, $periode, null, null, null);
-        $moyenneGeneraleApres = $this->computeGeneralAverage($calc, $etudiantId, $classeId, $periode, $matiereId, $evaluationId, [
+        $moyenneGeneraleAvant = $this->computeGeneralAverage($calc, $etudiantId, $classeId, (int) $targetEval->annee_universitaire_id, $periode, null, null, null);
+        $moyenneGeneraleApres = $this->computeGeneralAverage($calc, $etudiantId, $classeId, (int) $targetEval->annee_universitaire_id, $periode, $matiereId, $evaluationId, [
             'note' => $hypoValue,
             'is_absent' => $isAbsent,
         ]);
@@ -1614,14 +1613,14 @@ class ESBTPNoteController extends Controller
     private function computeGeneralAverage(
         NoteCalculationService $calc,
         int $etudiantId,
-        int $classeId,
+        int $classeId, int $anneeUniversitaireId,
         string $periode,
         ?int $overrideMatiereId,
         ?int $overrideEvalId,
         ?array $override
     ): ?float {
         $evaluations = ESBTPEvaluation::query()
-            ->where('classe_id', $classeId)
+            ->where('classe_id', $classeId)->where('annee_universitaire_id', $anneeUniversitaireId)
             ->where('periode', $periode)
             ->where('is_published', 1)
             ->get();
