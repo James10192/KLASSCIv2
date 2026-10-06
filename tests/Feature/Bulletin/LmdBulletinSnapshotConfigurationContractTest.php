@@ -73,6 +73,19 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringNotContainsString("\$bCfg['direction'] ?? \$etab['directeur']", $pdf);
     }
 
+    public function test_lmd_official_band_hides_empty_code_and_direction_labels(): void
+    {
+        $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));
+
+        $this->assertStringContainsString('$officialBandItems = collect([', $pdf);
+        $this->assertStringContainsString("trim((string) \$item['value']) !== ''", $pdf);
+        $this->assertStringContainsString('$officialBandItems->isNotEmpty()', $pdf);
+        $this->assertStringContainsString('@foreach($officialBandItems as $officialItem)', $pdf);
+        $this->assertStringContainsString('$officialColumnWidth', $pdf);
+        $this->assertStringNotContainsString("{{ \$codeEtablissement !== '' ? \$codeEtablissement : '—' }}", $pdf);
+        $this->assertStringNotContainsString("{{ \$directionEtablissement !== '' ? \$directionEtablissement : '—' }}", $pdf);
+    }
+
     public function test_lmd_bulletins_page_exposes_its_own_configuration_and_keeps_infinite_scroll(): void
     {
         $view = file_get_contents(resource_path('views/esbtp/lmd/bulletins/index.blade.php'));
