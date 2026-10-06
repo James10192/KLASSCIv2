@@ -5,6 +5,7 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <link rel="stylesheet" href="{{ asset('css/modal-force-fix.css') }}?v={{ @filemtime(public_path('css/modal-force-fix.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/inscription-paiements-inline.css') }}?v={{ @filemtime(public_path('css/inscription-paiements-inline.css')) ?: '1' }}">
 <style>
 /* === CORRECTION SPÉCIFIQUE MODALS INSCRIPTIONS SHOW === */
 
@@ -1858,7 +1859,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
                     @if($canViewFinancials ?? false)
                     <!-- Situation financière détaillée -->
-                    <div class="is-card">
+                    <div class="is-card" id="inscription-financial-section">
                         <div class="is-card-body">
                             <div class="is-section-header">
                                 <div class="is-section-icon"><i class="fas fa-chart-line"></i></div>
@@ -2265,9 +2266,10 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                         <br><small class="text-warning">
                                                             <i class="fas fa-hourglass-half me-1"></i>En attente
                                                             @can('paiements.validate')
-                                                                - <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="text-warning">
-                                                                    <i class="fas fa-external-link-alt"></i>Valider
-                                                                </a>
+                                                                - <button type="button" class="ips-inline-finance-link js-scroll-pending-payments"
+                                                                        data-category-id="{{ $item['category']->id }}">
+                                                                    <i class="fas fa-check-circle"></i>Valider ici
+                                                                </button>
                                                             @endcan
                                                         </small>
                                                     @endif
@@ -2412,9 +2414,10 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                                 <br><small class="text-warning">
                                                                     <i class="fas fa-hourglass-half me-1"></i>En attente
                                                                     @can('paiements.validate')
-                                                                        - <a href="{{ route('esbtp.paiements.index') }}?search={{ $reliquat->id }}" class="text-warning">
-                                                                            <i class="fas fa-external-link-alt"></i>Valider
-                                                                        </a>
+                                                                        - <button type="button" class="ips-inline-finance-link js-scroll-pending-payments"
+                                                                                data-reliquat-id="{{ $reliquat->id }}">
+                                                                            <i class="fas fa-check-circle"></i>Valider ici
+                                                                        </button>
                                                                     @endcan
                                                                 </small>
                                                             @endif
@@ -2636,9 +2639,10 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                 @endif
                                             @if($montantEnAttente > 0)
                                                 @can('paiements.validate')
-                                                    <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="btn btn-sm btn-outline-warning">
-                                                        <i class="fas fa-external-link-alt me-1"></i>Valider paiement
-                                                    </a>
+                                                    <button type="button" class="btn btn-sm btn-outline-warning js-scroll-pending-payments"
+                                                            data-category-id="{{ $item['category']->id }}">
+                                                        <i class="fas fa-check-circle me-1"></i>Valider ici
+                                                    </button>
                                                 @endcan
                                             @endif
                                         </div>
@@ -2743,9 +2747,10 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                         @endcan
                                                         @if($paiementsReliquatEnAttente > 0)
                                                             @can('paiements.validate')
-                                                                <a href="{{ route('esbtp.paiements.index') }}?search={{ urlencode($inscription->etudiant->nom . ' ' . $inscription->etudiant->prenoms) }}" class="btn btn-sm btn-outline-warning">
-                                                                    <i class="fas fa-external-link-alt me-1"></i>Valider paiement
-                                                                </a>
+                                                                <button type="button" class="btn btn-sm btn-outline-warning js-scroll-pending-payments"
+                                                                        data-reliquat-id="{{ $reliquat->id }}">
+                                                                    <i class="fas fa-check-circle me-1"></i>Valider ici
+                                                                </button>
                                                             @endcan
                                                         @endif
                                                     </div>
@@ -2828,363 +2833,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     @endif
 
                     @if($canViewFinancials ?? false)
-                    <!-- Paiements liés à l'inscription -->
-                    <div class="is-card">
-                        <div class="is-card-body">
-                            <div class="is-section-header" style="flex-wrap:wrap;">
-                                <div class="is-section-icon"><i class="fas fa-money-bill-wave"></i></div>
-                                <div class="is-section-title">Paiements liés à cette inscription</div>
-                                <div class="ms-auto">
-                                <div class="dropdown pdf-dropdown">
-                                    <button class="btn btn-outline-success dropdown-toggle" type="button"
-                                            id="situationFinanciereDropdown" data-bs-toggle="dropdown"
-                                            aria-expanded="false" title="Situation Financière">
-                                        <i class="fas fa-file-invoice-dollar"></i> Situation Financière
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="situationFinanciereDropdown">
-                                        <li>
-                                            <a class="dropdown-item" href="{{ route('esbtp.inscriptions.situation-financiere.preview', $inscription) }}">
-                                                <i class="fas fa-window-restore me-1"></i>Vue web
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item" href="{{ route('esbtp.inscriptions.situation-financiere.pdf-preview', $inscription) }}" target="_blank">
-                                                <i class="fas fa-eye me-1"></i>Aperçu PDF
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item" href="{{ route('esbtp.inscriptions.situation-financiere.pdf', $inscription) }}">
-                                                <i class="fas fa-download me-1"></i>Télécharger PDF
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
-                                </div>
-                            </div>
-                            @php
-                                $allPayments = collect();
-                                if($inscription->paiements && $inscription->paiements->count()) {
-                                    $allPayments = $allPayments->merge($inscription->paiements);
-                                }
-
-                                // Séparer les paiements par statut
-                                $validatedPayments = $allPayments->filter(function($payment) {
-                                    if (isset($payment->status)) {
-                                        return in_array($payment->status, ['validated', 'validé']);
-                                    }
-                                    // Pour les anciens paiements sans status, vérifier le statut explicite
-                                    return !isset($payment->status) || $payment->status === 'validé';
-                                });
-
-                                $rejectedPayments = $allPayments->filter(function($payment) {
-                                    if (isset($payment->status)) {
-                                        return in_array($payment->status, ['rejected', 'rejeté']);
-                                    }
-                                    return false;
-                                });
-
-                                $pendingPayments = $allPayments->filter(function($payment) {
-                                    if (isset($payment->status)) {
-                                        return in_array($payment->status, ['pending', 'en_attente']);
-                                    }
-                                    return false;
-                                });
-                            @endphp
-
-                            @if($allPayments->count() > 0)
-                                <!-- Paiements Validés -->
-                                @if($validatedPayments->count() > 0)
-                                    <div class="mb-4">
-                                        <h6 class="text-success mb-3">
-                                            <i class="fas fa-check-circle me-2"></i>Paiements Validés ({{ $validatedPayments->count() }})
-                                        </h6>
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered table-striped">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Date</th>
-                                                        <th>Montant</th>
-                                                        <th>Mode</th>
-                                                        <th>Référence</th>
-                                                        <th>Statut</th>
-                                                        <th>Commentaire</th>
-                                                        <th class="text-end">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($validatedPayments as $payment)
-                                                        <tr>
-                                                            <td>
-                                                                @if(isset($payment->date_paiement))
-                                                                    {{ \Carbon\Carbon::parse($payment->date_paiement)->format('d/m/Y') }}
-                                                                @elseif(isset($payment->payment_date))
-                                                                    {{ $payment->payment_date ? $payment->payment_date->format('d/m/Y') : '' }}
-                                                                @else
-                                                                    {{ $payment->date ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                @php
-                                                                    // Un avoir annule tout ou partie d'un versement : il se lit en
-                                                                    // négatif, et le versement qu'il compense le dit.
-                                                                    $estAvoir = $payment instanceof \App\Models\ESBTPPaiement && $payment->isAvoir();
-                                                                    $recuAnnule = $estAvoir ? ($allPayments->firstWhere('id', $payment->parent_paiement_id)?->numero_recu) : null;
-                                                                @endphp
-                                                                <strong @if($estAvoir) style="color:#b91c1c;" @endif>
-                                                                    @if($estAvoir)
-                                                                        − {{ number_format($payment->montant, 0, ',', ' ') }} FCFA
-                                                                    @elseif(isset($payment->montant))
-                                                                        {{ number_format($payment->montant, 0, ',', ' ') }} FCFA
-                                                                    @elseif(isset($payment->amount))
-                                                                        {{ number_format($payment->amount, 0, ',', ' ') }} FCFA
-                                                                    @endif
-                                                                </strong>
-                                                                @if($estAvoir)
-                                                                    <div class="small text-muted">Avoir {{ $payment->numero_avoir }}@if($recuAnnule) · annule {{ $recuAnnule }}@endif</div>
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                @if(isset($payment->mode_paiement))
-                                                                    {{ ucfirst($payment->mode_paiement) }}
-                                                                @elseif(isset($payment->payment_method))
-                                                                    {{ ucfirst($payment->payment_method) }}
-                                                                @else
-                                                                    {{ $payment->methode ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                @if(isset($payment->reference_paiement))
-                                                                    {{ $payment->reference_paiement ?? '-' }}
-                                                                @elseif(isset($payment->reference_number))
-                                                                    {{ $payment->reference_number ?? '-' }}
-                                                                @else
-                                                                    {{ $payment->reference ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                @php
-                                                                    $compense = ! $estAvoir && $payment instanceof \App\Models\ESBTPPaiement
-                                                                        && $allPayments->contains(fn ($p) => (int) $p->parent_paiement_id === (int) $payment->id);
-                                                                @endphp
-                                                                @if($estAvoir)
-                                                                    <span class="badge bg-primary">Avoir</span>
-                                                                @elseif($compense && $payment->avoir_disponible <= 0)
-                                                                    <span class="badge bg-secondary">Annulé par avoir</span>
-                                                                @elseif($compense)
-                                                                    <span class="badge bg-success">Validé</span> <span class="badge bg-secondary">en partie annulé</span>
-                                                                @else
-                                                                    <span class="badge bg-success">
-                                                                        @if(isset($payment->status))
-                                                                            {{ $payment->status === 'validated' ? 'Validé' : ucfirst($payment->status) }}
-                                                                        @else
-                                                                            Validé
-                                                                        @endif
-                                                                    </span>
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                @if(isset($payment->observations))
-                                                                    <span class="d-inline-block text-truncate" style="max-width:160px;" title="{{ $payment->observations }}">{{ $payment->observations }}</span>
-                                                                @else
-                                                                    {{ $payment->commentaire ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                            <td class="text-end" style="white-space:nowrap;width:1%;">
-                                                                @include('esbtp.paiements.partials.actions-versement', ['paiement' => $payment, 'retour' => request()->getRequestUri()])
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                                <tfoot>
-                                                    <tr class="table-success">
-                                                        <th>Total net payé</th>
-                                                        <th>
-                                                            @php
-                                                                // Les avoirs se déduisent : un versement annulé ne compte plus.
-                                                                $totalValidated = 0;
-                                                                foreach($validatedPayments as $payment) {
-                                                                    $montantLigne = $payment->montant ?? $payment->amount ?? 0;
-                                                                    $totalValidated += ($payment instanceof \App\Models\ESBTPPaiement && $payment->isAvoir()) ? -$montantLigne : $montantLigne;
-                                                                }
-                                                            @endphp
-                                                            <strong>{{ number_format($totalValidated, 0, ',', ' ') }} FCFA</strong>
-                                                        </th>
-                                                        <th colspan="5"></th>
-                                                    </tr>
-                                                </tfoot>
-                                            </table>
-                                        </div>
-                                    </div>
-                                @endif
-
-                                <!-- Paiements en Attente -->
-                                @if($pendingPayments->count() > 0)
-                                    <div class="mb-4">
-                                        <h6 class="text-warning mb-3">
-                                            <i class="fas fa-hourglass-half me-2"></i>Paiements en Attente ({{ $pendingPayments->count() }})
-                                        </h6>
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered table-striped">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Date</th>
-                                                        <th>Montant</th>
-                                                        <th>Mode</th>
-                                                        <th>Référence</th>
-                                                        <th>Statut</th>
-                                                        <th>Commentaire</th>
-                                                        <th class="text-end">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($pendingPayments as $payment)
-                                                        <tr>
-                                                            <td>
-                                                                @if(isset($payment->date_paiement))
-                                                                    {{ \Carbon\Carbon::parse($payment->date_paiement)->format('d/m/Y') }}
-                                                                @elseif(isset($payment->payment_date))
-                                                                    {{ $payment->payment_date ? $payment->payment_date->format('d/m/Y') : '' }}
-                                                                @else
-                                                                    {{ $payment->date ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                <strong>
-                                                                    @if(isset($payment->montant))
-                                                                        {{ number_format($payment->montant, 0, ',', ' ') }} FCFA
-                                                                    @elseif(isset($payment->amount))
-                                                                        {{ number_format($payment->amount, 0, ',', ' ') }} FCFA
-                                                                    @endif
-                                                                </strong>
-                                                            </td>
-                                                            <td>
-                                                                @if(isset($payment->mode_paiement))
-                                                                    {{ ucfirst($payment->mode_paiement) }}
-                                                                @elseif(isset($payment->payment_method))
-                                                                    {{ ucfirst($payment->payment_method) }}
-                                                                @else
-                                                                    {{ $payment->methode ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                @if(isset($payment->reference_paiement))
-                                                                    {{ $payment->reference_paiement ?? '-' }}
-                                                                @elseif(isset($payment->reference_number))
-                                                                    {{ $payment->reference_number ?? '-' }}
-                                                                @else
-                                                                    {{ $payment->reference ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                <span class="badge bg-warning">
-                                                                    {{ $payment->status === 'pending' ? 'En attente' : ucfirst($payment->status) }}
-                                                                </span>
-                                                            </td>
-                                                            <td>
-                                                                @if(isset($payment->observations))
-                                                                    <span class="d-inline-block text-truncate" style="max-width:160px;" title="{{ $payment->observations }}">{{ $payment->observations }}</span>
-                                                                @else
-                                                                    {{ $payment->commentaire ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                            <td class="text-end" style="white-space:nowrap;width:1%;">
-                                                                @include('esbtp.paiements.partials.actions-versement', ['paiement' => $payment, 'retour' => request()->getRequestUri()])
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                @endif
-
-                                <!-- Paiements Rejetés -->
-                                @if($rejectedPayments->count() > 0)
-                                    <div class="mb-4">
-                                        <h6 class="text-danger mb-3">
-                                            <i class="fas fa-times-circle me-2"></i>Paiements Rejetés ({{ $rejectedPayments->count() }})
-                                        </h6>
-                                        <div class="table-responsive">
-                                            <table class="table table-bordered table-striped">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Date</th>
-                                                        <th>Montant</th>
-                                                        <th>Mode</th>
-                                                        <th>Référence</th>
-                                                        <th>Statut</th>
-                                                        <th>Commentaire</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    @foreach($rejectedPayments as $payment)
-                                                        <tr>
-                                                            <td>
-                                                                @if(isset($payment->date_paiement))
-                                                                    {{ \Carbon\Carbon::parse($payment->date_paiement)->format('d/m/Y') }}
-                                                                @elseif(isset($payment->payment_date))
-                                                                    {{ $payment->payment_date ? $payment->payment_date->format('d/m/Y') : '' }}
-                                                                @else
-                                                                    {{ $payment->date ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                <strong class="text-muted">
-                                                                    @if(isset($payment->montant))
-                                                                        {{ number_format($payment->montant, 0, ',', ' ') }} FCFA
-                                                                    @elseif(isset($payment->amount))
-                                                                        {{ number_format($payment->amount, 0, ',', ' ') }} FCFA
-                                                                    @endif
-                                                                </strong>
-                                                            </td>
-                                                            <td>
-                                                                @if(isset($payment->mode_paiement))
-                                                                    {{ ucfirst($payment->mode_paiement) }}
-                                                                @elseif(isset($payment->payment_method))
-                                                                    {{ ucfirst($payment->payment_method) }}
-                                                                @else
-                                                                    {{ $payment->methode ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                @if(isset($payment->reference_paiement))
-                                                                    {{ $payment->reference_paiement ?? '-' }}
-                                                                @elseif(isset($payment->reference_number))
-                                                                    {{ $payment->reference_number ?? '-' }}
-                                                                @else
-                                                                    {{ $payment->reference ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                            <td>
-                                                                <span class="badge bg-danger">
-                                                                    {{ $payment->status === 'rejected' ? 'Rejeté' : ucfirst($payment->status) }}
-                                                                </span>
-                                                            </td>
-                                                            <td>
-                                                                @if(isset($payment->observations))
-                                                                    {{ $payment->observations }}
-                                                                @else
-                                                                    {{ $payment->commentaire ?? '-' }}
-                                                                @endif
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-                                @endif
-                            @else
-                                <div class="is-empty-state">
-                                    <div class="is-empty-icon"><i class="fas fa-money-bill-wave"></i></div>
-                                    <div class="is-empty-text">Aucun paiement enregistré</div>
-                                    <div class="is-empty-sub">Les paiements apparaîtront ici une fois effectués.</div>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-
-                    @endif {{-- canViewFinancials: Paiements liés --}}
+                        @include('esbtp.inscriptions.partials.paiements-lies', ['inscription' => $inscription])
+                    @endif
 
                     {{-- Section Reliquats --}}
                     @if(($canViewFinancials ?? false) && (isset($reliquatsEntrants) && $reliquatsEntrants->count() > 0 || isset($reliquatsSortants) && $reliquatsSortants->count() > 0))
@@ -4201,6 +3851,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 @endif
 
 @push('scripts')
+<script src="{{ asset('js/paiements/inscription-show-inline.js') }}?v={{ @filemtime(public_path('js/paiements/inscription-show-inline.js')) ?: '1' }}" defer></script>
 <script>
     // ========================================
     // AFFECTATION CLASSE RAPIDE - Modal AJAX
