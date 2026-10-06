@@ -70,6 +70,18 @@
         $statutEtablissement = trim((string) ($bCfg['statut'] ?? 'Privé')) ?: 'Privé';
         $directionEtablissement = trim((string) ($bCfg['direction'] ?? ''));
         $codeEtablissement = trim((string) ($bCfg['code_etablissement'] ?? ''));
+
+        // Le bandeau officiel ne doit jamais afficher de rubrique vide.
+        // Une valeur absente supprime à la fois son libellé et sa colonne ;
+        // les rubriques restantes se repartagent automatiquement toute la largeur.
+        $officialBandItems = collect([
+            ['label' => 'Code établissement', 'value' => $codeEtablissement],
+            ['label' => 'Statut', 'value' => $statutEtablissement],
+            ['label' => 'Direction', 'value' => $directionEtablissement],
+        ])->filter(fn (array $item) => trim((string) $item['value']) !== '')->values();
+        $officialColumnWidth = $officialBandItems->isNotEmpty()
+            ? 100 / $officialBandItems->count()
+            : 100;
         // Comme le bulletin BTS, la date imprimée est la date d'édition du PDF,
         // pas la dernière mise à jour du bulletin en base.
         $editionDate = now()->format('d/m/Y');
@@ -174,7 +186,6 @@
             margin: 0 0 4px;
         }
         .official-band td {
-            width: 33.333%;
             padding: 4px 7px;
             vertical-align: middle;
             font-size: {{ $fontEstablishment }}px;
@@ -360,21 +371,15 @@
     </tr>
 </table>
 
-@if($bCfg['show_etablissement_box'] ?? true)
+@if(($bCfg['show_etablissement_box'] ?? true) && $officialBandItems->isNotEmpty())
 <table class="official-band" cellspacing="0" cellpadding="0">
     <tr>
-        <td>
-            <span class="official-label">Code établissement</span>
-            <span class="official-value">{{ $codeEtablissement !== '' ? $codeEtablissement : '—' }}</span>
-        </td>
-        <td>
-            <span class="official-label">Statut</span>
-            <span class="official-value">{{ $statutEtablissement }}</span>
-        </td>
-        <td>
-            <span class="official-label">Direction</span>
-            <span class="official-value">{{ $directionEtablissement !== '' ? $directionEtablissement : '—' }}</span>
-        </td>
+        @foreach($officialBandItems as $officialItem)
+            <td style="width: {{ $officialColumnWidth }}%;">
+                <span class="official-label">{{ $officialItem['label'] }}</span>
+                <span class="official-value">{{ $officialItem['value'] }}</span>
+            </td>
+        @endforeach
     </tr>
 </table>
 @endif
