@@ -5,6 +5,7 @@ namespace Tests\Feature\Caisse;
 use App\Enums\CashSessionStatus;
 use App\Exceptions\CaisseCloturee;
 use App\Models\ESBTPCashSession;
+use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Models\User;
 use App\Services\Caisse\CashSessionService;
@@ -72,8 +73,9 @@ class CashSessionServiceTest extends TestCase
     {
         Carbon::setTestNow('2026-10-06 10:00:00');
         $user = User::factory()->create();
+        $inscription = ESBTPInscription::factory()->create();
 
-        ESBTPPaiement::factory()->create([
+        ESBTPPaiement::factory()->pour($inscription)->create([
             'created_by' => $user->id,
             'montant' => 12000,
             'mode_paiement' => 'espèces',
@@ -91,21 +93,23 @@ class CashSessionServiceTest extends TestCase
     public function test_expected_amount_counts_only_validated_cash(): void
     {
         $user = User::factory()->create();
-        ESBTPPaiement::factory()->create([
+        $inscription = ESBTPInscription::factory()->create();
+
+        ESBTPPaiement::factory()->pour($inscription)->create([
             'created_by' => $user->id,
             'montant' => 10000,
             'mode_paiement' => 'espèces',
             'status' => 'validé',
             'created_at' => now(),
         ]);
-        ESBTPPaiement::factory()->create([
+        ESBTPPaiement::factory()->pour($inscription)->create([
             'created_by' => $user->id,
             'montant' => 5000,
             'mode_paiement' => 'wave',
             'status' => 'validé',
             'created_at' => now(),
         ]);
-        ESBTPPaiement::factory()->create([
+        ESBTPPaiement::factory()->pour($inscription)->create([
             'created_by' => $user->id,
             'montant' => 2000,
             'mode_paiement' => 'espèces',
