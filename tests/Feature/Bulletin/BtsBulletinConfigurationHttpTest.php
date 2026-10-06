@@ -177,6 +177,33 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         );
     }
 
+    public function test_lmd_ajax_save_persists_typography_logo_and_spacing_without_settings_redirect(): void
+    {
+        $response = $this->postJson(route('esbtp.bulletins.save-configuration'), [
+            'lmd_bulletin_font_school_name' => '18',
+            'lmd_bulletin_font_title' => '16.5',
+            'lmd_bulletin_font_header_meta' => '10',
+            'lmd_bulletin_font_table' => '11',
+            'lmd_bulletin_logo_height' => '96',
+            'lmd_bulletin_header_padding_y' => '5',
+            'lmd_bulletin_header_meta_padding_y' => '1.5',
+            'lmd_bulletin_signature_space_height' => '58',
+            'lmd_bulletin_parcours_auto' => '1',
+            'lmd_bulletin_direction' => 'Direction des Études',
+        ]);
+
+        $response->assertOk()->assertJsonPath('success', true);
+        self::assertFalse($response->isRedirection());
+        self::assertSame('18', SettingsHelper::get('lmd_bulletin_font_school_name'));
+        self::assertSame('16.5', SettingsHelper::get('lmd_bulletin_font_title'));
+        self::assertSame('11', SettingsHelper::get('lmd_bulletin_font_table'));
+        self::assertSame('96', SettingsHelper::get('lmd_bulletin_logo_height'));
+        self::assertSame('5', SettingsHelper::get('lmd_bulletin_header_padding_y'));
+        self::assertSame('1.5', SettingsHelper::get('lmd_bulletin_header_meta_padding_y'));
+        self::assertSame('58', SettingsHelper::get('lmd_bulletin_signature_space_height'));
+        self::assertSame('Direction des Études', SettingsHelper::get('lmd_bulletin_direction'));
+    }
+
     public function test_yakro_header_scale_is_rejected_outside_safe_bounds(): void
     {
         SettingsHelper::setOrCreate('bulletin_bts1_semester1_weight', '1', 'bulletin');

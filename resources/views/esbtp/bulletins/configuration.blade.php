@@ -15,6 +15,7 @@
     $currentStyle = $settings['bulletin_style'] ?? 'yakro';
     $currentFont = (int) ($settings['bulletin_font_size'] ?? 13);
     $currentHeaderScale = max(70, min(220, (int) ($settings['bulletin_header_scale'] ?? 100)));
+    $currentTab = request('tab') === 'lmd' ? 'lmd' : 'bts';
 @endphp
 
 <div class="dashboard-acasi">
@@ -23,7 +24,7 @@
          premier d'entre eux et Alpine recevait `bulletinConfiguration(` --
          SyntaxError, aucune section visible. $currentStyle est un slug
          controle (yakro|abidjan), pas une donnee libre. --}}
-    <div class="main-content" x-data="bulletinConfiguration('{{ $currentStyle }}', {{ $currentFont }}, {{ $currentHeaderScale }})">
+    <div class="main-content" x-data="bulletinConfiguration('{{ $currentStyle }}', {{ $currentFont }}, {{ $currentHeaderScale }}, '{{ $currentTab }}')">
         <div class="bcfg-hero">
             <div class="bcfg-hero-top">
                 <div class="bcfg-hero-left">
@@ -289,9 +290,9 @@
 @include('partials._klassci_toast')
 <script>
 if (typeof window.bulletinConfiguration !== 'function') {
-    window.bulletinConfiguration = function (initialStyle, initialFont, initialHeaderScale) {
+    window.bulletinConfiguration = function (initialStyle, initialFont, initialHeaderScale, initialTab) {
         return {
-            tab: 'bts',
+            tab: initialTab === 'lmd' ? 'lmd' : 'bts',
             style: initialStyle || 'yakro',
             fontSize: Number(initialFont || 13),
             headerScale: Math.max(70, Math.min(220, Number(initialHeaderScale || 100))),
