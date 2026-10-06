@@ -70,7 +70,14 @@
         $statutEtablissement = trim((string) ($bCfg['statut'] ?? 'Privé')) ?: 'Privé';
         $directionEtablissement = trim((string) ($bCfg['direction'] ?? ''));
         $codeEtablissement = trim((string) ($bCfg['code_etablissement'] ?? ''));
-        $editionDate = ($bulletin->updated_at ?? now())->format('d/m/Y');
+        // Comme le bulletin BTS, la date imprimée est la date d'édition du PDF,
+        // pas la dernière mise à jour du bulletin en base.
+        $editionDate = now()->format('d/m/Y');
+        // Le bulletin LMD utilisait un logo plafonné à 54px, indépendamment du
+        // réglage PDF de l'école. On respecte maintenant ce réglage, avec un
+        // minimum lisible de 60px pour ce gabarit compact.
+        $logoHeight = max(60, min(120, (int) ($pdfCfg['logo_size'] ?? 60)));
+        $logoWidth = (int) round($logoHeight * 1.8);
     @endphp
 
     <style>
@@ -89,17 +96,77 @@
         .num { text-align: center; }
         .keep-together { page-break-inside: avoid; }
 
+        /* En-tête compact 50/50 : identité établissement à gauche,
+         * document + métadonnées à droite. On gagne une ligne complète
+         * par rapport à l'ancien empilement logo/école puis titre/métadonnées. */
+        .lmd-document-header {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 4px;
+            page-break-inside: avoid;
+            background: {{ $hdrBg }};
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .lmd-header-school,
+        .lmd-header-document {
+            width: 50%;
+            vertical-align: middle;
+        }
+        .lmd-header-school {
+            padding: 5px 7px;
+            border-right: 1px solid rgba(255,255,255,0.28);
+        }
+        .lmd-header-document { padding: 6px 9px; }
+        .lmd-header-title {
+            color: {{ $hdrText }};
+            font-size: {{ $fontTitle }}px;
+            font-weight: 800;
+            letter-spacing: .30px;
+            line-height: 1.14;
+            margin-bottom: 5px;
+        }
+        .lmd-header-meta {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .lmd-header-meta td {
+            width: 50%;
+            padding: 2.2px 4px;
+            color: {{ $hdrText }};
+            font-size: {{ $fontHeaderMeta }}px;
+            line-height: 1.18;
+        }
+        .lmd-header-meta td + td { border-left: 1px solid rgba(255,255,255,0.22); }
+        .lmd-header-meta tr + tr td { border-top: 1px solid rgba(255,255,255,0.18); }
+        .lmd-header-meta-label { opacity: .72; }
+        .lmd-header-meta-value { font-weight: 800; }
+
+        .signature-title {
+            font-weight: 800;
+            text-align: center;
+        }
+        .signature-space {
+            height: 42px;
+            line-height: 42px;
+        }
+        .signature-name {
+            font-size: {{ min(32, $fontSignature + 1) }}px;
+            font-weight: 800;
+            text-align: center;
+        }
+
         .official-band {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
             border: 1px solid #cbd5e1;
             border-radius: 5px;
-            margin: 0 0 6px;
+            margin: 0 0 4px;
         }
         .official-band td {
             width: 33.333%;
-            padding: 5px 8px;
+            padding: 4px 7px;
             vertical-align: middle;
             font-size: {{ $fontEstablishment }}px;
         }
@@ -115,16 +182,16 @@
         }
         .official-value { font-weight: 700; color: {{ $bodyText }}; }
 
-        .identity-grid { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        .identity-grid { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
         .identity-grid > tbody > tr > td { vertical-align: top; }
         .identity-grid > tbody > tr > td:first-child { padding-right: 13px; }
         .identity-grid > tbody > tr > td:last-child { padding-left: 13px; border-left: 1px solid #e2e8f0; }
-        .identity-grid table td { padding: 2.3px 0; line-height: 1.23; }
+        .identity-grid table td { padding: 1.8px 0; line-height: 1.20; }
 
         .bulletin-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 5px;
+            margin-top: 4px;
             page-break-inside: auto;
         }
         .bulletin-table thead { display: table-header-group; }
@@ -188,9 +255,9 @@
         .signature-block {
             border-left: 1px solid #e2e8f0;
             padding: 4px 0 0 16px;
-            text-align: right;
             font-size: {{ $fontSignature }}px;
-            line-height: 1.35;
+            line-height: 1.30;
+            min-height: 68px;
         }
         .bottom-note {
             text-align: center;
@@ -206,7 +273,7 @@
 <div class="container">
 
 @if(($bCfg['show_republic_info'] ?? true) || ($bCfg['show_ministry_info'] ?? true))
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 4px;">
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 2px;">
     <tr>
         <td style="text-align: center; font-size: {{ $fontRepublic }}px; color: {{ $bodyText }}; line-height: 1.32;">
             @if($bCfg['show_republic_info'] ?? true)
@@ -221,53 +288,65 @@
 </table>
 @endif
 
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius: 6px; overflow: hidden; margin-bottom: 6px; page-break-inside: avoid;">
+<table class="lmd-document-header" border="0" cellspacing="0" cellpadding="0">
     <tr>
-        <td width="16%" style="background-color: {{ $hdrBg }}; padding: 10px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-            @if(isset($logoBase64) && $logoBase64)
-                <img src="{{ $logoBase64 }}" style="max-height: 54px; max-width: 94px;" alt="Logo">
-            @else
-                <div style="font-size: 28px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4; letter-spacing: -2px;">K</div>
-            @endif
+        <td class="lmd-header-school">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                    <td width="27%" style="text-align:center; vertical-align:middle; padding-right:7px;">
+                        @if(isset($logoBase64) && $logoBase64)
+                            <img src="{{ $logoBase64 }}" style="max-height: {{ $logoHeight }}px; max-width: {{ $logoWidth }}px;" alt="Logo">
+                        @else
+                            <div style="font-size: 30px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4; letter-spacing: -2px;">K</div>
+                        @endif
+                    </td>
+                    <td width="73%" style="vertical-align:middle;">
+                        <div style="font-size: {{ $fontSchoolName }}px; font-weight: 800; color: {{ $hdrText }}; line-height:1.12; margin-bottom:3px;">
+                            {{ $etab['nom'] ?? 'KLASSCI' }}
+                        </div>
+                        @if(($etab['adresse'] ?? '') || ($etab['telephone'] ?? '') || ($etab['email'] ?? ''))
+                            <div style="font-size: {{ $fontSchoolMeta }}px; color: {{ $hdrText }}; opacity:0.86; line-height:1.25;">
+                                @if($etab['adresse'] ?? ''){{ $etab['adresse'] }}@endif
+                                @if($etab['telephone'] ?? '')
+                                    @if($etab['adresse'] ?? '') &nbsp;|&nbsp; @endif
+                                    Tél: {{ $etab['telephone'] }}
+                                @endif
+                                @if($etab['email'] ?? '')
+                                    @if(($etab['adresse'] ?? '') || ($etab['telephone'] ?? ''))<br>@endif
+                                    {{ $etab['email'] }}
+                                @endif
+                            </div>
+                        @endif
+                    </td>
+                </tr>
+            </table>
         </td>
-        <td width="84%" style="background-color: {{ $hdrBg }}; padding: 8px 13px; vertical-align: middle;">
-            <div style="font-size: {{ $fontSchoolName }}px; font-weight: 800; color: {{ $hdrText }}; margin-bottom: 1px;">
-                {{ $etab['nom'] ?? 'KLASSCI' }}
+        <td class="lmd-header-document">
+            <div class="lmd-header-title">
+                BULLETIN SEMESTRIEL DE NOTES — {{ $semestre }}{{ $semestre == 1 ? 'er' : 'ème' }} semestre
             </div>
-            @if(($etab['adresse'] ?? '') || ($etab['telephone'] ?? '') || ($etab['email'] ?? ''))
-            <div style="font-size: {{ $fontSchoolMeta }}px; color: {{ $hdrText }}; opacity: 0.86; margin-bottom: 5px;">
-                @if($etab['adresse'] ?? ''){{ $etab['adresse'] }}@endif
-                @if($etab['telephone'] ?? '')
-                    @if($etab['adresse'] ?? '') &nbsp;|&nbsp; @endif
-                    Tél: {{ $etab['telephone'] }}
-                @endif
-                @if($etab['email'] ?? '')
-                    @if(($etab['adresse'] ?? '') || ($etab['telephone'] ?? '')) &nbsp;|&nbsp; @endif
-                    {{ $etab['email'] }}
-                @endif
-            </div>
-            @endif
-            <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 5px;">
-                <div style="font-size: {{ $fontTitle }}px; font-weight: 800; color: {{ $hdrText }}; letter-spacing: 0.35px; margin-bottom: 2px;">
-                    BULLETIN SEMESTRIEL DE NOTES — {{ $semestre }}{{ $semestre == 1 ? 'er' : 'ème' }} semestre
-                </div>
-                <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                    <tr>
-                        <td width="40%" style="font-size: {{ $fontHeaderMeta }}px; color: {{ $hdrText }};">
-                            <span style="opacity: 0.75;">Année universitaire :</span>
-                            <strong>{{ $anneeLabel }}</strong>
-                        </td>
-                        <td width="30%" style="font-size: {{ $fontHeaderMeta }}px; color: {{ $hdrText }}; text-align: center;">
-                            <span style="opacity: 0.75;">Niveau :</span>
-                            <strong>{{ $niveau ?? '' }}</strong>
-                        </td>
-                        <td width="30%" style="font-size: {{ $fontHeaderMeta }}px; color: {{ $hdrText }}; text-align: right;">
-                            <span style="opacity: 0.75;">Semestre :</span>
-                            <strong>{{ $semestre ?? '' }}</strong>
-                        </td>
-                    </tr>
-                </table>
-            </div>
+            <table class="lmd-header-meta" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                    <td>
+                        <span class="lmd-header-meta-label">Année universitaire :</span>
+                        <span class="lmd-header-meta-value">{{ $anneeLabel }}</span>
+                    </td>
+                    <td>
+                        <span class="lmd-header-meta-label">{{ \App\Services\BulletinMentionResolver::editionLabel() }}</span>
+                        <span class="lmd-header-meta-value">{{ $editionDate }}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <span class="lmd-header-meta-label">Niveau :</span>
+                        <span class="lmd-header-meta-value">{{ $niveau ?? '' }}</span>
+                    </td>
+                    <td>
+                        <span class="lmd-header-meta-label">Semestre :</span>
+                        <span class="lmd-header-meta-value">{{ $semestre ?? '' }}</span>
+                    </td>
+                </tr>
+            </table>
         </td>
     </tr>
 </table>
@@ -450,14 +529,9 @@
         </td>
         <td width="38%">
             <div class="signature-block">
-                <div style="font-weight: 800;">
-                    Nom / Signature et cachet du chef<br>d'Etablissement
-                </div>
-                <div style="margin-top: 4px;">
-                    {{ $etab['ville'] ?? 'Abidjan' }}, le {{ $editionDate }}
-                </div>
-                <div style="margin-top: 2px;">Le Directeur des Etudes</div>
-                <div style="font-size: {{ min(32, $fontSignature + 1) }}px; font-weight: 800; margin-top: 14px;">{{ $etab['directeur'] ?? '' }}</div>
+                <div class="signature-title">Le Directeur des Études</div>
+                <div class="signature-space">&nbsp;</div>
+                <div class="signature-name">{{ $etab['directeur'] ?? '' }}</div>
             </div>
         </td>
     </tr>
