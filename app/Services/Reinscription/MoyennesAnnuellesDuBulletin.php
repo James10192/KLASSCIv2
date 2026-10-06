@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Log;
  * CE QU'IL REPRODUIT : le chemin de `BulletinService::buildDonneesBulletin()`
  * qui calcule `$moyenneAnnuelle` imprimee sur le bulletin du semestre 2. Ce
  * n'est PAS la seule ecriture de ce calcul : `collectAnnualAveragesForClasse()`
- * (rang annuel) en tient une seconde, qui ignore `tronc_commun_mga_include_s1`.
+ * (rang annuel) en tient une seconde, alignee sur la meme carte S1/S2.
  * C'est l'IMPRIMEE que la reinscription doit suivre, et
  * `MoyennesAnnuellesPariteBulletinTest` verifie que les deux concordent —
  *
@@ -37,8 +37,8 @@ use Illuminate\Support\Facades\Log;
  *   sinon le calcul courant (snapshot du semestre + note d'assiduite), comme
  *   `getAlignedBulletinAverageForPeriode()` ;
  * - le semestre 1 lu dans la classe qui le porte (tronc commun d'un oriente),
- *   par la carte annuelle (`BtsAnnualClassMapResolver`), SEULEMENT si
- *   `tronc_commun_mga_include_s1` est actif, comme au bulletin ;
+ *   par la carte annuelle (`BtsAnnualClassMapResolver`) ; l'etudiant emporte
+ *   toujours son S1 lorsqu'il rejoint sa classe de specialite au S2 ;
  * - les deux combines par `calculateAnnualAverage()` avec
  *   `getSemesterWeights($classe)`.
  *
@@ -176,16 +176,13 @@ class MoyennesAnnuellesDuBulletin
         $anneeId = (int) $premiere->annee_universitaire_id;
         $poids = $this->bulletins->getSemesterWeights($classe);
         $sourceConseil = $this->sourceDuConseil($classe);
-        // Comme au bulletin : sans ce reglage, le semestre 1 se lit dans la
-        // classe de l'inscription, jamais dans le tronc commun.
-        $s1DuTroncCommun = (bool) SettingsHelper::get('tronc_commun_mga_include_s1', true);
 
         // La classe qui porte chaque semestre, eleve par eleve.
         $classesDuSemestre = [];
         foreach ($inscriptions as $inscription) {
             $carte = $this->cartes->resolveForInscription($inscription, $anneeId);
             $classesDuSemestre[$inscription->id] = [
-                'semestre1' => (int) (($s1DuTroncCommun ? $carte['semestre1_classe_id'] ?? null : null) ?? $inscription->classe_id),
+                'semestre1' => (int) ($carte['semestre1_classe_id'] ?? $inscription->classe_id),
                 'semestre2' => (int) ($carte['semestre2_classe_id'] ?? $inscription->classe_id),
             ];
         }

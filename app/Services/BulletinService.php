@@ -735,17 +735,16 @@ class BulletinService
             ->where('moyenne_generale', '>', 0)
             ->exists();
 
-        // Tronc commun : resoudre la classe portant les notes du S1 via le class-map
-        // resolveur stateless (modele phases ET legacy). CLASS MAP only.
+        // La moyenne annuelle BTS porte toujours les deux semestres de l'etudiant.
+        // Apres orientation, S1 reste dans sa classe d'origine / tronc commun et
+        // S2 dans sa classe de specialite : la carte annuelle est obligatoire.
         $classeIdS1 = $classeId;
         $classeTroncCommun = null;
-        if (\App\Helpers\SettingsHelper::get('tronc_commun_mga_include_s1', true)) {
-            $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
-            $resolvedS1ClasseId = $classMap['semestre1_classe_id'] ?? $classeId;
-            if ($resolvedS1ClasseId && (int) $resolvedS1ClasseId !== (int) $classeId) {
-                $classeIdS1 = (int) $resolvedS1ClasseId;
-                $classeTroncCommun = ESBTPClasse::with('filiere')->find($resolvedS1ClasseId);
-            }
+        $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+        $resolvedS1ClasseId = $classMap['semestre1_classe_id'] ?? $classeId;
+        if ($resolvedS1ClasseId && (int) $resolvedS1ClasseId !== (int) $classeId) {
+            $classeIdS1 = (int) $resolvedS1ClasseId;
+            $classeTroncCommun = ESBTPClasse::with('filiere')->find($resolvedS1ClasseId);
         }
 
         $moyenneSemestre1 = $this->getAlignedBulletinAverageForPeriode(
@@ -3126,7 +3125,6 @@ class BulletinService
         $classe = ESBTPClasse::with(['filiere', 'niveau', 'niveauEtude'])->find($classeId);
         $weights = $this->getSemesterWeights($classe);
         $averages = [];
-
         $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, 'semestre2');
         $s1Stored = [];
         $s2Stored = [];

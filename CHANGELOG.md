@@ -14,6 +14,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Certificat et bulletin BTS : une seule moyenne annuelle, S1 toujours conservé et PDFs attachés au bon étudiant.** La moyenne annuelle reprend toujours le S1 propre à l'étudiant — y compris son S1 de tronc commun avant spécialisation — puis son S2 ; le rang annuel classe toute la cohorte avec cette même règle. Le certificat reprend exactement cette moyenne canonique. Dans la fiche étudiant > Académique, les aperçus et téléchargements d'anciens bulletins ouvrent maintenant le bulletin identifié lui-même, et non une route ambiguë qui pouvait interpréter l'id du bulletin comme l'id d'un autre étudiant. Pour une année BTS terminée sans moyenne reconstruisible depuis S1/S2, les personnes autorisées à modifier les bulletins peuvent saisir une moyenne annuelle historique depuis l'aperçu du certificat ; elle reste un repli audité et ne modifie aucune note.
 - Les frais proposés lors de l’inscription utilisent le scope académique commun : parcours et niveau en LMD, filière et niveau en BTS, avec priorité aux surcharges annuelles valides. L’année choisie dans le formulaire, validée côté serveur, ou l’année courante quand elle n’est pas fournie, remplace l’année historique de la classe. Les souscriptions et paiements existants ne sont pas réécrits.
 
 ### Ajouts

@@ -26,8 +26,9 @@ use Tests\TestCase;
  * La reinscription decide sur la moyenne annuelle que le bulletin IMPRIME.
  * `MoyennesAnnuellesDuBulletin` en tient une seconde ecriture, pour toute une
  * promotion d'un coup : ce test la confronte au bulletin lui-meme, sur un eleve
- * oriente apres un semestre de tronc commun, reglage
- * `tronc_commun_mga_include_s1` actif puis coupe.
+ * oriente apres un semestre de tronc commun. Meme si une ancienne instance
+ * porte encore `tronc_commun_mga_include_s1=0`, le S1 de l'etudiant reste
+ * une composante obligatoire de sa moyenne annuelle.
  */
 class MoyennesAnnuellesPariteBulletinTest extends TestCase
 {
@@ -53,15 +54,14 @@ class MoyennesAnnuellesPariteBulletinTest extends TestCase
         $this->assertEqualsWithDelta($attendue, $calculee, 0.001);
     }
 
-    public function test_tronc_commun_exclu_meme_moyenne_que_le_bulletin(): void
+    public function test_ancien_setting_coupe_ne_supprime_plus_le_s1_du_tronc_commun(): void
     {
         SettingsHelper::setOrCreate('tronc_commun_mga_include_s1', '0');
 
         [$attendue, $calculee] = $this->lesDeuxMoyennes();
 
-        // Reglage coupe : le bulletin enregistre du tronc commun n'est plus lu,
-        // le S1 vient du calcul courant.
         $this->assertNotNull($attendue);
+        $this->assertEqualsWithDelta((18 + 2 * 9.13) / 3, $attendue, 0.01);
         $this->assertEqualsWithDelta($attendue, $calculee, 0.001);
     }
 
@@ -90,7 +90,7 @@ class MoyennesAnnuellesPariteBulletinTest extends TestCase
         $s2 = $this->matiereNotee($etudiant, $spec, $specFiliere, $niveau, $annee, 'semestre2', 9);
         $this->seedConfiguredBulletin($etudiant->id, $spec->id, $annee->id, 'semestre2', [$s2->id]);
         // Bulletin de S1 enregistre dans le tronc commun, a 18 alors que les
-        // notes vivantes donnent 15 : c'est lui que le reglage fait lire, ou non.
+        // notes vivantes donnent 15 : ce S1 propre a l'etudiant suit au S2.
         $this->seedConfiguredBulletin($etudiant->id, $tc->id, $annee->id, 'semestre1', [$s1->id])
             ->forceFill(['moyenne_generale' => 18, 'note_assiduite' => 0])->save();
 
