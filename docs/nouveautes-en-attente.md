@@ -19,3 +19,4 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 - 2026-10-04 · #1401 · bulletin LMD : le nom de l'établissement, le titre du document et les métadonnées d'en-tête reprennent exactement la couleur de texte choisie dans les paramètres PDF
 - 2026-10-05 · #1407 · Nanan gère les enseignants et professeurs LMD ainsi que les rendez-vous ciblés : programmer, reprogrammer, annuler, fermer ou rouvrir un créneau, renvoyer les convocations et activer/désactiver la fermeture automatique du jour à minuit
 - 2026-10-05 · #1415 · configuration des frais : l’audience Tous / Nouveaux / Anciens est indépendante par filière ou parcours et niveau ; Nanan peut aussi régler l’audience et l’échéance d’une combinaison sans ressaisir son montant
+- 2026-10-06 · #1417 · encaissement : la date réelle du versement est modifiable sur ordinateur, tablette et mobile, avec protections contre dates futures, périodes verrouillées et caisses espèces déjà clôturées

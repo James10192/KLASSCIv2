@@ -68,6 +68,26 @@ class CashSessionServiceTest extends TestCase
         $this->assertNotNull($stale->closed_at);
     }
 
+    public function test_aggregat_suit_la_date_metier_du_paiement_et_non_son_created_at(): void
+    {
+        Carbon::setTestNow('2026-10-06 10:00:00');
+        $user = User::factory()->create();
+
+        ESBTPPaiement::factory()->create([
+            'created_by' => $user->id,
+            'montant' => 12000,
+            'mode_paiement' => 'espèces',
+            'status' => 'validé',
+            'date_paiement' => '2026-10-05',
+            'created_at' => '2026-10-06 09:00:00',
+        ]);
+
+        $service = app(CashSessionService::class);
+
+        $this->assertSame(12000.0, $service->aggregat($user->id, '2026-10-05')['especes']);
+        $this->assertSame(0.0, $service->aggregat($user->id, '2026-10-06')['especes']);
+    }
+
     public function test_expected_amount_counts_only_validated_cash(): void
     {
         $user = User::factory()->create();

@@ -27,28 +27,66 @@ class CashSessionService
         ];
     }
 
-    public function assertEspecesAutorisees(User $user, ?string $mode): void
+    public function assertEspecesAutorisees(User $user, ?string $mode, ?string $jour = null): void
     {
+        if ($message = $this->dateValidationMessage($user, $mode, $jour)) {
+            throw new CaisseCloturee($message);
+        }
+
         $canon = ModePaiement::fromLegacy($mode);
         if ($canon === null || ! $canon->isDrawer()) {
             return;
         }
 
-        $this->ensureOpen($user);
+        $this->ensureOpen($user, $jour);
+    }
+
+    public function dateValidationMessage(User $user, ?string $mode, ?string $jour = null): ?string
+    {
+        $canon = ModePaiement::fromLegacy($mode);
+        if ($canon === null || ! $canon->isDrawer()) {
+            return null;
+        }
+
+        $businessDate = Carbon::parse($jour ?? now()->toDateString())->toDateString();
+        $today = now()->toDateString();
+
+        if ($businessDate > $today) {
+            return 'Une caisse ne peut pas être ouverte sur une date future.';
+        }
+
+        $session = $this->sessionForDate($user, $businessDate);
+
+        if ($businessDate < $today && ! $session) {
+            return 'Impossible d’antidater ce paiement espèces au '.Carbon::parse($businessDate)->format('d/m/Y')
+                .' : aucune session de caisse ouverte n’existe pour cette date. Utilisez une écriture corrective ou la réconciliation.';
+        }
+
+        if ($session?->isLocked()) {
+            return $businessDate === $today
+                ? 'Votre caisse du jour est déjà clôturée. Contactez la comptabilité pour enregistrer ce versement espèces.'
+                : 'Impossible d’antidater ce paiement espèces au '.Carbon::parse($businessDate)->format('d/m/Y')
+                    .' : la caisse de cette date est déjà clôturée. Utilisez la réconciliation pour toute correction.';
+        }
+
+        return null;
     }
 
     public function ensureOpen(User $user, ?string $jour = null): ESBTPCashSession
     {
-        $this->autoCloseStale($user);
-        $session = $this->lazyOpen($user, $jour ?? now()->toDateString());
+        $businessDate = Carbon::parse($jour ?? now()->toDateString())->toDateString();
 
-        if ($session->isLocked()) {
-            throw new CaisseCloturee(
-                'Votre caisse du jour est déjà clôturée. Contactez la comptabilité pour enregistrer ce versement espèces.'
-            );
+        if ($message = $this->dateValidationMessage($user, ModePaiement::ESPECES->value, $businessDate)) {
+            throw new CaisseCloturee($message);
         }
 
-        return $session;
+        if ($businessDate < now()->toDateString()) {
+            return $this->sessionForDate($user, $businessDate);
+        }
+
+        $this->autoCloseStale($user);
+
+        return $this->lazyOpen($user, $businessDate);
     }
 
     public function close(User $user, float $countedAmount, ?string $notes = null, ?string $jour = null): ESBTPCashSession
@@ -138,6 +176,14 @@ class CashSessionService
             ->get();
     }
 
+    private function sessionForDate(User $user, string $jour): ?ESBTPCashSession
+    {
+        return ESBTPCashSession::query()
+            ->where('cashier_user_id', $user->id)
+            ->whereDate('business_date', $jour)
+            ->first();
+    }
+
     private function lazyOpen(User $user, string $jour): ESBTPCashSession
     {
         return ESBTPCashSession::query()->firstOrCreate(
@@ -156,6 +202,6 @@ class CashSessionService
     {
         return ESBTPPaiement::query()
             ->ownedBy($userId)
-            ->whereDate('created_at', $jour);
+            ->whereDate('date_paiement', $jour);
     }
 }
