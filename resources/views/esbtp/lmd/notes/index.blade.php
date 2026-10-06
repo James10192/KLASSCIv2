@@ -45,8 +45,6 @@
     }
     .ln-hero-info h1 { font-size: 1.45rem; font-weight: 700; margin: 0 0 .2rem; color: #fff; letter-spacing: -.02em; }
     .ln-hero-info p { margin: 0; opacity: .8; font-size: .88rem; }
-
-    /* KPIs in hero */
     .ln-hero-kpis {
         display: flex; gap: .75rem; margin-top: 1.5rem;
         position: relative; z-index: 1; flex-wrap: wrap;
@@ -202,7 +200,6 @@
 
     /* Modal body */
     .ln-modal .modal-body { padding: 0; }
-
     .ln-modal-toolbar {
         display: flex; align-items: center; gap: .75rem; padding: 1rem 1.5rem;
         border-bottom: 1px solid #e8ecf1; flex-wrap: wrap; background: #fafbfc;
@@ -504,9 +501,12 @@
                 <div class="ln-hero-icon"><i class="fas fa-edit"></i></div>
                 <div class="ln-hero-info">
                     <h1>Notes LMD</h1>
-                    <p>Gestion des notes par classe — {{ $anneeCourante->name ?? 'Aucune année' }}</p>
+                    <p>Gestion des notes par classe — {{ $anneeSelectionnee->name ?? 'Aucune année' }}</p>
                 </div>
             </div>
+            <form method="GET" action="{{ route('esbtp.lmd.notes.index') }}"><x-au-select name="annee_universitaire_id" id="lmd_annee_universitaire_id"
+                :value="$anneeSelectionnee?->id" icon="fa-calendar" :searchable="false" :placeholder-is-first-option="false" onchange="this.form.submit()"
+                :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => $a->name.($a->is_current ? ' · courante' : '')])->toArray()" /></form>
         </div>
 
         <div class="ln-hero-kpis">
@@ -652,12 +652,10 @@
 
                 @include('esbtp.lmd.notes.partials._requalification')
 
-                {{-- Ce qui est noté et ce qui manque, élément par élément, sur la maquette du semestre. --}}
                 <div class="ln-suivi">
-                    @include('esbtp.partials._couverture-notes', ['classeId' => null, 'anneeId' => $anneeCourante->id ?? null, 'periode' => 'semestre1', 'titre' => 'Suivi du semestre', 'replie' => true])
+                    @include('esbtp.partials._couverture-notes', ['classeId' => null, 'anneeId' => $anneeSelectionnee->id ?? null, 'periode' => 'semestre1', 'titre' => 'Suivi du semestre', 'replie' => true])
                 </div>
 
-                {{-- Toolbar: UE → ECUE selectors + dynamic periods --}}
                 <div class="ln-modal-toolbar">
                     <select id="ueSelect" style="min-width:220px;">
                         <option value="">— Choisir une UE —</option>
@@ -747,6 +745,7 @@
                 @csrf
                 <input type="hidden" name="classe_id" id="evalClasseId">
                 <input type="hidden" name="matiere_id" id="evalMatiereId">
+                <input type="hidden" name="annee_universitaire_id" value="{{ $anneeSelectionnee?->id }}">
                 <input type="hidden" name="embed" value="1">
                 <input type="hidden" name="is_published" value="1">
 
@@ -852,6 +851,7 @@ let currentClasseId = null;
 let currentClasseData = null;
 let currentMatiereId = null;
 let currentMatiereName = '';
+const lmdAcademicYearId = @json($anneeSelectionnee?->id);
 let evaluationsData = {};
 let notesData = {};
 let evalParamsCache = {};
@@ -913,7 +913,7 @@ async function openNotesModal(classeId, classeName) {
     chargerRequalification(classeId);
 
     try {
-        const resp = await fetch('/esbtp/lmd/notes/classe/' + classeId + '/data', {
+        const resp = await fetch('/esbtp/lmd/notes/classe/' + classeId + '/data?annee_universitaire_id=' + encodeURIComponent(lmdAcademicYearId), {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
         currentClasseData = await resp.json();
@@ -1051,7 +1051,7 @@ async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
     document.getElementById('autosaveInfo').style.display = 'none';
 
     try {
-        const resp = await fetch(`/esbtp/notes/api/evaluations/by-class-matiere/${classeId}/${matiereId}`, {
+        const resp = await fetch(`/esbtp/notes/api/evaluations/by-class-matiere/${classeId}/${matiereId}?annee_universitaire_id=${encodeURIComponent(lmdAcademicYearId)}`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
         const data = await resp.json();

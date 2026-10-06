@@ -80,7 +80,11 @@ class SuiviDesNotesTool extends ChatbotTool
                     'refus' => 'Cette classe n\'a pas de semestre '.$semestre.' (semestres : '.implode(', ', $semestres).').'];
             }
 
-            $payload = $navigation->ajouter($service->summarize((int) $anneeId, 'semestre'.$semestre, null, (int) $classe->id, $autorisees), $classe);
+            $payload = $navigation->ajouter(
+                $service->summarize((int) $anneeId, 'semestre'.$semestre, null, (int) $classe->id, $autorisees),
+                $classe,
+                (int) $anneeId
+            );
             if (! $detail) {
                 $payload = $service->sansLesNotesNiLeursAuteurs($payload);
             }

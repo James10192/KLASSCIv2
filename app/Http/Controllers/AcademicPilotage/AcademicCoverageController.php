@@ -61,7 +61,7 @@ class AcademicCoverageController extends Controller
         if ($anneeId === null) {
             $payload = $this->coverage->summarize(null, $periode, null, (int) $classe->id);
 
-            $payload = $this->navigation->ajouter($payload, $classe);
+            $payload = $this->navigation->ajouter($payload, $classe, $anneeId);
 
             return response()->json($detailComplet ? $payload : $this->coverage->sansLesNotesNiLeursAuteurs($payload), 200);
         }
@@ -80,7 +80,7 @@ class AcademicCoverageController extends Controller
 
         // Le lien est ajouté après le cache : il reste une aide de navigation,
         // pas une donnée calculée qui modifierait la clé ou le périmètre.
-        $payload = $this->navigation->ajouter($payload, $classe);
+        $payload = $this->navigation->ajouter($payload, $classe, $anneeId);
 
         // APRES le cache, jamais avant : la premiere lecture par un enseignant
         // servirait sinon une version amputee a tous les suivants.

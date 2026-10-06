@@ -166,6 +166,7 @@ class SuiviDesNotesLmdTest extends TestCase
         $algebre = collect($reponse->json('subjects'))->firstWhere('code', 'BMI11');
         $this->assertStringContainsString('/esbtp/lmd/notes', $algebre['saisie_url']);
         $this->assertStringContainsString('ecue='.$algebre['id'], $algebre['saisie_url']);
+        $this->assertStringContainsString('annee_universitaire_id='.$this->annee->id, $algebre['saisie_url']);
     }
 
     public function test_les_deux_ecrans_lmd_portent_le_panneau(): void
@@ -255,4 +256,66 @@ class SuiviDesNotesLmdTest extends TestCase
         $this->assertStringContainsString('BDR11 Droit civil', $relaye);
         $this->assertStringContainsString('KOFFI Yao', $relaye);
     }
+    public function test_la_grille_lmd_peut_rester_sur_une_ancienne_annee_apres_la_bascule_de_is_current(): void
+    {
+        $this->admin->assignRole('superAdmin');
+        $this->annee->update(['is_current' => false]);
+
+        $courante = ESBTPAnneeUniversitaire::factory()->create([
+            'name' => '2026-2027',
+            'is_current' => true,
+        ]);
+
+        $nouveau = ESBTPEtudiant::factory()->create([
+            'nom' => 'NOUVEAU',
+            'prenoms' => 'Etudiant',
+            'matricule' => 'FL26-001',
+        ]);
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $nouveau->id,
+            'classe_id' => $this->classe->id,
+            'annee_universitaire_id' => $courante->id,
+            'status' => 'active',
+            'workflow_step' => 'etudiant_cree',
+        ]);
+
+        $matiere = ESBTPMatiere::where('code', 'BMI11')->firstOrFail();
+        $evaluationCourante = ESBTPEvaluation::create([
+            'titre' => 'Devoir 2026-2027',
+            'classe_id' => $this->classe->id,
+            'matiere_id' => $matiere->id,
+            'annee_universitaire_id' => $courante->id,
+            'periode' => 'semestre1',
+            'type' => 'devoir',
+            'date_evaluation' => '2026-10-02 08:00:00',
+            'duree_minutes' => 60,
+            'coefficient' => 1,
+            'bareme' => 20,
+            'status' => ESBTPEvaluation::STATUS_COMPLETED,
+            'is_published' => true,
+        ]);
+
+        $historique = $this->actingAs($this->admin)->getJson(route('esbtp.lmd.notes.classe-data', [
+            'classe' => $this->classe->id,
+            'annee_universitaire_id' => $this->annee->id,
+        ]))->assertOk();
+
+        $idsHistoriques = collect($historique->json('etudiants'))->pluck('id');
+        $this->assertTrue($idsHistoriques->contains($this->awa->id));
+        $this->assertTrue($idsHistoriques->contains($this->koffi->id));
+        $this->assertFalse($idsHistoriques->contains($nouveau->id));
+        $this->assertFalse(collect($historique->json('evaluations'))->pluck('id')->contains($evaluationCourante->id));
+
+        $fallback = $this->actingAs($this->admin)->getJson(route('esbtp.lmd.notes.classe-data', [
+            'classe' => $this->classe->id,
+        ]))->assertOk();
+
+        $this->assertTrue(collect($fallback->json('etudiants'))->pluck('id')->contains($nouveau->id));
+        $this->assertTrue(collect($fallback->json('evaluations'))->pluck('id')->contains($evaluationCourante->id));
+        $this->assertFalse(collect($fallback->json('evaluations'))->pluck('id')->contains(
+            ESBTPEvaluation::where('annee_universitaire_id', $this->annee->id)->value('id')
+        ));
+    }
+
+
 }
