@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Paiements;
 
+use App\Enums\CashSessionStatus;
+use App\Helpers\SettingsHelper;
+use App\Models\ESBTPCashSession;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisSubscription;
@@ -52,6 +55,7 @@ class EncaisserMobileTest extends TestCase
         Permission::findOrCreate('paiements.validate', 'web');
         // Le profil mobile « caissier » se deduit de cette permission.
         Permission::findOrCreate('module.caisse.access', 'web');
+        SettingsHelper::setOrCreate('comptabilite.period_locked_until', '', 'comptabilite', 'string');
         Cache::flush();
 
         $this->caissier = User::factory()->create();
@@ -87,7 +91,12 @@ class EncaisserMobileTest extends TestCase
             // Le mode especes est propose a qui porte paiements.create.
             ->assertSee('data-canon="especes"', false)
             // Le formulaire de bureau est toujours la, intact.
-            ->assertSee('id="payment-form"', false);
+            ->assertSee('id="payment-form"', false)
+            // Bureau et mobile portent tous deux une date modifiable.
+            ->assertSee('name="date_paiement"', false)
+            ->assertSee('x-model="datePaiement"', false)
+            ->assertSee('Date réelle du versement')
+            ->assertSee('Aujourd’hui');
     }
 
     public function test_le_montant_propose_se_remplace_au_premier_chiffre(): void
@@ -225,6 +234,83 @@ class EncaisserMobileTest extends TestCase
 
         $reponse->assertStatus(422)->assertJsonValidationErrors(['montant']);
         $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    public function test_la_date_mobile_envoyee_est_la_date_choisie_et_non_plus_la_date_figee_du_chargement(): void
+    {
+        $this->get(route('esbtp.paiements.create'))
+            ->assertOk()
+            ->assertSee("date_paiement: this.datePaiement || this.cfg.date", false);
+    }
+
+    public function test_une_date_future_est_refusee_cote_serveur(): void
+    {
+        $payload = $this->versement(10000);
+        $payload['date_paiement'] = now()->addDay()->toDateString();
+
+        $this->postJson(route('esbtp.paiements.store'), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['date_paiement']);
+
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    public function test_un_paiement_non_especes_peut_etre_antidate_si_la_periode_est_ouverte(): void
+    {
+        $payload = $this->versement(10000);
+        $payload['date_paiement'] = now()->subDay()->toDateString();
+        $payload['mode_paiement'] = 'Wave';
+
+        $this->postJson(route('esbtp.paiements.store'), $payload)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $paiement = ESBTPPaiement::where('inscription_id', $this->inscription->id)->firstOrFail();
+        $this->assertSame(now()->subDay()->toDateString(), $paiement->date_paiement->toDateString());
+    }
+
+    public function test_un_paiement_antidate_dans_une_periode_verrouillee_est_refuse(): void
+    {
+        SettingsHelper::setOrCreate(
+            'comptabilite.period_locked_until',
+            now()->toDateString(),
+            'comptabilite',
+            'date'
+        );
+        Cache::flush();
+
+        $payload = $this->versement(10000);
+        $payload['date_paiement'] = now()->subDay()->toDateString();
+        $payload['mode_paiement'] = 'Wave';
+
+        $this->postJson(route('esbtp.paiements.store'), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['date_paiement']);
+
+        $this->assertSame(0, ESBTPPaiement::where('inscription_id', $this->inscription->id)->count());
+    }
+
+    public function test_un_paiement_especes_antidate_exige_une_caisse_de_cette_date_encore_ouverte(): void
+    {
+        $date = now()->subDay()->toDateString();
+
+        $payload = $this->versement(10000);
+        $payload['date_paiement'] = $date;
+
+        $this->postJson(route('esbtp.paiements.store'), $payload)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['date_paiement']);
+
+        ESBTPCashSession::query()->create([
+            'cashier_user_id' => $this->caissier->id,
+            'business_date' => $date,
+            'status' => CashSessionStatus::OPEN,
+            'opened_at' => now()->subDay(),
+        ]);
+
+        $this->postJson(route('esbtp.paiements.store'), $payload)
+            ->assertOk()
+            ->assertJsonPath('success', true);
     }
 
     public function test_le_formulaire_de_bureau_garde_sa_redirection(): void

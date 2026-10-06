@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Paiement;
 
+use App\Domain\Comptabilite\Paiements\Services\PaymentDatePolicy;
 use App\Helpers\SettingsHelper;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -54,6 +55,16 @@ class StorePaiementRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $v) {
+            $dateMessage = app(PaymentDatePolicy::class)->validationMessage(
+                $this->user(),
+                $this->input('date_paiement'),
+                $this->input('mode_paiement')
+            );
+
+            if ($dateMessage !== null) {
+                $v->errors()->add('date_paiement', $dateMessage);
+            }
+
             $montant = (int) $this->input('montant', 0);
             $threshold = (int) SettingsHelper::get('comptabilite.unusual_amount_threshold', 500000);
             $confirmed = $this->input('confirmed_unusual_amount') === '1' || $this->input('confirmed_unusual_amount') === 1;

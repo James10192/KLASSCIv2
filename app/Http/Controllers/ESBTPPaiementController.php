@@ -547,7 +547,7 @@ class ESBTPPaiementController extends Controller
         );
 
         app(\App\Services\Caisse\CashSessionService::class)
-            ->assertEspecesAutorisees($request->user(), $request->input('mode_paiement'));
+            ->assertEspecesAutorisees($request->user(), $request->input('mode_paiement'), $request->input('date_paiement'));
 
         $validated = $request->validated();
 
