@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\ListeInfinie;
+use App\Support\LMDBulletinPrintSettings;
 use App\Domain\Bulletins\FiltresBulletins;
 use App\Http\Controllers\Concerns\ExporteBulletinsParTranches;
 use App\Domain\Academique\CoherenceSystemeAcademique;
@@ -2169,7 +2170,7 @@ class ESBTPBulletinController extends Controller
      */
     public function saveConfiguration(Request $request)
     {
-        $request->validate([
+        $request->validate(array_merge([
             'bulletin_header_scale' => ['nullable', 'integer', 'min:70', 'max:220'],
             'bulletin_header_left_font_size' => ['nullable', 'integer', 'min:6', 'max:24'],
             'bulletin_header_school_name_font_size' => ['nullable', 'integer', 'min:8', 'max:30'],
@@ -2184,7 +2185,11 @@ class ESBTPBulletinController extends Controller
             'bulletin_edition_opacity' => ['nullable', 'integer', 'min:10', 'max:100'],
             'bulletin_authenticity_font_size' => ['nullable', 'integer', 'min:6', 'max:18'],
             'bulletin_authenticity_opacity' => ['nullable', 'integer', 'min:10', 'max:100'],
-        ]);
+            'lmd_bulletin_parcours_auto' => ['nullable', 'in:0,1'],
+            'lmd_bulletin_code_etablissement' => ['nullable', 'string', 'max:160'],
+            'lmd_bulletin_statut' => ['nullable', 'string', 'max:80'],
+            'lmd_bulletin_direction' => ['nullable', 'string', 'max:160'],
+        ], LMDBulletinPrintSettings::validationRules()));
 
         $effectiveBtsSettings = BtsBulletinPolicy::effectiveSettings(
             $request->all(),
@@ -2311,6 +2316,8 @@ class ESBTPBulletinController extends Controller
                 'lmd_bulletin_label_parcours',
                 'lmd_bulletin_notice_text',
                 'lmd_bulletin_bottom_text',
+                'lmd_bulletin_parcours_auto',
+                ...LMDBulletinPrintSettings::fieldKeys(),
             ]);
 
             // Récupérer tous les paramètres de bulletin avec gestion des checkboxes

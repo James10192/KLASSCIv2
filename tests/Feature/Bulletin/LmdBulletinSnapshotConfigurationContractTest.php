@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Bulletin;
 
+use App\Models\ESBTPFiliere;
 use App\Models\ESBTPLMDBulletin;
+use App\Models\ESBTPLMDParcours;
+use App\Models\ESBTPNiveauEtude;
 use Tests\TestCase;
 
 class LmdBulletinSnapshotConfigurationContractTest extends TestCase
@@ -48,7 +51,9 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString('width: 50%;', $pdf);
         $this->assertStringContainsString('BulletinMentionResolver::editionLabel()', $pdf);
         $this->assertStringContainsString('$editionDate = now()->format(\'d/m/Y\')', $pdf);
-        $this->assertStringContainsString('$logoHeight = max(60, min(120', $pdf);
+        $this->assertStringContainsString("lmd_bulletin_logo_height", $pdf);
+        $this->assertStringContainsString("lmd_bulletin_header_padding_y", $pdf);
+        $this->assertStringContainsString("lmd_bulletin_signature_space_height", $pdf);
         $this->assertStringContainsString('class="signature-title">Le Directeur des Études</div>', $pdf);
         $this->assertStringContainsString('class="signature-space"', $pdf);
         $this->assertStringContainsString('class="signature-name"', $pdf);
@@ -62,7 +67,7 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $view = file_get_contents(resource_path('views/esbtp/lmd/bulletins/index.blade.php'));
         $controller = file_get_contents(app_path('Http/Controllers/ESBTPLMDBulletinController.php'));
 
-        $this->assertStringContainsString('setting_lmd_bulletin_direction', $view);
+        $this->assertStringContainsString('name="lmd_bulletin_direction"', $view);
         $this->assertStringContainsString("SettingsHelper::get('lmd_bulletin_direction', '')", $controller);
         $this->assertStringContainsString('$directionEtablissement', $pdf);
         $this->assertStringNotContainsString("\$bCfg['direction'] ?? \$etab['directeur']", $pdf);
@@ -73,16 +78,62 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $view = file_get_contents(resource_path('views/esbtp/lmd/bulletins/index.blade.php'));
 
         $this->assertStringContainsString('Configuration du bulletin LMD', $view);
-        $this->assertStringContainsString("route('esbtp.settings.update')", $view);
-        $this->assertStringContainsString('setting_lmd_bulletin_statut', $view);
-        $this->assertStringContainsString('setting_lmd_bulletin_direction', $view);
-        $this->assertStringContainsString('setting_lmd_bulletin_font_student', $view);
-        $this->assertStringContainsString('setting_lmd_bulletin_font_table_header', $view);
-        $this->assertStringContainsString('setting_lmd_bulletin_font_signature', $view);
+        $this->assertStringContainsString("route('esbtp.bulletins.save-configuration')", $view);
+        $this->assertStringNotContainsString("route('esbtp.settings.update')", $view);
+        $this->assertStringContainsString('name="lmd_bulletin_statut"', $view);
+        $this->assertStringContainsString('name="lmd_bulletin_direction"', $view);
+        $this->assertStringContainsString('LMDBulletinPrintSettings::fontFields()', $view);
+        $this->assertStringContainsString('LMDBulletinPrintSettings::layoutFields()', $view);
+        $this->assertStringContainsString('lmd-bulletin-config-form', $view);
         $this->assertStringContainsString('max="32"', $view);
         $this->assertStringContainsString('6 à 32 px', $view);
         $this->assertStringContainsString('<x-liste-infinie', $view);
         $this->assertStringContainsString('form.submit=function(){if(!suspendre)filtrer()}', $view);
+    }
+
+    public function test_central_configuration_exposes_real_lmd_typography_and_layout_controls(): void
+    {
+        $partial = file_get_contents(resource_path('views/esbtp/bulletins/partials/_configuration-lmd.blade.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
+        $configuration = file_get_contents(resource_path('views/esbtp/bulletins/configuration.blade.php'));
+        $support = file_get_contents(app_path('Support/LMDBulletinPrintSettings.php'));
+
+        $this->assertStringContainsString('LMDBulletinPrintSettings::fontFields()', $partial);
+        $this->assertStringContainsString('LMDBulletinPrintSettings::layoutFields()', $partial);
+        $this->assertStringContainsString('lmd_bulletin_logo_height', $support);
+        $this->assertStringContainsString('lmd_bulletin_signature_space_height', $support);
+        $this->assertStringContainsString('LMDBulletinPrintSettings::validationRules()', $controller);
+        $this->assertStringContainsString('...LMDBulletinPrintSettings::fieldKeys()', $controller);
+        $this->assertStringContainsString("initialTab === 'lmd' ? 'lmd' : 'bts'", $configuration);
+    }
+
+    public function test_parcours_officiel_ne_montre_jamais_le_code_court_de_filiere(): void
+    {
+        $parcours = new ESBTPLMDParcours(['name' => 'Bâtiment et Urbanisme']);
+        $filiere = new ESBTPFiliere();
+        $filiere->code = 'BU';
+        $filiere->name = 'Bâtiment et Urbanisme';
+        $niveau = new ESBTPNiveauEtude();
+        $niveau->name = 'Licence 1';
+
+        $parcours->setRelation('filiere', $filiere);
+
+        $this->assertSame(
+            'LICENCE 1 BÂTIMENT ET URBANISME',
+            $parcours->genererLabelBulletin($niveau)
+        );
+        $this->assertSame(
+            'LICENCE 1 BÂTIMENT ET URBANISME',
+            $parcours->nettoyerLabelBulletin('LICENCE 1 BU BÂTIMENT ET URBANISME')
+        );
+        $this->assertSame(
+            'LICENCE 1 BUREAUTIQUE ET URBANISME',
+            $parcours->nettoyerLabelBulletin('LICENCE 1 BUREAUTIQUE ET URBANISME')
+        );
+
+        $service = file_get_contents(app_path('Services/LMDBulletinService.php'));
+        $this->assertStringContainsString('parcours.filiere', $service);
+        $this->assertStringContainsString('nettoyerLabelBulletin($bulletin->parcours_label)', $service);
     }
 
     public function test_lmd_teacher_snapshot_is_scoped_to_semester_and_supports_external_teachers(): void

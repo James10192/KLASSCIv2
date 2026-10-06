@@ -984,6 +984,7 @@ class LMDBulletinService
             'classe.niveau',
             'classe.filiere',
             'parcours.mention.domaine',
+            'parcours.filiere',
             'anneeUniversitaire',
             'resultatsUEs.uniteEnseignement',
             'resultatsUEs.resultatsECUEs.matiere',
@@ -991,12 +992,19 @@ class LMDBulletinService
             'deliberation',
         ]);
 
+        // Les snapshots historiques peuvent encore contenir le code court de la
+        // filière dans le parcours ("LICENCE 1 BU BÂTIMENT..."). Ce code est un
+        // identifiant technique et ne doit jamais sortir sur le document officiel.
+        $parcoursLabelBulletin = $bulletin->parcours
+            ? $bulletin->parcours->nettoyerLabelBulletin($bulletin->parcours_label)
+            : $bulletin->parcours_label;
+
         // Bulletin field visibility & labels (configurable per tenant)
         $bulletinFields = [
             ['key' => 'domaine', 'show' => $this->getSetting('lmd_bulletin_show_domaine', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_domaine', $this->vocabulaire->natureDe($bulletin->parcours?->mention?->domaine)), 'value' => $bulletin->domaine_label],
             ['key' => 'mention', 'show' => $this->getSetting('lmd_bulletin_show_mention', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_mention', $this->vocabulaire->mention()), 'value' => $bulletin->mention_label],
             ['key' => 'specialite', 'show' => $this->getSetting('lmd_bulletin_show_specialite', '0') == '1', 'label' => $this->getSetting('lmd_bulletin_label_specialite', 'SPÉCIALITÉ'), 'value' => $bulletin->specialite_label ?? ''],
-            ['key' => 'parcours', 'show' => $this->getSetting('lmd_bulletin_show_parcours', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_parcours', $this->vocabulaire->parcours()), 'value' => $bulletin->parcours_label],
+            ['key' => 'parcours', 'show' => $this->getSetting('lmd_bulletin_show_parcours', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_parcours', $this->vocabulaire->parcours()), 'value' => $parcoursLabelBulletin],
         ];
 
         // Un bulletin est un snapshot, mais son ordre doit rester celui de la
@@ -1038,7 +1046,7 @@ class LMDBulletinService
             'parcours' => $bulletin->parcours,
             'domaine' => $bulletin->domaine_label,
             'mention' => $bulletin->mention_label,
-            'parcours_label' => $bulletin->parcours_label,
+            'parcours_label' => $parcoursLabelBulletin,
             'niveau' => $bulletin->niveau,
             'semestre' => $bulletin->semestre,
             'resultats_ues' => $resultatsUes,

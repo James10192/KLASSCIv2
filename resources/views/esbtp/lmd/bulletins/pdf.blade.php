@@ -73,11 +73,20 @@
         // Comme le bulletin BTS, la date imprimée est la date d'édition du PDF,
         // pas la dernière mise à jour du bulletin en base.
         $editionDate = now()->format('d/m/Y');
-        // Le bulletin LMD utilisait un logo plafonné à 54px, indépendamment du
-        // réglage PDF de l'école. On respecte maintenant ce réglage, avec un
-        // minimum lisible de 60px pour ce gabarit compact.
-        $logoHeight = max(60, min(120, (int) ($pdfCfg['logo_size'] ?? 60)));
+        // Dimensions spécifiques au bulletin LMD. Elles restent indépendantes
+        // des autres documents PDF : agrandir le logo ici ne modifie ni reçus,
+        // ni listes d'appel, ni attestations.
+        $layoutNumber = static function (string $key, float $default, float $min, float $max): float {
+            $raw = \App\Helpers\SettingsHelper::get($key, $default);
+            $value = is_numeric($raw) ? (float) $raw : $default;
+            return max($min, min($max, $value));
+        };
+        $fallbackLogo = is_numeric($pdfCfg['logo_size'] ?? null) ? (float) $pdfCfg['logo_size'] : 72;
+        $logoHeight = $layoutNumber('lmd_bulletin_logo_height', $fallbackLogo, 40, 140);
         $logoWidth = (int) round($logoHeight * 1.8);
+        $headerPaddingY = $layoutNumber('lmd_bulletin_header_padding_y', 6, 2, 14);
+        $headerMetaPaddingY = $layoutNumber('lmd_bulletin_header_meta_padding_y', 2, 0, 8);
+        $signatureSpaceHeight = $layoutNumber('lmd_bulletin_signature_space_height', 42, 20, 120);
     @endphp
 
     <style>
@@ -114,10 +123,10 @@
             vertical-align: middle;
         }
         .lmd-header-school {
-            padding: 5px 7px;
+            padding: {{ $headerPaddingY }}px 7px;
             border-right: 1px solid rgba(255,255,255,0.28);
         }
-        .lmd-header-document { padding: 6px 9px; }
+        .lmd-header-document { padding: {{ $headerPaddingY }}px 9px; }
         .lmd-header-title {
             color: {{ $hdrText }};
             font-size: {{ $fontTitle }}px;
@@ -132,7 +141,7 @@
         }
         .lmd-header-meta td {
             width: 50%;
-            padding: 2.2px 4px;
+            padding: {{ $headerMetaPaddingY }}px 4px;
             color: {{ $hdrText }};
             font-size: {{ $fontHeaderMeta }}px;
             line-height: 1.18;
@@ -147,8 +156,8 @@
             text-align: center;
         }
         .signature-space {
-            height: 42px;
-            line-height: 42px;
+            height: {{ $signatureSpaceHeight }}px;
+            line-height: {{ $signatureSpaceHeight }}px;
         }
         .signature-name {
             font-size: {{ min(32, $fontSignature + 1) }}px;
