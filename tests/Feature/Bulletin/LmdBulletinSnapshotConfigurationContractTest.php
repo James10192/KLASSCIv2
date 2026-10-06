@@ -39,6 +39,23 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString("lmd_bulletin_font_student', 10.5", $pdf);
     }
 
+    public function test_lmd_bulletin_header_is_compact_half_width_and_signature_keeps_real_signing_space(): void
+    {
+        $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));
+
+        $this->assertStringContainsString('class="lmd-document-header"', $pdf);
+        $this->assertStringContainsString('.lmd-header-school,', $pdf);
+        $this->assertStringContainsString('width: 50%;', $pdf);
+        $this->assertStringContainsString('BulletinMentionResolver::editionLabel()', $pdf);
+        $this->assertStringContainsString('$editionDate = now()->format(\'d/m/Y\')', $pdf);
+        $this->assertStringContainsString('$logoHeight = max(60, min(120', $pdf);
+        $this->assertStringContainsString('class="signature-title">Le Directeur des Études</div>', $pdf);
+        $this->assertStringContainsString('class="signature-space"', $pdf);
+        $this->assertStringContainsString('class="signature-name"', $pdf);
+        $this->assertStringNotContainsString('Nom / Signature et cachet du chef', $pdf);
+        $this->assertStringNotContainsString("}}, le {{ \$editionDate", $pdf);
+    }
+
     public function test_lmd_direction_is_a_real_setting_and_not_the_directors_name_fallback(): void
     {
         $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));
