@@ -736,6 +736,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // (synchrone). Simulation par defaut, motif obligatoire.
         Route::post('/notes/corriger', [App\Http\Controllers\API\CLI\CLIMoyennesController::class, 'corrigerNotes'])
             ->name('notes.corriger');
+        // Suppression ciblee et reversible de notes : simulation par defaut,
+        // annee et liste d'etudiants explicites, sans toucher aux evaluations
+        // ni aux inscriptions.
+        Route::post('/notes/supprimer', [App\Http\Controllers\API\CLI\CLINotesSuppressionController::class, 'supprimer'])
+            ->name('notes.supprimer');
         // Jetons SERVEUR du LMS (compte technique « Service LMS ») : le jeton
         // en clair n'est rendu qu'a la creation. Voir docs/api/LMS_JETON_SERVEUR.md.
         Route::post('/lms/jeton-serveur', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'creer'])
