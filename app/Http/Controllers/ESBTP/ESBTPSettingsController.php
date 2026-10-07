@@ -475,7 +475,7 @@ class ESBTPSettingsController extends Controller
             // Créer les settings tronc commun si inexistants
             $troncCommunDefaults = [
                 'tronc_commun_enabled' => ['value' => '0', 'description' => 'Activer le tronc commun'],
-                'tronc_commun_mga_include_s1' => ['value' => '1', 'description' => 'Reporter les notes S1 dans la MGA'],
+                'tronc_commun_mga_include_s1' => ['value' => '1', 'description' => 'Annuel apres specialisation : inclure le S1 origine avec le S2 specialite'],
                 'tronc_commun_report_paiements' => ['value' => '1', 'description' => 'Reporter automatiquement les paiements du tronc commun'],
                 'tronc_commun_report_notes' => ['value' => '1', 'description' => 'Conserver les notes du S1 accessibles depuis la spécialisation'],
                 'tronc_commun_bulletin_show_origin' => ['value' => '1', 'description' => 'Mentionner la classe de tronc commun sur le bulletin'],

@@ -998,10 +998,14 @@ class ESBTPBulletinController extends Controller
             // Bug observé : 7.00 + 0.13 = 7.13 au lieu de 10.49 + 0.13 = 10.62.
             $moyenneAvecAssiduite = $moyenneGlobale + ($noteAssiduite ?? 0);
             $classeIdS1 = (int) $bulletin->classe_id;
+            $classeIdS2 = (int) $bulletin->classe_id;
             $classMap = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)
                 ->resolve((int) $bulletin->etudiant_id, (int) $bulletin->classe_id, (int) $bulletin->annee_universitaire_id);
             if (! empty($classMap['semestre1_classe_id'])) {
                 $classeIdS1 = (int) $classMap['semestre1_classe_id'];
+            }
+            if (! empty($classMap['semestre2_classe_id'])) {
+                $classeIdS2 = (int) $classMap['semestre2_classe_id'];
             }
             $moyenneSemestre1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
                 $bulletin->etudiant_id,
@@ -1013,13 +1017,19 @@ class ESBTPBulletinController extends Controller
             );
             $moyenneSemestre2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
                 $bulletin->etudiant_id,
-                $bulletin->classe_id,
+                $classeIdS2,
                 $bulletin->annee_universitaire_id,
                 'semestre2',
                 $periodeCourante,
                 $moyenneAvecAssiduite
             );
-            $moyenneAnnuelle = $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+            $moyenneAnnuelle = $this->bulletinService->calculateConfiguredAnnualAverage(
+                $moyenneSemestre1,
+                $moyenneSemestre2,
+                $semesterWeights,
+                $classeIdS1,
+                $classeIdS2
+            );
             $effectifClasse = $this->bulletinService->getValidatedClassStudentCount(
                 $bulletin->classe_id,
                 $bulletin->annee_universitaire_id,

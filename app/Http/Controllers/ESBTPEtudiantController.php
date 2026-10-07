@@ -30,6 +30,7 @@ use App\Services\InscriptionWorkflowService;
 use App\Services\ClasseManagementService;
 use App\Services\FuzzyNameMatcher;
 use App\Services\DocumentPrintGuard;
+use App\Services\Documents\MoyennesAnnuellesDuCertificat;
 use App\Services\Frais\SoldesParSouscription;
 
 class ESBTPEtudiantController extends Controller
@@ -1531,6 +1532,29 @@ class ESBTPEtudiantController extends Controller
     }
 
     /**
+     * Enregistre une moyenne annuelle historique quand l'annee BTS est terminee
+     * et qu'aucune moyenne annuelle ne peut etre reconstruite selon la regle configuree.
+     */
+    public function enregistrerMoyenneAnnuelleHistorique(
+        Request $request,
+        ESBTPEtudiant $etudiant,
+        ESBTPInscription $inscription,
+        MoyennesAnnuellesDuCertificat $moyennes
+    ) {
+        abort_unless((int) $inscription->etudiant_id === (int) $etudiant->id, 404);
+
+        $validated = $request->validate([
+            'moyenne' => ['required', 'numeric', 'min:0', 'max:20'],
+        ]);
+
+        $moyennes->enregistrerHistorique($inscription, (float) $validated['moyenne'], auth()->user());
+
+        return redirect()
+            ->route('esbtp.etudiants.certificat.preview', $etudiant)
+            ->with('success', 'Moyenne annuelle historique enregistree. Elle sera utilisee uniquement tant qu\'aucune moyenne annuelle n\'est calculable selon la regle configuree.');
+    }
+
+    /**
      * Génère la response PDF certificat avec la disposition demandée.
      */
     private function respondWithCertificatPdf($id, string $disposition)
@@ -1602,133 +1626,7 @@ class ESBTPEtudiantController extends Controller
      */
     private function attachMoyenneCalculee($inscriptions, int $etudiantId)
     {
-        $poidS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
-        $poidS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
-        if ($poidS1 + $poidS2 <= 0) { $poidS1 = 1; $poidS2 = 1; }
-
-        $calcSem = function ($resultats, $periode) {
-            $sp = 0; $sc = 0;
-            foreach ($resultats->where('periode', $periode) as $r) {
-                $c = $r->coefficient ?? 1;
-                $sp += $r->moyenne * $c;
-                $sc += $c;
-            }
-            return $sc > 0 ? $sp / $sc : null;
-        };
-
-        foreach ($inscriptions as $inscription) {
-            $anneeId = optional($inscription->anneeUniversitaire)->id;
-            $mg = null;
-
-            // 1. Bulletins officiels (moyenne_generale + note_assiduite)
-            if ($anneeId) {
-                $buls = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiantId)
-                    ->where('annee_universitaire_id', $anneeId)
-                    ->where('moyenne_generale', '>', 0)
-                    ->get();
-                if ($buls->count()) {
-                    $mg = round($buls->avg(function ($b) {
-                        $attendanceNote = \App\Helpers\SettingsHelper::drapeau('bulletin_show_attendance_note', true)
-                            ? ($b->note_assiduite ?? 0)
-                            : 0;
-
-                        return $b->moyenne_generale + $attendanceNote;
-                    }), 2);
-                }
-            }
-
-            // 2. Fallback : résultats bruts avec pondération S1/S2
-            if ($mg === null && $anneeId) {
-                // Sans ce filtre, une ligne laissee sur une matiere etrangere a
-                // sa classe (rebascule CLI) comptait ses notes deux fois.
-                $resultats = \App\Domain\Academique\CoherenceSystemeAcademique::resultatsRetenus(
-                    \App\Models\ESBTPResultat::where('etudiant_id', $etudiantId)
-                        ->where('annee_universitaire_id', $anneeId)
-                        ->whereNotNull('moyenne')
-                        ->get(),
-                    'certificat/moyenne enregistree'
-                );
-
-                if ($resultats->count()) {
-                    $mS1 = $calcSem($resultats, 'semestre1');
-                    $mS2 = $calcSem($resultats, 'semestre2');
-
-                    if ($mS1 !== null && $mS2 !== null) {
-                        $mg = round(($mS1 * $poidS1 + $mS2 * $poidS2) / ($poidS1 + $poidS2), 2);
-                    } elseif ($mS1 !== null) {
-                        $mg = round($mS1, 2);
-                    } elseif ($mS2 !== null) {
-                        $mg = round($mS2, 2);
-                    } else {
-                        $sp = 0; $sc = 0;
-                        foreach ($resultats as $r) { $c = $r->coefficient ?? 1; $sp += $r->moyenne * $c; $sc += $c; }
-                        $mg = $sc > 0 ? round($sp / $sc, 2) : null;
-                    }
-                }
-            }
-
-            // 3. Dernier recours : les notes saisies, lues comme le Bilan de la
-            // fiche de resultats. Une annee passee peut n'avoir ni bulletin ni
-            // moyenne enregistree alors que ses notes existent (notes importees,
-            // recalcul jamais passe) : le certificat imprimait alors « — » la ou
-            // la fiche montrait la moyenne. Annees terminees seulement : sur
-            // l'annee en cours, ce calcul donne une moyenne partielle.
-            if ($mg === null && $anneeId && $this->anneeTerminee($inscription->anneeUniversitaire)) {
-                $mg = $this->moyenneAnnuelleDepuisLesNotes($inscription, $etudiantId, $anneeId);
-            }
-
-            $inscription->moyenne_generale_calculee = $mg;
-        }
-
-        return $inscriptions;
-    }
-
-    /**
-     * Moyenne annuelle calculee en direct depuis les notes, comme le Bilan de
-     * la fiche de resultats. BTS seulement : le calcul LMD (UE, credits,
-     * compensation) ne passe pas par ce service.
-     */
-    private function moyenneAnnuelleDepuisLesNotes($inscription, int $etudiantId, int $anneeId): ?float
-    {
-        $classeId = $inscription->classe_id ?? null;
-        if (! $classeId || (optional($inscription->classe)->systeme_academique ?? '') === 'LMD') {
-            return null;
-        }
-
-        // Un repli ne doit jamais rendre le certificat impossible a tirer :
-        // en cas d'echec, la ligne reste « — » et l'echec est journalise.
-        try {
-            $total = app(\App\Services\ESBTP\BtsCurrentResultSnapshotService::class)
-                ->getAnnualSnapshot($etudiantId, (int) $classeId, $anneeId)['effective_total'] ?? null;
-        } catch (\Throwable $e) {
-            \Log::warning('Certificat : moyenne non calculee depuis les notes.', [
-                'etudiant_id' => $etudiantId,
-                'annee_universitaire_id' => $anneeId,
-                'erreur' => $e->getMessage(),
-            ]);
-
-            return null;
-        }
-
-        return $total !== null ? round((float) $total, 2) : null;
-    }
-
-    /**
-     * Annee terminee : sa date de fin est passee. Sans date de fin, toute annee
-     * autre que l'annee courante. La date ecarte aussi l'annee de la campagne
-     * suivante, qui n'est pas « courante » mais pas terminee non plus.
-     */
-    private function anneeTerminee($annee): bool
-    {
-        if (! $annee) {
-            return false;
-        }
-
-        if (! empty($annee->end_date)) {
-            return $annee->estTerminee();
-        }
-
-        return ! ($annee->is_current ?? false);
+        return app(MoyennesAnnuellesDuCertificat::class)->attacher($inscriptions, $etudiantId);
     }
 
     /**

@@ -4642,16 +4642,14 @@
                             @if($abMg !== null)
                                 <span style="font-size:.8rem; font-weight:700; color:{{ $abMgCls }};">{{ number_format($abMg, 2) }}/20</span>
                             @endif
-                            @php
-                                $_abClasseId = $autreInsc->classe_id;
-                                $_abAnneeId = optional($autreInsc->anneeUniversitaire)->id;
-                            @endphp
-                            @php $_abPdfParams = ['bulletin' => $ab->id, 'classe_id' => $_abClasseId, 'periode' => $ab->periode, 'annee_universitaire_id' => $_abAnneeId]; @endphp
-                            <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_abPdfParams) }}"
+                            {{-- Le bulletin est déjà identifié : passer par sa route liée au
+                                 modèle évite l'ambiguïté legacy de pdf-params, où "bulletin"
+                                 signifie en réalité etudiant_id. --}}
+                            <a href="{{ route('esbtp.bulletins.preview-pdf', $ab) }}"
                                class="acad-arch-pdf-link acad-arch-pdf-link--ghost" target="_blank" title="Aperçu PDF">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{{ route('esbtp.bulletins.pdf-params', $_abPdfParams) }}"
+                            <a href="{{ route('esbtp.bulletins.download', $ab) }}"
                                class="acad-arch-pdf-link" target="_blank" title="Télécharger le bulletin PDF">
                                 <i class="fas fa-file-pdf"></i> PDF
                             </a>

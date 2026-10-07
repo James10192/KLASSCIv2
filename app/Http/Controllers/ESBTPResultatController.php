@@ -1044,13 +1044,32 @@ class ESBTPResultatController extends Controller
         // « aucune note ». Pas de repli. Il rendait la moyenne courante (0 faute de note) sur l'onglet ouvert,
         // un bulletin officiel périmé sur l'autre, et sans classe il lisait les notes de toutes les années
         // jusqu'à lever « Classe invalide ». Le bulletin officiel d'un semestre reste lisible dans le bandeau
-        // « Officiel » de l'onglet de CE semestre ; la moyenne annuelle exige des notes sur les deux.
+        // « Officiel » de l'onglet de CE semestre ; la moyenne annuelle suit la politique configuree
+        // (S1+S2 ou S2 de specialite pour un etudiant oriente).
         $moyenneSemestre1 = $annualSnapshot['semester_snapshots']['semestre1']['effective_total'] ?? null;
         $moyenneSemestre2 = $annualSnapshot['semester_snapshots']['semestre2']['effective_total'] ?? null;
-        $moyenneAnnuelle = ($annualSnapshot['state'] ?? null) === 'annual_complete'
+        $annualState = $annualSnapshot['state'] ?? null;
+        $annualClassMap = $annualSnapshot['class_map'] ?? [];
+        $annualS1ClassId = (int) ($annualClassMap['semestre1_classe_id'] ?? $classe?->id ?? 0);
+        $annualS2ClassId = (int) ($annualClassMap['semestre2_classe_id'] ?? $classe?->id ?? 0);
+        $moyenneAnnuelle = in_array($annualState, ['annual_complete', 'annual_complete_no_coefficients'], true)
             ? ($annualSnapshot['effective_total'] ?? null)
-            : $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
-        $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
+            : ($classe
+                ? $this->bulletinService->calculateConfiguredAnnualAverage(
+                    $moyenneSemestre1,
+                    $moyenneSemestre2,
+                    $semesterWeights,
+                    $annualS1ClassId,
+                    $annualS2ClassId
+                )
+                : null);
+        $detailUiState = $this->buildAnnualDetailUiState(
+            $periode,
+            $moyenneSemestre1,
+            $moyenneSemestre2,
+            $moyenneAnnuelle,
+            $annualState
+        );
         $bulletinWorkflowPeriode = $detailUiState['bulletin_workflow_periode'];
         $bulletinWorkflowPeriodeLabel = $detailUiState['bulletin_workflow_periode_label'];
         if (! $classe) {
@@ -2873,11 +2892,19 @@ class ESBTPResultatController extends Controller
         return $alerts;
     }
 
-    private function buildAnnualDetailUiState(string $periode, ?float $moyenneSemestre1, ?float $moyenneSemestre2, ?float $moyenneAnnuelle): array
-    {
+    private function buildAnnualDetailUiState(
+        string $periode,
+        ?float $moyenneSemestre1,
+        ?float $moyenneSemestre2,
+        ?float $moyenneAnnuelle,
+        ?string $annualSnapshotState = null
+    ): array {
         $hasSemestre1 = $moyenneSemestre1 !== null;
         $hasSemestre2 = $moyenneSemestre2 !== null;
-        $annualComplete = $periode === 'annuel' && $hasSemestre1 && $hasSemestre2 && $moyenneAnnuelle !== null;
+        $snapshotComplete = in_array($annualSnapshotState, ['annual_complete', 'annual_complete_no_coefficients'], true);
+        $annualComplete = $periode === 'annuel'
+            && $moyenneAnnuelle !== null
+            && ($snapshotComplete || ($hasSemestre1 && $hasSemestre2));
         $annualIncomplete = $periode === 'annuel' && ! $annualComplete && ($hasSemestre1 || $hasSemestre2);
         $primarySemester = $annualComplete
             ? 'semestre2'
@@ -2908,9 +2935,10 @@ class ESBTPResultatController extends Controller
     /**
      * Construit le detail par semestre affiche sur l'onglet annuel.
      *
-     * La moyenne annuelle est une moyenne des DEUX moyennes semestrielles, pas une moyenne
-     * ponderee de toutes les matieres de l'annee : il n'existe donc pas de liste de matieres
-     * annuelle (le service met d'ailleurs sa cle 'subjects' a vide en annual_complete).
+     * La moyenne annuelle suit la politique BTS configuree : S1+S2, ou S2 de specialite
+     * seulement apres orientation. Elle n'est jamais une moyenne directe de toutes les
+     * matieres de l'annee ; il n'existe donc pas de liste de matieres annuelle
+     * (le service met sa cle 'subjects' a vide en annual_complete).
      * On rend un bloc par semestre, chacun avec ses matieres, sa moyenne et sa decision,
      * pour que les chiffres affiches se reconcilient toujours avec les lignes affichees.
      *
