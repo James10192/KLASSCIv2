@@ -5121,6 +5121,10 @@
         /* ── Autres inscriptions (exclure l'inscription de référence) ── */
         $finAutresInscs = $etudiant->inscriptions->filter(fn($i) => !$finInscRef || $i->id !== $finInscRef->id)->sortByDesc('created_at');
 
+        /* La modale d'encaissement doit exister même sans inscription courante :
+           les cartes "Autres années" peuvent encore porter un solde à encaisser. */
+        $finHasPaymentTarget = (bool) $finInscRef || $finAutresInscs->isNotEmpty();
+
         /* ── Collect paiements de l'inscription de référence ── */
         $finPaiementsActive = collect();
         if($finInscRef) {
@@ -5290,7 +5294,7 @@
             @endif
             @if($finInscRef && $finSolde > 0)
             @can('paiements.create')
-            <button class="hero-btn primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, var(--k-blue), var(--k-blue-2)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(4,83,203,.3);"
+            <button type="button" class="hero-btn primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, var(--k-blue), var(--k-blue-2)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(4,83,203,.3);"
                     data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal"
                     onclick="prepareEtudiantPaymentModal({{ $finInscRef->id }})">
                 <i class="fas fa-plus-circle"></i> Enregistrer un paiement
@@ -5748,7 +5752,7 @@
                         <i class="fas fa-file-pdf"></i> PDF Situation
                     </a>
                     @can('paiements.create')
-                    <button {{ $autreSolde <= 0 ? 'disabled' : '' }}
+                    <button type="button" {{ $autreSolde <= 0 ? 'disabled' : '' }}
                             style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; font-size:.8rem; border-radius:8px; background:linear-gradient(135deg, var(--k-blue, #0453cb), var(--k-blue-2, #5e91de)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(4,83,203,.25);{{ $autreSolde <= 0 ? ' opacity:.5; cursor:not-allowed;' : '' }}"
                             @if($autreSolde > 0) data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal" onclick="prepareEtudiantPaymentModal({{ $autreInsc->id }})" @endif>
                         <i class="fas fa-{{ $autreSolde <= 0 ? 'check-circle' : 'plus-circle' }}"></i>
@@ -6609,6 +6613,10 @@ function etdHideSkeleton(el, cls) {
 
 function prepareEtudiantPaymentModal(inscriptionId) {
     const form = document.getElementById('etudiantPaymentForm');
+    if (!form) {
+        console.error('KLASSCI: formulaire etudiantPaymentForm introuvable pour l\'inscription', inscriptionId);
+        return;
+    }
     form.action = `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
     form.reset();
     const dateInput = form.querySelector('#etd_date_paiement');
@@ -6864,7 +6872,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .etd-skeleton-input { height: 38px; width: 100%; }
 .etd-skeleton-msg { height: 52px; width: 100%; margin-bottom: 1rem; }
 </style>
-@if(isset($finInscRef) && $finInscRef)
+@if(($voirFinances ?? false) && ($finHasPaymentTarget ?? false))
 <div class="modal fade" id="etudiantPaymentModal" tabindex="-1" aria-labelledby="etudiantPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border-radius:15px; border:none; box-shadow:0 10px 40px rgba(0,0,0,.2);">
