@@ -33,7 +33,7 @@ class CLINotesImportController extends BaseApiController
             'annee_universitaire_id' => 'required|integer|exists:esbtp_annee_universitaires,id',
             'motif' => 'required|string|min:10|max:500',
             'entries' => 'required|array|min:1|max:'.self::MAX_LIGNES,
-            'entries.*.evaluation_id' => 'required|integer|distinct',
+            'entries.*.evaluation_id' => 'required|integer',
             'entries.*.etudiant_id' => 'required|integer|exists:esbtp_etudiants,id',
             'entries.*.note' => 'required|numeric|min:0|max:100',
             'dry_run' => 'nullable|boolean',
@@ -67,7 +67,7 @@ class CLINotesImportController extends BaseApiController
             ->where('workflow_step', 'etudiant_cree')
             ->whereNull('deleted_at')
             ->get(['etudiant_id', 'classe_id'])
-            ->mapWithKeys(fn (ESBTPInscription $i) => [(int) $i->etudiant_id.':'.(int) $i->classe_id => true]);
+            ->mapWithKeys(fn (ESBTPInscription $i) => [((int) $i->etudiant_id).':'.((int) $i->classe_id) => true]);
 
         $notes = ESBTPNote::withTrashed()
             ->whereIn('evaluation_id', $evaluationIds)
