@@ -3532,17 +3532,25 @@
                             </div>
                             <div class="col-md-3">
                                 <div class="ls-field">
-                                    <div class="ls-label">Note éliminatoire (/20)</div>
+                                    <div class="ls-label">Note éliminatoire ECUE (/20)</div>
                                     <input type="number" class="ls-input" name="setting_lmd_note_eliminatoire"
                                            value="{{ $lmdVal('lmd_note_eliminatoire', 0) }}" min="0" max="10" step="0.5">
-                                    <div class="ls-hint">0 = pas de note éliminatoire (UEMOA)</div>
+                                    <div class="ls-hint">Appliquée par le jury aux ECUE. 0 = désactivée.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="ls-field">
+                                    <div class="ls-label">Minimum UE pour APC (/20)</div>
+                                    <input type="number" class="ls-input" name="setting_lmd_compensation_inter_ue_minimum"
+                                           value="{{ $lmdVal('lmd_compensation_inter_ue_minimum', 0) }}" min="0" max="20" step="0.5">
+                                    <div class="ls-hint">0 = comportement historique. Ex. 8 : une UE à 7,5 reste NAQ.</div>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <label class="ls-toggle" for="lmd_compensation_inter_ue">
                                     <div class="ls-toggle-text">
                                         <div class="ls-toggle-label">Compensation inter-UE</div>
-                                        <div class="ls-toggle-hint">APC : UE &lt; 10 compensée si moy. gén. &ge; 10</div>
+                                        <div class="ls-toggle-hint">APC seulement si l'UE atteint le minimum APC et si la moyenne générale atteint le seuil de validation.</div>
                                     </div>
                                     <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
                                         <input class="form-check-input" type="checkbox" id="lmd_compensation_inter_ue"

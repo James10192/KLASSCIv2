@@ -332,6 +332,7 @@ class LmdBulletinProjectionService
     private function appliquerCompensationLive(array &$resultatsUEs, ?float $moyenneGenerale): int
     {
         $threshold = $this->rules->validationThreshold();
+        $compensationMinimum = $this->rules->interUeCompensationMinimum();
         $creditsCapitalises = 0;
 
         foreach ($resultatsUEs as &$resultat) {
@@ -343,7 +344,12 @@ class LmdBulletinProjectionService
                 $resultat['statut'] = ESBTPLMDResultatUE::STATUT_AQ;
                 $resultat['credits_capitalises'] = $resultat['credit'];
                 $creditsCapitalises += $resultat['credit'];
-            } elseif ($this->rules->interUeCompensationEnabled() && $moyenneGenerale !== null && $moyenneGenerale >= $threshold) {
+            } elseif (
+                $this->rules->interUeCompensationEnabled()
+                && (float) $resultat['moyenne'] >= $compensationMinimum
+                && $moyenneGenerale !== null
+                && $moyenneGenerale >= $threshold
+            ) {
                 $resultat['statut'] = ESBTPLMDResultatUE::STATUT_APC;
                 $resultat['credits_capitalises'] = $resultat['credit'];
                 $creditsCapitalises += $resultat['credit'];
