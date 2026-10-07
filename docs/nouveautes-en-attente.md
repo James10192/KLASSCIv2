@@ -13,6 +13,7 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
 
+- 2026-10-07 · #1439 · fiche étudiant : si l'année courante est déjà échue, la bannière et la carte Inscriptions proposent la réinscription vers l'année suivante sans attendre la bascule de l'année courante ni un rendez-vous
 - 2026-10-07 · #1431 · fiche étudiant > Finances : « Enregistrer un paiement » ouvre aussi la modale sur une ancienne inscription qui reste à solder, même sans inscription courante
 - 2026-10-06 · #1429 · BTS : regle annuelle configurable apres tronc commun (S1+S2 ou S2 specialite), Resultats/bulletin/certificat/reinscription alignes, saisie historique et PDFs de la fiche etudiant attaches au bon eleve
 - 2026-10-06 · #1427 · notes BTS/LMD et évaluations : choisir localement une ancienne année pour terminer la saisie et la clôture, sans changer l’année courante de KLASSCI

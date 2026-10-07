@@ -2225,7 +2225,13 @@
      HERO
 ════════════════════════════════════════════════════════════════ --}}
 @php
-    $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+    // Le contrôleur fournit l'année de travail et, séparément, la cible de
+    // réinscription. Repli conservé pour les rendus isolés de la vue.
+    $anneeCourante = $anneeCourante ?? \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+    $reinscriptionCible = $reinscriptionCible ?? null;
+    $anneeCouranteEchue = $anneeCouranteEchue ?? false;
+    $doitProposerReinscription = $doitProposerReinscription ?? false;
+
     $inscCourante = $anneeCourante
         ? $etudiant->inscriptions->first(fn($i) => $i->annee_universitaire_id === $anneeCourante->id)
         : null;
@@ -2574,9 +2580,10 @@
 <div class="tab-panel active" id="tab-overview">
     @include('esbtp.partials.bts-journey', ['btsJourney' => $btsJourney ?? null])
 
-    {{-- Bannière : étudiant non inscrit pour l'année courante (masquée si pré-inscrit sous réserve) --}}
-    @if($anneeCourante && !$inscCourante && !$inscFutureSousReserve)
-    <div style="
+    {{-- Bannière : la cible de réinscription est indépendante de is_current.
+         Une année peut rester "courante" administrativement tout en étant échue. --}}
+    @if($doitProposerReinscription && $reinscriptionCible)
+    <div data-reinscription-cible="{{ $reinscriptionCible->id }}" style="
         background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
         border: 1.5px solid #ffc107;
         border-left: 5px solid #e65100;
@@ -2592,15 +2599,23 @@
         </div>
         <div>
             <div style="font-weight:700; color:#b45309; font-size:.95rem; margin-bottom:4px;">
-                Cet étudiant n'est pas réinscrit pour l'année {{ $anneeCourante->name }}
+                @if($anneeCouranteEchue && $inscCourante && $anneeCourante && $reinscriptionCible->id !== $anneeCourante->id)
+                    L'année {{ $anneeCourante->name }} est échue — réinscription à préparer pour {{ $reinscriptionCible->name }}
+                @else
+                    Cet étudiant n'est pas réinscrit pour l'année {{ $reinscriptionCible->name }}
+                @endif
             </div>
             <div style="color:#92400e; font-size:.85rem; line-height:1.5;">
-                Les indicateurs ci-dessous ne sont pas disponibles pour l'année en cours.
-                Pour afficher les données académiques, financières et de présence, veuillez d'abord réinscrire cet étudiant.
+                @if($anneeCouranteEchue && $inscCourante && $anneeCourante && $reinscriptionCible->id !== $anneeCourante->id)
+                    L'année {{ $anneeCourante->name }} reste l'année courante de travail, mais sa date de fin est passée.
+                    Vous pouvez lancer directement la réinscription vers <strong>{{ $reinscriptionCible->name }}</strong>, même sans prise de rendez-vous préalable.
+                @else
+                    Les indicateurs de la nouvelle année ne seront disponibles qu'après la réinscription de cet étudiant.
+                @endif
             </div>
             <a href="{{ route('esbtp.reinscription.show', $etudiant) }}"
                style="display:inline-flex; align-items:center; gap:6px; margin-top:10px; padding:6px 14px; background:#e65100; color:#fff; border-radius:6px; font-size:.82rem; font-weight:600; text-decoration:none;">
-                <i class="fas fa-redo"></i> Réinscrire pour {{ $anneeCourante->name }}
+                <i class="fas fa-redo"></i> Réinscrire pour {{ $reinscriptionCible->name }}
             </a>
         </div>
     </div>
@@ -3257,15 +3272,23 @@
         @empty
         <div style="padding:24px;color:var(--k-gray);font-size:.9rem;">Aucune inscription enregistrée.</div>
         @endforelse
-        {{-- CTA Réinscription si pas encore inscrit pour l'année courante --}}
-        @if($anneeCourante && !$inscCourante && !$inscFutureSousReserve)
-        <a href="{{ route('esbtp.reinscription.show', $etudiant) }}" class="insc-card insc-cta-card">
+        {{-- CTA Réinscription : année cible calculée par le moteur, pas seulement is_current --}}
+        @if($doitProposerReinscription && $reinscriptionCible)
+        <a href="{{ route('esbtp.reinscription.show', $etudiant) }}"
+           class="insc-card insc-cta-card"
+           data-reinscription-cible="{{ $reinscriptionCible->id }}">
             <div class="insc-card-accent inactif"></div>
             <div class="insc-card-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;">
                 <div class="insc-cta-icon"><i class="fas fa-plus"></i></div>
                 <div>
-                    <div class="insc-cta-title">Réinscrire pour {{ $anneeCourante->name }}</div>
-                    <div class="insc-cta-sub">Cet étudiant n'est pas encore inscrit pour l'année en cours</div>
+                    <div class="insc-cta-title">Réinscrire pour {{ $reinscriptionCible->name }}</div>
+                    <div class="insc-cta-sub">
+                        @if($anneeCouranteEchue && $inscCourante && $anneeCourante && $reinscriptionCible->id !== $anneeCourante->id)
+                            {{ $anneeCourante->name }} est échue ; la prochaine inscription peut être préparée dès maintenant
+                        @else
+                            Cet étudiant n'est pas encore inscrit pour l'année cible
+                        @endif
+                    </div>
                 </div>
                 <i class="fas fa-arrow-right" style="color:var(--k-blue); opacity:.6;"></i>
             </div>
