@@ -762,14 +762,15 @@ class LMDBulletinService
      * Appliquer la compensation inter-UE et calculer les credits capitalises.
      *
      * Regles:
-     * - AQ: moyenne_ue >= 10 → credits capitalises
-     * - APC: moyenne_ue < 10 MAIS moyenne_generale >= 10 → credits capitalises
+     * - AQ: moyenne_ue >= seuil de validation → credits capitalises
+     * - APC: minimum APC <= moyenne_ue < seuil ET moyenne_generale >= seuil
      * - NAQ: sinon → pas de credits
      */
     public function appliquerCompensation(array $resultatsUEs, ?float $moyenneGenerale): int
     {
         $threshold = $this->getValidationThreshold();
         $compensationEnabled = $this->rules->interUeCompensationEnabled();
+        $compensationMinimum = $this->rules->interUeCompensationMinimum();
         $creditsCapitalises = 0;
         $apcIds = [];
 
@@ -779,8 +780,13 @@ class LMDBulletinService
             if ((float) $resultat->moyenne >= $threshold) {
                 // Deja AQ
                 $creditsCapitalises += $resultat->credit;
-            } elseif ($compensationEnabled && $moyenneGenerale !== null && $moyenneGenerale >= $threshold) {
-                // Compensation: APC
+            } elseif (
+                $compensationEnabled
+                && (float) $resultat->moyenne >= $compensationMinimum
+                && $moyenneGenerale !== null
+                && $moyenneGenerale >= $threshold
+            ) {
+                // Compensation: APC, seulement au-dessus du plancher de l'UE.
                 $apcIds[] = $resultat->id;
                 $creditsCapitalises += $resultat->credit;
             }

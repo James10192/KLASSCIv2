@@ -24,6 +24,17 @@ class LmdAcademicRuleProfileTest extends TestCase
         $this->assertFalse($profile->interUeCompensationEnabled());
     }
 
+    public function test_apc_minimum_is_tenant_configurable_and_retrocompatible(): void
+    {
+        $default = new LmdAcademicRuleProfile(fn (string $key, mixed $fallback = null): mixed => $fallback);
+        $configured = new LmdAcademicRuleProfile(
+            fn (string $key, mixed $fallback = null): mixed => $key === 'lmd_compensation_inter_ue_minimum' ? '8' : $fallback
+        );
+
+        $this->assertSame(0.0, $default->interUeCompensationMinimum());
+        $this->assertSame(8.0, $configured->interUeCompensationMinimum());
+    }
+
     /** @dataProvider mentionProvider */
     public function test_mentions_use_the_same_profile_for_bulletins_and_jurys(float $average, ?string $expected): void
     {
