@@ -516,6 +516,21 @@ class ESBTPEvaluation extends Model implements Auditable
      */
     protected static function booted(): void
     {
+        // `enseignant_id` identifie le professeur responsable de l'évaluation,
+        // jamais l'utilisateur qui l'a créée. Sans ce garde, une permission de
+        // saisie trop large pouvait faire apparaître un agent administratif sur
+        // les bulletins LMD.
+        static::saving(function (self $evaluation): void {
+            if ((! $evaluation->exists || $evaluation->isDirty('enseignant_id')) && $evaluation->enseignant_id) {
+                $enseignant = User::find($evaluation->enseignant_id);
+                if (! $enseignant || ! $enseignant->hasAnyRole(['enseignant', 'teacher'])) {
+                    throw ValidationException::withMessages([
+                        'enseignant_id' => 'L’enseignant d’une évaluation doit être un utilisateur ayant le rôle enseignant.',
+                    ]);
+                }
+            }
+        });
+
         static::saving(function (self $evaluation): void {
             $doitControler = ! $evaluation->exists
                 || $evaluation->isDirty(['matiere_id', 'classe_id']);
