@@ -741,6 +741,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // ni aux inscriptions.
         Route::post('/notes/supprimer', [App\Http\Controllers\API\CLI\CLINotesSuppressionController::class, 'supprimer'])
             ->name('notes.supprimer');
+        // Import atomique d'un relevé vérifié : met à jour/crée des notes dans
+        // des évaluations existantes, après simulation et confirmation explicite.
+        Route::post('/notes/importer', [App\Http\Controllers\API\CLI\CLINotesImportController::class, 'importer'])
+            ->name('notes.importer');
         // Jetons SERVEUR du LMS (compte technique « Service LMS ») : le jeton
         // en clair n'est rendu qu'a la creation. Voir docs/api/LMS_JETON_SERVEUR.md.
         Route::post('/lms/jeton-serveur', [App\Http\Controllers\API\CLI\CLILmsJetonController::class, 'creer'])
