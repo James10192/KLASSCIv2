@@ -99,6 +99,9 @@
         $headerPaddingY = $layoutNumber('lmd_bulletin_header_padding_y', 6, 2, 14);
         $headerMetaPaddingY = $layoutNumber('lmd_bulletin_header_meta_padding_y', 2, 0, 8);
         $signatureSpaceHeight = $layoutNumber('lmd_bulletin_signature_space_height', 42, 20, 120);
+        $bottomWidthPercent = $layoutNumber('lmd_bulletin_bottom_width_percent', 104, 90, 108);
+        $bottomHorizontalOffset = (100 - $bottomWidthPercent) / 2;
+        $paysEtablissement = trim((string) ($etab['pays'] ?? '')) ?: 'Côte d\'Ivoire';
     @endphp
 
     <style>
@@ -280,12 +283,18 @@
             min-height: 68px;
         }
         .bottom-note {
+            width: {{ $bottomWidthPercent }}%;
+            margin-left: {{ $bottomHorizontalOffset }}%;
             text-align: center;
             font-size: {{ $fontBottom }}px;
             color: {{ $secondary }};
             margin-top: 5px;
             line-height: 1.32;
             page-break-inside: avoid;
+        }
+        .bottom-note-line {
+            display: block;
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -552,8 +561,8 @@
 </table>
 
 <div class="bottom-note">
-    {{ $bottomText }}<br>
-    {{ $etab['nom'] ?? 'KLASSCI' }}, Etablissement {{ mb_strtolower($statutEtablissement, 'UTF-8') }}, Côte d'Ivoire
+    <span class="bottom-note-line">{{ $bottomText }}</span>
+    <span class="bottom-note-line">{{ $etab['nom'] ?? 'KLASSCI' }}, Etablissement {{ mb_strtolower($statutEtablissement, 'UTF-8') }}, {{ $paysEtablissement }}</span>
 </div>
 <div style="text-align: center; font-size: {{ min(32, $fontBottom + .5) }}px; font-weight: 800; margin-top: 3px; page-break-inside: avoid;">
     {{ \App\Services\BulletinMentionResolver::authenticityText() }}

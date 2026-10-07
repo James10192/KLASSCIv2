@@ -518,6 +518,7 @@ class ESBTPLMDBulletinController extends Controller
             'email' => $schoolInfo['email'],
             'logo' => $schoolInfo['logo'],
             'ville' => $schoolInfo['city'] ?: 'Abidjan',
+            'pays' => trim((string) ($schoolInfo['country'] ?? '')) ?: 'Côte d\'Ivoire',
             'directeur' => $schoolInfo['director_name'],
         ];
 
