@@ -735,9 +735,9 @@ class BulletinService
             ->where('moyenne_generale', '>', 0)
             ->exists();
 
-        // La moyenne annuelle BTS porte toujours les deux semestres de l'etudiant.
-        // Apres orientation, S1 reste dans sa classe d'origine / tronc commun et
-        // S2 dans sa classe de specialite : la carte annuelle est obligatoire.
+        // La carte annuelle reste obligatoire dans les deux politiques :
+        // S1 garde sa classe d'origine / tronc commun et S2 sa classe de specialite.
+        // Le reglage decide ensuite si l'annuel oriente combine S1+S2 ou prend S2 seul.
         $classeIdS1 = $classeId;
         $classeTroncCommun = null;
         $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
