@@ -107,3 +107,4 @@ class CLINotesSuppressionController extends BaseApiController
             ? 'Aucune écriture : prévisualisation. Relancer avec dry_run=false et la confirmation pour supprimer les notes.'
             : 'Notes supprimées. Les évaluations, étudiants et inscriptions sont inchangés.');
 }
+}
