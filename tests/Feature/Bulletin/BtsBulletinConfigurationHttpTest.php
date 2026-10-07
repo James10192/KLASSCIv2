@@ -188,6 +188,7 @@ class BtsBulletinConfigurationHttpTest extends TestCase
             'lmd_bulletin_header_padding_y' => '5',
             'lmd_bulletin_header_meta_padding_y' => '1.5',
             'lmd_bulletin_signature_space_height' => '58',
+            'lmd_bulletin_bottom_width_percent' => '106',
             'lmd_bulletin_parcours_auto' => '1',
             'lmd_bulletin_direction' => 'Direction des Études',
         ]);
@@ -201,6 +202,7 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         self::assertSame('5', SettingsHelper::get('lmd_bulletin_header_padding_y'));
         self::assertSame('1.5', SettingsHelper::get('lmd_bulletin_header_meta_padding_y'));
         self::assertSame('58', SettingsHelper::get('lmd_bulletin_signature_space_height'));
+        self::assertSame('106', SettingsHelper::get('lmd_bulletin_bottom_width_percent'));
         self::assertSame('Direction des Études', SettingsHelper::get('lmd_bulletin_direction'));
     }
 

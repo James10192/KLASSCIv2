@@ -23,7 +23,11 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString('lmd_bulletin_font_table_header', $pdf);
         $this->assertStringContainsString('lmd_bulletin_font_teacher', $pdf);
         $this->assertStringContainsString('$statutEtablissement', $pdf);
-        $this->assertStringNotContainsString('Etablissement privé, Côte d\'Ivoire', $pdf);
+        $this->assertStringContainsString('$paysEtablissement', $pdf);
+        $this->assertStringContainsString("lmd_bulletin_bottom_width_percent", $pdf);
+        $this->assertStringContainsString('class="bottom-note-line"', $pdf);
+        $this->assertStringContainsString('white-space: nowrap', $pdf);
+        $this->assertStringNotContainsString("}}, Côte d'Ivoire", $pdf);
     }
 
     public function test_lmd_bulletin_pdf_uses_space_for_readability_and_can_flow_cleanly_to_page_two(): void
@@ -115,6 +119,8 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString('LMDBulletinPrintSettings::layoutFields()', $partial);
         $this->assertStringContainsString('lmd_bulletin_logo_height', $support);
         $this->assertStringContainsString('lmd_bulletin_signature_space_height', $support);
+        $this->assertStringContainsString('lmd_bulletin_bottom_width_percent', $support);
+        $this->assertStringContainsString('Largeur du pied de page', $support);
         $this->assertStringContainsString('LMDBulletinPrintSettings::validationRules()', $controller);
         $this->assertStringContainsString('...LMDBulletinPrintSettings::fieldKeys()', $controller);
         $this->assertStringContainsString("initialTab === 'lmd' ? 'lmd' : 'bts'", $configuration);
