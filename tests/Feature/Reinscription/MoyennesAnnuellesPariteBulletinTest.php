@@ -17,6 +17,7 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPNote;
 use App\Models\User;
 use App\Services\BulletinService;
+use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\Reinscription\MoyennesAnnuellesDuBulletin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Bts\Concerns\SeedsConfiguredBulletin;
@@ -26,9 +27,9 @@ use Tests\TestCase;
  * La reinscription decide sur la moyenne annuelle que le bulletin IMPRIME.
  * `MoyennesAnnuellesDuBulletin` en tient une seconde ecriture, pour toute une
  * promotion d'un coup : ce test la confronte au bulletin lui-meme, sur un eleve
- * oriente apres un semestre de tronc commun. Meme si une ancienne instance
- * porte encore `tronc_commun_mga_include_s1=0`, le S1 de l'etudiant reste
- * une composante obligatoire de sa moyenne annuelle.
+ * oriente apres un semestre de tronc commun, dans les deux politiques possibles.
+ * Le snapshot courant (source de resultats.index et du classement live) doit
+ * basculer avec le meme reglage.
  */
 class MoyennesAnnuellesPariteBulletinTest extends TestCase
 {
@@ -47,25 +48,37 @@ class MoyennesAnnuellesPariteBulletinTest extends TestCase
     {
         SettingsHelper::setOrCreate('tronc_commun_mga_include_s1', '1');
 
-        [$attendue, $calculee] = $this->lesDeuxMoyennes();
+        [$attendue, $calculee, $snapshot] = $this->lesDeuxMoyennes();
 
         $this->assertNotNull($attendue, 'Temoin : le bulletin imprime une annuelle quand le S1 vient du tronc commun.');
         $this->assertEqualsWithDelta((18 + 2 * 9.13) / 3, $attendue, 0.01, 'Temoin : le S1 enregistre du tronc commun est bien lu.');
         $this->assertEqualsWithDelta($attendue, $calculee, 0.001);
+        $this->assertSame('s1_s2', $snapshot['annual_policy']);
+        $this->assertNotEquals(
+            $snapshot['semester_snapshots']['semestre2']['effective_total'],
+            $snapshot['effective_total']
+        );
     }
 
-    public function test_ancien_setting_coupe_ne_supprime_plus_le_s1_du_tronc_commun(): void
+    public function test_mode_s2_seul_reste_identique_entre_bulletin_reinscription_et_resultats(): void
     {
         SettingsHelper::setOrCreate('tronc_commun_mga_include_s1', '0');
 
-        [$attendue, $calculee] = $this->lesDeuxMoyennes();
+        [$attendue, $calculee, $snapshot] = $this->lesDeuxMoyennes();
 
         $this->assertNotNull($attendue);
-        $this->assertEqualsWithDelta((18 + 2 * 9.13) / 3, $attendue, 0.01);
+        $this->assertEqualsWithDelta(9.13, $attendue, 0.01);
         $this->assertEqualsWithDelta($attendue, $calculee, 0.001);
+        $this->assertSame('specialisation_s2', $snapshot['annual_policy']);
+        $this->assertEqualsWithDelta(
+            (float) $snapshot['semester_snapshots']['semestre2']['effective_total'],
+            (float) $snapshot['effective_total'],
+            0.001
+        );
+        $this->assertContains($snapshot['state'], ['annual_complete', 'annual_complete_no_coefficients']);
     }
 
-    /** @return array{0: float|null, 1: float|null} */
+    /** @return array{0: float|null, 1: float|null, 2: array} */
     private function lesDeuxMoyennes(): array
     {
         $annee = ESBTPAnneeUniversitaire::factory()->create();
@@ -96,8 +109,10 @@ class MoyennesAnnuellesPariteBulletinTest extends TestCase
 
         $calculee = app(MoyennesAnnuellesDuBulletin::class)->pour([$inscription->fresh()])[$inscription->id]['moyenne'] ?? null;
         $attendue = app(BulletinService::class)->genererDonneesBulletin($etudiant->id, $spec->id, $annee->id, 'semestre2')['moyenneAnnuelle'];
+        $snapshot = app(BtsCurrentResultSnapshotService::class)
+            ->getAnnualSnapshot($etudiant->id, $spec->id, $annee->id);
 
-        return [$attendue, $calculee];
+        return [$attendue, $calculee, $snapshot];
     }
 
     private function matiereNotee(ESBTPEtudiant $etudiant, ESBTPClasse $classe, ESBTPFiliere $filiere, ESBTPNiveauEtude $niveau, ESBTPAnneeUniversitaire $annee, string $periode, float $note): ESBTPMatiere

@@ -742,6 +742,7 @@ class BulletinService
         $classeTroncCommun = null;
         $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
         $resolvedS1ClasseId = $classMap['semestre1_classe_id'] ?? $classeId;
+        $classeIdS2 = (int) ($classMap['semestre2_classe_id'] ?? $classeId);
         if ($resolvedS1ClasseId && (int) $resolvedS1ClasseId !== (int) $classeId) {
             $classeIdS1 = (int) $resolvedS1ClasseId;
             $classeTroncCommun = ESBTPClasse::with('filiere')->find($resolvedS1ClasseId);
@@ -758,14 +759,20 @@ class BulletinService
         );
         $moyenneSemestre2 = $this->getAlignedBulletinAverageForPeriode(
             $etudiantId,
-            $classeId, // Toujours la classe actuelle pour S2
+            $classeIdS2, // Classe qui porte reellement le S2 (specialite apres orientation)
             $anneeUniversitaireId,
             'semestre2',
             $periode,
             $moyenneAvecAssiduite,
             $noteAssiduite
         );
-        $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+        $moyenneAnnuelle = $this->calculateConfiguredAnnualAverage(
+            $moyenneSemestre1,
+            $moyenneSemestre2,
+            $semesterWeights,
+            (int) $classeIdS1,
+            (int) $classeIdS2
+        );
         $rangAnnuel = $this->calculerRangAnnuel(
             (int) $etudiantId,
             (int) $classe->id,
@@ -1360,6 +1367,42 @@ class BulletinService
         }
 
         return (($semester1 * $weights['semester1']) + ($semester2 * $weights['semester2'])) / $total;
+    }
+
+    /**
+     * Politique annuelle BTS apres une orientation en cours d'annee.
+     *
+     * Une classe ordinaire conserve toujours S1 + S2. Le reglage ne s'applique
+     * que lorsque la carte annuelle porte S1 et S2 dans deux classes differentes
+     * (tronc commun/origine puis specialite).
+     */
+    public function annualIncludesSemester1(int $semester1ClassId, int $semester2ClassId): bool
+    {
+        if ($semester1ClassId === $semester2ClassId) {
+            return true;
+        }
+
+        return SettingsHelper::drapeau('tronc_commun_mga_include_s1', true);
+    }
+
+    /**
+     * Une seule porte pour la moyenne annuelle affichee et classee.
+     *
+     * ON  : S1 d'origine + S2 de specialite, avec les ponderations du niveau.
+     * OFF : S2 de specialite seulement, uniquement pour un parcours oriente.
+     */
+    public function calculateConfiguredAnnualAverage(
+        ?float $semester1,
+        ?float $semester2,
+        array $weights,
+        int $semester1ClassId,
+        int $semester2ClassId
+    ): ?float {
+        if (! $this->annualIncludesSemester1($semester1ClassId, $semester2ClassId)) {
+            return $semester2;
+        }
+
+        return $this->calculateAnnualAverage($semester1, $semester2, $weights);
     }
 
     public function normalizePeriode(string $periode): string
@@ -3172,7 +3215,13 @@ class BulletinService
                 $anneeUniversitaireId,
                 'semestre2'
             );
-            $annual = $this->calculateAnnualAverage($s1, $s2, $weights);
+            $annual = $this->calculateConfiguredAnnualAverage(
+                $s1,
+                $s2,
+                $weights,
+                $classeIdS1,
+                $classeIdS2
+            );
             if ($annual === null) {
                 continue;
             }

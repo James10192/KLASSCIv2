@@ -26,11 +26,31 @@ class RangAnnuelPariteTroncCommunTest extends TestCase
         User::factory()->create(['id' => 1]);
         SettingsHelper::setOrCreate('bulletin_semester1_weight', '1');
         SettingsHelper::setOrCreate('bulletin_semester2_weight', '1');
-        SettingsHelper::setOrCreate('tronc_commun_mga_include_s1', '0');
         SettingsHelper::setOrCreate('bulletin_show_attendance_note', '0');
     }
 
-    public function test_le_rang_annuel_classe_sur_s1_plus_s2_et_non_sur_s2_seul(): void
+    public function test_mode_s1_s2_classe_sur_la_moyenne_annuelle_complete(): void
+    {
+        SettingsHelper::setOrCreate('tronc_commun_mga_include_s1', '1');
+        [$annee, $spec, $a, $b] = $this->scenario();
+
+        $service = app(BulletinService::class);
+        $this->assertSame(1, $service->calculerRangAnnuel($a->id, $spec->id, $annee->id, 14.0));
+        $this->assertSame(2, $service->calculerRangAnnuel($b->id, $spec->id, $annee->id, 13.0));
+    }
+
+    public function test_mode_s2_seul_classe_la_specialite_sur_s2(): void
+    {
+        SettingsHelper::setOrCreate('tronc_commun_mga_include_s1', '0');
+        [$annee, $spec, $a, $b] = $this->scenario();
+
+        $service = app(BulletinService::class);
+        $this->assertSame(2, $service->calculerRangAnnuel($a->id, $spec->id, $annee->id, 10.0));
+        $this->assertSame(1, $service->calculerRangAnnuel($b->id, $spec->id, $annee->id, 20.0));
+    }
+
+    /** @return array{ESBTPAnneeUniversitaire, ESBTPClasse, ESBTPEtudiant, ESBTPEtudiant} */
+    private function scenario(): array
     {
         $annee = ESBTPAnneeUniversitaire::factory()->create();
         $niveau = ESBTPNiveauEtude::factory()->create(['year' => 1, 'type' => 'BTS']);
@@ -49,28 +69,18 @@ class RangAnnuelPariteTroncCommunTest extends TestCase
             'systeme_academique' => 'BTS',
         ]);
 
-        $a = $this->etudiantOriente($annee, $niveau, $tcFiliere, $specFiliere, $tc, $spec);
-        $b = $this->etudiantOriente($annee, $niveau, $tcFiliere, $specFiliere, $tc, $spec);
+        $a = $this->etudiantOriente($annee, $niveau, $specFiliere, $tcFiliere, $tc, $spec);
+        $b = $this->etudiantOriente($annee, $niveau, $specFiliere, $tcFiliere, $tc, $spec);
 
-        // A : S1=18, S2=10 => annuelle 14.
-        // B : S1=6,  S2=20 => annuelle 13.
-        // Un classement S2 seul donnerait B premier ; l'annuel correct donne A premier.
         $this->bulletin($a, $tc, $annee, 'semestre1', 18);
         $this->bulletin($a, $spec, $annee, 'semestre2', 10);
         $this->bulletin($b, $tc, $annee, 'semestre1', 6);
         $this->bulletin($b, $spec, $annee, 'semestre2', 20);
 
-        $rang = app(BulletinService::class)->calculerRangAnnuel(
-            $a->id,
-            $spec->id,
-            $annee->id,
-            14.0
-        );
-
-        $this->assertSame(1, $rang);
+        return [$annee, $spec, $a, $b];
     }
 
-    private function etudiantOriente($annee, $niveau, $tcFiliere, $specFiliere, $tc, $spec): ESBTPEtudiant
+    private function etudiantOriente($annee, $niveau, $specFiliere, $tcFiliere, $tc, $spec): ESBTPEtudiant
     {
         $etudiant = ESBTPEtudiant::factory()->create();
         $inscription = ESBTPInscription::factory()->create([

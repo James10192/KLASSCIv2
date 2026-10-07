@@ -12,66 +12,88 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\Setting;
 use App\Services\BulletinService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\Feature\Bts\Concerns\SeedsConfiguredBulletin;
 use Tests\TestCase;
 
 /**
- * Le S1 d'un etudiant oriente fait partie de son annee, meme apres son passage
- * en specialite au S2. L'ancien setting tronc_commun_mga_include_s1 ne peut
- * donc plus transformer une moyenne annuelle en simple moyenne de specialite.
+ * Le reglage choisit la formule annuelle d'un eleve oriente, sans effacer sa
+ * chronologie : le S1 d'origine reste connu et affichable dans les deux modes.
  */
 class SettingTroncCommunMgaIncludeS1Test extends TestCase
 {
     use RefreshDatabase;
-    use SeedsConfiguredBulletin;
 
-    /** @test */
-    public function le_s1_tronc_commun_est_repris_dans_la_specialite(): void
+    public function test_actif_annuel_combine_s1_origine_et_s2_specialite(): void
     {
         $this->setSetting('tronc_commun_mga_include_s1', '1');
-
         [$inscription, $tcClasse, $specClasse] = $this->makePhaseBasedInscription();
-        $this->seedConfiguredBulletin(
-            $inscription->etudiant_id,
-            $specClasse->id,
-            $inscription->annee_universitaire_id,
-            'semestre1'
+
+        $service = app(BulletinService::class);
+        $this->assertTrue($service->annualIncludesSemester1($tcClasse->id, $specClasse->id));
+        $this->assertEqualsWithDelta(
+            14.0,
+            $service->calculateConfiguredAnnualAverage(
+                18.0,
+                10.0,
+                ['semester1' => 1.0, 'semester2' => 1.0],
+                $tcClasse->id,
+                $specClasse->id
+            ),
+            0.001
         );
 
-        $data = app(BulletinService::class)->genererDonneesBulletin(
+        $map = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)->resolve(
             $inscription->etudiant_id,
             $specClasse->id,
-            $inscription->annee_universitaire_id,
-            'semestre1'
+            $inscription->annee_universitaire_id
         );
-
-        $this->assertNotNull($data['classeTroncCommun']);
-        $this->assertSame($tcClasse->id, $data['classeTroncCommun']->id);
+        $this->assertSame($tcClasse->id, $map['semestre1_classe_id']);
+        $this->assertSame($specClasse->id, $map['semestre2_classe_id']);
     }
 
-    /** @test */
-    public function l_ancien_setting_coupe_ne_peut_plus_supprimer_le_s1_de_l_annuelle(): void
+    public function test_coupe_annuel_oriente_devient_s2_seul_sans_perdre_la_classe_origine(): void
+    {
+        $this->setSetting('tronc_commun_mga_include_s1', '0');
+        [$inscription, $tcClasse, $specClasse] = $this->makePhaseBasedInscription();
+
+        $service = app(BulletinService::class);
+        $this->assertFalse($service->annualIncludesSemester1($tcClasse->id, $specClasse->id));
+        $this->assertSame(
+            10.0,
+            $service->calculateConfiguredAnnualAverage(
+                18.0,
+                10.0,
+                ['semester1' => 1.0, 'semester2' => 1.0],
+                $tcClasse->id,
+                $specClasse->id
+            )
+        );
+
+        $map = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)->resolve(
+            $inscription->etudiant_id,
+            $specClasse->id,
+            $inscription->annee_universitaire_id
+        );
+        $this->assertSame($tcClasse->id, $map['semestre1_classe_id']);
+        $this->assertSame($specClasse->id, $map['semestre2_classe_id']);
+    }
+
+    public function test_coupe_ne_change_pas_une_classe_ordinaire(): void
     {
         $this->setSetting('tronc_commun_mga_include_s1', '0');
 
-        [$inscription, $tcClasse, $specClasse] = $this->makePhaseBasedInscription();
-        $this->seedConfiguredBulletin(
-            $inscription->etudiant_id,
-            $specClasse->id,
-            $inscription->annee_universitaire_id,
-            'semestre1'
+        $service = app(BulletinService::class);
+        $this->assertTrue($service->annualIncludesSemester1(42, 42));
+        $this->assertEqualsWithDelta(
+            14.0,
+            $service->calculateConfiguredAnnualAverage(
+                18.0,
+                10.0,
+                ['semester1' => 1.0, 'semester2' => 1.0],
+                42,
+                42
+            ),
+            0.001
         );
-
-        $data = app(BulletinService::class)->genererDonneesBulletin(
-            $inscription->etudiant_id,
-            $specClasse->id,
-            $inscription->annee_universitaire_id,
-            'semestre1'
-        );
-
-        $this->assertNotNull($data['classeTroncCommun']);
-        $this->assertSame($tcClasse->id, $data['classeTroncCommun']->id);
-        $this->assertTrue($data['isSpecialisation']);
     }
 
     private function setSetting(string $key, string $value): void

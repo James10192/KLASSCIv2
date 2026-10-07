@@ -36,7 +36,7 @@ class TroncCommunSettingsSeeder extends Seeder
                 'value' => true,
                 'group' => 'academic',
                 'type' => 'boolean',
-                'description' => 'Inclure les notes S1 (tronc commun) dans le calcul de la MGA annuelle',
+                'description' => 'Apres specialisation, inclure le S1 origine avec le S2 specialite dans la moyenne et le rang annuels',
             ],
             [
                 'key' => 'tronc_commun_bulletin_show_origin',

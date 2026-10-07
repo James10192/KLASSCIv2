@@ -2,6 +2,7 @@
 
 namespace App\Domain\Bulletins;
 
+use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -44,6 +45,7 @@ class MoyennesDeLaListe
         private ESBTPAbsenceService $absenceService,
         private BtsCurrentResultSnapshotService $snapshotService,
         private RankingService $rankingService,
+        private BtsAnnualClassMapResolver $classMapResolver,
     ) {}
 
     /**
@@ -171,7 +173,12 @@ class MoyennesDeLaListe
     private function statutAnnuel(array $snapshot): array
     {
         return match ($snapshot['state'] ?? 'no_data') {
-            'annual_complete' => ['state' => 'annual_complete', 'label' => null],
+            'annual_complete', 'annual_complete_no_coefficients' => [
+                'state' => 'annual_complete',
+                'label' => ($snapshot['annual_policy'] ?? 's1_s2') === 'specialisation_s2'
+                    ? 'Annuel · S2 specialite'
+                    : null,
+            ],
             'annual_incomplete' => [
                 'state' => 'annual_incomplete',
                 'label' => ($snapshot['primary_semester'] ?? 'semestre1') === 'semestre2'
@@ -213,17 +220,29 @@ class MoyennesDeLaListe
             );
 
             try {
+                $classMap = $this->classMapResolver->resolve(
+                    (int) $etudiant->id,
+                    (int) $etudiantClasseId,
+                    (int) ($anneeId ?? 0)
+                );
+                $classeIdS1 = (int) ($classMap['semestre1_classe_id'] ?? $etudiantClasseId);
+                $classeIdS2 = (int) ($classMap['semestre2_classe_id'] ?? $etudiantClasseId);
                 $s1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
-                    $etudiant->id, $etudiantClasseId, $anneeId ?? 0, 'semestre1', 'annuel', 0, $assiduite
+                    $etudiant->id, $classeIdS1, $anneeId ?? 0, 'semestre1', 'annuel', 0, $assiduite
                 );
                 $s2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
-                    $etudiant->id, $etudiantClasseId, $anneeId ?? 0, 'semestre2', 'annuel', 0, $assiduite
+                    $etudiant->id, $classeIdS2, $anneeId ?? 0, 'semestre2', 'annuel', 0, $assiduite
+                );
+                $annuelle = $this->bulletinService->calculateConfiguredAnnualAverage(
+                    $s1,
+                    $s2,
+                    $weights,
+                    $classeIdS1,
+                    $classeIdS2
                 );
             } catch (\RuntimeException $e) {
                 continue; // coefficient manquant pour cet eleve
             }
-
-            $annuelle = $this->bulletinService->calculateAnnualAverage($s1, $s2, $weights);
             if ($annuelle !== null) {
                 $moyennes[$etudiant->id] = round($annuelle, 2);
                 $statuts[$etudiant->id] = ['state' => 'annual_complete', 'label' => null];

@@ -28,7 +28,8 @@ use Illuminate\Support\Facades\Log;
  * CE QU'IL REPRODUIT : le chemin de `BulletinService::buildDonneesBulletin()`
  * qui calcule `$moyenneAnnuelle` imprimee sur le bulletin du semestre 2. Ce
  * n'est PAS la seule ecriture de ce calcul : `collectAnnualAveragesForClasse()`
- * (rang annuel) en tient une seconde, alignee sur la meme carte S1/S2.
+ * (rang annuel) en tient une seconde. Toutes les deux passent par la meme
+ * politique annuelle configurable pour rester strictement alignees.
  * C'est l'IMPRIMEE que la reinscription doit suivre, et
  * `MoyennesAnnuellesPariteBulletinTest` verifie que les deux concordent —
  *
@@ -37,10 +38,10 @@ use Illuminate\Support\Facades\Log;
  *   sinon le calcul courant (snapshot du semestre + note d'assiduite), comme
  *   `getAlignedBulletinAverageForPeriode()` ;
  * - le semestre 1 lu dans la classe qui le porte (tronc commun d'un oriente),
- *   par la carte annuelle (`BtsAnnualClassMapResolver`) ; l'etudiant emporte
- *   toujours son S1 lorsqu'il rejoint sa classe de specialite au S2 ;
- * - les deux combines par `calculateAnnualAverage()` avec
- *   `getSemesterWeights($classe)`.
+ *   par la carte annuelle (`BtsAnnualClassMapResolver`) ;
+ * - si `tronc_commun_mga_include_s1` est actif, S1 + S2 sont combines avec
+ *   `getSemesterWeights($classe)` ; s'il est coupe, un etudiant oriente est
+ *   evalue sur son S2 de specialite uniquement. Une classe ordinaire reste S1 + S2.
  *
  * Un semestre sans moyenne rend `null`, comme au bulletin, qui laisse alors la
  * decision du conseil vide. Ce service ne l'invente jamais a zero.
@@ -195,7 +196,14 @@ class MoyennesAnnuellesDuBulletin
             $s1 = $enregistrees[$inscription->id]['semestre1'] ?? $courantes[$inscription->id]['semestre1'] ?? null;
             $s2 = $enregistrees[$inscription->id]['semestre2'] ?? $courantes[$inscription->id]['semestre2'] ?? null;
 
-            $annuelle = $this->bulletins->calculateAnnualAverage($s1, $s2, $poids);
+            $classes = $classesDuSemestre[$inscription->id];
+            $annuelle = $this->bulletins->calculateConfiguredAnnualAverage(
+                $s1,
+                $s2,
+                $poids,
+                (int) $classes['semestre1'],
+                (int) $classes['semestre2']
+            );
             $resultat[(int) $inscription->id] = [
                 'moyenne' => $annuelle,
                 'semestre1' => $s1,

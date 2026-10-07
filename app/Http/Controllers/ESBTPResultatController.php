@@ -1047,9 +1047,21 @@ class ESBTPResultatController extends Controller
         // « Officiel » de l'onglet de CE semestre ; la moyenne annuelle exige des notes sur les deux.
         $moyenneSemestre1 = $annualSnapshot['semester_snapshots']['semestre1']['effective_total'] ?? null;
         $moyenneSemestre2 = $annualSnapshot['semester_snapshots']['semestre2']['effective_total'] ?? null;
-        $moyenneAnnuelle = ($annualSnapshot['state'] ?? null) === 'annual_complete'
+        $annualState = $annualSnapshot['state'] ?? null;
+        $annualClassMap = $annualSnapshot['class_map'] ?? [];
+        $annualS1ClassId = (int) ($annualClassMap['semestre1_classe_id'] ?? $classe?->id ?? 0);
+        $annualS2ClassId = (int) ($annualClassMap['semestre2_classe_id'] ?? $classe?->id ?? 0);
+        $moyenneAnnuelle = in_array($annualState, ['annual_complete', 'annual_complete_no_coefficients'], true)
             ? ($annualSnapshot['effective_total'] ?? null)
-            : $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+            : ($classe
+                ? $this->bulletinService->calculateConfiguredAnnualAverage(
+                    $moyenneSemestre1,
+                    $moyenneSemestre2,
+                    $semesterWeights,
+                    $annualS1ClassId,
+                    $annualS2ClassId
+                )
+                : null);
         $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
         $bulletinWorkflowPeriode = $detailUiState['bulletin_workflow_periode'];
         $bulletinWorkflowPeriodeLabel = $detailUiState['bulletin_workflow_periode_label'];

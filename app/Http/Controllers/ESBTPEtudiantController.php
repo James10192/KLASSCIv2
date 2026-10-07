@@ -1533,7 +1533,7 @@ class ESBTPEtudiantController extends Controller
 
     /**
      * Enregistre une moyenne annuelle historique quand l'annee BTS est terminee
-     * et qu'aucune moyenne annuelle ne peut etre reconstruite depuis S1/S2.
+     * et qu'aucune moyenne annuelle ne peut etre reconstruite selon la regle configuree.
      */
     public function enregistrerMoyenneAnnuelleHistorique(
         Request $request,
@@ -1551,7 +1551,7 @@ class ESBTPEtudiantController extends Controller
 
         return redirect()
             ->route('esbtp.etudiants.certificat.preview', $etudiant)
-            ->with('success', 'Moyenne annuelle historique enregistree. Elle sera utilisee uniquement tant qu\'aucune moyenne annuelle S1/S2 n\'est calculable.');
+            ->with('success', 'Moyenne annuelle historique enregistree. Elle sera utilisee uniquement tant qu\'aucune moyenne annuelle n\'est calculable selon la regle configuree.');
     }
 
     /**

@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  * Une vraie inscription BTS lit d'abord la moyenne annuelle du bulletin
  * (meme ponderation, meme tronc commun, memes snapshots). Une valeur annuelle
  * historique n'est qu'un repli pour une annee terminee impossible a
- * reconstruire depuis S1/S2.
+ * reconstruire selon la politique annuelle configuree.
  */
 class MoyennesAnnuellesDuCertificat
 {
@@ -106,7 +106,7 @@ class MoyennesAnnuellesDuCertificat
         $canonique = $this->annuelles->pour([$inscription])[$inscription->id]['moyenne'] ?? null;
         if ($canonique !== null) {
             throw ValidationException::withMessages([
-                'moyenne' => 'Cette moyenne annuelle est deja calculable depuis S1/S2. Corrigez les notes ou les bulletins sources plutot que de la remplacer manuellement.',
+                'moyenne' => 'Cette moyenne annuelle est deja calculable selon la regle annuelle configuree. Corrigez les notes ou les bulletins sources plutot que de la remplacer manuellement.',
             ]);
         }
 
