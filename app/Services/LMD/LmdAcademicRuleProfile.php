@@ -25,6 +25,8 @@ final class LmdAcademicRuleProfile
     /** Les deux cases de compensation de l'onglet LMD des paramètres. */
     public const REGLAGE_COMPENSATION_INTER_UE = 'lmd_compensation_inter_ue';
 
+    public const REGLAGE_COMPENSATION_INTER_UE_MINIMUM = 'lmd_compensation_inter_ue_minimum';
+
     public const REGLAGE_COMPENSATION_INTRA_UE = 'lmd_compensation_intra_ue';
 
     private Closure $resolver;
@@ -48,6 +50,20 @@ final class LmdAcademicRuleProfile
     public function interUeCompensationEnabled(): bool
     {
         return $this->toBool($this->first([self::REGLAGE_COMPENSATION_INTER_UE, 'lmd_compensation_enabled'], true));
+    }
+
+    /**
+     * Plancher propre à l'UE pour autoriser une acquisition par compensation.
+     *
+     * 0 conserve le comportement historique : toute UE sous le seuil direct peut
+     * être compensée si la moyenne générale du semestre atteint le seuil.
+     * Une école peut par exemple fixer 8 pour laisser une UE à 7,5 en NAQ.
+     */
+    public function interUeCompensationMinimum(): float
+    {
+        $value = (float) $this->first([self::REGLAGE_COMPENSATION_INTER_UE_MINIMUM], 0);
+
+        return max(0.0, min(20.0, $value));
     }
 
     /**

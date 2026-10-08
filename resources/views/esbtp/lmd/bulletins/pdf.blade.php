@@ -70,14 +70,38 @@
         $statutEtablissement = trim((string) ($bCfg['statut'] ?? 'Privé')) ?: 'Privé';
         $directionEtablissement = trim((string) ($bCfg['direction'] ?? ''));
         $codeEtablissement = trim((string) ($bCfg['code_etablissement'] ?? ''));
+
+        // Le bandeau officiel ne doit jamais afficher de rubrique vide.
+        // Une valeur absente supprime à la fois son libellé et sa colonne ;
+        // les rubriques restantes se repartagent automatiquement toute la largeur.
+        $officialBandItems = collect([
+            ['label' => 'Code établissement', 'value' => $codeEtablissement],
+            ['label' => 'Statut', 'value' => $statutEtablissement],
+            ['label' => 'Direction', 'value' => $directionEtablissement],
+        ])->filter(fn (array $item) => trim((string) $item['value']) !== '')->values();
+        $officialColumnWidth = $officialBandItems->isNotEmpty()
+            ? 100 / $officialBandItems->count()
+            : 100;
         // Comme le bulletin BTS, la date imprimée est la date d'édition du PDF,
         // pas la dernière mise à jour du bulletin en base.
         $editionDate = now()->format('d/m/Y');
-        // Le bulletin LMD utilisait un logo plafonné à 54px, indépendamment du
-        // réglage PDF de l'école. On respecte maintenant ce réglage, avec un
-        // minimum lisible de 60px pour ce gabarit compact.
-        $logoHeight = max(60, min(120, (int) ($pdfCfg['logo_size'] ?? 60)));
+        // Dimensions spécifiques au bulletin LMD. Elles restent indépendantes
+        // des autres documents PDF : agrandir le logo ici ne modifie ni reçus,
+        // ni listes d'appel, ni attestations.
+        $layoutNumber = static function (string $key, float $default, float $min, float $max): float {
+            $raw = \App\Helpers\SettingsHelper::get($key, $default);
+            $value = is_numeric($raw) ? (float) $raw : $default;
+            return max($min, min($max, $value));
+        };
+        $fallbackLogo = is_numeric($pdfCfg['logo_size'] ?? null) ? (float) $pdfCfg['logo_size'] : 72;
+        $logoHeight = $layoutNumber('lmd_bulletin_logo_height', $fallbackLogo, 40, 140);
         $logoWidth = (int) round($logoHeight * 1.8);
+        $headerPaddingY = $layoutNumber('lmd_bulletin_header_padding_y', 6, 2, 14);
+        $headerMetaPaddingY = $layoutNumber('lmd_bulletin_header_meta_padding_y', 2, 0, 8);
+        $signatureSpaceHeight = $layoutNumber('lmd_bulletin_signature_space_height', 42, 20, 120);
+        $bottomWidthPercent = $layoutNumber('lmd_bulletin_bottom_width_percent', 104, 90, 108);
+        $bottomHorizontalOffset = (100 - $bottomWidthPercent) / 2;
+        $paysEtablissement = trim((string) ($etab['pays'] ?? '')) ?: 'Côte d\'Ivoire';
     @endphp
 
     <style>
@@ -114,10 +138,10 @@
             vertical-align: middle;
         }
         .lmd-header-school {
-            padding: 5px 7px;
+            padding: {{ $headerPaddingY }}px 7px;
             border-right: 1px solid rgba(255,255,255,0.28);
         }
-        .lmd-header-document { padding: 6px 9px; }
+        .lmd-header-document { padding: {{ $headerPaddingY }}px 9px; }
         .lmd-header-title {
             color: {{ $hdrText }};
             font-size: {{ $fontTitle }}px;
@@ -132,7 +156,7 @@
         }
         .lmd-header-meta td {
             width: 50%;
-            padding: 2.2px 4px;
+            padding: {{ $headerMetaPaddingY }}px 4px;
             color: {{ $hdrText }};
             font-size: {{ $fontHeaderMeta }}px;
             line-height: 1.18;
@@ -147,8 +171,8 @@
             text-align: center;
         }
         .signature-space {
-            height: 42px;
-            line-height: 42px;
+            height: {{ $signatureSpaceHeight }}px;
+            line-height: {{ $signatureSpaceHeight }}px;
         }
         .signature-name {
             font-size: {{ min(32, $fontSignature + 1) }}px;
@@ -165,7 +189,6 @@
             margin: 0 0 4px;
         }
         .official-band td {
-            width: 33.333%;
             padding: 4px 7px;
             vertical-align: middle;
             font-size: {{ $fontEstablishment }}px;
@@ -260,12 +283,18 @@
             min-height: 68px;
         }
         .bottom-note {
+            width: {{ $bottomWidthPercent }}%;
+            margin-left: {{ $bottomHorizontalOffset }}%;
             text-align: center;
             font-size: {{ $fontBottom }}px;
             color: {{ $secondary }};
             margin-top: 5px;
             line-height: 1.32;
             page-break-inside: avoid;
+        }
+        .bottom-note-line {
+            display: block;
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -351,21 +380,15 @@
     </tr>
 </table>
 
-@if($bCfg['show_etablissement_box'] ?? true)
+@if(($bCfg['show_etablissement_box'] ?? true) && $officialBandItems->isNotEmpty())
 <table class="official-band" cellspacing="0" cellpadding="0">
     <tr>
-        <td>
-            <span class="official-label">Code établissement</span>
-            <span class="official-value">{{ $codeEtablissement !== '' ? $codeEtablissement : '—' }}</span>
-        </td>
-        <td>
-            <span class="official-label">Statut</span>
-            <span class="official-value">{{ $statutEtablissement }}</span>
-        </td>
-        <td>
-            <span class="official-label">Direction</span>
-            <span class="official-value">{{ $directionEtablissement !== '' ? $directionEtablissement : '—' }}</span>
-        </td>
+        @foreach($officialBandItems as $officialItem)
+            <td style="width: {{ $officialColumnWidth }}%;">
+                <span class="official-label">{{ $officialItem['label'] }}</span>
+                <span class="official-value">{{ $officialItem['value'] }}</span>
+            </td>
+        @endforeach
     </tr>
 </table>
 @endif
@@ -538,8 +561,8 @@
 </table>
 
 <div class="bottom-note">
-    {{ $bottomText }}<br>
-    {{ $etab['nom'] ?? 'KLASSCI' }}, Etablissement {{ mb_strtolower($statutEtablissement, 'UTF-8') }}, Côte d'Ivoire
+    <span class="bottom-note-line">{{ $bottomText }}</span>
+    <span class="bottom-note-line">{{ $etab['nom'] ?? 'KLASSCI' }}, Etablissement {{ mb_strtolower($statutEtablissement, 'UTF-8') }}, {{ $paysEtablissement }}</span>
 </div>
 <div style="text-align: center; font-size: {{ min(32, $fontBottom + .5) }}px; font-weight: 800; margin-top: 3px; page-break-inside: avoid;">
     {{ \App\Services\BulletinMentionResolver::authenticityText() }}

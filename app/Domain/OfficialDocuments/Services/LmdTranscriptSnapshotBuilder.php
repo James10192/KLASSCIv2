@@ -31,8 +31,10 @@ class LmdTranscriptSnapshotBuilder
     /**
      * v2 — octobre 2026 : la pondération contrôle continu / examen est gravée
      * quand l'école l'applique (`ponderation_cc_examen`, null sinon), comme dans le PV.
+     *
+     * v3 — octobre 2026 : le seuil minimal d'une UE pour APC est gravé avec le relevé.
      */
-    public const RULES_VERSION = 'lmd-transcript-profile-v2';
+    public const RULES_VERSION = 'lmd-transcript-profile-v3';
 
     /**
      * Les deux mises en page du releve, et le reglage qui tranche.
@@ -346,6 +348,7 @@ class LmdTranscriptSnapshotBuilder
             'validation_threshold' => $this->profile->validationThreshold(),
             'eliminatory_grade' => $this->profile->eliminatoryGrade(),
             'inter_ue_compensation' => $this->profile->interUeCompensationEnabled(),
+            'inter_ue_compensation_minimum' => $this->profile->interUeCompensationMinimum(),
             'intra_ue_compensation' => $this->profile->intraUeCompensationEnabled(),
             'mention_thresholds' => $this->profile->mentionThresholds(),
             'expected_credits_per_semester' => $this->profile->expectedCreditsPerSemester(),

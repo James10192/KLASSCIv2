@@ -587,6 +587,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // oublies, pour que la matiere cesse de disparaitre de leur bulletin.
         Route::post('/evaluations/noter-les-non-notes', [App\Http\Controllers\API\CLI\CLINotesZeroController::class, 'noter'])
             ->name('evaluations.noter-les-non-notes');
+        // Duplique une saisie vers un ECUE lié, après contrôle de la classe,
+        // de la période, des inscriptions et des notes déjà présentes.
+        Route::post('/evaluations/dupliquer-notes-ecue', [App\Http\Controllers\API\CLI\CLINotesDuplicationEcueController::class, 'dupliquer'])
+            ->name('evaluations.dupliquer-notes-ecue');
         // Saisie exceptionnelle de notes LMD venant d'une fiche officielle :
         // crée d'abord une évaluation tracée, puis la note, jamais de note orpheline.
         Route::post('/lmd/evaluations/regulariser-notes', [App\Http\Controllers\API\CLI\CLILmdRegularisationNotesController::class, 'enregistrer'])

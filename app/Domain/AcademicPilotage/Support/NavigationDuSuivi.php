@@ -26,7 +26,7 @@ final class NavigationDuSuivi
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    public function ajouter(array $payload, ESBTPClasse $classe): array
+    public function ajouter(array $payload, ESBTPClasse $classe, ?int $anneeUniversitaireId = null): array
     {
         $lmd = $this->estLmd($classe);
         $semestres = $this->semestres($classe);
@@ -42,14 +42,25 @@ final class NavigationDuSuivi
         $semestre = (int) data_get($payload, 'maquette.semestre', 0);
         $periode = 'semestre'.(in_array($semestre, $semestres, true) ? $semestre : $semestres[0]);
 
-        $payload['subjects'] = array_map(function (array $matiere) use ($classe, $periode, $lmd): array {
+        $payload['subjects'] = array_map(function (array $matiere) use ($classe, $periode, $lmd, $anneeUniversitaireId): array {
             if (empty($matiere['id'])) {
                 return $matiere;
             }
 
+            $params = array_filter([
+                'annee_universitaire_id' => $anneeUniversitaireId,
+                'classe_id' => $classe->id,
+                'matiere_id' => (int) $matiere['id'],
+                'periode' => $periode,
+            ], static fn ($value) => $value !== null);
+
             $matiere['saisie_url'] = $lmd
-                ? route('esbtp.lmd.notes.index', ['classe' => $classe->id, 'ecue' => (int) $matiere['id']])
-                : route('esbtp.notes.index', ['classe_id' => $classe->id, 'matiere_id' => (int) $matiere['id'], 'periode' => $periode]);
+                ? route('esbtp.lmd.notes.index', array_filter([
+                    'annee_universitaire_id' => $anneeUniversitaireId,
+                    'classe' => $classe->id,
+                    'ecue' => (int) $matiere['id'],
+                ], static fn ($value) => $value !== null))
+                : route('esbtp.notes.index', $params);
 
             return $matiere;
         }, $payload['subjects']);

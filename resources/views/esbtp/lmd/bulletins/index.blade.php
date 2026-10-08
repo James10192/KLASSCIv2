@@ -21,25 +21,8 @@
     $avgMoyenne = $kpis['moyenne'];
     $lmdGet = static fn (string $key, $default = '') => \App\Helpers\SettingsHelper::get($key, $default);
     $pdfColors = \App\Helpers\SettingsHelper::getPdfSettings();
-    $fontFields = [
-        'lmd_bulletin_font_republic' => ['République / Ministère', 9],
-        'lmd_bulletin_font_school_name' => ['Nom établissement', 15],
-        'lmd_bulletin_font_school_meta' => ['Coordonnées établissement', 8.5],
-        'lmd_bulletin_font_title' => ['Titre du bulletin', 14],
-        'lmd_bulletin_font_header_meta' => ['Année / niveau / semestre', 9],
-        'lmd_bulletin_font_establishment' => ['Code / statut / direction', 9.5],
-        'lmd_bulletin_font_student' => ['Identité étudiant / affectation', 10.5],
-        'lmd_bulletin_font_structure' => ['Domaine / mention / parcours', 10],
-        'lmd_bulletin_font_table_header' => ['En-tête tableau', 9],
-        'lmd_bulletin_font_table' => ['Lignes UE / ECUE', 9.5],
-        'lmd_bulletin_font_teacher' => ['Nom des enseignants', 8.5],
-        'lmd_bulletin_font_summary' => ['Moyenne / crédits', 13],
-        'lmd_bulletin_font_decision' => ['Décision', 10.5],
-        'lmd_bulletin_font_notice' => ['Notice importante', 8.5],
-        'lmd_bulletin_font_signature' => ['Signature', 10],
-        'lmd_bulletin_font_legend' => ['Légende', 8],
-        'lmd_bulletin_font_bottom' => ['Pied de page', 8.5],
-    ];
+    $fontFields = \App\Support\LMDBulletinPrintSettings::fontFields();
+    $layoutFields = \App\Support\LMDBulletinPrintSettings::layoutFields();
 @endphp
 <div class="lb-page">
     <div class="main-content">
@@ -94,21 +77,21 @@
                     <a class="lb-config-link" href="{{ route('esbtp.settings.index') }}"><i class="fas fa-palette"></i> Modifier les couleurs globales</a>
                 </div>
 
-                <form method="POST" action="{{ route('esbtp.settings.update') }}">
+                <form method="POST" action="{{ route('esbtp.bulletins.save-configuration') }}" id="lmd-bulletin-config-form">
                     @csrf
-                    @method('PUT')
+                    <input type="hidden" name="configuration_source" value="lmd-bulletins-index">
                     <div class="lb-config-section">
                         <h3>En-tête officiel et établissement</h3>
                         <div class="lb-config-grid">
-                            <div class="lb-config-field"><label>République</label><select name="setting_lmd_bulletin_show_republic_info"><option value="1" {{ $lmdGet('lmd_bulletin_show_republic_info',1) ? 'selected' : '' }}>Afficher</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_republic_info',1) ? 'selected' : '' }}>Masquer</option></select></div>
-                            <div class="lb-config-field"><label>Ministère</label><select name="setting_lmd_bulletin_show_ministry_info"><option value="1" {{ $lmdGet('lmd_bulletin_show_ministry_info',1) ? 'selected' : '' }}>Afficher</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_ministry_info',1) ? 'selected' : '' }}>Masquer</option></select></div>
-                            <div class="lb-config-field"><label>Encadré établissement</label><select name="setting_lmd_bulletin_show_etablissement_box"><option value="1" {{ $lmdGet('lmd_bulletin_show_etablissement_box',1) ? 'selected' : '' }}>Afficher</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_etablissement_box',1) ? 'selected' : '' }}>Masquer</option></select></div>
-                            <div class="lb-config-field lb-config-field--wide"><label>Texte République</label><input name="setting_lmd_bulletin_republic_text" value="{{ $lmdGet('lmd_bulletin_republic_text', "REPUBLIQUE DE COTE D'IVOIRE") }}"></div>
-                            <div class="lb-config-field"><label>Devise nationale</label><input name="setting_lmd_bulletin_union_text" value="{{ $lmdGet('lmd_bulletin_union_text','Union - Discipline - Travail') }}"></div>
-                            <div class="lb-config-field" style="grid-column:span 2"><label>Texte Ministère</label><input name="setting_lmd_bulletin_ministry_text" value="{{ $lmdGet('lmd_bulletin_ministry_text',"MINISTERE DE L'ENSEIGNEMENT SUPERIEUR ET DE LA RECHERCHE SCIENTIFIQUE") }}"></div>
-                            <div class="lb-config-field"><label>Code établissement</label><input name="setting_lmd_bulletin_code_etablissement" value="{{ $lmdGet('lmd_bulletin_code_etablissement','') }}"></div>
-                            <div class="lb-config-field"><label>Statut</label><select name="setting_lmd_bulletin_statut"><option value="Privé" {{ $lmdGet('lmd_bulletin_statut','Privé') === 'Privé' ? 'selected' : '' }}>Privé</option><option value="Public" {{ $lmdGet('lmd_bulletin_statut','Privé') === 'Public' ? 'selected' : '' }}>Public</option></select></div>
-                            <div class="lb-config-field"><label>Direction affichée</label><input name="setting_lmd_bulletin_direction" value="{{ $lmdGet('lmd_bulletin_direction','') }}" placeholder="Ex. Direction des Études"><span class="lb-font-hint">Texte du bandeau, distinct du nom du directeur signataire.</span></div>
+                            <div class="lb-config-field"><label>République</label><select name="lmd_bulletin_show_republic_info"><option value="1" {{ $lmdGet('lmd_bulletin_show_republic_info',1) ? 'selected' : '' }}>Afficher</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_republic_info',1) ? 'selected' : '' }}>Masquer</option></select></div>
+                            <div class="lb-config-field"><label>Ministère</label><select name="lmd_bulletin_show_ministry_info"><option value="1" {{ $lmdGet('lmd_bulletin_show_ministry_info',1) ? 'selected' : '' }}>Afficher</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_ministry_info',1) ? 'selected' : '' }}>Masquer</option></select></div>
+                            <div class="lb-config-field"><label>Encadré établissement</label><select name="lmd_bulletin_show_etablissement_box"><option value="1" {{ $lmdGet('lmd_bulletin_show_etablissement_box',1) ? 'selected' : '' }}>Afficher</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_etablissement_box',1) ? 'selected' : '' }}>Masquer</option></select></div>
+                            <div class="lb-config-field lb-config-field--wide"><label>Texte République</label><input name="lmd_bulletin_republic_text" value="{{ $lmdGet('lmd_bulletin_republic_text', "REPUBLIQUE DE COTE D'IVOIRE") }}"></div>
+                            <div class="lb-config-field"><label>Devise nationale</label><input name="lmd_bulletin_union_text" value="{{ $lmdGet('lmd_bulletin_union_text','Union - Discipline - Travail') }}"></div>
+                            <div class="lb-config-field" style="grid-column:span 2"><label>Texte Ministère</label><input name="lmd_bulletin_ministry_text" value="{{ $lmdGet('lmd_bulletin_ministry_text',"MINISTERE DE L'ENSEIGNEMENT SUPERIEUR ET DE LA RECHERCHE SCIENTIFIQUE") }}"></div>
+                            <div class="lb-config-field"><label>Code établissement</label><input name="lmd_bulletin_code_etablissement" value="{{ $lmdGet('lmd_bulletin_code_etablissement','') }}"></div>
+                            <div class="lb-config-field"><label>Statut</label><select name="lmd_bulletin_statut"><option value="Privé" {{ $lmdGet('lmd_bulletin_statut','Privé') === 'Privé' ? 'selected' : '' }}>Privé</option><option value="Public" {{ $lmdGet('lmd_bulletin_statut','Privé') === 'Public' ? 'selected' : '' }}>Public</option></select></div>
+                            <div class="lb-config-field"><label>Direction affichée</label><input name="lmd_bulletin_direction" value="{{ $lmdGet('lmd_bulletin_direction','') }}" placeholder="Ex. Direction des Études"><span class="lb-font-hint">Texte du bandeau, distinct du nom du directeur signataire.</span></div>
                         </div>
                     </div>
 
@@ -118,11 +101,11 @@
                             @foreach([
                                 'domaine'=>'Domaine','mention'=>'Mention','specialite'=>'Spécialité','parcours'=>'Parcours'
                             ] as $key=>$label)
-                            <div class="lb-config-field"><label>Afficher {{ $label }}</label><select name="setting_lmd_bulletin_show_{{ $key }}"><option value="1" {{ $lmdGet('lmd_bulletin_show_'.$key,$key==='specialite'?0:1) ? 'selected' : '' }}>Oui</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_'.$key,$key==='specialite'?0:1) ? 'selected' : '' }}>Non</option></select></div>
+                            <div class="lb-config-field"><label>Afficher {{ $label }}</label><select name="lmd_bulletin_show_{{ $key }}"><option value="1" {{ $lmdGet('lmd_bulletin_show_'.$key,$key==='specialite'?0:1) ? 'selected' : '' }}>Oui</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_'.$key,$key==='specialite'?0:1) ? 'selected' : '' }}>Non</option></select></div>
                             @endforeach
-                            <div class="lb-config-field"><label>Parcours automatique</label><select name="setting_lmd_bulletin_parcours_auto"><option value="1" {{ $lmdGet('lmd_bulletin_parcours_auto',1) ? 'selected' : '' }}>Oui</option><option value="0" {{ !$lmdGet('lmd_bulletin_parcours_auto',1) ? 'selected' : '' }}>Non</option></select></div>
+                            <div class="lb-config-field"><label>Parcours automatique</label><select name="lmd_bulletin_parcours_auto"><option value="1" {{ $lmdGet('lmd_bulletin_parcours_auto',1) ? 'selected' : '' }}>Oui</option><option value="0" {{ !$lmdGet('lmd_bulletin_parcours_auto',1) ? 'selected' : '' }}>Non</option></select></div>
                             @foreach(['domaine'=>'Domaine','mention'=>'Mention','specialite'=>'Spécialité','parcours'=>'Parcours'] as $key=>$label)
-                            <div class="lb-config-field"><label>Libellé {{ $label }}</label><input name="setting_lmd_bulletin_label_{{ $key }}" value="{{ $lmdGet('lmd_bulletin_label_'.$key,$key==='specialite'?'SPÉCIALITÉ':'') }}" placeholder="{{ $label }}"></div>
+                            <div class="lb-config-field"><label>Libellé {{ $label }}</label><input name="lmd_bulletin_label_{{ $key }}" value="{{ $lmdGet('lmd_bulletin_label_'.$key,$key==='specialite'?'SPÉCIALITÉ':'') }}" placeholder="{{ $label }}"></div>
                             @endforeach
                         </div>
                     </div>
@@ -130,22 +113,43 @@
                     <div class="lb-config-section">
                         <h3>Textes du document</h3>
                         <div class="lb-config-grid">
-                            <div class="lb-config-field lb-config-field--wide"><label>Notice importante</label><textarea rows="2" name="setting_lmd_bulletin_notice_text">{{ $lmdGet('lmd_bulletin_notice_text', \App\Services\LMDBulletinService::NOTICE_DEFAUT) }}</textarea></div>
-                            <div class="lb-config-field lb-config-field--wide"><label>Pied de page</label><input name="setting_lmd_bulletin_bottom_text" value="{{ $lmdGet('lmd_bulletin_bottom_text','Conservez soigneusement ce bulletin de notes. Aucun duplicata ne sera délivré.') }}"></div>
+                            <div class="lb-config-field lb-config-field--wide"><label>Notice importante</label><textarea rows="2" name="lmd_bulletin_notice_text">{{ $lmdGet('lmd_bulletin_notice_text', \App\Services\LMDBulletinService::NOTICE_DEFAUT) }}</textarea></div>
+                            <div class="lb-config-field lb-config-field--wide"><label>Pied de page</label><input name="lmd_bulletin_bottom_text" value="{{ $lmdGet('lmd_bulletin_bottom_text','Conservez soigneusement ce bulletin de notes. Aucun duplicata ne sera délivré.') }}"></div>
                         </div>
                     </div>
 
                     <div class="lb-config-section">
-                        <h3>Tailles de police par partie</h3>
-                        <p style="margin:-.3rem 0 .8rem;color:#64748b;font-size:.8rem;">Le gabarit peut maintenant respirer sur une page et se poursuivre proprement sur une deuxième : vous pouvez augmenter réellement la lisibilité sans casser le tableau.</p>
-                        <div class="lb-config-grid lb-config-grid--fonts">
-                            @foreach($fontFields as $key=>[$label,$default])
-                            <div class="lb-config-field"><label>{{ $label }}</label><input type="number" min="6" max="32" step="0.5" name="setting_{{ $key }}" value="{{ $lmdGet($key,$default) }}"><span class="lb-font-hint">6 à 32 px</span></div>
+                        <h3>Mise en page du PDF</h3>
+                        <p style="margin:-.3rem 0 .8rem;color:#64748b;font-size:.8rem;">Ces réglages contrôlent directement le bandeau 50/50 et la zone de signature visibles sur le bulletin.</p>
+                        <div class="lb-config-grid">
+                            @foreach($layoutFields as $key=>$field)
+                            <div class="lb-config-field">
+                                <label>{{ $field['label'] }}</label>
+                                <input type="number" min="{{ $field['min'] }}" max="{{ $field['max'] }}" step="{{ $field['step'] }}" name="{{ $key }}" value="{{ $lmdGet($key,$field['default']) }}">
+                                <span class="lb-font-hint">{{ $field['hint'] }} ({{ $field['min'] }}–{{ $field['max'] }} px)</span>
+                            </div>
                             @endforeach
                         </div>
                     </div>
 
-                    <div class="lb-config-actions"><button class="lb-config-save" type="submit"><i class="fas fa-save"></i>Enregistrer la configuration LMD</button></div>
+                    <div class="lb-config-section">
+                        <h3>Tailles de police par zone</h3>
+                        <p style="margin:-.3rem 0 .8rem;color:#64748b;font-size:.8rem;">Chaque valeur agit sur la zone nommée du PDF. Pour les longues listes UE/ECUE, KLASSCI resserre les marges de ligne sans réduire la police choisie.</p>
+                        <div class="lb-config-grid lb-config-grid--fonts">
+                            @foreach($fontFields as $key=>$field)
+                            <div class="lb-config-field">
+                                <label>{{ $field['label'] }}</label>
+                                <input type="number" min="6" max="32" step="0.5" name="{{ $key }}" value="{{ $lmdGet($key,$field['default']) }}">
+                                <span class="lb-font-hint">6 à 32 px</span>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="lb-config-actions">
+                        <span id="lmd-config-feedback" style="font-size:.78rem;color:#64748b;margin-right:auto;"></span>
+                        <button class="lb-config-save" type="submit"><i class="fas fa-save"></i><span>Enregistrer la configuration LMD</span></button>
+                    </div>
                 </form>
             </div>
         </details>
@@ -178,4 +182,35 @@ async function filtrer(){if(suspendre)return;clearTimeout(timer);var u=url(),id=
 form.submit=function(){if(!suspendre)filtrer()};form.addEventListener('submit',function(e){e.preventDefault();filtrer()});if(recherche)recherche.addEventListener('input',function(){clearTimeout(timer);timer=setTimeout(filtrer,400)});if(reset)reset.addEventListener('click',function(){suspendre=true;noms.forEach(function(n){var c=form.elements.namedItem(n);if(c)c.value=''});suspendre=false;filtrer()});resetVisible();
 })();
 </script>
+<script>
+(function(){'use strict';
+var cfg=document.getElementById('lmd-bulletin-config-form');
+if(!cfg||cfg.dataset.ajaxReady==='1')return;
+cfg.dataset.ajaxReady='1';
+cfg.addEventListener('submit',async function(e){
+    e.preventDefault();
+    var btn=cfg.querySelector('.lb-config-save'),label=btn?btn.querySelector('span'):null,feedback=document.getElementById('lmd-config-feedback');
+    if(btn){btn.disabled=true;btn.setAttribute('aria-busy','true')}
+    if(label)label.textContent='Enregistrement…';
+    if(feedback){feedback.textContent='';feedback.style.color='#64748b'}
+    try{
+        var response=await fetch(cfg.action,{method:'POST',headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest','X-CSRF-TOKEN':document.querySelector('meta[name="csrf-token"]')?.content||''},body:new FormData(cfg),credentials:'same-origin'});
+        var payload=await response.json().catch(function(){return {}});
+        if(!response.ok||payload.success===false){
+            var first=payload.errors?Object.values(payload.errors)[0]?.[0]:null;
+            throw new Error(first||payload.message||'Enregistrement impossible.');
+        }
+        if(feedback){feedback.textContent='Configuration enregistrée';feedback.style.color='#047857'}
+        window.dispatchEvent(new CustomEvent('toast',{detail:{type:'success',message:payload.message||'Configuration LMD enregistrée.'}}));
+    }catch(error){
+        if(feedback){feedback.textContent=error.message||'Erreur';feedback.style.color='#b91c1c'}
+        window.dispatchEvent(new CustomEvent('toast',{detail:{type:'error',message:error.message||'Enregistrement impossible.'}}));
+    }finally{
+        if(btn){btn.disabled=false;btn.removeAttribute('aria-busy')}
+        if(label)label.textContent='Enregistrer la configuration LMD';
+    }
+});
+})();
+</script>
+
 @endpush

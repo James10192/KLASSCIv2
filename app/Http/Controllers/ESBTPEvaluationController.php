@@ -36,10 +36,9 @@ class ESBTPEvaluationController extends Controller
      */
     public function index(Request $request)
     {
-        // Récupérer l'année universitaire courante
-        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $anneeAcademique = $anneeCourante ? $anneeCourante->name : date('Y').'-'.(date('Y') + 1);
-        $anneeUniversitaire = $anneeCourante;
+        $anneeUniversitaire = $this->anneeDemandeeOuCourante($request);
+        $anneeAcademique = $anneeUniversitaire ? $anneeUniversitaire->name : date('Y').'-'.(date('Y') + 1);
+        $anneesUniversitaires = ESBTPAnneeUniversitaire::orderByDesc('id')->get();
 
         $query = ESBTPEvaluation::with(['classe', 'matiere', 'createdBy'])
             ->withCount('notes')
@@ -49,9 +48,8 @@ class ESBTPEvaluationController extends Controller
             // deux tranches.
             ->orderBy('id', 'desc');
 
-        // Filtrer par année universitaire courante
-        if ($anneeCourante) {
-            $query->where('annee_universitaire_id', $anneeCourante->id);
+        if ($anneeUniversitaire) {
+            $query->where('annee_universitaire_id', $anneeUniversitaire->id);
         }
 
         $search = trim((string) $request->input('search', ''));
@@ -106,10 +104,9 @@ class ESBTPEvaluationController extends Controller
             );
         }
 
-        // Statistiques pour l'année courante uniquement
         $statsQuery = ESBTPEvaluation::query();
-        if ($anneeCourante) {
-            $statsQuery->where('annee_universitaire_id', $anneeCourante->id);
+        if ($anneeUniversitaire) {
+            $statsQuery->where('annee_universitaire_id', $anneeUniversitaire->id);
         }
 
         $totalEvaluations = (clone $statsQuery)->count();
@@ -135,6 +132,7 @@ class ESBTPEvaluationController extends Controller
             'date_debut' => $request->input('date_debut'),
             'date_fin' => $request->input('date_fin'),
             'per_page' => $perPage,
+            'annee_universitaire_id' => $anneeUniversitaire?->id,
         ];
 
         $summary = [
@@ -157,6 +155,7 @@ class ESBTPEvaluationController extends Controller
         $currentUser = \Auth::user();
         if (! $currentUser->hasAnyPermission(['identity.teach', 'identity.student'])) {
             $evaluationsForExternalLinks = ESBTPEvaluation::with(['classe', 'matiere'])
+                ->when($anneeUniversitaire, fn ($q) => $q->where('annee_universitaire_id', $anneeUniversitaire->id))
                 ->where('is_published', true)
                 ->whereDoesntHave('notes')
                 ->whereNull('enseignant_id') // Sans enseignant assigné
@@ -196,8 +195,8 @@ class ESBTPEvaluationController extends Controller
             'devoirs',
             'evaluationsForExternalLinks',
             'anneeAcademique',
-            'anneeCourante',
             'anneeUniversitaire',
+            'anneesUniversitaires',
             'filters',
             'summary'
         ));
@@ -285,7 +284,8 @@ class ESBTPEvaluationController extends Controller
             ], $status);
         }
 
-        return redirect()->route('esbtp.evaluations.index')->with('success', $message)->with('warning', $suite['avertissement'] ?? null);
+        return redirect()->route('esbtp.evaluations.index', ['annee_universitaire_id' => $evaluation->annee_universitaire_id])
+            ->with('success', $message)->with('warning', $suite['avertissement'] ?? null);
     }
 
     /**
@@ -299,19 +299,7 @@ class ESBTPEvaluationController extends Controller
         $matiere_id = $request->input('matiere_id');
         $classe_id = $request->input('classe_id');
 
-        // Suppression du bloc de redirection qui empêche la présélection de la matière
-        // if ($matiere_id) {
-        //     $matiere = ESBTPMatiere::findOrFail($matiere_id);
-        //     $evaluationsCount = ESBTPEvaluation::where('matiere_id', $matiere_id)->count();
-        //
-        //     // If evaluations exist, redirect to the evaluations list filtered by this subject
-        //     if ($evaluationsCount > 0) {
-        //         return redirect()->route('esbtp.evaluations.index', ['matiere_id' => $matiere_id])
-        //             ->with('info', 'Il existe déjà des évaluations pour cette matière. Vous pouvez en ajouter une nouvelle ici.');
-        //     }
-        // }
-
-        $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeUniversitaire = $this->anneeDemandeeOuCourante($request);
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $matieres = ESBTPMatiere::where('is_active', true)
             ->whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
@@ -445,8 +433,7 @@ class ESBTPEvaluationController extends Controller
         }
 
         try {
-            // Récupérer l'année universitaire courante
-            $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeUniversitaire = $this->anneeDemandeeOuCourante($request);
 
             if (! $anneeUniversitaire) {
                 \Log::error('Aucune année universitaire courante trouvée');
@@ -518,7 +505,7 @@ class ESBTPEvaluationController extends Controller
 
             // Ajouter les valeurs par défaut pour les champs manquants
             $evaluation->periode = $request->periode ?? 'semestre1'; // Valeur par défaut pour periode
-            $evaluation->annee_universitaire_id = $request->annee_universitaire_id ?? $anneeUniversitaire->id;
+            $evaluation->annee_universitaire_id = $anneeUniversitaire->id;
 
             \Log::info('Tentative de sauvegarde de l\'évaluation:', [
                 'titre' => $evaluation->titre,
@@ -579,7 +566,7 @@ class ESBTPEvaluationController extends Controller
                 ]);
             }
 
-            $redirect = redirect()->route('esbtp.evaluations.index')
+            $redirect = redirect()->route('esbtp.evaluations.index', ['annee_universitaire_id' => $evaluation->annee_universitaire_id])
                 ->with('success', $successMessage);
             if ($tcWarning) {
                 $redirect->with('warning', $tcWarning);
@@ -622,18 +609,14 @@ class ESBTPEvaluationController extends Controller
     {
         $evaluation->load(['classe', 'matiere', 'createdBy', 'updatedBy', 'notes.etudiant']);
 
-        // Récupérer l'année universitaire courante
-        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        // Une évaluation connaît déjà son année : ne pas la remplacer par is_current.
+        $anneeEvaluationId = (int) $evaluation->annee_universitaire_id;
 
-        // Récupérer tous les étudiants avec inscriptions actives sur l'année courante
-        // ET workflow_step = etudiant_cree (exclut les pré-inscriptions / prospects).
-        $etudiantsAnneeCourante = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
+        $etudiantsAnneeCourante = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeEvaluationId) {
             $query->where('classe_id', $evaluation->classe_id)
                 ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree');
-            if ($anneeCourante) {
-                $query->where('annee_universitaire_id', $anneeCourante->id);
-            }
+                ->where('workflow_step', 'etudiant_cree')
+                ->where('annee_universitaire_id', $anneeEvaluationId);
         })
             ->orderBy('nom')
             ->get();
@@ -756,13 +739,13 @@ class ESBTPEvaluationController extends Controller
             $evaluation->description = $request->description;
             $evaluation->type = $request->type;
             $evaluation->date_evaluation = $startAt;
-            $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeUniversitaireId = (int) $evaluation->annee_universitaire_id;
 
             // Récupérer le coefficient depuis le formulaire (priorité haute)
             $coefficient = $request->input('coefficient');
             if (empty($coefficient) || $coefficient <= 0) {
                 // Si pas de coefficient dans le formulaire, essayer de récupérer depuis la matière
-                $coefficient = $this->getCoefficientForCombination($request->classe_id, $request->matiere_id, $anneeUniversitaire?->id);
+                $coefficient = $this->getCoefficientForCombination($request->classe_id, $request->matiere_id, $anneeUniversitaireId);
                 if ($coefficient === null) {
                     // Fallback: utiliser 1 comme valeur par défaut au lieu de bloquer
                     $coefficient = 1;
@@ -1315,15 +1298,13 @@ class ESBTPEvaluationController extends Controller
     {
         $evaluation->load(['classe', 'matiere', 'notes.etudiant']);
 
-        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeCourante = ESBTPAnneeUniversitaire::find($evaluation->annee_universitaire_id);
 
-        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
+        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation) {
             $query->where('classe_id', $evaluation->classe_id)
                 ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree');
-            if ($anneeCourante) {
-                $query->where('annee_universitaire_id', $anneeCourante->id);
-            }
+                ->where('workflow_step', 'etudiant_cree')
+                ->where('annee_universitaire_id', $evaluation->annee_universitaire_id);
         })
             ->with(['notes' => function ($query) use ($evaluation) {
                 $query->where('evaluation_id', $evaluation->id);
@@ -1527,7 +1508,7 @@ class ESBTPEvaluationController extends Controller
                 ]);
             }
 
-            $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeUniversitaire = $this->anneeDemandeeOuCourante($request);
             if (! $anneeUniversitaire) {
                 return response()->json([
                     'success' => false,
@@ -1899,8 +1880,7 @@ class ESBTPEvaluationController extends Controller
             'classe_id' => 'required|exists:esbtp_classes,id',
             'matiere_id' => 'required|exists:esbtp_matieres,id',
         ]);
-
-        $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeUniversitaire = $this->anneeDemandeeOuCourante($request);
         if (! $anneeUniversitaire) {
             return response()->json([
                 'success' => false,
@@ -1946,6 +1926,15 @@ class ESBTPEvaluationController extends Controller
         return $record?->coefficient;
     }
 
+    private function anneeDemandeeOuCourante(Request $request): ?ESBTPAnneeUniversitaire
+    {
+        $request->validate(['annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id']]);
+
+        return $request->filled('annee_universitaire_id')
+            ? ESBTPAnneeUniversitaire::findOrFail($request->integer('annee_universitaire_id'))
+            : ESBTPAnneeUniversitaire::anneeCourante();
+    }
+
     /**
      * Get evaluations for a specific class and subject (AJAX API)
      * Used in the new notes system for grid display
@@ -1981,8 +1970,7 @@ class ESBTPEvaluationController extends Controller
                 ], 404);
             }
 
-            // Get current academic year
-            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeCourante = $this->anneeDemandeeOuCourante($request);
             if (! $anneeCourante) {
                 return response()->json([
                     'success' => false,

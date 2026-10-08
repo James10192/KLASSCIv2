@@ -21,6 +21,7 @@ use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Services\FuzzyNameMatcher;
 use App\Services\LMD\AgregatDeLaPeriode;
+use App\Services\Reinscription\EligibiliteReinscription;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\EtudiantAcademicJourneyPresenter;
 use App\Services\EtudiantDossierService;
@@ -568,8 +569,11 @@ class ESBTPStudentController extends Controller
         return redirect()->route('esbtp.etudiants.index')->with('success', 'Étudiant créé avec succès.');
     }
 
-    public function show(ESBTPEtudiant $etudiant, EtudiantDossierService $dossierService)
-    {
+    public function show(
+        ESBTPEtudiant $etudiant,
+        EtudiantDossierService $dossierService,
+        EligibiliteReinscription $eligibiliteReinscription
+    ) {
         $etudiant->load([
             'user',
             'accessibilityProfile.updatedBy',
@@ -599,6 +603,27 @@ class ESBTPStudentController extends Controller
 
         $dossier       = $dossierService->buildDossier($etudiant);
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        // ── Réinscription à proposer sur la fiche ──
+        // L'année marquée is_current reste l'année de travail de l'école. Elle peut
+        // être conservée après sa date de fin pour terminer notes et bulletins.
+        // La cible de réinscription, elle, vient du moteur canonique : si l'élève
+        // est encore inscrit dans une année courante désormais échue, le moteur
+        // vise l'année suivante sans imposer une bascule administrative préalable.
+        $reinscription = $eligibiliteReinscription->pour((int) $etudiant->id, auth()->user());
+        $reinscriptionCible = $reinscription['annee_cible'] ?? null;
+        $reinscriptionQuittee = $reinscription['inscription'] ?? null;
+        $inscriptionCibleExistante = $reinscription['inscription_annee_cible'] ?? null;
+        $anneeCouranteEchue = (bool) $anneeCourante?->estTerminee();
+        $reinscriptionSourceEstCourante = $anneeCourante
+            && $reinscriptionQuittee
+            && (int) $reinscriptionQuittee->annee_universitaire_id === (int) $anneeCourante->id;
+
+        $doitProposerReinscription = $reinscriptionCible !== null
+            && $reinscriptionQuittee !== null
+            && $inscriptionCibleExistante === null
+            && ($reinscription['etat'] ?? null) !== EligibiliteReinscription::ANNEE_INTERMEDIAIRE
+            && (! $reinscriptionSourceEstCourante || $anneeCouranteEchue);
 
         // ── Reliquats ──
         $inscriptionIds = $etudiant->inscriptions->pluck('id');
@@ -731,7 +756,8 @@ class ESBTPStudentController extends Controller
             'etudiant', 'dossier', 'anneeCourante', 'voirFinances',
             'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits',
             'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
-            'tpeAttendu', 'tpeParSemestre', 'btsJourney', 'academicJourney', 'btsAnnualSnapshot', 'inscriptionRepairClasses'
+            'tpeAttendu', 'tpeParSemestre', 'btsJourney', 'academicJourney', 'btsAnnualSnapshot', 'inscriptionRepairClasses',
+            'reinscriptionCible', 'anneeCouranteEchue', 'doitProposerReinscription'
         ));
     }
 
