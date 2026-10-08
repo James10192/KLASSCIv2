@@ -535,6 +535,8 @@ class ESBTPLMDBulletinController extends Controller
             'show_etablissement_box' => SettingsHelper::get('lmd_bulletin_show_etablissement_box', '1') == '1',
             'show_effectif' => SettingsHelper::get('lmd_bulletin_show_effectif', '0') == '1',
             'show_redoublant' => SettingsHelper::get('lmd_bulletin_show_redoublant', '0') == '1',
+            'show_affectation' => SettingsHelper::get('lmd_bulletin_show_affectation', '1') == '1',
+            'label_affectation' => SettingsHelper::get('lmd_bulletin_label_affectation', 'AFFECTATION'),
             'redoublant' => (function () use ($bulletin) {
                 $value = \App\Models\ESBTPInscription::query()->where('etudiant_id', $bulletin->etudiant_id)
                     ->where('classe_id', $bulletin->classe_id)
