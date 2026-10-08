@@ -101,6 +101,7 @@
         $signatureSpaceHeight = $layoutNumber('lmd_bulletin_signature_space_height', 42, 20, 120);
         $bottomWidthPercent = $layoutNumber('lmd_bulletin_bottom_width_percent', 104, 90, 108);
         $bottomHorizontalOffset = (100 - $bottomWidthPercent) / 2;
+        $bottomSingleLine = \App\Helpers\SettingsHelper::get('lmd_bulletin_bottom_single_line', '1') == '1';
         $officialHeaderBg = \App\Helpers\SettingsHelper::get('lmd_bulletin_official_header_bg', '#ffffff');
         $officialLabelColor = \App\Helpers\SettingsHelper::get('lmd_bulletin_header_label_color', '#1f2937');
         $officialLabelBold = \App\Helpers\SettingsHelper::get('lmd_bulletin_header_label_bold', '0') == '1';
@@ -108,6 +109,9 @@
         $headerMetaLabelColor = \App\Helpers\SettingsHelper::get('lmd_bulletin_meta_label_color', '#1f2937');
         $headerMetaLabelBold = \App\Helpers\SettingsHelper::get('lmd_bulletin_meta_label_bold', '0') == '1';
         $paysEtablissement = trim((string) ($etab['pays'] ?? '')) ?: 'Côte d\'Ivoire';
+        $bottomSchoolLine = ($etab['nom'] ?? 'KLASSCI') . ', Etablissement ' . mb_strtolower($statutEtablissement, 'UTF-8') . ', ' . $paysEtablissement;
+        $bottomCombined = $bottomText . ' — ' . $bottomSchoolLine;
+        $bottomSingleLineFont = min($fontBottom, max(6, 820 / max(1, mb_strlen($bottomCombined, 'UTF-8'))));
     @endphp
 
     <style>
@@ -129,6 +133,7 @@
         /* En-tête compact 50/50 : identité établissement à gauche,
          * document + métadonnées à droite. On gagne une ligne complète
          * par rapport à l'ancien empilement logo/école puis titre/métadonnées. */
+        .lmd-header-frame { width: 100%; border: 2px solid {{ $primary }}; border-radius: 7px; padding: 0; box-sizing: border-box; page-break-inside: avoid; margin-bottom: 4px; }
         .lmd-document-header {
             width: 100%;
             border-collapse: separate;
@@ -145,12 +150,10 @@
         }
         .lmd-header-school {
             padding: {{ $headerPaddingY }}px 7px;
-            border-top: 2px solid {{ $primary }};
-            border-left: 2px solid {{ $primary }};
             border-right: 1px solid rgba(255,255,255,0.28);
             border-radius: 7px 0 0 7px;
         }
-        .lmd-header-document { padding: {{ $headerPaddingY }}px 9px; border-top: 2px solid {{ $primary }}; border-right: 2px solid {{ $primary }}; border-radius: 0 7px 7px 0; }
+        .lmd-header-document { padding: {{ $headerPaddingY }}px 9px; border-radius: 0 7px 7px 0; }
         .lmd-header-title {
             color: {{ $hdrText }};
             font-size: {{ $fontTitle }}px;
@@ -303,11 +306,8 @@
             line-height: 1.32;
             page-break-inside: avoid;
         }
-        .bottom-note-line {
-            display: block;
-            white-space: normal;
-            word-wrap: break-word;
-        }
+        .bottom-note-line { display: block; white-space: nowrap; }
+        .bottom-note-single { display: block; white-space: nowrap; font-size: {{ $bottomSingleLineFont }}px; letter-spacing: -0.15px; }
     </style>
 </head>
 <body>
@@ -329,7 +329,7 @@
 </table>
 @endif
 
-<table class="lmd-document-header" border="0" cellspacing="0" cellpadding="0">
+<div class="lmd-header-frame"><table class="lmd-document-header" border="0" cellspacing="0" cellpadding="0">
     <tr>
         <td class="lmd-header-school">
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -390,11 +390,7 @@
             </table>
         </td>
     </tr>
-    {{-- DomPDF: the single spanning-cell bottom edge avoids gaps between 50/50 cells. --}}
-    <tr>
-        <td colspan="2" style="height: 0; line-height: 0; font-size: 0; padding: 0; border-bottom: 2px solid {{ $primary }};"></td>
-    </tr>
-</table>
+</table></div>
 
 @if(($bCfg['show_etablissement_box'] ?? true) && $officialBandItems->isNotEmpty())
 <table class="official-band" cellspacing="0" cellpadding="0">
@@ -589,8 +585,12 @@
 </table>
 
 <div class="bottom-note">
+    @if($bottomSingleLine)
+    <span class="bottom-note-single">{{ $bottomCombined }}</span>
+    @else
     <span class="bottom-note-line">{{ $bottomText }}</span>
-    <span class="bottom-note-line">{{ $etab['nom'] ?? 'KLASSCI' }}, Etablissement {{ mb_strtolower($statutEtablissement, 'UTF-8') }}, {{ $paysEtablissement }}</span>
+    <span class="bottom-note-line">{{ $bottomSchoolLine }}</span>
+    @endif
 </div>
 <div style="text-align: center; font-size: {{ min(32, $fontBottom + .5) }}px; font-weight: 800; margin-top: 3px; page-break-inside: avoid;">
     {{ \App\Services\BulletinMentionResolver::authenticityText() }}
