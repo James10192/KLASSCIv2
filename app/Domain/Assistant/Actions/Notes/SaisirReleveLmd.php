@@ -68,6 +68,7 @@ class SaisirReleveLmd extends ActionAgent
                 'semestre' => ['type' => 'string', 'description' => 'Semestre de la maquette, numéroté en continu : S1-S2 en L1, S3-S4 en L2, S5-S6 en L3.'],
                 'motif' => ['type' => 'string', 'description' => "D'où viennent ces notes (relevé officiel transmis par…), 20 caractères au moins, tel que dit par la personne. Vide s'il n'a pas été donné : l'outil le demandera."],
                 'date' => ['type' => 'string', 'description' => 'Date du relevé ou de la session (AAAA-MM-JJ). Par défaut aujourd\'hui.'],
+                'nature' => ['type' => 'string', 'enum' => RegularisationDeNotesLmd::NATURES, 'description' => "« examen » si le relevé ne donne que la note d'examen (le contrôle continu viendra à part) ; sinon « regularisation », le défaut."],
                 'zeros_confirmes' => ['type' => 'boolean', 'description' => 'true seulement si la personne a confirmé que les 0 sont de vraies notes et non des épreuves non composées.'],
                 'etudiants' => [
                     'type' => 'array',
@@ -132,7 +133,10 @@ class SaisirReleveLmd extends ActionAgent
         }
 
         $base = ['classe_id' => (int) $classe->id, 'annee_universitaire_id' => (int) $annee->id, 'periode' => $periode,
-            'date_regularisation' => $date, 'motif' => $motif];
+            'date_regularisation' => $date, 'motif' => $motif,
+            // Transmise telle quelle : une nature inconnue est refusée par le
+            // service, et le refus revient en question à la personne.
+            'nature' => $args['nature'] ?? RegularisationDeNotesLmd::NATURE_REGULARISATION];
         try {
             $rapport = $this->simuler($base, $entrees, (int) $user->id);
         } catch (ValidationException $e) {
@@ -146,9 +150,9 @@ class SaisirReleveLmd extends ActionAgent
 
         return new Proposition(
             titre: 'Relevé S' . substr($periode, 8) . " {$annee->name} — {$classe->name}",
-            resume: sprintf('%d note(s) pour %d étudiant(s), %d élément(s) de la maquette %s. Une évaluation de régularisation par élément, comptée au bulletin, non publiée aux étudiants. Motif : %s',
+            resume: sprintf('%d note(s) pour %d étudiant(s), %d élément(s) de la maquette %s. Une évaluation %s par élément, comptée au bulletin, non publiée aux étudiants. Motif : %s',
                 count($changees), count(array_unique(array_column($changees, 'etudiant_id'))), count(array_unique(array_column($changees, 'matiere_id'))),
-                'S' . substr($periode, 8), $motif),
+                'S' . substr($periode, 8), $base['nature'] === RegularisationDeNotesLmd::NATURE_EXAMEN ? "d'examen" : 'de régularisation', $motif),
             tableau: [
                 'colonnes' => ['Étudiant', 'Élément', 'Avant', 'Après'],
                 'lignes' => array_map(fn ($r) => [$r['etudiant'], $r['matiere'], $r['avant'] === null ? '—' : $this->nombre($r['avant']), $this->nombre($r['apres'])], $changees),
@@ -170,7 +174,7 @@ class SaisirReleveLmd extends ActionAgent
             throw new PropositionPerimee("Vous n'avez plus le droit de créer des évaluations et d'y poser des notes.");
         }
         $d = $proposition->donnees;
-        $base = array_intersect_key($d, array_flip(['classe_id', 'annee_universitaire_id', 'periode', 'date_regularisation', 'motif']));
+        $base = array_intersect_key($d, array_flip(['classe_id', 'annee_universitaire_id', 'periode', 'date_regularisation', 'motif', 'nature']));
         try {
             if ($this->simuler($base, $d['etudiants'], (int) $user->id) !== $proposition->etat['lignes']) {
                 throw new PropositionPerimee('Ces notes ont changé depuis la proposition.');

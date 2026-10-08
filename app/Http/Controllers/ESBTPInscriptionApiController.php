@@ -260,6 +260,10 @@ class ESBTPInscriptionApiController extends Controller
      */
     public function getFraisByClasse($classeId, Request $request)
     {
+        $validated = $request->validate([
+            'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
+        ]);
+
         try {
             $classe = ESBTPClasse::with([
                 "filiere",
@@ -285,9 +289,22 @@ class ESBTPInscriptionApiController extends Controller
 
             $statutEtablissement = $request->get("statut_etablissement");
             $fraisAudience = app(\App\Services\ApplicableFraisResolver::class);
+            $scope = app(\App\Services\FraisScopeResolver::class)->resolveForClasse($classe);
+            $scope['annee_universitaire_id'] = $validated['annee_universitaire_id']
+                ?? ESBTPAnneeUniversitaire::anneeCourante()?->id;
 
             foreach ($allCategories as $category) {
-                if (! $fraisAudience->categoryAppliesToStudent($category, $statutEtablissement)) {
+                // L'audience est une propriété de la combinaison académique,
+                // pas du catalogue de frais partagé entre tous les niveaux.
+                $configuration = ESBTPFraisConfiguration::getApplicableForScope(
+                    $category->id,
+                    $scope,
+                );
+                if (! $fraisAudience->categoryAppliesToStudent(
+                    $category,
+                    $statutEtablissement,
+                    $configuration,
+                )) {
                     continue;
                 }
 
@@ -306,15 +323,6 @@ class ESBTPInscriptionApiController extends Controller
                 if ($category->is_mandatory) {
                     // FRAIS OBLIGATOIRES : Recherche configuration par classe
 
-                    // 1. Chercher une configuration spécifique pour cette filière/niveau
-                    $configuration = \App\Models\ESBTPFraisConfiguration::where(
-                        "frais_category_id",
-                        $category->id,
-                    )
-                        ->where("filiere_id", $classe->filiere_id)
-                        ->where("niveau_id", $classe->niveau_etude_id)
-                        ->where("is_active", true)
-                        ->first();
 
                     if ($configuration) {
                         $defaultAmount = $configuration->getMontantByStatus(

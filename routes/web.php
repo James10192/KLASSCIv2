@@ -551,7 +551,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/etudiants/{etudiant}/certificat/preview-pdf', [ESBTPEtudiantController::class, 'previewCertificatPdf'])
                 ->name('etudiants.certificat.preview-pdf')
                 ->middleware(['permission:students.view', 'throttle:60,1']);
-
+            Route::patch('/etudiants/{etudiant}/certificat/moyenne-historique/{inscription}', [ESBTPEtudiantController::class, 'enregistrerMoyenneAnnuelleHistorique'])->name('etudiants.certificat.moyenne-historique')->middleware(['permission:students.view', 'permission:bulletins.edit']);
             // Routes pour les attestations de frÃ©quentation
             Route::get('/etudiants/{etudiant}/attestation-frequentation-preview', [ESBTPEtudiantController::class, 'previewAttestationFrequentation'])
                 ->name('etudiants.attestation-frequentation.preview')
@@ -3408,6 +3408,11 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
         ->middleware('permission:lmd.notes.manage')->name('notes.save-bulk');
     Route::get('notes/classe/{classe}/data', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'classeData'])
         ->middleware('permission:lmd.notes.view')->name('notes.classe-data');
+    // Régularisations d'un relevé → examens (titre et type, aucune note ne bouge).
+    Route::get('notes/classe/{classe}/requalification', [\App\Http\Controllers\ESBTPLMDRequalificationController::class, 'inventaire'])
+        ->middleware(['permission:lmd.notes.manage', 'permission:evaluations.edit'])->name('notes.requalification');
+    Route::post('notes/classe/{classe}/requalifier-examen', [\App\Http\Controllers\ESBTPLMDRequalificationController::class, 'appliquer'])
+        ->middleware(['permission:lmd.notes.manage', 'permission:evaluations.edit', 'throttle:20,1'])->name('notes.requalifier-examen');
 
     // --- Resultats ---
     Route::get('resultats', [\App\Http\Controllers\ESBTPLMDResultatController::class, 'index'])

@@ -64,6 +64,7 @@
         'csrf' => csrf_token(),
         'seuil' => (int) ($unusualAmountThreshold ?? 0),
         'date' => now()->toDateString(),
+        'yesterday' => now()->subDay()->toDateString(),
         'dateLabel' => now()->translatedFormat('d M Y'),
         'devise' => $mabDevise,
         'preselect' => $mabPreselect,
@@ -110,6 +111,42 @@
     .mab-recap .v { font-size: 26px; font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums; }
     .mab-recap .v small { font-size: 13px; font-weight: 600; color: #64748b; margin-left: 4px; }
     .mab-recap .l { font-size: 13.5px; color: #334155; }
+    .mab-date {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid #e6eaf2;
+        border-radius: 14px;
+        background: #fff;
+    }
+    .mab-date-copy { display: grid; gap: 2px; min-width: 0; }
+    .mab-date-copy span { color: #64748b; font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .mab-date-copy b { color: #0f172a; font-size: 14.5px; line-height: 1.25; }
+    .mab-date-edit {
+        flex: 0 0 auto;
+        min-height: 42px;
+        border: 1px solid #dbe4f0;
+        border-radius: 11px;
+        background: #f8fafc;
+        color: #0453cb;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+        padding: 0 13px;
+    }
+    .mab-date-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .mab-date-actions button {
+        min-height: 44px;
+        border: 1px solid #dbe4f0;
+        border-radius: 11px;
+        background: #fff;
+        color: #334155;
+        font: inherit;
+        font-weight: 700;
+        font-size: 13px;
+    }
     .mab-sous { font-size: 12px; font-weight: 700; color: #475569; letter-spacing: .04em; text-transform: uppercase; margin: 4px 2px -4px; }
     /* Plein écran : le pas-à-pas remplace les onglets, la barre d'action se pose en bas. */
     @media (max-width: 767.98px) {
@@ -275,7 +312,25 @@
                 <div class="mt">À encaisser</div>
                 <div class="v"><span x-text="fmtNu(montant)"></span><small x-text="cfg.devise"></small></div>
                 <div class="l" x-text="(sel ? sel.nom : '') + ' · ' + libelleChoix"></div>
-                <div class="l" style="color:#64748b" x-text="cfg.dateLabel"></div>
+            </div>
+
+            <div class="mab-date">
+                <div class="mab-date-copy">
+                    <span>Date du paiement</span>
+                    <b x-text="datePaiement === cfg.date ? ('Aujourd’hui · ' + formatDate(datePaiement)) : formatDate(datePaiement)"></b>
+                </div>
+                <button type="button" class="mab-date-edit" x-on:click="dateEdition = !dateEdition"
+                        x-text="dateEdition ? 'Fermer' : 'Modifier'"></button>
+            </div>
+            <div class="m-field" x-show="dateEdition" x-cloak>
+                <label for="mab-date-paiement">Date réelle du versement</label>
+                <input id="mab-date-paiement" type="date" class="m-in" x-model="datePaiement"
+                       x-bind:max="cfg.date" x-on:change="erreurs.date_paiement = ''">
+                <div class="mab-date-actions">
+                    <button type="button" x-on:click="datePaiement = cfg.date; dateEdition = false; erreurs.date_paiement = ''">Aujourd’hui</button>
+                    <button type="button" x-on:click="datePaiement = cfg.yesterday || cfg.date; erreurs.date_paiement = ''">Hier</button>
+                </div>
+                <div class="mab-field-err" x-show="erreurs.date_paiement" x-cloak x-text="erreurs.date_paiement"></div>
             </div>
 
             <div class="mab-sous">Mode de paiement</div>
@@ -348,6 +403,8 @@ if (typeof window.mabEncaisser !== 'function') {
             frais: [],
             choix: [],
             montant: 0,
+            datePaiement: '',
+            dateEdition: false,
             // Vrai tant que le montant affiché est celui proposé (le reste dû) :
             // le premier chiffre tapé le remplace au lieu de s'y ajouter.
             propose: false,
@@ -369,6 +426,7 @@ if (typeof window.mabEncaisser !== 'function') {
                     this.erreurGlobale = "Écran indisponible : configuration illisible.";
                     return;
                 }
+                this.datePaiement = this.cfg.date || '';
                 const pre = this.cfg.preselect || {};
                 if (pre.inscription) {
                     this.choisirInscription(pre.inscription);
@@ -413,6 +471,11 @@ if (typeof window.mabEncaisser !== 'function') {
                 return new Intl.NumberFormat('fr-FR').format(Number.isFinite(v) ? v : 0);
             },
             fmt(n) { return this.fmtNu(n) + ' ' + (this.cfg.devise || ''); },
+            formatDate(value) {
+                if (!value) return 'Date non définie';
+                const d = new Date(value + 'T12:00:00');
+                return new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }).format(d);
+            },
             initiales(nom) {
                 return String(nom || '').split(/\s+/).filter(Boolean).slice(0, 2)
                     .map(m => m.charAt(0)).join('').toUpperCase();
@@ -548,6 +611,8 @@ if (typeof window.mabEncaisser !== 'function') {
                 };
                 this.choix = [];
                 this.montant = 0;
+                this.datePaiement = this.cfg.date || '';
+                this.dateEdition = false;
                 this.propose = false;
                 this.confirme = false;
                 this.apercu = { allocations: [], message: '' };
@@ -697,7 +762,7 @@ if (typeof window.mabEncaisser !== 'function') {
                     inscription_id: this.sel.id,
                     frais_category_id: this.fraisChoisis[0].id,
                     montant: this.montant,
-                    date_paiement: this.cfg.date,
+                    date_paiement: this.datePaiement || this.cfg.date,
                     mode_paiement: this.form.mode,
                     reference_paiement: this.form.reference || null,
                     tranche: null,
@@ -747,12 +812,13 @@ if (typeof window.mabEncaisser !== 'function') {
                 const errs = data.errors || {};
                 const premier = (k) => Array.isArray(errs[k]) ? errs[k][0] : (errs[k] || '');
                 const champsMontant = ['montant', 'repartition', 'frais_category_id'];
-                const champsMode = ['mode_paiement', 'reference_paiement'];
+                const champsMode = ['mode_paiement', 'reference_paiement', 'date_paiement'];
                 let place = false;
                 champsMode.forEach(k => { if (errs[k]) { this.erreurs[k] = premier(k); place = true; } });
                 champsMontant.forEach(k => { if (errs[k]) { this.erreurs[k === 'repartition' ? 'montant' : k] = premier(k); place = true; } });
                 if (errs.montant || errs.repartition) { this.etape = 3; }
                 else if (errs.frais_category_id) { this.etape = 2; }
+                else if (errs.date_paiement) { this.etape = 4; this.dateEdition = true; }
                 if (!place) {
                     const autres = Object.keys(errs).map(premier).filter(Boolean);
                     this.erreurGlobale = data.message || autres[0]

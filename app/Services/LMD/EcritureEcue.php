@@ -40,6 +40,10 @@ class EcritureEcue
                 $matiere = ESBTPMatiere::findOrFail($donnees['matiere_id']);
                 $this->refuserAbsorptionMatiereBts($matiere);
                 $this->refuserCodeImprimeEnDouble($ue, $portee, $matiere);
+                // Un element archive dans le LMD (SortieDuLmd) se reprend ainsi.
+                if (! $matiere->is_active) {
+                    $matiere->update(['is_active' => true, 'updated_by' => auth()->id()]);
+                }
             } else {
                 [$matiere, $codeLibere] = $this->codes->ecrire($donnees['code'], null, $ue, $portee, fn () => ESBTPMatiere::create([
                     'name' => $donnees['name'],

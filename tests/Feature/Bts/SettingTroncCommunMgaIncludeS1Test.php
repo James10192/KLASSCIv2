@@ -12,78 +12,88 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\Setting;
 use App\Services\BulletinService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\Feature\Bts\Concerns\SeedsConfiguredBulletin;
 use Tests\TestCase;
 
 /**
- * c3 — Le setting tronc_commun_mga_include_s1 gouverne l'appel au class-map resolver.
- *
- *  - ON  : le résolveur est consulté et la classe TC est substituée pour le S1.
- *  - OFF : le résolveur N'EST PAS appelé du tout, aucune substitution.
- *
- * BTS uniquement (LMD intouché).
+ * Le reglage choisit la formule annuelle d'un eleve oriente, sans effacer sa
+ * chronologie : le S1 d'origine reste connu et affichable dans les deux modes.
  */
 class SettingTroncCommunMgaIncludeS1Test extends TestCase
 {
     use RefreshDatabase;
-    use SeedsConfiguredBulletin;
 
-    /** @test */
-    public function when_setting_on_the_resolver_substitutes_the_tronc_commun_classe(): void
+    public function test_actif_annuel_combine_s1_origine_et_s2_specialite(): void
     {
         $this->setSetting('tronc_commun_mga_include_s1', '1');
-
         [$inscription, $tcClasse, $specClasse] = $this->makePhaseBasedInscription();
 
-        $this->seedConfiguredBulletin(
-            $inscription->etudiant_id,
-            $specClasse->id,
-            $inscription->annee_universitaire_id,
-            'semestre1'
-        );
-
         $service = app(BulletinService::class);
-        $data = $service->genererDonneesBulletin(
-            $inscription->etudiant_id,
-            $specClasse->id,
-            $inscription->annee_universitaire_id,
-            'semestre1'
+        $this->assertTrue($service->annualIncludesSemester1($tcClasse->id, $specClasse->id));
+        $this->assertEqualsWithDelta(
+            14.0,
+            $service->calculateConfiguredAnnualAverage(
+                18.0,
+                10.0,
+                ['semester1' => 1.0, 'semester2' => 1.0],
+                $tcClasse->id,
+                $specClasse->id
+            ),
+            0.001
         );
 
-        $this->assertNotNull($data['classeTroncCommun']);
-        $this->assertSame($tcClasse->id, $data['classeTroncCommun']->id);
+        $map = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)->resolve(
+            $inscription->etudiant_id,
+            $specClasse->id,
+            $inscription->annee_universitaire_id
+        );
+        $this->assertSame($tcClasse->id, $map['semestre1_classe_id']);
+        $this->assertSame($specClasse->id, $map['semestre2_classe_id']);
     }
 
-    /** @test */
-    public function when_setting_off_no_tronc_commun_substitution_happens(): void
+    public function test_coupe_annuel_oriente_devient_s2_seul_sans_perdre_la_classe_origine(): void
+    {
+        $this->setSetting('tronc_commun_mga_include_s1', '0');
+        [$inscription, $tcClasse, $specClasse] = $this->makePhaseBasedInscription();
+
+        $service = app(BulletinService::class);
+        $this->assertFalse($service->annualIncludesSemester1($tcClasse->id, $specClasse->id));
+        $this->assertSame(
+            10.0,
+            $service->calculateConfiguredAnnualAverage(
+                18.0,
+                10.0,
+                ['semester1' => 1.0, 'semester2' => 1.0],
+                $tcClasse->id,
+                $specClasse->id
+            )
+        );
+
+        $map = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)->resolve(
+            $inscription->etudiant_id,
+            $specClasse->id,
+            $inscription->annee_universitaire_id
+        );
+        $this->assertSame($tcClasse->id, $map['semestre1_classe_id']);
+        $this->assertSame($specClasse->id, $map['semestre2_classe_id']);
+    }
+
+    public function test_coupe_ne_change_pas_une_classe_ordinaire(): void
     {
         $this->setSetting('tronc_commun_mga_include_s1', '0');
 
-        [$inscription, $tcClasse, $specClasse] = $this->makePhaseBasedInscription();
-
-        $this->seedConfiguredBulletin(
-            $inscription->etudiant_id,
-            $specClasse->id,
-            $inscription->annee_universitaire_id,
-            'semestre1'
-        );
-
-        // Setting OFF : la branche d'inclusion S1 (BulletinService.php:466) est sautée,
-        // donc AUCUNE substitution de classe TC pour le MGA. La classe reste la
-        // spécialité. NB : le BtsCurrentResultSnapshotService consulte le class-map
-        // resolver indépendamment de ce setting (comportement Plan C voulu, couvert
-        // par BtsCurrentResultSnapshotClassMapTest) — on ne le mocke donc PAS ici,
-        // on vérifie uniquement l'absence de substitution observable.
         $service = app(BulletinService::class);
-        $data = $service->genererDonneesBulletin(
-            $inscription->etudiant_id,
-            $specClasse->id,
-            $inscription->annee_universitaire_id,
-            'semestre1'
+        $this->assertTrue($service->annualIncludesSemester1(42, 42));
+        $this->assertEqualsWithDelta(
+            14.0,
+            $service->calculateConfiguredAnnualAverage(
+                18.0,
+                10.0,
+                ['semester1' => 1.0, 'semester2' => 1.0],
+                42,
+                42
+            ),
+            0.001
         );
-
-        $this->assertNull($data['classeTroncCommun']);
-        $this->assertFalse($data['isSpecialisation']);
     }
 
     private function setSetting(string $key, string $value): void
@@ -97,17 +107,23 @@ class SettingTroncCommunMgaIncludeS1Test extends TestCase
         ]);
     }
 
-    /**
-     * @return array{0: ESBTPInscription, 1: ESBTPClasse, 2: ESBTPClasse}
-     */
+    /** @return array{0: ESBTPInscription, 1: ESBTPClasse, 2: ESBTPClasse} */
     private function makePhaseBasedInscription(): array
     {
         $annee = ESBTPAnneeUniversitaire::factory()->create();
         $niveau = ESBTPNiveauEtude::factory()->create(['year' => 1, 'type' => 'BTS']);
         $tcFiliere = ESBTPFiliere::factory()->create(['is_tronc_commun' => true, 'semestres_tronc_commun' => 1]);
         $specFiliere = ESBTPFiliere::factory()->create(['parent_id' => $tcFiliere->id]);
-        $tcClasse = ESBTPClasse::factory()->create(['filiere_id' => $tcFiliere->id, 'niveau_etude_id' => $niveau->id, 'annee_universitaire_id' => $annee->id]);
-        $specClasse = ESBTPClasse::factory()->create(['filiere_id' => $specFiliere->id, 'niveau_etude_id' => $niveau->id, 'annee_universitaire_id' => $annee->id]);
+        $tcClasse = ESBTPClasse::factory()->create([
+            'filiere_id' => $tcFiliere->id,
+            'niveau_etude_id' => $niveau->id,
+            'annee_universitaire_id' => $annee->id,
+        ]);
+        $specClasse = ESBTPClasse::factory()->create([
+            'filiere_id' => $specFiliere->id,
+            'niveau_etude_id' => $niveau->id,
+            'annee_universitaire_id' => $annee->id,
+        ]);
         $etudiant = ESBTPEtudiant::factory()->create();
         $inscription = ESBTPInscription::factory()->create([
             'etudiant_id' => $etudiant->id,

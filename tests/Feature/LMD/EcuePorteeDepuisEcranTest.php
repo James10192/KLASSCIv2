@@ -12,6 +12,7 @@ use App\Services\LMD\CompositionUe;
 use App\Services\LMD\LMDImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -269,10 +270,11 @@ class EcuePorteeDepuisEcranTest extends TestCase
         $this->assertNotContains('ECUE-BU', $this->vusPar($this->batiment));
     }
 
-    public function test_une_ligne_dans_une_autre_ue_n_evite_pas_la_confirmation(): void
+    public function test_une_ligne_dans_une_autre_ue_garde_l_element_dans_le_lmd(): void
     {
-        // La cle etrangere est coupee des qu'il ne reste plus de ligne dans
-        // CETTE unite : une ligne ailleurs ne retient pas l'element dans le LMD.
+        // Une autre unite porte encore l'element : le retirer d'ici ne le fait
+        // pas sortir du LMD. Sa cle etrangere passe a cette unite au lieu d'etre
+        // coupee, ce qui le versait au catalogue BTS (ESBTP Abidjan, octobre 2026).
         $autre = $this->ue->replicate();
         $autre->code = 'UE-AUTRE';
         $autre->save();
@@ -283,7 +285,91 @@ class EcuePorteeDepuisEcranTest extends TestCase
 
         $this->actingAs($this->acteur)
             ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]), ['parcours_id' => $this->batiment->id])
+            ->assertOk();
+
+        $this->assertSame($autre->id, (int) $this->ecueBu->fresh()->unite_enseignement_id);
+    }
+
+    public function test_la_question_propose_de_supprimer_un_element_qui_n_a_jamais_servi(): void
+    {
+        $reponse = $this->actingAs($this->acteur)
+            ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]), ['parcours_id' => $this->batiment->id])
             ->assertStatus(409);
+
+        $options = collect($reponse->json('options'))->keyBy('valeur');
+        $this->assertTrue($options['supprimer']['possible']);
+        $this->assertTrue($options['supprimer']['recommande']);
+        $this->assertFalse($options['catalogue_bts']['recommande'], 'Le BTS ne doit jamais etre le choix par defaut.');
+    }
+
+    public function test_supprimer_un_element_inutilise_ne_le_verse_pas_au_bts(): void
+    {
+        $this->actingAs($this->acteur)
+            ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]), ['parcours_id' => $this->batiment->id, 'devenir' => 'supprimer'])
+            ->assertOk();
+
+        $this->assertSoftDeleted('esbtp_matieres', ['id' => $this->ecueBu->id]);
+        $this->assertSame(0, ESBTPMatiere::btsOnly()->whereKey($this->ecueBu->id)->count());
+        $this->assertNotContains('ECUE-BU', $this->vusPar($this->batiment));
+    }
+
+    public function test_archiver_garde_l_element_dans_le_lmd_et_hors_de_la_maquette(): void
+    {
+        $this->actingAs($this->acteur)
+            ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]), ['parcours_id' => $this->batiment->id, 'devenir' => 'archiver'])
+            ->assertOk();
+
+        $ecue = $this->ecueBu->fresh();
+        $this->assertSame($this->ue->id, (int) $ecue->unite_enseignement_id, 'Archive, il reste un element LMD.');
+        $this->assertFalse((bool) $ecue->is_active);
+        $this->assertNotContains('ECUE-BU', $this->vusPar($this->batiment));
+
+        // Le rattacher de nouveau le reactive.
+        $this->actingAs($this->acteur)
+            ->postJson(route('esbtp.lmd.ue.ecue.store', $this->ue), ['matiere_id' => $this->ecueBu->id, 'parcours_id' => $this->batiment->id, 'credit_ecue' => 3])
+            ->assertOk();
+        $this->assertTrue((bool) $this->ecueBu->fresh()->is_active);
+        $this->assertContains('ECUE-BU', $this->vusPar($this->batiment));
+    }
+
+    public function test_enregistrer_l_unite_ne_verse_pas_au_bts_un_element_archive(): void
+    {
+        // Le formulaire d'UE ne charge que les elements actifs : un archive n'y
+        // figure pas. Il ne doit pas pour autant etre « detache » a chaque
+        // enregistrement, ce qui couperait sa cle et le verserait au BTS.
+        $this->actingAs($this->acteur)
+            ->deleteJson(route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]), ['parcours_id' => $this->batiment->id, 'devenir' => 'archiver'])
+            ->assertOk();
+
+        $this->actingAs($this->acteur)->putJson(route('esbtp.lmd.ue.update', $this->ue), [
+            'name' => $this->ue->name, 'code' => 'UE-PARTAGEE', 'credit' => $this->ue->credit, 'type_ue' => 'fondamentale',
+            'ecues' => [], 'sync_ecues' => true,
+        ])->assertOk();
+
+        $this->assertSame($this->ue->id, (int) $this->ecueBu->fresh()->unite_enseignement_id);
+    }
+
+    public function test_un_element_qui_a_servi_ne_se_supprime_pas(): void
+    {
+        // Une note suffit a dire que l'element a servi. L'eleve et la classe
+        // sont hors sujet : on ne monte pas tout un cursus pour les avoir.
+        Schema::withoutForeignKeyConstraints(fn () => DB::table('esbtp_notes')->insert([
+            'matiere_id' => $this->ecueBu->id, 'etudiant_id' => 999999, 'classe_id' => 999999,
+            'note' => 12, 'created_at' => now(), 'updated_at' => now(),
+        ]));
+
+        $url = route('esbtp.lmd.ue.ecue.destroy', [$this->ue, $this->ecueBu]);
+        $options = collect($this->actingAs($this->acteur)
+            ->deleteJson($url, ['parcours_id' => $this->batiment->id])
+            ->assertStatus(409)->json('options'))->keyBy('valeur');
+        $this->assertFalse($options['supprimer']['possible']);
+        $this->assertTrue($options['archiver']['recommande']);
+
+        $this->actingAs($this->acteur)
+            ->deleteJson($url, ['parcours_id' => $this->batiment->id, 'devenir' => 'supprimer'])
+            ->assertStatus(422);
+        $this->assertNotSoftDeleted('esbtp_matieres', ['id' => $this->ecueBu->id]);
+        $this->assertSame(1, $this->lignes($this->batiment->id), 'Le refus doit annuler le retrait.');
     }
 
     public function test_la_liste_montre_le_coefficient_que_le_bulletin_utilise(): void

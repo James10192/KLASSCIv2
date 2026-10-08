@@ -14,6 +14,21 @@ final class LmdAcademicRuleProfile
 
     public const RATTRAPAGE_SCOPE_UE = 'ue';
 
+    /**
+     * L'école applique-t-elle la pondération contrôle continu / examen à la
+     * moyenne d'un ECUE ? Désactivé par défaut : avant ce réglage, la moyenne
+     * était celle de toutes les évaluations, et l'activer change les moyennes.
+     * ESBTP Abidjan l'active (fiches 40 % CC + 60 % test final, octobre 2026).
+     */
+    public const REGLAGE_PONDERATION_ACTIVE = 'lmd_ponderation_cc_examen';
+
+    /** Les deux cases de compensation de l'onglet LMD des paramètres. */
+    public const REGLAGE_COMPENSATION_INTER_UE = 'lmd_compensation_inter_ue';
+
+    public const REGLAGE_COMPENSATION_INTER_UE_MINIMUM = 'lmd_compensation_inter_ue_minimum';
+
+    public const REGLAGE_COMPENSATION_INTRA_UE = 'lmd_compensation_intra_ue';
+
     private Closure $resolver;
 
     /** @param null|Closure(string, mixed): mixed $resolver */
@@ -34,7 +49,21 @@ final class LmdAcademicRuleProfile
 
     public function interUeCompensationEnabled(): bool
     {
-        return $this->toBool($this->first(['lmd_compensation_inter_ue', 'lmd_compensation_enabled'], true));
+        return $this->toBool($this->first([self::REGLAGE_COMPENSATION_INTER_UE, 'lmd_compensation_enabled'], true));
+    }
+
+    /**
+     * Plancher propre à l'UE pour autoriser une acquisition par compensation.
+     *
+     * 0 conserve le comportement historique : toute UE sous le seuil direct peut
+     * être compensée si la moyenne générale du semestre atteint le seuil.
+     * Une école peut par exemple fixer 8 pour laisser une UE à 7,5 en NAQ.
+     */
+    public function interUeCompensationMinimum(): float
+    {
+        $value = (float) $this->first([self::REGLAGE_COMPENSATION_INTER_UE_MINIMUM], 0);
+
+        return max(0.0, min(20.0, $value));
     }
 
     /**
@@ -46,15 +75,12 @@ final class LmdAcademicRuleProfile
      */
     public function intraUeCompensationEnabled(): bool
     {
-        return $this->toBool($this->first(['lmd_compensation_intra_ue', 'lmd_intra_ue_compensation'], true));
+        return $this->toBool($this->first([self::REGLAGE_COMPENSATION_INTRA_UE, 'lmd_intra_ue_compensation'], true));
     }
 
     /**
-     * Ponderation du controle continu, en pourcentage.
-     *
-     * ATTENTION : ce reglage n'entre encore dans aucun calcul de moyenne. Il est expose
-     * ici pour un branchement futur, et volontairement absent du proces-verbal de jury
-     * tant qu'il ne pilote rien (un document legal ne doit pas affirmer une regle inappliquee).
+     * Ponderation du controle continu, en pourcentage. N'entre dans la moyenne
+     * d'un ECUE que si l'ecole l'a activee (ponderationAppliquee()).
      */
     public function continuousAssessmentWeight(): float
     {
@@ -63,11 +89,31 @@ final class LmdAcademicRuleProfile
 
     /**
      * Ponderation de l'examen terminal, en pourcentage. Meme reserve que
-     * continuousAssessmentWeight() : expose, pas encore applique au calcul des notes.
+     * continuousAssessmentWeight().
      */
     public function finalExamWeight(): float
     {
         return (float) $this->first(['lmd_exam_weight'], 60);
+    }
+
+    public function ponderationAppliquee(): bool
+    {
+        return $this->toBool($this->first([self::REGLAGE_PONDERATION_ACTIVE], false));
+    }
+
+    /**
+     * La pondération telle qu'un document officiel la grave : la règle en vigueur
+     * à la production du document, null quand l'école ne l'applique pas. Comme
+     * les règles de compensation, elle est relue à ce moment-là : régénérer les
+     * bulletins avant le PV ou le relevé après avoir changé la case.
+     *
+     * @return array{cc: float, examen: float}|null
+     */
+    public function ponderationGravee(): ?array
+    {
+        return $this->ponderationAppliquee()
+            ? ['cc' => $this->continuousAssessmentWeight(), 'examen' => $this->finalExamWeight()]
+            : null;
     }
 
     /**

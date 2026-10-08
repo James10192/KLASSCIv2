@@ -11,6 +11,14 @@
             'global' => 'Template global',
             default => 'À configurer',
         };
+        $effectiveAudience = $existingConfig->audience
+            ?? $category->audience
+            ?? \App\Models\ESBTPFraisCategory::AUDIENCE_TOUS;
+        $audienceLabel = match ($effectiveAudience) {
+            \App\Models\ESBTPFraisCategory::AUDIENCE_NOUVEAUX => 'Nouveaux uniquement',
+            \App\Models\ESBTPFraisCategory::AUDIENCE_ANCIENS => 'Anciens uniquement',
+            default => 'Tous les étudiants',
+        };
         $echeancierUrl = $existingConfig
             ? route('esbtp.comptabilite.echeanciers.index', [
                 'scope_type' => 'configuration',
@@ -25,6 +33,7 @@
                 'frais_category_id' => $category->id,
                 'affectation_status' => 'all',
             ]);
+        $isSingleScope = !empty($filiereId) || !empty($parcoursId);
     @endphp
 
     <div class="fc-cat-row" data-category-id="{{ $category->id }}" data-source-type="{{ $sourceType }}">
@@ -39,8 +48,8 @@
                     <span class="fc-cat-pill" style="background:rgba(15,23,42,.06);color:#334155;border-color:rgba(15,23,42,.08);">
                         {{ $sourceLabel }}
                     </span>
-                    @if(($category->audience ?? 'tous') === 'nouveaux_etablissement')
-                        <span class="fc-cat-pill" style="background:rgba(4,83,203,.08);color:#0453cb;">Nouveaux de l'établissement</span>
+                    @if($isSingleScope && $effectiveAudience !== \App\Models\ESBTPFraisCategory::AUDIENCE_TOUS)
+                        <span class="fc-cat-pill" style="background:rgba(4,83,203,.08);color:#0453cb;">{{ $audienceLabel }}</span>
                     @endif
                 </div>
                 @if($category->description)
@@ -132,18 +141,50 @@
         </div>
 
         <div class="fc-cat-section">
-            <label class="fc-cat-section-label">
-                <i class="fas fa-user-plus"></i>
-                Audience
-            </label>
-            <label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;color:#334155;margin:0;">
-                <input type="hidden" name="categories[{{ $category->id }}][audience]" value="tous">
-                <input type="checkbox"
-                       name="categories[{{ $category->id }}][audience]"
-                       value="nouveaux_etablissement"
-                       {{ ($category->audience ?? 'tous') === 'nouveaux_etablissement' ? 'checked' : '' }}>
-                Uniquement les nouveaux de l'établissement (ce niveau et les autres où ce frais est configuré)
-            </label>
+            <div class="fc-cat-section-label">
+                <i class="fas fa-users"></i>
+                Audience de cette configuration
+            </div>
+            <div class="fc-cat-section-hint">
+                @if($isSingleScope)
+                    Ce choix concerne uniquement cette combinaison filière/parcours + niveau. Les autres niveaux ne sont pas modifiés.
+                @else
+                    Chaque combinaison peut déjà avoir une audience différente. « Conserver » évite de les écraser lors d'une modification en masse.
+                @endif
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:.55rem;">
+                @if(!$isSingleScope)
+                    <label style="display:flex;align-items:flex-start;gap:.5rem;border:1px solid #0453cb;border-radius:10px;padding:.65rem;background:rgba(4,83,203,.045);cursor:pointer;">
+                        <input type="radio"
+                               name="categories[{{ $category->id }}][audience]"
+                               value="{{ \App\Services\FraisConfigurationWriter::AUDIENCE_CONSERVER }}"
+                               checked
+                               style="margin-top:.16rem;">
+                        <span style="min-width:0;">
+                            <strong style="display:block;font-size:.76rem;color:#1e293b;"><i class="fas fa-shield-alt" style="color:#0453cb;margin-right:.2rem;"></i>Conserver chaque audience</strong>
+                            <small style="display:block;color:#64748b;font-size:.68rem;line-height:1.25;margin-top:.15rem;">Ne modifie pas l'audience des combinaisons sélectionnées.</small>
+                        </span>
+                    </label>
+                @endif
+                @foreach([
+                    \App\Models\ESBTPFraisCategory::AUDIENCE_TOUS => ['fa-users','Tous les étudiants','Aucune restriction nouveau / ancien'],
+                    \App\Models\ESBTPFraisCategory::AUDIENCE_NOUVEAUX => ['fa-user-plus','Nouveaux uniquement','Première inscription dans l’établissement'],
+                    \App\Models\ESBTPFraisCategory::AUDIENCE_ANCIENS => ['fa-user-check','Anciens uniquement','Étudiants déjà passés par l’établissement'],
+                ] as $audienceValue => [$audienceIcon,$audienceTitle,$audienceHelp])
+                    @php $audienceSelected = $isSingleScope && $effectiveAudience === $audienceValue; @endphp
+                    <label style="display:flex;align-items:flex-start;gap:.5rem;border:1px solid {{ $audienceSelected ? '#0453cb' : '#e2e8f0' }};border-radius:10px;padding:.65rem;background:{{ $audienceSelected ? 'rgba(4,83,203,.045)' : '#fff' }};cursor:pointer;">
+                        <input type="radio"
+                               name="categories[{{ $category->id }}][audience]"
+                               value="{{ $audienceValue }}"
+                               {{ $audienceSelected ? 'checked' : '' }}
+                               style="margin-top:.16rem;">
+                        <span style="min-width:0;">
+                            <strong style="display:block;font-size:.76rem;color:#1e293b;"><i class="fas {{ $audienceIcon }}" style="color:#0453cb;margin-right:.2rem;"></i>{{ $audienceTitle }}</strong>
+                            <small style="display:block;color:#64748b;font-size:.68rem;line-height:1.25;margin-top:.15rem;">{{ $audienceHelp }}</small>
+                        </span>
+                    </label>
+                @endforeach
+            </div>
         </div>
 
         <div class="fc-cat-section">
@@ -169,7 +210,7 @@
         @if($isConfigured)
             <div class="fc-cat-status is-done">
                 <i class="fas fa-check-circle"></i>
-                {{ $sourceLabel }}
+                {{ $sourceLabel }} · {{ $audienceLabel }}
             </div>
         @else
             <div class="fc-cat-status is-todo">

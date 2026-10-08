@@ -23,7 +23,11 @@ class ESBTPLMDNoteController extends Controller
     public function index(Request $request)
     {
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $anneeId = $anneeCourante?->id;
+        $anneeSelectionnee = $request->filled('annee_universitaire_id')
+            ? ESBTPAnneeUniversitaire::findOrFail((int) $request->input('annee_universitaire_id'))
+            : $anneeCourante;
+        $anneeId = $anneeSelectionnee?->id;
+        $anneesUniversitaires = ESBTPAnneeUniversitaire::orderByDesc('id')->get();
 
         $classes = ESBTPClasse::where('systeme_academique', 'LMD')
             ->where('is_active', true)
@@ -42,26 +46,45 @@ class ESBTPLMDNoteController extends Controller
         $evalCounts = ESBTPEvaluation::whereHas('classe', fn ($q) => $q->where('systeme_academique', 'LMD'))
             ->whereHas('matiere', fn ($q) => $q->whereNotNull('unite_enseignement_id'))
             ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
+            ->when($anneeId, fn ($q, $id) => $q->where('annee_universitaire_id', $id))
             ->select('classe_id')
             ->selectRaw('COUNT(*) as total')
             ->groupBy('classe_id')
             ->pluck('total', 'classe_id');
 
-        return view('esbtp.lmd.notes.index', compact('classes', 'evalCounts', 'anneeCourante'));
+        // La règle de la requalification elle-même : le bandeau ne s'affiche qu'à qui peut l'utiliser.
+        $peutRequalifier = \App\Domain\Notes\RequalificationEnExamen::refusPour($request->user()) === null;
+
+        // La moyenne affichée dans la grille suit la règle du bulletin LMD :
+        // pondération contrôle continu / examen si l'école l'applique, sinon null.
+        $ponderation = app(\App\Services\LMD\LmdAcademicRuleProfile::class)->ponderationGravee();
+
+        return view('esbtp.lmd.notes.index', compact(
+            'classes',
+            'evalCounts',
+            'anneeCourante',
+            'anneeSelectionnee',
+            'anneesUniversitaires',
+            'peutRequalifier',
+            'ponderation'
+        ));
     }
 
     /**
      * Données JSON d'une classe pour le modal de gestion de notes.
      */
-    public function classeData(ESBTPClasse $classe)
+    public function classeData(Request $request, ESBTPClasse $classe)
     {
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeSelectionnee = $request->filled('annee_universitaire_id')
+            ? ESBTPAnneeUniversitaire::findOrFail((int) $request->input('annee_universitaire_id'))
+            : $anneeCourante;
 
         // Étudiants actifs de cette classe (même pattern que classes.show)
         $etudiants = $classe->inscriptions()
             ->where('status', 'active')
             ->where('workflow_step', 'etudiant_cree')
-            ->when($anneeCourante, fn ($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
+            ->when($anneeSelectionnee, fn ($q) => $q->where('annee_universitaire_id', $anneeSelectionnee->id))
             ->with('etudiant:id,nom,prenoms,matricule')
             ->get()
             ->map(fn ($i) => $i->etudiant)
@@ -73,6 +96,7 @@ class ESBTPLMDNoteController extends Controller
         $evaluations = ESBTPEvaluation::where('classe_id', $classe->id)
             ->whereHas('matiere', fn ($q) => $q->whereNotNull('unite_enseignement_id'))
             ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
+            ->when($anneeSelectionnee, fn ($q) => $q->where('annee_universitaire_id', $anneeSelectionnee->id))
             ->with(['matiere:id,name,code,unite_enseignement_id', 'matiere.uniteEnseignement:id,name,code'])
             ->withCount('notes')
             ->orderByDesc('date_evaluation')
@@ -91,29 +115,28 @@ class ESBTPLMDNoteController extends Controller
                 'saisie_url' => route('esbtp.lmd.notes.saisie', $e),
             ]);
 
-        // Matières (ECUEs) disponibles pour cette classe via parcours + filtrées par semestres du niveau
-        $matieres = collect();
-        $uesDisponibles = collect();
-        if ($classe->parcours) {
-            $semestresAutorises = $classe->getSemestresLMD();
-            $uesDisponibles = $classe->parcours->unitesEnseignement()
-                ->wherePivotIn('semestre', $semestresAutorises)
-                ->with(['matieres' => fn ($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code')])
-                ->get()
-                ->unique('id')
-                ->values();
+        // Les éléments que le bulletin lit, semestre par semestre : la même
+        // lecture que le suivi des notes (`LMDBulletinService::getUEsForSemestre`
+        // puis `getEcuesEffectifs`). Un élément réservé au parcours par le
+        // pivot figure donc dans la grille comme dans le suivi.
+        $bulletin = app(\App\Services\LMDBulletinService::class);
+        $parcoursId = $classe->parcours_id ? (int) $classe->parcours_id : null;
+        $uesDisponibles = collect($classe->getSemestresLMD())
+            ->flatMap(fn (int $s) => $bulletin->getUEsForSemestre($classe, $s)
+                ->map(fn ($ue) => [$ue, $s, $ue->getEcuesEffectifs($parcoursId)]))
+            ->unique(fn ($ligne) => $ligne[0]->id)
+            ->values();
 
-            $matieres = $uesDisponibles
-                ->flatMap(fn ($ue) => $ue->matieres->map(fn ($m) => [
-                    'id' => $m->id,
-                    'name' => $m->name,
-                    'code' => $m->code_affiche,
-                    'ue_name' => $ue->name,
-                    'ue_code' => $ue->code_affiche,
-                ]))
-                ->unique('id')
-                ->values();
-        }
+        $matieres = $uesDisponibles
+            ->flatMap(fn ($ligne) => $ligne[2]->map(fn ($m) => [
+                'id' => $m->id,
+                'name' => $m->name,
+                'code' => $m->code_affiche,
+                'ue_name' => $ligne[0]->name,
+                'ue_code' => $ligne[0]->code_affiche,
+            ]))
+            ->unique('id')
+            ->values();
 
         return response()->json([
             'classe' => [
@@ -133,12 +156,12 @@ class ESBTPLMDNoteController extends Controller
             'etudiants' => $etudiants,
             'evaluations' => $evaluations,
             'matieres' => $matieres,
-            'ues' => $uesDisponibles->map(fn ($ue) => [
-                'id' => $ue->id,
-                'name' => $ue->name,
-                'code' => $ue->code_affiche,
-                'semestre' => $ue->pivot->semestre ?? $ue->semestre,
-                'ecues_count' => $ue->matieres->count(),
+            'ues' => $uesDisponibles->map(fn ($ligne) => [
+                'id' => $ligne[0]->id,
+                'name' => $ligne[0]->name,
+                'code' => $ligne[0]->code_affiche,
+                'semestre' => $ligne[1],
+                'ecues_count' => $ligne[2]->count(),
             ]),
         ]);
     }
@@ -151,7 +174,10 @@ class ESBTPLMDNoteController extends Controller
         $this->assertEvaluationConfieeAEnseignant($evaluation);
 
         $evaluation->load([
-            'classe.inscriptions' => fn ($q) => $q->where('status', 'active')->where('workflow_step', 'etudiant_cree'),
+            'classe.inscriptions' => fn ($q) => $q
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->where('annee_universitaire_id', $evaluation->annee_universitaire_id),
             'classe.inscriptions.etudiant',
             'matiere.uniteEnseignement',
         ]);
@@ -209,8 +235,9 @@ class ESBTPLMDNoteController extends Controller
             'lmd_notes_bulk_upsert',
         );
 
-        return redirect()->route('esbtp.lmd.notes.index')
-            ->with('success', 'Notes enregistrées avec succès pour '.count($request->notes).' étudiants.');
+        return redirect()->route('esbtp.lmd.notes.index', [
+            'annee_universitaire_id' => $evaluation->annee_universitaire_id,
+        ])->with('success', 'Notes enregistrées avec succès pour '.count($request->notes).' étudiants.');
     }
 
     /**

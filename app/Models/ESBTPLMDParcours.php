@@ -91,33 +91,58 @@ class ESBTPLMDParcours extends Model
     }
 
     /**
-     * Generer le label parcours tel qu'il apparait sur le bulletin ESBTP.
-     * Ex: "LICENCE 3 GCV BATIMENT & URBANISME"
+     * Générer le libellé parcours destiné à un document officiel.
+     *
+     * Le code court de la filière (BU, TP, GCV...) est un identifiant interne :
+     * il aide les écrans et les imports, mais n'a pas à apparaître sur le
+     * bulletin. Exemple : "LICENCE 1 BÂTIMENT ET URBANISME", jamais
+     * "LICENCE 1 BU BÂTIMENT ET URBANISME".
      *
      * @param ESBTPNiveauEtude|null $niveau Le niveau de la classe
-     * @return string
      */
     public function genererLabelBulletin($niveau = null): string
     {
         $filiere = $this->filiere;
 
-        if (!$filiere && !$niveau) {
-            return $this->name; // Fallback au nom du parcours
+        if (! $filiere && ! $niveau) {
+            return (string) $this->name;
         }
 
         $parts = [];
 
-        // Niveau : "LICENCE 3" ou "MASTER 1"
         if ($niveau) {
-            $parts[] = strtoupper($niveau->name ?? '');
+            $parts[] = mb_strtoupper(trim((string) ($niveau->name ?? '')), 'UTF-8');
         }
 
-        // Filiere : "GCV BATIMENT & URBANISME"
         if ($filiere) {
-            $filiereLabel = trim(($filiere->code ? $filiere->code . ' ' : '') . $filiere->name);
-            $parts[] = strtoupper($filiereLabel);
+            $parts[] = mb_strtoupper(trim((string) ($filiere->name ?? '')), 'UTF-8');
         }
 
-        return implode(' ', array_filter($parts)) ?: $this->name;
+        return implode(' ', array_filter($parts)) ?: (string) $this->name;
+    }
+
+    /**
+     * Corrige aussi les snapshots déjà générés sans réécrire leur contenu.
+     *
+     * Les anciens bulletins ont parfois figé "LICENCE 1 BU BÂTIMENT..." dans
+     * parcours_label. On retire uniquement le token exact correspondant au code
+     * de la filière, sans toucher au reste du libellé historique.
+     */
+    public function nettoyerLabelBulletin(?string $label): string
+    {
+        $label = trim((string) $label);
+        $code = trim((string) ($this->filiere?->code ?? ''));
+
+        if ($label === '' || $code === '') {
+            return $label;
+        }
+
+        $nettoye = preg_replace(
+            '/(?<![\\pL\\pN])'.preg_quote($code, '/').'(?![\\pL\\pN])/iu',
+            ' ',
+            $label
+        );
+
+        return trim((string) preg_replace('/\\s{2,}/u', ' ', (string) $nettoye));
     }
 }

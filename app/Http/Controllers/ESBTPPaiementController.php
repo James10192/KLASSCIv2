@@ -547,7 +547,7 @@ class ESBTPPaiementController extends Controller
         );
 
         app(\App\Services\Caisse\CashSessionService::class)
-            ->assertEspecesAutorisees($request->user(), $request->input('mode_paiement'));
+            ->assertEspecesAutorisees($request->user(), $request->input('mode_paiement'), $request->input('date_paiement'));
 
         $validated = $request->validated();
 
@@ -1664,117 +1664,54 @@ class ESBTPPaiementController extends Controller
         try {
             $paiement = ESBTPPaiement::findOrFail($id);
 
-            // Vérifier si le paiement peut être validé
             if ($paiement->status === 'validé') {
-                if ($request->ajax() || $request->wantsJson()) {
-                    return response()->json(['success' => false, 'message' => 'Ce paiement est déjà validé.'], 400);
-                }
-                return redirect()->back()->with('error', 'Ce paiement est déjà validé.');
+                $message = 'Ce paiement est déjà validé.';
+                return ($request->ajax() || $request->wantsJson())
+                    ? response()->json(['success' => false, 'message' => $message], 400)
+                    : redirect()->back()->with('error', $message);
             }
 
             if ($paiement->status === 'rejeté') {
-                if ($request->ajax() || $request->wantsJson()) {
-                    return response()->json(['success' => false, 'message' => 'Ce paiement a été rejeté et ne peut pas être validé.'], 400);
-                }
-                return redirect()->back()->with('error', 'Ce paiement a été rejeté et ne peut pas être validé.');
+                $message = 'Ce paiement a été rejeté et ne peut pas être validé.';
+                return ($request->ajax() || $request->wantsJson())
+                    ? response()->json(['success' => false, 'message' => $message], 400)
+                    : redirect()->back()->with('error', $message);
             }
 
-            // S1.1 — Garde anti-auto-validation (séparation des tâches anti-fraude)
             if ($block = $this->assertNotSelfValidation($paiement)) {
-                if ($request->ajax() || $request->wantsJson()) {
-                    return response()->json(['success' => false, 'message' => $block['message']], 403);
-                }
-                return redirect()->back()->with('error', $block['message']);
+                return ($request->ajax() || $request->wantsJson())
+                    ? response()->json(['success' => false, 'message' => $block['message']], 403)
+                    : redirect()->back()->with('error', $block['message']);
             }
 
-            DB::beginTransaction();
+            app(\App\Domain\Comptabilite\Paiements\Actions\ValiderPaiement::class)
+                ->execute($paiement, $request->user());
 
-            // Changer le statut du paiement
-            $paiement->update([
-                'status' => 'validé',
-                'date_validation' => now(),
-                'validateur_id' => auth()->id()
-            ]);
-
-            // Si c'est un paiement de reliquat, mettre à jour le reliquat
-            if ($paiement->type_paiement === 'reliquat' && $paiement->reliquat_detail_id) {
-                $reliquat = \App\Models\ESBTPReliquatDetail::find($paiement->reliquat_detail_id);
-                if ($reliquat) {
-                    $nouveauMontantRegle = $reliquat->montant_regle + $paiement->montant;
-                    $nouveauSolde = $reliquat->montant_reliquat - $nouveauMontantRegle;
-
-                    $reliquat->update([
-                        'montant_regle' => $nouveauMontantRegle,
-                        'statut' => $nouveauSolde <= 0 ? 'totalement_regle' : 'partiellement_regle',
-                        'date_derniere_maj' => now()
-                    ]);
-                }
-            }
-
-            DB::commit();
-
-            app(\App\Services\GroupCacheInvalidator::class)->invalidate('paiement_validated');
-
-            // S1.6 — Notif gros montant aux users avec permission `comptabilite.notifications.high_amount`
-            $this->notifyHighAmountIfAny($paiement, auth()->user());
-
-            // Envoyer notification à l'étudiant
-            try {
-                $notificationService = app(\App\Services\NotificationService::class);
-                $notificationService->notifyPaiementValide($paiement, auth()->user());
-
-                // Envoyer notification aux parents
-                $notificationService->notifyParentsPaiementValide($paiement);
-            } catch (\Exception $e) {
-                Log::error('Erreur envoi notification paiement validé: ' . $e->getMessage());
-            }
-
-            // Désactiver les rappels pour ce paiement
-            try {
-                $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPPaiement')
-                    ->where('remindable_id', $paiement->id)
-                    ->first();
-                if ($reminder) {
-                    $reminder->deactivate();
-                }
-            } catch (\Exception $e) {
-                Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
-            }
-
-            // Workflow event : notifie holders de inscriptions.validate (issue #298)
-            \App\Support\WorkflowFlash::dispatch(
-                'paiement.validated',
-                Auth::user(),
-                ['inscription' => $paiement->inscription_id, 'paiement' => $paiement->id],
-            );
-
-            // Si requête AJAX, retourner JSON
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Paiement validé avec succès.',
-                    'paiement_id' => $paiement->id
+                    'paiement_id' => $paiement->id,
+                    'status' => 'validé',
                 ]);
             }
 
             return redirect()->back()->with('success', 'Paiement validé avec succès.');
-
-        } catch (\Exception $e) {
-            DB::rollback();
-            \Log::error('Erreur lors de la validation du paiement', [
+        } catch (\Throwable $e) {
+            Log::error('Erreur lors de la validation du paiement', [
                 'paiement_id' => $id,
                 'error' => $e->getMessage(),
-                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erreur lors de la validation: ' . $e->getMessage()
+                    'message' => 'Erreur lors de la validation: '.$e->getMessage(),
                 ], 500);
             }
 
-            return redirect()->back()->with('error', 'Erreur lors de la validation: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Erreur lors de la validation: '.$e->getMessage());
         }
     }
 
@@ -1785,105 +1722,40 @@ class ESBTPPaiementController extends Controller
     public function validerRapide(ESBTPPaiement $paiement)
     {
         try {
-            // Vérifier si le paiement peut être validé
             if ($paiement->status === 'validé') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ce paiement est déjà validé.'
-                ], 400);
+                return response()->json(['success' => false, 'message' => 'Ce paiement est déjà validé.'], 400);
             }
 
             if ($paiement->status === 'rejeté') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Ce paiement a été rejeté et ne peut pas être validé.'
-                ], 400);
+                return response()->json(['success' => false, 'message' => 'Ce paiement a été rejeté et ne peut pas être validé.'], 400);
             }
 
-            // S1.1 — Garde anti-auto-validation (séparation des tâches anti-fraude)
             if ($block = $this->assertNotSelfValidation($paiement)) {
                 return response()->json(['success' => false, 'message' => $block['message']], 403);
             }
 
-            DB::beginTransaction();
-
-            // Changer le statut du paiement
-            $paiement->update([
-                'status' => 'validé',
-                'date_validation' => now(),
-                'validateur_id' => auth()->id()
-            ]);
-
-            // Si c'est un paiement de reliquat, mettre à jour le reliquat
-            if ($paiement->type_paiement === 'reliquat' && $paiement->reliquat_detail_id) {
-                $reliquat = \App\Models\ESBTPReliquatDetail::find($paiement->reliquat_detail_id);
-                if ($reliquat) {
-                    $nouveauMontantRegle = $reliquat->montant_regle + $paiement->montant;
-                    $nouveauSolde = $reliquat->montant_reliquat - $nouveauMontantRegle;
-
-                    $reliquat->update([
-                        'montant_regle' => $nouveauMontantRegle,
-                        'statut' => $nouveauSolde <= 0 ? 'totalement_regle' : 'partiellement_regle',
-                        'date_derniere_maj' => now()
-                    ]);
-                }
-            }
-
-            DB::commit();
-
-            // S1.6 — Notif gros montant
-            $this->notifyHighAmountIfAny($paiement, auth()->user());
-
-            // Envoyer notifications
-            try {
-                $notificationService = app(\App\Services\NotificationService::class);
-                $notificationService->notifyPaiementValide($paiement, auth()->user());
-                $notificationService->notifyParentsPaiementValide($paiement);
-            } catch (\Exception $e) {
-                Log::error('Erreur envoi notification paiement validé (rapide): ' . $e->getMessage());
-            }
-
-            // Désactiver les rappels pour ce paiement
-            try {
-                $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPPaiement')
-                    ->where('remindable_id', $paiement->id)
-                    ->first();
-                if ($reminder) {
-                    $reminder->deactivate();
-                }
-            } catch (\Exception $e) {
-                Log::error('Erreur désactivation reminder paiement (rapide): ' . $e->getMessage());
-            }
-
-            Log::info('Validation rapide de paiement réussie', [
-                'paiement_id' => $paiement->id,
-                'inscription_id' => $paiement->inscription_id,
-                'montant' => $paiement->montant,
-                'user_id' => auth()->id()
-            ]);
+            app(\App\Domain\Comptabilite\Paiements\Actions\ValiderPaiement::class)
+                ->execute($paiement, request()->user());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Paiement validé avec succès.',
                 'paiement' => [
                     'id' => $paiement->id,
-                    'status' => $paiement->status,
-                    'date_validation' => $paiement->date_validation->format('d/m/Y H:i')
-                ]
+                    'status' => 'validé',
+                    'date_validation' => optional($paiement->fresh()->date_validation)->format('d/m/Y H:i'),
+                ],
             ]);
-
-        } catch (\Exception $e) {
-            DB::rollback();
-
+        } catch (\Throwable $e) {
             Log::error('Erreur lors de la validation rapide du paiement', [
                 'paiement_id' => $paiement->id,
                 'error' => $e->getMessage(),
-                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la validation: ' . $e->getMessage()
+                'message' => 'Erreur lors de la validation: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -2190,48 +2062,6 @@ class ESBTPPaiementController extends Controller
             }
 
             return redirect()->back()->with('error', 'Erreur lors de la validation groupée: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * S1.6 — Notifie les users habilités quand un paiement > seuil tenant est validé.
-     *
-     * Cible : users avec permission `comptabilite.notifications.high_amount`.
-     * Seuil : `comptabilite.notify_high_amount_threshold` (default 5 000 000 FCFA).
-     * Canaux : mail + database (cloche).
-     *
-     * Échec silencieux par design — la validation du paiement ne doit pas dépendre
-     * du succès de la notification. Erreurs loggées en warning.
-     */
-    private function notifyHighAmountIfAny(\App\Models\ESBTPPaiement $paiement, ?\App\Models\User $validateur): void
-    {
-        try {
-            $threshold = (int) \App\Helpers\SettingsHelper::get('comptabilite.notify_high_amount_threshold', 5000000);
-            if ($threshold <= 0 || (float) $paiement->montant < $threshold) {
-                return;
-            }
-
-            $recipients = \App\Models\User::permission('comptabilite.notifications.high_amount')->get();
-            if ($recipients->isEmpty()) {
-                return;
-            }
-
-            \Illuminate\Support\Facades\Notification::send(
-                $recipients,
-                new \App\Notifications\PaiementHighAmountValidatedNotification($paiement, $validateur, $threshold),
-            );
-
-            Log::info('[S1.6] Notification gros paiement envoyée', [
-                'paiement_id' => $paiement->id,
-                'montant' => $paiement->montant,
-                'threshold' => $threshold,
-                'recipients_count' => $recipients->count(),
-            ]);
-        } catch (\Throwable $e) {
-            Log::warning('[S1.6] Échec notification gros paiement (non bloquant)', [
-                'paiement_id' => $paiement->id,
-                'error' => $e->getMessage(),
-            ]);
         }
     }
 

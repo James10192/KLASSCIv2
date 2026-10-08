@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPFraisCategory;
+use App\Models\ESBTPFraisConfiguration;
 
 class TenantScolariteSettings
 {
@@ -76,6 +77,20 @@ class TenantScolariteSettings
     public function confirmerStatutEtablissement(): bool
     {
         if ($this->flag(self::CONFIRMER_STATUT_ETABLISSEMENT)) {
+            return true;
+        }
+
+        // Les anciennes bases peuvent encore porter l'audience sur la catégorie,
+        // tandis que les nouvelles configurations la portent par combinaison.
+        // Une seule portée restreinte suffit à rendre le statut nouveau/ancien
+        // nécessaire au moment d'inscrire un étudiant.
+        if (ESBTPFraisConfiguration::query()
+            ->where('is_active', true)
+            ->whereIn('audience', [
+                ESBTPFraisCategory::AUDIENCE_NOUVEAUX,
+                ESBTPFraisCategory::AUDIENCE_ANCIENS,
+            ])
+            ->exists()) {
             return true;
         }
 

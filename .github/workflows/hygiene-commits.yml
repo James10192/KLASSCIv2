@@ -384,6 +384,14 @@ jobs:
       - name: Montants nets par frais
         run: php vendor/bin/phpunit tests/Feature/Frais/MontantsNetsParFraisTest.php --no-coverage
 
+      - name: Date métier des encaissements et cohérence caisse
+        run: |
+          php vendor/bin/phpunit tests/Feature/Paiements/EncaisserMobileTest.php --no-coverage
+          php vendor/bin/phpunit tests/Feature/Caisse/CashSessionServiceTest.php --no-coverage
+
+      - name: Validation inline depuis la fiche inscription
+        run: php vendor/bin/phpunit tests/Feature/Paiements/InscriptionShowPaiementsInlineTest.php --no-coverage
+
       # Une classe LMD ne peut exister que si son parcours ou sa mention a une
       # filiere sur laquelle s'ancrer. Ce controle a une raison d'etre precise :
       # l'ancrage tenait par une coincidence d'identifiants, et USAT ne pouvait
@@ -415,6 +423,9 @@ jobs:
             echo "::endgroup::"
           done
           exit $echec
+
+      - name: Fiche étudiant - cible de réinscription après échéance
+        run: php vendor/bin/phpunit tests/Feature/Etudiants/FicheEtudiantReinscriptionCibleTest.php --no-coverage
 
       # KLASSCI Care : les demandes de support, leurs pieces jointes et la file
       # d'envoi vers le Master vivent en base. Ces tests montent leurs tables

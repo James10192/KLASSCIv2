@@ -147,8 +147,21 @@ if (typeof window.couvertureNotes !== 'function') {
                 return [this.classeId, this.anneeId, this.periode].join(':');
             },
 
+            // Les périodes viennent de la classe (le serveur les rend) ; avant
+            // la première réponse, celles d'une classe BTS.
+            periodes() {
+                return (this.donnees && Array.isArray(this.donnees.periodes) && this.donnees.periodes.length)
+                    ? this.donnees.periodes
+                    : [{ valeur: 'annuel', libelle: 'Année' }, { valeur: 'semestre1', libelle: 'S1' }, { valeur: 'semestre2', libelle: 'S2' }];
+            },
+
+            // Ce qui a été noté pour la matière (le serveur le calcule).
+            nature(matiere) {
+                return { cc_examen: 'CC + examen', examen: 'Examen seul', cc: 'CC seul' }[matiere && matiere.nature] || '';
+            },
+
             changerPeriode(periode) {
-                if (!['annuel', 'semestre1', 'semestre2'].includes(periode) || periode === this.periode) return;
+                if (!this.periodes().some(p => p.valeur === periode) || periode === this.periode) return;
                 this.periode = periode;
                 this.filtre = 'tout';
                 window.dispatchEvent(new CustomEvent('couverture:periode-change', { detail: { periode: periode } }));

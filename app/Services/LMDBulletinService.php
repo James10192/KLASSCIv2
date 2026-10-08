@@ -657,6 +657,14 @@ class LMDBulletinService
      * Calculer la moyenne d'un ECUE depuis les notes des evaluations.
      *
      * Moyenne ECUE = Σ(note_normalized × coeff_eval) / Σ coeff_eval
+     *
+     * Si l'ecole applique la ponderation (LmdAcademicRuleProfile::ponderationAppliquee),
+     * cette moyenne se fait a part pour les examens et pour le reste (controle
+     * continu), puis les deux se ponderent : 40/60 par defaut. Une seule des deux
+     * parties presente compte seule. Une absence vaut 0, comme sans ponderation.
+     * « Controle continu » = toute evaluation qui n'est pas un examen (devoir,
+     * controle, tp, oral...). Le rattrapage LMD ne passe pas par une evaluation :
+     * il est porte par la note de rattrapage de l'ECUE (noteEffectiveECUE).
      */
     public function calculerMoyenneECUE(
         int $etudiantId,
@@ -684,26 +692,48 @@ class LMDBulletinService
 
         if ($notes->isEmpty()) return null;
 
+        $notes = $notes->filter(fn ($note) => $note->evaluation !== null);
+        if (! $this->rules->ponderationAppliquee()) {
+            $moyenne = $this->moyenneParCoefficient($notes);
+
+            return $moyenne === null ? null : round($moyenne, 2);
+        }
+
+        [$examens, $controles] = $notes->partition(fn ($note) => $note->evaluation->type === ESBTPEvaluation::TYPE_EXAMEN);
+        $parties = array_filter([
+            [$this->moyenneParCoefficient($controles), max(0.0, $this->rules->continuousAssessmentWeight())],
+            [$this->moyenneParCoefficient($examens), max(0.0, $this->rules->finalExamWeight())],
+        ], fn (array $partie) => $partie[0] !== null);
+        $poids = array_sum(array_column($parties, 1));
+        if ($parties === []) {
+            return null;
+        }
+        if ($poids <= 0) {
+            // Deux poids a zero : rien a ponderer, la moyenne simple reprend la main.
+            return round((float) $this->moyenneParCoefficient($notes), 2);
+        }
+
+        return round(array_sum(array_map(fn (array $p) => $p[0] * $p[1], $parties)) / $poids, 2);
+    }
+
+    /** Σ(note sur 20 × coefficient) / Σ coefficient, une absence comptant 0. */
+    private function moyenneParCoefficient(\Illuminate\Support\Collection $notes): ?float
+    {
         $totalPoints = 0;
         $totalCoeff = 0;
 
         foreach ($notes as $note) {
             $eval = $note->evaluation;
-            if (!$eval) continue;
-
             $bareme = $eval->bareme ?: 20;
             $coeffEval = $eval->coefficient ?: 1;
 
-            // Normaliser la note sur 20
             $noteNormalisee = $note->is_absent ? 0 : (($note->note / $bareme) * 20);
 
             $totalPoints += $noteNormalisee * $coeffEval;
             $totalCoeff += $coeffEval;
         }
 
-        if ($totalCoeff == 0) return null;
-
-        return round($totalPoints / $totalCoeff, 2);
+        return $totalCoeff == 0 ? null : $totalPoints / $totalCoeff;
     }
 
     /**
@@ -732,14 +762,15 @@ class LMDBulletinService
      * Appliquer la compensation inter-UE et calculer les credits capitalises.
      *
      * Regles:
-     * - AQ: moyenne_ue >= 10 → credits capitalises
-     * - APC: moyenne_ue < 10 MAIS moyenne_generale >= 10 → credits capitalises
+     * - AQ: moyenne_ue >= seuil de validation → credits capitalises
+     * - APC: minimum APC <= moyenne_ue < seuil ET moyenne_generale >= seuil
      * - NAQ: sinon → pas de credits
      */
     public function appliquerCompensation(array $resultatsUEs, ?float $moyenneGenerale): int
     {
         $threshold = $this->getValidationThreshold();
         $compensationEnabled = $this->rules->interUeCompensationEnabled();
+        $compensationMinimum = $this->rules->interUeCompensationMinimum();
         $creditsCapitalises = 0;
         $apcIds = [];
 
@@ -749,8 +780,13 @@ class LMDBulletinService
             if ((float) $resultat->moyenne >= $threshold) {
                 // Deja AQ
                 $creditsCapitalises += $resultat->credit;
-            } elseif ($compensationEnabled && $moyenneGenerale !== null && $moyenneGenerale >= $threshold) {
-                // Compensation: APC
+            } elseif (
+                $compensationEnabled
+                && (float) $resultat->moyenne >= $compensationMinimum
+                && $moyenneGenerale !== null
+                && $moyenneGenerale >= $threshold
+            ) {
+                // Compensation: APC, seulement au-dessus du plancher de l'UE.
                 $apcIds[] = $resultat->id;
                 $creditsCapitalises += $resultat->credit;
             }
@@ -954,6 +990,7 @@ class LMDBulletinService
             'classe.niveau',
             'classe.filiere',
             'parcours.mention.domaine',
+            'parcours.filiere',
             'anneeUniversitaire',
             'resultatsUEs.uniteEnseignement',
             'resultatsUEs.resultatsECUEs.matiere',
@@ -961,12 +998,19 @@ class LMDBulletinService
             'deliberation',
         ]);
 
+        // Les snapshots historiques peuvent encore contenir le code court de la
+        // filière dans le parcours ("LICENCE 1 BU BÂTIMENT..."). Ce code est un
+        // identifiant technique et ne doit jamais sortir sur le document officiel.
+        $parcoursLabelBulletin = $bulletin->parcours
+            ? $bulletin->parcours->nettoyerLabelBulletin($bulletin->parcours_label)
+            : $bulletin->parcours_label;
+
         // Bulletin field visibility & labels (configurable per tenant)
         $bulletinFields = [
             ['key' => 'domaine', 'show' => $this->getSetting('lmd_bulletin_show_domaine', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_domaine', $this->vocabulaire->natureDe($bulletin->parcours?->mention?->domaine)), 'value' => $bulletin->domaine_label],
             ['key' => 'mention', 'show' => $this->getSetting('lmd_bulletin_show_mention', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_mention', $this->vocabulaire->mention()), 'value' => $bulletin->mention_label],
             ['key' => 'specialite', 'show' => $this->getSetting('lmd_bulletin_show_specialite', '0') == '1', 'label' => $this->getSetting('lmd_bulletin_label_specialite', 'SPÉCIALITÉ'), 'value' => $bulletin->specialite_label ?? ''],
-            ['key' => 'parcours', 'show' => $this->getSetting('lmd_bulletin_show_parcours', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_parcours', $this->vocabulaire->parcours()), 'value' => $bulletin->parcours_label],
+            ['key' => 'parcours', 'show' => $this->getSetting('lmd_bulletin_show_parcours', '1') == '1', 'label' => $this->libelleOuVocabulaire('lmd_bulletin_label_parcours', $this->vocabulaire->parcours()), 'value' => $parcoursLabelBulletin],
         ];
 
         // Un bulletin est un snapshot, mais son ordre doit rester celui de la
@@ -1008,7 +1052,7 @@ class LMDBulletinService
             'parcours' => $bulletin->parcours,
             'domaine' => $bulletin->domaine_label,
             'mention' => $bulletin->mention_label,
-            'parcours_label' => $bulletin->parcours_label,
+            'parcours_label' => $parcoursLabelBulletin,
             'niveau' => $bulletin->niveau,
             'semestre' => $bulletin->semestre,
             'resultats_ues' => $resultatsUes,

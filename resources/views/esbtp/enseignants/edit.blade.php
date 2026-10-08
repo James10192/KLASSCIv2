@@ -181,7 +181,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
     <div class="main-content">
 
         @if($errors->any())
-            <div class="ee-alert ee-alert-warning">
+            <div class="ee-alert ee-alert-warning" role="alert" aria-live="polite">
                 <i class="fas fa-exclamation-triangle ee-alert-icon"></i>
                 <div>
                     <strong>Veuillez corriger les erreurs suivantes :</strong>
@@ -194,8 +194,18 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
             </div>
         @endif
 
+        @if(session('error'))
+            <div class="ee-alert ee-alert-warning" role="alert" aria-live="assertive">
+                <i class="fas fa-exclamation-circle ee-alert-icon"></i>
+                <div>
+                    <strong>La modification n'a pas été enregistrée.</strong>
+                    <div style="margin-top:.2rem;">{{ session('error') }}</div>
+                </div>
+            </div>
+        @endif
+
         @if(session('success'))
-            <div class="ee-alert ee-alert-success">
+            <div class="ee-alert ee-alert-success" role="status" aria-live="polite">
                 <i class="fas fa-check-circle ee-alert-icon"></i>
                 <div>{{ session('success') }}</div>
             </div>
@@ -303,7 +313,8 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                             <label for="taux_horaire" class="ee-label">Taux horaire par défaut (FCFA/heure)</label>
                             <input type="number" name="taux_horaire" id="taux_horaire"
                                    value="{{ $currentTaux }}"
-                                   min="0" step="500"
+                                   min="0" step="0.01"
+                                   {{ $selectedRegime === 'permanent' ? 'disabled' : '' }}
                                    class="ee-input @error('taux_horaire') is-invalid @enderror">
                             <small class="ee-help">Appliqué quand aucun taux par type n'est défini.</small>
                             @error('taux_horaire') <div class="ee-error">{{ $message }}</div> @enderror
@@ -315,6 +326,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                             <input type="number" name="charge_horaire_max_semaine" id="charge_horaire_max_semaine"
                                    value="{{ $currentCharge }}"
                                    min="1" max="60"
+                                   {{ $selectedRegime !== 'permanent' ? 'disabled' : '' }}
                                    class="ee-input @error('charge_horaire_max_semaine') is-invalid @enderror">
                             @error('charge_horaire_max_semaine') <div class="ee-error">{{ $message }}</div> @enderror
                         </div>
@@ -351,7 +363,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                                         <div class="ee-taux-input-wrap">
                                             <input type="number" name="taux_par_type[{{ $t->value }}]" id="taux_{{ $t->value }}"
                                                    value="{{ $currentTauxParType[$t->value] ?? '' }}"
-                                                   min="0" step="500" placeholder="défaut"
+                                                   min="0" step="0.01" placeholder="défaut"
                                                    class="ee-input @error('taux_par_type.' . $t->value) is-invalid @enderror">
                                             <span class="ee-taux-unit">FCFA/h</span>
                                         </div>
@@ -510,7 +522,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                     <i class="fas fa-times"></i> Annuler
                 </a>
                 <div class="ee-actions-right">
-                    <button type="submit" class="btn-acasi primary">
+                    <button type="submit" class="btn-acasi primary" id="submitBtn">
                         <i class="fas fa-check me-1"></i> Enregistrer les modifications
                     </button>
                 </div>
@@ -525,17 +537,33 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
 (function() {
     'use strict';
 
+    const teacherForm = document.getElementById('teacherForm');
+    const submitBtn = document.getElementById('submitBtn');
+
     // ─── Régime cards ──────────────────────────────────────────────
     const regimeGrid = document.getElementById('regimeGrid');
     const tauxField = document.getElementById('tauxField');
     const chargeField = document.getElementById('chargeField');
+    const tauxInput = document.getElementById('taux_horaire');
+    const chargeInput = document.getElementById('charge_horaire_max_semaine');
 
     function applyRegime(regime) {
         regimeGrid.querySelectorAll('.ee-regime-card').forEach(c => {
             c.classList.toggle('active', c.dataset.regime === regime);
         });
-        tauxField.classList.toggle('show', regime !== 'permanent');
-        chargeField.classList.toggle('show', regime === 'permanent');
+
+        const permanent = regime === 'permanent';
+
+        if (tauxField) tauxField.classList.toggle('show', !permanent);
+        if (tauxInput) tauxInput.disabled = permanent;
+
+        if (chargeField) chargeField.classList.toggle('show', permanent);
+        if (chargeInput) {
+            chargeInput.disabled = !permanent;
+            if (permanent && (!chargeInput.value || Number(chargeInput.value) < 1)) {
+                chargeInput.value = '18';
+            }
+        }
     }
     regimeGrid.querySelectorAll('.ee-regime-card').forEach(card => {
         card.addEventListener('click', () => {
@@ -544,6 +572,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
             applyRegime(card.dataset.regime);
         });
     });
+    applyRegime(@json($selectedRegime));
 
     // ─── Profil détaillé (collapse) ────────────────────────────────
     const profileToggle = document.getElementById('profileToggle');
@@ -552,6 +581,27 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
         const collapsed = profileCard.dataset.collapsed === 'true';
         profileCard.dataset.collapsed = collapsed ? 'false' : 'true';
         profileToggle.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
+    });
+
+    // Si un champ invalide se trouve dans la section repliée, on l'ouvre avant
+    // que le navigateur n'essaie de le focaliser. Cela évite les submits bloqués
+    // sans indication visible (URL, année de diplôme, etc.).
+    teacherForm.addEventListener('invalid', (event) => {
+        const field = event.target;
+        if (profileCard.contains(field) && profileCard.dataset.collapsed === 'true') {
+            profileCard.dataset.collapsed = 'false';
+            profileToggle.setAttribute('aria-expanded', 'true');
+        }
+        window.setTimeout(() => {
+            field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 0);
+    }, true);
+
+    teacherForm.addEventListener('submit', () => {
+        if (!teacherForm.checkValidity()) return;
+        submitBtn.disabled = true;
+        submitBtn.setAttribute('aria-busy', 'true');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Enregistrement…';
     });
 
     // ─── Disponibilités : click cycle ───────────────────────────────

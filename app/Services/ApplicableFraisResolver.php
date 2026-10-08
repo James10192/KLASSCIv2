@@ -18,28 +18,54 @@ class ApplicableFraisResolver
     ) {
     }
 
-    public function categoryAppliesToStudent(ESBTPFraisCategory $category, ?string $statutEtablissement): bool
-    {
-        $audience = $category->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS;
-
-        // Les deux audiences restreintes exigent une reponse EXPLICITE. Un statut
-        // absent ne veut pas dire « nouveau », il veut dire « on ne sait pas » —
-        // et on ne facture pas sur une supposition.
-        //
-        // La regle etait dissymetrique : « anciens » demandait un statut egal a
-        // « ancien », mais « nouveaux » se contentait de « pas ancien », donc un
-        // champ vide suffisait. Un ancien d'ISLG a paye 50 000 F de tenue pour
-        // cette seule raison, et rendre l'argent a demande une reventilation.
-        //
-        // Le choix, pose par l'ecole en septembre 2026 : mieux vaut sous-facturer
-        // que sur-facturer. Un frais oublie se reclame ; un frais encaisse a tort
-        // ne se retire plus, parce que retirer une souscription payee laisserait
-        // le versement sans affectation.
-        return match ($audience) {
-            ESBTPFraisCategory::AUDIENCE_NOUVEAUX => $statutEtablissement === ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU,
-            ESBTPFraisCategory::AUDIENCE_ANCIENS => $statutEtablissement === ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN,
-            default => true,
+    /**
+     * Une seule définition de l'audience effective : la configuration précise
+     * gagne, puis le catalogue sert uniquement de repli pour les anciennes données.
+     */
+    public function effectiveAudience(
+        ESBTPFraisCategory $category,
+        ?ESBTPFraisConfiguration $configuration = null
+    ): string {
+        return match ($configuration?->audience ?? $category->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS) {
+            ESBTPFraisCategory::AUDIENCE_NOUVEAUX => ESBTPFraisCategory::AUDIENCE_NOUVEAUX,
+            ESBTPFraisCategory::AUDIENCE_ANCIENS => ESBTPFraisCategory::AUDIENCE_ANCIENS,
+            default => ESBTPFraisCategory::AUDIENCE_TOUS,
         };
+    }
+
+    public function categoryAppliesToStudent(
+        ESBTPFraisCategory $category,
+        ?string $statutEtablissement,
+        ?ESBTPFraisConfiguration $configuration = null
+    ): bool {
+        return $this->audienceAppliesToStatus(
+            $this->effectiveAudience($category, $configuration),
+            $statutEtablissement,
+        );
+    }
+
+    /**
+     * Audience réellement applicable à cette inscription : priorité à la
+     * configuration filière/parcours + niveau + année, puis repli catalogue.
+     */
+    public function audienceForInscription(ESBTPFraisCategory $category, ESBTPInscription $inscription): string
+    {
+        $scope = $this->scopeResolver->resolveForInscription($inscription);
+        $configuration = ESBTPFraisConfiguration::getApplicableForScope($category->id, $scope);
+
+        return $this->effectiveAudience($category, $configuration);
+    }
+
+    /**
+     * Variante sûre dès qu'une inscription est disponible : elle résout d'abord
+     * la configuration effective de SA filière/parcours + niveau + année.
+     */
+    public function categoryAppliesToInscription(ESBTPFraisCategory $category, ESBTPInscription $inscription): bool
+    {
+        return $this->audienceAppliesToStatus(
+            $this->audienceForInscription($category, $inscription),
+            $inscription->statut_etablissement,
+        );
     }
 
     public function resolveMandatoryFeesForInscription(ESBTPInscription $inscription, ?string $affectationStatus = null): Collection
@@ -51,12 +77,22 @@ class ApplicableFraisResolver
             ->mandatory()
             ->ordered()
             ->get()
-            ->filter(fn (ESBTPFraisCategory $category) => $this->categoryAppliesToStudent(
-                $category,
+            ->map(function (ESBTPFraisCategory $category) use ($scope) {
+                $configuration = ESBTPFraisConfiguration::getApplicableForScope($category->id, $scope);
+
+                return [
+                    'category' => $category,
+                    'configuration' => $configuration,
+                    'audience' => $this->effectiveAudience($category, $configuration),
+                ];
+            })
+            ->filter(fn (array $row) => $this->audienceAppliesToStatus(
+                $row['audience'],
                 $inscription->statut_etablissement,
             ))
-            ->map(function (ESBTPFraisCategory $category) use ($scope, $status) {
-                $configuration = ESBTPFraisConfiguration::getApplicableForScope($category->id, $scope);
+            ->map(function (array $row) use ($scope, $status) {
+                $category = $row['category'];
+                $configuration = $row['configuration'];
                 $amount = $configuration
                     ? $configuration->getMontantByStatus($status)
                     : (float) ($category->default_amount ?? 0);
@@ -64,12 +100,14 @@ class ApplicableFraisResolver
                 return [
                     'category' => $category,
                     'configuration' => $configuration,
+                    'audience' => $row['audience'],
                     'amount' => (float) $amount,
                     'description' => $category->name,
                     'type' => 'mandatory',
                     'scope' => $scope,
                 ];
-            });
+            })
+            ->values();
     }
 
     public function resolveFeesForClasse(ESBTPClasse $classe, ?string $affectationStatus = null): Collection
@@ -99,12 +137,22 @@ class ApplicableFraisResolver
             ->optional()
             ->ordered()
             ->get()
-            ->filter(fn (ESBTPFraisCategory $category) => $this->categoryAppliesToStudent(
-                $category,
-                $inscription->statut_etablissement,
-            ))
             ->map(function (ESBTPFraisCategory $category) use ($scope) {
                 $configuration = ESBTPFraisConfiguration::getApplicableForScope($category->id, $scope);
+
+                return [
+                    'category' => $category,
+                    'configuration' => $configuration,
+                    'audience' => $this->effectiveAudience($category, $configuration),
+                ];
+            })
+            ->filter(fn (array $row) => $this->audienceAppliesToStatus(
+                $row['audience'],
+                $inscription->statut_etablissement,
+            ))
+            ->map(function (array $row) use ($scope) {
+                $category = $row['category'];
+                $configuration = $row['configuration'];
 
                 $options = ESBTPFraisOption::active()
                     ->with(['assignments', 'fraisCategory', 'configuration.fraisCategory'])
@@ -122,12 +170,24 @@ class ApplicableFraisResolver
                 return [
                     'category' => $category,
                     'configuration' => $configuration,
+                    'audience' => $row['audience'],
                     'options' => $options,
                     'scope' => $scope,
                 ];
             })
             ->filter(fn (array $row) => $row['options']->isNotEmpty())
             ->values();
+    }
+
+    private function audienceAppliesToStatus(string $audience, ?string $statutEtablissement): bool
+    {
+        // Une audience restreinte exige un statut explicite : l'absence de statut
+        // ne doit jamais être interprétée comme « nouveau » ou « ancien ».
+        return match ($audience) {
+            ESBTPFraisCategory::AUDIENCE_NOUVEAUX => $statutEtablissement === ESBTPInscription::STATUT_ETABLISSEMENT_NOUVEAU,
+            ESBTPFraisCategory::AUDIENCE_ANCIENS => $statutEtablissement === ESBTPInscription::STATUT_ETABLISSEMENT_ANCIEN,
+            default => true,
+        };
     }
 
     private function optionMatchesScope(ESBTPFraisOption $option, array $scope): bool

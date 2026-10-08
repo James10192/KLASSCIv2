@@ -14,14 +14,13 @@ use App\Services\TenantScolariteSettings;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Propose de poser un barème : les montants d'une ou plusieurs catégories de
- * frais pour des portées (filière BTS ou parcours LMD, et niveau), en créant
- * au besoin une catégorie nouvelle par son code.
+ * Propose de configurer les frais : montants, audience et échéance d'une ou
+ * plusieurs catégories pour des portées (filière BTS ou parcours LMD, niveau).
  *
  * L'écriture est celle de la CLI (PoseDeBareme), qui passe par le même
  * FraisConfigurationWriter que l'écran de configuration des frais. Nanan ne
- * reçoit que des CODES (filière, parcours, niveau, catégorie) qu'elle résout
- * ici ; aucun montant n'est jamais supposé.
+ * reçoit que des codes ou noms exacts qu'elle résout ici ; elle ne suppose
+ * jamais une valeur absente.
  */
 class PoserBareme extends ActionAgent
 {
@@ -38,14 +37,14 @@ class PoserBareme extends ActionAgent
 
     public function libelle(): string
     {
-        return 'Préparation du barème des frais…';
+        return 'Préparation de la configuration des frais…';
     }
 
     public function description(): string
     {
-        return 'PROPOSE de poser des montants de frais. `configurations` : une ligne par frais et par portée {categorie, filiere (BTS) OU parcours (LMD), niveau : codes ou noms exacts ; montant, '
-            . 'montant_affecte / montant_reaffecte / montant_non_affecte facultatifs}. `categories` : seulement pour CRÉER un frais nouveau ou changer son nom {code, name, is_mandatory, audience, default_amount}. '
-            . 'Les montants viennent de la personne : n’en suppose jamais. `confirmer_statut` change un réglage d’établissement : seulement si la personne le demande. Rien n’est écrit avant « Valider ».';
+        return 'PROPOSE de configurer les frais par portée. `configurations` : une ligne par frais et par portée {categorie, filiere (BTS) OU parcours (LMD), niveau : codes ou noms exacts ; montant facultatif si la configuration existe déjà ; montant_affecte / montant_reaffecte / montant_non_affecte facultatifs ; audience facultative = tous|nouveaux_etablissement|anciens_etablissement ; echeance_jours facultative = 1..365}. '
+            . 'L’audience placée dans `configurations` ne concerne QUE cette combinaison filière/parcours + niveau. Pour changer uniquement l’audience ou l’échéance d’une configuration existante, NE redemande PAS son montant : laisse `montant` absent, sa valeur actuelle sera conservée. `categories` sert seulement à CRÉER un frais nouveau ou modifier ses informations de catalogue {code, name, is_mandatory, default_amount}. '
+            . 'Les montants viennent de la personne : n’en suppose jamais. Si elle dit « uniquement les nouveaux » ou « seulement les anciens », reporte exactement cette audience sur la ou les portées demandées. `confirmer_statut` change un réglage d’établissement : seulement si la personne le demande. Rien n’est écrit avant « Valider ».';
     }
 
     public function parameters(): array
@@ -53,14 +52,25 @@ class PoserBareme extends ActionAgent
         $ligne = [
             'type' => 'object',
             'properties' => [
-                'categorie' => ['type' => 'string', 'description' => 'Code du frais.'],
-                'filiere' => ['type' => 'string', 'description' => 'Code de filière (BTS).'],
-                'parcours' => ['type' => 'string', 'description' => 'Code de parcours (LMD).'],
-                'niveau' => ['type' => 'string', 'description' => 'Code de niveau.'],
-                'montant' => ['type' => 'number'],
+                'categorie' => ['type' => 'string', 'description' => 'Code ou nom exact du frais.'],
+                'filiere' => ['type' => 'string', 'description' => 'Code ou nom exact de filière (BTS).'],
+                'parcours' => ['type' => 'string', 'description' => 'Code ou nom exact de parcours (LMD).'],
+                'niveau' => ['type' => 'string', 'description' => 'Code ou nom exact du niveau.'],
+                'montant' => ['type' => 'number', 'description' => 'À fournir pour créer/changer le prix ; facultatif pour une modification audience/échéance sur une configuration existante.'],
                 'montant_affecte' => ['type' => 'number'],
                 'montant_reaffecte' => ['type' => 'number'],
                 'montant_non_affecte' => ['type' => 'number'],
+                'audience' => [
+                    'type' => 'string',
+                    'enum' => ['tous', 'nouveaux_etablissement', 'anciens_etablissement'],
+                    'description' => 'Audience de CETTE combinaison uniquement.',
+                ],
+                'echeance_jours' => [
+                    'type' => 'integer',
+                    'minimum' => 1,
+                    'maximum' => 365,
+                    'description' => 'Échéance en jours après inscription pour CETTE combinaison.',
+                ],
             ],
             'required' => ['categorie', 'niveau'],
         ];
@@ -70,8 +80,9 @@ class PoserBareme extends ActionAgent
             'properties' => [
                 'configurations' => ['type' => 'array', 'items' => $ligne],
                 'categories' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => [
-                    'code' => ['type' => 'string'], 'name' => ['type' => 'string'], 'is_mandatory' => ['type' => 'boolean'],
-                    'audience' => ['type' => 'string', 'enum' => ['tous', 'nouveaux_etablissement', 'anciens_etablissement']],
+                    'code' => ['type' => 'string'],
+                    'name' => ['type' => 'string'],
+                    'is_mandatory' => ['type' => 'boolean'],
                     'default_amount' => ['type' => 'number'],
                 ], 'required' => ['code', 'name']]],
                 'confirmer_statut' => ['type' => 'boolean', 'description' => 'Demander à l’agent de confirmer si l’élève est nouveau ou ancien.'],
@@ -82,7 +93,7 @@ class PoserBareme extends ActionAgent
 
     public function preparer(array $args, $user): Proposition
     {
-        $titre = 'Poser un barème de frais';
+        $titre = 'Configurer les frais';
         [$bareme, $lignes, $manques] = $this->bareme($args, $user);
         if ($manques === [] && ($refus = $this->pose->refus($bareme))) {
             $manques[] = $refus;
@@ -98,14 +109,17 @@ class PoserBareme extends ActionAgent
             $nouvelles ? 'Frais créé(s) : '.implode(', ', $nouvelles).'.' : null,
             $inactives ? 'Frais désactivé(s) qui redeviendront actifs : '.implode(', ', $inactives).'.' : null,
             $remplaces ? $remplaces.' montant(s) existant(s) remplacé(s).' : null,
-            'Les élèves déjà inscrits gardent le montant de leur souscription : le barème vaut pour les prochaines.',
+            'Les élèves déjà inscrits gardent le montant de leur souscription : cette configuration vaut pour les prochaines inscriptions.',
             $bareme['confirmer_statut'] ? 'Réglage de l’établissement : l’agent devra confirmer si chaque élève est nouveau ou ancien.' : null,
         ]));
 
         return new Proposition(
             titre: $titre,
-            resume: sprintf('%d montant(s) de frais posé(s) sur %d portée(s).', count($lignes), count(array_unique(array_column($lignes, 1)))),
-            tableau: ['colonnes' => ['Frais', 'Portée', 'Montant actuel', 'Nouveau montant'], 'lignes' => $lignes],
+            resume: sprintf('%d frais configuré(s) sur %d portée(s).', count($lignes), count(array_unique(array_column($lignes, 1)))),
+            tableau: [
+                'colonnes' => ['Frais', 'Portée', 'Montant actuel', 'Nouveau montant', 'Audience', 'Échéance'],
+                'lignes' => $lignes,
+            ],
             avertissements: $avertissements,
             donnees: ['bareme' => $bareme],
             etat: $this->etat($bareme),
@@ -128,15 +142,15 @@ class PoserBareme extends ActionAgent
         $resultat = DB::transaction(function () use ($bareme, $proposition, $user) {
             ESBTPFraisCategory::whereIn('code', array_map(fn ($c) => strtoupper($c['code']), $bareme['categories']))->lockForUpdate()->get(['id']);
             if ($this->etat($bareme) !== $proposition->etat) {
-                throw new PropositionPerimee('Le barème a changé depuis la proposition.');
+                throw new PropositionPerimee('La configuration des frais a changé depuis la proposition.');
             }
 
             return $this->pose->appliquer($bareme, (int) $user->id);
         });
 
         return [
-            'message' => sprintf('Barème posé : %d montant(s) créé(s), %d mis à jour.', $resultat['configurations_creees'], $resultat['configurations_maj']),
-            'lien' => route('esbtp.frais.index', [], false),
+            'message' => sprintf('Frais configurés : %d configuration(s) créée(s), %d mise(s) à jour.', $resultat['configurations_creees'], $resultat['configurations_maj']),
+            'lien' => route('esbtp.frais.configure', [], false),
             'model_type' => ESBTPFraisCategory::class,
             'model_id' => null,
             'details' => $resultat,
@@ -144,7 +158,8 @@ class PoserBareme extends ActionAgent
     }
 
     /**
-     * Traduit la demande de Nanan (codes) dans la forme de PoseDeBareme (identifiants).
+     * Traduit la demande de Nanan (codes ou noms exacts) dans la forme de
+     * PoseDeBareme (identifiants).
      *
      * @return array{0: array, 1: array<int, string[]>, 2: string[]}
      */
@@ -153,7 +168,7 @@ class PoserBareme extends ActionAgent
         $manques = [];
         $configurations = array_values((array) ($args['configurations'] ?? []));
         if ($configurations === []) {
-            $manques[] = 'Quels frais, pour quelles filières ou parcours et quels niveaux, et à quels montants ?';
+            $manques[] = 'Quels frais, pour quelles filières ou parcours et quels niveaux, et que faut-il modifier ?';
         }
         if (count($configurations) > self::MAX_LIGNES) {
             $manques[] = 'Plus de '.self::MAX_LIGNES.' lignes : procède par filière.';
@@ -167,9 +182,9 @@ class PoserBareme extends ActionAgent
                 continue;
             }
             $categories[$code] = array_filter([
-                'code' => $code, 'name' => trim((string) $c['name']),
+                'code' => $code,
+                'name' => trim((string) $c['name']),
                 'is_mandatory' => isset($c['is_mandatory']) ? (bool) $c['is_mandatory'] : null,
-                'audience' => $c['audience'] ?? null,
                 'default_amount' => isset($c['default_amount']) ? (float) $c['default_amount'] : null,
             ], fn ($v) => $v !== null);
         }
@@ -178,6 +193,7 @@ class PoserBareme extends ActionAgent
         $lignes = [];
         foreach ($configurations as $l) {
             $code = strtoupper(trim((string) ($l['categorie'] ?? '')));
+            $categoryModel = null;
             if (! isset($categories[$code])) {
                 [$existante, $manque] = self::designer(ESBTPFraisCategory::class, (string) ($l['categorie'] ?? ''), 'Frais');
                 if ($manque) {
@@ -188,33 +204,102 @@ class PoserBareme extends ActionAgent
                     $manques[] = "Le frais « {$existante->name} » n'a pas de code : il se configure depuis l'écran des frais.";
                     continue;
                 }
-                // Cité sans être redéfini : il est passé avec son nom actuel, donc
-                // PoseDeBareme le réécrit à l'identique — mais le RÉACTIVE s'il était
-                // désactivé. Ce cas est annoncé dans les avertissements.
+                $categoryModel = $existante;
                 $code = strtoupper((string) $existante->code);
                 $categories[$code] ??= ['code' => $code, 'name' => (string) $existante->name];
+            } else {
+                $categoryModel = ESBTPFraisCategory::where('code', $code)->first();
             }
-            if (! isset($l['montant']) || ! is_numeric($l['montant']) || (float) $l['montant'] < 0) {
-                $manques[] = "Quel montant pour {$code} ?";
-                continue;
-            }
+
             [$portee, $libelle, $manque] = $this->portee($l);
             if ($manque) {
                 $manques[] = $manque;
                 continue;
             }
-            $ligne = $portee + ['category_code' => $code, 'amount' => (float) $l['montant']];
+
+            $categoryId = $categoryModel?->id ?? ESBTPFraisCategory::where('code', $code)->value('id');
+            $avant = $categoryId ? PoseDeBareme::etatActuel((int) $categoryId, $portee) : null;
+            $hasMontant = array_key_exists('montant', $l);
+            $hasAudience = array_key_exists('audience', $l);
+            $hasDeadline = array_key_exists('echeance_jours', $l);
+            $hasStatusAmount = collect(['affecte', 'reaffecte', 'non_affecte'])
+                ->contains(fn (string $statut) => array_key_exists('montant_'.$statut, $l));
+
+            if (! $hasMontant && ! $hasAudience && ! $hasDeadline && ! $hasStatusAmount) {
+                $manques[] = "Que faut-il modifier pour {$code} : montant, audience ou échéance ?";
+                continue;
+            }
+
+            if ($hasMontant && (! is_numeric($l['montant']) || (float) $l['montant'] < 0)) {
+                $manques[] = "Quel montant valide pour {$code} ?";
+                continue;
+            }
+            if (! $hasMontant && $avant === null) {
+                $manques[] = "Quel montant pour {$code} ? Cette combinaison n'est pas encore configurée.";
+                continue;
+            }
+
+            $montant = $hasMontant ? (float) $l['montant'] : (float) $avant['amount'];
+            $ligne = $portee + ['category_code' => $code, 'amount' => $montant];
+
             foreach (['affecte', 'reaffecte', 'non_affecte'] as $statut) {
-                if (isset($l['montant_'.$statut]) && is_numeric($l['montant_'.$statut])) {
-                    $ligne['amount_'.$statut] = (float) $l['montant_'.$statut];
+                $cle = 'montant_'.$statut;
+                if (array_key_exists($cle, $l)) {
+                    if (! is_numeric($l[$cle]) || (float) $l[$cle] < 0) {
+                        $manques[] = "Montant {$statut} invalide pour {$code}.";
+                        continue 2;
+                    }
+                    $ligne['amount_'.$statut] = (float) $l[$cle];
+                } elseif (! $hasMontant && $avant !== null) {
+                    // Une demande « seulement les nouveaux » ne doit surtout pas
+                    // réécrire les trois montants de la combinaison.
+                    $ligne['amount_'.$statut] = $avant['amount_'.$statut] ?? $avant['amount'];
                 }
             }
+
+            if ($hasAudience) {
+                $audience = (string) $l['audience'];
+                if (! in_array($audience, [
+                    ESBTPFraisCategory::AUDIENCE_TOUS,
+                    ESBTPFraisCategory::AUDIENCE_NOUVEAUX,
+                    ESBTPFraisCategory::AUDIENCE_ANCIENS,
+                ], true)) {
+                    $manques[] = "Audience invalide pour {$code} : utilisez tous, nouveaux_etablissement ou anciens_etablissement.";
+                    continue;
+                }
+                $ligne['audience'] = $audience;
+            }
+
+            if ($hasDeadline) {
+                $echeance = filter_var($l['echeance_jours'], FILTER_VALIDATE_INT);
+                if ($echeance === false || $echeance < 1 || $echeance > 365) {
+                    $manques[] = "Quelle échéance valide pour {$code} ? Donnez un nombre de jours entre 1 et 365.";
+                    continue;
+                }
+                $ligne['deadline_days'] = $echeance;
+            } elseif ($avant !== null) {
+                $ligne['deadline_days'] = $avant['deadline_days'];
+            }
+
             $sortie[] = $ligne;
 
-            $actuelle = ESBTPFraisCategory::where('code', $code)->value('id');
-            $avant = $actuelle ? PoseDeBareme::montantActuel((int) $actuelle, PoseDeBareme::portee($ligne)) : null;
             $fcfa = fn ($v) => number_format((float) $v, 0, ',', ' ').' FCFA';
-            $lignes[] = [$categories[$code]['name'], $libelle, $avant === null ? '—' : $fcfa($avant), $fcfa($ligne['amount'])];
+            $audience = $ligne['audience'] ?? ($avant['audience'] ?? ESBTPFraisCategory::AUDIENCE_TOUS);
+            $audienceLabel = match ($audience) {
+                ESBTPFraisCategory::AUDIENCE_NOUVEAUX => 'Nouveaux uniquement',
+                ESBTPFraisCategory::AUDIENCE_ANCIENS => 'Anciens uniquement',
+                default => 'Tous',
+            };
+            $echeance = $ligne['deadline_days'] ?? 30;
+
+            $lignes[] = [
+                $categories[$code]['name'],
+                $libelle,
+                $avant === null ? '—' : $fcfa($avant['amount']),
+                $fcfa($ligne['amount']),
+                $audienceLabel,
+                $echeance.' j',
+            ];
         }
 
         $confirmer = (bool) ($args['confirmer_statut'] ?? false);
@@ -238,7 +323,8 @@ class PoserBareme extends ActionAgent
 
             return $manque ? [[], '', $manque] : [
                 ['systeme' => 'LMD', 'parcours_id' => (int) $parcours->id, 'filiere_id' => null, 'niveau_id' => (int) $niveau->id],
-                $parcours->name.' · '.$niveau->name, null,
+                $parcours->name.' · '.$niveau->name,
+                null,
             ];
         }
         if (! empty($l['filiere'])) {
@@ -246,7 +332,8 @@ class PoserBareme extends ActionAgent
 
             return $manque ? [[], '', $manque] : [
                 ['systeme' => 'BTS', 'parcours_id' => null, 'filiere_id' => (int) $filiere->id, 'niveau_id' => (int) $niveau->id],
-                $filiere->name.' · '.$niveau->name, null,
+                $filiere->name.' · '.$niveau->name,
+                null,
             ];
         }
 
@@ -288,12 +375,16 @@ class PoserBareme extends ActionAgent
             ->get(['id', 'code', 'name', 'is_mandatory', 'audience', 'category_type', 'default_amount', 'is_active'])
             ->map(fn ($c) => [(int) $c->id, (string) $c->code, (string) $c->name, (bool) $c->is_mandatory, (string) $c->audience, (float) $c->default_amount, (bool) $c->is_active])->all();
         $parCode = ESBTPFraisCategory::whereIn('code', $codes)->pluck('id', 'code');
-        $montants = array_map(fn ($l) => isset($parCode[$l['category_code']])
-            ? PoseDeBareme::montantActuel((int) $parCode[$l['category_code']], PoseDeBareme::portee($l)) : null, $bareme['configurations']);
+        $configurations = array_map(
+            fn ($l) => isset($parCode[$l['category_code']])
+                ? PoseDeBareme::etatActuel((int) $parCode[$l['category_code']], PoseDeBareme::portee($l))
+                : null,
+            $bareme['configurations']
+        );
 
         return [
             'categories' => $categories,
-            'montants' => $montants,
+            'configurations' => $configurations,
             'confirmer_statut' => (string) \App\Models\Setting::where('key', TenantScolariteSettings::CONFIRMER_STATUT_ETABLISSEMENT)->value('value'),
         ];
     }

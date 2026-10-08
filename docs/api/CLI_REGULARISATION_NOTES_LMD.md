@@ -17,6 +17,7 @@ Ability : `cli:admin`. Simulation par défaut : `dry_run: false` est requis pour
   "periode": "semestre2",
   "date_regularisation": "2026-06-30",
   "motif": "Relevé officiel du semestre 2 transmis par l'établissement",
+  "nature": "regularisation",
   "dry_run": true,
   "notes": [{ "matiere_id": 148, "note": 15 }]
 }
@@ -26,6 +27,19 @@ Ability : `cli:admin`. Simulation par défaut : `dry_run: false` est requis pour
   (`semestre3` ou `semestre4` pour une L2). Un semestre qui n'est pas l'un des
   deux de la classe est refusé.
 - `date_regularisation` : jamais dans le futur.
+- `nature` (facultatif) : `regularisation` (défaut) ou `examen`. Un relevé qui ne
+  donne que la note d'examen, le contrôle continu venant à part, se saisit en
+  `examen` : l'évaluation est de type `examen`, nommée `Examen SEMESTREn — <élément>`,
+  et reste distincte du contrôle continu saisi ensuite.
+  **Le type ne compte que si l'école applique la pondération** (réglage
+  `lmd_ponderation_cc_examen`, onglet LMD des paramètres) : la moyenne de
+  l'élément est alors `lmd_cc_weight` % de la moyenne des contrôles continus
+  plus `lmd_exam_weight` % de celle des examens (40/60 par défaut), une seule
+  partie présente comptant seule. Sans ce réglage, le bulletin LMD fait la
+  moyenne de toutes les évaluations selon leur coefficient (1 ici).
+- Une note déjà saisie pour le même élément sous l'autre nature est **refusée**
+  (`422`, qui nomme l'évaluation) : elle serait comptée deux fois. Même risque si
+  l'examen est ensuite planifié dans le module des examens : ne pas le ressaisir.
 - `notes[].matiere_id` : un élément (ECUE) de la maquette du semestre, tel que
   la classe le voit (`getEcuesEffectifs`, clé étrangère comprise). Au plus 40.
 - L'étudiant doit être inscrit **activement** dans la classe, cette année-là.
@@ -52,8 +66,20 @@ Refus : `422`, `{"success": false, "message": "...", "errors": {...}}`
 (classe non LMD, étudiant non inscrit, semestre hors classe, élément hors
 maquette, date future).
 
+## Requalifier après coup
+
+Un relevé déjà saisi en `regularisation` qui contenait en fait les notes d'examen
+se requalifie sans ressaisie : écran des notes LMD (fenêtre de la classe, bandeau
+« évaluations de régularisation »), ou Nanan (`proposer_requalification_examen`).
+Les évaluations prennent le titre et le type d'un examen ; les notes ne changent
+pas. Service : `App\Domain\Notes\RequalificationEnExamen`.
+
 ## Historique
 
+- 3 octobre 2026 : la pondération contrôle continu / examen s'applique quand l'école l'active (`lmd_ponderation_cc_examen`).
+
+- 3 octobre 2026 : paramètre `nature` (`regularisation` | `examen`), aussi pour
+  Nanan (`proposer_releve_notes_lmd`). Sans lui, rien ne change.
 - 2 octobre 2026 : semestre absolu, évaluations terminées au lieu de brouillon,
   année écrite en clair sur la note, maquette lue par clé étrangère, date future
   refusée. Service partagé avec Nanan.

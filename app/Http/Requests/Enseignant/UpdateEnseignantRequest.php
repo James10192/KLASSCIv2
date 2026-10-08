@@ -14,6 +14,28 @@ class UpdateEnseignantRequest extends FormRequest
         return true;
     }
 
+    /**
+     * Le champ taux_horaire n'est rendu dans le formulaire que pour les
+     * utilisateurs autorisés à gérer les tarifs. Le contrôleur met pourtant à
+     * jour la fiche complète : sans cette normalisation, une modification faite
+     * par la scolarité/directeur envoyait implicitement null et pouvait faire
+     * échouer l'UPDATE SQL (puis revenir silencieusement sur le formulaire).
+     *
+     * On conserve donc la valeur actuelle quand le champ n'a pas été soumis.
+     * Un utilisateur autorisé qui voit le champ continue, lui, à envoyer sa
+     * nouvelle valeur normalement.
+     */
+    protected function prepareForValidation(): void
+    {
+        $enseignant = $this->route('enseignant');
+
+        if (!$this->exists('taux_horaire') && $enseignant) {
+            $this->merge([
+                'taux_horaire' => $enseignant->taux_horaire,
+            ]);
+        }
+    }
+
     public function rules(): array
     {
         // L'enseignant est résolu via route model binding (paramètre {enseignant}).

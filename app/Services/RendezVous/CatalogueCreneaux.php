@@ -72,7 +72,13 @@ class CatalogueCreneaux
             return collect();
         }
 
-        $debut = Carbon::today();
+        // Si l'école ferme la journée à minuit, le jour courant est déjà
+        // considéré comme clos dès 00:00. Les rendez-vous existants restent
+        // visibles dans l'accueil, mais le catalogue n'offre plus de nouvelles
+        // places pour cette date.
+        $debut = $this->reglages->fermerJourAMinuit()
+            ? Carbon::today()->addDay()
+            : Carbon::today();
         if ($regle->plancher->gt($debut)) {
             $debut = $regle->plancher->copy();
         }

@@ -104,6 +104,16 @@ class RankingService
             $effectiveTotal = $snapshot['effective_total'] ?? null;
             $attendanceNote = $snapshot['attendance_note'] ?? null;
 
+            // Un rang annuel n'existe que si les deux semestres existent.
+            // Le snapshot conserve volontairement une moyenne partielle S1 ou S2
+            // pour l'affichage "Partiel", mais elle ne doit jamais classer un
+            // etudiant comme si elle etait une moyenne annuelle.
+            if ($periode === 'annuel' && ($snapshot['state'] ?? null) === 'annual_incomplete') {
+                $rawTotal = null;
+                $effectiveTotal = null;
+                $attendanceNote = null;
+            }
+
             // Quand l'assiduité est désactivée par setting, on ignore le bonus/malus
             // partout : la "moyenne avec assiduité" devient égale à la brute.
             if (! $attendanceEnabled) {

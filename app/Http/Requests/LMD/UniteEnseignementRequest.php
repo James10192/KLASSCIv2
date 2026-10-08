@@ -6,6 +6,7 @@ use App\Enums\TypeUE;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPUniteEnseignement;
+use App\Services\LMD\CodeDUnite;
 use App\Services\LMD\CodeDeMaquette;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\DB;
@@ -186,100 +187,14 @@ class UniteEnseignementRequest extends FormRequest
         $ue = $ue instanceof ESBTPUniteEnseignement ? $ue : ($ue ? ESBTPUniteEnseignement::find($ue) : null);
         $parcours = $this->filled('parcours_id') ? ESBTPLMDParcours::find($this->input('parcours_id')) : null;
 
-        if (! $this->resoudreLaCle($validator, $saisi, $ue, $parcours)) {
+        $code = app(CodeDUnite::class)->resoudre($saisi, $ue, $parcours, $this->boolean('propre_au_parcours'));
+        if ($code['refus'] !== null) {
+            $validator->errors()->add($code['champ'], $code['refus']);
+
             return;
         }
-        if ($this->refuserUneCleDejaPrise($validator, $ue)) {
-            return;
-        }
-        $this->refuserUnCodeDejaImprime($validator, $saisi, $ue, $parcours);
-    }
-
-    /**
-     * Pose $this->cle, la clé interne sous laquelle l'UE sera enregistrée.
-     * Rend false quand une erreur a déjà été posée sur le validateur.
-     */
-    private function resoudreLaCle(Validator $validator, string $saisi, ?ESBTPUniteEnseignement $ue, ?ESBTPLMDParcours $parcours): bool
-    {
-        $maquette = app(CodeDeMaquette::class);
-
-        if ($ue && CodeDeMaquette::suffixe($ue->code) !== null) {
-            $this->cle = $saisi . CodeDeMaquette::SEPARATEUR . \Illuminate\Support\Str::after($ue->code, CodeDeMaquette::SEPARATEUR);
-
-            return true;
-        }
-        if (! $this->boolean('propre_au_parcours')) {
-            $this->cle = $saisi;
-
-            return true;
-        }
-        if (! $ue) {
-            if (! $parcours) {
-                $validator->errors()->add('parcours_id', 'Choisissez le parcours auquel cette UE est propre.');
-
-                return false;
-            }
-            $this->cle = $maquette->cleUnitePropre($saisi, $parcours);
-
-            return true;
-        }
-
-        // Rendre propre une UE existante (codes renumerotes faute de mieux,
-        // qu'on veut remettre au code officiel). Son parcours se deduit de
-        // ses rattachements : il n'y en a qu'un, sinon elle ne lui est pas
-        // propre et il faut d'abord la retirer des autres.
-        $sesParcours = $ue->parcoursMultiple()->pluck('esbtp_lmd_parcours.id')->unique()->values();
-        if ($sesParcours->count() !== 1) {
-            $validator->errors()->add('propre_au_parcours', $sesParcours->isEmpty()
-                ? 'Rattachez d\'abord cette UE à son parcours (« Lier à des parcours »).'
-                : sprintf('Cette UE sert %d parcours. Retirez d\'abord ceux auxquels elle n\'appartient pas (« Lier à des parcours »).', $sesParcours->count()));
-
-            return false;
-        }
-        $this->parcoursPropre = ESBTPLMDParcours::find($sesParcours->first());
-        $this->cle = $maquette->cleUnitePropre($saisi, $this->parcoursPropre, $ue->id);
-
-        return true;
-    }
-
-    private function refuserUneCleDejaPrise(Validator $validator, ?ESBTPUniteEnseignement $ue): bool
-    {
-        $prise = ESBTPUniteEnseignement::withTrashed()
-            ->where('code', $this->cle)
-            ->when($ue, fn ($q) => $q->where('id', '!=', $ue->id))
-            ->first(['id', 'name']);
-        if (! $prise) {
-            return false;
-        }
-
-        $validator->errors()->add('code', $this->boolean('propre_au_parcours')
-            ? sprintf('Ce parcours a déjà son UE propre « %s » sous ce code : modifiez-la plutôt que d\'en créer une seconde.', $prise->name)
-            : sprintf(
-                'Ce code est déjà celui de l\'UE « %s ». S\'il s\'agit d\'une autre UE, propre à un parcours, cochez « UE propre à ce parcours » et choisissez le parcours.',
-                $prise->name
-            ));
-
-        return true;
-    }
-
-    private function refuserUnCodeDejaImprime(Validator $validator, string $saisi, ?ESBTPUniteEnseignement $ue, ?ESBTPLMDParcours $parcours): void
-    {
-        $maquette = app(CodeDeMaquette::class);
-        $parcoursIds = $parcours ? [(int) $parcours->id] : [];
-        if ($ue) {
-            $parcoursIds = array_merge($parcoursIds, $ue->parcoursMultiple()->pluck('esbtp_lmd_parcours.id')->map(fn ($id) => (int) $id)->all());
-        }
-        foreach (array_unique($parcoursIds) as $parcoursId) {
-            if ($deja = $maquette->autreUniteDuParcours($parcoursId, $this->cle, $ue?->id)) {
-                $validator->errors()->add('code', sprintf(
-                    'Ce parcours imprime déjà le code %s pour l\'UE « %s ». Un relevé ne peut pas porter deux fois le même code.',
-                    $saisi,
-                    $deja->name
-                ));
-
-                return;
-            }
-        }
+        $this->cle = $code['cle'];
+        $this->parcoursPropre = $code['parcours_propre'];
     }
 
     /**

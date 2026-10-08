@@ -511,43 +511,56 @@ class BtsCurrentResultSnapshotService
     private function buildAnnualSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId): array
     {
         $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+        $semester1ClassId = (int) ($classMap['semestre1_classe_id'] ?? $classeId);
+        $semester2ClassId = (int) ($classMap['semestre2_classe_id'] ?? $classeId);
+
         $semestre1 = $this->buildSemesterSnapshot(
             $etudiantId,
-            $classMap['semestre1_classe_id'] ?? $classeId,
+            $semester1ClassId,
             $anneeUniversitaireId,
             'semestre1'
         );
         $semestre2 = $this->buildSemesterSnapshot(
             $etudiantId,
-            $classMap['semestre2_classe_id'] ?? $classeId,
+            $semester2ClassId,
             $anneeUniversitaireId,
             'semestre2'
         );
         $classe = $this->classeAvecCycle($classeId);
         $weights = $this->bulletinService->getSemesterWeights($classe);
-
-        $annualEffective = $this->bulletinService->calculateAnnualAverage(
-            $semestre1['effective_total'],
-            $semestre2['effective_total'],
-            $weights
+        $includeSemester1 = $this->bulletinService->annualIncludesSemester1(
+            $semester1ClassId,
+            $semester2ClassId
         );
 
-        $annualRaw = $this->bulletinService->calculateAnnualAverage(
+        $annualEffective = $this->bulletinService->calculateConfiguredAnnualAverage(
+            $semestre1['effective_total'],
+            $semestre2['effective_total'],
+            $weights,
+            $semester1ClassId,
+            $semester2ClassId
+        );
+        $annualRaw = $this->bulletinService->calculateConfiguredAnnualAverage(
             $semestre1['raw_total'],
             $semestre2['raw_total'],
-            $weights
+            $weights,
+            $semester1ClassId,
+            $semester2ClassId
         );
 
         $hasSemestre1 = $semestre1['effective_total'] !== null;
         $hasSemestre2 = $semestre2['effective_total'] !== null;
+        $requiredSemestersAvailable = $includeSemester1
+            ? ($hasSemestre1 && $hasSemestre2)
+            : $hasSemestre2;
         $primarySemester = $hasSemestre1 ? 'semestre1' : ($hasSemestre2 ? 'semestre2' : null);
         $primarySnapshot = $primarySemester === 'semestre2' ? $semestre2 : $semestre1;
 
-        // Lot 3 : propage le flag coefficients_missing depuis les snapshots semestriels
-        $coefficientsMissing = ($semestre1['coefficients_missing'] ?? false)
-            || ($semestre2['coefficients_missing'] ?? false);
+        $coefficientsMissing = $includeSemester1
+            ? (($semestre1['coefficients_missing'] ?? false) || ($semestre2['coefficients_missing'] ?? false))
+            : ($semestre2['coefficients_missing'] ?? false);
 
-        if ($annualEffective !== null && $annualRaw !== null) {
+        if ($requiredSemestersAvailable && $annualEffective !== null && $annualRaw !== null) {
             $state = $coefficientsMissing ? 'annual_complete_no_coefficients' : 'annual_complete';
             $rawTotal = round($annualRaw, 2);
             $effectiveTotal = round($annualEffective, 2);
@@ -567,6 +580,16 @@ class BtsCurrentResultSnapshotService
             $subjects = [];
         }
 
+        $configurationReady = $includeSemester1
+            ? (($semestre1['configuration']['ready'] ?? false) && ($semestre2['configuration']['ready'] ?? false))
+            : ($semestre2['configuration']['ready'] ?? false);
+        $missingItems = $includeSemester1
+            ? array_values(array_unique(array_merge(
+                $semestre1['configuration']['missing_items'] ?? [],
+                $semestre2['configuration']['missing_items'] ?? []
+            )))
+            : array_values(array_unique($semestre2['configuration']['missing_items'] ?? []));
+
         return [
             'state' => $state,
             'periode' => 'annuel',
@@ -578,13 +601,11 @@ class BtsCurrentResultSnapshotService
             'manual_resultats_count' => ($semestre1['manual_resultats_count'] ?? 0) + ($semestre2['manual_resultats_count'] ?? 0),
             'coefficients_missing' => $coefficientsMissing,
             'configuration' => [
-                'ready' => ($semestre1['configuration']['ready'] ?? false) && ($semestre2['configuration']['ready'] ?? false),
-                'missing_items' => array_values(array_unique(array_merge(
-                    $semestre1['configuration']['missing_items'] ?? [],
-                    $semestre2['configuration']['missing_items'] ?? []
-                ))),
+                'ready' => $configurationReady,
+                'missing_items' => $missingItems,
             ],
             'primary_semester' => $primarySemester,
+            'annual_policy' => $includeSemester1 ? 's1_s2' : 'specialisation_s2',
             'class_map' => $classMap,
             'semester_snapshots' => [
                 'semestre1' => $semestre1,
@@ -592,4 +613,5 @@ class BtsCurrentResultSnapshotService
             ],
         ];
     }
+
 }

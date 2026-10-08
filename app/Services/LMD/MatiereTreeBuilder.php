@@ -152,6 +152,8 @@ class MatiereTreeBuilder
             ->where('filiere_id', $classe->filiere_id)
             ->where('niveau_etude_id', $classe->niveau_etude_id)
             ->whereNotNull('matiere_id')
+            // Un ECUE archive (SortieDuLmd) n'est plus dans aucune maquette.
+            ->whereDoesntHave('matiere', fn ($q) => $q->where('is_active', false)->whereNotNull('unite_enseignement_id'))
             ->when($semestre !== null, fn ($q) => $q->where('semestre', $semestre))
             ->with(['matiere.uniteEnseignement', 'teachers.user', 'teachers.availabilities'])
             ->orderBy('semestre')

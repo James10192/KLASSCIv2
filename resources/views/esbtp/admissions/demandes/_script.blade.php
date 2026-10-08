@@ -423,6 +423,7 @@ window.demandesInscription = function () {
             this.ins.frais = { chargement: true, masques: false, lignes: [], total: 0, incomplet: false };
             const p = new URLSearchParams({ affectation_status: this.ins.prep.candidature.affectation_status || '' });
             if (this.ins.f.statut_etablissement) p.set('statut_etablissement', this.ins.f.statut_etablissement);
+            if (this.ins.f.annee_universitaire_id) p.set('annee_universitaire_id', this.ins.f.annee_universitaire_id);
             try {
                 const d = await this.appeler(this.cfg.frais.replace('__ID__', id) + '?' + p.toString());
                 if (id !== this.ins.f.classe_id) return;
