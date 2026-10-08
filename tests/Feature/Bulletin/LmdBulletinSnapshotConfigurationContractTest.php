@@ -26,7 +26,9 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString('$paysEtablissement', $pdf);
         $this->assertStringContainsString("lmd_bulletin_bottom_width_percent", $pdf);
         $this->assertStringContainsString('class="bottom-note-line"', $pdf);
-        $this->assertStringContainsString('white-space: nowrap', $pdf);
+        $this->assertStringContainsString('white-space: normal', $pdf);
+        $this->assertStringContainsString('word-wrap: break-word', $pdf);
+        $this->assertStringNotContainsString('white-space: nowrap', $pdf);
         $this->assertStringNotContainsString("}}, Côte d'Ivoire", $pdf);
     }
 
@@ -121,6 +123,11 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString('lmd_bulletin_signature_space_height', $support);
         $this->assertStringContainsString('lmd_bulletin_bottom_width_percent', $support);
         $this->assertStringContainsString('Largeur du pied de page', $support);
+        $this->assertStringContainsString('lmd_bulletin_show_effectif', $partial);
+        $this->assertStringContainsString('lmd_bulletin_show_redoublant', $partial);
+        $this->assertStringContainsString('lmd_bulletin_ministry_bold', $partial);
+        $this->assertStringContainsString('lmd_bulletin_meta_label_color', $support);
+        $this->assertStringContainsString('lmd_bulletin_official_header_bg', $support);
         $this->assertStringContainsString('LMDBulletinPrintSettings::validationRules()', $controller);
         $this->assertStringContainsString('...LMDBulletinPrintSettings::fieldKeys()', $controller);
         $this->assertStringContainsString("initialTab === 'lmd' ? 'lmd' : 'bts'", $configuration);
