@@ -3291,7 +3291,16 @@
         </div>
         @empty
         <div style="padding:24px;color:var(--k-gray);font-size:.9rem;">Aucune inscription enregistrée.</div>
+        @endforelse
     @can('inscriptions.edit')
+    @php
+        $reductionFeeOptions = $reductionSubscriptions->map(fn ($subs) => $subs->map(fn ($sub) => [
+            'id' => $sub->id,
+            'name' => $sub->fraisCategory?->name ?? 'Frais',
+            'amount' => (float) $sub->amount,
+            'paid' => (float) \App\Models\ESBTPPaiement::netPaidForInscription((int) $sub->inscription_id, (int) $sub->frais_category_id, true),
+        ])->values());
+    @endphp
     <div class="modal fade" id="studentFeeReductionModal" tabindex="-1" aria-labelledby="studentFeeReductionTitle" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content" style="border-radius:16px;">
             <div class="modal-header"><div><h5 class="modal-title fw-bold" id="studentFeeReductionTitle">Accorder une réduction de frais</h5><div class="small text-muted" id="sfr-inscription"></div></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
@@ -3321,11 +3330,7 @@
     </div>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const values = @json($reductionSubscriptions->map(fn($subs) => $subs->map(fn($sub) => [
-            'id' => $sub->id, 'name' => $sub->fraisCategory?->name ?? 'Frais',
-            'amount' => (float) $sub->amount,
-            'paid' => (float) \App\Models\ESBTPPaiement::netPaidForInscription((int) $sub->inscription_id, (int) $sub->frais_category_id, true),
-        ])->values()));
+        const values = @json($reductionFeeOptions);
         const form = document.getElementById('studentFeeReductionForm');
         if (!form) return;
         const $ = id => document.getElementById(id);
@@ -3379,7 +3384,7 @@
     });
     </script>
     @endcan
-        @endforelse
+
         {{-- CTA Réinscription : année cible calculée par le moteur, pas seulement is_current --}}
         @if($doitProposerReinscription && $reinscriptionCible)
         <a href="{{ route('esbtp.reinscription.show', $etudiant) }}"
