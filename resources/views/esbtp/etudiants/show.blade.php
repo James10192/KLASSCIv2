@@ -3592,6 +3592,53 @@
         'compact' => false,
     ])
 
+    {{-- Accès direct aux résultats de chaque inscription, sans se limiter à l'année courante. --}}
+    @php
+        $peutVoirResultatsBts = auth()->user()->can('bulletins.view') || auth()->user()->can('bulletins.view_own');
+        $peutVoirResultatsLmd = auth()->user()->can('lmd.resultats.view');
+    @endphp
+    <div class="s-card" style="margin-bottom:16px;">
+        <div class="s-card-header">
+            <div class="s-card-title"><div class="s-card-title-icon"><i class="fas fa-chart-line"></i></div>Résultats par inscription</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;padding:12px 16px;">
+            @foreach($acadInscs as $inscriptionResultats)
+                @php
+                    $lmdResultats = $inscriptionResultats->classe?->systeme_academique === 'LMD';
+                    $peutVoirCetteInscription = $inscriptionResultats->annee_universitaire_id
+                        && $inscriptionResultats->classe_id
+                        && ($lmdResultats ? $peutVoirResultatsLmd : $peutVoirResultatsBts);
+                    $urlResultats = $peutVoirCetteInscription
+                        ? ($lmdResultats
+                            ? route('esbtp.lmd.resultats.etudiant', [
+                                'etudiant' => $etudiant->id,
+                                'annee_universitaire_id' => $inscriptionResultats->annee_universitaire_id,
+                            ])
+                            : route('esbtp.resultats.etudiant', [
+                                'etudiant' => $etudiant->id,
+                                'annee_universitaire_id' => $inscriptionResultats->annee_universitaire_id,
+                                'classe_id' => $inscriptionResultats->classe_id,
+                                'include_all_statuses' => 1,
+                            ]))
+                        : null;
+                @endphp
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid #e2e8f0;border-radius:9px;padding:10px 12px;background:#f8fafc;">
+                    <div style="min-width:0;">
+                        <strong style="color:#1e293b;">{{ $inscriptionResultats->anneeUniversitaire?->name ?? 'Année non renseignée' }}</strong>
+                        <span style="color:#64748b;font-size:.8rem;"> · {{ $inscriptionResultats->classe?->name ?? 'Classe non renseignée' }} · {{ $lmdResultats ? 'LMD' : 'BTS' }}</span>
+                    </div>
+                    @if($urlResultats)
+                        <a href="{{ $urlResultats }}" class="insc-btn view" title="Consulter les résultats de cette inscription">
+                            <i class="fas fa-chart-bar"></i> Voir les résultats <i class="fas fa-arrow-right" style="font-size:.7rem;"></i>
+                        </a>
+                    @else
+                        <span style="font-size:.76rem;color:#94a3b8;">Résultats indisponibles</span>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    </div>
+
     {{-- ══ BLOC TPE — Travail Personnel Etudiant attendu (lecture seule UEMOA) ══ --}}
     @if(($isLMD ?? false) && ($tpeAttendu ?? 0) > 0)
         @php
