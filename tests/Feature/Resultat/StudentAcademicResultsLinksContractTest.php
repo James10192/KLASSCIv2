@@ -10,12 +10,14 @@ class StudentAcademicResultsLinksContractTest extends TestCase
     {
         $view = file_get_contents(resource_path('views/esbtp/etudiants/show.blade.php'));
 
-        $this->assertStringContainsString('Résultats par inscription', $view);
-        $this->assertStringContainsString('@foreach($acadInscs as $inscriptionResultats)', $view);
+        $this->assertStringNotContainsString('Résultats par inscription', $view);
+        $this->assertStringContainsString('$lienResultatsInscription($acadRef)', $view);
+        $this->assertStringContainsString('$lienResultatsInscription($autreInsc)', $view);
+        $this->assertStringContainsString('@foreach($acadInscsPrec as $autreInsc)', $view);
         $this->assertStringContainsString("route('esbtp.resultats.etudiant'", $view);
         $this->assertStringContainsString("route('esbtp.lmd.resultats.etudiant'", $view);
-        $this->assertStringContainsString('\'annee_universitaire_id\' => $inscriptionResultats->annee_universitaire_id', $view);
-        $this->assertStringContainsString('\'classe_id\' => $inscriptionResultats->classe_id', $view);
+        $this->assertStringContainsString('\'annee_universitaire_id\' => $insc->annee_universitaire_id', $view);
+        $this->assertStringContainsString('\'classe_id\' => $insc->classe_id', $view);
         $this->assertStringContainsString("'include_all_statuses' => 1", $view);
     }
 }
