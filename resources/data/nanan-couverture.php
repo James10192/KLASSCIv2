@@ -125,6 +125,8 @@ return [
     'POST api/cli/maintenance/reparer-encodage' => ['hors_nanan' => 'Exploitation du serveur (déploiement, cache, migrations) : réservé au support technique.'],
     'POST api/cli/matieres/cleanup-tronc-commun' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
     'POST api/cli/migrate' => ['hors_nanan' => 'Exploitation du serveur (déploiement, cache, migrations) : réservé au support technique.'],
+    'POST api/cli/evaluations/dupliquer-notes-ecue' => ['hors_nanan' => 'Correction ciblée des évaluations et notes par le support, nécessitant une vérification humaine.'],
+    'POST api/cli/notes/importer' => ['hors_nanan' => 'Import de notes administratif supervisé par le support, hors autonomie de l’agent.'],
     'POST api/cli/notes/recompute' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
     'POST api/cli/notes/supprimer' => ['hors_nanan' => 'Suppression logique ciblée de données décidée par le support : opération de réparation exceptionnelle, jamais proposée automatiquement par Nanan.'],
     'POST api/cli/notes/unicite' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
