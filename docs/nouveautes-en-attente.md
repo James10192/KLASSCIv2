@@ -13,7 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
-- 2026-10-08 · Fiche étudiant / Inscriptions : action « Accorder une réduction » par inscription, avec motif prérempli, récapitulatif, vérification des paiements et permission inscriptions.edit.
+- 2026-10-08 · Fiche étudiant / Inscriptions : action « Accorder une réduction » par inscription, avec motif prérempli, récapitulatif, vérification des paiements et permission financière frais.souscriptions.ajuster (distincte de inscriptions.edit).
 - 2026-10-08 · Fiche étudiant > Académique : les liens résultats sont intégrés aux blocs académiques existants (année de référence et archives BTS/LMD), sans nouvelle carte.
 
 
