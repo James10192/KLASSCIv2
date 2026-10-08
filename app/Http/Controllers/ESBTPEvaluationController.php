@@ -501,7 +501,7 @@ class ESBTPEvaluationController extends Controller
 
             // Auto-assigner l'enseignant si c'est un rôle enseignant qui crée l'évaluation
             $user = \Auth::user();
-            if ($user->can('identity.teach')) {
+            if ($user->hasAnyRole(['enseignant', 'teacher'])) {
                 $evaluation->enseignant_id = \Auth::id();
             } else {
                 // Pour les autres rôles, utiliser l'assignation du formulaire

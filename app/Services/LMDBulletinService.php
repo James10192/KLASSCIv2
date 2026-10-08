@@ -284,9 +284,13 @@ class LMDBulletinService
             ->get()
             ->groupBy('matiere_id');
 
+        // Un bulletin officiel n'affiche que le professeur réellement déclaré.
+        // Le créateur administratif d'une évaluation ne peut jamais être repris
+        // comme enseignant, même si une ancienne donnée le contient.
         $this->preloadedEnseignants = ESBTPEvaluation::where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->whereNotNull('enseignant_id')
+            ->whereHas('enseignant.roles', fn ($query) => $query->whereIn('name', ['enseignant', 'teacher']))
             ->distinct()
             ->pluck('enseignant_id', 'matiere_id');
     }
@@ -969,6 +973,7 @@ class LMDBulletinService
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->whereNotNull('enseignant_id')
+            ->whereHas('enseignant.roles', fn ($query) => $query->whereIn('name', ['enseignant', 'teacher']))
             ->first();
 
         return $eval?->enseignant_id;

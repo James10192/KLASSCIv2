@@ -244,7 +244,7 @@ final class EnseignantDeClasseLmd
             ->get();
 
         return [
-            'users' => $evaluations->pluck('enseignant')->filter()->unique('id')->values(),
+            'users' => $evaluations->pluck('enseignant')->filter(fn (User $u) => $u->hasAnyRole(['enseignant', 'teacher']))->unique('id')->values(),
             'externes' => $evaluations->pluck('enseignant_externe_nom')->map(fn ($n) => trim((string) $n))->filter()->unique()->values(),
             'details' => $evaluations->map(fn (ESBTPEvaluation $e) => [
                 'id' => $e->id,
