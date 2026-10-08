@@ -3120,6 +3120,16 @@
     @php
         $toutesInscs = $etudiant->inscriptions->sortByDesc(fn($i) => optional($i->anneeUniversitaire)->start_date ?? $i->created_at);
     @endphp
+    @php
+        $reductionSubscriptions = auth()->user()->can('inscriptions.edit')
+            ? \App\Models\ESBTPFraisSubscription::query()
+                ->with('fraisCategory:id,name')
+                ->whereIn('inscription_id', $toutesInscs->pluck('id'))
+                ->where('is_active', true)
+                ->get()
+                ->groupBy('inscription_id')
+            : collect();
+    @endphp
     <div class="s-card">
         <div class="s-card-header">
             <div class="s-card-title">
@@ -3260,6 +3270,16 @@
                         <a href="{{ route('esbtp.inscriptions.show', $insc) }}" class="insc-btn view">
                             <i class="fas fa-eye"></i> Voir
                         </a>
+                        @can('inscriptions.edit')
+                            @if(($reductionSubscriptions->get($insc->id) ?? collect())->isNotEmpty())
+                                <button type="button" class="insc-btn edit" data-bs-toggle="modal" data-bs-target="#studentFeeReductionModal"
+                                    data-inscription-id="{{ $insc->id }}"
+                                    data-inscription-label="{{ $anneeLabel }} — {{ $insc->classe?->name ?? 'Inscription' }}"
+                                    onclick="window.openStudentFeeReduction(this)">
+                                    <i class="fas fa-hand-holding-usd"></i> Accorder une réduction
+                                </button>
+                            @endif
+                        @endcan
                         @can('update', $insc)
                         <a href="{{ route('esbtp.inscriptions.edit', $insc) }}" class="insc-btn edit">
                             <i class="fas fa-edit"></i> Modifier
@@ -3272,6 +3292,99 @@
         @empty
         <div style="padding:24px;color:var(--k-gray);font-size:.9rem;">Aucune inscription enregistrée.</div>
         @endforelse
+    @can('inscriptions.edit')
+    @php
+        $reductionFeeOptions = $reductionSubscriptions->map(fn ($subs) => $subs->map(fn ($sub) => [
+            'id' => $sub->id,
+            'name' => $sub->fraisCategory?->name ?? 'Frais',
+            'amount' => (float) $sub->amount,
+            'paid' => (float) \App\Models\ESBTPPaiement::netPaidForInscription((int) $sub->inscription_id, (int) $sub->frais_category_id, true),
+        ])->values());
+    @endphp
+    <div class="modal fade" id="studentFeeReductionModal" tabindex="-1" aria-labelledby="studentFeeReductionTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg"><div class="modal-content" style="border-radius:16px;">
+            <div class="modal-header"><div><h5 class="modal-title fw-bold" id="studentFeeReductionTitle">Accorder une réduction de frais</h5><div class="small text-muted" id="sfr-inscription"></div></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
+            <form id="studentFeeReductionForm">
+                @csrf
+                <div class="modal-body">
+                    <p class="small text-muted">Choisissez le frais, saisissez la réduction à accorder puis vérifiez le nouveau montant. Les paiements déjà enregistrés sont protégés.</p>
+                    <div id="sfr-error" class="alert alert-danger d-none" role="alert"></div>
+                    <div class="mb-3"><label for="sfr-category" class="form-label fw-semibold">1. Frais concerné</label>
+                        <select id="sfr-category" class="form-select" required><option value="">Sélectionner un frais</option></select>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-4"><label class="form-label">Montant actuel</label><input class="form-control" id="sfr-current" readonly></div>
+                        <div class="col-md-4"><label for="sfr-discount" class="form-label fw-semibold">2. Réduction (FCFA)</label><input class="form-control" type="number" min="1" step="1" id="sfr-discount" required></div>
+                        <div class="col-md-4"><label class="form-label">Nouveau montant</label><input class="form-control fw-bold" id="sfr-new-amount" readonly></div>
+                    </div>
+                    <div class="small text-muted mt-2" id="sfr-paid"></div>
+                    <div class="mt-3"><label for="sfr-reason" class="form-label fw-semibold">3. Motif</label>
+                        <textarea class="form-control" id="sfr-reason" rows="2" required minlength="10" maxlength="1000">Réduction exceptionnelle des frais de scolarité accordée à l'étudiant.</textarea>
+                        <div class="form-text">Motif prérempli, modifiable pour préciser la décision.</div>
+                    </div>
+                    <div class="alert alert-info mt-3 mb-0" id="sfr-summary" role="status">Sélectionnez un frais pour voir le récapitulatif.</div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button><button class="btn btn-primary" id="sfr-submit" type="submit" disabled>Confirmer la réduction</button></div>
+            </form>
+        </div></div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const values = @json($reductionFeeOptions);
+        const form = document.getElementById('studentFeeReductionForm');
+        if (!form) return;
+        const $ = id => document.getElementById(id);
+        let inscriptionId = null;
+        const fmt = value => new Intl.NumberFormat('fr-FR').format(value) + ' FCFA';
+        function selectedFee() { return (values[inscriptionId] || []).find(x => String(x.id) === $('sfr-category').value); }
+        function update() {
+            const fee = selectedFee();
+            const discount = Number($('sfr-discount').value);
+            $('sfr-current').value = fee ? fmt(fee.amount) : '';
+            $('sfr-paid').textContent = fee ? 'Paiements enregistrés : ' + fmt(fee.paid) : '';
+            $('sfr-new-amount').value = fee && Number.isFinite(discount) ? fmt(fee.amount - discount) : '';
+            const valid = fee && Number.isInteger(discount) && discount > 0 && fee.amount - discount >= fee.paid && fee.amount - discount >= 0 && $('sfr-reason').value.trim().length >= 10;
+            $('sfr-submit').disabled = !valid;
+            $('sfr-summary').textContent = fee && discount > 0
+                ? 'Vous accordez ' + fmt(discount) + ' sur ' + fee.name + '. Nouveau montant : ' + fmt(fee.amount - discount) + '.' + (valid ? '' : ' Vérifiez le solde déjà payé et le motif.')
+                : 'Sélectionnez un frais puis indiquez le montant à déduire.';
+        }
+        window.openStudentFeeReduction = function (button) {
+            inscriptionId = button.dataset.inscriptionId;
+            $('sfr-inscription').textContent = button.dataset.inscriptionLabel;
+            $('sfr-error').classList.add('d-none');
+            $('sfr-category').innerHTML = '<option value="">Sélectionner un frais</option>';
+            (values[inscriptionId] || []).forEach(fee => $('sfr-category').add(new Option(fee.name + ' — ' + fmt(fee.amount), fee.id)));
+            $('sfr-discount').value = '';
+            $('sfr-reason').value = "Réduction exceptionnelle des frais de scolarité accordée à l'étudiant.";
+            update();
+        };
+        ['sfr-category','sfr-discount','sfr-reason'].forEach(id => $(id).addEventListener('input', update));
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const fee = selectedFee(), discount = Number($('sfr-discount').value);
+            if (!fee || $('sfr-submit').disabled) return;
+            const newAmount = fee.amount - discount;
+            if (!confirm('Confirmer la réduction de ' + fmt(discount) + ' ?\\nNouveau montant : ' + fmt(newAmount))) return;
+            $('sfr-submit').disabled = true;
+            try {
+                const response = await fetch('/esbtp/inscriptions/' + encodeURIComponent(inscriptionId) + '/subscriptions/' + encodeURIComponent(fee.id), {
+                    method: 'PUT', headers: {'Content-Type':'application/json', 'Accept':'application/json', 'X-CSRF-TOKEN': form.querySelector('[name="_token"]').value},
+                    body: JSON.stringify({amount:newAmount,reason:$('sfr-reason').value.trim()})
+                });
+                const json = await response.json();
+                if (!response.ok || !json.success) throw new Error(json.message || 'La réduction n’a pas été enregistrée.');
+                window.location.reload();
+            } catch (error) {
+                $('sfr-error').textContent = error.message;
+                $('sfr-error').classList.remove('d-none');
+                update();
+            }
+        });
+    });
+    </script>
+    @endcan
+
         {{-- CTA Réinscription : année cible calculée par le moteur, pas seulement is_current --}}
         @if($doitProposerReinscription && $reinscriptionCible)
         <a href="{{ route('esbtp.reinscription.show', $etudiant) }}"
