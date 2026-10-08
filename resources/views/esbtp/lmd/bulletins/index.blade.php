@@ -120,6 +120,7 @@
                         <h3>Textes du document</h3>
                         <div class="lb-config-grid">
                             <div class="lb-config-field lb-config-field--wide"><label>Notice importante</label><textarea rows="2" name="lmd_bulletin_notice_text">{{ $lmdGet('lmd_bulletin_notice_text', \App\Services\LMDBulletinService::NOTICE_DEFAUT) }}</textarea></div>
+                            <div class="lb-config-field"><label>Pied de page sur une seule ligne</label><select name="lmd_bulletin_bottom_single_line"><option value="1" {{ $lmdGet('lmd_bulletin_bottom_single_line','1') == '1' ? 'selected' : '' }}>Oui (police adaptée)</option><option value="0" {{ $lmdGet('lmd_bulletin_bottom_single_line','1') == '0' ? 'selected' : '' }}>Non (deux lignes)</option></select></div>
                             <div class="lb-config-field lb-config-field--wide"><label>Pied de page</label><input name="lmd_bulletin_bottom_text" value="{{ $lmdGet('lmd_bulletin_bottom_text','Conservez soigneusement ce bulletin de notes. Aucun duplicata ne sera délivré.') }}"></div>
                         </div>
                     </div>
