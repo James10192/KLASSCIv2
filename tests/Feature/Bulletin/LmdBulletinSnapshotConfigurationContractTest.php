@@ -89,6 +89,20 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString('border: 2px solid {{ $primary }};', $pdf);
     }
 
+    public function test_lmd_identity_balances_and_metadata_has_configurable_values(): void
+    {
+        $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));
+        $index = file_get_contents(resource_path('views/esbtp/lmd/bulletins/index.blade.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
+
+        $this->assertStringContainsString('$identityColumns', $pdf);
+        $this->assertStringContainsString('array_slice($identityRows', $pdf);
+        $this->assertStringContainsString('show_affectation', $pdf);
+        $this->assertStringContainsString('lmd_bulletin_meta_value_color', $index);
+        $this->assertStringContainsString('lmd_bulletin_meta_value_bold', $controller);
+        $this->assertStringContainsString('lmd_bulletin_label_affectation', $controller);
+    }
+
     public function test_lmd_direction_is_a_real_setting_and_not_the_directors_name_fallback(): void
     {
         $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));

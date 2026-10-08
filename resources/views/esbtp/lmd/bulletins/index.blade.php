@@ -88,8 +88,9 @@
                             <div class="lb-config-field"><label>Encadré établissement</label><select name="lmd_bulletin_show_etablissement_box"><option value="1" {{ $lmdGet('lmd_bulletin_show_etablissement_box',1) ? 'selected' : '' }}>Afficher</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_etablissement_box',1) ? 'selected' : '' }}>Masquer</option></select></div>
                             <div class="lb-config-field"><label>Fond République / Ministère</label><input type="color" name="lmd_bulletin_official_header_bg" value="{{ $lmdGet('lmd_bulletin_official_header_bg','#ffffff') }}"></div>
                             <div class="lb-config-field"><label>Couleur République / Ministère</label><input type="color" name="lmd_bulletin_header_label_color" value="{{ $lmdGet('lmd_bulletin_header_label_color','#1f2937') }}"></div>
+                            <div class="lb-config-field"><label>Couleur des valeurs (année / niveau / semestre)</label><input type="color" name="lmd_bulletin_meta_value_color" value="{{ $lmdGet('lmd_bulletin_meta_value_color','#006c28') }}"></div>
                             <div class="lb-config-field"><label>Couleur des libellés du bandeau</label><input type="color" name="lmd_bulletin_meta_label_color" value="{{ $lmdGet('lmd_bulletin_meta_label_color','#1f2937') }}"></div>
-                            @foreach(['lmd_bulletin_header_label_bold'=>'République en gras','lmd_bulletin_ministry_bold'=>'Ministère en gras','lmd_bulletin_meta_label_bold'=>'Libellés année / édition / niveau / semestre en gras'] as $key=>$label)
+                            @foreach(['lmd_bulletin_header_label_bold'=>'République en gras','lmd_bulletin_ministry_bold'=>'Ministère en gras','lmd_bulletin_meta_label_bold'=>'Libellés année / édition / niveau / semestre en gras','lmd_bulletin_meta_value_bold'=>'Valeurs année / édition / niveau / semestre en gras'] as $key=>$label)
                             <div class="lb-config-field"><label>{{ $label }}</label><select name="{{ $key }}"><option value="1" {{ $lmdGet($key,'0') == '1' ? 'selected' : '' }}>Oui</option><option value="0" {{ $lmdGet($key,'0') != '1' ? 'selected' : '' }}>Non</option></select></div>
                             @endforeach
                             <div class="lb-config-field lb-config-field--wide"><label>Texte République</label><input name="lmd_bulletin_republic_text" value="{{ $lmdGet('lmd_bulletin_republic_text', "REPUBLIQUE DE COTE D'IVOIRE") }}"></div>
@@ -105,10 +106,11 @@
                         <h3>Champs académiques</h3>
                         <div class="lb-config-grid">
                             @foreach([
-                                'domaine'=>'Domaine','mention'=>'Mention','specialite'=>'Spécialité','parcours'=>'Parcours','effectif'=>'Effectif','redoublant'=>'Redoublant'
+                                'domaine'=>'Domaine','mention'=>'Mention','specialite'=>'Spécialité','parcours'=>'Parcours','effectif'=>'Effectif','redoublant'=>'Redoublant','affectation'=>'Affectation'
                             ] as $key=>$label)
                             <div class="lb-config-field"><label>Afficher {{ $label }}</label><select name="lmd_bulletin_show_{{ $key }}"><option value="1" {{ $lmdGet('lmd_bulletin_show_'.$key,$key==='specialite'?0:1) ? 'selected' : '' }}>Oui</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_'.$key,$key==='specialite'?0:1) ? 'selected' : '' }}>Non</option></select></div>
                             @endforeach
+                            <div class="lb-config-field"><label>Libellé affectation</label><input name="lmd_bulletin_label_affectation" value="{{ $lmdGet('lmd_bulletin_label_affectation','AFFECTATION') }}"></div>
                             <div class="lb-config-field"><label>Parcours automatique</label><select name="lmd_bulletin_parcours_auto"><option value="1" {{ $lmdGet('lmd_bulletin_parcours_auto',1) ? 'selected' : '' }}>Oui</option><option value="0" {{ !$lmdGet('lmd_bulletin_parcours_auto',1) ? 'selected' : '' }}>Non</option></select></div>
                             @foreach(['domaine'=>'Domaine','mention'=>'Mention','specialite'=>'Spécialité','parcours'=>'Parcours'] as $key=>$label)
                             <div class="lb-config-field"><label>Libellé {{ $label }}</label><input name="lmd_bulletin_label_{{ $key }}" value="{{ $lmdGet('lmd_bulletin_label_'.$key,$key==='specialite'?'SPÉCIALITÉ':'') }}" placeholder="{{ $label }}"></div>
