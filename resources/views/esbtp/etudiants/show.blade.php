@@ -3121,7 +3121,7 @@
         $toutesInscs = $etudiant->inscriptions->sortByDesc(fn($i) => optional($i->anneeUniversitaire)->start_date ?? $i->created_at);
     @endphp
     @php
-        $reductionSubscriptions = auth()->user()->can('inscriptions.edit')
+        $reductionSubscriptions = auth()->user()->can('frais.souscriptions.ajuster')
             ? \App\Models\ESBTPFraisSubscription::query()
                 ->with('fraisCategory:id,name')
                 ->whereIn('inscription_id', $toutesInscs->pluck('id'))
@@ -3270,7 +3270,7 @@
                         <a href="{{ route('esbtp.inscriptions.show', $insc) }}" class="insc-btn view">
                             <i class="fas fa-eye"></i> Voir
                         </a>
-                        @can('inscriptions.edit')
+                        @can('frais.souscriptions.ajuster')
                             @if(($reductionSubscriptions->get($insc->id) ?? collect())->isNotEmpty())
                                 <button type="button" class="insc-btn edit" data-bs-toggle="modal" data-bs-target="#studentFeeReductionModal"
                                     data-inscription-id="{{ $insc->id }}"
@@ -3292,7 +3292,7 @@
         @empty
         <div style="padding:24px;color:var(--k-gray);font-size:.9rem;">Aucune inscription enregistrée.</div>
         @endforelse
-    @can('inscriptions.edit')
+    @can('frais.souscriptions.ajuster')
     @php
         $reductionFeeOptions = $reductionSubscriptions->map(fn ($subs) => $subs->map(fn ($sub) => [
             'id' => $sub->id,
