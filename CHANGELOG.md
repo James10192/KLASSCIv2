@@ -67,6 +67,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Rendez-vous d'inscription — le lieu est enfin annoncé.** Nouveau réglage « Lieu du rendez-vous » (page Rendez-vous, bloc Accueil au guichet), repris sur la convocation PDF, l'e-mail, le WhatsApp et la page de rendez-vous de klassci.com. Laissé vide, l'adresse de l'établissement est reprise.
 
 ### Améliorations
+- **Réduction guidée sur une inscription :** depuis la fiche étudiant, les utilisateurs ayant le droit de modifier les inscriptions peuvent réduire une souscription grâce à un assistant affichant le montant initial, le montant déduit, le nouveau montant et un motif prérempli, sans descendre sous les paiements enregistrés.
 - **Fiche étudiant — Académique :** raccourcis de résultats dans les sections académiques existantes, pour l'année de référence et les années précédentes, sans carte supplémentaire.
 
 - Bas du bulletin BTS (gabarit configurable) : résultats, statistiques avec absences, mentions du conseil sur trois colonnes de largeur égale, puis bande décision du conseil + signature du directeur à la même hauteur. Une décision vide laisse des lignes d'écriture au lieu d'une boîte blanche. Partiels `bulletins/partials/bilan` et `conseil-signature`. Le bulletin tient toujours sur une page.
