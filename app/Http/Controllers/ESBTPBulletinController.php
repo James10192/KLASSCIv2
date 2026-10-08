@@ -2269,6 +2269,11 @@ class ESBTPBulletinController extends Controller
                 'lmd_bulletin_show_mention',
                 'lmd_bulletin_show_specialite',
                 'lmd_bulletin_show_parcours',
+                'lmd_bulletin_show_effectif',
+                'lmd_bulletin_show_redoublant',
+                'lmd_bulletin_header_label_bold',
+                'lmd_bulletin_ministry_bold',
+                'lmd_bulletin_meta_label_bold',
             ];
 
             $checkboxFields = array_merge($checkboxFields, $lmdCheckboxFields);

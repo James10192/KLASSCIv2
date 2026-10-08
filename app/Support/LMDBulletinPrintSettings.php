@@ -73,9 +73,18 @@ final class LMDBulletinPrintSettings
         ];
     }
 
+    public static function colorFields(): array
+    {
+        return [
+            'lmd_bulletin_official_header_bg',
+            'lmd_bulletin_header_label_color',
+            'lmd_bulletin_meta_label_color',
+        ];
+    }
+
     public static function fieldKeys(): array
     {
-        return array_merge(array_keys(self::fontFields()), array_keys(self::layoutFields()));
+        return array_merge(array_keys(self::fontFields()), array_keys(self::layoutFields()), self::colorFields());
     }
 
     public static function validationRules(): array
@@ -88,6 +97,10 @@ final class LMDBulletinPrintSettings
 
         foreach (self::layoutFields() as $key => $field) {
             $rules[$key] = ['nullable', 'numeric', 'min:'.$field['min'], 'max:'.$field['max']];
+        }
+
+        foreach (self::colorFields() as $key) {
+            $rules[$key] = ['nullable', 'regex:/^#[0-9a-fA-F]{6}$/'];
         }
 
         return $rules;
