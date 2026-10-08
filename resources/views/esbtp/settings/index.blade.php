@@ -2181,7 +2181,7 @@
                 <div class="bc-grid bc-grid-2">
                     @php $tcToggles = [
                         ['key' => 'tronc_commun_enabled', 'label' => 'Activer le tronc commun', 'desc' => 'Permet aux filieres marquees "tronc commun" de proposer une specialisation en cours d\'annee', 'icon' => 'fa-toggle-on', 'color' => '', 'default' => '0'],
-                        ['key' => 'tronc_commun_mga_include_s1', 'label' => 'Reporter les notes S1 dans la MGA', 'desc' => 'Inclure les notes du tronc commun (S1) dans le calcul de la Moyenne Generale Annuelle', 'icon' => 'fa-clipboard-check', 'color' => '', 'default' => '1'],
+                        ['key' => 'tronc_commun_mga_include_s1', 'label' => 'Inclure le S1 dans l\'annuel apres specialisation', 'desc' => 'Active : moyenne et rang annuels = S1 de la classe d\'origine + S2 de la specialite, selon les ponderations. Desactive : annuel et rang = S2 de specialite seulement. Le meme choix s\'applique aux Resultats, bulletins, certificats et reinscriptions.', 'icon' => 'fa-clipboard-check', 'color' => '', 'default' => '1'],
                         ['key' => 'tronc_commun_report_paiements', 'label' => 'Reporter les paiements', 'desc' => 'Reporter automatiquement les paiements du tronc commun sur la specialisation', 'icon' => 'fa-money-bill-transfer', 'color' => '', 'default' => '1'],
                         ['key' => 'tronc_commun_report_notes', 'label' => 'Reporter les notes', 'desc' => 'Conserver les notes du S1 (tronc commun) accessibles depuis la specialisation', 'icon' => 'fa-file-lines', 'color' => '', 'default' => '1'],
                         ['key' => 'tronc_commun_bulletin_show_origin', 'label' => 'Afficher la classe d\'origine', 'desc' => 'Mentionner la classe de tronc commun (S1) sur le bulletin de la specialisation (S2)', 'icon' => 'fa-id-card', 'color' => '', 'default' => '1'],
@@ -3532,17 +3532,25 @@
                             </div>
                             <div class="col-md-3">
                                 <div class="ls-field">
-                                    <div class="ls-label">Note éliminatoire (/20)</div>
+                                    <div class="ls-label">Note éliminatoire ECUE (/20)</div>
                                     <input type="number" class="ls-input" name="setting_lmd_note_eliminatoire"
                                            value="{{ $lmdVal('lmd_note_eliminatoire', 0) }}" min="0" max="10" step="0.5">
-                                    <div class="ls-hint">0 = pas de note éliminatoire (UEMOA)</div>
+                                    <div class="ls-hint">Appliquée par le jury aux ECUE. 0 = désactivée.</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="ls-field">
+                                    <div class="ls-label">Minimum UE pour APC (/20)</div>
+                                    <input type="number" class="ls-input" name="setting_lmd_compensation_inter_ue_minimum"
+                                           value="{{ $lmdVal('lmd_compensation_inter_ue_minimum', 0) }}" min="0" max="20" step="0.5">
+                                    <div class="ls-hint">0 = comportement historique. Ex. 8 : une UE à 7,5 reste NAQ.</div>
                                 </div>
                             </div>
                             <div class="col-md-3">
                                 <label class="ls-toggle" for="lmd_compensation_inter_ue">
                                     <div class="ls-toggle-text">
                                         <div class="ls-toggle-label">Compensation inter-UE</div>
-                                        <div class="ls-toggle-hint">APC : UE &lt; 10 compensée si moy. gén. &ge; 10</div>
+                                        <div class="ls-toggle-hint">APC seulement si l'UE atteint le minimum APC et si la moyenne générale atteint le seuil de validation.</div>
                                     </div>
                                     <div class="form-check form-switch" style="margin:0; padding-left:2.5em;">
                                         <input class="form-check-input" type="checkbox" id="lmd_compensation_inter_ue"

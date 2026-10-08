@@ -13,6 +13,12 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
 
+- 2026-10-07 · #1444 · LMD : nouveau réglage « Minimum UE pour APC » ; une UE sous ce plancher reste NAQ même si la moyenne générale permet la compensation
+- 2026-10-07 · #1441 · bulletin LMD : pied de page duplicata / identité établissement élargi et largeur configurable ; le pays imprimé vient désormais des paramètres de l'école
+- 2026-10-07 · #1439 · fiche étudiant : si l'année courante est déjà échue, la bannière et la carte Inscriptions proposent la réinscription vers l'année suivante sans attendre la bascule de l'année courante ni un rendez-vous
+- 2026-10-07 · #1431 · fiche étudiant > Finances : « Enregistrer un paiement » ouvre aussi la modale sur une ancienne inscription qui reste à solder, même sans inscription courante
+- 2026-10-06 · #1429 · BTS : regle annuelle configurable apres tronc commun (S1+S2 ou S2 specialite), Resultats/bulletin/certificat/reinscription alignes, saisie historique et PDFs de la fiche etudiant attaches au bon eleve
+- 2026-10-06 · #1427 · notes BTS/LMD et évaluations : choisir localement une ancienne année pour terminer la saisie et la clôture, sans changer l’année courante de KLASSCI
 - 2026-10-03 · #1397 · suivi des notes des classes LMD par semestre : panneau dans la fenêtre des notes LMD et sur la génération des bulletins LMD, Nanan dit ce qui manque
 - 2026-10-03 · #1399 · enseignants LMD : évaluations et bulletins reprennent le professeur du planning, avec affectation rapide et écran de configuration par semestre
 - 2026-10-04 · #1400 · professeurs LMD par classe : plusieurs enseignants possibles dans le planning, résolution automatique par classe, conflit détecté puis confirmation/harmonisation sur évaluations, séances et bulletins

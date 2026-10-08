@@ -37,12 +37,9 @@
                         <p>
                             Consultez et gérez toutes les évaluations
                             @if($anneeAcademique)
-                                <span class="ev-hero-chip" title="Année académique courante">
+                                <span class="ev-hero-chip" title="Année affichée sur cette page">
                                     <i class="fas fa-calendar-check"></i>{{ $anneeAcademique }}
                                 </span>
-                                <button type="button" class="ev-hero-chip-btn" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
-                                    <i class="fas fa-info-circle"></i>
-                                </button>
                             @endif
                         </p>
                     </div>
@@ -62,7 +59,7 @@
                     </button>
                     @endcan
                     @can('evaluations.create')
-                    <a href="{{ route('esbtp.evaluations.create') }}" class="ev-btn ev-btn--white">
+                    <a href="{{ route('esbtp.evaluations.create', ['annee_universitaire_id' => $anneeUniversitaire?->id]) }}" class="ev-btn ev-btn--white">
                         <i class="fas fa-plus-circle"></i><span>Nouvelle évaluation</span>
                     </a>
                     @endcan
@@ -157,6 +154,16 @@
 
             <div class="ev-card-body">
                 <form id="evaluations-filter-form" class="ev-filters" autocomplete="off">
+                    <div class="ev-filter">
+                        <label class="ev-filter-label">Année</label>
+                        <x-au-select
+                            name="annee_universitaire_id"
+                            :value="$filters['annee_universitaire_id'] ?? ''"
+                            placeholder="Année courante"
+                            icon="fa-calendar"
+                            :searchable="false"
+                            :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => $a->name.($a->is_current ? ' · courante' : '')])->toArray()" />
+                    </div>
                     <div class="ev-filter">
                         <label class="ev-filter-label">Classe</label>
                         <x-au-select
@@ -278,48 +285,6 @@
 @endcanany
 
 @endsection
-
-<!-- Modal pour les instructions de changement d'année -->
-<div class="modal fade" id="yearChangeModal" tabindex="-1" role="dialog" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="yearChangeModalLabel">Comment changer l'année académique ?</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p><strong>Pour consulter les données d'une autre année :</strong></p>
-                <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
-                    <li><strong>Aller dans</strong> : Menu → Années Universitaires</li>
-                    <li><strong>Trouver l'année souhaitée</strong> (ex: 2023-2024)</li>
-                    <li><strong>Cliquer sur "Activer"</strong> pour la définir comme année courante</li>
-                    <li><strong>Revenir ici</strong> : Les évaluations affichées se mettront à jour automatiquement</li>
-                </ol>
-                <hr style="margin: 15px 0;">
-                <p style="color: #6b7280; font-size: 14px;">
-                    <i class="fas fa-info-circle"></i>
-                    <strong>Note :</strong> Seule une année peut être "courante" à la fois.
-                    Changer l'année courante affecte l'affichage des évaluations dans toute l'application.
-                </p>
-                <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
-                    <strong>Exemple :</strong><br>
-                    • Année courante = 2024-2025 → Voir les évaluations créées en 2024-2025<br>
-                    • Année courante = 2023-2024 → Voir les évaluations créées en 2023-2024
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#yearChangeModal').modal('hide');">Fermer</button>
-                @can('annees.view')
-                <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
-                    <i class="fas fa-external-link-alt"></i> Aller aux Années
-                </a>
-                @endcan
-            </div>
-        </div>
-    </div>
-</div>
 
 @push('styles')
 <style>
@@ -1366,18 +1331,6 @@ function initializeEvaluations() {
     const bulkDeleteBtn = document.getElementById('evaluations-bulk-delete');
     const bulkClearBtn = document.getElementById('evaluations-bulk-clear');
 
-    let yearModalInstance = null;
-    window.showYearChangeInfo = () => {
-        const modalElement = document.getElementById('yearChangeModal');
-        if (!modalElement || typeof bootstrap === 'undefined') {
-            return;
-        }
-        if (!yearModalInstance) {
-            yearModalInstance = new bootstrap.Modal(modalElement);
-        }
-        yearModalInstance.show();
-    };
-
     function showToast(message, type = 'success') {
         if (window.toastr && typeof window.toastr[type] === 'function') {
             window.toastr[type](message);
@@ -1965,6 +1918,13 @@ function initializeEvaluations() {
     filtersForm.addEventListener('change', (event) => {
         if (!event.target.matches('select[name], input[type="date"]')) return;
         if (pageInput) pageInput.value = '1';
+
+        if (event.target.getAttribute('name') === 'annee_universitaire_id') {
+            const params = new URLSearchParams(new FormData(filtersForm));
+            window.location.href = resultsContainer.dataset.refreshUrl + '?' + params.toString();
+            return;
+        }
+
         clearTimeout(filterTimer);
         filterTimer = setTimeout(() => submitFilterForm(), FILTER_DEBOUNCE);
     });
@@ -1975,6 +1935,9 @@ function initializeEvaluations() {
             // de CHARGEMENT — le filtre venu de l'URL, pas le vide — et ne
             // previent aucun composant, donc les listes gardaient leur libelle.
             filtersForm.querySelectorAll('select[name], input[type="date"]').forEach((field) => {
+                if (field.getAttribute('name') === 'annee_universitaire_id') {
+                    return;
+                }
                 poserValeurFiltre(field, '');
             });
             selectedIds.clear();
@@ -2045,7 +2008,8 @@ function initializeEvaluations() {
                 <div class="text-muted mt-2">Chargement des coefficients...</div>
             </div>
         `;
-        fetch(coeffModalUrl, {
+        const coeffModalParams = new URLSearchParams({ annee_universitaire_id: coeffYearId || '' });
+        fetch(coeffModalUrl + '?' + coeffModalParams.toString(), {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'

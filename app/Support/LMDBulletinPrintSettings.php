@@ -62,6 +62,14 @@ final class LMDBulletinPrintSettings
                 'step' => 2,
                 'hint' => 'Espace blanc entre « Directeur des Études » et son nom.',
             ],
+            'lmd_bulletin_bottom_width_percent' => [
+                'label' => 'Largeur du pied de page',
+                'default' => 104,
+                'min' => 90,
+                'max' => 108,
+                'step' => 1,
+                'hint' => 'Élargit les deux lignes finales (duplicata et identité de l’établissement). 100 % = largeur du contenu, au-delà utilise les marges latérales du PDF.',
+            ],
         ];
     }
 
