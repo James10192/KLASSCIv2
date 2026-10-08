@@ -773,12 +773,14 @@ class LMDBulletinService
         $compensationMinimum = $this->rules->interUeCompensationMinimum();
         $creditsCapitalises = 0;
         $apcIds = [];
+        $naqIds = [];
+        $aqIds = [];
 
         foreach ($resultatsUEs as $resultat) {
             if ($resultat->moyenne === null) continue;
 
             if ((float) $resultat->moyenne >= $threshold) {
-                // Deja AQ
+                $aqIds[] = $resultat->id;
                 $creditsCapitalises += $resultat->credit;
             } elseif (
                 $compensationEnabled
@@ -790,7 +792,17 @@ class LMDBulletinService
                 $apcIds[] = $resultat->id;
                 $creditsCapitalises += $resultat->credit;
             }
-            // Sinon reste NAQ, pas de credits
+            else {
+                // Re-appliquer la règle sur un résultat antérieurement marqué APC.
+                $naqIds[] = $resultat->id;
+            }
+        }
+
+        if ($aqIds !== []) {
+            ESBTPLMDResultatUE::whereIn('id', $aqIds)->update(['statut' => ESBTPLMDResultatUE::STATUT_AQ]);
+        }
+        if ($naqIds !== []) {
+            ESBTPLMDResultatUE::whereIn('id', $naqIds)->update(['statut' => ESBTPLMDResultatUE::STATUT_NAQ]);
         }
 
         // Batch update APC au lieu d'un update par UE
