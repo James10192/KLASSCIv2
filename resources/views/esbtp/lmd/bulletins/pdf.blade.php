@@ -99,7 +99,7 @@
         $headerPaddingY = $layoutNumber('lmd_bulletin_header_padding_y', 6, 2, 14);
         $headerMetaPaddingY = $layoutNumber('lmd_bulletin_header_meta_padding_y', 2, 0, 8);
         $signatureSpaceHeight = $layoutNumber('lmd_bulletin_signature_space_height', 42, 20, 120);
-        $bottomWidthPercent = $layoutNumber('lmd_bulletin_bottom_width_percent', 104, 90, 108);
+        $bottomWidthPercent = $layoutNumber('lmd_bulletin_bottom_width_percent', 104, 90, 130);
         $bottomHorizontalOffset = (100 - $bottomWidthPercent) / 2;
         $bottomSingleLine = \App\Helpers\SettingsHelper::get('lmd_bulletin_bottom_single_line', '1') == '1';
         $officialHeaderBg = \App\Helpers\SettingsHelper::get('lmd_bulletin_official_header_bg', '#ffffff');
@@ -108,10 +108,34 @@
         $ministryBold = \App\Helpers\SettingsHelper::get('lmd_bulletin_ministry_bold', '0') == '1';
         $headerMetaLabelColor = \App\Helpers\SettingsHelper::get('lmd_bulletin_meta_label_color', '#1f2937');
         $headerMetaLabelBold = \App\Helpers\SettingsHelper::get('lmd_bulletin_meta_label_bold', '0') == '1';
+        $headerMetaValueColor = \App\Helpers\SettingsHelper::get('lmd_bulletin_meta_value_color', $hdrText);
+        $headerMetaValueBold = \App\Helpers\SettingsHelper::get('lmd_bulletin_meta_value_bold', '1') == '1';
         $paysEtablissement = trim((string) ($etab['pays'] ?? '')) ?: 'Côte d\'Ivoire';
         $bottomSchoolLine = ($etab['nom'] ?? 'KLASSCI') . ', Etablissement ' . mb_strtolower($statutEtablissement, 'UTF-8') . ', ' . $paysEtablissement;
         $bottomCombined = $bottomText . ' — ' . $bottomSchoolLine;
-        $bottomSingleLineFont = min($fontBottom, max(6, 820 / max(1, mb_strlen($bottomCombined, 'UTF-8'))));
+        // Conserver une police lisible et éviter de dépasser les marges physiques A4.
+        $bottomSingleLineFont = min($fontBottom, max(9, (1020 * min($bottomWidthPercent, 112) / 100) / max(1, mb_strlen($bottomCombined, 'UTF-8'))));
+        $identityRows = [
+            ['label' => 'NOM', 'value' => mb_strtoupper($etudiant->nom ?? '', 'UTF-8')],
+            ['label' => 'PRENOMS', 'value' => mb_strtoupper($etudiant->prenoms ?? '', 'UTF-8')],
+            ['label' => 'DATE NAISS.', 'value' => $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : ''],
+            ['label' => 'MATRICULE', 'value' => $etudiant->matricule ?? ''],
+        ];
+        if ($bCfg['show_redoublant'] ?? false) $identityRows[] = ['label' => 'REDOUBLANT', 'value' => $bCfg['redoublant'] === null ? 'Non renseigné' : ($bCfg['redoublant'] ? 'Oui' : 'Non')];
+        if (($bCfg['show_effectif'] ?? false) && $bulletin->effectif !== null) $identityRows[] = ['label' => 'EFFECTIF', 'value' => $bulletin->effectif];
+        if ($bCfg['show_affectation'] ?? true) $identityRows[] = ['label' => $bCfg['label_affectation'] ?? 'AFFECTATION', 'value' => $bulletin->affectation_label];
+        foreach (($bulletin_fields ?? []) as $field) {
+            if (($field['show'] ?? false) && trim((string) ($field['value'] ?? '')) !== '') {
+                $identityRows[] = ['label' => $field['label'], 'value' => $field['value']];
+            }
+        }
+        if (! isset($bulletin_fields)) {
+            foreach ([['label' => mb_strtoupper($vocabulaire->rang('domaine'), 'UTF-8'), 'value' => $domaine ?? ''], ['label' => mb_strtoupper($vocabulaire->rang('mention'), 'UTF-8'), 'value' => $mention ?? ''], ['label' => mb_strtoupper($vocabulaire->rang('parcours'), 'UTF-8'), 'value' => $parcours_label ?? '']] as $row) {
+                if (trim((string) $row['value']) !== '') $identityRows[] = $row;
+            }
+        }
+        $identitySplit = (int) ceil(count($identityRows) / 2);
+        $identityColumns = [array_slice($identityRows, 0, $identitySplit), array_slice($identityRows, $identitySplit)];
     @endphp
 
     <style>
@@ -176,7 +200,9 @@
         .lmd-header-meta td + td { border-left: 1px solid rgba(255,255,255,0.22); }
         .lmd-header-meta tr + tr td { border-top: 1px solid rgba(255,255,255,0.18); }
         .lmd-header-meta-label { color: {{ $headerMetaLabelColor }}; font-weight: {{ $headerMetaLabelBold ? '700' : '400' }}; }
-        .lmd-header-meta-value { font-weight: 800; }
+        .lmd-header-meta-value { color: {{ $headerMetaValueColor }}; font-weight: {{ $headerMetaValueBold ? '800' : '400' }}; font-size: {{ min(32, $fontHeaderMeta + 1) }}px; }
+        .lmd-header-meta td { background-color: #f5f8f5; border: 1px solid #e0eae0; padding: 4px 6px; }
+        .lmd-header-meta { border-spacing: 3px; border-collapse: separate; }
 
         .signature-title {
             font-weight: 800;
@@ -407,69 +433,18 @@
 
 <table class="identity-grid" border="0" cellspacing="0" cellpadding="0">
     <tr>
-        <td width="55%">
+        @foreach($identityColumns as $column)
+        <td width="50%" style="vertical-align: top;">
             <table width="100%" cellspacing="0" cellpadding="0">
+                @foreach($column as $row)
                 <tr>
-                    <td width="25%" style="font-size: {{ $fontStudent }}px; font-weight: 800;">NOM :</td>
-                    <td style="font-size: {{ $fontStudent }}px;">{{ mb_strtoupper($etudiant->nom ?? '', 'UTF-8') }}</td>
+                    <td width="30%" style="font-size: {{ $fontStudent }}px; font-weight: 800;">{{ $row['label'] }} :</td>
+                    <td style="font-size: {{ $fontStudent }}px;">{{ $row['value'] }}</td>
                 </tr>
-                <tr>
-                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">PRENOMS :</td>
-                    <td style="font-size: {{ $fontStudent }}px;">{{ mb_strtoupper($etudiant->prenoms ?? '', 'UTF-8') }}</td>
-                </tr>
-                <tr>
-                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">DATE NAISS. :</td>
-                    <td style="font-size: {{ $fontStudent }}px;">{{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : '' }}</td>
-                </tr>
-                <tr>
-                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">MATRICULE :</td>
-                    <td style="font-size: {{ $fontStudent }}px;">{{ $etudiant->matricule ?? '' }}</td>
-                </tr>
-                @if($bCfg['show_redoublant'] ?? false)
-                <tr>
-                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">REDOUBLANT :</td>
-                    <td style="font-size: {{ $fontStudent }}px;">{{ $bCfg['redoublant'] === null ? 'Non renseigné' : ($bCfg['redoublant'] ? 'Oui' : 'Non') }}</td>
-                </tr>
-                @endif
-                @if(($bCfg['show_effectif'] ?? false) && $bulletin->effectif !== null)
-                <tr>
-                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">EFFECTIF :</td>
-                    <td style="font-size: {{ $fontStudent }}px;">{{ $bulletin->effectif }}</td>
-                </tr>
-                @endif
-                <tr>
-                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">AFFECTATION :</td>
-                    <td style="font-size: {{ $fontStudent }}px;">{{ $bulletin->affectation_label }}</td>
-                </tr>
+                @endforeach
             </table>
         </td>
-        <td width="45%">
-            <table width="100%" cellspacing="0" cellpadding="0">
-                @if(isset($bulletin_fields))
-                    @foreach($bulletin_fields as $field)
-                        @if($field['show'] && $field['value'])
-                        <tr>
-                            <td width="40%" style="font-size: {{ $fontStructure }}px; font-weight: 800;">{{ $field['label'] }} :</td>
-                            <td style="font-size: {{ $fontStructure }}px;">{{ $field['value'] }}</td>
-                        </tr>
-                        @endif
-                    @endforeach
-                @else
-                    <tr>
-                        <td width="40%" style="font-size: {{ $fontStructure }}px; font-weight: 800;">{{ mb_strtoupper($vocabulaire->rang('domaine'), 'UTF-8') }} :</td>
-                        <td style="font-size: {{ $fontStructure }}px;">{{ $domaine ?? '' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-size: {{ $fontStructure }}px; font-weight: 800;">{{ mb_strtoupper($vocabulaire->rang('mention'), 'UTF-8') }} :</td>
-                        <td style="font-size: {{ $fontStructure }}px;">{{ $mention ?? '' }}</td>
-                    </tr>
-                    <tr>
-                        <td style="font-size: {{ $fontStructure }}px; font-weight: 800;">{{ mb_strtoupper($vocabulaire->rang('parcours'), 'UTF-8') }} :</td>
-                        <td style="font-size: {{ $fontStructure }}px;">{{ $parcours_label ?? '' }}</td>
-                    </tr>
-                @endif
-            </table>
-        </td>
+        @endforeach
     </tr>
 </table>
 
