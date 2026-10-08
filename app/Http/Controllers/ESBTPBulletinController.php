@@ -2267,6 +2267,7 @@ class ESBTPBulletinController extends Controller
                 'lmd_bulletin_show_republic_info',
                 'lmd_bulletin_show_ministry_info',
                 'lmd_bulletin_show_etablissement_box',
+                'lmd_bulletin_show_establishment_status',
                 'lmd_bulletin_show_domaine',
                 'lmd_bulletin_show_mention',
                 'lmd_bulletin_show_specialite',
