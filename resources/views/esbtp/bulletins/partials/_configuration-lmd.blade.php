@@ -28,8 +28,9 @@
         <div class="row g-3">
             <div class="col-md-4"><label class="bcfg-label">Fond zone République / Ministère</label><input type="color" class="form-control form-control-color" name="lmd_bulletin_official_header_bg" value="{{ $lmdGet('lmd_bulletin_official_header_bg','#ffffff') }}"></div>
             <div class="col-md-4"><label class="bcfg-label">Couleur République / Ministère</label><input type="color" class="form-control form-control-color" name="lmd_bulletin_header_label_color" value="{{ $lmdGet('lmd_bulletin_header_label_color','#1f2937') }}"></div>
+            <div class="col-md-4"><label class="bcfg-label">Couleur des valeurs année / niveau / semestre</label><input type="color" class="form-control form-control-color" name="lmd_bulletin_meta_value_color" value="{{ $lmdGet('lmd_bulletin_meta_value_color','#006c28') }}"></div>
             <div class="col-md-4"><label class="bcfg-label">Couleur libellés année / niveau / édition</label><input type="color" class="form-control form-control-color" name="lmd_bulletin_meta_label_color" value="{{ $lmdGet('lmd_bulletin_meta_label_color','#1f2937') }}"></div>
-            @foreach(['lmd_bulletin_header_label_bold'=>'République en gras','lmd_bulletin_ministry_bold'=>'Ministère en gras','lmd_bulletin_meta_label_bold'=>'Libellés année / édition / niveau / semestre en gras'] as $option=>$label)
+            @foreach(['lmd_bulletin_header_label_bold'=>'République en gras','lmd_bulletin_ministry_bold'=>'Ministère en gras','lmd_bulletin_meta_label_bold'=>'Libellés année / édition / niveau / semestre en gras','lmd_bulletin_meta_value_bold'=>'Valeurs année / édition / niveau / semestre en gras'] as $option=>$label)
                 <div class="col-md-4"><label class="bcfg-toggle" for="{{ $option }}"><span class="bcfg-toggle-label">{{ $label }}</span><input type="hidden" name="{{ $option }}_present" value="1"><input class="form-check-input" type="checkbox" name="{{ $option }}" id="{{ $option }}" value="1" {{ $lmdGet($option,'0') == '1' ? 'checked' : '' }}></label></div>
             @endforeach
             <div class="col-md-6"><label class="bcfg-label">Texte République</label><input type="text" class="bcfg-input" name="lmd_bulletin_republic_text" value="{{ $lmdGet('lmd_bulletin_republic_text', "REPUBLIQUE DE COTE D'IVOIRE") }}"></div>
@@ -115,7 +116,7 @@
     </div>
     <div class="bcfg-card-body">
         <div class="bcfg-toggles" style="margin-bottom:1rem;">
-            @foreach(['domaine'=>'Domaine','mention'=>'Mention','specialite'=>'Spécialité','parcours'=>'Parcours','effectif'=>'Effectif','redoublant'=>'Redoublant'] as $key=>$label)
+            @foreach(['domaine'=>'Domaine','mention'=>'Mention','specialite'=>'Spécialité','parcours'=>'Parcours','effectif'=>'Effectif','redoublant'=>'Redoublant','affectation'=>'Affectation'] as $key=>$label)
                 <label class="bcfg-toggle" for="lmd_bulletin_show_{{ $key }}">
                     <span class="bcfg-toggle-label">Afficher {{ $label }}</span>
                     <input type="hidden" name="lmd_bulletin_show_{{ $key }}_present" value="1">
