@@ -66,7 +66,7 @@ final class LMDBulletinPrintSettings
                 'label' => 'Largeur du pied de page',
                 'default' => 104,
                 'min' => 90,
-                'max' => 108,
+                'max' => 130,
                 'step' => 1,
                 'hint' => 'Élargit les deux lignes finales (duplicata et identité de l’établissement). 100 % = largeur du contenu, au-delà utilise les marges latérales du PDF.',
             ],
@@ -79,6 +79,7 @@ final class LMDBulletinPrintSettings
             'lmd_bulletin_official_header_bg',
             'lmd_bulletin_header_label_color',
             'lmd_bulletin_meta_label_color',
+            'lmd_bulletin_meta_value_color',
         ];
     }
 
