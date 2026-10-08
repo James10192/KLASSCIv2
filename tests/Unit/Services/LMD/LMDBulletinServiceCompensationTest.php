@@ -157,6 +157,25 @@ class LMDBulletinServiceCompensationTest extends TestCase
         $this->assertSame(ESBTPLMDResultatUE::STATUT_APC, $this->statutEnBase(3));
     }
 
+    public function test_un_ancien_apc_devient_naq_apres_durcissement_du_plancher(): void
+    {
+        $unites = [
+            $this->resultatUe(1, 14.0, 6, ESBTPLMDResultatUE::STATUT_AQ),
+            $this->resultatUe(2, 7.5, 4, ESBTPLMDResultatUE::STATUT_APC),
+        ];
+
+        $service = $this->service([
+            'lmd_compensation_inter_ue_minimum' => '10',
+            'lmd_compensation_inter_ue' => '0',
+        ]);
+
+        $credits = $service->appliquerCompensation($unites, 11.4);
+
+        $this->assertSame(6, $credits);
+        $this->assertSame(ESBTPLMDResultatUE::STATUT_AQ, $this->statutEnBase(1));
+        $this->assertSame(ESBTPLMDResultatUE::STATUT_NAQ, $this->statutEnBase(2));
+    }
+
     public function test_sans_compensation_l_unite_faible_reste_non_acquise(): void
     {
         $unites = [
