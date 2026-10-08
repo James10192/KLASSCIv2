@@ -2196,6 +2196,7 @@ class ESBTPBulletinController extends Controller
             'bulletin_authenticity_font_size' => ['nullable', 'integer', 'min:6', 'max:18'],
             'bulletin_authenticity_opacity' => ['nullable', 'integer', 'min:10', 'max:100'],
             'lmd_bulletin_parcours_auto' => ['nullable', 'in:0,1'],
+            'lmd_bulletin_bottom_single_line' => ['nullable', 'in:0,1'],
             'lmd_bulletin_code_etablissement' => ['nullable', 'string', 'max:160'],
             'lmd_bulletin_statut' => ['nullable', 'string', 'max:80'],
             'lmd_bulletin_direction' => ['nullable', 'string', 'max:160'],
@@ -2331,6 +2332,7 @@ class ESBTPBulletinController extends Controller
                 'lmd_bulletin_label_parcours',
                 'lmd_bulletin_notice_text',
                 'lmd_bulletin_bottom_text',
+                'lmd_bulletin_bottom_single_line',
                 'lmd_bulletin_parcours_auto',
                 ...LMDBulletinPrintSettings::fieldKeys(),
             ]);
