@@ -76,7 +76,7 @@
         // les rubriques restantes se repartagent automatiquement toute la largeur.
         $officialBandItems = collect([
             ['label' => 'Code établissement', 'value' => $codeEtablissement],
-            ['label' => 'Statut', 'value' => $statutEtablissement],
+            ['label' => 'Statut', 'value' => ($bCfg['show_establishment_status'] ?? true) ? $statutEtablissement : ''],
             ['label' => 'Direction', 'value' => $directionEtablissement],
         ])->filter(fn (array $item) => trim((string) $item['value']) !== '')->values();
         $officialColumnWidth = $officialBandItems->isNotEmpty()
