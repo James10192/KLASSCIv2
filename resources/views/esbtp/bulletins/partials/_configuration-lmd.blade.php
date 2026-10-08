@@ -59,6 +59,7 @@
         <div class="row g-3">
             <div class="col-md-4"><label class="bcfg-label">Code établissement</label><input type="text" class="bcfg-input" name="lmd_bulletin_code_etablissement" value="{{ $lmdGet('lmd_bulletin_code_etablissement','') }}" placeholder="Ex: 2720328001"></div>
             <div class="col-md-4"><label class="bcfg-label">Statut</label><select class="bcfg-select" name="lmd_bulletin_statut"><option value="Privé" {{ $lmdGet('lmd_bulletin_statut','Privé') === 'Privé' ? 'selected' : '' }}>Privé</option><option value="Public" {{ $lmdGet('lmd_bulletin_statut','Privé') === 'Public' ? 'selected' : '' }}>Public</option></select></div>
+            <div class="col-md-4"><label class="bcfg-label">Libellé affectation</label><input class="bcfg-input" type="text" name="lmd_bulletin_label_affectation" value="{{ $lmdGet('lmd_bulletin_label_affectation','AFFECTATION') }}"></div>
             <div class="col-md-4"><label class="bcfg-label">Direction affichée</label><input type="text" class="bcfg-input" name="lmd_bulletin_direction" value="{{ $lmdGet('lmd_bulletin_direction','') }}" placeholder="Ex: Direction des Études"><div class="bcfg-hint">Texte du bandeau, distinct du nom du directeur signataire.</div></div>
         </div>
     </div>
