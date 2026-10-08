@@ -101,6 +101,12 @@
         $signatureSpaceHeight = $layoutNumber('lmd_bulletin_signature_space_height', 42, 20, 120);
         $bottomWidthPercent = $layoutNumber('lmd_bulletin_bottom_width_percent', 104, 90, 108);
         $bottomHorizontalOffset = (100 - $bottomWidthPercent) / 2;
+        $officialHeaderBg = \App\Helpers\SettingsHelper::get('lmd_bulletin_official_header_bg', '#ffffff');
+        $officialLabelColor = \App\Helpers\SettingsHelper::get('lmd_bulletin_header_label_color', '#1f2937');
+        $officialLabelBold = \App\Helpers\SettingsHelper::get('lmd_bulletin_header_label_bold', '0') == '1';
+        $ministryBold = \App\Helpers\SettingsHelper::get('lmd_bulletin_ministry_bold', '0') == '1';
+        $headerMetaLabelColor = \App\Helpers\SettingsHelper::get('lmd_bulletin_meta_label_color', '#1f2937');
+        $headerMetaLabelBold = \App\Helpers\SettingsHelper::get('lmd_bulletin_meta_label_bold', '0') == '1';
         $paysEtablissement = trim((string) ($etab['pays'] ?? '')) ?: 'Côte d\'Ivoire';
     @endphp
 
@@ -163,7 +169,7 @@
         }
         .lmd-header-meta td + td { border-left: 1px solid rgba(255,255,255,0.22); }
         .lmd-header-meta tr + tr td { border-top: 1px solid rgba(255,255,255,0.18); }
-        .lmd-header-meta-label { opacity: .72; }
+        .lmd-header-meta-label { color: {{ $headerMetaLabelColor }}; font-weight: {{ $headerMetaLabelBold ? '700' : '400' }}; }
         .lmd-header-meta-value { font-weight: 800; }
 
         .signature-title {
@@ -248,7 +254,9 @@
             border: 1px solid #94a3b8;
             padding: 6px 10px;
             margin-top: 6px;
-            text-align: center;
+            width: 100%;
+            box-sizing: border-box;
+            text-align: left;
             font-size: {{ $fontDecision }}px;
             page-break-inside: avoid;
         }
@@ -294,7 +302,8 @@
         }
         .bottom-note-line {
             display: block;
-            white-space: nowrap;
+            white-space: normal;
+            word-wrap: break-word;
         }
     </style>
 </head>
@@ -302,15 +311,15 @@
 <div class="container">
 
 @if(($bCfg['show_republic_info'] ?? true) || ($bCfg['show_ministry_info'] ?? true))
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 2px;">
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 4px; border-collapse: separate; border-spacing: 0; border: 1px solid #dbe3ea; border-radius: 7px;">
     <tr>
-        <td style="text-align: center; font-size: {{ $fontRepublic }}px; color: {{ $bodyText }}; line-height: 1.32;">
+        <td style="text-align: center; font-size: {{ $fontRepublic }}px; color: {{ $bodyText }}; line-height: 1.32; padding: 5px 10px; background-color: {{ $officialHeaderBg }}; border-radius: 7px;">
             @if($bCfg['show_republic_info'] ?? true)
-                <div style="font-weight: 800; font-size: {{ max(6, $fontRepublic + .5) }}px;">{{ $bCfg['republic_text'] ?? 'REPUBLIQUE DE COTE D\'IVOIRE' }}</div>
+                <div style="font-weight: {{ $officialLabelBold ? 800 : 400 }}; color: {{ $officialLabelColor }}; font-size: {{ max(6, $fontRepublic + .5) }}px;">{{ $bCfg['republic_text'] ?? 'REPUBLIQUE DE COTE D\'IVOIRE' }}</div>
                 <div style="font-size: {{ max(6, $fontRepublic - 1) }}px; font-style: italic; color: {{ $secondary }};">{{ $bCfg['union_text'] ?? 'Union - Discipline - Travail' }}</div>
             @endif
             @if($bCfg['show_ministry_info'] ?? true)
-                <div style="font-size: {{ $fontRepublic }}px; margin-top: 1px;">{{ $bCfg['ministry_text'] ?? 'MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR ET DE LA RECHERCHE SCIENTIFIQUE' }}</div>
+                <div style="font-size: {{ $fontRepublic }}px; margin-top: 1px; color: {{ $officialLabelColor }}; font-weight: {{ $ministryBold ? 800 : 400 }};">{{ $bCfg['ministry_text'] ?? 'MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR ET DE LA RECHERCHE SCIENTIFIQUE' }}</div>
             @endif
         </td>
     </tr>
@@ -413,6 +422,18 @@
                     <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">MATRICULE :</td>
                     <td style="font-size: {{ $fontStudent }}px;">{{ $etudiant->matricule ?? '' }}</td>
                 </tr>
+                @if($bCfg['show_redoublant'] ?? false)
+                <tr>
+                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">REDOUBLANT :</td>
+                    <td style="font-size: {{ $fontStudent }}px;">{{ $bCfg['redoublant'] === null ? 'Non renseigné' : ($bCfg['redoublant'] ? 'Oui' : 'Non') }}</td>
+                </tr>
+                @endif
+                @if(($bCfg['show_effectif'] ?? false) && $bulletin->effectif !== null)
+                <tr>
+                    <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">EFFECTIF :</td>
+                    <td style="font-size: {{ $fontStudent }}px;">{{ $bulletin->effectif }}</td>
+                </tr>
+                @endif
                 <tr>
                     <td style="font-size: {{ $fontStudent }}px; font-weight: 800;">AFFECTATION :</td>
                     <td style="font-size: {{ $fontStudent }}px;">{{ $bulletin->affectation_label }}</td>
