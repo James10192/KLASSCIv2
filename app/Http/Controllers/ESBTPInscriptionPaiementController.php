@@ -625,11 +625,32 @@ class ESBTPInscriptionPaiementController extends Controller
             );
         }
 
+        $validated = $request->validate([
+            'amount' => ['required', 'integer', 'min:0'],
+            'reason' => ['required', 'string', 'min:10', 'max:1000'],
+        ]);
+        if (! $subscription->is_active) {
+            return response()->json(['success' => false, 'message' => 'Cette souscription est inactive.'], 422);
+        }
+
         try {
             DB::beginTransaction();
+            $subscription = ESBTPFraisSubscription::query()->lockForUpdate()->findOrFail($subscription->id);
+            $paid = (float) \App\Models\ESBTPPaiement::query()
+                ->where('inscription_id', $inscription->id)
+                ->where('frais_category_id', $subscription->frais_category_id)
+                ->whereIn('status', ['validé', 'validated', 'valide'])
+                ->sum('montant');
+            if ((float) $validated['amount'] < $paid) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Le nouveau montant ne peut pas être inférieur au total des paiements validés (' . number_format($paid, 0, ',', ' ') . ' FCFA).',
+                ], 422);
+            }
 
             $oldAmount = $subscription->amount;
-            $newAmount = $request->amount;
+            $newAmount = $validated['amount'];
 
             // Mettre à jour la souscription
             $subscription->update([
@@ -649,7 +670,7 @@ class ESBTPInscriptionPaiementController extends Controller
                 "old_amount" => $oldAmount,
                 "new_amount" => $newAmount,
                 "difference" => $newAmount - $oldAmount,
-                "reason" => $request->reason,
+                "reason" => $validated["reason"],
                 "ip_address" => request()->ip(),
                 "user_agent" => request()->header("User-Agent"),
             ]);
