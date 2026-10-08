@@ -636,11 +636,11 @@ class ESBTPInscriptionPaiementController extends Controller
         try {
             DB::beginTransaction();
             $subscription = ESBTPFraisSubscription::query()->lockForUpdate()->findOrFail($subscription->id);
-            $paid = (float) \App\Models\ESBTPPaiement::query()
-                ->where('inscription_id', $inscription->id)
-                ->where('frais_category_id', $subscription->frais_category_id)
-                ->whereIn('status', ['validé', 'validated', 'valide'])
-                ->sum('montant');
+            $paid = (float) \App\Models\ESBTPPaiement::netPaidForInscription(
+                (int) $inscription->id,
+                (int) $subscription->frais_category_id,
+                true
+            );
             if ((float) $validated['amount'] < $paid) {
                 DB::rollBack();
                 return response()->json([
