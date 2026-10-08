@@ -131,23 +131,25 @@
          * par rapport à l'ancien empilement logo/école puis titre/métadonnées. */
         .lmd-document-header {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
+            border: 1px solid {{ $primary }};
             margin-bottom: 4px;
             page-break-inside: avoid;
-            background: {{ $hdrBg }};
-            border-radius: 6px;
-            overflow: hidden;
+            border-radius: 7px;
         }
         .lmd-header-school,
         .lmd-header-document {
             width: 50%;
             vertical-align: middle;
+            background-color: {{ $hdrBg }};
         }
         .lmd-header-school {
             padding: {{ $headerPaddingY }}px 7px;
             border-right: 1px solid rgba(255,255,255,0.28);
+            border-radius: 7px 0 0 7px;
         }
-        .lmd-header-document { padding: {{ $headerPaddingY }}px 9px; }
+        .lmd-header-document { padding: {{ $headerPaddingY }}px 9px; border-radius: 0 7px 7px 0; }
         .lmd-header-title {
             color: {{ $hdrText }};
             font-size: {{ $fontTitle }}px;
@@ -311,9 +313,9 @@
 <div class="container">
 
 @if(($bCfg['show_republic_info'] ?? true) || ($bCfg['show_ministry_info'] ?? true))
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 4px; border-collapse: separate; border-spacing: 0; border: 1px solid #dbe3ea; border-radius: 7px;">
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 4px; border-collapse: collapse;">
     <tr>
-        <td style="text-align: center; font-size: {{ $fontRepublic }}px; color: {{ $bodyText }}; line-height: 1.32; padding: 5px 10px; background-color: {{ $officialHeaderBg }}; border-radius: 7px;">
+        <td style="text-align: center; font-size: {{ $fontRepublic }}px; color: {{ $bodyText }}; line-height: 1.32; padding: 3px 10px; background-color: {{ $officialHeaderBg }};">
             @if($bCfg['show_republic_info'] ?? true)
                 <div style="font-weight: {{ $officialLabelBold ? 800 : 400 }}; color: {{ $officialLabelColor }}; font-size: {{ max(6, $fontRepublic + .5) }}px;">{{ $bCfg['republic_text'] ?? 'REPUBLIQUE DE COTE D\'IVOIRE' }}</div>
                 <div style="font-size: {{ max(6, $fontRepublic - 1) }}px; font-style: italic; color: {{ $secondary }};">{{ $bCfg['union_text'] ?? 'Union - Discipline - Travail' }}</div>

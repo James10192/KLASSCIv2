@@ -26,7 +26,7 @@
             </label>
         </div>
         <div class="row g-3">
-            <div class="col-md-4"><label class="bcfg-label">Fond du cadre officiel</label><input type="color" class="form-control form-control-color" name="lmd_bulletin_official_header_bg" value="{{ $lmdGet('lmd_bulletin_official_header_bg','#ffffff') }}"></div>
+            <div class="col-md-4"><label class="bcfg-label">Fond zone République / Ministère</label><input type="color" class="form-control form-control-color" name="lmd_bulletin_official_header_bg" value="{{ $lmdGet('lmd_bulletin_official_header_bg','#ffffff') }}"></div>
             <div class="col-md-4"><label class="bcfg-label">Couleur République / Ministère</label><input type="color" class="form-control form-control-color" name="lmd_bulletin_header_label_color" value="{{ $lmdGet('lmd_bulletin_header_label_color','#1f2937') }}"></div>
             <div class="col-md-4"><label class="bcfg-label">Couleur libellés année / niveau / édition</label><input type="color" class="form-control form-control-color" name="lmd_bulletin_meta_label_color" value="{{ $lmdGet('lmd_bulletin_meta_label_color','#1f2937') }}"></div>
             @foreach(['lmd_bulletin_header_label_bold'=>'République en gras','lmd_bulletin_ministry_bold'=>'Ministère en gras','lmd_bulletin_meta_label_bold'=>'Libellés année / édition / niveau / semestre en gras'] as $option=>$label)
