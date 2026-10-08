@@ -56,7 +56,7 @@ final class ReconcileLmdUeStatuses extends Command
         $examined = 0;
         $changes = 0;
         $skipped = 0;
-        foreach ((clone $scope)->with('resultatsUEs')->orderBy('id')->cursor() as $bulletin) {
+        foreach ((clone $scope)->with('resultatsUEs')->lazyById(100) as $bulletin) {
             $rows = $bulletin->resultatsUEs;
             if ($rows->isEmpty() || $bulletin->moyenne_generale === null || $rows->contains(fn ($ue) => $ue->moyenne === null)) {
                 $skipped++;
