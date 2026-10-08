@@ -103,6 +103,23 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString('lmd_bulletin_label_affectation', $controller);
     }
 
+    public function test_establishment_status_can_be_hidden_without_empty_official_band(): void
+    {
+        $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));
+        $standalone = file_get_contents(resource_path('views/esbtp/lmd/bulletins/index.blade.php'));
+        $central = file_get_contents(resource_path('views/esbtp/bulletins/partials/_configuration-lmd.blade.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/ESBTPLMDBulletinController.php'));
+        $settings = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
+
+        $this->assertStringContainsString("show_establishment_status", $pdf);
+        $this->assertStringContainsString("show_establishment_status", $controller);
+        $this->assertStringContainsString("lmd_bulletin_show_establishment_status", $settings);
+        $this->assertStringContainsString("lmd_bulletin_show_establishment_status", $standalone);
+        $this->assertStringContainsString("lmd_bulletin_show_establishment_status", $central);
+        $this->assertStringContainsString('$officialBandItems->isNotEmpty()', $pdf);
+        $this->assertStringContainsString('->filter(fn (array $item)', $pdf);
+    }
+
     public function test_lmd_direction_is_a_real_setting_and_not_the_directors_name_fallback(): void
     {
         $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));
