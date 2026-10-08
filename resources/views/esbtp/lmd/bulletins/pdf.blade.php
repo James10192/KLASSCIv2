@@ -303,7 +303,7 @@
         .bottom-note-line {
             display: block;
             white-space: normal;
-            overflow-wrap: break-word;
+            word-wrap: break-word;
         }
     </style>
 </head>
@@ -311,9 +311,9 @@
 <div class="container">
 
 @if(($bCfg['show_republic_info'] ?? true) || ($bCfg['show_ministry_info'] ?? true))
-<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 4px; background: {{ $officialHeaderBg }}; border: 1px solid #dbe3ea; border-radius: 7px;">
+<table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 4px; border-collapse: separate; border-spacing: 0; border: 1px solid #dbe3ea; border-radius: 7px;">
     <tr>
-        <td style="text-align: center; font-size: {{ $fontRepublic }}px; color: {{ $bodyText }}; line-height: 1.32; padding: 5px 10px;">
+        <td style="text-align: center; font-size: {{ $fontRepublic }}px; color: {{ $bodyText }}; line-height: 1.32; padding: 5px 10px; background-color: {{ $officialHeaderBg }}; border-radius: 7px;">
             @if($bCfg['show_republic_info'] ?? true)
                 <div style="font-weight: {{ $officialLabelBold ? 800 : 400 }}; color: {{ $officialLabelColor }}; font-size: {{ max(6, $fontRepublic + .5) }}px;">{{ $bCfg['republic_text'] ?? 'REPUBLIQUE DE COTE D\'IVOIRE' }}</div>
                 <div style="font-size: {{ max(6, $fontRepublic - 1) }}px; font-style: italic; color: {{ $secondary }};">{{ $bCfg['union_text'] ?? 'Union - Discipline - Travail' }}</div>
