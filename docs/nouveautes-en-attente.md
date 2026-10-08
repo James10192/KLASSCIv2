@@ -1,5 +1,7 @@
 # Annonces dues aux écoles
 
+- Bulletin LMD : le statut de l’établissement peut être masqué indépendamment du code et de la direction. Si aucun de ces champs n’est affiché, le bandeau disparaît complètement sans laisser de bordure ni d’espace.
+
 Chaque ligne commençant par `- ` est un changement visible déjà fusionné, dont
 l'entrée de la fenêtre « Nouveautés » (`resources/data/nouveautes.php`) et le
 changelog public (klassci-landing, FR + EN) restent à écrire.
