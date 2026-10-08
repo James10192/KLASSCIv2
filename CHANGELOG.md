@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Bulletins LMD : statut de l’établissement facultatif.** Un réglage permet de masquer le statut sans masquer code et direction ; la bande disparaît entièrement, sans bordure ni espace, lorsque les trois rubriques sont absentes.
+
 - **Bulletin LMD : correction contrôlée des anciens statuts APC.** Une commande de maintenance permet de vérifier, puis de réappliquer sur demande les règles de compensation aux bulletins non publiés déjà calculés, sans modifier les notes. Les bulletins publiés restent protégés.
 
 - **Bulletin LMD : pied de page plus large et configurable.** Les deux lignes finales (mention de conservation/duplicata et identité de l'établissement) disposent d'une largeur dédiée, réglable dans la configuration du bulletin LMD, et restent chacune sur une ligne quand l'espace le permet. Le pays n'est plus écrit en dur : le PDF reprend désormais le pays configuré pour l'établissement.
