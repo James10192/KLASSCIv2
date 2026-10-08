@@ -86,6 +86,12 @@
                             <div class="lb-config-field"><label>République</label><select name="lmd_bulletin_show_republic_info"><option value="1" {{ $lmdGet('lmd_bulletin_show_republic_info',1) ? 'selected' : '' }}>Afficher</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_republic_info',1) ? 'selected' : '' }}>Masquer</option></select></div>
                             <div class="lb-config-field"><label>Ministère</label><select name="lmd_bulletin_show_ministry_info"><option value="1" {{ $lmdGet('lmd_bulletin_show_ministry_info',1) ? 'selected' : '' }}>Afficher</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_ministry_info',1) ? 'selected' : '' }}>Masquer</option></select></div>
                             <div class="lb-config-field"><label>Encadré établissement</label><select name="lmd_bulletin_show_etablissement_box"><option value="1" {{ $lmdGet('lmd_bulletin_show_etablissement_box',1) ? 'selected' : '' }}>Afficher</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_etablissement_box',1) ? 'selected' : '' }}>Masquer</option></select></div>
+                            <div class="lb-config-field"><label>Fond République / Ministère</label><input type="color" name="lmd_bulletin_official_header_bg" value="{{ $lmdGet('lmd_bulletin_official_header_bg','#ffffff') }}"></div>
+                            <div class="lb-config-field"><label>Couleur République / Ministère</label><input type="color" name="lmd_bulletin_header_label_color" value="{{ $lmdGet('lmd_bulletin_header_label_color','#1f2937') }}"></div>
+                            <div class="lb-config-field"><label>Couleur des libellés du bandeau</label><input type="color" name="lmd_bulletin_meta_label_color" value="{{ $lmdGet('lmd_bulletin_meta_label_color','#1f2937') }}"></div>
+                            @foreach(['lmd_bulletin_header_label_bold'=>'République en gras','lmd_bulletin_ministry_bold'=>'Ministère en gras','lmd_bulletin_meta_label_bold'=>'Libellés année / édition / niveau / semestre en gras'] as $key=>$label)
+                            <div class="lb-config-field"><label>{{ $label }}</label><select name="{{ $key }}"><option value="1" {{ $lmdGet($key,'0') == '1' ? 'selected' : '' }}>Oui</option><option value="0" {{ $lmdGet($key,'0') != '1' ? 'selected' : '' }}>Non</option></select></div>
+                            @endforeach
                             <div class="lb-config-field lb-config-field--wide"><label>Texte République</label><input name="lmd_bulletin_republic_text" value="{{ $lmdGet('lmd_bulletin_republic_text', "REPUBLIQUE DE COTE D'IVOIRE") }}"></div>
                             <div class="lb-config-field"><label>Devise nationale</label><input name="lmd_bulletin_union_text" value="{{ $lmdGet('lmd_bulletin_union_text','Union - Discipline - Travail') }}"></div>
                             <div class="lb-config-field" style="grid-column:span 2"><label>Texte Ministère</label><input name="lmd_bulletin_ministry_text" value="{{ $lmdGet('lmd_bulletin_ministry_text',"MINISTERE DE L'ENSEIGNEMENT SUPERIEUR ET DE LA RECHERCHE SCIENTIFIQUE") }}"></div>
@@ -99,7 +105,7 @@
                         <h3>Champs académiques</h3>
                         <div class="lb-config-grid">
                             @foreach([
-                                'domaine'=>'Domaine','mention'=>'Mention','specialite'=>'Spécialité','parcours'=>'Parcours'
+                                'domaine'=>'Domaine','mention'=>'Mention','specialite'=>'Spécialité','parcours'=>'Parcours','effectif'=>'Effectif','redoublant'=>'Redoublant'
                             ] as $key=>$label)
                             <div class="lb-config-field"><label>Afficher {{ $label }}</label><select name="lmd_bulletin_show_{{ $key }}"><option value="1" {{ $lmdGet('lmd_bulletin_show_'.$key,$key==='specialite'?0:1) ? 'selected' : '' }}>Oui</option><option value="0" {{ !$lmdGet('lmd_bulletin_show_'.$key,$key==='specialite'?0:1) ? 'selected' : '' }}>Non</option></select></div>
                             @endforeach
