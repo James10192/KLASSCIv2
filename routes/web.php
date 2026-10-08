@@ -1625,7 +1625,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('permission:paiements.edit');
             Route::put('/inscriptions/{inscription}/subscriptions/{subscription}', [ESBTPInscriptionPaiementController::class, 'updateSubscription'])
                 ->name('inscriptions.update-subscription')
-                ->middleware('role:superAdmin');
+                ->middleware('permission:inscriptions.edit');
 
             // API pour les parents dans les inscriptions
             Route::get('/api/parents/search', [ESBTPInscriptionApiController::class, 'searchParents'])->name('api.parents.search');
