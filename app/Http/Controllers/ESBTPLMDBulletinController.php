@@ -533,6 +533,15 @@ class ESBTPLMDBulletinController extends Controller
             'union_text' => SettingsHelper::get('lmd_bulletin_union_text', 'Union - Discipline - Travail'),
             'ministry_text' => SettingsHelper::get('lmd_bulletin_ministry_text', 'MINISTERE DE L\'ENSEIGNEMENT SUPERIEUR ET DE LA RECHERCHE SCIENTIFIQUE'),
             'show_etablissement_box' => SettingsHelper::get('lmd_bulletin_show_etablissement_box', '1') == '1',
+            'show_effectif' => SettingsHelper::get('lmd_bulletin_show_effectif', '0') == '1',
+            'show_redoublant' => SettingsHelper::get('lmd_bulletin_show_redoublant', '0') == '1',
+            'redoublant' => (function () use ($bulletin) {
+                $value = \App\Models\ESBTPInscription::query()->where('etudiant_id', $bulletin->etudiant_id)
+                    ->where('classe_id', $bulletin->classe_id)
+                    ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
+                    ->orderByDesc('id')->value('is_redoublant');
+                return $value === null ? null : (bool) $value;
+            })(),
             'code_etablissement' => SettingsHelper::get('lmd_bulletin_code_etablissement', ''),
             'statut' => SettingsHelper::get('lmd_bulletin_statut', 'Privé'),
             'direction' => SettingsHelper::get('lmd_bulletin_direction', ''),
