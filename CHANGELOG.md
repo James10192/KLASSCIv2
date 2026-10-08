@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Bulletin LMD : correction contrôlée des anciens statuts APC.** Une commande de maintenance permet de vérifier, puis de réappliquer sur demande les règles de compensation aux bulletins non publiés déjà calculés, sans modifier les notes. Les bulletins publiés restent protégés.
+
 - **Bulletin LMD : pied de page plus large et configurable.** Les deux lignes finales (mention de conservation/duplicata et identité de l'établissement) disposent d'une largeur dédiée, réglable dans la configuration du bulletin LMD, et restent chacune sur une ligne quand l'espace le permet. Le pays n'est plus écrit en dur : le PDF reprend désormais le pays configuré pour l'établissement.
 - **Fiche étudiant : la réinscription n'attend plus la bascule de l'année courante.** Quand l'année encore marquée courante est déjà échue, la fiche propose directement la réinscription vers l'année suivante configurée, en bannière et dans la carte Inscriptions, même sans prise de rendez-vous. Après bascule de l'année courante, le même appel à l'action reste visible tant que l'étudiant n'a pas d'inscription dans l'année cible ; une inscription déjà existante empêche tout doublon.
 - **Fiche étudiant : l'encaissement fonctionne aussi sur une ancienne inscription.** Dans l'onglet Finances, une inscription d'une autre année qui conserve un solde ouvre désormais la même fenêtre « Enregistrer un paiement » que l'année courante. Le paiement charge les frais restants de l'inscription cliquée et reste attaché à cette année ; l'absence d'inscription courante ne supprime plus silencieusement la modale.
