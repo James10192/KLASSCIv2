@@ -23,6 +23,53 @@ return [
     'titre' => 'Octobre 2026',
     'entrees' => [
         [
+            'titre' => 'Des régularisations qui étaient des notes d’examen',
+            'si' => 'requalification_examen',
+            'icone' => 'fa-exchange-alt',
+            'texte' => 'Dans la fenêtre des notes LMD d’une classe, un bandeau signale les évaluations saisies en « Régularisation ». Si c’étaient les notes d’examen d’un semestre, choisissez ce semestre, regardez ce qui change, puis « Requalifier en examen » : elles s’appellent désormais « Examen … », aucune note ne bouge, et le contrôle continu reste distinct.',
+            'permissions' => ['lmd.notes.manage'],
+            'captures' => [
+                'avant' => 'images/nouveautes/2026-10/requalification-examen-avant.webp',
+                'apres' => 'images/nouveautes/2026-10/requalification-examen-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Le bandeau dit combien d’évaluations sont concernées par semestre et montre chaque titre avant et après.',
+            ],
+        ],
+        [
+            'titre' => 'Le rang d’une UE au bulletin, parcours par parcours',
+            'icone' => 'fa-sort-numeric-down',
+            'texte' => 'Dans « Lier à des parcours » (Unités d’enseignement LMD), chaque parcours coché a son champ « Rang au bulletin ». Numérotez les UE du semestre dans l’ordre du bulletin officiel : une même UE peut avoir un rang différent dans deux parcours.',
+            'permissions' => ['lmd.structure.manage'],
+            'captures' => [
+                'avant' => 'images/nouveautes/2026-10/rang-ue-bulletin-avant.webp',
+                'apres' => 'images/nouveautes/2026-10/rang-ue-bulletin-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Le rang se règle à côté des semestres de chaque parcours.',
+            ],
+        ],
+        [
+            'titre' => 'La pondération contrôle continu / examen, si vous la choisissez',
+            'icone' => 'fa-balance-scale',
+            'texte' => 'Paramètres, onglet LMD : cochez « Appliquer la pondération à la moyenne des ECUE » pour que la moyenne d’un élément soit, par exemple, 40 % du contrôle continu et 60 % de l’examen. Une absence à l’examen compte 0. Décochée, rien ne change. Après l’avoir cochée, régénérez les bulletins.',
+            'permissions' => ['system.manage'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-10/ponderation-cc-examen-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'La case active la répartition saisie juste en dessous.',
+            ],
+        ],
+        [
+            'titre' => 'Retirer un ECUE ne le fait plus passer en BTS',
+            'icone' => 'fa-layer-group',
+            'texte' => 'Quand vous retirez un élément de la dernière maquette qui le contient (Unités d’enseignement LMD), KLASSCI vous demande ce qu’il devient : le supprimer s’il n’a jamais servi, l’archiver dans le LMD avec son historique, ou, seulement si vous le choisissez, en faire une matière BTS. Il ne retombe plus de lui-même dans les listes de notes et de bulletins BTS.',
+            'permissions' => ['lmd.structure.delete'],
+            'captures' => [
+                'apres' => 'images/nouveautes/2026-10/retrait-ecue-apres.webp',
+                'format' => 'bureau',
+                'legende' => 'Un élément qui a déjà servi ne peut pas être supprimé : KLASSCI conseille de l’archiver.',
+            ],
+        ],
+        [
             'titre' => 'Les résultats refaits, plus rapides et en couleur',
             'icone' => 'fa-chart-column',
             'texte' => 'La page Résultats se charge plus vite et la liste continue d’elle-même quand vous descendez, 50 élèves à la fois. La moyenne générale et le taux de réussite passent au vert, à l’orange ou au rouge selon leur état ; les repères se règlent dans les paramètres.',
@@ -136,7 +183,7 @@ return [
         [
             'titre' => 'Nanan fait davantage pour vous',
             'icone' => 'fa-wand-magic-sparkles',
-            'texte' => 'Sur simple demande, Nanan prépare et vous validez : valider des inscriptions, annuler un versement par un avoir, corriger une note, créer une évaluation, générer des bulletins, ajouter ou modifier des classes, préparer une année universitaire. Rien ne change sans votre clic sur « Valider ».',
+            'texte' => 'Sur simple demande, Nanan prépare et vous validez : valider des inscriptions, annuler un versement par un avoir, corriger une note, créer une évaluation, générer des bulletins, ajouter ou modifier des classes, préparer une année universitaire, requalifier des régularisations en examen, modifier ou retirer un élément d’une maquette LMD. Rien ne change sans votre clic sur « Valider ».',
             'permissions' => ['admin.access', 'identity.school_manager', 'identity.registrar', 'identity.direct_studies'],
         ],
         [

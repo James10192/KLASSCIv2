@@ -969,7 +969,7 @@
         `;
 
         // Appeler l'endpoint AJAX pour récupérer les frais
-        fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}?affectation_status=${encodeURIComponent(affectation)}`, {
+        fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}?affectation_status=${encodeURIComponent(affectation)}&annee_universitaire_id=${encodeURIComponent(document.getElementById('annee_universitaire_id')?.value || '')}`, {
             headers: {
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
@@ -1295,7 +1295,7 @@ document.addEventListener('DOMContentLoaded', function() {
             displayFrais(fraisParClasse[classeKey]);
         } else {
             // Fallback AJAX si les données locales ne sont pas disponibles
-            fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}?affectation_status=${encodeURIComponent(affectation)}`, {
+            fetch(`/esbtp/inscriptions/frais-by-classe/${classeId}?affectation_status=${encodeURIComponent(affectation)}&annee_universitaire_id=${encodeURIComponent(document.getElementById('annee_universitaire_id')?.value || '')}`, {
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')

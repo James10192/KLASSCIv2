@@ -6,6 +6,7 @@ use App\Models\Traits\HasAuditTrail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\ValidationException;
 
 class ESBTPLMDResultatUE extends Model
 {
@@ -32,6 +33,26 @@ class ESBTPLMDResultatUE extends Model
     const STATUT_AQ  = 'AQ';   // Acquis (moyenne >= 10)
     const STATUT_NAQ = 'NAQ';  // Non Acquis
     const STATUT_APC = 'APC';  // Acquis Par Compensation (moyenne_generale >= 10)
+
+    protected static function booted(): void
+    {
+        static::saving(function (ESBTPLMDResultatUE $resultat): void {
+            $bulletin = $resultat->relationLoaded('bulletin')
+                ? $resultat->bulletin
+                : ($resultat->bulletin_id ? ESBTPLMDBulletin::find($resultat->bulletin_id) : null);
+
+            if (! $bulletin?->is_published) {
+                return;
+            }
+
+            $dirty = array_diff(array_keys($resultat->getDirty()), ['updated_at']);
+            if (! $resultat->exists || $dirty !== []) {
+                throw ValidationException::withMessages([
+                    'bulletin' => 'Ce bulletin LMD est publié : ses résultats UE sont figés. Dépubliez-le avant toute correction.',
+                ]);
+            }
+        });
+    }
 
     public function bulletin()
     {

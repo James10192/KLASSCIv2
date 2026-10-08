@@ -38,7 +38,7 @@ class StatutEtablissementFeeSync
     private function attachNouveauxFees(ESBTPInscription $inscription): array
     {
         $fees = $this->resolver->resolveMandatoryFeesForInscription($inscription)
-            ->filter(fn (array $fee) => ($fee['category']->audience ?? ESBTPFraisCategory::AUDIENCE_TOUS) === ESBTPFraisCategory::AUDIENCE_NOUVEAUX)
+            ->filter(fn (array $fee) => $fee['audience'] === ESBTPFraisCategory::AUDIENCE_NOUVEAUX)
             ->map(fn (array $fee) => [
                 'category_id' => $fee['category']->id,
                 'description' => $fee['description'],
@@ -55,19 +55,20 @@ class StatutEtablissementFeeSync
 
     private function detachUnpaidNouveauxFees(ESBTPInscription $inscription): array
     {
-        $categoryIds = ESBTPFraisCategory::query()
-            ->where('audience', ESBTPFraisCategory::AUDIENCE_NOUVEAUX)
-            ->pluck('id');
-
         $removed = 0;
         $keptPaid = 0;
 
         $subscriptions = ESBTPFraisSubscription::query()
+            ->with('fraisCategory')
             ->where('inscription_id', $inscription->id)
-            ->whereIn('frais_category_id', $categoryIds)
             ->get();
 
         foreach ($subscriptions as $subscription) {
+            $category = $subscription->fraisCategory;
+            if (! $category || $this->resolver->audienceForInscription($category, $inscription) !== ESBTPFraisCategory::AUDIENCE_NOUVEAUX) {
+                continue;
+            }
+
             $paid = ESBTPPaiement::query()
                 ->where('inscription_id', $inscription->id)
                 ->where('frais_category_id', $subscription->frais_category_id)

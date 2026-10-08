@@ -126,6 +126,7 @@ return [
     'POST api/cli/matieres/cleanup-tronc-commun' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
     'POST api/cli/migrate' => ['hors_nanan' => 'Exploitation du serveur (déploiement, cache, migrations) : réservé au support technique.'],
     'POST api/cli/notes/recompute' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
+    'POST api/cli/notes/supprimer' => ['hors_nanan' => 'Suppression logique ciblée de données décidée par le support : opération de réparation exceptionnelle, jamais proposée automatiquement par Nanan.'],
     'POST api/cli/notes/unicite' => ['hors_nanan' => 'Réparation ou reprise de données décidée par le support, rejouée en commande d\'exploitation.'],
     'POST api/cli/paie/seed-demo' => ['hors_nanan' => 'Données de démonstration ou de recette : jamais sur une école en service.'],
     'POST api/cli/permissions/fix' => ['hors_nanan' => 'Exploitation du serveur (déploiement, cache, migrations) : réservé au support technique.'],

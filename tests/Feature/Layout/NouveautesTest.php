@@ -62,6 +62,28 @@ class NouveautesTest extends TestCase
         $this->assertSame(['Reclamations', 'Pour tous'], array_column(Nouveautes::pour(null, $contenu)['entrees'], 'titre'));
     }
 
+    /** Le bandeau de requalification est fermé à l'enseignant seul : son annonce aussi. */
+    public function test_la_requalification_n_est_annoncee_qu_a_qui_peut_l_ouvrir(): void
+    {
+        foreach (['lmd.notes.manage', 'evaluations.edit', 'identity.teach', 'identity.coordinate'] as $p) {
+            Permission::findOrCreate($p, 'web');
+        }
+        $contenu = ['titre' => 'T', 'entrees' => [
+            ['titre' => 'Requalification', 'texte' => 'x', 'si' => 'requalification_examen', 'permissions' => ['lmd.notes.manage']],
+        ]];
+
+        $enseignant = User::factory()->create();
+        $enseignant->givePermissionTo(['lmd.notes.manage', 'evaluations.edit', 'identity.teach']);
+        $coordinateur = User::factory()->create();
+        $coordinateur->givePermissionTo(['lmd.notes.manage', 'evaluations.edit', 'identity.teach', 'identity.coordinate']);
+        $sansEdition = User::factory()->create();
+        $sansEdition->givePermissionTo('lmd.notes.manage');
+
+        $this->assertSame([], Nouveautes::pour($enseignant, $contenu)['entrees']);
+        $this->assertSame([], Nouveautes::pour($sansEdition, $contenu)['entrees']);
+        $this->assertSame(['Requalification'], array_column(Nouveautes::pour($coordinateur, $contenu)['entrees'], 'titre'));
+    }
+
     public function test_le_contenu_livre_est_valide_et_ses_captures_existent(): void
     {
         $contenu = require resource_path('data/nouveautes.php');

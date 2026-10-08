@@ -192,6 +192,9 @@
     @if(!empty($rules['validation_threshold']))
         <br>Seuil de validation d'une unité : {{ $note($rules['validation_threshold']) }} / 20.
     @endif
+    @if(!empty($rules['ponderation_cc_examen']))
+        <br>Moyenne d'un élément : {{ $note($rules['ponderation_cc_examen']['cc']) }} % contrôle continu, {{ $note($rules['ponderation_cc_examen']['examen']) }} % examen.
+    @endif
     @if($methodeMoyenne)
         <br>Moyenne annuelle {{ $methodeMoyenne }}.
     @endif

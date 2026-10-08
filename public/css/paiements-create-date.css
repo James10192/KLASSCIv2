@@ -1,0 +1,54 @@
+.pc-date-summary {
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .85rem;
+    padding: .65rem .75rem .65rem .85rem;
+    border: 1.5px solid var(--pc-border);
+    border-radius: 12px;
+    background: #fff;
+}
+.pc-date-main { display: flex; align-items: center; gap: .7rem; min-width: 0; }
+.pc-date-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    color: var(--pc-primary);
+    background: rgba(4,83,203,.08);
+}
+.pc-date-copy { display: grid; min-width: 0; line-height: 1.2; }
+.pc-date-copy b { color: var(--pc-dark); font-size: .92rem; }
+.pc-date-copy span { color: var(--pc-muted); font-size: .75rem; margin-top: .18rem; }
+.pc-date-edit {
+    border: 0;
+    background: transparent;
+    color: var(--pc-primary);
+    font-weight: 700;
+    font-size: .8rem;
+    padding: .45rem .35rem;
+    border-radius: 8px;
+    white-space: nowrap;
+}
+.pc-date-edit:hover,
+.pc-date-edit:focus-visible { background: #eef4ff; outline: none; }
+.pc-date-editor { display: grid; gap: .55rem; }
+.pc-date-actions { display: flex; flex-wrap: wrap; gap: .45rem; }
+.pc-date-chip {
+    border: 1px solid var(--pc-border);
+    background: var(--pc-surface);
+    color: #334155;
+    border-radius: 999px;
+    padding: .36rem .68rem;
+    font-size: .76rem;
+    font-weight: 700;
+}
+.pc-date-chip:hover { border-color: var(--pc-primary); color: var(--pc-primary); background: #eef4ff; }
+
+@media (max-width: 480px) {
+    .pc-date-summary { align-items: flex-start; }
+    .pc-date-copy span { white-space: normal; }
+}

@@ -47,7 +47,22 @@ class FraisScopeResolver
         $inscription->loadMissing(['classe.parcours.mention.domaine', 'classe.filiere', 'classe.niveau', 'filiere', 'niveau']);
 
         if ($inscription->classe) {
-            return $this->resolveForClasse($inscription->classe);
+            // La classe porte le PERIMETRE académique :
+            // - BTS => filière + niveau
+            // - LMD => parcours + niveau
+            //
+            // L'année facturée appartient en revanche à l'INSCRIPTION. Les
+            // classes KLASSCI sont réutilisées d'une promotion à l'autre et
+            // peuvent donc conserver une ancienne annee_universitaire_id. Si on
+            // reprend cette année ici, un barème annuel LMD pourtant configuré
+            // pour l'inscription courante devient invisible : les nouvelles
+            // souscriptions tombent alors sur le montant par défaut et
+            // « Régénérer les frais » ne retrouve pas davantage le barème.
+            $scope = $this->resolveForClasse($inscription->classe);
+            $scope['annee_universitaire_id'] = $inscription->annee_universitaire_id
+                ?? $scope['annee_universitaire_id'];
+
+            return $scope;
         }
 
         return [

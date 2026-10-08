@@ -4,6 +4,7 @@
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/paiements-create-date.css') }}?v={{ @filemtime(public_path('css/paiements-create-date.css')) ?: '1' }}">
 <style>
     .pc-page {
         --pc-primary: #0453cb;
@@ -874,10 +875,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="pc-field">
-                                <label for="date_paiement" class="pc-label">Date de paiement <span class="pc-req">*</span></label>
-                                <input type="date" name="date_paiement" id="date_paiement" class="form-control" value="{{ old('date_paiement', date('Y-m-d')) }}" required>
-                            </div>
+                            @include('esbtp.paiements.partials._date-paiement-desktop')
                         </div>
 
                         {{-- Ou cet argent va atterrir. Le serveur repond, cet ecran

@@ -279,7 +279,7 @@
                                         <td style="text-align:center;"><span class="bp-stat-col">{{ $resECUE->stat_min !== null ? number_format($resECUE->stat_min, 2) : '' }}</span></td>
                                         <td style="text-align:center;"><span class="bp-stat-col">{{ $resECUE->stat_moy !== null ? number_format($resECUE->stat_moy, 2) : '' }}</span></td>
                                         <td style="text-align:center;"><span class="bp-stat-col">{{ $resECUE->stat_max !== null ? number_format($resECUE->stat_max, 2) : '' }}</span></td>
-                                        <td><span class="bp-enseignant">{{ $resECUE->enseignant->name ?? '' }}</span></td>
+                                        <td><span class="bp-enseignant">{{ $resECUE->enseignant_affiche }}</span></td>
                                     </tr>
                                 @endforeach
                             @endforeach

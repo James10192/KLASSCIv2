@@ -111,6 +111,9 @@
     <tr><td class="label">Décisions modifiées par le jury</td><td>{{ $snapshot['statistics']['overrides'] }}</td></tr>
     <tr><td class="label">Seuil de validation</td><td>{{ $snapshot['rules']['validation_threshold'] }}/20</td></tr>
     <tr><td class="label">Crédits attendus</td><td>{{ $snapshot['rules']['expected_credits'] }}</td></tr>
+    @if(!empty($snapshot['rules']['ponderation_cc_examen']))
+        <tr><td class="label">Moyenne d'un élément</td><td>{{ rtrim(rtrim(number_format((float) $snapshot['rules']['ponderation_cc_examen']['cc'], 2, ',', ''), '0'), ',') }} % contrôle continu, {{ rtrim(rtrim(number_format((float) $snapshot['rules']['ponderation_cc_examen']['examen'], 2, ',', ''), '0'), ',') }} % examen</td></tr>
+    @endif
     <tr><td class="label">Profil de règles</td><td>{{ $snapshot['rules']['profile_version'] }}</td></tr>
 </table>
 

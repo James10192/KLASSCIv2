@@ -303,7 +303,7 @@ class CompositionUe
 
     /**
      * Libere la cle etrangere des elements qui ne figurent plus dans AUCUNE
-     * maquette de cette unite.
+     * maquette de cette unite — ou la reporte sur une autre unite qui les porte.
      *
      * Retirer un element de la seule maquette Batiment ne doit pas le detacher de
      * l'unite : Travaux Publics s'en sert encore. On ne coupe que ce qui n'est
@@ -338,8 +338,24 @@ class CompositionUe
             return;
         }
 
-        ESBTPMatiere::whereIn('id', $orphelines)
-            ->where('unite_enseignement_id', $ue->id)
-            ->update(['unite_enseignement_id' => null, 'updated_by' => auth()->id()]);
+        // Un element que porte encore une AUTRE unite reste LMD : sa cle passe a
+        // cette unite-la. La couper le versait au catalogue BTS alors qu'une
+        // maquette s'en sert toujours (ESBTP Abidjan, octobre 2026).
+        $ailleurs = DB::table('esbtp_ue_matiere')
+            ->whereIn('matiere_id', $orphelines)
+            ->where('unite_enseignement_id', '!=', $ue->id)
+            ->orderBy('unite_enseignement_id')
+            ->get(['matiere_id', 'unite_enseignement_id'])
+            ->unique('matiere_id')
+            ->pluck('unite_enseignement_id', 'matiere_id');
+
+        foreach ($orphelines as $matiereId) {
+            ESBTPMatiere::whereKey($matiereId)
+                ->where('unite_enseignement_id', $ue->id)
+                ->update([
+                    'unite_enseignement_id' => $ailleurs[$matiereId] ?? null,
+                    'updated_by' => auth()->id(),
+                ]);
+        }
     }
 }

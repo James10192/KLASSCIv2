@@ -88,10 +88,30 @@ return [
             'libelle' => 'Lecture du dossier de réinscription…',
             'suggestion' => 'Pourquoi la réinscription de cet étudiant est bloquée ?',
         ],
+        // Mêmes droits que le panneau « Suivi du semestre » : l'enseignant y lit ses classes.
+        'suivi_des_notes' => [
+            'enabled' => true,
+            'any_permissions' => ['academic_health.view', 'academic_health.view_own'],
+            'libelle' => 'Lecture du suivi des notes…',
+            'suggestion' => "Qu'est-ce qui manque comme notes au semestre 1 de cette classe ?",
+        ],
         'proposer_liaison_ue_parcours' => [
             'enabled' => true,
             'all_permissions' => ['lmd.structure.manage'],
             'libelle' => 'Préparation de la liaison UE ↔ parcours…',
+        ],
+        // Mêmes permissions que les modals de /esbtp/lmd/ue (modifier : manage ;
+        // retirer un élément : delete).
+        'proposer_modification_maquette_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.structure.manage'],
+            'libelle' => 'Préparation des modifications de la maquette…',
+            'suggestion' => 'Aligne la maquette L1 S1 de ce parcours sur le bulletin officiel',
+        ],
+        'proposer_retrait_ecue_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.structure.delete'],
+            'libelle' => 'Préparation du retrait de l’élément…',
         ],
         'proposer_creation_classes' => [
             'enabled' => true,
@@ -170,6 +190,13 @@ return [
             'libelle' => 'Préparation de la saisie du relevé…',
             'suggestion' => 'Saisis le relevé de notes du semestre 1 de cette classe pour 2025-2026',
         ],
+        // Mêmes permissions que le bandeau de l'écran des notes LMD.
+        'proposer_requalification_examen' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.notes.manage', 'evaluations.edit'],
+            'libelle' => 'Recherche des régularisations à requalifier…',
+            'suggestion' => 'Les notes de régularisation de cette classe étaient les notes d’examen',
+        ],
         'proposer_saisie_moyennes' => [
             'enabled' => true,
             'all_permissions' => ['bulletins.edit'],
@@ -213,6 +240,12 @@ return [
             'enabled' => true,
             'all_permissions' => ['lmd.planning.edit'],
             'libelle' => 'Préparation des affectations d’enseignants…',
+        ],
+        'proposer_professeur_classe_lmd' => [
+            'enabled' => true,
+            'all_permissions' => ['lmd.planning.edit'],
+            'libelle' => 'Préparation du professeur de la classe…',
+            'suggestion' => 'Mets ce professeur sur cet ECUE de cette classe au semestre 1',
         ],
         // La pièce appartient à qui l'a déposée (PiecesJointes::pour) : ces droits
         // ne disent que les métiers où lire un tableau joint a un sens.
@@ -294,6 +327,12 @@ return [
             'libelle' => 'Lecture des rendez-vous…',
             'suggestion' => 'Où en sont les rendez-vous d’inscription ?',
         ],
+        'lire_rendez_vous_cible' => [
+            'enabled' => true,
+            'any_permissions' => ['inscriptions.rdv.view', 'inscriptions.rdv.manage', 'inscriptions.rdv.accueil'],
+            'libelle' => 'Recherche du rendez-vous précis…',
+            'suggestion' => 'Retrouve le rendez-vous de cette famille',
+        ],
         'proposer_generation_creneaux_rdv' => [
             'enabled' => true,
             'all_permissions' => ['inscriptions.rdv.manage'],
@@ -308,6 +347,12 @@ return [
             'enabled' => true,
             'all_permissions' => ['inscriptions.rdv.manage'],
             'libelle' => 'Préparation des convocations…',
+        ],
+        'proposer_gestion_rendez_vous_cible' => [
+            'enabled' => true,
+            'any_permissions' => ['inscriptions.rdv.manage', 'inscriptions.rdv.accueil'],
+            'libelle' => 'Préparation du rendez-vous…',
+            'suggestion' => 'Reprogramme le rendez-vous de cette famille',
         ],
         'search_attendances' => [
             'enabled' => true,

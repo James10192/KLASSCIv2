@@ -170,6 +170,18 @@ class NananReleveLmdTest extends TestCase
         $this->assertStringContainsString('1 note(s) du relevé sont déjà enregistrées avec la même valeur', json_encode($r, JSON_UNESCAPED_UNICODE));
     }
 
+    public function test_un_releve_d_examen_seul_cree_des_examens(): void
+    {
+        $r = $this->proposer(['nature' => 'examen'] + $this->args([
+            ['etudiant' => 'FL25-001', 'notes' => [['element' => 'BMIB111', 'note' => 12.5]]],
+        ]));
+        $this->assertStringContainsString("Une évaluation d'examen par élément", json_encode($r, JSON_UNESCAPED_UNICODE));
+
+        $this->assertSame('executee', $this->valider($r)['statut']);
+        $this->assertSame(['examen'], ESBTPEvaluation::pluck('type')->all());
+        $this->assertStringStartsWith('Examen SEMESTRE1', (string) ESBTPEvaluation::value('titre'));
+    }
+
     public function test_une_colonne_qui_ne_designe_pas_un_seul_element_est_une_question(): void
     {
         $manques = $this->manques($this->proposer($this->args([

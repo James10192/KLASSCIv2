@@ -610,6 +610,8 @@ class CLIFraisController extends BaseApiController
             'configurations.*.amount_affecte' => ['nullable', 'numeric', 'min:0'],
             'configurations.*.amount_reaffecte' => ['nullable', 'numeric', 'min:0'],
             'configurations.*.amount_non_affecte' => ['nullable', 'numeric', 'min:0'],
+            'configurations.*.audience' => ['nullable', 'in:tous,nouveaux_etablissement,anciens_etablissement'],
+            'configurations.*.deadline_days' => ['nullable', 'integer', 'min:1', 'max:365'],
         ]);
 
         $appliquer = (bool) ($valide['apply'] ?? false);

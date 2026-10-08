@@ -1660,7 +1660,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // CHARGEMENT FRAIS PAR CLASSE
     // =============================================
     document.addEventListener('change', function(e) {
-        if (e.target.id === 'classe_id' || e.target.id === 'statut_etablissement') {
+        if (e.target.id === 'classe_id' || e.target.id === 'statut_etablissement' || e.target.id === 'annee_universitaire_id') {
             if (isLoadingFrais) return;
             const classeId = document.getElementById('classe_id')?.value;
             const fraisContainer = document.getElementById('fraisContainer');
@@ -1677,6 +1677,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const affectationStatus = document.getElementById('affectation_status')?.value || 'affecté';
                 const statutEtablissement = document.getElementById('statut_etablissement')?.value || '';
                 const fraisQuery = new URLSearchParams({ affectation_status: affectationStatus });
+                const anneeId = document.getElementById('annee_universitaire_id')?.value;
+                if (anneeId) fraisQuery.set('annee_universitaire_id', anneeId);
                 if (statutEtablissement) {
                     fraisQuery.set('statut_etablissement', statutEtablissement);
                 }

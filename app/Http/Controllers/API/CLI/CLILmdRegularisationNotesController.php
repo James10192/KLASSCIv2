@@ -34,6 +34,7 @@ final class CLILmdRegularisationNotesController extends BaseApiController
             'periode' => ['required', 'regex:/^semestre([1-9]|10)$/'],
             'date_regularisation' => ['required', 'date'],
             'motif' => ['required', 'string', 'min:20', 'max:1000'],
+            'nature' => ['nullable', 'in:' . implode(',', RegularisationDeNotesLmd::NATURES)],
             'dry_run' => ['nullable', 'boolean'],
             'notes' => ['required', 'array', 'min:1', 'max:40'],
             'notes.*.matiere_id' => ['required', 'integer', 'distinct', 'exists:esbtp_matieres,id'],

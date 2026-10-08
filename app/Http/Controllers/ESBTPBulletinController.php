@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\ListeInfinie;
+use App\Support\LMDBulletinPrintSettings;
 use App\Domain\Bulletins\FiltresBulletins;
 use App\Http\Controllers\Concerns\ExporteBulletinsParTranches;
 use App\Domain\Academique\CoherenceSystemeAcademique;
@@ -997,10 +998,14 @@ class ESBTPBulletinController extends Controller
             // Bug observé : 7.00 + 0.13 = 7.13 au lieu de 10.49 + 0.13 = 10.62.
             $moyenneAvecAssiduite = $moyenneGlobale + ($noteAssiduite ?? 0);
             $classeIdS1 = (int) $bulletin->classe_id;
+            $classeIdS2 = (int) $bulletin->classe_id;
             $classMap = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)
                 ->resolve((int) $bulletin->etudiant_id, (int) $bulletin->classe_id, (int) $bulletin->annee_universitaire_id);
             if (! empty($classMap['semestre1_classe_id'])) {
                 $classeIdS1 = (int) $classMap['semestre1_classe_id'];
+            }
+            if (! empty($classMap['semestre2_classe_id'])) {
+                $classeIdS2 = (int) $classMap['semestre2_classe_id'];
             }
             $moyenneSemestre1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
                 $bulletin->etudiant_id,
@@ -1012,13 +1017,19 @@ class ESBTPBulletinController extends Controller
             );
             $moyenneSemestre2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
                 $bulletin->etudiant_id,
-                $bulletin->classe_id,
+                $classeIdS2,
                 $bulletin->annee_universitaire_id,
                 'semestre2',
                 $periodeCourante,
                 $moyenneAvecAssiduite
             );
-            $moyenneAnnuelle = $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+            $moyenneAnnuelle = $this->bulletinService->calculateConfiguredAnnualAverage(
+                $moyenneSemestre1,
+                $moyenneSemestre2,
+                $semesterWeights,
+                $classeIdS1,
+                $classeIdS2
+            );
             $effectifClasse = $this->bulletinService->getValidatedClassStudentCount(
                 $bulletin->classe_id,
                 $bulletin->annee_universitaire_id,
@@ -2169,7 +2180,7 @@ class ESBTPBulletinController extends Controller
      */
     public function saveConfiguration(Request $request)
     {
-        $request->validate([
+        $request->validate(array_merge([
             'bulletin_header_scale' => ['nullable', 'integer', 'min:70', 'max:220'],
             'bulletin_header_left_font_size' => ['nullable', 'integer', 'min:6', 'max:24'],
             'bulletin_header_school_name_font_size' => ['nullable', 'integer', 'min:8', 'max:30'],
@@ -2184,7 +2195,11 @@ class ESBTPBulletinController extends Controller
             'bulletin_edition_opacity' => ['nullable', 'integer', 'min:10', 'max:100'],
             'bulletin_authenticity_font_size' => ['nullable', 'integer', 'min:6', 'max:18'],
             'bulletin_authenticity_opacity' => ['nullable', 'integer', 'min:10', 'max:100'],
-        ]);
+            'lmd_bulletin_parcours_auto' => ['nullable', 'in:0,1'],
+            'lmd_bulletin_code_etablissement' => ['nullable', 'string', 'max:160'],
+            'lmd_bulletin_statut' => ['nullable', 'string', 'max:80'],
+            'lmd_bulletin_direction' => ['nullable', 'string', 'max:160'],
+        ], LMDBulletinPrintSettings::validationRules()));
 
         $effectiveBtsSettings = BtsBulletinPolicy::effectiveSettings(
             $request->all(),
@@ -2311,6 +2326,8 @@ class ESBTPBulletinController extends Controller
                 'lmd_bulletin_label_parcours',
                 'lmd_bulletin_notice_text',
                 'lmd_bulletin_bottom_text',
+                'lmd_bulletin_parcours_auto',
+                ...LMDBulletinPrintSettings::fieldKeys(),
             ]);
 
             // Récupérer tous les paramètres de bulletin avec gestion des checkboxes

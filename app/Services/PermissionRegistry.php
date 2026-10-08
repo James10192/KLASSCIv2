@@ -77,6 +77,36 @@ class PermissionRegistry
     }
 
     /**
+     * Ramène un ancien nom de rôle vers son rôle canonique.
+     *
+     * Les rôles `teacher` / `admin` peuvent encore exister sur des comptes
+     * créés avant leur fusion. Le registry les marque déjà comme deprecated avec
+     * une raison « Rôle doublon de X » : on réutilise cette source de vérité au
+     * lieu de recopier une table d'aliases dans le code métier.
+     */
+    public function canonicalizeRole(string $role): string
+    {
+        if (array_key_exists($role, config('permissions.roles', []))) {
+            return $role;
+        }
+
+        $reason = $this->deprecatedReason($role);
+        if (! $reason) {
+            return $role;
+        }
+
+        if (preg_match('/R[oô]le doublon de ([A-Za-z0-9_]+)/ui', $reason, $matches) !== 1) {
+            return $role;
+        }
+
+        $canonical = $matches[1] ?? $role;
+
+        return array_key_exists($canonical, config('permissions.roles', []))
+            ? $canonical
+            : $role;
+    }
+
+    /**
      * Indique si un rôle est custom (créé depuis l'UI), donc modifiable/supprimable.
      */
     public function roleIsCustom(string $role): bool
@@ -209,7 +239,12 @@ class PermissionRegistry
      */
     public function manageableRoles(string $actorRole): array
     {
-        return config('permissions.role_management', [])[$actorRole] ?? [];
+        $actorRole = $this->canonicalizeRole($actorRole);
+
+        return array_values(array_unique(array_map(
+            fn (string $role) => $this->canonicalizeRole($role),
+            config('permissions.role_management', [])[$actorRole] ?? [],
+        )));
     }
 
     public function isDeprecated(string $name): bool

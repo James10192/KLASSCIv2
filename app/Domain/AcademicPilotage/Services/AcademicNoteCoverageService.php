@@ -3,6 +3,7 @@
 namespace App\Domain\AcademicPilotage\Services;
 
 use App\Domain\AcademicPilotage\Enums\GradeSheetEntryStatus;
+use App\Domain\AcademicPilotage\Support\NatureDesNotes;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPInscription;
@@ -576,13 +577,7 @@ final class AcademicNoteCoverageService
     private function subjectRow(?ESBTPMatiere $subject, Collection $evaluations, Collection $futureEvaluations, \Closure $indexPour, Collection $entries, bool $orphan = false, array $enseignants = []): array
     {
         $evaluationRows = $evaluations->map(fn (ESBTPEvaluation $evaluation): array => $this->evaluationRow($evaluation, $indexPour($evaluation), $entries))->values();
-        $missingByStudent = [];
-
-        foreach ($evaluationRows as $row) {
-            foreach ($row['missing_students'] as $student) {
-                $missingByStudent[$student['id']] = $student;
-            }
-        }
+        $missingByStudent = $evaluationRows->flatMap(fn (array $row) => $row['missing_students'])->keyBy('id')->all();
 
         $actors = $evaluationRows->flatMap(fn (array $row) => $row['actors'])->unique('id')->values();
         $manquants = (int) $evaluationRows->sum('missing_count');
@@ -605,6 +600,9 @@ final class AcademicNoteCoverageService
             'id' => $matiereId,
             'name' => $subject?->name ?? ($matiereId ? 'Matière #'.$matiereId : 'Matière hors référentiel'),
             'code' => $subject?->code,
+            // L'unite d'un element LMD, et ce qui a ete note (CC, examen, les deux).
+            'groupe' => $subject?->getAttribute('ue_libelle'),
+            'nature' => NatureDesNotes::pour($evaluationRows),
             'is_orphan' => $orphan,
             'statut' => $statut,
             // Qui relancer. Vient du planning general, et ne sert QU'A CA :

@@ -45,8 +45,6 @@
     }
     .ln-hero-info h1 { font-size: 1.45rem; font-weight: 700; margin: 0 0 .2rem; color: #fff; letter-spacing: -.02em; }
     .ln-hero-info p { margin: 0; opacity: .8; font-size: .88rem; }
-
-    /* KPIs in hero */
     .ln-hero-kpis {
         display: flex; gap: .75rem; margin-top: 1.5rem;
         position: relative; z-index: 1; flex-wrap: wrap;
@@ -202,7 +200,6 @@
 
     /* Modal body */
     .ln-modal .modal-body { padding: 0; }
-
     .ln-modal-toolbar {
         display: flex; align-items: center; gap: .75rem; padding: 1rem 1.5rem;
         border-bottom: 1px solid #e8ecf1; flex-wrap: wrap; background: #fafbfc;
@@ -318,6 +315,8 @@
     .ln-student-mat { font-size: .68rem; color: #94a3b8; font-family: 'SF Mono', SFMono-Regular, monospace; }
 
     /* Note input */
+    .ln-suivi { margin: .85rem 1.5rem 0; }
+    .ln-suivi .cvn { margin-bottom: 0; }
     .ln-note-input {
         width: 52px; padding: .28rem .3rem; border: 1.5px solid #e2e8f0;
         border-radius: 6px; font-size: .84rem; text-align: center;
@@ -502,9 +501,12 @@
                 <div class="ln-hero-icon"><i class="fas fa-edit"></i></div>
                 <div class="ln-hero-info">
                     <h1>Notes LMD</h1>
-                    <p>Gestion des notes par classe — {{ $anneeCourante->name ?? 'Aucune année' }}</p>
+                    <p>Gestion des notes par classe — {{ $anneeSelectionnee->name ?? 'Aucune année' }}</p>
                 </div>
             </div>
+            <form method="GET" action="{{ route('esbtp.lmd.notes.index') }}"><x-au-select name="annee_universitaire_id" id="lmd_annee_universitaire_id"
+                :value="$anneeSelectionnee?->id" icon="fa-calendar" :searchable="false" :placeholder-is-first-option="false" onchange="this.form.submit()"
+                :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => $a->name.($a->is_current ? ' · courante' : '')])->toArray()" /></form>
         </div>
 
         <div class="ln-hero-kpis">
@@ -648,7 +650,12 @@
                     </div>
                 </div>
 
-                {{-- Toolbar: UE → ECUE selectors + dynamic periods --}}
+                @include('esbtp.lmd.notes.partials._requalification')
+
+                <div class="ln-suivi">
+                    @include('esbtp.partials._couverture-notes', ['classeId' => null, 'anneeId' => $anneeSelectionnee->id ?? null, 'periode' => 'semestre1', 'titre' => 'Suivi du semestre', 'replie' => true])
+                </div>
+
                 <div class="ln-modal-toolbar">
                     <select id="ueSelect" style="min-width:220px;">
                         <option value="">— Choisir une UE —</option>
@@ -738,6 +745,7 @@
                 @csrf
                 <input type="hidden" name="classe_id" id="evalClasseId">
                 <input type="hidden" name="matiere_id" id="evalMatiereId">
+                <input type="hidden" name="annee_universitaire_id" value="{{ $anneeSelectionnee?->id }}">
                 <input type="hidden" name="embed" value="1">
                 <input type="hidden" name="is_published" value="1">
 
@@ -843,9 +851,13 @@ let currentClasseId = null;
 let currentClasseData = null;
 let currentMatiereId = null;
 let currentMatiereName = '';
+const lmdAcademicYearId = @json($anneeSelectionnee?->id);
 let evaluationsData = {};
 let notesData = {};
 let evalParamsCache = {};
+// Règle de moyenne du bulletin LMD : { cc, examen } si l'école pondère, null sinon.
+const ponderationEcue = @json($ponderation ?? null);
+let repriseLimitePrevue = null;
 let classeSemestres = []; // Dynamic semesters from class level
 const canEditExistingNotes = @json(auth()->user()->can('notes.edit'));
 const lmdAppreciationScale = @json(app(\App\Services\AppreciationScaleService::class)->frontendScale('lmd'));
@@ -898,9 +910,10 @@ async function openNotesModal(classeId, classeName) {
     ecueSelect.disabled = true;
 
     notesModal.show();
+    chargerRequalification(classeId);
 
     try {
-        const resp = await fetch('/esbtp/lmd/notes/classe/' + classeId + '/data', {
+        const resp = await fetch('/esbtp/lmd/notes/classe/' + classeId + '/data?annee_universitaire_id=' + encodeURIComponent(lmdAcademicYearId), {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
         currentClasseData = await resp.json();
@@ -908,6 +921,10 @@ async function openNotesModal(classeId, classeName) {
 
         // Store class semestres for dynamic period options
         classeSemestres = data.classe.semestres || [1, 2];
+        if (!document.getElementById('notesModalTitle').textContent) {
+            document.getElementById('notesModalTitle').textContent = data.classe.name || '';
+        }
+        lmdSuiviContexte(classeSemestres[0]);
 
         // Update hero
         const sub = [data.classe.filiere, data.classe.niveau].filter(Boolean).join(' · ');
@@ -1020,7 +1037,11 @@ document.getElementById('periodeFilter').addEventListener('change', function() {
     if (document.getElementById('ecueSelect').value) {
         buildNotesGrid();
     }
+    // Le suivi montre le semestre choisi ; « Toutes » le laisse où il est.
+    if (this.value !== 'all') lmdSuiviContexte(this.value);
 });
+
+@include('esbtp.lmd.notes.partials._suivi-script')
 
 // ══ Load evaluations for class + matière (same API as BTS) ══
 async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
@@ -1030,7 +1051,7 @@ async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
     document.getElementById('autosaveInfo').style.display = 'none';
 
     try {
-        const resp = await fetch(`/esbtp/notes/api/evaluations/by-class-matiere/${classeId}/${matiereId}`, {
+        const resp = await fetch(`/esbtp/notes/api/evaluations/by-class-matiere/${classeId}/${matiereId}?annee_universitaire_id=${encodeURIComponent(lmdAcademicYearId)}`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
         });
         const data = await resp.json();
@@ -1043,7 +1064,7 @@ async function loadEvaluationsAndBuildGrid(classeId, matiereId) {
         // Cache params
         evalParamsCache = {};
         Object.values(evaluationsData).forEach(ev => {
-            evalParamsCache[ev.id] = { bareme: parseFloat(ev.bareme) || 20, coefficient: parseFloat(ev.coefficient) || 1 };
+            evalParamsCache[ev.id] = { bareme: parseFloat(ev.bareme) || 20, coefficient: parseFloat(ev.coefficient) || 1, type: ev.type };
         });
 
         document.getElementById('notesLoading').style.display = 'none';
@@ -1257,6 +1278,7 @@ function saveNote(studentId, evaluationId, noteValue) {
         if (!data.success) throw new Error(data.message || 'Erreur de sauvegarde');
         markNoteSaved(input);
         removeOfflineNote(noteMutationKey(payload));
+        lmdSuiviApresSauvegarde();
     }).catch(err => {
         if (err.refusee) {
             // Refus du serveur : ce n'est PAS une attente réseau. On ne garde
@@ -1267,8 +1289,9 @@ function saveNote(studentId, evaluationId, noteValue) {
             calculateClassAverages();
             return;
         }
-        console.error('Save error:', err);
-        queueOfflineNote(payload, input, err.message);
+        if (!err.limite) console.error('Save error:', err);
+        queueOfflineNote(payload, input, err.limite ? null : err.message);
+        if (err.limite) planifierRepriseApresLimite(err.limite);
     }).finally(() => {
         input?.classList.remove('ln-syncing');
         updateOfflineQueueIndicator();
@@ -1286,6 +1309,12 @@ function sendNoteMutation(payload) {
         body: JSON.stringify(payload)
     }).then(async r => {
         const data = await r.json().catch(() => ({}));
+        if (r.status === 429) {
+            // Trop de notes en une minute : la note attend et repart seule.
+            const err = new Error('Trop de notes en une minute : elle sera renvoyée automatiquement.');
+            err.limite = parseInt(r.headers.get('Retry-After') || '20', 10) || 20;
+            throw err;
+        }
         if (r.status >= 400 && r.status < 500) {
             const detail = data.errors ? Object.values(data.errors).flat()[0] : null;
             const err = new Error(detail || data.message || 'Note refusée.');
@@ -1408,6 +1437,11 @@ function envoyerLot(notes, submitFinal) {
         body: JSON.stringify({ notes, submit_final: submitFinal })
     }).then(async r => {
         const data = await r.json().catch(() => ({}));
+        if (r.status === 429) {
+            const err = new Error('Trop d’enregistrements en une minute : réessayez dans un instant.');
+            err.limite = parseInt(r.headers.get('Retry-After') || '20', 10) || 20;
+            throw err;
+        }
         if (r.status >= 400 && r.status < 500) {
             const err = new Error(data.errors ? Object.values(data.errors).flat()[0] : (data.message || 'Enregistrement refusé.'));
             err.refusee = true;
@@ -1429,6 +1463,7 @@ function envoyerLot(notes, submitFinal) {
             setTimeout(() => inp.classList.remove('ln-saved'), 1500);
         });
         window.dispatchEvent(new CustomEvent('toast', { detail: { type: data.success ? 'success' : 'warning', message: data.message || 'Notes enregistrées.' } }));
+        lmdSuiviApresSauvegarde();
         (currentClasseData?.etudiants || []).forEach(stu => calculateStudentAverage(stu.id));
         calculateClassAverages();
     }).catch(err => {
@@ -1436,6 +1471,12 @@ function envoyerLot(notes, submitFinal) {
         btn.innerHTML = libelle;
         if (err.refusee) {
             window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: err.message } }));
+            return;
+        }
+        if (err.limite) {
+            // Rien n'est perdu : les notes restent à l'écran, la file les renverra.
+            if (!submitFinal) { notes.forEach(note => queueOfflineNote(note, findNoteInput(note))); planifierRepriseApresLimite(err.limite); }
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message: err.message } }));
             return;
         }
         console.error('Bulk save error:', err);
@@ -1523,10 +1564,16 @@ function markQueuedNoteInputs() {
     });
 }
 
+function planifierRepriseApresLimite(secondes) {
+    if (repriseLimitePrevue) return;
+    repriseLimitePrevue = setTimeout(() => { repriseLimitePrevue = null; replayOfflineNoteQueue(); }, (secondes + 1) * 1000);
+}
+
 async function replayOfflineNoteQueue() {
     if (isReplayingOfflineQueue || !navigator.onLine || offlineNoteQueue.length === 0) return;
     isReplayingOfflineQueue = true;
     updateOfflineQueueIndicator('syncing');
+    const presentesAuDepart = new Set(offlineNoteQueue.map(item => item.key));
 
     for (const item of [...offlineNoteQueue]) {
         const input = findNoteInput(item.payload);
@@ -1544,7 +1591,8 @@ async function replayOfflineNoteQueue() {
                 markNoteRefused(input, err.message);
                 continue;
             }
-            queueOfflineNote(item.payload, input, err.message);
+            queueOfflineNote(item.payload, input, err.limite ? null : err.message);
+            if (err.limite) planifierRepriseApresLimite(err.limite);
             break;
         } finally {
             input?.classList.remove('ln-syncing');
@@ -1553,6 +1601,11 @@ async function replayOfflineNoteQueue() {
 
     isReplayingOfflineQueue = false;
     updateOfflineQueueIndicator();
+    // Une note mise en file pendant cette reprise ne doit pas attendre le
+    // prochain « online ». Les autres restent pour leur propre motif (réseau,
+    // limite) : relancer sur elles bouclerait contre une panne du serveur.
+    const arriveesPendant = offlineNoteQueue.some(item => !presentesAuDepart.has(item.key));
+    if (arriveesPendant && navigator.onLine && !repriseLimitePrevue) planifierRepriseApresLimite(5);
 }
 
 function updateOfflineQueueIndicator(mode = null) {
@@ -1584,28 +1637,47 @@ function updateOfflineQueueIndicator(mode = null) {
 }
 
 // ══ Calculate student average + appreciation ══
-function calculateStudentAverage(studentId) {
-    const inputs = document.querySelectorAll(`.ln-note-input[data-student-id="${studentId}"]`);
-    let totalPoints = 0, totalCoeff = 0;
+/**
+ * Moyenne d'un élève pour l'ECUE affiché. lignes : [{ note sur 20, coefficient, examen }].
+ * ponderation : { cc, examen } ou null. Rend null s'il n'y a aucune note.
+ */
+function moyenneDeLaGrille(lignes, ponderation) {
+    const moyenneDe = ls => {
+        const coeff = ls.reduce((t, l) => t + l.coefficient, 0);
+        return coeff > 0 ? ls.reduce((t, l) => t + l.note * l.coefficient, 0) / coeff : null;
+    };
+    const simple = moyenneDe(lignes);
+    if (!ponderation || simple === null) return simple;
+    const parties = [
+        [moyenneDe(lignes.filter(l => !l.examen)), Math.max(0, ponderation.cc)],
+        [moyenneDe(lignes.filter(l => l.examen)), Math.max(0, ponderation.examen)],
+    ].filter(p => p[0] !== null);
+    const poids = parties.reduce((t, p) => t + p[1], 0);
+    return poids > 0 ? parties.reduce((t, p) => t + p[0] * p[1], 0) / poids : simple;
+}
 
+function calculateStudentAverage(studentId) {
+    // Même calcul que le bulletin (LMDBulletinService::calculerMoyenneECUE) :
+    // une absence compte 0, et si l'école pondère, la moyenne des contrôles
+    // continus et celle des examens sont pondérées, une partie seule comptant seule.
+    const inputs = document.querySelectorAll(`.ln-note-input[data-student-id="${studentId}"]`);
+    const lignes = [];
     inputs.forEach(inp => {
         const evalId = inp.dataset.evalId;
         const absCheck = document.querySelector(`.ln-abs-check[data-student-id="${studentId}"][data-eval-id="${evalId}"]`);
-        if (absCheck?.checked) return;
+        const params = evalParamsCache[evalId] || { bareme: 20, coefficient: 1 };
+        if (absCheck?.checked) { lignes.push({ note: 0, coefficient: params.coefficient, examen: params.type === 'examen' }); return; }
         const val = noteRetenue(inp);
         if (isNaN(val)) return;
-        const params = evalParamsCache[evalId] || { bareme: 20, coefficient: 1 };
-        const normalized = (val / params.bareme) * 20;
-        totalPoints += normalized * params.coefficient;
-        totalCoeff += params.coefficient;
+        lignes.push({ note: (val / params.bareme) * 20, coefficient: params.coefficient, examen: params.type === 'examen' });
     });
+    const avg = moyenneDeLaGrille(lignes, ponderationEcue);
 
     const avgEl = document.getElementById('avg-' + studentId);
     const apprEl = document.getElementById('appr-' + studentId);
     if (!avgEl) return;
 
-    if (totalCoeff > 0) {
-        const avg = totalPoints / totalCoeff;
+    if (avg !== null) {
         avgEl.textContent = avg.toFixed(2);
         avgEl.className = 'ln-avg ' + (avg >= 10 ? 'ln-avg--pass' : 'ln-avg--fail');
 
@@ -1750,11 +1822,16 @@ async function submitEvaluation() {
             body: formData
         });
 
-        const data = await resp.json();
+        const data = await resp.json().catch(() => ({
+            success: false,
+            message: resp.status === 419
+                ? 'Votre session a expiré. Rechargez la page avant de réessayer.'
+                : 'Le serveur n’a pas pu créer l’évaluation (HTTP ' + resp.status + '). Veuillez réessayer.'
+        }));
 
         if (!resp.ok || !data.success) {
             // Show validation errors
-            if (data.errors) {
+            if (data.errors && Object.values(data.errors).flat().some(Boolean)) {
                 const errDiv = document.getElementById('evalErrors');
                 errDiv.innerHTML = '<strong>Erreurs :</strong><ul style="margin:.25rem 0 0; padding-left:1.2rem;">' +
                     Object.values(data.errors).flat().map(e => '<li>' + escHtml(e) + '</li>').join('') + '</ul>';
@@ -1772,6 +1849,10 @@ async function submitEvaluation() {
                         input.parentNode.appendChild(fb);
                     }
                 });
+            } else {
+                const errDiv = document.getElementById('evalErrors');
+                errDiv.textContent = data.message || 'La création de l’évaluation a été refusée. Veuillez réessayer.';
+                errDiv.style.display = 'block';
             }
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-plus-circle"></i> Créer l\'évaluation';
@@ -1837,3 +1918,4 @@ function escHtml(str) {
 }
 </script>
 @endpush
+

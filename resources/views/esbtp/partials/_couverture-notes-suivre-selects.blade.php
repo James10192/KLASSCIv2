@@ -69,3 +69,7 @@
     }
 })();
 </script>
+{{-- Sur le formulaire d'évaluation uniquement, ce script détecte une classe
+     LMD et remplace le choix libre matière/professeur par maquette + planning.
+     Son garde interne le rend inerte sur les autres pages qui incluent ce pont. --}}
+<script src="{{ asset('js/lmd-evaluation-teacher.js') }}?v=20261003"></script>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Concerns;
 
+use App\Domain\Comptabilite\Paiements\Services\AccountingPeriodGuard;
 use App\Models\ESBTPPaiement;
 use Illuminate\Support\Facades\Log;
 
@@ -33,43 +34,25 @@ trait VerrouilleLesPeriodesComptables
      */
     protected function assertPeriodNotLocked(ESBTPPaiement $paiement): ?array
     {
-        $lockedUntil = \App\Helpers\SettingsHelper::get('comptabilite.period_locked_until');
-        if (empty($lockedUntil)) {
-            return null;
-        }
-
-        try {
-            $lockDate = \Carbon\Carbon::parse($lockedUntil)->endOfDay();
-        } catch (\Throwable $e) {
-            return null; // Setting mal formaté, on n'applique pas de garde
-        }
-
-        // Date de référence du paiement : date_paiement (la vraie date métier) ou created_at fallback
         $paiementDate = $paiement->date_paiement
             ? \Carbon\Carbon::parse($paiement->date_paiement)
             : ($paiement->created_at ?: now());
 
-        if ($paiementDate->gt($lockDate)) {
-            return null; // Postérieur au verrouillage → modifiable
-        }
+        $locked = app(AccountingPeriodGuard::class)->lockedContext(
+            $paiementDate,
+            auth()->user(),
+            ['paiement_id' => $paiement->id, 'action' => 'mutate_payment']
+        );
 
-        // Bypass autorisé (superAdmin via Gate::before *, ou perm explicite)
-        if (auth()->user()?->can('comptabilite.period.bypass_lock')) {
-            Log::warning('[S1.4] Bypass verrouillage période utilisé', [
-                'paiement_id' => $paiement->id,
-                'paiement_date' => $paiementDate->toDateString(),
-                'period_locked_until' => $lockDate->toDateString(),
-                'user_id' => auth()->id(),
-            ]);
-
+        if ($locked === null) {
             return null;
         }
 
         return [
             'message' => sprintf(
                 'Action refusée : le paiement du %s appartient à une période comptable verrouillée (jusqu\'au %s). Demandez à un comptable habilité de débloquer la période ou créez une écriture corrective sur la période courante.',
-                $paiementDate->translatedFormat('d/m/Y'),
-                $lockDate->translatedFormat('d/m/Y'),
+                $locked['date']->format('d/m/Y'),
+                $locked['locked_until']->format('d/m/Y'),
             ),
         ];
     }

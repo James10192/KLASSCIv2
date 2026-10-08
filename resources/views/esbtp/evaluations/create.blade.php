@@ -37,7 +37,7 @@
                         </span>
                     @endif
                     @if(auth()->check() && !auth()->user()->can('identity.teach'))
-                        <a href="{{ route('esbtp.evaluations.index') }}" class="ec-btn ec-btn--glass">
+                        <a href="{{ route('esbtp.evaluations.index', ['annee_universitaire_id' => $anneeUniversitaire?->id]) }}" class="ec-btn ec-btn--glass">
                             <i class="fas fa-arrow-left"></i> Retour à la liste
                         </a>
                     @else
@@ -71,6 +71,7 @@
               data-load-matieres-url="{{ route('esbtp.evaluations.load-matieres') }}"
               data-coeff-check-url="{{ route('esbtp.evaluations.coefficients.check') }}">
             @csrf
+            <input type="hidden" name="annee_universitaire_id" value="{{ $anneeUniversitaire?->id }}">
             @if($isEmbed)
                 <input type="hidden" name="embed" value="1">
                 @if(!empty($classe_id))
@@ -823,7 +824,7 @@ textarea.ec-input { resize: vertical; min-height: 90px; }
                 if (coeffInfoDiv) coeffInfoDiv.style.display = 'none';
                 return;
             }
-            fetch(coeffCheckUrl + '?classe_id=' + encodeURIComponent(classeId) + '&matiere_id=' + encodeURIComponent(matiereId), {
+            fetch(coeffCheckUrl + '?classe_id=' + encodeURIComponent(classeId) + '&matiere_id=' + encodeURIComponent(matiereId) + '&annee_universitaire_id=' + encodeURIComponent(@json($anneeUniversitaire?->id)), {
                 headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
             })
                 .then(function(r) { return r.json(); })

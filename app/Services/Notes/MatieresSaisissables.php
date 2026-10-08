@@ -6,22 +6,27 @@ use App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
+use App\Services\LMD\MatiereTreeBuilder;
 use Illuminate\Support\Collection;
 
 /**
- * Les matières proposées à la saisie des notes pour une classe BTS.
+ * Les matières / ECUE proposées à la saisie des notes et aux écrans qui
+ * créent une évaluation pour une classe.
  *
- * La maquette de la classe (source canonique, tronc commun compris), plus
- * les matières déjà évaluées dans la classe cette année : une évaluation
- * créée hors maquette doit rester atteignable, sinon ses notes deviennent
- * impossibles à corriger. Sans maquette ni évaluation, le catalogue BTS
- * entier est rendu, marqué comme tel : mieux vaut une liste longue qu'une
- * saisie impossible.
+ * BTS : maquette canonique du bulletin + matières déjà évaluées ; si aucune
+ * source n'existe, repli sur le catalogue BTS historique.
+ *
+ * LMD : éléments de la maquette de LA classe via MatiereTreeBuilder, la source
+ * canonique imposée par `.claude/rules/lmd-bts-matieres-single-source.md`, plus
+ * les ECUE déjà évalués dans cette classe/année pour qu'une donnée historique
+ * reste corrigeable. Aucun repli vers le catalogue BTS n'est permis.
  */
 class MatieresSaisissables
 {
-    public function __construct(private BtsBulletinSubjectResolver $maquette)
-    {
+    public function __construct(
+        private BtsBulletinSubjectResolver $maquette,
+        private MatiereTreeBuilder $lmd,
+    ) {
     }
 
     /**
@@ -29,13 +34,19 @@ class MatieresSaisissables
      */
     public function pour(ESBTPClasse $classe, ?int $anneeId): array
     {
+        if ((string) $classe->systeme_academique === 'LMD') {
+            return $this->pourLmd($classe, $anneeId);
+        }
+
+        return $this->pourBts($classe, $anneeId);
+    }
+
+    private function pourBts(ESBTPClasse $classe, ?int $anneeId): array
+    {
         $deLaMaquette = $this->maquette->subjectsForClasse($classe)->keyBy('id');
 
         $evaluees = ESBTPMatiere::btsOnly()
-            ->whereIn('id', ESBTPEvaluation::query()
-                ->where('classe_id', $classe->id)
-                ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
-                ->select('matiere_id'))
+            ->whereIn('id', $this->evaluationIds($classe, $anneeId))
             ->get()
             ->keyBy('id');
 
@@ -45,9 +56,49 @@ class MatieresSaisissables
             )];
         }
 
-        $toutes = $deLaMaquette->union($evaluees)->sortBy(fn ($m) => mb_strtolower((string) $m->name))->values();
+        $toutes = $deLaMaquette->union($evaluees)
+            ->sortBy(fn ($m) => mb_strtolower((string) $m->name))
+            ->values();
 
         return ['source' => 'maquette', 'matieres' => $this->lignes($toutes, $deLaMaquette)];
+    }
+
+    private function pourLmd(ESBTPClasse $classe, ?int $anneeId): array
+    {
+        // MatiereTreeBuilder ne rend pas des ESBTPMatiere directement : chaque
+        // ligne porte ['matiere' => ESBTPMatiere, ...]. On extrait donc la
+        // matière avant de keyBy(), sinon la maquette LMD entière aurait la clé
+        // null et l'API ne proposerait rien.
+        $deLaMaquette = $this->lmd
+            ->loadLmdMatieresForClasse($classe)
+            ->pluck('matiere')
+            ->filter()
+            ->keyBy('id');
+
+        $evaluees = ESBTPMatiere::query()
+            ->whereNotNull('unite_enseignement_id')
+            ->whereIn('id', $this->evaluationIds($classe, $anneeId))
+            ->get()
+            ->keyBy('id');
+
+        $toutes = $deLaMaquette
+            ->union($evaluees)
+            ->sortBy(fn ($m) => mb_strtolower((string) $m->name))
+            ->values();
+
+        return [
+            'source' => $deLaMaquette->isEmpty() ? 'referentiel_absent' : 'maquette_lmd',
+            'matieres' => $this->lignes($toutes, $deLaMaquette),
+        ];
+    }
+
+    private function evaluationIds(ESBTPClasse $classe, ?int $anneeId)
+    {
+        return ESBTPEvaluation::query()
+            ->where('classe_id', $classe->id)
+            ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId))
+            ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
+            ->select('matiere_id');
     }
 
     private function lignes(Collection $matieres, Collection $deLaMaquette): array

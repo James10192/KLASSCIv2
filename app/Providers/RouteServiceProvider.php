@@ -67,6 +67,11 @@ class RouteServiceProvider extends ServiceProvider
                 ->namespace($this->namespace)
                 ->group(base_path('routes/api.php'));
 
+            // Charger les routes statiques LMD avant bulletins/{bulletin}.
+            Route::middleware('web')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/lmd-evaluation-teachers.php'));
+
             Route::middleware('web')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/web.php'));

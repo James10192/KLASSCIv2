@@ -792,7 +792,9 @@ class ESBTPInscriptionController extends Controller
             "niveau",
             "classe.parcours.mention.domaine",
             "anneeUniversitaire",
-            "paiements",
+            "paiements.fraisCategory",
+            "paiements.categorie",
+            "paiements.creator",
         ]);
 
 
@@ -852,9 +854,9 @@ class ESBTPInscriptionController extends Controller
                 ->where("frais_category_id", $category->id)
                 ->first();
 
-            if (! $subscription && ! $fraisResolver->categoryAppliesToStudent(
+            if (! $subscription && ! $fraisResolver->categoryAppliesToInscription(
                 $category,
-                $inscription->statut_etablissement,
+                $inscription,
             )) {
                 continue;
             }
@@ -2555,9 +2557,9 @@ class ESBTPInscriptionController extends Controller
                 if ($amount <= 0) continue;
 
                 $categorie = $categoriesConnues->get((int) $categoryId);
-                if ($categorie && ! $resolveurAudience->categoryAppliesToStudent(
+                if ($categorie && ! $resolveurAudience->categoryAppliesToInscription(
                     $categorie,
-                    $inscription->statut_etablissement
+                    $inscription
                 )) {
                     $fraisEcartes[] = $categorie->name;
                     continue;
