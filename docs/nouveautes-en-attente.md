@@ -1,5 +1,6 @@
 # Annonces dues aux écoles
 
+
 Chaque ligne commençant par `- ` est un changement visible déjà fusionné, dont
 l'entrée de la fenêtre « Nouveautés » (`resources/data/nouveautes.php`) et le
 changelog public (klassci-landing, FR + EN) restent à écrire.
@@ -12,6 +13,8 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+
+- 2026-10-08 · #1499 · Bulletin LMD : statut établissement masquable ; le bandeau Code / Statut / Direction disparaît complètement lorsqu’il ne contient aucun élément visible.
 
 - 2026-10-07 · #1444 · LMD : nouveau réglage « Minimum UE pour APC » ; une UE sous ce plancher reste NAQ même si la moyenne générale permet la compensation
 - 2026-10-07 · #1441 · bulletin LMD : pied de page duplicata / identité établissement élargi et largeur configurable ; le pays imprimé vient désormais des paramètres de l'école
