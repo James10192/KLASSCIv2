@@ -26,9 +26,9 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringContainsString('$paysEtablissement', $pdf);
         $this->assertStringContainsString("lmd_bulletin_bottom_width_percent", $pdf);
         $this->assertStringContainsString('class="bottom-note-line"', $pdf);
-        $this->assertStringContainsString('white-space: normal', $pdf);
-        $this->assertStringContainsString('word-wrap: break-word', $pdf);
-        $this->assertStringNotContainsString('white-space: nowrap', $pdf);
+        $this->assertStringContainsString('white-space: nowrap', $pdf);
+        $this->assertStringContainsString('lmd_bulletin_bottom_single_line', $pdf);
+        $this->assertStringContainsString('lmd-header-frame', $pdf);
         $this->assertStringNotContainsString("}}, Côte d'Ivoire", $pdf);
     }
 
@@ -85,8 +85,8 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
             $this->assertStringContainsString($setting, $view);
         }
 
-        $this->assertStringContainsString('colspan="2" style="height: 0;', $pdf);
-        $this->assertStringContainsString('border-bottom: 2px solid {{ $primary }};', $pdf);
+        $this->assertStringContainsString('<div class="lmd-header-frame">', $pdf);
+        $this->assertStringContainsString('border: 2px solid {{ $primary }};', $pdf);
     }
 
     public function test_lmd_direction_is_a_real_setting_and_not_the_directors_name_fallback(): void
