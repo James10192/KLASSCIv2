@@ -145,6 +145,7 @@
     <div class="bcfg-card-body">
         <div class="row g-3">
             <div class="col-12"><label class="bcfg-label">Notice importante</label><textarea class="bcfg-textarea" name="lmd_bulletin_notice_text" rows="2">{{ $lmdGet('lmd_bulletin_notice_text', \App\Services\LMDBulletinService::NOTICE_DEFAUT) }}</textarea></div>
+            <div class="col-md-6"><label class="bcfg-label">Pied de page sur une seule ligne</label><select class="bcfg-select" name="lmd_bulletin_bottom_single_line"><option value="1" {{ $lmdGet('lmd_bulletin_bottom_single_line','1') == '1' ? 'selected' : '' }}>Oui (police adaptée)</option><option value="0" {{ $lmdGet('lmd_bulletin_bottom_single_line','1') == '0' ? 'selected' : '' }}>Non (deux lignes)</option></select></div>
             <div class="col-12"><label class="bcfg-label">Texte de pied de page</label><input type="text" class="bcfg-input" name="lmd_bulletin_bottom_text" value="{{ $lmdGet('lmd_bulletin_bottom_text','Conservez soigneusement ce bulletin de notes. Aucun duplicata ne sera délivré.') }}"></div>
         </div>
     </div>
