@@ -110,6 +110,11 @@ class CLINotesDuplicationEcueController extends BaseApiController
                 continue;
             }
 
+            if ($notesSource->contains(fn (ESBTPNote $note) => $note->trashed())) {
+                $erreurs[] = ['evaluation_id' => $sourceId, 'erreur' => 'La source contient une note supprimée : restauration ou correction manuelle requise.'];
+                continue;
+            }
+
             $doublonsSource = $notesSource->groupBy('etudiant_id')->filter(fn ($notes) => $notes->count() !== 1);
             if ($doublonsSource->isNotEmpty()) {
                 $erreurs[] = [
