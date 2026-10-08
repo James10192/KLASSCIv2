@@ -33,6 +33,25 @@
     .doc-toolbar-title i { color:var(--doc-accent); }
     .doc-toolbar-sub { font-size:.78rem; color:var(--doc-muted); margin-top:1px; }
     .doc-toolbar-btns { display:flex; gap:8px; flex-wrap:wrap; }
+    .doc-history {
+        max-width:820px; margin:0 auto 20px; padding:16px 18px;
+        background:#fff; border:1px solid var(--doc-border); border-radius:var(--doc-radius);
+        box-shadow:0 1px 4px rgba(0,0,0,.05);
+    }
+    .doc-history-head { display:flex; gap:10px; align-items:flex-start; margin-bottom:12px; }
+    .doc-history-head i { color:var(--doc-accent); margin-top:3px; }
+    .doc-history-title { font-weight:800; color:var(--doc-body); }
+    .doc-history-help { font-size:.78rem; color:var(--doc-muted); margin-top:2px; }
+    .doc-history-row {
+        display:grid; grid-template-columns:minmax(0,1fr) 150px auto; gap:10px;
+        align-items:center; padding:10px 0; border-top:1px solid var(--doc-border);
+    }
+    .doc-history-label { min-width:0; font-size:.84rem; color:var(--doc-body); }
+    .doc-history-label strong { display:block; }
+    .doc-history-input { width:100%; border:1px solid #d1d5db; border-radius:8px; padding:8px 10px; }
+    @media (max-width:640px) {
+        .doc-history-row { grid-template-columns:1fr; }
+    }
 
     .doc-page-wrap { max-width:820px; margin:0 auto; }
     .doc-paper {
@@ -166,6 +185,41 @@
         @endif
     </div>
 </div>
+
+@php
+    $moyennesHistoriques = $inscriptions->filter(
+        fn ($inscription) => (bool) ($inscription->moyenne_historique_saisissable ?? false)
+    );
+@endphp
+@can('bulletins.edit')
+@if($moyennesHistoriques->isNotEmpty())
+<div class="doc-history no-print">
+    <div class="doc-history-head">
+        <i class="fas fa-clock-rotate-left"></i>
+        <div>
+            <div class="doc-history-title">Completer une ancienne moyenne annuelle</div>
+            <div class="doc-history-help">Uniquement pour une annee BTS terminee dont la moyenne annuelle ne peut pas etre reconstruite depuis les semestres. Cette saisie ne modifie aucune note et devient secondaire des que S1/S2 permettent un calcul officiel.</div>
+        </div>
+    </div>
+    @foreach($moyennesHistoriques as $inscription)
+    <form method="POST"
+          action="{{ route('esbtp.etudiants.certificat.moyenne-historique', ['etudiant' => $etudiant->id, 'inscription' => $inscription->id]) }}"
+          class="doc-history-row">
+        @csrf
+        @method('PATCH')
+        <div class="doc-history-label">
+            <strong>{{ $inscription->anneeUniversitaire?->display_name ?? 'Annee historique' }}</strong>
+            <span>{{ $inscription->classe?->name ?? $inscription->niveauEtude?->name ?? 'BTS' }}</span>
+        </div>
+        <input class="doc-history-input" type="number" name="moyenne" min="0" max="20" step="0.01"
+               value="{{ $inscription->moyenne_historique_existante !== null ? number_format((float) $inscription->moyenne_historique_existante, 2, '.', '') : '' }}"
+               placeholder="Moyenne /20" required aria-label="Moyenne annuelle sur 20">
+        <button class="btn-acasi primary" type="submit"><i class="fas fa-save me-1"></i>Enregistrer</button>
+    </form>
+    @endforeach
+</div>
+@endif
+@endcan
 
 <div class="doc-page-wrap">
 <div class="doc-paper">

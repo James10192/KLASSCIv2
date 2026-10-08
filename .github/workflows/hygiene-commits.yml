@@ -424,6 +424,9 @@ jobs:
           done
           exit $echec
 
+      - name: Fiche étudiant - cible de réinscription après échéance
+        run: php vendor/bin/phpunit tests/Feature/Etudiants/FicheEtudiantReinscriptionCibleTest.php --no-coverage
+
       # KLASSCI Care : les demandes de support, leurs pieces jointes et la file
       # d'envoi vers le Master vivent en base. Ces tests montent leurs tables
       # par RefreshDatabase : poses dans le job « sans base », ils tomberaient

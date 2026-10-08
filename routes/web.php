@@ -551,7 +551,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/etudiants/{etudiant}/certificat/preview-pdf', [ESBTPEtudiantController::class, 'previewCertificatPdf'])
                 ->name('etudiants.certificat.preview-pdf')
                 ->middleware(['permission:students.view', 'throttle:60,1']);
-
+            Route::patch('/etudiants/{etudiant}/certificat/moyenne-historique/{inscription}', [ESBTPEtudiantController::class, 'enregistrerMoyenneAnnuelleHistorique'])->name('etudiants.certificat.moyenne-historique')->middleware(['permission:students.view', 'permission:bulletins.edit']);
             // Routes pour les attestations de frÃ©quentation
             Route::get('/etudiants/{etudiant}/attestation-frequentation-preview', [ESBTPEtudiantController::class, 'previewAttestationFrequentation'])
                 ->name('etudiants.attestation-frequentation.preview')

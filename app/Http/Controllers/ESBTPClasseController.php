@@ -1518,12 +1518,12 @@ class ESBTPClasseController extends Controller
                 "user_id" => auth()->id(),
             ]);
 
-            // Get current academic year
-            $anneeCourante = ESBTPAnneeUniversitaire::where(
-                "is_current",
-                true,
-            )->first();
-            if (!$anneeCourante) {
+            // Contexte local à la grille ; sans paramètre, is_current reste le défaut.
+            $anneeSelectionnee = $request->filled('annee_universitaire_id')
+                ? ESBTPAnneeUniversitaire::findOrFail((int) $request->input('annee_universitaire_id'))
+                : ESBTPAnneeUniversitaire::where("is_current", true)->first();
+
+            if (! $anneeSelectionnee) {
                 return response()->json(
                     [
                         "success" => false,
@@ -1543,7 +1543,7 @@ class ESBTPClasseController extends Controller
             }
 
             $etudiants = $this->noteStudentCohortService
-                ->studentsForClass($classe, $anneeCourante, $semesters)
+                ->studentsForClass($classe, $anneeSelectionnee, $semesters)
                 ->map(function ($etudiant) {
                     return [
                         "id" => $etudiant->id,

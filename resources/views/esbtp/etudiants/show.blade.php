@@ -2225,7 +2225,13 @@
      HERO
 ════════════════════════════════════════════════════════════════ --}}
 @php
-    $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+    // Le contrôleur fournit l'année de travail et, séparément, la cible de
+    // réinscription. Repli conservé pour les rendus isolés de la vue.
+    $anneeCourante = $anneeCourante ?? \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+    $reinscriptionCible = $reinscriptionCible ?? null;
+    $anneeCouranteEchue = $anneeCouranteEchue ?? false;
+    $doitProposerReinscription = $doitProposerReinscription ?? false;
+
     $inscCourante = $anneeCourante
         ? $etudiant->inscriptions->first(fn($i) => $i->annee_universitaire_id === $anneeCourante->id)
         : null;
@@ -2574,9 +2580,10 @@
 <div class="tab-panel active" id="tab-overview">
     @include('esbtp.partials.bts-journey', ['btsJourney' => $btsJourney ?? null])
 
-    {{-- Bannière : étudiant non inscrit pour l'année courante (masquée si pré-inscrit sous réserve) --}}
-    @if($anneeCourante && !$inscCourante && !$inscFutureSousReserve)
-    <div style="
+    {{-- Bannière : la cible de réinscription est indépendante de is_current.
+         Une année peut rester "courante" administrativement tout en étant échue. --}}
+    @if($doitProposerReinscription && $reinscriptionCible)
+    <div data-reinscription-cible="{{ $reinscriptionCible->id }}" style="
         background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
         border: 1.5px solid #ffc107;
         border-left: 5px solid #e65100;
@@ -2592,15 +2599,23 @@
         </div>
         <div>
             <div style="font-weight:700; color:#b45309; font-size:.95rem; margin-bottom:4px;">
-                Cet étudiant n'est pas réinscrit pour l'année {{ $anneeCourante->name }}
+                @if($anneeCouranteEchue && $inscCourante && $anneeCourante && $reinscriptionCible->id !== $anneeCourante->id)
+                    L'année {{ $anneeCourante->name }} est échue — réinscription à préparer pour {{ $reinscriptionCible->name }}
+                @else
+                    Cet étudiant n'est pas réinscrit pour l'année {{ $reinscriptionCible->name }}
+                @endif
             </div>
             <div style="color:#92400e; font-size:.85rem; line-height:1.5;">
-                Les indicateurs ci-dessous ne sont pas disponibles pour l'année en cours.
-                Pour afficher les données académiques, financières et de présence, veuillez d'abord réinscrire cet étudiant.
+                @if($anneeCouranteEchue && $inscCourante && $anneeCourante && $reinscriptionCible->id !== $anneeCourante->id)
+                    L'année {{ $anneeCourante->name }} reste l'année courante de travail, mais sa date de fin est passée.
+                    Vous pouvez lancer directement la réinscription vers <strong>{{ $reinscriptionCible->name }}</strong>, même sans prise de rendez-vous préalable.
+                @else
+                    Les indicateurs de la nouvelle année ne seront disponibles qu'après la réinscription de cet étudiant.
+                @endif
             </div>
             <a href="{{ route('esbtp.reinscription.show', $etudiant) }}"
                style="display:inline-flex; align-items:center; gap:6px; margin-top:10px; padding:6px 14px; background:#e65100; color:#fff; border-radius:6px; font-size:.82rem; font-weight:600; text-decoration:none;">
-                <i class="fas fa-redo"></i> Réinscrire pour {{ $anneeCourante->name }}
+                <i class="fas fa-redo"></i> Réinscrire pour {{ $reinscriptionCible->name }}
             </a>
         </div>
     </div>
@@ -3257,15 +3272,23 @@
         @empty
         <div style="padding:24px;color:var(--k-gray);font-size:.9rem;">Aucune inscription enregistrée.</div>
         @endforelse
-        {{-- CTA Réinscription si pas encore inscrit pour l'année courante --}}
-        @if($anneeCourante && !$inscCourante && !$inscFutureSousReserve)
-        <a href="{{ route('esbtp.reinscription.show', $etudiant) }}" class="insc-card insc-cta-card">
+        {{-- CTA Réinscription : année cible calculée par le moteur, pas seulement is_current --}}
+        @if($doitProposerReinscription && $reinscriptionCible)
+        <a href="{{ route('esbtp.reinscription.show', $etudiant) }}"
+           class="insc-card insc-cta-card"
+           data-reinscription-cible="{{ $reinscriptionCible->id }}">
             <div class="insc-card-accent inactif"></div>
             <div class="insc-card-inner" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;text-align:center;">
                 <div class="insc-cta-icon"><i class="fas fa-plus"></i></div>
                 <div>
-                    <div class="insc-cta-title">Réinscrire pour {{ $anneeCourante->name }}</div>
-                    <div class="insc-cta-sub">Cet étudiant n'est pas encore inscrit pour l'année en cours</div>
+                    <div class="insc-cta-title">Réinscrire pour {{ $reinscriptionCible->name }}</div>
+                    <div class="insc-cta-sub">
+                        @if($anneeCouranteEchue && $inscCourante && $anneeCourante && $reinscriptionCible->id !== $anneeCourante->id)
+                            {{ $anneeCourante->name }} est échue ; la prochaine inscription peut être préparée dès maintenant
+                        @else
+                            Cet étudiant n'est pas encore inscrit pour l'année cible
+                        @endif
+                    </div>
                 </div>
                 <i class="fas fa-arrow-right" style="color:var(--k-blue); opacity:.6;"></i>
             </div>
@@ -4642,16 +4665,14 @@
                             @if($abMg !== null)
                                 <span style="font-size:.8rem; font-weight:700; color:{{ $abMgCls }};">{{ number_format($abMg, 2) }}/20</span>
                             @endif
-                            @php
-                                $_abClasseId = $autreInsc->classe_id;
-                                $_abAnneeId = optional($autreInsc->anneeUniversitaire)->id;
-                            @endphp
-                            @php $_abPdfParams = ['bulletin' => $ab->id, 'classe_id' => $_abClasseId, 'periode' => $ab->periode, 'annee_universitaire_id' => $_abAnneeId]; @endphp
-                            <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_abPdfParams) }}"
+                            {{-- Le bulletin est déjà identifié : passer par sa route liée au
+                                 modèle évite l'ambiguïté legacy de pdf-params, où "bulletin"
+                                 signifie en réalité etudiant_id. --}}
+                            <a href="{{ route('esbtp.bulletins.preview-pdf', $ab) }}"
                                class="acad-arch-pdf-link acad-arch-pdf-link--ghost" target="_blank" title="Aperçu PDF">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{{ route('esbtp.bulletins.pdf-params', $_abPdfParams) }}"
+                            <a href="{{ route('esbtp.bulletins.download', $ab) }}"
                                class="acad-arch-pdf-link" target="_blank" title="Télécharger le bulletin PDF">
                                 <i class="fas fa-file-pdf"></i> PDF
                             </a>
@@ -5123,6 +5144,10 @@
         /* ── Autres inscriptions (exclure l'inscription de référence) ── */
         $finAutresInscs = $etudiant->inscriptions->filter(fn($i) => !$finInscRef || $i->id !== $finInscRef->id)->sortByDesc('created_at');
 
+        /* La modale d'encaissement doit exister même sans inscription courante :
+           les cartes "Autres années" peuvent encore porter un solde à encaisser. */
+        $finHasPaymentTarget = (bool) $finInscRef || $finAutresInscs->isNotEmpty();
+
         /* ── Collect paiements de l'inscription de référence ── */
         $finPaiementsActive = collect();
         if($finInscRef) {
@@ -5292,7 +5317,7 @@
             @endif
             @if($finInscRef && $finSolde > 0)
             @can('paiements.create')
-            <button class="hero-btn primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, var(--k-blue), var(--k-blue-2)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(4,83,203,.3);"
+            <button type="button" class="hero-btn primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, var(--k-blue), var(--k-blue-2)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(4,83,203,.3);"
                     data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal"
                     onclick="prepareEtudiantPaymentModal({{ $finInscRef->id }})">
                 <i class="fas fa-plus-circle"></i> Enregistrer un paiement
@@ -5750,7 +5775,7 @@
                         <i class="fas fa-file-pdf"></i> PDF Situation
                     </a>
                     @can('paiements.create')
-                    <button {{ $autreSolde <= 0 ? 'disabled' : '' }}
+                    <button type="button" {{ $autreSolde <= 0 ? 'disabled' : '' }}
                             style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; font-size:.8rem; border-radius:8px; background:linear-gradient(135deg, var(--k-blue, #0453cb), var(--k-blue-2, #5e91de)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(4,83,203,.25);{{ $autreSolde <= 0 ? ' opacity:.5; cursor:not-allowed;' : '' }}"
                             @if($autreSolde > 0) data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal" onclick="prepareEtudiantPaymentModal({{ $autreInsc->id }})" @endif>
                         <i class="fas fa-{{ $autreSolde <= 0 ? 'check-circle' : 'plus-circle' }}"></i>
@@ -6611,6 +6636,10 @@ function etdHideSkeleton(el, cls) {
 
 function prepareEtudiantPaymentModal(inscriptionId) {
     const form = document.getElementById('etudiantPaymentForm');
+    if (!form) {
+        console.error('KLASSCI: formulaire etudiantPaymentForm introuvable pour l\'inscription', inscriptionId);
+        return;
+    }
     form.action = `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
     form.reset();
     const dateInput = form.querySelector('#etd_date_paiement');
@@ -6866,7 +6895,7 @@ document.addEventListener('DOMContentLoaded', function() {
 .etd-skeleton-input { height: 38px; width: 100%; }
 .etd-skeleton-msg { height: 52px; width: 100%; margin-bottom: 1rem; }
 </style>
-@if(isset($finInscRef) && $finInscRef)
+@if(($voirFinances ?? false) && ($finHasPaymentTarget ?? false))
 <div class="modal fade" id="etudiantPaymentModal" tabindex="-1" aria-labelledby="etudiantPaymentModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border-radius:15px; border:none; box-shadow:0 10px 40px rgba(0,0,0,.2);">
