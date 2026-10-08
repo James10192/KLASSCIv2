@@ -67,6 +67,28 @@ class LmdBulletinSnapshotConfigurationContractTest extends TestCase
         $this->assertStringNotContainsString("}}, le {{ \$editionDate", $pdf);
     }
 
+    public function test_standalone_lmd_configuration_exposes_header_styling_and_student_fields(): void
+    {
+        $view = file_get_contents(resource_path('views/esbtp/lmd/bulletins/index.blade.php'));
+        $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));
+
+        foreach ([
+            'lmd_bulletin_official_header_bg',
+            'lmd_bulletin_header_label_color',
+            'lmd_bulletin_meta_label_color',
+            'lmd_bulletin_header_label_bold',
+            'lmd_bulletin_ministry_bold',
+            'lmd_bulletin_meta_label_bold',
+            'effectif',
+            'redoublant',
+        ] as $setting) {
+            $this->assertStringContainsString($setting, $view);
+        }
+
+        $this->assertStringContainsString('colspan="2" style="height: 0;', $pdf);
+        $this->assertStringContainsString('border-bottom: 2px solid {{ $primary }};', $pdf);
+    }
+
     public function test_lmd_direction_is_a_real_setting_and_not_the_directors_name_fallback(): void
     {
         $pdf = file_get_contents(resource_path('views/esbtp/lmd/bulletins/pdf.blade.php'));
