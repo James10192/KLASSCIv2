@@ -13,6 +13,8 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-08 · Fiche étudiant > Académique : chaque inscription dispose d'un raccourci vers ses résultats, y compris les années précédentes (BTS et LMD).
+
 
 - 2026-10-08 · #1499 · Bulletin LMD : statut établissement masquable ; le bandeau Code / Statut / Direction disparaît complètement lorsqu’il ne contient aucun élément visible.
 
