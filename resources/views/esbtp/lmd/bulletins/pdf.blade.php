@@ -133,7 +133,6 @@
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            border: 1px solid {{ $primary }};
             margin-bottom: 4px;
             page-break-inside: avoid;
             border-radius: 7px;
@@ -146,10 +145,13 @@
         }
         .lmd-header-school {
             padding: {{ $headerPaddingY }}px 7px;
+            border-top: 2px solid {{ $primary }};
+            border-bottom: 2px solid {{ $primary }};
+            border-left: 2px solid {{ $primary }};
             border-right: 1px solid rgba(255,255,255,0.28);
             border-radius: 7px 0 0 7px;
         }
-        .lmd-header-document { padding: {{ $headerPaddingY }}px 9px; border-radius: 0 7px 7px 0; }
+        .lmd-header-document { padding: {{ $headerPaddingY }}px 9px; border-top: 2px solid {{ $primary }}; border-bottom: 2px solid {{ $primary }}; border-right: 2px solid {{ $primary }}; border-radius: 0 7px 7px 0; }
         .lmd-header-title {
             color: {{ $hdrText }};
             font-size: {{ $fontTitle }}px;
