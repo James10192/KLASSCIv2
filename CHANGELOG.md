@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Correctifs
 
+- **Sécurité des frais :** modifier le montant d'une souscription (réduction ou augmentation) exige la permission spécifique `frais.souscriptions.ajuster`. Le simple droit de modifier une inscription ne suffit plus.
+
 - **Bulletins LMD : statut de l’établissement facultatif.** Un réglage permet de masquer le statut sans masquer code et direction ; la bande disparaît entièrement, sans bordure ni espace, lorsque les trois rubriques sont absentes.
 
 - **Bulletin LMD : correction contrôlée des anciens statuts APC.** Une commande de maintenance permet de vérifier, puis de réappliquer sur demande les règles de compensation aux bulletins non publiés déjà calculés, sans modifier les notes. Les bulletins publiés restent protégés.
