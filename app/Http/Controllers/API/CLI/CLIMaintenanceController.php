@@ -1020,7 +1020,9 @@ class CLIMaintenanceController extends BaseApiController
             $steps[] = ['action' => 'git stash', 'status' => $stashed ? 'stashed' : 'skipped', 'output' => $stashOutput];
 
             // Pull
-            $pullProcess = \Symfony\Component\Process\Process::fromShellCommandline("git pull origin {$branch}", $cwd);
+            // La stratégie explicite évite le fatal Git moderne sur une copie locale divergente.
+            // Un vrai conflit reste refusé et aucune mise à jour partielle n'est appliquée.
+            $pullProcess = \Symfony\Component\Process\Process::fromShellCommandline("git pull --no-rebase origin {$branch}", $cwd);
             $pullProcess->setTimeout(120);
             $pullProcess->setEnv($gitEnv);
             $pullProcess->run();
