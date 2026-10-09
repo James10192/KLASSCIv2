@@ -228,6 +228,28 @@
                 </form>
                 <p class="mwf-muted mt-2">Le lien part uniquement vers un e-mail ou un numéro vérifié. Renvoyer annule les liens précédents.</p>
             @endif
+            @if($activationDispatches->isNotEmpty())
+                <div class="mt-3">
+                    <h3 class="h6 mb-2">Historique des invitations (8 dernières tentatives)</h3>
+                    <div class="table-responsive">
+                        <table class="table table-sm" aria-label="Historique des invitations étudiant">
+                            <thead><tr><th>Date</th><th>Canal</th><th>Statut</th><th>Erreur</th></tr></thead>
+                            <tbody>
+                                @foreach($activationDispatches as $tentative)
+                                    <tr>
+                                        <td>{{ $tentative->created_at?->format('d/m/Y H:i') }}</td>
+                                        <td>{{ $tentative->channel === 'email' ? 'E-mail' : 'WhatsApp' }}</td>
+                                        <td>{{ \App\Services\Admissions\AdmissionActivationDispatchLog::label($tentative->status) }}</td>
+                                        <td>{{ $tentative->error_code ?: '—' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="mwf-muted">Le statut accepté indique uniquement la réponse MailPulse. La livraison réelle ne peut être confirmée qu'avec un accusé du fournisseur.</p>
+                </div>
+            @endif
+
         </section>
 
         <section class="mwf-card" aria-labelledby="mwf-classe">

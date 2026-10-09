@@ -27,6 +27,7 @@ final class AdmissionActivationNotifier
         private readonly InscriptionWorkflowSettings $settings,
         private readonly MailPulseClient $mailPulse,
         private readonly TenantScolariteSettings $scolarite,
+        private readonly AdmissionActivationDispatchLog $dispatches,
     ) {
     }
 
@@ -82,6 +83,8 @@ final class AdmissionActivationNotifier
             ."Activez votre compte et choisissez votre mot de passe : {$url}\n\n"
             ."Ce lien expire dans 48 heures et ne fonctionne qu'une fois.";
 
+        $requestId = 'admission-activation-'.$workflow->id.'-'.substr(hash('sha256', $url), 0, 16);
+
         try {
             $result = $this->mailPulse->sendWhatsAppMessage([
                 'to' => $workflow->candidature->telephone,
@@ -93,9 +96,12 @@ final class AdmissionActivationNotifier
                     'candidature_id' => $workflow->candidature_id,
                     'purpose' => 'student_account_activation',
                 ],
-            ], 'admission-activation-'.$workflow->id.'-'.substr(hash('sha256', $url), 0, 16));
+            ], $requestId);
 
-            if (! $result->isDispatchAccepted()) {
+            $this->dispatches->record($workflow, 'whatsapp', $requestId, $result);
+
+            // Une simulation ne constitue pas un message envoyé au destinataire.
+            if ($result->status === 'dry_run' || ! $result->isDispatchAccepted()) {
                 Log::warning('Activation KLASSCI : échec envoi WhatsApp', [
                     'workflow_id' => $workflow->id,
                     'status' => $result->status,
@@ -107,6 +113,7 @@ final class AdmissionActivationNotifier
 
             return true;
         } catch (\Throwable $e) {
+            $this->dispatches->record($workflow, 'whatsapp', $requestId);
             Log::warning('Activation KLASSCI : exception envoi WhatsApp', [
                 'workflow_id' => $workflow->id,
                 'exception' => $e::class,
@@ -134,6 +141,8 @@ final class AdmissionActivationNotifier
         // Même chemin que les convocations de rendez-vous : MailPulse. L'envoi
         // direct par le mailer de l'application échouait sans bruit là où il
         // n'est pas configuré, alors que les convocations, elles, arrivaient.
+        $requestId = 'admission-activation-email-'.$workflow->id.'-'.substr(hash('sha256', $url), 0, 16);
+
         try {
             $this->mailPulse->createOrUpdateContact([
                 'email' => $email,
@@ -155,9 +164,12 @@ final class AdmissionActivationNotifier
                     'subject' => $sujet,
                     'workflow_id' => $workflow->id,
                 ] + array_filter(['email_html' => $this->html($workflow, $url)]),
-            ], 'admission-activation-email-'.$workflow->id.'-'.substr(hash('sha256', $url), 0, 16));
+            ], $requestId);
 
-            if (! $result->isDispatchAccepted()) {
+            $this->dispatches->record($workflow, 'email', $requestId, $result);
+
+            // Une simulation ne constitue pas un message envoyé au destinataire.
+            if ($result->status === 'dry_run' || ! $result->isDispatchAccepted()) {
                 Log::warning('Activation KLASSCI : échec envoi e-mail', [
                     'workflow_id' => $workflow->id,
                     'status' => $result->status,
@@ -169,6 +181,7 @@ final class AdmissionActivationNotifier
 
             return true;
         } catch (\Throwable $e) {
+            $this->dispatches->record($workflow, 'email', $requestId);
             Log::warning('Activation KLASSCI : exception envoi e-mail', [
                 'workflow_id' => $workflow->id,
                 'exception' => $e::class,
