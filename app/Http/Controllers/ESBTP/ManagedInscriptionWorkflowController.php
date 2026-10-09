@@ -6,6 +6,7 @@ use App\Domain\Notifications\PhoneNormalizer;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPCandidature;
 use App\Models\ESBTPCandidatureWorkflow;
+use App\Services\Admissions\AdmissionActivationDispatchLog;
 use App\Services\Admissions\InscriptionWorkflowSettings;
 use App\Services\Admissions\ManagedInscriptionWorkflow;
 use App\Services\Admissions\ManagedWorkflowPresenter;
@@ -31,7 +32,7 @@ class ManagedInscriptionWorkflowController extends Controller
     ) {
     }
 
-    public function show(ESBTPCandidature $candidature)
+    public function show(ESBTPCandidature $candidature, AdmissionActivationDispatchLog $activationDispatchLog)
     {
         $this->guardManagedWorkflow();
         $workflow = $this->managed->ensure($candidature);
@@ -45,6 +46,7 @@ class ManagedInscriptionWorkflowController extends Controller
             'prochaineEtape' => $this->presenter->prochaineEtape($workflow),
             'contactJoignable' => $this->presenter->contactJoignable($workflow),
             'emailEnAttente' => $this->presenter->emailEnAttente($workflow),
+            'activationDispatches' => $activationDispatchLog->recent((int) $workflow->id),
             'activationStep' => $this->settings->accountActivationStep(),
             'classChoiceActor' => $classChoiceActor,
             'eligibleClasses' => $workflow->final_inscription_id ? collect() : $this->managed->eligibleClasses($workflow),

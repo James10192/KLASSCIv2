@@ -460,6 +460,12 @@ class ManagedInscriptionEndToEndTest extends TestCase
         // le notificateur, qui est ce que la caisse et le guichet appellent.
         $this->assertTrue(app(\App\Services\Admissions\AdmissionActivationNotifier::class)
             ->sendEmail($workflow->fresh(), route('esbtp.admissions.workflow.activation.form', ['token' => 'x'])));
+        $this->assertDatabaseHas('admission_activation_dispatches', [
+            'workflow_id' => $workflow->id,
+            'channel' => 'email',
+            'status' => 'accepted',
+            'provider_message_id' => 'msg-1',
+        ]);
     }
 
     /** @test */
@@ -566,6 +572,32 @@ class ManagedInscriptionEndToEndTest extends TestCase
             'password_confirmation' => 'MotDePasse123!',
         ])->assertSessionHasErrors('activation');
         $this->assertFalse($workflow->fresh()->accessActivated());
+    }
+
+    /** @test */
+    public function un_envoi_mailpulse_en_attente_n_est_pas_considere_comme_livre_et_une_tentative_est_idempotente(): void
+    {
+        $candidature = $this->candidature();
+        $workflow = app(ManagedInscriptionWorkflow::class)
+            ->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+        $log = app(\App\Services\Admissions\AdmissionActivationDispatchLog::class);
+        $result = new \App\Services\MailPulse\MailPulseResult(
+            true, 'pending', 202, 'test-request-1', 'provider-123', null, null, null, 'pending_reconciliation'
+        );
+
+        $log->record($workflow, 'whatsapp', 'admission-unique-test-1', $result);
+        $log->record($workflow, 'whatsapp', 'admission-unique-test-1', $result);
+
+        $this->assertSame(1, \App\Models\AdmissionActivationDispatch::query()
+            ->where('request_id', 'admission-unique-test-1')->count());
+        $this->assertDatabaseHas('admission_activation_dispatches', [
+            'workflow_id' => $workflow->id,
+            'channel' => 'whatsapp',
+            'status' => 'pending',
+            'provider_message_id' => 'provider-123',
+        ]);
+        $this->assertStringNotContainsString('Livré',
+            \App\Services\Admissions\AdmissionActivationDispatchLog::label('pending'));
     }
 
     // ── Préparation ─────────────────────────────────────────────────────

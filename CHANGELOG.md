@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Invitations d'activation des étudiants :** le dossier de candidature présente les huit dernières tentatives MailPulse e-mail et WhatsApp avec date, canal, acceptation ou échec. Les identifiants techniques sont conservés sans enregistrer le lien secret ni le contenu du message, et une même requête ne crée pas de doublon.
+
 - **Communication MailPulse :** un suivi en lecture seule affiche les notifications aux responsables suivies dans l'outbox des sept derniers jours, avec totaux par état, canal et dernières tentatives. Le statut « envoyé » historique ne signifie pas « livré » sans preuve de remise.
 
 - **Activation des comptes étudiants :** dans le suivi de candidature, affichage clair du statut et de l'expiration du lien sécurisé. Le réenvoi distingue une demande acceptée par MailPulse d'une livraison effective et d'un envoi différé après transaction. Aucun lien secret ni mot de passe n'est affiché dans le suivi.
