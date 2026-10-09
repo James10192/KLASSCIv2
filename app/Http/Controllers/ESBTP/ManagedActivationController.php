@@ -114,17 +114,23 @@ final class ManagedActivationController extends Controller
         $emailResult = $this->managed->issueActivation($workflow);
         $whatsappSent = $this->whatsapp->sendIfDue($workflow);
 
+        // MailPulse accepte une demande de remise, mais n'atteste pas sa livraison.
+        // Une transaction peut différer le dispatch jusqu'au commit : ne pas
+        // interpréter cet état comme un échec ou comme un message déjà envoyé.
         $channels = [];
         if ($emailResult['email_sent'] ?? false) {
-            $channels[] = 'e-mail';
+            $channels[] = 'e-mail accepté par le prestataire';
         }
         if ($whatsappSent) {
-            $channels[] = 'WhatsApp';
+            $channels[] = 'WhatsApp accepté par le prestataire';
+        }
+        if ($emailResult['email_pending'] ?? false) {
+            $channels[] = 'e-mail programmé après validation de la transaction';
         }
 
         return $channels
-            ? 'Nouveau lien d’activation envoyé par '.implode(' et ', $channels).'.'
-            : "Lien régénéré, mais aucun contact vérifié ne permet de l'envoyer. Confirmez l'e-mail ou le numéro avec l'étudiant.";
+            ? 'Lien d’activation renouvelé : '.implode(', ', $channels).'. La remise au destinataire reste à confirmer.'
+            : "Lien régénéré, mais aucun envoi n'a été confirmé. Vérifiez les contacts, les canaux activés et le suivi MailPulse avant de relancer.";
     }
 
     private function assertMilestoneReached(ESBTPCandidatureWorkflow $workflow): void
