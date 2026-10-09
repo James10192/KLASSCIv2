@@ -12,6 +12,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Notes BTS — correction de la validation groupée sur les anciens semestres.** La synchronisation après « Valider les notes » compare désormais le semestre comme du texte, conformément au stockage `VARCHAR` historique (`1`/`2`). Les anciennes valeurs `semestre1`/`semestre2` sont reconnues et réalignées pour les notes validées concernées, sans suppression de note ni changement des règles de doublons. Le diagnostic serveur inclut le contexte évaluation, classe, matière, période et SQLSTATE.
 - fix(notes): sélectionner l'année universitaire en AJAX sur les pages de notes BTS et LMD, avec mise à jour des listes, indicateurs et périmètres de saisie.
 
 ### Correctifs
