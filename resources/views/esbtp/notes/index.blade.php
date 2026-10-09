@@ -1702,6 +1702,9 @@ $('#saveAllNotesBtn').on('click', function() {
     // Le contexte de départ : si l'on change de classe, de matière ou de
     // période avant la réponse, celle-ci ne touche plus à la grille affichée.
     const draftKey = nmDraftKey();
+    // Persister le brouillon immédiatement avant l'envoi : ne pas dépendre
+    // du délai de debounce si PHP, le réseau ou le navigateur interrompt la requête.
+    nmAutosaveDraft(draftKey);
 
     // Envoyer une seule requête bulk au lieu d'une par étudiant
     $.ajax({
@@ -1820,7 +1823,13 @@ $('#saveAllNotesBtn').on('click', function() {
                 setTimeout(() => { btn.html(originalText); }, 2500);
                 return;
             }
-            const msg = xhr.responseJSON?.message || 'Erreur lors de la sauvegarde.';
+            let msg = xhr.responseJSON?.message || 'Erreur lors de la sauvegarde.';
+            // Une erreur 5xx n'est pas nécessairement une transaction annulée :
+            // le brouillon est conservé, puis l'utilisateur doit vérifier la grille
+            // avant de retenter afin de ne pas écraser une validation déjà passée.
+            if (xhr.status >= 500 || xhr.status === 0) {
+                msg += ' Vos saisies restent en brouillon sur cet appareil. Vérifiez leur statut avant de relancer la validation.';
+            }
             btn.html(`<i class="fas fa-times me-1"></i> Échec`).prop('disabled', false);
             alert(msg);
             setTimeout(() => { btn.html(originalText); }, 2500);

@@ -304,6 +304,7 @@ jobs:
             tests/Unit/Services/ExtensionsDeRoleTest.php \
             tests/Unit/Exploitation \
             tests/Feature/Exploitation \
+            tests/Feature/Notes/NoteAjaxErrorHandlingTest.php \
             tests/Unit/Deployment \
             tests/Unit/Routes \
             tests/Unit/Services/MailPulse/MailPulseMonitoringStatusTest.php \
