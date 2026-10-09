@@ -9,6 +9,7 @@ use App\Http\Requests\Notes\StoreNoteRequest;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Domain\Notes\SaisieGroupeeDeNotes;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -666,16 +667,24 @@ class ESBTPNoteController extends Controller
                 'is_locked' => $result['note']->isSubmitted() && ! Auth::user()->can('notes.edit'),
             ]);
 
-        } catch (\Exception $e) {
+        } catch (AcademicPilotageException $e) {
+            // Un verrou de fiche/examen est un conflit métier (409), jamais une panne serveur.
+            return $e->render($request);
+        } catch (\Throwable $e) {
+            // Référence corrélée à la trace interne ; ne jamais exposer SQL ni stack trace au client.
+            $incidentId = (string) Str::uuid();
             \Log::error('saveNoteAjax error: ' . $e->getMessage(), [
+                'incident_id' => $incidentId,
                 'evaluation_id' => $request->input('evaluation_id'),
                 'etudiant_id' => $request->input('etudiant_id'),
                 'user_id' => Auth::id(),
+                'exception' => $e,
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur serveur lors de l\'enregistrement de la note.',
+                'message' => 'Erreur serveur lors de l\'enregistrement de la note (réf. ' . $incidentId . ').',
+                'incident_id' => $incidentId,
             ], 500);
         }
     }
@@ -713,15 +722,23 @@ class ESBTPNoteController extends Controller
                     default => "{$saved} note(s) enregistrée(s) en brouillon.",
                 },
             ]);
-        } catch (\Exception $e) {
+        } catch (AcademicPilotageException $e) {
+            // Un verrou de fiche/examen est un conflit métier (409), jamais une panne serveur.
+            return $e->render($request);
+        } catch (\Throwable $e) {
+            // Référence corrélée à la trace interne ; ne jamais exposer SQL ni stack trace au client.
+            $incidentId = (string) Str::uuid();
             \Log::error('saveNotesAjaxBulk error: ' . $e->getMessage(), [
+                'incident_id' => $incidentId,
                 'user_id' => Auth::id(),
                 'count' => count($notes),
+                'exception' => $e,
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur serveur lors de l\'enregistrement des notes.',
+                'message' => 'Erreur serveur lors de l\'enregistrement des notes (réf. ' . $incidentId . ').',
+                'incident_id' => $incidentId,
             ], 500);
         }
     }
