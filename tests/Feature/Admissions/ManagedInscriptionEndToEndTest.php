@@ -534,6 +534,40 @@ class ManagedInscriptionEndToEndTest extends TestCase
             ->assertOk();
     }
 
+    /** @test */
+    public function lien_whatsapp_devenu_expire_refuse_l_ouverture_et_l_activation_meme_avec_signature_valide(): void
+    {
+        $this->reglage(InscriptionWorkflowSettings::ACCOUNT_ACTIVATION_STEP, InscriptionWorkflowSettings::ACTIVATION_AFTER_PAYMENT);
+        $candidature = $this->candidature();
+        $workflow = app(ManagedInscriptionWorkflow::class)->recordPayment(
+            $candidature,
+            $this->paiement(50000),
+            $this->agent->id
+        );
+
+        $this->assertNotNull($workflow->activation_token_hash);
+        $workflow->forceFill(['activation_token_expires_at' => now()->subMinute()])->save();
+        $version = ManagedInscriptionWorkflow::linkVersion($workflow->fresh());
+        $getUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'esbtp.admissions.workflow.activation.signed.form',
+            now()->addMinutes(10),
+            ['workflow' => $workflow->id, 'v' => $version]
+        );
+        $postUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'esbtp.admissions.workflow.activation.signed.submit',
+            now()->addMinutes(10),
+            ['workflow' => $workflow->id, 'v' => $version]
+        );
+
+        // Même si la signature est encore valide, le jeton métier expire.
+        $this->get($getUrl)->assertStatus(410)->assertSee('expiré');
+        $this->post($postUrl, [
+            'password' => 'MotDePasse123!',
+            'password_confirmation' => 'MotDePasse123!',
+        ])->assertSessionHasErrors('activation');
+        $this->assertFalse($workflow->fresh()->accessActivated());
+    }
+
     // ── Préparation ─────────────────────────────────────────────────────
 
     private function dossierPretAChoisir(): ESBTPCandidatureWorkflow
