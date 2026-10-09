@@ -424,7 +424,7 @@ class ESBTPClasse extends Model implements Auditable
             return 0;
         }
 
-        $count = $this->inscriptions()->occupeUnePlace($anneeCourante->id)->count();
+        $count = $this->inscriptions()->occupeUnePlace($anneeCourante->id)->whereHas('etudiant')->distinct()->count('etudiant_id');
 
         // Log pour debugging (à retirer en production)
         if (config('app.debug')) {
@@ -447,7 +447,7 @@ class ESBTPClasse extends Model implements Auditable
         $annee = $anneeId ?: ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
 
         return $annee === null ? collect() : ESBTPInscription::query()->occupeUnePlace((int) $annee)
-            ->selectRaw('classe_id, COUNT(*) as n')->groupBy('classe_id')->pluck('n', 'classe_id')
+            ->whereHas('etudiant')->selectRaw('classe_id, COUNT(DISTINCT etudiant_id) as n')->groupBy('classe_id')->pluck('n', 'classe_id')
             ->map(fn ($n) => (int) $n);
     }
 
