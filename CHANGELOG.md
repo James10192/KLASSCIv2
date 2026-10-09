@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Communication MailPulse :** le centre de suivi affiche désormais les invitations d'activation étudiantes à côté des notifications parents, avec comptages par canal et statut des sept derniers jours. La liste centralisée exclut les identifiants, destinataires et liens sécurisés.
+
 - **Invitations d'activation des étudiants :** le dossier de candidature présente les huit dernières tentatives MailPulse e-mail et WhatsApp avec date, canal, acceptation ou échec. Les identifiants techniques sont conservés sans enregistrer le lien secret ni le contenu du message, et une même requête ne crée pas de doublon.
 
 - **Communication MailPulse :** un suivi en lecture seule affiche les notifications aux responsables suivies dans l'outbox des sept derniers jours, avec totaux par état, canal et dernières tentatives. Le statut « envoyé » historique ne signifie pas « livré » sans preuve de remise.

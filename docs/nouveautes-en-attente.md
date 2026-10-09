@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-09 · #1540 · Communication > MailPulse : ajouter au centre des envois la synthèse des invitations d'activation étudiantes (7 jours), sans exposer les identifiants et liens des étudiants.
 - 2026-10-09 · #1540 · Dossier de candidature > Espace étudiant : historique des tentatives d'invitation e-mail et WhatsApp, états acceptés/en attente/échec, sans exposer les liens d'activation.
 - 2026-10-09 · #1540 · Communication > MailPulse : synthèse en lecture seule de l'outbox des notifications parents des sept derniers jours, avec distinction entre acceptation fournisseur, livraison enregistrée et échecs.
 - 2026-10-09 · #1536 · Dossier de candidature > Espace étudiant : statut et expiration du lien d'activation visibles, avec messages de renvoi précisant que la réception n'est pas encore confirmée.

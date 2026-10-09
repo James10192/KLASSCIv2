@@ -79,6 +79,48 @@ final class AdmissionActivationDispatchLog
         }
     }
 
+    /** @return array{available:bool,counts:array<string,int>,entries:Collection} */
+    public function overview(): array
+    {
+        $empty = [
+            'total' => 0, 'accepted' => 0, 'pending' => 0,
+            'failed' => 0, 'simulated' => 0,
+        ];
+        $unavailable = ['available' => false, 'counts' => $empty, 'entries' => collect()];
+
+        try {
+            if (! \Illuminate\Support\Facades\Schema::hasTable('admission_activation_dispatches')) {
+                return $unavailable;
+            }
+
+            $base = AdmissionActivationDispatch::query()
+                ->where('created_at', '>=', now()->subDays(7));
+
+            $groups = (clone $base)->selectRaw('status, COUNT(*) as total')
+                ->groupBy('status')
+                ->pluck('total', 'status')->all();
+
+            $counts = [
+                'total' => array_sum(array_map('intval', $groups)),
+                'accepted' => (int) ($groups['accepted'] ?? 0),
+                'pending' => (int) ($groups['pending'] ?? 0),
+                'failed' => (int) ($groups['failed'] ?? 0),
+                'simulated' => (int) ($groups['simulated'] ?? 0),
+            ];
+
+            $entries = (clone $base)->orderByDesc('id')->limit(20)
+                ->get(['id', 'channel', 'status', 'created_at']);
+
+            return ['available' => true, 'counts' => $counts, 'entries' => $entries];
+        } catch (\Throwable $exception) {
+            Log::warning('Admission activation dispatch overview unavailable', [
+                'exception' => $exception::class,
+            ]);
+
+            return $unavailable;
+        }
+    }
+
     public static function label(string $status): string
     {
         return match ($status) {

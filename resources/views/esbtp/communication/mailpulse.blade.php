@@ -134,6 +134,44 @@
         @endif
     </section>
 
+    <section class="mp-section" aria-labelledby="mp-invitations-etudiants">
+        <div class="mp-section-head">
+            <div class="section-icon mailpulse"><i class="fas fa-envelope-open-text" aria-hidden="true"></i></div>
+            <div>
+                <h3 class="section-title" id="mp-invitations-etudiants">Invitations d'activation étudiantes</h3>
+                <p class="section-description">Journal des tentatives e-mail et WhatsApp des 7 derniers jours, sans données personnelles ni liens d'activation.</p>
+            </div>
+        </div>
+        @if(! $activationMonitoring['available'])
+            <p class="text-muted mb-0">Historique des invitations indisponible : vérifiez la migration des journaux sur cette instance.</p>
+        @else
+            <div class="mailpulse-info-grid" aria-label="Statistiques des invitations étudiantes">
+                <div class="mailpulse-info-card"><strong>{{ number_format($activationMonitoring['counts']['total'], 0, ',', ' ') }}</strong>Tentatives</div>
+                <div class="mailpulse-info-card"><strong>{{ number_format($activationMonitoring['counts']['accepted'], 0, ',', ' ') }}</strong>Acceptées — livraison non confirmée</div>
+                <div class="mailpulse-info-card"><strong>{{ number_format($activationMonitoring['counts']['pending'], 0, ',', ' ') }}</strong>En attente</div>
+                <div class="mailpulse-info-card"><strong>{{ number_format($activationMonitoring['counts']['failed'], 0, ',', ' ') }}</strong>Échecs</div>
+                <div class="mailpulse-info-card"><strong>{{ number_format($activationMonitoring['counts']['simulated'], 0, ',', ' ') }}</strong>Simulations, aucun envoi</div>
+            </div>
+            <div class="table-responsive mt-3">
+                <table class="table table-sm table-hover" aria-label="Dernières invitations étudiantes">
+                    <thead><tr><th>Date</th><th>Canal</th><th>Statut enregistré</th></tr></thead>
+                    <tbody>
+                    @forelse($activationMonitoring['entries'] as $entry)
+                        <tr>
+                            <td>{{ $entry->created_at?->format('d/m/Y H:i') ?: '—' }}</td>
+                            <td>{{ $entry->channel === 'email' ? 'E-mail' : 'WhatsApp' }}</td>
+                            <td>{{ \App\Services\Admissions\AdmissionActivationDispatchLog::label($entry->status) }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="3" class="text-center text-muted py-3">Aucune invitation journalisée sur cette période.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <p class="text-muted mt-2 mb-0">La réception effective des invitations requiert les accusés de livraison de MailPulse, non encore intégrés ici.</p>
+        @endif
+    </section>
+
     <div class="mp-section">
         <div class="mp-section-head">
             <div class="section-icon mailpulse"><i class="fas fa-shield-alt"></i></div>

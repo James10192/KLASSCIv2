@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\SettingsHelper;
 use App\Models\Setting;
 use App\Services\MailPulse\MailPulseTestNotificationService;
+use App\Services\Admissions\AdmissionActivationDispatchLog;
 use App\Services\MailPulse\MailPulseMonitoring;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class CommunicationMailPulseController extends Controller
         $this->middleware('permission:mailpulse.send')->only('test');
     }
 
-    public function index(MailPulseMonitoring $monitoring): View
+    public function index(MailPulseMonitoring $monitoring, AdmissionActivationDispatchLog $activationDispatchLog): View
     {
         $apiConfigured = Setting::query()->where('key', 'mailpulse_api_key')->whereNotNull('value')->where('value', '!=', '')->exists()
             || trim((string) config('services.mailpulse.api_key', '')) !== '';
@@ -29,6 +30,7 @@ class CommunicationMailPulseController extends Controller
             'enabled' => SettingsHelper::drapeau('mailpulse_enabled', false),
             'apiConfigured' => $apiConfigured,
             'monitoring' => $monitoring->snapshot(),
+            'activationMonitoring' => $activationDispatchLog->overview(),
         ]);
     }
 
