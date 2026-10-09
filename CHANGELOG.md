@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Sécurité des comptes étudiants :** les créations et réinitialisations manuelles utilisent désormais un mot de passe temporaire individuel aléatoire de 24 caractères, en remplacement du code court et du mot de passe générique annuel ; les liens du parcours d'activation sont revalidés sous verrou à la dernière étape.
+
 - **Communication MailPulse :** le centre de suivi affiche désormais les invitations d'activation étudiantes à côté des notifications parents, avec comptages par canal et statut des sept derniers jours. La liste centralisée exclut les identifiants, destinataires et liens sécurisés.
 
 - **Invitations d'activation des étudiants :** le dossier de candidature présente les huit dernières tentatives MailPulse e-mail et WhatsApp avec date, canal, acceptation ou échec. Les identifiants techniques sont conservés sans enregistrer le lien secret ni le contenu du message, et une même requête ne crée pas de doublon.

@@ -36,6 +36,17 @@ final class AdmissionAccountActivator
                 ]);
             }
 
+            // Contrôler la validité DANS la transaction, après acquisition du
+            // verrou : un POST signé ne prolonge jamais le jeton métier.
+            if (! $workflow->activation_token_hash
+                || ! $workflow->activation_token_expires_at
+                || $workflow->activation_token_expires_at->isPast()
+                || $workflow->activation_token_used_at !== null) {
+                throw ValidationException::withMessages([
+                    'activation' => 'Ce lien d’activation a expiré ou a déjà été utilisé. Demandez un nouvel envoi.',
+                ]);
+            }
+
             $user = $workflow->etudiant?->user;
             if (! $user) {
                 throw ValidationException::withMessages([
