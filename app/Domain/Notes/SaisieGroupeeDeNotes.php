@@ -332,7 +332,9 @@ class SaisieGroupeeDeNotes
                 'heure' => $heureFormatee,
                 'type' => $typeEvaluation,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
+            // L'avis est envoyé après commit : même une erreur PHP du service de
+            // notification ne doit jamais transformer une note enregistrée en 500.
             Log::error("Erreur lors de l'envoi de la notification d'absence pour la note", [
                 'etudiant_id' => $note->etudiant_id,
                 'note_id' => $note->id,
