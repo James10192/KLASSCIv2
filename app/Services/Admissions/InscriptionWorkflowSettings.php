@@ -24,6 +24,7 @@ final class InscriptionWorkflowSettings
     public const NOTIFY_EMAIL = 'inscriptions.workflow.notify_email';
     public const NOTIFY_WHATSAPP = 'inscriptions.workflow.notify_whatsapp';
     public const RELIABLE_OUTBOX = 'inscriptions.workflow.reliable_invitation_outbox';
+    public const FAMILY_PORTAL = 'familles.portal.enabled';
 
     public const MODE_LEGACY = 'legacy';
     public const MODE_CAISSE_AVANT_PIECES = 'caisse_avant_pieces';
@@ -80,6 +81,12 @@ final class InscriptionWorkflowSettings
                 'type' => 'boolean',
                 'description' => "Envoyer les accès / étapes d'inscription par e-mail",
                 'sort_order' => 177,
+            ],
+            self::FAMILY_PORTAL => [
+                'value' => '0',
+                'type' => 'boolean',
+                'description' => "Autoriser l'espace familial restreint (habilitations vérifiées et comptes indépendants)",
+                'sort_order' => 180,
             ],
             self::RELIABLE_OUTBOX => [
                 'value' => '0',
@@ -233,7 +240,7 @@ final class InscriptionWorkflowSettings
      */
     public static function booleens(): array
     {
-        return [self::ENABLED, self::REQUIRE_RDV, self::CLASS_CHOICE_ONCE, self::NOTIFY_EMAIL, self::NOTIFY_WHATSAPP, self::RELIABLE_OUTBOX];
+        return [self::ENABLED, self::REQUIRE_RDV, self::CLASS_CHOICE_ONCE, self::NOTIFY_EMAIL, self::NOTIFY_WHATSAPP, self::RELIABLE_OUTBOX, self::FAMILY_PORTAL];
     }
 
     /** @return list<string> toutes les clés du parcours, cases et choix. */

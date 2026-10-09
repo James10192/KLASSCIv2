@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Espace familial (socle sécurisé, désactivé par défaut) :** un responsable disposant d'un compte indépendant peut consulter seulement l'identité d'un étudiant pour lequel il possède une habilitation vérifiée, limitée dans le temps et révocable. Un étudiant majeur exige en plus un consentement documenté. Pas de partage des accès ni de consultation des notes ou des finances par défaut.
+
 - **Invitations étudiantes fiables (activation progressive) :** une file transactionnelle chiffrée conserve les demandes d'envoi même si l'application s'interrompt après validation de l'inscription. Un traitement planifié reprend les tentatives avec la même clé MailPulse, annule les liens expirés, et sépare préparation, acceptation et preuve de livraison. Réglage désactivé par défaut tant que le cron et la migration ne sont pas vérifiés.
 
 - **Sécurité des comptes étudiants :** les créations et réinitialisations manuelles utilisent désormais un mot de passe temporaire individuel aléatoire de 24 caractères, en remplacement du code court et du mot de passe générique annuel ; le changement du secret temporaire est imposé dès la première connexion et les liens du parcours d'activation sont revalidés sous verrou à la dernière étape.

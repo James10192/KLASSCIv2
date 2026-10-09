@@ -688,6 +688,47 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertDatabaseCount('admission_activation_dispatches', 0);
     }
 
+    /** @test */
+    public function le_portail_familial_exige_un_compte_distinct_une_habilitation_et_un_consentement_du_majeur(): void
+    {
+        $this->reglage(InscriptionWorkflowSettings::FAMILY_PORTAL, '1');
+        $candidature = $this->candidature();
+        $workflow = app(ManagedInscriptionWorkflow::class)
+            ->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+        $etudiant = $workflow->fresh(['etudiant'])->etudiant;
+        $responsableUser = User::factory()->create([
+            'must_change_password' => false,
+            'password_changed_at' => now(),
+        ]);
+        $parent = \App\Models\ESBTPParent::create([
+            'user_id' => $responsableUser->id,
+            'nom' => 'KOUAME',
+            'prenoms' => 'Fatou',
+            'sexe' => 'F',
+            'telephone' => '+2250700000001',
+        ]);
+        $etudiant->parents()->attach($parent->id, ['relation' => 'parent', 'is_tuteur' => true]);
+
+        $acces = app(\App\Services\Familles\AccesFamilial::class);
+        $this->assertRefus(
+            fn () => $acces->approuver($parent, $etudiant, $this->agent, 'identite_guichet', 'piece-ref-01', null),
+            'consent_reference'
+        );
+
+        $grant = $acces->approuver(
+            $parent, $etudiant, $this->agent, 'identite_guichet',
+            'piece-ref-01', 'autorisation-signee-01'
+        );
+        $this->assertTrue($acces->peutConsulter($grant->fresh(['parent', 'etudiant']), $responsableUser));
+
+        $responsableUser->assignRole(\Spatie\Permission\Models\Role::findOrCreate('etudiant', 'web'));
+        $this->assertFalse($acces->peutConsulter($grant->fresh(['parent', 'etudiant']), $responsableUser));
+        $responsableUser->removeRole('etudiant');
+
+        $acces->revoquer($grant, $this->agent);
+        $this->assertFalse($acces->peutConsulter($grant->fresh(['parent', 'etudiant']), $responsableUser));
+    }
+
     // ── Préparation ─────────────────────────────────────────────────────
 
     private function dossierPretAChoisir(): ESBTPCandidatureWorkflow
