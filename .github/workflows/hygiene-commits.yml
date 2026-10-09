@@ -379,6 +379,11 @@ jobs:
           cp .env.example .env
           php artisan key:generate --force
 
+      # Régression réelle SQLSTATE 22007 : la colonne semestre est VARCHAR,
+      # une note legacy 'semestre2' ne doit jamais être comparée à l'entier 2.
+      - name: Notes BTS - semestre legacy sur MariaDB strict
+        run: php vendor/bin/phpunit tests/Feature/Notes/NoteBulkSemesterSqlRegressionTest.php --no-coverage
+
       # Restreint a CE fichier, pas au dossier : les neuf autres tests de
       # tests/Feature/Frais ne sont pas verts en integration continue
       # aujourd'hui, pour des raisons d'environnement anterieures a ce
