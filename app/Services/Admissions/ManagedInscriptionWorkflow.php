@@ -426,10 +426,10 @@ final class ManagedInscriptionWorkflow
         if (DB::transactionLevel() > 0) {
             DB::afterCommit(fn () => $this->notifier->sendEmail($workflow, $url));
 
-            return ['token' => $token, 'url' => $url, 'email_sent' => false];
+            return ['token' => $token, 'url' => $url, 'email_sent' => false, 'email_pending' => $this->notifier->emailUsable($workflow) && $this->settings->notifyEmail()];
         }
 
-        return ['token' => $token, 'url' => $url, 'email_sent' => $this->notifier->sendEmail($workflow, $url)];
+        return ['token' => $token, 'url' => $url, 'email_sent' => $this->notifier->sendEmail($workflow, $url), 'email_pending' => false];
     }
 
     /**
