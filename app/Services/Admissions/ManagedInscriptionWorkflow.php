@@ -401,7 +401,7 @@ final class ManagedInscriptionWorkflow
      * prouvée. Le jeton brut n'est jamais stocké. Régénérer invalide l'ancien
      * jeton e-mail ET les anciens liens WhatsApp (voir linkVersion()).
      *
-     * @return array{token:string,url:string,email_sent:bool}
+     * @return array{token:string,url:string,email_sent:bool,email_pending:bool}
      */
     public function issueActivation(ESBTPCandidatureWorkflow $workflow): array
     {
@@ -426,10 +426,10 @@ final class ManagedInscriptionWorkflow
         if (DB::transactionLevel() > 0) {
             DB::afterCommit(fn () => $this->notifier->sendEmail($workflow, $url));
 
-            return ['token' => $token, 'url' => $url, 'email_sent' => false];
+            return ['token' => $token, 'url' => $url, 'email_sent' => false, 'email_pending' => $this->notifier->emailUsable($workflow) && $this->settings->notifyEmail()];
         }
 
-        return ['token' => $token, 'url' => $url, 'email_sent' => $this->notifier->sendEmail($workflow, $url)];
+        return ['token' => $token, 'url' => $url, 'email_sent' => $this->notifier->sendEmail($workflow, $url), 'email_pending' => false];
     }
 
     /**

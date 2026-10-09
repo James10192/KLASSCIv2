@@ -38,9 +38,14 @@ final class ManagedActivationController extends Controller
             ], 410);
         }
 
+        // Le formulaire ne peut pas survivre au jeton initial de 48 heures.
+        $submitExpiresAt = now()->addMinutes(30);
+        if ($workflow->activation_token_expires_at && $workflow->activation_token_expires_at->lessThan($submitExpiresAt)) {
+            $submitExpiresAt = $workflow->activation_token_expires_at;
+        }
         $submitUrl = URL::temporarySignedRoute(
             'esbtp.admissions.workflow.activation.signed.submit',
-            now()->addMinutes(30),
+            $submitExpiresAt,
             ['workflow' => $workflow->id, 'v' => $request->query('v')],
         );
 
@@ -114,17 +119,23 @@ final class ManagedActivationController extends Controller
         $emailResult = $this->managed->issueActivation($workflow);
         $whatsappSent = $this->whatsapp->sendIfDue($workflow);
 
+        // MailPulse accepte une demande de remise, mais n'atteste pas sa livraison.
+        // Une transaction peut différer le dispatch jusqu'au commit : ne pas
+        // interpréter cet état comme un échec ou comme un message déjà envoyé.
         $channels = [];
         if ($emailResult['email_sent'] ?? false) {
-            $channels[] = 'e-mail';
+            $channels[] = 'e-mail accepté par le prestataire';
         }
         if ($whatsappSent) {
-            $channels[] = 'WhatsApp';
+            $channels[] = 'WhatsApp accepté par le prestataire';
+        }
+        if ($emailResult['email_pending'] ?? false) {
+            $channels[] = 'e-mail programmé après validation de la transaction';
         }
 
         return $channels
-            ? 'Nouveau lien d’activation envoyé par '.implode(' et ', $channels).'.'
-            : "Lien régénéré, mais aucun contact vérifié ne permet de l'envoyer. Confirmez l'e-mail ou le numéro avec l'étudiant.";
+            ? 'Lien d’activation renouvelé : '.implode(', ', $channels).'. La remise au destinataire reste à confirmer.'
+            : "Lien régénéré, mais aucun envoi n'a été confirmé. Vérifiez les contacts, les canaux activés et le suivi MailPulse avant de relancer.";
     }
 
     private function assertMilestoneReached(ESBTPCandidatureWorkflow $workflow): void
@@ -141,6 +152,15 @@ final class ManagedActivationController extends Controller
     private function assertActivatable(ESBTPCandidatureWorkflow $workflow, ?string $version): void
     {
         $workflow->refresh();
+
+        // Le GET et le POST doivent tous les deux respecter l'expiration métier.
+        // La signature temporaire du POST ne prolonge pas le lien de 48 h.
+        if (! $workflow->activation_token_hash || ! $workflow->activation_token_expires_at
+            || $workflow->activation_token_expires_at->isPast() || $workflow->activation_token_used_at) {
+            throw ValidationException::withMessages([
+                'activation' => 'Ce lien d’activation a expiré ou a déjà été utilisé. Demandez un nouvel envoi.',
+            ]);
+        }
 
         if (! $this->whatsapp->isCurrent($workflow, $version) && ! $workflow->accessActivated()) {
             throw ValidationException::withMessages([

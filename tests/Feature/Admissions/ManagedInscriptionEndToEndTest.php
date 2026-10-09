@@ -409,7 +409,7 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($secretariat)
             ->get(route('esbtp.admissions.workflow.show', $candidature))
             ->assertOk()
-            ->assertSee("Le lien n'est pas parti.", false)
+            ->assertSee("Aucun canal n'est actuellement autorisé pour un nouvel envoi.", false)
             ->assertSee($candidature->email);
 
         $this->actingAs($secretariat)
@@ -480,7 +480,7 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($admin)
             ->get(route('esbtp.admissions.workflow.show', $candidature))
             ->assertOk()
-            ->assertSee('Le lien ne part que par WhatsApp', false);
+            ->assertSee("L'e-mail du dossier n'est pas vérifié", false);
 
         $this->actingAs($admin)
             ->post(route('esbtp.admissions.workflow.activation.confirm-contact', $workflow), [
@@ -491,7 +491,7 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertTrue(app(\App\Services\Admissions\AdmissionActivationNotifier::class)->emailUsable($workflow->fresh()));
         $this->actingAs($admin)
             ->get(route('esbtp.admissions.workflow.show', $candidature))
-            ->assertDontSee('Le lien ne part que par WhatsApp', false);
+            ->assertDontSee("L'e-mail du dossier n'est pas vérifié", false);
     }
 
     /** @test */
@@ -532,6 +532,40 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($admin)
             ->get(route('esbtp.inscriptions.create', ['candidature' => $candidature->id]))
             ->assertOk();
+    }
+
+    /** @test */
+    public function lien_whatsapp_devenu_expire_refuse_l_ouverture_et_l_activation_meme_avec_signature_valide(): void
+    {
+        $this->reglage(InscriptionWorkflowSettings::ACCOUNT_ACTIVATION_STEP, InscriptionWorkflowSettings::ACTIVATION_AFTER_PAYMENT);
+        $candidature = $this->candidature();
+        $workflow = app(ManagedInscriptionWorkflow::class)->recordPayment(
+            $candidature,
+            $this->paiement(50000),
+            $this->agent->id
+        );
+
+        $this->assertNotNull($workflow->activation_token_hash);
+        $workflow->forceFill(['activation_token_expires_at' => now()->subMinute()])->save();
+        $version = ManagedInscriptionWorkflow::linkVersion($workflow->fresh());
+        $getUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'esbtp.admissions.workflow.activation.signed.form',
+            now()->addMinutes(10),
+            ['workflow' => $workflow->id, 'v' => $version]
+        );
+        $postUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'esbtp.admissions.workflow.activation.signed.submit',
+            now()->addMinutes(10),
+            ['workflow' => $workflow->id, 'v' => $version]
+        );
+
+        // Même si la signature est encore valide, le jeton métier expire.
+        $this->get($getUrl)->assertStatus(410)->assertSee('expiré');
+        $this->post($postUrl, [
+            'password' => 'MotDePasse123!',
+            'password_confirmation' => 'MotDePasse123!',
+        ])->assertSessionHasErrors('activation');
+        $this->assertFalse($workflow->fresh()->accessActivated());
     }
 
     // ── Préparation ─────────────────────────────────────────────────────

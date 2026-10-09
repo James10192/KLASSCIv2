@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Activation des comptes étudiants :** dans le suivi de candidature, affichage clair du statut et de l'expiration du lien sécurisé. Le réenvoi distingue une demande acceptée par MailPulse d'une livraison effective et d'un envoi différé après transaction. Aucun lien secret ni mot de passe n'est affiché dans le suivi.
+
 - fix(notes): sélectionner l'année universitaire en AJAX sur les pages de notes BTS et LMD, avec mise à jour des listes, indicateurs et périmètres de saisie.
 
 ### Correctifs

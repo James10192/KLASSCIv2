@@ -45,6 +45,9 @@ final class AdmissionWhatsappActivationLink
             || ! $this->settings->notifyWhatsapp()
             || $workflow->accessActivated()
             || ! $workflow->activation_token_hash
+            || ! $workflow->activation_token_expires_at
+            || $workflow->activation_token_expires_at->isPast()
+            || $workflow->activation_token_used_at !== null
             || ! $this->managed->activationMilestoneReached($workflow)) {
             return false;
         }

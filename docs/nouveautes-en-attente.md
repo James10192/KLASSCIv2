@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-09 · #1536 · Dossier de candidature > Espace étudiant : statut et expiration du lien d'activation visibles, avec messages de renvoi précisant que la réception n'est pas encore confirmée.
 - 2026-10-09 · #1535 · Enseignants : export de l'annuaire des professeurs en PDF (aperçu et téléchargement) ou Excel, avec filtres de recherche, statut et spécialisation et présentation officielle de l'établissement.
 - 2026-10-09 · #1535 · Planning général BTS : reprendre les affectations d'enseignants et volumes horaires d'une année précédente dans les configurations manquantes de la nouvelle année, avec aperçu et confirmation, sans écraser les données existantes.
 - 2026-10-08 · Fiche étudiant / Inscriptions : action « Accorder une réduction » par inscription, avec motif prérempli, récapitulatif, vérification des paiements et permission financière frais.souscriptions.ajuster (distincte de inscriptions.edit).
