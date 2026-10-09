@@ -306,6 +306,7 @@ jobs:
             tests/Feature/Exploitation \
             tests/Unit/Deployment \
             tests/Unit/Routes \
+            tests/Unit/Services/MailPulse/MailPulseMonitoringStatusTest.php \
             tests/Unit/Comptabilite \
             tests/Unit/Photos \
             tests/Unit/Services/Master
