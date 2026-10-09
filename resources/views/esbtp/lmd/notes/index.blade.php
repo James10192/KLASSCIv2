@@ -1309,6 +1309,10 @@ function saveNote(studentId, evaluationId, noteValue) {
         }
         if (!err.limite) console.error('Save error:', err);
         queueOfflineNote(payload, input, err.limite ? null : err.message);
+        if (err.serveur) {
+            // La requête a reçu un 5xx : ne pas présenter cette panne comme un réseau coupé.
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: err.message } }));
+        }
         if (err.limite) planifierRepriseApresLimite(err.limite);
     }).finally(() => {
         input?.classList.remove('ln-syncing');
@@ -1339,7 +1343,11 @@ function sendNoteMutation(payload) {
             err.refusee = true;
             throw err;
         }
-        if (!r.ok) throw new Error(data.message || ('Erreur serveur ' + r.status));
+        if (!r.ok) {
+            const err = new Error(data.message || ('Erreur serveur ' + r.status));
+            err.serveur = r.status >= 500;
+            throw err;
+        }
         return data;
     });
 }
@@ -1465,7 +1473,11 @@ function envoyerLot(notes, submitFinal) {
             err.refusee = true;
             throw err;
         }
-        if (!r.ok) throw new Error(data.message || ('Erreur serveur ' + r.status));
+        if (!r.ok) {
+            const err = new Error(data.message || ('Erreur serveur ' + r.status));
+            err.serveur = r.status >= 500;
+            throw err;
+        }
         return data;
     }).then(data => {
         btn.disabled = false;
@@ -1495,6 +1507,13 @@ function envoyerLot(notes, submitFinal) {
             // Rien n'est perdu : les notes restent à l'écran, la file les renverra.
             if (!submitFinal) { notes.forEach(note => queueOfflineNote(note, findNoteInput(note))); planifierRepriseApresLimite(err.limite); }
             window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'warning', message: err.message } }));
+            return;
+        }
+        if (err.serveur) {
+            // Le serveur a répondu en erreur : afficher la vraie réponse et sa référence de support.
+            // Le brouillon local reste intact, sans faire croire à une perte de connexion.
+            if (!submitFinal) notes.forEach(note => queueOfflineNote(note, findNoteInput(note), err.message));
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: err.message } }));
             return;
         }
         console.error('Bulk save error:', err);
