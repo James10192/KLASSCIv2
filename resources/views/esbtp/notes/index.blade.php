@@ -580,6 +580,7 @@
 <script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}" defer></script>
 <script>
 // Variables globales
+let nmAcademicYearId = @json($anneeSelectionneeId);
 let currentClassId = null;
 let currentClassname = '';
 let currentMatiereId = null;
@@ -618,7 +619,7 @@ function nmActualiserCouvertureApresSauvegarde() {
     clearTimeout(nmCouvertureRefreshTimer);
     nmCouvertureRefreshTimer = setTimeout(function() {
         window.dispatchEvent(new CustomEvent('couverture:invalider', {
-            detail: { classe_id: Number(currentClassId), annee_universitaire_id: @json($anneeSelectionneeId ?? null) }
+            detail: { classe_id: Number(currentClassId), annee_universitaire_id: nmAcademicYearId }
         }));
         nmNotifyOtherTabsNotesUpdated();
     }, 900);
@@ -629,7 +630,7 @@ function nmNotifyOtherTabsNotesUpdated() {
     const detail = {
         type: 'notes-updated',
         classe_id: Number(currentClassId),
-        annee_universitaire_id: @json($anneeSelectionneeId ?? null),
+        annee_universitaire_id: nmAcademicYearId,
         at: Date.now(),
     };
 
@@ -688,34 +689,83 @@ $(document).ready(function() {
     const filterInputs = filtersForm ? filtersForm.querySelectorAll('select, input[name="search"]') : [];
     const exportBlankPdfBtn = document.getElementById('exportBlankPdfBtn');
 
-    function fetchClasses() {
-        if (!filtersForm || !classesGrid) return;
+    let nmClassesRequestSeq = 0;
+    let nmRestoringYear = false;
 
+    async function fetchClasses() {
+        if (!filtersForm || !classesGrid) return;
+        const sequence = ++nmClassesRequestSeq;
         const formData = new FormData(filtersForm);
         formData.set('classes_ajax', '1');
+        const selectedYear = Number(formData.get('annee_universitaire_id')) || null;
         const params = new URLSearchParams(formData);
-
-        fetch(`${filtersForm.action}?${params.toString()}`, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            },
-            credentials: 'same-origin'
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    throw new Error('Erreur lors du chargement des classes.');
-                }
-                classesGrid.innerHTML = data.html;
-                if (classesCountSpan && typeof data.total !== 'undefined') {
-                    classesCountSpan.textContent = data.total;
-                }
-            })
-            .catch(error => {
-                console.error(error);
-                alert('Impossible de charger les classes.');
+        try {
+            const response = await fetch(`${filtersForm.action}?${params.toString()}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                credentials: 'same-origin'
             });
+            if (!response.ok) throw new Error('Impossible de charger les classes (' + response.status + ').');
+            const data = await response.json();
+            if (!data.success) throw new Error('Erreur lors du chargement des classes.');
+            if (sequence !== nmClassesRequestSeq) return;
+
+            const yearChanged = selectedYear !== nmAcademicYearId;
+            if (yearChanged) {
+                nmFlushAutosave();
+                nmAbortGridRequests();
+                nmCancelFinalSaveRetry();
+                currentClassId = null;
+                currentMatiereId = null;
+                cachedStudents = null;
+                cachedStudentsClassId = null;
+                cachedStudentsRequestKey = null;
+                evaluationsData = {};
+                notesData = {};
+                nmAcademicYearId = selectedYear;
+                document.querySelectorAll('#evaluationCreateForm input[name="annee_universitaire_id"]').forEach(
+                    input => { input.value = String(selectedYear ?? ''); }
+                );
+                const yearLabel = document.querySelector('.nm-context-value');
+                if (yearLabel) yearLabel.textContent = data.annee_name;
+                const refresh = document.querySelector('.nm-hero-actions .nm-hero-btn');
+                if (refresh) {
+                    const href = new URL(filtersForm.action, window.location.origin);
+                    href.searchParams.set('annee_universitaire_id', String(selectedYear));
+                    refresh.href = href.toString();
+                }
+                const location = new URL(window.location.href);
+                location.searchParams.set('annee_universitaire_id', String(selectedYear));
+                ['classe_id', 'matiere_id', 'periode'].forEach(key => location.searchParams.delete(key));
+                history.replaceState(history.state, '', location.toString());
+                window.dispatchEvent(new CustomEvent('couverture:contexte', {
+                    detail: { classe_id: null, annee_universitaire_id: selectedYear, periode: 'annuel' }
+                }));
+                updateBlankPdfLink();
+            }
+            classesGrid.innerHTML = data.html;
+            if (classesCountSpan) classesCountSpan.textContent = data.total;
+            const badge = document.querySelector('.nm-section-badge');
+            if (badge) badge.textContent = data.total + ' classes';
+            const stats = data.hero_stats || {};
+            const kpis = document.querySelectorAll('.nm-hero-kpi-value');
+            if (kpis.length === 4) {
+                kpis[0].textContent = data.total;
+                kpis[1].textContent = (stats.total_configured ?? 0) + '/' + (stats.total_matieres ?? 0);
+                kpis[2].textContent = (stats.avg_completion ?? 0) + '%';
+                kpis[3].textContent = Number(stats.global_avg) ? Number(stats.global_avg).toFixed(2) : '--';
+            }
+        } catch (error) {
+            if (sequence !== nmClassesRequestSeq) return;
+            console.error(error);
+            const yearSelect = filtersForm.querySelector('[name="annee_universitaire_id"]');
+            if (yearSelect && selectedYear !== nmAcademicYearId) {
+                nmRestoringYear = true;
+                yearSelect.value = String(nmAcademicYearId ?? '');
+                yearSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                nmRestoringYear = false;
+            }
+            alert('Impossible de charger les classes pour cette année. La sélection précédente est conservée.');
+        }
     }
 
     // Réutilisable après une validation : les cartes et leurs compteurs se
@@ -731,10 +781,7 @@ $(document).ready(function() {
 
     filterInputs.forEach((input) => {
         input.addEventListener('change', function() {
-            if (input.getAttribute('name') === 'annee_universitaire_id') {
-                filtersForm.submit();
-                return;
-            }
+            if (nmRestoringYear) return;
             fetchClasses();
         });
         if (input.getAttribute('name') === 'search') {
@@ -749,7 +796,12 @@ $(document).ready(function() {
         resetFiltersBtn.addEventListener('click', function(event) {
             event.preventDefault();
             if (!filtersForm) return;
+            const activeYear = filtersForm.querySelector('[name="annee_universitaire_id"]');
             filtersForm.reset();
+            if (activeYear) {
+                activeYear.value = String(nmAcademicYearId ?? '');
+                activeYear.dispatchEvent(new Event('change', { bubbles: true }));
+            }
             fetchClasses();
         });
     }
@@ -826,7 +878,7 @@ $(document).ready(function() {
             buildNotesGrid();
         }
         window.dispatchEvent(new CustomEvent('couverture:contexte', {
-            detail: { classe_id: currentClassId || null, annee_universitaire_id: @json($anneeSelectionneeId ?? null), periode: currentPeriodeFilter === 'semestre1' || currentPeriodeFilter === 'semestre2' ? currentPeriodeFilter : 'annuel' }
+            detail: { classe_id: currentClassId || null, annee_universitaire_id: nmAcademicYearId, periode: currentPeriodeFilter === 'semestre1' || currentPeriodeFilter === 'semestre2' ? currentPeriodeFilter : 'annuel' }
         }));
     });
 
@@ -928,7 +980,7 @@ function selectClass(classId, className) {
     window.dispatchEvent(new CustomEvent('couverture:contexte', {
         detail: {
             classe_id: classId,
-            annee_universitaire_id: @json($anneeSelectionneeId ?? null),
+            annee_universitaire_id: nmAcademicYearId,
             periode: 'annuel',
         },
     }));
@@ -1000,7 +1052,9 @@ function updateBlankPdfLink() {
             return;
         }
 
-        btn.setAttribute('href', template.replace(':classId', currentClassId));
+        const pdfUrl = new URL(template.replace(':classId', currentClassId), window.location.origin);
+        pdfUrl.searchParams.set('annee_universitaire_id', String(nmAcademicYearId ?? ''));
+        btn.setAttribute('href', pdfUrl.toString());
         btn.classList.remove('disabled');
         btn.removeAttribute('aria-disabled');
         btn.setAttribute('tabindex', '0');
@@ -1031,7 +1085,7 @@ function loadEvaluationsAndNotes() {
             .replace(':matiereId', currentMatiereId),
         method: 'GET',
         data: {
-            annee_universitaire_id: @json($anneeSelectionneeId),
+            annee_universitaire_id: nmAcademicYearId,
         },
         dataType: 'json',
         success: function(response) {
@@ -1124,7 +1178,7 @@ function buildNotesGrid() {
         method: 'GET',
         data: {
             semesters: requestedSemesters,
-            annee_universitaire_id: @json($anneeSelectionneeId),
+            annee_universitaire_id: nmAcademicYearId,
         },
         dataType: 'json',
         success: function(response) {
@@ -2067,7 +2121,7 @@ $(document).on('click', '#exportExcelBtn:not(:disabled):not(.disabled)', functio
         + '?classe=' + encodeURIComponent(currentClassId)
         + '&matiere=' + encodeURIComponent(currentMatiereId)
         + '&periode=' + encodeURIComponent(periode)
-        + '&annee_universitaire_id=' + encodeURIComponent(@json($anneeSelectionneeId));
+        + '&annee_universitaire_id=' + encodeURIComponent(nmAcademicYearId);
     window.open(url, '_blank');
 });
 
@@ -2162,7 +2216,7 @@ function pr7HandleFile(file) {
     formData.append('classe_id', currentClassId);
     formData.append('matiere_id', currentMatiereId);
     formData.append('periode', $('#periodeFilter').val());
-    formData.append('annee_universitaire_id', @json($anneeSelectionneeId));
+    formData.append('annee_universitaire_id', nmAcademicYearId);
 
     fetch(PR7.routes.importDryRun, {
         method: 'POST',
@@ -2271,7 +2325,7 @@ $(document).on('click', '#nm-import-confirm-btn:not(:disabled)', function() {
     formData.append('classe_id', currentClassId);
     formData.append('matiere_id', currentMatiereId);
     formData.append('periode', $('#periodeFilter').val());
-    formData.append('annee_universitaire_id', @json($anneeSelectionneeId));
+    formData.append('annee_universitaire_id', nmAcademicYearId);
 
     fetch(PR7.routes.importApply, {
         method: 'POST',
