@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Notes BTS — correction de la validation groupée sur les anciens semestres.** La synchronisation après « Valider les notes » compare désormais le semestre comme du texte, conformément au stockage `VARCHAR` historique (`1`/`2`). Les anciennes valeurs `semestre1`/`semestre2` sont reconnues et réalignées pour les notes validées concernées, sans suppression de note ni changement des règles de doublons. Le diagnostic serveur inclut le contexte évaluation, classe, matière, période et SQLSTATE.
+
 - **Espace familial (socle sécurisé, désactivé par défaut) :** un responsable disposant d'un compte indépendant peut consulter seulement l'identité d'un étudiant pour lequel il possède une habilitation vérifiée, limitée dans le temps et révocable. Un étudiant majeur exige en plus un consentement documenté. Pas de partage des accès ni de consultation des notes ou des finances par défaut.
 
 - **Invitations étudiantes fiables (activation progressive) :** une file transactionnelle chiffrée conserve les demandes d'envoi même si l'application s'interrompt après validation de l'inscription. Un traitement planifié reprend les tentatives avec la même clé MailPulse, annule les liens expirés, et sépare préparation, acceptation et preuve de livraison. Réglage désactivé par défaut tant que le cron et la migration ne sont pas vérifiés.
