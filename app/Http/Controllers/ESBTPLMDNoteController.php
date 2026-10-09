@@ -59,6 +59,22 @@ class ESBTPLMDNoteController extends Controller
         // pondération contrôle continu / examen si l'école l'applique, sinon null.
         $ponderation = app(\App\Services\LMD\LmdAcademicRuleProfile::class)->ponderationGravee();
 
+        if ($request->ajax() && $request->boolean('classes_ajax')) {
+            return response()->json([
+                'success' => true,
+                'html' => view('esbtp.lmd.notes.partials._classes', [
+                    'classes' => $classes,
+                    'evalCounts' => $evalCounts,
+                    'anneeSelectionnee' => $anneeSelectionnee,
+                    'totalClasses' => $classes->count(),
+                ])->render(),
+                'annee_name' => $anneeSelectionnee?->name ?? 'Aucune année',
+                'total_classes' => $classes->count(),
+                'total_etudiants' => $classes->sum('etudiants_count'),
+                'total_evaluations' => $evalCounts->sum(),
+            ]);
+        }
+
         return view('esbtp.lmd.notes.index', compact(
             'classes',
             'evalCounts',
