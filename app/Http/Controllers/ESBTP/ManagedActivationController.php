@@ -38,9 +38,14 @@ final class ManagedActivationController extends Controller
             ], 410);
         }
 
+        // Le formulaire ne peut pas survivre au jeton initial de 48 heures.
+        $submitExpiresAt = now()->addMinutes(30);
+        if ($workflow->activation_token_expires_at && $workflow->activation_token_expires_at->lessThan($submitExpiresAt)) {
+            $submitExpiresAt = $workflow->activation_token_expires_at;
+        }
         $submitUrl = URL::temporarySignedRoute(
             'esbtp.admissions.workflow.activation.signed.submit',
-            now()->addMinutes(30),
+            $submitExpiresAt,
             ['workflow' => $workflow->id, 'v' => $request->query('v')],
         );
 
@@ -147,6 +152,15 @@ final class ManagedActivationController extends Controller
     private function assertActivatable(ESBTPCandidatureWorkflow $workflow, ?string $version): void
     {
         $workflow->refresh();
+
+        // Le GET et le POST doivent tous les deux respecter l'expiration métier.
+        // La signature temporaire du POST ne prolonge pas le lien de 48 h.
+        if (! $workflow->activation_token_hash || ! $workflow->activation_token_expires_at
+            || $workflow->activation_token_expires_at->isPast() || $workflow->activation_token_used_at) {
+            throw ValidationException::withMessages([
+                'activation' => 'Ce lien d’activation a expiré ou a déjà été utilisé. Demandez un nouvel envoi.',
+            ]);
+        }
 
         if (! $this->whatsapp->isCurrent($workflow, $version) && ! $workflow->accessActivated()) {
             throw ValidationException::withMessages([
