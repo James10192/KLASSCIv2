@@ -501,13 +501,14 @@
                 <div class="ln-hero-icon"><i class="fas fa-edit"></i></div>
                 <div class="ln-hero-info">
                     <h1>Notes LMD</h1>
-                    <p>Gestion des notes par classe — {{ $anneeSelectionnee->name ?? 'Aucune année' }}</p>
+                    <p id="lmd-year-context">Gestion des notes par classe — {{ $anneeSelectionnee->name ?? 'Aucune année' }}</p>
                 </div>
             </div>
-            <form method="GET" action="{{ route('esbtp.lmd.notes.index') }}"><x-au-select name="annee_universitaire_id" id="lmd_annee_universitaire_id"
-                :value="$anneeSelectionnee?->id" icon="fa-calendar" :searchable="false" :placeholder-is-first-option="false" onchange="this.form.submit()"
+            <form method="GET" action="{{ route('esbtp.lmd.notes.index') }}" id="lmdYearForm"><x-au-select name="annee_universitaire_id" id="lmd_annee_universitaire_id"
+                :value="$anneeSelectionnee?->id" icon="fa-calendar" :searchable="false" :placeholder-is-first-option="false"
                 :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => $a->name.($a->is_current ? ' · courante' : '')])->toArray()" /></form>
         </div>
+        <div id="lmd-year-feedback" role="status" aria-live="polite" style="font-size:.8rem;margin-top:.35rem;"></div>
 
         <div class="ln-hero-kpis">
             <div class="ln-kpi ln-kpi--classes">
@@ -545,63 +546,9 @@
     @endforeach
 
     {{-- ══ Classes grid ══ --}}
-    @if($classes->isEmpty())
-        <div class="ln-empty-card">
-            <div class="ln-empty">
-                <div class="ln-empty-icon"><i class="fas fa-layer-group"></i></div>
-                <div class="ln-empty-title">Aucune classe LMD</div>
-                <div class="ln-empty-text">Aucune classe utilisant le système LMD n'a été trouvée. Configurez d'abord vos classes.</div>
-            </div>
-        </div>
-    @else
-        <div class="ln-section-header">
-            <div class="ln-section-title">
-                <i class="fas fa-th-large"></i>
-                Classes LMD
-            </div>
-            <span class="ln-section-count">{{ $totalClasses }} classe{{ $totalClasses > 1 ? 's' : '' }}</span>
-        </div>
-
-        <div class="ln-cards">
-            @foreach($classes as $classe)
-                @php $nbEvals = $evalCounts[$classe->id] ?? 0; @endphp
-                <div class="ln-card">
-                    <div class="ln-card-head">
-                        <div class="ln-card-icon"><i class="fas fa-graduation-cap"></i></div>
-                        <div>
-                            <div class="ln-card-title">{{ $classe->name }}</div>
-                            <div class="ln-card-sub">
-                                {{ $classe->filiere->name ?? '' }}
-                                @if($classe->niveau) &middot; {{ $classe->niveau->name ?? '' }} @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="ln-card-metrics">
-                        <div class="ln-metric">
-                            <span class="ln-metric-label">Étudiants</span>
-                            <span class="ln-metric-value">{{ $classe->etudiants_count }}</span>
-                        </div>
-                        <div class="ln-metric">
-                            <span class="ln-metric-label">Évaluations</span>
-                            <span class="ln-metric-value">{{ $nbEvals }}</span>
-                        </div>
-                        <div class="ln-metric">
-                            <span class="ln-metric-label">Année</span>
-                            <span class="ln-metric-value" style="font-size:.82rem; color:#64748b;">{{ $anneeCourante->name ?? '—' }}</span>
-                        </div>
-                    </div>
-
-                    <div class="ln-card-foot">
-                        <button type="button" class="ln-card-btn ln-card-btn--primary"
-                                onclick="openNotesModal({{ $classe->id }}, @js($classe->name))">
-                            <i class="fas fa-edit"></i>Gérer les notes
-                        </button>
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    @endif
+    <div id="lmd-classes-results">
+        @include('esbtp.lmd.notes.partials._classes')
+    </div>
 
 </div>
 
@@ -851,7 +798,7 @@ let currentClasseId = null;
 let currentClasseData = null;
 let currentMatiereId = null;
 let currentMatiereName = '';
-const lmdAcademicYearId = @json($anneeSelectionnee?->id);
+let lmdAcademicYearId = @json($anneeSelectionnee?->id);
 let evaluationsData = {};
 let notesData = {};
 let evalParamsCache = {};
@@ -864,6 +811,77 @@ const lmdAppreciationScale = @json(app(\App\Services\AppreciationScaleService::c
 const lmdNotesQueueKey = 'klassci:lmd-notes:offline-queue:v1';
 let offlineNoteQueue = loadOfflineNoteQueue();
 let isReplayingOfflineQueue = false;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const yearForm = document.getElementById('lmdYearForm');
+    const yearSelect = document.getElementById('lmd_annee_universitaire_id');
+    const feedback = document.getElementById('lmd-year-feedback');
+    let requestSequence = 0;
+    let restoring = false;
+    if (!yearForm || !yearSelect) return;
+
+    async function changeYear() {
+        if (restoring) return;
+        const newYear = Number(yearSelect.value) || null;
+        if (newYear === lmdAcademicYearId) return;
+        const sequence = ++requestSequence;
+        feedback.textContent = 'Chargement des classes…';
+        yearForm.setAttribute('aria-busy', 'true');
+        try {
+            const url = new URL(yearForm.action, window.location.origin);
+            url.searchParams.set('classes_ajax', '1');
+            url.searchParams.set('annee_universitaire_id', String(newYear ?? ''));
+            const response = await fetch(url.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                credentials: 'same-origin'
+            });
+            if (!response.ok) throw new Error('Erreur HTTP ' + response.status);
+            const data = await response.json();
+            if (!data.success) throw new Error('Impossible de charger les classes.');
+            if (sequence !== requestSequence) return;
+
+            lmdAcademicYearId = newYear;
+            anneeSuivi = newYear;
+            currentClasseId = null;
+            currentClasseData = null;
+            currentMatiereId = null;
+            evaluationsData = {};
+            notesData = {};
+            document.getElementById('lmd-classes-results').innerHTML = data.html;
+            document.getElementById('lmd-year-context').textContent = 'Gestion des notes par classe — ' + data.annee_name;
+            const kpis = document.querySelectorAll('.ln-hero-kpis .ln-kpi-value');
+            if (kpis.length === 3) {
+                kpis[0].textContent = data.total_classes;
+                kpis[1].textContent = data.total_etudiants;
+                kpis[2].textContent = data.total_evaluations;
+            }
+            document.querySelectorAll('#evalCreateForm input[name="annee_universitaire_id"]').forEach(
+                input => { input.value = String(newYear ?? ''); }
+            );
+            window.dispatchEvent(new CustomEvent('couverture:contexte', {
+                detail: { classe_id: null, annee_universitaire_id: newYear, periode: 'semestre1' }
+            }));
+            const currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('annee_universitaire_id', String(newYear ?? ''));
+            currentUrl.searchParams.delete('classe');
+            currentUrl.searchParams.delete('ecue');
+            history.replaceState(history.state, '', currentUrl.toString());
+            feedback.textContent = '';
+        } catch (error) {
+            if (sequence !== requestSequence) return;
+            console.error('Changement d’année LMD :', error);
+            restoring = true;
+            yearSelect.value = String(lmdAcademicYearId ?? '');
+            yearSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            restoring = false;
+            feedback.textContent = 'Impossible de charger cette année. Sélection précédente conservée.';
+        } finally {
+            if (sequence === requestSequence) yearForm.removeAttribute('aria-busy');
+        }
+    }
+    yearSelect.addEventListener('change', changeYear);
+    yearForm.addEventListener('submit', event => { event.preventDefault(); changeYear(); });
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     notesModal = new bootstrap.Modal(document.getElementById('modalNotes'));

@@ -284,6 +284,9 @@ class ESBTPNoteController extends Controller
                     'classStatsById' => $classStatsById,
                 ])->render(),
                 'total' => $classes->count(),
+                'hero_stats' => $heroStats,
+                'annee_name' => $anneeAcademique,
+                'annee_id' => $anneeSelectionneeId,
             ]);
         }
 
