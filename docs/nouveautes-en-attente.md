@@ -36,3 +36,5 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 - 2026-10-06 · bulletin LMD · en-tête compact 50/50 (logo établissement agrandi, Année/Édition/Niveau/Semestre sur deux demi-lignes) et zone de signature nettoyée : titre du Directeur des Études en haut, espace de signature au centre, nom en bas.
 - 2026-10-06 · configuration LMD complète · polices par zone + hauteur logo + espacements en-tête/signature, sauvegarde AJAX sans redirection vers /esbtp/settings ; les codes courts internes de filière comme BU ne sont plus imprimés dans Parcours.
 - 2026-10-06 · bulletin LMD · le bandeau Code établissement / Statut / Direction masque maintenant complètement les rubriques sans valeur et redistribue automatiquement l'espace entre celles qui restent.
+
+- 2026-10-09 · Notes BTS et LMD : changer l'année universitaire sans recharger la page ; classes, indicateurs, saisie des évaluations et suivi des notes actualisés.
