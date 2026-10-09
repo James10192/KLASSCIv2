@@ -1481,6 +1481,9 @@
                 Aucune année universitaire sélectionnée. Veuillez en choisir une pour afficher le planning.
             </div>
         @else
+            @can('planning.manage')
+                @include('esbtp.planning-general.partials.reprise-annee')
+            @endcan
             <!-- Configuration des Volumes Horaires par Combinaison -->
             <div class="pg-section" style="background:#fff; border-radius:14px; border:1px solid #e8ecf1; box-shadow:0 1px 3px rgba(0,0,0,.04); padding:1.5rem; margin-bottom:1.25rem;">
                 {{-- Section header --}}
@@ -3500,5 +3503,85 @@ $(function() {
         $('#combinations-preview-wrapper').show();
     });
 });
+</script>
+@endpush
+
+@push('scripts')
+<script>
+(function () {
+    // Délégation : le contenu du planning peut être rechargé via les onglets AJAX.
+    function getForm() { return document.getElementById('pg-reprise-form'); }
+    function feedback(form, message, error) {
+        const area = form.querySelector('#pg-reprise-feedback');
+        area.textContent = message;
+        area.style.color = error ? '#b91c1c' : '#047857';
+    }
+    function reset(form) {
+        form.querySelector('#pg-reprise-confirm-area').hidden = true;
+        form.querySelector('#pg-reprise-confirm').checked = false;
+        form.querySelector('#pg-reprise-submit').disabled = true;
+        form.querySelector('#pg-reprise-feedback').textContent = '';
+    }
+    function errorText(result, fallback) {
+        return result.message || (result.errors && Object.values(result.errors).flat().join(' ')) || fallback;
+    }
+    document.addEventListener('change', function (event) {
+        const form = getForm();
+        if (!form) return;
+        if (event.target.id === 'pg-reprise-source') reset(form);
+        if (event.target.id === 'pg-reprise-confirm') {
+            form.querySelector('#pg-reprise-submit').disabled = !event.target.checked;
+        }
+    });
+    document.addEventListener('click', async function (event) {
+        const btn = event.target.closest('#pg-reprise-preview');
+        const form = getForm();
+        if (!btn || !form) return;
+        reset(form);
+        const source = form.querySelector('[name=source_annee_id]').value;
+        const target = form.querySelector('[name=target_annee_id]').value;
+        if (!source) { feedback(form, 'Choisissez une année source.', true); return; }
+        btn.disabled = true;
+        feedback(form, 'Vérification des configurations…', false);
+        try {
+            const query = new URLSearchParams({ source_annee_id: source, target_annee_id: target });
+            const response = await fetch(btn.dataset.previewUrl + '?' + query.toString(), {
+                headers: { Accept: 'application/json' }, credentials: 'same-origin'
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(errorText(result, 'Aperçu indisponible.'));
+            feedback(form, result.to_import + ' configuration(s) à importer · ' +
+                result.already_present + ' déjà présente(s) · ' +
+                result.source_count + ' trouvée(s) dans ' + result.source + '.', false);
+            if (result.to_import > 0) form.querySelector('#pg-reprise-confirm-area').hidden = false;
+        } catch (error) {
+            feedback(form, error.message, true);
+        } finally { btn.disabled = false; }
+    });
+    document.addEventListener('submit', async function (event) {
+        if (event.target.id !== 'pg-reprise-form') return;
+        event.preventDefault();
+        const form = event.target;
+        if (!form.querySelector('#pg-reprise-confirm').checked) return;
+        const btn = form.querySelector('#pg-reprise-submit');
+        btn.disabled = true;
+        feedback(form, 'Importation sécurisée en cours…', false);
+        try {
+            const response = await fetch(form.action, {
+                method: 'POST', body: new FormData(form), credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(errorText(result, 'Importation impossible.'));
+            feedback(form, result.message, false);
+            form.querySelector('#pg-reprise-confirm-area').hidden = true;
+            const activeTab = document.querySelector('.ph-tab.active');
+            if (activeTab) activeTab.click();
+        } catch (error) {
+            feedback(form, error.message, true);
+            btn.disabled = false;
+        }
+    });
+})();
 </script>
 @endpush

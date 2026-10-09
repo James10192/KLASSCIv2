@@ -2299,6 +2299,10 @@ Route::prefix('secretaires')->name('secretaires.')->middleware(['auth', 'permiss
 
 // Routes pour la gestion des enseignants
 Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.access|identity.direct_studies|identity.registrar|identity.registrar_clerk', 'permission:module.enseignants.access', 'throttle:60,1'])->group(function () {
+    // Export annuaire enseignant — AVANT la ressource /enseignants/{enseignant}
+    Route::get('enseignants/preview-pdf', [\App\Http\Controllers\ESBTPEnseignantExportController::class, 'previewPdf'])->name('enseignants.preview-pdf')->middleware(['permission:teachers.view', 'throttle:30,1']);
+    Route::get('enseignants/export-pdf', [\App\Http\Controllers\ESBTPEnseignantExportController::class, 'downloadPdf'])->name('enseignants.export-pdf')->middleware(['permission:teachers.view', 'throttle:10,1']);
+    Route::get('enseignants/export-excel', [\App\Http\Controllers\ESBTPEnseignantExportController::class, 'downloadExcel'])->name('enseignants.export-excel')->middleware(['permission:teachers.view', 'throttle:10,1']);
     Route::get('enseignants/duplicates', [ESBTPEnseignantController::class, 'duplicates'])->name('enseignants.duplicates');
     Route::post('enseignants/quick-create', [ESBTPEnseignantController::class, 'quickStore'])->name('enseignants.quick-create');
     Route::get('enseignants/bulk-availability', [ESBTPEnseignantController::class, 'bulkAvailability'])->name('enseignants.bulk-availability');
@@ -3215,6 +3219,10 @@ Route::middleware(['auth', 'permission:admin.access|identity.direct_studies|iden
     // Routes pour le planning gÃ©nÃ©ral coordinateur
     Route::get('/planning-general', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'index'])->name('planning-general.index')
         ->middleware('permission:planning.manage|timetables.view_all');
+    Route::get('/planning-general/reprise-annee/preview', [\App\Http\Controllers\ESBTPPlanningYearCarryoverController::class, 'preview'])->name('planning-general.reprise-annee.preview')
+        ->middleware(['permission:planning.manage', 'throttle:30,1']);
+    Route::post('/planning-general/reprise-annee', [\App\Http\Controllers\ESBTPPlanningYearCarryoverController::class, 'store'])->name('planning-general.reprise-annee')
+        ->middleware(['permission:planning.manage', 'throttle:5,1']);
     Route::get('/planning-general/coordinateur', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'coordinateur'])->name('planning-general.coordinateur')
         ->middleware('permission:planning.manage|timetables.view_all');
     Route::get('/planning-general/repartition-matieres', [\App\Http\Controllers\ESBTPPlanningGeneralController::class, 'repartitionMatieres'])->name('planning-general.repartition-matieres')

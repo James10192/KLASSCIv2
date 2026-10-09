@@ -549,6 +549,14 @@
                     <div class="te-hero-subtitle">Vue secondaire — la gestion principale est dans <strong>Personnel</strong>.</div>
                 </div>
                 <div class="te-hero-actions">
+                    @can('teachers.view')
+                        <x-export-modal
+                            :preview-url="route('esbtp.enseignants.preview-pdf')"
+                            :pdf-url="route('esbtp.enseignants.export-pdf')"
+                            :excel-url="route('esbtp.enseignants.export-excel')"
+                            button-class="te-hero-btn"
+                            label="Exporter la liste" />
+                    @endcan
                     <button type="button" class="te-hero-btn" data-bs-toggle="modal" data-bs-target="#bulkAvailabilityModal">
                         <i class="fas fa-calendar-check"></i>Disponibilités
                     </button>
@@ -609,13 +617,22 @@
                             <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactifs</option>
                         </select>
                     </div>
+                    <div class="te-filter-group">
+                        <label class="te-filter-label">Spécialisation</label>
+                        <select name="specialization" class="te-filter-select">
+                            <option value="">Toutes</option>
+                            @foreach($specializations as $specialization)
+                                <option value="{{ $specialization }}" {{ request('specialization') == $specialization ? 'selected' : '' }}>{{ $specialization }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="te-filter-group" style="flex: 0 0 auto; min-width: auto;">
                         <label class="te-filter-label">&nbsp;</label>
                         <div style="display: flex; gap: 0.5rem;">
                             <button type="submit" class="te-filter-btn">
                                 <i class="fas fa-search"></i>Filtrer
                             </button>
-                            @if(request()->hasAny(['search', 'status']))
+                            @if(request()->hasAny(['search', 'status', 'specialization']))
                                 <a href="{{ route('esbtp.enseignants.index') }}" class="te-filter-btn-reset">
                                     <i class="fas fa-times"></i>Reset
                                 </a>
@@ -757,6 +774,12 @@
 
 @push('scripts')
 <script>
+// Filtres serveur identiques pour la liste, l'aperçu PDF et le fichier Excel.
+window.exportFilters = function () {
+    const form = document.querySelector('.te-filter-bar form');
+    if (!form) return {};
+    return Object.fromEntries(new FormData(form).entries());
+};
 $(document).ready(function() {
     // ═══ Modal Bulk Availability ═══
     const bulkModal = document.getElementById('bulkAvailabilityModal');
