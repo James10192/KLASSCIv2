@@ -704,6 +704,8 @@ class ManagedInscriptionEndToEndTest extends TestCase
             'user_id' => $responsableUser->id,
             'nom' => 'KOUAME',
             'prenoms' => 'Fatou',
+            'sexe' => 'F',
+            'telephone' => '+2250700000001',
         ]);
         $etudiant->parents()->attach($parent->id, ['relation' => 'parent', 'is_tuteur' => true]);
 
