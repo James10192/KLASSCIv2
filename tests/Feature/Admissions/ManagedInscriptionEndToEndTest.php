@@ -724,6 +724,9 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $responsableUser->assignRole(\Spatie\Permission\Models\Role::findOrCreate('etudiant', 'web'));
         $this->assertFalse($acces->peutConsulter($grant->fresh(['parent', 'etudiant']), $responsableUser));
         $responsableUser->removeRole('etudiant');
+        $responsableUser->assignRole(\Spatie\Permission\Models\Role::findOrCreate('superAdmin', 'web'));
+        $this->assertFalse($acces->peutConsulter($grant->fresh(['parent', 'etudiant']), $responsableUser));
+        $responsableUser->removeRole('superAdmin');
 
         $acces->revoquer($grant, $this->agent);
         $this->assertFalse($acces->peutConsulter($grant->fresh(['parent', 'etudiant']), $responsableUser));

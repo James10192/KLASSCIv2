@@ -19,7 +19,9 @@ final class AccesFamilial
      */
     public function peutConsulter(ESBTPFamilyAccessGrant $grant, User $user): bool
     {
-        if ($user->hasRole('etudiant')
+        // Ce portail est réservé à une identité sans rôle métier. Un compte
+        // de personnel ou d'étudiant ne peut pas se requalifier comme parent.
+        if ($user->roles()->exists()
             || $grant->verified_at === null || $grant->revoked_at !== null
             || ! $grant->expires_at?->isFuture()) {
             return false;

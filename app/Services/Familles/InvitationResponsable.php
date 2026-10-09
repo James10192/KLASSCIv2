@@ -55,7 +55,7 @@ final class InvitationResponsable
             $existing = User::withTrashed()->where('email', $email)->first();
             $user = $parent->user_id ? User::find($parent->user_id) : null;
             if (($existing && (! $user || (int) $existing->id !== (int) $user->id))
-                || ($user && ($user->trashed() || $user->hasRole('etudiant')
+                || ($user && ($user->trashed() || $user->roles()->exists()
                     || mb_strtolower(trim((string) $user->email)) !== $email
                     || (int) $user->id === (int) $student->user_id))) {
                 throw ValidationException::withMessages([
