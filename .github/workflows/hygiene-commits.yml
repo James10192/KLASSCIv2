@@ -376,6 +376,10 @@ jobs:
           cp .env.example .env
           php artisan key:generate --force
 
+      # Régression ESBTP Abidjan SQLSTATE 22007 : semestre VARCHAR legacy.
+      - name: Notes BTS - semestre legacy sur MariaDB strict
+        run: php vendor/bin/phpunit tests/Feature/Notes/NoteBulkSemesterSqlRegressionTest.php --no-coverage
+
       # Restreint a CE fichier, pas au dossier : les neuf autres tests de
       # tests/Feature/Frais ne sont pas verts en integration continue
       # aujourd'hui, pour des raisons d'environnement anterieures a ce
