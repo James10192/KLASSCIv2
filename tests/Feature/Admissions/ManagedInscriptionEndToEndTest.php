@@ -598,6 +598,12 @@ class ManagedInscriptionEndToEndTest extends TestCase
         ]);
         $this->assertStringNotContainsString('Livré',
             \App\Services\Admissions\AdmissionActivationDispatchLog::label('pending'));
+        $overview = $log->overview();
+        $this->assertTrue($overview['available']);
+        $this->assertGreaterThanOrEqual(1, $overview['counts']['pending']);
+        $this->assertNotEmpty($overview['entries']);
+        $this->assertArrayNotHasKey('request_id', $overview['entries']->first()->getAttributes());
+        $this->assertArrayNotHasKey('provider_message_id', $overview['entries']->first()->getAttributes());
     }
 
     // ── Préparation ─────────────────────────────────────────────────────
