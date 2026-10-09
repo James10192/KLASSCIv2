@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Notes BTS — correction de la validation groupée sur les anciens semestres.** La synchronisation après « Valider les notes » compare désormais le semestre comme du texte, conformément au stockage `VARCHAR` historique (`1`/`2`). Les anciennes valeurs `semestre1`/`semestre2` sont reconnues et réalignées pour les notes validées concernées, sans suppression de note ni changement des règles de doublons. Le diagnostic serveur inclut le contexte évaluation, classe, matière, période et SQLSTATE.
+
 ### Correctifs
 
 - **Bulletin LMD : pied de page plus large et configurable.** Les deux lignes finales (mention de conservation/duplicata et identité de l'établissement) disposent d'une largeur dédiée, réglable dans la configuration du bulletin LMD, et restent chacune sur une ligne quand l'espace le permet. Le pays n'est plus écrit en dur : le PDF reprend désormais le pays configuré pour l'établissement.
