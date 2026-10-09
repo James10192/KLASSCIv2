@@ -9,6 +9,8 @@ use App\Http\Requests\Notes\StoreNoteRequest;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
 use App\Domain\Academique\CoherenceSystemeAcademique;
+use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
+use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Domain\Notes\SaisieGroupeeDeNotes;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -713,9 +715,48 @@ class ESBTPNoteController extends Controller
                     default => "{$saved} note(s) enregistrée(s) en brouillon.",
                 },
             ]);
-        } catch (\Exception $e) {
+        } catch (AcademicPilotageException $e) {
+            // Un verrou de fiche/examen est un conflit métier (409), jamais une panne serveur.
+            return $e->render($request);
+        } catch (\Throwable $e) {
+            // Référence corrélée à la trace interne ; ne jamais exposer SQL ni stack trace au client.
+            $incidentId = (string) Str::uuid();
+            $evaluationId = (int) ($notes[0]['evaluation_id'] ?? 0);
+            $classeId = null;
+            $matiereId = null;
+            $semestreSource = null;
+            $semestreNormalise = null;
+
+            // Diagnostics best effort : une panne SQL ne doit pas en déclencher une autre
+            // et aucun identifiant fourni par le navigateur ne sert de source métier.
+            try {
+                $evaluation = $evaluationId > 0
+                    ? ESBTPEvaluation::query()->find($evaluationId, ['id', 'classe_id', 'matiere_id', 'periode'])
+                    : null;
+                if ($evaluation) {
+                    $classeId = $evaluation->classe_id;
+                    $matiereId = $evaluation->matiere_id;
+                    $semestreSource = (string) $evaluation->periode;
+                    $semestreNormalise = app(AcademicPeriodNormalizer::class)->normalize($semestreSource);
+                }
+            } catch (\Throwable $diagnosticError) {
+                // Les logs principaux restent disponibles même si la base est indisponible.
+            }
+
+            $sqlState = $e instanceof \Illuminate\Database\QueryException || $e instanceof \PDOException
+                ? ($e->errorInfo[0] ?? null)
+                : null;
             \Log::error('saveNotesAjaxBulk error: ' . $e->getMessage(), [
+                'request_id' => $incidentId,
+                'incident_id' => $incidentId,
                 'user_id' => Auth::id(),
+                'classe_id' => $classeId,
+                'evaluation_id' => $evaluationId ?: null,
+                'matiere_id' => $matiereId,
+                'semestre_source' => $semestreSource,
+                'semestre_normalise' => $semestreNormalise,
+                'exception_class' => get_class($e),
+                'sql_state' => $sqlState,
                 'count' => count($notes),
             ]);
 
