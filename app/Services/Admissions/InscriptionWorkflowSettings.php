@@ -23,6 +23,7 @@ final class InscriptionWorkflowSettings
     public const CLASS_CHOICE_ONCE = 'inscriptions.workflow.class_choice_once';
     public const NOTIFY_EMAIL = 'inscriptions.workflow.notify_email';
     public const NOTIFY_WHATSAPP = 'inscriptions.workflow.notify_whatsapp';
+    public const RELIABLE_OUTBOX = 'inscriptions.workflow.reliable_invitation_outbox';
 
     public const MODE_LEGACY = 'legacy';
     public const MODE_CAISSE_AVANT_PIECES = 'caisse_avant_pieces';
@@ -79,6 +80,12 @@ final class InscriptionWorkflowSettings
                 'type' => 'boolean',
                 'description' => "Envoyer les accès / étapes d'inscription par e-mail",
                 'sort_order' => 177,
+            ],
+            self::RELIABLE_OUTBOX => [
+                'value' => '0',
+                'type' => 'boolean',
+                'description' => "Envoi durable des invitations étudiants via l'outbox transactionnelle (nécessite le cron actif)",
+                'sort_order' => 179,
             ],
             self::NOTIFY_WHATSAPP => [
                 'value' => '1',
@@ -155,6 +162,11 @@ final class InscriptionWorkflowSettings
         return $this->boolean(self::NOTIFY_EMAIL, true);
     }
 
+    public function reliableOutboxEnabled(): bool
+    {
+        return $this->boolean(self::RELIABLE_OUTBOX, false);
+    }
+
     public function notifyWhatsApp(): bool
     {
         return $this->boolean(self::NOTIFY_WHATSAPP, true);
@@ -221,7 +233,7 @@ final class InscriptionWorkflowSettings
      */
     public static function booleens(): array
     {
-        return [self::ENABLED, self::REQUIRE_RDV, self::CLASS_CHOICE_ONCE, self::NOTIFY_EMAIL, self::NOTIFY_WHATSAPP];
+        return [self::ENABLED, self::REQUIRE_RDV, self::CLASS_CHOICE_ONCE, self::NOTIFY_EMAIL, self::NOTIFY_WHATSAPP, self::RELIABLE_OUTBOX];
     }
 
     /** @return list<string> toutes les clés du parcours, cases et choix. */

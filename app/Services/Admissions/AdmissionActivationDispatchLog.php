@@ -103,7 +103,9 @@ final class AdmissionActivationDispatchLog
             $counts = [
                 'total' => array_sum(array_map('intval', $groups)),
                 'accepted' => (int) ($groups['accepted'] ?? 0),
-                'pending' => (int) ($groups['pending'] ?? 0),
+                'pending' => (int) ($groups['pending'] ?? 0)
+                    + (int) ($groups['queued'] ?? 0)
+                    + (int) ($groups['processing'] ?? 0),
                 'failed' => (int) ($groups['failed'] ?? 0),
                 'simulated' => (int) ($groups['simulated'] ?? 0),
             ];
@@ -126,6 +128,9 @@ final class AdmissionActivationDispatchLog
         return match ($status) {
             'accepted' => 'Accepté par MailPulse — remise non confirmée',
             'pending' => 'En attente du fournisseur',
+            'queued' => 'En file sécurisée',
+            'processing' => 'En cours de remise au fournisseur',
+            'expired' => 'Lien expiré, envoi annulé',
             'simulated' => 'Simulation — aucun envoi réel',
             'failed' => 'Échec enregistré',
             default => 'État inconnu',

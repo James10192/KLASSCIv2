@@ -421,6 +421,16 @@ final class ManagedInscriptionWorkflow
 
         $url = route('esbtp.admissions.workflow.activation.form', ['token' => $token]);
 
+        // Outbox facultative : crée la demande DANS la transaction métier.
+        // Un processus mort après commit ne perd donc pas l'invitation.
+        if ($this->settings->reliableOutboxEnabled()) {
+            $queued = $this->settings->notifyEmail()
+                && $this->notifier->emailUsable($workflow)
+                && app(AdmissionActivationOutbox::class)->enqueue($workflow, 'email', $url);
+
+            return ['token' => $token, 'url' => $url, 'email_sent' => false, 'email_pending' => $queued];
+        }
+
         // Jamais d'envoi sous verrou ni avant validation : dans une transaction,
         // l'e-mail part après le commit (et pas du tout en cas d'annulation).
         if (DB::transactionLevel() > 0) {
