@@ -46,6 +46,31 @@ class ESBTPClasseController extends Controller
     ) {
     }
     /**
+     * Source unique des listes de classe (écran, appel, PDF et Excel).
+     * Une inscription d'une autre année, un dossier inachevé ou un doublon
+     * ne doit pas apparaître dans la liste ni gonfler l'effectif.
+     */
+    private function etudiantsPourListeDeClasse(
+        ESBTPClasse $classe,
+        ?ESBTPAnneeUniversitaire $anneeCourante
+    ): \Illuminate\Support\Collection {
+        if (!$anneeCourante) {
+            return collect();
+        }
+
+        return $classe->inscriptions()
+            ->occupeUnePlace($anneeCourante->id)
+            ->whereHas('etudiant')
+            ->with(['etudiant.accessibilityProfile'])
+            ->get()
+            ->pluck('etudiant')
+            ->filter()
+            ->unique('id')
+            ->sortBy(fn ($etudiant) => Str::lower(trim($etudiant->nom . ' ' . $etudiant->prenoms)))
+            ->values();
+    }
+
+    /**
      * Affiche la liste des classes.
      *
      * @return \Illuminate\Http\Response
@@ -1718,27 +1743,7 @@ class ESBTPClasseController extends Controller
             true,
         )->first();
 
-        $etudiants = $classe
-            ->inscriptions()
-            ->with(["etudiant.accessibilityProfile"])
-            ->where("status", "active")
-            ->where("workflow_step", "etudiant_cree")
-            ->when($anneeCourante, function ($query) use ($anneeCourante) {
-                return $query->where(
-                    "annee_universitaire_id",
-                    $anneeCourante->id,
-                );
-            })
-            ->get()
-            ->map(function ($inscription) {
-                return $inscription->etudiant;
-            })
-            ->filter()
-            // Trier alpha et réindexer pour obtenir 1, 2, 3... dans la vue
-            ->sortBy(function ($etudiant) {
-                return Str::lower($etudiant->nom . " " . $etudiant->prenoms);
-            })
-            ->values();
+        $etudiants = $this->etudiantsPourListeDeClasse($classe, $anneeCourante);
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -1771,27 +1776,7 @@ class ESBTPClasseController extends Controller
             true,
         )->first();
 
-        $etudiants = $classe
-            ->inscriptions()
-            ->with(["etudiant.accessibilityProfile"])
-            ->where("status", "active")
-            ->where("workflow_step", "etudiant_cree")
-            ->when($anneeCourante, function ($query) use ($anneeCourante) {
-                return $query->where(
-                    "annee_universitaire_id",
-                    $anneeCourante->id,
-                );
-            })
-            ->get()
-            ->map(function ($inscription) {
-                return $inscription->etudiant;
-            })
-            ->filter()
-            // Tri identique à la version web afin de conserver la numérotation
-            ->sortBy(function ($etudiant) {
-                return Str::lower($etudiant->nom . " " . $etudiant->prenoms);
-            })
-            ->values();
+        $etudiants = $this->etudiantsPourListeDeClasse($classe, $anneeCourante);
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -1833,24 +1818,7 @@ class ESBTPClasseController extends Controller
             true,
         )->first();
 
-        $etudiants = $classe
-            ->inscriptions()
-            ->with(["etudiant.accessibilityProfile"])
-            ->where("status", "active")
-            ->where("workflow_step", "etudiant_cree")
-            ->when($anneeCourante, function ($query) use ($anneeCourante) {
-                return $query->where(
-                    "annee_universitaire_id",
-                    $anneeCourante->id,
-                );
-            })
-            ->get()
-            ->map(function ($inscription) {
-                return $inscription->etudiant;
-            })
-            ->filter()
-            ->sortBy(["nom", "prenoms"])
-            ->values();
+        $etudiants = $this->etudiantsPourListeDeClasse($classe, $anneeCourante);
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -1883,24 +1851,7 @@ class ESBTPClasseController extends Controller
             true,
         )->first();
 
-        $etudiants = $classe
-            ->inscriptions()
-            ->with(["etudiant.accessibilityProfile"])
-            ->where("status", "active")
-            ->where("workflow_step", "etudiant_cree")
-            ->when($anneeCourante, function ($query) use ($anneeCourante) {
-                return $query->where(
-                    "annee_universitaire_id",
-                    $anneeCourante->id,
-                );
-            })
-            ->get()
-            ->map(function ($inscription) {
-                return $inscription->etudiant;
-            })
-            ->filter()
-            ->sortBy(["nom", "prenoms"])
-            ->values();
+        $etudiants = $this->etudiantsPourListeDeClasse($classe, $anneeCourante);
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -1942,24 +1893,7 @@ class ESBTPClasseController extends Controller
             true,
         )->first();
 
-        $etudiants = $classe
-            ->inscriptions()
-            ->with(["etudiant.accessibilityProfile"])
-            ->where("status", "active")
-            ->where("workflow_step", "etudiant_cree")
-            ->when($anneeCourante, function ($query) use ($anneeCourante) {
-                return $query->where(
-                    "annee_universitaire_id",
-                    $anneeCourante->id,
-                );
-            })
-            ->get()
-            ->map(function ($inscription) {
-                return $inscription->etudiant;
-            })
-            ->filter()
-            ->sortBy(["nom", "prenoms"])
-            ->values();
+        $etudiants = $this->etudiantsPourListeDeClasse($classe, $anneeCourante);
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
