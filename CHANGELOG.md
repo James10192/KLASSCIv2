@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- fix(notes): sélectionner l'année universitaire en AJAX sur les pages de notes BTS et LMD, avec mise à jour des listes, indicateurs et périmètres de saisie.
+
 ### Correctifs
 
 - **Sécurité des frais :** modifier le montant d'une souscription (réduction ou augmentation) exige la permission spécifique `frais.souscriptions.ajuster`. Le simple droit de modifier une inscription ne suffit plus.

@@ -4,7 +4,7 @@
     le filtre de période de cette page.
 --}}
 // ══ Suivi des notes ══
-const anneeSuivi = @json($anneeCourante->id ?? null);
+let anneeSuivi = lmdAcademicYearId;
 let lmdSuiviSilencieux = false;
 let lmdSuiviMinuteur = null;
 
