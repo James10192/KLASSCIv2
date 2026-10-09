@@ -195,16 +195,22 @@
             <div class="mwf-kv"><span>Envoi du lien</span><strong>{{ $activationStep === 'after_payment' ? 'Après le paiement' : 'Après le contrôle des pièces' }}</strong></div>
             <div class="mwf-kv"><span>Identifiant</span><strong>{{ $workflow->etudiant?->user?->username ?: 'Pas encore créé' }}</strong></div>
             <div class="mwf-kv"><span>Compte</span><strong>{{ $workflow->accessActivated() ? 'Activé' : 'En attente d\'activation' }}</strong></div>
+            @php($etatInvitation = \App\Services\Admissions\EtatInvitationCompteEtudiant::lire($workflow))
+            <div class="mwf-kv"><span>Invitation</span><strong>{{ $etatInvitation['libelle'] }}</strong></div>
+            @if($etatInvitation['expiration'])
+                <div class="mwf-kv"><span>Expiration du lien</span><strong>{{ $etatInvitation['expiration']->format('d/m/Y H:i') }}</strong></div>
+            @endif
+            <p class="mwf-muted mt-2">Ce statut suit le lien et l'activation, pas la livraison du message. La remise par e-mail ou WhatsApp n'est confirmée que par un accusé du fournisseur.</p>
             <div class="mwf-kv"><span>Informations</span><strong>{{ $workflow->profileCompleted() ? 'Complétées' : 'À compléter par l\'étudiant' }}</strong></div>
             @if($workflow->etudiant_id && !$workflow->accessActivated() && ($user?->can('inscriptions.validate') || $user?->can('pieces_dossier.suivre')))
                 @if(! $contactJoignable || $emailEnAttente)
                     <div class="mwf-alerte mt-2" role="status">
                         @if(! $contactJoignable)
-                            <strong>Le lien n'est pas parti.</strong>
-                            Il ne part que vers un contact vérifié, et celui de ce dossier ne l'est pas.
+                            <strong>Aucun canal n'est actuellement autorisé pour un nouvel envoi.</strong>
+                            Vérifiez les coordonnées et les réglages de vérification des contacts.
                         @else
-                            <strong>Le lien ne part que par WhatsApp :</strong> l'e-mail de ce dossier n'est pas vérifié.
-                            Si l'étudiant n'a rien reçu, confirmez son e-mail : le lien partira aussi par e-mail.
+                            <strong>L'e-mail du dossier n'est pas vérifié :</strong> seul le canal WhatsApp peut être essayé, si l'envoi est autorisé et disponible.
+                            Si l'étudiant n'a rien reçu, confirmez son e-mail et vérifiez les résultats d'envoi dans MailPulse.
                         @endif
                         Relisez-les avec l'étudiant :
                         <div class="mwf-kv"><span>E-mail</span><strong>{{ $candidature->email ?: '—' }}</strong></div>

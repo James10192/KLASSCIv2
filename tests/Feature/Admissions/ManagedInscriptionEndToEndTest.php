@@ -409,7 +409,7 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($secretariat)
             ->get(route('esbtp.admissions.workflow.show', $candidature))
             ->assertOk()
-            ->assertSee("Le lien n'est pas parti.", false)
+            ->assertSee("Aucun canal n'est actuellement autorisé pour un nouvel envoi.", false)
             ->assertSee($candidature->email);
 
         $this->actingAs($secretariat)
@@ -480,7 +480,7 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->actingAs($admin)
             ->get(route('esbtp.admissions.workflow.show', $candidature))
             ->assertOk()
-            ->assertSee('Le lien ne part que par WhatsApp', false);
+            ->assertSee("L'e-mail du dossier n'est pas vérifié", false);
 
         $this->actingAs($admin)
             ->post(route('esbtp.admissions.workflow.activation.confirm-contact', $workflow), [
@@ -491,7 +491,7 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertTrue(app(\App\Services\Admissions\AdmissionActivationNotifier::class)->emailUsable($workflow->fresh()));
         $this->actingAs($admin)
             ->get(route('esbtp.admissions.workflow.show', $candidature))
-            ->assertDontSee('Le lien ne part que par WhatsApp', false);
+            ->assertDontSee("L'e-mail du dossier n'est pas vérifié", false);
     }
 
     /** @test */
