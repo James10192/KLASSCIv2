@@ -50,6 +50,7 @@ class NoteBulkSemesterSqlRegressionTest extends TestCase
             $table->string('semestre')->nullable();
             $table->string('submission_status')->nullable();
             $table->timestamp('archived_at')->nullable();
+            $table->timestamps();
             $table->softDeletes();
         });
     }
