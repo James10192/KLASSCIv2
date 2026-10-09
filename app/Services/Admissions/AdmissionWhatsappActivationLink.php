@@ -52,6 +52,12 @@ final class AdmissionWhatsappActivationLink
             return false;
         }
 
+        $workflow->loadMissing(['candidature', 'etudiant.user']);
+        if ($this->settings->reliableOutboxEnabled()) {
+            return $this->notifier->whatsappUsable($workflow)
+                && app(AdmissionActivationOutbox::class)->enqueue($workflow, 'whatsapp', $this->url($workflow));
+        }
+
         return $this->notifier->sendWhatsAppLink(
             $workflow->loadMissing(['candidature', 'etudiant.user']),
             $this->url($workflow),

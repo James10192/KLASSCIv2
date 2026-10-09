@@ -627,6 +627,67 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertSame($ancienHash, $apres->etudiant->user->password);
     }
 
+    /** @test */
+    public function une_invitation_en_outbox_est_enregistree_avant_tout_envoi_et_reprise_avec_la_meme_cle(): void
+    {
+        $this->reglage(InscriptionWorkflowSettings::RELIABLE_OUTBOX, '1');
+        $candidature = $this->candidature();
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldReceive('sendEmailMessage')->once()
+            ->andReturn(new \App\Services\MailPulse\MailPulseResult(
+                true, 'accepted', 202, 'provider-request-1', 'msg-1',
+                null, null, null, 'accepted'
+            ));
+        $client->shouldReceive('createOrUpdateContact')->once()
+            ->andReturn(new \App\Services\MailPulse\MailPulseResult(true, 'ok'));
+        $this->app->instance(MailPulseClient::class, $client);
+
+        $workflow = app(ManagedInscriptionWorkflow::class)
+            ->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+
+        $queued = \App\Models\AdmissionActivationDispatch::query()
+            ->where('workflow_id', $workflow->id)->where('channel', 'email')->firstOrFail();
+        $this->assertSame('queued', $queued->status);
+        $this->assertNotEmpty($queued->encrypted_payload);
+        $this->assertStringNotContainsString('/activation/', $queued->encrypted_payload);
+
+        $result = app(\App\Services\Admissions\AdmissionActivationOutbox::class)->process(
+            10, app(\App\Services\Admissions\AdmissionActivationNotifier::class),
+            app(ManagedInscriptionWorkflow::class)
+        );
+        $this->assertSame(1, $result['accepted']);
+        $queued->refresh();
+        $this->assertSame('accepted', $queued->status);
+        $this->assertNull($queued->encrypted_payload);
+        $this->assertSame(1, \App\Models\AdmissionActivationDispatch::query()
+            ->where('request_id', $queued->request_id)->count());
+
+        // Le second passage ne renvoie rien.
+        $result = app(\App\Services\Admissions\AdmissionActivationOutbox::class)->process(
+            10, app(\App\Services\Admissions\AdmissionActivationNotifier::class),
+            app(ManagedInscriptionWorkflow::class)
+        );
+        $this->assertSame(0, $result['accepted']);
+    }
+
+    /** @test */
+    public function le_rollback_annule_egalement_la_demande_d_invitation_persistante(): void
+    {
+        $this->reglage(InscriptionWorkflowSettings::RELIABLE_OUTBOX, '1');
+        $candidature = $this->candidature();
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($candidature): void {
+                app(ManagedInscriptionWorkflow::class)
+                    ->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+                throw new \RuntimeException('force_rollback_for_outbox_test');
+            });
+            $this->fail('Le rollback était attendu');
+        } catch (\RuntimeException $e) {
+            $this->assertSame('force_rollback_for_outbox_test', $e->getMessage());
+        }
+        $this->assertDatabaseCount('admission_activation_dispatches', 0);
+    }
+
     // ── Préparation ─────────────────────────────────────────────────────
 
     private function dossierPretAChoisir(): ESBTPCandidatureWorkflow

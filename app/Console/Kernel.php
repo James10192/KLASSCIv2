@@ -146,6 +146,14 @@ class Kernel extends ConsoleKernel
             ->description('Envoi automatique des rappels pour inscriptions et paiements en attente')
             ->onOneServer();
 
+        // Invitations étudiantes : outbox durable activée école par école.
+        // Lecture no-op quand le réglage est désactivé.
+        $schedule->command('inscriptions:envoyer-invitations --max=25')
+            ->everyMinute()
+            ->withoutOverlapping(5)
+            ->onOneServer()
+            ->name('admission-activation-durable-outbox');
+
         $schedule->command('mailpulse:reconcile-parent-notifications --limit=50')
             ->everyFiveMinutes()
             ->withoutOverlapping()

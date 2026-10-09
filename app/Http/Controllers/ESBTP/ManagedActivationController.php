@@ -127,10 +127,14 @@ final class ManagedActivationController extends Controller
             $channels[] = 'e-mail accepté par le prestataire';
         }
         if ($whatsappSent) {
-            $channels[] = 'WhatsApp accepté par le prestataire';
+            $channels[] = $this->settings->reliableOutboxEnabled()
+                ? 'WhatsApp en file sécurisée'
+                : 'WhatsApp accepté par le prestataire';
         }
         if ($emailResult['email_pending'] ?? false) {
-            $channels[] = 'e-mail programmé après validation de la transaction';
+            $channels[] = $this->settings->reliableOutboxEnabled()
+                ? 'e-mail en file sécurisée'
+                : 'e-mail programmé après validation de la transaction';
         }
 
         return $channels
