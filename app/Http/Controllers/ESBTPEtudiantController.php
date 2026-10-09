@@ -1021,7 +1021,8 @@ class ESBTPEtudiantController extends Controller
                 'email' => $email,
                 'username' => $username,
                 'password' => Hash::make($password),
-                'is_active' => true
+                'is_active' => true,
+                'must_change_password' => true,
             ]);
 
             // Assigner le rôle étudiant
