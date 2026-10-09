@@ -4,6 +4,7 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPFamilyAccessGrant;
+use App\Models\ESBTPFamilyAccountInvitation;
 use App\Models\ESBTPParent;
 use App\Models\ESBTPEtudiant;
 use App\Services\Familles\AccesFamilial;
@@ -63,7 +64,12 @@ final class AccesFamilialController extends Controller
             ->get()
             ->keyBy(fn ($g) => $g->parent_id.':'.$g->etudiant_id);
 
-        return view('esbtp.familles.habilitations', compact('relations', 'grants'));
+        $invitations = ESBTPFamilyAccountInvitation::query()
+            ->whereIn('grant_id', $grants->pluck('id'))
+            ->orderByDesc('id')->get()
+            ->unique('grant_id')->keyBy('grant_id');
+
+        return view('esbtp.familles.habilitations', compact('relations', 'grants', 'invitations'));
     }
 
     public function approuver(Request $request, ReglagesFamille $settings, AccesFamilial $service): RedirectResponse

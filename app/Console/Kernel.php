@@ -154,6 +154,14 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->name('admission-activation-durable-outbox');
 
+        // Invitations des responsables : même principe durable et traitement
+        // indépendant du login, désactivé si le portail familial est coupé.
+        $schedule->command('familles:envoyer-invitations --max=25')
+            ->everyMinute()
+            ->withoutOverlapping(5)
+            ->onOneServer()
+            ->name('familles-invitations-securisees');
+
         $schedule->command('mailpulse:reconcile-parent-notifications --limit=50')
             ->everyFiveMinutes()
             ->withoutOverlapping()

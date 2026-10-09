@@ -68,6 +68,15 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
+        // Le compte responsable indépendant (sans rôle applicatif privilégié)
+        // doit retrouver son espace à chaque connexion, et non le dashboard
+        // générique. Jamais pour un compte étudiant ni un compte personnel.
+        if ($user->roles()->doesntExist()
+            && app(\App\Services\Familles\ReglagesFamille::class)->enabled()
+            && \App\Models\ESBTPParent::query()->where('user_id', $user->id)->exists()) {
+            return redirect()->route('esbtp.famille.espace');
+        }
+
         // Lot 9 — Si l'utilisateur n'a QUE des rôles custom (créés via UI Lot 8),
         // pas de dashboard hard-codé : router vers le dashboard widget-based.
         // Les rôles système (superAdmin, secretaire...) gardent leur dashboard

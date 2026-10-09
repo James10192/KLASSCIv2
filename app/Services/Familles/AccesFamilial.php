@@ -93,7 +93,22 @@ final class AccesFamilial
 
     public function revoquer(ESBTPFamilyAccessGrant $grant, User $agent): void
     {
-        $grant->forceFill(['revoked_at' => now(), 'revoked_by' => $agent->id])->save();
+        DB::transaction(function () use ($grant, $agent): void {
+            $grant->forceFill(['revoked_at' => now(), 'revoked_by' => $agent->id])->save();
+
+            // Les invitations inutilisées ne doivent survivre ni à une
+            // révocation du droit, ni aux retries du worker.
+            \App\Models\ESBTPFamilyAccountInvitation::query()
+                ->where('grant_id', $grant->id)
+                ->whereNull('used_at')
+                ->update([
+                    'status' => 'cancelled',
+                    'revoked_at' => now(),
+                    'encrypted_url' => null,
+                    'next_attempt_at' => null,
+                    'locked_until' => null,
+                ]);
+        });
         Log::info('Family access revoked', [
             'grant_id' => $grant->id,
             'revoked_by' => $agent->id,

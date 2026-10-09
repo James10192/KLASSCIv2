@@ -729,6 +729,57 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertFalse($acces->peutConsulter($grant->fresh(['parent', 'etudiant']), $responsableUser));
     }
 
+    /** @test */
+    public function le_responsable_recoit_une_invitation_distincte_et_un_lien_personnel_a_usage_unique(): void
+    {
+        $this->reglage(InscriptionWorkflowSettings::FAMILY_PORTAL, '1');
+        $candidature = $this->candidature();
+        $workflow = app(ManagedInscriptionWorkflow::class)
+            ->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+        $etudiant = $workflow->fresh(['etudiant'])->etudiant;
+        $parent = \App\Models\ESBTPParent::create([
+            'nom' => 'KOUAME', 'prenoms' => 'Yao', 'sexe' => 'M',
+            'telephone' => '+2250700000002', 'email' => 'responsable@example.test',
+        ]);
+        $etudiant->parents()->attach($parent->id, ['relation' => 'parent', 'is_tuteur' => true]);
+        $grant = app(\App\Services\Familles\AccesFamilial::class)
+            ->approuver($parent, $etudiant, $this->agent, 'identite_guichet',
+                'reference-piece-02', 'accord-etudiant-majeur-02');
+
+        $service = app(\App\Services\Familles\InvitationResponsable::class);
+        $this->assertRefus(
+            fn () => $service->preparer($grant, $this->agent, 'autre@example.test'),
+            'confirmed_email'
+        );
+        $invite = $service->preparer($grant, $this->agent, 'responsable@example.test');
+        $parent->refresh();
+        $this->assertNotNull($parent->user_id);
+        $this->assertNotSame((int) $etudiant->user_id, (int) $parent->user_id);
+        $this->assertSame('queued', $invite->status);
+        $this->assertNotEmpty($invite->encrypted_url);
+        $this->assertStringNotContainsString('/invitation/', $invite->encrypted_url);
+        $url = \Illuminate\Support\Facades\Crypt::decryptString($invite->encrypted_url);
+        $token = basename(parse_url($url, PHP_URL_PATH));
+
+        $client = Mockery::mock(MailPulseClient::class);
+        $client->shouldReceive('sendEmailMessage')->once()
+            ->andReturn(new \App\Services\MailPulse\MailPulseResult(
+                true, 'accepted', 202, 'family-test-1', 'msg-family',
+                null, null, null, 'accepted'
+            ));
+        $result = $service->traiter(10, $client);
+        $this->assertSame(1, $result['accepted']);
+        $invite->refresh();
+        $this->assertSame('accepted', $invite->status);
+        $this->assertNull($invite->encrypted_url);
+
+        $user = $service->activer($token, 'MotDePasseFamillePrive123!');
+        $this->assertTrue($user->is_active);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('MotDePasseFamillePrive123!', $user->password));
+        $this->assertNotNull($invite->fresh()->used_at);
+        $this->assertRefus(fn () => $service->activer($token, 'AutreMotDePasse123456!'), 'token');
+    }
+
     // ── Préparation ─────────────────────────────────────────────────────
 
     private function dossierPretAChoisir(): ESBTPCandidatureWorkflow

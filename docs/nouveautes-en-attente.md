@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-09 · #1539 · Familles > Habilitations : invitation du responsable vérifié via MailPulse, compte personnel indépendant, activation par lien unique et suivi en file sans révélation du mot de passe.
 - 2026-10-09 · #1539 · Familles : espace personnel limité et registre de vérification des habilitations, sans accès implicite aux notes ni aux finances. Nécessite activation par settings et compte parent distinct déjà créé.
 - 2026-10-09 · #1540 · Inscriptions > Invitations : file sécurisée persistante (à activer dans les settings après vérification du cron), reprise des envois MailPulse sans régénérer de lien et protection des liens expirés.
 - 2026-10-09 · #1536 · Comptes étudiants : identifiants temporaires individuels renforcés pour le parcours historique, changement imposé à la première connexion ; expiration du lien contrôlée dans la transaction avant activation.
