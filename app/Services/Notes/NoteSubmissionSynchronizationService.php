@@ -2,6 +2,7 @@
 
 namespace App\Services\Notes;
 
+use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\User;
@@ -73,7 +74,17 @@ class NoteSubmissionSynchronizationService
         $notesSynchronized = 0;
 
         foreach ($evaluations as $evaluation) {
-            $semestre = (int) str_replace('semestre', '', (string) $evaluation->periode);
+            // esbtp_notes.semestre est un VARCHAR : le modèle écrit historiquement
+            // "1" ou "2". Normaliser les périodes legacy, puis lier une CHAÎNE
+            // aux requêtes : un entier dans une comparaison SQL force MySQL à
+            // convertir "semestre2" en DECIMAL et lève SQLSTATE[22007].
+            $normalizer = app(AcademicPeriodNormalizer::class);
+            $periodeNormalisee = $normalizer->normalize((string) $evaluation->periode);
+            $numeroSemestre = $normalizer->semesterNumber($periodeNormalisee);
+            if ($numeroSemestre === null) {
+                throw new \UnexpectedValueException('Une note BTS doit appartenir à un semestre numéroté.');
+            }
+            $semestre = (string) $numeroSemestre;
 
             $updated = ESBTPNote::query()
                 ->where('evaluation_id', $evaluation->id)
