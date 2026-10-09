@@ -93,6 +93,47 @@
         </span>
     </div>
 
+    <section class="mp-section" aria-labelledby="mp-suivi-envois">
+        <div class="mp-section-head">
+            <div class="section-icon mailpulse"><i class="fas fa-chart-line" aria-hidden="true"></i></div>
+            <div>
+                <h3 class="section-title" id="mp-suivi-envois">Suivi des notifications aux responsables</h3>
+                <p class="section-description">Journal MailPulse des 7 derniers jours, en lecture seule. Aucun envoi n'est déclenché par cet écran.</p>
+            </div>
+        </div>
+        @if(! $monitoring['available'])
+            <p class="text-muted mb-0">Le journal des notifications n'est pas encore disponible pour cette instance. Vérifiez les migrations et la connexion à la base de données.</p>
+        @else
+            <div class="mailpulse-info-grid" aria-label="Statistiques des communications">
+                <div class="mailpulse-info-card"><strong>{{ number_format($monitoring['counts']['total'], 0, ',', ' ') }}</strong>Notifications suivies</div>
+                <div class="mailpulse-info-card"><strong>{{ number_format($monitoring['counts']['accepted'], 0, ',', ' ') }}</strong>Acceptées / émises — remise non démontrée</div>
+                <div class="mailpulse-info-card"><strong>{{ number_format($monitoring['counts']['pending'], 0, ',', ' ') }}</strong>En attente</div>
+                <div class="mailpulse-info-card"><strong>{{ number_format($monitoring['counts']['delivered'], 0, ',', ' ') }}</strong>Marquées livrées</div>
+                <div class="mailpulse-info-card"><strong>{{ number_format($monitoring['counts']['read'], 0, ',', ' ') }}</strong>Marquées lues</div>
+                <div class="mailpulse-info-card"><strong>{{ number_format($monitoring['counts']['failed'], 0, ',', ' ') }}</strong>Échecs</div>
+            </div>
+            <p class="mwf-muted text-muted mt-3">« Accepté » correspond à la réponse du prestataire et ne garantit pas la réception. Les états de livraison et lecture n'ont de valeur que si un accusé fiable a été enregistré.</p>
+            <div class="table-responsive mt-3">
+                <table class="table table-sm table-hover" aria-label="Derniers événements MailPulse">
+                    <thead><tr><th>Quand</th><th>Événement</th><th>Canal</th><th>Statut enregistré</th><th>Tentatives</th></tr></thead>
+                    <tbody>
+                    @forelse($monitoring['entries'] as $entry)
+                        <tr>
+                            <td>{{ $entry->created_at?->format('d/m/Y H:i') ?: '—' }}</td>
+                            <td>{{ str_replace('_', ' ', $entry->metadata['workflow_event'] ?? $entry->notification_type ?? 'notification') }}</td>
+                            <td>{{ strtoupper((string) $entry->channel) }}</td>
+                            <td>{{ \App\Services\MailPulse\MailPulseMonitoring::statusLabel((string) $entry->status) }}</td>
+                            <td>{{ (int) $entry->attempt_count }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="5" class="text-center text-muted py-3">Aucun envoi MailPulse suivi sur cette période.</td></tr>
+                    @endforelse
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </section>
+
     <div class="mp-section">
         <div class="mp-section-head">
             <div class="section-icon mailpulse"><i class="fas fa-shield-alt"></i></div>
