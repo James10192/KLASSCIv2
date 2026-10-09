@@ -6,7 +6,7 @@
 <div class="container-fluid py-4">
     <h1 class="h3">Habilitations des responsables</h1>
     <p class="text-muted">Validation humaine obligatoire. Le lien tuteur ne suffit pas à ouvrir l'espace familial. Les références de preuve ne sont conservées que sous empreinte.</p>
-    <div class="alert alert-warning">Le compte étudiant ne doit jamais être partagé avec le responsable. L'ouverture de son compte personnel et l'envoi de son invitation constituent un parcours distinct, à finaliser avant toute activation générale.</div>
+    <div class="alert alert-warning">Le compte étudiant ne doit jamais être partagé avec le responsable. Les invitations sont enregistrées dans une file sécurisée. Vérifiez les contacts, le cron et les permissions avant activation générale.</div>
     <div class="row g-3">
     @forelse($relations as $relation)
         @php($grant = $grants->get($relation->parent_id.':'.$relation->etudiant_id))
@@ -18,6 +18,25 @@
                     <p class="small text-muted">Compte indépendant : {{ $relation->parent_user_id ? 'existant' : 'à créer' }}</p>
                     @if($grant && $grant->verified_at && ! $grant->revoked_at && $grant->expires_at->isFuture())
                         <p class="text-success">Accès accordé jusqu'au {{ $grant->expires_at->format('d/m/Y') }}</p>
+                        @if($relation->parent_user_id)
+                            <p class="small text-muted">Identité indépendante liée au responsable.</p>
+                        @else
+                            <p class="small text-muted">L'invitation prépare automatiquement un compte distinct, inactif jusqu'à sa validation par le responsable.</p>
+                        @endif
+                        @php($invitation = $invitations->get($grant->id))
+                        @if($invitation)
+                            <p class="small">Dernière invitation : <strong>{{ $invitation->status }}</strong> — {{ $invitation->created_at->format('d/m/Y H:i') }}. « accepted » ne garantit pas la réception.</p>
+                        @endif
+                        <form method="post" action="{{ route('esbtp.famille.invitation.envoyer', $grant) }}" class="mb-3">
+                            @csrf
+                            <label class="form-label">Ressaisir l'e-mail du responsable vérifié au guichet</label>
+                            <input type="email" name="confirmed_email" class="form-control mb-2" required autocomplete="off" placeholder="Adresse confirmée personnellement">
+                            <label class="form-check mb-3">
+                                <input type="checkbox" name="verification_contact" value="1" required class="form-check-input">
+                                <span class="form-check-label">J'atteste avoir confirmé que cette adresse appartient au responsable autorisé.</span>
+                            </label>
+                            <button type="submit" class="btn btn-primary btn-sm">Préparer l'invitation sécurisée</button>
+                        </form>
                         <form method="post" action="{{ route('esbtp.famille.habilitations.revoquer', $grant) }}">
                             @csrf
                             <button class="btn btn-outline-danger btn-sm" type="submit">Révoquer l'accès</button>

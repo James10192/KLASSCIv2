@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Invitation sécurisée des responsables :** après validation de la relation familiale et du consentement requis, le service scolarité peut préparer un lien à usage unique envoyé par MailPulse via une file chiffrée. Le parent crée son propre mot de passe ; le lien devient inutilisable après activation ou retrait du droit.
+
 - **Espace familial (socle sécurisé, désactivé par défaut) :** un responsable disposant d'un compte indépendant peut consulter seulement l'identité d'un étudiant pour lequel il possède une habilitation vérifiée, limitée dans le temps et révocable. Un étudiant majeur exige en plus un consentement documenté. Pas de partage des accès ni de consultation des notes ou des finances par défaut.
 
 - **Invitations étudiantes fiables (activation progressive) :** une file transactionnelle chiffrée conserve les demandes d'envoi même si l'application s'interrompt après validation de l'inscription. Un traitement planifié reprend les tentatives avec la même clé MailPulse, annule les liens expirés, et sépare préparation, acceptation et preuve de livraison. Réglage désactivé par défaut tant que le cron et la migration ne sont pas vérifiés.
