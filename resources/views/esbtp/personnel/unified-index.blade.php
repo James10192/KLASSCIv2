@@ -1975,6 +1975,11 @@
                             <i class="fas fa-calendar-check"></i>Disponibilités
                         </button>
                         @endif
+                        @if($personnelAccess['enseignants']['view'] ?? false)
+                        <a href="{{ route('esbtp.enseignants.index') }}" class="pu-panel-btn" style="background:#eff6ff;color:#0453cb;border:1px solid #bfdbfe;" title="Exporter la liste des enseignants avec les filtres (PDF ou Excel)">
+                            <i class="fas fa-file-export"></i>Liste PDF / Excel
+                        </a>
+                        @endif
                         @if($personnelAccess['enseignants']['create'] ?? false)
                         <a href="{{ route('esbtp.enseignants.create') }}" class="pu-panel-btn pu-panel-btn-primary">
                             <i class="fas fa-plus"></i>Nouvel Enseignant

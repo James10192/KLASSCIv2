@@ -357,7 +357,13 @@
                     <p class="mb-0">Administration complète du personnel : coordinateurs, enseignants et secrétaires</p>
                 </div>
                 <div class="col-md-4 text-end">
-                    <div class="dropdown">
+                    @can('teachers.view')
+                        <a href="{{ route('esbtp.enseignants.index') }}"
+                           class="btn btn-light me-2 mb-2" style="border-radius:10px;font-weight:600;">
+                            <i class="fas fa-file-export me-1"></i>Liste enseignants · PDF / Excel
+                        </a>
+                    @endcan
+                    <div class="dropdown d-inline-block">
                         <button class="btn-acasi primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
                             <i class="fas fa-plus me-1"></i>Nouveau Personnel
                         </button>
