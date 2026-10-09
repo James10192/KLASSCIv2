@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Sécurité des comptes étudiants :** les créations et réinitialisations manuelles utilisent désormais un mot de passe temporaire individuel aléatoire de 24 caractères, en remplacement du code court et du mot de passe générique annuel ; le changement du secret temporaire est imposé dès la première connexion et les liens du parcours d'activation sont revalidés sous verrou à la dernière étape.
+
 - **Enregistrement des notes : message de blocage explicite.** La saisie AJAX BTS signale désormais une fiche de notes validée ou un examen verrouillé avec son motif réel, plutôt qu'une erreur serveur générique. En cas de véritable incident, une référence permet au support de retrouver la trace interne sans exposer de détails techniques.
 
 - **Communication MailPulse :** le centre de suivi affiche désormais les invitations d'activation étudiantes à côté des notifications parents, avec comptages par canal et statut des sept derniers jours. La liste centralisée exclut les identifiants, destinataires et liens sécurisés.

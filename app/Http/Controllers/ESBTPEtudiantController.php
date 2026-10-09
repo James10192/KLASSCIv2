@@ -1009,18 +1009,9 @@ class ESBTPEtudiantController extends Controller
             // identifiant ; sans adresse reelle, l'e-mail reste vide.
             $email = app(\App\Services\Emails\AdresseDeCompte::class)->pour($etudiant->email_personnel ?: $etudiant->email);
 
-            // Générer un mot de passe simple
-            // 6 caractères: 4 lettres majuscules + 2 chiffres
-            $lettres = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-            $chiffres = '23456789';
-
-            $password = '';
-            for ($i = 0; $i < 4; $i++) {
-                $password .= $lettres[rand(0, strlen($lettres) - 1)];
-            }
-            for ($i = 0; $i < 2; $i++) {
-                $password .= $chiffres[rand(0, strlen($chiffres) - 1)];
-            }
+            // Secret individuel et imprévisible, provisoire en attendant
+            // l'invitation par lien à usage unique pour les comptes historiques.
+            $password = \App\Services\Admissions\MotDePasseTemporaireEtudiant::generer();
 
             // Créer le compte utilisateur
             $user = User::create([
@@ -1030,7 +1021,8 @@ class ESBTPEtudiantController extends Controller
                 'email' => $email,
                 'username' => $username,
                 'password' => Hash::make($password),
-                'is_active' => true
+                'is_active' => true,
+                'must_change_password' => true,
             ]);
 
             // Assigner le rôle étudiant
@@ -1076,7 +1068,7 @@ class ESBTPEtudiantController extends Controller
                     ->with('error', 'Compte utilisateur introuvable.');
             }
 
-            $defaultPassword = UserService::defaultPassword();
+            $defaultPassword = \App\Services\Admissions\MotDePasseTemporaireEtudiant::generer();
 
             // Update password AND force password change on first login
             $user->password = Hash::make($defaultPassword);
@@ -1095,7 +1087,7 @@ class ESBTPEtudiantController extends Controller
 
             return redirect()
                 ->back()
-                ->with('success', 'Mot de passe réinitialisé à '.$defaultPassword.' avec succès! L\'étudiant devra changer son mot de passe à la première connexion.')
+                ->with('success', 'Mot de passe temporaire individuel créé : '.$defaultPassword.'. Remettez-le uniquement à l’étudiant concerné par un canal vérifié ; changement obligatoire à la première connexion.')
                 ->with('new_password', $defaultPassword);
 
         } catch (\Exception $e) {

@@ -606,6 +606,27 @@ class ManagedInscriptionEndToEndTest extends TestCase
         $this->assertArrayNotHasKey('provider_message_id', $overview['entries']->first()->getAttributes());
     }
 
+    /** @test */
+    public function activation_expiree_est_refusee_dans_la_transaction_sans_changer_le_mot_de_passe(): void
+    {
+        $candidature = $this->candidature();
+        $workflow = app(ManagedInscriptionWorkflow::class)
+            ->recordPayment($candidature, $this->paiement(50000), $this->agent->id);
+        $workflow->loadMissing('etudiant.user');
+        $this->assertNotNull($workflow->activation_token_hash);
+        $ancienHash = $workflow->etudiant->user->password;
+
+        $workflow->forceFill(['activation_token_expires_at' => now()->subMinute()])->save();
+
+        $this->assertRefus(
+            fn () => app(AdmissionAccountActivator::class)->activateWorkflow($workflow->fresh(), 'SecretUniqueEtudiant123'),
+            'activation'
+        );
+        $apres = $workflow->fresh(['etudiant.user']);
+        $this->assertFalse($apres->accessActivated());
+        $this->assertSame($ancienHash, $apres->etudiant->user->password);
+    }
+
     // ── Préparation ─────────────────────────────────────────────────────
 
     private function dossierPretAChoisir(): ESBTPCandidatureWorkflow
