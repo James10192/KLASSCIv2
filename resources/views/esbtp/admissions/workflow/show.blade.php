@@ -195,6 +195,11 @@
             <div class="mwf-kv"><span>Envoi du lien</span><strong>{{ $activationStep === 'after_payment' ? 'Après le paiement' : 'Après le contrôle des pièces' }}</strong></div>
             <div class="mwf-kv"><span>Identifiant</span><strong>{{ $workflow->etudiant?->user?->username ?: 'Pas encore créé' }}</strong></div>
             <div class="mwf-kv"><span>Compte</span><strong>{{ $workflow->accessActivated() ? 'Activé' : 'En attente d\'activation' }}</strong></div>
+            <div class="mwf-kv"><span>Invitation</span><strong>@if($workflow->accessActivated()) Compte activé @elseif($workflow->activation_token_used_at) Lien déjà utilisé @elseif($workflow->activation_token_expires_at && $workflow->activation_token_expires_at->isPast()) Lien expiré @elseif($workflow->activation_token_hash && $workflow->activation_token_expires_at) Lien créé — remise à confirmer @else Aucun lien actif @endif</strong></div>
+            @if($workflow->activation_token_expires_at && ! $workflow->accessActivated())
+                <div class="mwf-kv"><span>Expiration du lien</span><strong>{{ $workflow->activation_token_expires_at->format('d/m/Y H:i') }}</strong></div>
+            @endif
+            <p class="mwf-muted mt-2">La création du lien ne garantit pas la réception. Contrôlez le statut du message auprès de MailPulse avant de considérer l'invitation comme livrée.</p>
             <div class="mwf-kv"><span>Informations</span><strong>{{ $workflow->profileCompleted() ? 'Complétées' : 'À compléter par l\'étudiant' }}</strong></div>
             @if($workflow->etudiant_id && !$workflow->accessActivated() && ($user?->can('inscriptions.validate') || $user?->can('pieces_dossier.suivre')))
                 @if(! $contactJoignable || $emailEnAttente)
