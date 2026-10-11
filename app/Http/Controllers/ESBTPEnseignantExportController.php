@@ -6,6 +6,7 @@ use App\Domain\Exports\Reports\EnseignantsReport;
 use App\Domain\Notifications\PhoneFormatter;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPClasse;
 use App\Services\Enseignants\AnnuaireEnseignantsBulletins;
 use App\Services\ExportRenderer;
 use Illuminate\Http\Request;
@@ -14,21 +15,45 @@ use Illuminate\Validation\ValidationException;
 final class ESBTPEnseignantExportController extends Controller
 {
     private const PDF_MAX_ROWS = 1000;
+    private const PDF_MAX_AFFECTATIONS = 1000;
     private const EXCEL_MAX_ROWS = 50000;
 
+    // Une ValidationException levee sur un lien GET redirigeait silencieusement
+    // vers /esbtp/enseignants : le navigateur n'affichait jamais le PDF ni l'erreur.
+    // Chaque format retourne maintenant une page 422 explicite et navigable.
     public function previewPdf(Request $request, ExportRenderer $renderer)
     {
-        return $renderer->pdfPreview($this->report($request, self::PDF_MAX_ROWS));
+        return $this->deliver($request, $renderer, 'preview');
     }
 
     public function downloadPdf(Request $request, ExportRenderer $renderer)
     {
-        return $renderer->pdfDownload($this->report($request, self::PDF_MAX_ROWS));
+        return $this->deliver($request, $renderer, 'pdf');
     }
 
     public function downloadExcel(Request $request, ExportRenderer $renderer)
     {
-        return $renderer->excelDownload($this->report($request, self::EXCEL_MAX_ROWS));
+        return $this->deliver($request, $renderer, 'excel');
+    }
+
+    private function deliver(Request $request, ExportRenderer $renderer, string $format)
+    {
+        try {
+            $report = $this->report(
+                $request,
+                $format === 'excel' ? self::EXCEL_MAX_ROWS : self::PDF_MAX_ROWS
+            );
+
+            return match ($format) {
+                'preview' => $renderer->pdfPreview($report),
+                'pdf' => $renderer->pdfDownload($report),
+                'excel' => $renderer->excelDownload($report),
+            };
+        } catch (ValidationException $e) {
+            return response()->view('esbtp.enseignants.export-error', [
+                'messages' => array_values(array_merge(...array_values($e->errors()))),
+            ], 422)->header('Cache-Control', 'no-store');
+        }
     }
 
     private function report(Request $request, int $max): EnseignantsReport
@@ -39,6 +64,8 @@ final class ESBTPEnseignantExportController extends Controller
             'status' => ['nullable', 'in:active,inactive'],
             'specialization' => ['nullable', 'string', 'max:150'],
             'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
+            'classe_id' => ['nullable', 'integer', 'exists:esbtp_classes,id'],
+            'semestre' => ['nullable', 'integer', 'in:1,2'],
         ]);
 
         $anneeId = $filters['annee_universitaire_id'] ?? ESBTPAnneeUniversitaire::anneeCourante()?->id;
@@ -91,7 +118,11 @@ final class ESBTPEnseignantExportController extends Controller
         })->all();
 
         $annuaire = app(AnnuaireEnseignantsBulletins::class);
-        $affectations = $annuaire->affectations((int) $annee->id);
+        $affectations = $annuaire->affectations(
+            (int) $annee->id,
+            ! empty($filters['classe_id']) ? (int) $filters['classe_id'] : null,
+            ! empty($filters['semestre']) ? (int) $filters['semestre'] : null
+        );
         // Les noms libres n'ont pas de statut ni de specialisation : ne pas les
         // introduire dans un export filtre sur ces proprietes inconnues.
         $inclureManuels = empty($filters['status']) && empty($filters['specialization']);
@@ -99,18 +130,32 @@ final class ESBTPEnseignantExportController extends Controller
             $enregistres, $affectations, $inclureManuels, $filters['search'] ?? null
         );
 
-        $volume = count($resultat['rows']) + count($resultat['affectations']);
-        if ($volume > $max) {
-            throw ValidationException::withMessages([
-                'export' => "L'annuaire et le détail des bulletins comportent {$volume} lignes (limite {$max}). Affinez les filtres ou utilisez Excel.",
-            ]);
+        // La limite de 1000 concerne chaque tableau imprimable, pas la somme
+        // de deux tableaux distincts (qui declenchait une redirection 302).
+        // Excel n'exporte que les enseignants distincts : ses affectations ne
+        // doivent pas etre prises en compte dans ce quota.
+        $totalAffectations = count($resultat['affectations']);
+        if ($max === self::PDF_MAX_ROWS && $totalAffectations > self::PDF_MAX_AFFECTATIONS) {
+            if (! empty($filters['classe_id'])) {
+                throw ValidationException::withMessages([
+                    'export' => "Cette classe comporte {$totalAffectations} affectations pour le PDF (limite ".self::PDF_MAX_AFFECTATIONS."). Sélectionnez un semestre ou exportez au format Excel.",
+                ]);
+            }
+            // L'annuaire reste disponible et COMPLET : seul le detail des
+            // affectations volumineuses est masque, avec avertissement dans
+            // le PDF et un filtre de classe pour l'imprimer separement.
+            $resultat['affectations'] = [];
         }
 
         $labels = ['Année universitaire des bulletins' => $annee->display_name];
+        if (! empty($filters['classe_id'])) {
+            $labels['Classe des bulletins'] = ESBTPClasse::query()->whereKey($filters['classe_id'])->value('name') ?? 'Classe #'.$filters['classe_id'];
+        }
+        if (! empty($filters['semestre'])) $labels['Semestre des bulletins'] = 'S'.$filters['semestre'];
         if (! empty($filters['search'])) $labels['Recherche'] = $filters['search'];
         if (! empty($filters['status'])) $labels['Statut'] = $filters['status'] === 'active' ? 'Actif' : 'Inactif';
         if (! empty($filters['specialization'])) $labels['Spécialisation'] = $filters['specialization'];
 
-        return new EnseignantsReport($resultat['rows'], $labels, $resultat['affectations']);
+        return new EnseignantsReport($resultat['rows'], $labels, $resultat['affectations'], $totalAffectations);
     }
 }
