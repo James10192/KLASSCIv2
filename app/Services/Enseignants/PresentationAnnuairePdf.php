@@ -15,7 +15,7 @@ final class PresentationAnnuairePdf
         $enregistres = [];
         $saisies = [];
         foreach ($rows as $row) {
-            if (str_starts_with((string) ($row['origine'] ?? ''), 'Enregistré')) {
+            if (str_starts_with((string) ($row['origine'] ?? 'Enregistré'), 'Enregistré')) {
                 $row['email_affiche'] = self::contactValide((string) ($row['email'] ?? ''), true);
                 $row['telephone_affiche'] = self::contactValide((string) ($row['telephone'] ?? ''));
                 $enregistres[] = $row;
