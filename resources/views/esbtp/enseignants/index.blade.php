@@ -617,6 +617,15 @@
                         <label class="te-filter-label">Recherche</label>
                         <input type="text" name="search" class="te-filter-input" placeholder="Nom, email, matricule..." value="{{ request('search') }}">
                     </div>
+                    <div class="te-filter-group" style="flex:1.5">
+                        <label class="te-filter-label" for="te-export-vue">Document PDF à produire</label>
+                        <select name="vue" id="te-export-vue" class="te-filter-select">
+                            <option value="synthese" {{ request('vue', 'synthese') === 'synthese' ? 'selected' : '' }}>01 · Synthèse / classes</option>
+                            <option value="annuaire" {{ request('vue') === 'annuaire' ? 'selected' : '' }}>02 · Annuaire officiel</option>
+                            <option value="rapprochement" {{ request('vue') === 'rapprochement' ? 'selected' : '' }}>03 · Saisies à rapprocher</option>
+                            <option value="affectations" {{ request('vue') === 'affectations' ? 'selected' : '' }}>04 · Matières / professeurs par classe</option>
+                        </select>
+                    </div>
                     <div class="te-filter-group">
                         <label class="te-filter-label" for="te-export-annee">Année des bulletins (export)</label>
                         <select name="annee_universitaire_id" id="te-export-annee" class="te-filter-select">
@@ -670,7 +679,7 @@
                             <button type="submit" class="te-filter-btn">
                                 <i class="fas fa-search"></i>Filtrer
                             </button>
-                            @if(request()->hasAny(['search', 'status', 'specialization', 'annee_universitaire_id', 'classe_id', 'semestre']))
+                            @if(request()->hasAny(['search', 'status', 'specialization', 'annee_universitaire_id', 'classe_id', 'semestre', 'vue']))
                                 <a href="{{ route('esbtp.enseignants.index') }}" class="te-filter-btn-reset">
                                     <i class="fas fa-times"></i>Reset
                                 </a>
@@ -812,7 +821,7 @@
 
 @push('scripts')
 <script>
-// Filtres serveur identiques pour la liste, l'aperçu PDF et le fichier Excel.
+// Parametres du document PDF et filtres serveur, reutilises par l'apercu et le telechargement.
 window.exportFilters = function () {
     const form = document.querySelector('.te-filter-bar form');
     if (!form) return {};
