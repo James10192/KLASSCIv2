@@ -35,7 +35,7 @@ final class EnseignantsPremiumSelectsTest extends TestCase
         }
         $this->assertStringContainsString('new FormData(form).entries()', $vue);
         $this->assertStringContainsString("request('vue', 'synthese')", $vue);
-        $this->assertStringContainsString("request('annee_universitaire_id', $anneeExportId)", $vue);
+        $this->assertStringContainsString('request(\'annee_universitaire_id\', $anneeExportId)', $vue);
     }
 
     public function test_les_listes_longues_disposent_de_recherche_et_les_choix_obligatoires_sans_option_vide(): void
