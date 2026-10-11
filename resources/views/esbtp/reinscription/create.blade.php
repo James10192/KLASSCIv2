@@ -255,7 +255,7 @@
         @endif
 
         <!-- Gestion des reliquats pour superadmin -->
-        @if(($peutReporterReliquat || $isSuperAdmin) && !empty($fraisNonSoldes))
+        @if(($peutReporterReliquat || $isSuperAdmin) && $hasDetteAReporter)
         <div class="card-moderne mb-lg">
             <div class="main-card-header" style="background-color: rgba(251, 191, 36, 0.1);">
                 <div class="main-card-title" style="color: var(--warning);">
@@ -271,6 +271,13 @@
                         Ces montants seront reportés comme "reliquat année précédente" sur la nouvelle inscription.
                     </div>
 
+                    @if($arriérésAnterieurs > 0)
+                    <div class="reliquat-detail">
+                        <strong>Impayés d'inscriptions encore plus anciennes</strong>
+                        <span class="badge bg-warning">{{ number_format($arriérésAnterieurs, 0, ',', ' ') }} FCFA</span>
+                        <p class="small text-muted mb-0">La créance d'origine reste conservée ; aucun second report n'est créé.</p>
+                    </div>
+                    @endif
                     <h6 class="mb-3">Détail des frais non soldés :</h6>
 
                     @foreach($fraisNonSoldes as $frais)
@@ -305,7 +312,7 @@
                     @csrf
                     @method('PUT')
 
-                    @if(($peutReporterReliquat || $isSuperAdmin) && !empty($fraisNonSoldes))
+                    @if(($peutReporterReliquat || $isSuperAdmin) && $hasDetteAReporter)
                     <!-- Section de gestion des reliquats -->
                     <div class="row mb-4">
                         <div class="col-md-12">
@@ -650,7 +657,7 @@
                     <input type="hidden" name="affectation_status_final" id="affectationFinale" value="{{ $affectationActuelle }}">
                     <input type="hidden" name="selected_optionals" id="selectedOptionals" value="{}">
                     @if($peutReporterReliquat || $isSuperAdmin)
-                    <input type="hidden" name="has_reliquat" value="{{ !empty($fraisNonSoldes) ? '1' : '0' }}">
+                    <input type="hidden" name="has_reliquat" value="{{ $hasDetteAReporter ? '1' : '0' }}">
                     <input type="hidden" name="reliquat_montant" value="{{ $analyse['etudiant']->reliquat_montant }}">
                     @endif
 
@@ -1069,9 +1076,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const fraisParClasse = @json($fraisParClasse ?? []);
 
     // Validation du reliquat pour superadmin
-    @if(($peutReporterReliquat || $isSuperAdmin) && !empty($fraisNonSoldes))
+    @if(($peutReporterReliquat || $isSuperAdmin) && $hasDetteAReporter)
     function validateReliquat() {
-        const hasReliquat = {{ !empty($fraisNonSoldes) ? 'true' : 'false' }};
+        const hasReliquat = {{ $hasDetteAReporter ? 'true' : 'false' }};
         if (hasReliquat) {
             const actionReliquat = document.querySelector('input[name="action_reliquat"]:checked');
             if (!actionReliquat) {

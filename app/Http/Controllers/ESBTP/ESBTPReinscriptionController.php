@@ -391,6 +391,10 @@ class ESBTPReinscriptionController extends Controller
             $totalAttendu = $this->calculerTotalAttendu($inscription);
             $totalPaye = $this->calculerTotalPaye($inscription);
             $soldeRestant = $totalAttendu - $totalPaye;
+            $situationDeReinscription = app(\App\Services\Finances\SituationFinanciereEtudiant::class)
+                ->pour((int) $etudiantId, (int) $inscription->id);
+            $arriérésAnterieurs = (float) $situationDeReinscription['arrieres'];
+            $hasDetteAReporter = $soldeRestant > 0 || $arriérésAnterieurs > 0;
 
             // Ajouter les informations financières et de rôle
             // La même décision que la fiche (tolérance de l'école comprise).
@@ -401,7 +405,7 @@ class ESBTPReinscriptionController extends Controller
             $etudiant->solde_restant = $soldeRestant;
             $etudiant->peut_reinscrire = $eligibilite['etat'] !== \App\Services\Reinscription\EligibiliteReinscription::IMPAYE || $eligibilite['peut_deroger'];
             $etudiant->reliquat_possible = ($peutReporterReliquat || $isSuperAdmin) && $soldeRestant > 0;
-            $etudiant->reliquat_montant = ($peutReporterReliquat || $isSuperAdmin) ? max(0, $soldeRestant) : 0;
+            $etudiant->reliquat_montant = ($peutReporterReliquat || $isSuperAdmin) ? max(0, $soldeRestant) + $arriérésAnterieurs : 0;
 
             // Récupérer les détails des frais non soldés pour le reliquat
             $fraisNonSoldes = [];
@@ -437,6 +441,8 @@ class ESBTPReinscriptionController extends Controller
                 'fraisParClasse',
                 'anneeAcademique',
                 'fraisNonSoldes',
+                'hasDetteAReporter',
+                'arriérésAnterieurs',
                 'isSuperAdmin',
                 'peutReporterReliquat',
                 'anneeUniversitairesFutures',
