@@ -310,6 +310,7 @@ jobs:
             tests/Unit/Services/MailPulse/MailPulseMonitoringStatusTest.php \
             tests/Unit/Exports/EnseignantsReportTest.php \
             tests/Unit/Exports/AnnuaireEnseignantsBulletinsTest.php \
+            tests/Unit/Exports/EnseignantsExportRedirectRegressionTest.php \
             tests/Unit/Security/MotDePasseTemporaireEtudiantTest.php \
             tests/Unit/Comptabilite \
             tests/Unit/Photos \
