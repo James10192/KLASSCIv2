@@ -66,7 +66,15 @@ final class ESBTPEnseignantExportController extends Controller
             'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
             'classe_id' => ['nullable', 'integer', 'exists:esbtp_classes,id'],
             'semestre' => ['nullable', 'integer', 'in:1,2'],
+            'vue' => ['nullable', 'in:synthese,annuaire,rapprochement,affectations'],
         ]);
+
+        $vue = $filters['vue'] ?? 'synthese';
+        if ($max === self::PDF_MAX_ROWS && $vue === 'affectations' && empty($filters['classe_id'])) {
+            throw ValidationException::withMessages([
+                'vue' => 'Pour imprimer les matières et les professeurs, choisissez d’abord une classe. Le panorama global est disponible dans la vue Synthèse.',
+            ]);
+        }
 
         $anneeId = $filters['annee_universitaire_id'] ?? ESBTPAnneeUniversitaire::anneeCourante()?->id;
         if (! $anneeId || ! $annee = ESBTPAnneeUniversitaire::query()->find($anneeId)) {
@@ -130,24 +138,26 @@ final class ESBTPEnseignantExportController extends Controller
             $enregistres, $affectations, $inclureManuels, $filters['search'] ?? null
         );
 
-        // La limite de 1000 concerne chaque tableau imprimable, pas la somme
-        // de deux tableaux distincts (qui declenchait une redirection 302).
-        // Excel n'exporte que les enseignants distincts : ses affectations ne
-        // doivent pas etre prises en compte dans ce quota.
+        // Seule la vue de detail imprime chaque affectation. Les autres
+        // editions restent lisibles meme si l'etablissement a des milliers de
+        // libelles (synthese = comptages, annuaire = fiches, rapprochement = noms).
         $totalAffectations = count($resultat['affectations']);
-        if ($max === self::PDF_MAX_ROWS && $totalAffectations > self::PDF_MAX_AFFECTATIONS) {
-            if (! empty($filters['classe_id'])) {
-                throw ValidationException::withMessages([
-                    'export' => "Cette classe comporte {$totalAffectations} affectations pour le PDF (limite ".self::PDF_MAX_AFFECTATIONS."). Sélectionnez un semestre ou exportez au format Excel.",
-                ]);
-            }
-            // L'annuaire reste disponible et COMPLET : seul le detail des
-            // affectations volumineuses est masque, avec avertissement dans
-            // le PDF et un filtre de classe pour l'imprimer separement.
-            $resultat['affectations'] = [];
+        if ($max === self::PDF_MAX_ROWS && $vue === 'affectations'
+            && $totalAffectations > self::PDF_MAX_AFFECTATIONS) {
+            throw ValidationException::withMessages([
+                'export' => "Cette sélection comporte {$totalAffectations} affectations (limite ".self::PDF_MAX_AFFECTATIONS."). Choisissez un semestre pour alléger ce document.",
+            ]);
         }
 
-        $labels = ['Année universitaire des bulletins' => $annee->display_name];
+        $labels = [
+            'Document PDF' => [
+                'synthese' => 'Synthèse et repères par classe',
+                'annuaire' => 'Annuaire officiel (fiches KLASSCI)',
+                'rapprochement' => 'Noms des bulletins à rapprocher',
+                'affectations' => 'Affectations détaillées par classe',
+            ][$vue],
+            'Année universitaire des bulletins' => $annee->display_name,
+        ];
         if (! empty($filters['classe_id'])) {
             $labels['Classe des bulletins'] = ESBTPClasse::query()->whereKey($filters['classe_id'])->value('name') ?? 'Classe #'.$filters['classe_id'];
         }
@@ -156,6 +166,6 @@ final class ESBTPEnseignantExportController extends Controller
         if (! empty($filters['status'])) $labels['Statut'] = $filters['status'] === 'active' ? 'Actif' : 'Inactif';
         if (! empty($filters['specialization'])) $labels['Spécialisation'] = $filters['specialization'];
 
-        return new EnseignantsReport($resultat['rows'], $labels, $resultat['affectations'], $totalAffectations);
+        return new EnseignantsReport($resultat['rows'], $labels, $resultat['affectations'], $totalAffectations, $vue);
     }
 }
