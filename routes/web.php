@@ -1305,7 +1305,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/paiements/repartition/apercu', [App\Http\Controllers\ESBTPPaiementController::class, 'apercuRepartition'])
                     ->middleware('throttle:120,1')
                     ->name('paiements.repartition.apercu');
-                Route::post('/reliquats/pay', [App\Http\Controllers\ESBTPPaiementController::class, 'payReliquat'])->name('reliquats.pay');
+                Route::get('/paiements/reliquats/inscription/{inscription}', [App\Http\Controllers\ESBTP\ReliquatEncaissementController::class, 'etat'])
+                    ->whereNumber('inscription')->middleware('throttle:60,1')->name('paiements.reliquats.etat');
+                Route::post('/reliquats/pay', [App\Http\Controllers\ESBTP\ReliquatEncaissementController::class, 'store'])
+                    ->middleware('throttle:20,1')->name('reliquats.pay');
             });
 
             // â”€â”€ EDIT (modification d'un paiement existant)

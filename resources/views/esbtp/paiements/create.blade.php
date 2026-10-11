@@ -6,6 +6,9 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <link rel="stylesheet" href="{{ asset('css/paiements-create-date.css') }}?v={{ @filemtime(public_path('css/paiements-create-date.css')) ?: '1' }}">
 <style>
+    .pc-reliquat-entry {display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:1rem;margin:0 0 1rem;}
+    .pc-reliquat-entry strong {color:#0f172a;font-size:.88rem}
+    .pc-reliquat-entry p {margin:.25rem 0 0;color:#64748b;font-size:.76rem}
     .pc-page {
         --pc-primary: #0453cb;
         --pc-primary-d: #033a8e;
@@ -722,6 +725,14 @@
         </div>
         @endif
 
+        {{-- Même encaissement de reliquat que le dossier étudiant ; le versement ordinaire ci-dessous reste intact. --}}
+        <section class="pc-reliquat-entry" aria-label="Dettes d'anciennes inscriptions">
+            <div><strong><i class="fas fa-history"></i> Dettes des anciennes inscriptions</strong>
+                <p>Ces règlements sont distincts des frais de l'année. Choisissez d'abord un étudiant.</p>
+            </div>
+            <x-reliquat-caisse-modal :inscription-id="$inscription?->id" />
+        </section>
+
         <form action="{{ route('esbtp.paiements.store') }}" method="POST" id="payment-form">
             @csrf
         <div class="pc-grid">
@@ -774,7 +785,7 @@
                             </div>
                             <div class="pc-insc-list">
                                 <template x-for="row in rows" :key="row.id">
-                                    <button type="button" class="pc-insc-row" :class="{ 'is-on': selectedId === row.id }" @click="choisir(row)">
+                                    <button type="button" class="pc-insc-row" :class="{ 'is-on': selectedId === row.id }" @click="choisir(row); $dispatch('caisse-inscription-changed', {inscriptionId: row.id})">
                                         <span class="pc-avatar" x-text="initiales(row.nom)"></span>
                                         <span class="pc-insc-txt">
                                             <span class="pc-insc-nom" x-text="row.nom"></span>
@@ -1238,6 +1249,7 @@ $(function() {
     // Gestion du changement d'inscription
     $('#inscription_id').on('change', function() {
         var inscriptionId = $(this).val();
+        window.dispatchEvent(new CustomEvent('caisse-inscription-changed', { detail: { inscriptionId: inscriptionId } }));
         debugLog('Inscription sélectionnée:', inscriptionId);
         currentInscription = inscriptionId || null;
         
