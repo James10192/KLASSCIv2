@@ -28,7 +28,7 @@ class ReliquatCaisseAjaxTest extends TestCase
             \App\Http\Middleware\EnsureInstalled::class,
             \App\Http\Middleware\PaywallMiddleware::class,
         ]);
-        foreach (['paiements.create', 'paiements.create.non_cash', 'paiements.create.mobile_money',
+        foreach (['admin.access', 'module.caisse.access', 'paiements.create', 'paiements.create.non_cash', 'paiements.create.mobile_money',
             'finances.etudiants.voir', 'reinscriptions.reliquats.report'] as $droit) {
             Permission::findOrCreate($droit, 'web');
         }
@@ -57,7 +57,7 @@ class ReliquatCaisseAjaxTest extends TestCase
     private function caissier(array $perms = ['paiements.create']): User
     {
         $u = User::factory()->create();
-        $u->givePermissionTo($perms);
+        $u->givePermissionTo(array_values(array_unique(array_merge(['admin.access', 'module.caisse.access'], $perms))));
         return $u;
     }
 
