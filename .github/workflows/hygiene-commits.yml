@@ -437,6 +437,11 @@ jobs:
           done
           exit $echec
 
+      - name: Compte financier et permissions de report multi-annees
+        run: |
+          php vendor/bin/phpunit tests/Feature/Finances/SituationFinanciereEtudiantTest.php --no-coverage
+          php vendor/bin/phpunit tests/Feature/Reinscription/FicheReinscriptionTest.php --no-coverage
+
       - name: Fiche étudiant - cible de réinscription après échéance
         run: php vendor/bin/phpunit tests/Feature/Etudiants/FicheEtudiantReinscriptionCibleTest.php --no-coverage
 

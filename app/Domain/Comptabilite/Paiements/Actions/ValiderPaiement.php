@@ -17,31 +17,42 @@ use Illuminate\Support\Facades\Notification;
 
 class ValiderPaiement
 {
-    public function execute(ESBTPPaiement $paiement, ?User $validateur): ESBTPPaiement
+    public function execute(ESBTPPaiement $paiement, ?User $validateur, bool $effetsSecondaires = true): ESBTPPaiement
     {
         DB::transaction(function () use ($paiement, $validateur) {
-            $paiement->update([
+            $verrou = ESBTPPaiement::query()->lockForUpdate()->findOrFail($paiement->id);
+            if ($verrou->status !== 'en_attente') {
+                throw new \DomainException('Ce paiement a déjà été traité.');
+            }
+
+            if ($verrou->type_paiement === 'reliquat' && $verrou->reliquat_detail_id) {
+                $reliquat = ESBTPReliquatDetail::query()
+                    ->lockForUpdate()
+                    ->findOrFail($verrou->reliquat_detail_id);
+                if ($reliquat->solde_restant + 0.009 < (float) $verrou->montant) {
+                    throw new \DomainException('Montant du reliquat dépassé : revérifiez les versements déjà validés.');
+                }
+                $regle = round((float) $reliquat->montant_regle + (float) $verrou->montant, 2);
+                $reliquat->update([
+                    'montant_regle' => $regle,
+                    'statut' => $regle >= (float) $reliquat->montant_reliquat ? 'totalement_regle' : 'partiellement_regle',
+                    'date_derniere_maj' => now(),
+                ]);
+            }
+
+            $verrou->update([
                 'status' => 'validé',
                 'date_validation' => now(),
                 'validateur_id' => $validateur?->id,
             ]);
-
-            if ($paiement->type_paiement === 'reliquat' && $paiement->reliquat_detail_id) {
-                $reliquat = ESBTPReliquatDetail::find($paiement->reliquat_detail_id);
-                if ($reliquat) {
-                    $nouveauMontantRegle = (float) $reliquat->montant_regle + (float) $paiement->montant;
-                    $nouveauSolde = (float) $reliquat->montant_reliquat - $nouveauMontantRegle;
-
-                    $reliquat->update([
-                        'montant_regle' => $nouveauMontantRegle,
-                        'statut' => $nouveauSolde <= 0 ? 'totalement_regle' : 'partiellement_regle',
-                        'date_derniere_maj' => now(),
-                    ]);
-                }
-            }
         });
 
         $paiement->refresh();
+        // Le lot valide au sein de sa propre transaction et invalide son cache
+        // une fois après COMMIT. Ne pas notifier pendant qu'il est non commité.
+        if (! $effetsSecondaires) {
+            return $paiement;
+        }
 
         try {
             app(GroupCacheInvalidator::class)->invalidate('paiement_validated');

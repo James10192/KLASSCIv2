@@ -433,7 +433,9 @@ class ReeinscriptionService
             $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
 
             // Vérifier permissions SuperAdmin pour outrepasser
-            $isSuperAdmin = auth()->user() && auth()->user()->can('admin.access');
+            $acteur = auth()->user();
+            $peutReporter = $acteur && $acteur->can('reinscriptions.reliquats.report');
+            $peutAbandonner = $acteur && $acteur->isSuperAdmin();
 
             $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)
                 ->pour((int) $etudiantId, null, $anneeUniversitaireId ? (int) $anneeUniversitaireId : null);
@@ -442,12 +444,6 @@ class ReeinscriptionService
             if ($eligibilite['inscription_intermediaire'] !== null) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException($eligibilite['message_intermediaire']);
             }
-            if (!$this->peutSeReinscrire($etudiantId, $anneeUniversitaireId) && !$isSuperAdmin) {
-                throw new \App\Exceptions\ReinscriptionRefuseeException("L'étudiant doit solder tous ses frais avant la réinscription");
-            }
-
-            // Note: Si SuperAdmin et que l'étudiant a des impayés, les reliquats seront créés automatiquement
-
             // 2. L'inscription QUITTÉE pour l'année visée : celle que la garde
             // vient de juger, et dont le reste dû part en reliquat. La dernière
             // inscription active (`latest()`) pouvait être une autre — celle de
@@ -529,10 +525,24 @@ class ReeinscriptionService
                     ? "Une inscription annulée existe déjà dans cette classe pour {$nouvelleAnnee->name} : rouvrez-la depuis la liste des inscriptions."
                     : "L'étudiant est déjà inscrit dans cette classe pour {$nouvelleAnnee->name} : choisissez une autre classe pour corriger.");
             }
-            if ($dejaInscrit && !$isSuperAdmin) {
+            if ($dejaInscrit && !$peutAbandonner) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException(
                     "L'étudiant est déjà inscrit pour {$nouvelleAnnee->name}. Pour corriger cette inscription, demandez à un superadministrateur."
                 );
+            }
+
+            // Les refus de doublon/classe de l'année cible priment sur la décision financière.
+            // Sinon la réinscription incorrecte reçoit un faux refus « report manquant ».
+            if ($actionReliquat === 'abandonner' && !$peutAbandonner) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException("L'abandon des frais est réservé au SuperAdmin.");
+            }
+            if ($actionReliquat === 'reporter' && !$peutReporter) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException("Permission de report d'impayés manquante.");
+            }
+            if (!$this->peutSeReinscrire($etudiantId, $anneeUniversitaireId)) {
+                if (!in_array($actionReliquat, ['reporter', 'abandonner'], true)) {
+                    throw new \App\Exceptions\ReinscriptionRefuseeException("Choisissez explicitement le report des impayés ou une remise autorisée.");
+                }
             }
 
             // 4. Vérifier et désactiver toute inscription active existante pour cet étudiant dans cette année
@@ -886,7 +896,7 @@ class ReeinscriptionService
             return false;
         }
 
-        return $eligibilite['solde'] <= $eligibilite['tolerance'];
+        return $eligibilite['autorisee'];
     }
 
     /**
@@ -928,10 +938,18 @@ class ReeinscriptionService
         // Récupérer tous les frais souscrits pour l'inscription source
         $fraisSouscrits = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscriptionSource->id)
             ->where('is_active', true)
+            // Sérialise deux requêtes de report sur la même souscription.
+            ->lockForUpdate()
             ->with(['fraisCategory', 'selectedOption'])
             ->get();
 
         foreach ($fraisSouscrits as $fraisSubscription) {
+            // Une créance reportée ne se reporte pas une deuxième fois : le
+            // dossier financier global retrouve le reliquat original par ID.
+            if (\App\Models\ESBTPReliquatDetail::where('frais_subscription_id', $fraisSubscription->id)->exists()) {
+                continue;
+            }
+
             // Calculer le montant attendu pour ce frais
             $montantAttendu = $fraisSubscription->chargedAmount();
 
@@ -989,22 +1007,6 @@ class ReeinscriptionService
                         'frais_category_id' => $fraisSubscription->frais_category_id,
                         'montant_reliquat' => $montantReliquat,
                         'frais_name' => $fraisSubscription->configuration_name ?? 'N/A'
-                    ]);
-                } else {
-                    // Comportement par défaut : créer le reliquat (backward compatibility)
-                    \App\Models\ESBTPReliquatDetail::create([
-                        'inscription_source_id' => $inscriptionSource->id,
-                        'inscription_destination_id' => $inscriptionDestination->id,
-                        'frais_subscription_id' => $fraisSubscription->id,
-                        'montant_attendu' => $montantAttendu,
-                        'montant_paye' => $montantPaye,
-                        'montant_reliquat' => $montantReliquat,
-                        'montant_regle' => 0,
-                        'statut' => 'actif',
-                        'date_creation' => now(),
-                        'date_derniere_maj' => now(),
-                        'created_by' => auth()->id(),
-                        'notes' => "Reliquat créé automatiquement lors de la réinscription de {$inscriptionSource->anneeUniversitaire->name} vers {$inscriptionDestination->anneeUniversitaire->name}"
                     ]);
                 }
             }

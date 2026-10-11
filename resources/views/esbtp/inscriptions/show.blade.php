@@ -2833,6 +2833,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     @endif
 
                     @if($canViewFinancials ?? false)
+                        <x-situation-financiere-etudiant :situation="$situationFinanciereEtudiant" />
                         @include('esbtp.inscriptions.partials.paiements-lies', ['inscription' => $inscription])
                     @endif
 

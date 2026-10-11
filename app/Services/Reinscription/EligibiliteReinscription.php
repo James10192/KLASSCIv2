@@ -79,6 +79,14 @@ final class EligibiliteReinscription
         $paye = $inscription ? SoldeDeReinscription::paye((int) $inscription->id) : 0.0;
         $solde = round($du - $paye, 2);
         $tolerance = self::tolerance();
+        // Les dettes des années N-2, N-3... doivent également empêcher une
+        // réinscription sans autorisation. N-1 reste une dette distincte.
+        $arriérés = 0.0;
+        if ($inscription && $solde <= $tolerance) {
+            $situation = app(\App\Services\Finances\SituationFinanciereEtudiant::class)
+                ->pour($etudiantId, (int) $inscription->id);
+            $arriérés = (float) $situation['arrieres'];
+        }
 
         $etat = match (true) {
             $inscription === null => null,
@@ -86,12 +94,13 @@ final class EligibiliteReinscription
             // Viser plus loin partirait de l'année d'avant et laisserait ce
             // dossier à côté : aucun solde, aucune dérogation n'y change rien.
             $intermediaire !== null => self::ANNEE_INTERMEDIAIRE,
+            $arriérés > $tolerance => self::IMPAYE,
             $solde <= 0 => self::SOLDEE,
             $solde <= $tolerance => self::DANS_TOLERANCE,
             default => self::IMPAYE,
         };
         $autorisee = in_array($etat, [self::SOLDEE, self::DANS_TOLERANCE], true);
-        $deroge = $lecteur !== null && method_exists($lecteur, 'isSuperAdmin') && $lecteur->isSuperAdmin();
+        $deroge = $lecteur !== null && method_exists($lecteur, 'can') && $lecteur->can('reinscriptions.reliquats.report');
 
         return [
             'inscription' => $inscription,
@@ -103,6 +112,7 @@ final class EligibiliteReinscription
             'du' => $du,
             'paye' => $paye,
             'solde' => $solde,
+            'arrieres_anterieurs' => $arriérés,
             'tolerance' => $tolerance,
             'etat' => $etat,
             'autorisee' => $autorisee,

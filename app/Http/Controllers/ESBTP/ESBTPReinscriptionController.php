@@ -340,9 +340,12 @@ class ESBTPReinscriptionController extends Controller
 
         $voirFinances = auth()->user()->can('finances.etudiants.voir');
         $notesComptees = is_countable($analyse['notes'] ?? null) ? count($analyse['notes']) : 0;
+        $situationFinanciere = $voirFinances
+            ? app(\App\Services\Finances\SituationFinanciereEtudiant::class)->pour((int) $etudiantId, (int) $inscription->id)
+            : null;
 
         return view('esbtp.reinscription.show', compact(
-            'analyse', 'eligibilite', 'anneeAcademique', 'voirFinances', 'reliquatEntrant', 'reliquatAnneeCible', 'notesComptees', 'preparerSuivante'
+            'analyse', 'eligibilite', 'anneeAcademique', 'voirFinances', 'reliquatEntrant', 'reliquatAnneeCible', 'notesComptees', 'preparerSuivante', 'situationFinanciere'
         ));
     }
 
@@ -388,20 +391,25 @@ class ESBTPReinscriptionController extends Controller
             $totalAttendu = $this->calculerTotalAttendu($inscription);
             $totalPaye = $this->calculerTotalPaye($inscription);
             $soldeRestant = $totalAttendu - $totalPaye;
+            $situationDeReinscription = app(\App\Services\Finances\SituationFinanciereEtudiant::class)
+                ->pour((int) $etudiantId, (int) $inscription->id);
+            $arriérésAnterieurs = (float) $situationDeReinscription['arrieres'];
+            $hasDetteAReporter = $soldeRestant > 0 || $arriérésAnterieurs > 0;
 
             // Ajouter les informations financières et de rôle
             // La même décision que la fiche (tolérance de l'école comprise).
             $isSuperAdmin = auth()->user() && auth()->user()->isSuperAdmin();
+            $peutReporterReliquat = (bool) auth()->user()?->can('reinscriptions.reliquats.report');
             $etudiant->montant_attendu = $totalAttendu;
             $etudiant->montant_paye = $totalPaye;
             $etudiant->solde_restant = $soldeRestant;
             $etudiant->peut_reinscrire = $eligibilite['etat'] !== \App\Services\Reinscription\EligibiliteReinscription::IMPAYE || $eligibilite['peut_deroger'];
-            $etudiant->reliquat_possible = $isSuperAdmin && $soldeRestant > 0;
-            $etudiant->reliquat_montant = $isSuperAdmin ? max(0, $soldeRestant) : 0;
+            $etudiant->reliquat_possible = ($peutReporterReliquat || $isSuperAdmin) && $soldeRestant > 0;
+            $etudiant->reliquat_montant = ($peutReporterReliquat || $isSuperAdmin) ? max(0, $soldeRestant) + $arriérésAnterieurs : 0;
 
             // Récupérer les détails des frais non soldés pour le reliquat
             $fraisNonSoldes = [];
-            if ($isSuperAdmin && $soldeRestant > 0) {
+            if (($peutReporterReliquat || $isSuperAdmin) && $soldeRestant > 0) {
                 $fraisNonSoldes = $this->calculerFraisNonSoldes($inscription);
             }
 
@@ -433,7 +441,10 @@ class ESBTPReinscriptionController extends Controller
                 'fraisParClasse',
                 'anneeAcademique',
                 'fraisNonSoldes',
+                'hasDetteAReporter',
+                'arriérésAnterieurs',
                 'isSuperAdmin',
+                'peutReporterReliquat',
                 'anneeUniversitairesFutures',
                 'anneeEtudiantActuelle',
                 'anneeDestinationName',
@@ -854,7 +865,9 @@ class ESBTPReinscriptionController extends Controller
 
             // Vérifier qu'au moins une classe est fournie
             if (!$classeId) {
-                return back()->withErrors(['error' => 'Vous devez sélectionner une classe pour la réinscription.']);
+                return $request->expectsJson()
+                    ? response()->json(['message' => 'Sélectionnez une classe.', 'errors' => ['nouvelle_classe_id' => ['Sélectionnez une classe.']]], 422)
+                    : back()->withErrors(['error' => 'Vous devez sélectionner une classe pour la réinscription.']);
             }
 
             // Décoder les frais optionnels sélectionnés
@@ -887,7 +900,7 @@ class ESBTPReinscriptionController extends Controller
             // Envoyer notification aux parents
             try {
                 $notificationService = app(\App\Services\NotificationService::class);
-                $reliquatMontant = $request->action_reliquat === 'report' ? $request->reliquat_montant : 0;
+                $reliquatMontant = $request->action_reliquat === 'reporter' ? $request->reliquat_montant : 0;
                 $notificationService->notifyParentsReinscriptionCreated(
                     $nouvelleInscription,
                     $request->decision ?? 'passage',
@@ -895,6 +908,19 @@ class ESBTPReinscriptionController extends Controller
                 );
             } catch (\Exception $e) {
                 \Log::error('Erreur envoi notification réinscription parent: ' . $e->getMessage());
+            }
+
+            if ($request->expectsJson()) {
+                // Le flux classique demande une photo après réinscription.
+                // Le JSON ne doit pas perdre cette étape au clic du lien suivant.
+                session()->flash('demander_photo', true);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Réinscription enregistrée. Vous pouvez ouvrir le dossier.',
+                    'inscription_id' => $nouvelleInscription->id,
+                    'url' => route('esbtp.inscriptions.show', $nouvelleInscription->id),
+                ]);
             }
 
             return redirect()->route('esbtp.inscriptions.show', $nouvelleInscription->id)
@@ -905,15 +931,22 @@ class ESBTPReinscriptionController extends Controller
                 ->with('demander_photo', true);
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Le statut redoublant changé sans motif : rien n'est enregistré.
-            return back()->withInput()->withErrors($e->errors());
+            return $request->expectsJson()
+                ? response()->json(['message' => 'Vérifiez les informations.', 'errors' => $e->errors()], 422)
+                : back()->withInput()->withErrors($e->errors());
         } catch (\App\Exceptions\ReinscriptionRefuseeException $e) {
             // Refus métier : le message est écrit pour la personne.
-            return back()->withInput()->withErrors(['error' => $e->getMessage()]);
+            return $request->expectsJson()
+                ? response()->json(['message' => $e->getMessage(), 'errors' => ['action_reliquat' => [$e->getMessage()]]], 422)
+                : back()->withInput()->withErrors(['error' => $e->getMessage()]);
         } catch (\Throwable $e) {
             // Le détail (SQL compris) reste au journal, jamais à l'écran.
             \Log::error('Réinscription impossible', ['etudiant_id' => $etudiantId, 'erreur' => $e->getMessage()]);
 
-            return back()->withInput()->withErrors(['error' => "La réinscription n'a pas pu être enregistrée. Le détail est dans le journal du serveur."]);
+            $message = "La réinscription n'a pas pu être enregistrée. Le détail est dans le journal du serveur.";
+            return $request->expectsJson()
+                ? response()->json(['message' => $message], 500)
+                : back()->withInput()->withErrors(['error' => $message]);
         }
     }
 
