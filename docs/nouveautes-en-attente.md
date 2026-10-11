@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-11 · #1552 · Enseignants : aperçu et téléchargement PDF sans retour silencieux à la liste en cas de données volumineuses ; détail imprimable par classe et semestre, message d'erreur explicite si les paramètres sont invalides.
 - 2026-10-11 · #1551 · Enseignants : menu d'export visible, choix de l'année universitaire et PDF/Excel intégrant les professeurs ajoutés manuellement sur les bulletins BTS, avec détail par classe, matière et semestre et couleurs lisibles.
 - 2026-10-09 · #1539 · Familles : espace personnel limité et registre de vérification des habilitations, sans accès implicite aux notes ni aux finances. Nécessite activation par settings et compte parent distinct déjà créé.
 - 2026-10-09 · #1540 · Inscriptions > Invitations : file sécurisée persistante (à activer dans les settings après vérification du cron), reprise des envois MailPulse sans régénérer de lien et protection des liens expirés.

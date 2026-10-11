@@ -629,6 +629,25 @@
                         </select>
                     </div>
                     <div class="te-filter-group">
+                        <label class="te-filter-label" for="te-export-classe">Classe des bulletins (export)</label>
+                        <select name="classe_id" id="te-export-classe" class="te-filter-select">
+                            <option value="">Toutes les classes</option>
+                            @foreach($classesExport as $classeExport)
+                                <option value="{{ $classeExport->id }}" {{ (int) request('classe_id') === (int) $classeExport->id ? 'selected' : '' }}>
+                                    {{ $classeExport->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="te-filter-group">
+                        <label class="te-filter-label" for="te-export-semestre">Semestre (export)</label>
+                        <select name="semestre" id="te-export-semestre" class="te-filter-select">
+                            <option value="">S1 + S2</option>
+                            <option value="1" {{ request('semestre') === '1' ? 'selected' : '' }}>Semestre 1</option>
+                            <option value="2" {{ request('semestre') === '2' ? 'selected' : '' }}>Semestre 2</option>
+                        </select>
+                    </div>
+                    <div class="te-filter-group">
                         <label class="te-filter-label">Statut</label>
                         <select name="status" class="te-filter-select">
                             <option value="">Tous</option>
@@ -651,7 +670,7 @@
                             <button type="submit" class="te-filter-btn">
                                 <i class="fas fa-search"></i>Filtrer
                             </button>
-                            @if(request()->hasAny(['search', 'status', 'specialization', 'annee_universitaire_id']))
+                            @if(request()->hasAny(['search', 'status', 'specialization', 'annee_universitaire_id', 'classe_id', 'semestre']))
                                 <a href="{{ route('esbtp.enseignants.index') }}" class="te-filter-btn-reset">
                                     <i class="fas fa-times"></i>Reset
                                 </a>

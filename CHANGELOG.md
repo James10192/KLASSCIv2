@@ -12,6 +12,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Export PDF enseignants :** le rejet de l'export n'est plus une redirection silencieuse vers la liste. Le contrôle de volume distingue annuaire et affectations ; si le détail est trop long, l'annuaire PDF reste disponible, précise le volume non imprimé et propose un filtre classe/semestre pour obtenir le détail.
+
+
 - **Export des enseignants et bulletins BTS :** le menu de la page Enseignants n'est plus masqué par le bandeau. Les exports PDF/Excel conservent les comptes enseignants et incluent les professeurs renseignés manuellement sur les bulletins, filtrés par année universitaire. Le PDF présente aussi les affectations classe/matière/semestre, avec des colonnes lisibles et des couleurs adaptées aux réglages de l'établissement.
 
 - **Notes BTS — correction de la validation groupée sur les anciens semestres.** La synchronisation après « Valider les notes » compare désormais le semestre comme du texte, conformément au stockage `VARCHAR` historique (`1`/`2`). Les anciennes valeurs `semestre1`/`semestre2` sont reconnues et réalignées pour les notes validées concernées, sans suppression de note ni changement des règles de doublons. Le diagnostic serveur inclut le contexte évaluation, classe, matière, période et SQLSTATE.

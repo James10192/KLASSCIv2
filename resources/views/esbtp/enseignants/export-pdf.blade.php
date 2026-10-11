@@ -13,7 +13,7 @@
             </td>
             <td class="pdf-kpi-cell">
                 <div class="pdf-kpi-label">Affectations bulletin (classe / matière / semestre)</div>
-                <div class="pdf-kpi-value">{{ count($affectations ?? []) }}</div>
+                <div class="pdf-kpi-value">{{ $affectationsTotal ?? count($affectations ?? []) }}</div>
             </td>
         </tr>
     </table>
@@ -56,6 +56,15 @@
         </tbody>
     </table>
 
+    @if(($affectationsTotal ?? count($affectations ?? [])) > count($affectations ?? []))
+        <div style="margin:12px 0;padding:11px 13px;border-left:3px solid #0453cb;background:#eff6ff;font-size:9px;color:#1e293b;">
+            L'annuaire des enseignants ci-dessus est complet. Les
+            {{ $affectationsTotal }} affectations par matière dépassent la limite
+            d'impression du détail dans un seul PDF.
+            Pour obtenir le détail intégral, sélectionnez une classe (et au besoin un semestre)
+            sur la page Enseignants, puis relancez l'export PDF.
+        </div>
+    @else
     <h3 style="font-size:11px;margin:14px 0 7px;page-break-after:avoid">
         Affectations par classe et semestre — année universitaire sélectionnée
     </h3>
@@ -81,4 +90,5 @@
         @endforelse
         </tbody>
     </table>
+    @endif
 </x-pdf-document>
