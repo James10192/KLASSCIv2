@@ -20,7 +20,7 @@ class EnseignantsExportRedirectRegressionTest extends TestCase
         $reponse = $this->get(route('esbtp.enseignants.preview-pdf', ['status' => 'inconnu']));
 
         $reponse->assertStatus(422);
-        $reponse->assertSee('Le document n&#039;a pas pu être préparé', false);
+        $reponse->assertSee("Le document n'a pas pu être préparé", false);
         $reponse->assertSee('gestion des enseignants');
         $this->assertFalse($reponse->isRedirection());
     }
