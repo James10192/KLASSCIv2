@@ -1,44 +1,83 @@
 <x-pdf-document
     title="Liste des enseignants"
-    subtitle="Annuaire du corps enseignant"
+    subtitle="Annuaire des enseignants et affectations saisies sur les bulletins BTS"
     :filters="$reportFilters ?? []"
     orientation="landscape">
+    {{-- Deux tableaux courts plutot qu'un seul de 9 colonnes : en A4 paysage,
+         telephones et adresses email ne doivent jamais sortir de la page. --}}
     <table class="pdf-kpi-table" style="page-break-inside:avoid">
         <tr>
             <td class="pdf-kpi-cell">
-                <div class="pdf-kpi-label">Enseignants concernés</div>
+                <div class="pdf-kpi-label">Enseignants distincts</div>
                 <div class="pdf-kpi-value">{{ $total }}</div>
+            </td>
+            <td class="pdf-kpi-cell">
+                <div class="pdf-kpi-label">Affectations bulletin (classe / matière / semestre)</div>
+                <div class="pdf-kpi-value">{{ count($affectations ?? []) }}</div>
             </td>
         </tr>
     </table>
 
-    <table class="pdf-detail-table" style="width:100%; table-layout:fixed;">
+    <p style="font-size:8px;color:#475569;margin:5px 0 10px">
+        Les fiches enregistrées restent dans l'annuaire quelle que soit l'année.
+        Les affectations manuelles proviennent de l'année universitaire sélectionnée ;
+        elles ne constituent pas des comptes utilisateurs.
+    </p>
+
+    <table class="pdf-detail-table" style="width:100%;table-layout:fixed;border-collapse:collapse;">
         <thead>
             <tr>
-                <th style="width:4%">N°</th>
-                <th style="width:11%">Matricule</th>
-                <th style="width:19%">Nom et prénoms</th>
-                <th style="width:15%">Téléphone</th>
-                <th style="width:19%">Email</th>
-                <th style="width:17%">Spécialisation</th>
-                <th style="width:8%">Régime</th>
-                <th style="width:7%">Statut</th>
+                <th style="width:5%">N°</th>
+                <th style="width:22%">Nom et prénoms</th>
+                <th style="width:12%">Matricule</th>
+                <th style="width:25%">Coordonnées</th>
+                <th style="width:18%">Spécialisation / régime</th>
+                <th style="width:18%">Origine</th>
             </tr>
         </thead>
         <tbody>
         @forelse($rows as $row)
-            <tr style="page-break-inside:avoid;">
+            <tr style="page-break-inside:avoid">
                 <td>{{ $loop->iteration }}</td>
-                <td style="overflow-wrap:break-word;">{{ $row['matricule'] }}</td>
-                <td style="overflow-wrap:break-word;"><strong>{{ $row['nom'] }}</strong></td>
-                <td>{{ $row['telephone'] }}</td>
-                <td style="overflow-wrap:break-word; font-size:8px;">{{ $row['email'] }}</td>
-                <td style="overflow-wrap:break-word;">{{ $row['specialisation'] }}</td>
-                <td>{{ $row['regime'] }}</td>
-                <td>{{ $row['statut'] }}</td>
+                <td style="word-wrap:break-word"><strong>{{ $row['nom'] }}</strong><div style="font-size:7px">{{ $row['statut'] }}</div></td>
+                <td style="word-wrap:break-word">{{ $row['matricule'] }}</td>
+                <td style="word-wrap:break-word">
+                    {{ $row['telephone'] }}
+                    <div style="font-size:7px;word-wrap:break-word">{{ $row['email'] }}</div>
+                </td>
+                <td style="word-wrap:break-word">{{ $row['specialisation'] }}
+                    <div style="font-size:7px">{{ $row['regime'] }}</div>
+                </td>
+                <td style="word-wrap:break-word;font-size:8px">{{ $row['origine'] ?? 'Enregistré' }}</td>
             </tr>
         @empty
-            <tr><td colspan="8" style="text-align:center; padding:20px;">Aucun enseignant pour ces filtres.</td></tr>
+            <tr><td colspan="6" style="text-align:center;padding:15px">Aucun enseignant pour ces filtres.</td></tr>
+        @endforelse
+        </tbody>
+    </table>
+
+    <h3 style="font-size:11px;margin:14px 0 7px;page-break-after:avoid">
+        Affectations par classe et semestre — année universitaire sélectionnée
+    </h3>
+    <table class="pdf-detail-table" style="width:100%;table-layout:fixed;border-collapse:collapse">
+        <thead>
+            <tr>
+                <th style="width:27%">Classe</th>
+                <th style="width:10%">Période</th>
+                <th style="width:33%">Matière</th>
+                <th style="width:30%">Professeur renseigné</th>
+            </tr>
+        </thead>
+        <tbody>
+        @forelse(($affectations ?? []) as $affectation)
+            <tr style="page-break-inside:avoid">
+                <td style="word-wrap:break-word">{{ $affectation['classe'] }}</td>
+                <td>{{ $affectation['semestre'] }}</td>
+                <td style="word-wrap:break-word">{{ $affectation['matiere'] }}</td>
+                <td style="word-wrap:break-word">{{ $affectation['nom'] }}</td>
+            </tr>
+        @empty
+            <tr><td colspan="4" style="text-align:center;padding:12px">Aucune affectation saisie sur les bulletins de cette année.</td></tr>
         @endforelse
         </tbody>
     </table>
