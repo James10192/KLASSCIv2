@@ -27,6 +27,27 @@
         margin-bottom: 10px;
     }
 
+    .rf-feedback { border:1px solid #bfdbfe; background:#eff6ff; color:#1e40af; padding:.85rem 1rem; border-radius:10px; margin-bottom:1rem; font-size:.84rem; }
+    .rf-feedback--error { border-color:#fecaca; color:#991b1b; background:#fff1f2; }
+    .rf-feedback--success { border-color:#a7f3d0; color:#065f46; background:#ecfdf5; }
+    .rf-invalid { outline:2px solid #dc2626 !important; outline-offset:2px; }
+    /* Clone minimal x-au-select pour filiere/niveau dynamiques : select HTML CACHE
+       conserve comme source pour les callbacks Alpine et les options chargees AJAX. */
+    .rf-native-picker { position:relative; display:flex; width:100%; flex-direction:column; }
+    .rf-native-source { position:absolute!important; opacity:0!important; width:1px!important; height:1px!important; clip-path:inset(50%); pointer-events:none; }
+    .rf-native-trigger { display:flex; align-items:center; gap:.55rem; justify-content:space-between; width:100%; min-height:44px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; color:#1e293b; padding:.65rem .8rem; text-align:left; cursor:pointer; font-size:.86rem; }
+    .rf-native-trigger:hover, .rf-native-trigger:focus-visible { border-color:#0453cb; outline:2px solid #bfdbfe; }
+    .rf-native-trigger span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rf-native-trigger i { color:#0453cb; }
+    .rf-native-menu { position:absolute; z-index:150; top:calc(100% + 4px); left:0; right:0; border:1px solid #cbd5e1; border-radius:10px; background:#fff; box-shadow:0 12px 30px rgba(15,23,42,.13); padding:.45rem; }
+    .rf-native-search { width:100%; border:1px solid #e2e8f0; border-radius:8px; padding:.55rem; color:#1e293b; margin-bottom:.3rem; }
+    .rf-native-options { max-height:220px; overflow-y:auto; }
+    .rf-native-option { display:block; width:100%; text-align:left; border:0; border-radius:7px; background:#fff; padding:.55rem .6rem; color:#1e293b; cursor:pointer; font-size:.82rem; }
+    .rf-native-option:hover, .rf-native-option[aria-selected="true"] { background:#eff6ff; color:#0453cb; }
+    .rf-optional-toggle { display:flex; align-items:center; gap:.65rem; border:1px solid #bfdbfe; border-radius:9px; padding:.75rem; cursor:pointer; background:#f8fbff; color:#0453cb; }
+    .rf-optional-toggle input { accent-color:#0453cb; width:17px; height:17px; }
+    .rf-au-full { display:flex !important; width:100%; }
+    .rf-au-full .au-select-trigger { width:100%; }
     /* Searchable Select Component CSS (from etudiants.index) */
     .searchable-select {
         position: relative;
@@ -234,22 +255,29 @@
         @endif
 
         <!-- Gestion des reliquats pour superadmin -->
-        @if($isSuperAdmin && !empty($fraisNonSoldes))
+        @if(($peutReporterReliquat || $isSuperAdmin) && $hasDetteAReporter)
         <div class="card-moderne mb-lg">
             <div class="main-card-header" style="background-color: rgba(251, 191, 36, 0.1);">
                 <div class="main-card-title" style="color: var(--warning);">
                     <i class="fas fa-exclamation-triangle"></i>
-                    Gestion des Reliquats (Superadministrateur)
+                    Gestion des impayés et reports
                 </div>
             </div>
             <div class="p-lg">
                 <div class="reliquat-section">
                     <div class="alert alert-warning mb-lg">
                         <i class="fas fa-user-shield me-2"></i>
-                        <strong>Privilège Superadmin :</strong> Vous pouvez créer une réinscription avec des frais impayés.
+                        <strong>Report autorisé :</strong> Vous êtes habilité par l'école à reporter les impayés à la réinscription.
                         Ces montants seront reportés comme "reliquat année précédente" sur la nouvelle inscription.
                     </div>
 
+                    @if($arriérésAnterieurs > 0)
+                    <div class="reliquat-detail">
+                        <strong>Impayés d'inscriptions encore plus anciennes</strong>
+                        <span class="badge bg-warning">{{ number_format($arriérésAnterieurs, 0, ',', ' ') }} FCFA</span>
+                        <p class="small text-muted mb-0">La créance d'origine reste conservée ; aucun second report n'est créé.</p>
+                    </div>
+                    @endif
                     <h6 class="mb-3">Détail des frais non soldés :</h6>
 
                     @foreach($fraisNonSoldes as $frais)
@@ -279,11 +307,12 @@
                 </div>
             </div>
             <div class="p-lg">
-                <form action="{{ route('esbtp.reinscription.update', $analyse['etudiant']->id) }}" method="POST">
+                <form action="{{ route('esbtp.reinscription.update', $analyse['etudiant']->id) }}" method="POST" id="reinscriptionFinalisationForm" novalidate>
+                    <div id="rf-feedback" class="rf-feedback" hidden role="alert" aria-live="assertive"></div>
                     @csrf
                     @method('PUT')
 
-                    @if($isSuperAdmin && !empty($fraisNonSoldes))
+                    @if(($peutReporterReliquat || $isSuperAdmin) && $hasDetteAReporter)
                     <!-- Section de gestion des reliquats -->
                     <div class="row mb-4">
                         <div class="col-md-12">
@@ -292,7 +321,7 @@
                                     <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Gestion des Reliquats</h6>
                                 </div>
                                 <div class="card-body">
-                                    <h6 class="mb-3">Choix de gestion du reliquat :</h6>
+                                    <h6 class="mb-3">Décision financière à confirmer :</h6>
 
                                     <div class="form-check mb-3">
                                         <input class="form-check-input" type="radio" id="reporter_reliquat" name="action_reliquat" value="reporter">
@@ -303,13 +332,15 @@
                                         </label>
                                     </div>
 
+                                    @if($isSuperAdmin)
                                     <div class="form-check mb-3">
                                         <input class="form-check-input" type="radio" id="abandonner_reliquat" name="action_reliquat" value="abandonner">
                                         <label class="form-check-label" for="abandonner_reliquat">
                                             <strong><i class="fas fa-times me-1"></i> Abandonner les frais impayés</strong>
-                                            <br><small class="text-muted">Les frais non soldés seront annulés définitivement (remise exceptionnelle)</small>
+                                            <br><small class="text-muted">Remise exceptionnelle distincte du report, réservée au SuperAdmin.</small>
                                         </label>
                                     </div>
+                                    @endif
 
                                     <div class="alert alert-info mt-3">
                                         <i class="fas fa-info-circle me-2"></i>
@@ -385,12 +416,17 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group-moderne">
-                                <label for="decision" class="form-label-moderne">Décision académique *</label>
-                                <select name="decision" id="decision" class="form-select-moderne" required>
-                                    <option value="passage" {{ $analyse['decision'] === 'passage' ? 'selected' : '' }}>Passage{{ $analyse['decision'] === 'passage' ? ' (proposée par les résultats)' : '' }}</option>
-                                    <option value="redoublement" {{ $analyse['decision'] === 'redoublement' ? 'selected' : '' }}>Redoublement{{ $analyse['decision'] === 'redoublement' ? ' (proposée par les résultats)' : '' }}</option>
-                                    <option value="rattrapage" {{ $analyse['decision'] === 'rattrapage' ? 'selected' : '' }}>Rattrapage{{ $analyse['decision'] === 'rattrapage' ? ' (proposée par les résultats)' : '' }}</option>
-                                </select>
+                                <span class="form-label-moderne">Décision académique *</span>
+                                <x-au-select class="rf-au-full" name="decision" id="decision"
+                                    label="Décision académique"
+                                    icon="fa-graduation-cap"
+                                    :placeholder-is-first-option="false"
+                                    :value="$analyse['decision']"
+                                    :options="[
+                                        'passage' => 'Passage',
+                                        'redoublement' => 'Redoublement',
+                                        'rattrapage' => 'Rattrapage',
+                                    ]" />
                                 <small class="form-text text-muted">
                                     La décision détermine les classes proposées
                                 </small>
@@ -402,13 +438,14 @@
                     <div class="row mb-4">
                         <div class="col-md-12">
                             <div class="form-group-moderne">
-                                <label for="annee_universitaire_id" class="form-label-moderne">Année universitaire de destination *</label>
-                                <select name="annee_universitaire_id" id="annee_universitaire_id" class="form-select-moderne" required>
-                                    <option value="">Sélectionner l'année universitaire</option>
-                                    @foreach($anneeUniversitairesFutures as $annee)
-                                        <option value="{{ $annee->id }}" {{ isset($anneeDestination) && $anneeDestination && (int) $anneeDestination->id === (int) $annee->id ? 'selected' : '' }}>{{ $annee->name }}</option>
-                                    @endforeach
-                                </select>
+                                <span class="form-label-moderne">Année universitaire de destination *</span>
+                                <x-au-select class="rf-au-full" name="annee_universitaire_id" id="annee_universitaire_id"
+                                    label="Année universitaire de destination"
+                                    icon="fa-calendar-alt"
+                                    placeholder="Sélectionner l'année universitaire"
+                                    :searchable="$anneeUniversitairesFutures->count() > 8"
+                                    :value="$anneeDestination?->id ?? ''"
+                                    :options="$anneeUniversitairesFutures->mapWithKeys(fn ($annee) => [(string) $annee->id => $annee->name])->all()" />
                                 <small class="form-text text-muted">
                                     Seules les années universitaires futures sont disponibles pour la réinscription
                                 </small>
@@ -420,12 +457,13 @@
                     <div class="row mb-4" x-data="{ choixFiliere: 'meme' }">
                         <div class="col-md-6">
                             <div class="form-group-moderne">
-                                <label for="affectation_status" class="form-label-moderne">Statut d'affectation *</label>
-                                <select name="affectation_status" id="affectation_status" class="form-select-moderne" required>
-                                    <option value="affecté" {{ $affectationActuelle === 'affecté' ? 'selected' : '' }}>Affecté</option>
-                                    <option value="réaffecté" {{ $affectationActuelle === 'réaffecté' ? 'selected' : '' }}>Réaffecté</option>
-                                    <option value="non_affecté" {{ $affectationActuelle === 'non_affecté' ? 'selected' : '' }}>Non affecté</option>
-                                </select>
+                                <span class="form-label-moderne">Statut d'affectation *</span>
+                                <x-au-select class="rf-au-full" name="affectation_status" id="affectation_status"
+                                    label="Statut d'affectation"
+                                    icon="fa-user-check"
+                                    :placeholder-is-first-option="false"
+                                    :value="$affectationActuelle"
+                                    :options="['affecté' => 'Affecté', 'réaffecté' => 'Réaffecté', 'non_affecté' => 'Non affecté']" />
                                 <small class="form-text text-muted">
                                     Repris de l'inscription quittée. Le statut influence les frais applicables
                                 </small>
@@ -506,8 +544,9 @@
                             <div x-show="choixFiliere === 'autre'" x-cloak>
                                 <!-- Select Filière -->
                                 <div class="form-group-moderne mb-3">
-                                    <label for="autre_filiere_id" class="form-label-moderne">Filière *</label>
-                                    <select id="autre_filiere_id" class="form-select-moderne"
+                                    <span class="form-label-moderne">Filière *</span>
+                                    <div class="rf-native-picker" data-rf-native-picker>
+                                    <select id="autre_filiere_id" class="rf-native-source"
                                             :required="choixFiliere === 'autre'"
                                             @change="handleFiliereChange">
                                         <option value="">Sélectionner une filière...</option>
@@ -515,16 +554,31 @@
                                             <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
                                         @endforeach
                                     </select>
+                                        <button class="rf-native-trigger" type="button" aria-label="Choisir une filière"
+                                                aria-expanded="false"><i class="fas fa-sitemap"></i> <span>Sélectionner une filière...</span><i class="fas fa-chevron-down"></i></button>
+                                        <div class="rf-native-menu" hidden>
+                                            <input type="search" class="rf-native-search" placeholder="Rechercher une filière..." aria-label="Rechercher une filière">
+                                            <div class="rf-native-options" role="listbox"></div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Select Niveau -->
                                 <div class="form-group-moderne mb-3">
-                                    <label for="autre_niveau_id" class="form-label-moderne">Niveau d'étude *</label>
-                                    <select id="autre_niveau_id" class="form-select-moderne"
-                                            :required="choixFiliere === 'autre'"
-                                            @change="handleNiveauChange">
-                                        <option value="">Sélectionner d'abord une filière...</option>
-                                    </select>
+                                    <span class="form-label-moderne">Niveau d'étude *</span>
+                                    <div class="rf-native-picker" data-rf-native-picker>
+                                        <select id="autre_niveau_id" class="rf-native-source"
+                                                :required="choixFiliere === 'autre'"
+                                                @change="handleNiveauChange">
+                                            <option value="">Sélectionner d'abord une filière...</option>
+                                        </select>
+                                        <button class="rf-native-trigger" type="button" aria-label="Choisir un niveau"
+                                                aria-expanded="false"><i class="fas fa-layer-group"></i> <span>Sélectionner d'abord une filière...</span><i class="fas fa-chevron-down"></i></button>
+                                        <div class="rf-native-menu" hidden>
+                                            <input type="search" class="rf-native-search" placeholder="Rechercher un niveau..." aria-label="Rechercher un niveau">
+                                            <div class="rf-native-options" role="listbox"></div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Searchable Select Classe (Alpine.js) -->
@@ -601,9 +655,9 @@
                     <!-- Champs cachés -->
                     <input type="hidden" name="decision_finale" id="decisionFinale" value="{{ $analyse['decision'] }}">
                     <input type="hidden" name="affectation_status_final" id="affectationFinale" value="{{ $affectationActuelle }}">
-                    <input type="hidden" name="selected_optionals" id="selectedOptionals" value="{}"
-                    @if($isSuperAdmin)
-                    <input type="hidden" name="has_reliquat" value="{{ !empty($fraisNonSoldes) ? '1' : '0' }}">
+                    <input type="hidden" name="selected_optionals" id="selectedOptionals" value="{}">
+                    @if($peutReporterReliquat || $isSuperAdmin)
+                    <input type="hidden" name="has_reliquat" value="{{ $hasDetteAReporter ? '1' : '0' }}">
                     <input type="hidden" name="reliquat_montant" value="{{ $analyse['etudiant']->reliquat_montant }}">
                     @endif
 
@@ -1022,13 +1076,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const fraisParClasse = @json($fraisParClasse ?? []);
 
     // Validation du reliquat pour superadmin
-    @if($isSuperAdmin && !empty($fraisNonSoldes))
+    @if(($peutReporterReliquat || $isSuperAdmin) && $hasDetteAReporter)
     function validateReliquat() {
-        const hasReliquat = {{ !empty($fraisNonSoldes) ? 'true' : 'false' }};
+        const hasReliquat = {{ $hasDetteAReporter ? 'true' : 'false' }};
         if (hasReliquat) {
             const actionReliquat = document.querySelector('input[name="action_reliquat"]:checked');
             if (!actionReliquat) {
-                alert('Vous devez choisir une action pour les frais impayés (reporter ou abandonner) avant de procéder à la réinscription.');
+                alert('Choisissez une décision pour les frais impayés avant de finaliser.');
                 return false;
             }
         }
@@ -1347,12 +1401,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     ${fraisItem.is_mandatory ?
                         `<input type="hidden" name="frais_obligatoire[]" value="${fraisItem.category.id}" data-amount="${categoryAmount}">` :
                         `<div class="mt-3">
-                            <select class="form-select frais-optional" data-category-id="${fraisItem.category.id}" style="font-size: 12px;">
-                                <option value="none">Ne pas souscrire</option>
-                                <option value="default" data-amount="${categoryAmount}">
-                                    Souscrire ce frais
-                                </option>
-                            </select>
+                            <label class="rf-optional-toggle">
+                                <input type="checkbox" class="frais-optional" data-category-id="${fraisItem.category.id}" data-amount="${categoryAmount}">
+                                <span>Ajouter ce frais optionnel</span>
+                            </label>
                         </div>`
                     }
                 </div>
@@ -1373,19 +1425,164 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.querySelectorAll('.frais-optional').forEach(function(select) {
             const categoryId = select.dataset.categoryId;
-            const selectedOption = select.options[select.selectedIndex];
-
-            if (select.value !== 'none') {
+            if (select.checked) {
                 selectedOptionals[categoryId] = {
-                    variant_id: select.value,
-                    amount: parseFloat(selectedOption.dataset.amount) || 0,
-                    name: selectedOption.text
+                    variant_id: 'default',
+                    amount: parseFloat(select.dataset.amount) || 0,
+                    name: 'Souscription de frais optionnel'
                 };
             }
         });
 
         document.getElementById('selectedOptionals').value = JSON.stringify(selectedOptionals);
     }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('reinscriptionFinalisationForm');
+    const feedback = document.getElementById('rf-feedback');
+    if (!form || !feedback) return;
+
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const btn = document.getElementById('btnConfirmer');
+        if (btn?.disabled || form.dataset.saving === 'true' || form.dataset.saved === 'true') return;
+
+        // Même si l'utilisateur confirme depuis la fiche rapide, les valeurs
+        // calculées par les pickers sont transmises à l'API.
+        const decision = document.getElementById('decision');
+        const affectation = document.getElementById('affectation_status');
+        if (decision) document.getElementById('decisionFinale').value = decision.value;
+        if (affectation) document.getElementById('affectationFinale').value = affectation.value;
+
+        feedback.hidden = true;
+        feedback.className = 'rf-feedback';
+        form.querySelectorAll('.rf-invalid').forEach(el => el.classList.remove('rf-invalid'));
+        const data = new FormData(form);
+        if (!data.get('annee_universitaire_id')) {
+            afficherErreur('Choisissez une année universitaire.', 'annee_universitaire_id');
+            return;
+        }
+        if (!data.get('nouvelle_classe_id') && !data.get('autre_classe_id')) {
+            afficherErreur('Choisissez la classe de destination.', 'nouvelle_classe_id');
+            return;
+        }
+        if (form.querySelector('input[name="action_reliquat"]') && !data.get('action_reliquat')) {
+            afficherErreur('Choisissez le report des impayés ou une autre décision autorisée.', 'action_reliquat');
+            return;
+        }
+
+        form.dataset.saving = 'true';
+        if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+        feedback.hidden = false;
+        feedback.textContent = 'Enregistrement en cours…';
+        try {
+            const res = await fetch(form.action, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+                body: data,
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || json.success !== true) {
+                const erreurs = json.errors || {};
+                const champ = Object.keys(erreurs)[0] || null;
+                const premier = champ ? (erreurs[champ][0] || json.message) : null;
+                afficherErreur(premier || json.message || 'Enregistrement refusé, vérifiez les informations.', champ);
+                return;
+            }
+            form.dataset.saved = 'true';
+            feedback.className = 'rf-feedback rf-feedback--success';
+            feedback.textContent = json.message || 'Réinscription confirmée.';
+            const link = document.createElement('a');
+            link.href = json.url;
+            link.textContent = ' Ouvrir la nouvelle inscription';
+            link.className = 'btn-acasi primary ms-2';
+            feedback.appendChild(link);
+            feedback.scrollIntoView({behavior:'smooth', block:'center'});
+        } catch (err) {
+            afficherErreur('Connexion interrompue : vérifiez le dossier avant de réessayer pour éviter une double réinscription.');
+        } finally {
+            form.dataset.saving = 'false';
+            if (btn && form.dataset.saved !== 'true') {
+                btn.disabled = false;
+                btn.removeAttribute('aria-busy');
+            }
+        }
+    });
+
+    function afficherErreur(message, champ) {
+        feedback.className = 'rf-feedback rf-feedback--error';
+        feedback.textContent = message;
+        feedback.hidden = false;
+        const cible = champ ? form.querySelector('[name="' + CSS.escape(champ) + '"]') : null;
+        const declencheur = cible?.closest('.au-select')?.querySelector('.au-select-trigger') || cible;
+        if (declencheur) {
+            declencheur.classList.add('rf-invalid');
+            declencheur.focus?.();
+        }
+        feedback.scrollIntoView({behavior:'smooth', block:'center'});
+    }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-rf-native-picker]').forEach(function (root) {
+        const native = root.querySelector('.rf-native-source');
+        const trigger = root.querySelector('.rf-native-trigger');
+        const label = trigger.querySelector('span');
+        const menu = root.querySelector('.rf-native-menu');
+        const search = root.querySelector('.rf-native-search');
+        const options = root.querySelector('.rf-native-options');
+        if (!native || !trigger || !menu || !options) return;
+
+        function render() {
+            const term = (search.value || '').toLocaleLowerCase('fr');
+            options.replaceChildren();
+            Array.from(native.options).filter(opt => opt.text.toLocaleLowerCase('fr').includes(term)).forEach(opt => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'rf-native-option';
+                btn.setAttribute('role', 'option');
+                btn.setAttribute('aria-selected', String(opt.value === native.value));
+                btn.dataset.value = opt.value;
+                btn.textContent = opt.text;
+                btn.addEventListener('click', () => {
+                    native.value = opt.value;
+                    native.dispatchEvent(new Event('change', {bubbles:true}));
+                    close();
+                    render();
+                });
+                options.appendChild(btn);
+            });
+            if (options.children.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'text-muted small p-2';
+                empty.textContent = 'Aucun résultat.';
+                options.appendChild(empty);
+            }
+            label.textContent = native.selectedOptions[0]?.textContent?.trim() || 'Choisir…';
+        }
+        function close() { menu.hidden = true; trigger.setAttribute('aria-expanded','false'); }
+        trigger.addEventListener('click', () => {
+            const next = !menu.hidden;
+            document.querySelectorAll('.rf-native-menu').forEach(m => { m.hidden = true; });
+            menu.hidden = next;
+            trigger.setAttribute('aria-expanded', String(!next));
+            if (!next) { search.value = ''; render(); search.focus(); }
+        });
+        search.addEventListener('input', render);
+        root.addEventListener('keydown', event => {
+            if (event.key === 'Escape') { close(); trigger.focus(); }
+        });
+        document.addEventListener('click', event => { if (!root.contains(event.target)) close(); });
+        native.addEventListener('change', render);
+        new MutationObserver(render).observe(native, {childList:true, subtree:true, characterData:true});
+        render();
+    });
 });
 </script>
 @endpush

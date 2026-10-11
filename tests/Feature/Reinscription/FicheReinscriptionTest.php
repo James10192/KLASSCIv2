@@ -353,4 +353,72 @@ class FicheReinscriptionTest extends TestCase
 
         $this->fiche($sansFinances)->assertOk()->assertSee('Réinscription bloquée')->assertDontSee('220 000');
     }
+
+    public function test_le_droit_de_report_est_attribuable_independamment_du_role(): void
+    {
+        Permission::findOrCreate('reinscriptions.reliquats.report', 'web');
+        $this->agent->givePermissionTo('reinscriptions.reliquats.report');
+
+        $etat = app(EligibiliteReinscription::class)
+            ->pour($this->inscription->etudiant_id, $this->agent);
+        $this->assertTrue($etat['peut_deroger']);
+        $this->assertFalse($etat['autorisee']); // impayé réel, autorisé seulement par dérogation
+        $this->fiche($this->agent)->assertOk()
+            ->assertSee('réinscription possible par dérogation');
+    }
+
+    public function test_le_droit_de_report_ne_permet_pas_de_corriger_une_reinscription(): void
+    {
+        Permission::findOrCreate('reinscriptions.reliquats.report', 'web');
+        $this->agent->givePermissionTo('reinscriptions.reliquats.report');
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $this->courante->id,
+            'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+            'status' => 'active',
+        ]);
+        $etat = app(EligibiliteReinscription::class)
+            ->pour($this->inscription->etudiant_id, $this->agent, $this->courante->id);
+        $this->assertSame(EligibiliteReinscription::DEJA_INSCRIT, $etat['etat']);
+        $this->assertFalse($etat['peut_rejouer']);
+    }
+
+    public function test_admin_access_ne_donne_pas_implicitement_le_droit_de_report(): void
+    {
+        Permission::findOrCreate('admin.access', 'web');
+        Permission::findOrCreate('reinscriptions.reliquats.report', 'web');
+        $this->agent->givePermissionTo('admin.access');
+
+        $etat = app(EligibiliteReinscription::class)
+            ->pour($this->inscription->etudiant_id, $this->agent);
+        $this->assertFalse($etat['peut_deroger']);
+        $this->assertFalse($etat['peut_poursuivre']);
+    }
+
+    public function test_un_arriere_ancien_bloque_meme_quand_la_derniere_inscription_est_soldee(): void
+    {
+        ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)->update(['amount' => 0]);
+        $ancienneAnnee = ESBTPAnneeUniversitaire::factory()->create([
+            'name' => '2024-2025',
+            'is_current' => false,
+            'start_date' => now()->subYears(2)->startOfMonth(),
+            'end_date' => now()->subYear()->subMonths(3),
+        ]);
+        $ancienneInscription = ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $ancienneAnnee->id,
+            'status' => 'active',
+        ]);
+        ESBTPFraisSubscription::factory()->create([
+            'inscription_id' => $ancienneInscription->id,
+            'frais_category_id' => ESBTPFraisCategory::factory()->create()->id,
+            'amount' => 25000,
+        ]);
+
+        $etat = app(EligibiliteReinscription::class)
+            ->pour($this->inscription->etudiant_id, $this->agent, $this->courante->id);
+        $this->assertSame(EligibiliteReinscription::IMPAYE, $etat['etat']);
+        $this->assertSame(25000.0, $etat['arrieres_anterieurs']);
+        $this->assertFalse(app(ReeinscriptionService::class)->peutSeReinscrire($this->inscription->etudiant_id, $this->courante->id));
+    }
 }

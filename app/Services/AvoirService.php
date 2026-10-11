@@ -25,9 +25,13 @@ class AvoirService
 
     public function issue(ESBTPPaiement $parent, float $montant, string $kind, string $motif, int $userId): ESBTPPaiement
     {
-        $this->assertCanIssue($parent, $montant, $kind, $motif);
-
         return DB::transaction(function () use ($parent, $montant, $kind, $motif, $userId) {
+            // La capacité de crédit dépend des avoirs déjà émis. Elle doit
+            // être évaluée sous verrou du paiement parent, pas avant la
+            // transaction (deux caisses peuvent émettre en parallèle).
+            $parent = ESBTPPaiement::query()->lockForUpdate()->findOrFail($parent->id);
+            $this->assertCanIssue($parent, $montant, $kind, $motif);
+
             $numero = ESBTPPaiement::genererNumeroRecu('AV');
 
             $avoir = ESBTPPaiement::create([
@@ -60,6 +64,21 @@ class AvoirService
             // lieu de le reporter. Un remboursement integral laisserait alors
             // survivre du paiement fantome sur les autres frais.
             $this->reflet->refleter($avoir, $parent);
+
+            // Un avoir sur un règlement d'arriéré REOUVRE la même créance.
+            // Le reflet de ventilation ne suffit pas : le reliquat a son
+            // compteur propre, indépendant des souscriptions de l'année.
+            if ($parent->type_paiement === 'reliquat' && $parent->reliquat_detail_id) {
+                $reliquat = \App\Models\ESBTPReliquatDetail::query()
+                    ->lockForUpdate()->findOrFail($parent->reliquat_detail_id);
+                $regle = max(0.0, round((float) $reliquat->montant_regle - $montant, 2));
+                $reliquat->update([
+                    'montant_regle' => $regle,
+                    'statut' => $regle <= 0 ? 'actif' :
+                        ($regle >= (float) $reliquat->montant_reliquat ? 'totalement_regle' : 'partiellement_regle'),
+                    'date_derniere_maj' => now(),
+                ]);
+            }
 
             return $avoir;
         });

@@ -421,7 +421,7 @@
     btnSkip.addEventListener('click', function () {
         modal.hide();
         allowSubmit = true;
-        mainForm.submit();
+        mainForm.requestSubmit();
     });
 
     // Vider une section parent
@@ -476,10 +476,10 @@
                     errorsBox.classList.add('rqf-errors--warning');
                     errorsBox.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>' + json.message;
                     errorsBox.style.display = 'block';
-                    setTimeout(() => { modal.hide(); mainForm.submit(); }, 1800);
+                    setTimeout(() => { modal.hide(); mainForm.requestSubmit(); }, 1800);
                 } else {
                     modal.hide();
-                    mainForm.submit();
+                    mainForm.requestSubmit();
                 }
                 return;
             }
