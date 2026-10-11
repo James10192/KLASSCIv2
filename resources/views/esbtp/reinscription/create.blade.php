@@ -31,6 +31,21 @@
     .rf-feedback--error { border-color:#fecaca; color:#991b1b; background:#fff1f2; }
     .rf-feedback--success { border-color:#a7f3d0; color:#065f46; background:#ecfdf5; }
     .rf-invalid { outline:2px solid #dc2626 !important; outline-offset:2px; }
+    /* Clone minimal x-au-select pour filiere/niveau dynamiques : select HTML CACHE
+       conserve comme source pour les callbacks Alpine et les options chargees AJAX. */
+    .rf-native-picker { position:relative; display:flex; width:100%; flex-direction:column; }
+    .rf-native-source { position:absolute!important; opacity:0!important; width:1px!important; height:1px!important; clip-path:inset(50%); pointer-events:none; }
+    .rf-native-trigger { display:flex; align-items:center; gap:.55rem; justify-content:space-between; width:100%; min-height:44px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; color:#1e293b; padding:.65rem .8rem; text-align:left; cursor:pointer; font-size:.86rem; }
+    .rf-native-trigger:hover, .rf-native-trigger:focus-visible { border-color:#0453cb; outline:2px solid #bfdbfe; }
+    .rf-native-trigger span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .rf-native-trigger i { color:#0453cb; }
+    .rf-native-menu { position:absolute; z-index:150; top:calc(100% + 4px); left:0; right:0; border:1px solid #cbd5e1; border-radius:10px; background:#fff; box-shadow:0 12px 30px rgba(15,23,42,.13); padding:.45rem; }
+    .rf-native-search { width:100%; border:1px solid #e2e8f0; border-radius:8px; padding:.55rem; color:#1e293b; margin-bottom:.3rem; }
+    .rf-native-options { max-height:220px; overflow-y:auto; }
+    .rf-native-option { display:block; width:100%; text-align:left; border:0; border-radius:7px; background:#fff; padding:.55rem .6rem; color:#1e293b; cursor:pointer; font-size:.82rem; }
+    .rf-native-option:hover, .rf-native-option[aria-selected="true"] { background:#eff6ff; color:#0453cb; }
+    .rf-optional-toggle { display:flex; align-items:center; gap:.65rem; border:1px solid #bfdbfe; border-radius:9px; padding:.75rem; cursor:pointer; background:#f8fbff; color:#0453cb; }
+    .rf-optional-toggle input { accent-color:#0453cb; width:17px; height:17px; }
     .rf-au-full { display:flex !important; width:100%; }
     .rf-au-full .au-select-trigger { width:100%; }
     /* Searchable Select Component CSS (from etudiants.index) */
@@ -522,8 +537,9 @@
                             <div x-show="choixFiliere === 'autre'" x-cloak>
                                 <!-- Select Filière -->
                                 <div class="form-group-moderne mb-3">
-                                    <label for="autre_filiere_id" class="form-label-moderne">Filière *</label>
-                                    <select id="autre_filiere_id" class="form-select-moderne"
+                                    <span class="form-label-moderne">Filière *</span>
+                                    <div class="rf-native-picker" data-rf-native-picker>
+                                    <select id="autre_filiere_id" class="rf-native-source"
                                             :required="choixFiliere === 'autre'"
                                             @change="handleFiliereChange">
                                         <option value="">Sélectionner une filière...</option>
@@ -531,16 +547,31 @@
                                             <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
                                         @endforeach
                                     </select>
+                                        <button class="rf-native-trigger" type="button" aria-label="Choisir une filière"
+                                                aria-expanded="false"><i class="fas fa-sitemap"></i> <span>Sélectionner une filière...</span><i class="fas fa-chevron-down"></i></button>
+                                        <div class="rf-native-menu" hidden>
+                                            <input type="search" class="rf-native-search" placeholder="Rechercher une filière..." aria-label="Rechercher une filière">
+                                            <div class="rf-native-options" role="listbox"></div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Select Niveau -->
                                 <div class="form-group-moderne mb-3">
-                                    <label for="autre_niveau_id" class="form-label-moderne">Niveau d'étude *</label>
-                                    <select id="autre_niveau_id" class="form-select-moderne"
-                                            :required="choixFiliere === 'autre'"
-                                            @change="handleNiveauChange">
-                                        <option value="">Sélectionner d'abord une filière...</option>
-                                    </select>
+                                    <span class="form-label-moderne">Niveau d'étude *</span>
+                                    <div class="rf-native-picker" data-rf-native-picker>
+                                        <select id="autre_niveau_id" class="rf-native-source"
+                                                :required="choixFiliere === 'autre'"
+                                                @change="handleNiveauChange">
+                                            <option value="">Sélectionner d'abord une filière...</option>
+                                        </select>
+                                        <button class="rf-native-trigger" type="button" aria-label="Choisir un niveau"
+                                                aria-expanded="false"><i class="fas fa-layer-group"></i> <span>Sélectionner d'abord une filière...</span><i class="fas fa-chevron-down"></i></button>
+                                        <div class="rf-native-menu" hidden>
+                                            <input type="search" class="rf-native-search" placeholder="Rechercher un niveau..." aria-label="Rechercher un niveau">
+                                            <div class="rf-native-options" role="listbox"></div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <!-- Searchable Select Classe (Alpine.js) -->
@@ -1363,12 +1394,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     ${fraisItem.is_mandatory ?
                         `<input type="hidden" name="frais_obligatoire[]" value="${fraisItem.category.id}" data-amount="${categoryAmount}">` :
                         `<div class="mt-3">
-                            <select class="form-select frais-optional" data-category-id="${fraisItem.category.id}" style="font-size: 12px;">
-                                <option value="none">Ne pas souscrire</option>
-                                <option value="default" data-amount="${categoryAmount}">
-                                    Souscrire ce frais
-                                </option>
-                            </select>
+                            <label class="rf-optional-toggle">
+                                <input type="checkbox" class="frais-optional" data-category-id="${fraisItem.category.id}" data-amount="${categoryAmount}">
+                                <span>Ajouter ce frais optionnel</span>
+                            </label>
                         </div>`
                     }
                 </div>
@@ -1389,13 +1418,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
         document.querySelectorAll('.frais-optional').forEach(function(select) {
             const categoryId = select.dataset.categoryId;
-            const selectedOption = select.options[select.selectedIndex];
-
-            if (select.value !== 'none') {
+            if (select.checked) {
                 selectedOptionals[categoryId] = {
-                    variant_id: select.value,
-                    amount: parseFloat(selectedOption.dataset.amount) || 0,
-                    name: selectedOption.text
+                    variant_id: 'default',
+                    amount: parseFloat(select.dataset.amount) || 0,
+                    name: 'Souscription de frais optionnel'
                 };
             }
         });
@@ -1491,6 +1518,64 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         feedback.scrollIntoView({behavior:'smooth', block:'center'});
     }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-rf-native-picker]').forEach(function (root) {
+        const native = root.querySelector('.rf-native-source');
+        const trigger = root.querySelector('.rf-native-trigger');
+        const label = trigger.querySelector('span');
+        const menu = root.querySelector('.rf-native-menu');
+        const search = root.querySelector('.rf-native-search');
+        const options = root.querySelector('.rf-native-options');
+        if (!native || !trigger || !menu || !options) return;
+
+        function render() {
+            const term = (search.value || '').toLocaleLowerCase('fr');
+            options.replaceChildren();
+            Array.from(native.options).filter(opt => opt.text.toLocaleLowerCase('fr').includes(term)).forEach(opt => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'rf-native-option';
+                btn.setAttribute('role', 'option');
+                btn.setAttribute('aria-selected', String(opt.value === native.value));
+                btn.dataset.value = opt.value;
+                btn.textContent = opt.text;
+                btn.addEventListener('click', () => {
+                    native.value = opt.value;
+                    native.dispatchEvent(new Event('change', {bubbles:true}));
+                    close();
+                    render();
+                });
+                options.appendChild(btn);
+            });
+            if (options.children.length === 0) {
+                const empty = document.createElement('p');
+                empty.className = 'text-muted small p-2';
+                empty.textContent = 'Aucun résultat.';
+                options.appendChild(empty);
+            }
+            label.textContent = native.selectedOptions[0]?.textContent?.trim() || 'Choisir…';
+        }
+        function close() { menu.hidden = true; trigger.setAttribute('aria-expanded','false'); }
+        trigger.addEventListener('click', () => {
+            const next = !menu.hidden;
+            document.querySelectorAll('.rf-native-menu').forEach(m => { m.hidden = true; });
+            menu.hidden = next;
+            trigger.setAttribute('aria-expanded', String(!next));
+            if (!next) { search.value = ''; render(); search.focus(); }
+        });
+        search.addEventListener('input', render);
+        root.addEventListener('keydown', event => {
+            if (event.key === 'Escape') { close(); trigger.focus(); }
+        });
+        document.addEventListener('click', event => { if (!root.contains(event.target)) close(); });
+        native.addEventListener('change', render);
+        new MutationObserver(render).observe(native, {childList:true, subtree:true, characterData:true});
+        render();
+    });
 });
 </script>
 @endpush
