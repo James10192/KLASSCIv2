@@ -6,6 +6,9 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <link rel="stylesheet" href="{{ asset('css/paiements-create-date.css') }}?v={{ @filemtime(public_path('css/paiements-create-date.css')) ?: '1' }}">
 <style>
+    .pc-reliquat-entry {display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:1rem;margin:0 0 1rem;}
+    .pc-reliquat-entry strong {color:#0f172a;font-size:.88rem}
+    .pc-reliquat-entry p {margin:.25rem 0 0;color:#64748b;font-size:.76rem}
     .pc-page {
         --pc-primary: #0453cb;
         --pc-primary-d: #033a8e;
@@ -266,6 +269,9 @@
         gap: 0.7rem;
         margin-bottom: 0.9rem;
     }
+    .pc-filter--premium {border:0!important;padding:0!important;min-height:48px;background:transparent!important;overflow:visible}
+    .pc-filter--premium .au-select {width:100%;min-width:0;display:flex}
+    .pc-filter--premium .au-select-trigger {width:100%;min-height:48px}
     .pc-search,
     .pc-filter {
         position: relative;
@@ -283,8 +289,8 @@
         border-color: var(--pc-primary);
         box-shadow: 0 0 0 3px rgba(4, 83, 203, .12);
     }
-    .pc-search i,
-    .pc-filter i {
+    .pc-search > i,
+    .pc-filter:not(.pc-filter--premium) > i {
         position: absolute;
         left: 0.9rem;
         color: var(--pc-muted);
@@ -722,6 +728,14 @@
         </div>
         @endif
 
+        {{-- Même encaissement de reliquat que le dossier étudiant ; le versement ordinaire ci-dessous reste intact. --}}
+        <section class="pc-reliquat-entry" aria-label="Dettes d'anciennes inscriptions">
+            <div><strong><i class="fas fa-history"></i> Dettes des anciennes inscriptions</strong>
+                <p>Ces règlements sont distincts des frais de l'année. Choisissez d'abord un étudiant.</p>
+            </div>
+            <x-reliquat-caisse-modal :inscription-id="$inscription?->id" />
+        </section>
+
         <form action="{{ route('esbtp.paiements.store') }}" method="POST" id="payment-form">
             @csrf
         <div class="pc-grid">
@@ -753,28 +767,28 @@
                                     <i class="fas fa-search"></i>
                                     <input type="search" x-model="q" @input.debounce.250ms="charger()" placeholder="Nom, prénom ou matricule" autocomplete="off">
                                 </label>
-                                <label class="pc-filter">
-                                    <i class="fas fa-sitemap"></i>
-                                    <select x-model="filiereId" @change="charger()">
-                                        <option value="">Toutes les filières</option>
-                                        @foreach(($filieres ?? []) as $filiere)
-                                            <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </label>
-                                <label class="pc-filter">
-                                    <i class="fas fa-layer-group"></i>
-                                    <select x-model="niveauId" @change="charger()">
-                                        <option value="">Tous les niveaux</option>
-                                        @foreach(($niveaux ?? []) as $niveau)
-                                            <option value="{{ $niveau->id }}">{{ $niveau->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </label>
+                                <div class="pc-filter pc-filter--premium">
+                                    <x-au-select
+                                        x-model="filiereId"
+                                        @change="charger()"
+                                        :options="$filieres->mapWithKeys(fn ($f) => [(string) $f->id => $f->name])->all()"
+                                        placeholder="Toutes les filières"
+                                        icon="fa-sitemap"
+                                        searchable />
+                                </div>
+                                <div class="pc-filter pc-filter--premium">
+                                    <x-au-select
+                                        x-model="niveauId"
+                                        @change="charger()"
+                                        :options="$niveaux->mapWithKeys(fn ($n) => [(string) $n->id => $n->name])->all()"
+                                        placeholder="Tous les niveaux"
+                                        icon="fa-layer-group"
+                                        searchable />
+                                </div>
                             </div>
                             <div class="pc-insc-list">
                                 <template x-for="row in rows" :key="row.id">
-                                    <button type="button" class="pc-insc-row" :class="{ 'is-on': selectedId === row.id }" @click="choisir(row)">
+                                    <button type="button" class="pc-insc-row" :class="{ 'is-on': selectedId === row.id }" @click="choisir(row); $dispatch('caisse-inscription-changed', {inscriptionId: row.id})">
                                         <span class="pc-avatar" x-text="initiales(row.nom)"></span>
                                         <span class="pc-insc-txt">
                                             <span class="pc-insc-nom" x-text="row.nom"></span>
@@ -1238,6 +1252,7 @@ $(function() {
     // Gestion du changement d'inscription
     $('#inscription_id').on('change', function() {
         var inscriptionId = $(this).val();
+        window.dispatchEvent(new CustomEvent('caisse-inscription-changed', { detail: { inscriptionId: inscriptionId } }));
         debugLog('Inscription sélectionnée:', inscriptionId);
         currentInscription = inscriptionId || null;
         

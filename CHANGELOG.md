@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Caisse — règlement des reliquats :** un dialogue d'encaissement guidé est disponible depuis les situations financières et sur `paiements.create`. Le paiement reste séparé des frais courants, lié à sa dette d'origine, prévisualise le disponible après réservations et se crée en attente de validation. Modes autorisés et droit `paiements.create` ou variantes existantes, sans droit lié au report de réinscription ; contrôle serveur et AJAX sans rechargement.
+
 - **Réinscription avec impayés :** nouvelle permission d'école `reinscriptions.reliquats.report` configurable dans les rôles. Une dérogation exige une décision explicite et est contrôlée côté service ; remise/abandon reste distinct et réservé au SuperAdmin.
 
 - **Export enseignants en fenêtre guidée :** le bouton « Exporter les enseignants » ouvre désormais un seul dialogue de configuration : choix du document, année, classe, semestre et filtres facultatifs, puis trois actions Aperçu PDF, PDF ou Excel. Le formulaire de recherche des fiches reste simple ; une classe manquante pour les affectations PDF est signalée et mise en évidence avant navigation, sans page d'erreur.

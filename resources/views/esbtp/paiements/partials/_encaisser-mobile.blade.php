@@ -176,6 +176,10 @@
     </header>
 
     <div class="m-body">
+        {{-- Encaissement des arriérés accessible aussi dans le shell mobile. --}}
+        <div class="mab-reliquat-mobile" style="margin-bottom:12px">
+            <x-reliquat-caisse-modal :inscription-id="$inscription?->id" />
+        </div>
         <div class="m-step" aria-hidden="true">
             <i x-bind:class="etape >= 1 ? 'on' : ''"></i>
             <i x-bind:class="etape >= 2 ? 'on' : ''"></i>
@@ -601,6 +605,7 @@ if (typeof window.mabEncaisser !== 'function') {
                 }
             },
             choisirInscription(row) {
+                window.dispatchEvent(new CustomEvent('caisse-inscription-changed', { detail: { inscriptionId: row.id } }));
                 this.sel = {
                     id: row.id,
                     etudiant_id: row.etudiant_id,

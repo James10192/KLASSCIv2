@@ -2,7 +2,10 @@
 
 {{-- Lecture financière commune à la fiche étudiant et à la réinscription.
      Un reliquat reste attaché à son année d'origine. --}}
-<section class="sfe-card" aria-label="Situation financière par inscription">
+<section class="sfe-card" aria-label="Situation financière par inscription"
+    data-sfe-inscription-id="{{ $situation['inscription_courante_id'] }}"
+    x-data="{ pending: 0 }"
+    @reliquat-encaissement-refresh.window="if (Number($event.detail.inscriptionId) === {{ (int) $situation['inscription_courante_id'] }}) pending = $event.detail.pending">
     <div class="sfe-head">
         <div class="sfe-icon"><i class="fas fa-wallet"></i></div>
         <div class="sfe-title">
@@ -16,6 +19,21 @@
         <div class="sfe-kpi"><small>Années antérieures</small><strong>{{ $fcfaSfe($situation['arrieres']) }}</strong><span>Impayés et reliquats antérieurs</span></div>
         <div class="sfe-kpi sfe-kpi--primary"><small>Total à régulariser</small><strong>{{ $fcfaSfe($situation['total']) }}</strong><span>Après paiements validés, sans double report</span></div>
     </div>
+    @if($situation['inscription_courante_id'])
+    <div class="sfe-actions">
+        <x-reliquat-caisse-modal :inscription-id="$situation['inscription_courante_id']" />
+        @canany(['paiements.create', 'paiements.create.non_cash', 'paiements.create.mobile_money'])
+            <a class="sfe-pay-current" href="{{ route('esbtp.paiements.create', ['inscription_id' => $situation['inscription_courante_id']]) }}">
+                <i class="fas fa-credit-card"></i> Régler les frais de l'année
+            </a>
+        @endcanany
+    </div>
+    @endif
+    <p class="sfe-note" x-show="pending > 0" x-cloak>
+        <i class="fas fa-clock"></i>
+        <span>Versements sur dettes anciennes en attente de validation : <strong x-text="new Intl.NumberFormat('fr-FR').format(pending) + ' FCFA'"></strong>.
+        Ils ne sont pas encore déduits du total dû.</span>
+    </p>
     @if($situation['anomalies'] > 0)
     <div class="sfe-warning" role="alert"><i class="fas fa-triangle-exclamation"></i>
         {{ $situation['anomalies'] }} créance(s) semblent avoir été reportées plusieurs fois. Demandez une vérification comptable avant correction.
@@ -66,6 +84,9 @@
 @push('styles')
 <style>
 .sfe-card { background:#fff; border:1px solid #e2e8f0; border-radius:14px; padding:1.3rem; box-shadow:0 1px 3px rgba(15,23,42,.05); margin-bottom:1.25rem; }
+.sfe-actions {display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:0 0 1rem}
+.sfe-pay-current {display:inline-flex;gap:.35rem;align-items:center;padding:.6rem .85rem;border:1px solid #bfdbfe;border-radius:9px;background:#eff6ff;color:#0453cb;text-decoration:none;font-size:.77rem;font-weight:750}
+.sfe-pay-current:hover {background:#dbeafe;color:#033a8e}
 .sfe-head { display:flex; align-items:center; gap:.8rem; margin-bottom:1rem; }
 .sfe-icon { width:40px; height:40px; display:grid; place-items:center; flex-shrink:0; color:#fff; background:linear-gradient(135deg,#0453cb,#3b7ddb); border-radius:10px; }
 .sfe-title h3 { font-size:1rem; font-weight:800; color:#0f172a; margin:0 0 .2rem; }
