@@ -17,9 +17,16 @@
     color: #fff;
     margin-bottom: 1.5rem;
     position: relative;
-    overflow: hidden;
+    z-index: 20; /* Les filtres animes plus bas ne doivent pas recouvrir le menu export. */
 }
-.te-hero::before {
+.te-hero-deco {
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    overflow: hidden;
+    pointer-events: none;
+}
+.te-hero-deco::before {
     content: '';
     position: absolute;
     top: -40%; right: -10%;
@@ -28,7 +35,7 @@
     border-radius: 50%;
     pointer-events: none;
 }
-.te-hero::after {
+.te-hero-deco::after {
     content: '';
     position: absolute;
     bottom: -30%; left: -5%;
@@ -44,7 +51,7 @@
     gap: 1rem;
     margin-bottom: 1.5rem;
     position: relative;
-    z-index: 1;
+    z-index: 3; /* Menu d'export au-dessus des KPIs du bandeau. */
 }
 .te-hero-title {
     font-size: 1.5rem;
@@ -540,13 +547,14 @@
     <div class="main-content">
 
         {{-- ═══ Hero ═══ --}}
-        <div class="te-hero te-animate">
+        <div class="te-hero">
+            <div class="te-hero-deco" aria-hidden="true"></div>
             <div class="te-hero-top">
                 <div>
                     <div class="te-hero-title">
                         <i class="fas fa-chalkboard-teacher"></i>Gestion des Enseignants
                     </div>
-                    <div class="te-hero-subtitle">Vue secondaire — la gestion principale est dans <strong>Personnel</strong>.</div>
+                    <div class="te-hero-subtitle">Vue secondaire — la gestion principale est dans <strong>Personnel</strong>. L’année choisie sélectionne les professeurs des bulletins exportés.</div>
                 </div>
                 <div class="te-hero-actions">
                     @can('teachers.view')
@@ -610,6 +618,17 @@
                         <input type="text" name="search" class="te-filter-input" placeholder="Nom, email, matricule..." value="{{ request('search') }}">
                     </div>
                     <div class="te-filter-group">
+                        <label class="te-filter-label" for="te-export-annee">Année des bulletins (export)</label>
+                        <select name="annee_universitaire_id" id="te-export-annee" class="te-filter-select">
+                            @foreach($anneesUniversitaires as $anneeUniversitaire)
+                                <option value="{{ $anneeUniversitaire->id }}"
+                                    {{ (int) request('annee_universitaire_id', $anneeExportId) === (int) $anneeUniversitaire->id ? 'selected' : '' }}>
+                                    {{ $anneeUniversitaire->display_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="te-filter-group">
                         <label class="te-filter-label">Statut</label>
                         <select name="status" class="te-filter-select">
                             <option value="">Tous</option>
@@ -632,7 +651,7 @@
                             <button type="submit" class="te-filter-btn">
                                 <i class="fas fa-search"></i>Filtrer
                             </button>
-                            @if(request()->hasAny(['search', 'status', 'specialization']))
+                            @if(request()->hasAny(['search', 'status', 'specialization', 'annee_universitaire_id']))
                                 <a href="{{ route('esbtp.enseignants.index') }}" class="te-filter-btn-reset">
                                     <i class="fas fa-times"></i>Reset
                                 </a>
