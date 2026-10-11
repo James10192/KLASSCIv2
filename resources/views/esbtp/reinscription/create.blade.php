@@ -394,12 +394,17 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group-moderne">
-                                <label for="decision" class="form-label-moderne">Décision académique *</label>
-                                <select name="decision" id="decision" class="form-select-moderne" required>
-                                    <option value="passage" {{ $analyse['decision'] === 'passage' ? 'selected' : '' }}>Passage{{ $analyse['decision'] === 'passage' ? ' (proposée par les résultats)' : '' }}</option>
-                                    <option value="redoublement" {{ $analyse['decision'] === 'redoublement' ? 'selected' : '' }}>Redoublement{{ $analyse['decision'] === 'redoublement' ? ' (proposée par les résultats)' : '' }}</option>
-                                    <option value="rattrapage" {{ $analyse['decision'] === 'rattrapage' ? 'selected' : '' }}>Rattrapage{{ $analyse['decision'] === 'rattrapage' ? ' (proposée par les résultats)' : '' }}</option>
-                                </select>
+                                <span class="form-label-moderne">Décision académique *</span>
+                                <x-au-select class="rf-au-full" name="decision" id="decision"
+                                    label="Décision académique"
+                                    icon="fa-graduation-cap"
+                                    :placeholder-is-first-option="false"
+                                    :value="$analyse['decision']"
+                                    :options="[
+                                        'passage' => 'Passage',
+                                        'redoublement' => 'Redoublement',
+                                        'rattrapage' => 'Rattrapage',
+                                    ]" />
                                 <small class="form-text text-muted">
                                     La décision détermine les classes proposées
                                 </small>
@@ -411,13 +416,14 @@
                     <div class="row mb-4">
                         <div class="col-md-12">
                             <div class="form-group-moderne">
-                                <label for="annee_universitaire_id" class="form-label-moderne">Année universitaire de destination *</label>
-                                <select name="annee_universitaire_id" id="annee_universitaire_id" class="form-select-moderne" required>
-                                    <option value="">Sélectionner l'année universitaire</option>
-                                    @foreach($anneeUniversitairesFutures as $annee)
-                                        <option value="{{ $annee->id }}" {{ isset($anneeDestination) && $anneeDestination && (int) $anneeDestination->id === (int) $annee->id ? 'selected' : '' }}>{{ $annee->name }}</option>
-                                    @endforeach
-                                </select>
+                                <span class="form-label-moderne">Année universitaire de destination *</span>
+                                <x-au-select class="rf-au-full" name="annee_universitaire_id" id="annee_universitaire_id"
+                                    label="Année universitaire de destination"
+                                    icon="fa-calendar-alt"
+                                    placeholder="Sélectionner l'année universitaire"
+                                    :searchable="$anneeUniversitairesFutures->count() > 8"
+                                    :value="$anneeDestination?->id ?? ''"
+                                    :options="$anneeUniversitairesFutures->mapWithKeys(fn ($annee) => [(string) $annee->id => $annee->name])->all()" />
                                 <small class="form-text text-muted">
                                     Seules les années universitaires futures sont disponibles pour la réinscription
                                 </small>
@@ -429,12 +435,13 @@
                     <div class="row mb-4" x-data="{ choixFiliere: 'meme' }">
                         <div class="col-md-6">
                             <div class="form-group-moderne">
-                                <label for="affectation_status" class="form-label-moderne">Statut d'affectation *</label>
-                                <select name="affectation_status" id="affectation_status" class="form-select-moderne" required>
-                                    <option value="affecté" {{ $affectationActuelle === 'affecté' ? 'selected' : '' }}>Affecté</option>
-                                    <option value="réaffecté" {{ $affectationActuelle === 'réaffecté' ? 'selected' : '' }}>Réaffecté</option>
-                                    <option value="non_affecté" {{ $affectationActuelle === 'non_affecté' ? 'selected' : '' }}>Non affecté</option>
-                                </select>
+                                <span class="form-label-moderne">Statut d'affectation *</span>
+                                <x-au-select class="rf-au-full" name="affectation_status" id="affectation_status"
+                                    label="Statut d'affectation"
+                                    icon="fa-user-check"
+                                    :placeholder-is-first-option="false"
+                                    :value="$affectationActuelle"
+                                    :options="['affecté' => 'Affecté', 'réaffecté' => 'Réaffecté', 'non_affecté' => 'Non affecté']" />
                                 <small class="form-text text-muted">
                                     Repris de l'inscription quittée. Le statut influence les frais applicables
                                 </small>
