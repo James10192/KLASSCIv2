@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Sélecteurs premium — enseignants :** les six listes déroulantes des filtres et des documents pédagogiques utilisent le composant KLASSCI `<x-au-select>` (recherche disponible pour les longues listes, style cohérent, accessibilité clavier). Les valeurs choisies continuent d'alimenter les aperçus PDF et exports Excel sans rechargement inutile.
+
 - **Répertoire pédagogique des enseignants :** l'export PDF propose quatre vues complémentaires : synthèse des classes par semestre, annuaire des fiches enregistrées, noms saisis sur les bulletins à rapprocher et détail des matières/professeurs par classe. Les chiffres distinguent fiches et libellés libres, les doublons de civilité sont uniquement signalés pour contrôle humain et les coordonnées factices « NEANT » ne sont plus imprimées. Les filtres de liste et les options d'édition sont visuellement séparés.
 
 

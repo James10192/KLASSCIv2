@@ -178,6 +178,10 @@
 .te-export-separator { margin:1.15rem 0; border-top:1px solid #e2e8f0; }
 .te-export-options { padding:.15rem 0; }
 .te-export-options .te-filter-group { min-width:160px; }
+/* Au-select conserve un select natif CACHE pour FormData et le submit GET.
+   Le conteneur est flex-column pour eviter les menus tronques en dehors d'une flex row. */
+.te-filter-group .au-select { display:flex; width:100%; min-width:0; flex:0 0 auto; }
+.te-filter-group .au-select-trigger { min-height:44px; width:100%; }
 .te-filter-row {
     display: flex;
     gap: 0.75rem;
@@ -198,8 +202,7 @@
     color: #64748b;
     margin-bottom: 0.35rem;
 }
-.te-filter-input,
-.te-filter-select {
+.te-filter-input {
     width: 100%;
     padding: 0.6rem 0.75rem;
     border: 1px solid #e2e8f0;
@@ -209,8 +212,7 @@
     background: #fff;
     transition: border-color 0.2s, box-shadow 0.2s;
 }
-.te-filter-input:focus,
-.te-filter-select:focus {
+.te-filter-input:focus {
     outline: none;
     border-color: #0453cb;
     box-shadow: 0 0 0 3px rgba(4,83,203,0.1);
@@ -621,28 +623,32 @@
                 <div class="te-filter-heading"><i class="fas fa-filter"></i> Rechercher dans les fiches enseignants</div>
                 <div class="te-filter-row">
                     <div class="te-filter-group" style="flex: 2;">
-                        <label class="te-filter-label">Recherche</label>
+                        <span class="te-filter-label">Recherche</span>
                         <input type="text" name="search" class="te-filter-input" placeholder="Nom, email, matricule..." value="{{ request('search') }}">
                     </div>
                     <div class="te-filter-group">
-                        <label class="te-filter-label">Statut</label>
-                        <select name="status" class="te-filter-select">
-                            <option value="">Tous</option>
-                            <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Actifs</option>
-                            <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactifs</option>
-                        </select>
+                        <span class="te-filter-label">Statut</span>
+                        <x-au-select
+                            name="status"
+                            label="Statut des enseignants"
+                            icon="fa-user-check"
+                            placeholder="Tous les statuts"
+                            :value="request('status', '')"
+                            :options="['active' => 'Actifs', 'inactive' => 'Inactifs']" />
                     </div>
                     <div class="te-filter-group">
-                        <label class="te-filter-label">Spécialisation</label>
-                        <select name="specialization" class="te-filter-select">
-                            <option value="">Toutes</option>
-                            @foreach($specializations as $specialization)
-                                <option value="{{ $specialization }}" {{ request('specialization') == $specialization ? 'selected' : '' }}>{{ $specialization }}</option>
-                            @endforeach
-                        </select>
+                        <span class="te-filter-label">Spécialisation</span>
+                        <x-au-select
+                            name="specialization"
+                            label="Spécialisation des enseignants"
+                            icon="fa-book-open"
+                            placeholder="Toutes les spécialisations"
+                            :value="request('specialization', '')"
+                            :searchable="$specializations->count() > 8"
+                            :options="$specializations->mapWithKeys(fn ($specialization) => [(string) $specialization => (string) $specialization])->all()" />
                     </div>
                     <div class="te-filter-group" style="flex: 0 0 auto; min-width: auto;">
-                        <label class="te-filter-label">&nbsp;</label>
+                        <span class="te-filter-label">&nbsp;</span>
                         <div style="display: flex; gap: 0.5rem;">
                             <button type="submit" class="te-filter-btn">
                                 <i class="fas fa-search"></i>Filtrer
@@ -660,43 +666,53 @@
                 <p class="te-export-caption">Ces choix sont pris en compte immédiatement par les boutons « Aperçu PDF » et « Télécharger PDF » du bandeau. Le fichier Excel reste un export de données complet.</p>
                 <div class="te-filter-row te-export-options">
                     <div class="te-filter-group" style="flex:1.5">
-                        <label class="te-filter-label" for="te-export-vue">Document PDF à produire</label>
-                        <select name="vue" id="te-export-vue" class="te-filter-select">
-                            <option value="synthese" {{ request('vue', 'synthese') === 'synthese' ? 'selected' : '' }}>01 · Synthèse / classes</option>
-                            <option value="annuaire" {{ request('vue') === 'annuaire' ? 'selected' : '' }}>02 · Annuaire officiel</option>
-                            <option value="rapprochement" {{ request('vue') === 'rapprochement' ? 'selected' : '' }}>03 · Saisies à rapprocher</option>
-                            <option value="affectations" {{ request('vue') === 'affectations' ? 'selected' : '' }}>04 · Matières / professeurs par classe</option>
-                        </select>
+                        <span class="te-filter-label">Document PDF à produire</span>
+                        <x-au-select
+                            name="vue"
+                            label="Document PDF à produire"
+                            icon="fa-file-pdf"
+                            placeholder="Choisir le document"
+                            :placeholder-is-first-option="false"
+                            :value="request('vue', 'synthese')"
+                            :options="[
+                                'synthese' => '01 · Synthèse / classes',
+                                'annuaire' => '02 · Annuaire officiel',
+                                'rapprochement' => '03 · Saisies à rapprocher',
+                                'affectations' => '04 · Matières / professeurs par classe',
+                            ]" />
                     </div>
                     <div class="te-filter-group">
-                        <label class="te-filter-label" for="te-export-annee">Année des bulletins (export)</label>
-                        <select name="annee_universitaire_id" id="te-export-annee" class="te-filter-select">
-                            @foreach($anneesUniversitaires as $anneeUniversitaire)
-                                <option value="{{ $anneeUniversitaire->id }}"
-                                    {{ (int) request('annee_universitaire_id', $anneeExportId) === (int) $anneeUniversitaire->id ? 'selected' : '' }}>
-                                    {{ $anneeUniversitaire->display_name }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <span class="te-filter-label">Année des bulletins (export)</span>
+                        <x-au-select
+                            name="annee_universitaire_id"
+                            label="Année universitaire des bulletins"
+                            icon="fa-calendar-alt"
+                            placeholder="Année universitaire"
+                            :placeholder-is-first-option="false"
+                            :value="request('annee_universitaire_id', $anneeExportId)"
+                            :searchable="$anneesUniversitaires->count() > 8"
+                            :options="$anneesUniversitaires->mapWithKeys(fn ($annee) => [(string) $annee->id => $annee->display_name])->all()" />
                     </div>
                     <div class="te-filter-group">
-                        <label class="te-filter-label" for="te-export-classe">Classe des bulletins (export)</label>
-                        <select name="classe_id" id="te-export-classe" class="te-filter-select">
-                            <option value="">Toutes les classes</option>
-                            @foreach($classesExport as $classeExport)
-                                <option value="{{ $classeExport->id }}" {{ (int) request('classe_id') === (int) $classeExport->id ? 'selected' : '' }}>
-                                    {{ $classeExport->name }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <span class="te-filter-label">Classe des bulletins (export)</span>
+                        <x-au-select
+                            name="classe_id"
+                            label="Classe des bulletins"
+                            icon="fa-chalkboard"
+                            placeholder="Toutes les classes"
+                            :value="request('classe_id', '')"
+                            :searchable="$classesExport->count() > 8"
+                            :options="$classesExport->mapWithKeys(fn ($classe) => [(string) $classe->id => $classe->name])->all()" />
                     </div>
                     <div class="te-filter-group">
-                        <label class="te-filter-label" for="te-export-semestre">Semestre (export)</label>
-                        <select name="semestre" id="te-export-semestre" class="te-filter-select">
-                            <option value="">S1 + S2</option>
-                            <option value="1" {{ request('semestre') === '1' ? 'selected' : '' }}>Semestre 1</option>
-                            <option value="2" {{ request('semestre') === '2' ? 'selected' : '' }}>Semestre 2</option>
-                        </select>
+                        <span class="te-filter-label">Semestre (export)</span>
+                        <x-au-select
+                            name="semestre"
+                            label="Semestre des bulletins"
+                            icon="fa-calendar-week"
+                            placeholder="S1 + S2"
+                            :value="request('semestre', '')"
+                            :options="['1' => 'Semestre 1', '2' => 'Semestre 2']" />
                     </div>
                 </div>
             </form>
