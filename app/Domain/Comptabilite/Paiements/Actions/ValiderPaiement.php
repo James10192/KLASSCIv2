@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Notification;
 
 class ValiderPaiement
 {
-    public function execute(ESBTPPaiement $paiement, ?User $validateur): ESBTPPaiement
+    public function execute(ESBTPPaiement $paiement, ?User $validateur, bool $effetsSecondaires = true): ESBTPPaiement
     {
         DB::transaction(function () use ($paiement, $validateur) {
             $verrou = ESBTPPaiement::query()->lockForUpdate()->findOrFail($paiement->id);
@@ -48,6 +48,11 @@ class ValiderPaiement
         });
 
         $paiement->refresh();
+        // Le lot valide au sein de sa propre transaction et invalide son cache
+        // une fois après COMMIT. Ne pas notifier pendant qu'il est non commité.
+        if (! $effetsSecondaires) {
+            return $paiement;
+        }
 
         try {
             app(GroupCacheInvalidator::class)->invalidate('paiement_validated');

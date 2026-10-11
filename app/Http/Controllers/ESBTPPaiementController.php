@@ -1999,7 +1999,7 @@ class ESBTPPaiementController extends Controller
                 // Un seul chemin pour modifier le solde d'un reliquat.
                 try {
                     app(\App\Domain\Comptabilite\Paiements\Actions\ValiderPaiement::class)
-                        ->execute($paiement, $request->user());
+                        ->execute($paiement, $request->user(), false);
                 } catch (\DomainException $e) {
                     $errorCount++;
                     \Log::warning('Validation groupée refusée', ['paiement_id' => $id, 'message' => $e->getMessage()]);
