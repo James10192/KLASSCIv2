@@ -27,6 +27,12 @@
         margin-bottom: 10px;
     }
 
+    .rf-feedback { border:1px solid #bfdbfe; background:#eff6ff; color:#1e40af; padding:.85rem 1rem; border-radius:10px; margin-bottom:1rem; font-size:.84rem; }
+    .rf-feedback--error { border-color:#fecaca; color:#991b1b; background:#fff1f2; }
+    .rf-feedback--success { border-color:#a7f3d0; color:#065f46; background:#ecfdf5; }
+    .rf-invalid { outline:2px solid #dc2626 !important; outline-offset:2px; }
+    .rf-au-full { display:flex !important; width:100%; }
+    .rf-au-full .au-select-trigger { width:100%; }
     /* Searchable Select Component CSS (from etudiants.index) */
     .searchable-select {
         position: relative;
@@ -279,7 +285,8 @@
                 </div>
             </div>
             <div class="p-lg">
-                <form action="{{ route('esbtp.reinscription.update', $analyse['etudiant']->id) }}" method="POST">
+                <form action="{{ route('esbtp.reinscription.update', $analyse['etudiant']->id) }}" method="POST" id="reinscriptionFinalisationForm" novalidate>
+                    <div id="rf-feedback" class="rf-feedback" hidden role="alert" aria-live="assertive"></div>
                     @csrf
                     @method('PUT')
 
@@ -1387,6 +1394,95 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         document.getElementById('selectedOptionals').value = JSON.stringify(selectedOptionals);
+    }
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('reinscriptionFinalisationForm');
+    const feedback = document.getElementById('rf-feedback');
+    if (!form || !feedback) return;
+
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const btn = document.getElementById('btnConfirmer');
+        if (btn?.disabled || form.dataset.saving === 'true' || form.dataset.saved === 'true') return;
+
+        // Même si l'utilisateur confirme depuis la fiche rapide, les valeurs
+        // calculées par les pickers sont transmises à l'API.
+        const decision = document.getElementById('decision');
+        const affectation = document.getElementById('affectation_status');
+        if (decision) document.getElementById('decisionFinale').value = decision.value;
+        if (affectation) document.getElementById('affectationFinale').value = affectation.value;
+
+        feedback.hidden = true;
+        feedback.className = 'rf-feedback';
+        form.querySelectorAll('.rf-invalid').forEach(el => el.classList.remove('rf-invalid'));
+        const data = new FormData(form);
+        if (!data.get('annee_universitaire_id')) {
+            afficherErreur('Choisissez une année universitaire.', 'annee_universitaire_id');
+            return;
+        }
+        if (!data.get('nouvelle_classe_id') && !data.get('autre_classe_id')) {
+            afficherErreur('Choisissez la classe de destination.', 'nouvelle_classe_id');
+            return;
+        }
+        if (form.querySelector('input[name="action_reliquat"]') && !data.get('action_reliquat')) {
+            afficherErreur('Choisissez le report des impayés ou une autre décision autorisée.', 'action_reliquat');
+            return;
+        }
+
+        form.dataset.saving = 'true';
+        if (btn) { btn.disabled = true; btn.setAttribute('aria-busy', 'true'); }
+        feedback.hidden = false;
+        feedback.textContent = 'Enregistrement en cours…';
+        try {
+            const res = await fetch(form.action, {
+                method: 'POST',
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+                body: data,
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || json.success !== true) {
+                const erreurs = json.errors || {};
+                const champ = Object.keys(erreurs)[0] || null;
+                const premier = champ ? (erreurs[champ][0] || json.message) : null;
+                afficherErreur(premier || json.message || 'Enregistrement refusé, vérifiez les informations.', champ);
+                return;
+            }
+            form.dataset.saved = 'true';
+            feedback.className = 'rf-feedback rf-feedback--success';
+            feedback.textContent = json.message || 'Réinscription confirmée.';
+            const link = document.createElement('a');
+            link.href = json.url;
+            link.textContent = ' Ouvrir la nouvelle inscription';
+            link.className = 'btn-acasi primary ms-2';
+            feedback.appendChild(link);
+            feedback.scrollIntoView({behavior:'smooth', block:'center'});
+        } catch (err) {
+            afficherErreur('Connexion interrompue : vérifiez le dossier avant de réessayer pour éviter une double réinscription.');
+        } finally {
+            form.dataset.saving = 'false';
+            if (btn && form.dataset.saved !== 'true') {
+                btn.disabled = false;
+                btn.removeAttribute('aria-busy');
+            }
+        }
+    });
+
+    function afficherErreur(message, champ) {
+        feedback.className = 'rf-feedback rf-feedback--error';
+        feedback.textContent = message;
+        feedback.hidden = false;
+        const cible = champ ? form.querySelector('[name="' + CSS.escape(champ) + '"]') : null;
+        const declencheur = cible?.closest('.au-select')?.querySelector('.au-select-trigger') || cible;
+        if (declencheur) {
+            declencheur.classList.add('rf-invalid');
+            declencheur.focus?.();
+        }
+        feedback.scrollIntoView({behavior:'smooth', block:'center'});
     }
 });
 </script>
