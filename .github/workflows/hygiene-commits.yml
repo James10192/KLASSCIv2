@@ -402,6 +402,9 @@ jobs:
           php vendor/bin/phpunit tests/Feature/Paiements/EncaisserMobileTest.php --no-coverage
           php vendor/bin/phpunit tests/Feature/Caisse/CashSessionServiceTest.php --no-coverage
 
+      - name: Caisse - reliquats AJAX, idempotence et permissions
+        run: php vendor/bin/phpunit tests/Feature/Paiements/ReliquatCaisseAjaxTest.php --no-coverage
+
       - name: Validation inline depuis la fiche inscription
         run: php vendor/bin/phpunit tests/Feature/Paiements/InscriptionShowPaiementsInlineTest.php --no-coverage
 
