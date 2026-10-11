@@ -403,6 +403,11 @@ return [
             'icon' => 'fa-trash',
             'aliases' => ['delete_inscriptions', 'delete inscriptions'],
         ],
+        'reinscriptions.reliquats.report' => [
+            'label' => 'Autoriser la réinscription avec report des impayés',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-file-invoice-dollar',
+        ],
         'reinscriptions.demandes.view' => [
             'label' => 'Voir les demandes de réinscription en ligne',
             'group' => 'Inscriptions',

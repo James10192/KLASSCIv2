@@ -91,7 +91,7 @@ final class EligibiliteReinscription
             default => self::IMPAYE,
         };
         $autorisee = in_array($etat, [self::SOLDEE, self::DANS_TOLERANCE], true);
-        $deroge = $lecteur !== null && method_exists($lecteur, 'isSuperAdmin') && $lecteur->isSuperAdmin();
+        $deroge = $lecteur !== null && method_exists($lecteur, 'can') && $lecteur->can('reinscriptions.reliquats.report');
 
         return [
             'inscription' => $inscription,

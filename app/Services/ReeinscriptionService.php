@@ -433,7 +433,9 @@ class ReeinscriptionService
             $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
 
             // Vérifier permissions SuperAdmin pour outrepasser
-            $isSuperAdmin = auth()->user() && auth()->user()->can('admin.access');
+            $acteur = auth()->user();
+            $peutReporter = $acteur && $acteur->can('reinscriptions.reliquats.report');
+            $peutAbandonner = $acteur && $acteur->isSuperAdmin();
 
             $eligibilite = app(\App\Services\Reinscription\EligibiliteReinscription::class)
                 ->pour((int) $etudiantId, null, $anneeUniversitaireId ? (int) $anneeUniversitaireId : null);
@@ -442,11 +444,17 @@ class ReeinscriptionService
             if ($eligibilite['inscription_intermediaire'] !== null) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException($eligibilite['message_intermediaire']);
             }
-            if (!$this->peutSeReinscrire($etudiantId, $anneeUniversitaireId) && !$isSuperAdmin) {
-                throw new \App\Exceptions\ReinscriptionRefuseeException("L'étudiant doit solder tous ses frais avant la réinscription");
+            if ($actionReliquat === 'abandonner' && !$peutAbandonner) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException("L'abandon des frais est réservé au SuperAdmin.");
             }
-
-            // Note: Si SuperAdmin et que l'étudiant a des impayés, les reliquats seront créés automatiquement
+            if ($actionReliquat === 'reporter' && !$peutReporter) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException("Permission de report d'impayés manquante.");
+            }
+            if (!$this->peutSeReinscrire($etudiantId, $anneeUniversitaireId)) {
+                if (!in_array($actionReliquat, ['reporter', 'abandonner'], true)) {
+                    throw new \App\Exceptions\ReinscriptionRefuseeException("Choisissez explicitement le report des impayés ou une remise autorisée.");
+                }
+            }
 
             // 2. L'inscription QUITTÉE pour l'année visée : celle que la garde
             // vient de juger, et dont le reste dû part en reliquat. La dernière
@@ -989,22 +997,6 @@ class ReeinscriptionService
                         'frais_category_id' => $fraisSubscription->frais_category_id,
                         'montant_reliquat' => $montantReliquat,
                         'frais_name' => $fraisSubscription->configuration_name ?? 'N/A'
-                    ]);
-                } else {
-                    // Comportement par défaut : créer le reliquat (backward compatibility)
-                    \App\Models\ESBTPReliquatDetail::create([
-                        'inscription_source_id' => $inscriptionSource->id,
-                        'inscription_destination_id' => $inscriptionDestination->id,
-                        'frais_subscription_id' => $fraisSubscription->id,
-                        'montant_attendu' => $montantAttendu,
-                        'montant_paye' => $montantPaye,
-                        'montant_reliquat' => $montantReliquat,
-                        'montant_regle' => 0,
-                        'statut' => 'actif',
-                        'date_creation' => now(),
-                        'date_derniere_maj' => now(),
-                        'created_by' => auth()->id(),
-                        'notes' => "Reliquat créé automatiquement lors de la réinscription de {$inscriptionSource->anneeUniversitaire->name} vers {$inscriptionDestination->anneeUniversitaire->name}"
                     ]);
                 }
             }

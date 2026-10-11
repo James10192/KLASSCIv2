@@ -234,19 +234,19 @@
         @endif
 
         <!-- Gestion des reliquats pour superadmin -->
-        @if($isSuperAdmin && !empty($fraisNonSoldes))
+        @if(($peutReporterReliquat || $isSuperAdmin) && !empty($fraisNonSoldes))
         <div class="card-moderne mb-lg">
             <div class="main-card-header" style="background-color: rgba(251, 191, 36, 0.1);">
                 <div class="main-card-title" style="color: var(--warning);">
                     <i class="fas fa-exclamation-triangle"></i>
-                    Gestion des Reliquats (Superadministrateur)
+                    Gestion des impayés et reports
                 </div>
             </div>
             <div class="p-lg">
                 <div class="reliquat-section">
                     <div class="alert alert-warning mb-lg">
                         <i class="fas fa-user-shield me-2"></i>
-                        <strong>Privilège Superadmin :</strong> Vous pouvez créer une réinscription avec des frais impayés.
+                        <strong>Report autorisé :</strong> Vous êtes habilité par l'école à reporter les impayés à la réinscription.
                         Ces montants seront reportés comme "reliquat année précédente" sur la nouvelle inscription.
                     </div>
 
@@ -283,7 +283,7 @@
                     @csrf
                     @method('PUT')
 
-                    @if($isSuperAdmin && !empty($fraisNonSoldes))
+                    @if(($peutReporterReliquat || $isSuperAdmin) && !empty($fraisNonSoldes))
                     <!-- Section de gestion des reliquats -->
                     <div class="row mb-4">
                         <div class="col-md-12">
@@ -292,7 +292,7 @@
                                     <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Gestion des Reliquats</h6>
                                 </div>
                                 <div class="card-body">
-                                    <h6 class="mb-3">Choix de gestion du reliquat :</h6>
+                                    <h6 class="mb-3">Décision financière à confirmer :</h6>
 
                                     <div class="form-check mb-3">
                                         <input class="form-check-input" type="radio" id="reporter_reliquat" name="action_reliquat" value="reporter">
@@ -303,13 +303,15 @@
                                         </label>
                                     </div>
 
+                                    @if($isSuperAdmin)
                                     <div class="form-check mb-3">
                                         <input class="form-check-input" type="radio" id="abandonner_reliquat" name="action_reliquat" value="abandonner">
                                         <label class="form-check-label" for="abandonner_reliquat">
                                             <strong><i class="fas fa-times me-1"></i> Abandonner les frais impayés</strong>
-                                            <br><small class="text-muted">Les frais non soldés seront annulés définitivement (remise exceptionnelle)</small>
+                                            <br><small class="text-muted">Remise exceptionnelle distincte du report, réservée au SuperAdmin.</small>
                                         </label>
                                     </div>
+                                    @endif
 
                                     <div class="alert alert-info mt-3">
                                         <i class="fas fa-info-circle me-2"></i>
@@ -601,8 +603,8 @@
                     <!-- Champs cachés -->
                     <input type="hidden" name="decision_finale" id="decisionFinale" value="{{ $analyse['decision'] }}">
                     <input type="hidden" name="affectation_status_final" id="affectationFinale" value="{{ $affectationActuelle }}">
-                    <input type="hidden" name="selected_optionals" id="selectedOptionals" value="{}"
-                    @if($isSuperAdmin)
+                    <input type="hidden" name="selected_optionals" id="selectedOptionals" value="{}">
+                    @if($peutReporterReliquat || $isSuperAdmin)
                     <input type="hidden" name="has_reliquat" value="{{ !empty($fraisNonSoldes) ? '1' : '0' }}">
                     <input type="hidden" name="reliquat_montant" value="{{ $analyse['etudiant']->reliquat_montant }}">
                     @endif
@@ -1022,13 +1024,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const fraisParClasse = @json($fraisParClasse ?? []);
 
     // Validation du reliquat pour superadmin
-    @if($isSuperAdmin && !empty($fraisNonSoldes))
+    @if(($peutReporterReliquat || $isSuperAdmin) && !empty($fraisNonSoldes))
     function validateReliquat() {
         const hasReliquat = {{ !empty($fraisNonSoldes) ? 'true' : 'false' }};
         if (hasReliquat) {
             const actionReliquat = document.querySelector('input[name="action_reliquat"]:checked');
             if (!actionReliquat) {
-                alert('Vous devez choisir une action pour les frais impayés (reporter ou abandonner) avant de procéder à la réinscription.');
+                alert('Choisissez une décision pour les frais impayés avant de finaliser.');
                 return false;
             }
         }
