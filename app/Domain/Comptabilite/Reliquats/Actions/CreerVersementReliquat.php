@@ -42,6 +42,12 @@ final class CreerVersementReliquat
                     ->where('created_by', $agent->id)
                     ->where('metadata->reliquat_request_key', $requestKey)->first();
                 if ($ancien) {
+                    if (abs((float) $ancien->montant - $montant) > 0.009
+                        || ModePaiement::fromLegacy($ancien->mode_paiement)?->value !== $canonique) {
+                        throw ValidationException::withMessages([
+                            'request_key' => 'Une demande précédente utilise déjà cette clé pour un autre montant ou mode.',
+                        ]);
+                    }
                     return $ancien;
                 }
             }

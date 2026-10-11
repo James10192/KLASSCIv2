@@ -3,7 +3,9 @@
 {{-- Lecture financière commune à la fiche étudiant et à la réinscription.
      Un reliquat reste attaché à son année d'origine. --}}
 <section class="sfe-card" aria-label="Situation financière par inscription"
-    data-sfe-inscription-id="{{ $situation['inscription_courante_id'] }}">
+    data-sfe-inscription-id="{{ $situation['inscription_courante_id'] }}"
+    x-data="{ pending: 0 }"
+    @reliquat-encaissement-refresh.window="if (Number($event.detail.inscriptionId) === {{ (int) $situation['inscription_courante_id'] }}) pending = $event.detail.pending">
     <div class="sfe-head">
         <div class="sfe-icon"><i class="fas fa-wallet"></i></div>
         <div class="sfe-title">
@@ -27,6 +29,11 @@
         @endcanany
     </div>
     @endif
+    <p class="sfe-note" x-show="pending > 0" x-cloak>
+        <i class="fas fa-clock"></i>
+        <span>Versements sur dettes anciennes en attente de validation : <strong x-text="new Intl.NumberFormat('fr-FR').format(pending) + ' FCFA'"></strong>.
+        Ils ne sont pas encore déduits du total dû.</span>
+    </p>
     @if($situation['anomalies'] > 0)
     <div class="sfe-warning" role="alert"><i class="fas fa-triangle-exclamation"></i>
         {{ $situation['anomalies'] }} créance(s) semblent avoir été reportées plusieurs fois. Demandez une vérification comptable avant correction.

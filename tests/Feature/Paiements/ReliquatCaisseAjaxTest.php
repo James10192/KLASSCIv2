@@ -111,6 +111,15 @@ class ReliquatCaisseAjaxTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('montant');
     }
 
+    public function test_une_cle_rejouee_avec_un_montant_different_est_refusee(): void
+    {
+        $this->actingAs($this->caissier());
+        $this->postJson(route('esbtp.reliquats.pay'), $this->versement(10000))->assertCreated();
+        $this->postJson(route('esbtp.reliquats.pay'), $this->versement(11000))
+            ->assertUnprocessable()->assertJsonValidationErrors('request_key');
+        $this->assertSame(1, ESBTPPaiement::where('reliquat_detail_id', $this->reliquat->id)->count());
+    }
+
     public function test_permission_report_seul_ne_permet_pas_d_encaisser(): void
     {
         $this->actingAs($this->caissier(['reinscriptions.reliquats.report']));

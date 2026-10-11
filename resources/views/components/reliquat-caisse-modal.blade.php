@@ -171,7 +171,10 @@ if (typeof window.reliquatCaisseModal !== 'function') {
                     this.lignes = json.reliquats || [];
                     this.selection = this.lignes.find(r => r.id === Number(this.reliquatId) && r.payable) || null;
                     if (!this.selection) { this.reliquatId = null; this.montant = ''; }
-                    this.$dispatch('reliquat-encaissement-refresh', {inscriptionId:requested, soldes:json.soldes});
+                    this.$dispatch('reliquat-encaissement-refresh', {
+                        inscriptionId:requested, soldes:json.soldes,
+                        pending:Number(this.lignes.reduce((s, r) => s + Number(r.attente || 0), 0))
+                    });
                 } catch (e) { this.error = e.message || 'Lecture impossible.'; }
                 finally { this.loading = false; }
             },
