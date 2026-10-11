@@ -936,10 +936,18 @@ class ReeinscriptionService
         // Récupérer tous les frais souscrits pour l'inscription source
         $fraisSouscrits = \App\Models\ESBTPFraisSubscription::where('inscription_id', $inscriptionSource->id)
             ->where('is_active', true)
+            // Sérialise deux requêtes de report sur la même souscription.
+            ->lockForUpdate()
             ->with(['fraisCategory', 'selectedOption'])
             ->get();
 
         foreach ($fraisSouscrits as $fraisSubscription) {
+            // Une créance reportée ne se reporte pas une deuxième fois : le
+            // dossier financier global retrouve le reliquat original par ID.
+            if (\App\Models\ESBTPReliquatDetail::where('frais_subscription_id', $fraisSubscription->id)->exists()) {
+                continue;
+            }
+
             // Calculer le montant attendu pour ce frais
             $montantAttendu = $fraisSubscription->chargedAmount();
 
