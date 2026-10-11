@@ -90,6 +90,8 @@
     $hdrBg = $pdf['header_bg_color'] ?? $pdf['primary_color'] ?? '#0453cb';
     $hdrText = $pdf['header_text_on_bg'] ?? $pdf['header_text_color'] ?? '#ffffff';
     $primary = $pdf['primary_color'] ?? '#0453cb';
+    // L'en-tete peut avoir un fond different des entetes de tableau/KPI.
+    $primaryText = $pdf['header_text_on_primary'] ?? '#ffffff';
     $secondary = $pdf['secondary_color'] ?? '#64748b';
     // Dans l'UI settings, "Couleur d'accent" est stockée dans pdf_primary_color.
     $accent = $primary;
@@ -259,7 +261,7 @@
         }
         .pdf-kpi-cell {
             background-color: {{ $accent }} !important;
-            color: {{ $hdrText }} !important;
+            color: {{ $primaryText }} !important;
             padding: 8px 10px;
             text-align: center;
             border-right: 1px solid rgba(255,255,255,.28);
@@ -274,21 +276,21 @@
             letter-spacing: .3px;
             opacity: .78;
             margin-bottom: 3px;
-            color: {{ $hdrText }} !important;
+            color: {{ $primaryText }} !important;
             background: transparent !important;
         }
         .pdf-kpi-value {
             font-size: 14pt;
             font-weight: bold;
             line-height: 1.1;
-            color: {{ $hdrText }} !important;
+            color: {{ $primaryText }} !important;
             background: transparent !important;
         }
         .pdf-kpi-sub {
             font-size: 7.5pt;
             opacity: .72;
             margin-top: 3px;
-            color: {{ $hdrText }} !important;
+            color: {{ $primaryText }} !important;
             background: transparent !important;
         }
         .pdf-detail-table {
@@ -299,7 +301,7 @@
         }
         .pdf-detail-table th {
             background-color: {{ $accent }} !important;
-            color: {{ $hdrText }} !important;
+            color: {{ $primaryText }} !important;
             text-align: left;
             padding: 5px 7px;
             border: 1px solid {{ $accent }};

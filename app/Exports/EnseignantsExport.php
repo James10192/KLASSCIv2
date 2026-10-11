@@ -17,13 +17,13 @@ final class EnseignantsExport implements FromCollection, WithHeadings, WithMappi
 {
     private int $number = 0;
 
-    public function __construct(private readonly array $rows) {}
+    public function __construct(private readonly array $rows, private readonly string $annee = '') {}
 
     public function collection(): Collection { return collect($this->rows); }
 
     public function headings(): array
     {
-        return ['N°', 'Matricule', 'Enseignant', 'Téléphone', 'Email', 'Spécialisation', 'Régime', 'Statut'];
+        return ['N°', 'Matricule', 'Enseignant', 'Téléphone', 'Email', 'Spécialisation', 'Régime', 'Statut', 'Origine', 'Classes (année universitaire)', 'Année universitaire des bulletins'];
     }
 
     public function map($row): array
@@ -37,6 +37,9 @@ final class EnseignantsExport implements FromCollection, WithHeadings, WithMappi
             $this->safeText($row['specialisation']),
             $row['regime'],
             $row['statut'],
+            $this->safeText($row['origine'] ?? 'Enregistré'),
+            $this->safeText($row['classes'] ?? ''),
+            $this->safeText($this->annee),
         ];
     }
 
@@ -49,13 +52,13 @@ final class EnseignantsExport implements FromCollection, WithHeadings, WithMappi
 
     public function columnFormats(): array
     {
-        return ['B' => NumberFormat::FORMAT_TEXT, 'D' => NumberFormat::FORMAT_TEXT, 'E' => NumberFormat::FORMAT_TEXT];
+        return ['B' => NumberFormat::FORMAT_TEXT, 'D' => NumberFormat::FORMAT_TEXT, 'E' => NumberFormat::FORMAT_TEXT, 'J' => NumberFormat::FORMAT_TEXT, 'K' => NumberFormat::FORMAT_TEXT];
     }
 
     public function styles(Worksheet $sheet)
     {
         $sheet->freezePane('A2');
-        $sheet->setAutoFilter('A1:H' . max(1, count($this->rows) + 1));
+        $sheet->setAutoFilter('A1:K' . max(1, count($this->rows) + 1));
         return [1 => [
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0453CB']],
