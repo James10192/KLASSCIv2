@@ -23,7 +23,7 @@ final class EnseignantsExport implements FromCollection, WithHeadings, WithMappi
 
     public function headings(): array
     {
-        return ['N°', 'Matricule', 'Enseignant', 'Téléphone', 'Email', 'Spécialisation', 'Régime', 'Statut'];
+        return ['N°', 'Matricule', 'Enseignant', 'Téléphone', 'Email', 'Spécialisation', 'Régime', 'Statut', 'Origine', 'Classes (année universitaire)'];
     }
 
     public function map($row): array
@@ -37,6 +37,8 @@ final class EnseignantsExport implements FromCollection, WithHeadings, WithMappi
             $this->safeText($row['specialisation']),
             $row['regime'],
             $row['statut'],
+            $this->safeText($row['origine'] ?? 'Enregistré'),
+            $this->safeText($row['classes'] ?? ''),
         ];
     }
 
@@ -49,13 +51,13 @@ final class EnseignantsExport implements FromCollection, WithHeadings, WithMappi
 
     public function columnFormats(): array
     {
-        return ['B' => NumberFormat::FORMAT_TEXT, 'D' => NumberFormat::FORMAT_TEXT, 'E' => NumberFormat::FORMAT_TEXT];
+        return ['B' => NumberFormat::FORMAT_TEXT, 'D' => NumberFormat::FORMAT_TEXT, 'E' => NumberFormat::FORMAT_TEXT, 'J' => NumberFormat::FORMAT_TEXT];
     }
 
     public function styles(Worksheet $sheet)
     {
         $sheet->freezePane('A2');
-        $sheet->setAutoFilter('A1:H' . max(1, count($this->rows) + 1));
+        $sheet->setAutoFilter('A1:J' . max(1, count($this->rows) + 1));
         return [1 => [
             'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0453CB']],
