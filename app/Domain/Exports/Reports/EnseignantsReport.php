@@ -12,6 +12,7 @@ final class EnseignantsReport extends ExportableReport
         private readonly array $rows,
         private readonly array $appliedFilters,
         private readonly array $affectations = [],
+        private readonly ?int $totalAffectations = null,
     ) {}
 
     public function title(): string { return 'Liste des enseignants'; }
@@ -22,7 +23,8 @@ final class EnseignantsReport extends ExportableReport
 
     public function viewData(): array
     {
-        return ['rows' => $this->rows, 'total' => count($this->rows), 'affectations' => $this->affectations];
+        return ['rows' => $this->rows, 'total' => count($this->rows), 'affectations' => $this->affectations,
+            'affectationsTotal' => $this->totalAffectations ?? count($this->affectations)];
     }
 
     public function excelExport(): FromCollection
@@ -39,7 +41,7 @@ final class EnseignantsReport extends ExportableReport
     public function cacheKey(): string
     {
         return hash('sha256', json_encode([
-            $this->pdfView(), $this->appliedFilters, $this->rows, $this->affectations,
+            $this->pdfView(), $this->appliedFilters, $this->rows, $this->affectations, $this->totalAffectations,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 }
