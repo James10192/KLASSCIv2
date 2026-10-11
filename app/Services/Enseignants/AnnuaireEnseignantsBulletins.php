@@ -2,7 +2,6 @@
 
 namespace App\Services\Enseignants;
 
-use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\Setting;
@@ -18,7 +17,7 @@ final class AnnuaireEnseignantsBulletins
     public function __construct(private readonly BulletinInlineConfigurationService $configuration) {}
 
     /** @return array<int, array{classe: string, semestre: string, matiere: string, nom: string}> */
-    public function affectations(int $anneeId): array
+    public function affectations(int $anneeId, ?int $classeId = null, ?int $semestreFiltre = null): array
     {
         // Les classes peuvent avoir ete rattachees a une autre annee entre-temps :
         // les reglages de bulletins historiques restent une source valable.
@@ -37,6 +36,11 @@ final class AnnuaireEnseignantsBulletins
         }
 
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if ($classeId !== null) {
+            // Le filtre de classe s'applique avant le chargement des modeles et
+            // des configurations de chaque semestre, pas apres un scan global.
+            $ids = array_values(array_filter($ids, fn (int $id): bool => $id === $classeId));
+        }
         if ($ids === []) {
             return [];
         }
@@ -48,6 +52,9 @@ final class AnnuaireEnseignantsBulletins
         $matiereIds = [];
         foreach ($classes as $classe) {
             foreach ([1, 2] as $semestre) {
+                if ($semestreFiltre !== null && $semestre !== $semestreFiltre) {
+                    continue;
+                }
                 $professeurs = $this->configuration->loadProfesseursTemplate(
                     (int) $classe->id, $anneeId, 'semestre'.$semestre
                 );
