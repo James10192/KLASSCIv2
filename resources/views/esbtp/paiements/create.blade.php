@@ -289,8 +289,8 @@
         border-color: var(--pc-primary);
         box-shadow: 0 0 0 3px rgba(4, 83, 203, .12);
     }
-    .pc-search i,
-    .pc-filter i {
+    .pc-search > i,
+    .pc-filter:not(.pc-filter--premium) > i {
         position: absolute;
         left: 0.9rem;
         color: var(--pc-muted);
