@@ -87,10 +87,12 @@ class ESBTPEnseignantController extends Controller
         $anneesUniversitaires = ESBTPAnneeUniversitaire::query()
             ->orderByDesc('start_date')->get(['id', 'name', 'start_date', 'end_date']);
         $anneeExportId = ESBTPAnneeUniversitaire::anneeCourante()?->id;
+        $classesExport = \App\Models\ESBTPClasse::query()
+            ->orderBy('name')->get(['id', 'name']);
 
         return view(
             "esbtp.enseignants.index",
-            compact("teachers", "specializations", "stats", "anneesUniversitaires", "anneeExportId"),
+            compact("teachers", "specializations", "stats", "anneesUniversitaires", "anneeExportId", "classesExport"),
         );
     }
 
