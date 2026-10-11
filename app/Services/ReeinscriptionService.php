@@ -444,18 +444,6 @@ class ReeinscriptionService
             if ($eligibilite['inscription_intermediaire'] !== null) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException($eligibilite['message_intermediaire']);
             }
-            if ($actionReliquat === 'abandonner' && !$peutAbandonner) {
-                throw new \App\Exceptions\ReinscriptionRefuseeException("L'abandon des frais est réservé au SuperAdmin.");
-            }
-            if ($actionReliquat === 'reporter' && !$peutReporter) {
-                throw new \App\Exceptions\ReinscriptionRefuseeException("Permission de report d'impayés manquante.");
-            }
-            if (!$this->peutSeReinscrire($etudiantId, $anneeUniversitaireId)) {
-                if (!in_array($actionReliquat, ['reporter', 'abandonner'], true)) {
-                    throw new \App\Exceptions\ReinscriptionRefuseeException("Choisissez explicitement le report des impayés ou une remise autorisée.");
-                }
-            }
-
             // 2. L'inscription QUITTÉE pour l'année visée : celle que la garde
             // vient de juger, et dont le reste dû part en reliquat. La dernière
             // inscription active (`latest()`) pouvait être une autre — celle de
@@ -537,10 +525,24 @@ class ReeinscriptionService
                     ? "Une inscription annulée existe déjà dans cette classe pour {$nouvelleAnnee->name} : rouvrez-la depuis la liste des inscriptions."
                     : "L'étudiant est déjà inscrit dans cette classe pour {$nouvelleAnnee->name} : choisissez une autre classe pour corriger.");
             }
-            if ($dejaInscrit && !$isSuperAdmin) {
+            if ($dejaInscrit && !$peutAbandonner) {
                 throw new \App\Exceptions\ReinscriptionRefuseeException(
                     "L'étudiant est déjà inscrit pour {$nouvelleAnnee->name}. Pour corriger cette inscription, demandez à un superadministrateur."
                 );
+            }
+
+            // Les refus de doublon/classe de l'année cible priment sur la décision financière.
+            // Sinon la réinscription incorrecte reçoit un faux refus « report manquant ».
+            if ($actionReliquat === 'abandonner' && !$peutAbandonner) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException("L'abandon des frais est réservé au SuperAdmin.");
+            }
+            if ($actionReliquat === 'reporter' && !$peutReporter) {
+                throw new \App\Exceptions\ReinscriptionRefuseeException("Permission de report d'impayés manquante.");
+            }
+            if (!$this->peutSeReinscrire($etudiantId, $anneeUniversitaireId)) {
+                if (!in_array($actionReliquat, ['reporter', 'abandonner'], true)) {
+                    throw new \App\Exceptions\ReinscriptionRefuseeException("Choisissez explicitement le report des impayés ou une remise autorisée.");
+                }
             }
 
             // 4. Vérifier et désactiver toute inscription active existante pour cet étudiant dans cette année
