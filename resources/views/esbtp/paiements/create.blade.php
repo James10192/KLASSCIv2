@@ -269,6 +269,9 @@
         gap: 0.7rem;
         margin-bottom: 0.9rem;
     }
+    .pc-filter--premium {border:0!important;padding:0!important;min-height:48px;background:transparent!important;overflow:visible}
+    .pc-filter--premium .au-select {width:100%;min-width:0;display:flex}
+    .pc-filter--premium .au-select-trigger {width:100%;min-height:48px}
     .pc-search,
     .pc-filter {
         position: relative;
@@ -764,24 +767,24 @@
                                     <i class="fas fa-search"></i>
                                     <input type="search" x-model="q" @input.debounce.250ms="charger()" placeholder="Nom, prénom ou matricule" autocomplete="off">
                                 </label>
-                                <label class="pc-filter">
-                                    <i class="fas fa-sitemap"></i>
-                                    <select x-model="filiereId" @change="charger()">
-                                        <option value="">Toutes les filières</option>
-                                        @foreach(($filieres ?? []) as $filiere)
-                                            <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </label>
-                                <label class="pc-filter">
-                                    <i class="fas fa-layer-group"></i>
-                                    <select x-model="niveauId" @change="charger()">
-                                        <option value="">Tous les niveaux</option>
-                                        @foreach(($niveaux ?? []) as $niveau)
-                                            <option value="{{ $niveau->id }}">{{ $niveau->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </label>
+                                <div class="pc-filter pc-filter--premium">
+                                    <x-au-select
+                                        x-model="filiereId"
+                                        @change="charger()"
+                                        :options="$filieres->mapWithKeys(fn ($f) => [(string) $f->id => $f->name])->all()"
+                                        placeholder="Toutes les filières"
+                                        icon="fa-sitemap"
+                                        searchable />
+                                </div>
+                                <div class="pc-filter pc-filter--premium">
+                                    <x-au-select
+                                        x-model="niveauId"
+                                        @change="charger()"
+                                        :options="$niveaux->mapWithKeys(fn ($n) => [(string) $n->id => $n->name])->all()"
+                                        placeholder="Tous les niveaux"
+                                        icon="fa-layer-group"
+                                        searchable />
+                                </div>
                             </div>
                             <div class="pc-insc-list">
                                 <template x-for="row in rows" :key="row.id">
