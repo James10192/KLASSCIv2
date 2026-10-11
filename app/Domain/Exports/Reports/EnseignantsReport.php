@@ -27,7 +27,7 @@ final class EnseignantsReport extends ExportableReport
 
     public function excelExport(): FromCollection
     {
-        return new EnseignantsExport($this->rows);
+        return new EnseignantsExport($this->rows, (string) ($this->appliedFilters['Année universitaire des bulletins'] ?? ''));
     }
 
     public function filename(): string
