@@ -82,9 +82,15 @@ class ESBTPEnseignantController extends Controller
             "temporary" => (int) ($row->temporary ?? 0),
         ];
 
+        // Annee utilisee par les exports pour lire les professeurs des bulletins BTS.
+        // L'annuaire des comptes reste global, independamment de l'annee choisie.
+        $anneesUniversitaires = ESBTPAnneeUniversitaire::query()
+            ->orderByDesc('start_date')->get(['id', 'name', 'start_date', 'end_date']);
+        $anneeExportId = ESBTPAnneeUniversitaire::anneeCourante()?->id;
+
         return view(
             "esbtp.enseignants.index",
-            compact("teachers", "specializations", "stats"),
+            compact("teachers", "specializations", "stats", "anneesUniversitaires", "anneeExportId"),
         );
     }
 
