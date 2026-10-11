@@ -911,6 +911,10 @@ class ESBTPReinscriptionController extends Controller
             }
 
             if ($request->expectsJson()) {
+                // Le flux classique demande une photo après réinscription.
+                // Le JSON ne doit pas perdre cette étape au clic du lien suivant.
+                session()->flash('demander_photo', true);
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Réinscription enregistrée. Vous pouvez ouvrir le dossier.',

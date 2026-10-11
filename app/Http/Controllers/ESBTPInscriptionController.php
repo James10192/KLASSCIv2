@@ -1094,6 +1094,10 @@ class ESBTPInscriptionController extends Controller
         }
 
         $canViewFinancials = auth()->user()->can('viewFinancials', $inscription);
+        $situationFinanciereEtudiant = $canViewFinancials
+            ? app(\App\Services\Finances\SituationFinanciereEtudiant::class)
+                ->pour((int) $inscription->etudiant_id, (int) $inscription->id)
+            : null;
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Other inscriptions for this student (excluding current)
@@ -1134,6 +1138,7 @@ class ESBTPInscriptionController extends Controller
                 "reinscriptionData",
                 "classesDisponibles",
                 "canViewFinancials",
+                "situationFinanciereEtudiant",
                 "anneeCourante",
                 "otherInscriptions",
                 "btsJourney",
