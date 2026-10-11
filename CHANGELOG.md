@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Export des enseignants et bulletins BTS :** le menu de la page Enseignants n'est plus masqué par le bandeau. Les exports PDF/Excel conservent les comptes enseignants et incluent les professeurs renseignés manuellement sur les bulletins, filtrés par année universitaire. Le PDF présente aussi les affectations classe/matière/semestre, avec des colonnes lisibles et des couleurs adaptées aux réglages de l'établissement.
+
 - **Notes BTS — correction de la validation groupée sur les anciens semestres.** La synchronisation après « Valider les notes » compare désormais le semestre comme du texte, conformément au stockage `VARCHAR` historique (`1`/`2`). Les anciennes valeurs `semestre1`/`semestre2` sont reconnues et réalignées pour les notes validées concernées, sans suppression de note ni changement des règles de doublons. Le diagnostic serveur inclut le contexte évaluation, classe, matière, période et SQLSTATE.
 
 - **Espace familial (socle sécurisé, désactivé par défaut) :** un responsable disposant d'un compte indépendant peut consulter seulement l'identité d'un étudiant pour lequel il possède une habilitation vérifiée, limitée dans le temps et révocable. Un étudiant majeur exige en plus un consentement documenté. Pas de partage des accès ni de consultation des notes ou des finances par défaut.
