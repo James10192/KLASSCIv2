@@ -131,6 +131,23 @@ class SituationFinanciereEtudiantTest extends TestCase
         $this->assertSame(300000.0, $s['courant']);
     }
 
+    public function test_avoirs_successifs_ne_depassent_pas_le_paiement_originel(): void
+    {
+        $paiement = $this->paiementReliquat(50000);
+        app(ValiderPaiement::class)->execute($paiement, $this->caissier);
+        $avoir = app(AvoirService::class);
+
+        $avoir->issue($paiement->fresh(), 35000, AvoirService::KIND_CREDIT, 'Rectification première tranche', $this->caissier->id);
+        $this->assertSame(15000.0, (float) $this->report->fresh()->montant_regle);
+
+        $this->expectException(\\App\\Exceptions\\AvoirForbiddenException::class);
+        try {
+            $avoir->issue($paiement->fresh(), 20000, AvoirService::KIND_CREDIT, 'Rectification complémentaire', $this->caissier->id);
+        } finally {
+            $this->assertSame(15000.0, (float) $this->report->fresh()->montant_regle);
+        }
+    }
+
     private function paiementReliquat(int $montant): ESBTPPaiement
     {
         return ESBTPPaiement::create([

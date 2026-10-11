@@ -25,9 +25,13 @@ class AvoirService
 
     public function issue(ESBTPPaiement $parent, float $montant, string $kind, string $motif, int $userId): ESBTPPaiement
     {
-        $this->assertCanIssue($parent, $montant, $kind, $motif);
-
         return DB::transaction(function () use ($parent, $montant, $kind, $motif, $userId) {
+            // La capacité de crédit dépend des avoirs déjà émis. Elle doit
+            // être évaluée sous verrou du paiement parent, pas avant la
+            // transaction (deux caisses peuvent émettre en parallèle).
+            $parent = ESBTPPaiement::query()->lockForUpdate()->findOrFail($parent->id);
+            $this->assertCanIssue($parent, $montant, $kind, $motif);
+
             $numero = ESBTPPaiement::genererNumeroRecu('AV');
 
             $avoir = ESBTPPaiement::create([

@@ -367,6 +367,22 @@ class FicheReinscriptionTest extends TestCase
             ->assertSee('réinscription possible par dérogation');
     }
 
+    public function test_le_droit_de_report_ne_permet_pas_de_corriger_une_reinscription(): void
+    {
+        Permission::findOrCreate('reinscriptions.reliquats.report', 'web');
+        $this->agent->givePermissionTo('reinscriptions.reliquats.report');
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'annee_universitaire_id' => $this->courante->id,
+            'type_inscription' => NormalisationTypeInscription::REINSCRIPTION,
+            'status' => 'active',
+        ]);
+        $etat = app(EligibiliteReinscription::class)
+            ->pour($this->inscription->etudiant_id, $this->agent, $this->courante->id);
+        $this->assertSame(EligibiliteReinscription::DEJA_INSCRIT, $etat['etat']);
+        $this->assertFalse($etat['peut_rejouer']);
+    }
+
     public function test_admin_access_ne_donne_pas_implicitement_le_droit_de_report(): void
     {
         Permission::findOrCreate('admin.access', 'web');
