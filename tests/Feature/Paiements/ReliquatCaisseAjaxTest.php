@@ -50,7 +50,7 @@ class ReliquatCaisseAjaxTest extends TestCase
             'frais_subscription_id' => $sub->id,
             'montant_attendu' => 100000, 'montant_paye' => 0,
             'montant_reliquat' => 100000, 'montant_regle' => 0,
-            'statut' => 'actif', 'date_creation' => now(),
+            'statut' => 'actif', 'date_creation' => now(), 'created_by' => User::factory()->create()->id,
         ]);
     }
 
