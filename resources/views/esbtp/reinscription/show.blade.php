@@ -424,6 +424,10 @@
         </section>
     @endif
 
+    @if($voirFinances)
+        <x-situation-financiere-etudiant :situation="$situationFinanciere" />
+    @endif
+
     <div class="rsd-grid">
         @if($voirFinances)
             <section class="rsd-card">

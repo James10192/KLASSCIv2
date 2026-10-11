@@ -340,9 +340,12 @@ class ESBTPReinscriptionController extends Controller
 
         $voirFinances = auth()->user()->can('finances.etudiants.voir');
         $notesComptees = is_countable($analyse['notes'] ?? null) ? count($analyse['notes']) : 0;
+        $situationFinanciere = $voirFinances
+            ? app(\App\Services\Finances\SituationFinanciereEtudiant::class)->pour((int) $etudiantId, (int) $inscription->id)
+            : null;
 
         return view('esbtp.reinscription.show', compact(
-            'analyse', 'eligibilite', 'anneeAcademique', 'voirFinances', 'reliquatEntrant', 'reliquatAnneeCible', 'notesComptees', 'preparerSuivante'
+            'analyse', 'eligibilite', 'anneeAcademique', 'voirFinances', 'reliquatEntrant', 'reliquatAnneeCible', 'notesComptees', 'preparerSuivante', 'situationFinanciere'
         ));
     }
 

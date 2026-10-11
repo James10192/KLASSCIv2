@@ -5265,6 +5265,7 @@
      $finInscRef, pose ici, et disparait avec lui. --}}
 @if($voirFinances)
 <div class="tab-panel" id="tab-finances">
+    <x-situation-financiere-etudiant :situation="$situationFinanciere" />
     @php
         /* ── Inscription de l'année courante (priorité absolue) ── */
         $finAnneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();

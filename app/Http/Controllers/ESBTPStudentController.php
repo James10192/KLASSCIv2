@@ -751,9 +751,12 @@ class ESBTPStudentController extends Controller
             ->get(['id', 'name', 'filiere_id', 'niveau_etude_id', 'systeme_academique', 'places_totales', 'places_occupees']);
 
         $voirFinances = auth()->user()->can('finances.etudiants.voir');
+        $situationFinanciere = $voirFinances
+            ? app(\App\Services\Finances\SituationFinanciereEtudiant::class)->pour((int) $etudiant->id)
+            : null;
 
         return view('esbtp.etudiants.show', compact(
-            'etudiant', 'dossier', 'anneeCourante', 'voirFinances',
+            'etudiant', 'dossier', 'anneeCourante', 'voirFinances', 'situationFinanciere',
             'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits',
             'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
             'tpeAttendu', 'tpeParSemestre', 'btsJourney', 'academicJourney', 'btsAnnualSnapshot', 'inscriptionRepairClasses',

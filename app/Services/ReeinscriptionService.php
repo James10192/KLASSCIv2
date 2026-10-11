@@ -894,7 +894,7 @@ class ReeinscriptionService
             return false;
         }
 
-        return $eligibilite['solde'] <= $eligibilite['tolerance'];
+        return $eligibilite['autorisee'];
     }
 
     /**
