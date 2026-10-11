@@ -33,6 +33,17 @@ class EnseignantsExportRedirectRegressionTest extends TestCase
         $this->assertFalse($reponse->isRedirection());
     }
 
+    public function test_le_detail_des_affectations_exige_une_classe_et_explique_pourquoi(): void
+    {
+        $this->autoriserSansBase();
+
+        $reponse = $this->get(route('esbtp.enseignants.preview-pdf', ['vue' => 'affectations']));
+
+        $reponse->assertStatus(422);
+        $reponse->assertSee('choisissez d’abord une classe', false);
+        $this->assertFalse($reponse->isRedirection());
+    }
+
     public function test_telechargement_pdf_invalide_ne_renvoie_pas_302(): void
     {
         $this->autoriserSansBase();

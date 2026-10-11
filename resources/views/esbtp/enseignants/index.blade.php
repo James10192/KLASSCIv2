@@ -172,6 +172,12 @@
     margin-bottom: 1.25rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
+.te-filter-heading { font-size: .84rem; font-weight: 800; color: #1e293b; margin: .2rem 0 .75rem; display:flex; align-items:center; gap:.5rem; }
+.te-filter-heading i { color: #0453cb; }
+.te-export-caption { font-size:.76rem; color:#64748b; line-height:1.5; margin: -.3rem 0 .85rem; }
+.te-export-separator { margin:1.15rem 0; border-top:1px solid #e2e8f0; }
+.te-export-options { padding:.15rem 0; }
+.te-export-options .te-filter-group { min-width:160px; }
 .te-filter-row {
     display: flex;
     gap: 0.75rem;
@@ -612,10 +618,55 @@
         {{-- ═══ Filter Bar ═══ --}}
         <div class="te-filter-bar te-animate te-delay-1">
             <form method="GET" action="{{ route('esbtp.enseignants.index') }}">
+                <div class="te-filter-heading"><i class="fas fa-filter"></i> Rechercher dans les fiches enseignants</div>
                 <div class="te-filter-row">
                     <div class="te-filter-group" style="flex: 2;">
                         <label class="te-filter-label">Recherche</label>
                         <input type="text" name="search" class="te-filter-input" placeholder="Nom, email, matricule..." value="{{ request('search') }}">
+                    </div>
+                    <div class="te-filter-group">
+                        <label class="te-filter-label">Statut</label>
+                        <select name="status" class="te-filter-select">
+                            <option value="">Tous</option>
+                            <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Actifs</option>
+                            <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactifs</option>
+                        </select>
+                    </div>
+                    <div class="te-filter-group">
+                        <label class="te-filter-label">Spécialisation</label>
+                        <select name="specialization" class="te-filter-select">
+                            <option value="">Toutes</option>
+                            @foreach($specializations as $specialization)
+                                <option value="{{ $specialization }}" {{ request('specialization') == $specialization ? 'selected' : '' }}>{{ $specialization }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="te-filter-group" style="flex: 0 0 auto; min-width: auto;">
+                        <label class="te-filter-label">&nbsp;</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="submit" class="te-filter-btn">
+                                <i class="fas fa-search"></i>Filtrer
+                            </button>
+                            @if(request()->hasAny(['search', 'status', 'specialization', 'annee_universitaire_id', 'classe_id', 'semestre', 'vue']))
+                                <a href="{{ route('esbtp.enseignants.index') }}" class="te-filter-btn-reset">
+                                    <i class="fas fa-times"></i>Reset
+                                </a>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="te-export-separator"></div>
+                <div class="te-filter-heading"><i class="fas fa-file-pdf"></i> Préparer le document pédagogique</div>
+                <p class="te-export-caption">Ces choix sont pris en compte immédiatement par les boutons « Aperçu PDF » et « Télécharger PDF » du bandeau. Le fichier Excel reste un export de données complet.</p>
+                <div class="te-filter-row te-export-options">
+                    <div class="te-filter-group" style="flex:1.5">
+                        <label class="te-filter-label" for="te-export-vue">Document PDF à produire</label>
+                        <select name="vue" id="te-export-vue" class="te-filter-select">
+                            <option value="synthese" {{ request('vue', 'synthese') === 'synthese' ? 'selected' : '' }}>01 · Synthèse / classes</option>
+                            <option value="annuaire" {{ request('vue') === 'annuaire' ? 'selected' : '' }}>02 · Annuaire officiel</option>
+                            <option value="rapprochement" {{ request('vue') === 'rapprochement' ? 'selected' : '' }}>03 · Saisies à rapprocher</option>
+                            <option value="affectations" {{ request('vue') === 'affectations' ? 'selected' : '' }}>04 · Matières / professeurs par classe</option>
+                        </select>
                     </div>
                     <div class="te-filter-group">
                         <label class="te-filter-label" for="te-export-annee">Année des bulletins (export)</label>
@@ -646,36 +697,6 @@
                             <option value="1" {{ request('semestre') === '1' ? 'selected' : '' }}>Semestre 1</option>
                             <option value="2" {{ request('semestre') === '2' ? 'selected' : '' }}>Semestre 2</option>
                         </select>
-                    </div>
-                    <div class="te-filter-group">
-                        <label class="te-filter-label">Statut</label>
-                        <select name="status" class="te-filter-select">
-                            <option value="">Tous</option>
-                            <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Actifs</option>
-                            <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactifs</option>
-                        </select>
-                    </div>
-                    <div class="te-filter-group">
-                        <label class="te-filter-label">Spécialisation</label>
-                        <select name="specialization" class="te-filter-select">
-                            <option value="">Toutes</option>
-                            @foreach($specializations as $specialization)
-                                <option value="{{ $specialization }}" {{ request('specialization') == $specialization ? 'selected' : '' }}>{{ $specialization }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="te-filter-group" style="flex: 0 0 auto; min-width: auto;">
-                        <label class="te-filter-label">&nbsp;</label>
-                        <div style="display: flex; gap: 0.5rem;">
-                            <button type="submit" class="te-filter-btn">
-                                <i class="fas fa-search"></i>Filtrer
-                            </button>
-                            @if(request()->hasAny(['search', 'status', 'specialization', 'annee_universitaire_id', 'classe_id', 'semestre']))
-                                <a href="{{ route('esbtp.enseignants.index') }}" class="te-filter-btn-reset">
-                                    <i class="fas fa-times"></i>Reset
-                                </a>
-                            @endif
-                        </div>
                     </div>
                 </div>
             </form>
@@ -812,7 +833,7 @@
 
 @push('scripts')
 <script>
-// Filtres serveur identiques pour la liste, l'aperçu PDF et le fichier Excel.
+// Parametres du document PDF et filtres serveur, reutilises par l'apercu et le telechargement.
 window.exportFilters = function () {
     const form = document.querySelector('.te-filter-bar form');
     if (!form) return {};

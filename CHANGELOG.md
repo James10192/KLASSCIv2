@@ -12,6 +12,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Répertoire pédagogique des enseignants :** l'export PDF propose quatre vues complémentaires : synthèse des classes par semestre, annuaire des fiches enregistrées, noms saisis sur les bulletins à rapprocher et détail des matières/professeurs par classe. Les chiffres distinguent fiches et libellés libres, les doublons de civilité sont uniquement signalés pour contrôle humain et les coordonnées factices « NEANT » ne sont plus imprimées. Les filtres de liste et les options d'édition sont visuellement séparés.
+
+
 - **Export PDF enseignants :** le rejet de l'export n'est plus une redirection silencieuse vers la liste. Le contrôle de volume distingue annuaire et affectations ; si le détail est trop long, l'annuaire PDF reste disponible, précise le volume non imprimé et propose un filtre classe/semestre pour obtenir le détail.
 
 

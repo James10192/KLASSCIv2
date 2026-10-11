@@ -36,6 +36,23 @@ class EnseignantsReportTest extends TestCase
         $this->assertNotSame($premier->cacheKey(), $modifie->cacheKey());
     }
 
+    public function test_le_pdf_separe_les_fiches_des_saisies_manuelles_et_le_mode_change_le_cache(): void
+    {
+        $inscrit = array_merge($this->row(), ['origine' => 'Enregistré', 'classes' => '']);
+        $manuel = array_merge($this->row('M. DIARRA'), [
+            'origine' => 'Bulletin (saisie manuelle)', 'classes' => '1 BTS',
+        ]);
+        $affectations = [['classe' => '1 BTS', 'semestre' => 'S1', 'matiere' => 'Dessin', 'nom' => 'M. DIARRA']];
+        $synthese = new EnseignantsReport([$inscrit, $manuel], [], $affectations, 1, 'synthese');
+        $rapprochement = new EnseignantsReport([$inscrit, $manuel], [], $affectations, 1, 'rapprochement');
+
+        $this->assertSame(1, $synthese->viewData()['nombreFiches']);
+        $this->assertSame(1, $synthese->viewData()['nombreSaisies']);
+        $this->assertSame(1, $synthese->viewData()['nombreClasses']);
+        $this->assertSame('rapprochement', $rapprochement->viewData()['vue']);
+        $this->assertNotSame($synthese->cacheKey(), $rapprochement->cacheKey());
+    }
+
     public function test_export_excel_formate_le_telephone_comme_texte_et_protege_les_formules(): void
     {
         $export = new EnseignantsExport([$this->row('=2+2')]);
