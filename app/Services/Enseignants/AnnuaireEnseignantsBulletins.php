@@ -22,9 +22,10 @@ final class AnnuaireEnseignantsBulletins
     {
         // Les classes peuvent avoir ete rattachees a une autre annee entre-temps :
         // les reglages de bulletins historiques restent une source valable.
-        $ids = ESBTPClasse::query()->where('annee_universitaire_id', $anneeId)->pluck('id')->all();
-        $ids = array_merge($ids, ESBTPBulletin::query()
-            ->where('annee_universitaire_id', $anneeId)->distinct()->pluck('classe_id')->all());
+        // Uniquement les classes disposant d'au moins une source : parcourir
+        // toutes les classes de l'annee causerait 2 lectures inutiles par classe.
+        $ids = ESBTPBulletin::query()
+            ->where('annee_universitaire_id', $anneeId)->distinct()->pluck('classe_id')->all();
 
         $cles = Setting::query()->where('is_active', true)
             ->where('key', 'like', 'bulletin_professeurs_template.%.'.$anneeId.'.semestre%')
