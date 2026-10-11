@@ -174,12 +174,6 @@
 }
 .te-filter-heading { font-size: .84rem; font-weight: 800; color: #1e293b; margin: .2rem 0 .75rem; display:flex; align-items:center; gap:.5rem; }
 .te-filter-heading i { color: #0453cb; }
-.te-export-caption { font-size:.76rem; color:#64748b; line-height:1.5; margin: -.3rem 0 .85rem; }
-.te-export-separator { margin:1.15rem 0; border-top:1px solid #e2e8f0; }
-.te-export-options { padding:.15rem 0; }
-.te-export-options .te-filter-group { min-width:160px; }
-/* Au-select conserve un select natif CACHE pour FormData et le submit GET.
-   Le conteneur est flex-column pour eviter les menus tronques en dehors d'une flex row. */
 .te-filter-group .au-select { display:flex; width:100%; min-width:0; flex:0 0 auto; }
 .te-filter-group .au-select-trigger { min-height:44px; width:100%; }
 .te-filter-row {
@@ -562,16 +556,18 @@
                     <div class="te-hero-title">
                         <i class="fas fa-chalkboard-teacher"></i>Gestion des Enseignants
                     </div>
-                    <div class="te-hero-subtitle">Vue secondaire — la gestion principale est dans <strong>Personnel</strong>. L’année choisie sélectionne les professeurs des bulletins exportés.</div>
+                    <div class="te-hero-subtitle">Vue secondaire — la gestion principale est dans <strong>Personnel</strong>. Préparez les PDF et Excel depuis le bouton d’export.</div>
                 </div>
                 <div class="te-hero-actions">
                     @can('teachers.view')
-                        <x-export-modal
+                        <x-enseignants-export-dialog
                             :preview-url="route('esbtp.enseignants.preview-pdf')"
                             :pdf-url="route('esbtp.enseignants.export-pdf')"
                             :excel-url="route('esbtp.enseignants.export-excel')"
-                            button-class="te-hero-btn"
-                            label="Exporter la liste" />
+                            :annees="$anneesUniversitaires"
+                            :annee-id="$anneeExportId"
+                            :classes="$classesExport"
+                            :specializations="$specializations" />
                     @endcan
                     <button type="button" class="te-hero-btn" data-bs-toggle="modal" data-bs-target="#bulkAvailabilityModal">
                         <i class="fas fa-calendar-check"></i>Disponibilités
@@ -653,66 +649,12 @@
                             <button type="submit" class="te-filter-btn">
                                 <i class="fas fa-search"></i>Filtrer
                             </button>
-                            @if(request()->hasAny(['search', 'status', 'specialization', 'annee_universitaire_id', 'classe_id', 'semestre', 'vue']))
+                            @if(request()->hasAny(['search', 'status', 'specialization']))
                                 <a href="{{ route('esbtp.enseignants.index') }}" class="te-filter-btn-reset">
                                     <i class="fas fa-times"></i>Reset
                                 </a>
                             @endif
                         </div>
-                    </div>
-                </div>
-                <div class="te-export-separator"></div>
-                <div class="te-filter-heading"><i class="fas fa-file-pdf"></i> Préparer le document pédagogique</div>
-                <p class="te-export-caption">Ces choix sont pris en compte immédiatement par les boutons « Aperçu PDF » et « Télécharger PDF » du bandeau. Le fichier Excel reste un export de données complet.</p>
-                <div class="te-filter-row te-export-options">
-                    <div class="te-filter-group" style="flex:1.5">
-                        <span class="te-filter-label">Document PDF à produire</span>
-                        <x-au-select
-                            name="vue"
-                            label="Document PDF à produire"
-                            icon="fa-file-pdf"
-                            placeholder="Choisir le document"
-                            :placeholder-is-first-option="false"
-                            :value="request('vue', 'synthese')"
-                            :options="[
-                                'synthese' => '01 · Synthèse / classes',
-                                'annuaire' => '02 · Annuaire officiel',
-                                'rapprochement' => '03 · Saisies à rapprocher',
-                                'affectations' => '04 · Matières / professeurs par classe',
-                            ]" />
-                    </div>
-                    <div class="te-filter-group">
-                        <span class="te-filter-label">Année des bulletins (export)</span>
-                        <x-au-select
-                            name="annee_universitaire_id"
-                            label="Année universitaire des bulletins"
-                            icon="fa-calendar-alt"
-                            placeholder="Année universitaire"
-                            :placeholder-is-first-option="false"
-                            :value="request('annee_universitaire_id', $anneeExportId)"
-                            :searchable="$anneesUniversitaires->count() > 8"
-                            :options="$anneesUniversitaires->mapWithKeys(fn ($annee) => [(string) $annee->id => $annee->display_name])->all()" />
-                    </div>
-                    <div class="te-filter-group">
-                        <span class="te-filter-label">Classe des bulletins (export)</span>
-                        <x-au-select
-                            name="classe_id"
-                            label="Classe des bulletins"
-                            icon="fa-chalkboard"
-                            placeholder="Toutes les classes"
-                            :value="request('classe_id', '')"
-                            :searchable="$classesExport->count() > 8"
-                            :options="$classesExport->mapWithKeys(fn ($classe) => [(string) $classe->id => $classe->name])->all()" />
-                    </div>
-                    <div class="te-filter-group">
-                        <span class="te-filter-label">Semestre (export)</span>
-                        <x-au-select
-                            name="semestre"
-                            label="Semestre des bulletins"
-                            icon="fa-calendar-week"
-                            placeholder="S1 + S2"
-                            :value="request('semestre', '')"
-                            :options="['1' => 'Semestre 1', '2' => 'Semestre 2']" />
                     </div>
                 </div>
             </form>
@@ -849,12 +791,6 @@
 
 @push('scripts')
 <script>
-// Parametres du document PDF et filtres serveur, reutilises par l'apercu et le telechargement.
-window.exportFilters = function () {
-    const form = document.querySelector('.te-filter-bar form');
-    if (!form) return {};
-    return Object.fromEntries(new FormData(form).entries());
-};
 $(document).ready(function() {
     // ═══ Modal Bulk Availability ═══
     const bulkModal = document.getElementById('bulkAvailabilityModal');

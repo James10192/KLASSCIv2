@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-11 · #1556 · Enseignants : export PDF/Excel préparé dans une seule fenêtre premium avec aperçu, téléchargement et validation visuelle des paramètres obligatoires, sans filtres dispersés sur la liste.
 - 2026-10-11 · #1555 · Enseignants : filtres et préparation des documents en sélecteurs premium KLASSCI, avec recherche de classe/spécialité et conservation des choix pour le PDF et Excel.
 - 2026-10-11 · #1554 · Enseignants : quatre documents PDF distincts pour retrouver les enseignants enregistrés, les saisies des bulletins, les affectations par classe/semestre et une synthèse de pilotage ; suppression des coordonnées factices à l'impression.
 - 2026-10-11 · #1552 · Enseignants : aperçu et téléchargement PDF sans retour silencieux à la liste en cas de données volumineuses ; détail imprimable par classe et semestre, message d'erreur explicite si les paramètres sont invalides.
