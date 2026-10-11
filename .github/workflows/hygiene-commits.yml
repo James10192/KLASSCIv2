@@ -311,6 +311,7 @@ jobs:
             tests/Unit/Exports/EnseignantsReportTest.php \
             tests/Unit/Exports/AnnuaireEnseignantsBulletinsTest.php \
             tests/Unit/Exports/EnseignantsExportRedirectRegressionTest.php \
+            tests/Unit/Exports/PresentationAnnuairePdfTest.php \
             tests/Unit/Security/MotDePasseTemporaireEtudiantTest.php \
             tests/Unit/Comptabilite \
             tests/Unit/Photos \
