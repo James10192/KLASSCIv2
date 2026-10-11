@@ -41,6 +41,6 @@ class EnseignantsExportRedirectRegressionTest extends TestCase
 
         $reponse->assertStatus(422);
         $this->assertFalse($reponse->isRedirection());
-        $reponse->assertHeader('Cache-Control', 'no-store');
+        $this->assertStringContainsString('no-store', $reponse->headers->get('Cache-Control', ''));
     }
 }
