@@ -140,7 +140,7 @@ class SituationFinanciereEtudiantTest extends TestCase
         $avoir->issue($paiement->fresh(), 35000, AvoirService::KIND_CREDIT, 'Rectification première tranche', $this->caissier->id);
         $this->assertSame(15000.0, (float) $this->report->fresh()->montant_regle);
 
-        $this->expectException(\\App\\Exceptions\\AvoirForbiddenException::class);
+        $this->expectException(\App\Exceptions\AvoirForbiddenException::class);
         try {
             $avoir->issue($paiement->fresh(), 20000, AvoirService::KIND_CREDIT, 'Rectification complémentaire', $this->caissier->id);
         } finally {
