@@ -182,7 +182,6 @@
    Le conteneur est flex-column pour eviter les menus tronques en dehors d'une flex row. */
 .te-filter-group .au-select { display:flex; width:100%; min-width:0; flex:0 0 auto; }
 .te-filter-group .au-select-trigger { min-height:44px; width:100%; }
-.te-filter-group .au-select-menu { min-width:100%; }
 .te-filter-row {
     display: flex;
     gap: 0.75rem;
@@ -624,11 +623,11 @@
                 <div class="te-filter-heading"><i class="fas fa-filter"></i> Rechercher dans les fiches enseignants</div>
                 <div class="te-filter-row">
                     <div class="te-filter-group" style="flex: 2;">
-                        <label class="te-filter-label">Recherche</label>
+                        <span class="te-filter-label">Recherche</span>
                         <input type="text" name="search" class="te-filter-input" placeholder="Nom, email, matricule..." value="{{ request('search') }}">
                     </div>
                     <div class="te-filter-group">
-                        <label class="te-filter-label">Statut</label>
+                        <span class="te-filter-label">Statut</span>
                         <x-au-select
                             name="status"
                             label="Statut des enseignants"
@@ -638,7 +637,7 @@
                             :options="['active' => 'Actifs', 'inactive' => 'Inactifs']" />
                     </div>
                     <div class="te-filter-group">
-                        <label class="te-filter-label">Spécialisation</label>
+                        <span class="te-filter-label">Spécialisation</span>
                         <x-au-select
                             name="specialization"
                             label="Spécialisation des enseignants"
@@ -649,7 +648,7 @@
                             :options="$specializations->mapWithKeys(fn ($specialization) => [(string) $specialization => (string) $specialization])->all()" />
                     </div>
                     <div class="te-filter-group" style="flex: 0 0 auto; min-width: auto;">
-                        <label class="te-filter-label">&nbsp;</label>
+                        <span class="te-filter-label">&nbsp;</span>
                         <div style="display: flex; gap: 0.5rem;">
                             <button type="submit" class="te-filter-btn">
                                 <i class="fas fa-search"></i>Filtrer
@@ -667,7 +666,7 @@
                 <p class="te-export-caption">Ces choix sont pris en compte immédiatement par les boutons « Aperçu PDF » et « Télécharger PDF » du bandeau. Le fichier Excel reste un export de données complet.</p>
                 <div class="te-filter-row te-export-options">
                     <div class="te-filter-group" style="flex:1.5">
-                        <label class="te-filter-label" for="te-export-vue">Document PDF à produire</label>
+                        <span class="te-filter-label">Document PDF à produire</span>
                         <x-au-select
                             name="vue"
                             label="Document PDF à produire"
@@ -683,7 +682,7 @@
                             ]" />
                     </div>
                     <div class="te-filter-group">
-                        <label class="te-filter-label" for="te-export-annee">Année des bulletins (export)</label>
+                        <span class="te-filter-label">Année des bulletins (export)</span>
                         <x-au-select
                             name="annee_universitaire_id"
                             label="Année universitaire des bulletins"
@@ -695,7 +694,7 @@
                             :options="$anneesUniversitaires->mapWithKeys(fn ($annee) => [(string) $annee->id => $annee->display_name])->all()" />
                     </div>
                     <div class="te-filter-group">
-                        <label class="te-filter-label" for="te-export-classe">Classe des bulletins (export)</label>
+                        <span class="te-filter-label">Classe des bulletins (export)</span>
                         <x-au-select
                             name="classe_id"
                             label="Classe des bulletins"
@@ -706,7 +705,7 @@
                             :options="$classesExport->mapWithKeys(fn ($classe) => [(string) $classe->id => $classe->name])->all()" />
                     </div>
                     <div class="te-filter-group">
-                        <label class="te-filter-label" for="te-export-semestre">Semestre (export)</label>
+                        <span class="te-filter-label">Semestre (export)</span>
                         <x-au-select
                             name="semestre"
                             label="Semestre des bulletins"
