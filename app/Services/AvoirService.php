@@ -61,6 +61,21 @@ class AvoirService
             // survivre du paiement fantome sur les autres frais.
             $this->reflet->refleter($avoir, $parent);
 
+            // Un avoir sur un règlement d'arriéré REOUVRE la même créance.
+            // Le reflet de ventilation ne suffit pas : le reliquat a son
+            // compteur propre, indépendant des souscriptions de l'année.
+            if ($parent->type_paiement === 'reliquat' && $parent->reliquat_detail_id) {
+                $reliquat = \App\Models\ESBTPReliquatDetail::query()
+                    ->lockForUpdate()->findOrFail($parent->reliquat_detail_id);
+                $regle = max(0.0, round((float) $reliquat->montant_regle - $montant, 2));
+                $reliquat->update([
+                    'montant_regle' => $regle,
+                    'statut' => $regle <= 0 ? 'actif' :
+                        ($regle >= (float) $reliquat->montant_reliquat ? 'totalement_regle' : 'partiellement_regle'),
+                    'date_derniere_maj' => now(),
+                ]);
+            }
+
             return $avoir;
         });
     }

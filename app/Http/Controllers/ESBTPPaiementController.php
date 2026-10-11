@@ -1611,11 +1611,21 @@ class ESBTPPaiementController extends Controller
             DB::beginTransaction();
 
             // Récupérer le reliquat
-            $reliquat = \App\Models\ESBTPReliquatDetail::findOrFail($reliquatId);
+            $reliquat = \App\Models\ESBTPReliquatDetail::query()->lockForUpdate()->findOrFail($reliquatId);
 
-            // Vérifier que le montant ne dépasse pas le solde restant
-            if ($montantPaye > $reliquat->solde_restant) {
-                return redirect()->back()->with('error', 'Le montant à payer ne peut pas dépasser le solde restant (' . number_format($reliquat->solde_restant, 0, ',', ' ') . ' FCFA).');
+            // Réserver le solde dès la saisie : les règlements déjà en attente
+            // ne doivent pas permettre de réencaisser la même créance.
+            $enAttente = (float) ESBTPPaiement::query()
+                ->where('reliquat_detail_id', $reliquat->id)
+                ->where('type_paiement', 'reliquat')
+                ->where('status', 'en_attente')
+                ->encaissements()
+                ->sum('montant');
+            $disponible = max(0.0, round($reliquat->solde_restant - $enAttente, 2));
+            if ($montantPaye > $disponible) {
+                DB::rollBack();
+                return redirect()->back()->with('error',
+                    'Montant disponible pour ce reliquat : '.number_format($disponible, 0, ',', ' ').' FCFA (paiements en attente déduits).');
             }
 
             // Générer un numéro de reçu
@@ -1985,26 +1995,15 @@ class ESBTPPaiementController extends Controller
                     continue;
                 }
 
-                // Valider le paiement
-                $paiement->update([
-                    'status' => 'validé',
-                    'date_validation' => now(),
-                    'validateur_id' => auth()->id()
-                ]);
-
-                // Si c'est un paiement de reliquat, mettre à jour le reliquat
-                if ($paiement->type_paiement === 'reliquat' && $paiement->reliquat_detail_id) {
-                    $reliquat = \App\Models\ESBTPReliquatDetail::find($paiement->reliquat_detail_id);
-                    if ($reliquat) {
-                        $nouveauMontantRegle = $reliquat->montant_regle + $paiement->montant;
-                        $nouveauSolde = $reliquat->montant_reliquat - $nouveauMontantRegle;
-
-                        $reliquat->update([
-                            'montant_regle' => $nouveauMontantRegle,
-                            'statut' => $nouveauSolde <= 0 ? 'totalement_regle' : 'partiellement_regle',
-                            'date_derniere_maj' => now()
-                        ]);
-                    }
+                // Même transaction et mêmes verrous que la validation unitaire.
+                // Un seul chemin pour modifier le solde d'un reliquat.
+                try {
+                    app(\App\Domain\Comptabilite\Paiements\Actions\ValiderPaiement::class)
+                        ->execute($paiement, $request->user());
+                } catch (\DomainException $e) {
+                    $errorCount++;
+                    \Log::warning('Validation groupée refusée', ['paiement_id' => $id, 'message' => $e->getMessage()]);
+                    continue;
                 }
 
                 $successCount++;
