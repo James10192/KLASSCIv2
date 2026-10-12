@@ -144,7 +144,25 @@ final class BtsClassCohortCounter
             $perimetre($requete);
 
             $parClasse = [];
-            foreach ($requete->get() as $inscription) {
+            $inscriptions = $requete->get();
+
+            if ($annuel) {
+                // UNE inscription propriétaire par étudiant/an, même avec une
+                // double inscription historique (TC terminée + spécialité) ou
+                // deux spécialisations corrigées. Sinon une ligne pouvait se
+                // trouver dans deux classements annuels simultanément.
+                $inscriptions = $inscriptions->groupBy('etudiant_id')->map(
+                    fn ($lignes) => $lignes->sortByDesc(fn (ESBTPInscription $i) => sprintf(
+                        '%d:%d:%s:%010d',
+                        $i->isSpecialisation() ? 1 : 0,
+                        $i->status === 'active' ? 1 : 0,
+                        substr((string) $i->date_inscription, 0, 10),
+                        (int) $i->id
+                    ))->first()
+                )->values();
+            }
+
+            foreach ($inscriptions as $inscription) {
                 $resolved = $this->resolveClasseId($inscription, $semester, $annuel);
                 if ($resolved !== null) {
                     $parClasse[$resolved][(int) $inscription->etudiant_id] = true;
@@ -195,8 +213,7 @@ final class BtsClassCohortCounter
 
     private function resolveClasseId(ESBTPInscription $inscription, int $semester, bool $annuel = false): ?int
     {
-        if ($annuel && app(BtsAnnualRankingPolicy::class)->mode() === BtsAnnualRankingPolicy::ORIGINE
-            && $inscription->classe?->isBTS()) {
+        if ($annuel && $inscription->classe?->isBTS()) {
             // Même les anciens parcours sans phases peuvent posséder S1 en TC.
             $map = app(BtsAnnualClassMapResolver::class)->resolveForInscription(
                 $inscription,
