@@ -389,7 +389,7 @@
                         <td style="text-align:center; font-size:9px;">{{ $formatDate($paiement->date_paiement ?? null) }}</td>
                         <td style="text-align:center;"><span class="matricule-col">{{ $paiement->etudiant->matricule ?? 'N/A' }}</span></td>
                         <td><span class="student-name">{{ trim(($paiement->etudiant->nom ?? '') . ' ' . ($paiement->etudiant->prenoms ?? '')) ?: 'N/A' }}</span></td>
-                        <td style="font-size:9px;">{{ optional(optional($paiement->inscription)->classe)->name ?? 'N/A' }}</td>
+                        <td style="font-size:9px;">{{ optional(optional($paiement->inscription)->classe)->name ?? 'N/A' }}<span style="display:block;font-size:7.2px;color:#64748b;margin-top:2px;">Année : {{ $paiement->inscription?->anneeUniversitaire?->name ?? '—' }}</span></td>
                         @php
                             // Meme lecture qu'a l'ecran, dans l'Excel et sur
                             // le recu. N'imprimer que la categorie choisie au

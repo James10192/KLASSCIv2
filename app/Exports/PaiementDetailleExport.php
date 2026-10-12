@@ -268,7 +268,7 @@ class PaiementDetailleExport implements FromCollection, WithHeadings, WithMappin
         $sheet->getStyle("C{$startRow}:D{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         $sheet->getStyle("E{$startRow}:F{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         $sheet->getStyle("I{$startRow}:I{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle("I{$startRow}:I{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("J{$startRow}:J{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
     }
 
     private function applyStatusBadges(Worksheet $sheet, int $startRow, int $endRow): void
@@ -326,7 +326,7 @@ class PaiementDetailleExport implements FromCollection, WithHeadings, WithMappin
         ]);
         $sheet->getStyle("A{$row}:H{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         $sheet->getStyle("I{$row}")->getNumberFormat()->setFormatCode('#,##0 "FCFA"');
-        $sheet->getStyle("H{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("I{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         $sheet->getRowDimension($row)->setRowHeight(22);
 
         return $row;

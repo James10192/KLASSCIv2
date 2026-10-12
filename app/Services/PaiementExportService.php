@@ -261,7 +261,7 @@ class PaiementExportService
             fputcsv($out, [], ';'); // ligne vide
 
             // En-têtes
-            $headers = ['Date', 'N° Reçu', 'Matricule', 'Nom étudiant', 'Classe', 'Mode', 'Montant (FCFA)', 'Statut'];
+            $headers = ['Date', 'N° Reçu', 'Matricule', 'Nom étudiant', 'Classe', 'Année d’inscription', 'Mode', 'Montant (FCFA)', 'Statut'];
             if ($showCreator) {
                 $headers[] = 'Encaissé par';
             }
@@ -274,6 +274,7 @@ class PaiementExportService
                     optional($p->etudiant)->matricule ?? '',
                     trim((optional($p->etudiant)->nom ?? '') . ' ' . (optional($p->etudiant)->prenoms ?? '')),
                     optional(optional($p->inscription)->classe)->name ?? '',
+                    $p->inscription?->anneeUniversitaire?->name ?? '',
                     $p->mode_paiement ?? '',
                     number_format((float) $p->montant, 0, ',', ' '),
                     $this->statusLabel($p->status ?? $p->statut ?? ''),
@@ -286,7 +287,7 @@ class PaiementExportService
 
             // Footer
             fputcsv($out, [], ';');
-            $totalRow = ['TOTAL', '', '', '', '', '', number_format($totalMontant, 0, ',', ' '), ''];
+            $totalRow = ['TOTAL', '', '', '', '', '', '', number_format($totalMontant, 0, ',', ' '), ''];
             if ($showCreator) {
                 $totalRow[] = '';
             }
