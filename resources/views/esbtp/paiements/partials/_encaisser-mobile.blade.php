@@ -191,6 +191,15 @@
 
         {{-- Étape 1 : l'étudiant --}}
         <div class="mab-etape" x-show="etape === 1" x-cloak>
+            <div class="m-seg">
+                <button type="button" x-bind:class="!rechercheAnciens ? 'on' : ''"
+                    x-on:click="rechercheAnciens=false;chercher()">Cette année</button>
+                <button type="button" x-bind:class="rechercheAnciens ? 'on' : ''"
+                    x-on:click="rechercheAnciens=true;chercher()">Dette ancienne</button>
+            </div>
+            <p class="mab-hint" x-show="rechercheAnciens" x-cloak>
+                Paiement sur l'ancienne inscription, sans créer de nouvelle inscription.
+            </p>
             <label class="m-search">
                 <x-m.icon name="search" />
                 <input type="search" x-model="q" x-on:input.debounce.300ms="chercher()" x-ref="recherche"
@@ -205,7 +214,7 @@
                         <div class="av" aria-hidden="true" x-text="initiales(row.nom)"></div>
                         <div class="tt">
                             <b x-text="row.nom"></b>
-                            <span x-text="[row.classe, row.niveau].filter(Boolean).join(' · ')"></span>
+                            <span x-text="[row.classe, row.niveau, row.annee].filter(Boolean).join(' · ')"></span>
                             <span class="mab-mat" x-text="row.matricule"></span>
                         </div>
                         <div class="tr"><x-m.icon name="chr" class="ch" /></div>
@@ -213,7 +222,7 @@
                 </template>
                 <x-m.empty x-show="inscriptions.length === 0 && !chargement.liste" x-cloak
                            icon="search" title="Aucun dossier trouvé"
-                           text="Vérifiez l'orthographe du nom ou le matricule. Seules les inscriptions de l'année en cours apparaissent." />
+                           text="Vérifiez le nom ou le matricule. Vous pouvez également basculer sur « Dette ancienne »." />
             </div>
         </div>
 
@@ -402,6 +411,7 @@ if (typeof window.mabEncaisser !== 'function') {
             cfg: { urls: {}, seuil: 0, devise: '', date: '', dateLabel: '', preselect: {} },
             etape: 1,
             q: '',
+            rechercheAnciens: false,
             inscriptions: [],
             sel: null,
             frais: [],
@@ -554,6 +564,7 @@ if (typeof window.mabEncaisser !== 'function') {
                 this.chargement.liste = true;
                 const params = new URLSearchParams();
                 if (this.q.trim()) { params.set('q', this.q.trim()); }
+                if (this.rechercheAnciens) { params.set('anciennes', '1'); }
                 try {
                     const res = await fetch(this.cfg.urls.inscriptions + '?' + params.toString(), {
                         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
