@@ -116,7 +116,7 @@ class FicheEtudiantFinancesMasqueesTest extends TestCase
 
         $this->assertStringContainsString('id="etudiantPaymentModal"', $html);
         $this->assertStringContainsString(
-            'onclick="prepareEtudiantPaymentModal('.$inscription->id.')"',
+            'onclick="prepareEtudiantPaymentModal('.$inscription->id.', true)"',
             $html
         );
         $this->assertStringContainsString('Enregistrer un paiement', $html);

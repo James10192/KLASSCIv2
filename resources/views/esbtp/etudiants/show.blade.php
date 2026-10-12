@@ -5959,7 +5959,7 @@
                     @can('paiements.create')
                     <button type="button" {{ $autreSolde <= 0 ? 'disabled' : '' }}
                             style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; font-size:.8rem; border-radius:8px; background:linear-gradient(135deg, var(--k-blue, #0453cb), var(--k-blue-2, #5e91de)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(4,83,203,.25);{{ $autreSolde <= 0 ? ' opacity:.5; cursor:not-allowed;' : '' }}"
-                            @if($autreSolde > 0) data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal" onclick="prepareEtudiantPaymentModal({{ $autreInsc->id }})" @endif>
+                            @if($autreSolde > 0) data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal" onclick="prepareEtudiantPaymentModal({{ $autreInsc->id }}, true)" @endif>
                         <i class="fas fa-{{ $autreSolde <= 0 ? 'check-circle' : 'plus-circle' }}"></i>
                         {{ $autreSolde <= 0 ? 'Soldé' : 'Enregistrer un paiement' }}
                     </button>
@@ -6816,13 +6816,22 @@ function etdHideSkeleton(el, cls) {
     el.parentElement.querySelector('.' + cls)?.remove();
 }
 
-function prepareEtudiantPaymentModal(inscriptionId) {
+function prepareEtudiantPaymentModal(inscriptionId, ancienneInscription = false) {
     const form = document.getElementById('etudiantPaymentForm');
     if (!form) {
         console.error('KLASSCI: formulaire etudiantPaymentForm introuvable pour l\'inscription', inscriptionId);
         return;
     }
-    form.action = `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
+    window._etdHistoricalPayment = Boolean(ancienneInscription);
+    form.action = ancienneInscription
+        ? @json(route('esbtp.paiements.store'))
+        : `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
+    const validationDirecte = document.getElementById('etd-direct-validation-wrap');
+    if (validationDirecte) validationDirecte.style.display = ancienneInscription ? 'none' : '';
+    const validationCheck = document.getElementById('etd_validate_payment');
+    if (validationCheck && ancienneInscription) validationCheck.checked = false;
+    const oldConfirm = document.getElementById('etd-confirm-historical');
+    if (oldConfirm) oldConfirm.style.display = ancienneInscription ? '' : 'none';
     form.reset();
     const dateInput = form.querySelector('#etd_date_paiement');
     if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
@@ -6956,15 +6965,46 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...';
 
+        const payload = new FormData(form);
+        if (window._etdHistoricalPayment) {
+            payload.set('inscription_id', String(window._etdInscriptionId));
+            payload.set('etudiant_id', @json($etudiant->id));
+            payload.set('frais_category_id', String(payload.get('fee_category_id') || ''));
+            payload.set('commentaire', String(payload.get('observations') || ''));
+            payload.delete('fee_category_id');
+            payload.delete('observations');
+            payload.delete('validate_payment');
+
+            const confirmBox = document.getElementById('etd_confirm_unusual_amount');
+            const seuil = Number(@json((int) \App\Helpers\SettingsHelper::get('comptabilite.unusual_amount_threshold', 500000)));
+            if (montant > seuil && !confirmBox?.checked) {
+                if (confirmBox) {
+                    confirmBox.setCustomValidity('Confirmez explicitement ce montant inhabituel.');
+                    confirmBox.reportValidity();
+                }
+                submitted = false;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = origHtml;
+                return;
+            }
+            payload.set('confirmed_unusual_amount', confirmBox?.checked ? '1' : '0');
+        }
+
         fetch(form.action, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json',
             },
-            body: new FormData(form)
+            body: payload
         })
-        .then(r => r.json().catch(() => ({ success: true })))
+        .then(async r => {
+            const data = await r.json().catch(() => ({success:false, message:'Réponse du serveur illisible.'}));
+            if (!r.ok || data.success !== true) {
+                throw new Error(data.message || 'Le paiement a été refusé par le serveur.');
+            }
+            return data;
+        })
         .then(data => {
             // Fermer le modal
             const modalEl = document.getElementById('etudiantPaymentModal');
@@ -7042,7 +7082,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(err => {
             console.error('Erreur paiement:', err);
-            alert('❌ Une erreur est survenue. Veuillez réessayer.');
+            alert('❌ ' + (err.message || 'Une erreur est survenue. Veuillez réessayer.'));
             submitted = false;
             submitBtn.disabled = false;
             submitBtn.innerHTML = origHtml;
@@ -7173,7 +7213,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     {{-- Checkbox validation directe (réservée aux users avec self_override : créateur = validateur) --}}
                     @can('paiements.validate.self_override')
-                    <div style="margin-top:1.25rem; padding:14px 16px; background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #86efac; border-radius:10px;">
+                    <div id="etd-direct-validation-wrap" style="margin-top:1.25rem; padding:14px 16px; background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #86efac; border-radius:10px;">
                         <div class="form-check" style="margin:0;">
                             <input class="form-check-input" type="checkbox" id="etd_validate_payment" name="validate_payment" value="1"
                                    style="width:18px; height:18px; margin-top:2px; cursor:pointer;">
@@ -7187,6 +7227,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                     @endcan
+                </div>
+                <div id="etd-confirm-historical" style="display:none; padding:0 2rem 1rem;">
+                    <label style="display:flex;gap:.55rem;align-items:flex-start;color:#334155;font-size:.82rem;">
+                        <input type="checkbox" id="etd_confirm_unusual_amount" onchange="this.setCustomValidity('')" style="margin-top:.2rem;">
+                        <span>Je confirme ce montant s'il dépasse le seuil de paiement inhabituel de l'établissement. La dette reste attachée à son année d'origine.</span>
+                    </label>
                 </div>
                 <div class="modal-footer" style="background:#f8f9fa;border-radius:0 0 15px 15px;padding:1.25rem 2rem;border:none;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="padding:.65rem 1.5rem;border-radius:8px;font-weight:600;border:2px solid #6c757d;">

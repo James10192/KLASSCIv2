@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1561 · Fiche étudiant : le paiement d'une ancienne inscription utilise en AJAX paiements.store sans modifier le workflow académique ; une réponse serveur 422 ne produit plus un faux toast de succès et les montants inhabituels demandent confirmation.
 - 2026-10-12 · #1561 · Fenêtre de paiement des inscriptions : même calcul de frais restants que la caisse (reports déduits), interdiction de remettre une ancienne inscription en validation par un paiement, et vérification serveur du mode autorisé.
 - 2026-10-12 · #1561 · CI élargie aux scénarios de répartition avec dette reportée et à l'ordre d'affichage/confidentialité des finances de la fiche étudiant.
 - 2026-10-12 · #1561 · Garde serveur anti-double règlement : sur une ancienne inscription avec report, un versement supérieur au solde non reporté ou une ventilation sur le montant transféré est refusé ; seuls les frais restant à l'origine sont encaissables.
