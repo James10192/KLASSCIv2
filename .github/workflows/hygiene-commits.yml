@@ -405,6 +405,9 @@ jobs:
       - name: Caisse - reliquats AJAX, idempotence et permissions
         run: php vendor/bin/phpunit tests/Feature/Paiements/ReliquatCaisseAjaxTest.php --no-coverage
 
+      - name: Portées de caisse : année de paiement, année de dette et inscrits
+        run: php vendor/bin/phpunit tests/Feature/Paiements/PerimetreAnneeDettePaiementsTest.php --no-coverage
+
       - name: Validation inline depuis la fiche inscription
         run: php vendor/bin/phpunit tests/Feature/Paiements/InscriptionShowPaiementsInlineTest.php --no-coverage
 

@@ -26,6 +26,8 @@ class PerimetreAnneeDettePaiementsTest extends TestCase
     {
         parent::setUp();
 
+        // Une seule année officielle courante pour des assertions déterministes.
+        ESBTPAnneeUniversitaire::query()->update(['is_current' => false]);
         $anneeAncienne = ESBTPAnneeUniversitaire::factory()->create([
             'name' => '2024-2025', 'is_current' => false,
         ]);
@@ -58,16 +60,17 @@ class PerimetreAnneeDettePaiementsTest extends TestCase
 
     public function test_les_trois_portees_exposent_les_bons_encaissements(): void
     {
-        ESBTPPaiement::factory()->pour($this->ancienneInscription)->create(['montant' => 10000]);
-        ESBTPPaiement::factory()->pour($this->inscriptionCourante)->create(['montant' => 20000]);
-        ESBTPPaiement::factory()->pour($this->inscriptionCourante)->reliquat()->create(['montant' => 30000]);
+        $ancien = ESBTPPaiement::factory()->pour($this->ancienneInscription)->create(['montant' => 10000]);
+        $courant = ESBTPPaiement::factory()->pour($this->inscriptionCourante)->create(['montant' => 20000]);
+        $reporte = ESBTPPaiement::factory()->pour($this->inscriptionCourante)->reliquat()->create(['montant' => 30000]);
+        $ids = [$ancien->id, $courant->id, $reporte->id];
 
         $comptes = app(PaymentFilterService::class);
         $req = fn (string $portee) => Request::create('/esbtp/paiements', 'GET', ['portee' => $portee]);
 
-        $this->assertSame(3, $comptes->baseFilteredQuery($req('tous'))->count());
-        $this->assertSame(1, $comptes->baseFilteredQuery($req('annee'))->count());
-        $this->assertSame(2, $comptes->baseFilteredQuery($req('arrieres'))->count());
+        $this->assertSame(3, $comptes->baseFilteredQuery($req('tous'))->whereIn('esbtp_paiements.id', $ids)->count());
+        $this->assertSame(1, $comptes->baseFilteredQuery($req('annee'))->whereIn('esbtp_paiements.id', $ids)->count());
+        $this->assertSame(2, $comptes->baseFilteredQuery($req('arrieres'))->whereIn('esbtp_paiements.id', $ids)->count());
     }
 
     public function test_l_ancienne_dette_non_reportee_est_proposee_sans_inscription_nouvelle(): void
