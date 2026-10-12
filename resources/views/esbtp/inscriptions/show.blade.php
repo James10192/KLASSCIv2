@@ -2432,11 +2432,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                                         </td>
                                                         <td>
                                                             <div class="btn-group">
-                                                                @can('paiements.create')
+                                                                @canany(['paiements.create', 'paiements.create.non_cash', 'paiements.create.mobile_money'])
                                                                     <button class="btn btn-sm btn-success"
-                                                                            data-bs-toggle="modal"
-                                                                            data-bs-target="#reliquatPaymentModal"
-                                                                            onclick="prepareReliquatPaymentModal({{ $reliquat->id }}, {{ $reliquat->solde_restant }}, {{ json_encode($reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A') }})"
+                                                                            onclick="window.dispatchEvent(new CustomEvent('reliquat-caisse-ouvrir', { detail: { reliquatId: {{ $reliquat->id }} } }))"
                                                                             title="Payer ce reliquat">
                                                                         <i class="fas fa-credit-card"></i>
                                                                     </button>
@@ -2740,8 +2738,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 
                                                     <!-- Actions reliquat -->
                                                     <div class="financial-actions">
-                                                        @can('paiements.create')
-                                                            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#reliquatPaymentModal" onclick="prepareReliquatPaymentModal({{ $reliquat->id }}, {{ $reliquat->solde_restant }}, {{ json_encode($reliquat->fraisSubscription->fraisConfiguration->name ?? $reliquat->fraisSubscription->fraisCategory->name ?? 'N/A') }})" title="Payer ce reliquat">
+                                                        @canany(['paiements.create', 'paiements.create.non_cash', 'paiements.create.mobile_money'])
+                                                            <button class="btn btn-sm btn-success" onclick="window.dispatchEvent(new CustomEvent('reliquat-caisse-ouvrir', { detail: { reliquatId: {{ $reliquat->id }} } }))" title="Payer ce reliquat">
                                                                 <i class="fas fa-credit-card me-1"></i>Payer reliquat
                                                             </button>
                                                         @endcan
@@ -3240,179 +3238,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                         transition: all 0.2s;
                     ">
                         <i class="fas fa-check-double me-1"></i>Valider définitivement
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal pour paiement de reliquat -->
-<div class="modal fade" id="reliquatPaymentModal" tabindex="-1" aria-labelledby="reliquatPaymentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content" style="border-radius: 15px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
-            <div class="modal-header" style="background: linear-gradient(135deg, #198754 0%, #157347 100%); color: white; border-radius: 15px 15px 0 0; padding: 1.5rem; border: none;">
-                <h5 class="modal-title fw-bold" id="reliquatPaymentModalLabel">
-                    <i class="fas fa-history me-2"></i>Paiement de Reliquat
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="reliquatPaymentForm" method="POST" action="{{ route('esbtp.reliquats.pay') }}">
-                @csrf
-                <input type="hidden" id="reliquat_id" name="reliquat_id">
-                <div class="modal-body" style="padding: 2rem;">
-                    <!-- Alert moderne -->
-                    <div style="
-                        background: linear-gradient(135deg, #d1f4e0 0%, #e8f8f0 100%);
-                        border-left: 4px solid #198754;
-                        border-radius: 10px;
-                        padding: 1rem 1.25rem;
-                        margin-bottom: 1.5rem;
-                    ">
-                        <div class="d-flex align-items-start gap-3">
-                            <div style="
-                                width: 40px;
-                                height: 40px;
-                                border-radius: 50%;
-                                background: linear-gradient(135deg, #198754, #157347);
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                color: white;
-                                flex-shrink: 0;
-                            ">
-                                <i class="fas fa-info-circle"></i>
-                            </div>
-                            <div style="flex-grow: 1;">
-                                <div style="color: #0f5132; font-weight: 500; margin-bottom: 0.25rem;">Paiement d'arrières</div>
-                                <div style="color: #0a3622; font-size: 0.9rem;">
-                                    Vous êtes sur le point de payer un reliquat de l'année précédente.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Carte détail du reliquat -->
-                    <div style="
-                        background: linear-gradient(135deg, #fff8dc 0%, #fffaed 100%);
-                        border: 2px solid #ffc107;
-                        border-radius: 12px;
-                        padding: 1.5rem;
-                        margin-bottom: 1.5rem;
-                        box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
-                    ">
-                        <div class="d-flex align-items-start gap-3">
-                            <div style="
-                                width: 50px;
-                                height: 50px;
-                                border-radius: 50%;
-                                background: linear-gradient(135deg, #ffc107, #ffb300);
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                color: white;
-                                font-size: 1.25rem;
-                                flex-shrink: 0;
-                            ">
-                                <i class="fas fa-receipt"></i>
-                            </div>
-                            <div style="flex-grow: 1;">
-                                <h6 style="color: #664d03; font-weight: 700; margin-bottom: 0.75rem; font-size: 1rem;">
-                                    Détail du Reliquat
-                                </h6>
-                                <div class="row">
-                                    <div class="col-md-6 mb-2">
-                                        <div style="font-size: 0.85rem; color: #997404; margin-bottom: 0.25rem;">Frais concerné</div>
-                                        <div style="font-weight: 600; color: #664d03;" id="reliquat_frais_name">-</div>
-                                    </div>
-                                    <div class="col-md-6 mb-2">
-                                        <div style="font-size: 0.85rem; color: #997404; margin-bottom: 0.25rem;">Montant à payer</div>
-                                        <div style="
-                                            background: rgba(220, 53, 69, 0.1);
-                                            border: 2px solid #dc3545;
-                                            border-radius: 8px;
-                                            padding: 0.5rem 0.75rem;
-                                            display: inline-block;
-                                        ">
-                                            <span id="reliquat_amount" style="font-weight: 700; color: #dc3545; font-size: 1.25rem;">0</span>
-                                            <span style="font-weight: 600; color: #dc3545; margin-left: 0.25rem;">FCFA</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Formulaire -->
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label for="reliquat_montant" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
-                                <i class="fas fa-coins me-1" style="color: #198754;"></i>
-                                Montant à payer <span class="text-danger">*</span>
-                            </label>
-                            <div class="input-group">
-                                <span class="input-group-text" style="background: linear-gradient(135deg, #d1f4e0, #e8f8f0); border: 2px solid #198754; border-right: none;">
-                                    <i class="fas fa-dollar-sign" style="color: #198754;"></i>
-                                </span>
-                                <input type="number" class="form-control" id="reliquat_montant" name="montant" min="1" step="1" required
-                                       style="border: 2px solid #198754; border-left: none; border-right: none; font-weight: 600; color: #198754;">
-                                <span class="input-group-text" style="background: linear-gradient(135deg, #d1f4e0, #e8f8f0); border: 2px solid #198754; border-left: none; font-weight: 600; color: #198754;">
-                                    FCFA
-                                </span>
-                            </div>
-                            <div class="form-text" style="font-size: 0.8rem; color: #6c757d;">
-                                <i class="fas fa-info-circle me-1"></i>Montant minimum: 1 FCFA
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="reliquat_mode_paiement" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
-                                <i class="fas fa-credit-card me-1" style="color: #198754;"></i>
-                                Mode de paiement <span class="text-danger">*</span>
-                            </label>
-                            <div style="position: relative;">
-                                <i class="fas fa-wallet" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #198754; z-index: 10;"></i>
-                                <select class="form-select" id="reliquat_mode_paiement" name="mode_paiement" required
-                                        style="padding-left: 2.75rem; border: 2px solid #198754; border-radius: 8px; font-weight: 500; color: #198754;">
-                                    <option value="">Sélectionnez un mode</option>
-                                    <option value="especes">Espèces</option>
-                                    <option value="cheque">Chèque</option>
-                                    <option value="virement">Virement bancaire</option>
-                                    <option value="mobile_money">Mobile Money</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-12">
-                            <label for="reliquat_notes" class="form-label fw-semibold" style="color: #2d3748; font-size: 0.9rem;">
-                                <i class="fas fa-comment-dots me-1" style="color: #6c757d;"></i>
-                                Notes (optionnel)
-                            </label>
-                            <textarea class="form-control" id="reliquat_notes" name="notes" rows="3"
-                                      placeholder="Notes complémentaires sur ce paiement..."
-                                      style="border: 2px solid #dee2e6; border-radius: 8px; resize: none;"></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer" style="background: #f8f9fa; border-radius: 0 0 15px 15px; padding: 1.25rem 2rem; border: none;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="
-                        padding: 0.65rem 1.5rem;
-                        border-radius: 8px;
-                        font-weight: 600;
-                        border: 2px solid #6c757d;
-                    ">
-                        <i class="fas fa-times me-2"></i>Annuler
-                    </button>
-                    <button type="submit" class="btn btn-success" style="
-                        padding: 0.65rem 1.5rem;
-                        border-radius: 8px;
-                        font-weight: 600;
-                        background: linear-gradient(135deg, #198754, #157347);
-                        border: none;
-                        box-shadow: 0 4px 12px rgba(25, 135, 84, 0.3);
-                    ">
-                        <i class="fas fa-credit-card me-2"></i>Confirmer le paiement
                     </button>
                 </div>
             </form>
@@ -4877,22 +4702,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
             modal.show();
         };
 
-        // Fonction pour préparer le modal de paiement de reliquat
-        window.prepareReliquatPaymentModal = function(reliquatId, montantRestant, nomFrais) {
-            debugLog('🔄 Préparation modal paiement reliquat:', { reliquatId, montantRestant, nomFrais });
-
-            // Remplir les données du reliquat
-            document.getElementById('reliquat_id').value = reliquatId;
-            document.getElementById('reliquat_frais_name').textContent = nomFrais;
-            document.getElementById('reliquat_amount').textContent = new Intl.NumberFormat('fr-FR').format(montantRestant);
-            document.getElementById('reliquat_montant').value = montantRestant;
-            document.getElementById('reliquat_montant').max = montantRestant;
-
-            // Réinitialiser les autres champs
-            document.getElementById('reliquat_mode_paiement').value = '';
-            document.getElementById('reliquat_notes').value = '';
-        };
-
         // Fonction pour préparer le modal d'édition de souscription (SuperAdmin)
         window.prepareEditSubscriptionModal = function(subscriptionId, categoryName, currentAmount) {
             debugLog('✏️ Préparation modal édition souscription:', { subscriptionId, categoryName, currentAmount });
@@ -5111,7 +4920,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
     $(document).ready(function() {
         protectFormAgainstDoubleClick('#paymentForm', '#paymentModal');              // Modal associer un paiement
         protectFormAgainstDoubleClick('#validationForm', '#validationModal');        // Modal validation définitive
-        protectFormAgainstDoubleClick('#reliquatPaymentForm', '#reliquatPaymentModal'); // Modal paiement reliquat
         protectFormAgainstDoubleClick('#subscriptionForm', '#subscriptionModal');    // Modal souscription optionnel
 
         // ========================================
@@ -5195,81 +5003,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 console.log('  ✅ Validation OK - Soumission autorisée');
             });
         }
-
-        // ========================================
-        // VALIDATION MONTANT PAIEMENT - RELIQUATPAYMENTMODAL
-        // ========================================
-        const reliquatMontantInput = document.getElementById('reliquat_montant');
-        const reliquatPaymentForm = document.getElementById('reliquatPaymentForm');
-
-        // Créer un élément pour afficher le message de validation
-        if (reliquatMontantInput && !document.getElementById('reliquat-montant-validation-message')) {
-            const messageDiv = document.createElement('div');
-            messageDiv.id = 'reliquat-montant-validation-message';
-            messageDiv.style.cssText = 'margin-top: 0.5rem; font-size: 0.875rem; display: none;';
-            reliquatMontantInput.closest('.col-md-6').appendChild(messageDiv);
-        }
-
-        // Validation en temps réel sur l'input montant reliquat
-        if (reliquatMontantInput) {
-            reliquatMontantInput.addEventListener('input', function() {
-                const montantSaisi = parseFloat(this.value) || 0;
-                const montantMax = parseFloat(this.getAttribute('max')) || Infinity;
-                const messageDiv = document.getElementById('reliquat-montant-validation-message');
-
-                if (montantSaisi > montantMax && montantMax !== Infinity) {
-                    // Afficher le message d'erreur
-                    if (messageDiv) {
-                        messageDiv.style.display = 'block';
-                        messageDiv.innerHTML = `
-                            <div style="
-                                background: linear-gradient(135deg, #f8d7da 0%, #f5c2c7 100%);
-                                border-left: 4px solid #dc3545;
-                                border-radius: 8px;
-                                padding: 0.75rem 1rem;
-                            ">
-                                <div style="display: flex; align-items: start; gap: 0.5rem;">
-                                    <i class="fas fa-exclamation-triangle" style="color: #dc3545; margin-top: 2px;"></i>
-                                    <div style="flex: 1; color: #842029;">
-                                        <strong>Montant trop élevé !</strong><br>
-                                        Le montant saisi (${montantSaisi.toLocaleString('fr-FR')} FCFA) dépasse le solde restant (${montantMax.toLocaleString('fr-FR')} FCFA).
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }
-
-                    // Validation HTML5
-                    this.setCustomValidity(`Le montant ne peut pas dépasser ${montantMax.toLocaleString('fr-FR')} FCFA`);
-                } else {
-                    // Masquer le message d'erreur
-                    if (messageDiv) {
-                        messageDiv.style.display = 'none';
-                    }
-
-                    // Réinitialiser la validation HTML5
-                    this.setCustomValidity('');
-                }
-            });
-        }
-
-        // Validation finale avant soumission du formulaire reliquat
-        if (reliquatPaymentForm) {
-            reliquatPaymentForm.addEventListener('submit', function(e) {
-                const montantSaisi = parseFloat(reliquatMontantInput.value) || 0;
-                const montantMax = parseFloat(reliquatMontantInput.getAttribute('max')) || Infinity;
-
-                if (montantSaisi > montantMax && montantMax !== Infinity) {
-                    e.preventDefault();
-                    const resetFn = $('#reliquatPaymentForm').data('resetSubmitting');
-                    if (resetFn) resetFn();
-                    alert(`Le montant saisi (${montantSaisi.toLocaleString('fr-FR')} FCFA) dépasse le solde restant du reliquat (${montantMax.toLocaleString('fr-FR')} FCFA).`);
-                    reliquatMontantInput.focus();
-                    return false;
-                }
-            });
-        }
-    });
 
     // ── Désabonnement frais optionnel ─────────────────────────────────────
     window.prepareUnsubscribeModal = function(categoryId, categoryName, montantSouscrit, montantPaye) {
