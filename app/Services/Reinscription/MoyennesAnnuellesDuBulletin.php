@@ -113,16 +113,16 @@ class MoyennesAnnuellesDuBulletin
     /**
      * La moyenne sur laquelle la reinscription decide, et d'ou elle vient.
      *
-     * BTS : la moyenne que le conseil du bulletin retient (annuelle ou semestre 2,
-     * selon `bulletin_btsN_council_average_source`). Sans elle — semestre sans
-     * note, notes hors evaluation — le bulletin n'imprime pas de decision ; la
-     * reinscription doit en proposer une, retombe sur `$repli` (sa moyenne des
-     * notes brutes), le DIT dans `source` et le journalise une fois par classe.
+     * BTS : la moyenne retenue par le conseil (annuelle, S2 ou les deux).
+     * Si la décision est automatique au seuil, une moyenne obligatoire absente
+     * interdit tout passage : aucun repli sur les notes brutes n'est autorisé.
+     * Le repli historique reste seulement pour les conseils manuels, sauf
+     * mode « les deux » qui requiert toujours les deux moyennes.
      *
      * LMD : `$repli`, inchange (rule `lmd-bts-bulletin-separation`).
      *
      * @param  array|null  $annuelle  ligne de `pour()` deja calculee pour le lot, sinon relue ici
-     * @return array{moyenne: float|int, source: string, semestres: array|null}
+     * @return array{moyenne: float|int|null, source: string, semestres: array|null}
      */
     public function decision(?ESBTPInscription $inscription, ESBTPClasse $classe, ?array $annuelle, float|int $repli, bool $sansNote): array
     {
@@ -135,9 +135,21 @@ class MoyennesAnnuellesDuBulletin
         }
 
         if (($annuelle['moyenne_decision'] ?? null) !== null) {
-            $source = $annuelle['source_conseil'] === 'annual' ? 'bulletin_annuel' : 'bulletin_semestre2';
+            $source = match ($annuelle['source_conseil']) {
+                BtsBulletinPolicy::SOURCE_BOTH => 'bulletin_deux_moyennes',
+                'annual' => 'bulletin_annuel',
+                default => 'bulletin_semestre2',
+            };
 
             return ['moyenne' => $annuelle['moyenne_decision'], 'source' => $source, 'semestres' => $annuelle];
+        }
+
+        // Le seul S2 (ou une moyenne brute de notes) ne suffit jamais lorsque
+        // le conseil automatique demande l'annuelle. C'était le faux passage :
+        // le bulletin refusait de trancher, la réinscription admettait quand même.
+        $sourceConseil = $annuelle['source_conseil'] ?? $this->sourceDuConseil($classe);
+        if ($sourceConseil === BtsBulletinPolicy::SOURCE_BOTH || $this->seuilConseilAutomatique($classe) !== null) {
+            return ['moyenne' => null, 'source' => 'bulletin_incomplet', 'semestres' => $annuelle];
         }
 
         $source = $sansNote ? 'aucune_note' : 'notes_brutes';
@@ -177,6 +189,7 @@ class MoyennesAnnuellesDuBulletin
         $anneeId = (int) $premiere->annee_universitaire_id;
         $poids = $this->bulletins->getSemesterWeights($classe);
         $sourceConseil = $this->sourceDuConseil($classe);
+        $seuilConseil = $this->seuilConseilAutomatique($classe);
 
         // La classe qui porte chaque semestre, eleve par eleve.
         $classesDuSemestre = [];
@@ -210,11 +223,33 @@ class MoyennesAnnuellesDuBulletin
                 'semestre2' => $s2,
                 'poids' => ['semester1' => (float) $poids['semester1'], 'semester2' => (float) $poids['semester2']],
                 'source_conseil' => $sourceConseil,
+                'seuil_conseil' => $seuilConseil,
                 'moyenne_decision' => BtsBulletinPolicy::decisionAverage($sourceConseil, $s2, $annuelle),
             ];
         }
 
         return $resultat;
+    }
+
+    /**
+     * Le seuil du conseil prime aussi sur la réinscription, quelle que soit
+     * la moyenne retenue (annuelle, S2 ou les deux). Sans mode automatique,
+     * seules les règles de réinscription historiques s'appliquent.
+     */
+    private function seuilConseilAutomatique(ESBTPClasse $classe): ?float
+    {
+
+        $annee = $classe->relationLoaded('niveau') ? $classe->niveau?->year : $classe->niveau()->value('year');
+        if (! in_array((int) $annee, [1, 2], true)) {
+            return null;
+        }
+
+        $prefix = "bulletin_bts{$annee}_council_";
+        if (SettingsHelper::get($prefix.'mode', BtsBulletinPolicy::defaultFor($prefix.'mode')) !== 'threshold') {
+            return null;
+        }
+
+        return (float) SettingsHelper::get($prefix.'threshold', BtsBulletinPolicy::defaultFor($prefix.'threshold') ?? 10);
     }
 
     /** Le reglage que `BulletinService::automaticCouncilDecision()` lit, pour ce niveau. */

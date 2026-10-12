@@ -15,6 +15,7 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPNote;
 use App\Models\User;
 use App\Services\ReeinscriptionService;
+use App\Services\Reinscription\MoyennesAnnuellesDuBulletin;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -203,6 +204,121 @@ class AnalyseDecisionsReinscriptionTest extends TestCase
         $this->assertSame('passage', $analyse['decision']);
     }
 
+    public function test_le_choix_deux_moyennes_refuse_le_passage_si_annuelle_sous_le_seuil(): void
+    {
+        [$etudiant, $inscription] = $this->eleveAvecBulletins(7.41, 10.24, noteBrute: 14.0);
+        SettingsHelper::setOrCreate('bulletin_bts1_council_average_source', 'both');
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+
+        $this->assertSame('bulletin_deux_moyennes', $analyse['moyenne_source']);
+        $this->assertEqualsWithDelta(9.30, $analyse['moyenne_generale'], 0.01);
+        $this->assertNotSame('passage', $analyse['decision']);
+        $this->assertFalse($analyse['peut_passer']);
+
+        $liste = app(ReeinscriptionService::class)->getEtudiantsParDecision('2025-2026');
+        $this->assertNotContains($etudiant->id, collect($liste['passages'])->pluck('etudiant.id')->all());
+    }
+
+    public function test_le_choix_deux_moyennes_refuse_le_passage_si_s2_sous_le_seuil(): void
+    {
+        [, $inscription] = $this->eleveAvecBulletins(14.0, 8.0, noteBrute: 16.0);
+        SettingsHelper::setOrCreate('bulletin_bts1_council_average_source', 'both');
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+
+        $this->assertSame('bulletin_deux_moyennes', $analyse['moyenne_source']);
+        $this->assertEqualsWithDelta(8.0, $analyse['moyenne_generale'], 0.01);
+        $this->assertNotSame('passage', $analyse['decision']);
+    }
+
+    public function test_le_choix_deux_moyennes_admet_si_les_deux_atteignent_le_seuil(): void
+    {
+        [, $inscription] = $this->eleveAvecBulletins(11.0, 13.0, noteBrute: 7.0);
+        SettingsHelper::setOrCreate('bulletin_bts1_council_average_source', 'both');
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+
+        $this->assertSame('bulletin_deux_moyennes', $analyse['moyenne_source']);
+        $this->assertSame('passage', $analyse['decision']);
+        $this->assertTrue($analyse['peut_passer']);
+    }
+
+    public function test_une_annuelle_sous_le_seuil_refuse_le_passage_meme_si_le_s2_est_bon_et_la_regle_academique_plus_basse(): void
+    {
+        [, $inscription] = $this->eleveAvecBulletins(7.41, 10.24, noteBrute: 17.0);
+        SettingsHelper::setOrCreate('bulletin_bts1_council_mode', 'threshold');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_average_source', 'annual');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_threshold', '10');
+        ESBTPRegleAcademique::where('niveau', $inscription->classe->niveau->name)
+            ->where('filiere', $inscription->classe->filiere->name)
+            ->update(['moyenne_passage' => 9]);
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+        $this->assertSame('bulletin_annuel', $analyse['moyenne_source']);
+        $this->assertEqualsWithDelta(9.30, $analyse['moyenne_generale'], 0.01);
+        $this->assertFalse($analyse['peut_passer']);
+        $this->assertSame('redoublement', $analyse['decision']);
+    }
+
+    public function test_une_annuelle_indisponible_ne_declenche_aucun_passage_avec_bon_s2_en_mode_annuel(): void
+    {
+        [$etudiant, $inscription] = $this->eleveAvecBulletins(12.0, 13.0, noteBrute: 18.0);
+        ESBTPBulletin::where('etudiant_id', $etudiant->id)->where('periode', 'semestre1')->delete();
+        SettingsHelper::setOrCreate('bulletin_bts1_council_mode', 'threshold');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_average_source', 'annual');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_threshold', '10');
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+
+        $this->assertSame('bulletin_incomplet', $analyse['moyenne_source']);
+        $this->assertNull($analyse['moyenne_generale']);
+        $this->assertFalse($analyse['peut_passer']);
+        $this->assertSame('a_verifier', $analyse['decision']);
+
+        $liste = app(ReeinscriptionService::class)->getEtudiantsParDecision('2025-2026');
+        $this->assertNotContains($etudiant->id, collect($liste['passages'])->pluck('etudiant.id')->all());
+        $this->assertContains($etudiant->id, collect($liste['errors'])->pluck('etudiant.id')->all());
+    }
+
+    public function test_une_annuelle_absente_ne_peut_etre_remplacee_par_les_notes_brutes_en_mode_deux(): void
+    {
+        [, $inscription] = $this->eleveAvecBulletins(12.0, 13.0, noteBrute: 18.0);
+        SettingsHelper::setOrCreate('bulletin_bts1_council_average_source', 'both');
+
+        $decision = app(MoyennesAnnuellesDuBulletin::class)->decision(
+            $inscription,
+            $inscription->classe,
+            [
+                'semestre1' => null,
+                'semestre2' => 13.0,
+                'moyenne' => null,
+                'source_conseil' => 'both',
+                'moyenne_decision' => null,
+            ],
+            18.0,
+            false
+        );
+
+        $this->assertNull($decision['moyenne']);
+        $this->assertSame('bulletin_incomplet', $decision['source']);
+    }
+
+    public function test_le_seuil_du_conseil_est_respecte_pour_la_reinscription_en_mode_deux_moyennes(): void
+    {
+        [, $inscription] = $this->eleveAvecBulletins(11.0, 11.0, noteBrute: 15.0);
+        SettingsHelper::setOrCreate('bulletin_bts1_council_mode', 'threshold');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_average_source', 'both');
+        SettingsHelper::setOrCreate('bulletin_bts1_council_threshold', '12');
+
+        $analyse = app(ReeinscriptionService::class)->analyserSituationEtudiantParInscription($inscription);
+
+        $this->assertEqualsWithDelta(11.0, $analyse['moyenne_generale'], 0.01);
+        $this->assertSame('redoublement', $analyse['decision']);
+        $this->assertFalse($analyse['peut_passer']);
+        $this->assertTrue($analyse['doit_redoubler']);
+    }
+
     /**
      * @return array{0: ESBTPEtudiant, 1: ESBTPInscription}
      */
@@ -215,7 +331,9 @@ class AnalyseDecisionsReinscriptionTest extends TestCase
         SettingsHelper::setOrCreate('bulletin_semester2_weight', '2');
         SettingsHelper::setOrCreate('bulletin_show_attendance_note', '0');
 
-        $etudiant = $this->etudiantInscritEn($anneePrecedente);
+        // Le conseil automatique visé est celui du BTS 1 : le niveau ne
+        // peut pas être tiré aléatoirement entre BTS 1, 2 et 3 par la factory.
+        $etudiant = $this->etudiantInscritEn($anneePrecedente, null, 1);
         $inscription = ESBTPInscription::where('etudiant_id', $etudiant->id)->with(['classe.niveau', 'classe.filiere', 'anneeUniversitaire', 'etudiant'])->firstOrFail();
 
         ESBTPRegleAcademique::create([
@@ -273,12 +391,16 @@ class AnalyseDecisionsReinscriptionTest extends TestCase
         ]);
     }
 
-    private function etudiantInscritEn(ESBTPAnneeUniversitaire $annee, ?ESBTPEtudiant $etudiant = null): ESBTPEtudiant
+    private function etudiantInscritEn(ESBTPAnneeUniversitaire $annee, ?ESBTPEtudiant $etudiant = null, ?int $anneeBts = null): ESBTPEtudiant
     {
         $etudiant ??= ESBTPEtudiant::factory()->create();
 
         $filiere = ESBTPFiliere::factory()->create();
-        $niveau = ESBTPNiveauEtude::factory()->create();
+        $niveau = ESBTPNiveauEtude::factory()->create($anneeBts === null ? [] : [
+            'year' => $anneeBts,
+            'name' => 'BTS '.$anneeBts,
+            'libelle' => 'BTS Année '.$anneeBts,
+        ]);
         $classe = ESBTPClasse::factory()->create([
             'filiere_id' => $filiere->id,
             'niveau_etude_id' => $niveau->id,

@@ -1045,10 +1045,16 @@ class ESBTPBulletinController extends Controller
             $levelYear = $classe?->niveau?->year ?? $classe?->niveauEtude?->year;
             $levelYear = is_numeric($levelYear) ? (int) $levelYear : null;
             $automaticCouncilDecision = null;
+            $seuilAutomatiqueBts = false;
             if ($classe) {
                 $settings = \App\Services\BtsBulletinPolicy::readSettings(
                     fn (string $key, string $default) => \App\Helpers\SettingsHelper::get($key, $default)
                 );
+                $seuilAutomatiqueBts = \App\Services\BtsBulletinPolicy::usesCouncilPolicy(
+                    (bool) $classe->isBTS(),
+                    $levelYear,
+                    $this->bulletinService->normalizePeriode((string) $bulletin->periode)
+                ) && ($settings["bulletin_bts{$levelYear}_council_mode"] ?? 'manual') === 'threshold';
                 $source = \App\Services\BtsBulletinPolicy::councilAverageSource($levelYear, $settings);
                 $decisionAverage = \App\Services\BtsBulletinPolicy::decisionAverage($source, $moyenneSemestre2, $moyenneAnnuelle);
                 $automaticCouncilDecision = \App\Services\BtsBulletinPolicy::councilDecision(
@@ -1061,7 +1067,8 @@ class ESBTPBulletinController extends Controller
             }
             $decisionConseil = \App\Services\BtsBulletinPolicy::displayCouncilDecision(
                 $automaticCouncilDecision,
-                $bulletin->decision_conseil
+                $bulletin->decision_conseil,
+                $seuilAutomatiqueBts
             );
             $councilDecision = [
                 'title' => $this->bulletinService->councilDecisionTitle(

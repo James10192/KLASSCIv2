@@ -2288,18 +2288,28 @@
                         <div class="bc-label">BTS 1, semestre 2</div>
                         <div class="council-grid">
                             <label>Mode
-                                <select class="form-control form-control-modern" name="setting_bulletin_bts1_council_mode">
-                                    @foreach(['manual' => 'Manuel', 'threshold' => 'Selon un seuil'] as $value => $label)
-                                    <option value="{{ $value }}" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_mode', 'manual') === $value ? 'selected' : '' }}>{{ $label }}</option>
-                                    @endforeach
-                                </select>
+                                <x-au-select
+                                    name="setting_bulletin_bts1_council_mode"
+                                    icon="fa-gavel"
+                                    :value="\App\Helpers\SettingsHelper::get('bulletin_bts1_council_mode', 'manual')"
+                                    :placeholder-is-first-option="false"
+                                    :options="['manual' => 'Manuel', 'threshold' => 'Selon un seuil']"
+                                />
                             </label>
-                            <label>Moyenne de décision
-                                @php $_sourceDecisionBts1 = \App\Helpers\SettingsHelper::get('bulletin_bts1_council_average_source', \App\Services\BtsBulletinPolicy::defaultFor('bulletin_bts1_council_average_source')); @endphp
-                                <select class="form-control form-control-modern" name="setting_bulletin_bts1_council_average_source">
-                                    <option value="annual" {{ $_sourceDecisionBts1 === 'annual' ? 'selected' : '' }}>Annuelle avec assiduité</option>
-                                    <option value="semestre2" {{ $_sourceDecisionBts1 === 'semestre2' ? 'selected' : '' }}>Semestre 2 avec assiduité</option>
-                                </select>
+                            <label>Critère d'admission au seuil
+                                <x-au-select
+                                    name="setting_bulletin_bts1_council_average_source"
+                                    icon="fa-graduation-cap"
+                                    :value="\App\Helpers\SettingsHelper::get('bulletin_bts1_council_average_source', \App\Services\BtsBulletinPolicy::defaultFor('bulletin_bts1_council_average_source'))"
+                                    :searchable="false"
+                                    :placeholder-is-first-option="false"
+                                    :options="[
+                                        'annual' => 'Moyenne annuelle uniquement (avec assiduité)',
+                                        'semestre2' => 'Semestre 2 uniquement (avec assiduité)',
+                                        'both' => 'Les deux moyennes doivent atteindre le seuil',
+                                    ]"
+                                />
+                                <small class="bc-desc">Activez d'abord « Selon un seuil » pour une décision automatique. En mode « Les deux », S2 ET moyenne annuelle doivent chacun atteindre le seuil. Si l'une manque, aucune admission automatique n'est prononcée. Le changement de critère nécessite de vérifier les bulletins déjà générés et leurs décisions.</small>
                             </label>
                             <label>Seuil
                                 <input type="number" class="form-control form-control-modern" name="setting_bulletin_bts1_council_threshold" value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_threshold', '10') }}" min="0" max="20" step="0.01">
@@ -2316,11 +2326,13 @@
                         <div class="bc-label">BTS 2, semestre 2</div>
                         <div class="council-grid">
                             <label>Mode
-                                <select class="form-control form-control-modern" name="setting_bulletin_bts2_council_mode">
-                                    @foreach(['manual' => 'Manuel', 'fixed' => 'Texte fixe'] as $value => $label)
-                                    <option value="{{ $value }}" {{ \App\Helpers\SettingsHelper::get('bulletin_bts2_council_mode', 'manual') === $value ? 'selected' : '' }}>{{ $label }}</option>
-                                    @endforeach
-                                </select>
+                                <x-au-select
+                                    name="setting_bulletin_bts2_council_mode"
+                                    icon="fa-gavel"
+                                    :value="\App\Helpers\SettingsHelper::get('bulletin_bts2_council_mode', 'manual')"
+                                    :placeholder-is-first-option="false"
+                                    :options="['manual' => 'Manuel', 'fixed' => 'Texte fixe']"
+                                />
                             </label>
                             <label>Texte fixe
                                 <input type="text" class="form-control form-control-modern" name="setting_bulletin_bts2_council_fixed_text" value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts2_council_fixed_text', "Redouble en cas d'échec à l'examen du BTS") }}" placeholder="Texte de décision">
