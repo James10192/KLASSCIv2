@@ -56,6 +56,8 @@ class EtatFinancierParFrais
             ->groupBy('frais_subscription_id')
             ->map(fn ($group) => $group->last());
 
+        $souscriptionsParId = $souscriptions->keyBy('id');
+
         $lignesSources = $souscriptions
             ->map(function (ESBTPFraisSubscription $souscription) use ($paye, $parInscription, $reports) {
                 $inscription = $parInscription->get($souscription->inscription_id);
@@ -94,9 +96,9 @@ class EtatFinancierParFrais
         // Les reliquats ne sont pas de nouveaux frais annuels. Leur ligne
         // retrace seulement où se trouve maintenant la créance d'origine.
         // Source (du diminué) + report (du transféré) = montant initial.
-        $lignesReports = $reports->map(function (ESBTPReliquatDetail $report) use ($parInscription) {
+        $lignesReports = $reports->map(function (ESBTPReliquatDetail $report) use ($parInscription, $souscriptionsParId) {
             $inscription = $parInscription->get($report->inscription_source_id);
-            $frais = $report->fraisSubscription?->fraisCategory;
+            $frais = $souscriptionsParId->get($report->frais_subscription_id)?->fraisCategory;
             if (! $inscription || ! $frais) {
                 return null;
             }
