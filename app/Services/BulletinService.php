@@ -3182,7 +3182,6 @@ class BulletinService
     private function collectAnnualAveragesForClasse(int $classeId, int $anneeUniversitaireId): array
     {
         $classe = ESBTPClasse::with(['filiere', 'niveau', 'niveauEtude'])->find($classeId);
-        $weights = $this->getSemesterWeights($classe);
         $averages = [];
         $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, 'annuel');
         $s1Stored = [];
@@ -3215,6 +3214,10 @@ class BulletinService
             );
         }
 
+        $semesterWeightsByClasse = [];
+        $specialityClasses = ESBTPClasse::whereIn('id', array_keys($s2Stored))
+            ->with(['niveau', 'niveauEtude'])
+            ->get()->keyBy('id');
         foreach ($etudiantIds as $etudiantId) {
             $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
             $classeIdS1 = (int) ($classMap['semestre1_classe_id'] ?? $classeId);
@@ -3233,7 +3236,8 @@ class BulletinService
             );
             // En mode rang sur classe d'origine, les poids viennent toujours
             // de la spécialité S2 de chaque élève, jamais de la classe TC.
-            $studentWeights = $this->getSemesterWeights(ESBTPClasse::find($classeIdS2) ?? $classe);
+            $studentWeights = $semesterWeightsByClasse[$classeIdS2]
+                ??= $this->getSemesterWeights($specialityClasses->get($classeIdS2) ?? $classe);
             $annual = $this->calculateConfiguredAnnualAverage(
                 $s1,
                 $s2,
