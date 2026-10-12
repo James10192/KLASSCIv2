@@ -9,6 +9,11 @@ use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
+use App\Models\ESBTPReliquatDetail;
+use App\Models\User;
+use App\Http\Controllers\Comptabilite\EtatFinancierController;
+use App\Services\Frais\EtatFinancierParFrais;
+use ReflectionMethod;
 use App\Services\PaymentFilterService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\Request;
@@ -175,4 +180,58 @@ class PerimetreAnneeDettePaiementsTest extends TestCase
         $this->assertSame(0, $situation['reliquats']->count());
         $this->assertSame($avant, ESBTPInscription::count());
     }
+
+    public function test_etat_cumule_inclut_les_inscriptions_terminees_sans_inclure_les_annulations(): void
+    {
+        $this->ancienneInscription->update(['status' => 'terminée']);
+        $annulee = ESBTPInscription::factory()->create([
+            'annee_universitaire_id' => $this->ancienneInscription->annee_universitaire_id,
+            'status' => 'annulée',
+        ]);
+
+        $selection = new ReflectionMethod(EtatFinancierController::class, 'inscriptions');
+        $controleur = app(EtatFinancierController::class);
+        $toutes = $selection->invoke($controleur, null, '', null);
+        $courante = $selection->invoke($controleur, $this->anneeCourante, '', null);
+
+        $this->assertTrue($toutes->contains('id', $this->ancienneInscription->id));
+        $this->assertFalse($toutes->contains('id', $annulee->id));
+        $this->assertFalse($courante->contains('id', $this->ancienneInscription->id));
+    }
+
+    public function test_etat_par_frais_compte_une_creance_reportee_une_seule_fois(): void
+    {
+        $this->ancienneInscription->update(['status' => 'terminée']);
+        $frais = ESBTPFraisCategory::factory()->create();
+        $souscription = ESBTPFraisSubscription::factory()->create([
+            'inscription_id' => $this->ancienneInscription->id,
+            'frais_category_id' => $frais->id,
+            'amount' => 100000,
+            'is_active' => true,
+        ]);
+
+        ESBTPReliquatDetail::create([
+            'inscription_source_id' => $this->ancienneInscription->id,
+            'inscription_destination_id' => $this->inscriptionCourante->id,
+            'frais_subscription_id' => $souscription->id,
+            'montant_attendu' => 100000,
+            'montant_paye' => 0,
+            'montant_reliquat' => 60000,
+            'montant_regle' => 20000,
+            'statut' => 'partiellement_regle',
+            'date_creation' => now(),
+            'created_by' => User::factory()->create()->id,
+        ]);
+
+        $sources = ESBTPInscription::query()->whereKey($this->ancienneInscription->id)
+            ->with(['etudiant', 'classe', 'anneeUniversitaire'])->get();
+        $lignes = app(EtatFinancierParFrais::class)->construire($sources, $frais->id);
+
+        $this->assertCount(2, $lignes);
+        $this->assertEquals(100000, $lignes->sum('du'));
+        $this->assertEquals(20000, $lignes->sum('paye'));
+        $this->assertEquals(80000, $lignes->sum('reste'));
+        $this->assertTrue($lignes->contains(fn ($ligne) => str_contains($ligne['frais'], 'reliquat reporté')));
+    }
+
 }
