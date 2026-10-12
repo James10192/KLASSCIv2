@@ -4985,6 +4985,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                 console.log('  ✅ Validation OK - Soumission autorisée');
             });
         }
+    });
 
     // ── Désabonnement frais optionnel ─────────────────────────────────────
     window.prepareUnsubscribeModal = function(categoryId, categoryName, montantSouscrit, montantPaye) {
