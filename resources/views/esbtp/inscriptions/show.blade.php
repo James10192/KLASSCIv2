@@ -14,7 +14,6 @@
 #validationModal.modal,
 #subscriptionModal.modal,
 #transferModal.modal,
-#reliquatPaymentModal.modal,
 #affectationClasseModal.modal {
     z-index: 9999 !important;
     backdrop-filter: none !important;
@@ -25,7 +24,6 @@
 #validationModal .modal-dialog,
 #subscriptionModal .modal-dialog,
 #transferModal .modal-dialog,
-#reliquatPaymentModal .modal-dialog,
 #affectationClasseModal .modal-dialog {
     z-index: 10000 !important;
     /* position: relative retiré pour permettre le centrage avec modal-dialog-centered */
@@ -37,7 +35,6 @@
 #validationModal .modal-content,
 #subscriptionModal .modal-content,
 #transferModal .modal-content,
-#reliquatPaymentModal .modal-content,
 #affectationClasseModal .modal-content {
     z-index: 10001 !important;
     backdrop-filter: none !important;
@@ -53,7 +50,6 @@
 #validationModal.modal.fade .modal-dialog,
 #subscriptionModal.modal.fade .modal-dialog,
 #transferModal.modal.fade .modal-dialog,
-#reliquatPaymentModal.modal.fade .modal-dialog,
 #affectationClasseModal.modal.fade .modal-dialog {
     transition: none !important;
     /* transform: none retiré pour permettre modal-dialog-centered de fonctionner */
@@ -64,7 +60,6 @@
 #validationModal.modal.show,
 #subscriptionModal.modal.show,
 #transferModal.modal.show,
-#reliquatPaymentModal.modal.show,
 #affectationClasseModal.modal.show {
     display: block !important;
     visibility: visible !important;
@@ -95,14 +90,12 @@ body.modal-open .card:hover {
 #validationModal, #validationModal *,
 #subscriptionModal, #subscriptionModal *,
 #transferModal, #transferModal *,
-#reliquatPaymentModal, #reliquatPaymentModal *,
 #editSubscriptionModal, #editSubscriptionModal *,
 #affectationClasseModal, #affectationClasseModal *,
 #paymentModal:hover, #paymentModal *:hover,
 #validationModal:hover, #validationModal *:hover,
 #subscriptionModal:hover, #subscriptionModal *:hover,
 #transferModal:hover, #transferModal *:hover,
-#reliquatPaymentModal:hover, #reliquatPaymentModal *:hover,
 #editSubscriptionModal:hover, #editSubscriptionModal *:hover,
 #affectationClasseModal:hover, #affectationClasseModal *:hover {
     backdrop-filter: none !important;
@@ -115,7 +108,6 @@ body:has(#paymentModal.show) .modal-backdrop,
 body:has(#validationModal.show) .modal-backdrop,
 body:has(#subscriptionModal.show) .modal-backdrop,
 body:has(#transferModal.show) .modal-backdrop,
-body:has(#reliquatPaymentModal.show) .modal-backdrop,
 body:has(#editSubscriptionModal.show) .modal-backdrop,
 body:has(#affectationClasseModal.show) .modal-backdrop {
     backdrop-filter: none !important;
@@ -134,8 +126,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #subscriptionModal .form-select,
 #transferModal .form-control,
 #transferModal .form-select,
-#reliquatPaymentModal .form-control,
-#reliquatPaymentModal .form-select {
     height: 44px !important;
     display: flex !important;
     align-items: center !important;
@@ -146,7 +136,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #validationModal div[style*="position: relative"],
 #subscriptionModal div[style*="position: relative"],
 #transferModal div[style*="position: relative"],
-#reliquatPaymentModal div[style*="position: relative"] {
     position: relative !important;
 }
 
@@ -155,7 +144,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #validationModal i[style*="position: absolute"],
 #subscriptionModal i[style*="position: absolute"],
 #transferModal i[style*="position: absolute"],
-#reliquatPaymentModal i[style*="position: absolute"] {
     position: absolute !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
@@ -168,7 +156,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #validationModal .form-select,
 #subscriptionModal .form-select,
 #transferModal .form-select,
-#reliquatPaymentModal .form-select {
     border-radius: 8px !important;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
@@ -178,7 +165,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #validationModal .form-select:focus,
 #subscriptionModal .form-select:focus,
 #transferModal .form-select:focus,
-#reliquatPaymentModal .form-select:focus {
     box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15) !important;
     border-color: #0d6efd !important;
     outline: none !important;
@@ -190,7 +176,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #validationModal .form-select,
 #subscriptionModal .form-select,
 #transferModal .form-select,
-#reliquatPaymentModal .form-select {
     /* Style Filament wrapper-like */
     background-color: white !important;
     border: 1px solid rgb(209 213 219) !important; /* gray-300 */
@@ -205,7 +190,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #validationModal .form-select:focus,
 #subscriptionModal .form-select:focus,
 #transferModal .form-select:focus,
-#reliquatPaymentModal .form-select:focus {
     border-color: rgb(59 130 246) !important; /* primary-500 */
     box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15), 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
     outline: none !important;
@@ -216,7 +200,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #validationModal .form-control,
 #subscriptionModal .form-control,
 #transferModal .form-control,
-#reliquatPaymentModal .form-control {
     border: 1px solid rgb(209 213 219) !important;
     border-radius: 8px !important;
     box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
@@ -227,7 +210,6 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
 #validationModal .form-control:focus,
 #subscriptionModal .form-control:focus,
 #transferModal .form-control:focus,
-#reliquatPaymentModal .form-control:focus {
     border-color: rgb(59 130 246) !important;
     box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15), 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
     outline: none !important;
@@ -4473,7 +4455,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
         debugLog('🚀 Initialisation du diagnostic des modals');
         
         // Surveillance simple des événements de modals - Style class-selector
-        const modals = ['paymentModal', 'validationModal', 'subscriptionModal', 'transferModal', 'reliquatPaymentModal'];
+        const modals = ['paymentModal', 'validationModal', 'subscriptionModal', 'transferModal'];
         
         // Événement spécial pour le modal de transfert - réinitialisation complète
         const transferModal = document.getElementById('transferModal');
