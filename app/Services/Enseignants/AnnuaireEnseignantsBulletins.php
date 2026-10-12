@@ -17,7 +17,7 @@ final class AnnuaireEnseignantsBulletins
     public function __construct(private readonly BulletinInlineConfigurationService $configuration) {}
 
     /** @return array<int, array{classe: string, semestre: string, matiere: string, nom: string}> */
-    public function affectations(int $anneeId, ?int $classeId = null, ?int $semestreFiltre = null): array
+    public function affectations(int $anneeId, ?int $classeId = null, ?int $semestreFiltre = null, ?array $classeIds = null, ?array $matiereIds = null): array
     {
         // Les classes peuvent avoir ete rattachees a une autre annee entre-temps :
         // les reglages de bulletins historiques restent une source valable.
@@ -41,6 +41,10 @@ final class AnnuaireEnseignantsBulletins
             // des configurations de chaque semestre, pas apres un scan global.
             $ids = array_values(array_filter($ids, fn (int $id): bool => $id === $classeId));
         }
+        if ($classeIds !== null) {
+            // [] est un perimetre vide, jamais « toutes les classes ».
+            $ids = array_values(array_intersect($ids, array_map('intval', $classeIds)));
+        }
         if ($ids === []) {
             return [];
         }
@@ -60,7 +64,8 @@ final class AnnuaireEnseignantsBulletins
                 );
                 foreach ($professeurs as $matiereId => $nom) {
                     $nom = preg_replace('/\s+/u', ' ', trim((string) $nom));
-                    if (! ctype_digit((string) $matiereId) || (int) $matiereId < 1 || $nom === '') {
+                    if (! ctype_digit((string) $matiereId) || (int) $matiereId < 1 || $nom === ''
+                        || ($matiereIds !== null && ! in_array((int) $matiereId, $matiereIds, true))) {
                         continue;
                     }
                     $matiereIds[] = (int) $matiereId;

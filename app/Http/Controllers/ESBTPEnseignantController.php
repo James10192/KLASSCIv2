@@ -88,11 +88,19 @@ class ESBTPEnseignantController extends Controller
             ->orderByDesc('start_date')->get(['id', 'name', 'start_date', 'end_date']);
         $anneeExportId = ESBTPAnneeUniversitaire::anneeCourante()?->id;
         $classesExport = \App\Models\ESBTPClasse::query()
+            ->orderBy('name')->get(['id', 'name', 'filiere_id', 'niveau_etude_id']);
+        $filieresExport = \App\Models\ESBTPFiliere::query()
+            ->orderBy('name')->get(['id', 'name', 'parent_id']);
+        $niveauxExport = \App\Models\ESBTPNiveauEtude::query()
+            ->orderBy('name')->get(['id', 'name']);
+        // Les matieres sont celles du referentiel, le filtre porte sur les
+        // IDs exacts utilises par les configurations des bulletins.
+        $matieresExport = \App\Models\ESBTPMatiere::query()
             ->orderBy('name')->get(['id', 'name']);
 
         return view(
             "esbtp.enseignants.index",
-            compact("teachers", "specializations", "stats", "anneesUniversitaires", "anneeExportId", "classesExport"),
+            compact("teachers", "specializations", "stats", "anneesUniversitaires", "anneeExportId", "classesExport", "filieresExport", "niveauxExport", "matieresExport"),
         );
     }
 

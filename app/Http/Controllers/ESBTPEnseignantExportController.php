@@ -7,6 +7,10 @@ use App\Domain\Notifications\PhoneFormatter;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPMatiere;
+use App\Models\ESBTPNiveauEtude;
+use App\Services\Enseignants\PerimetreExportEnseignants;
 use App\Services\Enseignants\AnnuaireEnseignantsBulletins;
 use App\Services\ExportRenderer;
 use Illuminate\Http\Request;
@@ -64,15 +68,26 @@ final class ESBTPEnseignantExportController extends Controller
             'status' => ['nullable', 'in:active,inactive'],
             'specialization' => ['nullable', 'string', 'max:150'],
             'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
-            'classe_id' => ['nullable', 'integer', 'exists:esbtp_classes,id'],
+            'classe_id' => ['nullable', 'integer', 'exists:esbtp_classes,id'], // Compatibilite anciens liens
+            'classe_ids' => ['sometimes', 'array', 'max:100'],
+            'classe_ids.*' => ['integer', 'distinct', 'exists:esbtp_classes,id'],
+            'filiere_ids' => ['sometimes', 'array', 'max:100'],
+            'filiere_ids.*' => ['integer', 'distinct', 'exists:esbtp_filieres,id'],
+            'niveau_ids' => ['sometimes', 'array', 'max:100'],
+            'niveau_ids.*' => ['integer', 'distinct', 'exists:esbtp_niveau_etudes,id'],
+            'matiere_ids' => ['sometimes', 'array', 'max:100'],
+            'matiere_ids.*' => ['integer', 'distinct', 'exists:esbtp_matieres,id'],
             'semestre' => ['nullable', 'integer', 'in:1,2'],
             'vue' => ['nullable', 'in:synthese,annuaire,rapprochement,affectations,matieres,specialisations'],
         ]);
 
         $vue = $filters['vue'] ?? 'synthese';
-        if ($max === self::PDF_MAX_ROWS && $vue === 'affectations' && empty($filters['classe_id'])) {
+        $filtrePedagogique = ! empty($filters['classe_id'])
+            || ! empty($filters['classe_ids']) || ! empty($filters['filiere_ids'])
+            || ! empty($filters['niveau_ids']) || ! empty($filters['matiere_ids']);
+        if ($max === self::PDF_MAX_ROWS && $vue === 'affectations' && ! $filtrePedagogique) {
             throw ValidationException::withMessages([
-                'vue' => 'Pour imprimer les matières et les professeurs, choisissez d’abord une classe. Le panorama global est disponible dans la vue Synthèse.',
+                'vue' => 'Pour imprimer les matières et les professeurs, choisissez d’abord une classe, une filière, un niveau ou une matière. Le panorama global est disponible dans la vue Synthèse.',
             ]);
         }
 
@@ -101,7 +116,7 @@ final class ESBTPEnseignantExportController extends Controller
         }
 
         $count = (clone $query)->count();
-        if ($count > $max) {
+        if (! $filtrePedagogique && $count > $max) {
             throw ValidationException::withMessages([
                 'export' => "La liste comporte {$count} enseignants (limite {$max}). Affinez les filtres.",
             ]);
@@ -125,11 +140,23 @@ final class ESBTPEnseignantExportController extends Controller
             ];
         })->all();
 
+        $perimetre = PerimetreExportEnseignants::classes(
+            ESBTPClasse::query()->get(['id', 'filiere_id', 'niveau_etude_id']),
+            ESBTPFiliere::query()->get(['id', 'parent_id']),
+            $filters
+        );
+        // Une selection de matieres sans autre critere utilise toutes les classes
+        // mais reste limitee aux matieres demandees.
+        $matieresChoisies = ! empty($filters['matiere_ids'])
+            ? array_map('intval', $filters['matiere_ids']) : null;
+
         $annuaire = app(AnnuaireEnseignantsBulletins::class);
         $affectations = $annuaire->affectations(
             (int) $annee->id,
             ! empty($filters['classe_id']) ? (int) $filters['classe_id'] : null,
-            ! empty($filters['semestre']) ? (int) $filters['semestre'] : null
+            ! empty($filters['semestre']) ? (int) $filters['semestre'] : null,
+            $perimetre,
+            $matieresChoisies
         );
         // Les noms libres n'ont pas de statut ni de specialisation : ne pas les
         // introduire dans un export filtre sur ces proprietes inconnues.
@@ -137,6 +164,21 @@ final class ESBTPEnseignantExportController extends Controller
         $resultat = $annuaire->consolider(
             $enregistres, $affectations, $inclureManuels, $filters['search'] ?? null
         );
+        if ($filtrePedagogique) {
+            // Une fiche « Enregistre » sans affectation sur le perimetre choisi
+            // ne doit pas figurer dans l'annuaire par specialite ni dans Excel.
+            // Seule une concordance nominale non ambigue deja faite par
+            // consolider() peut lier la fiche au libelle du bulletin.
+            $resultat['rows'] = array_values(array_filter(
+                $resultat['rows'],
+                fn (array $ligne) => ($ligne['origine'] ?? '') !== 'Enregistré'
+            ));
+        }
+        if (count($resultat['rows']) > $max) {
+            throw ValidationException::withMessages([
+                'export' => 'La sélection comporte trop de libellés pour ce format. Affinez les filtres.',
+            ]);
+        }
 
         // Seule la vue de detail imprime chaque affectation. Les autres
         // editions restent lisibles meme si l'etablissement a des milliers de
@@ -176,8 +218,21 @@ final class ESBTPEnseignantExportController extends Controller
             ][$vue],
             'Année universitaire des bulletins' => $annee->display_name,
         ];
+        $choix = [
+            'Classes' => ['classe_ids', ESBTPClasse::class, 'name'],
+            'Filières' => ['filiere_ids', ESBTPFiliere::class, 'name'],
+            'Niveaux' => ['niveau_ids', ESBTPNiveauEtude::class, 'name'],
+            'Matières' => ['matiere_ids', ESBTPMatiere::class, 'name'],
+        ];
+        foreach ($choix as $libelle => [$champ, $modele, $colonne]) {
+            if (empty($filters[$champ])) continue;
+            $noms = $modele::query()->whereIn('id', $filters[$champ])->orderBy($colonne)->pluck($colonne)->all();
+            $labels[$libelle] = implode(', ', array_slice($noms, 0, 8))
+                .(count($noms) > 8 ? ' (+'.(count($noms) - 8).' autres)' : '');
+        }
         if (! empty($filters['classe_id'])) {
-            $labels['Classe des bulletins'] = ESBTPClasse::query()->whereKey($filters['classe_id'])->value('name') ?? 'Classe #'.$filters['classe_id'];
+            $labels['Classe des bulletins (lien ancien)'] = ESBTPClasse::query()
+                ->whereKey($filters['classe_id'])->value('name') ?? 'Classe #'.$filters['classe_id'];
         }
         if (! empty($filters['semestre'])) $labels['Semestre des bulletins'] = 'S'.$filters['semestre'];
         if (! empty($filters['search'])) $labels['Recherche'] = $filters['search'];

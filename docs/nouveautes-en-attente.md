@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1568 · Enseignants > Exporter : choisir plusieurs classes, filières, niveaux d'études et matières avec recherche, sans rechargement ; les PDF/Excel respectent le périmètre croisé demandé.
 - 2026-10-12 · #1567 · Enseignants > Exporter : deux nouveaux documents « Répertoire par spécialisation » et « Matières regroupées » en PDF/Excel, avec professeurs, classes et semestres, et annexe des noms à classer.
 - 2026-10-12 · #1566 · BTS tronc commun : dans Résultats et sur les bulletins, S1 origine + S2 spécialisation, rang annuel de la classe actuelle (ou classe d'origine si choisi dans Paramètres), cohorte annuelle exclusive et liens de bulletins exacts.
 - 2026-10-12 · #1565 · Fiche étudiant > Académique : affichage du S1 en tronc commun et du S2 en spécialité avec la classe d'origine, le bon bilan annuel et le statut « moyenne partielle » si incomplet.
