@@ -118,6 +118,39 @@ class RangAnnuelPariteTroncCommunTest extends TestCase
         $this->assertSame($s2->id, $liens[$a->id] ?? null);
     }
 
+    public function test_double_inscription_historique_n_attribue_pas_deux_classes_annuelles(): void
+    {
+        SettingsHelper::setOrCreate('tronc_commun_rang_annuel_classe', 'specialisation');
+        [$annee, $spec, $a, $b] = $this->scenario();
+        $tcId = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)->resolve(
+            $a->id, $spec->id, $annee->id
+        )['semestre1_classe_id'];
+        $tc = ESBTPClasse::findOrFail($tcId);
+
+        // Même année, deux inscriptions : l'ancienne est clôturée.
+        ESBTPInscription::factory()->create([
+            'etudiant_id' => $a->id,
+            'classe_id' => $tcId,
+            'filiere_id' => $tc->filiere_id,
+            'annee_universitaire_id' => $annee->id,
+            'status' => 'terminée',
+            'workflow_step' => 'etudiant_cree',
+        ]);
+
+        $this->app->forgetScopedInstances();
+        $cohorte = app(\App\Domain\BtsTroncCommun\BtsClassCohortCounter::class);
+        $this->assertEqualsCanonicalizing([$a->id, $b->id],
+            $cohorte->etudiantIdsToutesInscriptions($spec->id, $annee->id, 'annuel'));
+        $this->assertSame([], $cohorte->etudiantIdsToutesInscriptions($tcId, $annee->id, 'annuel'));
+
+        SettingsHelper::setOrCreate('tronc_commun_rang_annuel_classe', 'origine');
+        $this->app->forgetScopedInstances();
+        $cohorte = app(\App\Domain\BtsTroncCommun\BtsClassCohortCounter::class);
+        $this->assertEqualsCanonicalizing([$a->id, $b->id],
+            $cohorte->etudiantIdsToutesInscriptions($tcId, $annee->id, 'annuel'));
+        $this->assertSame([], $cohorte->etudiantIdsToutesInscriptions($spec->id, $annee->id, 'annuel'));
+    }
+
     public function test_moyenne_annuelle_absente_ne_donne_pas_de_rang(): void
     {
         [$annee, $spec, $a] = $this->scenario();
