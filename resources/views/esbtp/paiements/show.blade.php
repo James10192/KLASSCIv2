@@ -4,6 +4,8 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/paiements/mode-reglement.css') }}?v={{ @filemtime(public_path('css/paiements/mode-reglement.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/paiements/avoir-modal.css') }}?v={{ @filemtime(public_path('css/paiements/avoir-modal.css')) ?: '1' }}">
 <style>
 /* ===================================================================
    PAIEMENT SHOW PREMIUM — KLASSCI Design System 2025
@@ -357,6 +359,17 @@
                     <i class="fas fa-edit"></i> Modifier
                 </a>
                 @endcan
+                {{-- Même permission et mêmes états éligibles que sur paiements.index. --}}
+                @can('paiements.correct_mode')
+                @if($paiement->status === 'validé' && ! $paiement->isAvoir() && ! $paiement->reconciliation_locked_at)
+                <button type="button" class="ps-btn ghost" data-bs-toggle="modal"
+                        data-bs-target="#modeReglementModal{{ $paiement->id }}"
+                        title="Corriger le mode de règlement">
+                    <i class="fas fa-right-left"></i> Corriger le mode
+                </button>
+                @endif
+                @endcan
+
                 @can('paiements.reventiler')
                 @if(! $paiement->isAvoir())
                 <a href="{{ route('esbtp.paiements.ventilation.edit', $paiement->id) }}" class="ps-btn ghost" title="Corriger l'imputation sans changer le montant ni le numéro de reçu">
@@ -764,6 +777,8 @@
 
 @include('esbtp.paiements.partials.avoir-modal', ['paiement' => $paiement, 'modalId' => 'modalAvoir'])
 
+@include('esbtp.paiements.partials.mode-reglement-modal', ['paiement' => $paiement])
+
 {{-- Historique d'audit (production audit log) --}}
 <div class="ps-content {{ $psShellMobile ? 'm-only-desktop' : '' }}" style="margin-top: 1.5rem;">
     <x-entity-history :model="$paiement" :limit="10" />
@@ -771,6 +786,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/paiements/mode-reglement.js') }}?v={{ @filemtime(public_path('js/paiements/mode-reglement.js')) ?: '1' }}"></script>
 <script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <script>
 // Copy receipt number on click

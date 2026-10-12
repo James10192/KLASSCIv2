@@ -5,6 +5,8 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <link rel="stylesheet" href="{{ asset('css/cursor-fix.css') }}?v={{ @filemtime(public_path('css/cursor-fix.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/paiements/mode-reglement.css') }}?v={{ @filemtime(public_path('css/paiements/mode-reglement.css')) ?: '1' }}">
+<link rel="stylesheet" href="{{ asset('css/paiements/avoir-modal.css') }}?v={{ @filemtime(public_path('css/paiements/avoir-modal.css')) ?: '1' }}">
 <style>
     /* ═══════════════════════════════════════════════
        Namespace pi-* (paiements.index premium)
@@ -947,17 +949,7 @@
     .pi-table .pi-cell-status .pi-status { min-width: 96px; justify-content: center; white-space: nowrap; }
     .pi-table .pi-cell-actions .paiement-actions-wrapper { min-width: 218px; }
 
-    /* Le modal de correction doit aussi être stylé lorsqu'une ligne vient d'être rafraîchie par AJAX. */
-    .mr-content { border:none; border-radius:16px; overflow:hidden; box-shadow:0 20px 60px rgba(15,23,42,.22); }
-    .mr-head { display:flex; align-items:center; gap:.8rem; padding:1.05rem 1.3rem; background:linear-gradient(135deg,#0a3d8f,#0453cb 60%,#3b7ddb); color:#fff; }
-    .mr-head-ic { width:38px; height:38px; border-radius:11px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .mr-head-t { font-weight:700; font-size:1rem; line-height:1.2; } .mr-head-s { font-size:.76rem; color:rgba(255,255,255,.72); margin-top:.1rem; }
-    .mr-body { padding:1.1rem 1.3rem; } .mr-note { background:#f8fafc; border:1px solid #e2e8f0; border-left:3px solid #0453cb; border-radius:9px; padding:.6rem .8rem; font-size:.8rem; color:#475569; line-height:1.45; margin-bottom:1rem; }
-    .mr-lbl { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:#64748b; margin:.85rem 0 .35rem; } .mr-req { color:#b45309; letter-spacing:0; text-transform:none; font-weight:600; } .mr-actuel { font-weight:700; font-size:.95rem; color:#0f172a; }
-    .mr-input { width:100%; border:1px solid #e2e8f0; border-radius:9px; padding:.5rem .7rem; font-size:.9rem; color:#1e293b; background:#fff; } .mr-input:focus { outline:none; border-color:#0453cb; box-shadow:0 0 0 3px rgba(4,83,203,.1); } .mr-area { resize:vertical; min-height:74px; font-size:.85rem; }
-    .mr-hint { font-size:.72rem; color:#b45309; margin-top:.25rem; } .mr-hint--ok { color:#065f46; }
-    .mr-confirm { display:flex; gap:.8rem; background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:.9rem 1rem; } .mr-confirm-ic { width:34px; height:34px; border-radius:10px; background:#0453cb; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; } .mr-confirm-t { font-weight:700; color:#1e3a8a; margin-bottom:.35rem; } .mr-confirm-p { font-size:.85rem; color:#1e40af; margin:0 0 .4rem; line-height:1.45; } .mr-confirm-motif { margin-top:.5rem; border-top:1px solid #bfdbfe; padding-top:.5rem; } .mr-confirm-motif span { display:block; font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:#1e3a8a; } .mr-confirm-motif em { font-size:.84rem; color:#1e40af; }
-    .mr-foot { display:flex; justify-content:flex-end; gap:.6rem; padding:.85rem 1.3rem; border-top:1px solid #e2e8f0; background:#f8fafc; } .mr-btn { border:none; border-radius:9px; padding:.5rem 1rem; font-size:.85rem; font-weight:600; cursor:pointer; } .mr-btn--ghost { background:#fff; border:1px solid #e2e8f0; color:#475569; } .mr-btn--primary { background:#0453cb; color:#fff; } .mr-btn--primary:hover:not(:disabled) { background:#033a8e; } .mr-btn--primary:disabled { opacity:.5; cursor:not-allowed; }
+
 </style>
 @endsection
 
@@ -1252,6 +1244,9 @@
     </div>
 </div>
 
+{{-- Hôte stable : les modales Bootstrap survivent au remplacement AJAX du tableau. --}}
+<div id="pi-payment-modals-root"></div>
+
 {{-- Toast container (feedback post-action) --}}
 <div id="pi-toast-container" class="pi-toast-container" aria-live="polite" aria-atomic="true"></div>
 
@@ -1274,6 +1269,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/paiements/mode-reglement.js') }}?v={{ @filemtime(public_path('js/paiements/mode-reglement.js')) ?: '1' }}"></script>
 <script src="{{ asset('js/inscriptions/common.js') }}?v={{ @filemtime(public_path('js/inscriptions/common.js')) ?: '1' }}"></script>
 <style>
 .avatar-circle {
@@ -1455,6 +1451,90 @@ function showYearChangeInfo() {
     let lastUpdatedAt = null;
     let currentPaiementsCount = 0; // Nombre actuel de paiements
     let currentUrl = window.location.href;
+
+    // Un rafraîchissement qui remplace un modal Bootstrap ouvert enlève la
+    // fenêtre mais garde son backdrop et body.modal-open : écran bloqué.
+    // On diffère le rendu DOM jusqu'à hidden.bs.modal (fin de l'animation).
+    let modalTransitions = 0;
+    let refreshDiffere = false;
+    const modalesEnTransition = new WeakSet();
+    document.addEventListener('show.bs.modal', event => {
+        modalTransitions++;
+        modalesEnTransition.add(event.target);
+    });
+    // Bootstrap retire .show et aria-modal AVANT la fin du fade-out.
+    // Une ligne AJAX peut être rafraîchie précisément pendant cet intervalle.
+    document.addEventListener('hide.bs.modal', event => {
+        modalesEnTransition.add(event.target);
+    });
+    document.addEventListener('hidden.bs.modal', event => {
+        modalesEnTransition.delete(event.target);
+        modalTransitions = Math.max(0, modalTransitions - 1);
+        if (!paiementModalEnCours() && refreshDiffere) {
+            refreshDiffere = false;
+            fetchPaiementsData(false, false);
+        }
+    });
+    function paiementModalEnCours() {
+        return modalTransitions > 0 || document.body.classList.contains('modal-open')
+            || Boolean(document.querySelector('.modal.show'));
+    }
+
+    // Les modales ont un hôte stable hors #paiements-table-container.
+    // On respecte les instances Bootstrap (dispose AVANT retrait d'un modal
+    // fermé) et Alpine lors de la pose des fragments AJAX.
+    function piMountModals(source, { replaceAll = false, updateExisting = false, paiementId = null } = {}) {
+        const host = document.getElementById('pi-payment-modals-root');
+        if (!host || !source) return;
+
+        const elements = Array.from(source.querySelectorAll('.modal[id]'));
+        const nouveauxIds = new Set(elements.map(el => el.id));
+        const retirer = (el) => {
+            window.bootstrap?.Modal?.getInstance(el)?.dispose();
+            el.remove();
+        };
+        const detruire = (el) => {
+            if (modalesEnTransition.has(el) || el.classList.contains('show')
+                || el.getAttribute('aria-modal') === 'true') {
+                // Supprimer après hidden, sans relancer ce test : le listener
+                // cible s'exécute avant que le listener document retire le flag.
+                el.addEventListener('hidden.bs.modal', () => retirer(el), { once: true });
+                return;
+            }
+            retirer(el);
+        };
+        if (replaceAll) {
+            Array.from(host.querySelectorAll('.modal[id]')).forEach(detruire);
+        } else if (paiementId !== null) {
+            ['rejetModal', 'avoirModal', 'modeReglementModal', 'supprimerPaiementModal']
+                .map(prefix => document.getElementById(prefix + paiementId))
+                .filter(el => el && !nouveauxIds.has(el.id))
+                .forEach(detruire);
+        }
+
+        elements.forEach(el => {
+            const existing = document.getElementById(el.id);
+            // Au premier chargement, l'élément trouvé EST l'élément source :
+            // il faut le déplacer vers le host, non le prendre pour un doublon.
+            if (existing && existing !== el && !replaceAll && !updateExisting) return;
+            if (existing && existing !== el) {
+                if (modalesEnTransition.has(existing) || existing.classList.contains('show')
+                    || existing.getAttribute('aria-modal') === 'true') {
+                    existing.addEventListener('hidden.bs.modal', () => {
+                        window.bootstrap?.Modal?.getInstance(existing)?.dispose();
+                        existing.replaceWith(el);
+                        window.Alpine?.initTree?.(el);
+                    }, { once: true });
+                    return;
+                }
+                window.bootstrap?.Modal?.getInstance(existing)?.dispose();
+                existing.replaceWith(el);
+            } else {
+                host.appendChild(el);
+            }
+            window.Alpine?.initTree?.(el);
+        });
+    }
 
     /**
      * Met à jour l'affichage de la barre d'actions groupées (sticky subheader)
@@ -1694,9 +1774,17 @@ function showYearChangeInfo() {
                     if (detailsEl) detailsEl.innerHTML = data.metrics_details;
                 }
 
-                // Mettre à jour le tableau
+                // Mettre à jour le tableau. Un modal peut avoir été ouvert
+                // pendant la requête : ne jamais détruire son DOM à la réponse.
                 if (data.table) {
-                    document.getElementById('paiements-table-container').innerHTML = data.table;
+                    if (paiementModalEnCours()) {
+                        refreshDiffere = true;
+                        return;
+                    }
+                    const nouveauTableau = document.createElement('template');
+                    nouveauTableau.innerHTML = data.table;
+                    piMountModals(nouveauTableau.content, { replaceAll: true });
+                    document.getElementById('paiements-table-container').replaceChildren(nouveauTableau.content);
                     // Réinitialiser les listeners
                     initCheckboxListeners();
 
@@ -1996,21 +2084,10 @@ function showYearChangeInfo() {
             const newRow = rowFragment.cloneNode(true);
             const clonedCells = Array.from(newRow.children).map(cell => cell.cloneNode(true));
 
-            const modalFragment = template.content.querySelector(`#rejetModal${paiementId}`);
-            if (modalFragment) {
-                const newModal = modalFragment.cloneNode(true);
-                const existingModal = document.getElementById(`rejetModal${paiementId}`);
-                if (existingModal) {
-                    existingModal.replaceWith(newModal);
-                } else {
-                    document.body.appendChild(newModal);
-                }
-            } else {
-                const existingModal = document.getElementById(`rejetModal${paiementId}`);
-                if (existingModal) {
-                    existingModal.remove();
-                }
-            }
+            // Synchroniser toutes les modales de cette ligne, pas seulement
+            // le rejet. Si la modale de rejet se ferme encore en animation,
+            // attendre hidden.bs.modal avant de détruire son instance.
+            piMountModals(template.content, { updateExisting: true, paiementId: String(paiementId) });
 
             const tbody = document.querySelector('#paiements-table-container tbody');
 
@@ -2268,7 +2345,7 @@ function showYearChangeInfo() {
                     tmpl.innerHTML = data.rows.trim();
 
                     const newRows = Array.from(tmpl.content.querySelectorAll('tr[data-paiement-id]'));
-                    const modals = Array.from(tmpl.content.querySelectorAll('div.modal[id^="rejetModal"]'));
+
 
                     newRows.forEach((row) => {
                         // Une ligne deja affichee (versement saisi en tete pendant
@@ -2279,8 +2356,9 @@ function showYearChangeInfo() {
                         // Cleanup animation class
                         setTimeout(() => row.classList.remove('pi-row-enter'), 600);
                     });
-                    // La modale d'une ligne deja affichee est deja la : pas de second id.
-                    modals.forEach((m) => { if (!document.getElementById(m.id)) document.body.appendChild(m); });
+                    // Modales rejeter / mode / avoir / supprimer, toutes dans le
+                    // même hôte stable que la première page.
+                    piMountModals(tmpl.content);
 
                     // Update compteur affiche
                     const shown = document.getElementById('pi-rows-shown');
@@ -2384,6 +2462,9 @@ function showYearChangeInfo() {
      */
     $(document).ready(function() {
         debugLog('✅ Scripts paiements initialisés');
+
+        // Rendre les modales de la première page hors du tableau (Bootstrap).
+        piMountModals(document.getElementById('paiements-table-container'));
 
         // Initialiser les listeners de checkboxes
         initCheckboxListeners();

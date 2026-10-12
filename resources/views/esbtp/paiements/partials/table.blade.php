@@ -44,7 +44,7 @@
             </thead>
             <tbody id="pi-tbody">
                 @forelse($paiements as $paiement)
-                    @include('esbtp.paiements.partials.ligne-paiement', ['paiement' => $paiement, 'showCreatorColumn' => $showCreatorColumn])
+                    @include('esbtp.paiements.partials.ligne-paiement', ['paiement' => $paiement, 'showCreatorColumn' => $showCreatorColumn, 'renderPaiementModals' => false])
                 @empty
                     <tr id="pi-empty-row">
                         <td colspan="{{ $colspan }}" class="pi-table-empty">
@@ -55,6 +55,14 @@
                 @endforelse
             </tbody>
         </table>
+    </div>
+
+    {{-- Modales sœurs du tableau, jamais enfants de <tbody> (HTML invalide).
+         Le script de page les déplace ensuite vers l'hôte persistant, hors AJAX. --}}
+    <div class="pi-modals-to-mount">
+        @foreach($paiements as $paiement)
+            @include('esbtp.paiements.partials.modals-paiement', ['paiement' => $paiement])
+        @endforeach
     </div>
 
     {{-- Sentinel infinite scroll + loader skeleton --}}
