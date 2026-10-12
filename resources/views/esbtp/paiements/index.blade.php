@@ -248,6 +248,11 @@
     .pi-portee-nav a{display:inline-flex;align-items:center;gap:.45rem;text-decoration:none;border:1px solid #cbd5e1;background:white;border-radius:11px;padding:.65rem .85rem;color:#475569;font-weight:700;font-size:.78rem}
     .pi-portee-nav a.is-active{border-color:#0453cb;background:#eff6ff;color:#0453cb}
     .pi-portee-nav a:hover{border-color:#0453cb;color:#0453cb}
+    .pi-date-presets{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;padding:.65rem .9rem;border:1px solid #d6e2f5;border-radius:11px;background:#f8fafc;margin:-.25rem 0 1rem}
+    .pi-date-presets strong{font-size:.76rem;color:#1e293b;margin-right:.35rem}
+    .pi-date-presets button{background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:.46rem .7rem;cursor:pointer;color:#475569;font-size:.77rem;font-weight:700}
+    .pi-date-presets button:hover,.pi-date-presets button[aria-pressed="true"]{background:#0453cb;border-color:#0453cb;color:#fff}
+    .pi-date-presets small{flex-basis:100%;font-size:.72rem;color:#64748b}
     /* ═══════ Filter bar ═══════ */
     .pi-filters {
         background: #fff;
@@ -980,7 +985,7 @@
                         <div class="pi-hero-chips">
                             <span class="pi-chip">
                                 <i class="fas fa-calendar"></i>
-                                <span id="pi-portee-label">{{ request('portee', 'tous') === 'annee' ? 'Scolarité ' . $anneeNom : (request('portee') === 'arrieres' ? 'Dettes anciennes' : 'Encaissements · toutes années') }}</span>
+                                <span id="pi-portee-label">{{ request('portee', 'tous') === 'annee' ? 'Scolarité ' . $anneeNom : (request('portee') === 'arrieres' ? 'Dettes anciennes' : 'Flux d’encaissement · toutes années') }}</span>
                                 <button type="button" class="pi-chip-btn" onclick="showYearChangeInfo()" title="Comment changer d'année ?" aria-label="Information changement d'année">
                                     <i class="fas fa-info-circle"></i>
                                 </button>
@@ -1107,15 +1112,23 @@
         @endphp
         <nav class="pi-portee-nav" aria-label="Choisir les versements à afficher">
             <a href="{{ $piPorteeUrl('tous') }}" class="{{ $piPortee === 'tous' ? 'is-active' : '' }}">
-                <i class="fas fa-cash-register"></i> Tous les encaissements
+                <i class="fas fa-cash-register"></i> Par date · toutes années
             </a>
             <a href="{{ $piPorteeUrl('annee') }}" class="{{ $piPortee === 'annee' ? 'is-active' : '' }}">
-                <i class="fas fa-calendar-check"></i> Frais de l'année courante
+                <i class="fas fa-calendar-check"></i> Inscription {{ $anneeNom }}
             </a>
             <a href="{{ $piPorteeUrl('arrieres') }}" class="{{ $piPortee === 'arrieres' ? 'is-active' : '' }}">
                 <i class="fas fa-history"></i> Règlements d'anciennes dettes
             </a>
         </nav>
+
+        <div class="pi-date-presets" aria-label="Raccourcis pour filtrer par date d'encaissement">
+            <strong><i class="far fa-calendar-alt" aria-hidden="true"></i> Date d'encaissement</strong>
+            <button type="button" data-pi-period="today" aria-pressed="false">Aujourd'hui</button>
+            <button type="button" data-pi-period="month" aria-pressed="false">30 derniers jours</button>
+            <button type="button" data-pi-period="all" aria-pressed="false">Toutes les dates</button>
+            <small>Ces raccourcis montrent les versements de <b>toutes les années d'inscription</b> effectués à la date choisie ; ils ne filtrent pas par année scolaire.</small>
+        </div>
 
         {{-- Alerte note (statique, pas AJAX) --}}
         <div class="alert alert-info alert-sm mb-lg">
@@ -1797,7 +1810,7 @@ function showYearChangeInfo() {
         const portee = new URLSearchParams(window.location.search).get('portee') || 'tous';
         const annee = @json($anneeNom);
         const libelles = {
-            tous: ['Encaissements · toutes années', "Tous les versements sont visibles, quelle que soit l'année de la dette."],
+            tous: ['Flux d’encaissement · toutes années', "Date du versement : toutes les années d'inscription, y compris les anciennes dettes."],
             annee: ['Scolarité ' + annee, "Vous voyez les frais de l'inscription de l'année courante, hors reliquats."],
             arrieres: ['Dettes anciennes', 'Vous voyez uniquement les règlements de dettes anciennes, reportées ou non.'],
         };
@@ -1808,6 +1821,7 @@ function showYearChangeInfo() {
         const note = document.getElementById('pi-portee-note');
         if (libelle) libelle.textContent = libelles[actuel][0];
         if (note) note.textContent = libelles[actuel][1];
+        piSyncDatePresets();
         document.querySelectorAll('.pi-portee-nav a').forEach(function (lien) {
             const actif = (new URL(lien.href, window.location.href).searchParams.get('portee') || 'tous') === actuel;
             lien.classList.toggle('is-active', actif);
@@ -1815,6 +1829,41 @@ function showYearChangeInfo() {
             else lien.removeAttribute('aria-current');
         });
     }
+
+    // Vue caisse : une date donnée regroupe les règlements de toutes les promotions.
+    // Les raccourcis repassent volontairement sur "tous", indépendamment de l'année de la dette.
+    function piDateLocale(date) {
+        return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+    }
+    function piSyncDatePresets() {
+        const p = new URLSearchParams(window.location.search);
+        const today = new Date();
+        const end = piDateLocale(today);
+        const start = new Date(today);
+        start.setDate(start.getDate() - 29);
+        const from = p.get('date_debut') || '';
+        const to = p.get('date_fin') || '';
+        let active = '';
+        if ((p.get('portee') || 'tous') === 'tous') {
+            if (from === end && to === end) active = 'today';
+            else if (from === piDateLocale(start) && to === end) active = 'month';
+            else if (!from && !to) active = 'all';
+        }
+        document.querySelectorAll('[data-pi-period]').forEach(function (button) {
+            button.setAttribute('aria-pressed', button.dataset.piPeriod === active ? 'true' : 'false');
+        });
+    }
+    $(document).on('click', '[data-pi-period]', function () {
+        const preset = this.dataset.piPeriod;
+        const today = new Date();
+        const end = piDateLocale(today);
+        const start = new Date(today);
+        start.setDate(start.getDate() - 29);
+        $('#date_debut').val(preset === 'all' ? '' : preset === 'today' ? end : piDateLocale(start));
+        $('#date_fin').val(preset === 'all' ? '' : end);
+        $('#paiements-filter-form input[name="portee"]').val('tous');
+        $('#paiements-filter-form').trigger('submit');
+    });
 
     $(document).on('click', '.pi-portee-nav a', function (e) {
         e.preventDefault();

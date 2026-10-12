@@ -56,6 +56,7 @@
             'pdf-preview' => ['url' => route('esbtp.paiements.export.pdf-preview'), 'onglet' => true],
             'etat-financier-preview' => ['url' => route('esbtp.paiements.export.etat-financier'), 'onglet' => true, 'inline' => true],
             'etat-financier' => ['url' => route('esbtp.paiements.export.etat-financier'), 'onglet' => false],
+            'etat-financier-toutes' => ['url' => route('esbtp.paiements.export.etat-financier'), 'onglet' => false, 'annee_situation' => 'toutes'],
             'excel' => ['url' => route('esbtp.paiements.export.excel'), 'onglet' => false],
             'saari' => ['url' => route('esbtp.paiements.export.saari'), 'onglet' => false],
             'csv' => ['url' => route('esbtp.paiements.export.csv'), 'onglet' => false],
@@ -172,10 +173,12 @@
     <x-m.sheet id="pim-filtres" title="Filtres" sub="La liste et les exports suivent ces filtres.">
         <div class="pim-form">
             <div class="m-field">
-                <label>Période</label>
+                <label>Date du versement, toutes années</label>
+                <small>Les raccourcis recherchent par date d'encaissement, indépendamment de l'année d'inscription.</small>
                 <div class="m-seg pim-presets">
                     <button type="button" x-bind:class="presetActif('jour') ? 'on' : ''" x-on:click="preset('jour')">Aujourd'hui</button>
                     <button type="button" x-bind:class="presetActif('semaine') ? 'on' : ''" x-on:click="preset('semaine')">7 jours</button>
+                    <button type="button" x-bind:class="presetActif('30j') ? 'on' : ''" x-on:click="preset('30j')">30 jours</button>
                     <button type="button" x-bind:class="presetActif('mois') ? 'on' : ''" x-on:click="preset('mois')">Ce mois</button>
                     <button type="button" x-bind:class="presetActif('tout') ? 'on' : ''" x-on:click="preset('tout')">Tout</button>
                 </div>
@@ -189,13 +192,13 @@
                 <label>Quels paiements ?</label>
                 <div class="m-opt pim-opt">
                     <label><input type="radio" name="pim_portee" value="tous" x-model="brouillon.portee">
-                        <span class="rd" aria-hidden="true"></span><span>Tous les encaissements</span></label>
+                        <span class="rd" aria-hidden="true"></span><span>Par date · toutes années</span></label>
                     <label><input type="radio" name="pim_portee" value="annee" x-model="brouillon.portee">
                         <span class="rd" aria-hidden="true"></span><span>Frais de cette année</span></label>
                     <label><input type="radio" name="pim_portee" value="arrieres" x-model="brouillon.portee">
                         <span class="rd" aria-hidden="true"></span><span>Dettes anciennes</span></label>
                 </div>
-                <small>Un paiement d'une ancienne année ne crée aucune inscription.</small>
+                <small>Un paiement d'une ancienne année ne crée aucune inscription. Les filtres de dates concernent la date du versement.</small>
             </div>
             <div class="m-field">
                 <label>Statut</label>
@@ -445,6 +448,7 @@
                     var auj = new Date();
                     if (cle === 'jour') { return [this._iso(auj), this._iso(auj)]; }
                     if (cle === 'semaine') { var d = new Date(auj); d.setDate(d.getDate() - 6); return [this._iso(d), this._iso(auj)]; }
+                    if (cle === '30j') { var d = new Date(auj); d.setDate(d.getDate() - 29); return [this._iso(d), this._iso(auj)]; }
                     if (cle === 'mois') { return [this._iso(new Date(auj.getFullYear(), auj.getMonth(), 1)), this._iso(auj)]; }
                     return ['', ''];
                 },
@@ -452,6 +456,7 @@
                     var b = this._bornes(cle);
                     this.brouillon.date_debut = b[0];
                     this.brouillon.date_fin = b[1];
+                    this.brouillon.portee = 'tous'; // un raccourci de date signifie toutes les années d'inscription
                 },
                 presetActif(cle) {
                     var b = this._bornes(cle);
