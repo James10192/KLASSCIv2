@@ -5494,7 +5494,7 @@
     </div>
     @endif
     <nav class="fin-shortcuts" aria-label="Naviguer dans la situation financière">
-        @if($finInscActive)<a href="#fin-frais-inscription">Frais de l'inscription</a>@endif
+        @if($finInscActive && $finInscActive->fraisSubscriptions->isNotEmpty())<a href="#fin-frais-inscription">Frais de l'inscription</a>@endif
         <a href="#fin-global-multi">Situation globale toutes années</a>
         @if($finAutresInscs->isNotEmpty())<a href="#fin-autres-annees">Autres inscriptions ({{ $finAutresInscs->count() }})</a>@endif
     </nav>

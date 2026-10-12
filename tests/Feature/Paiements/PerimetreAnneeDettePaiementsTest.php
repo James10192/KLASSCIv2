@@ -127,6 +127,35 @@ class PerimetreAnneeDettePaiementsTest extends TestCase
         $this->assertSame('Dates de versement', $resumes[1]['label']);
     }
 
+    public function test_encaissement_du_jour_sur_ancienne_inscription_figure_dans_le_journal_toutes_annees(): void
+    {
+        $aujourdhui = now()->toDateString();
+        $ancien = ESBTPPaiement::factory()->pour($this->ancienneInscription)->create([
+            'date_paiement' => $aujourdhui,
+            'montant' => 25000,
+        ]);
+        $courantHier = ESBTPPaiement::factory()->pour($this->inscriptionCourante)->create([
+            'date_paiement' => now()->subDay()->toDateString(),
+            'montant' => 50000,
+        ]);
+        $ids = [$ancien->id, $courantHier->id];
+
+        $request = Request::create('/esbtp/paiements', 'GET', [
+            'portee' => 'tous',
+            'date_debut' => $aujourdhui,
+            'date_fin' => $aujourdhui,
+        ]);
+
+        $journal = app(PaymentFilterService::class)->baseFilteredQuery($request)
+            ->whereIn('esbtp_paiements.id', $ids)->pluck('esbtp_paiements.id')->all();
+        $export = app(\App\Services\PaiementExportService::class)
+            ->buildQuery(['portee' => 'tous', 'date_debut' => $aujourdhui, 'date_fin' => $aujourdhui])
+            ->whereIn('esbtp_paiements.id', $ids)->pluck('esbtp_paiements.id')->all();
+
+        $this->assertEqualsCanonicalizing([$ancien->id], $journal);
+        $this->assertEqualsCanonicalizing($journal, $export);
+    }
+
     public function test_l_ancienne_dette_non_reportee_est_proposee_sans_inscription_nouvelle(): void
     {
         $categorie = ESBTPFraisCategory::factory()->create();

@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1561 · Recette caisse : test un paiement d'aujourd'hui sur une ancienne inscription (sans inclure le paiement d'hier sur l'année courante) ; raccourci frais seulement quand la section existe.
 - 2026-10-12 · #1561 · Tests d'encaissement sur dossier achevé alignés sur la valeur ENUM officielle `terminée` ; la validation accepte aussi l'orthographe legacy `terminee` sans ouvrir les inscriptions annulées.
 - 2026-10-12 · #1561 · Tests HTTP : une ancienne inscription au montant entièrement reporté ne propose plus de frais direct dans les fenêtres de paiement ; l'ancien flux de validation ne peut pas rouvrir son workflow.
 - 2026-10-12 · #1561 · Fiche étudiant : les cartes d'anciennes inscriptions distinguent le solde directement encaissable de la part transférée en reliquat, sans la présenter comme une inscription soldée.
