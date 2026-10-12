@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1561 · Encaissement : lorsqu'aucune inscription courante n'est trouvée, recherche guidée vers les anciennes inscriptions, nom d'utilisateur inclus (bureau/mobile), sans inscription fictive.
 - 2026-10-12 · #1561 · Exports des versements PDF, Excel/CSV et SAARI : affichage explicite de l'origine des inscriptions sélectionnées et de la période de paiement, identique à la liste.
 - 2026-10-12 · #1561 · État financier PDF : choisir une situation cumulée de l'année courante ou de toutes les inscriptions, sans appliquer silencieusement les dates du journal de caisse (bureau et mobile).
 - 2026-10-12 · #1561 · Paiements > Suivi : raccourcis Aujourd'hui, 30 jours, toutes dates sur toutes années, sans confondre date de caisse et année de la dette (bureau et mobile).

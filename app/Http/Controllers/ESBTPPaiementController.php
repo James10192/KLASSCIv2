@@ -511,7 +511,9 @@ class ESBTPPaiementController extends Controller
                     $etudiant->where(function ($champ) use ($terme) {
                         $champ->where('nom', 'like', "%{$terme}%")
                             ->orWhere('prenoms', 'like', "%{$terme}%")
-                            ->orWhere('matricule', 'like', "%{$terme}%");
+                            ->orWhere('matricule', 'like', "%{$terme}%")
+                            ->orWhereHas('user', fn ($user) => $user->where('name', 'like', "%{$terme}%")
+                                ->orWhere('email', 'like', "%{$terme}%"));
                     });
                 }
             });

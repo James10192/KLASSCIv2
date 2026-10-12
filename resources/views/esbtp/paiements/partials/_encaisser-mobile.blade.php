@@ -222,7 +222,9 @@
                 </template>
                 <x-m.empty x-show="inscriptions.length === 0 && !chargement.liste" x-cloak
                            icon="search" title="Aucun dossier trouvé"
-                           text="Vérifiez le nom ou le matricule. Vous pouvez également basculer sur « Dette ancienne »." />
+                           text="Vérifiez le nom ou le matricule. Le paiement d'une dette ancienne ne nécessite aucune inscription courante." />
+                <button type="button" class="m-btn g" x-show="inscriptions.length === 0 && !chargement.liste && !rechercheAnciens" x-cloak
+                        x-on:click="rechercheAnciens=true;chercher()">Chercher parmi les anciennes inscriptions</button>
             </div>
         </div>
 

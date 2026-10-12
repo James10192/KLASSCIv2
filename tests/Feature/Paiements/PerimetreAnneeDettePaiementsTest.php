@@ -73,6 +73,18 @@ class PerimetreAnneeDettePaiementsTest extends TestCase
         $this->assertSame(2, $comptes->baseFilteredQuery($req('arrieres'))->whereIn('esbtp_paiements.id', $ids)->count());
     }
 
+    public function test_rechercher_une_ancienne_inscription_sans_reinscription_courante(): void
+    {
+        $this->withoutMiddleware();
+        $matricule = $this->ancienneInscription->etudiant->matricule;
+        $response = $this->getJson(route('esbtp.api.caisse.inscriptions', [
+            'q' => $matricule,
+            'anciennes' => 1,
+        ]));
+
+        $response->assertOk()->assertJsonPath('results.0.id', $this->ancienneInscription->id);
+    }
+
     public function test_l_ancienne_dette_non_reportee_est_proposee_sans_inscription_nouvelle(): void
     {
         $categorie = ESBTPFraisCategory::factory()->create();
