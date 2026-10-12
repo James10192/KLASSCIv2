@@ -3440,39 +3440,50 @@
 <div class="tab-panel" id="tab-academique">
 @php
     /* ── Données ─────────────────────────────────────────────────── */
-    $acadInscs = $etudiant->inscriptions->sortByDesc(fn($i) => optional($i->anneeUniversitaire)->start_date);
+    $acadInscs = $etudiant->inscriptions->sortByDesc(fn($i) => sprintf(
+        '%s-%d-%010d',
+        optional($i->anneeUniversitaire)->start_date?->format('Ymd') ?? '00000000',
+        $i->isSpecialisation() ? 1 : 0,
+        $i->id
+    ));
+    $acadRecords = app(\App\Services\ESBTP\BtsStudentAcademicRecords::class);
 
-    /* Inscription de référence : la plus récente avec bulletins CALCULÉS (moyenne_generale > 0).
-       - Filtre classe_id : pas de mélange avec d'autres inscriptions/classes (bug bulletin 179).
+    /* Inscription de référence : la plus récente avec bulletins calculés (moyenne_generale non null).
+       - Classes par semestre : pas de mélange avec d'autres inscriptions/classes (bug bulletin 179).
        - Filtre periode != annuel : l'annuel n'est PAS une période standard BTS (c'est
          l'agrégation S1+S2 affichée au bas du bulletin S2). Les rares bulletins
          periode='annuel' en base sont des artefacts legacy, exclus de l'UI académique. */
     $acadRef = null; $acadBuls = collect();
     foreach ($acadInscs as $_i) {
-        $_b = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiant->id)
-            ->where('annee_universitaire_id', optional($_i->anneeUniversitaire)->id)
-            ->where('classe_id', $_i->classe_id)
-            ->where('periode', '!=', 'annuel')
-            ->orderBy('periode')->get();
-        /* Un bulletin n'est "calculé" que si au moins un a moyenne_generale > 0 */
-        $_bCalcules = $_b->filter(fn($b) => $b->moyenne_generale !== null && $b->moyenne_generale > 0);
+        // S1 est parfois en tronc commun, S2 dans la spécialité.
+        $_b = $acadRecords->bulletins((int) $etudiant->id, $_i);
+        /* Même 0/20 est une moyenne calculée. */
+        $_bCalcules = $_b->filter(fn($b) => $b->moyenne_generale !== null);
         if ($_bCalcules->count()) { $acadRef = $_i; $acadBuls = $_b; break; }
     }
     /* Fallback : inscription la plus récente avec resultats bruts */
     if (!$acadRef) {
         foreach ($acadInscs as $_i) {
-            $_r = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
-                ->where('annee_universitaire_id', optional($_i->anneeUniversitaire)->id)
-                ->whereNotNull('moyenne')->exists();
+            $_r = $acadRecords->resultats((int) $etudiant->id, $_i)
+                ->whereNotNull('moyenne')->isNotEmpty();
             if ($_r) { $acadRef = $_i; break; }
         }
     }
     if (!$acadRef && $acadInscs->count()) $acadRef = $acadInscs->first();
 
     /* Résultats bruts de l'année de référence (pour top/flop, sparkline et KPIs si pas de bulletins) */
-    $acadResultatsRef = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
-        ->where('annee_universitaire_id', optional($acadRef?->anneeUniversitaire)->id)
-        ->with(['matiere'])->get();
+    $acadResultatsRef = $acadRef
+        ? $acadRecords->resultats((int) $etudiant->id, $acadRef)
+        : collect();
+    $acadClassMap = $acadRef ? $acadRecords->classMap($acadRef) : null;
+    $acadSemestreClasseLabels = $acadClassMap
+        ? \App\Models\ESBTPClasse::withTrashed()
+            ->whereIn('id', array_unique([
+                $acadClassMap['semestre1_classe_id'],
+                $acadClassMap['semestre2_classe_id'],
+            ]))
+            ->pluck('name', 'id')
+        : collect();
     $acadAppreciations = app(\App\Services\AppreciationScaleService::class);
     $acadClassify = static fn (?float $moyenne): array => $acadAppreciations->classificationFor($moyenne, 'bts', '');
     $acadLabelFor = static fn (?float $moyenne): ?string => $moyenne === null ? null : $acadClassify($moyenne)['label'];
@@ -3632,6 +3643,7 @@
     /* MOYENNE CANONIQUE : on délègue au snapshot annuel qui respecte le flag
        bulletin_show_attendance_note (effective_total = raw_total si flag OFF, sinon
        raw_total + bonus assiduité). Cohérent avec le PDF bulletin annuel. */
+    $acadMoyenneProvisoire = false;
     if ($acadRef && $acadRef->classe_id && $acadRef->annee_universitaire_id) {
         try {
             $_acadSnapshot = app(\App\Services\ESBTP\BtsCurrentResultSnapshotService::class)->getAnnualSnapshot(
@@ -3639,6 +3651,7 @@
                 (int) $acadRef->classe_id,
                 (int) $acadRef->annee_universitaire_id
             );
+            $acadMoyenneProvisoire = ($_acadSnapshot['state'] ?? null) === 'annual_incomplete';
             if (($_acadSnapshot['effective_total'] ?? null) !== null) {
                 $acadMg = round((float) $_acadSnapshot['effective_total'], 2);
                 if ($acadMg !== null) {
@@ -3681,7 +3694,11 @@
     $acadFlop = $acadAllNotes->where('moyenne', '<', 10)->sortBy('moyenne')->take(3);
 
     /* Sparkline : moyennes pondérées par période */
-    $acadSparkData = $acadResultatsRef->groupBy(fn($r) => $r->periode ?? 'N/A')
+    $acadSparkData = $acadResultatsRef->groupBy(fn($r) => match ((string) $r->periode) {
+        '1' => 'semestre1',
+        '2' => 'semestre2',
+        default => $r->periode ?? 'N/A',
+    })
         ->map(function($g) {
             $sp = 0; $sc = 0;
             foreach ($g->whereNotNull('moyenne') as $r) {
@@ -3694,7 +3711,11 @@
         ->sortKeys();
 
     /* Résultats groupés par semestre pour l'affichage détail */
-    $acadSemestres = $acadResultatsRef->groupBy(fn($r) => $r->periode ?? 'N/A')->sortKeys();
+    $acadSemestres = $acadResultatsRef->groupBy(fn($r) => match ((string) $r->periode) {
+        '1' => 'semestre1',
+        '2' => 'semestre2',
+        default => $r->periode ?? 'N/A',
+    })->sortKeys();
 
     /* Fallback PROVISOIRE : aucun bulletin ET aucun esbtp_resultats (= bulletin
        non encore généré), mais des notes ont été saisies. On affiche alors le
@@ -3714,7 +3735,13 @@
     }
 
     /* Années précédentes */
-    $acadAutres = $acadInscs->filter(fn($i) => !$acadRef || $i->id !== $acadRef->id);
+    // La double inscription TC → spécialité est un SEUL parcours annuel,
+    // pas une deuxième année à présenter dans l'historique.
+    $acadAutres = $acadInscs->filter(fn($i) => !$acadRef
+        || ($i->id !== $acadRef->id
+            && ! ($i->annee_universitaire_id === $acadRef->annee_universitaire_id
+                && ($i->id === $acadRef->inscription_origine_id
+                    || $i->inscription_origine_id === $acadRef->id))));
 
     /* Notice : données d'une année différente de l'année courante */
     $acadAnneeCourante = $presAnneeCourante ?? \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
@@ -4057,7 +4084,7 @@
                 $mgStroke = $acadMg === null ? '#64748b' : ($acadMg >= 14 ? '#10b981' : ($acadMg >= 12 ? '#34d399' : ($acadMg >= 10 ? '#f59e0b' : '#ef4444')));
             @endphp
             <div class="acad-kpi-block">
-                <div class="acad-kpi-label">Moyenne</div>
+                <div class="acad-kpi-label">Moyenne{{ $acadMoyenneProvisoire ? ' partielle' : '' }}</div>
                 <div class="acad-ring-wrap">
                     <svg viewBox="0 0 80 80">
                         <circle class="acad-ring-bg" cx="40" cy="40" r="35"/>
@@ -4189,14 +4216,15 @@
         @foreach($acadBuls as $bul)
         @php
             /* Résultats matières pour ce semestre */
-            $semResultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
-                ->where('annee_universitaire_id', optional($acadRef->anneeUniversitaire)->id)
-                ->where('periode', $bul->periode)
-                ->with(['matiere'])->get()
+            $semPeriode = in_array((string) $bul->periode, ['semestre1', '1'], true) ? 'semestre1' : 'semestre2';
+            $semAliases = $semPeriode === 'semestre1' ? ['semestre1', '1'] : ['semestre2', '2'];
+            $semResultats = $acadResultatsRef
+                ->filter(fn($r) => (int) $r->classe_id === (int) $bul->classe_id
+                    && in_array((string) $r->periode, $semAliases, true))
                 ->sortBy(fn($r) => optional($r->matiere)->name);
 
             /* Moyenne semestre : bulletin officiel, sinon calculée depuis résultats */
-            $mg = ($bul->moyenne_generale > 0) ? $bul->moyenne_generale : null;
+            $mg = $bul->moyenne_generale !== null ? (float) $bul->moyenne_generale : null;
             if ($mg === null && $semResultats->count()) {
                 $_sp = 0; $_sc = 0;
                 foreach ($semResultats->whereNotNull('moyenne') as $_sr) {
@@ -4212,9 +4240,9 @@
                 try {
                     $_semSnap = app(\App\Services\ESBTP\BtsCurrentResultSnapshotService::class)->getPeriodeSnapshot(
                         (int) $etudiant->id,
-                        (int) $acadRef->classe_id,
+                        (int) ($acadClassMap[$semPeriode.'_classe_id'] ?? $acadRef->classe_id),
                         (int) $acadRef->annee_universitaire_id,
-                        strtolower($bul->periode)
+                        $semPeriode
                     );
                     if (($_semSnap['effective_total'] ?? null) !== null) {
                         $mg = round((float) $_semSnap['effective_total'], 2);
@@ -4225,7 +4253,7 @@
             }
             $semKey = 'acad-sem-' . $bul->id;
             $semBadgeCls = $mg === null ? '' : ($mg >= 12 ? 'green' : ($mg >= 10 ? 'amber' : 'red'));
-            $semLabel = ucfirst(str_replace(['semestre', '_', '-'], ['Semestre ', ' ', ' '], strtolower($bul->periode ?? '')));
+            $semLabel = $semPeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2';
         @endphp
         <div class="acad-sem-block">
             <div class="acad-sem-header"
@@ -4235,6 +4263,12 @@
                 <div class="acad-sem-header-left">
                     <i class="fas fa-book-open" style="color:var(--k-blue); font-size:.8rem;"></i>
                     <span class="acad-sem-period">{{ $semLabel ?: 'Semestre' }}</span>
+                    @if($acadClassMap && $acadClassMap['semestre1_classe_id'] !== $acadClassMap['semestre2_classe_id'])
+                        <span style="font-size:.7rem;color:var(--k-muted);">
+                            · {{ $acadSemestreClasseLabels->get($acadClassMap[$semPeriode.'_classe_id']) ?? 'Classe historique' }}
+                            {{ $semPeriode === 'semestre1' ? '(Tronc commun)' : '(Spécialisation)' }}
+                        </span>
+                    @endif
                     @if($bul->rang)
                         <span style="font-size:.72rem; color:var(--k-muted);">
                             <i class="fas fa-trophy" style="color:#f59e0b; font-size:.65rem;"></i> {{ $bul->rang }}
@@ -4659,9 +4693,7 @@
             $autreBuls = collect(); // pas de BTS bulletins
         } else {
             $autreBulsLMD = collect();
-            $autreBuls = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiant->id)
-                ->where('annee_universitaire_id', optional($autreInsc->anneeUniversitaire)->id)
-                ->orderBy('periode')->get();
+            $autreBuls = $acadRecords->bulletins((int) $etudiant->id, $autreInsc);
         }
         $autreMention = null;
         $autreAnneeLabel = optional($autreInsc->anneeUniversitaire)->display_name ?? 'Année N/A';
@@ -4686,11 +4718,9 @@
             $autreResultatsBruts = collect(); // pas de résultats BTS bruts pour LMD
         } else {
             // BTS : logique existante
-            $autreResultatsBruts = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
-                ->where('annee_universitaire_id', optional($autreInsc->anneeUniversitaire)->id)
-                ->with(['matiere'])->get();
+            $autreResultatsBruts = $acadRecords->resultats((int) $etudiant->id, $autreInsc);
 
-            $autreBulsValides = $autreBuls->filter(fn($b) => ($b->moyenne_generale ?? 0) > 0);
+            $autreBulsValides = $autreBuls->filter(fn($b) => $b->moyenne_generale !== null);
         }
 
         if (! $autreIsLMD) {
