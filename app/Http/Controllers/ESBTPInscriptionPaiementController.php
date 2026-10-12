@@ -105,7 +105,7 @@ class ESBTPInscriptionPaiementController extends Controller
         $anneeInscription = $inscription->anneeUniversitaire;
         $anneePasse = $anneeCourante?->start_date && $anneeInscription?->start_date
             && $anneeInscription->start_date < $anneeCourante->start_date;
-        if (in_array($inscription->status, ESBTPInscription::STATUTS_ANNULES, true) || $anneePasse || $inscription->status === 'terminee') {
+        if (in_array($inscription->status, ESBTPInscription::STATUTS_ANNULES, true) || $anneePasse || in_array($inscription->status, ['terminée', 'terminee'], true)) {
             return $this->refuser(
                 $request, 'inscription_id',
                 'Cette ancienne inscription ne peut pas être remise en validation. Enregistrez son paiement via la caisse (paiements.create).'

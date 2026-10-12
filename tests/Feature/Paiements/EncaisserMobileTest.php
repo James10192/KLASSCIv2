@@ -332,7 +332,7 @@ class EncaisserMobileTest extends TestCase
      */
     public function test_une_inscription_terminee_accepte_le_reglement_de_sa_dette_sans_reinscription(): void
     {
-        $this->inscription->update(['status' => 'terminee']);
+        $this->inscription->update(['status' => 'terminée']);
         $avant = ESBTPInscription::count();
 
         $reponse = $this->postJson(route('esbtp.paiements.store'), $this->versement(20000));

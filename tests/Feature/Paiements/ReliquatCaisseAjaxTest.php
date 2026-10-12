@@ -105,7 +105,7 @@ class ReliquatCaisseAjaxTest extends TestCase
     public function test_un_ancien_workflow_d_inscription_ne_peut_pas_etre_reactive_par_un_paiement(): void
     {
         $source = $this->reliquat->inscriptionSource;
-        $source->update(['status' => 'terminee']);
+        $source->update(['status' => 'terminée']);
         $this->actingAs($this->caissier());
         $avant = ESBTPPaiement::count();
 
@@ -117,7 +117,7 @@ class ReliquatCaisseAjaxTest extends TestCase
         ])->assertUnprocessable()->assertJsonValidationErrors('inscription_id');
 
         $this->assertSame($avant, ESBTPPaiement::count());
-        $this->assertSame('terminee', $source->fresh()->status);
+        $this->assertSame('terminée', $source->fresh()->status);
     }
 
     public function test_get_affiche_le_disponible_et_les_paiements_reserves_sans_le_solder(): void

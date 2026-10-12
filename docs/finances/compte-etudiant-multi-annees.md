@@ -1,7 +1,7 @@
 # Compte financier étudiant — règles métier et recette
 
 ## Paiement avant réinscription : pas de nouveau dossier
-Le **paiement d'une ancienne dette non reportée** reste rattaché à l'ancienne inscription. Il passe par le même formulaire `paiements.create` avec l'identifiant de cette inscription (catégories et règles de répartition habituelles), même lorsque l'étudiant n'est pas réinscrit. La recherche « Régler une ancienne année » donne accès aux anciennes inscriptions, y compris sur mobile. Elle inclut les inscriptions d'une année achevée (`terminee`), même sans inscription courante, mais jamais les inscriptions annulées. Elle ne crée aucun dossier 2026-2027.
+Le **paiement d'une ancienne dette non reportée** reste rattaché à l'ancienne inscription. Il passe par le même formulaire `paiements.create` avec l'identifiant de cette inscription (catégories et règles de répartition habituelles), même lorsque l'étudiant n'est pas réinscrit. La recherche « Régler une ancienne année » donne accès aux anciennes inscriptions, y compris sur mobile. Elle inclut les inscriptions d'une année achevée (`terminée`), même sans inscription courante, mais jamais les inscriptions annulées. Elle ne crée aucun dossier 2026-2027.
 
 Sur la fiche étudiant, les anciennes années distinguent maintenant explicitement le montant **non reporté** (encaissement direct) du montant **transféré en reliquat** (circuit dédié). Une année avec dette transférée n'est pas déclarée « soldée » par erreur.
 

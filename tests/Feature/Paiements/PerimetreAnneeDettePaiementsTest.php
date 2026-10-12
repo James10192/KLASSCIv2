@@ -88,7 +88,7 @@ class PerimetreAnneeDettePaiementsTest extends TestCase
     public function test_inscription_terminee_reste_recherchable_en_caisse_pour_regler_sa_dette(): void
     {
         $this->withoutMiddleware();
-        $this->ancienneInscription->update(['status' => 'terminee']);
+        $this->ancienneInscription->update(['status' => 'terminée']);
 
         $response = $this->getJson(route('esbtp.api.caisse.inscriptions', [
             'q' => $this->ancienneInscription->etudiant->matricule,

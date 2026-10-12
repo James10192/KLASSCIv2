@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1561 · Tests d'encaissement sur dossier achevé alignés sur la valeur ENUM officielle `terminée` ; la validation accepte aussi l'orthographe legacy `terminee` sans ouvrir les inscriptions annulées.
 - 2026-10-12 · #1561 · Tests HTTP : une ancienne inscription au montant entièrement reporté ne propose plus de frais direct dans les fenêtres de paiement ; l'ancien flux de validation ne peut pas rouvrir son workflow.
 - 2026-10-12 · #1561 · Fiche étudiant : les cartes d'anciennes inscriptions distinguent le solde directement encaissable de la part transférée en reliquat, sans la présenter comme une inscription soldée.
 - 2026-10-12 · #1561 · Fiche étudiant : le paiement d'une ancienne inscription utilise en AJAX paiements.store sans modifier le workflow académique ; une réponse serveur 422 ne produit plus un faux toast de succès et les montants inhabituels demandent confirmation.
@@ -21,7 +22,7 @@ Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 - 2026-10-12 · #1561 · Garde serveur anti-double règlement : sur une ancienne inscription avec report, un versement supérieur au solde non reporté ou une ventilation sur le montant transféré est refusé ; seuls les frais restant à l'origine sont encaissables.
 - 2026-10-12 · #1561 · Répartition de caisse : les montants déjà transférés en reliquat ne sont plus comptés comme encore dus sur le frais de l'inscription source.
 - 2026-10-12 · #1561 · Protection comptable côté serveur : la clôture administrative d'une ancienne inscription ne bloque pas son règlement, mais une inscription annulée refuse tout encaissement (HTTP 422) même via URL directe.
-- 2026-10-12 · #1561 · Caisse : une inscription d'année achevée (« terminee ») reste retrouvable pour solder son impayé sans réinscription ; les inscriptions annulées restent exclues.
+- 2026-10-12 · #1561 · Caisse : une inscription d'année achevée (« terminée ») reste retrouvable pour solder son impayé sans réinscription ; les inscriptions annulées restent exclues.
 - 2026-10-12 · #1561 · Tableau PDF des paiements : l'année de l'inscription est visible sur chaque ligne, y compris pour une dette ancienne encaissée aujourd'hui.
 - 2026-10-12 · #1561 · Export détaillé PDF/Excel : une colonne indique l’année d’inscription sur chaque paiement et distingue ainsi une dette ancienne encaissée aujourd’hui des frais de l’année.
 - 2026-10-12 · #1561 · Export détaillé des paiements : sélectionner toutes les années, l’année courante ou les anciennes dettes ; dates d’encaissement indépendantes et même filtre que le journal de caisse.
