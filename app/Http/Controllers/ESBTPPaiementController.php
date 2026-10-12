@@ -210,6 +210,11 @@ class ESBTPPaiementController extends Controller
                 'classe' => $classeLabel !== '' ? $classeLabel : null,
                 'parcours' => $estLmd ? ($classe?->parcours?->name ?? $inscription?->filiere?->name) : null,
                 'frais' => $p->ventilation()->pluck('nom')->filter()->implode(', '),
+                'type_dette' => $p->type_paiement === 'reliquat'
+                    ? 'Ancienne dette reportée'
+                    : (($inscription?->anneeUniversitaire && ! $inscription->anneeUniversitaire->is_current)
+                        ? 'Ancienne dette · '.$inscription->anneeUniversitaire->name
+                        : null),
                 'mode' => (string) $p->mode_paiement,
                 'quand' => $quand,
                 'montant' => (float) ($fraisFiltre ? $p->partPourCategorie($fraisFiltre) : $p->montant),

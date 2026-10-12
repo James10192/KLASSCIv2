@@ -133,6 +133,7 @@
                     <div class="tt">
                         <b x-text="p.nom"></b>
                         <span x-text="sousTitre(p)"></span>
+                        <small x-show="p.type_dette" x-cloak x-text="p.type_dette" style="font-weight:700;color:#9a3412"></small>
                     </div>
                     <div class="tr">
                         <span class="amt" x-bind:class="p.avoir ? 'neg' : ''" x-text="montantLigne(p)"></span>
@@ -150,7 +151,7 @@
                     </x-m.empty>
                 </template>
                 <template x-if="!filtresActifs()">
-                    <x-m.empty icon="inbox" :title="$pimMienSeul ? 'Aucun encaissement' : 'Aucun paiement'" text="Le premier paiement de l'année apparaîtra ici." />
+                    <x-m.empty icon="inbox" :title="$pimMienSeul ? 'Aucun encaissement' : 'Aucun paiement'" text="Aucun versement pour les filtres sélectionnés." />
                 </template>
             </div>
         </template>
