@@ -526,7 +526,9 @@ class BtsCurrentResultSnapshotService
             $anneeUniversitaireId,
             'semestre2'
         );
-        $classe = $this->classeAvecCycle($classeId);
+        // La formule annuelle conserve les pondérations de la spécialité
+        // actuelle, même si l'établissement compare les rangs au groupe TC.
+        $classe = $this->classeAvecCycle($semester2ClassId);
         $weights = $this->bulletinService->getSemesterWeights($classe);
         $includeSemester1 = $this->bulletinService->annualIncludesSemester1(
             $semester1ClassId,

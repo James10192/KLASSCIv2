@@ -49,6 +49,81 @@ class RangAnnuelPariteTroncCommunTest extends TestCase
         $this->assertSame(1, $service->calculerRangAnnuel($b->id, $spec->id, $annee->id, 20.0));
     }
 
+    public function test_une_seule_cohorte_annuelle_et_le_rang_du_bulletin_s1_utilise_la_specialite(): void
+    {
+        SettingsHelper::setOrCreate('tronc_commun_mga_include_s1', '1');
+        SettingsHelper::setOrCreate('tronc_commun_rang_annuel_classe', 'specialisation');
+        [$annee, $spec, $a, $b] = $this->scenario();
+
+        $tcId = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)->resolve(
+            $a->id, $spec->id, $annee->id
+        )['semestre1_classe_id'];
+
+        $cohorte = app(\App\Domain\BtsTroncCommun\BtsClassCohortCounter::class);
+        $this->assertEqualsCanonicalizing([$a->id, $b->id], $cohorte->etudiantIdsPourPeriode($tcId, $annee->id, 'semestre1'));
+        $this->assertEqualsCanonicalizing([$a->id, $b->id], $cohorte->etudiantIdsPourPeriode($spec->id, $annee->id, 'annuel'));
+        $this->assertSame([], $cohorte->etudiantIdsPourPeriode($tcId, $annee->id, 'annuel'));
+
+        $bulletins = app(BulletinService::class);
+        // Un bulletin S1 garde son en-tête TC, mais jamais un rang annuel TC
+        // si le conseil classe sur la spécialité.
+        $this->assertSame(1, $bulletins->calculerRangAnnuel($a->id, $tcId, $annee->id, 14.0));
+        $this->assertSame(2, $bulletins->calculerRangAnnuel($b->id, $tcId, $annee->id, 13.0));
+
+        $ids = $bulletins->buildEtudiantsQuery($tcId, $annee->id, false, 'annuel')->pluck('id')->all();
+        $this->assertSame([], $ids);
+        $this->assertEqualsCanonicalizing([$a->id, $b->id],
+            $bulletins->buildEtudiantsQuery($spec->id, $annee->id, false, 'annuel')->pluck('id')->all());
+    }
+
+    public function test_option_classe_origine_ne_produit_pas_deux_rangs_annuels(): void
+    {
+        SettingsHelper::setOrCreate('tronc_commun_mga_include_s1', '1');
+        SettingsHelper::setOrCreate('tronc_commun_rang_annuel_classe', 'origine');
+        [$annee, $spec, $a, $b] = $this->scenario();
+        $tcId = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)->resolve(
+            $a->id, $spec->id, $annee->id
+        )['semestre1_classe_id'];
+
+        $cohorte = app(\App\Domain\BtsTroncCommun\BtsClassCohortCounter::class);
+        $this->assertSame([], $cohorte->etudiantIdsPourPeriode($spec->id, $annee->id, 'annuel'));
+        $this->assertEqualsCanonicalizing([$a->id, $b->id],
+            $cohorte->etudiantIdsPourPeriode($tcId, $annee->id, 'annuel'));
+        $this->assertSame(1, app(BulletinService::class)->calculerRangAnnuel($a->id, $spec->id, $annee->id, 14.0));
+        $this->assertSame(2, app(BulletinService::class)->calculerRangAnnuel($b->id, $spec->id, $annee->id, 13.0));
+    }
+
+    public function test_bulletin_s1_depuis_classe_origine_et_bulletin_s2_prioritaire_dans_la_liste_annuelle(): void
+    {
+        [$annee, $spec, $a] = $this->scenario();
+        $tcId = app(\App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver::class)->resolve(
+            $a->id, $spec->id, $annee->id
+        )['semestre1_classe_id'];
+        $s1 = ESBTPBulletin::where('etudiant_id', $a->id)
+            ->where('classe_id', $tcId)->where('periode', 'semestre1')->firstOrFail();
+        $s2 = ESBTPBulletin::where('etudiant_id', $a->id)
+            ->where('classe_id', $spec->id)->where('periode', 'semestre2')->firstOrFail();
+
+        $service = app(BulletinService::class);
+        $liens = [];
+        $service->getStudentBulletins(collect([$a]), $tcId, $annee->id, '1', $liens);
+        $this->assertSame($s1->id, $liens[$a->id] ?? null);
+
+        $liens = [];
+        $service->getStudentBulletins(collect([$a]), $spec->id, $annee->id, '2', $liens);
+        $this->assertSame($s2->id, $liens[$a->id] ?? null);
+
+        $liens = [];
+        $service->getStudentBulletins(collect([$a]), $spec->id, $annee->id, null, $liens);
+        $this->assertSame($s2->id, $liens[$a->id] ?? null);
+    }
+
+    public function test_moyenne_annuelle_absente_ne_donne_pas_de_rang(): void
+    {
+        [$annee, $spec, $a] = $this->scenario();
+        $this->assertNull(app(BulletinService::class)->calculerRangAnnuel($a->id, $spec->id, $annee->id, null));
+    }
+
     /** @return array{ESBTPAnneeUniversitaire, ESBTPClasse, ESBTPEtudiant, ESBTPEtudiant} */
     private function scenario(): array
     {

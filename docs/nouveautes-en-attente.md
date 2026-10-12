@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1566 · BTS tronc commun : dans Résultats et sur les bulletins, S1 origine + S2 spécialisation, rang annuel de la classe actuelle (ou classe d'origine si choisi dans Paramètres), cohorte annuelle exclusive et liens de bulletins exacts.
 - 2026-10-12 · #1565 · Fiche étudiant > Académique : affichage du S1 en tronc commun et du S2 en spécialité avec la classe d'origine, le bon bilan annuel et le statut « moyenne partielle » si incomplet.
 - 2026-10-12 · #1564 · Paramètres > Bulletins > Conseil BTS 1 : nouveau critère « Les deux moyennes » (S2 et annuelle au seuil), décision auto et réinscription cohérentes, résultat incomplet à vérifier.
 - 2026-10-12 · #1561 · État financier toutes années : les inscriptions terminées restent dans le suivi et les reliquats reportés sont ventilés sans double compter les créances.

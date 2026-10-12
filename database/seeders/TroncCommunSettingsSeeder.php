@@ -39,6 +39,13 @@ class TroncCommunSettingsSeeder extends Seeder
                 'description' => 'Apres specialisation, inclure le S1 origine avec le S2 specialite dans la moyenne et le rang annuels',
             ],
             [
+                'key' => \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::KEY,
+                'value' => \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::SPECIALISATION,
+                'group' => 'academic',
+                'type' => 'string',
+                'description' => 'Groupe de classement annuel : spécialité courante ou tronc commun origine',
+            ],
+            [
                 'key' => 'tronc_commun_bulletin_show_origin',
                 'value' => true,
                 'group' => 'academic',

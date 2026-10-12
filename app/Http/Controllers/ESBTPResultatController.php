@@ -344,16 +344,11 @@ class ESBTPResultatController extends Controller
             $query->withPivot('coefficient');
         }])->findOrFail($classe_id);
 
-        // Get students through inscriptions for the selected class and year
-        $studentsQuery = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
-            $query->where('classe_id', $classe_id)
-                ->where('annee_universitaire_id', $annee_universitaire_id);
-
-            // CORRECTION: Si include_all_statuses = false, alors filtrer sur 'active' uniquement
-            if (! $include_all_statuses) {
-                $query->where('status', 'active');
-            }
-        });
+        // Même élection que resultats.index, les rangs et les bulletins :
+        // S1 classe d'origine, S2 classe actuelle, annuel propriétaire unique.
+        $studentsQuery = $this->bulletinService->buildEtudiantsQuery(
+            $classe_id, $annee_universitaire_id, $include_all_statuses, $periode ?: 'annuel'
+        );
 
         $students = $studentsQuery->get();
         $studentWorkflowAlerts = $this->buildStudentWorkflowAlerts($students, $annee_universitaire_id, $classe_id);
@@ -1150,6 +1145,22 @@ class ESBTPResultatController extends Controller
             ->filter()
             ->all();
 
+        // Rang de la moyenne annuelle COMPLETE dans la classe propriétaire,
+        // qui est par défaut la spécialisation S2, et non le TC du S1.
+        $rangAnnuel = null;
+        $classeRangAnnuel = null;
+        if ($annee_universitaire_id && $annualSnapshot
+            && in_array($annualSnapshot['state'] ?? '', ['annual_complete', 'annual_complete_no_coefficients'], true)) {
+            $mapRang = $annualSnapshot['class_map'] ?? [];
+            if (! empty($mapRang['semestre1_classe_id']) && ! empty($mapRang['semestre2_classe_id'])) {
+                $classeRangId = app(\App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::class)->classeDeRang($mapRang);
+                $rangAnnuel = app(\App\Services\RankingService::class)->calculerRangPourEtudiant(
+                    (int) $etudiant->id, $classeRangId, (int) $annee_universitaire_id, 'annuel'
+                );
+                $classeRangAnnuel = ESBTPClasse::find($classeRangId);
+            }
+        }
+
         return view('esbtp.resultats.etudiant', compact(
             'etudiant',
             'classe',
@@ -1175,6 +1186,8 @@ class ESBTPResultatController extends Controller
             'moyenneSemestre1',
             'moyenneSemestre2',
             'moyenneAnnuelle',
+            'rangAnnuel',
+            'classeRangAnnuel',
             'semesterWeights',
             'include_all_statuses',
             'detailUiState',

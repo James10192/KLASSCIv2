@@ -56,7 +56,8 @@ final class BtsClassCohortCounter
             $anneeUniversitaireId,
             $this->semesterNumber($periode),
             'effectif',
-            fn ($q) => $q->where('status', 'active')->where('workflow_step', 'etudiant_cree')
+            fn ($q) => $q->where('status', 'active')->where('workflow_step', 'etudiant_cree'),
+            $periode === 'annuel'
         );
     }
 
@@ -82,7 +83,8 @@ final class BtsClassCohortCounter
             $anneeUniversitaireId,
             $this->semesterNumber($periode),
             'toutes',
-            fn ($q) => $q
+            fn ($q) => $q,
+            $periode === 'annuel'
         );
     }
 
@@ -101,7 +103,8 @@ final class BtsClassCohortCounter
             $anneeUniversitaireId,
             $this->semesterNumber($periode),
             'actives',
-            fn ($q) => $q->where('status', 'active')
+            fn ($q) => $q->where('status', 'active'),
+            $periode === 'annuel'
         );
     }
 
@@ -121,9 +124,11 @@ final class BtsClassCohortCounter
      * @param  \Closure(\Illuminate\Database\Eloquent\Builder): mixed  $perimetre
      * @return list<int>
      */
-    private function appartenance(int $classeId, int $anneeUniversitaireId, int $semester, string $modePerimetre, \Closure $perimetre): array
+    private function appartenance(int $classeId, int $anneeUniversitaireId, int $semester, string $modePerimetre, \Closure $perimetre, bool $annuel = false): array
     {
-        $cacheKey = $anneeUniversitaireId.':'.$semester.':'.$modePerimetre;
+        // Le propriétaire annuel est distinct de la cohorte de S2.
+        $modeRang = $annuel ? app(BtsAnnualRankingPolicy::class)->mode() : '';
+        $cacheKey = $anneeUniversitaireId.':'.$semester.':'.$modePerimetre.':'.($annuel ? 'annuel:'.$modeRang : 'semestre');
 
         if (! array_key_exists($cacheKey, $this->cohortCache)) {
             $requete = ESBTPInscription::query()
@@ -140,7 +145,7 @@ final class BtsClassCohortCounter
 
             $parClasse = [];
             foreach ($requete->get() as $inscription) {
-                $resolved = $this->resolveClasseId($inscription, $semester);
+                $resolved = $this->resolveClasseId($inscription, $semester, $annuel);
                 if ($resolved !== null) {
                     $parClasse[$resolved][(int) $inscription->etudiant_id] = true;
                 }
@@ -188,8 +193,20 @@ final class BtsClassCohortCounter
         return count($this->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, $periode));
     }
 
-    private function resolveClasseId(ESBTPInscription $inscription, int $semester): ?int
+    private function resolveClasseId(ESBTPInscription $inscription, int $semester, bool $annuel = false): ?int
     {
+        if ($annuel && app(BtsAnnualRankingPolicy::class)->mode() === BtsAnnualRankingPolicy::ORIGINE
+            && $inscription->classe?->isBTS()) {
+            // Même les anciens parcours sans phases peuvent posséder S1 en TC.
+            $map = app(BtsAnnualClassMapResolver::class)->resolveForInscription(
+                $inscription,
+                (int) $inscription->annee_universitaire_id,
+                (int) $inscription->classe_id
+            );
+
+            return app(BtsAnnualRankingPolicy::class)->classeDeRang($map);
+        }
+
         $phase = $this->phaseResolver->resolveSemesterPhase($inscription, $semester);
         if (is_array($phase) && ! empty($phase['classe_id'])) {
             return (int) $phase['classe_id'];

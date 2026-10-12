@@ -3,6 +3,7 @@
 namespace App\Domain\Bulletins;
 
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
+use App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -54,8 +55,20 @@ class MoyennesDeLaListe
     public function calculer(Collection $etudiants, $classeId, $anneeId, $semestre): array
     {
         $inscriptions = $classeId ? collect() : $this->inscriptionsDeLAnnee($etudiants, $anneeId);
-        $classeDe = fn ($etudiant) => $classeId ?: ($inscriptions[$etudiant->id]->classe_id ?? null);
         $periode = $semestre ? 'semestre'.$semestre : 'annuel';
+        $classeDe = function ($etudiant) use ($classeId, $inscriptions, $anneeId, $periode) {
+            if ($classeId) {
+                return (int) $classeId;
+            }
+            $inscription = $inscriptions[$etudiant->id] ?? null;
+            if (! $inscription || ! $anneeId) {
+                return null;
+            }
+            // Sans filtre de classe, le semestre suit aussi sa vraie classe :
+            // S1 TC, S2 spécialité ; en annuel, calcul sur la spécialité.
+            $map = $this->classMapResolver->resolveForInscription($inscription, (int) $anneeId);
+            return (int) ($map[$periode === 'semestre1' ? 'semestre1_classe_id' : 'semestre2_classe_id'] ?? $inscription->classe_id);
+        };
 
         $classement = $classeId
             ? $this->rankingService->calculerRangsClasse((int) $classeId, (int) $anneeId, $periode)
@@ -81,9 +94,31 @@ class MoyennesDeLaListe
             foreach ($classement['rows']->whereNotNull('rang')->keyBy('etudiant_id') as $etudiantId => $ligne) {
                 $rangs[$etudiantId] = $ligne['rang'];
             }
-        } elseif (! empty($moyennes)) {
-            arsort($moyennes);
-            $rangs = $this->rangsSequentiels($moyennes);
+        } elseif (! empty($moyennes) && $anneeId) {
+            // SANS filtre de classe : ne jamais classer l'ensemble des BTS
+            // de l'école les uns contre les autres. Chaque élève obtient
+            // uniquement son rang dans la cohorte propriétaire de sa période.
+            $rangs = [];
+            $groupes = [];
+            foreach ($etudiants as $etudiant) {
+                $inscription = $inscriptions[$etudiant->id] ?? null;
+                if (! $inscription) {
+                    continue;
+                }
+                $map = $this->classMapResolver->resolveForInscription($inscription, (int) $anneeId);
+                $rangClasseId = $periode === 'annuel'
+                    ? app(BtsAnnualRankingPolicy::class)->classeDeRang($map)
+                    : (int) ($map[$periode.'_classe_id'] ?? $inscription->classe_id);
+                $groupes[$rangClasseId][] = (int) $etudiant->id;
+            }
+            foreach ($groupes as $rangClasseId => $ids) {
+                $cohorte = $this->rankingService->calculerRangsClasse((int) $rangClasseId, (int) $anneeId, $periode);
+                foreach ($cohorte['rows']->whereNotNull('rang') as $ligne) {
+                    if (in_array((int) $ligne['etudiant_id'], $ids, true)) {
+                        $rangs[(int) $ligne['etudiant_id']] = $ligne['rang'];
+                    }
+                }
+            }
         }
 
         return [
