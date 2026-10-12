@@ -3184,7 +3184,7 @@ class BulletinService
         $classe = ESBTPClasse::with(['filiere', 'niveau', 'niveauEtude'])->find($classeId);
         $weights = $this->getSemesterWeights($classe);
         $averages = [];
-        $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, 'semestre2');
+        $etudiantIds = $this->classCohortCounter->etudiantIdsPourPeriode($classeId, $anneeUniversitaireId, 'annuel');
         $s1Stored = [];
         $s2Stored = [];
         foreach ($etudiantIds as $etudiantId) {
