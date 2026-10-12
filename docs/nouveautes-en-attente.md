@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1571 · Rangs BTS cohérents jusque dans la liste administrative des bulletins (chargement AJAX compris), les bulletins du portail étudiant, « Mes notes » et le parcours académique.
 - 2026-10-12 · #1570 · Enseignants > Exporter : choix des colonnes, rubriques par matière/classe/niveau/filière, nouvelle liste épurée et orientation A4 portrait/paysage automatique ; Excel reprend exactement les colonnes et les rubriques choisies.
 - 2026-10-12 · #1569 · Bulletins BTS : les rangs annuels et semestriels affichés dans les PDF concordent avec Résultats et la fiche étudiant, même si d'anciens bulletins de camarades ont des moyennes périmées.
 - 2026-10-12 · #1568 · Enseignants > Exporter : choisir plusieurs classes, filières, niveaux d'études et matières avec recherche, sans rechargement ; les PDF/Excel respectent le périmètre croisé demandé.

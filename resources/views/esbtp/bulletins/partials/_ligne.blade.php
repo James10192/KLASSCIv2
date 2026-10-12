@@ -44,10 +44,11 @@
         @endif
     </td>
     <td class="center">
-        @if($bulletin->rang)
+        @php $rangCourant = $rangsCourants[$bulletin->id] ?? null; @endphp
+        @if(($rangCourant['rang'] ?? null) !== null)
             <span class="bul-rang-display">
-                {{ $bulletin->rang }}<sup>{{ $bulletin->rang == 1 ? 'er' : 'ème' }}</sup>
-                @if($bulletin->effectif_classe)<span class="over">/ {{ $bulletin->effectif_classe }}</span>@endif
+                {{ $rangCourant['rang'] }}<sup>{{ $rangCourant['rang'] === 1 ? 'er' : 'ème' }}</sup>
+                @if(($rangCourant['total'] ?? 0) > 0)<span class="over">/ {{ $rangCourant['total'] }}</span>@endif
             </span>
         @else
             <span class="bul-moy-pill na">—</span>
