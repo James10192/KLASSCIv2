@@ -21,7 +21,8 @@
      data-classes='@json($classes)'
      data-filieres='@json($filieres)'
      data-niveaux='@json($niveaux)'
-     data-matieres='@json($matieres)'>
+     data-matieres='@json($matieres)'
+     data-structure="{{ json_encode(\App\Services\Enseignants\CompositionExportEnseignants::definitions(), JSON_HEX_APOS | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT) }}">
     <button type="button" class="te-hero-btn" data-export-trigger @click="ouvrir()"
             aria-haspopup="dialog" :aria-expanded="open.toString()">
         <i class="fas fa-download"></i> Exporter les enseignants
@@ -73,6 +74,12 @@
                                 <input type="radio" name="vue" value="specialisations" x-model="vue" @change="errors = {}">
                                 <i class="fas fa-layer-group"></i>
                                 <span><strong>Répertoire par spécialisation</strong><small>Enseignants regroupés par discipline + noms à classer</small></span>
+                                <i class="fas fa-check-circle te-exp-checked"></i>
+                            </label>
+                            <label class="te-exp-choice" :class="{ 'te-exp-choice--selected': vue === 'liste' }">
+                                <input type="radio" name="vue" value="liste" x-model="vue" @change="errors = {}">
+                                <i class="fas fa-list"></i>
+                                <span><strong>Liste épurée</strong><small>Juste les noms, regroupés par matière, classe, filière ou niveau</small></span>
                                 <i class="fas fa-check-circle te-exp-checked"></i>
                             </label>
                             <label class="te-exp-choice" :class="{ 'te-exp-choice--selected': vue === 'matieres' }">
@@ -149,6 +156,56 @@
                             <i class="fas fa-info-circle"></i>
                             Les spécialisations viennent des fiches KLASSCI. Les noms des bulletins non classables figurent en annexe sans rapprochement automatique.
                         </p>
+
+                        <div class="te-exp-section-title te-exp-section-spaced">
+                            <span class="te-exp-step">3</span> Composer le document
+                        </div>
+                        <div class="te-exp-compose">
+                            <div>
+                                <div class="te-exp-label">Colonnes à afficher <em>au moins une</em></div>
+                                <p class="te-exp-scope-help">Décochez les informations inutiles. L'intitulé d'un groupe peut remplacer une colonne répétée.</p>
+                                <div class="te-exp-column-grid" role="group" aria-label="Colonnes du document">
+                                    <template x-for="[key, label] in Object.entries(schema[vue]?.colonnes || {})" :key="vue + '-' + key">
+                                        <label class="te-exp-column-option" :class="{ 'te-exp-column-option--checked': selectedColumns.includes(key) }">
+                                            <input type="checkbox" :checked="selectedColumns.includes(key)"
+                                                   @change="changerColonne(key, $event.target.checked)">
+                                            <span x-text="label"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                                <p class="te-exp-error" x-show="errors.colonnes" x-text="errors.colonnes" role="alert" x-cloak></p>
+                                <template x-for="colonne in selectedColumns" :key="colonne">
+                                    <input type="hidden" name="colonnes[]" :value="colonne">
+                                </template>
+                            </div>
+                            <div>
+                                <div class="te-exp-label">Classement / rubriques</div>
+                                <div class="te-exp-group-choices" role="radiogroup" aria-label="Regroupement du document">
+                                    <template x-for="[key, label] in Object.entries(schema[vue]?.regroupements || {})" :key="vue + '-' + key">
+                                        <label class="te-exp-group-option" :class="{ 'te-exp-group-option--selected': regroupement === key }">
+                                            <input type="radio" name="regroupement" :value="key" x-model="regroupement" @change="choisirRegroupement(key)">
+                                            <span x-text="label"></span>
+                                        </label>
+                                    </template>
+                                </div>
+                                <div class="te-exp-label" style="margin-top:.95rem">Orientation du PDF</div>
+                                <div class="te-exp-group-choices" role="radiogroup" aria-label="Orientation du PDF">
+                                    <label class="te-exp-group-option" :class="{ 'te-exp-group-option--selected': orientation === 'auto' }">
+                                        <input type="radio" name="orientation" value="auto" x-model="orientation">
+                                        Automatique
+                                    </label>
+                                    <label class="te-exp-group-option" :class="{ 'te-exp-group-option--selected': orientation === 'portrait' }">
+                                        <input type="radio" name="orientation" value="portrait" x-model="orientation">
+                                        Portrait
+                                    </label>
+                                    <label class="te-exp-group-option" :class="{ 'te-exp-group-option--selected': orientation === 'landscape' }">
+                                        <input type="radio" name="orientation" value="landscape" x-model="orientation">
+                                        Paysage
+                                    </label>
+                                </div>
+                                <p class="te-exp-scope-help">Automatique privilégie le portrait et choisit le paysage si les colonnes sont trop larges. En portrait forcé, une sélection incompatible est refusée pour éviter les coupes.</p>
+                            </div>
+                        </div>
 
                         <button type="button" class="te-exp-more" @click="afficherAvance = !afficherAvance"
                                 :aria-expanded="afficherAvance.toString()" aria-controls="te-exp-advanced">
@@ -231,6 +288,14 @@
 .te-exp-step { display:grid; place-items:center; border-radius:50%; color:#0453cb; background:#eff6ff; width:24px; height:24px; font-size:.75rem; }
 .te-exp-choices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.65rem; }
 .te-exp-multi-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.8rem; margin-top:.85rem; align-items:start; }
+.te-exp-compose { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); gap:1rem; padding:.9rem; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc; }
+.te-exp-column-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem; margin-top:.65rem; }
+.te-exp-column-option { display:flex; gap:.5rem; align-items:center; border:1px solid #cbd5e1; border-radius:8px; padding:.5rem; cursor:pointer; font-size:.76rem; background:#fff; color:#334155; }
+.te-exp-column-option--checked { background:#eff6ff; border-color:#0453cb; color:#1d4ed8; font-weight:700; }
+.te-exp-column-option input,.te-exp-group-option input { accent-color:#0453cb; }
+.te-exp-group-choices { display:flex; flex-wrap:wrap; gap:.4rem; margin-top:.6rem; }
+.te-exp-group-option { display:inline-flex; align-items:center; gap:.3rem; padding:.42rem .55rem; border-radius:9px; background:#fff; border:1px solid #cbd5e1; font-size:.74rem; cursor:pointer; }
+.te-exp-group-option--selected { border-color:#0453cb; background:#eff6ff; color:#1d4ed8; font-weight:700; }
 .te-exp-scope-help { color:#64748b; font-size:.73rem; line-height:1.4; margin:.25rem 0 .65rem; }
 .te-exp-multi-trigger { min-height:44px; display:flex; align-items:center; gap:.6rem; width:100%; background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:.65rem .8rem; color:#1e293b; font-weight:650; text-align:left; cursor:pointer; }
 .te-exp-multi-trigger > i:first-child { color:#0453cb; }
@@ -294,7 +359,8 @@ body.te-exp-body-locked { overflow:hidden; }
     .te-exp-body { padding:1rem; }
     .te-exp-footer { padding:.8rem 1rem 1rem; }
     .te-exp-choices { grid-template-columns:1fr; }
-    .te-exp-grid, .te-exp-multi-grid { grid-template-columns:1fr; }
+    .te-exp-grid, .te-exp-multi-grid, .te-exp-compose { grid-template-columns:1fr; }
+    .te-exp-column-grid { grid-template-columns:1fr 1fr; }
     .te-exp-actions { justify-content:stretch; }
     .te-exp-actions .te-exp-button { flex:1 1 46%; }
 }
@@ -310,9 +376,16 @@ if (typeof window.enseignantsExportDialog !== 'function') {
             afficherAvance: {{ request()->hasAny(['search', 'status', 'specialization']) ? 'true' : 'false' }},
             selections: { classes: [], filieres: [], niveaux: [], matieres: [] },
             options: { classes: [], filieres: [], niveaux: [], matieres: [] },
+            schema: {},
+            selectedColumns: [],
+            regroupement: 'aucun',
+            orientation: 'auto',
             errors: {},
             init() {
                 this.launcher = this.$el;
+                try { this.schema = JSON.parse(this.launcher.dataset.structure || '{}'); } catch (_) { this.schema = {}; }
+                this.reinitialiserComposition();
+                this.$watch('vue', () => { this.reinitialiserComposition(); this.errors = {}; });
                 for (const kind of ['classes', 'filieres', 'niveaux', 'matieres']) {
                     let rows = [];
                     try { rows = JSON.parse(this.launcher.dataset[kind] || '[]'); } catch (_) { rows = []; }
@@ -324,6 +397,24 @@ if (typeof window.enseignantsExportDialog !== 'function') {
                         parent_id: item.parent_id == null ? null : String(item.parent_id)
                     }));
                 }
+            },
+            reinitialiserComposition() {
+                const def = this.schema[this.vue];
+                this.selectedColumns = def ? [...def.defaut] : ['nom'];
+                this.regroupement = def?.regroupement || 'aucun';
+            },
+            choisirRegroupement(key) {
+                this.regroupement = key;
+                if (this.vue === 'matieres' && key === 'aucun' && !this.selectedColumns.includes('matiere')) {
+                    this.selectedColumns = [...this.selectedColumns, 'matiere'];
+                }
+                this.errors = {};
+            },
+            changerColonne(key, checked) {
+                this.selectedColumns = checked
+                    ? [...new Set([...this.selectedColumns, key])]
+                    : this.selectedColumns.filter(colonne => colonne !== key);
+                this.errors = {};
             },
             hasPedagogicalFilters() {
                 return Object.values(this.selections).some(values => values.length > 0);
@@ -394,6 +485,13 @@ if (typeof window.enseignantsExportDialog !== 'function') {
                 if (!form) return;
                 const params = new URLSearchParams(new FormData(form));
                 const errors = {};
+                if (!this.selectedColumns.length) {
+                    errors.colonnes = "Choisissez au moins une colonne avant l'export.";
+                }
+                if (this.vue === 'matieres' && this.regroupement === 'aucun'
+                    && !this.selectedColumns.includes('matiere')) {
+                    errors.colonnes = "Sans rubriques par matière, affichez la colonne Matière.";
+                }
                 if (!params.get('annee_universitaire_id')) {
                     errors.annee_universitaire_id = "Choisissez une année universitaire.";
                 }

@@ -2,7 +2,7 @@
     title="Répertoire pédagogique"
     subtitle="Enseignants et affectations des bulletins BTS"
     :filters="$reportFilters ?? []"
-    orientation="landscape">
+    :orientation="$reportOrientation ?? 'landscape'">
     <style>
         .ens-intro { font-size:9px; line-height:1.55; margin:8px 0 12px; }
         .ens-section { margin:14px 0 7px; font-size:12px; font-weight:700; page-break-after:avoid; }
@@ -22,6 +22,7 @@
         .ens-spacer { margin-top:8px; }
     </style>
 
+    @if($composition === null)
     <table class="pdf-kpi-table" style="page-break-inside:avoid;">
         <tr>
             <td class="pdf-kpi-cell" style="width:25%">
@@ -52,7 +53,41 @@
         à l'année universitaire, contrairement aux données des bulletins.
     </p>
 
-    @if($vue === 'synthese')
+    @endif
+
+    @if($composition !== null)
+        <h2 class="ens-section">{{ $vue === 'liste' ? 'Liste épurée des professeurs' : 'Édition personnalisée' }}</h2>
+        <p class="ens-small">
+            {{ $composition['total'] }} ligne(s) après regroupement.
+            Les noms issus des bulletins sont conservés tels que saisis : il ne s'agit pas d'identités fusionnées.
+            Les informations de filtre et de périmètre figurent dans l'en-tête du document.
+        </p>
+        @forelse($composition['groupes'] as $groupe)
+            @if($composition['regroupement'] !== 'aucun')
+                <h3 class="ens-subsection">{{ $groupe['titre'] }} — {{ count($groupe['lignes']) }} ligne(s)</h3>
+            @endif
+            <table class="pdf-detail-table ens-table" style="width:100%">
+                <thead>
+                    <tr>
+                        @foreach($composition['entetes'] as $titre)
+                            <th>{{ $titre }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($groupe['lignes'] as $ligne)
+                        <tr>
+                            @foreach($composition['colonnes'] as $colonne)
+                                <td @class(['ens-strong' => $colonne === 'nom'])>{{ $ligne[$colonne] }}</td>
+                            @endforeach
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @empty
+            <p class="ens-hint">Aucune donnée ne correspond à ce périmètre et aux filtres sélectionnés.</p>
+        @endforelse
+    @elseif($vue === 'synthese')
         <h2 class="ens-section">01 — Repères de pilotage</h2>
         <div class="ens-hint">
             Ce panorama sert à retrouver rapidement <strong>les classes ayant des données</strong>,

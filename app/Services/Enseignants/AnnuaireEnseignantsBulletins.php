@@ -51,9 +51,10 @@ final class AnnuaireEnseignantsBulletins
 
         // Ne pas inclure de classes supprimees ; les periodes sont toujours
         // resolues par le lecteur canonique (setting puis bulletin historique).
-        $classes = ESBTPClasse::query()->whereIn('id', $ids)->get(['id', 'name'])->keyBy('id');
+        $classes = ESBTPClasse::query()->with(['filiere:id,name', 'niveau:id,name'])
+            ->whereIn('id', $ids)->get(['id', 'name', 'filiere_id', 'niveau_etude_id'])->keyBy('id');
         $brutes = [];
-        $matiereIds = [];
+        $idsMatieresPourNoms = [];
         foreach ($classes as $classe) {
             foreach ([1, 2] as $semestre) {
                 if ($semestreFiltre !== null && $semestre !== $semestreFiltre) {
@@ -68,10 +69,13 @@ final class AnnuaireEnseignantsBulletins
                         || ($matiereIds !== null && ! in_array((int) $matiereId, $matiereIds, true))) {
                         continue;
                     }
-                    $matiereIds[] = (int) $matiereId;
+                    $idsMatieresPourNoms[] = (int) $matiereId;
                     $brutes[] = [
                         'classe' => (string) $classe->name, 'semestre' => 'S'.$semestre,
                         'matiere_id' => (int) $matiereId, 'nom' => $nom,
+                        'classe_id' => (int) $classe->id,
+                        'filiere' => (string) ($classe->filiere?->name ?? 'Non renseignée'),
+                        'niveau' => (string) ($classe->niveau?->name ?? 'Non renseigné'),
                     ];
                 }
             }
@@ -82,7 +86,7 @@ final class AnnuaireEnseignantsBulletins
         }
 
         $matieres = \App\Models\ESBTPMatiere::query()
-            ->whereIn('id', array_unique($matiereIds))->pluck('name', 'id');
+            ->whereIn('id', array_unique($idsMatieresPourNoms))->pluck('name', 'id');
         $lignes = [];
         foreach ($brutes as $ligne) {
             $nomMatiere = $matieres->get($ligne['matiere_id'], 'Matière #'.$ligne['matiere_id']);
@@ -91,13 +95,19 @@ final class AnnuaireEnseignantsBulletins
                 'semestre' => $ligne['semestre'],
                 'matiere' => (string) $nomMatiere,
                 'nom' => $ligne['nom'],
+                'classe_id' => $ligne['classe_id'],
+                'matiere_id' => $ligne['matiere_id'],
+                'filiere' => $ligne['filiere'],
+                'niveau' => $ligne['niveau'],
             ];
         }
 
         // Plusieurs bulletins de la meme classe ne doivent pas multiplier les lignes.
         $distinctes = [];
         foreach ($lignes as $ligne) {
-            $cle = implode('|', array_map(fn ($v) => self::cle((string) $v), $ligne));
+            $cle = implode('|', [
+                $ligne['classe_id'], $ligne['matiere_id'], $ligne['semestre'], self::cle($ligne['nom']),
+            ]);
             $distinctes[$cle] = $ligne;
         }
         $lignes = array_values($distinctes);

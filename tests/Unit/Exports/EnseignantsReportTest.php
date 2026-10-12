@@ -5,6 +5,8 @@ namespace Tests\Unit\Exports;
 use App\Domain\Exports\Reports\EnseignantsReport;
 use App\Exports\EnseignantsExport;
 use App\Exports\EnseignantsGroupesExport;
+use App\Exports\EnseignantsCompositionExport;
+use App\Services\Enseignants\CompositionExportEnseignants;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use Tests\TestCase;
 
@@ -30,6 +32,24 @@ class EnseignantsReportTest extends TestCase
         $this->assertInstanceOf(EnseignantsGroupesExport::class, $report->excelExport());
         $annuaire = new EnseignantsReport([$this->row()], [], [], 0, 'annuaire');
         $this->assertInstanceOf(EnseignantsExport::class, $annuaire->excelExport());
+    }
+
+    public function test_liste_simplifiee_declenche_portrait_excel_personnalise_et_cache_distinct(): void
+    {
+        $affectations = [
+            ['classe' => '1 BTS', 'semestre' => 'S1', 'matiere' => 'Maths',
+                'nom' => 'PROF KONE', 'filiere' => 'BTP', 'niveau' => 'BTS 1'],
+        ];
+        $options = CompositionExportEnseignants::options('liste', ['nom'], 'matiere');
+        $report = new EnseignantsReport([], [], $affectations, 1, 'liste', $options, 'auto');
+        $autre = new EnseignantsReport([], [], $affectations, 1, 'liste', $options, 'landscape');
+
+        $this->assertSame('portrait', $report->orientation());
+        $this->assertSame('portrait', $report->viewData()['reportOrientation']);
+        $this->assertSame(1, $report->viewData()['composition']['total']);
+        $this->assertInstanceOf(EnseignantsCompositionExport::class, $report->excelExport());
+        $this->assertSame(['Nom du professeur'], $report->excelExport()->headings());
+        $this->assertNotSame($report->cacheKey(), $autre->cacheKey());
     }
 
     public function test_changement_de_nom_invalide_le_cache_pdf(): void
