@@ -9,6 +9,9 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPReliquatDetail;
 use App\Models\User;
+use App\Domain\Comptabilite\Paiements\Actions\ValiderPaiement;
+use App\Services\AvoirService;
+use Spatie\Permission\Models\Role;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -28,7 +31,8 @@ class ReliquatCaisseAjaxTest extends TestCase
             \App\Http\Middleware\EnsureInstalled::class,
             \App\Http\Middleware\PaywallMiddleware::class,
         ]);
-        foreach (['admin.access', 'module.caisse.access', 'paiements.create', 'paiements.create.non_cash', 'paiements.create.mobile_money',
+        Role::findOrCreate('superAdmin', 'web');
+        foreach (['inscriptions.view', 'identity.enrollment_officer', 'admin.access', 'module.caisse.access', 'paiements.create', 'paiements.create.non_cash', 'paiements.create.mobile_money',
             'finances.etudiants.voir', 'reinscriptions.reliquats.report'] as $droit) {
             Permission::findOrCreate($droit, 'web');
         }
@@ -133,6 +137,54 @@ class ReliquatCaisseAjaxTest extends TestCase
         $this->actingAs($this->caissier(['paiements.create.mobile_money']));
         $this->postJson(route('esbtp.reliquats.pay'), $this->versement(10000, 'especes'))->assertForbidden();
         $this->postJson(route('esbtp.reliquats.pay'), $this->versement(10000, 'wave'))->assertCreated();
+    }
+
+    public function test_la_fiche_inscription_utilise_un_seul_dialogue_ajax_pour_toutes_les_actions_reliquat(): void
+    {
+        $agent = $this->caissier(['inscriptions.view', 'finances.etudiants.voir', 'identity.enrollment_officer']);
+        $this->actingAs($agent)->get(route('esbtp.inscriptions.show', $this->inscription))
+            ->assertOk()
+            ->assertSee('reliquat-caisse-ouvrir', false)
+            ->assertSee('Régler un arriéré')
+            ->assertDontSee('id="reliquatPaymentForm"', false)
+            ->assertDontSee('prepareReliquatPaymentModal', false);
+    }
+
+    public function test_deux_caissiers_ne_peuvent_pas_reserver_plus_que_le_solde_cumule(): void
+    {
+        $premier = $this->caissier();
+        $second = $this->caissier();
+        $this->actingAs($premier)->postJson(route('esbtp.reliquats.pay'),
+            $this->versement(65000, 'virement', 'e3a70bf6-b184-4076-ae74-78f017be4837'))->assertCreated();
+        $this->actingAs($second)->postJson(route('esbtp.reliquats.pay'),
+            $this->versement(45000, 'virement', '9e43db6e-64e4-4503-9b33-7294394d79fd'))
+            ->assertUnprocessable()->assertJsonValidationErrors('montant');
+        $this->actingAs($second)->postJson(route('esbtp.reliquats.pay'),
+            $this->versement(35000, 'virement', '9e43db6e-64e4-4503-9b33-7294394d79fc'))->assertCreated();
+        $this->assertSame(100000.0, (float) ESBTPPaiement::where('reliquat_detail_id', $this->reliquat->id)
+            ->where('status', 'en_attente')->sum('montant'));
+        $this->assertSame(0.0, (float) $this->reliquat->fresh()->montant_regle);
+    }
+
+    public function test_validation_et_avoir_actualisent_le_solde_origine_sans_toucher_aux_frais_de_l_annee(): void
+    {
+        $agent = $this->caissier();
+        $this->actingAs($agent);
+        $this->postJson(route('esbtp.reliquats.pay'), $this->versement(40000))->assertCreated();
+        $paiement = ESBTPPaiement::where('reliquat_detail_id', $this->reliquat->id)->firstOrFail();
+        $avant = app(\App\Services\Finances\SituationFinanciereEtudiant::class)
+            ->pour($this->inscription->etudiant_id, $this->inscription->id);
+        app(ValiderPaiement::class)->execute($paiement, $agent);
+        $apres = app(\App\Services\Finances\SituationFinanciereEtudiant::class)
+            ->pour($this->inscription->etudiant_id, $this->inscription->id);
+        $this->assertSame($avant['courant'], $apres['courant']);
+        $this->assertSame($avant['arrieres'] - 40000, $apres['arrieres']);
+        $this->assertSame(40000.0, (float) $this->reliquat->fresh()->montant_regle);
+        app(AvoirService::class)->issue($paiement->fresh(), 15000, AvoirService::KIND_CREDIT,
+            'Annulation partielle du règlement ancien', $agent->id);
+        $this->assertSame(25000.0, (float) $this->reliquat->fresh()->montant_regle);
+        $this->assertSame($avant['courant'], app(\App\Services\Finances\SituationFinanciereEtudiant::class)
+            ->pour($this->inscription->etudiant_id, $this->inscription->id)['courant']);
     }
 
     public function test_dette_deja_reglee_n_est_pas_encaissee_nouveau(): void
