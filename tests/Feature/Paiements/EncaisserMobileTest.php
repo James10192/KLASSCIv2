@@ -330,6 +330,34 @@ class EncaisserMobileTest extends TestCase
      *
      * @return array<string, mixed>
      */
+    public function test_une_inscription_terminee_accepte_le_reglement_de_sa_dette_sans_reinscription(): void
+    {
+        $this->inscription->update(['status' => 'terminee']);
+        $avant = ESBTPInscription::count();
+
+        $reponse = $this->postJson(route('esbtp.paiements.store'), $this->versement(20000));
+
+        $reponse->assertOk()->assertJsonPath('success', true);
+        $this->assertSame($avant, ESBTPInscription::count());
+        $this->assertDatabaseHas('esbtp_paiements', [
+            'inscription_id' => $this->inscription->id,
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'montant' => 20000,
+        ]);
+    }
+
+    public function test_le_serveur_refuse_le_reglement_direct_sur_inscription_annulee(): void
+    {
+        $this->inscription->update(['status' => 'annulée']);
+        $avant = ESBTPPaiement::count();
+
+        $this->postJson(route('esbtp.paiements.store'), $this->versement(20000))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['inscription_id']);
+
+        $this->assertSame($avant, ESBTPPaiement::count());
+    }
+
     private function versement(int $montant): array
     {
         return [

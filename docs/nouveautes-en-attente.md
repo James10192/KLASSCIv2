@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1561 · Protection comptable côté serveur : la clôture administrative d'une ancienne inscription ne bloque pas son règlement, mais une inscription annulée refuse tout encaissement (HTTP 422) même via URL directe.
 - 2026-10-12 · #1561 · Caisse : une inscription d'année achevée (« terminee ») reste retrouvable pour solder son impayé sans réinscription ; les inscriptions annulées restent exclues.
 - 2026-10-12 · #1561 · Tableau PDF des paiements : l'année de l'inscription est visible sur chaque ligne, y compris pour une dette ancienne encaissée aujourd'hui.
 - 2026-10-12 · #1561 · Export détaillé PDF/Excel : une colonne indique l’année d’inscription sur chaque paiement et distingue ainsi une dette ancienne encaissée aujourd’hui des frais de l’année.

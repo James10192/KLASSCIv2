@@ -598,6 +598,22 @@ class ESBTPPaiementController extends Controller
             return redirect()->back()->withErrors(['etudiant_id' => $motif])->withInput();
         }
 
+        // Un règlement d'ancienne année reste possible après clôture de
+        // l'inscription. Pas après ANNULATION : le serveur doit faire appliquer
+        // la même frontière que la recherche, même sur une URL directe.
+        if (in_array($inscription->status, ESBTPInscription::STATUTS_ANNULES, true)) {
+            $motif = "Cette inscription a été annulée : aucun paiement ne peut y être enregistré.";
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $motif,
+                    'errors' => ['inscription_id' => [$motif]],
+                ], 422);
+            }
+
+            return redirect()->back()->withErrors(['inscription_id' => $motif])->withInput();
+        }
+
         // Un frais deja depose en nature est SOLDE : on ne l'encaisse pas.
         //
         // L'etudiant a apporte sa ramette, sa chemise cartonnee. Le lui faire
