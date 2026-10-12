@@ -4,6 +4,7 @@ namespace App\Services\Frais;
 
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPPaiement;
+use App\Models\ESBTPReliquatDetail;
 use Illuminate\Support\Collection;
 
 /**
@@ -45,8 +46,18 @@ class EtatFinancierParFrais
             ->with('fraisCategory:id,name,sort_order,category_type')
             ->get();
 
-        return $souscriptions
-            ->map(function (ESBTPFraisSubscription $souscription) use ($paye, $parInscription) {
+        // Même choix que SituationFinanciereEtudiant : une créance reportée
+        // reste unique, même lorsque des doublons historiques subsistent.
+        $reports = ESBTPReliquatDetail::query()
+            ->whereIn('inscription_source_id', $ids)
+            ->whereIn('frais_subscription_id', $souscriptions->pluck('id'))
+            ->orderBy('id')
+            ->get()
+            ->groupBy('frais_subscription_id')
+            ->map(fn ($group) => $group->last());
+
+        $lignesSources = $souscriptions
+            ->map(function (ESBTPFraisSubscription $souscription) use ($paye, $parInscription, $reports) {
                 $inscription = $parInscription->get($souscription->inscription_id);
                 $frais = $souscription->fraisCategory;
 
@@ -55,9 +66,11 @@ class EtatFinancierParFrais
                 }
 
                 $montantPaye = (float) ($paye[$souscription->inscription_id][$souscription->frais_category_id] ?? 0);
-                $du = (float) $souscription->chargedAmount();
-
-                $statut = $this->statut($souscription, $montantPaye);
+                $report = $reports->get($souscription->id);
+                $montantReporte = (float) ($report?->montant_reliquat ?? 0);
+                // La source ne doit plus réclamer la part confiée au reliquat.
+                $du = max(0.0, round((float) $souscription->chargedAmount() - $montantReporte, 2));
+                $statut = $this->statutSource($souscription, $montantPaye, $du, $montantReporte);
 
                 $etudiant = $inscription->etudiant;
 
@@ -66,6 +79,7 @@ class EtatFinancierParFrais
                     'matricule' => $etudiant->matricule ?? '—',
                     'etudiant' => trim(($etudiant->nom ?? '').' '.($etudiant->prenoms ?? '')) ?: '—',
                     'classe' => $inscription->classe->name ?? '—',
+                    'annee' => $inscription->anneeUniversitaire?->name ?? '—',
                     'frais_id' => $frais->id,
                     'frais' => $frais->name,
                     'ordre_frais' => $frais->sort_order ?? 9999,
@@ -75,12 +89,64 @@ class EtatFinancierParFrais
                     'statut' => $statut,
                 ];
             })
-            ->filter()
-            ->sortBy([
-                ['etudiant', 'asc'],
-                ['ordre_frais', 'asc'],
-            ])
+            ->filter();
+
+        // Les reliquats ne sont pas de nouveaux frais annuels. Leur ligne
+        // retrace seulement où se trouve maintenant la créance d'origine.
+        // Source (du diminué) + report (du transféré) = montant initial.
+        $lignesReports = $reports->map(function (ESBTPReliquatDetail $report) use ($parInscription) {
+            $inscription = $parInscription->get($report->inscription_source_id);
+            $frais = $report->fraisSubscription?->fraisCategory;
+            if (! $inscription || ! $frais) {
+                return null;
+            }
+
+            $du = (float) $report->montant_reliquat;
+            $paye = min($du, max(0.0, (float) $report->montant_regle));
+            $reste = max(0.0, round($du - $paye, 2));
+
+            return [
+                'inscription_id' => $inscription->id,
+                'matricule' => $inscription->etudiant?->matricule ?? '—',
+                'etudiant' => trim(($inscription->etudiant?->nom ?? '').' '.($inscription->etudiant?->prenoms ?? '')) ?: '—',
+                'classe' => $inscription->classe?->name ?? '—',
+                'annee' => $inscription->anneeUniversitaire?->name ?? '—',
+                'frais_id' => $frais->id,
+                'frais' => $frais->name.' (reliquat reporté)',
+                'ordre_frais' => $frais->sort_order ?? 9999,
+                'du' => $du,
+                'paye' => $paye,
+                'reste' => $reste,
+                'statut' => $reste <= 0 ? 'Soldé' : ($paye > 0 ? 'Partiel' : 'Aucun paiement'),
+            ];
+        })->filter();
+
+        return $lignesSources->concat($lignesReports)
+            ->sortBy([['etudiant', 'asc'], ['ordre_frais', 'asc']])
             ->values();
+    }
+
+    /** Statut de la partie qui reste sur l'inscription d'origine. */
+    private function statutSource(
+        ESBTPFraisSubscription $souscription,
+        float $paye,
+        float $du,
+        float $reporte
+    ): string {
+        if ($reporte <= 0) {
+            return $this->statut($souscription, $paye);
+        }
+        if ($souscription->satisfied_in_kind) {
+            return 'Déposé en nature';
+        }
+        if ($souscription->montantNonDefini()) {
+            return 'Montant non défini';
+        }
+        if ($du <= 0) {
+            return 'Reporté';
+        }
+
+        return $paye >= $du ? 'Soldé' : ($paye > 0 ? 'Partiel' : 'Aucun paiement');
     }
 
     /**

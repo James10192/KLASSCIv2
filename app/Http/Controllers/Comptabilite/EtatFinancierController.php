@@ -100,7 +100,9 @@ class EtatFinancierController extends Controller
     private function inscriptions(?ESBTPAnneeUniversitaire $annee, string $recherche, $restreintA): Collection
     {
         return ESBTPInscription::query()
-            ->whereIn('status', ['active', 'en_attente'])
+            // Une inscription achevée conserve ses créances : elle ne disparaît
+            // jamais d'un état des dettes toutes années.
+            ->whereIn('status', ['active', 'en_attente', 'terminée', 'terminee'])
             ->when($annee, fn ($q) => $q->where('annee_universitaire_id', $annee->id))
             ->when($recherche !== '', function ($q) use ($recherche) {
                 $comme = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $recherche).'%';
@@ -113,7 +115,7 @@ class EtatFinancierController extends Controller
                 'paiements',
                 fn ($p) => $p->ownedBy($restreintA)
             ))
-            ->with(['etudiant:id,nom,prenoms,matricule', 'classe:id,name'])
+            ->with(['etudiant:id,nom,prenoms,matricule', 'classe:id,name', 'anneeUniversitaire:id,name'])
             ->get();
     }
 

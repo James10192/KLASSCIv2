@@ -30,6 +30,7 @@
             'Aucun paiement' => 'ef-rien',
             'Déposé en nature' => 'ef-nature',
             'Montant non défini' => 'ef-inconnu',
+            'Reporté' => 'ef-nature',
         ];
         $money = fn ($v) => number_format((float) $v, 0, ',', ' ');
 
@@ -60,7 +61,7 @@
     </table>
 
     <div class="ef-note">
-        État des frais cumulés des inscriptions sélectionnées à la date d'édition : les dates de versement et le statut filtrés sur le journal des paiements ne s'appliquent pas ici. Les versements en attente de validation sont comptés,
+        État des frais cumulés des inscriptions sélectionnées à la date d'édition. La part transférée à un reliquat est retirée du dû d'origine et présentée sur une ligne de reliquat distincte, sans double compte : les dates de versement et le statut filtrés sur le journal des paiements ne s'appliquent pas ici. Les versements en attente de validation sont comptés,
         comme sur la situation financière de l'étudiant. Un versement réparti sur plusieurs frais est
         imputé à chacun d'eux selon sa ventilation. Tout avoir validé est déduit du frais qu'il
         annule, qu'il ait été remboursé en caisse ou conservé en crédit sur le compte de l'étudiant —
@@ -90,7 +91,7 @@
                     <tr>
                         <td class="ef-mat">{{ $ligne['matricule'] }}</td>
                         <td>{{ $ligne['etudiant'] }}</td>
-                        <td>{{ $ligne['classe'] }}</td>
+                        <td>{{ $ligne['classe'] }}<span style="display:block;font-size:7pt;color:#64748b;">{{ $ligne['annee'] ?? '—' }}</span></td>
                         <td>{{ $ligne['frais'] }}</td>
                         <td class="ef-num">{{ $ligne['statut'] === 'Montant non défini' ? '—' : $money($ligne['du']) }}</td>
                         <td class="ef-num">{{ $money($ligne['paye']) }}</td>
