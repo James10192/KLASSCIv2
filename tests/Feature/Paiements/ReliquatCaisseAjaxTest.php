@@ -141,7 +141,7 @@ class ReliquatCaisseAjaxTest extends TestCase
 
     public function test_la_fiche_inscription_utilise_un_seul_dialogue_ajax_pour_toutes_les_actions_reliquat(): void
     {
-        $agent = $this->caissier(['inscriptions.view', 'finances.etudiants.voir', 'identity.enrollment_officer']);
+        $agent = $this->caissier(['paiements.create', 'inscriptions.view', 'finances.etudiants.voir', 'identity.enrollment_officer']);
         $this->actingAs($agent)->get(route('esbtp.inscriptions.show', $this->inscription))
             ->assertOk()
             ->assertSee('reliquat-caisse-ouvrir', false)
