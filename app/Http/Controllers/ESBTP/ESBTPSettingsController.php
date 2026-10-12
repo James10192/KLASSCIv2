@@ -940,7 +940,8 @@ class ESBTPSettingsController extends Controller
         $souligne = str_replace('.', '_', $cle);
         $formes = [$cle, $souligne];
 
-        if (in_array($cle, InscriptionWorkflowSettings::cles(), true)) {
+        if (in_array($cle, InscriptionWorkflowSettings::cles(), true)
+            || $cle === \App\Domain\BtsTroncCommun\BtsAnnualRankingPolicy::KEY) {
             $formes[] = 'setting_'.$cle;
             $formes[] = 'setting_'.$souligne;
         }
