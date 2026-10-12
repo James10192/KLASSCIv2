@@ -648,6 +648,28 @@ class ESBTPPaiementController extends Controller
         }
 
 
+        // Une partie des frais de l'inscription source peut déjà avoir été
+        // transférée sur une inscription ultérieure. Le paiement ordinaire
+        // ne peut solder que la partie NON reportée, jamais le reliquat.
+        $sourceAvecReport = \App\Models\ESBTPReliquatDetail::query()
+            ->where('inscription_source_id', $inscription->id)->exists();
+        if ($sourceAvecReport) {
+            $situation = app(\App\Services\Finances\SituationFinanciereEtudiant::class)
+                ->pour((int) $inscription->etudiant_id, (int) $inscription->id);
+            $ligneOrigine = $situation['annees']->firstWhere('inscription_id', $inscription->id);
+            $resteDirect = (float) ($ligneOrigine['non_reporte'] ?? 0);
+
+            if ((float) $validated['montant'] > $resteDirect + 0.005) {
+                $motif = $resteDirect < 1
+                    ? "Dette déjà reportée : utilisez « Régler un arriéré » sur l'inscription de destination."
+                    : sprintf("Montant supérieur au solde non reporté de %s FCFA. Réglez le reliquat séparément.", number_format($resteDirect, 0, ',', ' '));
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $motif, 'errors' => ['montant' => [$motif]]], 422);
+                }
+                return redirect()->back()->withErrors(['montant' => $motif])->withInput();
+            }
+        }
+
         // PROTECTION BACKEND: Détecter les doublons récents (dernières 10 secondes)
         $timeWindow = now()->subSeconds(10);
         $duplicateCheck = ESBTPPaiement::where('inscription_id', $validated['inscription_id'])
@@ -721,6 +743,22 @@ class ESBTPPaiementController extends Controller
             }
 
             return redirect()->back()->withErrors(['montant' => $e->getMessage()])->withInput();
+        }
+
+        // Empêche aussi la répartition manuelle de placer une avance sur un
+        // frais déjà transféré. Le total seul ne suffirait pas à le détecter.
+        if ($sourceAvecReport) {
+            $plafondsDirects = $repartition->resteConnuParFrais($inscription->id);
+            foreach ($allocations as $categorieId => $montantAlloue) {
+                if (array_key_exists((int) $categorieId, $plafondsDirects)
+                    && $montantAlloue > $plafondsDirects[(int) $categorieId] + 0.005) {
+                    $motif = "Frais reporté ou soldé sur l'inscription d'origine : corrigez la répartition ou utilisez « Régler un arriéré ».";
+                    if ($request->expectsJson()) {
+                        return response()->json(['success' => false, 'message' => $motif, 'errors' => ['repartition' => [$motif]]], 422);
+                    }
+                    return redirect()->back()->withErrors(['repartition' => $motif])->withInput();
+                }
+            }
         }
 
         try {

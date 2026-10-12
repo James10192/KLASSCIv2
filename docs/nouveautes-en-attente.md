@@ -13,6 +13,7 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1561 · Garde serveur anti-double règlement : sur une ancienne inscription avec report, un versement supérieur au solde non reporté ou une ventilation sur le montant transféré est refusé ; seuls les frais restant à l'origine sont encaissables.
 - 2026-10-12 · #1561 · Répartition de caisse : les montants déjà transférés en reliquat ne sont plus comptés comme encore dus sur le frais de l'inscription source.
 - 2026-10-12 · #1561 · Protection comptable côté serveur : la clôture administrative d'une ancienne inscription ne bloque pas son règlement, mais une inscription annulée refuse tout encaissement (HTTP 422) même via URL directe.
 - 2026-10-12 · #1561 · Caisse : une inscription d'année achevée (« terminee ») reste retrouvable pour solder son impayé sans réinscription ; les inscriptions annulées restent exclues.
