@@ -3231,10 +3231,13 @@ class BulletinService
                 $anneeUniversitaireId,
                 'semestre2'
             );
+            // En mode rang sur classe d'origine, les poids viennent toujours
+            // de la spécialité S2 de chaque élève, jamais de la classe TC.
+            $studentWeights = $this->getSemesterWeights(ESBTPClasse::find($classeIdS2) ?? $classe);
             $annual = $this->calculateConfiguredAnnualAverage(
                 $s1,
                 $s2,
-                $weights,
+                $studentWeights,
                 $classeIdS1,
                 $classeIdS2
             );
