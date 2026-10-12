@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Fiche étudiant — tronc commun BTS 1 :** les résultats et bulletins du semestre 1 restent visibles avec leur classe de tronc commun après l'orientation en spécialité pour le semestre 2. Le bilan académique rassemble les deux semestres de la même année, signale une moyenne annuelle encore partielle et ne mélange plus les notes des autres classes. Les anciennes doubles inscriptions et une moyenne valide de 0/20 sont prises en charge.
+
 - **BTS 1 — décision du conseil selon deux moyennes :** dans Paramètres > Bulletins, le seuil d'admission peut désormais s'appliquer au seul S2, à la moyenne annuelle ou aux **deux** (S2 ET annuelle). Dans ce dernier cas, chacune doit atteindre le seuil : une bonne moyenne S2 ne suffit plus lorsque l'annuelle est insuffisante. Si une des moyennes manque, aucune admission automatique n'est générée et la réinscription est signalée à vérifier. Les valeurs déjà configurées par les établissements restent inchangées jusqu'à sélection explicite du nouveau mode.
 
 - **Encaissements des anciennes promotions :** les inscriptions terminées restent consultables à la caisse pour régler leurs frais encore dus, mais les inscriptions annulées ne sont jamais proposées. Aucun dossier de l'année courante n'est créé.

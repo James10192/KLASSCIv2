@@ -421,7 +421,8 @@ jobs:
           for chemin in \
             tests/Unit/Services/BtsBulletinPolicyTest.php \
             tests/Feature/Bulletin/BtsBulletinConfigurationHttpTest.php \
-            tests/Feature/Reinscription/AnalyseDecisionsReinscriptionTest.php
+            tests/Feature/Reinscription/AnalyseDecisionsReinscriptionTest.php \
+            tests/Feature/Bts/StudentAcademicTroncCommunTest.php
           do
             php vendor/bin/phpunit "$chemin" --no-coverage || echec=1
           done
