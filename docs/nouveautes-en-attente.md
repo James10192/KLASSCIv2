@@ -13,6 +13,28 @@ ligne reste ouverte, `git push origin presentation:<école>` est refusé
 Format : `- AAAA-MM-JJ · #PR · ce que l'école voit de changé`
 
 ## Ouvertes
+- 2026-10-12 · #1561 · État financier toutes années : les inscriptions terminées restent dans le suivi et les reliquats reportés sont ventilés sans double compter les créances.
+- 2026-10-12 · #1561 · Recette caisse : test un paiement d'aujourd'hui sur une ancienne inscription (sans inclure le paiement d'hier sur l'année courante) ; raccourci frais seulement quand la section existe.
+- 2026-10-12 · #1561 · Tests d'encaissement sur dossier achevé alignés sur la valeur ENUM officielle `terminée` ; la validation accepte aussi l'orthographe legacy `terminee` sans ouvrir les inscriptions annulées.
+- 2026-10-12 · #1561 · Tests HTTP : une ancienne inscription au montant entièrement reporté ne propose plus de frais direct dans les fenêtres de paiement ; l'ancien flux de validation ne peut pas rouvrir son workflow.
+- 2026-10-12 · #1561 · Fiche étudiant : les cartes d'anciennes inscriptions distinguent le solde directement encaissable de la part transférée en reliquat, sans la présenter comme une inscription soldée.
+- 2026-10-12 · #1561 · Fiche étudiant : le paiement d'une ancienne inscription utilise en AJAX paiements.store sans modifier le workflow académique ; une réponse serveur 422 ne produit plus un faux toast de succès et les montants inhabituels demandent confirmation.
+- 2026-10-12 · #1561 · Fenêtre de paiement des inscriptions : même calcul de frais restants que la caisse (reports déduits), interdiction de remettre une ancienne inscription en validation par un paiement, et vérification serveur du mode autorisé.
+- 2026-10-12 · #1561 · CI élargie aux scénarios de répartition avec dette reportée et à l'ordre d'affichage/confidentialité des finances de la fiche étudiant.
+- 2026-10-12 · #1561 · Garde serveur anti-double règlement : sur une ancienne inscription avec report, un versement supérieur au solde non reporté ou une ventilation sur le montant transféré est refusé ; seuls les frais restant à l'origine sont encaissables.
+- 2026-10-12 · #1561 · Répartition de caisse : les montants déjà transférés en reliquat ne sont plus comptés comme encore dus sur le frais de l'inscription source.
+- 2026-10-12 · #1561 · Protection comptable côté serveur : la clôture administrative d'une ancienne inscription ne bloque pas son règlement, mais une inscription annulée refuse tout encaissement (HTTP 422) même via URL directe.
+- 2026-10-12 · #1561 · Caisse : une inscription d'année achevée (« terminée ») reste retrouvable pour solder son impayé sans réinscription ; les inscriptions annulées restent exclues.
+- 2026-10-12 · #1561 · Tableau PDF des paiements : l'année de l'inscription est visible sur chaque ligne, y compris pour une dette ancienne encaissée aujourd'hui.
+- 2026-10-12 · #1561 · Export détaillé PDF/Excel : une colonne indique l’année d’inscription sur chaque paiement et distingue ainsi une dette ancienne encaissée aujourd’hui des frais de l’année.
+- 2026-10-12 · #1561 · Export détaillé des paiements : sélectionner toutes les années, l’année courante ou les anciennes dettes ; dates d’encaissement indépendantes et même filtre que le journal de caisse.
+- 2026-10-12 · #1561 · Encaissement : lorsqu'aucune inscription courante n'est trouvée, recherche guidée vers les anciennes inscriptions, nom d'utilisateur inclus (bureau/mobile), sans inscription fictive.
+- 2026-10-12 · #1561 · Exports des versements PDF, Excel/CSV et SAARI : affichage explicite de l'origine des inscriptions sélectionnées et de la période de paiement, identique à la liste.
+- 2026-10-12 · #1561 · État financier PDF : choisir une situation cumulée de l'année courante ou de toutes les inscriptions, sans appliquer silencieusement les dates du journal de caisse (bureau et mobile).
+- 2026-10-12 · #1561 · Paiements > Suivi : raccourcis Aujourd'hui, 30 jours, toutes dates sur toutes années, sans confondre date de caisse et année de la dette (bureau et mobile).
+- 2026-10-12 · #1561 · Fiche étudiant > Finances : année de référence et frais de l'inscription affichés en premier, situation multi-années consultable ensuite sans perdre les anciennes inscriptions.
+- 2026-10-12 · Caisse et suivi des paiements : les dettes anciennes peuvent être payées même sans nouvelle inscription. Séparez « Tous les encaissements », « Frais de cette année » et « Dettes anciennes » pour éviter de confondre paiements et nouveaux inscrits.
+
 - 2026-10-11 · Caisse : régler un reliquat depuis la fiche financière ou « Encaisser un paiement » ; modal premium avec montant disponible, paiements en attente, choix du mode autorisé et confirmation AJAX, sans mélanger la nouvelle scolarité.
 - 2026-10-11 · Réinscription : permission d'établissement pour autoriser un report de dette, avec contrôle serveur et choix explicite, sans droit d'abandon implicite.
 - 2026-10-11 · #1556 · Enseignants : export PDF/Excel préparé dans une seule fenêtre premium avec aperçu, téléchargement et validation visuelle des paramètres obligatoires, sans filtres dispersés sur la liste.

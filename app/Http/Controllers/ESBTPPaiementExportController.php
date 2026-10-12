@@ -170,6 +170,7 @@ class ESBTPPaiementExportController extends Controller
             'date_fin' => 'nullable|date|after_or_equal:date_debut',
             'modes' => 'nullable|array',
             'modes.*' => 'string|max:50',
+            'portee' => 'nullable|in:tous,annee,arrieres',
             'format' => 'required|in:pdf,excel',
         ];
 
@@ -178,6 +179,7 @@ class ESBTPPaiementExportController extends Controller
         // Normalisation : forcer arrays
         $data['classe_ids'] = $data['classe_ids'] ?? [];
         $data['modes'] = $data['modes'] ?? [];
+        $data['portee'] = $data['portee'] ?? 'tous';
 
         return $data;
     }

@@ -40,6 +40,7 @@
         'devise' => $pimDevise,
         'filtres' => [
             'search' => (string) request('search', ''),
+            'portee' => (string) request('portee', 'tous'),
             'status' => (string) request('status', ''),
             'frais_category_id' => (string) request('frais_category_id', ''),
             'date_debut' => (string) request('date_debut', ''),
@@ -55,6 +56,8 @@
             'pdf-preview' => ['url' => route('esbtp.paiements.export.pdf-preview'), 'onglet' => true],
             'etat-financier-preview' => ['url' => route('esbtp.paiements.export.etat-financier'), 'onglet' => true, 'inline' => true],
             'etat-financier' => ['url' => route('esbtp.paiements.export.etat-financier'), 'onglet' => false],
+            'etat-financier-toutes' => ['url' => route('esbtp.paiements.export.etat-financier'), 'onglet' => false, 'annee_situation' => 'toutes'],
+            'etat-financier-toutes-preview' => ['url' => route('esbtp.paiements.export.etat-financier'), 'onglet' => true, 'inline' => true, 'annee_situation' => 'toutes'],
             'excel' => ['url' => route('esbtp.paiements.export.excel'), 'onglet' => false],
             'saari' => ['url' => route('esbtp.paiements.export.saari'), 'onglet' => false],
             'csv' => ['url' => route('esbtp.paiements.export.csv'), 'onglet' => false],
@@ -132,6 +135,7 @@
                     <div class="tt">
                         <b x-text="p.nom"></b>
                         <span x-text="sousTitre(p)"></span>
+                        <small x-show="p.type_dette" x-cloak x-text="p.type_dette" style="font-weight:700;color:#0453cb"></small>
                     </div>
                     <div class="tr">
                         <span class="amt" x-bind:class="p.avoir ? 'neg' : ''" x-text="montantLigne(p)"></span>
@@ -149,7 +153,7 @@
                     </x-m.empty>
                 </template>
                 <template x-if="!filtresActifs()">
-                    <x-m.empty icon="inbox" :title="$pimMienSeul ? 'Aucun encaissement' : 'Aucun paiement'" text="Le premier paiement de l'année apparaîtra ici." />
+                    <x-m.empty icon="inbox" :title="$pimMienSeul ? 'Aucun encaissement' : 'Aucun paiement'" text="Aucun versement pour les filtres sélectionnés." />
                 </template>
             </div>
         </template>
@@ -170,10 +174,12 @@
     <x-m.sheet id="pim-filtres" title="Filtres" sub="La liste et les exports suivent ces filtres.">
         <div class="pim-form">
             <div class="m-field">
-                <label>Période</label>
+                <label>Date du versement, toutes années</label>
+                <small>Les raccourcis recherchent par date d'encaissement, indépendamment de l'année d'inscription.</small>
                 <div class="m-seg pim-presets">
                     <button type="button" x-bind:class="presetActif('jour') ? 'on' : ''" x-on:click="preset('jour')">Aujourd'hui</button>
                     <button type="button" x-bind:class="presetActif('semaine') ? 'on' : ''" x-on:click="preset('semaine')">7 jours</button>
+                    <button type="button" x-bind:class="presetActif('30j') ? 'on' : ''" x-on:click="preset('30j')">30 jours</button>
                     <button type="button" x-bind:class="presetActif('mois') ? 'on' : ''" x-on:click="preset('mois')">Ce mois</button>
                     <button type="button" x-bind:class="presetActif('tout') ? 'on' : ''" x-on:click="preset('tout')">Tout</button>
                 </div>
@@ -183,6 +189,18 @@
                 </div>
             </div>
 
+            <div class="m-field">
+                <label>Quels paiements ?</label>
+                <div class="m-opt pim-opt">
+                    <label><input type="radio" name="pim_portee" value="tous" x-model="brouillon.portee">
+                        <span class="rd" aria-hidden="true"></span><span>Par date · toutes années</span></label>
+                    <label><input type="radio" name="pim_portee" value="annee" x-model="brouillon.portee">
+                        <span class="rd" aria-hidden="true"></span><span>Frais de cette année</span></label>
+                    <label><input type="radio" name="pim_portee" value="arrieres" x-model="brouillon.portee">
+                        <span class="rd" aria-hidden="true"></span><span>Dettes anciennes</span></label>
+                </div>
+                <small>Un paiement d'une ancienne année ne crée aucune inscription. Les filtres de dates concernent la date du versement.</small>
+            </div>
             <div class="m-field">
                 <label>Statut</label>
                 <div class="m-seg">
@@ -230,12 +248,22 @@
                 @if($pimEtatFinancier)
                     <button type="button" x-on:click="exporter('etat-financier-preview')">
                         <x-m.icon name="scale" />
-                        <span class="pim-menu-tt">Aperçu état financier<small>Qui a soldé quel frais</small></span>
+                        <span class="pim-menu-tt">État financier · année courante<small>Soldes cumulés, sans filtre de dates</small></span>
                         <span class="ch"><x-m.icon name="chr" /></span>
                     </button>
                     <button type="button" x-on:click="exporter('etat-financier')">
                         <x-m.icon name="dl" />
-                        <span class="pim-menu-tt">Télécharger l'état financier</span>
+                        <span class="pim-menu-tt">Télécharger · année courante</span>
+                        <span class="ch"><x-m.icon name="chr" /></span>
+                    </button>
+                    <button type="button" x-on:click="exporter('etat-financier-toutes-preview')">
+                        <x-m.icon name="scale" />
+                        <span class="pim-menu-tt">Aperçu état financier · toutes années<small>Soldes de toutes les inscriptions</small></span>
+                        <span class="ch"><x-m.icon name="chr" /></span>
+                    </button>
+                    <button type="button" x-on:click="exporter('etat-financier-toutes')">
+                        <x-m.icon name="dl" />
+                        <span class="pim-menu-tt">Télécharger · toutes années</span>
                         <span class="ch"><x-m.icon name="chr" /></span>
                     </button>
                 @endif
@@ -411,10 +439,10 @@
                     this.recharger();
                 },
                 reinitialiser() {
-                    this.brouillon = { search: this.filtres.search, status: '', frais_category_id: '', date_debut: '', date_fin: '' };
+                    this.brouillon = { search: this.filtres.search, portee: 'tous', status: '', frais_category_id: '', date_debut: '', date_fin: '' };
                 },
                 toutEffacer() {
-                    this.filtres = { search: '', status: '', frais_category_id: '', date_debut: '', date_fin: '' };
+                    this.filtres = { search: '', portee: 'tous', status: '', frais_category_id: '', date_debut: '', date_fin: '' };
                     this.recharger();
                 },
                 segment(status) {
@@ -431,6 +459,7 @@
                     var auj = new Date();
                     if (cle === 'jour') { return [this._iso(auj), this._iso(auj)]; }
                     if (cle === 'semaine') { var d = new Date(auj); d.setDate(d.getDate() - 6); return [this._iso(d), this._iso(auj)]; }
+                    if (cle === '30j') { var d = new Date(auj); d.setDate(d.getDate() - 29); return [this._iso(d), this._iso(auj)]; }
                     if (cle === 'mois') { return [this._iso(new Date(auj.getFullYear(), auj.getMonth(), 1)), this._iso(auj)]; }
                     return ['', ''];
                 },
@@ -438,6 +467,7 @@
                     var b = this._bornes(cle);
                     this.brouillon.date_debut = b[0];
                     this.brouillon.date_fin = b[1];
+                    this.brouillon.portee = 'tous'; // un raccourci de date signifie toutes les années d'inscription
                 },
                 presetActif(cle) {
                     var b = this._bornes(cle);
@@ -507,6 +537,10 @@
                     if (!ex || !ex.url) { return; }
                     var p = this.parametres();
                     if (ex.inline) { p.set('inline', '1'); }
+                    if (format.startsWith('etat-financier')) {
+                        p.delete('date_debut'); p.delete('date_fin'); p.delete('status'); p.delete('portee');
+                        p.set('annee_situation', ex.annee_situation || 'courante');
+                    }
                     var url = ex.url + (p.toString() ? '?' + p.toString() : '');
                     this.fermerTout();
                     if (ex.onglet) {

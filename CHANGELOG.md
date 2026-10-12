@@ -12,6 +12,13 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Encaissements des anciennes promotions :** les inscriptions terminées restent consultables à la caisse pour régler leurs frais encore dus, mais les inscriptions annulées ne sont jamais proposées. Aucun dossier de l'année courante n'est créé.
+
+- **Fiche étudiant — finances réorganisées :** l'inscription de référence (année courante, ou future sous réserve) et ses frais apparaissent avant la synthèse multi-années. Le compte global est repliable et accessible directement, les autres inscriptions restent visibles ; sans inscription courante, la fiche invite à consulter les dettes anciennes sans réinscription.
+
+- **Caisse : dettes anciennes avant ou après réinscription.** La recherche de paiements inclut sur demande les anciennes inscriptions ; la fenêtre des arriérés distingue les dettes non reportées (paiement sur l'inscription d'origine) des reliquats officiellement reportés (règlement propre du report). Dans `paiements.index`, trois vues explicites séparent tous les encaissements, les frais de l'année et les règlements d'anciennes dettes. Les statistiques comptent des versements, jamais des inscrits.
+
+
 - **Caisse — règlement des reliquats :** un dialogue d'encaissement guidé est disponible depuis les situations financières et sur `paiements.create`. Le paiement reste séparé des frais courants, lié à sa dette d'origine, prévisualise le disponible après réservations et se crée en attente de validation. Modes autorisés et droit `paiements.create` ou variantes existantes, sans droit lié au report de réinscription ; contrôle serveur et AJAX sans rechargement.
 
 - **Réinscription avec impayés :** nouvelle permission d'école `reinscriptions.reliquats.report` configurable dans les rôles. Une dérogation exige une décision explicite et est contrôlée côté service ; remise/abandon reste distinct et réservé au SuperAdmin.

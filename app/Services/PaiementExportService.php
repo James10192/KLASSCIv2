@@ -41,7 +41,8 @@ class PaiementExportService
      */
     private const EAGER_LOAD = [
         'etudiant:id,matricule,nom,prenoms',
-        'inscription:id,etudiant_id,classe_id,filiere_id,niveau_id',
+        'inscription:id,etudiant_id,classe_id,filiere_id,niveau_id,annee_universitaire_id',
+        'inscription.anneeUniversitaire:id,name',
         'inscription.classe:id,name,filiere_id,niveau_etude_id',
         'inscription.filiere:id,name',
         'inscription.niveau:id,name',
@@ -90,6 +91,9 @@ class PaiementExportService
             && $user->can('paiements.view_own')) {
             $query->where('created_by', $user->id);
         }
+
+        // Même périmètre que /paiements : inscription d'origine ≠ jour d'encaissement.
+        PaymentFilterService::appliquerPortee($query, (string) ($filters['portee'] ?? 'tous'));
 
         // Étudiant spécifique
         if (! empty($filters['etudiant_id'])) {
@@ -160,7 +164,7 @@ class PaiementExportService
         $totalMontant = \App\Models\ESBTPPaiement::netCashFrom($paiements);
         $showCreator = $this->shouldShowCreatorColumn($user);
         $context = $this->buildContext($filters, $user, $showCreator);
-        $orientation = $showCreator ? 'landscape' : 'portrait';
+        $orientation = 'landscape'; // La colonne « année d'inscription » doit rester lisible.
 
         Log::info('PDF détaillé paiements rendu', [
             'user_id' => $user?->id,
@@ -257,7 +261,7 @@ class PaiementExportService
             fputcsv($out, [], ';'); // ligne vide
 
             // En-têtes
-            $headers = ['Date', 'N° Reçu', 'Matricule', 'Nom étudiant', 'Classe', 'Mode', 'Montant (FCFA)', 'Statut'];
+            $headers = ['Date', 'N° Reçu', 'Matricule', 'Nom étudiant', 'Classe', 'Année d’inscription', 'Mode', 'Montant (FCFA)', 'Statut'];
             if ($showCreator) {
                 $headers[] = 'Encaissé par';
             }
@@ -270,6 +274,7 @@ class PaiementExportService
                     optional($p->etudiant)->matricule ?? '',
                     trim((optional($p->etudiant)->nom ?? '') . ' ' . (optional($p->etudiant)->prenoms ?? '')),
                     optional(optional($p->inscription)->classe)->name ?? '',
+                    $p->inscription?->anneeUniversitaire?->name ?? '',
                     $p->mode_paiement ?? '',
                     number_format((float) $p->montant, 0, ',', ' '),
                     $this->statusLabel($p->status ?? $p->statut ?? ''),
@@ -282,7 +287,7 @@ class PaiementExportService
 
             // Footer
             fputcsv($out, [], ';');
-            $totalRow = ['TOTAL', '', '', '', '', '', number_format($totalMontant, 0, ',', ' '), ''];
+            $totalRow = ['TOTAL', '', '', '', '', '', '', number_format($totalMontant, 0, ',', ' '), ''];
             if ($showCreator) {
                 $totalRow[] = '';
             }
@@ -334,7 +339,18 @@ class PaiementExportService
      */
     public function buildFiltersSummary(array $filters, ?User $user = null): array
     {
-        $summary = [];
+        $summary = [[
+            'label' => 'Années des inscriptions',
+            'value' => match ((string) ($filters['portee'] ?? 'tous')) {
+                'annee' => 'Frais de l’année courante, sans reliquats',
+                'arrieres' => 'Anciennes dettes, reportées ou non',
+                default => 'Toutes les années d’inscription',
+            },
+        ]];
+
+        if (empty($filters['date_debut']) && empty($filters['date_fin'])) {
+            $summary[] = ['label' => 'Dates de versement', 'value' => 'Toutes les dates'];
+        }
 
         if (! empty($filters['date_debut']) || ! empty($filters['date_fin'])) {
             $debut = ! empty($filters['date_debut'])
@@ -343,7 +359,7 @@ class PaiementExportService
             $fin = ! empty($filters['date_fin'])
                 ? Carbon::parse($filters['date_fin'])->format('d/m/Y')
                 : '—';
-            $summary[] = ['label' => 'Période', 'value' => $debut . ' → ' . $fin];
+            $summary[] = ['label' => 'Dates de versement', 'value' => $debut . ' → ' . $fin];
         }
 
         if (! empty($filters['etudiant_id'])) {

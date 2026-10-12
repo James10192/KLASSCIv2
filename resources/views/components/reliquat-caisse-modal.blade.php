@@ -39,11 +39,25 @@
                             <p>Ce versement reste en attente de validation et ne solde pas encore la dette.</p>
                         </div>
                         <p class="rc-loading" x-show="loading"><i class="fas fa-spinner fa-spin"></i> Lecture des dettes…</p>
-                        <template x-if="!loading && lignes.length === 0">
-                            <p class="rc-empty">Aucun reliquat reporté à régler pour cet étudiant. Les frais ordinaires restent dans l'encaissement habituel.</p>
+                        <template x-if="!loading && lignes.length === 0 && dettesDirectes.length === 0">
+                            <p class="rc-empty">Aucune dette ancienne à régler pour ce dossier. Pour les frais de l'année, utilisez le versement habituel.</p>
                         </template>
+                        <div x-show="!loading && dettesDirectes.length" x-cloak>
+                            <div class="rc-section-title">Dettes non reportées — règlement sur leur année d'origine</div>
+                            <p class="rc-explain">L'étudiant n'a pas besoin d'être réinscrit pour solder cette dette. Choisissez l'année ; KLASSCI ouvrira l'encaissement correspondant, sans créer d'inscription.</p>
+                            <div class="rc-debts">
+                                <template x-for="d in dettesDirectes" :key="d.inscription_id">
+                                    <a class="rc-debt rc-debt-link" :href="d.url" :aria-label="'Encaisser la dette de ' + d.annee">
+                                        <span><strong x-text="d.annee"></strong><small x-text="d.classe"></small>
+                                            <small>Dette de cette inscription, non reportée</small></span>
+                                        <span class="rc-debt-money"><strong x-text="argent(d.montant)"></strong><small>Régler sur cette année <i class="fas fa-arrow-right"></i></small></span>
+                                    </a>
+                                </template>
+                            </div>
+                        </div>
                         <div x-show="!loading && lignes.length">
-                            <div class="rc-section-title">1. Choisir la dette à rembourser</div>
+                            <div class="rc-section-title">Dettes déjà reportées — règlement du reliquat</div>
+                            <p class="rc-explain">Seul le montant encore disponible peut être encaissé. Le report existe déjà ; aucun nouvel étudiant n'est créé.</p>
                             <div class="rc-debts">
                                 <template x-for="r in lignes" :key="r.id">
                                     <button type="button" class="rc-debt"
@@ -62,7 +76,7 @@
                                     </button>
                                 </template>
                             </div>
-                            <div class="rc-section-title">2. Enregistrer le versement</div>
+                            <div class="rc-section-title">Enregistrer le versement du reliquat sélectionné</div>
                             <div class="rc-fields">
                                 <div class="rc-field" :class="{ 'rc-field--invalid': field === 'montant' }">
                                     <label for="rc-montant">Montant à encaisser (FCFA)</label>
@@ -112,7 +126,7 @@
 .rc-head{display:flex;align-items:center;gap:.9rem;padding:1.25rem 1.4rem;border-bottom:1px solid #e2e8f0}.rc-head-icon{background:#eff6ff;color:#0453cb;width:42px;height:42px;display:grid;place-items:center;border-radius:11px}
 .rc-heading{flex:1}.rc-heading h2{font-size:1.08rem;font-weight:800;color:#0f172a;margin:0}.rc-heading p{font-size:.78rem;color:#64748b;margin:.3rem 0 0}.rc-close{border:0;background:#f1f5f9;border-radius:8px;width:36px;height:36px;color:#475569;cursor:pointer}
 .rc-form{display:flex;flex-direction:column;min-height:0}.rc-content{padding:1.25rem 1.4rem;overflow-y:auto}.rc-section-title{font-size:.85rem;font-weight:800;margin:.45rem 0 .85rem;color:#0f172a}
-.rc-debts{display:grid;gap:.5rem;margin-bottom:1.2rem}.rc-debt{width:100%;display:flex;justify-content:space-between;gap:1rem;text-align:left;padding:.85rem;border:1px solid #dbe4f0;background:#fff;border-radius:11px;cursor:pointer}.rc-debt:hover,.rc-debt--active{border-color:#0453cb;background:#eff6ff}.rc-debt--disabled{opacity:.55;cursor:default}
+.rc-explain{font-size:.77rem;color:#64748b;line-height:1.45;margin:-.2rem 0 .85rem}.rc-debts{display:grid;gap:.5rem;margin-bottom:1.2rem}.rc-debt-link{text-decoration:none;color:inherit}.rc-debt-link:hover{text-decoration:none;color:inherit}.rc-debt{width:100%;display:flex;justify-content:space-between;gap:1rem;text-align:left;padding:.85rem;border:1px solid #dbe4f0;background:#fff;border-radius:11px;cursor:pointer}.rc-debt:hover,.rc-debt--active{border-color:#0453cb;background:#eff6ff}.rc-debt--disabled{opacity:.55;cursor:default}
 .rc-debt span,.rc-debt-money{display:flex;flex-direction:column;gap:.2rem}.rc-debt strong{font-size:.82rem}.rc-debt small{font-size:.7rem;color:#64748b}.rc-debt-money{text-align:right;align-items:flex-end}.rc-danger{color:#b91c1c!important}
 .rc-fields{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}.rc-field{display:flex;min-width:0;flex-direction:column;gap:.3rem}.rc-field label,.rc-label{font-weight:700;font-size:.77rem;color:#475569}
 .rc-field input,.rc-field textarea{border:1px solid #cbd5e1;border-radius:9px;padding:.6rem .75rem;min-height:44px;max-width:100%;color:#1e293b}.rc-field .au-select{width:100%;display:flex}.rc-field .au-select-trigger{width:100%;min-height:44px}
@@ -129,7 +143,7 @@ if (typeof window.reliquatCaisseModal !== 'function') {
     window.reliquatCaisseModal = function (initialInscription) {
         return {
             inscriptionId: Number(initialInscription) || 0,
-            open: false, loading: false, sending: false, lignes: [],
+            open: false, loading: false, sending: false, lignes: [], dettesDirectes: [],
             reliquatId: null, selection: null, montant: '', error: '',
             field: '', success: '', receipt: '', requestKey: null,
             argent(n) { return new Intl.NumberFormat('fr-FR').format(Number(n || 0)) + ' FCFA'; },
@@ -137,7 +151,7 @@ if (typeof window.reliquatCaisseModal !== 'function') {
                 const next = Number(id) || 0;
                 if (this.inscriptionId !== next) {
                     this.inscriptionId = next;
-                    this.lignes = []; this.selection = null; this.reliquatId = null;
+                    this.lignes = []; this.dettesDirectes = []; this.selection = null; this.reliquatId = null;
                     if (this.open) this.charger();
                 }
             },
@@ -175,6 +189,7 @@ if (typeof window.reliquatCaisseModal !== 'function') {
                     const json = await response.json();
                     if (requested !== this.inscriptionId || !this.open) return;
                     this.lignes = json.reliquats || [];
+                    this.dettesDirectes = json.dettes_non_reportees || [];
                     this.selection = this.lignes.find(r => r.id === Number(this.reliquatId) && r.payable) || null;
                     if (!this.selection) { this.reliquatId = null; this.montant = ''; }
                     this.$dispatch('reliquat-encaissement-refresh', {

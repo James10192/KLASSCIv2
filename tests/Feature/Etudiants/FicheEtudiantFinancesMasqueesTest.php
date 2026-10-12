@@ -77,6 +77,15 @@ class FicheEtudiantFinancesMasqueesTest extends TestCase
         $this->assertStringContainsString('id="tab-finances"', $html);
     }
 
+
+    public function test_la_situation_globale_est_secondaire_et_les_autres_annees_restent_accessibles(): void
+    {
+        $html = $this->ficheVuePar(['admin.access', 'students.view', 'paiements.view']);
+        $this->assertStringContainsString('id="fin-global-multi"', $html);
+        $this->assertStringContainsString('Situation financière sur toutes les inscriptions', $html);
+        $this->assertTrue(strpos($html, 'fin-reference-empty') !== false || strpos($html, 'class="fin-hero"') !== false);
+    }
+
     public function test_une_ancienne_inscription_a_solder_peut_ouvrir_la_modale_de_paiement(): void
     {
         $user = User::factory()->create();
@@ -107,7 +116,7 @@ class FicheEtudiantFinancesMasqueesTest extends TestCase
 
         $this->assertStringContainsString('id="etudiantPaymentModal"', $html);
         $this->assertStringContainsString(
-            'onclick="prepareEtudiantPaymentModal('.$inscription->id.')"',
+            'onclick="prepareEtudiantPaymentModal('.$inscription->id.', true)"',
             $html
         );
         $this->assertStringContainsString('Enregistrer un paiement', $html);

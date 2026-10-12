@@ -9,9 +9,9 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPReliquatDetail;
 use App\Models\User;
-use App\Domain\Comptabilite\Paiements\Actions\ValiderPaiement;
-use App\Services\AvoirService;
 use Spatie\Permission\Models\Role;
+use App\Services\AvoirService;
+use App\Domain\Comptabilite\Paiements\Actions\ValiderPaiement;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -32,8 +32,8 @@ class ReliquatCaisseAjaxTest extends TestCase
             \App\Http\Middleware\PaywallMiddleware::class,
         ]);
         Role::findOrCreate('superAdmin', 'web');
-        foreach (['inscriptions.view', 'identity.enrollment_officer', 'admin.access', 'module.caisse.access', 'paiements.create', 'paiements.create.non_cash', 'paiements.create.mobile_money',
-            'finances.etudiants.voir', 'reinscriptions.reliquats.report'] as $droit) {
+        foreach (['admin.access', 'module.caisse.access', 'paiements.create', 'paiements.create.non_cash', 'paiements.create.mobile_money',
+            'finances.etudiants.voir', 'inscriptions.view', 'identity.enrollment_officer', 'reinscriptions.reliquats.report'] as $droit) {
             Permission::findOrCreate($droit, 'web');
         }
 
@@ -85,6 +85,39 @@ class ReliquatCaisseAjaxTest extends TestCase
             ->assertSee('Régler un arriéré')
             ->assertSee('name="mode_paiement"', false)
             ->assertSee('id="payment-form"', false);
+    }
+
+    public function test_la_fiche_ne_propose_pas_un_frais_deja_transfere_en_reliquat(): void
+    {
+        $source = $this->reliquat->inscriptionSource;
+        $this->actingAs($this->caissier(['paiements.create', 'finances.etudiants.voir', 'inscriptions.view']));
+
+        $this->getJson(route('esbtp.inscriptions.frais-restants', $source->id))
+            ->assertOk()
+            ->assertJsonPath('categories', []);
+
+        $categorieId = $this->reliquat->fraisSubscription->frais_category_id;
+        $this->getJson(route('esbtp.inscriptions.frais.montant-restant', [$source->id, $categorieId]))
+            ->assertOk()
+            ->assertJsonPath('montant_restant', 0);
+    }
+
+    public function test_un_ancien_workflow_d_inscription_ne_peut_pas_etre_reactive_par_un_paiement(): void
+    {
+        $source = $this->reliquat->inscriptionSource;
+        $source->update(['status' => 'terminée']);
+        $this->actingAs($this->caissier());
+        $avant = ESBTPPaiement::count();
+
+        $this->postJson(route('esbtp.inscriptions.valider-avec-paiement', $source->id), [
+            'fee_category_id' => $this->reliquat->fraisSubscription->frais_category_id,
+            'montant' => 10000,
+            'mode_paiement' => 'virement',
+            'date_paiement' => now()->toDateString(),
+        ])->assertUnprocessable()->assertJsonValidationErrors('inscription_id');
+
+        $this->assertSame($avant, ESBTPPaiement::count());
+        $this->assertSame('terminée', $source->fresh()->status);
     }
 
     public function test_get_affiche_le_disponible_et_les_paiements_reserves_sans_le_solder(): void

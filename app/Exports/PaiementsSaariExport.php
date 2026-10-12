@@ -211,6 +211,12 @@ class PaiementsSaariExport implements FromCollection, WithMapping, WithTitle, Wi
         // Sous-titre + filtres
         $sheet->mergeCells("A3:{$highestColumn}3");
         $subtitle = 'Export SAARI — Journal des encaissements';
+        $portee = (string) ($this->filters['portee'] ?? 'tous');
+        $subtitle .= ' — '.match ($portee) {
+            'annee' => 'frais de l’année universitaire courante',
+            'arrieres' => 'règlements des dettes anciennes',
+            default => 'toutes les années d’inscription',
+        };
         if (!empty($this->filters['periode_label'])) {
             $subtitle .= ' (' . $this->filters['periode_label'] . ')';
         }

@@ -244,6 +244,15 @@
     .pi-alert--success > i { color: #10b981; font-size: 1rem; }
     .pi-alert--success .btn-close { margin-left: auto; opacity: .6; }
 
+    .pi-portee-nav{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0}
+    .pi-portee-nav a{display:inline-flex;align-items:center;gap:.45rem;text-decoration:none;border:1px solid #cbd5e1;background:white;border-radius:11px;padding:.65rem .85rem;color:#475569;font-weight:700;font-size:.78rem}
+    .pi-portee-nav a.is-active{border-color:#0453cb;background:#eff6ff;color:#0453cb}
+    .pi-portee-nav a:hover{border-color:#0453cb;color:#0453cb}
+    .pi-date-presets{display:flex;flex-wrap:wrap;align-items:center;gap:.45rem;padding:.65rem .9rem;border:1px solid #d6e2f5;border-radius:11px;background:#f8fafc;margin:-.25rem 0 1rem}
+    .pi-date-presets strong{font-size:.76rem;color:#1e293b;margin-right:.35rem}
+    .pi-date-presets button{background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:.46rem .7rem;cursor:pointer;color:#475569;font-size:.77rem;font-weight:700}
+    .pi-date-presets button:hover,.pi-date-presets button[aria-pressed="true"]{background:#0453cb;border-color:#0453cb;color:#fff}
+    .pi-date-presets small{flex-basis:100%;font-size:.72rem;color:#64748b}
     /* ═══════ Filter bar ═══════ */
     .pi-filters {
         background: #fff;
@@ -976,7 +985,7 @@
                         <div class="pi-hero-chips">
                             <span class="pi-chip">
                                 <i class="fas fa-calendar"></i>
-                                {{ $anneeNom }}
+                                <span id="pi-portee-label">{{ request('portee', 'tous') === 'annee' ? 'Scolarité ' . $anneeNom : (request('portee') === 'arrieres' ? 'Dettes anciennes' : 'Flux d’encaissement · toutes années') }}</span>
                                 <button type="button" class="pi-chip-btn" onclick="showYearChangeInfo()" title="Comment changer d'année ?" aria-label="Information changement d'année">
                                     <i class="fas fa-info-circle"></i>
                                 </button>
@@ -1023,13 +1032,24 @@
                             @if(auth()->user()?->can('paiements.view') || auth()->user()?->can('paiements.view_own'))
                             <li>
                                 <a class="dropdown-item" href="#" onclick="exportPaiements('etat-financier-preview'); return false;">
-                                    <i class="fas fa-file-invoice-dollar text-primary me-2"></i>Aperçu état financier
-                                    <small class="text-muted d-block ms-4" style="font-size:.7rem;">Qui a soldé quel frais</small>
+                                    <i class="fas fa-file-invoice-dollar text-primary me-2"></i>Aperçu état financier · année courante
+                                    <small class="text-muted d-block ms-4" style="font-size:.7rem;">Soldes cumulés, indépendants des dates de caisse</small>
                                 </a>
                             </li>
                             <li>
                                 <a class="dropdown-item" href="#" onclick="exportPaiements('etat-financier'); return false;">
-                                    <i class="fas fa-file-pdf text-danger me-2"></i>Télécharger l'état financier
+                                    <i class="fas fa-file-pdf text-danger me-2"></i>État financier · année courante
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="exportPaiements('etat-financier-toutes-preview'); return false;">
+                                    <i class="fas fa-layer-group text-primary me-2"></i> Aperçu état financier · toutes années
+                                    <small class="text-muted d-block ms-4" style="font-size:.7rem;">Soldes de toutes les inscriptions, sans filtre de date</small>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="exportPaiements('etat-financier-toutes'); return false;">
+                                    <i class="fas fa-file-pdf text-primary me-2"></i> Télécharger état financier · toutes années
                                 </a>
                             </li>
                             @endif
@@ -1097,11 +1117,36 @@
             </div>
         @endif
 
+        @php
+            $piPortee = in_array(request('portee'), ['annee', 'arrieres'], true) ? request('portee') : 'tous';
+            $piPorteeUrl = fn ($portee) => route('esbtp.paiements.index').'?'.http_build_query(array_merge(request()->except('portee', 'page'), ['portee' => $portee]));
+        @endphp
+        <nav class="pi-portee-nav" aria-label="Choisir les versements à afficher">
+            <a href="{{ $piPorteeUrl('tous') }}" class="{{ $piPortee === 'tous' ? 'is-active' : '' }}">
+                <i class="fas fa-cash-register"></i> Par date · toutes années
+            </a>
+            <a href="{{ $piPorteeUrl('annee') }}" class="{{ $piPortee === 'annee' ? 'is-active' : '' }}">
+                <i class="fas fa-calendar-check"></i> Inscription {{ $anneeNom }}
+            </a>
+            <a href="{{ $piPorteeUrl('arrieres') }}" class="{{ $piPortee === 'arrieres' ? 'is-active' : '' }}">
+                <i class="fas fa-history"></i> Règlements d'anciennes dettes
+            </a>
+        </nav>
+
+        <div class="pi-date-presets" aria-label="Raccourcis pour filtrer par date d'encaissement">
+            <strong><i class="far fa-calendar-alt" aria-hidden="true"></i> Date d'encaissement</strong>
+            <button type="button" data-pi-period="today" aria-pressed="false">Aujourd'hui</button>
+            <button type="button" data-pi-period="month" aria-pressed="false">30 derniers jours</button>
+            <button type="button" data-pi-period="all" aria-pressed="false">Toutes les dates</button>
+            <small>Ces raccourcis montrent les versements de <b>toutes les années d'inscription</b> effectués à la date choisie ; ils ne filtrent pas par année scolaire.</small>
+        </div>
+
         {{-- Alerte note (statique, pas AJAX) --}}
         <div class="alert alert-info alert-sm mb-lg">
             <i class="fas fa-info-circle me-2"></i>
-            <strong>Note :</strong> Ces chiffres représentent les paiements <u>enregistrés dans le système</u> selon leur statut de validation.
-            Pour voir les montants attendus vs payés par catégorie de frais, consultez le
+            <strong>Lecture :</strong> <span id="pi-portee-note">{{ $piPortee === 'arrieres' ? 'Vous voyez uniquement les règlements de dettes anciennes, reportées ou non.' : ($piPortee === 'annee' ? 'Vous voyez les frais de l’inscription de l’année courante, hors reliquats.' : 'Tous les versements sont visibles, quelle que soit l’année de la dette.') }}</span>
+            Les compteurs indiquent des <strong>paiements, pas des inscriptions ni des nouveaux étudiants</strong>. Les dates filtrent le jour réel d'encaissement.
+            Pour suivre les montants attendus et réglés, consultez le
             <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="alert-link">Suivi par Catégorie</a>.
         </div>
 
@@ -1128,6 +1173,7 @@
                 </div>
             </div>
             <form action="{{ route('esbtp.paiements.index') }}" method="GET" id="paiements-filter-form">
+                <input type="hidden" name="portee" value="{{ $piPortee }}">
                 <div class="pi-filters-row">
                     <div class="pi-field">
                         <label for="search">Recherche</label>
@@ -1769,6 +1815,79 @@ function showYearChangeInfo() {
         }
     }
 
+    // Le changement de périmètre emprunte le même rafraîchissement AJAX que
+    // les filtres, sans recharger la page ni perdre la période saisie.
+    function synchroniserPortee() {
+        const portee = new URLSearchParams(window.location.search).get('portee') || 'tous';
+        const annee = @json($anneeNom);
+        const libelles = {
+            tous: ['Flux d’encaissement · toutes années', "Date du versement : toutes les années d'inscription, y compris les anciennes dettes."],
+            annee: ['Scolarité ' + annee, "Vous voyez les frais de l'inscription de l'année courante, hors reliquats."],
+            arrieres: ['Dettes anciennes', 'Vous voyez uniquement les règlements de dettes anciennes, reportées ou non.'],
+        };
+        const actuel = Object.prototype.hasOwnProperty.call(libelles, portee) ? portee : 'tous';
+        const input = document.querySelector('#paiements-filter-form input[name="portee"]');
+        if (input) input.value = actuel;
+        const libelle = document.getElementById('pi-portee-label');
+        const note = document.getElementById('pi-portee-note');
+        if (libelle) libelle.textContent = libelles[actuel][0];
+        if (note) note.textContent = libelles[actuel][1];
+        piSyncDatePresets();
+        document.querySelectorAll('.pi-portee-nav a').forEach(function (lien) {
+            const actif = (new URL(lien.href, window.location.href).searchParams.get('portee') || 'tous') === actuel;
+            lien.classList.toggle('is-active', actif);
+            if (actif) lien.setAttribute('aria-current', 'page');
+            else lien.removeAttribute('aria-current');
+        });
+    }
+
+    // Vue caisse : une date donnée regroupe les règlements de toutes les promotions.
+    // Les raccourcis repassent volontairement sur "tous", indépendamment de l'année de la dette.
+    function piDateLocale(date) {
+        return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+    }
+    function piSyncDatePresets() {
+        const p = new URLSearchParams(window.location.search);
+        const today = new Date();
+        const end = piDateLocale(today);
+        const start = new Date(today);
+        start.setDate(start.getDate() - 29);
+        const from = p.get('date_debut') || '';
+        const to = p.get('date_fin') || '';
+        let active = '';
+        if ((p.get('portee') || 'tous') === 'tous') {
+            if (from === end && to === end) active = 'today';
+            else if (from === piDateLocale(start) && to === end) active = 'month';
+            else if (!from && !to) active = 'all';
+        }
+        document.querySelectorAll('[data-pi-period]').forEach(function (button) {
+            button.setAttribute('aria-pressed', button.dataset.piPeriod === active ? 'true' : 'false');
+        });
+    }
+    $(document).on('click', '[data-pi-period]', function () {
+        const preset = this.dataset.piPeriod;
+        const today = new Date();
+        const end = piDateLocale(today);
+        const start = new Date(today);
+        start.setDate(start.getDate() - 29);
+        $('#date_debut').val(preset === 'all' ? '' : preset === 'today' ? end : piDateLocale(start));
+        $('#date_fin').val(preset === 'all' ? '' : end);
+        $('#paiements-filter-form input[name="portee"]').val('tous');
+        $('#paiements-filter-form').trigger('submit');
+    });
+
+    $(document).on('click', '.pi-portee-nav a', function (e) {
+        e.preventDefault();
+        const portee = new URL(this.href, window.location.href).searchParams.get('portee') || 'tous';
+        const url = new URL(window.location.href);
+        url.searchParams.set('portee', portee);
+        url.searchParams.delete('page');
+        history.pushState({}, '', url.pathname + url.search);
+        currentUrl = url.pathname + url.search;
+        synchroniserPortee();
+        fetchPaiementsData();
+    });
+
     /**
      * Intercepte la soumission du formulaire de filtres
      * pour faire une requête AJAX au lieu de recharger la page
@@ -1785,6 +1904,7 @@ function showYearChangeInfo() {
         // Mettre à jour l'URL dans le navigateur
         history.pushState({}, '', newUrl);
         currentUrl = newUrl;
+        synchroniserPortee();
 
         // Fetch les données
         fetchPaiementsData();
@@ -1824,6 +1944,7 @@ function showYearChangeInfo() {
      */
     window.addEventListener('popstate', function() {
         debugLog('⬅️ Navigation navigateur détectée');
+        synchroniserPortee();
         fetchPaiementsData();
     });
 
@@ -2028,9 +2149,29 @@ function showYearChangeInfo() {
                 params.set('inline', '1');
                 openInNewTab = true;
                 break;
+            case 'etat-financier-toutes':
+                exportUrl = '{{ route('esbtp.paiements.export.etat-financier') }}';
+                params.set('annee_situation', 'toutes');
+                break;
+            case 'etat-financier-toutes-preview':
+                exportUrl = '{{ route('esbtp.paiements.export.etat-financier') }}';
+                params.set('annee_situation', 'toutes');
+                params.set('inline', '1');
+                openInNewTab = true;
+                break;
             default:
                 debugError('❌ Format d\'export inconnu:', format);
                 return;
+        }
+
+        // Un état financier est un STOCK de frais, pas le flux de caisse.
+        // Ne jamais lui transmettre silencieusement le filtre de dates du journal.
+        if (format.startsWith('etat-financier')) {
+            params.delete('date_debut');
+            params.delete('date_fin');
+            params.delete('status');
+            params.delete('portee');
+            if (!params.has('annee_situation')) params.set('annee_situation', 'courante');
         }
 
         // Ajouter les paramètres de filtres

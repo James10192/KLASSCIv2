@@ -210,6 +210,11 @@ class ESBTPPaiementController extends Controller
                 'classe' => $classeLabel !== '' ? $classeLabel : null,
                 'parcours' => $estLmd ? ($classe?->parcours?->name ?? $inscription?->filiere?->name) : null,
                 'frais' => $p->ventilation()->pluck('nom')->filter()->implode(', '),
+                'type_dette' => $p->type_paiement === 'reliquat'
+                    ? 'Ancienne dette reportée'
+                    : (($inscription?->anneeUniversitaire && ! $inscription->anneeUniversitaire->is_current)
+                        ? 'Ancienne dette · '.$inscription->anneeUniversitaire->name
+                        : null),
                 'mode' => (string) $p->mode_paiement,
                 'quand' => $quand,
                 'montant' => (float) ($fraisFiltre ? $p->partPourCategorie($fraisFiltre) : $p->montant),
@@ -487,13 +492,21 @@ class ESBTPPaiementController extends Controller
         $q = trim((string) $request->get('q', ''));
         $filiereId = $request->integer('filiere_id') ?: null;
         $niveauId = $request->integer('niveau_id') ?: null;
+        $anciennes = $request->boolean('anciennes');
 
         $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         $query = ESBTPInscription::query()
-            ->with(['etudiant.user', 'filiere:id,name', 'niveauEtude:id,name', 'classe:id,name'])
-            ->whereIn('status', ['active', 'en_attente'])
-            ->when($annee, fn ($q) => $q->where('annee_universitaire_id', $annee->id))
+            ->with(['etudiant.user', 'filiere:id,name', 'niveauEtude:id,name', 'classe:id,name', 'anneeUniversitaire:id,name'])
+            // Une année achevée peut porter des frais impayés : l'état
+            // « terminée » ne doit pas effacer sa dette de la recherche.
+            // En revanche, une inscription annulée ne doit pas être encaissée.
+            ->when($anciennes,
+                fn ($q) => $q->whereNotIn('status', ESBTPInscription::STATUTS_ANNULES),
+                fn ($q) => $q->whereIn('status', ['active', 'en_attente'])
+            )
+            ->when($annee && ! $anciennes, fn ($q) => $q->where('annee_universitaire_id', $annee->id))
+            ->when($annee && $anciennes, fn ($q) => $q->where('annee_universitaire_id', '!=', $annee->id))
             ->when($filiereId, fn ($q) => $q->where('filiere_id', $filiereId))
             ->when($niveauId, fn ($q) => $q->where('niveau_id', $niveauId));
 
@@ -504,7 +517,9 @@ class ESBTPPaiementController extends Controller
                     $etudiant->where(function ($champ) use ($terme) {
                         $champ->where('nom', 'like', "%{$terme}%")
                             ->orWhere('prenoms', 'like', "%{$terme}%")
-                            ->orWhere('matricule', 'like', "%{$terme}%");
+                            ->orWhere('matricule', 'like', "%{$terme}%")
+                            ->orWhereHas('user', fn ($user) => $user->where('name', 'like', "%{$terme}%")
+                                ->orWhere('email', 'like', "%{$terme}%"));
                     });
                 }
             });
@@ -525,6 +540,7 @@ class ESBTPPaiementController extends Controller
                     'filiere' => $inscription->filiere->name ?? '—',
                     'niveau' => $inscription->niveauEtude->name ?? '—',
                     'classe' => $inscription->classe->name ?? '—',
+                    'annee' => $inscription->anneeUniversitaire?->name ?? '—',
                 ];
             })
             ->values();
@@ -582,6 +598,22 @@ class ESBTPPaiementController extends Controller
             return redirect()->back()->withErrors(['etudiant_id' => $motif])->withInput();
         }
 
+        // Un règlement d'ancienne année reste possible après clôture de
+        // l'inscription. Pas après ANNULATION : le serveur doit faire appliquer
+        // la même frontière que la recherche, même sur une URL directe.
+        if (in_array($inscription->status, ESBTPInscription::STATUTS_ANNULES, true)) {
+            $motif = "Cette inscription a été annulée : aucun paiement ne peut y être enregistré.";
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $motif,
+                    'errors' => ['inscription_id' => [$motif]],
+                ], 422);
+            }
+
+            return redirect()->back()->withErrors(['inscription_id' => $motif])->withInput();
+        }
+
         // Un frais deja depose en nature est SOLDE : on ne l'encaisse pas.
         //
         // L'etudiant a apporte sa ramette, sa chemise cartonnee. Le lui faire
@@ -615,6 +647,28 @@ class ESBTPPaiementController extends Controller
             }
         }
 
+
+        // Une partie des frais de l'inscription source peut déjà avoir été
+        // transférée sur une inscription ultérieure. Le paiement ordinaire
+        // ne peut solder que la partie NON reportée, jamais le reliquat.
+        $sourceAvecReport = \App\Models\ESBTPReliquatDetail::query()
+            ->where('inscription_source_id', $inscription->id)->exists();
+        if ($sourceAvecReport) {
+            $situation = app(\App\Services\Finances\SituationFinanciereEtudiant::class)
+                ->pour((int) $inscription->etudiant_id, (int) $inscription->id);
+            $ligneOrigine = $situation['annees']->firstWhere('inscription_id', $inscription->id);
+            $resteDirect = (float) ($ligneOrigine['non_reporte'] ?? 0);
+
+            if ((float) $validated['montant'] > $resteDirect + 0.005) {
+                $motif = $resteDirect < 1
+                    ? "Dette déjà reportée : utilisez « Régler un arriéré » sur l'inscription de destination."
+                    : sprintf("Montant supérieur au solde non reporté de %s FCFA. Réglez le reliquat séparément.", number_format($resteDirect, 0, ',', ' '));
+                if ($request->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $motif, 'errors' => ['montant' => [$motif]]], 422);
+                }
+                return redirect()->back()->withErrors(['montant' => $motif])->withInput();
+            }
+        }
 
         // PROTECTION BACKEND: Détecter les doublons récents (dernières 10 secondes)
         $timeWindow = now()->subSeconds(10);
@@ -689,6 +743,22 @@ class ESBTPPaiementController extends Controller
             }
 
             return redirect()->back()->withErrors(['montant' => $e->getMessage()])->withInput();
+        }
+
+        // Empêche aussi la répartition manuelle de placer une avance sur un
+        // frais déjà transféré. Le total seul ne suffirait pas à le détecter.
+        if ($sourceAvecReport) {
+            $plafondsDirects = $repartition->resteConnuParFrais($inscription->id);
+            foreach ($allocations as $categorieId => $montantAlloue) {
+                if (array_key_exists((int) $categorieId, $plafondsDirects)
+                    && $montantAlloue > $plafondsDirects[(int) $categorieId] + 0.005) {
+                    $motif = "Frais reporté ou soldé sur l'inscription d'origine : corrigez la répartition ou utilisez « Régler un arriéré ».";
+                    if ($request->expectsJson()) {
+                        return response()->json(['success' => false, 'message' => $motif, 'errors' => ['repartition' => [$motif]]], 422);
+                    }
+                    return redirect()->back()->withErrors(['repartition' => $motif])->withInput();
+                }
+            }
         }
 
         try {
@@ -2344,6 +2414,7 @@ class ESBTPPaiementController extends Controller
                 'frais_category_id' => $request->input('frais_category_id'),
                 'date_debut' => $request->input('date_debut'),
                 'date_fin' => $request->input('date_fin'),
+                'portee' => $request->input('portee', 'tous'),
             ];
 
             // Créer l'export
@@ -2389,6 +2460,7 @@ class ESBTPPaiementController extends Controller
                 'date_debut' => $request->input('date_debut'),
                 'date_fin' => $request->input('date_fin'),
                 'periode_label' => $this->buildPeriodeLabel($request),
+                'portee' => $request->input('portee', 'tous'),
             ];
 
             $export = new \App\Exports\PaiementsSaariExport($paiements, $filters);
@@ -2445,6 +2517,7 @@ class ESBTPPaiementController extends Controller
                 'frais_category_id' => $request->input('frais_category_id'),
                 'date_debut' => $request->input('date_debut'),
                 'date_fin' => $request->input('date_fin'),
+                'portee' => $request->input('portee', 'tous'),
             ];
 
             // Créer l'export
@@ -2562,6 +2635,8 @@ class ESBTPPaiementController extends Controller
             'status' => $request->input('status'),
             'date_debut' => $request->input('date_debut'),
             'date_fin' => $request->input('date_fin'),
+            'frais_category_id' => $request->input('frais_category_id'),
+            'portee' => $request->input('portee', 'tous'),
         ];
 
         $settings = $this->getReceiptSettings();

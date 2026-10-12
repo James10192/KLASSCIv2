@@ -330,6 +330,69 @@ class EncaisserMobileTest extends TestCase
      *
      * @return array<string, mixed>
      */
+    public function test_une_inscription_terminee_accepte_le_reglement_de_sa_dette_sans_reinscription(): void
+    {
+        $this->inscription->update(['status' => 'terminée']);
+        $avant = ESBTPInscription::count();
+
+        $reponse = $this->postJson(route('esbtp.paiements.store'), $this->versement(20000));
+
+        $reponse->assertOk()->assertJsonPath('success', true);
+        $this->assertSame($avant, ESBTPInscription::count());
+        $this->assertDatabaseHas('esbtp_paiements', [
+            'inscription_id' => $this->inscription->id,
+            'etudiant_id' => $this->inscription->etudiant_id,
+            'montant' => 20000,
+        ]);
+    }
+
+    public function test_le_serveur_refuse_le_reglement_direct_sur_inscription_annulee(): void
+    {
+        $this->inscription->update(['status' => 'annulée']);
+        $avant = ESBTPPaiement::count();
+
+        $this->postJson(route('esbtp.paiements.store'), $this->versement(20000))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['inscription_id']);
+
+        $this->assertSame($avant, ESBTPPaiement::count());
+    }
+
+    public function test_paiement_ancien_ne_reencaisse_pas_la_part_deja_reportee(): void
+    {
+        $destination = ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+        ]);
+        $sub = ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)
+            ->where('frais_category_id', $this->scolarite->id)->firstOrFail();
+        \App\Models\ESBTPReliquatDetail::create([
+            'inscription_source_id' => $this->inscription->id,
+            'inscription_destination_id' => $destination->id,
+            'frais_subscription_id' => $sub->id,
+            'montant_attendu' => 150000,
+            'montant_paye' => 0,
+            'montant_reliquat' => 150000,
+            'montant_regle' => 0,
+            'statut' => 'actif',
+            'date_creation' => now(),
+            'created_by' => $this->caissier->id,
+        ]);
+
+        $avant = ESBTPPaiement::count();
+        // La dette directe restante est la tenue (100 000), pas la scolarité
+        // reportée (150 000). Au-delà du restant : refus serveur.
+        $this->postJson(route('esbtp.paiements.store'), $this->versement(110000))
+            ->assertStatus(422)->assertJsonValidationErrors(['montant']);
+        $this->assertSame($avant, ESBTPPaiement::count());
+
+        // L'agent peut toujours payer les frais réellement non reportés.
+        $this->postJson(route('esbtp.paiements.store'), $this->versement(40000))
+            ->assertOk()->assertJsonPath('success', true);
+        $paiement = ESBTPPaiement::where('inscription_id', $this->inscription->id)
+            ->orderByDesc('id')->firstOrFail();
+        $this->assertSame($this->tenue->id, (int) $paiement->allocations->first()->frais_category_id);
+    }
+
     private function versement(int $montant): array
     {
         return [

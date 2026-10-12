@@ -2218,6 +2218,30 @@
 </style>
 @endsection
 
+@push('styles')
+<style>
+.fin-shortcuts{display:flex;gap:.55rem;flex-wrap:wrap;margin:-.1rem 0 1.1rem}
+.fin-shortcuts a{color:#0453cb;background:#eff6ff;border:1px solid #c8dafb;border-radius:10px;text-decoration:none;padding:.55rem .85rem;font-size:.79rem;font-weight:700}
+.fin-shortcuts a:hover,.fin-shortcuts a:focus-visible{background:#dbeafe;outline-offset:2px}
+.fin-reference-empty{display:flex;align-items:center;gap:.85rem;background:#f8fafc;border:1px solid #d5e1f4;border-left:4px solid #0453cb;border-radius:13px;padding:1.2rem;margin-bottom:1.1rem;color:#334155;font-size:.86rem}
+.fin-reference-empty i{color:#0453cb;font-size:1.25rem}
+.fin-global-disclosure{scroll-margin-top:90px;border:1px solid #d7e1f1;border-radius:14px;background:#fff;margin:1.35rem 0;overflow:hidden}
+.fin-global-disclosure>summary{list-style:none;display:flex;gap:.75rem;align-items:center;cursor:pointer;padding:1rem 1.2rem;background:#f8fafc}
+.fin-global-disclosure>summary::-webkit-details-marker{display:none}
+.fin-global-disclosure>summary>span:first-child{display:flex;flex-direction:column;gap:.23rem;flex:1;min-width:0}
+.fin-global-disclosure>summary strong{font-size:.89rem;color:#0f172a}
+.fin-global-disclosure>summary small{font-size:.74rem;color:#64748b;font-weight:400}
+.fin-global-disclosure>summary i.fa-layer-group{display:none}
+.fin-global-total{display:flex;flex-direction:column;text-align:right;gap:.25rem}
+.fin-global-total strong{color:#0453cb!important;font-variant-numeric:tabular-nums}
+.fin-global-chevron{color:#0453cb;transition:transform .2s}
+.fin-global-disclosure[open] .fin-global-chevron{transform:rotate(180deg)}
+.fin-global-detail{padding:1rem}
+.fin-global-detail .sfe-card{box-shadow:none;border:0;margin:0;padding:.5rem}
+@media(max-width:700px){.fin-global-disclosure>summary{flex-wrap:wrap}.fin-global-total{text-align:left;order:3;width:100%}.fin-global-detail{padding:.5rem}}
+</style>
+@endpush
+
 @section('content')
 <div class="fiche-page">
 
@@ -5265,7 +5289,6 @@
      $finInscRef, pose ici, et disparait avec lui. --}}
 @if($voirFinances)
 <div class="tab-panel" id="tab-finances">
-    <x-situation-financiere-etudiant :situation="$situationFinanciere" />
     @php
         /* ── Inscription de l'année courante (priorité absolue) ── */
         $finAnneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
@@ -5320,6 +5343,8 @@
         $finTaux   = $finTotalAttenduGlobal > 0 ? min(100, round($finTotalPayeGlobal / $finTotalAttenduGlobal * 100)) : 0;
     @endphp
 
+    {{-- La situation de l'inscription de référence précède les agrégats multi-années. --}}
+    @if($finInscRef)
     {{-- ── HERO FINANCIER ─────────────────────────────────────── --}}
     <div class="fin-hero">
         @if($finInscActive)
@@ -5462,6 +5487,17 @@
             @endif
         </div>
     </div>
+    @else
+    <div class="fin-reference-empty" role="status">
+        <i class="fas fa-calendar-times" aria-hidden="true"></i>
+        <span><strong>Pas d'inscription pour l'année courante.</strong> Consultez les inscriptions antérieures ci-dessous pour vérifier et régler les dettes, sans réinscription.</span>
+    </div>
+    @endif
+    <nav class="fin-shortcuts" aria-label="Naviguer dans la situation financière">
+        @if($finInscActive && $finInscActive->fraisSubscriptions->isNotEmpty())<a href="#fin-frais-inscription">Frais de l'inscription</a>@endif
+        <a href="#fin-global-multi">Situation globale toutes années</a>
+        @if($finAutresInscs->isNotEmpty())<a href="#fin-autres-annees">Autres inscriptions ({{ $finAutresInscs->count() }})</a>@endif
+    </nav>
 
     {{-- ── BANDEAU PAIEMENTS EN ATTENTE ── --}}
     @php
@@ -5517,7 +5553,7 @@
     @endphp
 
     @if($finHasSubscriptions)
-    <div class="s-card" style="margin-bottom:16px;">
+    <div id="fin-frais-inscription" class="s-card" style="margin-bottom:16px; scroll-margin-top:90px;">
         <div class="s-card-header">
             <div class="s-card-title">
                 <div class="s-card-title-icon"><i class="fas fa-table"></i></div>
@@ -5746,9 +5782,19 @@
         @endif
     </div>
 
+    {{-- La vue globale reste disponible sans reléguer les frais de l'année active au bas de l'écran. --}}
+    <details id="fin-global-multi" class="fin-global-disclosure" @if(!$finInscRef) open @endif>
+        <summary>
+            <span><i class="fas fa-layer-group" aria-hidden="true"></i><strong>Situation financière sur toutes les inscriptions</strong><small>Une dette conserve son année d'origine · détail et reports</small></span>
+            <span class="fin-global-total"><small>À régulariser au total</small><strong>{{ number_format((float) ($situationFinanciere['total'] ?? 0), 0, ',', ' ') }} FCFA</strong></span>
+            <i class="fas fa-chevron-down fin-global-chevron" aria-hidden="true"></i>
+        </summary>
+        <div class="fin-global-detail"><x-situation-financiere-etudiant :situation="$situationFinanciere" /></div>
+    </details>
+
     {{-- ── AUTRES INSCRIPTIONS (années précédentes) ────────────── --}}
     @if($finAutresInscs->count())
-    <div class="fin-autres-header">
+    <div id="fin-autres-annees" class="fin-autres-header" style="scroll-margin-top:90px;">
         <i class="fas fa-archive"></i>
         Autres années ({{ $finAutresInscs->count() }})
     </div>
@@ -5762,8 +5808,12 @@
         $autreAttente = \App\Models\ESBTPPaiement::pendingEncaissementsFrom($autrePaiements);
         $autreAttendu = 0;
         try { $autreAttendu = $autreInsc->fraisSubscriptions->sum(fn ($s) => $s->chargedAmount()); } catch(\Exception $e) {}
-        $autreSolde   = $autreAttendu - $autrePaye;
-        $autreTaux    = $autreAttendu > 0 ? min(100, round($autrePaye / $autreAttendu * 100)) : 0;
+        $autreSituation = $situationFinanciere['annees']->firstWhere('inscription_id', $autreInsc->id);
+        $autreReporte = (float) ($autreSituation['reporte'] ?? 0);
+        // Le montant reporté appartient toujours à cette année d'origine,
+        // mais il se règle depuis le reliquat, pas depuis les frais directs.
+        $autreSolde = (float) ($autreSituation['non_reporte'] ?? max(0, $autreAttendu - $autrePaye));
+        $autreTaux = $autreAttendu > 0 ? min(100, round($autrePaye / $autreAttendu * 100)) : 0;
         $autreAccordionId = 'fin-arch-' . $autreInsc->id;
     @endphp
     <div class="fin-arch-card">
@@ -5786,6 +5836,13 @@
             </div>
         </button>
 
+        @if($autreReporte > 0)
+        <p style="margin:.5rem 0;color:#475569;font-size:.75rem;">
+            <i class="fas fa-info-circle" aria-hidden="true"></i>
+            {{ number_format($autreReporte, 0, ',', ' ') }} FCFA transférés en reliquat :
+            le solde restant de ce report se suit dans la situation globale.
+        </p>
+        @endif
         <div class="collapse" id="{{ $autreAccordionId }}">
             <div class="fin-arch-body">
                 {{-- Mini hero stats --}}
@@ -5913,9 +5970,9 @@
                     @can('paiements.create')
                     <button type="button" {{ $autreSolde <= 0 ? 'disabled' : '' }}
                             style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; font-size:.8rem; border-radius:8px; background:linear-gradient(135deg, var(--k-blue, #0453cb), var(--k-blue-2, #5e91de)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(4,83,203,.25);{{ $autreSolde <= 0 ? ' opacity:.5; cursor:not-allowed;' : '' }}"
-                            @if($autreSolde > 0) data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal" onclick="prepareEtudiantPaymentModal({{ $autreInsc->id }})" @endif>
+                            @if($autreSolde > 0) data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal" onclick="prepareEtudiantPaymentModal({{ $autreInsc->id }}, true)" @endif>
                         <i class="fas fa-{{ $autreSolde <= 0 ? 'check-circle' : 'plus-circle' }}"></i>
-                        {{ $autreSolde <= 0 ? 'Soldé' : 'Enregistrer un paiement' }}
+                        {{ $autreSolde > 0 ? 'Enregistrer un paiement' : ($autreReporte > 0 ? 'Reporté en reliquat' : 'Soldé') }}
                     </button>
                     @endcan
                 </div>
@@ -6770,13 +6827,22 @@ function etdHideSkeleton(el, cls) {
     el.parentElement.querySelector('.' + cls)?.remove();
 }
 
-function prepareEtudiantPaymentModal(inscriptionId) {
+function prepareEtudiantPaymentModal(inscriptionId, ancienneInscription = false) {
     const form = document.getElementById('etudiantPaymentForm');
     if (!form) {
         console.error('KLASSCI: formulaire etudiantPaymentForm introuvable pour l\'inscription', inscriptionId);
         return;
     }
-    form.action = `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
+    window._etdHistoricalPayment = Boolean(ancienneInscription);
+    form.action = ancienneInscription
+        ? @json(route('esbtp.paiements.store'))
+        : `/esbtp/inscriptions/${inscriptionId}/valider-avec-paiement`;
+    const validationDirecte = document.getElementById('etd-direct-validation-wrap');
+    if (validationDirecte) validationDirecte.style.display = ancienneInscription ? 'none' : '';
+    const validationCheck = document.getElementById('etd_validate_payment');
+    if (validationCheck && ancienneInscription) validationCheck.checked = false;
+    const oldConfirm = document.getElementById('etd-confirm-historical');
+    if (oldConfirm) oldConfirm.style.display = ancienneInscription ? '' : 'none';
     form.reset();
     const dateInput = form.querySelector('#etd_date_paiement');
     if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
@@ -6910,15 +6976,46 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...';
 
+        const payload = new FormData(form);
+        if (window._etdHistoricalPayment) {
+            payload.set('inscription_id', String(window._etdInscriptionId));
+            payload.set('etudiant_id', @json($etudiant->id));
+            payload.set('frais_category_id', String(payload.get('fee_category_id') || ''));
+            payload.set('commentaire', String(payload.get('observations') || ''));
+            payload.delete('fee_category_id');
+            payload.delete('observations');
+            payload.delete('validate_payment');
+
+            const confirmBox = document.getElementById('etd_confirm_unusual_amount');
+            const seuil = Number(@json((int) \App\Helpers\SettingsHelper::get('comptabilite.unusual_amount_threshold', 500000)));
+            if (montant > seuil && !confirmBox?.checked) {
+                if (confirmBox) {
+                    confirmBox.setCustomValidity('Confirmez explicitement ce montant inhabituel.');
+                    confirmBox.reportValidity();
+                }
+                submitted = false;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = origHtml;
+                return;
+            }
+            payload.set('confirmed_unusual_amount', confirmBox?.checked ? '1' : '0');
+        }
+
         fetch(form.action, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json',
             },
-            body: new FormData(form)
+            body: payload
         })
-        .then(r => r.json().catch(() => ({ success: true })))
+        .then(async r => {
+            const data = await r.json().catch(() => ({success:false, message:'Réponse du serveur illisible.'}));
+            if (!r.ok || data.success !== true) {
+                throw new Error(data.message || 'Le paiement a été refusé par le serveur.');
+            }
+            return data;
+        })
         .then(data => {
             // Fermer le modal
             const modalEl = document.getElementById('etudiantPaymentModal');
@@ -6996,7 +7093,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(err => {
             console.error('Erreur paiement:', err);
-            alert('❌ Une erreur est survenue. Veuillez réessayer.');
+            alert('❌ ' + (err.message || 'Une erreur est survenue. Veuillez réessayer.'));
             submitted = false;
             submitBtn.disabled = false;
             submitBtn.innerHTML = origHtml;
@@ -7127,7 +7224,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     {{-- Checkbox validation directe (réservée aux users avec self_override : créateur = validateur) --}}
                     @can('paiements.validate.self_override')
-                    <div style="margin-top:1.25rem; padding:14px 16px; background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #86efac; border-radius:10px;">
+                    <div id="etd-direct-validation-wrap" style="margin-top:1.25rem; padding:14px 16px; background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #86efac; border-radius:10px;">
                         <div class="form-check" style="margin:0;">
                             <input class="form-check-input" type="checkbox" id="etd_validate_payment" name="validate_payment" value="1"
                                    style="width:18px; height:18px; margin-top:2px; cursor:pointer;">
@@ -7141,6 +7238,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
                     @endcan
+                </div>
+                <div id="etd-confirm-historical" style="display:none; padding:0 2rem 1rem;">
+                    <label style="display:flex;gap:.55rem;align-items:flex-start;color:#334155;font-size:.82rem;">
+                        <input type="checkbox" id="etd_confirm_unusual_amount" onchange="this.setCustomValidity('')" style="margin-top:.2rem;">
+                        <span>Je confirme ce montant s'il dépasse le seuil de paiement inhabituel de l'établissement. La dette reste attachée à son année d'origine.</span>
+                    </label>
                 </div>
                 <div class="modal-footer" style="background:#f8f9fa;border-radius:0 0 15px 15px;padding:1.25rem 2rem;border:none;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="padding:.65rem 1.5rem;border-radius:8px;font-weight:600;border:2px solid #6c757d;">

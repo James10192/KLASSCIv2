@@ -518,7 +518,15 @@ class PaiementsExport implements FromCollection, WithHeadings, WithMapping, With
         ]);
         $sheet->getRowDimension($titleRow)->setRowHeight(20);
 
-        $filters = [];
+        $portee = (string) ($this->filters['portee'] ?? 'tous');
+        $filters = [[
+            'label' => 'Périmètre des inscriptions',
+            'value' => match ($portee) {
+                'annee' => 'Frais de l’année universitaire courante (hors reliquats)',
+                'arrieres' => 'Dettes anciennes (reportées ou non)',
+                default => 'Tous les versements, quelle que soit l’année d’inscription',
+            },
+        ]];
 
         if (!empty($this->filters['search'])) {
             $filters[] = [
@@ -536,14 +544,14 @@ class PaiementsExport implements FromCollection, WithHeadings, WithMapping, With
 
         if (!empty($this->filters['date_debut'])) {
             $filters[] = [
-                'label' => 'Date début',
+                'label' => 'Date d’encaissement (depuis)',
                 'value' => \Carbon\Carbon::parse($this->filters['date_debut'])->format('d/m/Y'),
             ];
         }
 
         if (!empty($this->filters['date_fin'])) {
             $filters[] = [
-                'label' => 'Date fin',
+                'label' => 'Date d’encaissement (jusqu’au)',
                 'value' => \Carbon\Carbon::parse($this->filters['date_fin'])->format('d/m/Y'),
             ];
         }

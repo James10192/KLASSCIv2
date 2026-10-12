@@ -6,6 +6,12 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}?v={{ @filemtime(public_path('css/dashboard-moderne.css')) ?: '1' }}">
 <link rel="stylesheet" href="{{ asset('css/paiements-create-date.css') }}?v={{ @filemtime(public_path('css/paiements-create-date.css')) ?: '1' }}">
 <style>
+    .pc-recherche-type{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.65rem}
+    .pc-recherche-type button{border:1px solid #bfdbfe;color:#0453cb;background:#fff;padding:.5rem .75rem;border-radius:10px;cursor:pointer;font-size:.78rem;font-weight:700}
+    .pc-recherche-type button.is-active{background:#0453cb;color:#fff}
+.pc-search-older{display:inline-flex;align-items:center;gap:.4rem;background:#eff6ff;border:1px solid #a9c6f9;border-radius:9px;margin:.7rem auto 0;padding:.55rem .9rem;color:#0453cb;font-weight:700;font-size:.78rem;cursor:pointer}
+.pc-search-older:hover{background:#dbeafe}
+    .pc-recherche-hint{font-size:.78rem;color:#475569;margin:0 0 .85rem}
     .pc-reliquat-entry {display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:1rem;margin:0 0 1rem;}
     .pc-reliquat-entry strong {color:#0f172a;font-size:.88rem}
     .pc-reliquat-entry p {margin:.25rem 0 0;color:#64748b;font-size:.76rem}
@@ -762,6 +768,17 @@
                         </div>
                     @else
                         <div x-data="caisseInscriptionPicker()" x-init="charger()">
+                            <div class="pc-recherche-type">
+                                <button type="button" :class="{ 'is-active': !rechercheAnciens }" @click="changerPortee(false)">
+                                    Inscriptions de cette année
+                                </button>
+                                <button type="button" :class="{ 'is-active': rechercheAnciens }" @click="changerPortee(true)">
+                                    <i class="fas fa-history"></i> Régler une ancienne année
+                                </button>
+                            </div>
+                            <p class="pc-recherche-hint" x-show="rechercheAnciens" x-cloak>
+                                Un ancien étudiant peut payer sa dette sans être réinscrit. Le règlement sera lié à son ancienne inscription.
+                            </p>
                             <div class="pc-toolbar">
                                 <label class="pc-search">
                                     <i class="fas fa-search"></i>
@@ -792,13 +809,19 @@
                                         <span class="pc-avatar" x-text="initiales(row.nom)"></span>
                                         <span class="pc-insc-txt">
                                             <span class="pc-insc-nom" x-text="row.nom"></span>
-                                            <span class="pc-insc-sub"><span x-text="row.classe"></span> · <span class="pc-mono" x-text="row.matricule"></span></span>
+                                            <span class="pc-insc-sub"><span x-text="row.classe"></span> · <span class="pc-mono" x-text="row.matricule"></span> · <span x-text="row.annee"></span></span>
                                         </span>
                                         <span class="pc-insc-track" x-text="[row.filiere, row.niveau].filter(Boolean).join(' · ')"></span>
                                         <i class="fas fa-check-circle pc-insc-check" aria-hidden="true"></i>
                                     </button>
                                 </template>
-                                <div class="pc-insc-empty" x-show="rows.length === 0" x-cloak>Aucun dossier pour ces filtres.</div>
+                                <div class="pc-insc-empty" x-show="rows.length === 0 && !chargement" x-cloak>
+                                    <span>Aucun dossier pour ces filtres et cette année.</span>
+                                    <button x-show="!rechercheAnciens" x-cloak type="button" class="pc-search-older" @click="changerPortee(true)">
+                                        <i class="fas fa-history" aria-hidden="true"></i> Rechercher dans les inscriptions antérieures
+                                    </button>
+                                </div>
+                                <div class="pc-insc-empty" x-show="chargement" x-cloak aria-live="polite">Recherche en cours…</div>
                             </div>
                             <input type="hidden" name="etudiant_id" id="etudiant_id" x-model="etudiantId" required>
                         </div>
@@ -1011,6 +1034,9 @@ window.caisseInscriptionPicker = function () {
         q: '',
         filiereId: '',
         niveauId: '',
+        rechercheAnciens: false,
+        chargement: false,
+        sequenceChargement: 0,
         rows: [],
         selectedId: null,
         etudiantId: '',
@@ -1023,24 +1049,43 @@ window.caisseInscriptionPicker = function () {
                 .join('')
                 .toUpperCase();
         },
+        changerPortee(anciennes) {
+            if (this.rechercheAnciens === anciennes) return;
+            this.rechercheAnciens = anciennes;
+            this.selectedId = null;
+            this.etudiantId = '';
+            window.caisseRequestedInscriptionId = null;
+            const input = document.getElementById('etudiant_id');
+            if (input) { input.value = ''; $(input).trigger('change'); }
+            this.charger();
+        },
         async charger() {
+            const sequence = ++this.sequenceChargement;
+            this.chargement = true;
             const params = new URLSearchParams();
             if (this.q.trim()) params.set('q', this.q.trim());
             if (this.filiereId) params.set('filiere_id', this.filiereId);
             if (this.niveauId) params.set('niveau_id', this.niveauId);
+            if (this.rechercheAnciens) params.set('anciennes', '1');
             try {
                 const response = await fetch(url + '?' + params.toString(), {
                     headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
-                if (!response.ok) return;
+                if (!response.ok) throw new Error('HTTP ' + response.status);
                 const payload = await response.json();
-                this.rows = payload.results || [];
+                if (sequence === this.sequenceChargement) this.rows = payload.results || [];
             } catch (error) {
+                if (sequence === this.sequenceChargement) this.rows = [];
                 debugWarn('Liste inscriptions indisponible', error);
+            } finally {
+                if (sequence === this.sequenceChargement) this.chargement = false;
             }
         },
         choisir(row) {
             this.selectedId = row.id;
+            // Cette inscription précise doit être conservée par le chargeur,
+            // sans rebasculer automatiquement sur la nouvelle année.
+            window.caisseRequestedInscriptionId = row.id;
             this.etudiantId = String(row.etudiant_id);
             const input = document.getElementById('etudiant_id');
             if (input) {
@@ -1166,7 +1211,8 @@ $(function() {
                         });
                     });
 
-                    var preferredInscriptionId = @json($inscription->id ?? null);
+                    var preferredInscriptionId = window.caisseRequestedInscriptionId || @json($inscription->id ?? null);
+                    window.caisseRequestedInscriptionId = null;
                     var preferredExists = preferredInscriptionId && inscriptions.some(function(inscription) {
                         return String(inscription.id) === String(preferredInscriptionId);
                     });

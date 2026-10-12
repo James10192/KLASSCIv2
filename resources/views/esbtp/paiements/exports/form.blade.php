@@ -495,6 +495,23 @@
                     </div>
                 </div>
 
+                {{-- L'annee d'inscription est distincte de la date du versement. --}}
+                <div class="pe-field" style="grid-column:1/-1;">
+                    <label class="pe-field-label" for="pe-portee"><i class="fas fa-layer-group"></i> Inscriptions concernées</label>
+                    <x-au-select
+                        id="pe-portee"
+                        name="portee"
+                        :value="request('portee', 'tous')"
+                        :options="[
+                            'tous' => 'Toutes les années — tous les versements',
+                            'annee' => 'Frais de l’année courante (hors reliquats)',
+                            'arrieres' => 'Règlements des dettes anciennes',
+                        ]"
+                        icon="fa-layer-group"
+                    />
+                    <div class="pe-field-hint">Ce choix concerne l'année d'origine de l'inscription. Les dates ci-dessous filtrent les versements encaissés, quelle que soit l'année de la dette.</div>
+                </div>
+
                 {{-- Date début --}}
                 <div class="pe-field">
                     <label class="pe-field-label" for="pe-date-debut">
@@ -702,6 +719,8 @@
             $filiere.val('').trigger('change');
             $niveau.val('').trigger('change');
             $classes.val(null).trigger('change');
+            const porteeInput = document.getElementById('pe-portee');
+            if (porteeInput) { porteeInput.value = 'tous'; porteeInput.dispatchEvent(new Event('change', { bubbles: true })); }
             document.getElementById('pe-date-debut').value = '';
             document.getElementById('pe-date-fin').value = '';
             document.querySelectorAll('input[name="modes[]"]').forEach(cb => cb.checked = false);

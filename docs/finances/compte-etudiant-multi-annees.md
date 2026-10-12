@@ -1,5 +1,20 @@
 # Compte financier étudiant — règles métier et recette
 
+## Paiement avant réinscription : pas de nouveau dossier
+Le **paiement d'une ancienne dette non reportée** reste rattaché à l'ancienne inscription. Il passe par le même formulaire `paiements.create` avec l'identifiant de cette inscription (catégories et règles de répartition habituelles), même lorsque l'étudiant n'est pas réinscrit. La recherche « Régler une ancienne année » donne accès aux anciennes inscriptions, y compris sur mobile. Elle inclut les inscriptions d'une année achevée (`terminée`), même sans inscription courante, mais jamais les inscriptions annulées. Elle ne crée aucun dossier 2026-2027.
+
+Sur la fiche étudiant, les anciennes années distinguent maintenant explicitement le montant **non reporté** (encaissement direct) du montant **transféré en reliquat** (circuit dédié). Une année avec dette transférée n'est pas déclarée « soldée » par erreur.
+
+La partie déjà reportée est déduite du plafond de chaque frais d'origine. Un paiement ou une ventilation manuelle qui empiète sur ce montant est refusé côté serveur ; les frais non reportés restent payables directement.
+
+Le **reliquat reporté** ne peut exister qu'après réinscription avec décision explicite de report. Son versement suit l'action transactionnelle `CreerVersementReliquat`, `type_paiement=reliquat`, et ne réduit le solde qu'une fois validé. Les deux cas sont présentés dans le même dialogue « Régler un arriéré », avec deux actions différentes bien identifiées.
+
+### Comprendre les chiffres de paiements.index
+- « Tous les encaissements » : toutes années de créance confondues, selon les dates de paiement filtrées.
+- « Frais de l'année courante » : versements ordinaires liés aux inscriptions de l'année courante, hors reliquats reportés.
+- « Règlements d'anciennes dettes » : versements des anciennes inscriptions et versements de reliquats reportés, y compris ceux rattachés à l'inscription récente.
+- **Chaque ligne et KPI compte un paiement, jamais un nouvel inscrit.** L'effectif officiel vient exclusivement de `StudentCountService`, sur les inscriptions actives finalisées de l'année ; aucun règlement de dette ne crée ni ne finalise une inscription. Les exports de paiements héritent de la même portée via `PaymentFilterService`.
+
 ## Portée
 La situation globale **lit** les écritures existantes : `ESBTPFraisSubscription`, `ESBTPPaiement`, `ESBTPReliquatDetail`. Elle ne duplique ni créance ni paiement. Le restant de l'année est le dû des souscriptions moins les paiements **validés, hors reliquat**, moins la créance déjà transférée. Un reliquat conserve l'inscription source et est affiché à part au solde encore ouvert. Les anciennes inscriptions non transférées restent exigibles.
 

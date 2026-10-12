@@ -397,6 +397,11 @@ jobs:
       - name: Montants nets par frais
         run: php vendor/bin/phpunit tests/Feature/Frais/MontantsNetsParFraisTest.php --no-coverage
 
+      # Une dette reportée ne peut pas être encaissée une seconde fois sur
+      # l'inscription source : couvre le plafond et l'imputation par frais.
+      - name: Répartition des frais et reliquats transférés
+        run: php vendor/bin/phpunit tests/Feature/Frais/RepartitionDuVersementTest.php --no-coverage
+
       - name: Date métier des encaissements et cohérence caisse
         run: |
           php vendor/bin/phpunit tests/Feature/Paiements/EncaisserMobileTest.php --no-coverage
@@ -404,6 +409,9 @@ jobs:
 
       - name: Caisse - reliquats AJAX, idempotence et permissions
         run: php vendor/bin/phpunit tests/Feature/Paiements/ReliquatCaisseAjaxTest.php --no-coverage
+
+      - name: "Portées de caisse - année de paiement, année de dette et inscrits"
+        run: php vendor/bin/phpunit tests/Feature/Paiements/PerimetreAnneeDettePaiementsTest.php --no-coverage
 
       - name: Validation inline depuis la fiche inscription
         run: php vendor/bin/phpunit tests/Feature/Paiements/InscriptionShowPaiementsInlineTest.php --no-coverage
@@ -444,6 +452,9 @@ jobs:
         run: |
           php vendor/bin/phpunit tests/Feature/Finances/SituationFinanciereEtudiantTest.php --no-coverage
           php vendor/bin/phpunit tests/Feature/Reinscription/FicheReinscriptionTest.php --no-coverage
+
+      - name: Fiche étudiant - confidentialité et priorité des finances
+        run: php vendor/bin/phpunit tests/Feature/Etudiants/FicheEtudiantFinancesMasqueesTest.php --no-coverage
 
       - name: Fiche étudiant - cible de réinscription après échéance
         run: php vendor/bin/phpunit tests/Feature/Etudiants/FicheEtudiantReinscriptionCibleTest.php --no-coverage

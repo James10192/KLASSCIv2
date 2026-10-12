@@ -9,6 +9,7 @@ use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPPaiementAllocation;
+use App\Models\ESBTPReliquatDetail;
 use App\Models\User;
 use App\Services\Frais\RepartitionDuVersement;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -58,6 +59,33 @@ class RepartitionDuVersementTest extends TestCase
         $this->doit($this->tenue, 100000);
 
         $this->repartition = app(RepartitionDuVersement::class);
+    }
+
+    public function test_un_frais_deja_reporte_ne_redevient_pas_du_sur_l_inscription_d_origine(): void
+    {
+        $destination = ESBTPInscription::factory()->create([
+            'etudiant_id' => $this->inscription->etudiant_id,
+        ]);
+        $sub = ESBTPFraisSubscription::where('inscription_id', $this->inscription->id)
+            ->where('frais_category_id', $this->scolarite->id)->firstOrFail();
+
+        ESBTPReliquatDetail::create([
+            'inscription_source_id' => $this->inscription->id,
+            'inscription_destination_id' => $destination->id,
+            'frais_subscription_id' => $sub->id,
+            'montant_attendu' => 150000,
+            'montant_paye' => 0,
+            'montant_reliquat' => 150000,
+            'montant_regle' => 0,
+            'statut' => 'actif',
+            'date_creation' => now(),
+            'created_by' => $this->user->id,
+        ]);
+
+        $reste = $this->repartition->resteConnuParFrais($this->inscription->id);
+        $this->assertSame(0.0, $reste[$this->scolarite->id]);
+        $this->assertSame(100000.0, $reste[$this->tenue->id]);
+        $this->assertSame([$this->tenue->id => 40000.0], $this->calculer(40000, $this->scolarite));
     }
 
     // ------------------------------------------------------------------

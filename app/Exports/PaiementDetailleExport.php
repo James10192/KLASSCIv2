@@ -67,6 +67,7 @@ class PaiementDetailleExport implements FromCollection, WithHeadings, WithMappin
             'Matricule',
             'Nom étudiant',
             'Classe',
+            'Année d’inscription',
             'Mode',
             'Montant (FCFA)',
             'Statut',
@@ -92,6 +93,7 @@ class PaiementDetailleExport implements FromCollection, WithHeadings, WithMappin
             $etu->matricule ?? '—',
             $etu ? trim(($etu->nom ?? '') . ' ' . ($etu->prenoms ?? '')) : '—',
             $cls->name ?? '—',
+            $paiement->inscription?->anneeUniversitaire?->name ?? '—',
             $paiement->mode_paiement ?? '—',
             (float) ($paiement->montant ?? 0),
             $this->statusLabel($paiement->status ?? $paiement->statut ?? ''),
@@ -265,20 +267,20 @@ class PaiementDetailleExport implements FromCollection, WithHeadings, WithMappin
         $sheet->getStyle("B{$startRow}:B{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle("C{$startRow}:D{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
         $sheet->getStyle("E{$startRow}:F{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-        $sheet->getStyle("H{$startRow}:H{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle("I{$startRow}:I{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("I{$startRow}:I{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("J{$startRow}:J{$endRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
     }
 
     private function applyStatusBadges(Worksheet $sheet, int $startRow, int $endRow): void
     {
         for ($row = $startRow; $row <= $endRow; $row++) {
-            $value = trim((string) $sheet->getCell("I{$row}")->getValue());
+            $value = trim((string) $sheet->getCell("J{$row}")->getValue());
             if ($value === '' || $value === '—') {
                 continue;
             }
 
             $normalized = Str::lower($value);
-            $style = $sheet->getStyle("I{$row}");
+            $style = $sheet->getStyle("J{$row}");
 
             $style->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $style->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
@@ -309,9 +311,9 @@ class PaiementDetailleExport implements FromCollection, WithHeadings, WithMappin
 
     private function renderTotal(Worksheet $sheet, int $row, string $highestColumn): int
     {
-        $sheet->mergeCells("A{$row}:G{$row}");
+        $sheet->mergeCells("A{$row}:H{$row}");
         $sheet->setCellValue("A{$row}", 'TOTAL ENCAISSÉ');
-        $sheet->setCellValue("H{$row}", $this->totalMontant);
+        $sheet->setCellValue("I{$row}", $this->totalMontant);
 
         $sheet->getStyle("A{$row}:{$highestColumn}{$row}")->applyFromArray([
             'font' => ['bold' => true, 'size' => 12, 'color' => ['rgb' => '0453CB']],
@@ -322,9 +324,9 @@ class PaiementDetailleExport implements FromCollection, WithHeadings, WithMappin
                 'bottom' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => 'C7D2FE']],
             ],
         ]);
-        $sheet->getStyle("A{$row}:G{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle("H{$row}")->getNumberFormat()->setFormatCode('#,##0 "FCFA"');
-        $sheet->getStyle("H{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("A{$row}:H{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle("I{$row}")->getNumberFormat()->setFormatCode('#,##0 "FCFA"');
+        $sheet->getStyle("I{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
         $sheet->getRowDimension($row)->setRowHeight(22);
 
         return $row;
