@@ -99,6 +99,25 @@ class ESBTPInscriptionPaiementController extends Controller
         Request $request,
         ESBTPInscription $inscription,
     ) {
+        // Ce flux valide une inscription académique : l'ancienne caisse ne
+        // doit pas modifier son workflow lorsque l'étudiant règle un arriéré.
+        $anneeCourante = ESBTPAnneeUniversitaire::query()->where('is_current', true)->first();
+        $anneeInscription = $inscription->anneeUniversitaire;
+        $anneePasse = $anneeCourante?->start_date && $anneeInscription?->start_date
+            && $anneeInscription->start_date < $anneeCourante->start_date;
+        if (in_array($inscription->status, ESBTPInscription::STATUTS_ANNULES, true) || $anneePasse || $inscription->status === 'terminee') {
+            return $this->refuser(
+                $request, 'inscription_id',
+                'Cette ancienne inscription ne peut pas être remise en validation. Enregistrez son paiement via la caisse (paiements.create).'
+            );
+        }
+
+        abort_unless(
+            app(\App\Services\MobileMoneyPaymentGuard::class)->allowsMode($request->user(), $request->input('mode_paiement')),
+            403,
+            'Ce mode de paiement n est pas autorisé pour votre rôle.'
+        );
+
         $validatePayment = $request->boolean("validate_payment");
         $autoValidateInscription = $request->boolean(
             "auto_validate_inscription",
@@ -155,7 +174,8 @@ class ESBTPInscriptionPaiementController extends Controller
             true,
         );
 
-        $montantRestant = $subscription->chargedAmount() - $totalPaye;
+        $plafonds = app(\App\Services\Frais\RepartitionDuVersement::class)->resteConnuParFrais((int) $inscription->id);
+        $montantRestant = $plafonds[(int) $subscription->frais_category_id] ?? ($subscription->chargedAmount() - $totalPaye);
 
         // Vérifier que le montant ne dépasse pas le montant restant
         if ($request->montant > $montantRestant) {
@@ -1122,7 +1142,8 @@ class ESBTPInscriptionPaiementController extends Controller
         );
 
         // Calculer le montant restant
-        $montantRestant = $subscription->chargedAmount() - $totalPaye;
+        $plafonds = app(\App\Services\Frais\RepartitionDuVersement::class)->resteConnuParFrais((int) $inscription->id);
+        $montantRestant = $plafonds[(int) $subscription->frais_category_id] ?? ($subscription->chargedAmount() - $totalPaye);
 
         // Sécurité : si le montant restant est négatif (corruption de données), le forcer à 0
         if ($montantRestant < 0) {
@@ -1177,11 +1198,12 @@ class ESBTPInscriptionPaiementController extends Controller
             $paiementsParCategorie[$categoryId] = (float) ($paiementsParCategorie[$categoryId] ?? 0) + (float) $total;
         }
 
+        $plafonds = app(\App\Services\Frais\RepartitionDuVersement::class)->resteConnuParFrais((int) $inscription->id);
         $categories = $inscription->fraisSubscriptions
             ->filter(fn ($sub) => $sub->chargedAmount() > 0)
-            ->map(function ($sub) use ($paiementsParCategorie) {
+            ->map(function ($sub) use ($paiementsParCategorie, $plafonds) {
             $totalPaye = $paiementsParCategorie[$sub->frais_category_id] ?? 0;
-            $restant = max(0, $sub->chargedAmount() - $totalPaye);
+            $restant = $plafonds[(int) $sub->frais_category_id] ?? max(0, $sub->chargedAmount() - $totalPaye);
 
             return [
                 'category_id' => $sub->frais_category_id,
