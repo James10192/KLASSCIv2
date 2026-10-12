@@ -12,6 +12,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Octobre 2026
 
+- **Exports enseignants — regroupement matière et spécialisation :** dans « Exporter les enseignants », deux nouveaux documents PDF/Excel permettent de consulter les fiches classées par spécialité (avec les noms à classer), ou les professeurs des bulletins regroupés par matière sur l'ensemble des classes, avec S1/S2 et classes concernées. Les anciennes éditions par classe restent disponibles, sans fusion des noms saisis.
+
 - **Tronc commun BTS — résultats et rang annuel unifiés :** S1 reste attaché à la classe de tronc commun et S2 à la classe de spécialisation ; la moyenne annuelle pondérée combine les deux selon le réglage existant. Le rang annuel compare par défaut l'étudiant avec ses camarades de la classe actuelle et peut être configuré pour le groupe d'origine dans Paramètres > Tronc commun. La liste des résultats sans filtre ne mélange plus les classes, les pages par classe et la fiche étudiant affichent la cohorte et le rang annuel de référence, et les liens ouvrent le bon bulletin par semestre (S2 prioritaire en annuel). Aucun classement automatique pour une moyenne annuelle incomplète ; les ex æquo restent possibles.
 
 - **Fiche étudiant — tronc commun BTS 1 :** les résultats et bulletins du semestre 1 restent visibles avec leur classe de tronc commun après l'orientation en spécialité pour le semestre 2. Le bilan académique rassemble les deux semestres de la même année, signale une moyenne annuelle encore partielle et ne mélange plus les notes des autres classes. Les anciennes doubles inscriptions et une moyenne valide de 0/20 sont prises en charge.

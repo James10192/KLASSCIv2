@@ -66,7 +66,7 @@ final class ESBTPEnseignantExportController extends Controller
             'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
             'classe_id' => ['nullable', 'integer', 'exists:esbtp_classes,id'],
             'semestre' => ['nullable', 'integer', 'in:1,2'],
-            'vue' => ['nullable', 'in:synthese,annuaire,rapprochement,affectations'],
+            'vue' => ['nullable', 'in:synthese,annuaire,rapprochement,affectations,matieres,specialisations'],
         ]);
 
         $vue = $filters['vue'] ?? 'synthese';
@@ -149,12 +149,30 @@ final class ESBTPEnseignantExportController extends Controller
             ]);
         }
 
+        // Le panorama par matiere n'exige aucune classe : seules les lignes
+        // regroupees sont imprimees, pour eviter des PDF de milliers de lignes.
+        if ($max === self::PDF_MAX_ROWS && $vue === 'matieres') {
+            $groupes = \App\Services\Enseignants\PresentationAnnuairePdf::preparer(
+                $resultat['rows'], $resultat['affectations'], $vue
+            )['matieresGroupes'];
+            $totalProfesseurs = array_sum(array_map(
+                fn (array $groupe): int => $groupe['nombreEnseignants'], $groupes
+            ));
+            if ($totalProfesseurs > self::PDF_MAX_AFFECTATIONS) {
+                throw ValidationException::withMessages([
+                    'export' => "Ce document regroupe {$totalProfesseurs} couples matière/professeur (limite ".self::PDF_MAX_AFFECTATIONS."). Affinez la classe, le semestre ou utilisez Excel.",
+                ]);
+            }
+        }
+
         $labels = [
-            'Document PDF' => [
+            'Document' => [
                 'synthese' => 'Synthèse et repères par classe',
                 'annuaire' => 'Annuaire officiel (fiches KLASSCI)',
                 'rapprochement' => 'Noms des bulletins à rapprocher',
                 'affectations' => 'Affectations détaillées par classe',
+                'matieres' => 'Matières et professeurs regroupés',
+                'specialisations' => 'Répertoire par spécialisation',
             ][$vue],
             'Année universitaire des bulletins' => $annee->display_name,
         ];
