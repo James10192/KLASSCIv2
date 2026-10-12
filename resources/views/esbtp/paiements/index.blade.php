@@ -1818,7 +1818,10 @@ function showYearChangeInfo() {
 
     $(document).on('click', '.pi-portee-nav a', function (e) {
         e.preventDefault();
-        const url = new URL(this.href, window.location.href);
+        const portee = new URL(this.href, window.location.href).searchParams.get('portee') || 'tous';
+        const url = new URL(window.location.href);
+        url.searchParams.set('portee', portee);
+        url.searchParams.delete('page');
         history.pushState({}, '', url.pathname + url.search);
         currentUrl = url.pathname + url.search;
         synchroniserPortee();
