@@ -57,6 +57,23 @@ class EnseignantsExportRedirectRegressionTest extends TestCase
         $reponse->assertSee("Le document n'a pas pu être préparé", false);
     }
 
+    public function test_systeme_invalide_est_refuse_avant_la_lecture_des_enseignants(): void
+    {
+        $this->autoriserSansBase();
+        $reponse = $this->get(route('esbtp.enseignants.export-pdf', ['systemes' => ['BTS', 'inconnu']]));
+        $reponse->assertStatus(422);
+        $reponse->assertSee("Le document n'a pas pu être préparé", false);
+    }
+
+    public function test_reference_matiere_non_typee_est_refusee(): void
+    {
+        $this->autoriserSansBase();
+        $reponse = $this->get(route('esbtp.enseignants.export-pdf', [
+            'systemes' => ['BTS', 'LMD'], 'matiere_refs' => ['42'],
+        ]));
+        $reponse->assertStatus(422);
+    }
+
     public function test_telechargement_pdf_invalide_ne_renvoie_pas_302(): void
     {
         $this->autoriserSansBase();

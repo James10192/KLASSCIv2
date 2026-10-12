@@ -14,45 +14,45 @@ final class CompositionExportEnseignants
     {
         return [
             'liste' => [
-                'colonnes' => ['nom' => 'Nom du professeur', 'matiere' => 'Matière', 'classe' => 'Classe', 'filiere' => 'Filière', 'niveau' => "Niveau d'études", 'semestre' => 'Semestre'],
+                'colonnes' => ['nom' => 'Nom du professeur', 'systeme' => 'Système', 'matiere' => 'Matière', 'ue' => 'UE LMD', 'classe' => 'Classe', 'filiere' => 'Filière', 'niveau' => "Niveau d'études", 'parcours' => 'Parcours LMD', 'semestre' => 'Semestre', 'source' => 'Source du nom'],
                 'defaut' => ['nom'],
-                'regroupements' => ['matiere' => 'Par matière', 'classe' => 'Par classe', 'filiere' => 'Par filière', 'niveau' => 'Par niveau', 'semestre' => 'Par semestre', 'aucun' => 'Sans regroupement'],
+                'regroupements' => ['matiere' => 'Par matière', 'ue' => 'Par UE LMD', 'parcours' => 'Par parcours LMD', 'classe' => 'Par classe', 'filiere' => 'Par filière', 'niveau' => 'Par niveau', 'semestre' => 'Par semestre', 'systeme' => 'Par système', 'aucun' => 'Sans regroupement'],
                 'regroupement' => 'matiere',
             ],
             'matieres' => [
-                'colonnes' => ['nom' => 'Nom du professeur', 'matiere' => 'Matière', 'classes' => 'Classes et semestres', 'nb_classes' => 'Nombre de classes', 'S1' => 'S1', 'S2' => 'S2', 'total' => 'Affectations'],
+                'colonnes' => ['nom' => 'Nom du professeur', 'systeme' => 'Système', 'matiere' => 'Matière', 'ue' => 'UE LMD', 'parcours' => 'Parcours LMD', 'classes' => 'Classes et semestres', 'semestres' => 'Semestres', 'nb_classes' => 'Nombre de classes', 'S1' => 'S1 BTS', 'S2' => 'S2 BTS', 'total' => 'Affectations'],
                 'defaut' => ['nom', 'classes', 'S1', 'S2', 'total'],
-                'regroupements' => ['matiere' => 'Par matière', 'aucun' => 'Sans regroupement'],
+                'regroupements' => ['matiere' => 'Par matière', 'ue' => 'Par UE LMD', 'parcours' => 'Par parcours LMD', 'systeme' => 'Par système', 'aucun' => 'Sans regroupement'],
                 'regroupement' => 'matiere',
             ],
             'affectations' => [
-                'colonnes' => ['nom' => 'Professeur saisi', 'matiere' => 'Matière', 'classe' => 'Classe', 'filiere' => 'Filière', 'niveau' => 'Niveau', 'semestre' => 'Semestre'],
+                'colonnes' => ['nom' => 'Professeur saisi', 'systeme' => 'Système', 'matiere' => 'Matière', 'ue' => 'UE LMD', 'parcours' => 'Parcours LMD', 'classe' => 'Classe', 'filiere' => 'Filière', 'niveau' => 'Niveau', 'semestre' => 'Semestre', 'source' => 'Source du nom'],
                 'defaut' => ['classe', 'matiere', 'nom'],
-                'regroupements' => ['semestre' => 'Par semestre', 'matiere' => 'Par matière', 'classe' => 'Par classe', 'niveau' => 'Par niveau', 'filiere' => 'Par filière', 'aucun' => 'Sans regroupement'],
+                'regroupements' => ['semestre' => 'Par semestre', 'matiere' => 'Par matière', 'ue' => 'Par UE LMD', 'parcours' => 'Par parcours LMD', 'systeme' => 'Par système', 'classe' => 'Par classe', 'niveau' => 'Par niveau', 'filiere' => 'Par filière', 'aucun' => 'Sans regroupement'],
                 'regroupement' => 'semestre',
             ],
             'specialisations' => [
-                'colonnes' => ['nom' => 'Enseignant', 'matricule' => 'Matricule', 'regime' => 'Régime', 'statut' => 'Statut', 'telephone' => 'Téléphone', 'email' => 'Email', 'origine' => 'Origine'],
+                'colonnes' => ['nom' => 'Enseignant', 'systeme' => 'Système', 'matricule' => 'Matricule', 'regime' => 'Régime', 'statut' => 'Statut', 'telephone' => 'Téléphone', 'email' => 'Email', 'origine' => 'Origine'],
                 'defaut' => ['nom', 'matricule', 'regime', 'statut', 'telephone', 'email'],
-                'regroupements' => ['specialisation' => 'Par spécialisation', 'aucun' => 'Sans regroupement'],
+                'regroupements' => ['specialisation' => 'Par spécialisation', 'systeme' => 'Par système', 'aucun' => 'Sans regroupement'],
                 'regroupement' => 'specialisation',
             ],
             'annuaire' => [
-                'colonnes' => ['nom' => 'Enseignant', 'matricule' => 'Matricule', 'specialisation' => 'Spécialisation', 'regime' => 'Régime', 'statut' => 'Statut', 'telephone' => 'Téléphone', 'email' => 'Email'],
+                'colonnes' => ['nom' => 'Enseignant', 'systeme' => 'Système', 'matricule' => 'Matricule', 'specialisation' => 'Spécialisation', 'regime' => 'Régime', 'statut' => 'Statut', 'telephone' => 'Téléphone', 'email' => 'Email'],
                 'defaut' => ['nom', 'matricule', 'specialisation', 'regime', 'statut', 'telephone', 'email'],
-                'regroupements' => ['aucun' => 'Sans regroupement', 'specialisation' => 'Par spécialisation'],
+                'regroupements' => ['aucun' => 'Sans regroupement', 'systeme' => 'Par système', 'specialisation' => 'Par spécialisation'],
                 'regroupement' => 'aucun',
             ],
             'rapprochement' => [
-                'colonnes' => ['nom' => 'Nom saisi', 'classes' => 'Classes', 'total' => 'Affectations', 'origine' => 'Origine'],
+                'colonnes' => ['nom' => 'Nom saisi', 'systeme' => 'Système', 'classes' => 'Classes', 'total' => 'Affectations', 'origine' => 'Origine'],
                 'defaut' => ['nom', 'classes', 'total'],
-                'regroupements' => ['initiale' => 'Par initiale', 'aucun' => 'Sans regroupement'],
+                'regroupements' => ['initiale' => 'Par initiale', 'systeme' => 'Par système', 'aucun' => 'Sans regroupement'],
                 'regroupement' => 'initiale',
             ],
             'synthese' => [
-                'colonnes' => ['classe' => 'Classe', 'S1' => 'S1', 'S2' => 'S2', 'total' => 'Affectations', 'enseignants_saisis' => 'Noms distincts'],
+                'colonnes' => ['classe' => 'Classe', 'systeme' => 'Système', 'semestres' => 'Semestres', 'S1' => 'S1 BTS', 'S2' => 'S2 BTS', 'total' => 'Affectations', 'enseignants_saisis' => 'Noms distincts'],
                 'defaut' => ['classe', 'S1', 'S2', 'total', 'enseignants_saisis'],
-                'regroupements' => ['aucun' => 'Sans regroupement'],
+                'regroupements' => ['aucun' => 'Sans regroupement', 'systeme' => 'Par système'],
                 'regroupement' => 'aucun',
             ],
         ];
@@ -96,7 +96,8 @@ final class CompositionExportEnseignants
             'specialisations' => self::lignesFiches($presentation, true),
             'annuaire' => self::lignesFiches($presentation, false),
             'rapprochement' => array_map(fn ($r) => [
-                'nom' => $r['nom'], 'classes' => $r['classes'] ?? '—',
+                'nom' => $r['nom'], 'systeme' => $r['systeme'] ?? 'BTS',
+                'classes' => $r['classes'] ?? '—',
                 'total' => $r['affectations_nombre'] ?? 0, 'origine' => $r['origine'] ?? '—',
                 'initiale' => mb_strtoupper(mb_substr(trim($r['nom']), 0, 1, 'UTF-8'), 'UTF-8'),
             ], $presentation['saisies']),
@@ -111,8 +112,23 @@ final class CompositionExportEnseignants
                     ? 'À classer — spécialisation non renseignée' : (string) $ligne['specialisation'],
                 default => trim((string) ($ligne[$groupBy] ?? '')) ?: 'Non renseigné',
             };
+            $systeme = (string) ($ligne['systeme'] ?? 'BTS');
+            if (($options['separer_systemes'] ?? false) && $groupBy !== 'systeme') {
+                $titre = $systeme.' — '.$titre;
+                if ($systeme === 'LMD' && $groupBy === 'matiere') {
+                    $titre .= ' · '.(string) ($ligne['ue'] ?? 'UE non précisée')
+                        .' · '.(string) ($ligne['parcours'] ?? 'Parcours non précisé');
+                }
+            }
             $cle = mb_strtolower($titre, 'UTF-8');
-            if (! isset($groupes[$cle])) $groupes[$cle] = ['titre' => $titre, 'lignes' => [], 'cles' => []];
+            if ($groupBy === 'matiere') {
+                $cle .= '|'.(string) ($ligne['matiere_id'] ?? '')
+                    .'|'.($systeme === 'LMD' ? (string) ($ligne['parcours'] ?? '') : '');
+            }
+            if (! isset($groupes[$cle])) $groupes[$cle] = [
+                'titre' => $titre, 'reference' => $ligne['matiere_id'] ?? null,
+                'lignes' => [], 'cles' => [],
+            ];
             $valeurs = [];
             foreach ($colonnes as $colonne) $valeurs[$colonne] = $ligne[$colonne] ?? '—';
             // La liste simplifiee ne repete pas la meme fiche dans une rubrique.
@@ -123,12 +139,20 @@ final class CompositionExportEnseignants
             $groupes[$cle]['lignes'][] = $valeurs;
         }
         $resultat = array_values($groupes);
+        $titres = array_count_values(array_map(
+            fn ($g) => mb_strtolower($g['titre'], 'UTF-8'), $resultat
+        ));
         usort($resultat, fn ($a, $b) => strnatcasecmp($a['titre'], $b['titre']));
         foreach ($resultat as &$g) {
+            if ($groupBy === 'matiere'
+                && ($titres[mb_strtolower($g['titre'], 'UTF-8')] ?? 0) > 1
+                && $g['reference'] !== null) {
+                $g['titre'] .= ' · Réf. #'.$g['reference'];
+            }
             usort($g['lignes'], fn ($a, $b) => strnatcasecmp(
                 (string) ($a['nom'] ?? reset($a)), (string) ($b['nom'] ?? reset($b))
             ));
-            unset($g['cles']);
+            unset($g['cles'], $g['reference']);
         }
         unset($g);
         $entetes = [];
@@ -146,7 +170,11 @@ final class CompositionExportEnseignants
         foreach ($presentation['matieresGroupes'] as $groupe) {
             foreach ($groupe['enseignants'] as $prof) {
                 $lignes[] = [
-                    'matiere' => $groupe['matiere'], 'nom' => $prof['nom'],
+                    'matiere' => $groupe['matiere'], 'matiere_id' => $groupe['matiere_id'] ?? null,
+                    'systeme' => $groupe['systeme'] ?? 'BTS',
+                    'ue' => $groupe['ue'] ?? '—', 'parcours' => $groupe['parcours'] ?? '—',
+                    'nom' => $prof['nom'],
+                    'semestres' => $prof['semestres'] ?? '—',
                     'classes' => $prof['classes'], 'nb_classes' => $prof['nombreClasses'],
                     'S1' => $prof['S1'], 'S2' => $prof['S2'], 'total' => $prof['total'],
                 ];
@@ -160,7 +188,8 @@ final class CompositionExportEnseignants
         $lignes = $presentation['fiches'];
         if ($avecManuels) $lignes = array_merge($lignes, $presentation['saisies']);
         return array_map(fn ($r) => [
-            'nom' => $r['nom'], 'matricule' => $r['matricule'] ?? '—',
+            'nom' => $r['nom'], 'systeme' => $r['systeme'] ?? 'BTS',
+            'matricule' => $r['matricule'] ?? '—',
             'specialisation' => $r['specialisation'] ?? '—',
             'regime' => $r['regime'] ?? '—', 'statut' => $r['statut'] ?? '—',
             'telephone' => PresentationAnnuairePdf::contactValide((string) ($r['telephone'] ?? '')),
@@ -173,7 +202,9 @@ final class CompositionExportEnseignants
     public static function largeur(array $composition): int
     {
         $min = [
-            'nom' => 57, 'matiere' => 44, 'classe' => 35, 'classes' => 68,
+            'nom' => 57, 'systeme' => 20, 'matiere' => 44, 'ue' => 49,
+            'parcours' => 46, 'source' => 39, 'semestres' => 34,
+            'classe' => 35, 'classes' => 68,
             'filiere' => 42, 'niveau' => 34, 'semestre' => 20, 'matricule' => 29,
             'specialisation' => 45, 'regime' => 24, 'statut' => 19, 'telephone' => 32,
             'email' => 47, 'origine' => 35, 'S1' => 16, 'S2' => 16,

@@ -570,6 +570,8 @@
                             :filieres="$filieresExport"
                             :niveaux="$niveauxExport"
                             :matieres="$matieresExport"
+                            :parcours="$parcoursExport"
+                            :ues="$uesExport"
                             :specializations="$specializations" />
                     @endcan
                     <button type="button" class="te-hero-btn" data-bs-toggle="modal" data-bs-target="#bulkAvailabilityModal">

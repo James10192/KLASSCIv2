@@ -189,6 +189,7 @@ final class EnseignantDePlanificationLmd
                 $r = $this->resoudre($classe, (int) $ecue->id, $anneeId, $semestre, true);
 
                 return [
+                    'ue_id' => (int) $ue->id,
                     'matiere_id' => (int) $ecue->id,
                     'code' => $ecue->code,
                     'name' => $ecue->name,

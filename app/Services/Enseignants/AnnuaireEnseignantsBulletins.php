@@ -52,7 +52,9 @@ final class AnnuaireEnseignantsBulletins
         // Ne pas inclure de classes supprimees ; les periodes sont toujours
         // resolues par le lecteur canonique (setting puis bulletin historique).
         $classes = ESBTPClasse::query()->with(['filiere:id,name', 'niveau:id,name'])
-            ->whereIn('id', $ids)->get(['id', 'name', 'filiere_id', 'niveau_etude_id'])->keyBy('id');
+            ->whereIn('id', $ids)
+            ->where(fn ($q) => $q->where('systeme_academique', 'BTS')->orWhereNull('systeme_academique'))
+            ->get(['id', 'name', 'filiere_id', 'niveau_etude_id', 'systeme_academique'])->keyBy('id');
         $brutes = [];
         $idsMatieresPourNoms = [];
         foreach ($classes as $classe) {
@@ -91,6 +93,10 @@ final class AnnuaireEnseignantsBulletins
         foreach ($brutes as $ligne) {
             $nomMatiere = $matieres->get($ligne['matiere_id'], 'Matière #'.$ligne['matiere_id']);
             $lignes[] = [
+                'systeme' => 'BTS',
+                'ue' => '—',
+                'parcours' => '—',
+                'source' => 'Bulletin BTS',
                 'classe' => $ligne['classe'],
                 'semestre' => $ligne['semestre'],
                 'matiere' => (string) $nomMatiere,

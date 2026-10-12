@@ -28,27 +28,35 @@ final class PresentationAnnuairePdf
         $parNom = [];
         foreach ($affectations as $item) {
             $classe = trim((string) $item['classe']);
+            $systeme = (string) ($item['systeme'] ?? 'BTS');
             $semestre = (string) $item['semestre'];
-            if (! isset($parClasse[$classe])) {
-                $parClasse[$classe] = ['classe' => $classe, 'S1' => 0, 'S2' => 0, 'total' => 0, 'noms' => []];
+            $cleClasse = $systeme.'|'.(string) ($item['classe_id'] ?? $classe);
+            if (! isset($parClasse[$cleClasse])) {
+                $parClasse[$cleClasse] = [
+                    'classe' => $classe, 'systeme' => $systeme,
+                    'S1' => 0, 'S2' => 0, 'total' => 0, 'noms' => [], 'periodes' => [],
+                ];
             }
-            $parClasse[$classe]['total']++;
+            $parClasse[$cleClasse]['total']++;
+            $parClasse[$cleClasse]['periodes'][$semestre] = true;
             if (in_array($semestre, ['S1', 'S2'], true)) {
-                $parClasse[$classe][$semestre]++;
+                $parClasse[$cleClasse][$semestre]++;
             }
-            $parClasse[$classe]['noms'][self::normaliser((string) $item['nom'])] = true;
-            $cle = self::normaliser((string) $item['nom']);
+            $parClasse[$cleClasse]['noms'][self::normaliser((string) $item['nom'])] = true;
+            $cle = $systeme.'|'.self::normaliser((string) $item['nom']);
             $parNom[$cle] = ($parNom[$cle] ?? 0) + 1;
         }
         foreach ($parClasse as &$classe) {
             $classe['enseignants_saisis'] = count($classe['noms']);
-            unset($classe['noms']);
+            $classe['semestres'] = implode(', ', array_keys($classe['periodes']));
+            unset($classe['noms'], $classe['periodes']);
         }
         unset($classe);
         uksort($parClasse, 'strnatcasecmp');
 
         foreach ($saisies as &$ligne) {
-            $ligne['affectations_nombre'] = $parNom[self::normaliser((string) $ligne['nom'])] ?? 0;
+            $cleNom = (string) ($ligne['systeme'] ?? 'BTS').'|'.self::normaliser((string) $ligne['nom']);
+            $ligne['affectations_nombre'] = $parNom[$cleNom] ?? 0;
             $classes = array_filter(array_map('trim', explode(',', (string) ($ligne['classes'] ?? ''))));
             $ligne['classes_nombre'] = count($classes);
         }
@@ -69,6 +77,7 @@ final class PresentationAnnuairePdf
         foreach (array_merge($enregistres, $saisies) as $ligne) {
             $cle = self::normaliser((string) $ligne['nom'], true);
             if (mb_strlen($cle, 'UTF-8') < 9 || ! str_contains($cle, ' ')) continue;
+            $cle = (string) ($ligne['systeme'] ?? 'BTS').'|'.$cle;
             $groupesVariantes[$cle][(string) $ligne['nom']] = true;
         }
         $pistes = [];
@@ -80,9 +89,9 @@ final class PresentationAnnuairePdf
 
         $parSemestre = ['S1' => [], 'S2' => []];
         foreach ($affectations as $item) {
-            if (isset($parSemestre[$item['semestre']])) {
-                $parSemestre[$item['semestre']][] = $item;
-            }
+            $periode = (string) $item['semestre'];
+            if (! isset($parSemestre[$periode])) $parSemestre[$periode] = [];
+            $parSemestre[$periode][] = $item;
         }
 
         // Le regroupement est un travail de lecture : aucune variante de nom
@@ -120,10 +129,23 @@ final class PresentationAnnuairePdf
             $nom = trim((string) $item['nom']);
             $classe = trim((string) $item['classe']);
             $semestre = (string) $item['semestre'];
-            $cleMatiere = self::normaliserLibelle($matiere);
+            $systeme = (string) ($item['systeme'] ?? 'BTS');
+            $ue = (string) ($item['ue'] ?? '—');
+            $parcours = (string) ($item['parcours'] ?? '—');
+            // LMD : une UE/ECUE d'un parcours n'est pas interchangeable
+            // avec son homonyme BTS ni avec une UE d'un autre parcours.
+            $cleMatiere = implode('|', [
+                $systeme, (string) ($item['matiere_id'] ?? self::normaliserLibelle($matiere)),
+                $systeme === 'LMD' ? $ue : '',
+                $systeme === 'LMD' ? $parcours : '',
+            ]);
             $cleNom = self::normaliserLibelle($nom);
             if (! isset($parMatiere[$cleMatiere])) {
-                $parMatiere[$cleMatiere] = ['matiere' => $matiere, 'enseignants' => [], 'total' => 0];
+                $parMatiere[$cleMatiere] = [
+                    'matiere' => $matiere, 'matiere_id' => $item['matiere_id'] ?? null,
+                    'systeme' => $systeme, 'ue' => $ue, 'parcours' => $parcours,
+                    'enseignants' => [], 'total' => 0,
+                ];
             }
             if (! isset($parMatiere[$cleMatiere]['enseignants'][$cleNom])) {
                 $parMatiere[$cleMatiere]['enseignants'][$cleNom] = [
@@ -152,6 +174,9 @@ final class PresentationAnnuairePdf
                 }
                 $prof['classes'] = implode(' ; ', $details);
                 $prof['nombreClasses'] = count($prof['periodes']);
+                $prof['semestres'] = implode(', ', array_values(array_unique(
+                    array_merge(...array_map('array_keys', array_values($prof['periodes'])))
+                )));
                 unset($prof['periodes']);
             }
             unset($prof);

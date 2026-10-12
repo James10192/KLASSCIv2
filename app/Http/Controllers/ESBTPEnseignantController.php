@@ -82,25 +82,87 @@ class ESBTPEnseignantController extends Controller
             "temporary" => (int) ($row->temporary ?? 0),
         ];
 
-        // Annee utilisee par les exports pour lire les professeurs des bulletins BTS.
+        // Les exports consultent l'annee BTS (bulletins) et LMD (maquette/planning).
         // L'annuaire des comptes reste global, independamment de l'annee choisie.
         $anneesUniversitaires = ESBTPAnneeUniversitaire::query()
             ->orderByDesc('start_date')->get(['id', 'name', 'start_date', 'end_date']);
         $anneeExportId = ESBTPAnneeUniversitaire::anneeCourante()?->id;
         $classesExport = \App\Models\ESBTPClasse::query()
-            ->orderBy('name')->get(['id', 'name', 'filiere_id', 'niveau_etude_id']);
-        $filieresExport = \App\Models\ESBTPFiliere::query()
+            ->orderBy('name')->get(['id', 'name', 'filiere_id', 'niveau_etude_id', 'systeme_academique', 'parcours_id']);
+        $systemesParFiliere = $classesExport->groupBy('filiere_id')->map(
+            fn ($classes) => $classes->map(fn ($classe) =>
+                $classe->systeme_academique === 'LMD' ? 'LMD' : 'BTS'
+            )->unique()->values()->all()
+        );
+        $systemesParNiveau = $classesExport->groupBy('niveau_etude_id')->map(
+            fn ($classes) => $classes->map(fn ($classe) =>
+                $classe->systeme_academique === 'LMD' ? 'LMD' : 'BTS'
+            )->unique()->values()->all()
+        );
+        $filieresBrutes = \App\Models\ESBTPFiliere::query()
             ->orderBy('name')->get(['id', 'name', 'parent_id']);
+        $parents = $filieresBrutes->pluck('parent_id', 'id');
+        // Une filiere parente sans classe directe reste selectable si ses
+        // options portent des classes BTS ou LMD.
+        foreach ($classesExport as $classe) {
+            $systeme = $classe->systeme_academique === 'LMD' ? 'LMD' : 'BTS';
+            $parentId = $parents->get($classe->filiere_id);
+            $vus = [];
+            while ($parentId && ! isset($vus[$parentId])) {
+                $vus[$parentId] = true;
+                $systemesParFiliere->put($parentId, array_values(array_unique(
+                    array_merge($systemesParFiliere->get($parentId, []), [$systeme])
+                )));
+                $parentId = $parents->get($parentId);
+            }
+        }
+        $filieresExport = $filieresBrutes->map(function ($filiere) use ($systemesParFiliere) {
+            $filiere->systemes = $systemesParFiliere->get($filiere->id, []);
+            return $filiere;
+        });
         $niveauxExport = \App\Models\ESBTPNiveauEtude::query()
-            ->orderBy('name')->get(['id', 'name']);
-        // Les matieres sont celles du referentiel, le filtre porte sur les
-        // IDs exacts utilises par les configurations des bulletins.
+            ->orderBy('name')->get(['id', 'name'])->map(function ($niveau) use ($systemesParNiveau) {
+                $niveau->systemes = $systemesParNiveau->get($niveau->id, []);
+                return $niveau;
+            });
+        // Une meme graphie de matiere peut representer un cours BTS et un
+        // ECUE LMD : le selecteur conserve les identifiants et leur origine.
+        // Les ECUE declares seulement dans le pivot UE-matiere sont aussi LMD.
+        $idsEcuePivot = \Illuminate\Support\Facades\DB::table('esbtp_ue_matiere')
+            ->distinct()->pluck('matiere_id')->map(fn ($id) => (int) $id)->flip();
         $matieresExport = \App\Models\ESBTPMatiere::query()
-            ->orderBy('name')->get(['id', 'name']);
+            ->orderBy('name')->get(['id', 'name', 'unite_enseignement_id'])
+            ->flatMap(function ($matiere) use ($idsEcuePivot) {
+                $estLmd = $matiere->unite_enseignement_id !== null || $idsEcuePivot->has((int) $matiere->id);
+                $systemes = $estLmd
+                    ? ($matiere->unite_enseignement_id === null ? ['BTS', 'LMD'] : ['LMD'])
+                    : ['BTS'];
+
+                return collect($systemes)->map(fn (string $systeme) => [
+                    'id' => $systeme.':'.$matiere->id,
+                    'name' => '['.$systeme.'] '.$matiere->name,
+                    'systemes' => [$systeme],
+                ]);
+            })->values();
+
+        $parcoursExport = \App\Models\ESBTPLMDParcours::query()
+            ->orderBy('name')->get(['id', 'name', 'filiere_id'])
+            ->map(fn ($parcours) => [
+                'id' => (string) $parcours->id,
+                'name' => $parcours->name,
+                'systemes' => ['LMD'],
+            ]);
+        $uesExport = \App\Models\ESBTPUniteEnseignement::query()
+            ->orderBy('name')->get(['id', 'code', 'name'])
+            ->map(fn ($ue) => [
+                'id' => (string) $ue->id,
+                'name' => trim(($ue->code ?: '').' — '.$ue->name, ' —'),
+                'systemes' => ['LMD'],
+            ]);
 
         return view(
             "esbtp.enseignants.index",
-            compact("teachers", "specializations", "stats", "anneesUniversitaires", "anneeExportId", "classesExport", "filieresExport", "niveauxExport", "matieresExport"),
+            compact("teachers", "specializations", "stats", "anneesUniversitaires", "anneeExportId", "classesExport", "filieresExport", "niveauxExport", "matieresExport", "parcoursExport", "uesExport"),
         );
     }
 
