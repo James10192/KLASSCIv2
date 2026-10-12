@@ -10,6 +10,7 @@
 @if($peutEncaisser)
 <div class="rc-launcher" x-data="reliquatCaisseModal({{ (int) ($inscriptionId ?? 0) }})"
      @caisse-inscription-changed.window="setInscription($event.detail.inscriptionId)"
+     @reliquat-caisse-ouvrir.window="ouvrir($event.detail.reliquatId)"
      @keydown.escape.window="if (open) fermer()">
     <button type="button" class="rc-open" @click="ouvrir()" :disabled="!inscriptionId"
         title="Régler une dette ancienne, distincte de la scolarité actuelle">
@@ -154,13 +155,18 @@ if (typeof window.reliquatCaisseModal !== 'function') {
                     if (this.open) this.charger();
                 }
             },
-            async ouvrir() {
+            async ouvrir(cible = null) {
                 if (!this.inscriptionId) return;
                 this.open = true; this.error = ''; this.success = ''; this.receipt = '';
                 this.requestKey = null;
                 document.body.style.overflow = 'hidden';
                 this.$nextTick(() => this.$refs.dialog?.focus());
                 await this.charger();
+                if (cible !== null && cible !== undefined) {
+                    const ancienneDette = this.lignes.find(r => r.id === Number(cible));
+                    if (ancienneDette?.payable) this.selectionner(ancienneDette);
+                    else this.error = 'Cette créance n’est pas disponible à l’encaissement : vérifiez le solde et les versements en attente.';
+                }
             },
             fermer() {
                 this.open = false;
